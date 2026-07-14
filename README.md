@@ -1,63 +1,67 @@
-# TilauScope 4.1, derived from Artisan Roaster Scope derived
+# TilauScope
 
-A major update that makes TilauScope easier for beginners while providing more powerful tools to explore and improve your roasts. Here's what's new.
+**A guided roasting assistant for home & amateur coffee roasters — built on [Artisan Roaster Scope](https://github.com/artisan-roaster-scope/artisan).**
 
-## ☕ Roasting Assistant
+![License](https://img.shields.io/badge/license-GPL--3.0-blue) ![Based on Artisan](https://img.shields.io/badge/based%20on-Artisan%20Roaster%20Scope-89B4FA)
 
-* The roast plan now **anticipates heat reductions before first crack**: power decreases are staged throughout the Maillard phase and triggered using bean temperature (earlier on high-thermal-mass roasters), preventing first crack from "crushing" the curve because the reduction happened too late.
-* During development, the **DROP countdown** now accounts for the natural slowing of the roast curve (no more overly optimistic estimates) and displays the **projected final DTR**. You always know where your roast is expected to finish, not just where it is now.
-* The plan's **historical references** (master curve and crash/flick alerts) now use only your previous roasts of the **exact same bean** (BeanCave identity) and with a **comparable batch size**, eliminating misleading reference curves caused by comparing 250 g batches with 450 g batches.
-* **First crack temperature is now learned from your own roasting history**. From the second roast of a bean onward, the plan uses the actual first crack temperature measured on your machine instead of a theoretical value. Heat ramps, planned curve, and drop targets are automatically adjusted. The PDF report indicates whether the value comes from your history or the reference database.
-* **Automatic heat reductions are now announced.** During Maillard, the assistant displays the next scheduled step (for example, *"Next 48% @170°C"*), so the power slider no longer moves unexpectedly. If drying is projected to take significantly longer than planned for that bean, the coach warns you before the profile becomes flat.
-* **You always know how you're tracking against the plan.** During Drying and Maillard, the assistant displays your lead or delay relative to the planned curve (for example, *"Plan +0:15"*) and evaluates your RoR against the expected slope **at that exact point on the curve**, eliminating misleading "above plan" messages early in Maillard.
-* **The roast plan continuously self-calibrates.** Expected Drying and Maillard durations are now based on your measured roasts of the same bean while remaining within professional roasting guidelines. If a bean consistently dries or browns too slowly or too quickly, TilauScope automatically adjusts the phase heat profile (within safe limits, from the third roast onward) and explains the reason in the action notes.
-* Three experience levels are available: **Guided**, **Standard**, and **Expert**. In Guided mode, the assistant automatically opens, starts, and closes with the START/STOP button, letting you focus on roasting instead of the interface.
-* The assistant can be **docked** in place of the main panel or **detached** into a floating window.
-* The bean list now displays only beans that are **actually in stock**.
-* **AirWave** airflow recommendations are adapted to each roast phase, with alerts when airflow begins cooling the drum.
-* At the end of each roast, a **"Actual Curve vs Plan"** summary shows, phase by phase, whether the roast ran hotter or cooler than planned.
-* In Guided mode, a small button at the top right of the graph lets you switch between a simplified **Coach View** (one key recommendation plus a phase verdict) and the complete **Expert View**, avoiding information overload.
+## What is TilauScope?
 
-## 📊 BeanCave & Roast Viewer
+Artisan is a professional-grade roast logging and control tool used by roasters worldwide. **TilauScope is an opinionated guided layer built on top of it**, aimed at home and amateur roasters who want more than a scope: step-by-step guidance, automatic milestone detection, and a roast plan that learns from every batch — while never touching or slowing down Artisan's real-time core.
 
-* New **"Data"** button opens a dedicated window for exploring roast milestones, events, and measurements, with easy navigation between milestones.
-* Completely redesigned **multi-roast comparison**. Each roast has its own color and three visualization modes:
+Think of it as *"Artisan, plus a coach standing next to you telling you what to do and why."*
 
-  * **Overlay**
-  * **Consistency** (min/max band to visualize repeatability)
-  * **Aligned** (aligns roast milestones to compare curve shapes)
-* New **phase balance banner** (Drying / Maillard / Development) with a **plain-language analysis** of your batch consistency.
-* The **Coach** now adapts its recommendations to your target roast level (light, medium, or dark) instead of relying on a single generic reference.
-* **Bean density measurement** is now assisted by a connected scale.
-* The **Roasting plan** tab is now a guided **3-step flow** (Bean → Conditions → Target). A progress header lights up as you fill each step, ambient readings sit in compact tiles with **"Fill from online weather"** right where it belongs, batch weight has its own field, and the advanced probe-offset settings stay tucked away until you need them.
-* New **"Repair ALog"** tool restores incomplete roast profiles.
+## Why TilauScope
 
-## 🫖 Brew Advisor — New
+- 🧑‍🏫 **Guided roast assistant** — a live plan that tells you what to do next (heat, airflow, timing) and explains why, instead of leaving you to interpret a raw curve.
+- 📈 **Learns from your own roasts** — first crack temperature, phase durations, and crash/flick risk are calibrated from your roasting history for that exact bean and batch size, not generic theory.
+- 🎚️ **Three experience levels** — **Guided**, **Standard**, **Expert**. Beginners get an assistant that opens, starts, and closes itself; experts get the full Artisan interface, undisturbed.
+- 🫘 **BeanCave** — a bean database and roast log in one place: stock, density, roast history, and side-by-side batch comparison (overlay / consistency / aligned).
+- ☕ **Brew Advisor** — brewing recipes (espresso, V60, French Press, AeroPress, Moka…) adjusted for roast level, dose, and bean freshness, plus a resting/degassing calendar.
+- 🔌 **Real hardware integration** — connected scales, BLE airflow/color sensors, adaptive PID control, and label printing, wired directly into the roasting workflow.
 
-* Brewing recipes for **seven brewing methods** (Espresso, V60, French Press, AeroPress, Moka, and more), automatically adjusted for roast level, coffee dose, and bean freshness.
-* **Degassing / resting recommendations** based on roast level, with lighter roasts requiring longer resting periods.
-* Water recommendations based on the correct **GH / KH** hardness parameters instead of a simple "hard" or "soft" classification.
-* **Machine-specific espresso profiles**, with optional **AI-assisted fine tuning**.
-* A **Brew Planning timeline** shows all your roasts on a calendar of their resting windows: each bar glows brightest on the **best day to drink**, then fades into a "drink soon" tail. Switch the **Filter / Espresso** target to shift every window, and click **☕ Brew this coffee** on any roast to jump straight into the Brew Advisor already loaded with it.
+## Screenshots
 
-## 🔥 Preheating & Control
+### Guided roast assistant
 
-* New **progressive preheating algorithm** that gradually slows heating as the target temperature is approached, while automatically adapting holding power to room conditions and your roasting history.
-* Select the control sensor (**BT or ET**) directly from the roast settings.
-* A new **automation banner** clearly indicates when the roast is being controlled by an automation process.
+![Guided roast assistant panel](wiki/general-roasting.png)
+*The guided assistant panel during a roast — live phase tracking, 4-lever control (Air / Drum / Airwave / Burner), and milestone buttons*
 
-## ⏰ Alarms
+| | |
+|---|---|
+| ![Drying phase projection](wiki/roasting-development-annotation.png) *Live projection of Dry End time and target, tracked against the plan* | ![First Crack projection](wiki/roasting-fc-prediction-annotation.png) *Maillard phase countdown to expected First Crack* |
 
-* New **sentence-based alarm editor** where every alarm reads like a clear sentence, can be grouped by roast phase, and reordered using drag-and-drop.
-* New **visual alarm timeline** and **AI-powered consistency audit**.
+### BeanCave & Roast Viewer
 
-## 🧰 Preparation & Quality of Life
+| | |
+|---|---|
+| ![BeanCave green bean management](wiki/bean-cave-green-beans-management.png) *BeanCave — green bean inventory & specs* | ![Post-roast summary](wiki/integration-of-bean-cave-in-roast-properties.png) *Post-roast summary — weight loss, DTR, Agtron colour, AI-assisted notes* |
+| ![Roast Viewer curve](wiki/bean-cave-alog-on-the-fly-preview.png) *Roast Viewer — revisit any past roast curve from BeanCave* | ![Roast Viewer advanced stats](wiki/bean-cave-alog-on-the-fly-properties.png) *Advanced stats — phase balance, RoR per phase, AUC* |
+| ![Live cursor readout](wiki/bean-cave-annotation-on-curves.png) *Live cursor readout — every channel at a glance, anywhere on the curve* | ![Printed bean label](wiki/bean-cave-integrated-print-labels.png) *Auto-generated bean label, ready to print* |
 
-* New **Insights** tab in the settings window provides an estimated roast outcome before you even start roasting.
-* **Batch tracking** follows each roast from preparation through the final result.
-* Optional automatic detection of **Dry End** and **First Crack**.
-* All TilauScope tools are now grouped into a dedicated menu, the configuration window has been reorganized, and the label printer has been made more reliable.
+### Alarms & automation
 
----
+| | |
+|---|---|
+| ![Sentence-based alarm editor](wiki/integration-of-difluid-airwave-in-alarms.png) *Sentence-based Alarm Editor, grouped by roast phase* | ![Event button configuration](wiki/full-integration-of-difluid-in-events.png) *Event buttons wiring hardware commands to roast milestones* |
+| ![AirWave and ambient probe events](wiki/full-integration-of-airwave-and-ambiant-in-events.png) *Custom event buttons for AirWave and ambient probe commands* | |
 
-💡 **Tip:** You can switch between **Guided**, **Standard**, and **Expert** modes at any time from the assistant header.
+### Hardware & configuration
+
+| | |
+|---|---|
+| ![Connected BLE hardware](wiki/ble-devices-support.png) *Connected BLE hardware setup (ambient probe, DiFluid AirWave)* | ![Adaptive PID parameters](wiki/pid-on-et-for-airwave.png) *Adaptive PID parameters per roast phase, tunable per machine* |
+| ![Extra device channels](wiki/extra-devices.png) *Extra device channels — multi-sensor roasts (burner, ambient, MODBUS)* | |
+
+## Hardware supported
+
+Skywalker "Cyberroaster" FIR drum roasters, DiFluid AirWave (airflow/BLE) and Omniflux (color/acoustic) sensors, Acaia scales, Niimbot label printers, and a custom ambient probe (temperature/humidity/acoustic) — all integrated via BLE, Modbus, or MQTT.
+
+## Built on Artisan Roaster Scope
+
+TilauScope is a fork of [Artisan Roaster Scope](https://github.com/artisan-roaster-scope/artisan), the open-source roast logging and control software. All of Artisan's core functionality — device support, profile recording, alarms, PID control — is inherited unchanged; TilauScope adds the guided layer on top, additively.
+
+Full credit and thanks to the Artisan team and community. If TilauScope is useful to you, consider [supporting Artisan's development](https://www.paypal.me/MarkoLuther) too.
+
+## License
+
+GNU General Public License v3.0 — see [LICENSE](LICENSE).
