@@ -1,3 +1,14 @@
+## 📥 Download TilauScope
+
+| Platform | Latest build |
+|---|---|
+| 🍎 macOS | [![Download for macOS](https://img.shields.io/badge/Download-macOS-89B4FA?logo=apple&logoColor=white)](https://github.com/neuralldev/tilauscope_fork/releases?q=macOS&expanded=true) |
+| 🪟 Windows | [![Download for Windows](https://img.shields.io/badge/Download-Windows-89B4FA?logo=windows&logoColor=white)](https://github.com/neuralldev/tilauscope_fork/releases?q=Windows&expanded=true) |
+
+See the [Releases page](https://github.com/neuralldev/tilauscope_fork/releases) for every build and its release notes.
+
+---
+
 # TilauScope
 
 **A guided roasting assistant for home & amateur coffee roasters — built on [Artisan Roaster Scope](https://github.com/artisan-roaster-scope/artisan).**
