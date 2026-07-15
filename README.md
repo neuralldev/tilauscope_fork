@@ -7,6 +7,13 @@
 
 See the [Releases page](https://github.com/neuralldev/tilauscope_fork/releases) for every build and its release notes.
 
+> ⚠️ **macOS: "TilauScope is damaged and can't be opened"?**
+> This is normal — the app isn't notarized by Apple yet, and macOS flags every browser-downloaded app this way regardless of how it was built. It's a one-time fix: open **Terminal** and run
+> ```
+> xattr -cr /path/to/tilauscope-*.dmg
+> ```
+> (or drag the `.dmg` into the Terminal window instead of typing the path), then open it normally. You only need to do this for the **first manual install** — updates delivered afterward through the app's own "Check for updates" button install without this issue.
+
 ---
 
 # TilauScope
