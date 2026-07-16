@@ -20,6 +20,7 @@ A major update that makes TilauScope easier for beginners while providing more p
 
 ## 📊 BeanCave & Roast Viewer
 
+* **Scan a label, open the record.** Roast and green-bean labels now carry a QR code you can scan two ways: the new **📷 SCAN** button in BeanCave opens a webcam scanner (the camera runs only while the window is open) and shows a **roast card** — curve with key events, weights and loss, Agtron, DTR, tasting notes, and a link to the source bean sheet; or point your **phone's camera** at the label and the record page opens right in the phone browser (TilauScope running on the same Wi-Fi network, address `tilauscope.local`).
 * The **green beans catalogue is now a readable list** — each bean on three compact lines with stock, origin and freshness badges (blend, harvest age), a live **search** field and an **"In stock"** filter, replacing the old 28-column table.
 * The **bean sheet is now read-first**: a clear presentation in zones (Essentials with stat tiles, Provenance, Characteristics, Sensory, Sacks) where each zone has its own **✎ Edit** dialog — including live **scale capture** on the stock field and the Flavor Wheel for tasting notes. The **Add** button opens a full expert form with required-field guidance.
 * New **"New sack" assistant** guides you step by step when a bag of green coffee arrives: register a brand-new bean, **restock** an existing one, or start a fresh sheet for a **new crop year** — with a final review screen before anything is saved.
