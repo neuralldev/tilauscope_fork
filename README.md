@@ -7,13 +7,6 @@
 
 See the [Releases page](https://github.com/neuralldev/tilauscope_fork/releases) for every build and its release notes.
 
-> ⚠️ **macOS: "TilauScope is damaged and can't be opened"?**
-> This is normal — the app isn't notarized by Apple yet, and macOS flags every browser-downloaded app this way regardless of how it was built. It's a one-time fix: open **Terminal** and run
-> ```
-> xattr -cr /path/to/tilauscope-*.dmg
-> ```
-> (or drag the `.dmg` into the Terminal window instead of typing the path), then open it normally. You only need to do this for the **first manual install** — updates delivered afterward through the app's own "Check for updates" button install without this issue.
-
 ---
 
 # TilauScope
@@ -35,7 +28,7 @@ Think of it as *"Artisan, plus a coach standing next to you telling you what to 
 - 🎚️ **Three experience levels** — **Guided**, **Standard**, **Expert**. Beginners get an assistant that opens, starts, and closes itself; experts get the full Artisan interface, undisturbed.
 - 🫘 **BeanCave** — a bean database and roast log in one place: stock, density, roast history, and side-by-side batch comparison (overlay / consistency / aligned).
 - ☕ **Brew Advisor** — brewing recipes (espresso, V60, French Press, AeroPress, Moka…) adjusted for roast level, dose, and bean freshness, plus a resting/degassing calendar.
-- 🔌 **Real hardware integration** — connected scales, BLE airflow/color sensors, adaptive PID control, and label printing, wired directly into the roasting workflow.
+- 🔌 **Real hardware integration** — BLE airflow/color sensors, adaptive PID control, and label printing, wired directly into the roasting workflow.
 
 ## Screenshots
 
@@ -72,11 +65,13 @@ Think of it as *"Artisan, plus a coach standing next to you telling you what to 
 
 ## Hardware supported
 
-Skywalker "Cyberroaster" FIR drum roasters, DiFluid AirWave (airflow/BLE) and Omniflux (color/acoustic) sensors, Acaia scales, Niimbot label printers, and a custom ambient probe (temperature/humidity/acoustic) — all integrated via BLE, Modbus, or MQTT.
+Developed for Skywalker, it also connects to many others, support ESP32 Skycommand from community. Add support for specific devices such as DiFluid AirWave (airflow/BLE), Omniflux (color/acoustic) sensors, Niimbot B21S label printers, Lebrew C1 and Aqua Gauge and a custom ambient probe (temperature/humidity/acoustic) — all integrated via BLE, Modbus, or MQTT. The probe is open source, code is available from https://github.com/neuralldev/tilauscope_ambiant.
 
 ## Built on Artisan Roaster Scope
 
-TilauScope is a fork of [Artisan Roaster Scope](https://github.com/artisan-roaster-scope/artisan), the open-source roast logging and control software. All of Artisan's core functionality — device support, profile recording, alarms, PID control — is inherited unchanged; TilauScope adds the guided layer on top, additively.
+TilauScope is based on [Artisan Roaster Scope](https://github.com/artisan-roaster-scope/artisan), the famous open-source roast logging and control software. All of Artisan's core functionality — device support, profile recording, alarms, PID control — is inherited unchanged; TilauScope adds the guided layer on top, additively.
+
+Tilauscope is 100% free to use and runs without any internet or cloud connection. TilauScope has been created by home enthusiast for home enthusiast.  
 
 Full credit and thanks to the Artisan team and community. If TilauScope is useful to you, consider [supporting Artisan's development](https://www.paypal.me/MarkoLuther) too.
 
