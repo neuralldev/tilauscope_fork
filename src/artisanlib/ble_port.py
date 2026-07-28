@@ -1,0 +1,715 @@
+#
+# ABOUT
+# BLE support for Artisan
+
+# LICENSE
+# This program or module is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, either version 2 of the License, or
+# version 3 of the License, or (at your option) any later version. It is
+# provided for educational purposes and is distributed in the hope that
+# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
+# the GNU General Public License for more details.
+
+# AUTHOR
+# Marko Luther, 2024, updated by Tilau
+
+import asyncio
+from asyncio import CancelledError  # <--- Add this line
+import logging
+import platform
+import subprocess
+
+from bleak import BleakScanner, BleakClient
+from bleak.exc import BleakError, BleakCharacteristicNotFoundError, BleakBluetoothNotAvailableError
+
+
+from PyQt6.QtCore import QObject
+
+from artisanlib.async_comm import AsyncLoopThread
+
+from collections.abc import Callable, Awaitable
+from typing import Final, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from bleak.backends.device import BLEDevice # pylint: disable=unused-import
+    from bleak.backends.scanner import AdvertisementData # pylint: disable=unused-import
+    from bleak.backends.characteristic import BleakGATTCharacteristic  # pylint: disable=unused-import
+
+_log = logging.getLogger(__name__)
+
+##TILAU ##
+def bluetooth_enabled(timeout: float = 1.0) -> bool:
+    try:
+        # Run the async function in a temporary event loop
+        return asyncio.run(bluetooth_enabled_async(timeout))
+    except Exception:
+        # Final safety fallback
+        return True
+    
+##TILAU ##
+async def bluetooth_enabled_async(timeout: float = 1.0) -> bool:
+    os_name = platform.system()
+    if os_name=="Darwin":
+        try:
+            output = subprocess.check_output(
+                ["system_profiler", "SPBluetoothDataType"],
+                text=True
+            )
+            return "State: On" in output
+        except subprocess.CalledProcessError:
+            return False
+    if os_name=="Windows":
+        try:
+            import winrt.windows.devices.radios as wrr # type: ignore
+        except ImportError:
+            wrr = None        
+        if wrr:
+            try:
+                # Get all radios (WiFi, Bluetooth, Mobile) should workd with both WIN10 and 11
+                radios = await wrr.Radio.get_radios_async()
+                # Find the one that identifies as Bluetooth
+                bt_radio = next((r for r in radios if r.kind == wrr.RadioKind.BLUETOOTH), None)
+                if bt_radio:
+                    # RadioState.ON is 1
+                    _log.info("bluetooth radio state: %s", 1 if bt_radio.state == wrr.RadioState.ON else 0)
+                    return bt_radio.state == wrr.RadioState.ON
+            except Exception as e:
+                _log.error(f"WinRT Error: {e}")
+        try: # should work with windows 11
+            import winreg
+            path = r"Software\Microsoft\Windows\CurrentVersion\ActionCenter\QuickActions\All\SystemSettings_Device_BluetoothQuickAction"
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, path) as key:
+                value, _ = winreg.QueryValueEx(key, "State")
+            return value == 1 # 1 = On, 0 = Off
+        except FileNotFoundError:
+            return True    # by default return True if the registry key is not found, as it might be missing on older Windows versions
+
+## the interface to the BLEAK lib providing only basic services, but ensures that BLEAK runs in a separate thread/asyncloop and
+## prevents overlapping scan-connects that can lead to crashes
+class BLE:
+
+    def __init__(self) -> None:
+        self._asyncLoopThread: AsyncLoopThread|None = None
+        self._scan_and_connect_lock: asyncio.Lock = asyncio.Lock() # lock to prevent overlapping scan/connect calls
+        self._terminate_scan_event: asyncio.Event = asyncio.Event() # event to terminate ongoing scan
+
+    def __del__(self) -> None:
+        self.close()
+
+    # close() needs to be called on terminating the app to get rid of the singular thread/asyncloop running the bleak scan and connect
+    def close(self) -> None:
+        if hasattr(self, '_asyncLoopThread') and self._asyncLoopThread is not None:
+            del self._asyncLoopThread
+            self._asyncLoopThread = None
+
+    def terminate_scan(self) -> None:
+        self._terminate_scan_event.set()
+
+    # returns True if the given device_name is a prefix of the devices name or the local_name of the advertisement
+    # returns True also in case the local_name is None, but the given service_uuid is within ad.service_uuids
+    @staticmethod
+    def name_match(bd:'BLEDevice', ad:'AdvertisementData', device_name:str, case_sensitive:bool, service_uuid:str|None, manufacturer_key:int|None) -> bool:
+        def manufacturer_key_match() -> bool:
+            # if given Advertisement data lists service_uuids and the service_uuid is given (not None) it has to be contained among the service_uuids provided by the service
+            # to match, thus this function
+            # returns True if service_uuid is None or ad.service_uuids is []
+            # or if service_uuid is in ad.service_uuids
+            return service_uuid is None or manufacturer_key is None or manufacturer_key in ad.manufacturer_data
+
+        return ((manufacturer_key_match() and (
+                    (bd.name is not None and (bd.name.startswith(device_name) if
+                        case_sensitive else bd.name.casefold().startswith(device_name.casefold()))) or
+                    (ad.local_name is not None and (ad.local_name.startswith(device_name) if
+                        case_sensitive else ad.local_name.casefold().startswith(device_name.casefold()))))) or
+                (ad.local_name is None and service_uuid is not None and
+                    service_uuid.casefold() in (uuid.casefold() for uuid in ad.service_uuids)))
+
+    # matches the discovered BLEDevice and AdvertisementData
+    # returns True on success and False otherwise, as well as the service_uuid str of the matching device_description
+    def description_match(self, bd:'BLEDevice', ad:'AdvertisementData',
+            device_descriptions:tuple[dict[str|None,set[str]|None], dict[str, dict[str, int]]], case_sensitive:bool) -> tuple[bool, str|None]:
+        for service_uuid, device_names in device_descriptions[0].items():
+            if device_names is None or any(self.name_match(bd,ad,device_name,case_sensitive, service_uuid,
+                            (device_descriptions[1][service_uuid][device_name] if
+                                service_uuid in device_descriptions[1] and device_name in device_descriptions[1][service_uuid] else None))
+                    for device_name in device_names):
+                return True, service_uuid
+        return False, None
+
+
+    # returns discovered_bd and service_uuid on success, or None
+    async def _scan(self,
+            device_descriptions:tuple[dict[str|None,set[str]|None], dict[str, dict[str, int]]],
+            blacklist:set[str],
+            case_sensitive:bool,
+            scan_timeout:float,
+            address:str|None) -> 'tuple[BLEDevice|None, str|None]':
+        try:
+            async with asyncio.timeout(scan_timeout):
+                async with BleakScanner() as scanner: # pyrefly: ignore[bad-context-manager]
+                    self._terminate_scan_event.clear()
+                    async for bd, ad in scanner.advertisement_data():
+                        if self._terminate_scan_event.is_set():
+                            return None, None
+#                        _log.debug("device %s, (%s): %s", bd.name, ad.local_name, ad.service_uuids)
+                        if bd.address not in blacklist and (address is None or bd.address == address):
+                            res:bool
+                            res_service_uuid:str|None
+                            res, res_service_uuid = self.description_match(bd,ad,device_descriptions,case_sensitive)
+                            if res:
+                                _log.debug('BLE device match')
+                                # we return the first discovered device that matches the given device descriptions
+                                return bd, res_service_uuid
+        except TimeoutError:
+            _log.debug('timeout on BLE scanning')
+        return None, None
+
+    # pylint: disable=too-many-positional-arguments
+    # on success returns tuple of BleakClient, service UUID as str and device name
+    async def _scan_and_connect(self,
+                device_descriptions:tuple[dict[str|None,set[str]|None], dict[str, dict[str, int]]],
+                blacklist:set[str], # client addresses to ignore
+                case_sensitive:bool,
+                disconnected_callback:Callable[[BleakClient], None]|None,
+                scan_timeout:float, connect_timeout:float,
+                address:str|None = None # if given, connect only to the device with this ble address
+                ) -> tuple[BleakClient|None, str|None, str|None]:
+        if self._scan_and_connect_lock is None:
+            self._scan_and_connect_lock = asyncio.Lock()
+        async with self._scan_and_connect_lock:
+            # the lock ensures that only one scan/connect operation is running at any time
+            # as trying to establish a connection to two devices at the same time
+            # can cause errors
+            discovered_bd:BLEDevice|None = None
+            service_uuid:str|None = None
+            discovered_bd, service_uuid = await self._scan(device_descriptions, blacklist, case_sensitive, scan_timeout, address)
+            if discovered_bd is None:
+                return None, None, None
+            client = BleakClient(
+                        discovered_bd,
+                        disconnected_callback=disconnected_callback,
+                        service=([service_uuid] if service_uuid is not None else None),
+                        timeout=connect_timeout)
+            try:
+                async with asyncio.timeout(connect_timeout):
+                    await client.connect()
+            except TimeoutError:
+                _log.debug('timeout on connect')
+                return None, None, None
+            _log.debug('BLE client is_connected')
+            return client, service_uuid, discovered_bd.name
+
+## TILAU ## connect_known : connexion directe sans scan, pour TilauBLEScanner
+    async def _connect_known(
+                self,
+                known_device: 'BLEDevice',
+                service_uuid: str,
+                disconnected_callback: 'Callable[[BleakClient], None] | None',
+                connect_timeout: float = 10,
+                ) -> 'tuple[BleakClient | None, str | None, str | None]':
+        """Connexion directe sans scan — BLEDevice fourni par TilauBLEScanner.
+        Protégé par le même lock que _scan_and_connect pour éviter les connexions
+        simultanées qui causent des instabilités BLE.
+        """
+        if self._scan_and_connect_lock is None:
+            self._scan_and_connect_lock = asyncio.Lock()
+        async with self._scan_and_connect_lock:
+            # timeout géré par BleakClient lui-même (paramètre timeout=connect_timeout)
+            # — on n'utilise PAS asyncio.timeout() qui crée des Futures incompatibles
+            # avec la loop Core Bluetooth sur macOS.
+            client = BleakClient(
+                known_device,
+                disconnected_callback=disconnected_callback,
+                service=[service_uuid],
+                timeout=connect_timeout,
+            )
+            try:
+                await client.connect()
+            except Exception as e:
+                _log.error(f"[BLE] connect_known: failed — {e}")
+                return None, None, None
+            # Valider que le service attendu est bien exposé
+            validated_uuid: str | None = None
+            for service in client.services:
+                if service.uuid.casefold() == service_uuid.casefold():
+                    validated_uuid = service_uuid
+                    break
+            if validated_uuid is None:
+                _log.error(f"[BLE] connect_known: service {service_uuid} not found on device")
+                await client.disconnect()
+                return None, None, None
+            return client, validated_uuid, known_device.name
+
+    def connect_known(
+            self,
+            known_device: 'BLEDevice',
+            service_uuid: str,
+            disconnected_callback: 'Callable[[BleakClient], None] | None' = None,
+            connect_timeout: float = 10,
+            ) -> 'tuple[BleakClient | None, str | None, str | None]':
+        """Point d'entrée synchrone — même pattern que scan_and_connect."""
+        if self._asyncLoopThread is None:
+            self._asyncLoopThread = AsyncLoopThread()
+        assert self._asyncLoopThread is not None
+        fut = asyncio.run_coroutine_threadsafe(
+            self._connect_known(known_device, service_uuid, disconnected_callback, connect_timeout),
+            self._asyncLoopThread.loop,
+        )
+        try:
+            return fut.result(timeout=connect_timeout + 2)
+        except BleakBluetoothNotAvailableError:
+            _log.error("[BLE] connect_known: Bluetooth not available")
+            return None, None, None
+        except BleakError as e:
+            _log.error("[BLE] connect_known: BLE error — %s", e)
+            return None, None, None
+        except Exception:
+            _log.error("[BLE] connect_known: exception — %s", fut.exception())
+            return None, None, None
+
+## TILAU ## add support for sending large packets, especially to BLE print which requires 220 bytes length
+    def write(self, client:BleakClient, write_uuid:str, message:bytes, response:bool = False, chunk=20) -> None:
+        if hasattr(self, '_asyncLoopThread') and self._asyncLoopThread is not None and client.is_connected:
+            chunk_size = chunk
+            async def _do_chunked_write():
+                for i in range(0, len(message), chunk_size):
+                    try:
+                        await client.write_gatt_char(write_uuid, message[i:i+chunk_size], response=response)
+                    except Exception as e:
+                        _log.error('chunk not written to airwave %d : %s', i, e)
+                        return # cancel
+
+            fut = asyncio.run_coroutine_threadsafe(_do_chunked_write(), self._asyncLoopThread.loop)
+            try:
+                # Ajouter un timeout de 5 secondes pour éviter un blocage total en cas de défaillance matérielle.
+                fut.result(timeout=5.0) 
+            except asyncio.TimeoutError:
+                _log.error('BLE timeout')
+                fut.cancel()
+                raise
+            except Exception as e:
+                _log.error('unhandled error on BLE : %s', e)
+                raise
+
+
+    def read(self, client:BleakClient, read_uuid:str) -> bytes|None:
+        if hasattr(self, '_asyncLoopThread') and self._asyncLoopThread is not None and client.is_connected:
+            fut = asyncio.run_coroutine_threadsafe(
+                    client.read_gatt_char(read_uuid),
+                    self._asyncLoopThread.loop)
+            try:
+                return bytes(fut.result())
+            except Exception: # pylint: disable=broad-except
+                #raise fut.exception() from e # type: ignore[misc]
+                exc = fut.exception() if not fut.cancelled() else CancelledError()
+                _log.error('exception in read: %s', exc)
+        return None
+
+    def scan_and_connect(self,
+            device_descriptions: tuple[dict[str|None,set[str]|None], dict[str, dict[str, int]]],
+            blacklist:set[str], # list of client addresses to ignore as they don't offer the required service
+            case_sensitive:bool=True,
+            disconnected_callback:Callable[[BleakClient], None]|None = None,
+            scan_timeout:float=6,
+            connect_timeout:float=6,
+            address:str|None = None # if given, connect only to the device with this ble address
+            ) -> tuple[BleakClient|None, str|None, str|None]:
+        if hasattr(self, '_asyncLoopThread') and self._asyncLoopThread is None:
+            self._asyncLoopThread = AsyncLoopThread()
+        assert self._asyncLoopThread is not None
+        fut = asyncio.run_coroutine_threadsafe(
+                self._scan_and_connect(
+                    device_descriptions,
+                    blacklist,
+                    case_sensitive,
+                    disconnected_callback,
+                    scan_timeout,
+                    connect_timeout,
+                    address),
+                self._asyncLoopThread.loop)
+        try:
+            return fut.result()
+        except BleakBluetoothNotAvailableError:
+            _log.error('Bluetooth is not supported, turned off or permission is denied')
+            return None, None, None
+        except BleakError as e:
+            _log.error('BLE exception: %s', e)
+            return None, None, None
+        except Exception: # pylint: disable=broad-except
+            _log.error('exception in scan_and_connect: %s', fut.exception())
+            return None, None, None
+
+    def disconnect_ble(self, client:'BleakClient') -> bool:
+        if hasattr(self, '_asyncLoopThread') and self._asyncLoopThread is not None:
+            # don't wait for completion not to block caller (note: ble device will not be discovered until fully disconnected)
+            asyncio.run_coroutine_threadsafe(client.disconnect(), self._asyncLoopThread.loop)
+        return False
+
+    def start_notify(self, client:BleakClient, uuid:str, callback: 'Callable[[BleakGATTCharacteristic, bytearray], Awaitable[None]|None]') -> None:
+        if hasattr(self, '_asyncLoopThread') and self._asyncLoopThread is not None and client.is_connected:
+            fut = asyncio.run_coroutine_threadsafe(
+                    client.start_notify(uuid, callback),
+                    self._asyncLoopThread.loop)
+            try:
+                fut.result()
+            except Exception:  # pylint: disable=broad-except
+                #raise fut.exception() from e # type: ignore[misc]
+                exc = fut.exception() if not fut.cancelled() else CancelledError()
+                _log.error('exception in read: %s', exc)
+
+    def stop_notify(self, client:'BleakClient', uuid:str) -> None:
+        if hasattr(self, '_asyncLoopThread') and self._asyncLoopThread is not None and client.is_connected:
+            fut = asyncio.run_coroutine_threadsafe(
+                client.stop_notify(uuid),
+                self._asyncLoopThread.loop)
+            try:
+                fut.result()
+            except Exception:  # pylint: disable=broad-except
+                #raise fut.exception() from e # type: ignore[misc]
+                exc = fut.exception() if not fut.cancelled() else CancelledError()
+                _log.error('exception in read: %s', exc)
+
+ble = BLE() # unique to module
+
+
+
+#####
+
+
+
+class ClientBLE(QObject):
+
+    SCAN_BETWEEN_SCANS_START:Final[float] = 0.1 # initial sleep between scans in seconds
+    SCAN_BETWEEN_SCANS_INC:Final[float] = 0.1   # increase of sleep time per scan
+    SCAN_BETWEEN_SCANS_MAX:Final[float] = 3     # maximum sleep between scans in seconds
+
+# NOTE: __slots__ are incompatible with multiple inheritance mixings in subclasses (e.g. with QObject)
+
+    def __init__(self) -> None:
+        super().__init__()
+        # internals
+        self._running:bool                                   = False           # if True we keep reconnecting
+        self._async_loop_thread: AsyncLoopThread|None        = None            # the asyncio AsyncLoopThread object
+        self._ble_client:BleakClient|None                    = None
+        self._connected_service_uuid:str|None                = None            # set to the service UUID we are connected to
+        self._connected_device_name:str|None                 = None            # set to the device name we are connected to
+        self._disconnected_event:asyncio.Event               = asyncio.Event() # event set on disconnect
+        self._active_notification_uuids:set[str]             = set() # uuids of characteristics were notification are active
+        self._sleep_between_scans:float                      = self.SCAN_BETWEEN_SCANS_START
+
+        # configuration
+        self._device_descriptions:dict[str|None, set[str]|None] = {} # maps service UUIDs to a set of device name prefixes
+        self._device_manufacturer_keys:dict[str, dict[str, int]] = {} # maps a service UUID to a dict matching a name prefix to a mandatory advertisement manufacturer key
+        self._notifications:dict[str, Callable[[BleakGATTCharacteristic, bytearray], None]] = {}
+        self._writers:dict[str, list[str]] = {} # associates a service UUID with a list of write characteristics
+        self._readers:dict[str, list[str]] = {} # associates a service UUID with a list of read characteristics
+        self._heartbeat_frequency : float = 0 # heartbeat frequency in seconds; heartbeat ends if not >0
+        self._logging = False  # if True device communication is logged
+
+
+    ##
+
+    def start_notifications(self) -> None:
+        for notify_uuid, callback in self._notifications.items():
+            if self._ble_client is not None and self._ble_client.is_connected and \
+                    self._ble_client.services.get_characteristic(notify_uuid):
+                try:
+                    ble.start_notify(self._ble_client, notify_uuid, callback)
+                    self._active_notification_uuids.add(notify_uuid)
+                    _log.debug('notification on characteristic %s started', notify_uuid)
+                except BleakCharacteristicNotFoundError:
+                    _log.debug('start_notifications: characteristic %s not found', notify_uuid)
+
+    # Notifications are stopped automatically on disconnect, so this method does not need to be called
+    # unless notifications need to be stopped before the device disconnects
+    def stop_notifications(self) -> None:
+        for notify_uuid in self._active_notification_uuids:
+            if self._ble_client is not None and self._ble_client.is_connected:
+                try:
+                    ble.stop_notify(self._ble_client, notify_uuid)
+                    _log.debug('notifications on %s stopped', notify_uuid)
+                except BleakCharacteristicNotFoundError:
+                    _log.debug('start_notifications: characteristic %s not found', notify_uuid)
+        self._active_notification_uuids = set()
+
+    def _disconnect(self) -> None:
+        if self._ble_client is not None and self._ble_client.is_connected:
+            ble.disconnect_ble(self._ble_client)
+
+    # returns the service UUID connected to or None
+    def connected(self) -> tuple[str|None, str|None]:
+        if self._ble_client is not None and self._ble_client.is_connected:
+            return self._connected_service_uuid, self._connected_device_name
+        return None, None
+
+
+    # connect and re-connect while self._running to BLE
+    async def _connect(self, case_sensitive:bool=True, scan_timeout:float=6, connect_timeout:float=6, address:str|None = None) -> None:
+        blacklist:set[str] = set()
+        while self._running:
+            # scan and connect
+            # NOTE: re-connecting a bleak client by address on reconnect can lead to instabilities thus we re-scan always
+            service_uuid:str|None
+            self._connected_service_uuid = None
+            self._connected_device_name = None
+            # Hook : si la sous-classe définit scan_and_connect_override(),
+            # on l'utilise — permet de bypasser le scan (ex. NiimbotBLE).
+            _scan_fn = getattr(self, "scan_and_connect_override", None)
+            if _scan_fn is not None:
+                ## TILAU ## forward the upstream tuple (descriptions, manufacturer_keys) — consistent with the else branch
+                self._ble_client, service_uuid, device_name = _scan_fn(
+                    (self._device_descriptions, self._device_manufacturer_keys), blacklist, case_sensitive,
+                    self.disconnected_callback, scan_timeout, connect_timeout, address)
+            else:    
+                self._ble_client, service_uuid, device_name = ble.scan_and_connect(
+                                    (self._device_descriptions, self._device_manufacturer_keys),
+                                    blacklist,
+                                    case_sensitive,
+                                    self.disconnected_callback,
+                                    scan_timeout,
+                                    connect_timeout,
+                                    address)
+            if service_uuid is not None and self._ble_client is not None and self._ble_client.is_connected:
+                # validate correct service
+                try:
+                    for service in self._ble_client.services:
+                        if service.uuid.casefold() == service_uuid.casefold():
+                            # client offers the service that was requests
+                            self._connected_service_uuid = service_uuid
+                            self._connected_device_name = device_name
+                            break
+                except Exception as e: # pylint: disable=broad-except
+                    _log.error(e)
+                if self._connected_service_uuid is None:
+                    # the client does not offer our service thus we put its
+                    # address on the blacklist to be ignored on next discover
+                    # and disconnect
+                    ##blacklist.add(self._ble_client.address) # we don't blacklist as the searched for service might just not yet be discovered
+                    self._disconnect()
+                    self._ble_client = None
+                    self._connected_device_name = None
+                else:
+                    # successfully connected
+                    self.on_connect()
+            if self._ble_client is not None:
+                # start notifications
+                self.start_notifications()
+                # await disconnect
+                self._disconnected_event.clear()
+                await self._disconnected_event.wait()
+                _log.debug('BLE reconnect')
+            try:
+                await asyncio.sleep(self._sleep_between_scans)
+                self._sleep_between_scans = max(self._sleep_between_scans + self.SCAN_BETWEEN_SCANS_INC, self.SCAN_BETWEEN_SCANS_MAX)
+            except Exception as e: # pylint: disable=broad-except
+                _log.warning(e)
+
+    # release the async lock _disconnected_event after disconnect triggered to enable the automatic reconnect
+    async def set_event(self) -> None:
+        deadline = 5.0  # secondes max d'attente
+        elapsed = 0.0
+        while self._ble_client is not None and self._ble_client.is_connected and elapsed < deadline:
+            await asyncio.sleep(0.05)
+            elapsed += 0.05
+        if elapsed >= deadline:
+            _log.warning('set_event: timeout waiting for disconnect, forcing event')
+        self._disconnected_event.set()
+
+    # this seems only to be called if disconnect from device received and not if disconnecting via API calls
+    def disconnected_callback(self, _client:BleakClient) -> None:
+        self.stop_notifications()
+        self.on_disconnect()
+        if hasattr(self, '_async_loop_thread') and self._async_loop_thread is not None:
+            asyncio.run_coroutine_threadsafe(self.set_event(), self._async_loop_thread.loop)
+
+    def send(self, message:bytes, response:bool = False, write_characteristic:str|None = None, chunk:int = 20) -> None:
+        if self._ble_client is not None and self._connected_service_uuid is not None and self._connected_service_uuid in self._writers:
+            if self._logging:
+                _log.debug('send to %s: %s', self._writers[self._connected_service_uuid], message)
+            write_chars = self._writers[self._connected_service_uuid]
+            wc:str|None = None
+            if write_characteristic is None:
+                # if there is no explicit write_characteristic specified thus we write to the only registered as writer
+                if len(write_chars) == 1:
+                    wc = write_chars[0]
+            elif write_characteristic in write_chars:
+                wc = write_characteristic
+            if wc is None:
+                if write_characteristic is None:
+                    _log.debug('send failed. No unique write characteristic registered for service %s', self._connected_service_uuid)
+                else:
+                    _log.debug('send failed. Characteristic %s not registered for write for service %s', write_characteristic, self._connected_service_uuid)
+            else:
+                ble.write(self._ble_client, wc, message, response, chunk)
+
+    def read(self, read_characteristic:str|None = None) -> bytes|None:
+        if self._ble_client is not None and self._connected_service_uuid is not None and self._connected_service_uuid in self._readers:
+            if self._logging:
+                _log.debug('receive from %s', self._readers[self._connected_service_uuid])
+            read_chars = self._readers[self._connected_service_uuid]
+            rc:str|None = None
+            if read_characteristic is None:
+                # if there is no explicit read_characteristic specified thus we read from the only registered as reader
+                if len(read_chars) == 1:
+                    rc = read_chars[0]
+            elif read_characteristic in read_chars:
+                rc = read_characteristic
+            if rc is None:
+                if read_characteristic is None:
+                    _log.debug('read failed. No unique read characteristic registered for service %s', self._connected_service_uuid)
+                else:
+                    _log.debug('read failed. Characteristic %s not registered for read for service %s', read_characteristic, self._connected_service_uuid)
+            else:
+                return ble.read(self._ble_client, rc)
+        return None
+
+    async def _keep_alive(self) -> None:
+        while self._heartbeat_frequency > 0 and self._running:
+            await asyncio.sleep(self._heartbeat_frequency)
+            self.heartbeat()
+
+    async def _connect_and_keep_alive(self,case_sensitive:bool,scan_timeout:float, connect_timeout:float, address:str|None = None) -> None:
+        await asyncio.gather(
+            self._connect(case_sensitive,scan_timeout,connect_timeout, address),
+            self._keep_alive())
+
+
+    def scan(self, scan_timeout:float = 3.0, grace:float = 2.0) -> 'list[tuple[BLEDevice, AdvertisementData]]':
+        try:
+            if not hasattr(self, '_async_loop_thread') or self._async_loop_thread is None:
+                self._running = True # enable automatic reconnects
+                self._async_loop_thread = AsyncLoopThread()
+                # run scan in async loop
+                coro = BleakScanner.discover(
+                    timeout=scan_timeout,
+                    return_adv=True)
+                try: # Fix 2026/02/26: if the scan is cancelled or stopped while running, we catch the exception and return an empty list instead of crashing
+                    ## TILAU ## hard cap on the blocking wait: discover() occupies the full
+                    # scan window, so a healthy scan always completes within scan_timeout;
+                    # if Core Bluetooth hangs, we degrade to [] instead of blocking the
+                    # caller (and the config dialog) forever.
+                    res = asyncio.run_coroutine_threadsafe(coro, self._async_loop_thread.loop).result(timeout=scan_timeout + grace)
+                except (CancelledError, Exception) as e:
+                    _log.debug(f"Scan cancelled or stopped: {e}")
+                    return []
+                _log.debug('scan_ble ended')
+                if res:
+                    return list(res.values())
+        except BleakBluetoothNotAvailableError:
+            _log.error('Bluetooth is not supported, turned off or permission is denied')
+        except BleakError as e:
+            _log.error('BLE exception: %s', e)
+        except Exception as e:  # pylint: disable=broad-except
+            _log.exception(e)
+        return []
+
+
+    def start(self, case_sensitive:bool=True, scan_timeout:float=6, connect_timeout:float=6, address:str|None = None) -> None:
+        _log.debug('start')
+        self._sleep_between_scans = self.SCAN_BETWEEN_SCANS_START
+        if self._running:
+            _log.error('BLE client already running')
+        else:
+            try:
+                if not hasattr(self, '_async_loop_thread') or self._async_loop_thread is None:
+                    self._running = True # enable automatic reconnects
+                    self._async_loop_thread = AsyncLoopThread()
+                    # run _connect in async loop
+                    asyncio.run_coroutine_threadsafe(
+                        self._connect_and_keep_alive(case_sensitive, scan_timeout, connect_timeout, address),
+                        self._async_loop_thread.loop)
+                    _log.debug('BLE client started')
+                    self.on_start()
+            except Exception as e:  # pylint: disable=broad-except
+                _log.exception(e)
+
+
+    def stop(self) -> None:
+        _log.debug('stop')
+        if self._running:
+            self._running = False # disable automatic reconnects
+            if self._ble_client is None:
+                ble.terminate_scan() # we stop ongoing scanning
+            self._disconnect()
+            if self._async_loop_thread is not None:
+                del self._async_loop_thread
+                self._async_loop_thread = None
+            self._ble_client = None
+            self._connected_service_uuid = None
+            self._connected_device_name = None
+            _log.debug('BLE client stopped')
+            self.on_stop()
+        else:
+            _log.debug('BLE client not running')
+
+
+
+    ## external API
+
+    # configurations
+
+    def setLogging(self, b:bool) -> None:
+        self._logging = b
+
+    # clears device descriptions used to match services
+    def init_device_description(self) -> None:
+        self._device_descriptions = {}
+        self._device_manufacturer_keys = {}
+
+    # adds the device description (service UUID and name) to the dict of matchers used to filter discovered
+    # clients. Any name added to an associated UUID can result in a match by prefix with the discovered client names. Associating a service UUID with
+    # an empty name (None) will match independent of the discovered clients name, as long as the a service with
+    # the specified service UUID is supported. The empty service UUID (None) matches with any discovered client of the associated names.
+    # If both, serviceUUID and device name are not given (both set to None), any service matches.
+    # The initial device description as generated on init_device_description() does not match anything.
+    # Note that the descriptions are processed in service_uuid insertion order, thus descriptions service_uuids inserted first match before those added later
+    # if device_manufacturer_key is given, that key needs to occur in the advertisement manufacture data
+    def add_device_description(self, service_uuid:str|None = None, device_name:str|None = None, device_manufacturer_key:int|None = None) -> None:
+        if service_uuid is None and device_name is None:
+            self._device_descriptions = {None: None}
+        elif device_name is None:
+            self._device_descriptions[service_uuid] = None
+        elif service_uuid not in self._device_descriptions:
+            self._device_descriptions[service_uuid] = { device_name }
+        elif self._device_descriptions[service_uuid] is not None:
+            self._device_descriptions[service_uuid].add(device_name) # type:ignore[union-attr]
+        #
+        if service_uuid is not None and device_name is not None and device_manufacturer_key is not None:
+            if service_uuid not in self._device_manufacturer_keys:
+                self._device_manufacturer_keys[service_uuid] = { device_name: device_manufacturer_key }
+            else:
+                self._device_manufacturer_keys[service_uuid][device_name] = device_manufacturer_key
+
+    def add_notify(self, notify_uuid:str, callback:'Callable[[BleakGATTCharacteristic, bytearray], None]') -> None:
+        self._notifications[notify_uuid] = callback
+
+    def add_write(self, service_uuid:str, write_uuid:str) -> None:
+        if service_uuid in self._writers:
+            self._writers[service_uuid].append(write_uuid)
+        else:
+            self._writers[service_uuid] = [write_uuid]
+
+    def add_read(self, service_uuid:str, read_uuid:str) -> None:
+        if service_uuid in self._readers:
+            self._readers[service_uuid].append(read_uuid)
+        else:
+            self._readers[service_uuid] = [read_uuid]
+
+    def set_heartbeat(self, frequency:float) -> None:
+        self._heartbeat_frequency = frequency
+
+
+    # to be implemented by subclasses
+
+    def on_start(self) -> None: # pylint: disable=no-self-use
+        ...
+    def on_connect(self) -> None: # pylint: disable=no-self-use
+        ...
+    def on_disconnect(self) -> None: # pylint: disable=no-self-use
+        ...
+    def on_stop(self) -> None: # pylint: disable=no-self-use
+        ...
+    def heartbeat(self) -> None: # pylint: disable=no-self-use
+        ...

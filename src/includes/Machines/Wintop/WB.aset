@@ -1,0 +1,20 @@
+[General]
+Delay=3000
+Oversampling=true
+roastertype_setup=Wintop WB
+dropDuplicates=true
+dropDuplicatesLimit=0.1
+
+[Device]
+controlETpid=4, 2
+id=0
+readBTpid=4, 1
+showFujiLCDs=false
+
+[SerialPort]
+baudrate=9600
+bytesize=8
+comport=COM4
+parity=O
+stopbits=1
+timeout=0.4

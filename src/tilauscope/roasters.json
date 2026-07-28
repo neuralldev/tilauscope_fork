@@ -1,0 +1,1154 @@
+[
+    {
+        "manufacturer": "ITOP",
+        "model": "Cyberroaster",
+        "roaster_id": "itop-cyberroaster",
+        "roaster_type": "drum",
+        "heating_type": "electric",
+        "is_radiant_electric": true,
+        "technology": [
+            "radiation"
+        ],
+        "batch_capacity_min_g": 150,
+        "batch_capacity_max_g": 500,
+        "optimal_batch_capacity_g": 400,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "drum_design": "perforated",
+        "thermal_mass_index": 0.55,
+        "heat_retention_index": 0.6,
+        "airflow_dependency_index": 0.8,
+        "thermal_response_speed": 0.75,
+        "heating_control": {
+            "control_type": "variable",
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 5.0,
+            "supports_negative_pressure_tracking": true,
+            "inlet_air_mode": "pull"
+        },
+        "drum_control": {
+            "variable_speed": true,
+            "min_rpm": 41,
+            "max_rpm": 69,
+            "min_rpm_setting": 60,
+            "step_rpm_setting": 5
+        },
+        "cooling_system": "external_cooler",
+        "supported_interfaces": [
+            "modbus",
+            "serial"
+        ],
+        "artisan_compatible": true,
+        "bean_temperature_offset_c": [
+            -13.0,
+            -8.0,
+            -10.0,
+            -12.5
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "supports_preheat_profiles": false,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": false,
+        "dev_thermal_inertia_factor": 0.45,
+        "notes": "bt_offsets calibrated on 68 real roasts (Light n=23, Medium n=45) from Beast Edition raw BT values. Residual error \u00b13\u00b0C. Deeper roasts show larger divergence handled by dev_thermal_inertia_factor. FIR radiant electric heater.",
+        "expected_tp_bt": 95.0,
+        "thermal_model_kernel": "triangular",
+        "thermal_model_sigma": 1.0
+    },
+    {
+        "manufacturer": "ITOP",
+        "model": "Skywalker V1",
+        "roaster_id": "itop-skywalker-v1",
+        "roaster_type": "drum",
+        "heating_type": "electric",
+        "is_radiant_electric": true,
+        "technology": [
+            "radiation"
+        ],
+        "batch_capacity_min_g": 150,
+        "batch_capacity_max_g": 500,
+        "optimal_batch_capacity_g": 400,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "drum_design": "perforated",
+        "thermal_mass_index": 0.55,
+        "heat_retention_index": 0.6,
+        "airflow_dependency_index": 0.8,
+        "thermal_response_speed": 0.75,
+        "heating_control": {
+            "control_type": "variable",
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 5.0,
+            "supports_negative_pressure_tracking": true
+        },
+        "drum_control": {
+            "variable_speed": false,
+            "min_rpm": 59,
+            "max_rpm": 59,
+            "min_rpm_setting": 59,
+            "step_rpm_setting": 0
+        },
+        "cooling_system": "external_cooler",
+        "supported_interfaces": [
+            "serial"
+        ],
+        "artisan_compatible": true,
+        "bean_temperature_offset_c": [
+            -13.0,
+            -8.0,
+            -10.0,
+            -12.5
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "supports_preheat_profiles": false,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": false,
+        "dev_thermal_inertia_factor": 0.45,
+        "notes": "bt_offsets aligned with Cyberroaster \u2014 same FIR technology. Calibrated on 68 real roasts raw BT values.",
+        "expected_tp_bt": 95.0,
+        "thermal_model_kernel": "triangular",
+        "thermal_model_sigma": 1.0
+    },
+    {
+        "manufacturer": "Aillio",
+        "model": "Bullet R1 V2",
+        "roaster_id": "aillio-bullet-r1-v2",
+        "roaster_type": "drum",
+        "heating_type": "induction",
+        "is_radiant_electric": false,
+        "technology": [
+            "convection",
+            "radiation"
+        ],
+        "batch_capacity_min_g": 150,
+        "batch_capacity_max_g": 1000,
+        "optimal_batch_capacity_g": 700,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "drum_design": "solid",
+        "thermal_mass_index": 0.75,
+        "heat_retention_index": 0.8,
+        "airflow_dependency_index": 0.6,
+        "thermal_response_speed": 0.65,
+        "heating_control": {
+            "control_type": "variable",
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 1.0
+        },
+        "drum_control": {
+            "variable_speed": true,
+            "min_rpm": 30,
+            "max_rpm": 120,
+            "min_rpm_setting": 30,
+            "step_rpm_setting": 1
+        },
+        "cooling_system": "internal_tray",
+        "supported_interfaces": [
+            "usb"
+        ],
+        "artisan_compatible": true,
+        "supports_preheat_profiles": true,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": true,
+        "bean_temperature_offset_c": [
+            -2.0,
+            -2.0,
+            -3.0,
+            -3.0
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "dev_thermal_inertia_factor": 0.6,
+        "notes": "IBTS infrared sensor supported by Artisan.",
+        "thermal_model_kernel": "gaussian",
+        "thermal_model_sigma": 0.8
+    },
+    {
+        "manufacturer": "Cormorant",
+        "model": "CR600g",
+        "roaster_id": "cormorant-cr600g",
+        "roaster_type": "drum",
+        "heating_type": "gas",
+        "is_radiant_electric": false,
+        "technology": [
+            "radiation",
+            "convection",
+            "conduction"
+        ],
+        "batch_capacity_min_g": 50,
+        "batch_capacity_max_g": 600,
+        "optimal_batch_capacity_g": 450,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "drum_design": "solid",
+        "thermal_mass_index": 0.72,
+        "heat_retention_index": 0.8,
+        "airflow_dependency_index": 0.65,
+        "thermal_response_speed": 0.85,
+        "heating_control": {
+            "control_type": "variable",
+            "min_power_percent": 0,
+            "max_power_percent": 100,
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "min_airflow_percent": 0,
+            "max_airflow_percent": 100,
+            "airflow_resolution_percent": 1.0,
+            "supports_negative_pressure_tracking": false,
+            "supports_closed_loop_exhaust": false
+        },
+        "drum_control": {
+            "variable_speed": true,
+            "min_rpm": 40,
+            "max_rpm": 60,
+            "rpm_resolution": 1,
+            "min_rpm_setting": 40,
+            "step_rpm_setting": 1
+        },
+        "roast_control_mode": "manual",
+        "cooling_system": "external_cooler",
+        "temperature_probes": [
+            {
+                "name": "BT",
+                "probe_type": "thermocouple_k",
+                "placement": "bean_mass",
+                "diameter_mm": 3.0
+            },
+            {
+                "name": "ET",
+                "probe_type": "thermocouple_k",
+                "placement": "environment",
+                "diameter_mm": 3.0
+            }
+        ],
+        "supported_interfaces": [
+            "usb"
+        ],
+        "artisan_compatible": true,
+        "electrical_specification": {
+            "voltage": 12,
+            "phase_type": "single_phase",
+            "frequency_hz": 50
+        },
+        "gas_specification": {
+            "gas_type": "propane",
+            "pressure_control": "manual",
+            "nominal_consumption_kw": 1.0
+        },
+        "bean_discharge_type": "front",
+        "weight_kg": 14,
+        "width_mm": 530,
+        "depth_mm": 300,
+        "height_mm": 447,
+        "supports_preheat_profiles": true,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": false,
+        "bean_temperature_offset_c": [
+            -3.0,
+            -5.0,
+            -7.0,
+            -9.0
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "notes": "Manual infrared propane drum roaster. Flame diffuser allows switching between convection-heavy and conduction-heavy roasting. Inertia 0.55: 14 kg tabletop SS drum, instant gas cut \u2014 not a shop drum (the earlier 0.8 was the generic gas-drum default).",
+        "dev_thermal_inertia_factor": 0.55,
+        "thermal_model_kernel": "gaussian",
+        "thermal_model_sigma": 0.8
+    },
+    {
+        "manufacturer": "Cormorant",
+        "model": "CR600e",
+        "roaster_id": "cormorant-cr600e",
+        "roaster_type": "drum",
+        "heating_type": "electric",
+        "is_radiant_electric": false,
+        "technology": [
+            "radiation",
+            "convection",
+            "conduction"
+        ],
+        "batch_capacity_min_g": 50,
+        "batch_capacity_max_g": 600,
+        "optimal_batch_capacity_g": 450,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "drum_design": "solid",
+        "thermal_mass_index": 0.68,
+        "heat_retention_index": 0.72,
+        "airflow_dependency_index": 0.75,
+        "thermal_response_speed": 0.9,
+        "heating_control": {
+            "control_type": "variable",
+            "min_power_percent": 0,
+            "max_power_percent": 100,
+            "power_resolution_percent": 1.0,
+            "physical_range": {
+                "min_physical": 0,
+                "max_physical": 2400,
+                "step_physical": 100,
+                "unit": "W"
+            }
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "min_airflow_percent": 0,
+            "max_airflow_percent": 100,
+            "airflow_resolution_percent": 1.0,
+            "supports_negative_pressure_tracking": false,
+            "supports_closed_loop_exhaust": false,
+            "physical_range": {
+                "min_physical": 0,
+                "max_physical": 12.4,
+                "step_physical": 0.1,
+                "unit": "V"
+            }
+        },
+        "drum_control": {
+            "variable_speed": true,
+            "min_rpm": 40,
+            "max_rpm": 60,
+            "rpm_resolution": 1,
+            "min_rpm_setting": 40,
+            "step_rpm_setting": 1,
+            "physical_range": {
+                "min_physical": 0,
+                "max_physical": 14.9,
+                "step_physical": 0.1,
+                "unit": "V"
+            }
+        },
+        "roast_control_mode": "manual",
+        "cooling_system": "external_cooler",
+        "temperature_probes": [
+            {
+                "name": "BT",
+                "probe_type": "thermocouple_k",
+                "placement": "bean_mass",
+                "diameter_mm": 3.0
+            },
+            {
+                "name": "ET",
+                "probe_type": "thermocouple_k",
+                "placement": "environment",
+                "diameter_mm": 3.0
+            }
+        ],
+        "supported_interfaces": [
+            "usb"
+        ],
+        "artisan_compatible": true,
+        "electrical_specification": {
+            "voltage": 230,
+            "phase_type": "single_phase",
+            "frequency_hz": 50,
+            "max_power_draw_kw": 2.4
+        },
+        "bean_discharge_type": "front",
+        "weight_kg": 14,
+        "width_mm": 530,
+        "depth_mm": 300,
+        "height_mm": 447,
+        "supports_preheat_profiles": true,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": false,
+        "bean_temperature_offset_c": [
+            -3.0,
+            -5.0,
+            -7.0,
+            -9.0
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "notes": "Electric version of the CR600. Similar thermal profile to the gas variant but with slightly faster response and lower heat retention. Inertia 0.5 keeps the declared e<g ordering.",
+        "dev_thermal_inertia_factor": 0.5,
+        "thermal_model_kernel": "gaussian",
+        "thermal_model_sigma": 0.8
+    },
+    {
+        "manufacturer": "Cormorant",
+        "model": "CR1200e",
+        "roaster_id": "cormorant-cr1200e",
+        "roaster_type": "drum",
+        "heating_type": "electric",
+        "is_radiant_electric": false,
+        "technology": [
+            "radiation",
+            "convection",
+            "conduction"
+        ],
+        "batch_capacity_min_g": 200,
+        "batch_capacity_max_g": 1200,
+        "optimal_batch_capacity_g": 900,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "drum_design": "solid",
+        "thermal_mass_index": 0.78,
+        "heat_retention_index": 0.82,
+        "airflow_dependency_index": 0.68,
+        "thermal_response_speed": 0.8,
+        "heating_control": {
+            "control_type": "variable",
+            "min_power_percent": 0,
+            "max_power_percent": 100,
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "min_airflow_percent": 0,
+            "max_airflow_percent": 100,
+            "airflow_resolution_percent": 1.0,
+            "supports_negative_pressure_tracking": false,
+            "supports_closed_loop_exhaust": false
+        },
+        "drum_control": {
+            "variable_speed": true,
+            "min_rpm": 35,
+            "max_rpm": 55,
+            "rpm_resolution": 1,
+            "min_rpm_setting": 35,
+            "step_rpm_setting": 1
+        },
+        "roast_control_mode": "manual",
+        "cooling_system": "external_cooler",
+        "temperature_probes": [
+            {
+                "name": "BT",
+                "probe_type": "thermocouple_k",
+                "placement": "bean_mass",
+                "diameter_mm": 3.0
+            },
+            {
+                "name": "ET",
+                "probe_type": "thermocouple_k",
+                "placement": "environment",
+                "diameter_mm": 3.0
+            }
+        ],
+        "supported_interfaces": [
+            "usb"
+        ],
+        "artisan_compatible": true,
+        "electrical_specification": {
+            "voltage": 230,
+            "phase_type": "single_phase",
+            "frequency_hz": 50,
+            "max_power_draw_kw": 3.5
+        },
+        "bean_discharge_type": "front",
+        "supports_preheat_profiles": true,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": false,
+        "bean_temperature_offset_c": [
+            -3.0,
+            -5.0,
+            -7.0,
+            -9.0
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "notes": "Compact electric smart roaster with strong airflow dependency and very fast thermal response. Suitable for automated profile playback and light roast development. Inertia 0.6: bigger drum/batch than CR600, between Bullet and Santoker.",
+        "dev_thermal_inertia_factor": 0.6,
+        "thermal_model_kernel": "gaussian",
+        "thermal_model_sigma": 0.8
+    },
+    {
+        "manufacturer": "Kaleido",
+        "model": "M1 Pro",
+        "roaster_id": "kaleido-m1-pro",
+        "roaster_type": "drum",
+        "heating_type": "infrared",
+        "is_radiant_electric": true,
+        "technology": [
+            "radiation",
+            "convection"
+        ],
+        "batch_capacity_min_g": 50,
+        "batch_capacity_max_g": 200,
+        "optimal_batch_capacity_g": 150,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "drum_design": "perforated",
+        "thermal_mass_index": 0.45,
+        "heat_retention_index": 0.5,
+        "airflow_dependency_index": 0.85,
+        "thermal_response_speed": 0.88,
+        "heating_control": {
+            "control_type": "variable",
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 1.0
+        },
+        "drum_control": {
+            "variable_speed": true,
+            "min_rpm": 20,
+            "max_rpm": 90,
+            "min_rpm_setting": 20,
+            "step_rpm_setting": 1
+        },
+        "cooling_system": "internal_tray",
+        "supported_interfaces": [
+            "usb",
+            "bluetooth"
+        ],
+        "artisan_compatible": true,
+        "supports_preheat_profiles": true,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": true,
+        "bean_temperature_offset_c": [
+            -2.0,
+            -3.0,
+            -4.0,
+            -5.0
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "dev_thermal_inertia_factor": 0.35,
+        "notes": "Inertia graduated across the Kaleido family by drum/batch mass (M1 0.35, M2 0.4, M6 0.45, M10 0.55).",
+        "thermal_model_kernel": "triangular",
+        "thermal_model_sigma": 1.0
+    },
+    {
+        "manufacturer": "Kaleido",
+        "model": "M2 Pro",
+        "roaster_id": "kaleido-m2-pro",
+        "roaster_type": "drum",
+        "heating_type": "infrared",
+        "is_radiant_electric": true,
+        "technology": [
+            "radiation",
+            "convection"
+        ],
+        "batch_capacity_min_g": 50,
+        "batch_capacity_max_g": 400,
+        "optimal_batch_capacity_g": 300,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "drum_design": "perforated",
+        "thermal_mass_index": 0.5,
+        "heat_retention_index": 0.55,
+        "airflow_dependency_index": 0.82,
+        "thermal_response_speed": 0.86,
+        "heating_control": {
+            "control_type": "variable",
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 1.0
+        },
+        "drum_control": {
+            "variable_speed": true,
+            "min_rpm": 20,
+            "max_rpm": 90,
+            "min_rpm_setting": 20,
+            "step_rpm_setting": 1
+        },
+        "cooling_system": "internal_tray",
+        "temperature_probes": [
+            {
+                "name": "BT",
+                "probe_type": "thermocouple_k",
+                "placement": "bean_mass",
+                "diameter_mm": 2.0
+            },
+            {
+                "name": "ET",
+                "probe_type": "thermocouple_k",
+                "placement": "environment",
+                "diameter_mm": 2.0
+            }
+        ],
+        "supported_interfaces": [
+            "usb",
+            "bluetooth"
+        ],
+        "artisan_compatible": true,
+        "electrical_specification": {
+            "voltage": 230,
+            "phase_type": "single_phase",
+            "max_power_draw_kw": 1.6
+        },
+        "weight_kg": 12.5,
+        "width_mm": 450,
+        "depth_mm": 250,
+        "height_mm": 360,
+        "supports_preheat_profiles": true,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": true,
+        "bean_temperature_offset_c": [
+            -2.0,
+            -3.0,
+            -4.0,
+            -5.0
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "notes": "Carbon fiber infrared direct fire + hot air perforated drum. Dual K-type probes with adjustable depth holders. USB connects to Kaleido's own touch-panel system; Bluetooth connects to Artisan on Windows/macOS. Dual-system variant ships with a bundled tablet running Kaleido software; Pro variant is Artisan-only. Independent cooling tray allows pre-heating next batch during cool-down. Built-in smoke extraction via Venturi-effect fan. Optimal batch 50\u2013300g; 400g is rated maximum. Inertia graduated across the family by mass (M1 0.35, M2 0.4, M6 0.45, M10 0.55).",
+        "dev_thermal_inertia_factor": 0.4,
+        "thermal_model_kernel": "triangular",
+        "thermal_model_sigma": 1.0
+    },
+    {
+        "manufacturer": "Kaleido",
+        "model": "M6 Pro",
+        "roaster_id": "kaleido-m6-pro",
+        "roaster_type": "drum",
+        "heating_type": "infrared",
+        "is_radiant_electric": true,
+        "technology": [
+            "radiation",
+            "convection"
+        ],
+        "batch_capacity_min_g": 200,
+        "batch_capacity_max_g": 600,
+        "optimal_batch_capacity_g": 500,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "drum_design": "perforated",
+        "thermal_mass_index": 0.6,
+        "heat_retention_index": 0.65,
+        "airflow_dependency_index": 0.8,
+        "thermal_response_speed": 0.82,
+        "heating_control": {
+            "control_type": "variable",
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 1.0
+        },
+        "drum_control": {
+            "variable_speed": true,
+            "min_rpm": 20,
+            "max_rpm": 90,
+            "min_rpm_setting": 20,
+            "step_rpm_setting": 1
+        },
+        "cooling_system": "internal_tray",
+        "supported_interfaces": [
+            "usb",
+            "bluetooth"
+        ],
+        "artisan_compatible": true,
+        "supports_preheat_profiles": true,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": true,
+        "bean_temperature_offset_c": [
+            -3.0,
+            -4.0,
+            -5.0,
+            -6.0
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "dev_thermal_inertia_factor": 0.45,
+        "thermal_model_kernel": "triangular",
+        "thermal_model_sigma": 1.0
+    },
+    {
+        "manufacturer": "Kaleido",
+        "model": "M10 Pro",
+        "roaster_id": "kaleido-m10-pro",
+        "roaster_type": "drum",
+        "heating_type": "infrared",
+        "is_radiant_electric": true,
+        "technology": [
+            "radiation",
+            "convection"
+        ],
+        "batch_capacity_min_g": 300,
+        "batch_capacity_max_g": 1200,
+        "optimal_batch_capacity_g": 900,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "drum_design": "perforated",
+        "thermal_mass_index": 0.72,
+        "heat_retention_index": 0.75,
+        "airflow_dependency_index": 0.75,
+        "thermal_response_speed": 0.78,
+        "heating_control": {
+            "control_type": "variable",
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 1.0
+        },
+        "drum_control": {
+            "variable_speed": true,
+            "min_rpm": 20,
+            "max_rpm": 90,
+            "min_rpm_setting": 20,
+            "step_rpm_setting": 1
+        },
+        "cooling_system": "internal_tray",
+        "supported_interfaces": [
+            "usb",
+            "bluetooth"
+        ],
+        "artisan_compatible": true,
+        "supports_preheat_profiles": true,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": true,
+        "bean_temperature_offset_c": [
+            -3.0,
+            -4.0,
+            -5.0,
+            -6.0
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "dev_thermal_inertia_factor": 0.55,
+        "notes": "Inertia 0.55: a 900 g IR drum carries real momentum \u2014 graduated with the family (M1 0.35, M2 0.4, M6 0.45, M10 0.55).",
+        "thermal_model_kernel": "triangular",
+        "thermal_model_sigma": 1.0
+    },
+    {
+        "manufacturer": "IKAWA",
+        "model": "Pro V3",
+        "roaster_id": "ikawa-pro-v3",
+        "roaster_type": "fluid_bed",
+        "heating_type": "electric",
+        "is_radiant_electric": false,
+        "technology": [
+            "convection"
+        ],
+        "batch_capacity_min_g": 30,
+        "batch_capacity_max_g": 120,
+        "optimal_batch_capacity_g": 100,
+        "agitation_type": "air_only",
+        "thermal_mass_index": 0.15,
+        "heat_retention_index": 0.2,
+        "airflow_dependency_index": 1.0,
+        "thermal_response_speed": 0.98,
+        "heating_control": {
+            "control_type": "pid",
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 1.0
+        },
+        "drum_control": {
+            "variable_speed": false,
+            "min_rpm": null,
+            "max_rpm": null,
+            "min_rpm_setting": null,
+            "step_rpm_setting": null
+        },
+        "cooling_system": "internal_tray",
+        "supported_interfaces": [
+            "bluetooth"
+        ],
+        "artisan_compatible": true,
+        "supports_preheat_profiles": true,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": true,
+        "bean_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "dev_thermal_inertia_factor": 0.15,
+        "notes": "Inertia 0.15: PID-driven air-only heat transfer, near-instant flux cut.",
+        "thermal_model_kernel": "gaussian",
+        "thermal_model_sigma": 0.8
+    },
+    {
+        "manufacturer": "Santoker",
+        "model": "X3",
+        "roaster_id": "santoker-x3",
+        "roaster_type": "drum",
+        "heating_type": "electric",
+        "is_radiant_electric": false,
+        "technology": [
+            "conduction",
+            "convection"
+        ],
+        "batch_capacity_min_g": 300,
+        "batch_capacity_max_g": 1200,
+        "optimal_batch_capacity_g": 800,
+        "agitation_type": "drum_rotation",
+        "drum_material": "cast_iron",
+        "drum_design": "solid",
+        "thermal_mass_index": 0.85,
+        "heat_retention_index": 0.9,
+        "airflow_dependency_index": 0.45,
+        "thermal_response_speed": 0.52,
+        "heating_control": {
+            "control_type": "pid",
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 1.0
+        },
+        "drum_control": {
+            "variable_speed": true,
+            "min_rpm": 30,
+            "max_rpm": 80,
+            "min_rpm_setting": 30,
+            "step_rpm_setting": 1
+        },
+        "cooling_system": "external_cooler",
+        "supported_interfaces": [
+            "usb",
+            "modbus"
+        ],
+        "artisan_compatible": true,
+        "supports_preheat_profiles": false,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": true,
+        "bean_temperature_offset_c": [
+            -2.0,
+            -3.0,
+            -4.0,
+            -5.0
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "dev_thermal_inertia_factor": 0.7,
+        "thermal_model_kernel": "gaussian",
+        "thermal_model_sigma": 0.8
+    },
+    {
+        "manufacturer": "Hottop",
+        "model": "KN-8828B-2K+",
+        "roaster_id": "hottop-kn-8828b-2k-plus",
+        "roaster_type": "drum",
+        "heating_type": "electric",
+        "is_radiant_electric": false,
+        "technology": [
+            "conduction",
+            "convection"
+        ],
+        "batch_capacity_min_g": 150,
+        "batch_capacity_max_g": 300,
+        "optimal_batch_capacity_g": 250,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "drum_design": "solid",
+        "thermal_mass_index": 0.5,
+        "heat_retention_index": 0.55,
+        "airflow_dependency_index": 0.7,
+        "thermal_response_speed": 0.45,
+        "heating_control": {
+            "control_type": "variable",
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 1.0
+        },
+        "drum_control": {
+            "variable_speed": false,
+            "min_rpm": null,
+            "max_rpm": null,
+            "min_rpm_setting": null,
+            "step_rpm_setting": null
+        },
+        "cooling_system": "internal_tray",
+        "supported_interfaces": [
+            "usb"
+        ],
+        "artisan_compatible": true,
+        "supports_preheat_profiles": false,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": false,
+        "bean_temperature_offset_c": [
+            -2.0,
+            -3.0,
+            -5.0,
+            -7.0
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "dev_thermal_inertia_factor": 0.7,
+        "notes": "Inertia 0.7 is deliberately ABOVE what the mass indices suggest (~0.55): momentum is actuator-lag driven \u2014 sheathed element against the drum, enclosed chassis, slowest response of the fleet (0.45). Field practice on Hottop is cutting heat ~60 s before FC, which 0.7 reproduces.",
+        "thermal_model_kernel": "gaussian",
+        "thermal_model_sigma": 0.8
+    },
+    {
+        "manufacturer": "Smola",
+        "model": "BC150",
+        "roaster_id": "smola-bc150",
+        "roaster_type": "fluid_bed",
+        "heating_type": "electric",
+        "is_radiant_electric": false,
+        "technology": [
+            "convection"
+        ],
+        "batch_capacity_min_g": 50,
+        "batch_capacity_max_g": 150,
+        "optimal_batch_capacity_g": 120,
+        "agitation_type": "air_only",
+        "thermal_mass_index": 0.12,
+        "heat_retention_index": 0.18,
+        "airflow_dependency_index": 1,
+        "thermal_response_speed": 0.97,
+        "heating_control": {
+            "control_type": "variable",
+            "power_resolution_percent": 1.67
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 2.5
+        },
+        "drum_control": {
+            "variable_speed": false,
+            "min_rpm": null,
+            "max_rpm": null,
+            "min_rpm_setting": null,
+            "step_rpm_setting": null
+        },
+        "cooling_system": "external_cooler",
+        "supported_interfaces": [
+            "usb",
+            "bluetooth"
+        ],
+        "artisan_compatible": true,
+        "supports_preheat_profiles": false,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": false,
+        "bean_temperature_offset_c": [
+            -8,
+            -10,
+            -10,
+            -10
+        ],
+        "environmental_temperature_offset_c": [
+            0,
+            0,
+            0,
+            0
+        ],
+        "notes": "Entry-level Smola fluid bed roaster. BT probe placement at chamber base causes ~10\u00b0C underread \u2014 particularly significant near FC. Basic Artisan connectivity via USB or Bluetooth. No built-in profile replay; manual or Arduino-assisted control recommended for curve work.",
+        "dev_thermal_inertia_factor": 0.2,
+        "thermal_model_kernel": "gaussian",
+        "thermal_model_sigma": 0.8
+    },
+    {
+        "manufacturer": "Smola",
+        "model": "BC300 Pro",
+        "roaster_id": "smola-bc300-pro",
+        "roaster_type": "fluid_bed",
+        "heating_type": "electric",
+        "is_radiant_electric": false,
+        "technology": [
+            "convection"
+        ],
+        "batch_capacity_min_g": 100,
+        "batch_capacity_max_g": 300,
+        "optimal_batch_capacity_g": 250,
+        "agitation_type": "air_only",
+        "thermal_mass_index": 0.15,
+        "heat_retention_index": 0.2,
+        "airflow_dependency_index": 1,
+        "thermal_response_speed": 0.96,
+        "heating_control": {
+            "control_type": "variable",
+            "power_resolution_percent": 1.67
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 2.5
+        },
+        "drum_control": {
+            "variable_speed": false,
+            "min_rpm": null,
+            "max_rpm": null,
+            "min_rpm_setting": null,
+            "step_rpm_setting": null
+        },
+        "cooling_system": "external_cooler",
+        "supported_interfaces": [
+            "usb",
+            "bluetooth"
+        ],
+        "artisan_compatible": true,
+        "supports_preheat_profiles": true,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": false,
+        "supports_auto_airflow_events": false,
+        "supports_profile_replay": true,
+        "bean_temperature_offset_c": [
+            -8,
+            -10,
+            -10,
+            -10
+        ],
+        "environmental_temperature_offset_c": [
+            0,
+            0,
+            0,
+            0
+        ],
+        "notes": "Mid-tier Smola fluid bed roaster with 60-level heat and 40-level airflow control, and 15-stage programmable profile support. Connects to Artisan via USB or Bluetooth on Windows/macOS. Optional extendable thermometer for BT/ET. BT probe placement at chamber base causes ~10\u00b0C underread near FC. Profile replay supported via built-in stages.",
+        "dev_thermal_inertia_factor": 0.2,
+        "thermal_model_kernel": "gaussian",
+        "thermal_model_sigma": 0.8
+    },
+    {
+        "manufacturer": "Custom",
+        "model": "Skywalker V1 - THE BEAST Edition",
+        "roaster_id": "custom-skywalker-v1-beast-edition",
+        "roaster_type": "drum",
+        "heating_type": "electric",
+        "is_radiant_electric": true,
+        "technology": [
+            "radiation"
+        ],
+        "batch_capacity_min_g": 150,
+        "batch_capacity_max_g": 500,
+        "optimal_batch_capacity_g": 400,
+        "agitation_type": "drum_rotation",
+        "drum_material": "stainless_steel",
+        "drum_design": "perforated",
+        "thermal_mass_index": 0.55,
+        "heat_retention_index": 0.6,
+        "airflow_dependency_index": 0.8,
+        "thermal_response_speed": 0.75,
+        "heating_control": {
+            "control_type": "variable",
+            "power_resolution_percent": 1.0
+        },
+        "airflow_control": {
+            "control_type": "variable",
+            "airflow_resolution_percent": 1.0,
+            "supports_negative_pressure_tracking": true
+        },
+        "drum_control": {
+            "variable_speed": true,
+            "min_rpm": 30,
+            "max_rpm": 95,
+            "min_rpm_setting": 1,
+            "step_rpm_setting": 1
+        },
+        "cooling_system": "external_cooler",
+        "supported_interfaces": [
+            "serial"
+        ],
+        "artisan_compatible": true,
+        "bean_temperature_offset_c": [
+            -13.0,
+            -8.0,
+            -10.0,
+            -12.5
+        ],
+        "environmental_temperature_offset_c": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        "supports_preheat_profiles": true,
+        "supports_auto_charge_temperature": false,
+        "supports_auto_gas_events": true,
+        "supports_auto_airflow_events": true,
+        "supports_profile_replay": true,
+        "dev_thermal_inertia_factor": 0.45,
+        "notes": "bt_offsets calibrated on 68 real roasts (Light n=23, Medium n=45) raw BT values \u2014 no Artisan formula applied. Residual error \u00b13\u00b0C. Deeper roasts show larger divergence handled by dev_thermal_inertia_factor.",
+        "expected_tp_bt": 95.0,
+        "thermal_model_kernel": "triangular",
+        "thermal_model_sigma": 1.0
+    }
+]

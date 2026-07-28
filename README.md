@@ -1,80 +1,108 @@
-## 📥 Download TilauScope
+<img align="right" src="src/tilauscope.png" width="90">
 
-| Platform | Latest build |
-|---|---|
-| 🍎 macOS | [![Download for macOS](https://img.shields.io/badge/Download-macOS-89B4FA?logo=apple&logoColor=white)](https://github.com/neuralldev/tilauscope_fork/releases?q=macOS&expanded=true) |
-| 🪟 Windows | [![Download for Windows](https://img.shields.io/badge/Download-Windows-89B4FA?logo=windows&logoColor=white)](https://github.com/neuralldev/tilauscope_fork/releases?q=Windows&expanded=true) |
+TilauScope
+==========
+A guided roasting assistant for home and amateur coffee roasters.
 
-See the [Releases page](https://github.com/neuralldev/tilauscope_fork/releases) for every build and its release notes.
+[![Latest release](https://img.shields.io/github/v/release/neuralldev/tilauscope_fork?label=release)](https://github.com/neuralldev/tilauscope_fork/releases/latest)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+
+> **TilauScope is a modified version of [Artisan Roaster Scope](https://github.com/artisan-roaster-scope/artisan).**
+> It is not affiliated with, nor endorsed by, the Artisan project. Modifications by
+> Tilau began in 2025 and are ongoing. Please report TilauScope issues here, never
+> on the Artisan tracker. See [NOTICE](NOTICE) for full attribution and licensing.
 
 ---
 
-# TilauScope
+## What it is
 
-**A guided roasting assistant for home & amateur coffee roasters — built on [Artisan Roaster Scope](https://github.com/artisan-roaster-scope/artisan).**
+Artisan is a professional-grade scope: it records and plots everything, and leaves
+every decision to you. That is exactly right for a professional, and overwhelming
+for someone roasting 250 g batches at home on a Saturday morning.
 
-![License](https://img.shields.io/badge/license-GPL--3.0-blue) ![Based on Artisan](https://img.shields.io/badge/based%20on-Artisan%20Roaster%20Scope-89B4FA)
+TilauScope keeps Artisan's core untouched and adds an opinionated layer on top of
+it — one that has an opinion about *what you should do next*, and says so while
+the drum is turning.
 
-## What is TilauScope?
+## What it adds
 
-Artisan is a professional-grade roast logging and control tool used by roasters worldwide. **TilauScope is an opinionated guided layer built on top of it**, aimed at home and amateur roasters who want more than a scope: step-by-step guidance, automatic milestone detection, and a roast plan that learns from every batch — while never touching or slowing down Artisan's real-time core.
+**A guided roast assistant.** Before charging, it builds a roast plan from the
+bean, the batch size and your machine. During the roast it tells you which lever
+to move and when — staged heat reductions announced before they happen, a live
+read on whether you are ahead of or behind plan, a DROP countdown that accounts
+for the curve flattening out, and a projected final DTR.
 
-Think of it as *"Artisan, plus a coach standing next to you telling you what to do and why."*
+**A plan that learns from you.** First-crack temperature, phase durations and heat
+profiles are re-derived from your own previous roasts of the *same* bean at a
+*comparable* batch size — not from a generic reference curve.
 
-## Why TilauScope
+**BeanCave**, a green-bean database with stock tracking, storage advice based on
+water activity, sack management, QR-coded labels, and a roast viewer. Scan a label
+with your phone and the record opens in the browser.
 
-- 🧑‍🏫 **Guided roast assistant** — a live plan that tells you what to do next (heat, airflow, timing) and explains why, instead of leaving you to interpret a raw curve.
-- 📈 **Learns from your own roasts** — first crack temperature, phase durations, and crash/flick risk are calibrated from your roasting history for that exact bean and batch size, not generic theory.
-- 🎚️ **Three experience levels** — **Guided**, **Standard**, **Expert**. Beginners get an assistant that opens, starts, and closes itself; experts get the full Artisan interface, undisturbed.
-- 🫘 **BeanCave** — a bean database and roast log in one place: stock, density, roast history, and side-by-side batch comparison (overlay / consistency / aligned).
-- ☕ **Brew Advisor** — brewing recipes (espresso, V60, French Press, AeroPress, Moka…) adjusted for roast level, dose, and bean freshness, plus a resting/degassing calendar.
-- 🔌 **Real hardware integration** — BLE airflow/color sensors, adaptive PID control, and label printing, wired directly into the roasting workflow.
+**Remote piloting.** A phone-shaped web interface served on your local network:
+draggable controls for the four levers, contextual milestone marking, and a
+non-destructive recorder. Installable as a PWA.
+
+**Hardware integration** beyond Artisan's: Skywalker V2, DiFluid AirWave and
+Omniflux, Acaia scales, Niimbot label printers, and a custom ESP32 ambient probe.
+
+**Preheat PID** with cross-roast memory, so the machine is at the right
+temperature when you are ready to charge.
 
 ## Screenshots
 
-### Guided roast assistant
-
-![Guided roast assistant panel](wiki/general-roasting.png)
-*The guided assistant panel during a roast — live phase tracking, 4-lever control (Air / Drum / Airwave / Burner), and milestone buttons*
-
 | | |
 |---|---|
-| ![Drying phase projection](wiki/roasting-development-annotation.png) *Live projection of Dry End time and target, tracked against the plan* | ![First Crack projection](wiki/roasting-fc-prediction-annotation.png) *Maillard phase countdown to expected First Crack* |
+| ![Guided roasting](wiki/tilauscope/general%20roasting.png) | ![Bean management](wiki/tilauscope/bean%20cave%20green%20beans%20management.png) |
+| ![First crack prediction](wiki/tilauscope/roasting%20FC%20prediction%20annotation.png) | ![Device integration](wiki/tilauscope/BLE%20devices%20support.png) |
 
-### BeanCave & Roast Viewer
+## Install
 
-| | |
-|---|---|
-| ![BeanCave green bean management](wiki/bean-cave-green-beans-management.png) *BeanCave — green bean inventory & specs* | ![Post-roast summary](wiki/integration-of-bean-cave-in-roast-properties.png) *Post-roast summary — weight loss, DTR, Agtron colour, AI-assisted notes* |
-| ![Roast Viewer curve](wiki/bean-cave-alog-on-the-fly-preview.png) *Roast Viewer — revisit any past roast curve from BeanCave* | ![Roast Viewer advanced stats](wiki/bean-cave-alog-on-the-fly-properties.png) *Advanced stats — phase balance, RoR per phase, AUC* |
-| ![Live cursor readout](wiki/bean-cave-annotation-on-curves.png) *Live cursor readout — every channel at a glance, anywhere on the curve* | ![Printed bean label](wiki/bean-cave-integrated-print-labels.png) *Auto-generated bean label, ready to print* |
+Download the latest macOS or Windows build from the
+[releases page](https://github.com/neuralldev/tilauscope_fork/releases/latest).
 
-### Alarms & automation
+macOS builds are signed and, when Apple's service cooperates, notarized. If a
+build could not be notarized the release notes say so and tell you how to open it.
 
-| | |
-|---|---|
-| ![Sentence-based alarm editor](wiki/integration-of-difluid-airwave-in-alarms.png) *Sentence-based Alarm Editor, grouped by roast phase* | ![Event button configuration](wiki/full-integration-of-difluid-in-events.png) *Event buttons wiring hardware commands to roast milestones* |
-| ![AirWave and ambient probe events](wiki/full-integration-of-airwave-and-ambiant-in-events.png) *Custom event buttons for AirWave and ambient probe commands* | |
+To run from source, see [wiki/HowToRunFromSource.md](wiki/HowToRunFromSource.md).
+TilauScope targets **Python 3.14** and **PyQt6**; dependencies are pinned in
+[src/requirements.txt](src/requirements.txt).
 
-### Hardware & configuration
+## Documentation
 
-| | |
-|---|---|
-| ![Connected BLE hardware](wiki/ble-devices-support.png) *Connected BLE hardware setup (ambient probe, DiFluid AirWave)* | ![Adaptive PID parameters](wiki/pid-on-et-for-airwave.png) *Adaptive PID parameters per roast phase, tunable per machine* |
-| ![Extra device channels](wiki/extra-devices.png) *Extra device channels — multi-sensor roasts (burner, ambient, MODBUS)* | |
+- [What's new](wiki/whatsnew.md) — user-facing changes, by version
+- [Release history](wiki/ReleaseHistory.md) — full changelog
+- [Installation](wiki/Installation.md)
+- [Improving translations](wiki/HowToImproveTranslations.md)
 
-## Hardware supported
+## Contributing
 
-Developed for Skywalker, it also connects to many others, support ESP32 Skycommand from community. Add support for specific devices such as DiFluid AirWave (airflow/BLE), Omniflux (color/acoustic) sensors, Niimbot B21S label printers, Lebrew C1 and Aqua Gauge and a custom ambient probe (temperature/humidity/acoustic) — all integrated via BLE, Modbus, or MQTT. The probe is open source, code is available from https://github.com/neuralldev/tilauscope_ambiant.
+Bug reports and ideas are welcome — please open an
+[issue](https://github.com/neuralldev/tilauscope_fork/issues) or a
+[discussion](https://github.com/neuralldev/tilauscope_fork/discussions).
 
-## Built on Artisan Roaster Scope
+TilauScope is developed by a single person against one main roasting machine, so
+reports that include a profile (`*.alog`) and a settings file (`*.aset`) are far
+more actionable than reports that do not. The bug report form will ask for them.
 
-TilauScope is based on [Artisan Roaster Scope](https://github.com/artisan-roaster-scope/artisan), the famous open-source roast logging and control software. All of Artisan's core functionality — device support, profile recording, alarms, PID control — is inherited unchanged; TilauScope adds the guided layer on top, additively.
+## Licence
 
-Tilauscope is 100% free to use and runs without any internet or cloud connection. TilauScope has been created by home enthusiast for home enthusiast.  
+TilauScope is distributed under the **GNU Affero General Public License v3 or
+later** ([LICENSE](LICENSE)).
 
-Full credit and thanks to the Artisan team and community. If TilauScope is useful to you, consider [supporting Artisan's development](https://www.paypal.me/MarkoLuther) too.
+Code inherited from Artisan Roaster Scope keeps its original GPL terms and
+headers ([LICENSE-GPL-3.0](LICENSE-GPL-3.0)); code original to this fork, under
+`src/tilauscope/`, is AGPL-3.0-or-later. GPLv3 §13 expressly permits this
+combination. [NOTICE](NOTICE) explains the arrangement in full.
 
-## License
+One practical consequence: if you run a modified TilauScope and let other people
+use it remotely over a network — its remote-piloting interface, for instance —
+you owe those users the source of your modified version.
 
-GNU General Public License v3.0 — see [LICENSE](LICENSE).
+## Credits
+
+TilauScope exists because Artisan exists. All credit for the roasting engine,
+the device layer and a decade of careful work goes to **Marko Luther** and the
+Artisan contributors. The original project README is preserved here as
+[README-Artisan.md](README-Artisan.md).

@@ -1,0 +1,355 @@
+[project]
+name = 'TlauScope'
+dynamic = ['version']
+description = "Artisan is a software that helps coffee roasters record, analyze, and control roast profiles. Tilauscope is a fork of Artisan Roaster Scope limited to use for home roasters"
+readme = {file = 'README.txt', content-type='text/markdown'}
+authors = [
+    {name = 'Rafael Cobo'},
+    {name = 'Marko Luther'},
+    {name = 'Dave Baxter'}
+]
+maintainers = [
+    {name = 'Marko Luther'},
+    {name = 'Dave Baxter'}
+]
+license = 'GPL-3.0'
+license-files = ['LICENSE']
+requires-python = '>=3.14'
+keywords = ['roasting', 'roast logging', 'speciality coffee']
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+'Homepage' = 'https://artisan-scope.org/'
+'Documentation' = 'https://artisan-scope.org/docs/quick-start-guide/'
+'Repository' = 'https://github.com/artisan-roaster-scope/artisan'
+'Issue Tracker' = 'https://github.com/artisan-roaster-scope/artisan/issues'
+'Changelog' = 'https://github.com/artisan-roaster-scope/artisan/blob/master/wiki/ReleaseHistory.md'
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+## black
+
+[tool.black]
+line-length = 100
+target-version = ['py313']
+include = '\.pyi?$'
+extend-exclude = '''
+# A regex preceded with ^/ will apply only to files and directories
+# in the root of the project.
+^/foo.py  # exclude a file named foo.py in the root of the project (in addition to the defaults)
+'''
+
+## pylint conf
+
+[tool.pylint.MASTER]
+load-plugins = [
+#    'pylint.extensions.bad_builtin', # suggest comprehension over filter/join/map
+    'pylint.extensions.check_elif',
+#    'pylint.extensions.code_style', # suggests the := operator; NOT YET
+    'pylint.extensions.comparison_placement',
+#    'pylint.extensions.confusing_elif', # nested if => functions; NOT YET
+    'pylint.extensions.docparams',
+    'pylint.extensions.docstyle',
+    'pylint.extensions.eq_without_hash',
+    'pylint.extensions.for_any_all',
+    'pylint.extensions.overlapping_exceptions',
+    'pylint.extensions.private_import',
+    'pylint.extensions.set_membership',
+    'pylint.extensions.typing',
+#    'pylint.extensions.redefined_variable_type', # NOT YET
+#    'pylint.extensions.mccabe', # complexity rating for functions; NOT YET
+    'pylint.extensions.no_self_use'
+]
+ignore-paths = [ "^uic/.*$",
+                 "^build/.*$",
+                 "^dist/.*$",
+                 "^proto/.*$",
+                 "^test/.*$",
+                 "^.pytype/.*$" ]
+
+# Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the
+# number of processors available to use.
+jobs = "0"
+
+# Minimum supported python version
+py-version = "3.14"
+
+# Pickle collected data for later comparisons.
+persistent = "no"
+
+# A comma-separated list of package or module names from where C extensions may
+# be loaded. Extensions are loading into the active Python interpreter and may
+# run arbitrary code.
+extension-pkg-allow-list='''PyQt6'''
+
+[tool.pylint.'MESSAGES CONTROL']
+
+# Disable the message, report, category or checker with the given id(s). You
+# can either give multiple identifiers separated by comma (,) or put this
+# option multiple times (only on the command line, not in the configuration
+# file where it should appear only once). You can also use "--disable=all" to
+# disable everything first and then re-enable specific checks. For example, if
+# you want to run only the similarities checker, you can use "--disable=all
+# --enable=similarities". If you want to run only the classes checker, but have
+# no Warning level messages displayed, use "--disable=all --enable=classes
+# --disable=W".
+disable='''
+        line-too-long,
+        too-many-lines,
+        trailing-whitespace,
+        missing-final-newline,
+        trailing-newlines,
+        multiple-statements,
+        multiple-imports,
+        wrong-import-order,
+        ungrouped-imports,
+        wrong-import-position,
+        useless-import-alias,
+        import-outside-toplevel,
+        empty-docstring,
+        missing-module-docstring,
+        missing-class-docstring,
+        missing-function-docstring,
+        invalid-name,
+        too-many-statements,
+        too-many-branches,
+        too-many-ancestors,
+        too-many-instance-attributes,
+        too-few-public-methods,
+        too-many-public-methods,
+        too-many-return-statements,
+        too-many-branches,
+        too-many-arguments,
+        too-many-locals,
+        too-many-boolean-expressions,
+        too-many-nested-blocks,
+        too-many-positional-arguments,
+        cyclic-import,
+        duplicate-code,
+'''
+
+# Enable the message, report, category or checker with the given id(s). You can
+# either give multiple identifier separated by comma (,) or put this option
+# multiple time (only on the command line, not in the configuration file where
+# it should appear only once). See also the "--disable" option for examples.
+enable='''c-extension-no-member,'''
+
+
+## mypy conf
+
+[tool.mypy]
+files = ["*.py", "artisanlib/*.py", "plus/*.py", "tilauscope/*.py", "test/**/*.py"]
+exclude = ['build', 'dist', 'uic', 'misc']
+python_version = "3.14"
+
+# Ensure full coverage
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_untyped_decorators = true
+disallow_any_unimported = true
+
+
+# Restrict dynamic typing
+disallow_any_generics = true
+disallow_subclassing_any = true
+warn_return_any = true
+
+# Some more checks
+local_partial_types = true
+strict_equality = true
+
+# Know exactly what we're doing
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_unreachable = true
+show_error_codes = true
+
+enable_error_code = "possibly-undefined,truthy-bool,redundant-expr,unused-awaitable, explicit-override, ignore-without-code"
+
+# Explicit is better than implicit
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = ["libusb_package.*"]
+ignore_missing_imports = true
+
+
+[[tool.mypy.overrides]]
+module = "uic.*"
+follow_imports = 'skip'
+
+
+## ruff conf
+
+[tool.ruff]
+include = ["artisanlib/*.py", "plus/*.py", "tilauscope/*.py","test/**/*.py"]
+
+# Enable pycodestyle (`E`), Pyflakes (`F`), Updates ('UP'), flake8-bugbear (`B`) codes by default.
+# also flake8-2020 (YTT), flake8-commas (COM), flake8-comprehensions (C4),
+# flake8-datetimez (DTZ), flake8-pie (PIE), flake8-raise (RSE), flake8-return (RET),
+# flake8-simplify (SIM), flake8-gettext (INT), flake8-unused-arguments (ARG),
+# Error (PLE), Refactor (PLR), Warning (PLW)
+## next: flake8-use-pathlib (PTH), flake8-print (T20)
+lint.select = ["E", "F", "UP", "B", "A", "YTT", "COM", "C4", "DTZ", "PIE", "RSE", "RET", "SIM", "ARG", "PLE", "PLR", "PLW", "INT", "RUF013"]
+
+output-format = "pylint" # one of: text, json, junit, grouped, github, gitlab, pylint, azure
+
+# Same as Black.
+line-length = 100
+
+# Never enforce `E501` (line length violations).
+lint.ignore = ["E501", "E741", "E402", "PLR0912", "PLR0913", "PLR0915", "SIM105", "PLR2044", "PLR2004", "PLW0603", "PLR0911", "COM812", "A005"]
+
+# Exclude a variety of commonly ignored directories.
+exclude = ["dist", "build", "proto", ".pytype", ".mypy_cache", ".git", ".venv", ".venv_universal", ".venv_arm"]
+
+# Assume Python 3.43
+target-version = "py314"
+
+[tool.ruff.lint.per-file-ignores]
+"uic/*.py" = ["UP004", "F401", "ARG002"]
+
+
+
+## pyright conf
+
+[tool.pyright]
+include = ["artisanlib", "plus", "tilauscope" ]
+exclude = ["proto"]
+# ignore = ["src/oldstuff"]
+
+reportMissingImports = true
+reportMissingTypeStubs = false
+
+pythonVersion = "3.14"
+pythonPlatform = "All"
+
+#typeCheckingMode = "strict" # "off", "basic", "strict"
+
+# strict disabled checks # "error", "warning", false, true
+reportUnboundVariable = true # "error"
+reportMissingParameterType = true
+reportUnknownParameterType = true
+#reportUnknownMemberType = false # PyQt signal/slot issues
+reportUnknownArgumentType = true
+reportGeneralTypeIssues = true
+useLibraryCodeForTypes = true
+reportInvalidTypeForm = true
+reportUnnecessaryComparison = true
+reportUninitializedInstanceVariable = true
+
+
+## pytest conf
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+addopts = "-ra -v"
+testpaths = [
+    "test",
+]
+pythonpath = [
+  "src"
+]
+filterwarnings = [
+  "ignore::RuntimeWarning",
+  "ignore::pytest.PytestUnraisableExceptionWarning",
+]
+
+
+## coverage
+
+[tool.coverage.run]
+omit = [
+    "test/*",
+    "uic/*",
+    "proto/*",
+    "help/*",
+    "dist/*",
+    "build/*",
+    "artisan.py",
+    "conftest.py",
+    "pylupdate6pro.py",
+    "setup-*.py",
+    ]
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_also = [
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if __name__ == .__main__.:",
+
+    # Don't complaint about PyQt5 compatibility
+    "except ImportError",
+    "from PyQt5.",
+]
+[tool.coverage.html]
+directory = ".htmlcov"
+
+
+## codespell
+
+[tool.codespell]
+skip = '*.ts,./coverage,./build,./dist*,./htmlcov,./*.spec,*.svg'
+count = ''
+quiet-level = 3
+ignore-words-list = 'Abd,ser,alog,nd,iterm,dout,te,commandi,dout,exitt,currenty,exaust,controle,coment,controle,outweight,everytime,sade,weightIn,weightin,Caf,caf,Equil'
+
+
+ 
+## ty conf
+
+[tool.ty.src]
+include = [
+    "artisanlib/*.py",
+    "plus/*.py",
+    "tilauscope/*.py",
+]
+
+[tool.ty.rules]
+invalid-argument-type = "ignore"
+invalid-method-override = "ignore"
+invalid-assignment = "ignore"
+#unused-ignore-comment = "warn"
+#redundant-cast = "ignore"
+#possibly-unbound-attribute = "error"
+#possibly-unbound-import = "error"
+
+
+## pyrefly conf
+
+[tool.pyrefly]
+project_includes = [
+    "artisanlib/*.py",
+    "plus/*.py",
+    "tilauscope/*.py",
+    "test/**/*.py"
+]
+project_excludes = [
+    "**/build*",
+    "**/dist*",
+    "**/uic*",
+    "**/misc*",
+]
+python_version = "3.14.0"
+replace_imports_with_any = [
+    "libusb_package.*",
+    "uic.*",
+]
+
+[tool.pyrefly.errors]
+missing-attribute = false   # does not understand PyQt connect/disconnect methods
+missing-argument = false # pyrefly misinterprets @pyqtSlot() declarations
+bad-argument-type = false # pyrefly misinterprets @pyqtSlot() declarations
+
+
+[tool.zuban]
+files = ["artisanlib/*.py", "tilauscope/*.py", "plus/*.py"]
+exclude = ['build', 'dist', 'uic', 'misc']

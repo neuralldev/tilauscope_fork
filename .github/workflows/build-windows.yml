@@ -1,0 +1,136 @@
+name: Build TilauScope (Windows)
+run-name: Build TilauScope (Windows)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
+
+jobs:
+  build:
+    runs-on: windows-latest
+    # This file ships inside the published snapshot and is meant to run in the
+    # public repository only. In the private repo it stays inert: builds there
+    # are done locally from `continuous`.
+    if: github.repository == 'neuralldev/tilauscope_fork'
+
+    permissions:
+      contents: write   # ← allows git push and tag creation
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5 
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.14' 
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller pyinstaller-versionfile -r ./src/requirements.txt
+      
+      - name: Download Visual C++ Redistributable
+        run: |
+          curl -L -o vc_redist.x64.exe https://aka.ms/vs/17/release/vc_redist.x64.exe
+        shell: bash
+  
+      - name: Extract Version and Build
+        shell: bash
+        run: |
+          VERSION=$(grep "__version__ =" src/artisanlib/__init__.py | cut -d"'" -f2)
+          BUILD=$(grep "__build__ =" src/artisanlib/__init__.py | cut -d"'" -f2)
+          
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "APP_BUILD=$BUILD" >> $GITHUB_ENV
+          echo "Version extraite : $VERSION (Build $BUILD)"
+
+      - name: Create Version Info File
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
+          APP_BUILD: ${{ env.APP_BUILD }}
+        shell: cmd
+        run: |
+          echo company_name: "Tilau" > metadata.yml
+          echo product_name: "artisan" >> metadata.yml
+          echo file_description: "artisan" >> metadata.yml
+          echo internal_name: "artisan" >> metadata.yml
+          echo original_filename: "artisan.exe" >> metadata.yml
+
+          create-version-file metadata.yml --outfile src\version_info-win.txt --version ${{ env.APP_VERSION }}.${{ env.APP_BUILD }}
+
+      - name: Get PyQt6 Path
+        shell: bash
+        run: |
+          PYQT6_DIR=$(python -c "import PyQt6, os; print(os.path.dirname(PyQt6.__file__))")
+          echo "PYQT6_PATH=$PYQT6_DIR" >> $GITHUB_ENV
+          echo "Found PyQt6 path: $PYQT6_DIR"
+
+      - name: Build with PyInstaller
+        shell: cmd
+        run: |
+          set PARENT_DIR=%CD%
+          cd src
+          pyinstaller --noconfirm --log-level=WARN setup-tilauscope-win.spec
+
+      - name: Install NSIS
+        run: |
+          choco install nsis -y
+          echo "C:\Program Files (x86)\NSIS" >> $GITHUB_PATH
+
+      - name: Build Installer with NSIS
+        uses: joncloud/makensis-action@v4
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
+          APP_BUILD: ${{ env.APP_BUILD }}
+        with:
+          script-file: src/setup-tilauscope.nsi
+          arguments: "/DPRODUCT_VERSION=${{ env.APP_VERSION }}  /DPRODUCT_BUILD=${{ env.APP_BUILD }}"
+      
+      - name: Rename artifact
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
+          APP_BUILD: ${{ env.APP_BUILD }}
+        run: |
+          mv src\artisan-win-x64-${{ env.APP_VERSION }}-setup.exe src\tilauscope-${{ env.APP_VERSION }}-build${{ env.APP_BUILD }}-setup.exe
+
+      - name: Publish GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_VERSION: ${{ env.APP_VERSION }}
+          APP_BUILD: ${{ env.APP_BUILD }}
+        run: |
+          TAG="v${APP_VERSION}"
+          EXE="src/tilauscope-${APP_VERSION}-build${APP_BUILD}-setup.exe"
+
+          # One release per public version, carrying both platform installers.
+          # The macOS and Windows jobs race to create it; whichever loses simply
+          # finds it already there and uploads its own asset into it.
+          gh release create "$TAG" \
+            --title "TilauScope ${APP_VERSION}" \
+            --notes "Automated build from commit ${GITHUB_SHA}. See whatsnew.md for what changed." \
+            || echo "Release $TAG already exists - uploading into it."
+
+          gh release upload "$TAG" "$EXE" --clobber
+
+      - name: Notify on Discord
+        if: always()
+        shell: bash
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          APP_VERSION: ${{ env.APP_VERSION }}
+          APP_BUILD: ${{ env.APP_BUILD }}
+          STATUS: ${{ job.status }}
+        run: |
+          [ -z "$DISCORD_WEBHOOK_URL" ] && exit 0
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/tag/v${APP_VERSION}"
+          TEXT="TilauScope ${APP_VERSION} build ${APP_BUILD} (Windows): ${STATUS} - ${URL}"
+          jq -n --arg c "$TEXT" '{content: $c}' \
+            | curl -sS -X POST -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK_URL" \
+            || echo "Discord notification failed (non-fatal)."

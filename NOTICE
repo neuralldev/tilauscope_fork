@@ -1,0 +1,52 @@
+TilauScope
+Copyright (c) 2025-2026 Tilau
+
+TilauScope is a modified version of Artisan Roaster Scope.
+
+  Artisan Roaster Scope
+  Copyright (c) Marko Luther and the Artisan contributors
+  https://github.com/artisan-roaster-scope/artisan
+
+Modifications by Tilau began in 2025 and are ongoing. They add a guided
+assistance layer for home and amateur roasters — roast planning, automated
+milestone detection, a bean database, preheat PID control, remote piloting from
+a phone, and integration with several Bluetooth roasting accessories. Files and
+code sections added or altered by this fork are marked with a `## TILAU ##`
+comment.
+
+
+LICENSING OF THE COMBINED WORK
+------------------------------
+
+This distribution combines code under two licences:
+
+  * Code inherited from Artisan Roaster Scope, principally under `src/artisanlib/`,
+    remains under the terms stated in its own file headers (GNU General Public
+    License, version 2 or 3 or, at your option, any later version). The full GPL
+    text is kept in LICENSE-GPL-3.0. Those headers and copyright notices have not
+    been altered.
+
+  * Code original to TilauScope, principally under `src/tilauscope/`, is licensed
+    under the GNU Affero General Public License version 3 or later. The full text
+    is in LICENSE.
+
+Section 13 of the GNU General Public License version 3 expressly permits linking
+GPLv3-covered code with code covered by the GNU Affero General Public License
+version 3. The combined work is therefore distributed under the terms of the GNU
+Affero General Public License version 3, and its Section 13 applies to the parts
+covered by that licence.
+
+In practice this means that if you run a modified version of TilauScope and let
+other people interact with it remotely over a network — for instance through its
+remote-piloting web interface — you must offer those users access to the
+corresponding source of your modified version.
+
+
+THIRD-PARTY MATERIAL
+--------------------
+
+Fonts bundled under `src/includes/` (Source Han Sans, WenQuanYi Zen Hei) are
+distributed under their own licences by their respective authors.
+
+The colour palette used throughout the TilauScope interface is derived from
+Catppuccin (https://github.com/catppuccin/catppuccin), MIT licensed.

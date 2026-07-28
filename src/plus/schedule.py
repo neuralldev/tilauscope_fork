@@ -1,0 +1,4393 @@
+#
+# schedule.py
+#
+# Copyright (c) 2025, Paul Holleis, Marko Luther
+# All rights reserved.
+#
+#
+# ABOUT
+# This module connects to the artisan.plus inventory management service
+
+# LICENSE
+# This program or module is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, either version 2 of the License, or
+# version 3 of the License, or (at your option) any later version. It is
+# provided for educational purposes and is distributed in the hope that
+# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. Seef
+# the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import os
+import time
+import math
+import datetime
+import json
+import functools
+import html
+import textwrap
+import platform
+import logging
+from json import dumps as json_dumps
+from platform import python_version
+from uuid import UUID
+from packaging.version import Version
+
+from PyQt6.QtCore import (Qt, QMimeData, QSettings, pyqtSlot, pyqtSignal, QPoint, QPointF, QLocale, QDate, QDateTime, QSemaphore, QTimer)
+from PyQt6.QtGui import (QDrag, QPixmap, QPainter, QTextLayout, QTextLine, QColor, QFontMetrics, QCursor, QAction, QIcon)
+from PyQt6.QtWidgets import (QDialogButtonBox, QMessageBox, QStackedWidget, QApplication, QWidget, QVBoxLayout, QHBoxLayout, QFrame, QTabWidget,
+        QCheckBox, QGroupBox, QScrollArea, QLabel, QSizePolicy,
+        QGraphicsDropShadowEffect, QPlainTextEdit, QLineEdit, QMenu, QStatusBar, QToolButton)
+
+
+from babel.dates import format_date, format_timedelta
+from pydantic import BaseModel, Field, PositiveInt, UUID4, field_validator, model_validator, computed_field, field_serializer
+from typing import override, Final, Any, TypedDict, cast, TextIO, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from artisanlib.atypes import ProfileData # noqa: F401 # pylint: disable=unused-import
+    from artisanlib.main import ApplicationWindow # noqa: F401 # pylint: disable=unused-import
+    from PyQt6.QtCore import QObject, QEvent, QRect, QMargins # noqa: F401 # pylint: disable=unused-import
+    from PyQt6.QtGui import (QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent, QCloseEvent,  # noqa: F401 # pylint: disable=unused-import
+        QResizeEvent, QPaintEvent, QEnterEvent, QMouseEvent, QTextDocument, QKeyEvent) # noqa: F401 # pylint: disable=unused-import
+    from PyQt6.QtWidgets import QLayout, QLayoutItem, QBoxLayout # noqa: F401 # pylint: disable=unused-import
+    from plus.weight import WeightItem
+
+
+import plus.register
+import plus.controller
+import plus.connection
+import plus.stock
+import plus.config
+import plus.sync
+import plus.util
+from plus.util import datetime2epoch, epoch2datetime, schedulerLink, epoch2ISO8601, ISO86012epoch, plusLink
+from plus.weight import Display, GreenDisplay, RoastedDisplay, PROCESS_STATE, WeightManager, GreenWeightItem, RoastedWeightItem
+from artisanlib.widgets import ClickableQLabel, ClickableQLineEdit, Splitter
+from artisanlib.dialogs import ArtisanResizeablDialog
+from artisanlib.util import (float2float, float2str, convertWeight, weight_units, render_weight, comma2dot, float2floatWeightVolume, getDirectory,
+    getResourcePath, deserialize, roast_time, get_total_roast_time_from_profile, stringfromseconds)
+
+
+_log: Final[logging.Logger] = logging.getLogger(__name__)
+
+
+## Semaphores and persistancy
+
+prepared_items_semaphore = QSemaphore(
+    1
+)  # protects access to the prepared_items_cache_path file and the prepared_items dict
+
+prepared_items_cache_path = getDirectory(plus.config.prepared_items_cache)
+
+completed_roasts_semaphore = QSemaphore(
+    1
+)  # protects access to the completed_roasts_cache file and the completed_roasts dict
+
+completed_roasts_cache_path = getDirectory(plus.config.completed_roasts_cache)
+
+hidden_items_semaphore = QSemaphore(
+    1
+)  # protects access to the hidden_items_cache_path file and the hidden_items list cache
+
+hidden_items_cache_path = getDirectory(plus.config.hidden_items_cache)
+
+
+update_schedule_window_semaphore = QSemaphore(
+    1
+)  # prevents processing of updateScheduleWindow while drag-and-drop
+
+
+## Configuration
+
+# the minimal difference the edited roasted weight in kg of a completed item must have
+# to be able to persist the change, compensating back-and-forth unit conversion errors
+roasted_weight_editing_minimal_diff: Final[float] = 0.07 # 70g
+
+default_roast_time:float = 12*60 # 12min (in seconds)
+default_loss:Final[float] = 15.0 # default roast loss in percent
+loss_min:Final[float] = 5.0 # minimal loss that makes any sense in percent
+loss_max:Final[float] = 25.0 # maximal loss that makes any sense in percent
+similar_roasts_max_batch_size_delta:Final[float] = 0.5 # max batch size difference to regard roasts as similar in percent
+similar_roasts_max_roast_time_delta:Final[int] = 30 # max roast time difference to regard roasts as similar in seconds
+similar_roasts_max_drop_bt_temp_delta_C:Final[float] = 5.0 # max bean temperature difference at DROP to regard roasts as similar in C
+similar_roasts_max_drop_bt_temp_delta_F:Final[float] = 4.0 # max bean temperature difference at DROP to regard roasts as similar in F
+
+## Style
+
+border_width: Final[int] = 4
+border_radius: Final[int] = 6
+tooltip_line_length: Final[int] = 75 # in character
+tooltip_max_lines: Final[int] = 3
+tooltip_placeholder: Final[str] = '...'
+
+#
+plus_red_hover: Final[str] = '#B2153F'
+plus_red: Final[str] = '#BC2C52'
+plus_blue_hover: Final[str] = '#1985ba'
+plus_blue: Final[str] = '#147BB3'
+## for selected schedule item:
+plus_alt_blue_hover: Final[str] = '#3d81ba'
+plus_alt_blue: Final[str] = '#3979ae' # main.py:dark_blue
+#
+white: Final[str] = 'white'
+dull_white: Final[str] = '#FDFDFD'
+dim_white: Final[str] = '#EEEEEE'
+dark_white: Final[str] = '#505050'
+super_light_grey_hover: Final[str] = '#EEEEEE'
+super_light_grey: Final[str] = '#E3E3E3'
+very_light_grey: Final[str] = '#dddddd'
+light_grey_hover: Final[str] = '#D0D0D0'
+light_grey: Final[str] = '#BBBBBB'
+dark_grey_hover: Final[str] = '#909090'
+dark_grey: Final[str] = '#808080'
+dull_dark_grey: Final[str] = '#606060'
+medium_dark_grey: Final[str] = '#444444'
+very_dark_grey: Final[str] = '#222222'
+#
+drag_indicator_color: Final[str] = very_light_grey
+shadow_color: Final[str] = very_dark_grey
+shadow_color_dark_mode: Final[str] = light_grey
+
+tooltip_style: Final[str] = 'QToolTip { padding: 5px; opacity: 240; }'
+tooltip_light_background_style: Final[str] = f'QToolTip {{ background: {light_grey}; padding: 5px; opacity: 240; }}'
+tooltip_dull_dark_background_style: Final[str] = f'QToolTip {{ background: {dull_dark_grey}; padding: 5px; opacity: 240; }}'
+
+
+class TaskWebDisplayPayload(TypedDict):
+    id:str                 # scheduleItem pos / roast batch nr | max 6 characters
+    title:str              # task title
+    subtitle:str           # task subtitle (eg. blend component; coffee name)
+    batchsize:str          # rendered batch size | max ~6 characters
+    weight:str             # remaining weight to be added | max 6 characters
+    final_weight:str       # final weight as send to server | max 6 characters
+    percent:float          # percent of current green component already added
+    state:PROCESS_STATE    # processing state (0:disconnected, 1:connected, 2:weighing, 3:done, 4:canceled)
+    bucket:int             # number of buckets used from {0, 1, 2}
+    blend_percent:str      # percentage of blend component | max ~6 characters or scheduleItem pos for roasted tasks
+    total_percent:float    # total percentage of task completion
+    loss:str               # weight loss displayed if type==1 (roasted)
+    timer:int              # timer timeout in seconds; if 0, timer progress is not displayed
+    type:int               # task type (0:green, 1: roasted, 2:defects)
+    accuracy:float         # accuracy deciding when to enter/leave zoom mode (zoom mode off if 0)
+
+
+class CompletedItemDict(TypedDict):
+    scheduleID:str         # the ID of the ScheduleItem this completed item belongs to
+    scheduleDate:str       # the date of the ScheduleItem this completed item belongs to
+    roastUUID:str          # the UUID of this roast
+    roastdate: float       # as epoch
+    roastbatchnr: int      # set to zero if no batch number is assigned
+    roastbatchprefix: str  # might be the empty string if no prefix is used
+    count: int             # total count >0 of corresponding ScheduleItem
+    sequence_id: int       # sequence id of this roast (sequence_id <= count)
+    title:str
+    coffee_label: str|None
+    blend_label: str|None
+    store_label: str|None
+    batchsize: float       # in kg
+    weight: float          # in kg (resulting weight as set by the user if measured is True and otherwise equal to weight_estimate)
+    weight_estimate: float # in kg (estimated roasted weight based on profile template or previous roasts or similar)
+    defects_weight: float  # in kg (weight of defects sorted from roasted weight)
+    measured: bool         # True if (out-)weight was measured or manually set, False if estimated from server calculated loss or template
+    color: float
+    moisture: float        # in %
+    density: float         # in g/l
+    roastingnotes: str
+    cupping_score: float
+    cuppingnotes: str
+    roasttime: int
+
+
+# ordered list of dict with the completed roasts data (latest roast first)
+completed_roasts_cache:list[CompletedItemDict] = []
+completed_roasts_cache_plus_account_id:str|None = None # the plus_account_id from which completed roast cache was last loaded, None if cache was not yet loaded
+
+# dict associating ScheduledItem IDs to a list of prepared green weights (in kg) interpreted in order. Weights beyond item.count will be ignored.
+# NOTE: adding a roast consumes a prepared item in FIFO order thus the prepared_items_cache represents only still available prepared batches
+prepared_items_cache:dict[str, list[float]] = {}
+
+# list containing ScheduledItem IDs that are hidden
+hidden_items_cache:list[str] = []
+
+
+class ScheduledItem(BaseModel):
+    id: str = Field(alias='_id')
+    date: datetime.date
+    count: PositiveInt
+    title: str
+    coffee: str|None = Field(default=None)      # None or coffee hr_id
+    blend: str|None = Field(default=None)       # None or blend hr_id
+    store: str = Field(..., alias='location')
+    weight: float = Field(..., alias='amount')       # batch size in kg
+    loss: float = default_loss                       # default loss based calculated by magic on the server in % (if not given defaults to 15%)
+    machine: str|None = Field(default=None)
+    user: str|None = Field(default=None)
+    nickname: str|None = Field(default=None)
+    template: UUID4|None = Field(default=None)  # note that this generates UUID objects. To get a UUID string without dashes use uuid.hex.
+    note: str|None = Field(default=None)
+    roasts: set[UUID4] = Field(default=set())        # note that this generates UUID objects. To get a UUID string without dashes use uuid.hex.
+
+    @field_validator('*', mode='before')
+    def remove_blank_strings(cls: BaseModel, v: str|None) -> str|None:   # pylint: disable=no-self-argument,no-self-use
+        """Removes whitespace characters and return None if empty"""
+        if isinstance(v, str):
+            v = v.strip()
+        if v == '':
+            return None
+        return v
+
+    @model_validator(mode='after') # pyright:ignore[reportArgumentType]
+    def coffee_or_blend(self) -> 'ScheduledItem':
+        if self.coffee is None and self.blend is None:
+            raise ValueError('Either coffee or blend must be specified')
+        if self.coffee is not None and self.blend is not None:
+            raise ValueError('Either coffee or blend must be specified, but not both')
+        if len(self.title) == 0:
+            raise ValueError('Title cannot be empty')
+        if (self.date - datetime.datetime.now(datetime.UTC).astimezone().date()).days < 0:
+            raise ValueError('Date should not be in the past')
+        return self
+
+class CompletedItem(BaseModel):
+    count: PositiveInt       # total count >0 of corresponding ScheduleItem
+    scheduleID: str
+    scheduleDate: str
+    sequence_id: PositiveInt # sequence id of this roast (sequence_id <= count)
+    roastUUID: UUID4
+    roastdate: datetime.datetime
+    roastbatchnr: int
+    roastbatchprefix: str
+    title: str
+    coffee_label: str|None = Field(default=None)
+    blend_label: str|None = Field(default=None)
+    store_label: str|None = Field(default=None)
+    batchsize: float       # in kg (weight of greens)
+    weight: float          # in kg (resulting weight of roasted beans)
+    weight_estimate: float # in kg (estimated roasted beans weight based on profile template or previous roasts weight loss)
+    defects_weight: float = Field(default=0)  # in kg (weight of defects sorted from roasted weight)
+    measured: bool = Field(default=False)     # True if (out-)weight was measured or manually set, False if estimated from server calculated loss or template
+    color: float
+    moisture: float # in %
+    density: float  # in g/l
+    roastingnotes: str = Field(default='')
+    cupping_score: float
+    cuppingnotes: str = Field(default='')
+    roasttime: int = Field(default=0)
+
+    @computed_field  # type:ignore[prop-decorator] # Decorators on top of @property are not supported
+    @property
+    def prefix(self) -> str:
+        res = ''
+        if self.roastbatchnr > 0:
+            res = f'{self.roastbatchprefix}{self.roastbatchnr}'
+        return res
+
+    @model_validator(mode='after') # pyright:ignore[reportArgumentType]
+    def coffee_or_blend(self) -> 'CompletedItem':
+        if len(self.title) == 0:
+            raise ValueError('Title cannot be empty')
+# as CompletedItems are generated for ScheduledItems where store and one of blend/coffee needs to be set
+# the store_label and one of the blend_label/coffee_label should never be empty, but in case they are we
+# handle this without further ado
+        if self.coffee_label is None and self.blend_label is None:
+#            raise ValueError('Either coffee_label or blend_label must be specified')
+            _log.info('CompletedItem validation: Either coffee_label (%s) or blend_label (%s) must be specified (%s)', self.coffee_label, self.blend_label, self.scheduleID)
+        if self.coffee_label is not None and self.blend_label is not None:
+#            raise ValueError('Either coffee_label or blend_label must be specified, but not both')
+            _log.info('CompletedItem validation: Either coffee_label (%s) or blend_label (%s) must be specified, but not both (%s)', self.coffee_label, self.blend_label, self.scheduleID)
+# you should not be able to complete more roasts than the items coount, but in case it happens we
+# handle this without further ado
+        if self.sequence_id > self.count:
+#            raise ValueError('sequence_id cannot be larger than total count of roasts per ScheduleItem')
+            _log.info('CompletedItem validation: sequence_id (%s) cannot be larger than total count (%s) of roasts per ScheduleItem (%s)', self.sequence_id, self.count, self.scheduleID)
+        return self
+
+    @field_serializer('roastdate', when_used='json')
+    def serialize_roastdate_to_epoch(roastdate: datetime.datetime) -> int: # type:ignore[misc] # pylint: disable=no-self-argument
+        return int(roastdate.timestamp())
+
+    @field_serializer('roastUUID', when_used='json')
+    def serialize_roastUUID_to_str(roastUUID: UUID4) -> str: # type:ignore[misc] # pylint: disable=no-self-argument
+        return str(roastUUID.hex)
+
+
+    # updates this CompletedItem with the data given in profile_data
+    # NOTE: values in profile_data may be None here as those are produced by changes()
+    def update_completed_item(self, aw:'ApplicationWindow', profile_data:dict[str, Any]) -> bool:
+        updated:bool = False
+        if 'batch_number' in profile_data:
+            batch_number = int(profile_data['batch_number'])
+            if batch_number != self.roastbatchnr:
+                updated = True
+                self.roastbatchnr = batch_number
+        if 'batch_prefix' in profile_data:
+            batch_prefix = str(profile_data['batch_prefix'])
+            if batch_prefix != self.roastbatchprefix:
+                updated = True
+                self.roastbatchprefix = batch_prefix
+        if 'label' in profile_data:
+            label = str(profile_data['label'])
+            if label != self.title:
+                updated = True
+                self.title = label
+        if 'coffee' in profile_data and 'label' in profile_data['coffee']:
+            label = profile_data['coffee']['label']
+            if label != self.coffee_label:
+                updated = True
+                self.coffee_label = label
+        if 'blend' in profile_data and 'label' in profile_data['blend']:
+            label = profile_data['blend']['label']
+            if label != self.blend_label:
+                updated = True
+                self.blend_label = label
+        if 'location' in profile_data and 'label' in profile_data['location']:
+            label = str(profile_data['location']['label'])
+            if label != self.store_label:
+                updated = True
+                self.store_label = label
+        if 'amount' in profile_data:
+            amount = float(profile_data['amount'])
+            if amount != self.batchsize:
+                updated = True
+                self.batchsize = amount
+        if 'end_weight' in profile_data:
+            end_weight = float(profile_data['end_weight'])
+            if end_weight != self.weight:
+                updated = True
+                self.weight = end_weight
+        if 'defects_weight' in profile_data:
+            defects_weight = float(profile_data['defects_weight'])
+            if defects_weight != self.defects_weight:
+                updated = True
+                self.defects_weight = defects_weight
+        if 'ground_color' in profile_data:
+            ground_color = (0 if profile_data['ground_color'] is None else float2float(profile_data['ground_color']))
+            if ground_color != self.color:
+                updated = True
+                self.color = ground_color
+        if 'density_roasted' in profile_data:
+            density_roasted = (0 if profile_data['density_roasted'] is None else float(profile_data['density_roasted']))
+            if density_roasted != self.density:
+                updated = True
+                self.density = density_roasted
+        if 'moisture' in profile_data:
+            moisture = (0 if profile_data['moisture'] is None else float(profile_data['moisture']))
+            if moisture != self.moisture:
+                updated = True
+                self.moisture = moisture
+        if 'notes' in profile_data:
+            notes = ('' if profile_data['notes'] is None else str(profile_data['notes']).strip())
+            if notes != self.roastingnotes:
+                updated = True
+                self.roastingnotes = notes
+        if 'cupping_score' in profile_data:
+            cupping_score = (50 if profile_data['cupping_score'] is None else float2float(profile_data['cupping_score'], 2))
+            if cupping_score != self.cupping_score:
+                updated = True
+                self.cupping_score = cupping_score
+        if 'cupping_notes' in profile_data:
+            cupping_notes = ('' if profile_data['cupping_notes'] is None else str(profile_data['cupping_notes']).strip())
+            if cupping_notes != self.cuppingnotes:
+                updated = True
+                self.cuppingnotes = cupping_notes
+        if updated:
+            # we update the completed_roasts_cache entry
+            completed_item_dict = self.model_dump(mode='json')
+            if 'prefix' in completed_item_dict:
+                del completed_item_dict['prefix']
+            add_completed(aw.plus_account_id, cast(CompletedItemDict, completed_item_dict))
+        return updated
+
+
+
+###################
+# determine templates total roasting time
+
+# returns total roasting time in second of the profile associated with the given uuid
+# as well the profile name (prefixed with batch counter) is available as second result
+@functools.lru_cache(maxsize=100)
+def get_total_roasting_time_and_title(uuid:str) -> tuple[float|None, str|None]:
+    filepath = plus.register.getPath(uuid)
+    if filepath is not None:
+        try:
+            template:ProfileData = cast('ProfileData', deserialize(filepath))
+            roast_title:str|None = template.get('title', None)
+            if roast_title is not None:
+                batchnr = template.get('roastbatchnr', 0)
+                if batchnr > 0:
+                    roast_title = f"{template.get('roastbatchprefix', '')}{batchnr} {roast_title}"
+            return get_total_roast_time_from_profile(template), roast_title
+        except Exception: # pylint: disable=broad-except
+            # profile could be broken!
+            pass
+    return None, None
+
+
+# returns the total roasting time for the given list of roast times in seconds as int, replacing None values by the average roast time of the remaining values
+# (or default_roast_time if all roasting times are unknown/None)
+def total_roasting_time(rtimes:list[float|None]) -> float:
+    roasting_times:list[float] = [x for x in rtimes if x is not None]
+    if len(roasting_times) == 0:
+        return default_roast_time * len(rtimes) # assuming that all roasts have the default roast time
+    known_total = sum(roasting_times)
+    avg_roast_times = known_total / len(roasting_times)
+    # for each unkwnown roast time we add the average of the known roast times
+    return known_total + (len(rtimes) - len(roasting_times)) * avg_roast_times
+
+###################
+# completed roasts cache
+#
+# NOTE: completed roasts data file access is not protected by portalocker for parallel access via a second Artisan instance
+#   as the ArtisanViewer disables the scheduler, thus only one Artisan instance is handling this file
+#
+# NOTE: changes applied to the completed roasts cache via add_completed() are automatically persisted by a call to save_completed()
+
+
+# save completed roasts data to local file cache
+def save_completed(plus_account_id:str|None) -> None:
+    _log.debug('save_completed(%s): %s', plus_account_id, len(completed_roasts_cache))
+    if plus_account_id is not None:
+        try:
+            completed_roasts_semaphore.acquire(1)
+            f:TextIO
+            with open(completed_roasts_cache_path, 'w', encoding='utf-8') as f:
+                try:
+                    completed_roasts_cache_data = json.load(f)
+                except Exception:   # pylint: disable=broad-except
+                    completed_roasts_cache_data = {}
+                completed_roasts_cache_data[plus_account_id] = completed_roasts_cache
+                json.dump(completed_roasts_cache_data, f, indent=None, separators=(',', ':'), ensure_ascii=False)
+        except Exception as e:  # pylint: disable=broad-except
+            _log.exception(e)
+        finally:
+            if completed_roasts_semaphore.available() < 1:
+                completed_roasts_semaphore.release(1)
+
+
+# load completed roasts data from local file cache
+# if force is False (default True), the cache is only loaded if not yet loaded for the given plus_account_id before)
+def load_completed(plus_account_id:str|None, force:bool = True) -> None:
+    global completed_roasts_cache, completed_roasts_cache_plus_account_id  # pylint: disable=global-statement
+    _log.debug('load_completed(%s)', plus_account_id)
+    try:
+        completed_roasts_semaphore.acquire(1)
+        completed_roasts_cache = []
+        if plus_account_id is not None and (force or plus_account_id != completed_roasts_cache_plus_account_id):
+            f:TextIO
+            with open(completed_roasts_cache_path, encoding='utf-8') as f:
+                completed_roasts_cache_data = json.load(f)
+                if plus_account_id in completed_roasts_cache_data:
+                    completed_roasts = completed_roasts_cache_data[plus_account_id]
+                    today_completed:list[CompletedItemDict] = []
+                    previously_completed:list[CompletedItemDict] = []
+                    today = datetime.datetime.now(datetime.UTC)
+                    for ci in completed_roasts:
+                        if 'roastdate' in ci:
+                            if epoch2datetime(ci['roastdate']).astimezone().date() == today.astimezone().date():
+                                today_completed.append(ci)
+                            else:
+                                previously_completed.append(ci)
+                    if len(previously_completed)>0:
+                        previous_session_epoch:float = previously_completed[0].get('roastdate', datetime2epoch(today))
+                        previous_session_date = epoch2datetime(previous_session_epoch).astimezone().date()
+                        previously_completed = [pc for pc in previously_completed if epoch2datetime(pc['roastdate']).astimezone().date() == previous_session_date]
+                    # we keep all roasts completed today as well as all from the previous roast session
+                    completed_roasts_cache = today_completed + previously_completed
+                    completed_roasts_cache.sort(key=lambda cr: cr['roastdate'], reverse=True)
+                    completed_roasts_cache_plus_account_id = plus_account_id
+    except FileNotFoundError:
+        _log.debug('no completed roast cache file found')
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if completed_roasts_semaphore.available() < 1:
+            completed_roasts_semaphore.release(1)
+
+
+def get_all_completed() -> list[CompletedItemDict]:
+    try:
+        completed_roasts_semaphore.acquire(1)
+        return completed_roasts_cache
+    except Exception as e:  # pylint: disable=broad-except
+        _log.error(e)
+    finally:
+        if completed_roasts_semaphore.available() < 1:
+            completed_roasts_semaphore.release(1)
+    return []
+
+# returns the CompletedItemDict object for the given roastUUID if any
+def get_completed(roastUUID:str) -> CompletedItemDict|None:
+    try:
+        completed_roasts_semaphore.acquire(1)
+        return next((d for d in completed_roasts_cache if d['roastUUID'] == roastUUID), None)
+    except Exception as e:  # pylint: disable=broad-except
+        _log.error(e)
+    finally:
+        if completed_roasts_semaphore.available() < 1:
+            completed_roasts_semaphore.release(1)
+    return None
+
+
+# add the given CompletedItemDict if it contains a roastUUID which does not occurs yet in the completed_roasts_cache
+# if there is already a completed roast with the given UUID, its content is replaced by the given CompletedItemDict
+def add_completed(plus_account_id:str|None, ci:CompletedItemDict) -> None:
+    if 'roastUUID' in ci:
+        modified: bool = False
+        try:
+            completed_roasts_semaphore.acquire(1)
+            # test if there is already a completed roasts with that UUID
+            idx = next((i for i,d in enumerate(completed_roasts_cache) if d['roastUUID'] == ci['roastUUID']), None)
+            if idx is None:
+                # add ci to front
+                completed_roasts_cache.insert(0, ci)
+            else:
+                completed_roasts_cache[idx] = ci
+            modified = True
+        except Exception as e:  # pylint: disable=broad-except
+            _log.error(e)
+        finally:
+            if completed_roasts_semaphore.available() < 1:
+                completed_roasts_semaphore.release(1)
+        if modified:
+            save_completed(plus_account_id)
+
+# updates all roast properties (the changeable as well as the non-changeable from the loaded profiles roast properties to the given CompletedItem
+# such that changes in the RoastProperties are reflected in the items visualization (even if not yet established to the server)
+def updates_completed_from_roast_properties(aw:'ApplicationWindow', ci:CompletedItem) -> bool:
+    updated:bool = False
+    weight_unit_idx = weight_units.index(aw.qmc.weight[2])
+    weight = convertWeight(aw.qmc.weight[1], weight_unit_idx, 1)
+    if ci.weight != weight:
+        ci.weight = weight
+        ci.measured = bool(weight != 0)
+        updated = True
+    if ci.color != aw.qmc.ground_color:
+        ci.color = aw.qmc.ground_color
+        updated = True
+    if ci.moisture != aw.qmc.moisture_roasted:
+        ci.moisture = aw.qmc.moisture_roasted
+        updated = True
+    if ci.density != aw.qmc.density_roasted[0]:
+        ci.density = aw.qmc.density_roasted[0]
+        updated = True
+    if ci.roastingnotes != aw.qmc.roastingnotes:
+        ci.roastingnotes = aw.qmc.roastingnotes
+        updated = True
+    cupping_value = aw.qmc.calcFlavorChartScore()
+    if ci.cupping_score != cupping_value:
+        ci.cupping_score = cupping_value
+        updated = True
+    if ci.cuppingnotes != aw.qmc.cuppingnotes:
+        ci.cuppingnotes = aw.qmc.cuppingnotes
+        updated = True
+    # non_changeable attributes:
+    if ci.roastbatchnr != aw.qmc.roastbatchnr:
+        ci.roastbatchnr = aw.qmc.roastbatchnr
+        updated = True
+    if ci.roastbatchprefix != aw.qmc.roastbatchprefix:
+        ci.roastbatchprefix = aw.qmc.roastbatchprefix
+        updated = True
+    if ci.title != aw.qmc.title:
+        ci.title = aw.qmc.title
+        updated = True
+    if ci.coffee_label != aw.qmc.plus_coffee_label:
+        ci.coffee_label = aw.qmc.plus_coffee_label
+        updated = True
+    if ci.blend_label != aw.qmc.plus_blend_label:
+        ci.blend_label = aw.qmc.plus_blend_label
+        updated = True
+    if ci.store_label != aw.qmc.plus_store_label:
+        ci.store_label = aw.qmc.plus_store_label
+        updated = True
+    # not editable in RoastProperties (only available from the corresponding creating ScheduledItem) thus not modified
+    #batchsize
+
+    if updated:
+        # we update the completed_roasts_cache entry
+        completed_item_dict = ci.model_dump(mode='json')
+        if 'prefix' in completed_item_dict:
+            del completed_item_dict['prefix']
+        add_completed(aw.plus_account_id, cast(CompletedItemDict, completed_item_dict))
+    return updated
+
+def update_completed_item_from_loaded_profile(aw:'ApplicationWindow') -> None:
+    if aw.plus_account_id is not None and aw.qmc.roastUUID is not None:
+        # a plus account is configured
+        if aw.schedule_window is None:
+            #  we load the completed items to fill the cache
+            load_completed(aw.plus_account_id, force=False) # if already loaded, avoid re-loading
+        # get CompletedItem corresponding to the given roastUUID
+        completed_item_dict:CompletedItemDict|None = get_completed(aw.qmc.roastUUID)
+        if completed_item_dict is not None:
+            completed_item:CompletedItem = CompletedItem.model_validate(completed_item_dict)
+            # update completed item and persist changes, if any, in the completed item cache
+            updated = updates_completed_from_roast_properties(aw, completed_item)
+            if updated and aw.schedule_window is not None:
+                # update the schedule window
+                aw.schedule_window.updateScheduleWindow()
+
+
+###################
+# prepared schedule items cache
+#
+# NOTE: prepared scheduled items data file access is not protected by portalocker for parallel access via a second Artisan instance
+#   as the ArtisanViewer disables the scheduler, thus only one Artisan instance is handling this file
+#
+# NOTE: changes applied to the prepared schedule item cache via take_prepared(), set_prepared() and set_unprepared()
+#   are automatically persisted by a call to save_prepared()
+
+
+# save prepared schedule items information to local file cache
+def save_prepared(plus_account_id:str|None) -> None:
+    _log.debug('save_prepared(%s): %s', plus_account_id, len(prepared_items_cache))
+    if plus_account_id is not None:
+        try:
+            prepared_items_semaphore.acquire(1)
+            f:TextIO
+            with open(prepared_items_cache_path, 'w+', encoding='utf-8') as f:
+                try:
+                    prepared_items_cache_data = json.load(f)
+                except Exception:   # pylint: disable=broad-except
+                    prepared_items_cache_data = {}
+                prepared_items_cache_data[plus_account_id] = prepared_items_cache
+                json.dump(prepared_items_cache_data, f, indent=None, separators=(',', ':'), ensure_ascii=False)
+        except Exception as e:  # pylint: disable=broad-except
+            _log.exception(e)
+        finally:
+            if prepared_items_semaphore.available() < 1:
+                prepared_items_semaphore.release(1)
+
+# load prepared schedule items information from local file cache
+def load_prepared(plus_account_id:str|None, scheduled_items:list[ScheduledItem]) -> None:
+    global prepared_items_cache  # pylint: disable=global-statement
+    _log.debug('load_prepared(%s)', plus_account_id)
+    try:
+        prepared_items_semaphore.acquire(1)
+        prepared_items_cache = {}
+        if plus_account_id is not None:
+            f:TextIO
+            with open(prepared_items_cache_path, encoding='utf-8') as f:
+                prepared_items_cache_data = json.load(f)
+                if plus_account_id in prepared_items_cache_data:
+                    prepared_items = {}
+                    for item_id, prepared_weights in prepared_items_cache_data[plus_account_id].items():
+                        si = next((x for x in scheduled_items if x.id == item_id), None)
+                        if si is not None and len(prepared_weights)>0:
+                            # all batches of this item are prepared
+                            prepared_items[item_id] = prepared_weights
+                    prepared_items_cache = prepared_items
+    except FileNotFoundError:
+        _log.debug('no prepared items cache file found')
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if prepared_items_semaphore.available() < 1:
+            prepared_items_semaphore.release(1)
+
+def get_prepared(item:ScheduledItem) -> list[float]:
+    try:
+        prepared_items_semaphore.acquire(1)
+        return prepared_items_cache.get(item.id, [])
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if prepared_items_semaphore.available() < 1:
+            prepared_items_semaphore.release(1)
+    return []
+
+# reduce the list of prepared weights by taking the first one (FIFO)
+def take_prepared(plus_account_id:str|None, item:ScheduledItem) -> float|None:
+    _log.debug('take_prepared(%s, %s)', plus_account_id, item)
+    modified: bool = False
+    try:
+        prepared_items_semaphore.acquire(1)
+        prepared_items = prepared_items_cache.get(item.id, [])
+        if len(prepared_items) > 0:
+            first_prepared_item = prepared_items[0]
+            remaining_prepared_items = prepared_items[1:]
+            if len(remaining_prepared_items) > 0:
+                prepared_items_cache[item.id] = remaining_prepared_items
+            else:
+                del prepared_items_cache[item.id]
+            modified = True
+            return first_prepared_item
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if prepared_items_semaphore.available() < 1:
+            prepared_items_semaphore.release(1)
+    if modified:
+        save_prepared(plus_account_id)
+    return None
+
+# set batch as prepared
+def add_prepared(plus_account_id:str|None, item:ScheduledItem, weight:float) -> None:
+    modified: bool = False
+    try:
+        prepared_items_semaphore.acquire(1)
+        if item.id in prepared_items_cache:
+            prepared_items_cache[item.id].append(weight)
+        else:
+            prepared_items_cache[item.id] = [weight]
+        modified = True
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if prepared_items_semaphore.available() < 1:
+            prepared_items_semaphore.release(1)
+    if modified:
+        save_prepared(plus_account_id)
+
+# returns true if all remaining batches are prepared
+def fully_prepared(item:ScheduledItem) -> bool:
+    try:
+        prepared_items_semaphore.acquire(1)
+        return item.id in prepared_items_cache and item.count - len(item.roasts) <= len(prepared_items_cache[item.id])
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if prepared_items_semaphore.available() < 1:
+            prepared_items_semaphore.release(1)
+    return False
+
+# returns 1 if all remaining batches are prepared, 0 if no batch is prepared and 2 if some batches are prepared
+def prepared_state(item:ScheduledItem) -> int:
+    try:
+        prepared_items_semaphore.acquire(1)
+        if item.id in prepared_items_cache:
+            prepared = len(prepared_items_cache[item.id])
+            if prepared > 0:
+                tobe_prepared =  max(0, item.count - len(item.roasts))
+                if tobe_prepared - prepared <= 0:
+                    return 1 # all batches are prepared
+                return 2 # some batches are prepared
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if prepared_items_semaphore.available() < 1:
+            prepared_items_semaphore.release(1)
+    return 0
+
+# returns true if no batch is prepared
+def fully_unprepared(item:ScheduledItem) -> bool:
+    try:
+        prepared_items_semaphore.acquire(1)
+        return item.id not in prepared_items_cache or len(prepared_items_cache[item.id]) == 0
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if prepared_items_semaphore.available() < 1:
+            prepared_items_semaphore.release(1)
+    return False
+
+# set all remaining batches as prepared
+def set_prepared(plus_account_id:str|None, item:ScheduledItem) -> None:
+    modified: bool = False
+    try:
+        prepared_items_semaphore.acquire(1)
+        current_prepared = (prepared_items_cache[item.id][:item.count] if item.id in prepared_items_cache else [])
+        prepared_items_cache[item.id] = current_prepared + [item.weight]*(item.count - len(item.roasts) - len(current_prepared))
+        modified = True
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if prepared_items_semaphore.available() < 1:
+            prepared_items_semaphore.release(1)
+    if modified:
+        save_prepared(plus_account_id)
+
+# add one remaining batches as prepared
+def add_one_prepared(plus_account_id:str|None, item:ScheduledItem) -> None:
+    modified: bool = False
+    try:
+        prepared_items_semaphore.acquire(1)
+        current_prepared = (prepared_items_cache[item.id][:item.count] if item.id in prepared_items_cache else [])
+        if (item.count - len(item.roasts) - len(current_prepared)) > 0:
+            prepared_items_cache[item.id] = current_prepared + [item.weight]
+            modified = True
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if prepared_items_semaphore.available() < 1:
+            prepared_items_semaphore.release(1)
+    if modified:
+        save_prepared(plus_account_id)
+
+# remove one remaingin prepared batche
+def remove_one_prepared(plus_account_id:str|None, item:ScheduledItem) -> None:
+    modified: bool = False
+    try:
+        prepared_items_semaphore.acquire(1)
+        current_prepared = (prepared_items_cache[item.id][:item.count] if item.id in prepared_items_cache else [])
+        if len(current_prepared) > 0:
+            current_prepared.pop()
+            prepared_items_cache[item.id] = current_prepared
+            modified = True
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if prepared_items_semaphore.available() < 1:
+            prepared_items_semaphore.release(1)
+    if modified:
+        save_prepared(plus_account_id)
+
+# set all batches as unprepared
+def set_unprepared(plus_account_id:str|None, item:ScheduledItem) -> None:
+    modified: bool = False
+    try:
+        prepared_items_semaphore.acquire(1)
+        del prepared_items_cache[item.id]
+        modified = True
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if prepared_items_semaphore.available() < 1:
+            prepared_items_semaphore.release(1)
+    if modified:
+        save_prepared(plus_account_id)
+
+
+###################
+# hidden schedule items cache
+#
+# NOTE: hidden scheduled items data file access is not protected by portalocker for parallel access via a second Artisan instance
+#   as the ArtisanViewer disables the scheduler, thus only one Artisan instance is handling this file
+#
+# NOTE: changes applied to the hidden schedule item cache via set_hidden() and set_visible()
+#   are automatically persisted by a call to save_hidden()
+
+
+# save hidden schedule items information to local file cache
+def save_hidden(plus_account_id:str|None) -> None:
+    _log.debug('save_hidden(%s): %s', plus_account_id, len(hidden_items_cache))
+    if plus_account_id is not None:
+        try:
+            hidden_items_semaphore.acquire(1)
+            f:TextIO
+            with open(hidden_items_cache_path, 'w+', encoding='utf-8') as f:
+                try:
+                    hidden_items_cache_data = json.load(f)
+                except Exception:   # pylint: disable=broad-except
+                    hidden_items_cache_data = {}
+                hidden_items_cache_data[plus_account_id] = hidden_items_cache
+                json.dump(hidden_items_cache_data, f, indent=None, separators=(',', ':'), ensure_ascii=False)
+        except Exception as e:  # pylint: disable=broad-except
+            _log.exception(e)
+        finally:
+            if hidden_items_semaphore.available() < 1:
+                hidden_items_semaphore.release(1)
+
+# load hidden schedule items information from local file cache
+def load_hidden(plus_account_id:str|None, scheduled_items:list[ScheduledItem]) -> None:
+    global hidden_items_cache  # pylint: disable=global-statement
+    _log.debug('load_hidden(%s)', plus_account_id)
+    try:
+        hidden_items_semaphore.acquire(1)
+        hidden_items_cache = []
+        if plus_account_id is not None:
+            f:TextIO
+            with open(hidden_items_cache_path, encoding='utf-8') as f:
+                hidden_items_cache_data = json.load(f)
+                if plus_account_id in hidden_items_cache_data:
+                    hidden_items:list[str] = []
+                    for item_id in hidden_items_cache_data[plus_account_id]:
+                        # remove schedule items from hidden_items_cache that are not in the given list of schedule_items
+                        si = next((x for x in scheduled_items if x.id == item_id), None)
+                        if si is not None:
+                            hidden_items.append(item_id)
+                    hidden_items_cache = hidden_items
+    except FileNotFoundError:
+        _log.debug('no hidden items cache file found')
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if hidden_items_semaphore.available() < 1:
+            hidden_items_semaphore.release(1)
+
+def is_hidden(item:ScheduledItem) -> bool:
+    try:
+        hidden_items_semaphore.acquire(1)
+        return item.id in hidden_items_cache
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if hidden_items_semaphore.available() < 1:
+            hidden_items_semaphore.release(1)
+    return False
+
+def set_hidden(plus_account_id:str|None, item:ScheduledItem) -> None:
+    modified: bool = False
+    try:
+        hidden_items_semaphore.acquire(1)
+        if item.id not in hidden_items_cache:
+            hidden_items_cache.append(item.id)
+            modified = True
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if hidden_items_semaphore.available() < 1:
+            hidden_items_semaphore.release(1)
+    if modified:
+        save_hidden(plus_account_id)
+
+
+def set_visible(plus_account_id:str|None, item:ScheduledItem) -> None:
+    modified: bool = False
+    try:
+        hidden_items_semaphore.acquire(1)
+        if item.id in hidden_items_cache:
+            hidden_items_cache.remove(item.id)
+            modified = True
+    except Exception as e:  # pylint: disable=broad-except
+        _log.exception(e)
+    finally:
+        if hidden_items_semaphore.available() < 1:
+            hidden_items_semaphore.release(1)
+    if modified:
+        save_hidden(plus_account_id)
+
+#--------
+
+# returns blend name or None and list of components (just one if item is about a coffee
+def scheduleditem_beans_descriptions(weight_unit_idx:int, item:ScheduledItem) -> tuple[str|None, list[tuple[float,str]]]:
+    if item.blend is not None:
+        blends = plus.stock.getStandardBlends(weight_unit_idx, item.store)
+        blend = next((b for b in blends if plus.stock.getBlendId(b) == item.blend and plus.stock.getBlendStockDict(b)['location_hr_id'] == item.store), None)
+        if blend is not None:
+            return plus.stock.blend2ratio_beans(blend, item.weight, html_escape=False)
+    item_coffee = item.coffee
+    if item_coffee is not None:
+        coffee = plus.stock.getCoffee(item_coffee)
+        if coffee is not None:
+            return None, [(1,plus.stock.coffeeLabel(coffee))]
+    _log.error('scheduleditem_beans_descriptions(%s,%s) could not be resolved', weight_unit_idx, item)
+    return None, []
+
+def scheduleditem_beans_description(weight_unit_idx:int, item:ScheduledItem) -> str:
+    beans_description:str = ''
+    item_coffee = item.coffee
+    if item_coffee is not None:
+        coffee = plus.stock.getCoffee(item_coffee)
+        if coffee is not None:
+            store_label:str = plus.stock.getLocationLabel(coffee, item.store)
+            if store_label != '':
+                store_label = f'<br>[{html.escape(store_label)}]'
+            beans_description = f'<b>{html.escape(plus.stock.coffeeLabel(coffee))}</b>{store_label}'
+    else:
+        blends = plus.stock.getStandardBlends(weight_unit_idx, item.store)
+        blend = next((b for b in blends if plus.stock.getBlendId(b) == item.blend and plus.stock.getBlendStockDict(b)['location_hr_id'] == item.store), None)
+        if blend is not None:
+            blend_lines = ''.join([f'<tr><td>{html.escape(bl[0])}</td><td>{html.escape(bl[1])}</td></tr>'
+                        for bl in plus.stock.blend2weight_beans(blend, weight_unit_idx, item.weight)])
+            beans_description = f"<b>{html.escape(plus.stock.getBlendName(blend))}</b> [{html.escape(plus.stock.getBlendStockDict(blend)['location_label'])}]<table>{blend_lines}</table>"
+    return beans_description
+
+
+def completeditem_beans_descriptions(item:CompletedItem) -> list[tuple[float,str]]:
+    return [(1,(item.prefix or item.coffee_label or ''))]
+
+def completeditem_beans_description(weight_unit_idx:int, item:CompletedItem) -> str:
+    item_coffee_label = item.coffee_label
+    item_blend_label = item.blend_label
+    if item_coffee_label is None and item_blend_label is None:
+        return ''
+    coffee_blend_label = (f' {html.escape(item_coffee_label)}' if item_coffee_label is not None else (f' {html.escape(item_blend_label)}' if item_blend_label is not None else ''))
+    return f'{render_weight(item.batchsize, 1, weight_unit_idx)}{coffee_blend_label}'
+
+
+
+def remove_prefix(s:str, prefix:str) -> str:
+    if Version(python_version()) < Version('3.9.0'):
+        if s.startswith(prefix):
+            return s[len(prefix):]
+        return s
+    return s.removeprefix(prefix)
+
+def remove_suffix(s:str, suffix:str) -> str:
+    if Version(python_version()) < Version('3.9.0'):
+        if s.endswith(suffix):
+            return s[:-len(suffix)]
+        return s
+    return s.removesuffix(suffix)
+
+
+def locale_format_timedelta(locale:str, seconds:float) -> str:
+    sec = int(round(seconds))
+    if sec < 3600:
+        try:
+            return format_timedelta(sec, locale=locale, format='narrow', granularity='minute', threshold=1)
+        except Exception as e:  # pylint: disable=broad-except # UnknownLocaleError
+            _log.error(e)
+            return format_timedelta(sec, locale='en', format='narrow', granularity='minute', threshold=1)
+    try:
+        res = f"{format_timedelta(sec, locale=locale, format='narrow', granularity='hour', threshold=1)}"
+    except Exception as e:  # pylint: disable=broad-except # UnknownLocaleError
+        _log.error(e)
+        res = f"{format_timedelta(sec, locale='en', format='narrow', granularity='hour', threshold=1)}"
+    reminder = sec % 3600
+    if reminder>0:
+        try:
+            return f"{res} {format_timedelta(reminder, locale=locale, format='narrow', granularity='minute', threshold=1)}"
+        except Exception as e:  # pylint: disable=broad-except # UnknownLocaleError
+            _log.error(e)
+            return f"{res} {format_timedelta(reminder, locale='en', format='narrow', granularity='minute', threshold=1)}"
+    return res
+
+
+def locale_format_date_no_year(locale:str, date:datetime.date) -> str:
+    try:
+        # format nicely using babel
+        try:
+            date_without_year = format_date(date, format='long', locale=locale).replace(format_date(date, 'Y', locale=locale),'').strip()
+        except Exception as e:  # pylint: disable=broad-except # UnknownLocaleError
+            _log.error(e)
+            date_without_year = format_date(date, format='long', locale='en').replace(format_date(date, 'Y', locale='en'),'').strip()
+        # strip some more characters for certain locales
+        if locale.startswith(('en', 'vi')):
+            date_without_year = date_without_year.rstrip(',')
+        elif locale.startswith(('es', 'pt')):
+            date_without_year = remove_suffix(date_without_year, ' de')
+        elif locale.startswith('zh'):
+            date_without_year = date_without_year.lstrip('\u5E74')
+        elif locale.startswith('ko'):
+            date_without_year = date_without_year.lstrip('\uB144')
+        elif locale.startswith('th'):
+            date_without_year = remove_suffix(date_without_year, '\u0e04.\u0e28.')
+        elif locale.startswith('lv'):
+            date_without_year = remove_prefix(date_without_year, '. gada')
+        elif locale.startswith('hu'):
+            date_without_year = remove_prefix(date_without_year, '. ')
+        elif locale.startswith('ru'):
+            date_without_year = remove_suffix(date_without_year, '\u202f\u0433.')
+        elif locale.startswith('uk'):
+            date_without_year = remove_suffix(date_without_year, '\u202f\u0440.')
+        return date_without_year.strip()
+    except Exception as e: # pylint: disable=broad-except
+        _log.error(e)
+        # format using datetime using system locale
+        date_without_year = date.strftime('%x').replace(date.strftime('%Y'),'')
+        return date_without_year.strip().strip(',').strip('.').strip('-').strip('/').strip()
+
+
+#--------
+
+class QLabelRight(QLabel): # pyright: ignore [reportGeneralTypeIssues]
+    ...
+
+
+##### https://stackoverflow.com/questions/11446478/pyside-pyqt-truncate-text-in-qlabel-based-on-minimumsize
+class QElidedLabel(QLabel): # pyright: ignore[reportGeneralTypeIssues]
+    """Label with text elision.
+
+    QLabel which will elide text too long to fit the widget.  Based on:
+    https://doc-snapshots.qt.io/qtforpython-5.15/overviews/qtwidgets-widgets-elidedlabel-example.html
+
+    Parameters
+    ----------
+    text : str
+
+        Label text.
+
+    mode : Qt.TextElideMode
+
+       Specify where ellipsis should appear when displaying texts that
+       don’t fit.
+
+       Default is QtCore.Qt.TextElideMode.ElideRight.
+
+       Possible modes:
+         Qt.TextElideMode.ElideLeft
+         Qt.TextElideMode.ElideMiddle
+         Qt.TextElideMode.ElideRight
+
+    parent : QWidget
+
+       Parent widget.  Default is None.
+
+    """
+
+
+    def __init__(self, text:str = '', mode:Qt.TextElideMode = Qt.TextElideMode.ElideMiddle) -> None:
+        super().__init__()
+
+        self._mode = mode
+        self._contents = ''
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.setText(text)
+
+
+    @override
+    def setText(self, a0:str|None) -> None:
+        if a0 is not None:
+            self._contents = a0
+            self.update()
+
+
+    @override
+    def text(self) -> str:
+        return self._contents
+
+
+    @override
+    def paintEvent(self, a0:'QPaintEvent|None') -> None:
+        super().paintEvent(a0)
+
+        painter = QPainter(self)
+        font_metrics = painter.fontMetrics()
+        text_width = font_metrics.horizontalAdvance(self.text())
+
+        # layout phase
+        text_layout = QTextLayout(self._contents, painter.font())
+        text_layout.beginLayout()
+
+        while True:
+            line:QTextLine = text_layout.createLine()
+
+            if not line.isValid():
+                break
+
+            line.setLineWidth(self.width())
+
+            cr:QRect = self.contentsRect()
+
+            if text_width >= self.width():
+                elided_line = font_metrics.elidedText(self._contents, self._mode, self.width())
+                painter.drawText(QPoint(cr.left(), font_metrics.ascent()+cr.top()), elided_line)
+                break
+            line.draw(painter, QPointF(cr.left(), cr.top() + 0.5))
+
+        text_layout.endLayout()
+
+
+
+class DragTargetIndicator(QFrame): # pyright: ignore[reportGeneralTypeIssues]
+    def __init__(self, parent:QWidget|None = None) -> None:
+        super().__init__(parent)
+        layout = QHBoxLayout()
+        layout.addWidget(QLabel())
+        layout.setSpacing(0)
+        layout.setContentsMargins(5,5,5,5)
+        self.setLayout(layout)
+        self.setStyleSheet(
+            f'DragTargetIndicator {{ border:{border_width}px solid {drag_indicator_color}; background: {drag_indicator_color}; border-radius: {border_radius}px; }}')
+
+
+
+class StandardItem(QFrame): # pyright: ignore[reportGeneralTypeIssues]
+
+    clicked = pyqtSignal()
+    selected = pyqtSignal()
+    prepared = pyqtSignal()
+
+    def __init__(self) -> None:
+        super().__init__()
+        layout = QHBoxLayout()
+        left:str = self.getLeft()
+        self.first_label = QLabel(left)
+        self.first_label.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+        if left != '':
+            layout.addWidget(self.first_label)
+            layout.addSpacing(2)
+        self.second_label = QElidedLabel(self.getMiddle())
+        layout.addWidget(self.second_label)
+        self.third_label = QLabelRight(self.getRight())
+        layout.addWidget(self.third_label)
+        layout.setSpacing(5)
+        layout.setContentsMargins(5,5,5,5)
+        self.setLayout(layout)
+        self.setProperty('Hover', False)
+        self.setProperty('Selected', False)
+
+
+    def getFirstLabel(self) -> QLabel:
+        return self.first_label
+
+    def getSecondLabel(self) -> QElidedLabel:
+        return self.second_label
+
+    def getThirdLabel(self) -> QLabel:
+        return self.third_label
+
+    def update_labels(self) -> None:
+        self.first_label.setText(self.getLeft())
+        self.second_label.setText(self.getMiddle())
+        self.third_label.setText(self.getRight())
+
+
+    def getLeft(self) -> str: # pylint: disable=no-self-argument,no-self-use
+        return ''
+
+
+    def getMiddle(self) -> str: # pylint: disable=no-self-argument,no-self-use
+        return ''
+
+
+    def getRight(self) -> str: # pylint: disable=no-self-argument,no-self-use
+        return ''
+
+
+    def makeShadow(self) -> QGraphicsDropShadowEffect:
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(20) # (15)
+        shadow.setColor(QColor(shadow_color))
+        shadow.setOffset(0,1.5) # (0,0.7)
+        return shadow
+
+
+    def setText(self, txt:str) -> None:
+        pass
+
+
+    @override
+    def mousePressEvent(self, a0:'QMouseEvent|None') -> None:
+        if a0 is not None:
+            modifiers = QApplication.keyboardModifiers()
+            if modifiers == Qt.KeyboardModifier.AltModifier:  #alt click
+                self.clicked.emit()
+        super().mousePressEvent(a0)
+
+    @override
+    def mouseReleaseEvent(self, a0:'QMouseEvent|None') -> None:
+        if a0 is not None:
+            modifiers = QApplication.keyboardModifiers()
+            if modifiers != Qt.KeyboardModifier.AltModifier:  #no alt click
+                self.selected.emit()
+        super().mouseReleaseEvent(a0)
+
+
+    @override
+    def enterEvent(self, event:'QEnterEvent|None') -> None:
+        if event is not None:
+            self.setProperty('Hover', True)
+            self.setStyleSheet(self.styleSheet())
+        super().enterEvent(event)
+
+
+    @override
+    def leaveEvent(self, a0:'QEvent|None') -> None:
+        if a0 is not None:
+            self.setProperty('Hover', False)
+            self.setStyleSheet(self.styleSheet())
+        super().leaveEvent(a0)
+
+
+
+class NoDragItem(StandardItem):
+    # now a datetime in UTC timezone
+    def __init__(self, data:CompletedItem, aw:'ApplicationWindow', now:datetime.datetime) -> None:
+        # Store data separately from display label, but use label for default.
+        self.aw = aw
+        self.data:CompletedItem = data
+        self.locale_str = self.aw.locale_str
+        self.now = now
+        self.weight_unit_idx = weight_units.index(self.aw.qmc.weight[2])
+        super().__init__()
+        layout:QLayout|None = self.layout()
+        if layout is not None:
+            layout.setContentsMargins(10,5,10,5) # left, top, right, bottom
+
+        item_color = light_grey
+        item_color_hover = light_grey_hover
+        if self.data.roastdate.astimezone().date() == now.astimezone().date():
+            # item roasted today
+            item_color = plus_alt_blue
+            item_color_hover = plus_alt_blue_hover
+
+        head_line =  ('' if self.data.count == 1 else f'{self.data.sequence_id}/{self.data.count}')
+        wrapper =  textwrap.TextWrapper(width=tooltip_line_length, max_lines=tooltip_max_lines, placeholder=tooltip_placeholder)
+        title = '<br>'.join(wrapper.wrap(html.escape(self.data.title)))
+        accent_color = (white if self.aw.app.darkmode else plus_blue)
+        roasttime = (f' ({stringfromseconds(self.data.roasttime, leadingzero=False)})' if self.data.roasttime > 0 else '')
+        title_line = f"<p style='white-space:pre'><font color=\"{accent_color}\"><b><big>{title}</big></b></font>{roasttime}</p>"
+        beans_description = completeditem_beans_description(self.weight_unit_idx, self.data)
+        store_line = (f'</b><br>[{html.escape(self.data.store_label)}]' if (beans_description != '' and self.data.store_label is not None and self.data.store_label != '') else '')
+        detailed_description = f"{head_line}{title_line}<p style='white-space:pre'>{beans_description}{store_line}"
+        self.setToolTip(detailed_description)
+
+        self.setStyleSheet(
+            f'{tooltip_style} NoDragItem[Selected=false][Hover=false] {{ border:0px solid {item_color}; background: {item_color}; border-radius: {border_radius}px; }}'
+            f'NoDragItem[Selected=false][Hover=true] {{ border:0px solid {item_color_hover}; background: {item_color_hover}; border-radius: {border_radius}px; }}'
+            f'NoDragItem[Selected=true][Hover=false] {{ border:0px solid {plus_red}; background: {plus_red}; border-radius: {border_radius}px; }}'
+            f'NoDragItem[Selected=true][Hover=true] {{ border:0px solid {plus_red_hover}; background: {plus_red_hover}; border-radius: {border_radius}px; }}'
+            f'QLabel {{ font-weight: bold; color: {white}; }}'
+            f'QLabelRight {{ font-size: 10pt; }}'
+            'QElidedLabel { font-weight: normal; }')
+
+
+    @override
+    def getLeft(self) -> str:
+        return f'{self.data.prefix}'
+
+    @override
+    def getMiddle(self) -> str:
+        return f'{self.data.title}'
+
+    @override
+    def getRight(self) -> str:
+        try:
+            # the datetimes now and roastdate are in UTC, we need to compare the dates w.r.t. the local timezone thus we have to convert both via astimezone()
+            roastdate = self.data.roastdate
+            roastdate_date_local = roastdate.astimezone().date()
+            days_diff = (self.now.astimezone().date() - roastdate_date_local).days
+            task_date_str = ''
+            if days_diff == 0:
+                # for time formatting we use the system locale
+                locale = QLocale()
+                dt = QDateTime.fromSecsSinceEpoch(int(datetime2epoch(roastdate)))
+                task_date_str = locale.toString(dt.time(), QLocale.FormatType.ShortFormat)
+            elif days_diff == 1:
+                task_date_str = QApplication.translate('Plus', 'Yesterday').capitalize()
+            elif days_diff < 7:
+                # for date formatting we use the artisan-language locale
+                locale = QLocale(self.locale_str)
+                task_date_str = locale.toString(QDate(roastdate_date_local.year, roastdate_date_local.month, roastdate_date_local.day), 'dddd').capitalize()
+            else:
+                # date formatted according to the locale without the year
+                task_date_str = locale_format_date_no_year(self.locale_str, roastdate_date_local)
+
+            weight = (f'{render_weight(self.data.weight, 1, self.weight_unit_idx)}  ' if self.data.measured else '')
+
+            return f'{weight}{task_date_str}'
+        except Exception as e: # pylint: disable=broad-except
+            # if anything goes wrong here we log an exception and return the empty string
+            _log.exception(e)
+            return ''
+
+    def select(self) -> None:
+        if self.aw.schedule_window is not None and not self.aw.schedule_window.being_updated:
+            self.setProperty('Selected', True)
+            self.setStyleSheet(self.styleSheet())
+
+    def deselect(self) -> None:
+        if self.aw.schedule_window is not None and not self.aw.schedule_window.being_updated:
+            self.setProperty('Selected', False)
+            self.setStyleSheet(self.styleSheet())
+
+
+
+class DragItem(StandardItem):
+
+    registerRoast = pyqtSignal() # register current loaded roast profile in the schedule item with the given scheduleID
+
+    # today a date in local timezone
+    def __init__(self, data:ScheduledItem, aw:'ApplicationWindow', today:datetime.date, user_id: str|None, machine: str) -> None:
+        self.data:ScheduledItem = data
+        self.aw = aw
+        self.user_id = user_id
+
+        self.today: bool = data.date == today
+        self.days_diff = (data.date - today).days
+        # my items are all tasks that are explicitly targeting my user and machine
+        self.mine: bool = (data.user is not None and user_id is not None and data.user == user_id and
+                data.machine is not None and machine != '' and data.machine == machine)
+        self.weight_unit_idx = weight_units.index(self.aw.qmc.weight[2])
+
+        self.menu:QMenu|None = None
+
+        super().__init__()
+        if not self.is_hidden() and not self.aw.app.darkmode:
+            self.setGraphicsEffect(self.makeShadow())
+
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.itemMenu)
+
+        self.update_widget()
+
+    def is_hidden(self) -> bool:
+        return is_hidden(self.data)
+
+    def set_hidden(self) -> None:
+        set_hidden(self.aw.plus_account_id, self.data)
+
+    def set_visible(self) -> None:
+        set_visible(self.aw.plus_account_id, self.data)
+
+    def visible_filter_on(self) -> bool:
+        return self.aw.schedule_visible_filter
+
+    # need to be called if prepared information changes
+    def update_widget(self) -> None:
+        date_local = self.data.date
+        task_date:str = ''
+        try:
+            if self.days_diff == 0:
+                task_date = QApplication.translate('Plus', 'Today')
+            elif self.days_diff == 1:
+                task_date = QApplication.translate('Plus', 'Tomorrow')
+            elif self.days_diff < 7:
+                locale = QLocale(self.aw.locale_str)
+                task_date = locale.toString(QDate(date_local.year, date_local.month, date_local.day), 'dddd').capitalize()
+            else:
+                # date formatted according to the locale without the year
+                task_date = locale_format_date_no_year(self.aw.locale_str, date_local)
+        except Exception as e: # pylint: disable=broad-except
+            # if anything goes wrong here we log an exception and use the empty string as task_date
+            _log.exception(e)
+
+        user_nickname:str|None = plus.connection.getNickname()
+        task_operator = (QApplication.translate('Plus', 'by anybody') if self.data.user is None else
+            (f"{QApplication.translate('Plus', 'by')} {(html.escape(user_nickname) if user_nickname is not None else '')}" if self.user_id is not None and self.data.user == self.user_id else
+                (f"{QApplication.translate('Plus', 'by')} {html.escape(self.data.nickname)}" if self.data.nickname is not None else
+                    (QApplication.translate('Plus', 'by colleague' if self.user_id is not None else '')))))
+        task_machine = ('' if self.data.machine is None else f" {QApplication.translate('Plus', 'on')} {html.escape(self.data.machine)}")
+        task_operator_and_machine = f'{task_operator}{task_machine}'
+        if task_operator_and_machine != '':
+            task_operator_and_machine = f', {task_operator_and_machine}'
+        nr_roasts_tobedone = self.data.count - len(self.data.roasts)
+        prepared = max(0, min(nr_roasts_tobedone, len(get_prepared(self.data))))
+        prepared_info = (f", {prepared} { QApplication.translate('Plus', 'prepared')}" if prepared > 0 else '')
+        todo = QApplication.translate('Plus', '({} of {} done{})').format(len(self.data.roasts), self.data.count, prepared_info)
+        head_line = f'{task_date}{task_operator_and_machine}<br>{todo}'
+        wrapper =  textwrap.TextWrapper(width=tooltip_line_length, max_lines=tooltip_max_lines, placeholder=tooltip_placeholder)
+        title = '<br>'.join(wrapper.wrap(html.escape(self.data.title)))
+        accent_color = (white if self.aw.app.darkmode else plus_blue)
+        title_line = f"<p style='white-space:pre'><font color=\"{accent_color}\"><b><big>{title}</big></b></font></p>"
+        beans_description = scheduleditem_beans_description(self.weight_unit_idx, self.data)
+
+        detailed_description = f'{head_line}{title_line}{beans_description}'
+        # adding a note if any
+        if self.data.note is not None:
+            detailed_description += f'<hr>{html.escape(self.data.note)}'
+        if self.data.template is not None:
+            roasting_time, template_name = get_total_roasting_time_and_title(self.data.template.hex)
+            if roasting_time is not None and template_name is not None:
+                detailed_description += f"<hr>{template_name} ({stringfromseconds(roasting_time, leadingzero=False)})"
+        self.setToolTip(detailed_description)
+
+        # colors
+
+        today_text_color = white
+        otherday_text_color = dark_white
+        open_item_background = super_light_grey
+        open_item_background_hover = super_light_grey_hover
+        selected_item_color = plus_alt_blue
+        selected_item_color_hover = plus_alt_blue_hover
+        item_color: str = (dark_grey if self.mine else light_grey)
+        item_color_hover: str = (dark_grey_hover if self.mine else light_grey_hover)
+
+        if self.today:
+            self.setStyleSheet(
+                f'{tooltip_style} DragItem[Selected=true][Hover=false] {{ border:{border_width}px solid {selected_item_color}; background: {selected_item_color}; border-radius: {border_radius}px; }}'
+                f'DragItem[Selected=true][Hover=true] {{ border:{border_width}px solid {selected_item_color_hover}; background: {selected_item_color_hover}; border-radius: {border_radius}px; }}'
+                f'DragItem[Selected=false][Hover=false] {{ border:{border_width}px solid {item_color}; background: {item_color}; border-radius: {border_radius}px; }}'
+                f'DragItem[Selected=false][Hover=true] {{ border:{border_width}px solid {item_color_hover}; background: {item_color_hover}; border-radius: {border_radius}px; }}'
+                f'QLabel {{ font-weight: bold; color: {today_text_color}; }}'
+                'QElidedLabel { font-weight: normal; }')
+        else:
+            self.setStyleSheet(
+                f'{tooltip_style} DragItem[Selected=true][Hover=false] {{ border:{border_width}px solid {selected_item_color}; background: {open_item_background}; border-radius: {border_radius}px; }}'
+                f'DragItem[Selected=true][Hover=true] {{ border:{border_width}px solid {selected_item_color_hover}; background: {open_item_background_hover}; border-radius: {border_radius}px; }}'
+                f'DragItem[Selected=false][Hover=false] {{ border:{border_width}px solid {item_color}; background: {open_item_background}; border-radius: {border_radius}px; }}'
+                f'DragItem[Selected=false][Hover=true] {{ border:{border_width}px solid {item_color_hover}; background: {open_item_background_hover}; border-radius: {border_radius}px; }}'
+                f'QLabel {{ font-weight: bold; color: {otherday_text_color}; }}'
+                'QElidedLabel { font-weight: normal; }')
+
+        self.third_label.setText(self.getRight())
+
+
+    @pyqtSlot()
+    def allPrepared(self) -> None:
+        set_prepared(self.aw.plus_account_id, self.data)
+        self.update_widget()
+        self.prepared.emit()
+
+    @pyqtSlot()
+    def addPrepared(self) -> None:
+        add_one_prepared(self.aw.plus_account_id, self.data)
+        self.update_widget()
+        self.prepared.emit()
+
+    @pyqtSlot()
+    def removePrepared(self) -> None:
+        remove_one_prepared(self.aw.plus_account_id, self.data)
+        self.update_widget()
+        self.prepared.emit()
+
+    @pyqtSlot()
+    def nonePrepared(self) -> None:
+        set_unprepared(self.aw.plus_account_id, self.data)
+        self.update_widget()
+        self.prepared.emit()
+
+    @pyqtSlot()
+    def hideItem(self) -> None:
+        set_hidden(self.aw.plus_account_id, self.data)
+        self.aw.updateScheduleSignal.emit()
+
+    @pyqtSlot()
+    def showItem(self) -> None:
+        set_visible(self.aw.plus_account_id, self.data)
+        self.aw.updateScheduleSignal.emit()
+
+    def addLoadedProfileToSelectedScheduleItem(self) -> None:
+        string = QApplication.translate('Message','Register the currently loaded roast profile<br>in the selected entry.<br>This will overwrite some roast properties.')
+        # native dialog
+        if platform.system() == 'Darwin':
+            mbox = QMessageBox() # only without super this one shows the native dialog on macOS under Qt 6.6.2
+            # for native dialogs, text and informativetext need to be plain strings, no RTF incl. HTML instructions like <br>
+            mbox.setText(QApplication.translate('Message','Register Roast'))
+            mbox.setInformativeText(string.replace('<br>',' '))
+            mbox.setWindowModality(Qt.WindowModality.ApplicationModal) # for native dialog it has to be ApplicationModal
+            mbox.setStandardButtons(QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Ok)
+            mbox.setDefaultButton(QMessageBox.StandardButton.Cancel)
+            reply = mbox.exec()
+        else:
+            # non-native dialog
+            reply = QMessageBox.warning(None, #self, # only without super this one shows the native dialog on macOS under Qt 6.6.2 and later
+                            QApplication.translate('Message','Register Roast'),string,
+                            QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Ok, QMessageBox.StandardButton.Cancel)
+
+        if reply == int(QMessageBox.StandardButton.Ok):
+            self.registerRoast.emit()
+
+
+    def itemMenu(self) -> None:
+        if self.aw.schedule_window is not None and not self.aw.schedule_window.being_updated:
+            self.menu = QMenu()
+            fully_prepared_p = fully_prepared(self.data)
+            fully_unprepared_p = not fully_prepared_p and fully_unprepared(self.data)
+            if (self.aw.schedule_window.weight_manager.sm_green.current_weight_item is None or
+                (self.aw.schedule_window.weight_manager.sm_green.current_weight_item.uuid != self.data.id or
+                    self.aw.schedule_window.weight_manager.green_task_scale == 0)): # no scaled assigned to the green task, thus not processing
+                # this schedule item is not currently under processing by the weight manager
+                if not fully_prepared_p:
+                    allPreparedAction:QAction = QAction(QApplication.translate('Contextual Menu', 'All batches prepared'),self)
+                    allPreparedAction.triggered.connect(self.allPrepared)
+                    self.menu.addAction(allPreparedAction)
+                    addPreparedAction:QAction = QAction(QApplication.translate('Contextual Menu', 'One more batch prepared'),self)
+                    addPreparedAction.triggered.connect(self.addPrepared)
+                    self.menu.addAction(addPreparedAction)
+                if not fully_unprepared_p:
+                    removePreparedAction:QAction = QAction(QApplication.translate('Contextual Menu', 'One less batch prepared'),self)
+                    removePreparedAction.triggered.connect(self.removePrepared)
+                    self.menu.addAction(removePreparedAction)
+                    nonePreparedAction:QAction = QAction(QApplication.translate('Contextual Menu', 'No batch prepared'),self)
+                    nonePreparedAction.triggered.connect(self.nonePrepared)
+                    self.menu.addAction(nonePreparedAction)
+            if not self.aw.qmc.flagon and self.aw.curFile is not None and self.aw.qmc.scheduleID is None and self.aw.qmc.roastUUID is not None  and \
+                    not self.aw.schedule_window.in_completed(self.aw.qmc.roastUUID) and \
+                    self.aw.qmc.roastdate.date().toPyDate() >= self.aw.schedule_window.prev_roast_session_data():
+                # if not sampling and a profile without scheduleID loaded which is not yet registered as completed roast,
+                # and roast date is not before the last roast session
+                # we allow to assign the current profile to the selected schedule item
+                # NOTE: that in contrast to the automatic assignment which does not allow incomplete roasts without a DROP to be registered
+                #   to prevent recorded snippet to confuse the roast session,
+                #   a roast without DROP can still be registered manually
+                addToItemAction:QAction = QAction(QApplication.translate('Contextual Menu', 'Register roast'),self)
+                addToItemAction.triggered.connect(self.addLoadedProfileToSelectedScheduleItem)
+                self.menu.addAction(addToItemAction)
+            if is_hidden(self.data):
+                showaction:QAction = QAction(QApplication.translate('CheckBox', 'Show'),self)
+                showaction.triggered.connect(self.showItem)
+                self.menu.addAction(showaction)
+            else:
+                hideAction:QAction = QAction(QApplication.translate('Contextual Menu', 'Hide'),self)
+                hideAction.triggered.connect(self.hideItem)
+                self.menu.addAction(hideAction)
+            self.menu.popup(QCursor.pos())
+
+
+    @override
+    def getLeft(self) -> str:
+        return f'{max(0,self.data.count - len(self.data.roasts))}x'
+
+
+    @override
+    def getMiddle(self) -> str:
+        return self.data.title
+
+
+    @override
+    def getRight(self) -> str:
+        mark = ''
+        prepared = prepared_state(self.data)
+        if prepared == 2:
+            mark = '\u25CE '
+        elif prepared == 1:
+            mark = '\u25CF '
+        return f"{mark}{render_weight(self.data.weight, 1, self.weight_unit_idx)}"
+
+
+    @override
+    def mouseMoveEvent(self, a0:'QMouseEvent|None') -> None:
+        super().mouseMoveEvent(a0)
+        try:
+            update_schedule_window_semaphore.acquire(1)
+            if a0 is not None and a0.buttons() == Qt.MouseButton.LeftButton and self.aw.schedule_window is not None and not self.aw.schedule_window.being_updated:
+                drag = QDrag(self.aw.schedule_window) # we attach the "stable" schedule_window widget to the drag object
+                self.aw.schedule_window.drag_remaining.drag_source = self # and register the item being dragged under drag_remaining.drag_source
+                if self.visible_filter_on() and self.is_hidden():
+                    self.set_visible()
+
+                mime = QMimeData()
+                drag.setMimeData(mime)
+
+                self.setGraphicsEffect(None)
+                # Render at x2 pixel ratio to avoid blur on Retina screens.
+                pixmap = QPixmap(self.size().width() * 2, self.size().height() * 2)
+                pixmap.setDevicePixelRatio(2)
+                self.render(pixmap)
+                drag.setPixmap(pixmap)
+                if not is_hidden(self.data):
+                    self.setGraphicsEffect(self.makeShadow())
+                drag.exec(Qt.DropAction.MoveAction)
+        except Exception as ex:  # pylint: disable=broad-except
+            _log.exception(ex)
+        finally:
+            if update_schedule_window_semaphore.available() < 1:
+                update_schedule_window_semaphore.release(1)
+            if self.aw.schedule_window is not None:
+                self.aw.schedule_window.drag_remaining.drag_source = None
+                if self.aw.schedule_window.pending_updated:
+                    self.aw.updateScheduleSignal.emit()
+
+
+    def select(self, aw:'ApplicationWindow', load_template:bool=True) -> None:
+        self.setProperty('Selected', True)
+        self.setStyleSheet(self.styleSheet())
+        if load_template:
+            self.load_template(aw)
+
+
+    def load_template(self, aw:'ApplicationWindow') -> None:
+        if self.data.template is not None and aw.curFile is None and aw.qmc.timeindex[6] == 0:
+            # if template is set and no profile is loaded and DROP is not set we load the template
+            uuid:str = self.data.template.hex
+            QTimer.singleShot(500, lambda : aw.loadAndRedrawBackgroundUUID(UUID = uuid, force_reload=False))
+
+
+    def deselect(self) -> None:
+        self.setProperty('Selected', False)
+        self.setStyleSheet(self.styleSheet())
+
+
+
+class BaseWidget(QWidget): # pyright: ignore[reportGeneralTypeIssues]
+    """Widget list
+    """
+    def __init__(self, parent:QWidget|None = None, orientation:Qt.Orientation = Qt.Orientation.Vertical) -> None:
+        super().__init__(parent)
+        # Store the orientation for drag checks later.
+        self.orientation = orientation
+        self.blayout:QBoxLayout
+        if self.orientation == Qt.Orientation.Vertical:
+            self.blayout = QVBoxLayout()
+        else:
+            self.blayout = QHBoxLayout()
+        self.blayout.setContentsMargins(7, 7, 7, 7)
+        self.blayout.setSpacing(10)
+        self.setLayout(self.blayout)
+
+
+    def clearItems(self) -> None:
+        try: # self.blayout.count() fails if self.blayout does not contain any widget
+            while self.blayout.count():
+                child = self.blayout.takeAt(0)
+                if child is not None:
+                    widget = child.widget()
+                    if widget is not None:
+                        widget.setParent(None)
+                        widget.deleteLater()
+        except Exception: # pylint: disable=broad-except
+            pass
+
+
+    def count(self) -> int:
+        return self.blayout.count()
+
+
+    # returns -1 if not found
+    def indexOf(self, widget:'QWidget') -> int:
+        return self.blayout.indexOf(widget)
+
+
+    def itemAt(self, i:int) -> StandardItem|None:
+        item:QLayoutItem|None = self.blayout.itemAt(i)
+        if item is not None:
+            return cast(StandardItem, item.widget())
+        return None
+
+
+
+class StandardWidget(BaseWidget):
+    def __init__(self, parent:QWidget|None = None, orientation:Qt.Orientation = Qt.Orientation.Vertical) -> None:
+        super().__init__(parent, orientation)
+        self.blayout.setSpacing(5)
+
+
+    def get_items(self) -> list[NoDragItem]:
+        items:list[NoDragItem] = []
+        for n in range(self.blayout.count()):
+            li:QLayoutItem|None = self.blayout.itemAt(n)
+            if li is not None:
+                w:QWidget|None = li.widget()
+                if w is not None and isinstance(w, NoDragItem):
+                    # the target indicator is ignored
+                    items.append(w)
+        return items
+
+
+    def add_item(self, item:NoDragItem) -> None:
+        self.blayout.addWidget(item)
+
+
+
+class DragWidget(BaseWidget):
+    """Widget list allowing sorting via drag-and-drop.
+    """
+
+    orderChanged = pyqtSignal(list)
+
+    def __init__(self, parent:'ScheduleWindow|None' = None, orientation:Qt.Orientation = Qt.Orientation.Vertical) -> None:
+        super().__init__(parent, orientation)
+
+        self.schedule_window = parent
+
+        self.setAcceptDrops(True)
+
+        # Add the drag target indicator. This is invisible by default,
+        # we show it and move it around while the drag is active.
+        self._drag_target_indicator = DragTargetIndicator()
+        self.blayout.addWidget(self._drag_target_indicator)
+        self._drag_target_indicator.hide()
+        self.drag_source:DragItem|None = None
+        # NOTE: QDragLeaveEvent has no attribute e.source; therefore we set the self.drag_source explicitly in mouseMoveEvent (could be done also in by dragEnterEvent:e.source())
+
+
+    @override
+    def dragEnterEvent(self, a0:'QDragEnterEvent|None') -> None: # pylint: disable=no-self-argument,no-self-use
+        try:
+            if a0 is not None:
+                if self.drag_source is not None and self.drag_source.is_hidden():
+                    self.drag_source.set_visible()
+                a0.accept()
+        except Exception as ex:  # pylint: disable=broad-except
+            _log.exception(ex)
+
+    @override
+    def dragLeaveEvent(self, a0:'QDragLeaveEvent|None') -> None:
+        try:
+            if a0 is not None:
+                if self.drag_source is not None:
+                    self._drag_target_indicator.hide()
+                    if not self.drag_source.is_hidden():
+                        self.drag_source.set_hidden()
+                    if not self.drag_source.visible_filter_on():
+                        # as hidden items are not filtered out we have to put that item back
+                        index = self.blayout.indexOf(self._drag_target_indicator)
+                        if index >= 0:
+                            self.blayout.insertWidget(index, self.drag_source) # pyright:ignore[reportArgumentType]
+                            self.drag_source.show() # pyright:ignore[reportAttributeAccessIssue]
+                            self.blayout.activate()
+#                    self.drag_source = None
+                    a0.accept()
+                    # we need to update the schedule window to set a new selection and show the correct hidden state of this item
+                    if self.schedule_window is not None:
+                        self.schedule_window.aw.updateScheduleSignal.emit()
+                else:
+                    a0.ignore()
+        except Exception as ex:  # pylint: disable=broad-except
+            _log.exception(ex)
+
+
+    @override
+    def dragMoveEvent(self, a0:'QDragMoveEvent|None') -> None:
+        try: #
+            if a0 is not None:
+                if self.drag_source is not None:
+                    try:
+                        # Find the correct location of the drop target, so we can move it there.
+                        index = self._find_drop_location(a0)
+                        # Inserting moves the item if its alreaady in the layout.
+                        self.blayout.insertWidget(index, self._drag_target_indicator)
+                        # Hide the item being dragged.
+                        self.drag_source.hide()
+                        # Show the target
+                        self._drag_target_indicator.show()
+                    except Exception:   # pylint: disable=broad-except
+                        # wrapped C/C++ objects might have been deleted due to a complete redraw of the widget via updateScheduleWindow()
+                        pass
+                    a0.accept()
+                else:
+                    a0.ignore()
+        except Exception as ex:  # pylint: disable=broad-except
+            _log.exception(ex)
+
+
+    @override
+    def dropEvent(self, a0:'QDropEvent|None') -> None:
+        # Use drop target location for destination, then remove it.
+        try:
+            if a0 is not None:
+                if self.drag_source is not None:
+                    self._drag_target_indicator.hide()
+                    index = self.blayout.indexOf(self._drag_target_indicator)
+                    if index >= 0:
+                        self.blayout.insertWidget(index, self.drag_source) # pyright:ignore[reportArgumentType]
+                        self.orderChanged.emit(self.get_item_data())
+                        self.drag_source.show() # pyright:ignore[reportAttributeAccessIssue]
+                        self.blayout.activate()
+                    self.drag_source = None
+                    a0.accept()
+                else:
+                    a0.ignore()
+        except Exception as ex:  # pylint: disable=broad-except
+            _log.exception(ex)
+
+
+    def _find_drop_location(self, e:'QDragMoveEvent') -> int:
+        try:
+            pos = e.position()
+        except Exception:   # pylint: disable=broad-except
+            pos = e.posF() # type:ignore[attr-defined]
+        spacing = self.blayout.spacing() / 2
+
+        n = 0
+        for n in range(self.blayout.count()):
+            # Get the widget at each index in turn.
+            layoutItem:QLayoutItem|None = self.blayout.itemAt(n)
+            if layoutItem is not None:
+                w:QWidget|None = layoutItem.widget()
+                if w is not None:
+                    if self.orientation == Qt.Orientation.Vertical:
+                        # Drag drop vertically.
+                        drop_here = (
+                            pos.y() >= w.y() - spacing
+                            and pos.y() <= w.y() + w.size().height() + spacing
+                        )
+                    else:
+                        # Drag drop horizontally.
+                        drop_here = (
+                            pos.x() >= w.x() - spacing
+                            and pos.x() <= w.x() + w.size().width() + spacing
+                        )
+
+                    if drop_here:
+                        # Drop over this target.
+                        break
+        return n
+
+
+    @override
+    def clearItems(self) -> None:
+        while self.blayout.count():
+            child = self.blayout.takeAt(0)
+            if child is not None:
+                widget = child.widget()
+                if widget is not None and widget != self._drag_target_indicator:
+                    widget.setParent(None)
+                    widget.deleteLater()
+
+
+    def add_item(self, item:DragItem) -> None:
+        self.blayout.addWidget(item)
+
+
+    @override
+    def itemAt(self, i:int) -> DragItem|None:
+        item:QLayoutItem|None = self.blayout.itemAt(i)
+        if item is not None:
+            return cast(DragItem, item.widget())
+        return None
+
+
+    def get_items(self) -> list[DragItem]:
+        items:list[DragItem] = []
+        for n in range(self.blayout.count()):
+            li:QLayoutItem|None = self.blayout.itemAt(n)
+            if li is not None:
+                w:QWidget|None = li.widget()
+                if w is not None and w != self._drag_target_indicator and isinstance(w, DragItem):
+                    # the target indicator is ignored
+                    items.append(w)
+        return items
+
+
+    def get_item_data(self) -> list[ScheduledItem]:
+        return [item.data for item in self.get_items()]
+
+
+class ScheduleWindow(ArtisanResizeablDialog): # pyright:ignore[reportGeneralTypeIssues]
+
+    register_completed_roast = pyqtSignal()
+
+    def __init__(self, parent:'QWidget', aw:'ApplicationWindow', activeTab:int = 0) -> None:
+        if aw.get_os()[0] == 'RPi':
+            super().__init__(None, aw) # set the parent to None to make Schedule windows on RPi Bookworm non-modal (not blocking the main window)
+        else:
+            super().__init__(parent, aw) # if parent is set to None, Schedule panels hide behind the main window in full screen mode on Windows!
+
+        self.aw = aw # the Artisan application window
+        self.activeTab:int = activeTab
+
+        self.being_updated:bool = False # True while processing self.updateScheduleWindow()
+        self.pending_updated:bool = False # True if a self.updateScheduleWindow() did fail as the update_schedule_window_semaphore was not available
+
+        self.scheduled_items:list[ScheduledItem] = []
+        self.completed_items:list[CompletedItem] = [] # kept sorted; oldest roasts at begin, youngest appended at the end
+
+        # holds the currently selected remaining DragItem widget if any
+        self.selected_remaining_item:DragItem|None = None
+
+        # holds the currently selected completed NoDragItem widget if any
+        self.selected_completed_item:NoDragItem|None = None
+
+        # IMPORTANT NOTE: if dialog items have to be access after it has been closed, this Qt.WidgetAttribute.WA_DeleteOnClose attribute
+        # has to be set to False explicitly in its initializer (like in comportDlg) to avoid the early GC and one might
+        # want to use a dialog.deleteLater() call to explicitly have the dialog and its widgets GCe
+        # or rather use sip.delete(dialog) if the GC via .deleteLater() is prevented by a link to a parent object (parent not None)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+
+        self.drag_remaining:DragWidget = DragWidget(self, orientation=Qt.Orientation.Vertical)
+        self.drag_remaining.setContentsMargins(0, 0, 0, 0)
+
+        self.drag_remaining.orderChanged.connect(self.update_order)
+
+        remaining_widget = QWidget()
+        layout_remaining = QVBoxLayout()
+        layout_remaining.addWidget(self.drag_remaining)
+        layout_remaining.addStretch()
+        layout_remaining.setContentsMargins(0, 0, 0, 0)
+        remaining_widget.setLayout(layout_remaining)
+        remaining_widget.setContentsMargins(0, 0, 0, 0)
+
+
+        self.visible_filter = QCheckBox(QApplication.translate('Plus','Visible'))
+        self.visible_filter.setChecked(self.aw.schedule_visible_filter)
+        self.visible_filter.setToolTip(QApplication.translate('Plus','List only visible items'))
+        self.visible_filter.stateChanged.connect(self.remainingFilterChanged)
+        self.day_filter = QCheckBox(QApplication.translate('Plus','Today'))
+        self.day_filter.setChecked(self.aw.schedule_day_filter)
+        self.day_filter.stateChanged.connect(self.remainingFilterChanged)
+        self.day_filter.setToolTip(QApplication.translate('Plus','List only items scheduled for today'))
+        self.user_filter = QCheckBox()
+        self.user_filter.setChecked(self.aw.schedule_user_filter)
+        self.user_filter.stateChanged.connect(self.remainingFilterChanged)
+        self.machine_filter = QCheckBox()
+        self.machine_filter.setChecked(self.aw.schedule_machine_filter)
+        self.machine_filter.stateChanged.connect(self.remainingFilterChanged)
+
+        remaining_filter_layout = QVBoxLayout()
+        remaining_filter_layout.addWidget(self.visible_filter)
+        remaining_filter_layout.addWidget(self.day_filter)
+        remaining_filter_layout.addWidget(self.user_filter)
+        remaining_filter_layout.addWidget(self.machine_filter)
+        self.remaining_filter_group = QGroupBox(QApplication.translate('Plus', 'Filters'))
+        self.remaining_filter_group.setLayout(remaining_filter_layout)
+
+        self.remaining_scrollarea = QScrollArea()
+        self.remaining_scrollarea.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.remaining_scrollarea.setWidgetResizable(True)
+        self.remaining_scrollarea.setWidget(remaining_widget)
+        self.remaining_scrollarea.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignTop)
+
+        self.remaining_filter_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+
+        self.remaining_message = QLabel()
+        self.remaining_message.setTextFormat(Qt.TextFormat.RichText)
+        self.remaining_message.setWordWrap(True)
+        self.remaining_message.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse)
+        self.remaining_message.setOpenExternalLinks(True)
+
+        remaining_message_layout = QVBoxLayout()
+        remaining_message_layout.addWidget(self.remaining_message)
+        remaining_message_layout.setContentsMargins(15, 15, 15, 15) # left, top, right, bottom
+
+        self.remaining_message_widget = QWidget()
+        self.remaining_message_widget.setLayout(remaining_message_layout)
+
+        self.stacked_remaining_widget = QStackedWidget()
+        self.stacked_remaining_widget.addWidget(self.remaining_scrollarea)
+        self.stacked_remaining_widget.addWidget(self.remaining_message_widget)
+
+        remaining_filter_layout2 =  QVBoxLayout()
+        remaining_filter_layout2.addSpacing(1) # ensures a minimum height to keep the handle movable
+        remaining_filter_layout2.addWidget(self.remaining_filter_group)
+        remaining_filter_layout2.setContentsMargins(2, 10, 2, 2) # left, top, right, bottom # NOTE: if top is reduced to 2, on macOS the spacing of the single filters gets too small
+        remaining_filter_group2 = QFrame()
+        remaining_filter_group2.setLayout(remaining_filter_layout2)
+        self.remaining_filter_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        remaining_filter_group2.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+
+        self.remaining_splitter = Splitter(Qt.Orientation.Vertical)
+        self.remaining_splitter.addWidget(self.stacked_remaining_widget)
+        self.remaining_splitter.addWidget(remaining_filter_group2)
+        self.remaining_splitter.setSizes([100,0]) # the filter section is hidden by default and its position is not remembered
+
+
+        if not self.aw.scheduler_completed_details_visible:
+            self.remaining_filter_group.hide()
+        self.filter_frame_hide = False
+
+#####
+        self.nodrag_roasted = StandardWidget(self, orientation=Qt.Orientation.Vertical)
+        self.nodrag_roasted.setContentsMargins(0, 0, 0, 0)
+
+        roasted_widget = QWidget()
+        layout_roasted = QVBoxLayout()
+        layout_roasted.addWidget(self.nodrag_roasted)
+        layout_roasted.addStretch()
+        layout_roasted.setContentsMargins(0, 0, 0, 0)
+        roasted_widget.setLayout(layout_roasted)
+        roasted_widget.setContentsMargins(0, 0, 0, 0)
+
+        completed_scrollarea = QScrollArea()
+        completed_scrollarea.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        completed_scrollarea.setWidgetResizable(True)
+        completed_scrollarea.setWidget(roasted_widget)
+        completed_scrollarea.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignTop)
+#        completed_scrollarea.setFrameShadow(QFrame.Shadow.Sunken)
+#        completed_scrollarea.setFrameShape(QFrame.Shape.Panel)
+        completed_scrollarea.setMinimumWidth(roasted_widget.minimumSizeHint().width())
+
+        weight_unit_str:str = self.aw.qmc.weight[2].lower()
+        density_unit_str:Final[str] = 'g/l'
+        moisture_unit_str:Final[str] = '%'
+        color_unit_str:Final[str] = '#'
+
+        self.roasted_weight = ClickableQLineEdit()
+        self.roasted_weight.setToolTip(QApplication.translate('Label','Weight'))
+        self.roasted_weight.setValidator(self.aw.createCLocaleDoubleValidator(0., 9999999., 4, self.roasted_weight, ''))
+        self.roasted_weight.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+        self.roasted_weight.editingFinished.connect(self.roasted_weight_changed)
+        self.roasted_weight.receivedFocus.connect(self.roasted_weight_selected)
+        self.roasted_weight_suffix = ClickableQLabel(weight_unit_str)
+
+        # calculate unit label max_width
+        font = self.roasted_weight_suffix.font()
+        fontMetrics = QFontMetrics(font)
+        weight_suffix_width = fontMetrics.horizontalAdvance('Kg') # widest possible label
+        color_density_moisture_suffix_width = max(
+                fontMetrics.horizontalAdvance(moisture_unit_str),
+                fontMetrics.horizontalAdvance(density_unit_str),
+                fontMetrics.horizontalAdvance(color_unit_str))
+
+        self.roasted_weight_suffix.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.roasted_weight_suffix.setFixedWidth(weight_suffix_width)
+        self.roasted_weight_suffix.setAlignment (Qt.AlignmentFlag.AlignLeft)
+        self.roasted_weight_suffix.clicked.connect(self.roasted_measured_toggle)
+
+        self.roasted_yield = ClickableQLineEdit()
+        self.roasted_yield.setToolTip(QApplication.translate('Label','Yield'))
+        self.roasted_yield.setValidator(self.aw.createCLocaleDoubleValidator(0., 9999999., 4, self.roasted_yield, ''))
+        self.roasted_yield.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+        self.roasted_yield.editingFinished.connect(self.roasted_yield_changed)
+        self.roasted_yield_suffix = ClickableQLabel(weight_unit_str)
+        self.roasted_yield_suffix.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.roasted_yield_suffix.setFixedWidth(weight_suffix_width)
+        self.roasted_yield_suffix.setAlignment (Qt.AlignmentFlag.AlignLeft)
+
+        self.roasted_defects = ClickableQLineEdit()
+        self.roasted_defects.setToolTip(QApplication.translate('Label','Defects'))
+        self.roasted_defects.setValidator(self.aw.createCLocaleDoubleValidator(0., 9999999., 4, self.roasted_defects, ''))
+        self.roasted_defects.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+        self.roasted_defects.editingFinished.connect(self.defects_weight_changed)
+        self.roasted_defects_suffix = ClickableQLabel(weight_unit_str)
+        self.roasted_defects_suffix.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.roasted_defects_suffix.setFixedWidth(weight_suffix_width)
+        self.roasted_defects_suffix.setAlignment (Qt.AlignmentFlag.AlignLeft)
+
+        self.roasted_density = QLineEdit()
+        self.roasted_density.setToolTip(QApplication.translate('Label','Density'))
+        self.roasted_density.setValidator(self.aw.createCLocaleDoubleValidator(0., 999., 1, self.roasted_density))
+        self.roasted_density.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+        self.roasted_density.editingFinished.connect(self.roasted_density_changed)
+        roasted_density_suffix = QLabel(density_unit_str)
+        roasted_density_suffix.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        roasted_density_suffix.setFixedWidth(color_density_moisture_suffix_width)
+        roasted_density_suffix.setAlignment (Qt.AlignmentFlag.AlignLeft)
+
+        self.roasted_color = QLineEdit()
+        self.roasted_color.setToolTip(QApplication.translate('Label','Color'))
+        self.roasted_color.setValidator(self.aw.createCLocaleDoubleValidator(0., 255., 2, self.roasted_color))
+        self.roasted_color.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+        self.roasted_color.editingFinished.connect(self.roasted_color_changed)
+        roasted_color_suffix = QLabel(color_unit_str)
+        roasted_color_suffix.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        roasted_color_suffix.setFixedWidth(color_density_moisture_suffix_width)
+        roasted_color_suffix.setAlignment (Qt.AlignmentFlag.AlignLeft)
+
+        self.roasted_moisture = QLineEdit()
+        self.roasted_moisture.setToolTip(QApplication.translate('Label','Moisture'))
+        self.roasted_moisture.setValidator(self.aw.createCLocaleDoubleValidator(0., 100., 1, self.roasted_moisture))
+        self.roasted_moisture.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+        self.roasted_moisture.editingFinished.connect(self.roasted_moisture_changed)
+        roasted_moisture_suffix = QLabel(moisture_unit_str)
+        roasted_moisture_suffix.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        roasted_moisture_suffix.setFixedWidth(color_density_moisture_suffix_width)
+        roasted_moisture_suffix.setAlignment (Qt.AlignmentFlag.AlignLeft)
+
+        self.roasted_notes = QPlainTextEdit()
+        self.roasted_notes.setPlaceholderText(QApplication.translate('Label', 'Roasting Notes'))
+        self.roasted_notes.setToolTip(QApplication.translate('Label', 'Roasting Notes'))
+
+        self.cupping_score = QLineEdit()
+        self.cupping_score.setFixedWidth(42)
+        self.cupping_score.setPlaceholderText(QApplication.translate('Label', 'Score'))
+        self.cupping_score.setToolTip(QApplication.translate('Label','Cupping Score'))
+        self.cupping_score.setValidator(self.aw.createCLocaleDoubleValidator(0., 100., 2, self.cupping_score))
+        self.cupping_score.setAlignment(Qt.AlignmentFlag.AlignCenter) #Qt.AlignmentFlag.AlignHCenter|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+        self.cupping_score.editingFinished.connect(self.cupping_score_changed)
+
+        self.cupping_notes = QPlainTextEdit()
+        self.cupping_notes.setPlaceholderText(QApplication.translate('Label', 'Cupping Notes'))
+        self.cupping_notes.setToolTip(QApplication.translate('Label', 'Cupping Notes'))
+
+        ##
+        roasted_first_line_layout = QHBoxLayout()
+        roasted_first_line_layout.setSpacing(0)
+        roasted_first_line_layout.addWidget(self.roasted_weight)
+        roasted_first_line_layout.addSpacing(2)
+        roasted_first_line_layout.addWidget(self.roasted_weight_suffix)
+        #
+        roasted_first_line_layout.addSpacing(10)
+        roasted_first_line_layout.addWidget(self.roasted_color)
+        roasted_first_line_layout.addSpacing(2)
+        roasted_first_line_layout.addWidget(roasted_color_suffix)
+        roasted_first_line_layout.setContentsMargins(0, 0, 0, 0)
+        ##
+        roasted_second_line_layout = QHBoxLayout()
+        roasted_second_line_layout.setSpacing(0)
+        roasted_second_line_layout.addWidget(self.roasted_yield)
+        roasted_second_line_layout.addSpacing(2)
+        roasted_second_line_layout.addWidget(self.roasted_yield_suffix)
+        #
+        roasted_second_line_layout.addSpacing(10)
+        roasted_second_line_layout.addWidget(self.roasted_density)
+        roasted_second_line_layout.addSpacing(2)
+        roasted_second_line_layout.addWidget(roasted_density_suffix)
+        roasted_second_line_layout.setContentsMargins(0, 0, 0, 0)
+        ##
+        roasted_third_line_layout = QHBoxLayout()
+        roasted_third_line_layout.setSpacing(0)
+        roasted_third_line_layout.addWidget(self.roasted_defects)
+        roasted_third_line_layout.addSpacing(2)
+        roasted_third_line_layout.addWidget(self.roasted_defects_suffix)
+        #
+        roasted_third_line_layout.addSpacing(10)
+        roasted_third_line_layout.addWidget(self.roasted_moisture)
+        roasted_third_line_layout.addSpacing(2)
+        roasted_third_line_layout.addWidget(roasted_moisture_suffix)
+        roasted_third_line_layout.setContentsMargins(0, 0, 0, 0)
+        roasted_details_layout = QVBoxLayout()
+        roasted_details_layout.addLayout(roasted_first_line_layout)
+        roasted_details_layout.addLayout(roasted_second_line_layout)
+        roasted_details_layout.addLayout(roasted_third_line_layout)
+        roasted_details_layout.setContentsMargins(0, 0, 0, 0)
+
+
+        # restrict notes field height to two text lines
+        lines:int = 2
+        docMargin:float = 0
+        lineSpacing:float = 1.5
+
+        roasted_notes_doc:QTextDocument|None = self.roasted_notes.document()
+        if roasted_notes_doc is not None:
+            docMargin = roasted_notes_doc.documentMargin()
+            font = roasted_notes_doc.defaultFont()
+            fontMetrics = QFontMetrics(font)
+            lineSpacing = fontMetrics.lineSpacing()
+        margins:QMargins = self.roasted_notes.contentsMargins()
+        notes_hight:int = math.ceil(lineSpacing * lines +
+            (docMargin + self.roasted_notes.frameWidth()) * 2 + margins.top() + margins.bottom())
+        self.roasted_notes.setFixedHeight(notes_hight)
+        self.roasted_notes.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.roasted_notes.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.roasted_notes.setContentsMargins(0, 0, 0, 0)
+
+        cupping_notes_doc:QTextDocument|None = self.cupping_notes.document()
+        if cupping_notes_doc is not None:
+            docMargin = cupping_notes_doc.documentMargin()
+            font = cupping_notes_doc.defaultFont()
+            fontMetrics = QFontMetrics(font)
+            lineSpacing = fontMetrics.lineSpacing()
+        margins = self.cupping_notes.contentsMargins()
+        cupping_notes_hight:int = math.ceil(lineSpacing * lines +
+            (docMargin + self.cupping_notes.frameWidth()) * 2 + margins.top() + margins.bottom())
+        self.cupping_notes.setFixedHeight(cupping_notes_hight)
+        self.cupping_notes.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.cupping_notes.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.cupping_notes.setContentsMargins(0, 0, 0, 0)
+
+        cupping_layout = QHBoxLayout()
+        cupping_layout.addWidget(self.cupping_score)
+        cupping_layout.addWidget(self.cupping_notes)
+
+        completed_details_layout = QVBoxLayout()
+        completed_details_layout.addLayout(roasted_details_layout)
+        completed_details_layout.addWidget(self.roasted_notes)
+        completed_details_layout.addLayout(cupping_layout)
+        completed_details_layout.setContentsMargins(0, 0, 0, 0)
+        completed_details_layout.setSpacing(3)
+        self.completed_details_group = QGroupBox(QApplication.translate('Label','Roasted'))
+        self.completed_details_group.setLayout(completed_details_layout)
+        self.completed_details_group.setEnabled(False)
+
+        self.completed_details_scrollarea = QScrollArea()
+        self.completed_details_scrollarea.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.completed_details_scrollarea.setWidgetResizable(True)
+        self.completed_details_scrollarea.setWidget(self.completed_details_group)
+        self.completed_details_scrollarea.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+
+        completed_details_layout2 =  QVBoxLayout()
+        completed_details_layout2.addSpacing(1) # ensures a minimum height to keep the handle movable
+        completed_details_layout2.addWidget(self.completed_details_scrollarea)
+        completed_details_layout2.setSpacing(0)
+        completed_details_layout2.setContentsMargins(0, 0, 0, 0) # left, top, right, bottom
+        self.completed_frame = QFrame()
+        self.completed_frame.setLayout(completed_details_layout2)
+        self.completed_frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+
+        self.completed_splitter = Splitter(Qt.Orientation.Vertical)
+        self.completed_splitter.addWidget(completed_scrollarea)
+        self.completed_splitter.addWidget(self.completed_frame)
+        self.completed_splitter.setSizes([100,0])
+        self.completed_splitter_open_height: int = 0
+
+        if not self.aw.scheduler_filters_visible:
+            self.completed_details_scrollarea.hide()
+        self.completed_details_scrollarea_hide = False
+
+        completed_message = QLabel(f"{QApplication.translate('Plus', 'No completed roasts')}<br>")
+        completed_message.setWordWrap(True)
+
+        completed_message_layout = QVBoxLayout()
+        completed_message_layout.addWidget(completed_message)
+        completed_message_layout.setContentsMargins(15, 15, 15, 15) # left, top, right, bottom
+
+        self.completed_message_widget = QWidget()
+        self.completed_message_widget.setLayout(completed_message_layout)
+
+        self.sync_button = QToolButton()
+        self.sync_button.setToolTip(QApplication.translate('Tooltip','Update schedule'))
+        if self.aw.app.darkmode:
+            self.sync_button.setStyleSheet('''
+                QToolButton:hover:pressed {border:none;border-radius:3px;background-color:#C5C5C5;color: #EEEEEE;}
+                QToolButton:!hover {border:none;}
+                QToolButton:hover {border:none;border-radius: 3px;background-color: #8F8F8F;color: #EEEEEE;}
+                ''')
+        else:
+            self.sync_button.setStyleSheet('''
+                QToolButton:hover:pressed {border:none;border-radius:3px;background-color:#C5C5C5;color:#EEEEEE;}
+                QToolButton:!hover {border:none;}
+                QToolButton:hover {border:none;border-radius:3px;background-color:#CFCFCF;color:#EEEEEE;}
+                ''')
+        self.sync_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.sync_button.clicked.connect(self.trigger_stock_update)
+
+        basedir = os.path.join(getResourcePath(),'Icons')
+        p = os.path.join(basedir, ('update_dark.svg' if self.aw.app.darkmode else 'update_light.svg'))
+        self.sync_button.setIcon(QIcon(p))
+        status_bar = QStatusBar()
+        status_bar.setFixedHeight(20)
+        status_bar.addPermanentWidget(self.sync_button)
+
+        remaining_splitter_layout = QVBoxLayout()
+        remaining_splitter_layout.addWidget(self.remaining_splitter)
+        remaining_splitter_layout.addWidget(status_bar)
+        remaining_splitter_layout.setContentsMargins(0, 0, 0, 0) # left, top, right, bottom
+        remaining_splitter_layout.setSpacing(0)
+
+        self.remaining_splitter_layout_widget = QWidget()
+        self.remaining_splitter_layout_widget.setLayout(remaining_splitter_layout)
+
+        update_conf_message = QLabel(f"<b>{QApplication.translate('Plus', 'Schedule Updated!')}</b>")
+        update_conf_message.setTextFormat(Qt.TextFormat.RichText)
+        update_conf_message.setWordWrap(True)
+
+        update_conf_message_layout = QHBoxLayout()
+        update_conf_message_layout.addStretch()
+        update_conf_message_layout.addWidget(update_conf_message)
+        update_conf_message_layout.addStretch()
+
+        self.update_conf_button = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+        self.update_conf_button.setCenterButtons(True)
+        self.update_conf_button.accepted.connect(self.accept_updated_schedule)
+
+        update_conf_layout = QVBoxLayout()
+        update_conf_layout.addStretch()
+        update_conf_layout.addLayout(update_conf_message_layout)
+        update_conf_layout.addWidget(self.update_conf_button)
+        update_conf_layout.addStretch()
+        update_conf_layout.setContentsMargins(15, 15, 15, 15) # left, top, right, bottom
+
+        self.update_confirmation_widget = QWidget()
+        self.update_confirmation_widget.setLayout(update_conf_layout)
+
+        self.open_stacked_widget = QStackedWidget()
+        self.open_stacked_widget.addWidget(self.remaining_splitter_layout_widget)
+        self.open_stacked_widget.addWidget(self.update_confirmation_widget)
+
+        self.completed_stacked_widget = QStackedWidget()
+        self.completed_stacked_widget.addWidget(self.completed_splitter)
+        self.completed_stacked_widget.addWidget(self.completed_message_widget)
+
+#####
+
+        self.TabWidget = QTabWidget()
+        self.TabWidget.addTab(self.open_stacked_widget, QApplication.translate('Tab', 'To-Do'))
+        self.TabWidget.addTab(self.completed_stacked_widget, QApplication.translate('Tab', 'Completed'))
+        self.TabWidget.setStyleSheet(tooltip_style)
+
+        self.task_type = QLabel()
+        self.task_position = QLabel()
+        self.task_weight = ClickableQLabel()
+        self.task_title = QElidedLabel(mode = Qt.TextElideMode.ElideRight)
+
+        task_type_layout = QHBoxLayout()
+        task_type_layout.addWidget(self.task_position)
+        task_type_layout.addStretch()
+        task_type_layout.addWidget(self.task_type)
+        task_type_layout.setSpacing(0)
+        task_type_layout.setContentsMargins(0, 0, 0, 0) # left, top, right, bottom
+
+        task_weight_layout = QHBoxLayout()
+        task_weight_layout.addStretch()
+        task_weight_layout.addWidget(self.task_weight)
+        task_weight_layout.addStretch()
+        task_weight_layout.setSpacing(0)
+        task_weight_layout.setContentsMargins(0, 0, 0, 0) # left, top, right, bottom
+
+        task_title_layout = QHBoxLayout()
+        task_title_layout.addWidget(self.task_title)
+        task_title_layout.setSpacing(0)
+        task_title_layout.setContentsMargins(0, 5, 5, 0) # left, top, right, bottom
+
+        task_layout =  QVBoxLayout()
+        task_layout.addLayout(task_type_layout)
+        task_layout.addLayout(task_weight_layout)
+        task_layout.addLayout(task_title_layout)
+        task_layout.setSpacing(0)
+        task_layout.setContentsMargins(10, 5, 10, 15) # left, top, right, bottom
+        self.task_frame = QFrame()
+        self.task_frame.setLayout(task_layout)
+        self.task_frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+
+
+        task2_layout =  QVBoxLayout()
+        task2_layout.addWidget(self.task_frame)
+        task2_layout.addSpacing(1) # ensures a minimum height to keep the handle movable
+        task2_layout.setSpacing(0)
+        task2_layout.setContentsMargins(0, 0, 0, 0) # left, top, right, bottom
+        self.task2_frame = QFrame()
+        self.task2_frame.setLayout(task2_layout)
+        self.task2_frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+
+        self.main_splitter = Splitter(Qt.Orientation.Vertical)
+        self.main_splitter.addWidget(self.task2_frame)
+        self.main_splitter.addWidget(self.TabWidget)
+#        self.main_splitter.setSizes([0,100])
+        self.main_splitter.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+
+        if not self.aw.scheduler_tasks_visible:
+            self.task_frame.hide()
+        self.task_frame_hide = False # flag used by mainSplitterMoved()/hide_task_frame() to hide task frame again after closing the drawer
+
+
+        disconnected_widget = QLabel()
+        disconnected_widget.setTextFormat(Qt.TextFormat.RichText)
+        disconnected_widget.setText(QApplication.translate('Plus', 'Login to {} to receive your roast schedule').format(f'<a href="{plusLink()}">{plus.config.app_name}</a>'))
+        disconnected_widget.setWordWrap(True)
+        disconnected_widget.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        disconnected_widget.linkActivated.connect(self.disconnected_link_handler)
+
+        disconnected_layout = QVBoxLayout()
+        disconnected_layout.addWidget(disconnected_widget)
+        disconnected_layout.setContentsMargins(15, 15, 15, 15) # left, top, right, bottom
+
+        self.message_widget = QWidget()
+        self.message_widget.setLayout(disconnected_layout)
+
+        self.stacked_widget = QStackedWidget()
+        self.stacked_widget.addWidget(self.main_splitter)
+        self.stacked_widget.addWidget(self.message_widget)
+
+        self.main_layout = QVBoxLayout()
+        self.main_layout.addWidget(self.stacked_widget)
+        self.main_layout.setContentsMargins(0, 0, 0, 0) # left, top, right, bottom
+        self.main_layout.setSpacing(0)
+
+        self.setLayout(self.main_layout)
+
+        # we want minimize and close buttons, but no maximize buttons
+        if not platform.system().startswith('Windows'):
+            windowFlags = self.windowFlags()
+            windowFlags |= Qt.WindowType.Tool
+            windowFlags |= Qt.WindowType.CustomizeWindowHint # needed to be able to customize the close/min/max controls (at least on macOS)
+            windowFlags |= Qt.WindowType.WindowMinimizeButtonHint
+            windowFlags |= Qt.WindowType.WindowCloseButtonHint # not needed on macOS, but maybe on Linux
+            #windowFlags |= Qt.WindowType.WindowMinMaxButtonsHint # not needed on macOS
+            #windowFlags &= ~Qt.WindowType.WindowMaximizeButtonHint # not needed on macOS as the CustomizeWindowHint is removing min/max controls already
+            self.setWindowFlags(windowFlags)
+        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, False)
+
+        if platform.system() == 'Darwin':
+            self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow) # show tool window even if app is in background (see https://bugreports.qt.io/browse/QTBUG-57581)
+
+        self.setWindowTitle(QApplication.translate('Menu', 'Schedule'))
+
+        self.aw.disconnectPlusSignal.connect(self.updateScheduleWindow)
+
+        self.weight_item_display:WeightItemDisplay = WeightItemDisplay(self)
+        self.green_web_display:GreenWebDisplay = GreenWebDisplay(self)
+        self.roasted_web_display:RoastedWebDisplay = RoastedWebDisplay(self)
+        self.weight_manager:WeightManager = WeightManager(self.aw, [self.weight_item_display, self.green_web_display, self.roasted_web_display], self.aw.scale_manager)
+
+        plus.stock.update() # explicit update stock on opening the scheduler
+        self.updateScheduleWindow()
+
+        # set all child's to NoFocus to receive the up/down arrow key events in keyPressEvent
+        self.setChildrenFocusPolicy(self, Qt.FocusPolicy.NoFocus)
+
+        self.register_completed_roast.connect(self.register_completed_roast_slot)
+
+        # a click to the weight in the task display completes it
+        self.task_weight.clicked.connect(self.taskCompleted)
+
+        self.TabWidget.currentChanged.connect(self.tabSwitched)
+
+#        # we set the active tab with a QTimer after the tabbar has been rendered once, as otherwise
+#        # some tabs are not rendered at all on Windows using Qt v6.5.1 (https://bugreports.qt.io/projects/QTBUG/issues/QTBUG-114204?filter=allissues)
+#        QTimer.singleShot(50, self.setActiveTab)
+        self.setActiveTab()
+
+
+        settings = QSettings()
+        if settings.contains('ScheduleGeometry'):
+            self.restoreGeometry(settings.value('ScheduleGeometry'))
+        else:
+            self.resize(250,300)
+
+        settings = QSettings()
+        if settings.contains('ScheduleMainSplitter'):
+            self.main_splitter.restoreState(settings.value('ScheduleMainSplitter'))
+        if settings.contains('ScheduleRemainingSplitter') and settings.contains('ScheduleRemainingSplitterOpen'):
+            if settings.value('ScheduleRemainingSplitterOpen'):
+                self.remaining_filter_group.show()
+            else:
+                self.remaining_filter_group.hide()
+            self.remaining_splitter.restoreState(settings.value('ScheduleRemainingSplitter'))
+        if settings.contains('ScheduleCompletedSplitter') and settings.contains('ScheduleCompletedSplitterOpen'):
+            if settings.value('ScheduleCompletedSplitterOpen'):
+                self.completed_details_scrollarea.show()
+            else:
+                self.completed_details_scrollarea.hide()
+            self.completed_splitter.restoreState(settings.value('ScheduleCompletedSplitter'))
+
+        self.main_splitter.splitterMoved.connect(self.mainSplitterMoved)
+        self.remaining_splitter.splitterMoved.connect(self.remainingSplitterMoved)
+        self.completed_splitter.splitterMoved.connect(self.completedSplitterMoved)
+
+        self.aw.sendmessage(QApplication.translate('Message','Scheduler started'))
+
+    @pyqtSlot()
+    def accept_updated_schedule(self) -> None:
+        self.open_stacked_widget.setCurrentWidget(self.remaining_splitter_layout_widget)
+
+    def show_updated_widget(self) -> None:
+        self.open_stacked_widget.setCurrentWidget(self.update_confirmation_widget)
+
+    @staticmethod
+    @pyqtSlot(bool)
+    def trigger_stock_update(_:bool = False) -> None:
+        QTimer.singleShot(10, plus.stock.update_schedule)
+
+    def hide_task_frame(self) -> None:
+        if self.task_frame_hide:
+            splitter_sizes = self.main_splitter.sizes()
+            if len(splitter_sizes)>0 and splitter_sizes[0] == 0:
+                self.task_frame.hide()
+            self.task_frame_hide = False
+
+    @pyqtSlot(int,int)
+    def mainSplitterMoved(self, _pos: int, index: int) -> None:
+        splitter_sizes = self.main_splitter.sizes()
+        if len(splitter_sizes)>1:
+            # hide upper splitter content to allow minimizing the window
+            if index == 1 and splitter_sizes[0] > 0 and not self.task_frame.isVisible() and not self.task_frame_hide:
+                self.setUpdatesEnabled(False)
+                self.task_frame.show()
+                self.main_splitter.setSizes([0, splitter_sizes[0]+splitter_sizes[1]])
+                self.setUpdatesEnabled(True)
+            elif index == 1 and splitter_sizes[0] == 0 and self.task_frame.isVisible():
+                if not self.task_frame_hide:
+                    self.task_frame_hide = True
+                    QTimer.singleShot(1000, self.hide_task_frame)
+
+    def hide_filter_frame(self) -> None:
+        if self.filter_frame_hide:
+            splitter_sizes = self.remaining_splitter.sizes()
+            if len(splitter_sizes)>0 and splitter_sizes[1] == 0:
+                self.remaining_filter_group.hide()
+            self.filter_frame_hide = False
+
+    @pyqtSlot(int,int)
+    def remainingSplitterMoved(self, _pos: int, index: int) -> None:
+        splitter_sizes = self.remaining_splitter.sizes()
+        if len(splitter_sizes)>1:
+            # hide lower splitter content to allow minimizing the window
+            if index == 1 and splitter_sizes[1] > 0 and not self.remaining_filter_group.isVisible() and not self.filter_frame_hide:
+                self.setUpdatesEnabled(False)
+                self.remaining_filter_group.show()
+                self.remaining_splitter.setSizes([splitter_sizes[0]+splitter_sizes[1], 0])
+                self.setUpdatesEnabled(True)
+            elif index == 1 and splitter_sizes[1] == 0 and self.remaining_filter_group.isVisible():
+                if not self.filter_frame_hide:
+                    self.filter_frame_hide = True
+                    QTimer.singleShot(1000, self.hide_filter_frame)
+
+    def hide_completed_frame(self) -> None:
+        if self.completed_details_scrollarea_hide:
+            splitter_sizes = self.completed_splitter.sizes()
+            if len(splitter_sizes)>0 and splitter_sizes[1] == 0:
+                self.completed_details_scrollarea.hide()
+            self.completed_details_scrollarea_hide = False
+
+    @pyqtSlot(int,int)
+    def completedSplitterMoved(self, _pos: int, index: int) -> None:
+        splitter_sizes = self.completed_splitter.sizes()
+        if len(splitter_sizes)>1:
+            # hide lower completed splitter content to allow minimizing the window
+            if index == 1 and splitter_sizes[1] > 0 and not self.completed_details_scrollarea.isVisible() and not self.completed_details_scrollarea_hide:
+                self.setUpdatesEnabled(False)
+                self.completed_details_scrollarea.show()
+                self.completed_splitter.setSizes([splitter_sizes[0]+splitter_sizes[1], 0])
+                self.setUpdatesEnabled(True)
+            elif index == 1 and splitter_sizes[1] == 0 and self.completed_details_scrollarea.isVisible():
+                if not self.completed_details_scrollarea_hide:
+                    self.completed_details_scrollarea_hide = True
+                    QTimer.singleShot(1000, self.hide_completed_frame)
+
+    @pyqtSlot(str)
+    def disconnected_link_handler(self, _link:str) -> None:
+        plus.controller.toggle(self.aw)
+
+    # by default only the next item of the active tab is set, only if update_both is True both next items are reset
+    def set_next(self, update_both:bool = False) -> None:
+        # is potentially called from QTimer at a point of execution the scheduler window might have been already closed and the TabWidget has been collected
+        try:
+            if self.TabWidget:
+                todo_tab_active:bool = self.TabWidget.currentIndex() == 0
+                if todo_tab_active or update_both:
+                    self.weight_manager.set_next_green(self.next_not_prepared_item())
+                if not todo_tab_active or update_both:
+                    self.weight_manager.set_next_roasted(self.next_not_completed_item())
+        except Exception as e:  # pylint: disable=broad-except
+            _log.exception(e)
+
+    @pyqtSlot()
+    def taskCompleted(self) -> None:
+        todo_tab_active:bool = self.TabWidget.currentIndex() == 0
+        if todo_tab_active:
+            self.weight_manager.greenTaskCompleted()
+        else:
+            self.weight_manager.roastedTaskCompleted()
+
+
+
+    @pyqtSlot(list)
+    def update_order(self, l:list[ScheduledItem]) -> None:
+        self.scheduled_items = l
+        # update next weight item
+        self.set_next()
+
+    @pyqtSlot()
+    def tabSwitched(self) -> None:
+        self.set_next()
+
+    @pyqtSlot()
+    def setActiveTab(self) -> None:
+        self.TabWidget.setCurrentIndex(self.activeTab)
+
+    @pyqtSlot()
+    def roasted_weight_selected(self) -> None:
+        if self.roasted_weight.text() == '':
+            self.roasted_weight.setText(self.roasted_weight.placeholderText())
+            self.roasted_weight.selectAll()
+            if self.selected_completed_item is not None:
+                self.selected_completed_item.data.measured = True
+            self.roasted_weight_suffix.setEnabled(True)
+
+    @pyqtSlot()
+    def roasted_weight_changed(self) -> None:
+        text:str = self.roasted_weight.text()
+        if self.selected_completed_item is not None:
+            if text == '':
+                self.selected_completed_item.data.measured = False
+                self.roasted_weight_suffix.setEnabled(False)
+                self.roasted_yield.setText('')
+                self.roasted_defects.setText('0')
+            else:
+                roasted_weight_txt = comma2dot(text)
+                roasted_weight = float(roasted_weight_txt)
+                if self.aw.qmc.weight[2] == 'Kg' and roasted_weight > self.selected_completed_item.data.batchsize:
+                    # if input is larger than batch size we interpret it as in g
+                    converted_weight = convertWeight(roasted_weight, 0, weight_units.index(self.aw.qmc.weight[2]))
+                    roasted_weight_txt = f'{float2floatWeightVolume(converted_weight):g}'
+                self.roasted_weight.setText(roasted_weight_txt)
+                self.selected_completed_item.data.measured = True
+                self.roasted_weight_suffix.setEnabled(True)
+
+    @pyqtSlot()
+    def roasted_measured_toggle(self) -> None:
+        if self.selected_completed_item is not None:
+            self.selected_completed_item.data.measured = False
+            self.roasted_weight.setText('')
+            self.roasted_weight_suffix.setEnabled(False)
+            self.roasted_yield.setText('')
+            self.roasted_defects.setText('0')
+            self.roasted_yield.setPlaceholderText(self.roasted_weight.placeholderText())
+
+
+    @pyqtSlot()
+    def roasted_yield_changed(self) -> None:
+        defects:float = 0
+        roasted_yield:float = 0
+        roasted_weight:float = 0
+        text:str = self.roasted_yield.text()
+        if text != '':
+            roasted_yield_txt = comma2dot(text)
+            roasted_yield = float(roasted_yield_txt)
+        if self.roasted_weight.text().strip() == '' and roasted_yield > 0:
+            # if roasted_weight is empty, we put the yield to the roasted weight field and reset the roasted yield/defects fields
+            roasted_weight_txt = f'{float2floatWeightVolume(roasted_yield):g}'
+            self.roasted_weight.setText(roasted_weight_txt)
+            self.roasted_weight_suffix.setEnabled(True)
+            roasted_weight = roasted_yield
+            roasted_yield = 0
+        else:
+            roasted_weight_txt = self.roasted_weight.text().strip()
+            roasted_weight = (0 if roasted_weight_txt == '' else float(roasted_weight_txt))
+            roasted_yield = max(0.0,min(roasted_yield,roasted_weight))
+            defects = roasted_weight - roasted_yield
+        if 0 < roasted_yield < roasted_weight:
+            self.roasted_yield.setText(f'{float2floatWeightVolume(roasted_yield):g}')
+            self.roasted_defects.setText(f'{float2floatWeightVolume(defects):g}')
+        else:
+            self.roasted_yield.setText('')
+            self.roasted_defects.setText('0')
+
+    @pyqtSlot()
+    def defects_weight_changed(self) -> None:
+        defects:float = 0
+        roasted_yield:float = 0
+        text:str = self.roasted_defects.text()
+        if text != '' and self.roasted_weight.text().strip() != '':
+            defects_txt = comma2dot(text)
+            defects = float(defects_txt)
+        roasted_weight_txt = self.roasted_weight.text().strip()
+        defects = max(0.0,defects)
+        roasted_weight = (0 if roasted_weight_txt == '' else float(roasted_weight_txt))
+        if self.aw.qmc.weight[2] == 'Kg' and roasted_weight > 0 and defects > roasted_weight/2:
+            defects = convertWeight(defects,0,1)
+        defects = max(0.0,min(defects,roasted_weight))
+        if 0 < defects < roasted_weight:
+            roasted_yield = roasted_weight - defects
+            self.roasted_yield.setText(f'{float2floatWeightVolume(roasted_yield):g}')
+            self.roasted_defects.setText(f'{float2floatWeightVolume(defects):g}')
+        else:
+            self.roasted_yield.setText('')
+            self.roasted_defects.setText('0')
+
+
+    @pyqtSlot()
+    def roasted_color_changed(self) -> None:
+        self.roasted_color.setText(comma2dot(self.roasted_color.text()))
+
+
+    @pyqtSlot()
+    def roasted_moisture_changed(self) -> None:
+        self.roasted_moisture.setText(comma2dot(self.roasted_moisture.text()))
+
+
+    @pyqtSlot()
+    def roasted_density_changed(self) -> None:
+        self.roasted_density.setText(comma2dot(self.roasted_density.text()))
+
+    @pyqtSlot()
+    def cupping_score_changed(self) -> None:
+        if self.cupping_score.text() == '0':
+            self.cupping_score.setText('')
+        else:
+            self.cupping_score.setText(str(float2float(float(comma2dot(self.cupping_score.text())), 2)).rstrip('0').rstrip('.'))
+
+
+    @pyqtSlot(int)
+    def remainingFilterChanged(self, _:int = 0) -> None:
+        self.aw.schedule_visible_filter = self.visible_filter.isChecked()
+        self.aw.schedule_day_filter = self.day_filter.isChecked()
+        self.aw.schedule_user_filter = self.user_filter.isChecked()
+        self.aw.schedule_machine_filter = self.machine_filter.isChecked()
+        self.updateScheduleWindow()
+
+
+    @staticmethod
+    def setChildrenFocusPolicy(parent:'QWidget', policy:Qt.FocusPolicy) -> None:
+        def recursiveSetChildFocusPolicy(parentQWidget:'QWidget') -> None:
+            for childQWidget in parentQWidget.findChildren(QWidget):
+                childQWidget.setFocusPolicy(policy)
+                recursiveSetChildFocusPolicy(childQWidget)
+        recursiveSetChildFocusPolicy(parent)
+
+
+    @staticmethod
+    def moveSelection(list_widget:BaseWidget, selected_widget:QWidget|None, direction_up:bool) -> None:
+        list_widget_count:int = list_widget.count()
+        if list_widget_count > 0:
+            next_selected_item_pos = (list_widget_count - 1 if direction_up else 0)
+            if selected_widget is not None:
+                selected_item_pos = list_widget.indexOf(selected_widget)
+                if selected_item_pos != -1:
+                    next_selected_item_pos = (selected_item_pos - 1 if direction_up else selected_item_pos + 1)
+            if next_selected_item_pos < list_widget_count:
+                next_selected_item:StandardItem|None = list_widget.itemAt(next_selected_item_pos)
+                if next_selected_item is not None:
+                    next_selected_item.selected.emit()
+
+
+    @pyqtSlot('QKeyEvent')
+    @override
+    def keyPressEvent(self, a0: 'QKeyEvent|None') -> None:
+        if a0 is not None:
+            k = int(a0.key())
+            if k == 16777235:    # UP
+                active_tab = self.TabWidget.currentIndex()
+                if active_tab == 0:
+                    self.moveSelection(self.drag_remaining, self.selected_remaining_item, True)
+                elif active_tab == 1:
+                    self.moveSelection(self.nodrag_roasted, self.selected_completed_item, True)
+            elif k == 16777237:  # DOWN
+                active_tab = self.TabWidget.currentIndex()
+                if active_tab == 0:
+                    self.moveSelection(self.drag_remaining, self.selected_remaining_item, False)
+                elif active_tab == 1:
+                    self.moveSelection(self.nodrag_roasted, self.selected_completed_item, False)
+            elif k == 16777234:  # LEFT
+                active_tab = self.TabWidget.currentIndex()
+                if active_tab == 1:
+                    self.TabWidget.setCurrentIndex(0)
+            elif k == 16777236:  # RIGHT
+                active_tab = self.TabWidget.currentIndex()
+                if active_tab == 0:
+                    self.TabWidget.setCurrentIndex(1)
+            elif k == 16777220:  # ENTER
+                active_tab = self.TabWidget.currentIndex()
+                if active_tab == 1 and self.selected_completed_item:
+                    modifiers = QApplication.keyboardModifiers()
+                    if modifiers == Qt.KeyboardModifier.AltModifier:  #alt click
+                        self.selected_completed_item.clicked.emit()
+                    else:
+                        self.selected_completed_item.selected.emit()
+            elif k == 46 and QApplication.keyboardModifiers() == Qt.KeyboardModifier.ControlModifier: # CMD-.
+                self.closeEvent()
+            else:
+                super().keyPressEvent(a0)
+
+
+    @pyqtSlot('QCloseEvent')
+    @override
+    def closeEvent(self, a0:'QCloseEvent|None' = None) -> None:
+        if self.aw.scheduler_auto_open and len(self.scheduled_items) > 0 and self.aw.plus_account is not None:
+            self.aw.scheduler_auto_open = False
+            string = QApplication.translate('Message','Roasts will not adjust the schedule<br>while the schedule window is closed')
+            # native dialog
+            if platform.system() == 'Darwin':
+                mbox = QMessageBox() # only without super this one shows the native dialog on macOS under Qt 6.6.2
+                # for native dialogs, text and informativetext need to be plain strings, no RTF incl. HTML instructions like <br>
+                mbox.setText(QApplication.translate('Message','Close Scheduler'))
+                mbox.setInformativeText(string.replace('<br>',' '))
+                mbox.setWindowModality(Qt.WindowModality.ApplicationModal) # for native dialog it has to be ApplicationModal
+                mbox.setStandardButtons(QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Close)
+                mbox.setDefaultButton(QMessageBox.StandardButton.Cancel)
+                reply = mbox.exec()
+            else:
+                # non-native dialog
+                reply = QMessageBox.warning(None, #self, # only without super this one shows the native dialog on macOS under Qt 6.6.2 and later
+                                QApplication.translate('Message','Close Scheduler'),string,
+                                QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Close, QMessageBox.StandardButton.Cancel)
+            if reply == int(QMessageBox.StandardButton.Close):
+                self.closeScheduler()
+            elif a0 is not None:
+                a0.ignore()
+        else:
+            self.closeScheduler()
+
+    def closeWithoutDialog(self) -> None:
+        try:
+            # wait until drag-and-drop and updateScheduleWindow operations are done
+            update_schedule_window_semaphore.tryAcquire(1)
+            self.closeScheduler()
+        finally:
+            if update_schedule_window_semaphore.available() < 1:
+                update_schedule_window_semaphore.release(1)
+
+    @pyqtSlot()
+    @override
+    def close(self) -> bool:
+        try:
+            # wait until drag-and-drop and updateScheduleWindow operations are done
+            update_schedule_window_semaphore.tryAcquire(1)
+            self.closeEvent(None)
+        finally:
+            if update_schedule_window_semaphore.available() < 1:
+                update_schedule_window_semaphore.release(1)
+        return True
+
+    def closeScheduler(self) -> None:
+        _log.debug('Scheduler.closeScheduler')
+        self.weight_manager.stop() # reset the WeightManager to clear all connected displays and disconnect from connected scales
+        self.aw.scheduled_items_uuids = self.get_scheduled_items_ids()
+        # remember Dialog geometry
+        settings = QSettings()
+        #save window geometry
+        settings.setValue('ScheduleGeometry', self.saveGeometry())
+        #save splitter states
+        QSettings().setValue('ScheduleMainSplitter',self.main_splitter.saveState()) # upper TODO/Completed splitter
+        remaining_splitter_sizes = self.remaining_splitter.sizes()
+        QSettings().setValue('ScheduleRemainingSplitterOpen', len(remaining_splitter_sizes)>0 and remaining_splitter_sizes[1]>0)
+        QSettings().setValue('ScheduleRemainingSplitter',self.remaining_splitter.saveState()) # lower TODO splitter
+        completed_splitter_sizes = self.completed_splitter.sizes()
+        QSettings().setValue('ScheduleCompletedSplitterOpen', len(completed_splitter_sizes)>0 and completed_splitter_sizes[1]>0)
+        QSettings().setValue('ScheduleCompletedSplitter',self.completed_splitter.saveState()) # lower Completed splitter
+        self.aw.scheduler_tasks_visible = self.task_frame.isVisible()
+        self.aw.scheduler_completed_details_visible = self.completed_details_scrollarea.isVisible()
+        self.aw.scheduler_filters_visible = self.completed_details_scrollarea.isVisible()
+        #free resources
+        self.aw.schedule_window = None
+        self.aw.scheduleFlag = False
+        self.aw.scheduleAction.setChecked(False)
+        self.aw.schedule_activeTab = self.TabWidget.currentIndex()
+        if self.aw.qmc.timeindex[6] == 0:
+            # if DROP is not set we clear the ScheduleItem UUID/Date
+            self.aw.qmc.scheduleID = None
+            self.aw.qmc.scheduleDate = None
+        self.aw.sendmessage(QApplication.translate('Message','Scheduler stopped'))
+        self.aw.disconnectPlusSignal.disconnect(self.updateScheduleWindow)
+        self.accept()
+
+    # returns True if the (visible filtered) schedule changed significantly by the updated new_schedule vs the previous old_schedule such that the
+    # user has to be informed
+    def schedule_changed_significantly(self, old_schedule:list[ScheduledItem], new_schedule:list[plus.stock.ScheduledItem]) -> bool:
+        today:datetime.date = datetime.datetime.now(datetime.UTC).astimezone().date()
+        for item in filter(lambda x: self.aw.scheduledItemsfilter(today, x, is_hidden(x)), old_schedule):
+            nitem = next((x for x in new_schedule if x.get('_id', None) == item.id), None)
+            if nitem is not None:
+                try:
+                    new_item = ScheduledItem.model_validate(nitem)
+                    # the item exists in the new schedule
+                    # check if there is a change in any of the significant attributes
+                    if (new_item.title != item.title or
+                                new_item.date != item.date or
+                                new_item.count != item.count or
+                                new_item.coffee != item.coffee or
+                                new_item.blend != item.blend or
+                                new_item.store != item.store or
+                                new_item.weight != item.weight or
+                                new_item.user != item.user or
+                                new_item.machine != item.machine or
+                                # only if not all roasts in updated schedule item are already "known" by the existing item the count can change
+                                not new_item.roasts.issubset(item.roasts)):
+                            # changes in the SchedulleItem attributes date, nickname, note, template or loss do not trigger a user warning as those are not considered significant
+                        return True
+                except Exception:   # pylint: disable=broad-except
+                    # validation error
+                    return True
+        return False
+
+    # updates the current schedule items by joining its roast with those received as part of a stock update from the server
+    # adding new items at the end
+    def updateScheduledItems(self) -> None:
+        today = datetime.datetime.now(datetime.UTC).astimezone().date()
+        # remove outdated items which remained in the open app from yesterday
+        current_schedule:list[ScheduledItem] = [si for si in self.scheduled_items if (si.date - today).days >= 0]
+        plus.stock.init()
+        schedule:list[plus.stock.ScheduledItem] = plus.stock.getSchedule() # the new just received schedule
+        get_total_roasting_time_and_title.cache_clear() # clear roasting time/title cache as the templates might have changed or one got removed (not detected by the changed_significantly predicate below
+        if self.schedule_changed_significantly(self.scheduled_items, schedule):
+            self.show_updated_widget()
+#        _log.debug('schedule: %s',schedule)
+        # sort current schedule by order cache (if any)
+        if self.aw.scheduled_items_uuids != []:
+            new_schedule:list[plus.stock.ScheduledItem] = []
+            for uuid in self.aw.scheduled_items_uuids:
+                item = next((s for s in schedule if '_id' in s and s['_id'] == uuid), None)
+                if item is not None:
+                    new_schedule.append(item)
+            # append all schedule items with uuid not in the order cache
+            schedule = new_schedule + [s for s in schedule if '_id' in s and s['_id'] not in self.aw.scheduled_items_uuids]
+            # reset order cache to prevent resorting until next restart as this cached sort order is only used on startup to
+            # initially reconstruct the previous order w.r.t. the server ordered schedule loaded from the stock received
+            self.aw.scheduled_items_uuids = []
+            # schedule now only contains items received from the server (in local order)
+        else:
+            # remove items from current_schedule that are not in (new) schedule
+            current_schedule = [si for si in current_schedule if next((s for s in schedule if '_id' in s and s['_id'] == si.id), None) is not None]
+        # iterate over new schedule
+        for s in schedule:
+            try:
+                schedule_item:ScheduledItem = ScheduledItem.model_validate(s)
+                idx_existing_item:int|None = next((i for i, si in enumerate(current_schedule) if si.id == schedule_item.id), None)
+                # take new item (but merge completed items)
+                if idx_existing_item is not None:
+                    # remember existing item
+                    existing_item = current_schedule[idx_existing_item]
+                    # replace the current item with the updated one from the server
+                    current_schedule[idx_existing_item] = schedule_item
+                    # merge the completed roasts and set them to the newly received item
+                    schedule_item.roasts.update(existing_item.roasts)
+                    # if all done, remove that item as it is completed
+                    if len(schedule_item.roasts) >= schedule_item.count:
+                        # remove existing_item from schedule if completed (#roasts >= count)
+                        current_schedule.remove(schedule_item)
+                elif (len(schedule_item.roasts) < schedule_item.count and
+                        (sum(1 for ci in self.completed_items if ci.scheduleID == schedule_item.id) < schedule_item.count)):
+                    # only if not yet enough roasts got registered in the local schedule_item.roasts
+                    # and there are not enough completed roasts registered locally belonging to this schedule_item by schedule_item.id
+                    # we append non-completed new schedule item to schedule
+                    # NOTE: this second condition is needed it might happen that the server did not receive (yet) all completed roasts
+                    #  for a ScheduleItem which was locally already removed as completed to prevent re-adding that same ScheduleItem
+                    #  on re-receiving the current schedule from the server as still received from the server,
+                    #  we check if locally we already have registered enough completed roasts in self.completed_items for this ScheduleItem
+                    current_schedule.append(schedule_item)
+            except Exception:  # pylint: disable=broad-except
+                pass # validation fails for outdated items
+        # update the list of schedule items to be displayed
+        self.scheduled_items = list(current_schedule)
+
+    @staticmethod
+    def getCompletedItems() -> list[CompletedItem]:
+        res:list[CompletedItem] = []
+        completed:list[CompletedItemDict] = get_all_completed()
+
+        for c in completed:
+            try:
+                res.append(CompletedItem.model_validate(c))
+            except Exception as e:  # pylint: disable=broad-except
+                _log.error(e)
+        return res
+
+    # sets the items values as properties of the current roast and links it back to this schedule item
+    def set_roast_properties(self, item:ScheduledItem, overwrite_nondefault_title:bool=True) -> None:
+        self.aw.qmc.scheduleID = item.id
+        self.aw.qmc.scheduleDate = item.date.isoformat()
+        if overwrite_nondefault_title or self.aw.qmc.title == QApplication.translate('Scope Title', 'Roaster Scope'):
+            self.aw.qmc.title = item.title
+            if not self.aw.qmc.flagstart or self.aw.qmc.title_show_always:
+                self.aw.qmc.setProfileTitle(self.aw.qmc.title)
+                self.aw.qmc.fig.canvas.draw()
+        prepared:list[float] = get_prepared(item)
+        # we take the next prepared item weight if any, else the planned batch size from the item
+        weight_unit_idx:int = weight_units.index(self.aw.qmc.weight[2])
+        schedule_item_weight = (prepared[0] if len(prepared)>0 else item.weight)
+        self.aw.qmc.weight = (convertWeight(schedule_item_weight, 1, weight_unit_idx), self.aw.qmc.weight[1], self.aw.qmc.weight[2])
+        # initialize all aplus properties
+        self.aw.qmc.plus_store = None
+        self.aw.qmc.plus_store_label = None
+        self.aw.qmc.plus_coffee = None
+        self.aw.qmc.plus_coffee_label = None
+        self.aw.qmc.plus_blend_label = None
+        self.aw.qmc.plus_blend_spec = None
+        self.aw.qmc.plus_blend_spec_labels = None
+        self.aw.qmc.beans = ''
+        # set store/coffee/blend
+        store_item:tuple[str, str]|None = plus.stock.getStoreItem(item.store, plus.stock.getStores())
+        if store_item is not None:
+            self.aw.qmc.plus_store = item.store
+            self.aw.qmc.plus_store_label = plus.stock.getStoreLabel(store_item)
+            item_coffee = item.coffee
+            if item_coffee is not None:
+                coffee = plus.stock.getCoffee(item_coffee)
+                if coffee is None:
+                    # coffee not in stock, we keep at least the coffee hr_id
+                    self.aw.qmc.plus_coffee = item_coffee
+                    self.aw.qmc.plus_coffee_label = ''
+                    self.aw.qmc.beans = ''
+                else:
+                    self.aw.qmc.plus_coffee = item_coffee
+                    self.aw.qmc.plus_coffee_label = plus.stock.coffeeLabel(coffee)
+                    self.aw.qmc.beans = plus.stock.coffee2beans(coffee)
+                    # set coffee attributes from stock (moisture, density, screen size):
+                    try:
+                        coffees:list[tuple[str, tuple[plus.stock.Coffee, plus.stock.StockItem]]] = plus.stock.getCoffees(weight_unit_idx, item.store)
+                        idx:int|None = plus.stock.getCoffeeStockPosition(item_coffee, item.store, coffees)
+                        if idx is not None:
+                            cd = plus.stock.getCoffeeCoffeeDict(coffees[idx])
+                            if 'moisture' in cd:
+                                self.aw.qmc.moisture_greens = cd['moisture']
+                            else:
+                                self.aw.qmc.moisture_greens = 0
+                            if 'density' in cd:
+                                self.aw.qmc.density = (cd['density'],'g',1.,'l')
+                            else:
+                                self.aw.qmc.density = (0,'g',1.,'l')
+                            screen_size_min:int = 0
+                            screen_size_max:int = 0
+                            try:
+                                if 'screen_size' in cd:
+                                    screen = cd['screen_size']
+                                    if 'min' in screen:
+                                        screen_size_min = int(screen['min'])
+                                    if 'max' in screen:
+                                        screen_size_max = int(screen['max'])
+                            except Exception:  # pylint: disable=broad-except
+                                pass
+                            self.aw.qmc.beansize_min = screen_size_min
+                            self.aw.qmc.beansize_max = screen_size_max
+                    except Exception as e:  # pylint: disable=broad-except
+                        _log.error(e)
+            elif item.blend is not None:
+                blends:list[plus.stock.BlendStructure] = plus.stock.getStandardBlends(weight_unit_idx, item.store)
+                # NOTE: a blend might not have an hr_id as is the case for all custom blends
+                blend_structure:plus.stock.BlendStructure|None = next((bs for bs in blends if plus.stock.getBlendId(bs) == item.blend), None)
+                if blend_structure is not None:
+                    blend:plus.stock.Blend = plus.stock.getBlendBlendDict(blend_structure, schedule_item_weight)
+                    self.aw.qmc.plus_blend_label = blend['label']
+                    self.aw.qmc.plus_blend_spec = cast(plus.stock.Blend, dict(blend)) # make a copy of the blend dict
+                    self.aw.qmc.plus_blend_spec_labels = [i.get('label','') for i in self.aw.qmc.plus_blend_spec['ingredients']]
+                    # remove labels from ingredients
+                    ingredients = []
+                    for i in self.aw.qmc.plus_blend_spec['ingredients']:
+                        entry = plus.stock.BlendIngredient(ratio = i['ratio'], coffee = i['coffee'])
+                        if 'ratio_num' in i:
+                            entry['ratio_num'] = i['ratio_num']
+                        if 'ratio_denom' in i:
+                            entry['ratio_denom'] = i['ratio_denom']
+                        ingredients.append(entry)
+                    self.aw.qmc.plus_blend_spec['ingredients'] = ingredients
+                    # set beans description
+                    blend_lines = plus.stock.blend2beans(blend_structure, weight_unit_idx, self.aw.qmc.weight[0])
+                    self.aw.qmc.beans = '\n'.join(blend_lines)
+                    # set blend attributes from stock (moisture, density, screen size):
+                    if 'moisture' in blend:
+                        self.aw.qmc.moisture_greens = blend['moisture']
+                    else:
+                        self.aw.qmc.moisture_greens = 0
+                    if 'density' in blend:
+                        self.aw.qmc.density = (blend['density'],'g',1.,'l')
+                    else:
+                        self.aw.qmc.density = (0,'g',1.,'l')
+                    if 'screen_min' in blend:
+                        self.aw.qmc.beansize_min = blend['screen_min']
+                    else:
+                        self.aw.qmc.beansize_min = 0
+                    if 'screen_max' in blend:
+                        self.aw.qmc.beansize_max = blend['screen_max']
+                    else:
+                        self.aw.qmc.beansize_max = 0
+
+
+    def set_selected_remaining_item_roast_properties(self) -> None:
+        if self.selected_remaining_item is not None:
+            self.set_roast_properties(self.selected_remaining_item.data)
+
+
+    def load_selected_remaining_item_template(self) -> None:
+        if self.selected_remaining_item is not None:
+            self.selected_remaining_item.load_template(self.aw)
+
+    def select_item(self, item:DragItem) -> None:
+        if self.selected_remaining_item != item:
+            previous_selected_item_data:ScheduledItem|None = None
+            previous_selected_id:str|None = None
+            if self.selected_remaining_item is not None:
+                previous_selected_item_data = self.selected_remaining_item.data
+                previous_selected_id = previous_selected_item_data.id
+                # clear previous selection
+                self.selected_remaining_item.deselect()
+            # on selecting the item we only load the template if the item.data.id is different to the previous selected one
+            item.select(self.aw, load_template = previous_selected_id != item.data.id)
+            self.selected_remaining_item = item
+            if self.aw.qmc.flagon and self.aw.qmc.timeindex[6] == 0 and (previous_selected_item_data is None or (previous_selected_item_data != item.data)):
+                # while sampling and DROP not yet set, we update the roast properties on schedule item changes
+                self.set_selected_remaining_item_roast_properties()
+
+    @pyqtSlot()
+    def prepared_items_changed(self) -> None:
+        sender = self.sender()
+        if sender is not None and isinstance(sender, DragItem):
+            self.set_next()
+
+    @pyqtSlot()
+    def remaining_items_selection_changed(self) -> None:
+        sender = self.sender()
+        if not self.being_updated and sender is not None and isinstance(sender, DragItem):
+            self.select_item(sender)
+
+    @pyqtSlot()
+    def register_roast(self) -> None:
+        sender = self.sender()
+        if sender is not None and isinstance(sender, DragItem):
+            # updates the roast properties from the given ScheduleItem
+            self.set_roast_properties(sender.data, overwrite_nondefault_title=False)
+            self.aw.qmc.safesaveflag = True
+
+            # send updated roast to server
+            plus.controller.updateSyncRecordHashAndSync()
+
+            # register the current loaded roast profile in the
+            # schedule item linked to the given DragItem and add a corresponding
+            # completed roast item
+            self.register_remaining_item(sender)
+
+
+    # weight in kg
+    def set_green_weight(self, uuid:str, weight:float) -> None:
+        item:ScheduledItem|None = next((si for si in self.scheduled_items if si.id == uuid), None)
+        if item is not None:
+            add_prepared(self.aw.plus_account_id, item, weight)
+            self.updateRemainingItems()
+        self.set_next(True)
+
+    # weight in kg
+    def set_roasted_weight(self, uuid:str, weight:float) -> None:
+        item:CompletedItem|None = next((ci for ci in self.completed_items if ci.roastUUID.hex == uuid), None)
+        if item is not None:
+            try:
+                if not plus.config.connected and self.aw.plus_account is not None:
+                    # we lost connection, let's try to reconnect
+                    plus.controller.connect(clear_on_failure=False, interactive=False) # ensure we are connected (reconnect if needed)
+                if plus.config.connected:
+                    changes:dict[str, Any] = {
+                        'end_weight': weight,
+                        'roast_id': item.roastUUID.hex,
+                        'modified_at': epoch2ISO8601(time.time())}
+                    r = plus.connection.sendData(plus.config.roast_url, changes, 'POST')
+                    r.raise_for_status()
+                    # update successfully transmitted, we now also add/update the CompletedItem linked to self.selected_completed_item
+                    item.update_completed_item(self.aw, changes)
+                    item.measured = True
+                    # if previous selected roast is loaded we write the changes to its roast properties
+                    if item.roastUUID.hex == self.aw.qmc.roastUUID:
+                        self.updates_roast_properties_from_completed(item)
+# this add_completed is already done by the above update_completed_item!!
+#                    # we update the completed_roasts_cache entry
+#                    completed_item_dict = item.model_dump(mode='json')
+#                    if 'prefix' in completed_item_dict:
+#                        del completed_item_dict['prefix']
+#                    add_completed(self.aw.plus_account_id, cast(CompletedItemDict, completed_item_dict))
+                    self.updateRoastedItems() # updates widgets
+            except Exception as e:  # pylint: disable=broad-except
+                # updating data to server failed
+                _log.error(e)
+                self.aw.sendmessageSignal.emit(QApplication.translate('Message', 'Updating completed roast properties failed'), True, None)
+        self.set_next(True)
+
+    def next_not_prepared_item(self) -> GreenWeightItem|None:
+        today:datetime.date = datetime.datetime.now(datetime.UTC).astimezone().date()
+        for item in filter(lambda x: self.aw.scheduledItemsfilter(today, x, is_hidden(x)), self.scheduled_items):
+            prepared:int = len(get_prepared(item))
+            roasted:int = len(item.roasts)
+            remaining = item.count - roasted
+            if remaining > prepared:
+                weight_unit_idx = weight_units.index(self.aw.qmc.weight[2])
+                blend_name: str|None
+                blend_name, descriptions = scheduleditem_beans_descriptions(weight_unit_idx, item)
+                return GreenWeightItem(
+                    uuid = item.id,
+                    title = item.title,
+                    blend_name = blend_name,
+                    description = scheduleditem_beans_description(weight_unit_idx, item),
+                    descriptions = descriptions,
+                    position = ('' if item.count == 1 else f'{prepared + roasted + 1}/{item.count}'),
+                    weight = item.weight, # in kg
+                    weight_estimate = 0, # in kg
+                    weight_unit_idx = weight_unit_idx,
+                    callback = self.set_green_weight
+                )
+        return None
+
+    def is_only_not_completed_item(self, uuid:str) -> bool:
+        # latest roast first
+        item:CompletedItem|None = next((ci for ci in self.completed_items if not ci.measured), None)
+        return (item is not None and item.roastUUID.hex == uuid)
+
+    def next_not_completed_item(self) -> RoastedWeightItem|None:
+        completed_items = self.completed_items
+        today = datetime.datetime.now(datetime.UTC).astimezone().date()
+        todays_completed_items = [ci for ci in self.completed_items if ci.roastdate.astimezone().date() == today]
+        if len(todays_completed_items) != 0:
+            # in case there are completed items for todays sessions, the WeightManager ignores all items of the previous session
+            completed_items = todays_completed_items
+        # oldest roast first
+        item:CompletedItem|None = next((ci for ci in reversed(completed_items) if not ci.measured), None)
+        if item is not None:
+            weight_unit_idx = weight_units.index(self.aw.qmc.weight[2])
+            position = f'{item.sequence_id}/{item.count}'
+            return RoastedWeightItem(
+                    uuid = item.roastUUID.hex,
+                    title = item.title,
+                    blend_name = item.blend_label,
+                    description = completeditem_beans_description(weight_unit_idx, item),
+                    descriptions = completeditem_beans_descriptions(item),
+                    position = position,
+                    weight = item.batchsize, # in kg
+                    weight_estimate = item.weight_estimate, # in kg
+                    weight_unit_idx = weight_unit_idx,
+                    callback = self.set_roasted_weight
+            )
+        return None
+
+    # returns number of visible scheduled items
+    def updateRemainingItems(self) -> int:
+        self.drag_remaining.clearItems()
+        today:datetime.date = datetime.datetime.now(datetime.UTC).astimezone().date()
+        drag_items_first_label_max_width = 0
+        drag_first_labels = []
+        selected_item:DragItem|None = None
+        for item in filter(lambda x: self.aw.scheduledItemsfilter(today, x, is_hidden(x)), self.scheduled_items):
+            drag_item = DragItem(item,
+                self.aw,
+                today,
+                self.aw.plus_user_id,
+                self.aw.qmc.roastertype_setup.strip())
+            # remember selection
+            if self.selected_remaining_item is not None and self.selected_remaining_item.data.id == item.id:
+                selected_item = drag_item
+            # take the maximum width over all first labels of the DragItems
+            drag_first_label = drag_item.getFirstLabel()
+            drag_first_labels.append(drag_first_label)
+            drag_items_first_label_max_width = max(drag_items_first_label_max_width, drag_first_label.sizeHint().width())
+            # connect the selection signal
+            drag_item.selected.connect(self.remaining_items_selection_changed)
+            drag_item.prepared.connect(self.prepared_items_changed)
+            drag_item.registerRoast.connect(self.register_roast)
+            # append item to list
+            self.drag_remaining.add_item(drag_item)
+        if selected_item is not None:
+            # reselect the previously selected item
+            self.select_item(selected_item)
+        else:
+            # otherwise select first item if schedule is not empty
+            self.selected_remaining_item = None
+            if self.drag_remaining.count() > 0:
+                first_item:DragItem|None = self.drag_remaining.itemAt(0)
+                if first_item is not None:
+                    self.select_item(first_item)
+        # we set the first label width to the maximum first label width of all items
+        for first_label in drag_first_labels:
+            first_label.setFixedWidth(drag_items_first_label_max_width)
+        # updates the tabs tooltip
+        scheduled_items:list[ScheduledItem] = self.drag_remaining.get_item_data()
+        if len(scheduled_items) > 0:
+            todays_items:list[ScheduledItem] = []
+            later_items:list[ScheduledItem] = []
+            todays_items_roasting_times:list[float|None] = [] # roasting times in seconds of todays schedule item templates if any, otherwise None
+            later_items_roasting_times:list[float|None] = []  # roasting times in seconds of next sessions schedule item templates if any, otherwise None
+            for si in scheduled_items:
+                roasting_time:float|None = None
+                if si.template is not None:
+                    roasting_time,_ = get_total_roasting_time_and_title(si.template.hex)
+                if si.date == today:
+                    todays_items.append(si)
+                    todays_items_roasting_times.extend([roasting_time]*si.count)
+                else:
+                    later_items.append(si)
+                    later_items_roasting_times.extend([roasting_time]*si.count)
+
+            batches_today, batches_later = (sum(max(0, si.count - len(si.roasts)) for si in items) for items in (todays_items, later_items))
+            # total weight in kg
+            total_weight_today, total_weight_later = (sum(si.weight * max(0, (si.count - len(si.roasts))) for si in items) for items in (todays_items, later_items))
+            weight_unit_idx = weight_units.index(self.aw.qmc.weight[2])
+            one_batch_label = QApplication.translate('Message', '1 batch')
+            if batches_today > 0:
+                batches_today_label = (one_batch_label if batches_today == 1 else QApplication.translate('Message', '{} batches').format(batches_today))
+                todays_total_roasttime_estimate = locale_format_timedelta(self.aw.locale_str, total_roasting_time(todays_items_roasting_times))
+                todays_batches = f'{batches_today_label} • {render_weight(total_weight_today, 1, weight_unit_idx)} • {todays_total_roasttime_estimate}'
+            else:
+                todays_batches = ''
+            if batches_later > 0:
+                batches_later_label = (one_batch_label if batches_later == 1 else QApplication.translate('Message', '{} batches').format(batches_later))
+                later_total_roasttime_estimate = locale_format_timedelta(self.aw.locale_str, total_roasting_time(later_items_roasting_times))
+                later_batches = f'{batches_later_label} • {render_weight(total_weight_later, 1, weight_unit_idx)} • {later_total_roasttime_estimate}'
+            else:
+                later_batches = ''
+            self.TabWidget.setTabToolTip(0, f"<p style='white-space:pre'><b>{todays_batches}</b>{('<br>' if (batches_today > 0 and batches_later > 0) else '')}{later_batches}</p>")
+            # update app badge number
+            self.setAppBadge(batches_today + batches_later)
+        else:
+            self.TabWidget.setTabToolTip(0,'')
+            # update app badge number
+            self.setAppBadge(0)
+            # clear selection and reset scheduleID
+            self.selected_remaining_item = None
+            if self.aw.qmc.timeindex[6] == 0:
+                # if DROP is not set we clear the ScheduleItem UUID/Date
+                self.aw.qmc.scheduleID = None
+                self.aw.qmc.scheduleDate = None
+        return len(scheduled_items)
+
+    @staticmethod
+    def setAppBadge(number:int) -> None:
+        try:
+            app = QApplication.instance()
+            app.setBadgeNumber(max(0, number)) # type: ignore[union-attr] # "QCoreApplication" has no attribute "setBadgeNumber"
+        except Exception: # pylint: disable=broad-except
+            pass # setBadgeNumber only supported by Qt 6.5 and newer
+
+    # returns number of open items
+    @staticmethod
+    def openScheduleItemsCount(aw:'ApplicationWindow') -> int:
+        try:
+            plus.stock.init()
+            schedule:list[plus.stock.ScheduledItem] = plus.stock.getSchedule()
+            scheduled_items:list[ScheduledItem] = []
+            for item in schedule:
+                try:
+                    schedule_item:ScheduledItem = ScheduledItem.model_validate(item)
+                    scheduled_items.append(schedule_item)
+                except Exception:  # pylint: disable=broad-except
+                    pass # validation fails for outdated items
+            today:datetime.date = datetime.datetime.now(datetime.UTC).astimezone().date()
+            return sum(max(0, x.count - len(x.roasts)) for x in scheduled_items if aw.scheduledItemsfilter(today, x, is_hidden(x)))
+        except Exception:  # pylint: disable=broad-except
+#            _log.exception(e) # this can raise an exception on macOS if Artisan is started using sudo as the logging framework might not fully initialized
+            return 0
+
+    @pyqtSlot()
+    def updateFilters(self) -> None:
+        nickname:str|None = plus.connection.getNickname()
+        if nickname is not None and nickname != '':
+            self.user_filter.setText(nickname)
+            self.user_filter.setToolTip(QApplication.translate('Plus','List only items scheduled for the current user {}').format(nickname))
+            self.user_filter.show()
+        else:
+            self.user_filter.hide()
+        machine_name:str = self.aw.qmc.roastertype_setup.strip()
+        if machine_name != '':
+            self.machine_filter.setText(machine_name)
+            self.machine_filter.show()
+            self.machine_filter.setToolTip(QApplication.translate('Plus','List only items scheduled for the current machine {}').format(machine_name))
+        else:
+            self.machine_filter.hide()
+
+
+    def set_details(self, item:NoDragItem|None) -> None:
+        if item is None:
+            self.roasted_weight.setText('')
+            self.roasted_weight.setPlaceholderText('')
+            self.roasted_color.setText('')
+            self.roasted_yield.setText('')
+            self.roasted_yield.setPlaceholderText('')
+            self.roasted_defects.setText('')
+            self.roasted_density.setText('')
+            self.roasted_moisture.setText('')
+            self.roasted_notes.setPlainText('')
+            self.cupping_score.setText('')
+            self.cupping_notes.setPlainText('')
+            self.completed_details_group.setEnabled(False)
+        else:
+            data = item.data
+            converted_estimate = convertWeight(data.weight_estimate, 1, weight_units.index(self.aw.qmc.weight[2]))
+            converted_estimate_str = f'{float2floatWeightVolume(converted_estimate):g}'
+            self.roasted_weight.setPlaceholderText(converted_estimate_str)
+            converted_weight = convertWeight(data.weight, 1, weight_units.index(self.aw.qmc.weight[2]))
+            converted_weight_str = f'{float2floatWeightVolume(converted_weight):g}'
+            if not data.measured and converted_weight_str != converted_estimate_str:
+                # weight might have been set on server by another client
+                data.measured = True
+                # we update the completed_roasts_cache entry
+                completed_item_dict = data.model_dump(mode='json')
+                if 'prefix' in completed_item_dict:
+                    del completed_item_dict['prefix']
+                add_completed(self.aw.plus_account_id, cast(CompletedItemDict, completed_item_dict))
+            if data.measured:
+                self.roasted_weight.setText(converted_weight_str)
+                self.roasted_weight_suffix.setEnabled(True)
+                self.roasted_yield.setPlaceholderText(converted_weight_str)
+            else:
+                self.roasted_weight.setText('')
+                self.roasted_weight_suffix.setEnabled(False)
+                self.roasted_yield.setPlaceholderText(self.roasted_weight.placeholderText())
+            converted_defects_weight = convertWeight(data.defects_weight, 1, weight_units.index(self.aw.qmc.weight[2]))
+            converted_defects_weight_str = f'{float2floatWeightVolume(converted_defects_weight):g}'
+            self.roasted_defects.setText(converted_defects_weight_str)
+            if data.defects_weight > 0:
+                roasted_yield = data.weight - data.defects_weight
+                converted_yield = convertWeight(roasted_yield, 1, weight_units.index(self.aw.qmc.weight[2]))
+                converted_yield_str = f'{float2floatWeightVolume(converted_yield):g}'
+                self.roasted_yield.setText(converted_yield_str)
+            else:
+                self.roasted_yield.setText('')
+            self.roasted_color.setText(float2str(data.color))
+            self.roasted_density.setText(f'{data.density:g}')
+            self.roasted_moisture.setText(f'{data.moisture:g}')
+            self.roasted_notes.setPlainText(data.roastingnotes)
+            if data.cupping_score == 50:
+                self.cupping_score.setText('')
+            else:
+                self.cupping_score.setText(str(float2float(data.cupping_score, 2)).rstrip('0').rstrip('.'))
+            self.cupping_notes.setPlainText(data.cuppingnotes)
+            self.completed_details_group.setEnabled(True)
+
+
+    # computes the difference between the UI NoDragItem and the linked CompletedItem
+    # and returns only changed attributes as partial sync_record (lacking the roast_id)
+    # NOTE: resulting dict values may be None to represent default values (removing corresponding data item on the server)
+    def changes(self, item:NoDragItem) -> dict[str, Any]:
+        data = item.data
+        changes:dict[str, Any] = {}
+        try:
+            converted_data_weight = convertWeight(data.weight, 1, weight_units.index(self.aw.qmc.weight[2]))
+            converted_data_weight_str = f'{float2floatWeightVolume(converted_data_weight):g}'
+            roasted_weight_text:str = self.roasted_weight.text()
+            if roasted_weight_text == '':
+                roasted_weight_text = '0'
+            if roasted_weight_text != '':
+                roasted_weight_value_str = comma2dot(roasted_weight_text)
+                if converted_data_weight_str != roasted_weight_value_str:
+                    # on textual changes, send updated weight
+                    changes['end_weight'] = convertWeight(float(roasted_weight_value_str), weight_units.index(self.aw.qmc.weight[2]), 1)
+        except Exception:  # pylint: disable=broad-except
+            pass
+        try:
+            converted_data_defects_weight = convertWeight(data.defects_weight, 1, weight_units.index(self.aw.qmc.weight[2]))
+            converted_data_defects_weight_str = f'{float2floatWeightVolume(converted_data_defects_weight):g}'
+            roasted_defects_text:str = self.roasted_defects.text()
+            if roasted_defects_text != '':
+                roasted_defects_value_str = comma2dot(roasted_defects_text)
+                if converted_data_defects_weight_str != roasted_defects_value_str:
+                    # on textual changes, send updated weight
+                    changes['defects_weight'] = convertWeight(float(roasted_defects_value_str), weight_units.index(self.aw.qmc.weight[2]), 1)
+        except Exception:  # pylint: disable=broad-except
+            pass
+        current_roasted_color = float2float(self.roasted_color.text())
+        if current_roasted_color != data.color:
+            if current_roasted_color == 0:
+                changes['ground_color'] = None # remove entry on server as this is the default value
+            else:
+                changes['ground_color'] = current_roasted_color
+        current_roasted_density = float(self.roasted_density.text())
+        if current_roasted_density != data.density:
+            if current_roasted_density == 0:
+                changes['density_roasted'] = None # remove entry on server as this is the default value
+            else:
+                changes['density_roasted'] = current_roasted_density
+        current_roasted_moisture = float(self.roasted_moisture.text())
+        if current_roasted_moisture != data.moisture:
+            if current_roasted_moisture == 0:
+                changes['moisture'] = None # remove entry on server as this is the default value
+            else:
+                changes['moisture'] = current_roasted_moisture
+        current_notes = self.roasted_notes.toPlainText().strip()
+        if current_notes != data.roastingnotes:
+            if current_notes == '':
+                changes['notes'] = None # remove entry on server as this is the default value
+            else:
+                changes['notes'] = current_notes
+        current_cupping_score = (50 if self.cupping_score.text() == '' else float2float(float(self.cupping_score.text()), 2))
+        if current_cupping_score != data.cupping_score:
+            if current_cupping_score == 50:
+                changes['cupping_score'] = None # remove entry on server as this is the default value
+            else:
+                changes['cupping_score'] = current_cupping_score
+        current_cupping_notes = self.cupping_notes.toPlainText().strip()
+        if current_cupping_notes != data.cuppingnotes:
+            if current_cupping_notes == '':
+                changes['cupping_notes'] = None # remove entry on server as this is the default value
+            else:
+                changes['cupping_notes'] = current_cupping_notes
+        return changes
+
+
+    # updates the changeable properties of the currently loaded profiles roast properties from the given CompletedItem
+    def updates_roast_properties_from_completed(self, ci:CompletedItem) -> None:
+        # roastUUID has to agree and roastdate is fixed
+        if ci.roastUUID.hex == self.aw.qmc.roastUUID:
+            wunit:str = self.aw.qmc.weight[2]
+            wout = convertWeight(
+                ci.weight,
+                weight_units.index('Kg'),
+                weight_units.index(wunit)
+            )
+            self.aw.qmc.weight = (self.aw.qmc.weight[0], wout, self.aw.qmc.weight[2])
+            wdefects = convertWeight(
+                ci.defects_weight,
+                weight_units.index('Kg'),
+                weight_units.index(wunit)
+            )
+            self.aw.qmc.roasted_defects_weight = wdefects
+            self.aw.qmc.ground_color = ci.color
+            self.aw.qmc.moisture_roasted = ci.moisture
+            self.aw.qmc.density_roasted = (ci.density, self.aw.qmc.density_roasted[1], self.aw.qmc.density_roasted[2], self.aw.qmc.density_roasted[3])
+            self.aw.qmc.roastingnotes = ci.roastingnotes
+            cupping_value = self.aw.qmc.calcFlavorChartScore()
+            if ci.cupping_score != cupping_value:
+                # as cupping score is only computed from the single values we try to keep things as if the resulting score did not change
+                self.aw.qmc.setFlavorChartScore(ci.cupping_score)
+            self.aw.qmc.cuppingnotes = ci.cuppingnotes
+            # not updated:
+            #        roastbatchnr
+            #        roastbatchprefix
+            #        title
+            # don't update the coffee/blend/store labels as we do not maintain the corresponding hr_ids in CompletedItems
+            #        coffee_label
+            #        blend_label
+            #        store_label
+            #        batchsize
+
+
+
+    @pyqtSlot()
+    def completed_item_clicked(self) -> None:
+        sender = self.sender()
+        if not self.aw.qmc.flagon and sender is not None and isinstance(sender, NoDragItem):
+            # Artisan is OFF
+            # we try to load the clicked completed items profile if not yet loaded
+            sender_roastUUID = sender.data.roastUUID.hex
+            if sender_roastUUID != self.aw.qmc.roastUUID:
+                item_path = plus.register.getPath(sender_roastUUID)
+                if item_path is not None and os.path.isfile(item_path):
+                    try:
+                        self.aw.loadFileSignal.emit(item_path)
+                    except Exception as e: # pylint: disable=broad-except
+                        _log.exception(e)
+
+
+    def cancel_completed_item_edit(self) -> None:
+        if self.selected_completed_item is not None:
+            self.selected_completed_item.deselect()
+            self.clearCompletedItemSelection()
+
+    @pyqtSlot()
+    def completed_items_selection_changed(self) -> None:
+        sender = self.sender()
+        if sender is not None and isinstance(sender, NoDragItem):
+            splitter_sizes = self.completed_splitter.sizes()
+            if plus.controller.is_on():
+                # editing is only possible if artisan.plus is connected or at least ON
+                # save previous edits and clear previous selection
+                if self.selected_completed_item is not None:
+                    # compute the difference between the 5 property edit widget values and the corresponding CompletedItem values linked
+                    # to the currently selected NoDragItem as sync_record
+                    changes:dict[str, Any] = self.changes(self.selected_completed_item)
+                    if changes:
+                        # something got edited, we have to send the changes back to the server
+                        # first add essential metadata
+                        changes['roast_id'] = self.selected_completed_item.data.roastUUID.hex
+                        changes['modified_at'] = epoch2ISO8601(time.time())
+                        try:
+                            plus.controller.connect(clear_on_failure=False, interactive=False)
+                            r = plus.connection.sendData(plus.config.roast_url, changes, 'POST')
+                            r.raise_for_status()
+                            # update successfully transmitted, we now also add/update the CompletedItem linked to self.selected_completed_item
+                            self.selected_completed_item.data.update_completed_item(self.aw, changes)
+                            # if previous selected roast is loaded we write the changes to its roast properties
+                            if self.selected_completed_item.data.roastUUID.hex == self.aw.qmc.roastUUID:
+                                self.updates_roast_properties_from_completed(self.selected_completed_item.data)
+                        except Exception as e:  # pylint: disable=broad-except
+                            # updating data to server failed, we keep the selection
+                            _log.error(e)
+                            self.aw.sendmessageSignal.emit(QApplication.translate('Message', 'Updating completed roast properties failed'), True, None)
+                            # we keep the selection
+                            return
+                    # we update the completed_roasts_cache entry
+                    completed_item_dict = self.selected_completed_item.data.model_dump(mode='json')
+                    add_completed(self.aw.plus_account_id, cast(CompletedItemDict, completed_item_dict))
+                    # in case data was not edited or updating the edits to server succeeded we
+                    # clear previous selection
+                    self.selected_completed_item.deselect()
+                    # and update its labels as its measured state might have changed
+                    self.selected_completed_item.update_labels()
+                    # update next weight item, as the current one might have been completed by closing this edit
+                    self.set_next()
+                if sender != self.selected_completed_item:
+                    if plus.sync.getSync(sender.data.roastUUID.hex) is None:
+                        _log.info('completed roast %s could not be edited as corresponding sync record is missing', sender.data.roastUUID.hex)
+                        # as we cannot edit this entry we mark it as completed by setting the weight_estimate as weight locally, not to block the Batch Manager
+                        self.set_roasted_weight(sender.data.roastUUID.hex, sender.data.weight_estimate)
+                    else:
+                        # fetch data if roast is participating in the sync record game
+                        profile_data: dict[str, Any]|None = plus.sync.fetchServerUpdate(sender.data.roastUUID.hex, return_data = True)
+                        if profile_data is not None:
+                            # update completed items data from received profile_data
+                            updated:bool = sender.data.update_completed_item(self.aw, profile_data)
+                            # on changes, update loaded profile if saved earlier
+                            if (updated and self.aw.curFile is not None and sender.data.roastUUID.hex == self.aw.qmc.roastUUID and
+                                    self.aw.qmc.plus_file_last_modified is not None and 'modified_at' in profile_data and
+                                    ISO86012epoch(profile_data['modified_at']) > self.aw.qmc.plus_file_last_modified):
+                                plus.sync.applyServerUpdates(profile_data)
+                                # we update the loaded profile timestamp to avoid receiving the same update again
+                                self.aw.qmc.plus_file_last_modified = time.time()
+                            # start item editing mode
+                            sender.select()
+                            self.selected_completed_item = sender
+                            # update UI item
+                            self.set_details(sender)
+                            if len(splitter_sizes)>1:
+                                # enable focus on input widgets
+                                self.roasted_weight.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+                                self.roasted_yield.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+                                self.roasted_defects.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+                                self.roasted_color.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+                                self.roasted_density.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+                                self.roasted_moisture.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+                                self.roasted_notes.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+                                self.roasted_moisture.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+                                self.cupping_score.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+                                self.cupping_notes.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+                                if not self.completed_details_scrollarea.isVisible():
+                                    self.completed_details_scrollarea.show()
+                                    self.update()
+                                if splitter_sizes[1] == 0:
+                                    if self.completed_splitter_open_height != 0:
+                                        self.completed_splitter.setSizes([
+                                            sum(splitter_sizes) - self.completed_splitter_open_height,
+                                            self.completed_splitter_open_height])
+                                    else:
+                                        second_split_widget = self.completed_splitter.widget(1)
+                                        if second_split_widget is not None:
+                                            max_details_height = second_split_widget.sizeHint().height()
+                                            self.completed_splitter.setSizes([
+                                                sum(splitter_sizes) - max_details_height,
+                                                max_details_height])
+                                else:
+                                    self.completed_splitter_open_height = splitter_sizes[1]
+                        else:
+                            self.aw.sendmessageSignal.emit(QApplication.translate('Message', 'Fetching completed roast properties failed'), True, None)
+                else:
+                    self.clearCompletedItemSelection()
+            # NOTE: this branch is not reached any longer as if not connected to artisan.plus, the schedule window remains empty with a note
+            elif not self.aw.qmc.flagon:
+                # plus controller is not on and Artisan is OFF we first close a potentially pending edit section and then try to load that profile
+                if self.selected_completed_item is not None:
+                    # we terminate editing mode if offline and reset selection
+                    self.selected_completed_item = None
+                    # clear details split view
+                    self.set_details(None)
+                    # remember open height (might be user set)
+                    if len(splitter_sizes)>1:
+                        self.completed_splitter_open_height = splitter_sizes[1]
+                    # close details split
+                    self.completed_splitter.setSizes([sum(splitter_sizes),0])
+                    # disable focus on input widgets to return keyboard focus to parent
+                    self.roasted_weight.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                    self.roasted_yield.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                    self.roasted_defects.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                    self.roasted_color.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                    self.roasted_density.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                    self.roasted_moisture.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                    self.roasted_notes.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                    self.cupping_score.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                    self.cupping_notes.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                    if self.completed_details_scrollarea.isVisible():
+                        self.completed_details_scrollarea.hide()
+                # we try to load the clicked completed items profile if not yet loaded
+                sender_roastUUID = sender.data.roastUUID.hex
+                if sender_roastUUID != self.aw.qmc.roastUUID:
+                    item_path = plus.register.getPath(sender_roastUUID)
+                    if item_path is not None and os.path.isfile(item_path):
+                        try:
+                            self.aw.loadFile(item_path)
+                        except Exception as e: # pylint: disable=broad-except
+                            _log.exception(e)
+
+    def clearCompletedItemSelection(self) -> None:
+        if self.selected_completed_item is not None:
+            splitter_sizes = self.completed_splitter.sizes()
+            # edits completed, reset selection
+            self.selected_completed_item = None
+            # clear details split view
+            self.set_details(None)
+            # remember open height (might be user set)
+            if len(splitter_sizes)>1:
+                self.completed_splitter_open_height = splitter_sizes[1]
+            # close details split
+            self.completed_splitter.setSizes([sum(splitter_sizes),0])
+            # disable focus on input widgets to return keyboard focus to parent
+            self.roasted_weight.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.roasted_yield.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.roasted_defects.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.roasted_color.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.roasted_density.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.roasted_moisture.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.roasted_notes.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.cupping_score.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            self.cupping_notes.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            if self.completed_details_scrollarea.isVisible():
+                self.completed_details_scrollarea.hide()
+
+    def updateRoastedItems(self) -> None:
+        self.nodrag_roasted.clearItems()
+        now:datetime.datetime = datetime.datetime.now(datetime.UTC)
+        nodrag_items_first_label_max_width = 0
+        nodrag_first_labels = []
+        new_selected_completed_item:NoDragItem|None = None
+        for item in self.completed_items:
+            nodrag_item = NoDragItem(item, self.aw, now)
+            # take the maximum width over all first labels of the DragItems
+            nodrag_first_label = nodrag_item.getFirstLabel()
+            nodrag_first_labels.append(nodrag_first_label)
+            nodrag_items_first_label_max_width = max(nodrag_items_first_label_max_width, nodrag_first_label.sizeHint().width())
+            # connect the selection signal
+            nodrag_item.clicked.connect(self.completed_item_clicked)
+            nodrag_item.selected.connect(self.completed_items_selection_changed)
+            # append item to list
+            self.nodrag_roasted.add_item(nodrag_item)
+            # check if this is the selected item
+            if self.selected_completed_item is not None and self.selected_completed_item.data.roastUUID == item.roastUUID:
+                new_selected_completed_item = nodrag_item
+        # we set the first label width to the maximum first label width of all items
+        for first_label in nodrag_first_labels:
+            first_label.setFixedWidth(nodrag_items_first_label_max_width)
+        # update selected item if any
+        self.selected_completed_item = new_selected_completed_item
+        if self.selected_completed_item is not None:
+            self.selected_completed_item.select()
+
+        # updates the tabs tooltip
+        today:datetime.date = now.astimezone().date() # today in local timezone
+        completed_items:list[CompletedItem] = self.completed_items
+        if len(completed_items) > 0:
+            todays_items:list[CompletedItem] = []
+            earlier_items:list[CompletedItem] = []
+            for ci in completed_items:
+                if ci.roastdate.astimezone().date() == today:
+                    todays_items.append(ci)
+                else:
+                    earlier_items.append(ci)
+            batches_today, batches_earlier = (len(items) for items in (todays_items, earlier_items))
+            # total batchsize in kg
+            total_batchsize_today, total_batchsize_earlier = (sum(si.batchsize for si in items) for items in (todays_items, earlier_items))
+            weight_unit_idx = weight_units.index(self.aw.qmc.weight[2])
+            one_batch_label = QApplication.translate('Message', '1 batch')
+            if batches_today > 0:
+                todays_total_roasttime_str = ''
+                todays_total_roasttime = sum(ti.roasttime for ti in todays_items)
+                if todays_total_roasttime>0:
+                    todays_total_roasttime_str = f' • {locale_format_timedelta(self.aw.locale_str, todays_total_roasttime)}'
+                todays_batches_label = (one_batch_label if batches_today == 1 else QApplication.translate('Message', '{} batches').format(batches_today))
+                todays_batches = f'{todays_batches_label} • {render_weight(total_batchsize_today, 1, weight_unit_idx)}{todays_total_roasttime_str}'
+            else:
+                todays_batches = ''
+            if batches_earlier > 0:
+                earlier_total_roasttime_str = ''
+                earlier_total_roasttime = sum(ti.roasttime for ti in earlier_items)
+                if earlier_total_roasttime>0:
+                    earlier_total_roasttime_str = f' • {locale_format_timedelta(self.aw.locale_str, earlier_total_roasttime)}'
+                earlier_batches_label = (one_batch_label if batches_earlier == 1 else QApplication.translate('Message', '{} batches').format(batches_earlier))
+                earlier_batches = f'{earlier_batches_label} • {render_weight(total_batchsize_earlier, 1, weight_unit_idx)}{earlier_total_roasttime_str}'
+            else:
+                earlier_batches = ''
+            self.TabWidget.setTabToolTip(1, f"<p style='white-space:pre'><b>{todays_batches}</b>{('<br>' if (batches_today > 0 and batches_earlier > 0) else '')}{earlier_batches}</p>")
+        else:
+            self.TabWidget.setTabToolTip(1, '')
+
+    # returns True if there is a completed item with the given roastID
+    def in_completed(self, roastID:str) -> bool:
+        return any(ci.roastUUID.hex == roastID for ci in self.completed_items)
+
+    def prev_roast_session_data(self) -> datetime.date:
+        if self.completed_items:
+            return self.completed_items[-1].roastdate.date()
+        return datetime.datetime.now(datetime.UTC).astimezone().date()
+
+    def get_scheduled_items_ids(self) -> list[str]:
+        return [si.id for si in self.scheduled_items]
+
+    # returns end/drop temperature based on given timeindex and timex structures
+    @staticmethod
+    def end_temp(timeindex:list[int], temp2:list[float]) -> float:
+        if len(temp2) == 0:
+            return 0
+        if timeindex[6] == 0:
+            return temp2[-1]
+        return temp2[timeindex[6]]
+
+    # converts given BlendList into a Blend and returns True if equal modulo label to the given Blend
+    @staticmethod
+    def same_blend(blend_list1:plus.stock.BlendList|None, blend2:plus.stock.Blend|None) -> bool:
+        if blend_list1 is not None and blend2 is not None:
+            blend1 = plus.stock.list2blend(blend_list1)
+            if blend1 is not None:
+                return plus.stock.matchBlendDict(blend1, blend2, sameLabel=False)
+        return False
+
+    # returns the roasted weight estimate in kg calculated from the given ScheduledItem and the current roasts batchsize (in kg)
+    def weight_estimate(self, data:ScheduledItem, batchsize:float) -> float:
+        _log.debug('weight_estimate(%s)',batchsize)
+        background:ProfileData|None = self.aw.qmc.backgroundprofile
+        try:
+            if (background is not None and 'weight' in background):
+                # a background profile is loaded
+                same_coffee_or_blend = (('plus_coffee' in background and self.aw.qmc.plus_coffee is not None and background['plus_coffee'] == self.aw.qmc.plus_coffee) or
+                    ('plus_blend_spec' in background and self.same_blend(background['plus_blend_spec'], self.aw.qmc.plus_blend_spec)))
+                if same_coffee_or_blend:
+                    _log.debug('same_coffee_or_blend')
+                    # same coffee or blend
+                    same_machine = True # item.machine is not None and item.machine == background.machinesetup
+                    if same_machine:
+                        # roasted on the same machine
+                        # criteria not verified as typos, or unset machine name, could hinder correct suggestions
+                        background_weight = background['weight']
+                        _log.debug('background_weight: %s', background_weight)
+                        background_weight_in = float(background_weight[0])
+                        background_weight_out = float(background_weight[1])
+                        background_loss = self.aw.weight_loss(background_weight_in, background_weight_out)
+                        if loss_min < background_loss < loss_max:
+                            _log.debug('loss: %s < %s < %s', loss_min, background_loss, loss_max)
+                            # with a reasonable loss between 5% and 25%
+                            background_weight_unit_idx = weight_units.index(background_weight[2])
+                            background_weight_in = convertWeight(background_weight_in, background_weight_unit_idx, 1)  # batchsize converted to kg
+                            if abs(background_weight_in - batchsize) < batchsize * similar_roasts_max_batch_size_delta/100:
+                                _log.debug('batchsize delta (in kg): %s < %s',abs(background_weight_in - batchsize), batchsize * similar_roasts_max_batch_size_delta/100)
+                                # batch size the same (delta < 0.5%)
+                                foreground_roast_time = roast_time(self.aw.qmc.timeindex, self.aw.qmc.timex)
+                                background_roast_time = roast_time(self.aw.qmc.timeindexB, self.aw.qmc.timeB)
+                                if (foreground_roast_time is not None and background_roast_time is not None and
+                                        abs(foreground_roast_time - background_roast_time) < similar_roasts_max_roast_time_delta):
+                                    _log.debug('roast time delta: %s < %s', abs(foreground_roast_time - background_roast_time), similar_roasts_max_roast_time_delta)
+                                    # roast time is in the range (delta < 30sec)
+                                    foreground_end_temp = self.end_temp(self.aw.qmc.timeindex, self.aw.qmc.temp2)
+                                    background_end_temp = self.end_temp(self.aw.qmc.timeindexB, self.aw.qmc.temp2B)
+                                    if abs(foreground_end_temp - background_end_temp) < (similar_roasts_max_drop_bt_temp_delta_C if self.aw.qmc.mode == 'C' else similar_roasts_max_drop_bt_temp_delta_F):
+                                        _log.debug('drop/end temp: %s < %s', abs(foreground_end_temp - background_end_temp), (similar_roasts_max_drop_bt_temp_delta_C if self.aw.qmc.mode == 'C' else similar_roasts_max_drop_bt_temp_delta_F))
+                                        # drop/end temp is in the range (delta < 5C/4F)
+
+                                        # the current roast is similar to the one of the loaded background thus we return the
+                                        # background profiles roasted weight converted to kg as estimate
+                                        _log.debug('roasted weight set from template')
+                                        return convertWeight(background_weight_out, background_weight_unit_idx, 1) # roasted weight converted to kg
+        except Exception:  # pylint: disable=broad-except
+            pass
+        # else base roasted weight estimate on server provided loss
+        if loss_min < data.loss < loss_max:
+            _log.debug('roasted weight set from server provided loss')
+            return self.aw.apply_weight_loss(data.loss, batchsize)
+        # if we did not get a loss in a sensible range we assume the default loss (15%)
+        _log.debug('rosted weight set form default loss (%s%%)', default_loss)
+        return self.aw.apply_weight_loss(default_loss, batchsize)
+
+
+    def register_remaining_item(self, remaining_item:DragItem) -> None:
+        if self.aw.qmc.roastUUID is not None:
+            _log.info('register completed roast %s', self.aw.qmc.roastUUID)
+            try:
+                # register roastUUID in (local) currently selected ScheduleItem
+                # add roast to list of completed roasts
+                remaining_item.data.roasts.add(UUID(self.aw.qmc.roastUUID, version=4))
+                # reduce number of prepared batches of the currently selected remaining item
+                take_prepared(self.aw.plus_account_id, remaining_item.data)
+                # calculate weight estimate
+                weight_unit_idx:int = weight_units.index(self.aw.qmc.weight[2])
+                batchsize:float = convertWeight(self.aw.qmc.weight[0], weight_unit_idx, 1) # batchsize converted to kg
+                weight_estimate = self.weight_estimate(remaining_item.data, batchsize) # in kg
+
+                measured:bool
+
+                if self.aw.qmc.weight[1] == 0:
+                    # roasted weight not set
+                    measured = False
+                    self.aw.qmc.weight = (self.aw.qmc.weight[0], convertWeight(weight_estimate, 1, weight_unit_idx), self.aw.qmc.weight[2])
+                    weight = weight_estimate
+                else:
+                    measured = True
+                    weight = convertWeight(self.aw.qmc.weight[1], weight_unit_idx, 1)    # resulting weight converted to kg
+
+                rt:float|None = roast_time(self.aw.qmc.timeindex, self.aw.qmc.timex)
+
+                completed_item:CompletedItemDict = CompletedItemDict(
+                    scheduleID = remaining_item.data.id,
+                    scheduleDate = remaining_item.data.date.isoformat(),
+                    count = remaining_item.data.count,
+                    sequence_id = len(remaining_item.data.roasts),
+                    roastUUID = self.aw.qmc.roastUUID,
+                    roastdate = self.aw.qmc.roastdate.toSecsSinceEpoch(),
+                    title = self.aw.qmc.title,
+                    roastbatchnr = self.aw.qmc.roastbatchnr,
+                    roastbatchprefix = self.aw.qmc.roastbatchprefix,
+                    coffee_label = self.aw.qmc.plus_coffee_label,
+                    blend_label = self.aw.qmc.plus_blend_label,
+                    store_label = self.aw.qmc.plus_store_label,
+                    batchsize = batchsize,
+                    weight = weight,
+                    weight_estimate = weight_estimate,
+                    defects_weight = self.aw.qmc.roasted_defects_weight,
+                    measured = measured,
+                    color = self.aw.qmc.ground_color,
+                    moisture = self.aw.qmc.moisture_roasted,
+                    density = self.aw.qmc.density_roasted[0],
+                    roastingnotes = self.aw.qmc.roastingnotes,
+                    cupping_score = self.aw.qmc.calcFlavorChartScore(),
+                    cuppingnotes = self.aw.qmc.cuppingnotes,
+                    roasttime = (0 if rt is None else int(round(rt)))
+                )
+                add_completed(self.aw.plus_account_id, completed_item)
+                # update schedule, removing completed items and selecting the next one
+
+                # we catch potential validation errors for CompletedItemDict here to ensure that the updateScheduleWindow() is always correctly called
+            except Exception as e:   # pylint: disable=broad-except
+                _log.error(e)
+            self.updateScheduleWindow()
+
+    # register the current completed roast
+    @pyqtSlot()
+    def register_completed_roast_slot(self) -> None:
+        # if there is a non-empty schedule with a selected item
+        if self.selected_remaining_item is not None:
+            self.register_remaining_item(self.selected_remaining_item)
+
+    def update_styles(self) -> None:
+        if self.aw.app.darkmode:
+            # set dark mode styles
+            self.task_type.setStyleSheet(f'QLabel {{ color: {light_grey}; font-weight: 700; }}')
+            self.task_position.setStyleSheet(f'QLabel {{ color: {light_grey}; font-weight: 700; }}')
+            self.task_weight.setStyleSheet(
+                f'{tooltip_dull_dark_background_style} QLabel {{ color: {dim_white}; font-size: 40px; font-weight: 700; }}')
+            self.task_frame.setStyleSheet(f'background: {medium_dark_grey};')
+        else:
+            # set light mode styles
+            self.task_type.setStyleSheet(f'QLabel {{ color: {dark_grey}; font-weight: 700; }}')
+            self.task_position.setStyleSheet(f'QLabel {{ color: {dark_grey}; font-weight: 700; }}')
+            self.task_weight.setStyleSheet(
+                f'{tooltip_style} QLabel {{ color: {plus_alt_blue}; font-size: 40px; font-weight: 700; }}')
+            self.task_frame.setStyleSheet(f'background: {dull_white};')
+
+
+    # called from main:updateSchedule() on opening the scheduler dialog, on schedule filter changes, on app raise,
+    # on stock updates (eg. after successful login) and on plus disconnect
+    # also called on switching between light and dark mode to adjust the colors accordingly
+    # Note that on app raise (depending on the interval) also a stock update is triggered fetching the latest schedule from the server along
+    @pyqtSlot()
+    def updateScheduleWindow(self) -> None:
+        _log.debug('updateScheduleWindow()')
+        # lock resources to prevent race conditions
+        gotlock:bool = update_schedule_window_semaphore.tryAcquire(1)
+        if gotlock:
+            try:
+                self.pending_updated = False # reset pending updates to avoid cycles
+                self.being_updated = True # no user interactions (like right/left click processing)
+                self.drag_remaining.drag_source = None # block ongoing drag-and-drop action from completion and avoid dragging deleted objects if update occurs during a drag
+                self.TabWidget.setEnabled(False) # block tab switches
+                #
+                self.update_styles()
+                # load completed roasts cache
+                load_completed(self.aw.plus_account_id)
+                # if the currently loaded profile is among the completed_items, its corresponding entry in that completed list is updated with the information
+                # from the current loaded profile as properties might have been changed via the RoastProperties dialog
+                if self.aw.qmc.roastUUID is not None:
+                    completed_item:CompletedItem|None = next((ci for ci in self.completed_items if ci.roastUUID.hex == self.aw.qmc.roastUUID), None)
+                    if completed_item is not None:
+                        updates_completed_from_roast_properties(self.aw, completed_item)
+                if self.aw.plus_account is None:
+                    self.stacked_widget.setCurrentWidget(self.message_widget)
+                else:
+                    self.stacked_widget.setCurrentWidget(self.main_splitter)
+                    # update scheduled and completed items
+                    self.updateScheduledItems()                                 # updates the current schedule items from received stock data
+                    load_prepared(self.aw.plus_account_id, self.scheduled_items)# load the prepared items cache and update according to the valid schedule items
+                    load_hidden(self.aw.plus_account_id, self.scheduled_items)  # load the hidden items cache and update according to the valid schedule items
+                    self.completed_items = self.getCompletedItems()             # updates completed items from cache
+                    self.updateFilters()                                        # update filter widget (user and machine)
+
+                    # show empty message if there are no scheduled items or the schedule items scrolling widget if there are entries
+                    if self.scheduled_items == []:
+                        # clear selection and reset scheduleID
+                        self.selected_remaining_item = None
+                        if self.aw.qmc.timeindex[6] == 0:
+                            # if DROP is not set we clear the ScheduleItem UUID/Date
+                            self.aw.qmc.scheduleID = None
+                            self.aw.qmc.scheduleDate = None
+                        # show empty schedule message
+                        self.remaining_message.setText(QApplication.translate('Plus', 'Schedule empty!{}Plan your schedule on {}').format('<BR><BR>', f'<a href="{schedulerLink()}">{plus.config.app_name}</a><br>'))
+                        self.stacked_remaining_widget.setCurrentWidget(self.remaining_message_widget)
+                        self.setAppBadge(0)
+                    else:
+                        displayed_scheduled_items = self.updateRemainingItems() # redraw To-Do's widget
+                        if displayed_scheduled_items > 0:
+                            self.stacked_remaining_widget.setCurrentWidget(self.remaining_scrollarea)
+                        else:
+                            self.remaining_message.setText(f"{QApplication.translate('Plus', 'Nothing scheduled for you today!{}Deactivate filters to see all items.').format('<BR><BR>')}<br>")
+                            self.stacked_remaining_widget.setCurrentWidget(self.remaining_message_widget)
+
+
+                    # show empty message if there are no completed items or the completed splitter widget if there are entries
+                    if not self.completed_items:
+                        self.completed_stacked_widget.setCurrentWidget(self.completed_message_widget)
+                    else:
+                        self.updateRoastedItems()                               # redraw Completed widget
+                        self.completed_stacked_widget.setCurrentWidget(self.completed_splitter)
+
+                    # the weight unit might have changed, we update its label
+                    self.roasted_weight_suffix.setText(self.aw.qmc.weight[2].lower())
+                    self.roasted_yield_suffix.setText(self.aw.qmc.weight[2].lower())
+                    self.roasted_defects_suffix.setText(self.aw.qmc.weight[2].lower())
+                    # update next weight item
+                    self.set_next(update_both=True)
+            finally:
+                if update_schedule_window_semaphore.available() < 1:
+                    update_schedule_window_semaphore.release(1)
+                self.TabWidget.setEnabled(True) # re-enable tab switches
+                self.being_updated = False # reallow user interactions (like right/left click processing)
+        else:
+            self.pending_updated = True # we mark that a an update got blocked to have this run by mouseMoveEvent after the drag-drop terminated and the semaphore got released
+
+
+########
+# Displays
+
+
+class WeightItemDisplay(Display):
+    def __init__(self, schedule_window:'ScheduleWindow') -> None:
+        self.schedule_window:ScheduleWindow = schedule_window
+        super().__init__()
+
+    @override
+    def clear_green(self) -> None:
+        todo_tab_active:bool = self.schedule_window.TabWidget.currentIndex() == 0
+        if todo_tab_active:
+            self.clear()
+
+    @override
+    def clear_roasted(self) -> None:
+        completed_tab_active:bool = self.schedule_window.TabWidget.currentIndex() == 1
+        if completed_tab_active:
+            self.clear()
+
+    def clear(self) -> None:
+        self.schedule_window.task_type.setText('')
+        self.schedule_window.task_title.setText('')
+        self.schedule_window.task_position.setText('')
+        self.schedule_window.task_weight.setText('--')
+        self.schedule_window.task_weight.setToolTip(QApplication.translate('Plus', 'nothing to weight'))
+
+    @override
+    def show_item(self, task_type:int, item:'WeightItem|None', state:PROCESS_STATE = PROCESS_STATE.DISCONNECTED, component:int = 0, final_weight:int|None = None) -> None:
+        del state
+        del component
+        del final_weight
+        if item is None:
+            if task_type == 0:
+                self.clear_green()
+            elif task_type == 1:
+                self.clear_roasted()
+        else:
+            todo_tab_active:bool = self.schedule_window.TabWidget.currentIndex() == 0
+            if ((todo_tab_active and isinstance(item, GreenWeightItem)) or
+                not todo_tab_active and isinstance(item, RoastedWeightItem)):
+                if isinstance(item, GreenWeightItem):
+                    self.schedule_window.task_type.setText(' '.join(QApplication.translate('Label', 'Green').lower()))
+                else:
+                    self.schedule_window.task_type.setText(' '.join(QApplication.translate('Label', 'Roasted').lower()))
+                self.schedule_window.task_title.setText(item.title)
+                self.schedule_window.task_position.setText(item.position)
+                self.schedule_window.task_weight.setText(render_weight(item.weight, 1, item.weight_unit_idx))
+                self.schedule_window.task_weight.setToolTip(item.description)
+
+
+
+class GreenWebDisplay(GreenDisplay):
+
+    INIT_PAYLOAD:Final[TaskWebDisplayPayload] = TaskWebDisplayPayload(
+        id = '',
+        title = '',
+        subtitle = '',
+        batchsize = '',
+        weight = '',
+        final_weight = '',
+        percent = 0,
+        state = PROCESS_STATE.DISCONNECTED,
+        bucket = 0,
+        blend_percent = '',
+        total_percent = 0,
+        loss = '',
+        timer = 0,
+        type = 0, # 0:green task; constant
+        accuracy = 0
+    )
+
+    def __init__(self, schedule_window:'ScheduleWindow') -> None:
+        self.schedule_window:ScheduleWindow = schedule_window
+        super().__init__()
+        #-
+        self.last_item:GreenWeightItem|None = None
+        self.last_process_state:PROCESS_STATE = PROCESS_STATE.DISCONNECTED
+        self.last_component:int = 0
+        self.last_bucket:int = 0          # from {0,1}
+        self.last_current_weight:int = 0  # in g
+        #-
+        self.rendered_task:TaskWebDisplayPayload = cast(TaskWebDisplayPayload, dict(self.INIT_PAYLOAD)) # initialize with a copy of the empty_task
+
+    @override
+    def clear_green(self) -> None:
+        self.last_item = None
+        self.last_process_state = PROCESS_STATE.DISCONNECTED
+        self.last_component = 0
+        self.rendered_task = cast(TaskWebDisplayPayload, dict(self.INIT_PAYLOAD)) # reset with a copy of the empty_task
+        self.update()
+
+    # component indicates which of the item.descriptions is currently processed
+    # in state=PROCESS_STATE.done, the final_weight if given states the final weight in g that has been measured and that will be registered for the task
+    @override
+    def show_item(self, task_type:int, item:'WeightItem|None', state:PROCESS_STATE = PROCESS_STATE.DISCONNECTED, component:int = 0, final_weight:int|None = None) -> None:
+#        _log.debug("PRINT show_item(%s,%s,%s,%s)",item,state,component,final_weight)
+        if task_type == 0: # ignore non green task types
+            if item is None:
+                self.last_item = None
+                self.last_component = 0
+                self.last_process_state = state
+                self.rendered_task = cast(TaskWebDisplayPayload, dict(self.INIT_PAYLOAD))  # reset with a copy of the empty_task
+                self.rendered_task['state'] = state
+                self.update()
+            elif (isinstance(item, GreenWeightItem) and
+                (item != self.last_item or self.last_process_state != state or self.last_component != component)):
+                    # NOTE: as item is of type WeightItem and this is declared as @dataclass the equality is structural here
+                self.last_item = item
+                self.last_process_state = state
+                self.last_component = component
+                #-
+                self.rendered_task['id'] = item.position
+                self.rendered_task['title'] = item.title
+                # weight is rendered with max 7 characters ('10.32kg' is well displayed, '10.321kg' not) thus we set brief=1 for weights >= 10kg
+                self.rendered_task['batchsize'] = render_weight(item.weight, 1, item.weight_unit_idx, brief=(0 if item.weight < 10 else 1)) # item.weight in kg
+                if len(item.descriptions)>component:
+                    self.rendered_task['blend_percent'] = (f'{item.descriptions[component][0] * 100:.0f}%' if item.descriptions[component][0] != 1 else '')
+                    self.rendered_task['subtitle'] = item.descriptions[component][1]
+                else:
+                    self.rendered_task['blend_percent'] = ''
+                    self.rendered_task['subtitle'] = ''
+                self.last_current_weight = 0
+
+                self.rendered_task['accuracy'] = float2float(self.accuracy)
+                self.rendered_task['weight'] = ''
+                self.rendered_task['final_weight'] = ''
+                self.rendered_task['percent'] = 0
+                self.rendered_task['state'] = state
+                self.rendered_task['bucket'] = 0
+                self.rendered_task['total_percent'] = 0
+
+                # set timer tag
+                if state == PROCESS_STATE.CANCELD:
+                    self.rendered_task['timer'] = self.cancel_timer_timeout
+                elif state == PROCESS_STATE.DONE:
+                    self.rendered_task['timer'] = self.done_timer_timeout
+                    if final_weight is not None:
+                        # or as substring (no limit: brief = 0)
+                        self.rendered_task['final_weight'] = render_weight(final_weight, 0, weight_units.index(self.schedule_window.aw.qmc.weight[2]),
+                                    brief=(0 if final_weight < 10000 else 1))
+
+                self.update()
+
+                self.rendered_task['timer'] = 0 # clear timer start trigger immediately
+
+    # current_weight indicates total measured weight over both containers in g (not including the bucket weights)
+    @override
+    def show_progress(self, task_type:int, item:'WeightItem|None', state:PROCESS_STATE, component:int, bucket:int, current_weight:int) -> None:
+#        _log.debug("PRINT show_progress(%s, %s,%s,%s,%s)",task_type,state,component,bucket,current_weight)
+        if (task_type == 0 and item is not None and isinstance(item, GreenWeightItem) and self.last_item is not None and (self.last_process_state != state or self.last_component != component or self.last_bucket != bucket or
+                self.last_current_weight != current_weight)):
+            self.last_process_state = state
+            self.last_component = component
+            self.last_bucket = bucket
+            self.last_current_weight = current_weight
+
+            #-
+            self.rendered_task['accuracy'] = float2float(self.accuracy)
+            self.rendered_task['state'] = state
+            if self.last_item.descriptions and len(self.last_item.descriptions)>component:
+                self.rendered_task['blend_percent'] = (f'{self.last_item.descriptions[component][0] * 100:.0f}%' if self.last_item.descriptions[component][0] != 1 else '')
+                self.rendered_task['subtitle'] = self.last_item.descriptions[component][1]
+            else:
+                self.rendered_task['blend_percent'] = ''
+                self.rendered_task['subtitle'] = ''
+            self.rendered_task['bucket'] = bucket
+
+            if state == PROCESS_STATE.WEIGHING and len(self.last_item.descriptions)>component and len(self.last_item.descriptions[component])>0:
+                target = self.last_item.weight * 1000 # target in g
+                self.rendered_task['total_percent'] = 100 * current_weight / target
+                completed_ratio = sum(completed[0] for completed in self.last_item.descriptions[:component])
+                current_component_ratio = self.last_item.descriptions[component][0]
+                component_target_ratio = completed_ratio + current_component_ratio
+                component_target = component_target_ratio * target
+                # showing what is missing per component
+                # weight is rendered with max 7 characters ('10.32kg' is well displayed, '10.321kg' not) thus we set brief=1 for weights >= 10kg
+                delta_weight = component_target - current_weight
+                self.rendered_task['weight'] = f"{'+' if delta_weight<0 else ''}{render_weight(-delta_weight, 0, weight_units.index(self.schedule_window.aw.qmc.weight[2]), brief=(0 if delta_weight < 10000 else 1))}"
+                component_target_weight = target * current_component_ratio
+                completed_weight = target * completed_ratio
+                if component_target_weight>0:
+                    self.rendered_task['percent'] = 100 * (current_weight - completed_weight) / component_target_weight
+                else:
+                    self.rendered_task['percent'] = 0
+            else:
+                self.rendered_task['weight'] = ''
+                self.rendered_task['final_weight'] = ''
+                self.rendered_task['percent'] = 0
+                self.rendered_task['total_percent'] = 0
+            self.update()
+
+
+    def update(self) -> None:
+        if self.schedule_window.aw.taskWebDisplayGreen_server is not None:
+            msg = json_dumps(self.rendered_task, indent=None, separators=(',', ':'))
+            self.schedule_window.aw.taskWebDisplayGreen_server.send_msg(msg) # Note: send_msg sends respects its _min_send_interval message frequency!
+
+
+class RoastedWebDisplay(RoastedDisplay):
+
+    INIT_PAYLOAD:Final[TaskWebDisplayPayload] = TaskWebDisplayPayload(
+            id = '',
+            title = '',
+            subtitle = '',
+            batchsize = '',
+            weight = '',
+            final_weight = '',
+            percent = 0,
+            state = PROCESS_STATE.DISCONNECTED,
+            bucket = 0,
+            blend_percent = '',
+            total_percent = 0,
+            loss = '',
+            timer = 0,
+            type = 1, # 1:roasted task; constant
+            accuracy = 0
+    )
+
+    def __init__(self, schedule_window:'ScheduleWindow') -> None:
+        self.schedule_window:ScheduleWindow = schedule_window
+        super().__init__()
+        #-
+        self.last_item:RoastedWeightItem|None = None
+        self.last_process_state:PROCESS_STATE = PROCESS_STATE.DISCONNECTED
+        self.last_current_weight:int = 0  # in g
+        #-
+        self.rendered_task:TaskWebDisplayPayload = cast(TaskWebDisplayPayload, dict(self.INIT_PAYLOAD)) # initialize with a copy of the empty_task
+
+    @override
+    def clear_roasted(self) -> None:
+        self.last_item = None
+        self.last_process_state = PROCESS_STATE.DISCONNECTED
+        self.rendered_task = cast(TaskWebDisplayPayload, dict(self.INIT_PAYLOAD))  # reset with a copy of the empty_task
+        self.update()
+
+    @override
+    def show_item(self, task_type:int, item:'WeightItem|None', state:PROCESS_STATE = PROCESS_STATE.DISCONNECTED, component:int = 0, final_weight:int|None = None) -> None:
+        del component
+        if task_type == 1:
+            if item is None:
+                self.last_item = None
+                self.last_process_state = state
+                self.rendered_task = cast(TaskWebDisplayPayload, dict(self.INIT_PAYLOAD))  # reset with a copy of the empty_task
+                self.rendered_task['state'] = state
+                self.update()
+            elif (isinstance(item, RoastedWeightItem) and
+                        (item != self.last_item or self.last_process_state != state)):
+                        # as item is of type WeightItem and this is declared as @dataclass the equality is structural here
+                #-
+                self.last_item = item
+                self.last_process_state = state
+                #-
+                self.rendered_task['id'] = item.position
+                self.rendered_task['title'] = item.title
+                self.rendered_task['batchsize'] = render_weight(item.weight, 1, item.weight_unit_idx, brief=(0 if item.weight < 10 else 1)) # from 1:kg to target, user selected, weight unit
+                if len(item.descriptions)>0 and len(item.descriptions[0])>1:
+                    self.rendered_task['subtitle'] = (item.descriptions[0][1] if item.blend_name is None else item.blend_name)
+                else:
+                    self.rendered_task['subtitle'] = ''
+                self.rendered_task['loss'] = ''
+                self.rendered_task['weight'] = ''
+                self.rendered_task['final_weight'] = ''
+                self.rendered_task['percent'] = 0
+                self.rendered_task['state'] = state
+                self.rendered_task['bucket'] = 0
+                self.rendered_task['total_percent'] = 0
+
+                # set timer tag
+                if state == PROCESS_STATE.CANCELD:
+                    self.rendered_task['timer'] = self.cancel_timer_timeout
+                elif state == PROCESS_STATE.DONE:
+                    self.rendered_task['timer'] = self.done_timer_timeout
+                    if final_weight is not None:
+                        # or as substring (no limit: brief = 0)
+                        self.rendered_task['final_weight'] = render_weight(final_weight, 0, weight_units.index(self.schedule_window.aw.qmc.weight[2]),
+                                    brief=(0 if final_weight < 10000 else 1))
+
+                self.update()
+                self.rendered_task['timer'] = 0 # clear timer start trigger immediately
+
+    # current_weight indicates total measured weight in g (not including the bucket weight)
+    @override
+    def show_progress(self, task_type:int, item:'WeightItem|None', state:PROCESS_STATE, component:int, bucket:int, current_weight:int) -> None:
+#        _log.debug("PRINT show_progress(%s,%s,%s,%s,%s,%s)",task_type,item,state,component,bucket,current_weight)
+        del component, bucket
+
+        if task_type == 1:
+            if item is None and (self.last_process_state != state or
+                    self.last_current_weight != current_weight): # only possible for roasted tasks, after an empty bucket has placed
+                self.last_process_state = state
+                self.last_current_weight = current_weight
+                self.rendered_task['weight'] = ''
+                self.rendered_task['final_weight'] = ''
+                self.rendered_task['percent'] = 0
+                self.rendered_task['state'] = state
+                self.rendered_task['bucket'] = 0
+                self.rendered_task['blend_percent'] = ''
+                self.rendered_task['total_percent'] = 0 #
+                self.rendered_task['type'] = 0                  # reusing the green weighing for filling roasted
+                self.rendered_task['accuracy'] = float2float(self.accuracy)
+                self.update()
+            elif (isinstance(item, RoastedWeightItem) and self.last_item is not None and (self.last_process_state != state or
+                    self.last_current_weight != current_weight)):
+                self.last_process_state = state
+                self.last_current_weight = current_weight
+
+                #-
+                self.rendered_task['accuracy'] = float2float(self.accuracy)
+                self.rendered_task['state'] = state
+                self.rendered_task['blend_percent'] = ''
+
+                if state == PROCESS_STATE.WEIGHING:
+                    target = self.last_item.weight_estimate * 1000  # target in g
+                    self.rendered_task['type'] = 0                  # reusing the green weighing for filling roasted
+                    self.rendered_task['final_weight'] = render_weight(self.last_item.weight_estimate, 1, self.last_item.weight_unit_idx, brief=(0 if self.last_item.weight_estimate < 10 else 1)) # # render estimated roasted weight as batch size in kg
+                    self.rendered_task['total_percent'] = 100 * current_weight / target
+                    # showing what is missing
+                    # weight is rendered with max 7 characters ('10.32kg' is well displayed, '10.321kg' not) thus we set brief=1 for weights >= 10kg
+                    delta_weight = target - current_weight
+                    self.rendered_task['weight'] = f"{'+' if delta_weight<0 else ''}{render_weight(-delta_weight, 0, weight_units.index(self.schedule_window.aw.qmc.weight[2]), brief=(0 if delta_weight < 10000 else 1))}"
+                    if target>0:
+                        self.rendered_task['percent'] = 100 * current_weight / target
+                    else:
+                        self.rendered_task['percent'] = 0
+                else:
+                    self.rendered_task['weight'] = ''
+                    self.rendered_task['final_weight'] = ''
+                    self.rendered_task['percent'] = 0
+                    self.rendered_task['total_percent'] = 0
+                self.update()
+
+
+    # current weight in g
+    @override
+    def show_result(self, task_type:int, item:'WeightItem', state:PROCESS_STATE, current_weight:int) -> None:
+        if (task_type == 1 and isinstance(item, RoastedWeightItem) and self.last_item is not None and (self.last_process_state != state or self.last_current_weight != current_weight)):
+            self.last_process_state = state
+            self.last_current_weight = current_weight
+            #-
+            self.rendered_task['state'] = state
+            if state == PROCESS_STATE.WEIGHING:
+                batchsize = self.last_item.weight * 1000 # target in g
+                if batchsize>0:
+                    total_percent = 100 * current_weight / batchsize
+                else:
+                    total_percent = 0
+                self.rendered_task['final_weight'] = render_weight(current_weight, 0, weight_units.index(self.schedule_window.aw.qmc.weight[2]), brief=(0 if current_weight < 10000 else 1)) # yield
+                self.rendered_task['percent'] = 100.2 # > 100 to have the border fully blue
+                self.rendered_task['total_percent'] = total_percent
+                self.rendered_task['loss'] = f'-{float2float(100-total_percent, self.schedule_window.aw.percent_decimals)}%' # weight loss percent
+            else:
+                self.rendered_task['weight'] = '' # yield
+                self.rendered_task['final_weight'] = ''
+                self.rendered_task['percent'] = 0
+                self.rendered_task['total_percent'] = 0
+                self.rendered_task['loss'] = '' # weight loss percent
+            self.update()
+
+
+    def update(self) -> None:
+        if self.schedule_window.aw.taskWebDisplayRoasted_server is not None:
+            msg = json_dumps(self.rendered_task, indent=None, separators=(',', ':'))
+            self.schedule_window.aw.taskWebDisplayRoasted_server.send_msg(msg)

@@ -1,0 +1,83 @@
+**/*.pyc
+.svn/
+src/.eggs/
+src/build/
+src/dist*/
+src/.pydevproject
+src/artisan-mac-*.dmg
+src/artisan-win-*-setup.exe
+src/.ruff_cache
+
+# Virtual environments
+venv/
+.venv*/
+env/
+.env/
+tr.sh
+clantr.sh
+# uv
+.uv/
+uv.lock
+
+# Python development
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.vscode/
+src/.eggs/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+.prev_artisanlib_hash.txt
+simple.log
+artisan_plus.log
+outbox/
+*flycheck_*.py
+src/log_listener.py
+src/log_test.py
+artisan.original*.*
+*.zip
+
+#specific local dev
+tail.sh
+gototail.sh
+cattail.sh
+rundebug.sh
+.DS_Store
+src/.DS_Store
+wiki/.DS_Store
+
+#Keeps derived files out of the Artisan repository
+#   To remove these files from the repository a commit must first be made
+#   with the these files deleted, then this section should be uncommented.
+#to remove initially make a commit with thee files deleted then uncomment this section
+#src/uic/[!_]*.py
+#src/translations/*.qm
+#src/help/[!_]*.py
+#doc/help_dialogs/Output_html/[!_]*.html
+src/*.dmg
+src/*.notarized
+src/esp32*.txt
+src/marks.txt
+src/ruff.txt
+clonetranslations.sh
+/scripts
+/build
+token.json
+credentials.json
+build.bat
+build.sh
+buildmac.sh
+tail.bat
+VC*.exe
+version_info*.txt
+change.sh
+CLAUDE.md
+FeatureBaclog.md
+Roadmap.md
+AutoRoast-Spec.md

@@ -1,0 +1,67 @@
+@echo off
+:: test for existence of required environment variables
+setlocal enabledelayedexpansion
+SET QT_PATH=C:\Qt\6.9.2\mingw_64\bin
+if not defined QT_PATH (
+    echo QT_PATH not set, be sure Qt 6.x is installed.
+    echo Set QT_PATH appropriately, something like C:\Qt\6.4\msvc2019_64.  Exiting...
+    exit /b 1
+)
+SET PYTHON_PATH=%VIRTUAL_ENV%\Scripts
+if not defined PYTHON_PATH (
+    if defined PYTHONPATH (
+        set PYTHON_PATH=%PYTHONPATH%
+        echo PYTHON_PATH not set, defaulting to %PYTHONPATH%
+    ) else (
+        echo PYTHON_PATH not set, set it manually.  Exiting...
+        exit /b 1
+    )
+)
+
+if not defined PYUIC (
+    echo PYUIC not set, defaulting to pyuic6.exe
+    set PYUIC=pyuic6.exe
+)
+if not defined PYQT (
+    echo PYQT not set, defaulting to 6
+    set PYQT=6
+)
+
+::
+:: Generate translation, ui, and help files derived from repository sources
+::
+
+:: convert help files from .xlsx to .py
+echo ************* help files **************
+python ..\doc\help_dialogs\Script\xlsx_to_artisan_help.py all
+if ERRORLEVEL 1 (echo ** Failed in xlsx_to_artisan_help.py & exit /b 1) else (echo ** Success)
+
+:: convert .ui files to .py files
+echo ************* ui/uic **************
+for /r %%a IN (ui\*.ui) DO (
+    echo %%~na
+    %PYUIC% -o uic\%%~na.py ui\%%~na.ui
+    if ERRORLEVEL 1 (echo ** Failed in pyuic & exit /b 1)
+)
+echo ** Success
+
+:: Process translation files
+echo ************* pylupdate **************
+echo *** Processing translation files with pylupdate6pro.py
+python pylupdate6pro.py
+if ERRORLEVEL 1 (echo ** Failed in pylupdate6pro.py & exit /b 1) else (echo ** Success)
+echo ************* lrelease **************
+cd translations
+for /r %%a IN (*.ts) DO (
+    qt%PYQT%-tools lrelease %%~a
+    if ERRORLEVEL 1 (echo ** Failed in qt%PYQT%-tools lrelease step 2 & exit /b 1)
+)
+echo ** Success
+cd ..
+
+:: Zip the generated files
+"C:\Program Files\7-Zip\7z" a ..\generated-win.zip ..\doc\help_dialogs\Output_html\ help\ translations\ uic\
+if ERRORLEVEL 1 (echo ** Failed in 7z & exit /b 1) else (echo ** Success)
+::
+::  End of generating derived files
+::

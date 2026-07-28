@@ -1,0 +1,48 @@
+version: 1
+formatters:
+  simple:
+    format: '%(asctime)s - %(levelname)s: %(message)s'
+  advanced:
+    format: '%(asctime)s %(threadName)-10s %(name)-20s %(levelname)-7s: %(message)s'
+    datefmt: '%m-%d %H:%M:%S'
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: simple
+    stream: ext://sys.stdout
+  udp_tcp:
+    class: logging.handlers.SocketHandler
+    level: DEBUG
+    host: 127.0.0.1
+    port: 9021
+    formatter: advanced
+  file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    delay: true
+    maxBytes: 800000
+    backupCount: 2
+    encoding: "utf-8"
+    formatter: advanced
+loggers:
+  artisanlib:
+    level: INFO
+    handlers: [file]
+    propagate: no
+  plus:
+    level: INFO
+    handlers: [file]
+    propagate: no
+  pymodbus.logging:
+    level: ERROR
+    handlers: [file]
+    propagate: no
+  tilau:
+    handlers: [udp_tcp]
+    level: DEBUG
+    propagate: no
+root:
+  level: INFO
+  handlers: [file]
+ 
