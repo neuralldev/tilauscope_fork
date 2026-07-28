@@ -1,4 +1,3 @@
-<img align="right" src="src/tilauscope.png" width="90">
 
 TilauScope
 ==========
@@ -90,15 +89,6 @@ more actionable than reports that do not. The bug report form will ask for them.
 
 TilauScope is distributed under the **GNU Affero General Public License v3 or
 later** ([LICENSE](LICENSE)).
-
-Code inherited from Artisan Roaster Scope keeps its original GPL terms and
-headers ([licenses/GPL-3.0.txt](licenses/GPL-3.0.txt)); code original to this fork, under
-`src/tilauscope/`, is AGPL-3.0-or-later. GPLv3 §13 expressly permits this
-combination. [NOTICE](NOTICE) explains the arrangement in full.
-
-One practical consequence: if you run a modified TilauScope and let other people
-use it remotely over a network — its remote-piloting interface, for instance —
-you owe those users the source of your modified version.
 
 ## Credits
 
