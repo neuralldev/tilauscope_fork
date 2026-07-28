@@ -1,5 +1,8 @@
+## [4.1.1] 2026-07-28
+build 1
 ## [4.1.0] 2026-07-14
 build 41
+* 🐛 [fix(update)] : the "download failed" message now uses the application's own dialog style instead of a bare system alert
 * ⚡ [feat(update)] : updates are now downloaded straight from GitHub instead of Google Drive. The installer is attached to the release itself, so downloads are faster and no longer go through the "large file, download anyway?" scan page that sometimes returned a web page instead of the installer
 * 🐛 [fix(beancave)] : removed a leftover second update-check path that still queried Google Drive — its button had been hidden for a while, but the dead code kept a stale download location alive
 * ⚡ [feat(license)] : TilauScope is now licensed under the GNU Affero General Public License v3 or later. Code inherited from Artisan keeps its original GPL terms; a NOTICE file explains the arrangement. In practice: if you run a modified TilauScope and let others use it remotely over a network, you owe them your source

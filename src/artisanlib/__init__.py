@@ -1,6 +1,6 @@
-__version__ = '4.1.0'
+__version__ = '4.1.1'
 __revision__ = ''
-__build__ = '41'
+__build__ = '1'
 __artisan_os__ = 'macos'
 
 __tilau__ = True

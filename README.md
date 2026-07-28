@@ -92,7 +92,7 @@ TilauScope is distributed under the **GNU Affero General Public License v3 or
 later** ([LICENSE](LICENSE)).
 
 Code inherited from Artisan Roaster Scope keeps its original GPL terms and
-headers ([LICENSE-GPL-3.0](LICENSE-GPL-3.0)); code original to this fork, under
+headers ([licenses/GPL-3.0.txt](licenses/GPL-3.0.txt)); code original to this fork, under
 `src/tilauscope/`, is AGPL-3.0-or-later. GPLv3 §13 expressly permits this
 combination. [NOTICE](NOTICE) explains the arrangement in full.
 

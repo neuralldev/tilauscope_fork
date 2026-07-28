@@ -872,16 +872,16 @@ class TilauUpdater(QObject):
         _log.error(f"[TilauUpdater] Download failed: {msg}")
 
         from PyQt6.QtWidgets import QMessageBox
-        err_box = QMessageBox(self._parent)
-        err_box.setWindowTitle(QApplication.translate("tilauscope_beancave","Download Failed"))
-        err_box.setIcon(QMessageBox.Icon.Critical)
-        err_box.setText(
+        from tilauscope.tilauscope_types import show_styled_message
+        show_styled_message(
+            self._parent,
+            QApplication.translate("tilauscope_beancave","Download Failed"),
             QApplication.translate("tilauscope_beancave",
                 "The update could not be downloaded.\n\n{0}\n\n"
                 "Please download manually from:\n{1}"
-            ).format(msg, _GITHUB_RELEASES_URL)
+            ).format(msg, _GITHUB_RELEASES_URL),
+            QMessageBox.Icon.Critical,
         )
-        err_box.exec()
 
     # ── step 4 : install ──────────────────────────────────────────────────────
 

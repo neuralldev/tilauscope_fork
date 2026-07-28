@@ -23,7 +23,7 @@ This distribution combines code under two licences:
   * Code inherited from Artisan Roaster Scope, principally under `src/artisanlib/`,
     remains under the terms stated in its own file headers (GNU General Public
     License, version 2 or 3 or, at your option, any later version). The full GPL
-    text is kept in LICENSE-GPL-3.0. Those headers and copyright notices have not
+    text is kept in licenses/GPL-3.0.txt. Those headers and copyright notices have not
     been altered.
 
   * Code original to TilauScope, principally under `src/tilauscope/`, is licensed
