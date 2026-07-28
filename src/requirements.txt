@@ -87,7 +87,7 @@ appnope==0.1.4; sys_platform=='darwin'
 pyobjc-core==12.2; sys_platform=='darwin'
 pyobjc-framework-Cocoa==12.2; sys_platform=='darwin'
 pyobjc-framework-CoreBluetooth==12.2; sys_platform=='darwin'
-pyobjc-framework-libdispatch==12.2; sys_platform=='darwin'
+pyobjc-framework-libdispatch==12.2.1; sys_platform=='darwin'
 ###
 ########
 ### Linux specific packages
