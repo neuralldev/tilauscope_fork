@@ -1,5 +1,7 @@
-## [4.1.3] 2026-07-31
+## [4.1.4] 2026-07-31
 build 1
+## [4.1.3] 2026-07-31
+build 2
 * ⚡ [feat(tilauscope)] : "About TilauScope" shows the version you are running, credits Artisan Roaster Scope and its core developers, and links to the public source code. It sits where your system expects it — in the TilauScope menu beside the Apple logo on macOS, under Help on Windows and Linux — and replaces the old technical dialog, which listed library versions and nothing you could act on
 * ⚡ [feat(branding)] : the running program itself is now called TilauScope — it is the name shown in Activity Monitor and in the Force Quit window, which still read "artisan" even though everything around it had been renamed
 * ⚡ [feat(branding)] : the application is now called TilauScope everywhere it is installed — the macOS application is TilauScope.app, the Windows executable TilauScope.exe, the download tilauscope-mac-<version>.dmg. It used to install itself under Artisan's own name, which presented a modified build as the original
