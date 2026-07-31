@@ -151,7 +151,7 @@ canvas{width:100%;height:100%;display:block}
 #mnext.done{background:var(--overlay);color:var(--sub)}
 #mundo{flex:0 0 52px;border:1px solid var(--overlay);border-radius:13px;
  background:var(--surface);color:var(--text);font-size:22px;line-height:1}
-#mundo:disabled{opacity:.35}
+#mundo:disabled,#mnext:disabled{opacity:.35}
 #recbtn{display:block;width:100%;padding:11px;border:0;border-radius:13px;
  font-size:15px;font-weight:600;margin-top:8px;background:var(--green);color:var(--bg)}
 #recbtn.rec{background:var(--red);color:var(--bg)}
@@ -265,17 +265,20 @@ canvas{width:100%;height:100%;display:block}
 /* ---- deadman: link lost during the grace window (4c) ---- */
 /* a scrim over the FROZEN screen (last curve/values stay faintly visible behind,
    nothing moves) — the desktop holds the hardware still until the grace lapses. */
-#dead{position:fixed;inset:0;background:rgba(30,30,46,.86);z-index:35;display:none;
- flex-direction:column;align-items:center;justify-content:center;gap:13px;
- padding:26px;text-align:center}
+#dead{position:fixed;inset:0;width:100%;height:100%;background:rgba(30,30,46,.9);
+ z-index:35;display:none;align-items:center;justify-content:center;padding:24px}
 #dead.show{display:flex}
+/* everything lives in a centered, width-capped column so the copy wraps cleanly
+   and stays centred whatever the orientation/zone behind it. */
+.deadbox{display:flex;flex-direction:column;align-items:center;gap:12px;
+ text-align:center;width:100%;max-width:320px}
 #dead .brk{font-size:34px;line-height:1;filter:grayscale(1);opacity:.9}
 #dead .frozen{display:inline-flex;align-items:center;gap:7px;background:rgba(166,227,161,.14);
  color:var(--green);border:1px solid var(--green);border-radius:20px;
  padding:6px 14px;font-size:14px;font-weight:600}
 #dead .frozen .d2{width:8px;height:8px;border-radius:50%;background:var(--green)}
 #dead .last{color:var(--sub);font-size:13px;font-family:ui-monospace,monospace}
-#dead .cd{color:var(--text);font-size:14px;max-width:300px}
+#dead .cd{color:var(--text);font-size:14px;line-height:1.4}
 #dead .cd b{color:var(--yellow);font-variant-numeric:tabular-nums}
 #dead .reco{margin-top:4px;padding:12px 26px;border:0;border-radius:12px;
  background:var(--blue);color:var(--bg);font-size:15px;font-weight:600}
@@ -298,56 +301,69 @@ canvas{width:100%;height:100%;display:block}
    </div>
   </div>
   <div class=dock>
-   <button id=takeover>Prendre le contrôle</button>
-   <button id=release style=display:none>Rendre le contrôle</button>
+   <button id=takeover data-i18n=takeover>Take control</button>
+   <button id=release data-i18n=release style=display:none>Release control</button>
    <div class=grid id=grid></div>
    <div class="miles hidden" id=miles>
     <div class=pips id=pips></div>
     <div class=milerow>
-     <button id=mundo title="Annuler le dernier jalon">‹</button>
-     <button id=mnext>Marquer</button>
+     <button id=mundo data-i18n-title=undo_title title="Undo last milestone">‹</button>
+     <button id=mnext data-i18n=mark>Mark</button>
     </div>
    </div>
-   <button id=recbtn class=hidden>Démarrer l’enregistrement</button>
-   <div class=hint id=hint>Connexion…</div>
+   <button id=recbtn class=hidden data-i18n=rec_start>Start recording</button>
+   <div class=hint id=hint data-i18n=connecting>Connecting…</div>
   </div>
  </div>
 </div>
 <div id=stopsheet><div class=sheet>
- <h3>Arrêter le roast ?</h3>
- <div class=sub>Deux façons de finir, aucune ne jette le roast.</div>
- <button class="schoice save" id=st_save><span class=t>Enregistrer</span>
-  <span class=d>Sauve le .alog · complète poids et couleur au bureau</span></button>
- <button class="schoice finish" id=st_finish><span class=t>Finir sur Artisan</span>
-  <span class=d>Arrête sans écrire · tu termines au bureau</span></button>
- <button class=scancel id=st_cancel>Annuler</button>
+ <h3 data-i18n=stop_title>Stop the roast?</h3>
+ <div class=sub data-i18n=stop_sub>Two ways to finish — neither discards the roast.</div>
+ <button class="schoice save" id=st_save><span class=t data-i18n=save>Save</span>
+  <span class=d id=st_save_d data-i18n=save_desc>Saves the .alog · fill in the weight and colour at the desktop</span></button>
+ <button class="schoice finish" id=st_finish><span class=t data-i18n=finish>Finish on Artisan</span>
+  <span class=d data-i18n=finish_desc>Stops without writing · you finish at the desktop</span></button>
+ <button class=scancel id=st_cancel data-i18n=cancel>Cancel</button>
 </div></div>
 <div id=wheel><div class=sheet>
- <h3 id=wtitle>Réglage</h3><div class=sub id=wsub></div>
+ <h3 id=wtitle data-i18n=adjust>Adjust</h3><div class=sub id=wsub></div>
  <div class=wscroll id=wscroll><div class=wcenter></div></div>
- <div class=wbtns><button class=wcancel id=wcancel>Annuler</button>
-  <button class=wok id=wok>Valider</button></div>
+ <div class=wbtns><button class=wcancel id=wcancel data-i18n=cancel>Cancel</button>
+  <button class=wok id=wok data-i18n=confirm>Confirm</button></div>
 </div></div>
 <div id=toast></div>
 <div id=veil><div class=logo>TilauScope</div>
  <div class=spin id=veilspin></div>
- <div class=msg id=veilmsg>Connexion au torréfacteur…</div>
+ <div class=msg id=veilmsg data-i18n=connecting_roaster>Connecting to the roaster…</div>
  <div id=pairbox>
   <input id=ptinput type=text autocapitalize=off autocorrect=off spellcheck=false
-   placeholder="Colle le lien d’appairage">
-  <button id=ptgo>Appairer</button>
+   data-i18n-ph=paste_link_ph placeholder="Paste the pairing link">
+  <button id=ptgo data-i18n=pair>Pair</button>
  </div></div>
-<div id=dead>
+<div id=dead><div class=deadbox>
  <div class=brk>🔌</div>
- <div class=frozen><span class=d2></span>Matériel figé</div>
+ <div class=frozen id=deadfrozen><span class=d2></span><span data-i18n=hw_frozen>Hardware frozen</span></div>
  <div class=last id=deadlast>—</div>
- <div class=cd id=deadcd>Lien perdu. Le bureau garde ta main encore <b>—</b> s.</div>
+ <div class=cd id=deadcd></div>
  <div class=spin></div>
- <button class=reco id=deadreco>Reconnecter</button>
-</div>
+ <button class=reco id=deadreco data-i18n=reconnect>Reconnect</button>
+</div></div>
+<script id=i18n type="application/json">__TL_I18N__</script>
 <script>
 "use strict";
 var $=function(id){return document.getElementById(id);};
+/* ---------- i18n ---------- */
+/* strings are translated server-side (QApplication.translate) and injected as the
+   JSON in #i18n; the English already inline in the HTML is the fallback. */
+var T={};try{T=JSON.parse($('i18n').textContent)||{};}catch(e){}
+function tr(k){return (T[k]!=null?T[k]:k);}
+function applyI18n(){
+ var a=document.querySelectorAll('[data-i18n]');for(var i=0;i<a.length;i++){
+  var k=a[i].getAttribute('data-i18n');if(T[k]!=null)a[i].textContent=T[k];}
+ var p=document.querySelectorAll('[data-i18n-ph]');for(var j=0;j<p.length;j++){
+  var kp=p[j].getAttribute('data-i18n-ph');if(T[kp]!=null)p[j].setAttribute('placeholder',T[kp]);}
+ var tt=document.querySelectorAll('[data-i18n-title]');for(var m=0;m<tt.length;m++){
+  var kt=tt[m].getAttribute('data-i18n-title');if(T[kt]!=null)tt[m].setAttribute('title',T[kt]);}}
 /* ---------- identity + pairing ---------- */
 var PT=(location.hash.match(/pt=([^&]+)/)||[])[1];
 function DN(){var u=navigator.userAgent;
@@ -359,12 +375,23 @@ localStorage.setItem('tcid',CID);
 
 /* ---------- state ---------- */
 var WS=null,sq=10,giveup=false,role='observer',pendCtl=false;
+var gen=0,sock=null;    // connection generation + the live socket (see connect())
+var ptUsed=false;       // the URL pairing token has been presented at least once
+var dragCh=null;        // channel id currently under the finger (see attachDrag)
+var monitorOn=true;     // desktop still sampling? (false = frozen, not live)
 var chans=[],chById={},S={},advis={};              // slider values / advisory by channel id
 var series={t:[],bt:[],et:[],ror:[]};
 var markers=[],phase='idle',chargeT=null,clock=0,haveData=false;
 var MARKLBL={CHARGE:'CHARGE',DRYe:'DE',DRY:'DE',FCs:'FCs',SCs:'SCs',DROP:'DROP'};
 /* 4b: milestone sequence (from welcome.controls.mark) + recorder state. */
 var markSeq=[],recording=false;
+var axes=null;          // Artisan axis limits {tmin,tmax,rmin,rmax} (snapshot)
+/* curve colours: these are only the fallback — the desktop sends its own palette
+   so BT/ET/RoR are the SAME hue on both screens (a curve that changes colour
+   between the two is read wrong mid-roast). */
+var COL={bt:'#89B4FA',et:'#B4BEFE',ror:'#A6E3A1'};
+var ltime=null;         // Artisan's exact LCD timer seconds (matches the desktop)
+var wakeLock=null;      // Screen Wake Lock sentinel (keep the phone awake)
 
 function send(o){if(WS&&WS.readyState===1){WS.send(JSON.stringify(o));return true;}return false;}
 function cmd(payload){return send({v:1,type:'command',seq:++sq,ts:Date.now()/1000,payload:payload});}
@@ -375,29 +402,38 @@ function toast(msg,kind){var t=$('toast');t.textContent=msg;t.className='show'+(
  clearTimeout(toastT);toastT=setTimeout(function(){t.className='';},2400);}
 
 /* ---------- header / phase ---------- */
-var PHASES={idle:['Repos','#6C7086'],preheat:['Préchauffe','#F9E2AF'],
- drying:['Séchage','#89B4FA'],maillard:['Maillard','#F9E2AF'],
- development:['Développement','#F38BA8'],cooling:['Refroid.','#A6E3A1']};
-function fmtClock(){if(!haveData)return '—:—';
- // before CHARGE the timer counts preheat/monitoring time (clock starts ~0); after
- // CHARGE it counts the roast from 0.
- var s=Math.max(0,Math.round(chargeT!=null?(clock-chargeT):clock));
+var PHASECOL={idle:'#6C7086',preheat:'#F9E2AF',drying:'#89B4FA',
+ maillard:'#F9E2AF',development:'#F38BA8',cooling:'#A6E3A1'};
+function fmtClock(){
+ // ltime is Artisan's own LCD value (whole seconds, sent while recording) — show it
+ // verbatim so the phone timer matches the desktop exactly (Artisan uses a live wall
+ // clock + round-half-up, which we can't reproduce from sample times alone).
+ if(ltime!=null){var neg=ltime<0,a=Math.abs(ltime);
+  return (neg?'-':'')+Math.floor(a/60)+':'+('0'+(a%60)).slice(-2);}
+ if(!haveData)return '—:—';
+ // fallback (not recording): count preheat/monitoring time from clock (starts ~0).
+ var s=Math.max(0,Math.floor(chargeT!=null?(clock-chargeT):clock));
  return (Math.floor(s/60))+':'+('0'+(s%60)).slice(-2);}
 function paintHeader(){
- var ph=PHASES[phase]||[phase,'#6C7086'];var c=$('phasechip');
- c.textContent=ph[0];c.style.background=ph[1];
- c.style.color=(ph[1]==='#6C7086'||ph[1]==='#F38BA8'||ph[1]==='#89B4FA')?'#1E1E2E':'#1E1E2E';
+ var col=PHASECOL[phase]||'#6C7086';var c=$('phasechip');
+ c.textContent=(T['phase_'+phase]||phase);c.style.background=col;c.style.color='#1E1E2E';
  $('clock').textContent=fmtClock();}
 
 /* ---------- readouts ---------- */
 function paintReads(d){
  if('bt' in d)$('r_bt').textContent=(d.bt!=null?Math.round(d.bt):'–');
  if('et' in d)$('r_et').textContent=(d.et!=null?Math.round(d.et):'–');
- if('ror' in d)$('r_ror').textContent=(d.ror!=null?d.ror.toFixed(1):'–');
+ // Artisan only shows RoR from CHARGE on — keep the readout blank during preheat.
+ if('ror' in d)$('r_ror').textContent=(chargeT!=null&&d.ror!=null?d.ror.toFixed(1):'–');
  // ΔT (ET−BT) — only surfaced on tablet, but cheap to keep current
  var bt=(d.bt!=null?d.bt:lastVal('bt')),et=(d.et!=null?d.et:lastVal('et'));
  $('r_dt').textContent=(bt!=null&&et!=null)?Math.round(et-bt):'–';}
 
+/* the readout numbers are the curve's legend — recolour them with it, or the key
+   to reading the graph drifts away from the graph. Callers redraw straight after. */
+function applyColors(c){if(!c)return;
+ ['bt','et','ror'].forEach(function(k){if(c[k])COL[k]=c[k];});
+ $('r_bt').style.color=COL.bt;$('r_et').style.color=COL.et;$('r_ror').style.color=COL.ror;}
 /* ---------- chart ---------- */
 var cv=$('cv'),ctx=cv.getContext('2d'),DPR=Math.min(window.devicePixelRatio||1,2.5);
 function sizeCanvas(){var w=cv.clientWidth,h=cv.clientHeight;
@@ -417,11 +453,16 @@ function drawChart(){
  var W=cv.width,H=cv.height,PL=34*DPR,PR=42*DPR,PT_=8*DPR,PB=16*DPR;
  ctx.clearRect(0,0,W,H);
  var t=series.t,bt=series.bt,et=series.et,ror=series.ror,n=t.length;
- // domains
- var te=extent(bt.concat(et));if(!te)te=[20,220];
- var tmin=Math.floor((te[0]-8)/10)*10,tmax=Math.ceil((te[1]+8)/10)*10;
- if(tmax-tmin<40)tmax=tmin+40;
- var re=extent(ror);var rmin=0,rmax=15;if(re){rmin=Math.min(0,Math.floor(re[0]/5)*5);rmax=Math.max(15,Math.ceil(re[1]/5)*5);}
+ // domains: prefer Artisan's configured axis limits so the graph has the same look
+ // and bounds as the desktop canvas; fall back to auto-scaling until they arrive.
+ var tmin,tmax,rmin,rmax;
+ if(axes&&axes.tmin!=null&&axes.tmax!=null){tmin=axes.tmin;tmax=axes.tmax;
+  rmin=(axes.rmin!=null?axes.rmin:0);rmax=(axes.rmax!=null?axes.rmax:15);}
+ else{var te=extent(bt.concat(et));if(!te)te=[20,220];
+  tmin=Math.floor((te[0]-8)/10)*10;tmax=Math.ceil((te[1]+8)/10)*10;
+  if(tmax-tmin<40)tmax=tmin+40;
+  var re=extent(ror);rmin=0;rmax=15;if(re){rmin=Math.min(0,Math.floor(re[0]/5)*5);rmax=Math.max(15,Math.ceil(re[1]/5)*5);}}
+ if(tmax<=tmin)tmax=tmin+40;if(rmax<=rmin)rmax=rmin+15;
  // x-axis is a GROWING WINDOW, not a tight fit: start ~10 min wide so early data
  // isn't stretched across the screen, then extend one minute at a time keeping ~1
  // min of empty margin to the right of the latest sample.
@@ -461,13 +502,20 @@ function drawChart(){
   for(var i=0;i<n;i++){var v=arr[i];if(v==null||v!==v){started=false;continue;}
    var px=X(t[i]),py=Y(v);if(!started){ctx.moveTo(px,py);started=true;}else ctx.lineTo(px,py);}
   ctx.stroke();}
- line(ror,YR,'#A6E3A1',1.5);
- line(et,YT,'#B4BEFE',1.5);
- line(bt,YT,'#89B4FA',2.2);
+ // RoR only from CHARGE on (Artisan hides it during preheat): blank when CHARGE
+ // isn't marked, and mask the pre-charge part (t<0) once it is.
+ var rorV=(chargeT==null)?[]:ror.map(function(v,i){return t[i]>=0?v:null;});
+ // clip the curves to the plot box: with Artisan's fixed axis bounds a BT that
+ // runs past ylimit would otherwise stroke straight over the axis labels.
+ ctx.save();ctx.beginPath();ctx.rect(PL,PT_,W-PL-PR,H-PT_-PB);ctx.clip();
+ line(rorV,YR,COL.ror,1.5);
+ line(et,YT,COL.et,1.5);
+ line(bt,YT,COL.bt,2.2);
  // current BT dot + phase annotation
  if(n){var lbt=null,li=n-1;while(li>=0&&(bt[li]==null||bt[li]!==bt[li]))li--;
   if(li>=0){lbt=bt[li];var cx=X(t[li]),cy=YT(lbt);
-   ctx.fillStyle='#89B4FA';ctx.beginPath();ctx.arc(cx,cy,3.2*DPR,0,6.29);ctx.fill();}}
+   ctx.fillStyle=COL.bt;ctx.beginPath();ctx.arc(cx,cy,3.2*DPR,0,6.29);ctx.fill();}}
+ ctx.restore();
 }
 
 /* ---------- controls: 2×2 drag grid ---------- */
@@ -482,8 +530,12 @@ function buildGrid(){
   var top=document.createElement('div');top.className='top';
   var nm=document.createElement('span');nm.className='name';nm.textContent=ch.label;top.appendChild(nm);
   if(ch.coupled){var q=document.createElement('span');q.className='chain';q.textContent='⛓';top.appendChild(q);}
+  // built as nodes, not innerHTML: `unit` and `label` are server data and have no
+  // business being parsed as markup.
   var val=document.createElement('span');val.className='val';val.id='val_'+ch.id;
-  val.innerHTML='–<span class=u>%</span>';
+  var num=document.createElement('span');num.textContent='–';val.appendChild(num);
+  var un=document.createElement('span');un.className='u';
+  un.textContent=(ch.unit||'%');val.appendChild(un);
   val.addEventListener('click',function(){if(role==='controller')openWheel(ch);});
   top.appendChild(val);c.appendChild(top);
   var tr=document.createElement('div');tr.className='track';tr.id='tr_'+ch.id;
@@ -493,16 +545,20 @@ function buildGrid(){
  refresh();applyRole();
 }
 function refresh(){chans.forEach(function(ch){
-  var e=$('val_'+ch.id);if(e)e.innerHTML=(S[ch.id]==null?'–':Math.round(S[ch.id]))
-   +'<span class=u>'+(ch.unit||'%')+'</span>';
+  var e=$('val_'+ch.id);
+  if(e&&e.firstChild)e.firstChild.textContent=(S[ch.id]==null?'–':Math.round(S[ch.id]));
   var p=frac(ch)*100,fl=$('fl_'+ch.id),kb=$('kb_'+ch.id);
   if(fl)fl.style.width=p+'%';if(kb)kb.style.left=p+'%';});}
+/* the hint line is the one place that says what the page is currently good for —
+   "desktop stopped" outranks the role, since no control does anything then. */
+function paintHint(){$('hint').textContent=(!monitorOn?tr('desktop_off')
+ :(role==='controller'?tr('hint_controller')
+ :(haveData?tr('hint_observer'):tr('connecting'))));}
 function applyRole(){var ctl=role==='controller';
  chans.forEach(function(ch){var c=$('c_'+ch.id);if(c)c.classList.toggle('locked',!ctl);});
  $('takeover').style.display=ctl?'none':'block';
  $('release').style.display=ctl?'block':'none';
- $('hint').textContent=ctl?'Glisse pour régler · tap la valeur = molette'
-  :(haveData?'Observateur · prends le contrôle pour piloter':'Connexion…');}
+ paintHint();}
 /* drag: the value follows the finger locally only (no traffic while sliding);
    a single set_slider(final:true) is sent on release, and only if the value
    actually changed from where the drag started. */
@@ -511,10 +567,13 @@ function attachDrag(tr,ch){var dragging=false,startVal=null;
   f=Math.max(0,Math.min(1,f));var mn=ch.min!=null?ch.min:0,mx=ch.max!=null?ch.max:100;
   return clampStep(ch,mn+f*(mx-mn));}
  function live(x){var v=valAt(x);if(v!==S[ch.id]){S[ch.id]=v;refresh();}}
- function down(e){if(role!=='controller')return;dragging=true;startVal=S[ch.id];
+ function down(e){if(role!=='controller')return;dragging=true;dragCh=ch.id;startVal=S[ch.id];
   try{tr.setPointerCapture(e.pointerId);}catch(x){}live(e.clientX);}
- function move(e){if(dragging)live(e.clientX);}
- function up(){if(!dragging)return;dragging=false;var v=S[ch.id];
+ // when setPointerCapture fails, a release OUTSIDE the track never fires up() and
+ // the bar would keep following the finger with no contact — bail out on the first
+ // move without a pressed button instead.
+ function move(e){if(!dragging)return;if(e.buttons===0){up();return;}live(e.clientX);}
+ function up(){if(!dragging)return;dragging=false;dragCh=null;var v=S[ch.id];
   if(v!=null&&v!==startVal)cmd({action:'set_slider',channel:ch.id,value:v,final:true});}
  tr.addEventListener('pointerdown',down);tr.addEventListener('pointermove',move);
  tr.addEventListener('pointerup',up);tr.addEventListener('pointercancel',up);
@@ -545,24 +604,28 @@ function renderMiles(){
  var ctl=role==='controller';
  var mn=$('mnext'),mu=$('mundo');
  mn.style.display=ctl?'':'none';mu.style.display=ctl?'':'none';
- if(nextMile){mn.textContent='Marquer '+(MARKLBL[nextMile]||nextMile);mn.classList.remove('done');}
- else{mn.textContent='Roast complet';mn.classList.add('done');}
- mu.disabled=!undoMile;
+ if(nextMile){mn.textContent=tr('mark_next').replace('{m}',(MARKLBL[nextMile]||nextMile));mn.classList.remove('done');}
+ else{mn.textContent=tr('roast_complete');mn.classList.add('done');}
+ // nothing can be marked before the recorder runs: Artisan has no roast to attach
+ // a milestone to. Greyed rather than hidden, so the sequence ahead stays readable
+ // and the dock doesn't jump the moment recording starts.
+ mn.disabled=!recording||!nextMile;
+ mu.disabled=!recording||!undoMile;
 }
 /* ---------- 4b: recorder start / stop ---------- */
 function renderRec(){
  var b=$('recbtn'),ctl=role==='controller';
  if(!ctl){b.classList.add('hidden');return;}
  b.classList.remove('hidden');
- if(recording){b.classList.add('rec');b.textContent='STOP';}
- else{b.classList.remove('rec');b.textContent='Démarrer l’enregistrement';}
+ if(recording){b.classList.add('rec');b.textContent=tr('stop');}
+ else{b.classList.remove('rec');b.textContent=tr('rec_start');}
 }
 function render4b(){renderMiles();renderRec();}
 
 /* ---------- wheel picker ---------- */
 var wheelCh=null;
 function openWheel(ch){wheelCh=ch;$('wtitle').textContent=ch.label;
- $('wsub').textContent='Glisse jusqu’à la valeur, puis Valider';
+ $('wsub').textContent=tr('wheel_sub');
  var sc=$('wscroll');sc.querySelectorAll('.wopt,.pad').forEach(function(e){e.remove()});
  var mn=ch.min!=null?ch.min:0,mx=ch.max!=null?ch.max:100,st=ch.step||1;
  var top=document.createElement('div');top.className='pad';sc.appendChild(top);
@@ -585,17 +648,17 @@ $('wok').onclick=function(){var b=markSel();if(b&&wheelCh)setChan(wheelCh,+b.dat
 
 /* ---------- control lock ---------- */
 $('takeover').onclick=function(){if(pendCtl)return;
- if(!cmd({action:'request_control'})){toast('Hors ligne',' err');return;}
+ if(!cmd({action:'request_control'})){toast(tr('offline'),'err');return;}
  pendCtl=true;var b=$('takeover');b.classList.add('pending');
- b.textContent='Demande envoyée · confirme sur le bureau…';};
+ b.textContent=tr('req_sent');};
 $('release').onclick=function(){cmd({action:'release_control'});};
 function setRole(r){role=r;pendCtl=false;var b=$('takeover');b.classList.remove('pending');
- b.textContent='Prendre le contrôle';applyRole();render4b();}
+ b.textContent=tr('takeover');applyRole();render4b();}
 
 /* ---------- 4b button wiring ---------- */
-$('mnext').onclick=function(){if(role!=='controller'||!nextMile)return;
+$('mnext').onclick=function(){if(role!=='controller'||!recording||!nextMile)return;
  cmd({action:'mark',milestone:nextMile});};
-$('mundo').onclick=function(){if(role!=='controller'||!undoMile)return;
+$('mundo').onclick=function(){if(role!=='controller'||!recording||!undoMile)return;
  // re-emitting the mark toggles it OFF on the desktop (same as the mark button);
  // the milestone 'removed' event will refresh the pips.
  cmd({action:'mark',milestone:undoMile});};
@@ -603,7 +666,8 @@ $('recbtn').onclick=function(){if(role!=='controller')return;
  if(recording)openStop();else cmd({action:'recorder',op:'start'});};
 function canSave(){return isMarked('CHARGE')&&isMarked('DROP');}
 function openStop(){var ok=canSave();var s=$('st_save');s.disabled=!ok;
- s.title=ok?'':'CHARGE et DROP requis pour enregistrer';
+ // a title tooltip never shows on touch — put the reason where it can be read
+ $('st_save_d').textContent=ok?tr('save_desc'):tr('need_charge_drop');
  $('stopsheet').classList.add('show');}
 function closeStop(){$('stopsheet').classList.remove('show');}
 $('st_save').onclick=function(){if(!canSave())return;
@@ -612,7 +676,10 @@ $('st_finish').onclick=function(){cmd({action:'recorder',op:'stop',save:false});
 $('st_cancel').onclick=closeStop;
 
 /* ---------- ingest ---------- */
-function ingestSliders(sl){if(!sl)return;for(var k in sl)S[k]=sl[k];refresh();}
+/* skip the channel under the finger: a desktop change (or our own echo) landing
+   mid-drag would jump the bar away and then be silently overwritten by the value
+   we commit on release. The finger wins until it lets go. */
+function ingestSliders(sl){if(!sl)return;for(var k in sl)if(k!==dragCh)S[k]=sl[k];refresh();}
 function setSnapshot(d){
  series={t:(d.series&&d.series.t)||[],bt:(d.series&&d.series.bt)||[],
   et:(d.series&&d.series.et)||[],ror:(d.series&&d.series.ror)||[]};
@@ -622,126 +689,208 @@ function setSnapshot(d){
  var lt=series.t.length?series.t[series.t.length-1]:0;
  chargeT=d.charge_marked?(clock-lt):null;
  recording=!!d.recording;
+ // absent on older desktops -> assume live (the pre-existing behaviour)
+ monitorOn=(d.monitoring!==false);setDot(monitorOn?'on':'grace');
+ if(d.axes)axes=d.axes;
+ applyColors(d.colors);
+ ltime=(d.ltime!=null?d.ltime:null);
  ingestSliders(d.sliders);haveData=true;
  paintHeader();paintReads({bt:lastVal('bt'),et:lastVal('et'),ror:lastVal('ror')});
  drawChart();applyRole();render4b();}
 function lastVal(k){var a=series[k];for(var i=a.length-1;i>=0;i--)if(a[i]!=null&&a[i]===a[i])return a[i];return null;}
+/* the x origin FLIPS with CHARGE: telemetry carries session-absolute `clock` while
+   CHARGE is unmarked and charge-relative `t` once it is marked (and back again if
+   the mark is undone). Shift everything already plotted onto the new origin so the
+   curve stays continuous — no snapshot is re-sent mid-connection to repair it, and
+   an unshifted series would fold the roast back over the preheat. Pre-CHARGE points
+   end up negative, which is exactly what the snapshot sends and what the RoR mask
+   in drawChart() expects. */
+function rebase(delta){
+ for(var i=0;i<series.t.length;i++)series.t[i]+=delta;
+ for(var j=0;j<markers.length;j++)if(markers[j].t!=null)markers[j].t+=delta;}
+function resetSeries(){series={t:[],bt:[],et:[],ror:[]};markers=[];}
 function pushTele(d){
- var x=(d.t!=null?d.t:(d.clock!=null?d.clock:clock));
+ // data flowing again is proof the desktop resumed, even if we missed the event
+ if(!monitorOn){monitorOn=true;setDot('on');paintHint();}
+ if(d.phase)phase=d.phase;if(d.clock!=null)clock=d.clock;
+ if('ltime' in d)ltime=d.ltime;
+ // reconcile the recorder state every tick rather than trusting a single event:
+ // the desktop may have started/stopped while we were away or asleep.
+ if('recording' in d&&!!d.recording!==recording){recording=!!d.recording;render4b();}
+ if(d.axes)axes=d.axes;   // sent whenever Artisan's own axis bounds change
+ if(d.colors)applyColors(d.colors);
+ if(d.t!=null&&chargeT==null){chargeT=clock-d.t;rebase(-chargeT);}
+ else if(d.t==null&&chargeT!=null){rebase(chargeT);chargeT=null;}
+ var x=(d.t!=null?d.t:clock);
+ // x going backwards means a new session on the desktop (RESET, or a fresh
+ // monitoring run): the protocol has no reset event and no mid-connection
+ // re-snapshot, so drop the stale curve here rather than draw two roasts at once.
+ var lt=series.t.length?series.t[series.t.length-1]:null;
+ if(lt!=null&&x<lt-1){resetSeries();render4b();}
  series.t.push(x);series.bt.push(d.bt);series.et.push(d.et);series.ror.push(d.ror);
  if(series.t.length>1400){['t','bt','et','ror'].forEach(function(k){series[k].shift();});}
- if(d.phase)phase=d.phase;if(d.clock!=null)clock=d.clock;
- if(d.t!=null&&chargeT==null)chargeT=clock-d.t;
  ingestSliders(d.sliders);haveData=true;
  paintHeader();paintReads(d);drawChart();}
 
 /* ---------- events ---------- */
 function onEvent(d){
+ // sampling stopped/resumed on the desktop. The curve stays on screen (it is still
+ // the truth about the roast) but must stop looking live: amber dot, explicit hint,
+ // and no stale timer running against a clock that no longer advances.
+ if(d.kind==='monitor'){
+  monitorOn=(d.state!=='off');
+  setDot(monitorOn?'on':'grace');paintHint();
+  if(!monitorOn){ltime=null;phase='idle';paintHeader();
+   toast(tr('desktop_off'),'warn');}
+  return;}
+ // RESET on the desktop: the roast in hand is gone, so drop the curve rather than
+ // keep showing a roast that no longer exists.
+ if(d.kind==='session'&&d.state==='reset'){
+  resetSeries();chargeT=null;ltime=null;clock=0;phase='idle';recording=false;
+  paintHeader();paintReads({bt:null,et:null,ror:null});drawChart();render4b();
+  return;}
  if(d.kind==='control'){
-  if(d.state==='granted'){setRole('controller');toast('Tu pilotes','warn');}
+  if(d.state==='granted'){setRole('controller');toast(tr('you_control'),'warn');}
   else if(d.state==='released'){setRole('observer');}
-  else if(d.state==='revoked'){setRole('observer');toast('Contrôle repris ailleurs','warn');}
+  else if(d.state==='revoked'){setRole('observer');toast(tr('control_taken'),'warn');}
   return;}
  if(d.kind==='milestone'){var m=MARKLBL[d.name]||d.name;
   if(d.state==='removed'){
    markers=markers.filter(function(x){return x.name!==d.name;});
-   toast(m+' annulé','warn');}
+   toast(tr('undone').replace('{m}',m),'warn');}
   else{
    if(!markers.some(function(x){return x.name===d.name;}))markers.push({name:d.name,t:d.t});
-   toast(m+' marqué','warn');}
+   toast(tr('marked').replace('{m}',m),'warn');}
   drawChart();render4b();return;}
  if(d.kind==='recorder'){
-  if(d.state==='started'){recording=true;toast('Enregistrement démarré','warn');}
+  // two sources announce the same STOP: the bridge (when WE commanded it) and the
+  // telemetry tap ~1 s later (source-agnostic). Only toast a real transition — but
+  // always toast an explicit `saved`, which only the bridge sends.
+  var was=recording;
+  if(d.state==='started'){recording=true;if(!was)toast(tr('rec_started'),'warn');}
   else if(d.state==='stopped'){recording=false;
-   if(d.saved===true)toast('Roast enregistré','warn');
-   else toast('Enregistrement arrêté','warn');}
+   if(d.saved===true)toast(tr('roast_saved'),'warn');
+   else if(was)toast(tr('rec_stopped'),'warn');}
   render4b();return;}
 }
 function onAck(d){
- if(d.channel&&d.applied_value!=null){S[d.channel]=d.applied_value;refresh();}
+ if(d.channel&&d.channel!==dragCh&&d.applied_value!=null){S[d.channel]=d.applied_value;refresh();}
  if(d.channel&&('advisory' in d)){var f=$('c_'+d.channel);
   if(f){var on=d.advisory==='drum_midroast';f.classList.toggle('advisory',on);
    if(on){clearTimeout(advis[d.channel]);
     advis[d.channel]=setTimeout(function(){var g=$('c_'+d.channel);if(g)g.classList.remove('advisory');},4000);}}}
  // a STOP-with-save may succeed as STOP yet fail to write (status ok, saved:false)
  if(d.saved===false&&d.reason){
-  if(d.reason==='INCOMPLETE_ROAST')toast('CHARGE et DROP requis pour enregistrer','warn');
-  else if(d.reason==='NOTHING_TO_SAVE')toast('Rien à enregistrer','warn');}
+  if(d.reason==='INCOMPLETE_ROAST')toast(tr('need_charge_drop'),'warn');
+  else if(d.reason==='NOTHING_TO_SAVE')toast(tr('nothing_to_save'),'warn');}
  if(d.status==='rejected'){
   if(d.reason==='NOT_CONTROLLER'&&pendCtl){pendCtl=false;var b=$('takeover');
-   b.classList.remove('pending');b.textContent='Prendre le contrôle';toast('Contrôle refusé','err');}
-  else if(d.reason==='RATE_LIMITED')toast('Occupé, réessaie','warn');
-  else if(d.reason==='CHANNEL_READONLY')toast('Réglage en lecture seule','warn');
-  else if(d.reason==='NOT_CONTROLLER')toast('Prends d’abord le contrôle','warn');}
+   b.classList.remove('pending');b.textContent=tr('takeover');toast(tr('control_denied'),'err');}
+  else if(d.reason==='RATE_LIMITED')toast(tr('busy_retry'),'warn');
+  else if(d.reason==='CHANNEL_READONLY')toast(tr('read_only'),'warn');
+  else if(d.reason==='NOT_CONTROLLER')toast(tr('take_first'),'warn');}
 }
 
 /* ---------- deadman: link lost during the grace window (4c) ---------- */
 /* the desktop holds the hardware frozen for the control grace (~10 s) after a
    controller drops (webcontrol _GRACE_S) — reassure the pilot that nothing moves,
    count that window down, keep trying to reconnect. */
+/* Only the PILOT is party to that grace window — an observer that drops has simply
+   lost its view, so promising it a hardware freeze (and counting a lock down that
+   isn't its own) is a lie. Observers get the plain "link lost" wording. */
 var GRACE=10,deadCD=0,deadTimer=null,reconnTimer=null;
 function paintDead(){var cd=$('deadcd');
- if(deadCD>0)cd.innerHTML='Lien perdu. Le bureau garde ta main encore <b>'+deadCD+'</b> s.';
- else cd.innerHTML='Grâce écoulée · le matériel reste figé, le contrôle peut être repris.';}
+ // only the countdown needs markup (a bold {n}); the other two are plain text
+ if(role!=='controller'){cd.textContent=tr('link_lost_obs');return;}
+ if(deadCD>0)cd.innerHTML=tr('link_lost').replace('{n}','<b>'+deadCD+'</b>');
+ else cd.textContent=tr('grace_elapsed');}
 function showDead(){if(giveup)return;
+ var ctl=(role==='controller');
  var bt=lastVal('bt'),et=lastVal('et');
  var s=(bt!=null?'BT '+Math.round(bt)+'°':'')+(et!=null?'   ET '+Math.round(et)+'°':'');
  $('deadlast').textContent=s||'—';
- deadCD=GRACE;paintDead();$('dead').classList.add('show');
- clearInterval(deadTimer);deadTimer=setInterval(function(){deadCD--;paintDead();
+ $('deadfrozen').style.display=ctl?'':'none';
+ deadCD=ctl?GRACE:0;paintDead();$('dead').classList.add('show');
+ clearInterval(deadTimer);
+ if(ctl)deadTimer=setInterval(function(){deadCD--;paintDead();
   if(deadCD<=0)clearInterval(deadTimer);},1000);}
 function hideDead(){clearInterval(deadTimer);$('dead').classList.remove('show');}
 $('deadreco').onclick=function(){clearTimeout(reconnTimer);connect();};
+
+/* ---------- keep the screen awake ---------- */
+/* the phone tries to sleep when untouched during a roast; hold a Screen Wake Lock
+   (iOS Safari 16.4+). It drops when the tab is hidden, so re-acquire on visibility
+   and on any touch as a fallback for browsers that require a user gesture. */
+function reqWake(){if(wakeLock||!('wakeLock' in navigator)||document.visibilityState!=='visible')return;
+ try{navigator.wakeLock.request('screen').then(function(w){wakeLock=w;
+  w.addEventListener('release',function(){wakeLock=null;});},function(){});}catch(e){}}
+document.addEventListener('visibilitychange',function(){
+ if(document.visibilityState==='visible')reqWake();});
+window.addEventListener('pointerdown',reqWake);
 
 /* ---------- connection ---------- */
 function veil(show,msg){var v=$('veil');if(msg)$('veilmsg').textContent=msg;
  v.classList.toggle('hide',!show);
  if(show){$('pairbox').classList.remove('show');$('veilspin').style.display='';}}
 /* no token (typically the home-screen app in its own storage jar) — let the user
-   pair from inside the app by pasting the pairing link (TilauScope ▸ Appairer). */
+   pair from inside the app by pasting the pairing link (TilauScope ▸ Pair a phone). */
 function showPairForm(msg){$('veilmsg').textContent=msg;$('veil').classList.remove('hide');
  $('veilspin').style.display='none';$('pairbox').classList.add('show');}
 $('ptgo').onclick=function(){var raw=$('ptinput').value.trim();if(!raw)return;
  var m=raw.match(/pt=([^&\s]+)/);PT=m?m[1]:raw;
- giveup=false;veil(true,'Appairage…');connect();};
+ ptUsed=false;giveup=false;veil(true,tr('pairing'));connect();};
 $('ptinput').addEventListener('keydown',function(e){if(e.key==='Enter')$('ptgo').click();});
 function setDot(cls){$('dot').className='dot'+(cls?' '+cls:'');}
 function connect(){
  clearTimeout(reconnTimer);
- var ws;try{ws=new WebSocket('ws://'+location.host+'/ws');}catch(e){reconnTimer=setTimeout(connect,2000);return;}
- ws.onopen=function(){WS=ws;setDot('on');
+ var my=++gen;
+ // supersede any socket still open or mid-handshake: without this, tapping
+ // Reconnect while the retry timer is already dialling leaves two live sockets
+ // (double telemetry, double auth) and the loser's onclose then resets the header
+ // and schedules a third. Handlers are detached before closing so the old socket
+ // can no longer touch any shared state.
+ if(sock){try{sock.onopen=sock.onmessage=sock.onclose=sock.onerror=null;sock.close();}catch(e){}sock=null;}
+ var scheme=(location.protocol==='https:'?'wss://':'ws://');
+ var ws;try{ws=new WebSocket(scheme+location.host+'/ws');}catch(e){reconnTimer=setTimeout(connect,2000);return;}
+ sock=ws;
+ ws.onopen=function(){if(my!==gen)return;WS=ws;setDot('on');
   ws.send(JSON.stringify({v:1,type:'hello',seq:1,ts:Date.now()/1000,
    payload:{client_id:CID,client_ver:'1',proto_min:1,proto_max:1}}));
   var DT=localStorage.getItem('tdt');
   if(DT)ws.send(JSON.stringify({v:1,type:'auth',seq:2,ts:Date.now()/1000,
    payload:{device_id:CID,device_token:DT}}));
-  else if(PT)ws.send(JSON.stringify({v:1,type:'auth',seq:2,ts:Date.now()/1000,
-   payload:{token:PT,device_id:CID,display_name:DN()}}));
-  else{showPairForm('Pour piloter depuis cette app, colle le lien d’appairage (TilauScope ▸ Appairer un téléphone ▸ Copier le lien).');
+  else if(PT){ptUsed=true;ws.send(JSON.stringify({v:1,type:'auth',seq:2,ts:Date.now()/1000,
+   payload:{token:PT,device_id:CID,display_name:DN()}}));}
+  else{showPairForm(tr('pair_prompt'));
    giveup=true;try{ws.close();}catch(e){}}};
  ws.onmessage=function(e){var m;try{m=JSON.parse(e.data);}catch(x){return;}var d=m.payload||{};
   switch(m.type){
    case 'paired':localStorage.setItem('tdt',d.device_token);if(d.role)role=d.role;break;
    case 'welcome':
     if(d.roaster)$('roaster').textContent=d.roaster;
-    chans=(d.channels||[]).filter(function(c){return c.id!=='sv';});
+    chans=(d.channels||[]);   // the desktop already excludes SV and disabled sliders
     // 4b milestone sequence (desktop already trims to the amateur set per operator
     // level); keep only names we can label, preserving order.
     var mk=(d.controls&&d.controls.mark)||['CHARGE','DRYe','FCs','SCs','DROP'];
     markSeq=mk.filter(function(n){return MARKLBL[n];});
-    role=d.role||'observer';buildGrid();render4b();veil(false);hideDead();break;
+    role=d.role||'observer';buildGrid();render4b();veil(false);hideDead();reqWake();break;
    case 'snapshot':setSnapshot(d);break;
    case 'telemetry':pushTele(d);break;
    case 'event':onEvent(d);break;
    case 'ack':onAck(d);break;
    case 'heartbeat':if(d.clock!=null){clock=d.clock;paintHeader();}break;
    case 'error':
-    if(d.code==='AUTH_FAILED'){localStorage.removeItem('tdt');giveup=true;
-     showPairForm('Appairage expiré ou révoqué. Colle un nouveau lien d’appairage depuis TilauScope.');}
-    else toast(d.code||'Erreur','err');break;
+    if(d.code==='AUTH_FAILED'){localStorage.removeItem('tdt');
+     // the stored device token was revoked or is stale, but the link that opened
+     // this page still carries a pairing token we haven't spent — let the normal
+     // reconnect below present it instead of asking for a paste of the very link
+     // the user just followed. If THAT fails too, fall through to the form.
+     if(PT&&!ptUsed)toast(tr('pairing'),'warn');
+     else{giveup=true;showPairForm(tr('pair_expired'));}}
+    else toast(d.code||tr('error'),'err');break;
   }};
- ws.onclose=function(){WS=null;setDot('');
-  if(!giveup){setDot('grace');$('hint').textContent='Reconnexion…';
+ ws.onclose=function(){if(my!==gen)return;WS=null;sock=null;setDot('');
+  if(!giveup){setDot('grace');$('hint').textContent=tr('reconnecting');
    if(haveData)showDead();reconnTimer=setTimeout(connect,1800);}};
  ws.onerror=function(){try{ws.close();}catch(e){}};
 }
@@ -755,6 +904,76 @@ window.addEventListener('orientationchange',function(){
    feedback loop: the canvas CSS box is 100%/100%, unaffected by its .width. */
 if(window.ResizeObserver){var ro=new ResizeObserver(scheduleSize);
  ro.observe(document.querySelector('.chartwrap'));}
-sizeCanvas();connect();
+applyI18n();sizeCanvas();connect();
 </script>
 """
+
+
+def client_i18n() -> dict:
+    """English UI strings for the mobile client (`/`), each translatable via a
+    literal QApplication.translate call (context 'tilauscope') so the standard
+    lupdate/lrelease extractor picks them up — NO helper/macro, or they'd be
+    invisible to the extractor. The page runs in a browser and can't call Qt's
+    translator itself, so this dict is built once on the Qt main thread
+    (TilauWebControl.__init__) and injected into the served page as `window.T`;
+    the JS reads it, falling back to the English already inline in the HTML.
+    Placeholders {m}/{n} are filled in the client JS."""
+    from PyQt6.QtWidgets import QApplication
+    return {
+        "takeover": QApplication.translate("tilauscope", "Take control"),
+        "release": QApplication.translate("tilauscope", "Release control"),
+        "undo_title": QApplication.translate("tilauscope", "Undo last milestone"),
+        "mark": QApplication.translate("tilauscope", "Mark"),
+        "mark_next": QApplication.translate("tilauscope", "Mark {m}"),
+        "roast_complete": QApplication.translate("tilauscope", "Roast complete"),
+        "rec_start": QApplication.translate("tilauscope", "Start recording"),
+        "stop": QApplication.translate("tilauscope", "STOP"),
+        "connecting": QApplication.translate("tilauscope", "Connecting…"),
+        "reconnecting": QApplication.translate("tilauscope", "Reconnecting…"),
+        "stop_title": QApplication.translate("tilauscope", "Stop the roast?"),
+        "stop_sub": QApplication.translate("tilauscope", "Two ways to finish — neither discards the roast."),
+        "save": QApplication.translate("tilauscope", "Save"),
+        "save_desc": QApplication.translate("tilauscope", "Saves the .alog · fill in the weight and colour at the desktop"),
+        "finish": QApplication.translate("tilauscope", "Finish on Artisan"),
+        "finish_desc": QApplication.translate("tilauscope", "Stops without writing · you finish at the desktop"),
+        "cancel": QApplication.translate("tilauscope", "Cancel"),
+        "adjust": QApplication.translate("tilauscope", "Adjust"),
+        "confirm": QApplication.translate("tilauscope", "Confirm"),
+        "wheel_sub": QApplication.translate("tilauscope", "Drag to the value, then Confirm"),
+        "connecting_roaster": QApplication.translate("tilauscope", "Connecting to the roaster…"),
+        "paste_link_ph": QApplication.translate("tilauscope", "Paste the pairing link"),
+        "pair": QApplication.translate("tilauscope", "Pair"),
+        "pairing": QApplication.translate("tilauscope", "Pairing…"),
+        "pair_prompt": QApplication.translate("tilauscope", "To pilot from this app, paste the pairing link (TilauScope ▸ Pair a phone ▸ Copy link)."),
+        "pair_expired": QApplication.translate("tilauscope", "Pairing expired or revoked. Paste a new pairing link from TilauScope."),
+        "hw_frozen": QApplication.translate("tilauscope", "Hardware frozen"),
+        "reconnect": QApplication.translate("tilauscope", "Reconnect"),
+        "link_lost": QApplication.translate("tilauscope", "Link lost. The desktop keeps control for {n} more s."),
+        "link_lost_obs": QApplication.translate("tilauscope", "Link lost · the roast carries on at the desktop."),
+        "grace_elapsed": QApplication.translate("tilauscope", "Grace elapsed · the hardware stays frozen, control can be taken over."),
+        "req_sent": QApplication.translate("tilauscope", "Request sent · confirm on the desktop…"),
+        "you_control": QApplication.translate("tilauscope", "You're in control"),
+        "control_taken": QApplication.translate("tilauscope", "Control taken over elsewhere"),
+        "control_denied": QApplication.translate("tilauscope", "Control denied"),
+        "take_first": QApplication.translate("tilauscope", "Take control first"),
+        "busy_retry": QApplication.translate("tilauscope", "Busy, try again"),
+        "read_only": QApplication.translate("tilauscope", "Read-only control"),
+        "offline": QApplication.translate("tilauscope", "Offline"),
+        "error": QApplication.translate("tilauscope", "Error"),
+        "marked": QApplication.translate("tilauscope", "{m} marked"),
+        "undone": QApplication.translate("tilauscope", "{m} undone"),
+        "rec_started": QApplication.translate("tilauscope", "Recording started"),
+        "rec_stopped": QApplication.translate("tilauscope", "Recording stopped"),
+        "roast_saved": QApplication.translate("tilauscope", "Roast saved"),
+        "need_charge_drop": QApplication.translate("tilauscope", "CHARGE and DROP required to save"),
+        "nothing_to_save": QApplication.translate("tilauscope", "Nothing to save"),
+        "hint_controller": QApplication.translate("tilauscope", "Drag to set · tap the value for the wheel"),
+        "hint_observer": QApplication.translate("tilauscope", "Observer · take control to pilot"),
+        "desktop_off": QApplication.translate("tilauscope", "Desktop stopped measuring · view frozen"),
+        "phase_idle": QApplication.translate("tilauscope", "Idle"),
+        "phase_preheat": QApplication.translate("tilauscope", "Preheat"),
+        "phase_drying": QApplication.translate("tilauscope", "Drying"),
+        "phase_maillard": QApplication.translate("tilauscope", "Maillard"),
+        "phase_development": QApplication.translate("tilauscope", "Development"),
+        "phase_cooling": QApplication.translate("tilauscope", "Cooling"),
+    }

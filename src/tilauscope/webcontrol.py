@@ -108,13 +108,14 @@ def _default_welcome() -> dict:
         "roaster": "TilauScope",
         "unit": "C",
         "role": "observer",
+        # ids MUST follow the `slider{i}` convention the telemetry uses as its
+        # slider keys, or the values streamed up would never match a channel and
+        # the grid would sit empty for good. Labels stay generic: the real ones
+        # come from Artisan's own slider config via the command bridge.
         "channels": [
-            {"id": "heat", "label": "Feu", "status": "controllable",
-             "min": 0, "max": 100, "step": 1, "unit": "%"},
-            {"id": "air_extract", "label": "Air/Extraction", "status": "controllable",
-             "min": 0, "max": 100, "step": 5, "unit": "%", "coupled": True},
-            {"id": "drum", "label": "Tambour", "status": "controllable",
-             "min": 40, "max": 100, "step": 5, "unit": "%"},
+            {"id": f"slider{i}", "label": f"Slider {i + 1}", "status": "controllable",
+             "min": 0, "max": 100, "step": 1, "unit": "%"}
+            for i in range(4)
         ],
         "controls": {
             "recorder": True,
@@ -157,6 +158,25 @@ class TilauWebControl:
         self._snapshot_provider = snapshot_provider or _default_snapshot
         self._pairing = pairing  # PairingManager | None (None -> open, no auth)
         self._bridge = None      # CommandBridge | None (attached when control enabled)
+
+        # UI translations for the mobile client, resolved ONCE here on the Qt main
+        # thread (QApplication.translate must not run on the WS loop thread) and
+        # injected into the served page as window.T. English is inline in the page
+        # as the fallback if this ever fails.
+        self._i18n_json = "{}"
+        try:
+            import json as _json
+            from tilauscope.webclient import client_i18n
+            # `<` is escaped so a translation that happened to contain "</script>"
+            # cannot close the <script type="application/json"> block carrying this
+            # JSON and inject markup into the page. json.dumps does not do it.
+            self._i18n_json = _json.dumps(client_i18n(),
+                                          ensure_ascii=False).replace('<', '\\u003c')
+        except Exception:  # noqa: BLE001
+            _log.debug("client i18n unavailable; page uses inline English")
+        # the page is immutable once the translations are resolved: build it on the
+        # first request and serve that, instead of a 50 kB replace() per request.
+        self._client_html = ''
 
         # controller lock (§7) — all fields touched on the loop thread only
         self._controller = None       # device_id of the current controller (None = free)
@@ -205,6 +225,14 @@ class TilauWebControl:
         resp.headers.setdefault('X-Frame-Options', 'DENY')
         resp.headers.setdefault('Referrer-Policy', 'no-referrer')
         resp.headers.setdefault('Cache-Control', 'no-store')
+        # The page is fully self-contained: its own inline <style>/<script>, icons
+        # from this server, and a WebSocket back to it. Nothing else may load or be
+        # contacted, so nothing injected into the page could phone anywhere out.
+        resp.headers.setdefault('Content-Security-Policy',
+                                "default-src 'none'; img-src 'self' data:; "
+                                "style-src 'unsafe-inline'; script-src 'unsafe-inline'; "
+                                "connect-src 'self' ws: wss:; manifest-src 'self'; "
+                                "base-uri 'none'; form-action 'none'")
         return resp
 
     @staticmethod
@@ -241,6 +269,16 @@ class TilauWebControl:
     # ---- WebSocket ----------------------------------------------------------
 
     async def _ws_handler(self, request: web.Request) -> web.WebSocketResponse:
+        # Cross-origin upgrades are refused: a page served by any other site the
+        # phone happens to visit (or a DNS-rebinding host) must not be able to open
+        # a control socket. Browsers always send Origin on a WS upgrade and a
+        # same-origin one matches Host; non-browser clients send none at all.
+        origin = request.headers.get('Origin')
+        if origin:
+            from urllib.parse import urlsplit
+            if urlsplit(origin).netloc != request.headers.get('Host', ''):
+                _log.warning("control: refused WS upgrade from origin %s", origin)
+                raise web.HTTPForbidden(text='forbidden origin')
         ws = web.WebSocketResponse(heartbeat=None)
         await ws.prepare(request)
 
@@ -589,8 +627,10 @@ class TilauWebControl:
     # ---- real client (Phase 4) ----------------------------------------------
 
     async def _client_page(self, _request: web.Request) -> web.Response:
-        from tilauscope.webclient import CLIENT_HTML
-        return web.Response(text=CLIENT_HTML, content_type='text/html')
+        if not self._client_html:
+            from tilauscope.webclient import CLIENT_HTML
+            self._client_html = CLIENT_HTML.replace('__TL_I18N__', self._i18n_json)
+        return web.Response(text=self._client_html, content_type='text/html')
 
     # ---- PWA install: manifest + home-screen icon (Phase 4c) ----------------
 

@@ -46,7 +46,7 @@ from PyQt6.QtWidgets import (
     QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem,
     QHeaderView, QSizeGrip, QSplitter, QAbstractItemView,
 )
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QKeyEvent
 
 from artisanlib.util import fromCtoFstrict
 from tilauscope.tilauscope_types import (
@@ -2536,6 +2536,15 @@ class RoastSetupDialog(QDialog):
     def closeEvent(self, event) -> None:  # noqa: ANN001
         self._close_helpers()
         super().closeEvent(event)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_Escape:
+            # ESC on a non-modal QDialog calls reject() → hide() without closeEvent.
+            # Force close() to trigger closeEvent and the full cleanup
+            # (otherwise _scale_window/_ambient_window stay visible as orphan windows).
+            self.close()
+        else:
+            super().keyPressEvent(event)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

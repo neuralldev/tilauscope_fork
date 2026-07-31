@@ -5706,6 +5706,31 @@ class TilauScope(QWidget):
                 alarm_set = QApplication.translate("tilauscope_beancave", " ALARM-SET='<b>{0}</b>'").format(self.aw.qmc.alarmsetlabel.upper()) if self.aw.qmc.alarmsetlabel != "" else ""
             status_text += alarm_set
             # if roast started
+            # ## TILAU ## ground truth is Artisan's flagstart, NOT is_roasting: our
+            # own flag drifts whenever recording is toggled outside our button (the
+            # Artisan STOP, a remote command, the simulator), which left the banner
+            # announcing a roast session well after it had ended. This method is the
+            # sync point, so resync here rather than patch each caller.
+            self.is_roasting = bool(self.aw.qmc.flagstart)
+            # ## TILAU ## the guided assistant is started/stopped by the recording
+            # state, but only our own START/STOP button used to announce it. A roast
+            # started from Artisan (or the simulator, a remote command, an alarm)
+            # therefore left the assistant on its idle page — bean identified in the
+            # dropdown, never adopted, no plan. Same reasoning as the resync above:
+            # this method is the single sync point, so the edge is emitted here.
+            _prev_roasting = getattr(self, '_last_flagstart', None)
+            if _prev_roasting is not None and _prev_roasting != self.is_roasting:
+                try:
+                    self.roast_bridge.notify_roast_state(self.is_roasting)
+                except Exception as e:  # pylint: disable=broad-except
+                    _log.debug("roast state notify: %s", e)
+                # ## TILAU ## Artisan re-shows its own milestone bar at every
+                # OnRecorder (applyStandardButtonVisibility) — TilauScope has its
+                # own milestone row, so that bar must go back down whatever
+                # started the recording, not only our own button.
+                if self.is_roasting:
+                    self._hide_artisan_standard_buttons()
+            self._last_flagstart = self.is_roasting
             if self.is_roasting: # replace text with roast information
                 status_text = self.str_roastsession.upper()
             # now check for simulation mode
@@ -5713,7 +5738,10 @@ class TilauScope(QWidget):
             self._is_simulator = bool(self.aw.simulator)
             if self._is_simulator:
                 simulator_text = " - "+self.str_simulator if hasattr(self, "str_simulator") else "" # Fix 2026/04/15
-                if not self.aw.sample_loop_running:
+                # "paused" only means something while the scope is still ON: with
+                # monitoring off the loop is stopped, not paused, and the status
+                # already says OFFLINE — claiming a pause on top of it is wrong.
+                if not self.aw.sample_loop_running and self.aw.qmc.flagon:
                     simulator_text += " "+ self.str_paused
                 else:
                     b= self.aw.qmc.timeclock.elapsedMilli()
@@ -5729,7 +5757,18 @@ class TilauScope(QWidget):
             self.status_lbl.setText(f"{status_text}{simulator_text}")
             self.status_lbl.setStyleSheet(f"color: {'#A6E3A1' if self.aw.qmc.flagon else '#F38BA8'}; border: none; background:transparent;")
             self.update_button_style(self.btn_power, self.aw.qmc.flagon, False, False, True)
-            self.update_button_style(self.btn_start_stop, self.aw.qmc.flagstart, False, False, True) 
+            self.update_button_style(self.btn_start_stop, self.aw.qmc.flagstart, False, False, True)
+            # ## TILAU ## remote clients live off Artisan's sampling ticks, which
+            # stop with the sampling itself — a STOP that also takes monitoring down
+            # (simulator) would never reach the phone. This method already runs at
+            # every point where the desktop state changed, so it is the natural
+            # place to push it. Guarded: the status bar must never break for it.
+            try:
+                tap = getattr(self.aw, 'tilau_telemetry_tap', None)
+                if tap is not None:
+                    tap.sync_state()
+            except Exception as e:  # pylint: disable=broad-except
+                _log.debug("remote sync_state: %s", e)
         except Exception as e:
             _log.error(e)
 
@@ -5866,6 +5905,17 @@ class TilauScope(QWidget):
                 
         return True # On autorise le démarrage
     
+    ## TILAU ## single place hiding Artisan's own milestone/event button bar:
+    ## TilauScope displays its own CHARGE/DRY/FC…/DROP row, so the Artisan one
+    ## is redundant inside the canvas. Artisan re-shows it on every OnRecorder,
+    ## hence more than one caller — never duplicate the loop.
+    def _hide_artisan_standard_buttons(self) -> None:
+        try:
+            for b in self.artisan_buttons_collection.values():
+                b.setVisible(False)
+        except Exception as e:  # pylint: disable=broad-except
+            _log.debug("hide artisan buttons: %s", e)
+
     # Handle START/STOP button action
     def toggle_start_stop(self, pressed, force=False):
         if force :
@@ -5883,8 +5933,14 @@ class TilauScope(QWidget):
         ## the dialog must never pop up on STOP (is_roasting already True).
         if not self.is_roasting and not self.check_playback_before_start():
             return
+        ## TILAU ## snapshot BEFORE ToggleRecorder: Artisan calls back into
+        ## update_status_text() synchronously, which resyncs self.is_roasting on
+        ## flagstart. Reading the flag after the call therefore reports the NEW
+        ## state, and a START was taken for a STOP — post-roast result dialog
+        ## popping up 800 ms after pressing START.
+        was_roasting = self.is_roasting
         self.aw.qmc.ToggleRecorder(pressed)
-        if not self.is_roasting :
+        if not was_roasting :
             # update roasting flag
             self.is_roasting = True
             # Reset timing state so phase counters start fresh
@@ -5893,9 +5949,7 @@ class TilauScope(QWidget):
             self.current_phase = None
             # Switch timer to idle/preheating style while waiting for CHARGE
             self._update_timer_style("idle")
-            # start preheating
-            for b in self.artisan_buttons_collection.values():
-                b.setVisible(False)
+            self._hide_artisan_standard_buttons()
             # start preheating
             self.handle_preheat(True)
             #. disable reset button

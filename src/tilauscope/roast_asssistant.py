@@ -4725,6 +4725,11 @@ class RoastAssistantPanel(QWidget):
         ## inatteignable et tous les chemins AUTO (feedforward, trim, cockpit,
         ## automark, auto-DROP, cooling) sont morts. Le code reste en place pour
         ## la reprise. Garde-fou read-only conservé pour la ré-activation.
+        ## TILAU ## the header must mirror the current selection as soon as it
+        ## changes: it used to say "no green bean selected" while the dropdown
+        ## already showed the bean identified from the roast record.
+        self._setup_bar.combo_bean.currentIndexChanged.connect(self._on_setup_selection_changed)
+        self._setup_bar.combo_agtron.currentIndexChanged.connect(self._on_setup_selection_changed)
         self._bean_header.btn_auto.clicked.connect(self._ap_toggle)
         self._bean_header.btn_auto.setVisible(
             _AP_USER_ENABLED and not _roaster_is_readonly(self.aw))
@@ -4928,6 +4933,22 @@ class RoastAssistantPanel(QWidget):
         else:
             self._stop_assistant()
 
+    def _refresh_bean_header(self) -> None:   ## TILAU ##
+        """Mirror the current setup selection in the bean header.
+
+        Single point of truth for the idle header: while no roast is running the
+        header shows whatever the dropdowns hold (the bean identified from the
+        roast record, or the operator's own pick). During a roast the header is
+        owned by _start_assistant and must not be touched.
+        """
+        if self.is_active:
+            return
+        self._bean_header.update_bean(self._setup_bar.selected_bean(),
+                                      self._setup_bar.selected_agtron())
+
+    def _on_setup_selection_changed(self, _idx: int) -> None:   ## TILAU ##
+        self._refresh_bean_header()
+
     def _start_assistant(self) -> None:
         """Charge les données du grain sélectionné et génère le plan prédictif."""
         bean = self._setup_bar.selected_bean()
@@ -5051,7 +5072,7 @@ class RoastAssistantPanel(QWidget):
         self._setup_bar.set_active(False)
         self._setup_bar.show_combos(True)
         self._bean_header.set_active(False)
-        self._bean_header.update_bean(None, None)
+        self._refresh_bean_header()   ## TILAU ## keep showing what is selected
         self._current_phase = self._PHASE_IDLE
         self._stack.setCurrentIndex(self._PHASE_IDLE)
         self._ror_hist.clear()
@@ -6534,6 +6555,7 @@ class RoastAssistantPanel(QWidget):
         if not beans:
             _logd.debug("RoastAssistant: aucun grain trouvé dans BeanCave")
             self._setup_bar.populate_beans([], None, None)
+            self._refresh_bean_header()
             return
 
         # ── 2. UUID courant — priorité (Tilau 2026-07-11 : la sélection LIVE     ## TILAU ##
@@ -6602,6 +6624,9 @@ class RoastAssistantPanel(QWidget):
 
         # ── 4. Remplir la dropdown — toujours, même sans profil ──────────────────
         self._setup_bar.populate_beans(beans, current_uuid, ag_color)
+        ## TILAU ## populate_beans() fills the combo with signals blocked, so the
+        ## header has to be refreshed explicitly here.
+        self._refresh_bean_header()
         _logd.debug(
             f"RoastAssistant: {len(beans)} grain(s) chargé(s), "
             f"uuid={current_uuid!r}, ag_color={ag_color}"

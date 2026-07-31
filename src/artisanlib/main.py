@@ -22228,6 +22228,19 @@ class ApplicationWindow(QMainWindow):
                 # BLE is not stopped in self.stopActivities() as that one is also called on settings load and we need to keep
                 # the same BLE thread/loop running over the whole runtime of the app to avoid ble._scan_and_connect_lock and ble._terminate_scan_event
                 # are running in the wrong thread
+                ## TILAU ## last-resort stop of every live BLE scanner. Each owner
+                ## (BeanCave, the SENSORS tab) stops its own, but a scanner left
+                ## running keeps CoreBluetooth scanning into _Py_Finalize and its
+                ## discovery callback re-enters a half-torn-down interpreter →
+                ## SIGABRT on quit. Must run BEFORE ble.close() kills the loop the
+                ## cancellation travels through.
+                try:
+                    if 'tilauscope.tilau_ble_scanner' in sys.modules:
+                        from tilauscope.tilau_ble_scanner import TilauBLEScanner
+                        TilauBLEScanner.stop_all()
+                except Exception: # pylint: disable=broad-except
+                    pass
+
                 try:
                     if 'artisanlib.ble_port' in sys.modules:
                         from artisanlib import ble_port

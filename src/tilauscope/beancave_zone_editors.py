@@ -36,7 +36,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QThread
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -47,6 +47,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
@@ -55,7 +56,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from tilauscope.tilauscope_types import THEME, show_styled_message
+from tilauscope.tilauscope_types import THEME, TilauProgressDialog, show_styled_message
 from tilauscope.sack_manager import prompt_release_if_emptied  ## TILAU ## sack reclaim (§9.3)
 
 _logd = logging.getLogger('tilaudebug')
@@ -209,7 +210,18 @@ class ZoneEditorDialog(QDialog):
             f"color:{THEME['ACCENT']};font-family:{_MONO};font-size:12px;"
             f"font-weight:800;letter-spacing:2px;")
         title.setWordWrap(True)
-        lay.addWidget(title)
+        if zone == 'all':
+            head_row = QHBoxLayout()
+            head_row.addWidget(title, 1)
+            ai_btn = QPushButton("✨ " + QApplication.translate("tilauscope_beancave", "Fill from URL"))
+            ai_btn.setStyleSheet(self._btn_style(THEME['ACCENT'], THEME['BORDER']))
+            ai_btn.setToolTip(QApplication.translate("tilauscope_beancave",
+                "Fetch a supplier's product page and let AI fill this form automatically."))
+            ai_btn.clicked.connect(self._on_click_ai_parse)
+            head_row.addWidget(ai_btn)
+            lay.addLayout(head_row)
+        else:
+            lay.addWidget(title)
         sub = QLabel(
             QApplication.translate("tilauscope_beancave", "Fill what you know — everything can be refined later from the sheet.")
             if zone == 'all' else
@@ -501,6 +513,91 @@ class ZoneEditorDialog(QDialog):
         self.varieties_combo.addItems([""] + list(types.get(species, []) or []))
         self.varieties_combo.setCurrentText(current)
         self.varieties_combo.blockSignals(False)
+
+    # ── AI fill from supplier URL (expert form only, Lot 5 restore) ─────────
+    def _on_click_ai_parse(self) -> None:
+        from tilauscope.beancave import BeanAIWorker, URLInputDialog
+
+        dlg = URLInputDialog(self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        url_to_analyze = dlg.url_input.text().strip()
+        if not url_to_analyze:
+            return
+
+        self._ai_progress = TilauProgressDialog(
+            QApplication.translate("tilauscope_beancave", "Fetching and analyzing website content..."),
+            self)
+        self._ai_progress.show()
+
+        self._ai_thread = QThread()
+        self._ai_worker = BeanAIWorker(
+            getattr(self._host, 'ai', None),
+            url_to_analyze,
+            getattr(self._host, 'coffee_beans_categories', []),
+            getattr(self._host, 'coffee_processing_methods', {}),
+            getattr(self._host, 'coffee_producing_countries', []),
+            getattr(self._host, 'coffee_bean_types', {}),
+            getattr(self._host, 'coffee_beans_species', []))
+        self._ai_worker.moveToThread(self._ai_thread)
+
+        self._ai_worker.finished.connect(self._on_ai_parse_finished)
+        self._ai_worker.error.connect(self._on_ai_parse_error)
+        self._ai_thread.started.connect(self._ai_worker.run)
+
+        self._ai_worker.finished.connect(self._ai_thread.quit)
+        self._ai_worker.finished.connect(self._ai_worker.deleteLater)
+        self._ai_worker.error.connect(self._ai_thread.quit)
+        self._ai_worker.error.connect(self._ai_worker.deleteLater)
+        self._ai_thread.finished.connect(self._ai_thread.deleteLater)
+
+        self._ai_thread.start()
+
+    def _on_ai_parse_finished(self, bean) -> None:
+        self._ai_progress.close()
+        if not bean:
+            return
+
+        def update_combo(combo: QComboBox, value: str) -> None:
+            if value:
+                combo.setCurrentText(value)
+
+        self.name_edit.setText(bean.name)
+        self.farm_edit.setText(bean.farm)
+        self.supplier_edit.setText(bean.supplier)
+        self.crop_spin.setValue(int(bean.crop or 0))
+        self.altitude_spin.setValue(int(bean.altitude or 0))
+        update_combo(self.country_combo, bean.country)
+
+        self.category_combo.setCurrentText(bean.category or "")
+        self._refresh_processes(bean.category or "")
+        self.process_combo.setCurrentText(bean.process or "")
+        self.species_combo.setCurrentText(bean.species or "")
+        self._refresh_varieties(bean.species or "")
+        self.varieties_combo.setCurrentText(bean.varieties or "")
+
+        self.density_spin.setValue(float(bean.density or 0.0))
+        self.humidity_spin.setValue(float(bean.last_humidity or 0.0))
+        self.wa_spin.setValue(float(bean.water_activity or 0.0))
+        self.sca_spin.setValue(float(bean.sca or 0.0))
+        self.flavour_edit.setText(bean.flavour_notes)
+
+        if getattr(bean, 'is_blend', False):
+            self.type_combo.setCurrentIndex(1)
+            self.bean2_combo.setCurrentText(bean.bean2_name or "")
+            self.bean2_ratio_spin.setValue(float(bean.bean2_ratio or 0.0))
+            self.bean3_combo.setCurrentText(bean.bean3_name or "")
+            self.bean3_ratio_spin.setValue(float(bean.bean3_ratio or 0.0))
+        else:
+            self.type_combo.setCurrentIndex(0)
+        self._refresh_blend_visibility()
+
+    def _on_ai_parse_error(self, message: str) -> None:
+        self._ai_progress.close()
+        show_styled_message(self,
+            QApplication.translate("tilauscope_beancave", "AI Error"),
+            QApplication.translate("tilauscope_beancave", "Failed to extract bean data") + f": {message}",
+            QMessageBox.Icon.Warning)
 
     # ── create gate: required fields drive the Create button ────────────────
     def _wire_create_gate(self) -> None:

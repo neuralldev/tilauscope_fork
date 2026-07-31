@@ -113,9 +113,10 @@ class TilauWebHost:
 
     def set_records_resolvers(self,
                               roast_resolver: Callable[[str], Optional[str]],
-                              bean_resolver: Callable[[str], Optional[dict]]) -> None:
+                              bean_resolver: Callable[[str], Optional[dict]],
+                              sack_resolver: Optional[Callable[[str], Optional[str]]] = None) -> None:
         if self._records is not None:
-            self._records.set_resolvers(roast_resolver, bean_resolver)
+            self._records.set_resolvers(roast_resolver, bean_resolver, sack_resolver)
 
     def clear_records_resolvers(self) -> None:
         if self._records is not None:
@@ -132,6 +133,16 @@ class TilauWebHost:
     def publish_snapshot(self, snapshot: dict) -> None:
         """Store the latest full snapshot (served to clients on connect)."""
         self._last_snapshot = snapshot
+
+    def patch_snapshot(self, **fields) -> None:
+        """Amend a few fields of the stored snapshot without rebuilding it.
+
+        Used when sampling stops: the last full snapshot was built while Artisan
+        was still monitoring, and a phone connecting afterwards must not be told
+        the frozen view is live.
+        """
+        if isinstance(self._last_snapshot, dict):
+            self._last_snapshot = {**self._last_snapshot, **fields}
 
     def publish_telemetry(self, telemetry: dict) -> None:
         """Fan out a per-tick delta to connected observers (thread-safe)."""

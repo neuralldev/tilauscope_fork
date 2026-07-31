@@ -1,4 +1,4 @@
-__version__ = '4.1.1'
+__version__ = '4.1.2'
 __revision__ = ''
 __build__ = '1'
 __artisan_os__ = 'macos'

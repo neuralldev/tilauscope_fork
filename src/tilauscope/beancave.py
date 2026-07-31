@@ -1415,14 +1415,22 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         except Exception:  # noqa: BLE001
             return None
 
+    def _resolve_sack(self, sack_id: str):
+        """sack id -> uuid of the bean currently holding it (or None)."""
+        try:
+            return next((bean.uuid for bean in self.green_beans
+                         if sack_id in (getattr(bean, "sacks", None) or [])), None)
+        except Exception:  # noqa: BLE001
+            return None
+
     def _register_web_resolvers(self) -> None:
-        """Hand BeanCave's roast/bean resolvers to the app-level web host so the
-        read-only Records server can answer /roast and /bean. The server itself is
-        started by TilauWebHost with Artisan/TilauScope, not here."""
+        """Hand BeanCave's roast/bean/sack resolvers to the app-level web host so the
+        read-only Records server can answer /roast, /bean and /sack. The server itself
+        is started by TilauWebHost with Artisan/TilauScope, not here."""
         try:
             host = getattr(self.aw, 'tilau_web_host', None)
             if host is not None:
-                host.set_records_resolvers(self._resolve_roast, self._resolve_bean)
+                host.set_records_resolvers(self._resolve_roast, self._resolve_bean, self._resolve_sack)
                 _log.info("record web resolvers registered with TilauWebHost")
         except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
             _log.warning(f"record web resolvers not registered: {e}")
@@ -8700,11 +8708,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             elif dlg.result_kind == 'bean':
                 self._open_bean_sheet_from_scan(dlg.result_id)
             elif dlg.result_kind == 'sack':
-                self._show_message(self,
-                    QApplication.translate("tilauscope_beancave", "Storage sacks"),
-                    QApplication.translate("tilauscope_beancave",
-                        "Storage sack QR codes will be supported in a future version."),
-                    QMessageBox.Icon.Information)
+                self._open_bean_sheet_from_sack_scan(dlg.result_id)
         except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
             _logd.error(f"QR scan failed: {e}", exc_info=True)
 
@@ -8764,6 +8768,19 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             self.activateWindow()
         except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
             _logd.error(f"scan: bean sheet opening failed: {e}", exc_info=True)
+
+    def _open_bean_sheet_from_sack_scan(self, sack_id: str) -> None:
+        """Resolve a sack label to its owning coffee and open that record."""
+        bean_uuid = self._resolve_sack(sack_id)
+        if not bean_uuid:
+            self._show_message(self,
+                QApplication.translate("tilauscope_beancave", "Sack not found"),
+                QApplication.translate("tilauscope_beancave",
+                    "This label is not currently attached to any coffee in the "
+                    "BeanCave catalogue."),
+                QMessageBox.Icon.Warning)
+            return
+        self._open_bean_sheet_from_scan(bean_uuid)
 
     @pyqtSlot()
     def _open_alarm_editor(self) -> None:
@@ -11308,12 +11325,11 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         if not url_to_analyze:
             return
         
-        # 1. Create and show the non-blocking "Waiting" dialog
-        self.ai_progress = QProgressDialog(QApplication.translate("tilauscope_beancave","Fetching and analyzing website content..."), QApplication.translate("Button","Cancel"), 0, 0, self)
-        self.ai_progress.setWindowTitle(QApplication.translate("tilauscope_beancave","AI Extraction"))
-        self.ai_progress.setWindowModality(Qt.WindowModality.WindowModal)
-        # Prevent the user from closing it manually to avoid thread crashes
-        self.ai_progress.setCancelButton(None) 
+        # 1. Create and show the non-blocking "Waiting" dialog (frameless/themed,
+        # no cancel button so the background thread can't be interrupted mid-flight)
+        self.ai_progress = TilauProgressDialog(
+            QApplication.translate("tilauscope_beancave","Fetching and analyzing website content..."),
+            self)
         self.ai_progress.show()
 
         # 2. Setup the background thread
@@ -12029,37 +12045,164 @@ class BeanAIWorker(QObject):
             self.error.emit(str(e))
 
 class URLInputDialog(QDialog):
+    """Frameless, THEME-styled prompt for the supplier URL to AI-parse.
+
+    Styled to match TilauScope's dark THEME (frameless + translucent), same
+    pattern as AddBeanChoiceDialog / QRCodeDialog.
+    """
+
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle(QApplication.translate("tilauscope_beancave","Search for bean data using AI"))
+        super().__init__(parent,
+                         Qt.WindowType.FramelessWindowHint |
+                         Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setMinimumWidth(400)
-        
-        layout = QVBoxLayout(self)
+
+        # ── Outer shell (gives the translucent rounded frame) ──────────────
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+
+        card = QFrame()
+        card.setObjectName("URLInputCard")
+        card.setStyleSheet(f"""
+            #URLInputCard {{
+                background-color : {THEME['BG']};
+                border           : 2px solid {THEME['ACCENT']};
+                border-radius    : 14px;
+            }}
+        """)
+        outer.addWidget(card)
+
+        root = QVBoxLayout(card)
+        root.setContentsMargins(28, 24, 28, 24)
+        root.setSpacing(16)
+
+        # ── Icon + title ─────────────────────────────────────────────────
+        title_row = QHBoxLayout()
+        title_row.setSpacing(10)
+        icon_lbl = QLabel("✨")
+        icon_lbl.setStyleSheet("font-size: 26px;")
+        title_lbl = QLabel(QApplication.translate("tilauscope_beancave", "Search for bean data using AI"))
+        title_lbl.setWordWrap(True)
+        title_lbl.setStyleSheet(f"""
+            color       : {THEME['ACCENT']};
+            font-family : 'JetBrains Mono', monospace;
+            font-size   : 14px;
+            font-weight : 800;
+            letter-spacing: 1px;
+        """)
+        title_row.addWidget(icon_lbl)
+        title_row.addWidget(title_lbl, 1)
+        root.addLayout(title_row)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setStyleSheet(f"color: {THEME.get('BORDER', '#3f3f3f')};")
+        root.addWidget(sep)
+
+        _input_style = f"""
+            QLineEdit {{
+                background      : {THEME.get('SURFACE', '#181825')};
+                color            : {THEME['TEXT']};
+                border           : 1px solid {THEME.get('BORDER', '#3f3f3f')};
+                border-radius    : 7px;
+                padding          : 7px 10px;
+                font-family      : 'JetBrains Mono', monospace;
+                font-size        : 11px;
+            }}
+            QLineEdit:focus {{
+                border: 1px solid {THEME['ACCENT']};
+            }}
+        """
         self.url_input = QLineEdit()
+        self.url_input.setStyleSheet(_input_style)
         self.url_input.setPlaceholderText(QApplication.translate("tilauscope_beancave","Enter URL of supplier here..."))
-        
+        self.url_input.setMinimumHeight(30)
+
+        btn_style_secondary = f"""
+            QPushButton {{
+                background-color : transparent;
+                color            : {THEME['TEXT']};
+                border           : 1px solid {THEME.get('BORDER', '#3f3f3f')};
+                border-radius    : 6px;
+                padding          : 8px 18px;
+                font-family      : 'JetBrains Mono', monospace;
+                font-size        : 11px;
+            }}
+            QPushButton:hover {{
+                border-color : {THEME['ACCENT']};
+                color        : {THEME['ACCENT']};
+            }}
+            QPushButton:pressed {{
+                background-color : {THEME.get('SURFACE', '#1e1e2e')};
+            }}
+            QPushButton:disabled {{
+                color : {THEME.get('MUTED', '#888888')};
+                border-color : {THEME.get('BORDER', '#3f3f3f')};
+            }}
+        """
+        btn_style_primary = f"""
+            QPushButton {{
+                background-color : {THEME['ACCENT']};
+                color            : {THEME['BG']};
+                border           : none;
+                border-radius    : 6px;
+                padding          : 8px 18px;
+                font-family      : 'JetBrains Mono', monospace;
+                font-size        : 11px;
+                font-weight      : 700;
+            }}
+            QPushButton:hover {{
+                background-color : {THEME.get('ACCENT_LIGHT', THEME['ACCENT'])};
+            }}
+            QPushButton:pressed {{
+                background-color : {THEME.get('SURFACE', '#1e1e2e')};
+                color            : {THEME['ACCENT']};
+                border           : 1px solid {THEME['ACCENT']};
+            }}
+        """
+        btn_style_cancel = f"""
+            QPushButton {{
+                background-color : transparent;
+                color            : {THEME.get('MUTED', '#888888')};
+                border           : none;
+                padding          : 6px 12px;
+                font-family      : 'JetBrains Mono', monospace;
+                font-size        : 10px;
+            }}
+            QPushButton:hover {{
+                color : {THEME['TEXT']};
+            }}
+        """
+
         # Button: Paste URL
         self.btn_paste = QPushButton(QApplication.translate("tilauscope_beancave","Paste URL"))
+        self.btn_paste.setStyleSheet(btn_style_secondary)
         self.btn_paste.clicked.connect(self.paste_url)
-        
+
         # Connection for dynamic update when clipboard changes
         QGuiApplication.clipboard().dataChanged.connect(self.update_paste_button_state)
-        
+
         # Set initial state
         self.update_paste_button_state()
 
         # Boutons Validation
-        btns_layout = QHBoxLayout()
         self.btn_ok = QPushButton(QApplication.translate("tilauscope_beancave","Extract data"))
+        self.btn_ok.setStyleSheet(btn_style_primary)
+        self.btn_ok.setMinimumHeight(34)
         self.btn_ok.clicked.connect(self.accept)
         self.btn_cancel = QPushButton(QApplication.translate("Button","Cancel"))
+        self.btn_cancel.setStyleSheet(btn_style_cancel)
         self.btn_cancel.clicked.connect(self.reject)
-        
-        layout.addWidget(self.url_input)
-        layout.addWidget(self.btn_paste)
+
+        root.addWidget(self.url_input)
+        root.addWidget(self.btn_paste)
+
+        btns_layout = QHBoxLayout()
         btns_layout.addWidget(self.btn_ok)
+        btns_layout.addStretch(1)
         btns_layout.addWidget(self.btn_cancel)
-        layout.addLayout(btns_layout)
+        root.addLayout(btns_layout)
 
     def update_paste_button_state(self):
         """Checks clipboard content and enables/disables the paste button accordingly."""

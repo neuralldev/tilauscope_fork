@@ -1,4 +1,36 @@
+## [4.1.2] 2026-07-28
+build 1
+* 🐛 [fix(bluetooth)] : the application no longer crashes on quit while a Bluetooth scan is still running — the scan is now stopped for good at shutdown, including when the scan cycle restarted at the very moment the window was closing
+* 🐛 [fix(tilauscope)] : Artisan's own milestone button bar no longer reappears inside the graph when recording starts — TilauScope has its own CHARGE/DRY/FC/DROP row, and the Artisan one is now put away whatever starts the roast (our button, Artisan's own, the phone, the simulator)
 ## [4.1.1] 2026-07-28
+* 🐛 [fix(tilauscope)] : pressing START no longer opens the end-of-roast form — the roast was recognised as already running the instant recording began, so the START was treated as a STOP and the result screen popped up a second later
+* 🐛 [fix(assistant)] : in Guided level the assistant now starts with the roast whatever starts the recording — Artisan's own START, the phone, the simulator. Only TilauScope's button used to announce it, so a roast started elsewhere left the assistant on its idle page with no plan, as if no coffee had been found
+* 🐛 [fix(assistant)] : the assistant header no longer says "no green been has been selected" while the dropdown above it already shows the coffee identified from the roast record — it now follows the selection as you change it
+* 🐛 [fix(beancave)] : the "fill from URL" AI button is back — it was accidentally left hidden when the bean sheet was reworked into read-first zone editors. It now lives at the top of the expert "New bean" form, and its URL prompt and progress popup now match the app's dark theme instead of the OS default look
+* 🐛 [fix(roast setup)] : pressing Escape on the roast setup screen now closes the scale and probe capture windows along with it — they used to stay open on screen after the main window was gone
+build 3
+* 🐛 [fix(beancave)] : the printed roast label's QR code now opens the roast record when scanned — it used to encode a plain text block that no scanner could follow
+* ⚡ [feat(beancave)] : scanning a storage sack's QR code (webcam or phone) now opens the coffee currently holding that label, instead of a "coming soon" message
+build 2
+* 🐛 [fix(remote)] : the milestone buttons on the phone are greyed out until recording actually starts — marking CHARGE beforehand had no roast to attach itself to
+* 🐛 [fix(tilauscope)] : the status bar no longer claims a roast session is running after you have stopped it — it now reads Artisan's real recording state instead of TilauScope's own flag, which drifted whenever recording was toggled from anywhere but our button
+* 🐛 [fix(tilauscope)] : the simulator no longer reports "paused" when the scope is simply off — a stopped loop is not a pause, and the status already says OFFLINE
+* 🐛 [fix(remote)] : pressing STOP in simulator mode now reaches the phone. It takes monitoring down with it, and the phone was fed by Artisan's sampling, so the news died with the very thing that carried it; TilauScope now pushes state changes to connected phones directly
+* 🐛 [fix(remote)] : BT, ET and RoR now use the same colours on the phone as in the TilauScope window — they came from the phone's own palette before, so ET in particular did not match. The readout figures under the graph follow the same colours, and a change of theme on the desktop carries over
+* 🐛 [fix(remote)] : the phone graph now really follows Artisan's temperature and RoR scales — the bounds were only sent when the phone first connected, so a phone opened before the roast stayed stuck on its own auto-scale (a 10-50°C axis while Artisan showed 250). They are now sent whenever they change, including Artisan's automatic adjustment at the end of a roast
+* 🐛 [fix(remote)] : the phone curve no longer draws over its own axis labels when a temperature runs past the graph bounds set in Artisan
+* 🐛 [fix(remote)] : when Save is unavailable on the phone's STOP screen, the reason is now written under the button instead of hidden in a tooltip that a touchscreen never shows
+* ⚡ [feat(remote)] : the remote-control server now refuses WebSocket connections coming from any other website, and the phone page declares a strict content policy — it may only load its own resources and talk to the roaster
+* 🐛 [fix(remote)] : turning monitoring OFF on the desktop is now shown on the phone — the curve stays on screen but the indicator turns amber and says the view is frozen, instead of a dead graph that still looked live
+* 🐛 [fix(remote)] : the phone no longer goes deaf the moment recording stops — it was driven by Artisan's roast timer, which only ticks while recording, so a STOP left it frozen and it could not see anything that happened afterwards. It now follows the temperature readings instead, which keep coming for as long as monitoring is on
+* 🐛 [fix(remote)] : RESET on the desktop now clears the phone — curve, milestones and timer — instead of leaving the finished roast on screen
+* 🐛 [fix(remote)] : the phone no longer freezes after a RESET on the desktop — every reading of the new session was being discarded as "already seen" until it outran the previous roast, so the phone sat on a dead curve for as long as the roast you had just reset
+* 🐛 [fix(remote)] : pressing START or STOP on the desktop is now reflected on the phone — until now only the phone's own commands were, so its button could stay on STOP while Artisan had already stopped recording. The recording state now travels with every reading, so the phone also catches up on anything that happened while it was asleep or out of range
+* 🐛 [fix(remote)] : the phone curve no longer breaks at CHARGE — the roast used to fold back over the preheat and freeze the time window, leaving a scrambled graph until you reconnected
+* 🐛 [fix(remote)] : tapping Reconnect while the phone was already retrying no longer opens a second connection — the header could end up showing "disconnected" on a perfectly live link
+* 🐛 [fix(remote)] : the "connection lost" screen no longer promises an observer that the hardware is held frozen for 10 s — that grace window only concerns the phone actually piloting
+* 🐛 [fix(remote)] : if the paired device was revoked, opening the pairing link again now re-pairs on its own instead of asking you to paste the very link you just followed
+* 🐛 [fix(remote)] : a slider changed on the desktop no longer yanks the bar out from under your finger mid-drag on the phone (and your adjustment no longer silently cancels the desktop one)
 build 1
 ## [4.1.0] 2026-07-14
 build 41
@@ -8,6 +40,13 @@ build 41
 * ⚡ [feat(license)] : TilauScope is now licensed under the GNU Affero General Public License v3 or later. Code inherited from Artisan keeps its original GPL terms; a NOTICE file explains the arrangement. In practice: if you run a modified TilauScope and let others use it remotely over a network, you owe them your source
 * ⚡ [feat(docs)] : the project now has its own README describing what TilauScope adds on top of Artisan, with install and build-from-source instructions — Artisan's original README is preserved alongside it for attribution
 * 🐛 [fix(docs)] : bug reports and discussions now point to the TilauScope tracker instead of Artisan's, and the bug report form asks for the roasting machine, connected devices and the area concerned
+* ⚡ [feat(remote)] : the phone client's text is now fully translatable — every label and message is defined in English and goes through the normal translation system, delivered to the page in your app language (it was hardcoded French before)
+* 🐛 [fix(remote)] : the "connection lost" screen on the phone now keeps its text in a tidy centered column instead of letting the message sprawl and wrap to the right, in both portrait and landscape
+* 🐛 [fix(remote)] : STOP from the phone now reliably stops the recording on Artisan even when recording was started outside the phone — it was keyed on TilauScope's own flag, which could be out of step with Artisan's real recording state; it now reads Artisan directly
+* 🐛 [fix(remote)] : the phone keeps the screen awake during a roast (Screen Wake Lock) — it no longer dims or sleeps while you're not touching it
+* 🐛 [fix(remote)] : the phone graph now uses the same temperature and RoR axis bounds as the Artisan window, so it keeps the same shape instead of auto-zooming to the data
+* 🐛 [fix(remote)] : RoR is no longer shown on the phone during preheat — like Artisan, it appears only from CHARGE onwards (both the curve and the readout)
+* 🐛 [fix(remote)] : the phone timer no longer runs one second ahead of the desktop — it now shows Artisan's own LCD timer value verbatim instead of recomputing it from sample times (Artisan uses a live clock with different rounding), so the two always match
 * 🐛 [fix(remote)] : the phone timer now runs during preheat too (it counted only from CHARGE before, staying at —:—), then resets to 0:00 and counts the roast from CHARGE
 * 🐛 [fix(remote)] : the phone curve no longer stretches a few minutes of data across the whole width — it now opens on a ~10-minute window and grows one minute at a time, always keeping a little room ahead of the live point
 * 🐛 [fix(remote)] : the curve no longer flickers and jumps for a few seconds when rotating the phone back to portrait — the chart is now re-fitted smoothly as iOS settles the layout, instead of being cleared and stretched on every intermediate resize

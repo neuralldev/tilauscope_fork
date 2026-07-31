@@ -32,6 +32,7 @@
 import asyncio
 import logging
 import threading
+import weakref
 
 from typing import Final, TYPE_CHECKING
 
@@ -69,6 +70,27 @@ class TilauBLEScanner(QObject):
 
     devices_found = pyqtSignal(list)  # list[tuple[BLEDevice, AdvertisementData]]
 
+    # Instances vivantes — un scan CoreBluetooth encore actif pendant
+    # _Py_Finalize fait crasher l'app (SIGABRT dans handlePeripheralDiscovered).
+    # Chaque propriétaire stoppe son scanner, mais la fermeture de l'app doit
+    # pouvoir garantir l'arrêt même si un propriétaire n'a pas été fermé.
+    # WeakSet : le thread de scan garde lui-même une référence forte tant qu'il
+    # tourne, le registre n'a donc pas à prolonger la vie du scanner.
+    _instances: "weakref.WeakSet[TilauBLEScanner]" = weakref.WeakSet()
+    _instances_lock = threading.Lock()
+
+    @classmethod
+    def stop_all(cls) -> None:
+        """Arrête tous les scanners vivants — appelé à la fermeture de l'app,
+        avant ble_port.ble.close()."""
+        with cls._instances_lock:
+            scanners = list(cls._instances)
+        for s in scanners:
+            try:
+                s.stop()
+            except Exception:  # pylint: disable=broad-except
+                pass
+
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._stop_event = threading.Event()
@@ -89,6 +111,8 @@ class TilauBLEScanner(QObject):
             return
         self._stop_event.clear()
         self._running = True
+        with self._instances_lock:
+            self._instances.add(self)
         self._thread = threading.Thread(
             target=self._scan_loop,
             name="TilauBLEScanner",
@@ -98,11 +122,15 @@ class TilauBLEScanner(QObject):
         _log.info("TilauBLEScanner started — cycle %.0fs+%.0fs", SCAN_DURATION, SCAN_PAUSE)
 
     def stop(self) -> None:
+        with self._instances_lock:
+            self._instances.discard(self)
         if not self._running:
             return
         _log.info("TilauBLEScanner stopping…")
-        self._running = False
+        # _stop_event AVANT _running : _do_scan ne teste que l'event, et il est
+        # le seul verrou contre un discover lancé juste après l'annulation.
         self._stop_event.set()
+        self._running = False
         # Annuler le discover en vol : propage CancelledError dans la loop ble,
         # BleakScanner.__aexit__ appelle stopScan() → CoreBluetooth cesse de
         # scanner immédiatement, le thread de scan débloque et sort proprement.
@@ -157,6 +185,15 @@ class TilauBLEScanner(QObject):
         """
         from artisanlib.ble_port import ble
 
+        # Course d'arrêt : stop() peut tomber pendant que le thread quitte la
+        # pause du cycle précédent et s'apprête à relancer un discover. Sans ce
+        # garde, le nouveau scan démarre APRÈS l'annulation, personne ne
+        # l'annule plus, le join() rend la main sur un thread daemon toujours
+        # bloqué, et le callback CoreBluetooth rentre en Python pendant
+        # _Py_Finalize → SIGABRT à la fermeture.
+        if self._stop_event.is_set():
+            return []
+
         # S'assurer que la loop de ble est démarrée
         if ble._asyncLoopThread is None:
             ble._asyncLoopThread = __import__(
@@ -178,6 +215,11 @@ class TilauBLEScanner(QObject):
 
         fut = asyncio.run_coroutine_threadsafe(_scan_with_lock(), loop)
         self._current_fut = fut  # exposé à stop() pour annulation immédiate
+        # Deuxième moitié du garde ci-dessus : si stop() est tombé entre le test
+        # et la soumission, il a lu l'ancien future — on annule nous-mêmes.
+        if self._stop_event.is_set():
+            fut.cancel()
+            return []
         try:
             # Bloquant dans le thread TilauBLEScanner — pas dans la loop ble.
             # Timeout = scan + attente lock (max connect_timeout = 10s) + marge.

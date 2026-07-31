@@ -225,7 +225,15 @@ class CommandBridge(QObject):
         tm = getattr(self._aw, 'tilauscope_main', None)
         if tm is None:  # remote piloting needs the TilauScope window (2a limitation)
             return {'status': 'rejected', 'reason': 'BAD_MESSAGE'}
-        roasting = bool(getattr(tm, 'is_roasting', False))
+        # ground truth = Artisan's flagstart, NOT tm.is_roasting: the TilauScope flag
+        # drifts when recording is toggled outside its own button, and a stale False
+        # made STOP a no-op (it guards `if roasting:`). Sync tm.is_roasting to the
+        # real state so toggle_start_stop() also takes the correct start/stop branch.
+        roasting = bool(getattr(self._aw.qmc, 'flagstart', False))
+        try:
+            tm.is_roasting = roasting
+        except Exception:  # noqa: BLE001
+            pass
         if op == 'start':
             if not roasting:
                 tm.toggle_start_stop(True)   # guards no-meter + sets state (§ reuse)

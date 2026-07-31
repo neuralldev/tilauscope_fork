@@ -1098,8 +1098,8 @@ class NiimbotLabelBuilder:
         self,
         bean: GreenBean,
         data: dict,
-    ) -> tuple[dict[str, str], dict[str, str], dict[str, float]]:
-        """Retourne (roast_data, qr_data, phases).
+    ) -> tuple[dict[str, str], str, dict[str, float]]:
+        """Retourne (roast_data, qr_url, phases).
 
         ``phases`` contient les durées brutes (s) et les pourcentages.
         Lève ``ValueError`` si les points clés sont manquants/invalides.
@@ -1177,15 +1177,14 @@ class NiimbotLabelBuilder:
                 notes_parts.append(f"{initial}: {val}")
         roast_data["Tasting Notes"] = "; ".join(notes_parts)
 
-        qr_data: dict[str, str] = {
-            "Bean":    bean.name,
-            "Origin":  bean.country,
-            "Roaster": bean.supplier,
-            "Farm":    bean.farm,
-            "Date":    roast_date,
-        }
+        # ## TILAU ## QR encodes the same http record URL as the PDF label and the
+        # bean/sack labels, so any label can be scanned (webcam or phone) to open
+        # the roast record — previously encoded a raw text blob here, unscannable
+        # by parse_tilau_qr().
+        roast_uuid = str(data.get("roastUUID") or "")
+        qr_url = f"{qr_base_url()}/roast/{roast_uuid}" if roast_uuid else ""
 
-        return roast_data, qr_data, phases
+        return roast_data, qr_url, phases
 
     # ── Layout 80 mm ─────────────────────────────────────────────────────────
     #
@@ -1209,7 +1208,7 @@ class NiimbotLabelBuilder:
         img: Image.Image,
         W: int, H: int, PAD: int,
         roast_data: dict[str, str],
-        qr_data:    dict[str, str],
+        qr_url:     str,
         phases:     dict[str, float],
     ) -> None:
         TEXT_W = W - 2 * PAD          # 364px — pleine largeur disponible
@@ -1301,7 +1300,8 @@ class NiimbotLabelBuilder:
             )
 
         # ── QR code — bas droite, au-dessus du graphe ─────────────────────
-        self._paste_qr(img, draw, qr_data, QR_X, QR_Y, QR_SIZE)
+        if qr_url:
+            self._paste_qr(img, draw, qr_url, QR_X, QR_Y, QR_SIZE)
 
         # ── Séparateur avant graphe ───────────────────────────────────────
         GRAPH_Y = H - PAD - LABEL_GRAPH_H - GRAPH_H
@@ -1366,7 +1366,7 @@ class NiimbotLabelBuilder:
         img: Image.Image,
         W: int, H: int, PAD: int,
         roast_data: dict[str, str],
-        qr_data:    dict[str, str],
+        qr_url:     str,
     ) -> None:
         # QR supprimé sur ce format — trop petit pour être utile.
         # Texte pleine largeur (W - 2*PAD).
@@ -1504,24 +1504,23 @@ class NiimbotLabelBuilder:
 
     def _paste_qr(
         self,
-        img:   Image.Image,
-        draw:  ImageDraw.ImageDraw,
-        data:  dict[str, str],
-        qr_x:  int,
-        qr_y:  int,
-        size:  int,
+        img:     Image.Image,
+        draw:    ImageDraw.ImageDraw,
+        payload: str,
+        qr_x:    int,
+        qr_y:    int,
+        size:    int,
     ) -> None:
         """Génère et colle le QR code à la position (qr_x, qr_y)."""
         draw.rectangle((qr_x, qr_y, qr_x + size, qr_y + size), fill=0, outline=0)
         try:
-            qr_str = "\n".join(f"{k}:{v}" for k, v in data.items())
             qr = qrcode.QRCode(
                 version=1,
                 error_correction=qrcode.constants.ERROR_CORRECT_M,
                 box_size=4,
                 border=0,
             )
-            qr.add_data(qr_str)
+            qr.add_data(payload)
             qr.make(fit=True)
             qr_img = qr.make_image(fill_color="black", back_color="white").convert("L")
             qr_img = qr_img.resize((size, size), Image.Resampling.NEAREST)

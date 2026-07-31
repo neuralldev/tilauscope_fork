@@ -249,13 +249,15 @@ class TilauWebRecords:
 
     roast_resolver(roast_uuid) -> .alog filepath or None
     bean_resolver(uuid)        -> plain dict of GreenBean fields or None
-    Both are called from the server thread and must only read plain-python
-    data structures.
+    sack_resolver(sack_id)     -> owning bean uuid, or None if unassigned
+    All three are called from the server thread and must only read
+    plain-python data structures.
     """
 
     def __init__(self, port: int,
                  roast_resolver: Optional[Callable[[str], Optional[str]]] = None,
-                 bean_resolver: Optional[Callable[[str], Optional[dict]]] = None) -> None:
+                 bean_resolver: Optional[Callable[[str], Optional[dict]]] = None,
+                 sack_resolver: Optional[Callable[[str], Optional[str]]] = None) -> None:
         self._port = port
         # ## TILAU ## resolvers are settable so TilauWebHost can start the server
         # before BeanCave exists; the no-op default returns None -> clean 404 on
@@ -263,6 +265,7 @@ class TilauWebRecords:
         # resolvers via set_resolvers() once its catalogue is loaded.
         self._roast_resolver = roast_resolver or (lambda _u: None)
         self._bean_resolver = bean_resolver or (lambda _u: None)
+        self._sack_resolver = sack_resolver or (lambda _s: None)
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._thread: Optional[Thread] = None
         self._runner: Optional[web.AppRunner] = None
@@ -288,13 +291,16 @@ class TilauWebRecords:
 
     def set_resolvers(self,
                       roast_resolver: Optional[Callable[[str], Optional[str]]],
-                      bean_resolver: Optional[Callable[[str], Optional[dict]]]) -> None:
+                      bean_resolver: Optional[Callable[[str], Optional[dict]]],
+                      sack_resolver: Optional[Callable[[str], Optional[str]]] = None) -> None:
         self._roast_resolver = roast_resolver or (lambda _u: None)
         self._bean_resolver = bean_resolver or (lambda _u: None)
+        self._sack_resolver = sack_resolver or (lambda _s: None)
 
     def clear_resolvers(self) -> None:
         self._roast_resolver = lambda _u: None
         self._bean_resolver = lambda _u: None
+        self._sack_resolver = lambda _s: None
 
     # ---- hardening ----------------------------------------------------------
 
@@ -440,10 +446,13 @@ class TilauWebRecords:
 
     async def _sack_page(self, request: web.Request) -> web.Response:
         sack_id = request.match_info['sack_id']
-        body = (f"<h1>🧺 SACK {html.escape(sack_id)}</h1>"
-                "<p class=\"s\">Storage sack records will be available in a "
-                "future version.</p>")
-        return web.Response(text=_page('Storage sack', body), content_type='text/html')
+        bean_uuid = self._sack_resolver(sack_id)
+        if not bean_uuid:
+            body = (f"<h1>🧺 SACK {html.escape(sack_id)}</h1>"
+                    "<p class=\"s\">This label is not currently attached to "
+                    "any coffee in the BeanCave catalogue.</p>")
+            return web.Response(text=_page('Storage sack', body), content_type='text/html')
+        raise web.HTTPFound(f"/bean/{bean_uuid}")
 
     # ---- lifecycle (weblcds pattern) ----------------------------------------
 
