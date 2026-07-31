@@ -65,7 +65,8 @@ from artisanlib.util import fill_gaps, convertTemp, cast, fromCtoFstrict, conver
 from artisanlib.atypes import ProfileData, ComputedProfileInformation
 
 from PyQt6.QtCore import (QMutex, QMutexLocker,QRect, QModelIndex, QItemSelectionModel, QStandardPaths, Qt, pyqtSlot, QSettings, QThread, pyqtSignal, QObject,
-                          QEasingCurve,QPoint, QTimer, QPropertyAnimation, QEvent, QVariantAnimation, QByteArray, QSize) # @UnusedImport @Reimport  @UnresolvedImport
+                          QEasingCurve,QPoint, QTimer, QPropertyAnimation, QEvent, QVariantAnimation, QByteArray, QSize,
+                          QT_TRANSLATE_NOOP) # @UnusedImport @Reimport  @UnresolvedImport  ## TILAU ## QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
 from PyQt6.QtGui import ( QPixmap, QColor, QCloseEvent, QResizeEvent, QGuiApplication, QCursor, QKeyEvent, QPainter, QPainterPath, QBrush, QAction) # @UnusedImport @Reimport  @UnresolvedImport
 from PyQt6.QtWidgets import (QApplication, QComboBox, QSizeGrip, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QProgressDialog, QScrollArea,  # @UnusedImport @Reimport  @UnresolvedImport
                                 QPushButton, QWidget, QTabWidget, # @UnusedImport @Reimport  @UnresolvedImport
@@ -3324,7 +3325,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         # ── Groupe 1 — Workflow Artisan ───────────────────────────────────────
         self.load_artisan_button_viewer = _vbtn(
-            "M2 7h8M7 3l4 4-4 4M12 2v10", "Load in Artisan",
+            "M2 7h8M7 3l4 4-4 4M12 2v10", QT_TRANSLATE_NOOP("tilauscope_beancave", "Load in Artisan"),
             stroke=THEME["ACCENT"], style_extra=_SS_ACCENT2
         )
         self.load_artisan_button_viewer.clicked.connect(self.load_roast_in_artisan)
@@ -3333,7 +3334,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         self.load_artisan_background_button_viewer = _vbtn(
             "M3 4h8v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4zM5 4V3a2 2 0 0 1 4 0v1M10 7h2M10 9.5h2",
-            "Background"
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Background")
         )
         self.load_artisan_background_button_viewer.clicked.connect(self.load_roast_in_artisan_background)
         self.load_artisan_background_button_viewer.setToolTip(QApplication.translate("tilauscope_beancave","Load the selected ALog file into Artisan's background for comparison."))
@@ -3341,7 +3342,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         self.roast_finished_button = _vbtn(
             "M7 2c0 2-3 3-3 5.5a3 3 0 0 0 6 0C10 5 7 4 7 2zM5 11.5h4M7 9v3",
-            "Roast finished!", stroke=THEME["SUCCESS"], style_extra=_SS_GREEN2
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Roast finished!"), stroke=THEME["SUCCESS"], style_extra=_SS_GREEN2
         )
         self.roast_finished_button.clicked.connect(self.on_roast_finished_clicked)
         self.roast_finished_button.setToolTip(QApplication.translate("tilauscope_beancave","Load the roast in Artisan and record results."))
@@ -3350,7 +3351,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         # ── Groupe 2 — Export & Print ─────────────────────────────────────────
         self.print_pdf_label_button = _vbtn(
             "M3 2h6l3 3v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM9 2v3h3M5 7h4M5 9.5h3",
-            "PDF"
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "PDF")
         )
         self.print_pdf_label_button.clicked.connect(self.generate_and_print_pdf_label)
         self.print_pdf_label_button.setToolTip(QApplication.translate("tilauscope_beancave","Generate and print the label to PDF for the selected roast."))
@@ -3358,7 +3359,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         self.print_label_button = _vbtn(
             "M2 4h10v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4zM5 4V2h4v2M5 9h4",
-            "B21S"
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "B21S")
         )
         self.print_label_button.clicked.connect(self.generate_and_print_label)
         self.print_label_button.setToolTip(QApplication.translate("tilauscope_beancave","Generate and print the label for the selected roast (requires Niimbot B21S)."))
@@ -3366,7 +3367,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         self.btn_snapshot = _vbtn(
             "M1 4h12v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4zM1 6h12M5 9.5h4",
-            "Snapshot"
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Snapshot")
         )
         self.btn_snapshot.setToolTip(QApplication.translate("tilauscope_beancave","Take a PNG snapshot of the current curve."))
         self.btn_snapshot.setEnabled(False)
@@ -3376,7 +3377,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         ## the bean identity, the roast level and the curve into one image.
         self.btn_roast_card = _vbtn(
             "M1 3.5h12v9H1zM4 7a1 1 0 1 0 0-.01M1.6 11.4L5 8.4l2.4 2.2L10 8l3 2.8",
-            "Card")
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Card"))
         self.btn_roast_card.setToolTip(QApplication.translate("tilauscope_beancave","Export this roast as a shareable landscape image (JPEG), sized for social networks: green bean, roast level, key figures and the curve."))
         self.btn_roast_card.clicked.connect(self.on_export_roast_card)
         self.btn_roast_card.setEnabled(False)
@@ -3384,7 +3385,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         # ── Groupe 3 — Analyse & Outils ───────────────────────────────────────
         self.btn_roast_ready = _vbtn(
             "M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 10h4M10 8v4",
-            "Planning"
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Planning")
         )
         self.btn_roast_ready.setToolTip(QApplication.translate("tilauscope_beancave","Open the roast planning view to get roasting time repartition based on the selected roast profile."))
         self.btn_roast_ready.clicked.connect(self.show_roast_ready_view)
@@ -3392,7 +3393,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         self.btn_dial_in = _vbtn(
             "M7 2a5 5 0 1 0 0 10A5 5 0 0 0 7 2zM7 4v3.5l2 1.2",
-            "Dial-in"
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Dial-in")
         )
         self.btn_dial_in.setToolTip(QApplication.translate("tilauscope_beancave","Show espresso/filter extraction parameters based on roast color."))
         self.btn_dial_in.clicked.connect(self.show_barista_expert_view)
@@ -3400,7 +3401,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         self.btn_data_reader = _vbtn(
             "M2 2h10v12H2zM4 5h6M4 8h6M4 11h4",
-            "Data"
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Data")
         )
         self.btn_data_reader.setToolTip(QApplication.translate("tilauscope_beancave","Open a readable, navigable view of the recorded roast data (milestones, events, columns)."))
         self.btn_data_reader.clicked.connect(self.show_data_reader_view)
@@ -3408,7 +3409,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         self.refresh_button = _vbtn(
             "M2 7a5 5 0 1 0 1.2-3.2M2 3v4h4",
-            "Refresh"
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Refresh")
         )
         self.refresh_button.clicked.connect(self.list_alog_files)
         self.refresh_button.setToolTip(QApplication.translate("tilauscope_beancave","Refresh the roast list."))
@@ -3533,21 +3534,23 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         self.consistency_button = _make_mode_btn(
             _SVG_CONSISTENCY,
+            QT_TRANSLATE_NOOP("tilauscope_beancave",
             "<b>Consistency view</b><br>"
             "The reference roast as a solid line, with a shaded "
             "<b>min–max band</b> of all the selected roasts (bean temp &amp; RoR).<br>"
             "A <span style='color:#A6E3A1'>tight band</span> means your roasts are "
             "repeatable; a <span style='color:#F38BA8'>wide band</span> shows where "
-            "they drift apart.",
+            "they drift apart."),
             self._on_consistency_toggled)
         self.align_button = _make_mode_btn(
             _SVG_ALIGN,
+            QT_TRANSLATE_NOOP("tilauscope_beancave",
             "<b>Aligned view (time-warp)</b><br>"
             "Stretches each roast in time so its milestones (CHARGE, TP, DRY END, "
             "FC start, DROP) line up with the reference.<br>"
             "Lets you compare the <b>shape of the bean-temperature rise within each "
             "phase</b>, regardless of how long that phase actually lasted.<br>"
-            "<i>BT only — RoR is hidden because warping time distorts its scale.</i>",
+            "<i>BT only — RoR is hidden because warping time distorts its scale.</i>"),
             self._on_align_toggled)
 
         # ── Conteneur stable : canvas + overlays (zoom + consistance + aligné) ─
@@ -5849,10 +5852,12 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         # keep the learned, per-level ranges (with pooled fallback).
         rules = dict(rules)
         rules['development'] = lvl_th['dev_time']
+        # QT_TRANSLATE_NOOP declares the label for the extractor and returns it
+        # unchanged; the translate() below then finds it in the catalogue.
         for phase_name_key, phase_key, duration_s in [
-            ("Dry Phase",         "drying",      drying),
-            ("Maillard Phase",    "maillard",    maillard),
-            ("Development Phase", "development", development),
+            (QT_TRANSLATE_NOOP("tilauscope_beancave", "Dry Phase"),         "drying",      drying),
+            (QT_TRANSLATE_NOOP("tilauscope_beancave", "Maillard Phase"),    "maillard",    maillard),
+            (QT_TRANSLATE_NOOP("tilauscope_beancave", "Development Phase"), "development", development),
         ]:
             if phase_key in rules and duration_s > 0:
                 mn, mx = rules[phase_key]
@@ -7122,9 +7127,11 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             f"QMenu::item:selected {{ background-color:{THEME['HOVER']}; color:{THEME['BG']}; }}"
             f"QMenu::item:disabled {{ color:{THEME['SUBTEXT']}; }}"
         )
-        hdr = menu.addAction(
-            QApplication.translate("tilauscope_beancave", f"→ {click_mm}  BT {click_bt:.1f}°{mode}")
-        )
+        # Only "BT" is translatable here; the rest is an arrow and numbers. The
+        # whole f-string used to be wrapped, which meant the lookup key changed
+        # with every click and never matched anything.
+        _bt = QApplication.translate("tilauscope_beancave", "BT")
+        hdr = menu.addAction(f"→ {click_mm}  {_bt} {click_bt:.1f}°{mode}")
         hdr.setEnabled(False)
         menu.addSeparator()
 
@@ -7880,46 +7887,46 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         ## TILAU ## "+ New sack" is the single accent button of the action bar —
         ## Update dresses like the other CRUD buttons to avoid two defaults.
         self.update_button = _icon_btn(
-            "M2 7h10M7 2l5 5-5 5", "Update", extra_style=_SS_NORMAL)
+            "M2 7h10M7 2l5 5-5 5", QT_TRANSLATE_NOOP("tilauscope_beancave", "Update"), extra_style=_SS_NORMAL)
         self.update_button.clicked.connect(self.update_selected_bean)
         self.update_button.setToolTip(QApplication.translate("tilauscope_beancave","Update the selected green bean record with the values filled in the form."))
 
         self.add_button = _icon_btn(
-            "M7 2v10M2 7h10", "Add", extra_style=_SS_NORMAL)
+            "M7 2v10M2 7h10", QT_TRANSLATE_NOOP("tilauscope_beancave", "Add"), extra_style=_SS_NORMAL)
         ## TILAU ## Lot 5 step D: Add opens the full expert editor on a blank record
         self.add_button.clicked.connect(self._open_full_bean_editor)
         self.add_button.setToolTip(QApplication.translate("tilauscope_beancave","Create a new green bean record in a single expert form. For a guided entry, use « + New sack »."))
 
         self.clear_button = _icon_btn(
-            "M5 4l-3 3 3 3M2 7h9a2 2 0 0 0 0-4H9", "Clear", extra_style=_SS_NORMAL)
+            "M5 4l-3 3 3 3M2 7h9a2 2 0 0 0 0-4H9", QT_TRANSLATE_NOOP("tilauscope_beancave", "Clear"), extra_style=_SS_NORMAL)
         self.clear_button.clicked.connect(self.clear_form)
         self.clear_button.clicked.connect(self._enter_edit_mode)  ## TILAU ## Lot 5: a fresh entry needs the form
         self.clear_button.setToolTip(QApplication.translate("tilauscope_beancave","Clear all input fields to their default state."))
 
         self.remove_button = _icon_btn(
             "M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4M6 7v3M8 7v3",
-            "Delete", stroke=THEME["CRITICAL"], extra_style=_SS_DANGER)
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Delete"), stroke=THEME["CRITICAL"], extra_style=_SS_DANGER)
         self.remove_button.clicked.connect(self.confirm_and_delete)
         self.remove_button.setToolTip(QApplication.translate("tilauscope_beancave","Delete the selected green bean record. A confirmation dialog will appear."))
 
         # ── Boutons secondaires ─────────────────────────────────────────────
         self.roast = _sm_btn(
             "M7 2c0 2-3 3-3 5.5a3 3 0 0 0 6 0C10 5 7 4 7 2z",
-            "Roast", stroke=THEME["WARNING"])
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Roast"), stroke=THEME["WARNING"])
         self.roast.setStyleSheet(_SS_SECONDARY)
         self.roast.clicked.connect(self.on_click_roast_properties)
         self.roast.setToolTip(QApplication.translate("tilauscope_beancave","Set a roast session based on the current selection."))
 
         self.generate_label_button = _sm_btn(
             "M1.5 3H12.5a1.5 1.5 0 0 1 1.5 1.5v6A1.5 1.5 0 0 1 12.5 12H1.5A1.5 1.5 0 0 1 0 10.5v-6A1.5 1.5 0 0 1 1.5 3zM3 6.5h8M3 8.5h5",
-            "Label")
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Label"))
         self.generate_label_button.setStyleSheet(_SS_SECONDARY)
         self.generate_label_button.clicked.connect(self.on_print_label_clicked)
         self.generate_label_button.setToolTip(QApplication.translate("tilauscope_beancave","Generate a printable label for this green bean record."))
 
         self.generate_qr_button = _sm_btn(
             "M1 1h5v5H1zM8 1h5v5H8zM1 8h5v5H1zM3 3h1v1H3zM10 3h1v1H10zM3 10h1v1H3z",
-            "QR")
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "QR"))
         self.generate_qr_button.setStyleSheet(_SS_SECONDARY)
         self.generate_qr_button.clicked.connect(self.generate_qr_code)
         self.generate_qr_button.setToolTip(QApplication.translate("tilauscope_beancave","Generate a QR code for this green bean record."))
@@ -7927,14 +7934,14 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         ## TILAU ## Shareable bean card — 1200x630 JPEG for social posts
         self.generate_card_button = _sm_btn(
             "M1 3.5h12v9H1zM4 7a1 1 0 1 0 0-.01M1.6 11.4L5 8.4l2.4 2.2L10 8l3 2.8",
-            "Card")
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Card"))
         self.generate_card_button.setStyleSheet(_SS_SECONDARY)
         self.generate_card_button.clicked.connect(self.on_export_social_card)
         self.generate_card_button.setToolTip(QApplication.translate("tilauscope_beancave","Export this green bean sheet as a shareable landscape image (JPEG), sized for social networks."))
 
         self.inject_from_ai_button = _sm_btn(
             "M7 1.5l1.2 3.5H12l-3 2.2 1.1 3.5L7 8.5l-3.1 2.2L5 7.2 2 5h3.8z",
-            "AI", stroke=THEME["ACCENT"])
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "AI"), stroke=THEME["ACCENT"])
         self.inject_from_ai_button.setStyleSheet(_SS_SECONDARY)
         self.inject_from_ai_button.clicked.connect(self.on_click_ai_parse)
         self.inject_from_ai_button.clicked.connect(self._enter_edit_mode)  ## TILAU ## Lot 5: AI fills the form
@@ -8080,7 +8087,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         # ════════════════════════════════════════════════════════════════════
         # GROUPE 1 — Origin & Identity
         # ════════════════════════════════════════════════════════════════════
-        self.form_group_box = _grp("Origin & Identity", _C_ORIGIN)
+        self.form_group_box = _grp(QT_TRANSLATE_NOOP("tilauscope_beancave", "Origin & Identity"), _C_ORIGIN)
         _gl1 = QGridLayout(self.form_group_box)
         _gl1.setContentsMargins(10, 18, 10, 10)
         _gl1.setSpacing(5)
@@ -8097,12 +8104,12 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         _gl1.addWidget(_name_lbl,        0, 0)
         _gl1.addWidget(self.name_input,  0, 1, 1, 3)   # span 3 cols → pleine largeur
 
-        _frow("Farm / Region",  self.farm_input,     _gl1, 1, 0)
-        _frow("Country",        self.country_combo,  _gl1, 2, 0)
+        _frow(QT_TRANSLATE_NOOP("tilauscope_beancave", "Farm / Region"),  self.farm_input,     _gl1, 1, 0)
+        _frow(QT_TRANSLATE_NOOP("tilauscope_beancave", "Country"),        self.country_combo,  _gl1, 2, 0)
 
         # col droite : Supplier, Crop
-        _frow("Supplier",       self.supplier_input, _gl1, 1, 1)
-        _frow("Crop year",      self.crop_input,     _gl1, 2, 1)
+        _frow(QT_TRANSLATE_NOOP("tilauscope_beancave", "Supplier"),       self.supplier_input, _gl1, 1, 1)
+        _frow(QT_TRANSLATE_NOOP("tilauscope_beancave", "Crop year"),      self.crop_input,     _gl1, 2, 1)
 
         # Flavour Notes pleine largeur
         _fl_lbl = QLabel(QApplication.translate("tilauscope_beancave","Flavour Notes"))
@@ -8113,12 +8120,12 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         _gl1.addWidget(self.flavour_notes_input, 3, 1, 1, 3)
 
         # SCA score
-        _frow("SCA score",      self.sca_input,      _gl1, 4, 0)
+        _frow(QT_TRANSLATE_NOOP("tilauscope_beancave", "SCA score"),      self.sca_input,      _gl1, 4, 0)
 
         # ════════════════════════════════════════════════════════════════════
         # GROUPE 2 — Botany & Process
         # ════════════════════════════════════════════════════════════════════
-        _sec_botany = _grp("Botany & Process", _C_BOTANY)
+        _sec_botany = _grp(QT_TRANSLATE_NOOP("tilauscope_beancave", "Botany & Process"), _C_BOTANY)
         _gl2 = QGridLayout(_sec_botany)
         _gl2.setContentsMargins(10, 18, 10, 10)
         _gl2.setSpacing(5)
@@ -8127,7 +8134,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         _gl2.setColumnMinimumWidth(0, 120)
         _gl2.setColumnMinimumWidth(2, 120)
 
-        _frow("Type",           self.type_combo,             _gl2, 0, 0)
+        _frow(QT_TRANSLATE_NOOP("tilauscope_beancave", "Type"),           self.type_combo,             _gl2, 0, 0)
         # Ratio 1 affiché dans le groupe Blend en mode Blend (géré par _toggle_blend_fields)
 
         # Species + Variety : ligne 1 — visibles uniquement en Single Origin
@@ -8146,8 +8153,8 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         _gl2.addWidget(self.varieties_combo,   1, 3)  # position initiale (SO)
 
         # Category + Process : ligne 2
-        _frow("Category",       self.category_process_combo, _gl2, 2, 0)
-        _frow("Process",        self.process_combo,          _gl2, 2, 1)
+        _frow(QT_TRANSLATE_NOOP("tilauscope_beancave", "Category"),       self.category_process_combo, _gl2, 2, 0)
+        _frow(QT_TRANSLATE_NOOP("tilauscope_beancave", "Process"),        self.process_combo,          _gl2, 2, 1)
 
         # Stocker la ref au layout Botany pour le re-parentage dans _toggle_blend_fields
         self._gl2_botany = _gl2
@@ -8155,7 +8162,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         # ════════════════════════════════════════════════════════════════════
         # GROUPE 3 — Physical measures (grille 4 colonnes sur une ligne)
         # ════════════════════════════════════════════════════════════════════
-        _sec_phys = _grp("Physical measures", _C_PHYS)
+        _sec_phys = _grp(QT_TRANSLATE_NOOP("tilauscope_beancave", "Physical measures"), _C_PHYS)
         _gl3 = QGridLayout(_sec_phys)
         _gl3.setContentsMargins(10, 18, 10, 10)
         _gl3.setSpacing(5)
@@ -8187,10 +8194,10 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         # 4 colonnes : Altitude | Density | Humidity | Water activity
         for _ci, (_lbl_t, _w) in enumerate([
-            ("Altitude",       self.altitude_input),
-            ("Density",        _dens_box),
-            ("Humidity",       self.last_humidity_input),
-            ("Water activity", self.water_activity_input),
+            (QT_TRANSLATE_NOOP("tilauscope_beancave", "Altitude"),       self.altitude_input),
+            (QT_TRANSLATE_NOOP("tilauscope_beancave", "Density"),        _dens_box),
+            (QT_TRANSLATE_NOOP("tilauscope_beancave", "Humidity"),       self.last_humidity_input),
+            (QT_TRANSLATE_NOOP("tilauscope_beancave", "Water activity"), self.water_activity_input),
         ]):
             _lbl3 = QLabel(QApplication.translate("tilauscope_beancave", _lbl_t))
             _lbl3.setStyleSheet(f"color:{THEME['SUBTEXT']};font-size:11px;background:transparent;border:none;padding:0;")
@@ -8205,7 +8212,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         # ════════════════════════════════════════════════════════════════════
         # GROUPE 4 — Blend components (conditionnel)
         # ════════════════════════════════════════════════════════════════════
-        self.blend_group_box = _grp("Blend components", _C_BLEND)
+        self.blend_group_box = _grp(QT_TRANSLATE_NOOP("tilauscope_beancave", "Blend components"), _C_BLEND)
         self.blend_group_box.setStyleSheet(
             self.blend_group_box.styleSheet().replace(
                 f"border: 1px solid {THEME['BORDER']};",
@@ -8227,9 +8234,9 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self._blend_bean1_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         # Bean 1 + varieties_combo ajoutés par _toggle_blend_fields — ici seulement Ratio1/Bean2/Ratio2
         for _ci2, (_lbl_t2, _w2) in enumerate([
-            ("Ratio 1",  self.bean1_ratio_input),
-            ("Bean 2",   self.bean2_combo),
-            ("Ratio 2",  self.bean2_ratio_input),
+            (QT_TRANSLATE_NOOP("tilauscope_beancave", "Ratio 1"),  self.bean1_ratio_input),
+            (QT_TRANSLATE_NOOP("tilauscope_beancave", "Bean 2"),   self.bean2_combo),
+            (QT_TRANSLATE_NOOP("tilauscope_beancave", "Ratio 2"),  self.bean2_ratio_input),
         ]):
             _lbl4 = QLabel(QApplication.translate("tilauscope_beancave", _lbl_t2))
             _lbl4.setStyleSheet(f"color:{THEME['SUBTEXT']};font-size:11px;background:transparent;border:none;padding:0;")
@@ -8262,7 +8269,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         # ════════════════════════════════════════════════════════════════════
         # GROUPE 5 — Computed (Stock + Total roasted)
         # ════════════════════════════════════════════════════════════════════
-        _sec_computed = _grp("Computed", _C_COMP)
+        _sec_computed = _grp(QT_TRANSLATE_NOOP("tilauscope_beancave", "Computed"), _C_COMP)
         _gl5 = QGridLayout(_sec_computed)
         _gl5.setContentsMargins(10, 18, 10, 10)
         _gl5.setSpacing(5)
@@ -8803,9 +8810,10 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
     @pyqtSlot()
     def export_logs_for_diagnostics(self) -> None:
-        from tilauscope.tilau_exceptions import TilauCrashDialog
-        tilau_crash_dialog = TilauCrashDialog("other", 0, 0, "Exporting logs for diagnostics...", True)
-        tilau_crash_dialog = None
+        ## TILAU ## Shared with the About dialog's "Report a bug" button. Used to
+        ## instantiate a throwaway TilauCrashDialog purely for its side effect.
+        from tilauscope.tilau_exceptions import report_a_bug
+        report_a_bug(self)
 
     def populate_table(self) -> None:
         if self.cave is None or not hasattr(self.cave, 'green_beans') or not self.is_directory_defined:

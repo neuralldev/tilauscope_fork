@@ -94,8 +94,7 @@ built-in scale, a manual entry card takes the same figures by hand instead.
 Stopping shows a short comparison of what was planned against what happened, before taste is
 even entered — a first read on the brew, before the subjective one.
 
-<!-- CAPTURE 11.6 — a live brew in progress, planned vs actual on the chart. CAPTURE 11.7 —
-the post-brew comparison. -->
+![a live brew in progress, planned vs actual on the chart](assets/brew-11.6.png)
 
 ### The brew journal
 
@@ -119,8 +118,7 @@ with its narrower roll — see [Hardware and peripherals](hardware.md) and
 [Labels and QR](labels-and-qr.md). The button explains what is missing rather than doing
 nothing if the printer isn't ready.
 
-<!-- CAPTURE 11.8 — a printed espresso recipe label. CAPTURE 11.9 — a printed pour-over
-label with its step list. -->
+![a live brew in progress, planned vs actual on the chart](assets/brew-11.7.png)
 
 ---
 

@@ -22,8 +22,8 @@ from pathlib import Path
 from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QDialog, QVBoxLayout, QHBoxLayout,
                              QLabel, QTextEdit, QPushButton, QStyle, QFileDialog)
-from PyQt6.QtCore import QStandardPaths
-from PyQt6.QtGui import QFont
+from PyQt6.QtCore import QStandardPaths, QUrl
+from PyQt6.QtGui import QFont, QDesktopServices
 
 class TilauCrashDialog(QDialog):
 
@@ -147,6 +147,30 @@ def export_logs_to_zip():
         except Exception as e:
             print(f"Failed to zip: {e}")
     return False
+
+## TILAU ## Public issue tracker of the AGPL fork — where bug reports land.
+TILAUSCOPE_ISSUES_URL = "https://github.com/neuralldev/tilauscope_fork/issues"
+
+def report_a_bug(parent=None) -> bool:
+    """Single entry point for "report a bug": export the diagnostics archive,
+    then offer to open the public issue tracker.
+
+    Called from the About dialog and from BeanCave's Export Logs button, so the
+    two never drift apart. Cancelling the save dialog is silent (returns False).
+    """
+    from tilauscope.tilauscope_types import show_styled_message
+    if not export_logs_to_zip():
+        return False
+    choice = show_styled_message(
+        parent,
+        QApplication.translate("tilauscope", "Diagnostics saved"),
+        QApplication.translate("tilauscope",
+            "Attach the archive to your report so the problem can be reproduced."),
+        buttons=[QApplication.translate("tilauscope", "Open GitHub"),
+                 QApplication.translate("tilauscope", "Done")])
+    if choice == 0:
+        QDesktopServices.openUrl(QUrl(TILAUSCOPE_ISSUES_URL))
+    return True
 
 def my_exception_hook(exctype, value, tb):
     tb_text = "".join(traceback.format_exception(exctype, value, tb))

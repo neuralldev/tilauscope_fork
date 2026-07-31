@@ -133,7 +133,7 @@ jobs:
 
           DMG="src/tilauscope-${APP_VERSION}-build${APP_BUILD}.dmg"
           chmod +x src/sign-notarize-macos.sh
-          src/sign-notarize-macos.sh "src/dist/artisan.app" "$DMG"
+          src/sign-notarize-macos.sh "src/dist/TilauScope.app" "$DMG"
 
           rm -f "$APPLE_API_KEY_PATH"
 
@@ -185,7 +185,7 @@ jobs:
                   "$BODY" \
                   "**This macOS build is signed but NOT notarized.** On first launch macOS" \
                   "will refuse to open it. After dragging TilauScope to Applications, run once in Terminal:" \
-                  "    xattr -dr com.apple.quarantine /Applications/artisan.app" \
+                  "    xattr -dr com.apple.quarantine /Applications/TilauScope.app" \
                   "(or right-click the app, choose Open, then confirm).")" ;;
             esac
           fi

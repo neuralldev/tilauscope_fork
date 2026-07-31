@@ -108,7 +108,9 @@ def del_file(path, fatal=True):
 # Setup the environment
 ###################################
 ROOTLOCAL = os.getenv('PARENT_DIR')
-NAME = os.getenv('APP_NAME', 'artisan')
+## TILAU ## Fork identity: names the .exe and the installed folder. The GPL grants
+## the code, not the upstream name (GPLv3 §7e reserves trademark rights).
+NAME = os.getenv('APP_NAME', 'TilauScope')
 
 ROOT = Path(ROOTLOCAL).resolve()
 SOURCE = ROOT / 'src'
@@ -214,7 +216,11 @@ exe = EXE(pyz,
           debug=False,
           strip=False, # =True fails
           upx=False, # not installed
-          icon='artisan.ico',
+          ## TILAU ## Fork identity, not Artisan's. The GPL licenses the code, not
+          ## the upstream name or logo (GPLv3 §7e reserves trademark rights), so a
+          ## modified build must not present itself as Artisan in the taskbar.
+          ## Regenerate with tools/shell/gen_app_icons.py.
+          icon='tilauscope.ico',
           version='version_info-win.txt',
           console=False) # was True
 logging.info(">>>>> EXE complete, collecting files")
@@ -262,6 +268,7 @@ copy_file(SOURCE / 'tilauscope' / 'A101HLVN.TTF', TARGETSTR + '_internal\\tilaus
 
 for fn in [
     'tilauscope.png',
+    'tilauscope.ico',
     'artisan.png',
     'artisan.ico',
     'artisanAlarms.ico',
@@ -313,7 +320,7 @@ for fn in [
     r'includes\A101HLVB.TTF',
     r'includes\A101HLVN.TTF',
     r'includes\logging.yaml',
-    r'includes\artisan_public_key.pem',
+    r'includes\tilauscope_public_key.pem',
     ]:
     copy_file(SOURCE / fn, TARGETSTR)
 

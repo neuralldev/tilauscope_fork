@@ -962,8 +962,11 @@ class _AlarmRow(QFrame):
         if target is None:
             return QApplication.translate('tilauscope_alarms', '(no guard)')
         num = self._alarms.display_number(target)
-        key = 'not fired' if not_fired else 'fired'
-        verb = QApplication.translate('tilauscope_alarms', key)
+        # Both branches spell the literal out: pylupdate6 reads the source, so a
+        # key chosen first and translated afterwards is a string it never sees.
+        verb = (QApplication.translate('tilauscope_alarms', 'not fired')
+                if not_fired
+                else QApplication.translate('tilauscope_alarms', 'fired'))
         return f'#{num} {verb}'
 
     # ── events ────────────────────────────────────────────────────────────

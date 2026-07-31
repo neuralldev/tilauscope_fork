@@ -6,7 +6,7 @@
 #   APPLE_API_KEY_PATH=/path/to/AuthKey_XXXX.p8 \
 #   APPLE_API_KEY_ID=XXXXXXXXXX \
 #   APPLE_API_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
-#   ./sign-notarize-macos.sh dist/artisan.app tilauscope-4.1.0-build27.dmg
+#   ./sign-notarize-macos.sh dist/TilauScope.app tilauscope-4.1.0-build27.dmg
 #
 # Set NOTARIZE=0 to sign and package only (useful for a quick local check).
 # Set NOTARIZE_REQUIRED=0 to keep going (exit 0) if notarization fails, so the
@@ -66,8 +66,8 @@ ln -s /Applications "$DIST_DIR/Applications"
 # the "Bühler" machine-profile folder (ü → u + combining diaeresis). That
 # breaks the app's sealed-resource signature inside the image, and the notary
 # service reports it — confusingly — as "the signature of the binary is
-# invalid" on Contents/MacOS/artisan. APFS preserves the bytes as signed.
-hdiutil create "$DMG_PATH" -volname "artisan" -fs APFS -srcfolder "$DIST_DIR" -ov
+# invalid" on Contents/MacOS/TilauScope. APFS preserves the bytes as signed.
+hdiutil create "$DMG_PATH" -volname "TilauScope" -fs APFS -srcfolder "$DIST_DIR" -ov
 
 echo "=== Signing DMG"
 codesign --force --timestamp --sign "$CODESIGN_IDENTITY" "$DMG_PATH"
@@ -94,7 +94,7 @@ ship_unnotarized() {
   echo "0" > "$MARKER"
   echo "!!! Shipping a signed but NOT notarized DMG (NOTARIZE_REQUIRED=0)."
   echo "!!! On first launch macOS will block it. To authorize after install:"
-  echo "!!!     xattr -dr com.apple.quarantine /Applications/artisan.app"
+  echo "!!!     xattr -dr com.apple.quarantine /Applications/TilauScope.app"
   echo "!!! (or right-click the app → Open, then confirm in the dialog)."
 }
 

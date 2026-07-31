@@ -2900,7 +2900,10 @@ class TilauScope(QWidget):
         self._sv_widgets: tuple = ()
         self._sv_locked: bool = False
 
-        self.is_swapped = QSettings("Artisan", "TilauScope").value("interface/swap_events_control", False, type=bool) # shall we swap content?
+        ## TILAU ## Main store: this used to be QSettings("Artisan","TilauScope"), a
+        ## separate file written under Artisan's name. Key is namespaced, so it
+        ## folds in without collision; the old value is carried by settings_migration.
+        self.is_swapped = QSettings().value("interface/swap_events_control", False, type=bool) # shall we swap content?
 
         self.init_ui()
         
@@ -6071,7 +6074,7 @@ class TilauScope(QWidget):
             # 2. Use the cached boolean (Point 2)
             if swap:
                 self.is_swapped = not self.is_swapped
-                settings = QSettings("Artisan", "TilauScope")
+                settings = QSettings()
                 settings.setValue("interface/swap_events_control", self.is_swapped)
 
             widgets = []

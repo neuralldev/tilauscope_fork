@@ -25,8 +25,27 @@ Artisan's own menus.
 | **TilauScope Config...** | All fork settings, in four tabs. |
 | **Redo First-Time Setup...** | Replays the first-run wizard. |
 
-![the TilauScope menu, fully open, on a normal install (advanced-UI
-entries hidden). Must show the four entries above](assets/getting-started-1.1.png)
+![the TilauScope menu, fully open](assets/getting-started-1.1.png)
+
+### Version and bug reports
+
+**About TilauScope** lives where your system puts it: on macOS in the **TilauScope** menu
+beside the Apple logo, on Windows and Linux under **Help**.
+
+It tells you which version and build you are running — the number to quote whenever you
+report a problem. It also credits Artisan Roaster Scope, the application TilauScope is
+built on, and links to the source code, which is public.
+
+The same window has a **Report a bug** button. It gathers the application's logs into a
+single archive and asks you where to save it, then offers to open the issue tracker so you
+can attach it. The archive is what makes a problem reproducible; a report without it
+usually cannot be acted on.
+
+![the TilauScope menu, fully open](assets/getting-started-1.1.2.png)
+
+!!! note
+    The same archive is still available from the green-bean database, under **Export
+    Logs**. Both do exactly the same thing.
 
 
 ---

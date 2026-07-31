@@ -111,9 +111,36 @@ class DiFluidProtocol:
         return payload + struct.pack('B', checksum)
 
     def parse_messages_by_delimiter(self, received_bytes: bytes, delimiter: bytes = PREAMBLE) -> list[bytes]:
-        messages_raw = received_bytes.split(delimiter)
-        return [delimiter + part for part in messages_raw[1:] if part]
-    
+        """Cut a notification into frames, walking by the declared length.
+
+        Frame layout: preamble(2) | function | command | length | data | checksum,
+        so a frame is 6 + length bytes and carries its own size at offset 4.
+
+        Splitting on the preamble instead would treat any 0xDF 0xDF *inside* a
+        body as a frame boundary. That is reachable: a TEMPERATURE reply carries
+        two raw float32, and 111.936 °C encodes as 3B DF DF 42 — the frame was
+        cut in two, both halves failed their checksum, and the reading was lost.
+        Roughly one reading in 22 000 for the inlet band, 1 in 65 536 for the
+        catalyst band.
+        """
+        buf = bytes(received_bytes)
+        messages: list[bytes] = []
+        i = buf.find(delimiter)          # skip anything before the first frame
+        while i >= 0:
+            if i + 5 > len(buf):
+                break                    # header incomplete, nothing to size on
+            end = i + 6 + buf[i + 4]     # header(5) + data(length) + checksum(1)
+            if end <= len(buf):
+                messages.append(buf[i:end])
+                i = buf.find(delimiter, end)
+            else:
+                # The declared length overruns what arrived: either a truncated
+                # tail, or a corrupted header. Resync on the next preamble so a
+                # good frame behind a bad one is still delivered; if there is
+                # none, find() returns -1 and the walk ends.
+                i = buf.find(delimiter, i + 2)
+        return messages
+
     def parse_full_message(self, payload: bytes) -> dict:
         if len(payload) < 6 or not payload.startswith(self.PREAMBLE) :
             return {'valid': False, 'error': 'Invalid preamble or length'}

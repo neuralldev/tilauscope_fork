@@ -114,6 +114,22 @@ class TilauMenuExtension:
         self.act_pid_autotune.setCheckable(True)
         self.act_pid_autotune.triggered.connect(aw.handlePIDAutotune)
 
+        ## TILAU ## No About entry here on purpose: renaming the application made
+        ## Artisan's own About action read "About TilauScope" in the conventional
+        ## slot (application menu on macOS, Help menu elsewhere). It opens the
+        ## fork's About window — see ApplicationWindow.helpAbout().
+
+        ## TILAU ## macOS menu merging: Qt's default TextHeuristicRole inspects the
+        ## action's *translated* text and hijacks anything looking like About /
+        ## Preferences / Quit into the application menu. 'About TilauScope' was
+        ## silently moved there, and a translated 'Config...' would follow. Artisan
+        ## itself pins NoRole on every action it wants to keep in place
+        ## (main.py:2219 and below) — same treatment here.
+        for _action in (self.act_main, self.act_beancave, self.act_config,
+                        self.act_first_config, self.act_debug,
+                        self.act_pid_autotune):
+            _action.setMenuRole(QAction.MenuRole.NoRole)
+
     def _run_first_config(self, _checked: bool = False) -> None:
         """Force-replay the first-run configuration assistant."""
         try:

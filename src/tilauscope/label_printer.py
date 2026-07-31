@@ -724,8 +724,10 @@ class RoastedBeanLabelPrinter(_FontMixin):
 class GreenBeanLabelPrinter(_FontMixin):
 
     def __init__(self, logo_path: Path | None = None):
+        ## TILAU ## logo_path is accepted for call-site compatibility but no longer
+        ## loaded: the label's mark is drawn from vectors by _draw_tilau_logo(), and
+        ## the pixmap was decoded on every export without ever being painted.
         self._init_fonts()
-        self.logo = QPixmap(str(logo_path)) if logo_path and logo_path.exists() else None
 
     def render(self, painter: QPainter, bean: GreenBean):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)

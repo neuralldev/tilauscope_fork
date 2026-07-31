@@ -3705,8 +3705,8 @@ class BuildPRoastPlanPDF(FPDF):
             (QApplication.translate("tilauscope_beancave","Density")+" (g/L)", plan_data.get("Density")),
             (QApplication.translate("tilauscope_beancave","Bean Humidity")+" (%)", plan_data.get("Bean Humidity")),
             (QApplication.translate("tilauscope_beancave","Ambient Temp")+f" (°{self.mode})", plan_data.get("Ambient Temp")),
-            (QApplication.translate("tilauscope_beancave","Ambient Humidity"+" (%)"), plan_data.get("Ambient Humidity")),
-            (QApplication.translate("tilauscope_beancave","Weight to roast"+" (g)"), plan_data.get("Weight")),
+            (QApplication.translate("tilauscope_beancave","Ambient Humidity")+" (%)", plan_data.get("Ambient Humidity")),
+            (QApplication.translate("tilauscope_beancave","Weight to roast")+" (g)", plan_data.get("Weight")),
         ]
         
         self.set_font('helvetica', '', 10)

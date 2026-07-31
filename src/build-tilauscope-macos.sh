@@ -18,15 +18,22 @@ rm -f ${PYTHONPATH}/site-packages/fontTools/misc/bezierTools.c # 1.9MB
 rm -rf build dist
 ## TILAU ## Marqueur de notarisation d'un build précédent : s'il survit et que le
 ## build courant n'en produit pas, on lirait un verdict périmé.
-rm -f artisan-mac-*.dmg.notarized
+rm -f tilauscope-mac-*.dmg.notarized
 sleep .3 # sometimes it takes a little for dist to get really empty
 
 echo "************* updating build number **************"
 python3 ../scripts/update-build-files.py
 
+## TILAU ## update-build-files.py only stamps version/build, never the signature —
+## re-sign here so every local build (this script isn't used by the fork's CI,
+## which packages whatever publish.sh already signed and committed) verifies as
+## genuine instead of logging "signature invalid" at startup.
+echo "************* signing build **************"
+python3 generate_signature.py
+
 ## TILAU ## Opt-in signing + notarization, mirroring .github/workflows/build-macos.yml.
 ## Set CODESIGN_IDENTITY ("Developer ID Application: Name (TEAMID)") to take the
-## signed path: the spec then stops at dist/artisan.app (TILAU_SKIP_DMG=1) and
+## signed path: the spec then stops at dist/TilauScope.app (TILAU_SKIP_DMG=1) and
 ## sign-notarize-macos.sh signs, builds an APFS DMG, notarizes and staples it.
 ## Without CODESIGN_IDENTITY the build behaves exactly as before — the spec emits
 ## an unsigned HFS+ DMG, fine for a local test but not for distribution.
@@ -70,7 +77,7 @@ fi
 version=$(python3 -c "import artisanlib; print(artisanlib.__version__)")
 
 ## TILAU ## Same DMG name in both paths — scripts/main.py uploads a hard-coded
-## ./artisan-mac-<version>.dmg, so the signed path must not rename it.
+## ./tilauscope-mac-<version>.dmg, so the signed path must not rename it.
 ## TILAU ## TILAU_NOTARIZED est lu par scripts/main.py pour décider si la release
 ## publique doit porter l'avertissement « signé mais non notarisé » (équivalent de
 ## la variable NOTARIZED du workflow). 0 par défaut : un build non signé déclenche
@@ -79,12 +86,12 @@ TILAU_NOTARIZED=0
 if [ "$SIGNED_BUILD" = "1" ]; then
     echo "************* signing / packaging / notarizing **************"
     chmod +x sign-notarize-macos.sh
-    ./sign-notarize-macos.sh "dist/artisan.app" "artisan-mac-$version.dmg"
+    ./sign-notarize-macos.sh "dist/TilauScope.app" "tilauscope-mac-$version.dmg"
 
     ## TILAU ## sign-notarize-macos.sh dépose le verdict dans <dmg>.notarized.
     ## On le consomme ici puis on l'efface : c'est un fichier de travail, il n'a
     ## rien à faire dans src/ une fois le résultat récupéré.
-    marker="artisan-mac-$version.dmg.notarized"
+    marker="tilauscope-mac-$version.dmg.notarized"
     TILAU_NOTARIZED=$(cat "$marker" 2>/dev/null || echo 0)
     rm -f "$marker"
 fi
@@ -92,7 +99,7 @@ export TILAU_NOTARIZED
 echo "** notarized=$TILAU_NOTARIZED"
 
 # Check that the packaged files are above an expected size
-basename="artisan-mac-$version"
+basename="tilauscope-mac-$version"
 echo "basename: $basename"
 suffixes=".dmg" # array of suffixes to check
 min_size=295000000  # minimum size in bytes (2.95 GB)
@@ -105,6 +112,13 @@ for suffix in $suffixes; do
         exit 1
     else
         echo "**** Success: $filename is larger than minimum $min_size bytes"
-        python3 ../scripts/main.py # this is to adapt to your ci/cd env to upload on the cloud the dmg file
+        ## TILAU ## TILAU_LOCAL_ONLY=1 stops here: dist/TilauScope.app + the DMG are
+        ## built and ready to test, but nothing leaves this machine — no Google
+        ## Drive upload, no public fork release/manifest update.
+        if [ "${TILAU_LOCAL_ONLY:-0}" = "1" ]; then
+            echo "TILAU_LOCAL_ONLY=1 — skipping cloud upload and fork publication"
+        else
+            python3 ../scripts/main.py # this is to adapt to your ci/cd env to upload on the cloud the dmg file
+        fi
     fi
 done

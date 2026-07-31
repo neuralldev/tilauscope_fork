@@ -1,12 +1,12 @@
-__version__ = '4.1.2'
+__version__ = '4.1.3'
 __revision__ = ''
 __build__ = '1'
-__artisan_os__ = 'macos'
+__artisan_os__ = 'macOS'
 
 __tilau__ = True
 
-__release_sponsor_name__ = 'artisan.plus'
-__release_sponsor_domain__ = 'artisan.plus'
-__release_sponsor_url__ = 'https://artisan.plus/'
+__release_sponsor_name__ = 'powered by TilauScope'
+__release_sponsor_domain__ = 'tilauscope.com'
+__release_sponsor_url__ = 'https://github.com/neuralldev/tilauscope_fork/releases'
 
-__signature__ = 'e9ca9f1c44ee9e5d4a651dd8938943e410847f5506fa1578b67408f1e91822e089c0be38c78eeb4ba14f8448d1ba1a3f27828e25133cb8da5ca84f01eae6860f'
+__signature__ = 'd66f28728b043ca4ea38c371509f71f527dd683528ae803bae0c143048a5c845f5899e77eff5f4f264941e8bdcca2dbb4b9cc7db08fed0446ef7529667d39c02'

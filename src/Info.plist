@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>artisan</string>
+	<string>TilauScope</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -106,17 +106,17 @@
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
-	<string>artisan</string>
+	<string>TilauScope</string>
 	<key>CFBundleGetInfoString</key>
-	<string>artisan, Roast Logger</string>
+	<string>TilauScope, Roast Logger</string>
 	<key>CFBundleIconFile</key>
-	<string>artisan.icns</string>
+	<string>tilauscope.icns</string>
 	<key>CFBundleIdentifier</key>
 	<string>org.artisan</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>artisan</string>
+	<string>TilauScope</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

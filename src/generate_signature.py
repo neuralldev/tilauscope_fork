@@ -50,8 +50,9 @@ def extract_field(content: str, field_name: str) -> str | None:
 
 def load_private_key(build_service: str) -> ed25519.Ed25519PrivateKey | None:
 
+    ## TILAU ## TilauScope signs with its own keypair, not Artisan's upstream key
     if build_service == 'LOCAL':
-        path_abs = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'artisan-utils', 'crypto', 'artisan_private_key.pem'))
+        path_abs = os.path.expanduser('~/.tilauscope-keys/tilau_private_key.pem')
         try:
             with open(path_abs, encoding='utf-8') as f:
                 lines = f.readlines()
@@ -61,11 +62,11 @@ def load_private_key(build_service: str) -> ed25519.Ed25519PrivateKey | None:
 
         key_env = lines[1].strip()
 
-    # ARTISAN_KEY environment variable is set in the CI environment
+    # TILAU_KEY environment variable is set in the CI environment
     elif build_service in {'APPVEYOR','GITHUB_ACTIONS'}:
-        key_env = os.environ.get('ARTISAN_KEY', 'False')
+        key_env = os.environ.get('TILAU_KEY', 'False')
         if not key_env:
-            print('ERROR: ARTISAN_KEY environment variable not set.')
+            print('ERROR: TILAU_KEY environment variable not set.')
             sys.exit(1)
     else:
         print(f'ERROR: Unexpected build_service {build_service}')

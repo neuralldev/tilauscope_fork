@@ -46,7 +46,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QApplication,
                              QPlainTextEdit, QLabel, QComboBox, QPushButton,
                              QFrame, QSizeGrip, QSizePolicy, QSplitter, QToolButton,
                              QLineEdit, QTextEdit)
-from PyQt6.QtCore import pyqtSignal, QObject, QDateTime, QStandardPaths, QTimer, Qt, QSettings, QPointF
+from PyQt6.QtCore import pyqtSignal, QObject, QDateTime, QStandardPaths, QTimer, Qt, QSettings, QPointF, QT_TRANSLATE_NOOP  ## TILAU ## declares strings the extractor must see when translate() is fed a variable
 from PyQt6.QtGui import (QCursor, QTextCursor, QTextCharFormat, QColor,
                          QKeySequence, QShortcut, QPainter, QPen, QPolygonF)
 from artisanlib.main import ApplicationWindow # noqa: F401 # pylint: disable=unused-import
@@ -1228,7 +1228,9 @@ class TilauscopeLoggerWindow(QWidget):
         self.setup_file_loggers()
 
         # ## TILAU ## — persistent settings (must exist before _build_ui uses them)
-        self._settings = QSettings("TilauScope", "TilauLogger")
+        ## TILAU ## Main store; keys are already namespaced "tilaulogger/*". Was a
+        ## separate file, carried over by settings_migration.
+        self._settings = QSettings()
 
         # ## TILAU ## — observability bus + source→zone registry.
         # Bus must exist before _build_ui, which registers the zones.
@@ -1702,11 +1704,11 @@ class TilauscopeLoggerWindow(QWidget):
             ctrl_row.addWidget(b)
             return b
 
-        _action("📌", "Insert marker in all zones", self._insert_marker)
-        self._pause_btn = _action("⏸", "Pause / resume rendering", self._toggle_pause)
+        _action("📌", QT_TRANSLATE_NOOP("tilauscope_beancave", "Insert marker in all zones"), self._insert_marker)
+        self._pause_btn = _action("⏸", QT_TRANSLATE_NOOP("tilauscope_beancave", "Pause / resume rendering"), self._toggle_pause)
         self._pause_btn.setCheckable(True)
-        _action("💾", "Save snapshot to file", self._take_snapshot)
-        _action("♻", "Run garbage collection now", self._gc_now)
+        _action("💾", QT_TRANSLATE_NOOP("tilauscope_beancave", "Save snapshot to file"), self._take_snapshot)
+        _action("♻", QT_TRANSLATE_NOOP("tilauscope_beancave", "Run garbage collection now"), self._gc_now)
 
         ctrl_row.addStretch()
 

@@ -146,6 +146,9 @@ enable='''c-extension-no-member,'''
 files = ["*.py", "artisanlib/*.py", "plus/*.py", "tilauscope/*.py", "test/**/*.py"]
 exclude = ['build', 'dist', 'uic', 'misc']
 python_version = "3.14"
+# test/_guard.py is imported by name from conftest (pytest puts test/ on sys.path
+# for rootdir-relative conftest imports); mypy needs the same hint.
+mypy_path = "test"
 
 # Ensure full coverage
 check_untyped_defs = true
@@ -255,12 +258,38 @@ addopts = "-ra -v"
 testpaths = [
     "test",
 ]
+# rootdir IS src/, so the import root is "." — "src" would resolve to src/src.
 pythonpath = [
-  "src"
+  "."
 ]
+markers = [
+  "slow: subprocess-isolated or corpus-wide checks; excluded from `make test`",
+]
+# Warnings are errors. Later entries win, so the exceptions below are the only
+# things allowed through. Verified empty when this was turned on: the whole
+# suite raised exactly one distinct warning, the yoctopuce one excepted below.
+#
+# The point is RuntimeWarning in particular. numpy reports 'invalid value
+# encountered in divide', 'mean of empty slice' and friends that way, and the
+# plan model is dense numerics over real roast curves — silencing those (as the
+# inherited `ignore::RuntimeWarning` did) hides exactly the class of defect
+# that produces a quietly wrong roast plan.
 filterwarnings = [
-  "ignore::RuntimeWarning",
-  "ignore::pytest.PytestUnraisableExceptionWarning",
+  "error",
+  # yoctopuce declares ctypes Structures with _pack_ but no _layout_, which
+  # Python 3.14 deprecates. Not actionable: third-party, we already pin the
+  # latest release (2.1.15129), and upstream has shipped no fix.
+  #
+  # This exception is load-bearing, not cosmetic. artisanlib/canvas.py imports
+  # yoctopuce inside a bare `except Exception: pass`; promote the warning to an
+  # error and the import is swallowed, so YAPI never binds and the suite would
+  # silently exercise a canvas without Yocto device support — measurably
+  # different from production. Ignoring it is what keeps the tested code honest.
+  #
+  # That swallowing is also a live preview of Python 3.19, where this becomes an
+  # error for real and Yocto support disappears without a message. Revisit on
+  # any new yoctopuce release, and before that migration.
+  "ignore:Due to '_pack_':DeprecationWarning",
 ]
 
 

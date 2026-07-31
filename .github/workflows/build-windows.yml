@@ -57,10 +57,10 @@ jobs:
         shell: cmd
         run: |
           echo company_name: "Tilau" > metadata.yml
-          echo product_name: "artisan" >> metadata.yml
-          echo file_description: "artisan" >> metadata.yml
-          echo internal_name: "artisan" >> metadata.yml
-          echo original_filename: "artisan.exe" >> metadata.yml
+          echo product_name: "TilauScope" >> metadata.yml
+          echo file_description: "TilauScope" >> metadata.yml
+          echo internal_name: "TilauScope" >> metadata.yml
+          echo original_filename: "TilauScope.exe" >> metadata.yml
 
           create-version-file metadata.yml --outfile src\version_info-win.txt --version ${{ env.APP_VERSION }}.${{ env.APP_BUILD }}
 
@@ -97,7 +97,7 @@ jobs:
           APP_VERSION: ${{ env.APP_VERSION }}
           APP_BUILD: ${{ env.APP_BUILD }}
         run: |
-          mv src\artisan-win-x64-${{ env.APP_VERSION }}-setup.exe src\tilauscope-${{ env.APP_VERSION }}-build${{ env.APP_BUILD }}-setup.exe
+          mv src\tilauscope-win-x64-${{ env.APP_VERSION }}-setup.exe src\tilauscope-${{ env.APP_VERSION }}-build${{ env.APP_BUILD }}-setup.exe
 
       - name: Publish GitHub release
         shell: bash

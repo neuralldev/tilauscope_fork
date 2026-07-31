@@ -96,7 +96,7 @@ Unicode true
 ; Page du désinstalleur [cite: 25]
 !insertmacro MUI_UNPAGE_INSTFILES
 
-!define PRODUCT_NAME "artisan"
+!define PRODUCT_NAME "TilauScope"
 
 ; --- LANGUES ET TRADUCTIONS ---
 ; L'anglais est défini en premier comme langue par défaut (fallback) [cite: 25]
@@ -134,10 +134,10 @@ LangString DESC_OpenWithURL ${LANG_FRENCH} "Ouvrir avec URL"
 
 
 ; HM NIS Edit Wizard helper defines
-!define pyinstallerOutputDir 'dist/artisan'
+!define pyinstallerOutputDir 'dist/TilauScope'
 !define PRODUCT_PUBLISHER "Tilau"
-!define PRODUCT_WEB_SITE "https://github.com/artisan/README.md"
-!define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\artisan.exe"
+!define PRODUCT_WEB_SITE "https://github.com/neuralldev/tilauscope_fork"
+!define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\TilauScope.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 
@@ -153,7 +153,7 @@ Caption "${PRODUCT_NAME} Installer"
 
 VIProductVersion "${PRODUCT_VERSION}.${PRODUCT_BUILD}"
 VIAddVersionKey ProductName "${PRODUCT_NAME}"
-VIAddVersionKey Comments "Installer for artisan"
+VIAddVersionKey Comments "Installer for TilauScope"
 VIAddVersionKey CompanyName ""
 VIAddVersionKey LegalCopyright "Copyright 2025-${CUR_YEAR}, Tilau. GNU General Public License"
 VIAddVersionKey FileVersion "${PRODUCT_VERSION}.${PRODUCT_BUILD}"
@@ -162,14 +162,14 @@ VIAddVersionKey ProductVersion "${PRODUCT_VERSION}.${PRODUCT_BUILD}"
 
 ; MUI Settings
 !define MUI_ABORTWARNING
-;!define MUI_ICON "artisan.ico"
+;!define MUI_ICON "tilauscope.ico"
 ;!define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
 
 ; MUI end ------
 
 Name "${PRODUCT_NAME}"
-OutFile "artisan-win-x64-${PRODUCT_VERSION}-setup.exe"
-InstallDir "$PROGRAMFILES64\artisan"
+OutFile "tilauscope-win-x64-${PRODUCT_VERSION}-setup.exe"
+InstallDir "$PROGRAMFILES64\TilauScope"
 InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
 ShowUnInstDetails show
@@ -185,7 +185,7 @@ Function .onInit
   ${EndIf}
 
 ;  3. Vérification si l'application est déjà en cours d'exécution
-  !insertmacro IsRunning "Global\artisan_Mutex"
+  !insertmacro IsRunning "Global\TilauScope_Mutex"
 
 ; 4. Vérification de l'architecture 64-bit [cite: 32, 33]
   ${If} ${RunningX64}
@@ -227,9 +227,9 @@ Section "MainSection" SEC01
   SetOutPath "$INSTDIR"
   SetOverwrite ifnewer
   File /r '${pyinstallerOutputDir}\*.*'
-  CreateDirectory "$SMPROGRAMS\artisan"
-  CreateShortCut "$SMPROGRAMS\artisan\artisan.lnk" "$INSTDIR\artisan.exe"
-  CreateShortCut "$DESKTOP\artisan.lnk" "$INSTDIR\artisan.exe"
+  CreateDirectory "$SMPROGRAMS\TilauScope"
+  CreateShortCut "$SMPROGRAMS\TilauScope\TilauScope.lnk" "$INSTDIR\TilauScope.exe"
+  CreateShortCut "$DESKTOP\TilauScope.lnk" "$INSTDIR\TilauScope.exe"
 SectionEnd
 
 Section "Microsoft Visual C++ Redistributable Package (x64)" SEC02
@@ -240,8 +240,8 @@ SectionEnd
 Section -AdditionalIcons
   SetShellVarContext all
   WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
-  CreateShortCut "$SMPROGRAMS\artisan\Website.lnk" "$INSTDIR\${PRODUCT_NAME}.url"
-  CreateShortCut "$SMPROGRAMS\artisan\Uninstall.lnk" "$INSTDIR\uninst.exe"
+  CreateShortCut "$SMPROGRAMS\TilauScope\Website.lnk" "$INSTDIR\${PRODUCT_NAME}.url"
+  CreateShortCut "$SMPROGRAMS\TilauScope\Uninstall.lnk" "$INSTDIR\uninst.exe"
 SectionEnd
 
 Section -Post
@@ -252,36 +252,36 @@ Section -Post
     WriteUninstaller "$INSTDIR\uninst.exe"
   !endif
 
-  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\artisan.exe"
+  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "$INSTDIR\TilauScope.exe"
   WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "Path" "$INSTDIR"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayName" "$(^Name)"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" "$INSTDIR\uninst.exe"
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$INSTDIR\artisan.exe"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$INSTDIR\TilauScope.exe"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}.${PRODUCT_BUILD}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
 
   ; file associations
   !insertmacro APP_ASSOCIATE "alog" "Artisan.Profile" "Artisan Roast Profile" \
-     "$INSTDIR\artisanProfile.ico" "$(DESC_OpenWith)" "$INSTDIR\artisan.exe $\"%1$\""
+     "$INSTDIR\artisanProfile.ico" "$(DESC_OpenWith)" "$INSTDIR\TilauScope.exe $\"%1$\""
 
   !insertmacro APP_ASSOCIATE "alrm" "Artisan.Alarms" "Artisan Alarms" \
-     "$INSTDIR\artisanAlarms.ico" "$(DESC_OpenWith)" "$INSTDIR\artisan.exe $\"%1$\""
+     "$INSTDIR\artisanAlarms.ico" "$(DESC_OpenWith)" "$INSTDIR\TilauScope.exe $\"%1$\""
 
   !insertmacro APP_ASSOCIATE "apal" "Artisan.Palettes" "Artisan Palettes" \
-     "$INSTDIR\artisanPalettes.ico" "$(DESC_OpenWith)" "$INSTDIR\artisan.exe $\"%1$\""
+     "$INSTDIR\artisanPalettes.ico" "$(DESC_OpenWith)" "$INSTDIR\TilauScope.exe $\"%1$\""
 
   !insertmacro APP_ASSOCIATE "athm" "Artisan.Theme" "Artisan Theme" \
-     "$INSTDIR\artisanTheme.ico" "$(DESC_OpenWith)" "$INSTDIR\artisan.exe $\"%1$\""
+     "$INSTDIR\artisanTheme.ico" "$(DESC_OpenWith)" "$INSTDIR\TilauScope.exe $\"%1$\""
 
   !insertmacro APP_ASSOCIATE "aset" "Artisan.Settings" "Artisan Settings" \
-     "$INSTDIR\artisanSettings.ico" "$(DESC_OpenWith)" "$INSTDIR\artisan.exe $\"%1$\""
+     "$INSTDIR\artisanSettings.ico" "$(DESC_OpenWith)" "$INSTDIR\TilauScope.exe $\"%1$\""
 
   !insertmacro APP_ASSOCIATE "wg" "Artisan.Wheel" "Artisan Wheel" \
-     "$INSTDIR\artisanWheel.ico" "$(DESC_OpenWith)" "$INSTDIR\artisan.exe $\"%1$\""
+     "$INSTDIR\artisanWheel.ico" "$(DESC_OpenWith)" "$INSTDIR\TilauScope.exe $\"%1$\""
 
   !insertmacro APP_ASSOCIATE_URL "artisan" "URL:artisan Protocol" \
-     "$(DESC_OpenWithURL)" "$INSTDIR\artisan.exe $\"%1$\""
+     "$(DESC_OpenWithURL)" "$INSTDIR\TilauScope.exe $\"%1$\""
 
 SectionEnd
 
@@ -292,7 +292,7 @@ Function un.onUninstSuccess
 FunctionEnd
 
 Function un.onInit
-    !insertmacro IsRunning "Global\artisan_Mutex"
+    !insertmacro IsRunning "Global\TilauScope_Mutex"
 
     IfSilent +3
         MessageBox MB_ICONQUESTION|MB_YESNO|MB_TOPMOST "$(DESC_UninstConfirm)" IDYES +2
@@ -304,8 +304,8 @@ Section Uninstall
   ; 1. Suppression des fichiers principaux
   Delete "$INSTDIR\${PRODUCT_NAME}.url"
   Delete "$INSTDIR\uninst.exe"
-  Delete "$INSTDIR\artisan.exe"
-  Delete "$INSTDIR\artisan.exe.manifest"
+  Delete "$INSTDIR\TilauScope.exe"
+  Delete "$INSTDIR\TilauScope.exe.manifest"
   Delete "$INSTDIR\base_library.zip"
   Delete "$INSTDIR\logging.yaml"
   
@@ -336,10 +336,10 @@ Section Uninstall
 
   ; 4. Suppression des raccourcis (All Users)
   SetShellVarContext all
-  Delete "$SMPROGRAMS\artisan\Uninstall.lnk"
-  Delete "$SMPROGRAMS\artisan\artisan.lnk"
-  Delete "$DESKTOP\artisan.lnk"
-  RMDir "$SMPROGRAMS\artisan"
+  Delete "$SMPROGRAMS\TilauScope\Uninstall.lnk"
+  Delete "$SMPROGRAMS\TilauScope\TilauScope.lnk"
+  Delete "$DESKTOP\TilauScope.lnk"
+  RMDir "$SMPROGRAMS\TilauScope"
 
   ; 5. Nettoyage du Registre et des Associations
   DeleteRegKey HKLM "${PRODUCT_DIR_REGKEY}"

@@ -161,12 +161,15 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='artisan',
+    ## TILAU ## Names Contents/MacOS/<binary> — the process name in Activity
+    ## Monitor and Force Quit. MUST stay in sync with CFBundleExecutable in
+    ## Info.plist; if the two disagree the bundle will not launch at all.
+    name='TilauScope',
     debug=False,
     bootloader_ignore_signals=False,
     ## TILAU ## strip=True corrupts the bootloader's Mach-O such that codesign
     ## --verify still passes but Apple's notary service rejects it with "The
-    ## signature of the binary is invalid" on Contents/MacOS/artisan. Must stay
+    ## signature of the binary is invalid" on Contents/MacOS/TilauScope. Must stay
     ## False for notarization (COLLECT below is already strip=False).
     strip=False,
     upx=False,
@@ -190,7 +193,7 @@ with open('Info.plist', 'rb') as f:
     plist = plistlib.load(f)
 
 plist.update({
-    'CFBundleDisplayName': 'artisan',
+    'CFBundleDisplayName': 'TilauScope',
     'CFBundleShortVersionString': VERSION,
     'CFBundleVersion': VERSION,
     'NSHumanReadableCopyright': LICENSE,
@@ -203,15 +206,19 @@ plist.update({
 
 app = BUNDLE(
     coll,
-    name='artisan.app',
-    icon='artisan.icns',
+    name='TilauScope.app',
+    ## TILAU ## Fork identity, not Artisan's. The GPL licenses the code, not the
+    ## upstream name or logo (GPLv3 §7e reserves trademark rights), so a modified
+    ## build must not present itself as Artisan in the Dock.
+    ## Regenerate with tools/shell/gen_app_icons.py.
+    icon='tilauscope.icns',
     bundle_identifier='org.artisan-scope.roasterscope',
     info_plist=plist
 )
 
 # --- 5. Post-Build Cleanup & Pathing FIX ---
 DIST_DIR = Path('dist').resolve()
-APP_PATH = DIST_DIR / 'artisan.app'
+APP_PATH = DIST_DIR / 'TilauScope.app'
 
 print("************* Cleaning and Fixing Pathing **************")
 
@@ -241,7 +248,7 @@ if fw_dir.exists():
 
 # --- 6. DMG Creation (In Parent Directory)  ---
 os.chdir(SPECPATH)
-DMG_NAME = f'artisan-mac-{VERSION}.dmg'
+DMG_NAME = f'tilauscope-mac-{VERSION}.dmg'
 
 # 1. REMOVE the intermediate build folder so it doesn't show up in the DMG
 build_folder = DIST_DIR / 'artisan_build'
@@ -249,9 +256,9 @@ if build_folder.exists():
     print(f"*** Removing intermediate build folder: {build_folder} ***")
     shutil.rmtree(build_folder)
 
-## TILAU ## The signed release pipeline must codesign artisan.app *before* the
+## TILAU ## The signed release pipeline must codesign TilauScope.app *before* the
 ## DMG is built — a DMG whose inner app is unsigned cannot be notarized. When
-## TILAU_SKIP_DMG=1 the spec stops at dist/artisan.app and the caller
+## TILAU_SKIP_DMG=1 the spec stops at dist/TilauScope.app and the caller
 ## (.github/workflows/build-macos.yml) signs, packages, notarizes and staples.
 if os.environ.get('TILAU_SKIP_DMG') == '1':
     print("*** TILAU_SKIP_DMG=1 — leaving DMG creation to the caller ***")
@@ -261,15 +268,15 @@ else:
         os.remove(DMG_NAME)
 
     # 3. Create /Applications symlink inside dist for DMG view
-    # At this point, 'dist' only contains 'artisan.app'
+    # At this point, 'dist' only contains 'TilauScope.app'
     if os.path.exists('dist/Applications'):
         os.remove('dist/Applications')
     os.symlink('/Applications', 'dist/Applications')
 
     # 4. Generate DMG
     print(f"*** Generating DMG: {DMG_NAME} ***")
-    # Now that artisan_build is gone, the DMG will only contain artisan.app and the shortcut
-    os.system(f'hdiutil create "{DMG_NAME}" -volname "artisan" -fs HFS+ -srcfolder "dist"')
+    # Now that artisan_build is gone, the DMG will only contain TilauScope.app and the shortcut
+    os.system(f'hdiutil create "{DMG_NAME}" -volname "TilauScope" -fs HFS+ -srcfolder "dist"')
 
 # Logging final size
 def get_size(p):

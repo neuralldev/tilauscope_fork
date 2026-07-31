@@ -1,17 +1,27 @@
 #
 # ABOUT
 # Artisan Main Canvas
-
+#
+# COPYRIGHT (C) 2010-2026 The Artisan team represented by
+#   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
+#
 # LICENSE
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 2 of the License, or
-# version 3 of the License, or (at your option) any later version. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public License for more details.
-
+# This program or module is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# MAINTAINER
+# Marko Luther, 2026
+#
 # AUTHOR
 # Marko Luther, 2023, updated by TILAU
 
@@ -62,7 +72,7 @@ if TYPE_CHECKING:
 
 from artisanlib.util import (to_ascii, uchr, fill_gaps, deltaLabelPrefix, deltaLabelUTF8, deltaLabelMathPrefix, stringfromseconds,
         fromFtoC, fromFtoCstrict, fromCtoF, fromCtoFstrict, RoRfromFtoC, RoRfromFtoCstrict, RoRfromCtoF, RoRfromCtoFstrict, toInt, toString,
-        toFloat, application_name, getResourcePath, getDirectory, convertWeight, right_to_left, float2str,
+        toFloat, application_name, stock_theme_directory, getResourcePath, getDirectory, convertWeight, right_to_left, float2str,
         abbrevString, scaleFloat2String, is_proper_temp, weight_units, render_weight, volume_units, float2float, timearray2index,
         events_internal_to_external_value, events_external_to_internal_value, smooth_list, computeDeltas)
 from artisanlib import pid
@@ -382,11 +392,11 @@ class tgraphcanvas(QObject):
         'foreground_event_pos', 'plus_lockSchedule_sent_account', 'plus_lockSchedule_sent_date', 'specialeventplaybackramp', 'ramp_lookahead',
         'CO2kg_per_BTU_default', 'CO2kg_per_BTU', 'Biogas_CO2_Reduction', 'Biogas_CO2_Reduction_default',
         'meterunitnames', 'meterreads_default', 'meterreads', 'meterlabels_setup', 'meterlabels', 'meterunits_setup', 'meterunits',
-        'meterfuels_setup', 'meterfuels', 'metersources_setup', 'metersources', 'playbackdrop_min_roasttime', 'TP_max_roasttime', 
-        'single_click_mpl_upperleft_corner_timer', 'single_click_mpl_upperleft_corner_TIMEOUT', 
+        'meterfuels_setup', 'meterfuels', 'metersources_setup', 'metersources', 'playbackdrop_min_roasttime', 'TP_max_roasttime',
+        'single_click_mpl_upperleft_corner_timer', 'single_click_mpl_upperleft_corner_TIMEOUT', 'profile_upload_limit', 'last_profile_upload_times',
         'AirwaveFan','AirwaveMode',
         ]
-    
+         
     ## TILAU ##
     # mydevices to extend existing mapping dynamically
     tilau_devices = {
@@ -439,6 +449,8 @@ class tgraphcanvas(QObject):
                 continue
             if slot_i < len(extradevices):
                 extradevices[slot_i] = key_to_id[key]
+
+
 
     def __init__(self, parent:QWidget, dpi:int, locale:str, aw:'ApplicationWindow') -> None:
 
@@ -2689,6 +2701,9 @@ class tgraphcanvas(QObject):
         self.xlabel_text:str|None = None
         self.xlabel_artist:Text|None = None
         self.xlabel_width:float|None = None
+
+        self.profile_upload_limit:float = 1 # maximum upload frequency in seconds
+        self.last_profile_upload_times:float = 0
 
         self.updategraphicsSignal.connect(self.updategraphics, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
         self.updateLargeLCDsSignal.connect(self.updateLargeLCDs)
@@ -10821,7 +10836,11 @@ class tgraphcanvas(QObject):
                         self.ax.spines['top'].set_sketch_params(scale, length, randomness)
                     # hide all spines from the delta_ax
                     if self.delta_ax is not None:
-                        self.delta_ax.set_frame_on(False) # hide all splines (as the four lines above)
+                        self.delta_ax.spines.top.set_visible(False)
+                        self.delta_ax.spines.bottom.set_visible(False)
+                        self.delta_ax.spines.left.set_visible(False)
+                        self.delta_ax.spines.right.set_visible(False)
+#                        self.delta_ax.set_frame_on(False) # hide all splines (as the four lines above) # this removes canvas background color on MPL 3.11.x, lines above don't have this issue
 
                     if self.ygrid > 0:
                         major_locator = ticker.MultipleLocator(self.ygrid)
@@ -13639,7 +13658,7 @@ class tgraphcanvas(QObject):
                 bbox_data = self.ax.transData.inverted().transform(bb)  # zuban:ignore[arg-type] # bounding box in data space
                 bbox = Bbox(bbox_data)
                 t.remove()
-                return bbox.bounds  # x0, y0, width, height.  Relative to the start of the curve and self.ylimit_min
+                return cast(tuple[float,float,float,float], bbox.bounds)  # x0, y0, width, height.  Relative to the start of the curve and self.ylimit_min
             return 0,0,0,0
 
     # Find the bounds for an event annotation text box
@@ -13935,7 +13954,9 @@ class tgraphcanvas(QObject):
         #load selected dictionary
         if color == 1:
             self.aw.sendmessage(QApplication.translate('Message','Colors set to defaults'))
-            fname = os.path.join(getResourcePath(), 'Themes', application_name, 'Default.athm')
+            ## TILAU ## Resource folder name, not the application identity: the stock
+            ## themes live under Themes/Artisan/ and application_name is now TilauScope.
+            fname = os.path.join(getResourcePath(), 'Themes', stock_theme_directory, 'Default.athm')
             if os.path.isfile(fname) and not self.flagon:
                 self.aw.loadSettings_theme(fn=fname,remember=False,reset=False)
                 self.aw.sendmessage(QApplication.translate('Message','Colors set to Default Theme'))
@@ -15001,6 +15022,9 @@ class tgraphcanvas(QObject):
                 self.threadserver.terminatingSignal.disconnect(self.OffMonitorCloseDownRespectAlwaysON)
             else:
                 self.threadserver.terminatingSignal.disconnect(self.OffMonitorCloseDownIgnoreAlwaysON)
+
+            if self.aw.roasthubs_token and len(self.timex) > 20: # RoastHubs configured and some data recorded
+                QTimer.singleShot(100, self.uploadRoastHubs) # must happen before QTimer(300, onMonitorSignal) below is fired!
 
             # reset WebLCDs
             resLCD = '-.-' if self.LCDdecimalplaces else '--'
@@ -16868,6 +16892,31 @@ class tgraphcanvas(QObject):
                     message = QApplication.translate('Message','[SC END] recorded at {0} BT = {1}').format(st1,st2)
                     self.aw.sendmessage(message)
                 self.aw.onMarkMoveToNext(self.aw.buttonSCe)
+
+
+    # to run within the main UI thread (best called via a QTimer)
+    @pyqtSlot()
+    def uploadRoastHubs(self) -> None:
+        def on_upload_succeeded() -> None:
+            self.aw.sendmessageSignal.emit(QApplication.translate('Message','Uploaded to {}').format('RoastHubs'), True, None)
+        def on_upload_failure() -> None:
+            self.aw.sendmessageSignal.emit(QApplication.translate('Message','Upload to {} failed').format('RoastHubs'), True, None)
+
+        if (self.aw.roasthubs_token != '' and
+                libtime.time() - self.last_profile_upload_times > self.profile_upload_limit and
+                len(self.timex) > 20):
+            self.last_profile_upload_times = libtime.time()
+            import artisanlib.roasthubs
+            profile:ProfileData = self.aw.getProfile()
+            artisanlib.roasthubs.send_profile(
+                profile,
+                self.aw.roasthubs_org_id,
+                self.aw.roasthubs_machine_id,
+                self.aw.roasthubs_token,
+                on_upload_succeeded,
+                on_upload_failure)
+
+
 
     #record end of roast (drop of beans). Called from push button 'Drop'
     # if noaction is True, the button event action is not triggered
