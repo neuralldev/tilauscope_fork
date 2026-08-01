@@ -1,24 +1,12 @@
-# LICENSE
-# This file is part of TilauScope, a fork of Artisan Roaster Scope.
-# TilauScope is free software: you can redistribute it and/or modify it under
-# the terms of the GNU Affero General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option) any
-# later version. It is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
-# for more details. You should have received a copy of the GNU Affero General
-# Public License along with this program. If not, see
-# <https://www.gnu.org/licenses/>.
-
-# AUTHOR
-# Tilau 2025-2026
-
-"""tilauscope beancave integration"""
-__version__ = '4.0.5'
+__version__ = '4.2.0'
 __revision__ = ''
-__build__ = '2'
-__signature__ = ''
+__build__ = '1'
+__artisan_os__ = 'macOS'
 
-_release_sponsor_name__ = 'artisan.plus'
-__release_sponsor_domain__ = 'artisan.plus'
-__release_sponsor_url__ = 'https://artisan.plus/'
+__tilau__ = True
+
+__release_sponsor_name__ = 'powered by TilauScope'
+__release_sponsor_domain__ = 'tilauscope.org'
+__release_sponsor_url__ = 'https://github.com/neuralldev/tilauscope_fork/releases'
+
+__signature__ = '68d02ffbea03ed527ebe29ea936161b473b9729256e3642078e0a8b62b5f3c520bd48abda849a00f4c3deaccbfe02a9f0762cec20e0975c2950890360eb94100'

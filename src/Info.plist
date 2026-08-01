@@ -112,7 +112,7 @@
 	<key>CFBundleIconFile</key>
 	<string>tilauscope.icns</string>
 	<key>CFBundleIdentifier</key>
-	<string>org.artisan</string>
+	<string>org.tilauscope.roasterscope</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -124,9 +124,11 @@
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
+			<key>CFBundleURLName</key>
+			<string>org.tilauscope.roast-link</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>artisan</string>
+				<string>tilauscope</string>
 			</array>
 		</dict>
 	</array>

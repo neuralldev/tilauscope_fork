@@ -393,11 +393,11 @@ class tgraphcanvas(QObject):
         'CO2kg_per_BTU_default', 'CO2kg_per_BTU', 'Biogas_CO2_Reduction', 'Biogas_CO2_Reduction_default',
         'meterunitnames', 'meterreads_default', 'meterreads', 'meterlabels_setup', 'meterlabels', 'meterunits_setup', 'meterunits',
         'meterfuels_setup', 'meterfuels', 'metersources_setup', 'metersources', 'playbackdrop_min_roasttime', 'TP_max_roasttime',
-        'single_click_mpl_upperleft_corner_timer', 'single_click_mpl_upperleft_corner_TIMEOUT', 'profile_upload_limit', 'last_profile_upload_times',
-        'AirwaveFan','AirwaveMode',
-        ]
+        'single_click_mpl_upperleft_corner_timer', 'single_click_mpl_upperleft_corner_TIMEOUT', 'profile_upload_limit', 'last_profile_upload_times']
          
     ## TILAU ##
+    # extend slots to include TilauScope specific attributes
+    __slots__ += ['AirwaveFan','AirwaveMode']
     # mydevices to extend existing mapping dynamically
     tilau_devices = {
         "difluid": {"id": 190, "label": "Difluid AirWave", "nonserial": True, "nonTemp": (False, False)}, # intlet and calalyst temp
@@ -449,8 +449,6 @@ class tgraphcanvas(QObject):
                 continue
             if slot_i < len(extradevices):
                 extradevices[slot_i] = key_to_id[key]
-
-
 
     def __init__(self, parent:QWidget, dpi:int, locale:str, aw:'ApplicationWindow') -> None:
 
@@ -1081,12 +1079,6 @@ class tgraphcanvas(QObject):
                        '+MQTT 1112',                 #206
                        ]
 
-        ## TILAU ##
-        tlnbdev = len(self.devices)+1
-        self.devices.extend([d["label"] for d in self.tilau_devices.values()])
-        for i, (_, tldevice) in enumerate(self.tilau_devices.items()):
-            tldevice["id"] = i+tlnbdev  # Remplace l’ancien id par la position
-
         # ADD DEVICE:
         # ids of devices temperature conversions should not be applied
         self.nonTempDevices : Final[dict[int,tuple[bool,bool]]] = {
@@ -1180,10 +1172,6 @@ class tgraphcanvas(QObject):
             199: (True, True), # +Orbiter Damper/Heater
             200: (True, True)  # +Orbiter Air/RoR
         }
-        ## TILAU ##
-        self.nonTempDevices.update(
-            {info["id"]: info["nonTemp"] for info in self.tilau_devices.values()}
-        )
 
         # ADD DEVICE:
         # ids of (main) Phidget devices (without a + in front of their name string) as well as Phidget TMP100, HUM100 or PRE1000
@@ -1258,12 +1246,7 @@ class tgraphcanvas(QObject):
             194, # +Yocto Meteo Hum/Temp
             195  # +Yocto Meteo Pressure
         ]
-         ## TILAU ##
-        # Only extend with entries actually marked nonserial (e.g. BLE/MQTT
-        # devices) -- a genuinely serial TRP entry (nonserial=False) must keep
-        # showing the standard comport/baud config fields (see ports.py).
-        self.nonSerialDevices.extend([d["id"] for d in self.tilau_devices.values() if d.get("nonserial")])
-
+    
         # ADD DEVICE:
         # ids of special devices certain input filters should not be applied
         self.specialDevices : Final[list[int]] = [
@@ -1286,6 +1269,19 @@ class tgraphcanvas(QObject):
             75, # Phidget HUB IO Digital 23
             76  # Phidget HUB IO Digital 45
         ]
+
+        ## TILAU ##
+        tlnbdev = len(self.devices)+1
+        self.devices.extend([d["label"] for d in self.tilau_devices.values()])
+        for i, (_, tldevice) in enumerate(self.tilau_devices.items()):
+            tldevice["id"] = i+tlnbdev  # Remplace l’ancien id par la position
+        self.nonTempDevices.update(
+            {info["id"]: info["nonTemp"] for info in self.tilau_devices.values()}
+        )
+        # Only extend with entries actually marked nonserial (e.g. BLE/MQTT
+        # devices) -- a genuinely serial TRP entry (nonserial=False) must keep
+        # showing the standard comport/baud config fields (see ports.py).
+        self.nonSerialDevices.extend([d["id"] for d in self.tilau_devices.values() if d.get("nonserial")])
 
         #extra devices
         self.extradevices:list[int] = []                            # list with indexes for extra devices
@@ -1452,7 +1448,7 @@ class tgraphcanvas(QObject):
         # this flag is reset after the warning dialog popped up once and is set to True again on OFF and
         self.plus_beans_reminder_on_start:bool = True
 
-        self.title:str = QApplication.translate('Scope Title', 'Roaster Scope')
+        self.title:str = QApplication.translate('Scope Title', 'TilauScope')
         self.title_show_always:bool = False
         self.ambientTemp:float = 0.
         self.ambientTemp_sampled:float = 0. # keeps the measured ambientTemp over a restart
@@ -9480,7 +9476,7 @@ class tgraphcanvas(QObject):
 
             # if we are in KeepON mode, the reset triggered by ON should respect the roastpropertiesflag ("Delete Properties on Reset")
             if self.roastpropertiesflag and (self.flagKeepON or not keepProperties):
-                self.title = QApplication.translate('Scope Title', 'Roaster Scope')
+                self.title = QApplication.translate('Scope Title', 'TilauScope') ## TILAU ##
                 self.beans = ''
                 self.plus_store = None
                 self.plus_coffee = None
@@ -10294,7 +10290,7 @@ class tgraphcanvas(QObject):
             bnr = self.roastbatchnr
         if bnr != 0 and title != '':
             title = f'{bprefix}{str(bnr)} {title}'
-        elif bnr == 0 and title != '' and title != self.title != QApplication.translate('Scope Title', 'Roaster Scope') and bprefix != '':
+        elif bnr == 0 and title != '' and title != self.title != QApplication.translate('Scope Title', 'TilauScope') and bprefix != '': ## TILAU ##
             title = f'{bprefix} {title}'
 
         title = self.__dijkstra_to_ascii(title)
@@ -13956,7 +13952,7 @@ class tgraphcanvas(QObject):
             self.aw.sendmessage(QApplication.translate('Message','Colors set to defaults'))
             ## TILAU ## Resource folder name, not the application identity: the stock
             ## themes live under Themes/Artisan/ and application_name is now TilauScope.
-            fname = os.path.join(getResourcePath(), 'Themes', stock_theme_directory, 'Default.athm')
+            fname = os.path.join(getResourcePath(), 'Themes', stock_theme_directory, 'Catppuccin.athm') ## TILAU ##
             if os.path.isfile(fname) and not self.flagon:
                 self.aw.loadSettings_theme(fn=fname,remember=False,reset=False)
                 self.aw.sendmessage(QApplication.translate('Message','Colors set to Default Theme'))

@@ -47,7 +47,7 @@ class TilauCrashDialog(QDialog):
         "tilaulogger.py" : "crash in tilau logger manager",
         "tilaupid.py" : "crash of tilau PID",
         "visualalarm.py" : "crash of graphic alarm viewer",
-        "other" : "crash of Artisan roaster scope"
+        "other" : "crash of TilauScope"
     }
 
     def __init__(self, mod_name, line_no, error_val, tb_text, no_display:bool=False):

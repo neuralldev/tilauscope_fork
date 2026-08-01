@@ -1,5 +1,15 @@
-## [4.1.4] 2026-07-31
+## [4.2.0] 2026-07-31
 build 1
+* ⚡ [feat(branding)] : rebranded version
+build 3
+* ⚡ [feat(branding)] : the remote readout page you open on a phone or tablet is now titled TilauScope and sits on the dark background used everywhere else in the application, which gives the lit figures more contrast than the old grey did. The figures themselves keep the colours you chose in the readout settings
+* ⚡ [feat(branding)] : the remote readout page now carries the TilauScope icon in the browser tab and on the home screen when you add a shortcut to it. It previously declared no icon at all, so the browser showed whatever it could find
+* 🐛 [fix(build)] : a pinned Windows tile for the remote readout no longer comes up blank — three of the four tile images it asks for were never included in the installer
+* ⚡ [feat(branding)] : TilauScope is now identified as itself by macOS instead of borrowing Artisan's identity, so the two no longer compete over which one receives notifications and roast links. **On first launch macOS will ask again for permission to use Bluetooth, and the camera the first time you scan a label** — it treats the application as new. Grant them once and everything reconnects; your settings, beans, roast profiles and phone pairings are untouched. Best done before a roasting session rather than during one
+* ⚡ [feat(branding)] : the links back to a roast from an exported HTML report now open TilauScope through its own address instead of Artisan's. Both applications previously claimed the same one, so whichever the system picked answered the link. Reports exported before this build keep the old address and will no longer open a roast — re-export them to restore the link
+* 🐛 [fix(build)] : uninstalling on Windows now also removes the roast-link address it registered, which used to be left behind pointing at a program that no longer existed
+* 🐛 [fix(branding)] : the macOS dialog asking to use Bluetooth now says TilauScope connects to your roaster, scale, smoke extractor and probes — it read "artiisan wants to access bluetooth", misspelling included
+* 🐛 [fix(tests)] : the Windows build no longer fails before it starts — one roast fixture had a colon in its name, which Windows forbids, and the checkout step stopped there
 ## [4.1.3] 2026-07-31
 build 2
 * ⚡ [feat(tilauscope)] : "About TilauScope" shows the version you are running, credits Artisan Roaster Scope and its core developers, and links to the public source code. It sits where your system expects it — in the TilauScope menu beside the Apple logo on macOS, under Help on Windows and Linux — and replaces the old technical dialog, which listed library versions and nothing you could act on

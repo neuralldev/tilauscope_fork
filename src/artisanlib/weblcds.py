@@ -190,7 +190,8 @@ class WebLCDs(WebView):
         self._showetflag:bool = showetflag
         self._showbtflag:bool = showbtflag
 
-    @aiohttp_jinja2.template('artisan.tpl')
+    ## TILAU ## renamed from artisan.tpl along with the page's own branding.
+    @aiohttp_jinja2.template('tilauscope.tpl')
     @override
     async def index(self, _request: 'Request') -> dict[str,str]:
         showspace_str = 'inline' if not (self._showbtflag and self._showetflag) else 'none'

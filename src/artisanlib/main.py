@@ -357,9 +357,9 @@ class Artisan(QtSingleApplication):
 #            _log.exception(e)
 
     # takes a QUrl and interprets it as follows
-    # artisan://roast/<UUID>         : loads profile from path associated with the given roast <UUID>
-    # artisan://template/<UUID>      : loads background profile from path associated with the given roast <UUID>
-    # artisan://profile?url=<url>    : loads profile from given URL
+    # tilauscope://roast/<UUID>         : loads profile from path associated with the given roast <UUID>
+    # tilauscope://template/<UUID>      : loads background profile from path associated with the given roast <UUID>
+    # tilauscope://profile?url=<url>    : loads profile from given URL
     # file://<path>                  : loads file from path
     #                                  if query is "background" Artisan is not raised to the foreground
     #                                  if query is "template" and the file has an .alog extension, the profile is loaded as background profile
@@ -367,7 +367,7 @@ class Artisan(QtSingleApplication):
         _log.debug('open_url(%s)', url)
         aw:ApplicationWindow|None = self.activationWindow()
         if aw is not None and not aw.qmc.flagon and not aw.qmc.designerflag and not aw.qmc.wheelflag and aw.qmc.flavorchart_plot is None: # only if not yet monitoring
-            if url.scheme() == 'artisan' and url.authority() in {'roast','template'}:
+            if url.scheme() == 'tilauscope' and url.authority() in {'roast','template'}:
                 # we try to resolve this one into a file URL and recurse
                 roast_UUID = url.toString(QUrl.UrlFormattingOption.RemoveScheme | QUrl.UrlFormattingOption.RemoveAuthority | QUrl.UrlFormattingOption.RemoveQuery | QUrl.UrlFormattingOption.RemoveFragment | QUrl.UrlFormattingOption.StripTrailingSlash)[1:]
                 if aw.qmc.roastUUID is None or aw.qmc.roastUUID != roast_UUID:
@@ -379,7 +379,7 @@ class Artisan(QtSingleApplication):
                         if url.authority() == 'template':
                             file_url.setQuery('template')
                         self.open_url(file_url)
-            elif url.scheme() == 'artisan' and url.authority() == 'profile' and url.hasQuery():
+            elif url.scheme() == 'tilauscope' and url.authority() == 'profile' and url.hasQuery():
                 try:
                     query = QUrlQuery(url.query())
                     if query.hasQueryItem('url'):
@@ -1590,8 +1590,8 @@ class ApplicationWindow(QMainWindow):
         'schedule_visible_filter', 'scheduler_tasks_visible', 'scheduler_completed_details_visible', 'scheduler_filters_visible', 'scheduler_auto_open',
         'main_menu_actions_with_shortcuts', 'ui_mode', 'UIModeMenu',  'productionModeAction', 'defaultModeAction', 'expertModeAction', 'calculatorAction',
         'helpAboutAction', 'checkUpdateAction', 'errorAction', 'messageAction', 'serialAction', 'platformAction', 'aboutQtAction',
-        'helpDocumentationAction', 'KshortCAction', 'profile_data_type_adapter', 'official_build', 'roasthubs_org_id', 'roasthubs_machine_id', 'roasthubs_token',
-        'tilau_menu' ] ## TILAU ##
+        'helpDocumentationAction', 'KshortCAction', 'profile_data_type_adapter', 'official_build', 'roasthubs_org_id', 'roasthubs_machine_id', 'roasthubs_token',]
+    __slots__ += ['tilau_menu' ] ## TILAU ##
 
     nLCDS: Final[int] = 10 # maximum number of LCDs and extra devices (2x10 => 20 in total!)
 
@@ -1840,7 +1840,7 @@ class ApplicationWindow(QMainWindow):
         self.tilauscope_mqtt_client:TilauscopeMQTTClient|None = None # Mqtt bridge client
         self.tilau_aiConfig:TilauAIConfig|None = None
         self.tilau_roaster:str = ""
-        self.tilau_roaster_readonly:bool = False ## TILAU ## monitoring-only roaster: hide control sliders
+        self.tilau_roaster_readonly:bool = False # monitoring-only roaster: hide control sliders
         self.tilau_ai_service = TilauAIService(self.tilau_aiConfig, parent=self)
 
         self.qmc.canvas.setContentsMargins(0,0,0,0)
@@ -1923,23 +1923,19 @@ class ApplicationWindow(QMainWindow):
         self.colorTrack_mean_window_size:int = 50    # window size of the mean filter (10-200)
         self.colorTrack_median_window_size:int = 50  # window size of the median filter (10-200)
 
+        ## TILAU ##
         #lebrew BLE C1
         self.bleRoastSeeDeviceName:str|None = 'none' # device UUID selected
         self.bleRoastSeeDeviceslist:list[str] = ['please scan devices for list']
         #lebrew BLE AQUA GAUGE
         self.bleRoastSeeAGDeviceName:str|None = 'none' # device UUID selected
         self.bleRoastSeeAGDeviceslist:list[str] = ['please scan devices for list']
-
         #Skycommand
         self.skycommand:SkyCommand|None = None # holds the Skycommand instance created on connect; reset to None on disconnect
-        
-
         #TilauScope Annotation
         self.TilauScopeAnnotation :bool|None = False # if True TilauScope annotations are enabled in the profile
-
         #TilauScope Notification
         self.TilauScopeNotification: bool|None = False # if true, at start the notification about beans will be displayed
-
         #Tilaudcope FC Automarking
         self.TilauScopeFCMarkFlag:bool = False
         self.TilauScopeFCWindow:int = 35
@@ -1948,9 +1944,8 @@ class ApplicationWindow(QMainWindow):
             "FC": [4, 90.0, 2.0, 25.0],
             "SC": [4, 50.0, 1.0, 45.0]
         }
-        ## TILAU — Dry End auto-marking
+        # Dry End auto-marking
         self.TilauScopeDEMarkFlag:bool = False
-
         #TilauScope Ambient
         self.bleTilauScopeDeviceName:str|None = 'none' # device UUID selected
         self.bleTilauScopeDevice:TilauAmbient|None = None # object for communication
@@ -1959,11 +1954,9 @@ class ApplicationWindow(QMainWindow):
         self.bleTilauScopeautomarkFC:bool|None = False # automark FCs flag
         self.bleTilauScopeFCMarkdone:bool|None = False  # set to true when monitoring and mark has been set, treshold is fixed to 3 cracks
         self.bleTilauScopeFCTreshold:int|None = 3 # default number of cracks before marking
-
         # Niimbot B21S printer
         self.bleNiimbotDeviceName:str|None = None  # UUID mémorisé après première connexion
         self.bleNiimbotDeviceslist:list[str] = ['please scan devices for list']
-
         # Difluid Airwave
         self.bleAirwaveDeviceName:str|None = 'none' # device UUID selected
         self.bleAirwaveDeviceslist:list[str] = ['please scan devices for list']
@@ -1991,29 +1984,26 @@ class ApplicationWindow(QMainWindow):
             'MAX_COLOR_BIAS' : 15.0,
             'roc_smoothing_alpha' : 0.4
         }
-        
         # tilau pid for preheating
         self.tilauPreheatingPid:TilauPreheatPID|None = None 
-
         # tilau skywalker ble support
         self.bleSkywalkerDeviceName:str|None = 'none'
         self.bleSkywalkerDeviceslist:list[str] = ['please scan devices for list']
         self.bleSkywalkerDevice = None
-
         # tilauscope main
         self.tilauscope_main:TilauScope|None = None
-        ## TILAU ## headless-boot mode: Artisan window hidden, BeanCave is the shell.
-        ## Set True in main() when TILAU_HEADLESS=1. Drives the view-toggle in
-        ## tilauscopeCall() (flip aw visibility) and the act_main menu label.
+        # headless-boot mode: Artisan window hidden, BeanCave is the shell.
+        # Set True in main() when TILAU_HEADLESS=1. Drives the view-toggle in
+        # tilauscopeCall() (flip aw visibility) and the act_main menu label.
         self._tilau_headless:bool = False
-        ## TILAU ## headless: gate that allows the Artisan window to actually show.
-        ## Only the escape hatch (tilauscopeCall revealing Artisan) sets this True;
-        ## every other show() on aw (profile reload, redraw, fullscreen restore…)
-        ## is bounced back to hidden by showEvent so BeanCave stays the sole view.
+        # headless: gate that allows the Artisan window to actually show.
+        # Only the escape hatch (tilauscopeCall revealing Artisan) sets this True;
+        # every other show() on aw (profile reload, redraw, fullscreen restore…)
+        # is bounced back to hidden by showEvent so BeanCave stays the sole view.
         self._tilau_allow_show:bool = False
         self.tilauDBG:TilauscopeLoggerWindow|None = None
-        ## TILAU ## app-level owner of the read-only Records server + (opt-in) Control
-        ## server. Started in main() for both boot paths; independent of BeanCave.
+        # TILAU # app-level owner of the read-only Records server + (opt-in) Control
+        # server. Started in main() for both boot paths; independent of BeanCave.
         self.tilau_web_host = None # TilauWebHost|None (set by start_tilau_web_host)
         self.tilau_telemetry_tap = None # TelemetryTap|None (keeps the QObject alive)
         self.tilau_command_bridge = None # CommandBridge|None (downward remote commands)
@@ -4413,9 +4403,9 @@ class ApplicationWindow(QMainWindow):
 #            self.installEventFilter(self)
 
 #PLUS
-        self.updatePlusStatusSignal.connect(self.updatePlusStatusSlot)
+        # self.updatePlusStatusSignal.connect(self.updatePlusStatusSlot)
 
-#        QTimer.singleShot(2000,self.donate)
+        # QTimer.singleShot(2000,self.donate)
 
         QTimer.singleShot(0, self.logStartupTime)
         QTimer.singleShot(500, self.updateBadge)
@@ -4431,7 +4421,8 @@ class ApplicationWindow(QMainWindow):
         self._tilau_updater.start()                # fires after 5s by default
 
     # checks a builds signature using the public key
-    ## TILAU ## validated against TilauScope's own keypair, not Artisan's upstream key
+    ## TILAU ## 
+    # validated against TilauScope's own keypair, not Artisan's upstream key
     def app_signature_valid(self) -> bool:
         try:
             with open(getResourcePath() + 'tilauscope_public_key.pem', 'rb') as f:
@@ -13336,7 +13327,7 @@ class ApplicationWindow(QMainWindow):
         try:
             if prefix == '':
                 title = None
-                if  self.qmc.title != '' and self.qmc.title != QApplication.translate('Scope Title', 'Roaster Scope'):
+                if  self.qmc.title != '' and self.qmc.title != QApplication.translate('Scope Title', 'TilauScope'): ## TILAU ##
                     title = self.qmc.title
                 filename = title if prefix == '' and title else prefix
                 if filename != '':
@@ -14760,7 +14751,7 @@ class ApplicationWindow(QMainWindow):
                 self.orderBackgroundEvents()
                 #
                 self.qmc.backgroundFlavors = profile.get('flavors', [])
-                self.qmc.titleB = decodeLocalStrict(profile.get('title', QApplication.translate('Scope Title', 'Roaster Scope')))
+                self.qmc.titleB = decodeLocalStrict(profile.get('title', QApplication.translate('Scope Title', 'TilauScope'))) ## TILAU ##
 
                 if 'roastbatchnr' in profile:
                     try:
@@ -16297,7 +16288,7 @@ class ApplicationWindow(QMainWindow):
                 self.qmc.flavoraspect = min(2.0, max(0.5, float(profile['flavoraspect'])))
             else:
                 self.qmc.flavoraspect = 1.
-            self.qmc.title = QApplication.translate('Scope Title', 'Roaster Scope')
+            self.qmc.title = QApplication.translate('Scope Title', 'TilauScope') ## TILAU ##
             if 'title' in profile:
                 self.qmc.title = decodeLocalStrict(profile['title'], self.qmc.title)
 
@@ -22406,8 +22397,8 @@ class ApplicationWindow(QMainWindow):
             if 'roastUUID' in data and data['roastUUID'] != '':
                 roast_uuid = data['roastUUID']
 #                if plus.register.getPath(roast_uuid):
-#                    title_html = f'<a href="artisan://roast/{roast_uuid}">{title_html}</a>'
-                title_html = f'<a href="artisan://roast/{roast_uuid}">{title_html}</a>'
+#                    title_html = f'<a href="tilauscope://roast/{roast_uuid}">{title_html}</a>'
+                title_html = f'<a href="tilauscope://roast/{roast_uuid}">{title_html}</a>'
                 if bool(plus.sync.getSync(roast_uuid)):
                     time_html = f"<a href='{plus.util.roastLink(roast_uuid)}' target='_blank'>{time_html}</a>"
                 if 'plus_coffee' in data and data['plus_coffee'] != '':
@@ -23328,8 +23319,8 @@ class ApplicationWindow(QMainWindow):
             if 'roastUUID' in production_data:
                 roast_uuid = production_data['roastUUID']
 #                if plus.register.getPath(roast_uuid):
-#                    title_html = '<a href="artisan://roast/{0}">{1}</a>'.format(roast_uuid,title_html)
-                title_html = f'<a href="artisan://roast/{roast_uuid}">{title_html}</a>'
+#                    title_html = '<a href="tilauscope://roast/{0}">{1}</a>'.format(roast_uuid,title_html)
+                title_html = f'<a href="tilauscope://roast/{roast_uuid}">{title_html}</a>'
                 if bool(plus.sync.getSync(roast_uuid)):
                     time_html = f'<a href="{plus.util.roastLink(roast_uuid)}" target="_blank">{time_html}</a>'
         except Exception as e: # pylint: disable=broad-except
@@ -23581,7 +23572,7 @@ class ApplicationWindow(QMainWindow):
                                     pd['batchprefix'] = label
                                     label_chr_nr = label_chr_nr + 1
                                 # suppress default description
-    #                            if pd["title"] == QApplication.translate("Scope Title", "Roaster Scope"):
+    #                            if pd["title"] == QApplication.translate("Scope Title", "TilauScope"):
     #                                pd["title"] = ""
 
                                 entries += self.rankingData2htmlentry(pd,rd, cl) + '\n'
@@ -24472,14 +24463,14 @@ class ApplicationWindow(QMainWindow):
             title_html = str(htmllib.escape(batch)) + str(htmllib.escape(self.qmc.title))
             if self.qmc.roastUUID is not None and self.qmc.roastUUID != '':
 #                if plus.register.getPath(self.qmc.roastUUID):
-#                    title_html = '<a href="artisan://roast/' + self.qmc.roastUUID + '">' + title_html + "</a>"
-                title_html = '<a href="artisan://roast/' + self.qmc.roastUUID + '">' + title_html + '</a>'
+#                    title_html = '<a href="tilauscope://roast/' + self.qmc.roastUUID + '">' + title_html + "</a>"
+                title_html = '<a href="tilauscope://roast/' + self.qmc.roastUUID + '">' + title_html + '</a>'
                 if bool(plus.sync.getSync(self.qmc.roastUUID)):
                     datetime_html = f'<a href="{plus.util.roastLink(self.qmc.roastUUID)}" target="_blank">{datetime_html}</a>'
 #            if self.qmc.background and self.qmc.titleB is not None and self.qmc.titleB != "" and self.qmc.backgroundUUID is not None and plus.register.getPath(self.qmc.backgroundUUID):
-#                background_html = '<a href="artisan://roast/' + self.qmc.backgroundUUID + '">' + background_html + "</a>"
+#                background_html = '<a href="tilauscope://roast/' + self.qmc.backgroundUUID + '">' + background_html + "</a>"
             if self.qmc.background and self.qmc.titleB != '' and self.qmc.backgroundUUID is not None:
-                background_html = '<a href="artisan://roast/' + self.qmc.backgroundUUID + '">' + background_html + '</a>'
+                background_html = '<a href="tilauscope://roast/' + self.qmc.backgroundUUID + '">' + background_html + '</a>'
             if beans_html != '' and self.qmc.plus_coffee is not None:
                 beans_html = f'<a href="{plus.util.coffeeLink(self.qmc.plus_coffee)}" target="_blank">{beans_html}</a>'
                 # note that blends are hard to link back as it requires to link component by component
@@ -25140,7 +25131,7 @@ class ApplicationWindow(QMainWindow):
         self.serial_dlg.raise_()
         self.serial_dlg.activateWindow()
 
-## TILAU ##
+    ## TILAU ##
     @pyqtSlot()
     @pyqtSlot(bool, str)
     def tilauscopeCall(self, _:bool = False, message: str = "") -> None:
@@ -25291,8 +25282,8 @@ class ApplicationWindow(QMainWindow):
             otherlibs += ', Yoctopuce ' + yocto_version
         except Exception as e: # pylint: disable=broad-except
             _log.exception(e)
-        unofficial = ('' if not appFrozen() or self.official_build else QApplication.translate('Message', 'unoffical build')) # fork, mod
-        ## TILAU ## GPLv3-compliant fork attribution replacing "unofficial build" tag
+        unofficial = ('' if not appFrozen() or self.official_build else QApplication.translate('Message', 'unoffical TIlauScope build')) # fork, mod
+        ## TILAU ## AGPLv3-compliant fork attribution replacing "unofficial build" tag
         unofficial = QApplication.translate('About', '<br><small>TilauScope — based on <a href="https://artisan-scope.org">Artisan Roaster Scope</a></small>')
         box.about(self,
                 QApplication.translate('About', 'About'),
@@ -26483,9 +26474,12 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot(bool)
     def alarmconfig(self, _:bool = False) -> None:
         if self.qmc.device != 18 or self.simulator is not None:
-            from artisanlib.alarms import AlarmDlg
-            dialog = AlarmDlg(self,self,self.AlarmDlg_activeTab)
-            dialog.show()
+            from tilauscope.alarms import TilauAlarmDlg
+            dlg = TilauAlarmDlg(self, self)
+            dlg.show()
+#            from artisanlib.alarms import AlarmDlg
+#            dialog = AlarmDlg(self,self,self.AlarmDlg_activeTab)
+#            dialog.show()
         else:
             QMessageBox.information(self, QApplication.translate('Message', 'Alarm Config'),
                                     QApplication.translate('Message', 'Alarms are not available for device None'))
@@ -29065,8 +29059,13 @@ def main() -> None:
                         argv_file = QUrl.fromLocalFile(argv_file).toString() #here we don't want a local file, preserve the windows file:///
                     app.sendMessage(argv_file)
                     sys.exit(0)
-                # otherwise if an artisan://roast url open it in this instance, if not a url do normal file processing
-                elif re.match(r'artisan://[roast|profile]',argv_file):
+                # otherwise if a tilauscope:// url open it in this instance, if not a url do normal file processing
+                ## TILAU ## the upstream pattern was [roast|profile] — a character
+                ## class, so it matched any url whose authority merely started
+                ## with one of those letters. It covered template only because
+                ## 't' happens to be in the set; spelling the three out keeps
+                ## that behaviour without depending on the accident.
+                elif re.match(r'tilauscope://(roast|template|profile)',argv_file):
                     url = QUrl()
                     url.setUrl(argv_file)
                     app.open_url(url)

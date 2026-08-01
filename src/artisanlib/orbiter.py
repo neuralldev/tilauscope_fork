@@ -561,7 +561,7 @@ def saveOrbiterROP(filename:str, profile:ProfileData) -> bool:
 def saveOrbiter(filename:str, outfile:IO[bytes], profile:ProfileData) -> bool:
     readings:list[bytes] = []
     try:
-        default_title:str = QApplication.translate('Scope Title', 'Roaster Scope')
+        default_title:str = QApplication.translate('Scope Title', 'TilauScope') ## TILAU ##
         title:str = decodeLocalStrict(profile.get('title', default_title), default_title)
         if title == default_title:
             title = filename

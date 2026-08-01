@@ -280,8 +280,14 @@ Section -Post
   !insertmacro APP_ASSOCIATE "wg" "Artisan.Wheel" "Artisan Wheel" \
      "$INSTDIR\artisanWheel.ico" "$(DESC_OpenWith)" "$INSTDIR\TilauScope.exe $\"%1$\""
 
-  !insertmacro APP_ASSOCIATE_URL "artisan" "URL:artisan Protocol" \
+  !insertmacro APP_ASSOCIATE_URL "tilauscope" "URL:tilauscope Protocol" \
      "$(DESC_OpenWithURL)" "$INSTDIR\TilauScope.exe $\"%1$\""
+
+  ; NOTE: earlier builds claimed the "artisan" protocol instead. That key is
+  ; left in place on upgrade: deleting it unconditionally would break a real
+  ; Artisan install sitting alongside, and telling the two apart needs a
+  ; substring test LogicLib does not provide. A user who had an older build
+  ; can clear it by uninstalling that build first.
 
 SectionEnd
 
@@ -352,6 +358,10 @@ Section Uninstall
   !insertmacro APP_UNASSOCIATE "athm" "Artisan.Theme"
   !insertmacro APP_UNASSOCIATE "aset" "Artisan.Settings"
   !insertmacro APP_UNASSOCIATE "wg" "Artisan.Wheel"
+
+  ; The URL protocol was never removed here, so it kept pointing at a deleted
+  ; executable after an uninstall.
+  DeleteRegKey HKCR "tilauscope"
 
   ; 6. Tentative de suppression finale du répertoire d'installation
   ; Sans /r ici pour ne pas supprimer des fichiers créés par l'utilisateur par erreur

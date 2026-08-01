@@ -12351,7 +12351,7 @@ class _AlogListWorker(QObject):
         from datetime import datetime as _dt
 
         # Generic Artisan default titles that carry no bean information
-        _GENERIC_TITLES = {'roaster scope', 'artisan', ''}
+        _GENERIC_TITLES = {'roaster scope', 'artisan', 'tilausope',''}
 
         try:
             fnames = [f.name for f in self._directory.glob('*.alog')

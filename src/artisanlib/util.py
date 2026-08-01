@@ -71,7 +71,7 @@ application_desktop_file_name: Final[str] = 'org.tilauscope.tilauscope'
 ## TILAU ## Artisan's stock themes ship under includes/Themes/Artisan/ and are
 ## still the ones loaded by default; the folder is a resource name, not the
 ## application identity, so it must not follow application_name.
-stock_theme_directory: Final[str] = 'Artisan'
+stock_theme_directory: Final[str] = 'TilauScope' ## TILAU ##
 
 
 from PyQt6.QtCore import Qt, QStandardPaths, QCoreApplication, QTime, QDate, QDateTime

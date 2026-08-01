@@ -619,22 +619,24 @@ class serialport:
                                    self.MQTT_78,                     #204
                                    self.MQTT_910,                    #205
                                    self.MQTT_1112,                   #206  
-                                   ## TILAU ##
-                                   self.AIRWAVE,               ## TILAU ##
-                                   self.TILAUSCOPE12,          # Temp Humidity  
-                                   self.TILAUSCOPE34,          # Pressure    Altitude
-                                   self.TILAUSCOPE56,          # Crack count
-                                   self.TILAUMQTTBRIDGE12,         # MQTT Bridge
-                                   self.TILAUMQTTBRIDGE34,         # MQTT Bridge
-                                   self.TILAUMQTTBRIDGE56,         # MQTT Bridge
-                                   self.TILAUMQTTBRIDGE78,         # MQTT Bridge
+        ]
+        ## TILAU ##
+        self.devicefunctionlist += [
+                                   self.AIRWAVE,                    
+                                   self.TILAUSCOPE12,               # Temp Humidity  
+                                   self.TILAUSCOPE34,               # Pressure    Altitude
+                                   self.TILAUSCOPE56,               # Crack count
+                                   self.TILAUMQTTBRIDGE12,          # MQTT Bridge
+                                   self.TILAUMQTTBRIDGE34,          # MQTT Bridge
+                                   self.TILAUMQTTBRIDGE56,          # MQTT Bridge
+                                   self.TILAUMQTTBRIDGE78,          # MQTT Bridge
                                    self.TILAUMQTTBRIDGE910,         # MQTT Bridge
-                                   self.SKYWALKER_BTET,            ## TILAU ## Cyberroaster TC4-over-BLE (BT/ET) -> device #216
-                                   self.SKYWALKER_PF,               ## TILAU ## Cyberroaster OT echoes (Burner/Airflow)
-                                   self.TRP_BTET,                    ## TILAU ## TRP generic serial roaster (BT/ET) -> device #218
-                                   self.TRP_HF,                      ## TILAU ## TRP Heater/Fan readback -> device #219
-                                   self.SKYCOMMAND_BTET,             ## TILAU    ## SKYCOMMAND ## skycommand/roaster BT/ET readback
-                                   self.SKYCOMMAND_PF,                ## TILAU   ## SKYCOMMAND ## burner/airflow echoes
+                                   self.SKYWALKER_BTET,             # Cyberroaster TC4-over-BLE (BT/ET) 
+                                   self.SKYWALKER_PF,               # Cyberroaster OT echoes (Burner/Airflow)
+                                   self.TRP_BTET,                   # TRP generic serial roaster (BT/ET) 
+                                   self.TRP_HF,                     # TRP Heater/Fan readback 
+                                   self.SKYCOMMAND_BTET,            # SKYCOMMAND ## skycommand/roaster BT/ET readback
+                                   self.SKYCOMMAND_PF,              # SKYCOMMAND ## burner/airflow echoes
                                    ]
         #string with the name of the program for device #27
         self.externalprogram:str = 'test.py'
@@ -1882,7 +1884,7 @@ class serialport:
         color_mean, color_median = self.colorTrackBT.getColor()
         return tx, color_median, color_mean # ch1: mean, ch2: median
 
-## TILAU ##
+    ## TILAU ##
     def SKYWALKER_BTET(self) -> tuple[float,float,float]:
         # Cyberroaster (Skywalker V2) telemetry over the TC4-over-BLE transport.
         tx = self.aw.qmc.timeclock.elapsedMilli()
@@ -1930,7 +1932,7 @@ class serialport:
         return tx,t1,t2 # time, Airflow (chan2), Burner (chan1)
 
     # ── TRP (Tilauscope Roaster Protocol) ────────────────────────────────────
-    # ## TILAU ## Generic client for ANY TRP-speaking roaster controller, over
+    # Generic client for ANY TRP-speaking roaster controller, over
     # the real shared USB serial port (self.SP / self.COMsemaphore / openport()),
     # exactly like ARDUINOTC4temperature() above -- not a private BLE-style
     # transport like SKYWALKER_* above it. There is no per-roaster-model driver:

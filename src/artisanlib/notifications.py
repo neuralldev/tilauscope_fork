@@ -158,7 +158,7 @@ class NotificationManager(QObject):
     def configTrayIcon(self) -> None:
         # the tray icon is displayed only if notifications are supported by the system
         self.tray_icon.setIcon(self.artisanTrayIcon())
-        self.tray_icon.setToolTip('Artisan Notifications')
+        self.tray_icon.setToolTip('TilauScope Notifications') ## TILAU ##
         self.tray_icon.messageClicked.connect(self.messageClicked)
         #self.tray_icon.show() # if try_icon is not visible, notifications are not delivered
         self.tray_icon.setContextMenu(self.tray_menu)
@@ -189,9 +189,9 @@ class NotificationManager(QObject):
     def notificationArtisanIcon() -> QIcon:
         basedir = os.path.join(getResourcePath(),'Icons')
         if sys.platform.startswith('darwin'):
-            p = os.path.join(basedir, 'artisan-notification.png')
+            p = os.path.join(basedir, 'tilauscope.png')
         else:
-            p = os.path.join(basedir, 'artisan-notification.svg')
+            p = os.path.join(basedir, 'tilauscope-mark.svg')
         return QIcon(p)
 
     @pyqtSlot()

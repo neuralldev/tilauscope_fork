@@ -6012,7 +6012,7 @@ class TilauScope(QWidget):
             ## Restore the live values stashed at setup so the save filename
             ## and the .alog bean linkage are correct. Live DROP path only.
             qmc = self.aw.qmc
-            default_title = QApplication.translate('Scope Title', 'Roaster Scope')
+            default_title = QApplication.translate('Scope Title', 'TilauScope') ## TILAU ##
             stash_title = getattr(self.aw, '_tilau_live_title', '')
             stash_beans = getattr(self.aw, '_tilau_live_beans', '')
             if stash_title and (not qmc.title or qmc.title == default_title):

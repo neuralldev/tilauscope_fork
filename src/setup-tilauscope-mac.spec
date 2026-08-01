@@ -202,6 +202,26 @@ plist.update({
     'NSHighResolutionCapable': True,
     ## TILAU ## camera permission prompt for the BeanCave QR label scanner
     'NSCameraUsageDescription': 'TilauScope uses the camera to scan label QR codes and open the matching roast or bean record.',
+    ## TILAU ## These two strings are the sentence macOS itself shows in the
+    ## Bluetooth permission dialog. They read "artiisan wants to access
+    ## bluetooth" upstream — typo included. Rewording them costs nothing: TCC
+    ## keys its grants on CFBundleIdentifier, never on the usage description.
+    'NSBluetoothAlwaysUsageDescription': 'TilauScope connects to your roaster, scale, smoke extractor and probes over Bluetooth.',
+    'NSBluetoothPeripheralUsageDescription': 'TilauScope connects to your roaster, scale, smoke extractor and probes over Bluetooth.',
+    ## TILAU ## The identifier macOS anchors every privacy grant to — Bluetooth
+    ## for the roaster, scale, extractor and probes, and the camera for the QR
+    ## scanner. Declared here rather than left to BUNDLE(bundle_identifier=...),
+    ## which loses to this dict and silently did nothing.
+    ##
+    ## Under tilauscope.org, a domain this project owns. It was org.artisan —
+    ## Artisan's own identifier, inherited by the fork, which left two different
+    ## applications claiming one identity and let LaunchServices pick either of
+    ## them to route notifications and roast links.
+    ##
+    ## Changing this string again revokes every privacy grant: TCC keys on it,
+    ## its database is SIP-protected and tccutil can only reset, so no migration
+    ## exists. Settings are unaffected — they key on organizationDomain instead.
+    'CFBundleIdentifier': 'org.tilauscope.roasterscope',
 })
 
 app = BUNDLE(
@@ -212,7 +232,9 @@ app = BUNDLE(
     ## build must not present itself as Artisan in the Dock.
     ## Regenerate with tools/shell/gen_app_icons.py.
     icon='tilauscope.icns',
-    bundle_identifier='org.artisan-scope.roasterscope',
+    ## TILAU ## No bundle_identifier= here on purpose: info_plist is merged after
+    ## it and wins, so the argument was dead and advertised an identifier the
+    ## build never used. CFBundleIdentifier lives in the plist dict above.
     info_plist=plist
 )
 
