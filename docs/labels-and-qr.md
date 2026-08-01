@@ -18,13 +18,20 @@ tracks — the pool of ids, assigning and releasing one — is covered in
 
 | Label | Printed from | What it shows | Its QR opens |
 |---|---|---|---|
-| **Roast label** | A roast's record → **Print label** | Bean, origin, roast date, key roast figures, flavour notes, a QR | The roast's record |
+| **Roast label** | A roast's record → **Print label**, or the result form at the end of a roast → **🏷 Label PDF** | Bean, origin, roast date, key roast figures, flavour notes, a QR | The roast's record |
 | **Green bean label** | A coffee's record → **Print label** | Supplier, crop, process, altitude, density, cupping notes, a QR | The coffee's record |
 | **Sack label** | The sack labels tool (see [Sacks, stock and conservation](sacks-and-storage.md)) | A label id and a QR — nothing else | Whichever coffee currently holds that id |
 
 Roast and bean labels print as a PDF, sized to a full page with cut guides, so they can be
 printed on any printer and trimmed by hand. Sack labels print directly to a Niimbot thermal
 printer, sized for its 50×30 mm roll.
+
+A roast label can be printed the moment the roast ends, from the result form itself, without
+waiting for the roast to be filed — it uses the roasted weight and colour just entered, so
+the weight loss and colour on the label are the ones being recorded. Printing changes
+nothing in the record: the form can still be corrected and printed again, or abandoned. If
+the form is saved without a label having been printed, TilauScope asks once whether to print
+one before closing.
 
 <!-- CAPTURE 4.1 — a printed roast label PDF, full page with cut guides visible.
 CAPTURE 4.2 — a printed green bean label PDF. CAPTURE 4.3 — a sack label, actual size,

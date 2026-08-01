@@ -1182,6 +1182,8 @@ class _HeroMetric(QWidget):
     the number while inheriting the JetBrains Mono family from the base sheet.
     All setters guard against no-op updates to stay cheap on the 1 Hz path.
     """
+    _VAL_MIN_H: Final[int] = 60      # 46 px glyphs + ascender/descender room
+
     def __init__(self, label: str, unit: str = "", color: str = _ACCENT):
         super().__init__()
         self._unit  = unit
@@ -1205,6 +1207,12 @@ class _HeroMetric(QWidget):
         self._val.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._val.setTextFormat(Qt.TextFormat.RichText)
         self._val.setStyleSheet(f"{_FONT} border: none;")
+        # A rich-text QLabel reports a tiny minimum height (its content may
+        # wrap), so a squeezed page shrank it below the 46 px glyphs and the
+        # number was sliced top and bottom. Reserve the line height.  ## TILAU ##
+        self._val.setMinimumHeight(self._VAL_MIN_H)
+        self._val.setSizePolicy(QSizePolicy.Policy.Preferred,
+                                QSizePolicy.Policy.MinimumExpanding)
         self._sub = QLabel("")
         self._sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
         # Wrap allowed: an unwrapped QLabel imposes its FULL text width as the
@@ -1247,6 +1255,26 @@ class _HeroMetric(QWidget):
             self._sub.setText(sub)
             self._sub.setVisible(bool(sub))
             self._last_sub = sub
+            self._sync_sub_height()
+
+    def _sync_sub_height(self) -> None:
+        """Reserve the height the wrapped sub-line actually needs.  ## TILAU ##
+
+        A word-wrapped QLabel reports the height of ONE line as its minimum, so
+        a 3-line sub-line (heat-soak note on a narrow anchored panel) had its
+        last line cut off. Called on text change and on resize only — never on
+        the 1 Hz refresh when the text is unchanged.
+        """
+        w = self._sub.width()
+        if w <= 0 or not self._sub.isVisible():
+            return
+        h = self._sub.heightForWidth(w)
+        if h > 0 and self._sub.minimumHeight() != h:
+            self._sub.setMinimumHeight(h)
+
+    def resizeEvent(self, event) -> None:  # noqa: ANN001
+        super().resizeEvent(event)
+        self._sync_sub_height()
 
 
 class _MiniChip(QFrame):
@@ -3941,6 +3969,10 @@ class _SetupBar(QFrame):
                 label += f" · {b.process}"
             if b.crop:
                 label += f" {b.crop}"
+            ## TILAU ## a bean only listed because it is the one being roasted
+            ## (bottom of the bag) is flagged so the operator is not surprised.
+            if (getattr(b, "weight_left", 0.0) or 0.0) <= 0:
+                label += QApplication.translate("tilauscope_beancave", " (empty stock)")
             self.combo_bean.addItem(label, userData=b)
             if current_uuid and b.uuid == current_uuid:
                 select_idx = i
@@ -6543,8 +6575,22 @@ class RoastAssistantPanel(QWidget):
         # Only offer beans that are actually in stock (weight_left > 0), EXCEPT
         # in simulator mode where every bean must stay selectable for testing
         # (replaying any past roast, regardless of remaining stock). ## TILAU ##
+        #
+        # The bean pushed by RoastSetup (uuid carried by qmc.beans) is ALWAYS
+        # kept, even at zero stock: roasting the bottom of the bag drops the
+        # stock to 0 and the grain would otherwise vanish from its own roast.
         if self.aw.simulator is None:
-            beans = [b for b in beans if (getattr(b, "weight_left", 0.0) or 0.0) > 0]
+            live_uuid: str | None = None
+            try:
+                live_uuid = _extract_uuid_from_beans_field(
+                    getattr(self.aw.qmc, "beans", "") or "")
+            except Exception as e:  # noqa: BLE001
+                _logd.debug(f"RoastAssistant: erreur lecture qmc.beans ({e})")
+            beans = [
+                b for b in beans
+                if (getattr(b, "weight_left", 0.0) or 0.0) > 0
+                or (live_uuid and getattr(b, "uuid", "") == live_uuid)
+            ]
 
         if not beans:
             _logd.debug("RoastAssistant: aucun grain trouvé dans BeanCave")

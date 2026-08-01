@@ -14,6 +14,7 @@
 # TiLau 2025
 
 import uuid
+import logging
 import platform
 from dataclasses import dataclass, field
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -24,6 +25,8 @@ from PyQt6.QtCore import Qt, QPropertyAnimation, QTimer
 
 _IS_MACOS   = platform.system() == "Darwin"
 _IS_WINDOWS = platform.system() == "Windows"
+
+_log = logging.getLogger(__name__)
 _IS_LINUX   = platform.system() == "Linux"
 
 class AUCStartEvent:
@@ -562,6 +565,54 @@ def replace_accents(texte):
     # On ne garde que les caractères qui ne sont pas des "combinaisons" (accents)
     # et on réencode en ASCII en ignorant les erreurs pour plus de sécurité
     return "".join([c for c in charg_normalise if not unicodedata.combining(c)])
+
+## TILAU ## Single place where an exported file (label PDF, roast card, plan) is
+## handed over to the operating system's own viewer. Every caller wants the same
+## thing: the file must come up IN FRONT. Two of our own habits used to prevent
+## that — a WindowStaysOnTopHint window keeps the viewer underneath whatever the
+## OS does, and raising ourselves back after the launch pushes the viewer behind
+## a second time. Both are handled here so no call site has to remember.
+
+def drop_stay_on_top(window) -> None:
+    """Let another application come in front of `window`.
+
+    No-op when the window does not float. setWindowFlag() hides a visible
+    window, hence the show(). The hint is not restored: once the export is on
+    screen the window has no reason to fight it for the front.
+    """
+    try:
+        if window is None or not (window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint):
+            return
+        was_visible = window.isVisible()
+        window.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
+        if was_visible:
+            window.show()
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("drop_stay_on_top failed: %s", exc)
+
+
+def open_in_os_viewer(file_path: str, window=None, helpers=()) -> None:
+    """Open `file_path` with the OS viewer, in front of `window`.
+
+    `helpers` are floating companion windows (scale readout, colour card …)
+    that would otherwise stay above the viewer on their own.
+    """
+    import os
+    import subprocess
+    import sys
+    drop_stay_on_top(window)
+    for helper in helpers:
+        drop_stay_on_top(helper)
+    try:
+        if sys.platform.startswith("win"):
+            os.startfile(file_path)  # type: ignore[attr-defined]  # noqa: S606
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", file_path])  # noqa: S603,S607
+        else:
+            subprocess.Popen(["xdg-open", file_path])  # noqa: S603,S607
+    except Exception as exc:  # noqa: BLE001
+        _log.error("Failed to open file %s: %s", file_path, exc)
+
 
 def show_styled_message(parent, title, text, icon=QMessageBox.Icon.Information, rich=False, width:int= 0, buttons:list[str]=None):
     m = TilauMessageBox(parent, title, text, icon, rich, width, buttons)

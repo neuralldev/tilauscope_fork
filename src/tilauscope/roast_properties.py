@@ -44,16 +44,15 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtWidgets import QGridLayout, QStackedWidget, QScrollArea, QProgressBar
 from PyQt6.QtWidgets import (
     QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem,
-    QHeaderView, QSizeGrip, QSplitter, QAbstractItemView,
+    QHeaderView, QSizeGrip, QSplitter, QAbstractItemView, QFileDialog,
 )
 from PyQt6.QtGui import QColor, QKeyEvent
 
 from artisanlib.util import fromCtoFstrict
 from tilauscope.tilauscope_types import (
-    GreenBean, THEME, show_styled_message, AGTRON_SCALES, format_batch_label
+    GreenBean, THEME, show_styled_message, AGTRON_SCALES, format_batch_label,
+    open_in_os_viewer
 )
-
-from tilauscope.tilauambient import TilauAmbient
 
 # AI modules are optional — guard against ImportError if not yet deployed
 try:
@@ -517,10 +516,27 @@ class _ScaleFloatWindow(QDialog):
         self._weight_lbl.setText("–– g")
         self._hint_lbl.setText(QApplication.translate("tilauscope_beancave", "disconnected"))
 
+    ## TILAU ## connection feedback: without it the card sat on "–– g" with no
+    ## clue that the scale had gone idle during the roast.
+    def set_status(self, text: str) -> None:
+        self._hint_lbl.setText(text)
+
+    def scale_connecting(self) -> None:
+        self._weight = None
+        self._weight_lbl.setText("–– g")
+        self.set_status(QApplication.translate("tilauscope_beancave", "connecting…"))
+
+    def scale_ready(self) -> None:
+        self.set_status(QApplication.translate("tilauscope_beancave", "tap to use"))
+
     # ── Interaction ──────────────────────────────────────────────────────────
 
     def _on_weight_clicked(self, _event) -> None:  # noqa: ANN001
         if self._weight is None:
+            ## TILAU ## no reading yet → the click is a manual reconnect request
+            retry = getattr(self._parent_dialog, 'request_scale_connect', None)
+            if callable(retry):
+                retry()
             return
         self._parent_dialog.receive_scale_weight(self._weight)
 
@@ -636,12 +652,23 @@ class _AmbientFloatWindow(QDialog):
         self._timer.setInterval(self.POLL_INTERVAL_MS)
         self._timer.timeout.connect(self._on_tick)
 
-        # Wire to whatever device currently exists (may be None → try each tick)
+        # Wire to whatever device currently exists (may be None → retried each
+        # tick, so a probe that connects after the dialog opened is picked up).
         self._attach_device()
+        self._timer.start()
 
     # properties
     @property
     def temperature(self) -> float | None:
+        """Last good reading in the DISPLAY unit — that is what qmc.ambientTemp
+        holds (Artisan converts on sampling). Use temperature_c for the plan."""
+        if self._temperature is None:
+            return None
+        return self._temperature if self._aw.qmc.mode == "C" else fromCtoFstrict(self._temperature)
+
+    @property
+    def temperature_c(self) -> float | None:
+        """Last good reading in °C — internal unit of the whole plan chain."""
         return self._temperature
 
     @property
@@ -655,29 +682,32 @@ class _AmbientFloatWindow(QDialog):
     # ── Device wiring ─────────────────────────────────────────────────────────
 
     def _attach_device(self) -> None:
-        """Connect to bleTilauScopeDevice's Qt signals if the device exists."""
- 
+        """Wire to the LIVE probe owned by Artisan (aw.bleTilauScopeDevice).
+
+        Never instantiate a private TilauAmbient here: nobody would ever start
+        that second BLE client, so the card stayed stuck on "waiting for probe"
+        while the real probe was connected (green LED).            ## TILAU ##
+        """
         device = getattr(self._aw, 'bleTilauScopeDevice', None)
-        if device is not None and self._device_ref is not None and device is self._device_ref:
-            self._detach_device()
+        if device is None or device is self._device_ref:
             return
- 
-        self._device_ref = TilauAmbient(uuid=self._aw.bleTilauScopeDeviceName, aw=self._aw)            
+        self._detach_device()
         try:
-            self._device_ref.connected_signal.connect(self._on_probe_connected)
-            self._device_ref.disconnected_signal.connect(self._on_probe_disconnected)
+            device.connected_signal.connect(self._on_probe_connected)
+            device.disconnected_signal.connect(self._on_probe_disconnected)
+            self._device_ref = device
             _logd.debug("AmbientCard: attached to bleTilauScopeDevice")
             # If the device is already connected, reflect that immediately
-            if getattr(self._device_ref, 'is_connected', False):
+            if getattr(device, 'is_connected', False):
                 self._on_probe_connected()
         except Exception as exc:  # noqa: BLE001
             _log.warning("AmbientCard: could not attach to device: %s", exc)
 
     def _detach_device(self) -> None:
+        """Unwire only — the probe belongs to Artisan and must stay connected."""
         if self._device_ref is None:
             return
         try:
-            self._device_ref.disconnect()
             self._device_ref.connected_signal.disconnect(self._on_probe_connected)
             self._device_ref.disconnected_signal.disconnect(self._on_probe_disconnected)
         except Exception:  # noqa: BLE001
@@ -775,8 +805,8 @@ class _AmbientFloatWindow(QDialog):
 
     @pyqtSlot()
     def _on_probe_disconnected(self) -> None:
+        # The timer keeps running: it is also the re-attach watchdog. ## TILAU ##
         self._probe_live = False
-        self._timer.stop()
         self._card.setStyleSheet(f"""
             QFrame#ambientCard {{
                 background-color: {THEME['SURFACE']};
@@ -797,14 +827,22 @@ class _AmbientFloatWindow(QDialog):
 
     @pyqtSlot()
     def _on_tick(self) -> None:
-        # If device appeared after the card opened, attach now
-        
-        if not self._probe_live:
-            _logd.debug("probe is not live")
+        # If the probe appeared (or was replaced) after the card opened, wire now
+        if self._device_ref is None:
+            self._attach_device()
             return
 
+        if not self._probe_live:
+            # connected_signal may have fired before we were wired
+            if getattr(self._device_ref, 'is_connected', False):
+                self._on_probe_connected()
+            else:
+                return
+
         try:
-            data = self._device_ref.bme280.askAmbient()
+            # go through get_ambient(): it holds the command-idle guard shared
+            # with Artisan's sampling loop.                          ## TILAU ##
+            data = self._device_ref.get_ambient("AMBIENT")
         except Exception as exc:  # noqa: BLE001
             _log.warning("AmbientCard: read error: %s", exc)
             return
@@ -815,6 +853,12 @@ class _AmbientFloatWindow(QDialog):
         temp  = data.temperature * 1.0 if self._aw.qmc.mode =="C" else fromCtoFstrict(data.temperature)
         hum   = data.humidity
         press = data.pressure
+        ## TILAU ## keep the last good reading: the dialog injects these into
+        ## qmc (ambientTemp / ambient_humidity / ambient_pressure) on OK and
+        ## feeds the roast plan. Stored in °C — converted at the boundary only.
+        self._temperature = data.temperature
+        self._humidity    = hum
+        self._pressure    = press
         tc    = _temp_color(temp)
         hc    = _hum_color(hum)
 
@@ -1301,8 +1345,11 @@ class RoastSetupDialog(QDialog):
 
         # scale management
         self._scale_window: _ScaleFloatWindow | None = None
+        ## TILAU ## scale1_was_connected is set by _connect_scale() — it used to
+        ## be reset to False right after, which made the close path believe the
+        ## scale had to be dropped.
+        self.scale1_was_connected: bool = False
         self._connect_scale()
-        self.scale1_was_connected:bool = False
 
         # get roaster name if defined
         self._roaster =  self._aw.tilau_roaster
@@ -1313,7 +1360,8 @@ class RoastSetupDialog(QDialog):
             self._roaster_ctx = None
 
         # ambient probe — show card if probe device name is configured
-        self._is_tilau_probe = self._aw.bleTilauScopeDeviceName != ""
+        ## TILAU ## the unconfigured marker is 'none' (main.py default), not ""
+        self._is_tilau_probe = self._aw.bleTilauScopeDeviceName not in (None, "", "none")
         self._ambient_window: _AmbientFloatWindow | None = None
         if self._is_tilau_probe:
             self._ambient_window = _AmbientFloatWindow(self)
@@ -1352,6 +1400,7 @@ class RoastSetupDialog(QDialog):
                 sm.scale1_weight_changed_signal.connect(self._scale_window.update_weight)
                 sm.scale1_stable_weight_changed_signal.connect(self._scale_window.update_weight)
                 sm.scale1_disconnected_signal.connect(self._scale_window.scale_disconnected)
+                sm.scale1_connected_signal.connect(self._on_scale_connected)
                 if self.scale1_was_connected:
                     # already connected: seed the float window with the last reading
                     scale1_last_weight = sm.get_scale1_last_weight()
@@ -1359,25 +1408,50 @@ class RoastSetupDialog(QDialog):
                         self._scale_window.update_weight(scale1_last_weight)
                 else:
                     # not connected yet: request a connection
-                    sm.connect_scale1_signal.emit(False)
+                    self.request_scale_connect()
         except Exception as exc:  # noqa: BLE001
             _log.warning("Scale not available: %s", exc)
-            
+
+    def request_scale_connect(self) -> None:
+        """(Re)connect scale 1 — also the manual retry when the card is tapped."""
+        if self._scale_window is None:
+            return
+        try:
+            sm = self._aw.scale_manager
+            if not sm.is_scale1_configured() or sm.is_scale1_connected():
+                return
+            self._scale_window.scale_connecting()
+            sm.connect_scale1_signal.emit(False)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("Scale connect request failed: %s", exc)
+
+    @pyqtSlot()
+    def _on_scale_connected(self) -> None:
+        if self._scale_window is None:
+            return
+        self._scale_window.scale_ready()
+        try:
+            last = self._aw.scale_manager.get_scale1_last_weight()
+            if last is not None:
+                self._scale_window.update_weight(last)
+        except Exception:  # noqa: BLE001
+            pass
+
     def _disconnect_scale(self) -> None:
+        if self._scale_window is None:
+            return
         if self._aw.scale_manager.is_scale1_configured():
             # disconnect from scale_manager signals
             try:
                 self._aw.scale_manager.scale1_weight_changed_signal.disconnect(self._scale_window.update_weight)
                 self._aw.scale_manager.scale1_stable_weight_changed_signal.disconnect(self._scale_window.update_weight)
                 self._aw.scale_manager.scale1_disconnected_signal.disconnect(self._scale_window.scale_disconnected)
+                self._aw.scale_manager.scale1_connected_signal.disconnect(self._on_scale_connected)
             except Exception as e: # pylint: disable=broad-except
                 _log.error(e)
-            try:
-                # disconnect scales if they were not connected before
-                if not self.scale1_was_connected:
-                    self._aw.scale_manager.disconnect_scale1_signal.emit()
-            except Exception as e: # pylint: disable=broad-except
-                _log.error(e)
+            ## TILAU ## the scale is deliberately left connected when the setup
+            ## dialog closes: the roast that follows ends on RoastResultDialog,
+            ## which needs the very same link to weigh the roasted batch.
 
     def _show_scale_window(self) -> None:
         if self._scale_window is None:
@@ -1804,8 +1878,10 @@ class RoastSetupDialog(QDialog):
         aw_win = getattr(self, "_ambient_window", None)
         if aw_win is not None:
             try:
-                t = aw_win.temperature()
-                h = aw_win.humidity()
+                ## TILAU ## properties, not methods — calling them raised and
+                ## the plan silently fell back to 20 °C / 50 %. Plan wants °C.
+                t = aw_win.temperature_c
+                h = aw_win.humidity
                 if t is not None:
                     amb_t = float(t)
                 if h is not None:
@@ -2515,6 +2591,8 @@ class RoastSetupDialog(QDialog):
         self._start_fade_out()
 
     def _close_helpers(self) -> None:
+        ## TILAU ## unwire first — the scale manager outlives this dialog.
+        self._disconnect_scale()
         if self._scale_window is not None:
             self._scale_window.close()
             self._scale_window = None
@@ -2885,6 +2963,8 @@ class RoastResultDialog(QDialog):
         self._color_window: _ColorFloatWindow | None = None
 
         self._drag_pos: object = None
+        ## TILAU ## drives the "print the label before closing?" reminder on save
+        self._label_printed = False
 
         self.setStyleSheet(_base_style())
         self._connect_scale()
@@ -2966,7 +3046,17 @@ class RoastResultDialog(QDialog):
             _log.warning("RoastResultDialog: beans text parse failed: %s", exc)
         return None
 
+    ## TILAU ## An Acaia left alone for the length of a roast drops its BLE link
+    ## (or goes to sleep). A single connect request at dialog open then silently
+    ## failed and the card stayed on "–– g" forever. We now report the state and
+    ## keep retrying for a while, and the card is clickable to force a retry.
+    _SCALE_RETRY_MS:      Final[int] = 6_000
+    _SCALE_RETRY_MAX:     Final[int] = 10
+
     def _connect_scale(self) -> None:
+        self._scale_was_connected = False
+        self._scale_retries = 0
+        self._scale_retry_timer: QTimer | None = None
         try:
             sm = self._aw.scale_manager
             self._scale_was_connected = sm.is_scale1_connected()
@@ -2975,16 +3065,75 @@ class RoastResultDialog(QDialog):
                 sm.scale1_weight_changed_signal.connect(self._scale_window.update_weight)
                 sm.scale1_stable_weight_changed_signal.connect(self._scale_window.update_weight)
                 sm.scale1_disconnected_signal.connect(self._scale_window.scale_disconnected)
+                sm.scale1_connected_signal.connect(self._on_scale_connected)
                 if self._scale_was_connected:
                     last = sm.get_scale1_last_weight()
                     if last is not None:
                         self._scale_window.update_weight(last)
                 else:
-                    sm.connect_scale1_signal.emit(False)
+                    self.request_scale_connect()
         except Exception as exc:
             _log.warning("RoastResultDialog: scale not available: %s", exc)
 
+    def request_scale_connect(self) -> None:
+        """Ask the scale manager to (re)connect scale 1 and start the retry loop."""
+        if self._scale_window is None:
+            return
+        try:
+            sm = self._aw.scale_manager
+            if not sm.is_scale1_configured() or sm.is_scale1_connected():
+                return
+            self._scale_retries = 0
+            self._scale_window.scale_connecting()
+            sm.connect_scale1_signal.emit(False)
+            if self._scale_retry_timer is None:
+                self._scale_retry_timer = QTimer(self)
+                self._scale_retry_timer.setInterval(self._SCALE_RETRY_MS)
+                self._scale_retry_timer.timeout.connect(self._retry_scale_connect)
+            self._scale_retry_timer.start()
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("RoastResultDialog: scale connect request failed: %s", exc)
+
+    @pyqtSlot()
+    def _retry_scale_connect(self) -> None:
+        if self._scale_window is None:
+            self._stop_scale_retry()
+            return
+        try:
+            sm = self._aw.scale_manager
+            if sm.is_scale1_connected():
+                self._on_scale_connected()
+                return
+            self._scale_retries += 1
+            if self._scale_retries > self._SCALE_RETRY_MAX:
+                self._stop_scale_retry()
+                self._scale_window.set_status(QApplication.translate(
+                    "tilauscope_beancave", "no scale — tap to retry"))
+                return
+            sm.connect_scale1_signal.emit(False)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("RoastResultDialog: scale retry failed: %s", exc)
+            self._stop_scale_retry()
+
+    @pyqtSlot()
+    def _on_scale_connected(self) -> None:
+        self._stop_scale_retry()
+        if self._scale_window is None:
+            return
+        self._scale_window.scale_ready()
+        try:
+            last = self._aw.scale_manager.get_scale1_last_weight()
+            if last is not None:
+                self._scale_window.update_weight(last)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _stop_scale_retry(self) -> None:
+        if self._scale_retry_timer is not None:
+            self._scale_retry_timer.stop()
+
     def _disconnect_scale(self) -> None:
+        self._stop_scale_retry()
         if self._scale_window is None:
             return
         try:
@@ -2993,8 +3142,12 @@ class RoastResultDialog(QDialog):
                 sm.scale1_weight_changed_signal.disconnect(self._scale_window.update_weight)
                 sm.scale1_stable_weight_changed_signal.disconnect(self._scale_window.update_weight)
                 sm.scale1_disconnected_signal.disconnect(self._scale_window.scale_disconnected)
-                if not self._scale_was_connected:
-                    sm.disconnect_scale1_signal.emit()
+                try:
+                    sm.scale1_connected_signal.disconnect(self._on_scale_connected)
+                except Exception:  # noqa: BLE001
+                    pass
+                ## TILAU ## the physical scale is deliberately left connected:
+                ## disconnecting it here is what made the next dialog blind.
         except Exception as exc:
             _log.warning("RoastResultDialog: scale disconnect error: %s", exc)
 
@@ -3101,6 +3254,9 @@ class RoastResultDialog(QDialog):
             self._color_window.show()
 
     def _close_helpers(self) -> None:
+        ## TILAU ## unwire before destroying the card, otherwise the scale
+        ## manager keeps emitting into a dead window for the whole session.
+        self._disconnect_scale()
         if self._scale_window is not None:
             self._scale_window.close()
             self._scale_window = None
@@ -3587,6 +3743,17 @@ class RoastResultDialog(QDialog):
                 btn_row.addWidget(ai_btn)
         except Exception as exc:  # noqa: BLE001
             _log.warning("RoastResultDialog: AI button init failed: %s", exc)
+        # Roast label — printable straight from the values typed above, without
+        # waiting for the profile to reach the disk (see _label_profile_snapshot)
+        label_btn = QPushButton(
+            QApplication.translate("tilauscope_beancave", "🏷  Label PDF")
+        )
+        label_btn.setStyleSheet(_btn_secondary())
+        label_btn.setToolTip(QApplication.translate(
+            "tilauscope_beancave",
+            "Generate the roast label as a PDF from the values entered above"))
+        label_btn.clicked.connect(self._on_print_label)
+        btn_row.addWidget(label_btn)
         btn_row.addStretch()
         btn_row.addWidget(cancel_btn)
         btn_row.addWidget(ok_btn)
@@ -3861,10 +4028,135 @@ class RoastResultDialog(QDialog):
             self._color_window.move(x, y_base)
             self._color_window.show()
 
+    # ── Roast label (PDF) ────────────────────────────────────────────────────
+
+    def _label_profile_snapshot(self) -> dict:
+        """Profile dict feeding the label renderer.
+
+        The label printer only needs a profile dictionary — on the live path the
+        roast has not been written to disk yet, so it cannot be read back from an
+        .alog like BeanCave does: getProfile() returns the very same structure
+        from memory, 'computed' block included.
+
+        The values typed in this dialog are overridden on the snapshot only —
+        qmc stays untouched so that printing has no side effect and a later
+        Cancel really cancels.
+        """
+        profile = dict(self._aw.getProfile())
+
+        try:
+            roasted = float(self._roasted_weight_edit.text().replace(',', '.') or '0')
+        except ValueError:
+            roasted = 0.0
+        try:
+            whole_color = float(self._colour_whole_edit.text().replace(',', '.') or '0')
+        except ValueError:
+            whole_color = 0.0
+        try:
+            ground_color = float(self._colour_ground_edit.text().replace(',', '.') or '0')
+        except ValueError:
+            ground_color = 0.0
+
+        weight = list(profile.get('weight') or [0.0, 0.0, 'g'])
+        while len(weight) < 3:
+            weight.append('g')
+        try:
+            green = float(weight[0])
+        except (TypeError, ValueError):
+            green = 0.0
+        if green <= 0:
+            green = float(self._green_weight or 0.0)
+        profile['weight'] = [green, roasted, weight[2]]
+
+        profile['whole_color']  = whole_color
+        profile['ground_color'] = ground_color
+
+        computed = dict(profile.get('computed') or {})
+        if green > 0 and roasted > 0:
+            computed['total_loss'] = round((1.0 - (roasted / green)) * 100.0, 1)
+        profile['computed'] = computed
+
+        return profile
+
+    @pyqtSlot()
+    def _on_print_label(self) -> None:
+        try:
+            from tilauscope.label_printer import RoastedBeanLabelPrinter, get_downloads_dir
+
+            profile = self._label_profile_snapshot()
+
+            bean_name = (self._bean.name if self._bean and self._bean.name else "roast")
+            safe_name = bean_name.replace(" ", "_").replace("/", "-")
+            date_str  = str(profile.get('roastisodate') or profile.get('roastdate') or "").replace(" ", "_")
+            default   = str(get_downloads_dir() / f"roast_label_{safe_name}_{date_str}.pdf".replace("__", "_"))
+
+            file_path, _ = QFileDialog.getSaveFileName(
+                self,
+                QApplication.translate("tilauscope_beancave", "Save Label PDF"),
+                default,
+                QApplication.translate("tilauscope_beancave", "PDF Files (*.pdf)"))
+            if not file_path:
+                return
+
+            ok = RoastedBeanLabelPrinter().print_to_label(profile, self._bean, file_path)
+            if not ok:
+                show_styled_message(
+                    self,
+                    QApplication.translate("tilauscope_beancave", "Error"),
+                    QApplication.translate("tilauscope_beancave", "PDF file was not generated."),
+                    QMessageBox.Icon.Warning)
+                return
+
+            self._label_printed = True
+            self._open_file(file_path)
+            _log.info("RoastResultDialog: roast label written to %s", file_path)
+        except Exception as exc:  # noqa: BLE001
+            _log.error("RoastResultDialog: label printing failed: %s", exc)
+            show_styled_message(
+                self,
+                QApplication.translate("tilauscope_beancave", "Error"),
+                QApplication.translate("tilauscope_beancave",
+                    "Could not generate the roast label:<br><b>{0}</b>").format(exc),
+                QMessageBox.Icon.Warning, rich=True)
+
+    def _open_file(self, file_path: str) -> None:
+        """Hand the generated PDF to the OS viewer, in front of this dialog.
+
+        This dialog is created WindowStaysOnTopHint and its helper windows float
+        on their own, so the viewer would open underneath all of them — that is
+        what open_in_os_viewer takes care of. The dialog stays modal meanwhile,
+        so nothing behind it becomes reachable.
+        """
+        open_in_os_viewer(
+            file_path, self,
+            helpers=[w for w in (self._scale_window, self._color_window) if w is not None])
+
     # ── OK / Cancel ──────────────────────────────────────────────────────────
 
     @pyqtSlot()
     def _on_ok(self) -> None:
+        ## TILAU ## Last chance to print the label: once this dialog closes the
+        ## batch is done and the label has to be re-generated from BeanCave.
+        if not self._label_printed:
+            choice = show_styled_message(
+                self,
+                QApplication.translate("tilauscope_beancave", "Roast label"),
+                QApplication.translate("tilauscope_beancave",
+                    "You have not generated the label for this roast yet.<br>"
+                    "Do you want to print it before closing?"),
+                QMessageBox.Icon.Question, rich=True,
+                buttons=[
+                    QApplication.translate("tilauscope_beancave", "🏷  Label PDF"),
+                    QApplication.translate("tilauscope_beancave", "Save without label"),
+                ])
+            if choice == 0:
+                self._on_print_label()
+                # file dialog cancelled or generation failed → stay open
+                if not self._label_printed:
+                    return
+            elif choice != 1:
+                return  # dialog dismissed — do not close behind the user's back
+
         try:
             roasted_w = float(self._roasted_weight_edit.text().replace(',', '.') or '0')
         except ValueError:

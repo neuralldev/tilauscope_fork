@@ -82,7 +82,8 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 from tilauscope.niimprint import NiimbotBLE, Niimprint_PaperType
 from tilauscope.tilau_ble_scanner import TilauBLEScanner
 from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, ReferenceProfile, BeanCaveContainer, GREEN_BEAN_COLUMNS, show_styled_message,
-                                         THEME, standardization_map, ProbeDeviation, ProbeDeviationInterval, RoastingPhase, TilauProgressDialog, _IS_MACOS, _IS_WINDOWS)
+                                         THEME, standardization_map, ProbeDeviation, ProbeDeviationInterval, RoastingPhase, TilauProgressDialog, _IS_MACOS, _IS_WINDOWS,
+                                         open_in_os_viewer)
 from tilauscope.roast_timeline import RoastReadyDialog
 from tilauscope.sack_manager import SackChipsRow, SackPool, confirm_release, prompt_release_if_emptied  ## TILAU ## sack labels (Lot 1, §9.3)
 from tilauscope.beancave_catalogue import CatalogueListWidget  ## TILAU ## rich catalogue list (Lot 5)
@@ -859,7 +860,21 @@ class QRCodeDialog(QDialog):
             QApplication.translate("tilauscope_beancave", "PNG Files (*.png);;All Files (*)")
         )
         if file_path:
-            self._pil_img.save(file_path)
+            ## TILAU ## PIL infers the format from the extension: a name typed
+            ## without one raised out of the click handler, leaving neither a file
+            ## nor any message on screen.
+            if not Path(file_path).suffix:
+                file_path += ".png"
+            try:
+                self._pil_img.save(file_path)
+            except Exception as exc:  # noqa: BLE001
+                _logd.error(f"QR code save failed: {exc}")
+                show_styled_message(
+                    self,
+                    QApplication.translate("tilauscope_beancave", "Save Error"),
+                    QApplication.translate("tilauscope_beancave",
+                        "The QR code could not be saved:") + f"\n{exc}",
+                    QMessageBox.Icon.Warning)
 
     def _print(self) -> None:
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
@@ -7475,6 +7490,8 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                 figure.savefig(file_path)
                 self._show_message(self, QApplication.translate("tilauscope_beancave","Snapshot Successful"),
                                         QApplication.translate("tilauscope_beancave","The curve has been successfully saved to:")+f"\n{file_path}")
+                ## TILAU ## show the snapshot straight away, like the roast card does
+                self.try_to_open_file(file_path)
             except Exception as e:
                 self._show_message(self, QApplication.translate("tilauscope_beancave","Save Error"),
                                      QApplication.translate("tilauscope_beancave","An error occurred while saving the figure:")+f"\n{e}", QMessageBox.Icon.Critical)
@@ -11657,26 +11674,26 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                                 QMessageBox.Icon.Warning)
 
     def try_to_open_file(self, file_path: str):
-        try:
-            if _IS_WINDOWS:
-                os.startfile(file_path)
-            elif  _IS_MACOS:
-                subprocess.Popen(["open", file_path])  # Popen non-bloquant
-            else:
-                subprocess.Popen(["xdg-open", file_path])  # Popen non-bloquant
-        except Exception as e:
-            _log.error(f"Failed to open file {file_path}: {e}")
-
-        # Restitue le focus à BeancaveDlg après que l'OS ait traité l'ouverture
-        QTimer.singleShot(300, self._restore_focus)
+        ## TILAU ## No focus restore here any more: raising BeanCave back 300 ms
+        ## after the launch pushed the freshly exported PDF or card behind the
+        ## window, which read as "nothing was printed". The export must keep the
+        ## front — see open_in_os_viewer.
+        ## The "Saved to …" message shown just before this call has already queued
+        ## its own restore, which would land on top of the viewer: hold restores
+        ## off for a moment so the export really stays in front.
+        self._focus_restore_blocked_until = time.monotonic() + 2.0
+        open_in_os_viewer(file_path, self)
 
     def _restore_focus(self):
         if self.is_shutting_down:
             return
+        ## TILAU ## a file was just handed to an external viewer — leave it in front
+        if time.monotonic() < getattr(self, "_focus_restore_blocked_until", 0.0):
+            return
         if self.isVisible() and not self.isMinimized():
             self.raise_()
-            self.activateWindow()        
-        
+            self.activateWindow()
+
     def _show_message(self, parent, title: str, message: str, icon=QMessageBox.Icon.Information, **kwargs):
         show_styled_message(parent, title, message, icon, **kwargs)
         QTimer.singleShot(100, self._restore_focus)

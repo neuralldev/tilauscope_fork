@@ -1,7 +1,12 @@
-## [4.2.0] 2026-07-31
+## [4.2.1] 2026-07-31
 build 1
-* ⚡ [feat(branding)] : rebranded version
+## [4.2.0] 2026-07-31
 build 3
+* ⚡ [feat(end of roast)] : the end-of-roast form can now print the roast label as a PDF on the spot, from the roasted weight and colour just entered — the label used to be available only later, from a roast already filed in BeanCave. Printing leaves the form untouched, so figures can still be corrected and the label printed again
+* ⚡ [feat(end of roast)] : saving the end-of-roast form without having printed a label asks once whether to print one before closing, rather than letting the batch go to the bag unlabelled
+* ⚡ [feat(roast viewer)] : a curve snapshot now opens as soon as it is saved, like the roast card already did, instead of only telling you where it went
+* 🐛 [fix(beancave)] : saving a coffee's QR code under a name typed without a file extension now works instead of failing silently — no image was written and nothing was reported. A save that cannot go through says so
+* 🐛 [fix(labels)] : every file TilauScope exports and opens for you — roast label, green bean label, roast plan, roast card, bean card — now comes up in front instead of behind the window that produced it. The window took the front back a fraction of a second after handing the file over, so the PDF opened hidden underneath and looked like it had never been generated
 * ⚡ [feat(branding)] : the remote readout page you open on a phone or tablet is now titled TilauScope and sits on the dark background used everywhere else in the application, which gives the lit figures more contrast than the old grey did. The figures themselves keep the colours you chose in the readout settings
 * ⚡ [feat(branding)] : the remote readout page now carries the TilauScope icon in the browser tab and on the home screen when you add a shortcut to it. It previously declared no icon at all, so the browser showed whatever it could find
 * 🐛 [fix(build)] : a pinned Windows tile for the remote readout no longer comes up blank — three of the four tile images it asks for were never included in the installer
@@ -10,6 +15,17 @@ build 3
 * 🐛 [fix(build)] : uninstalling on Windows now also removes the roast-link address it registered, which used to be left behind pointing at a program that no longer existed
 * 🐛 [fix(branding)] : the macOS dialog asking to use Bluetooth now says TilauScope connects to your roaster, scale, smoke extractor and probes — it read "artiisan wants to access bluetooth", misspelling included
 * 🐛 [fix(tests)] : the Windows build no longer fails before it starts — one roast fixture had a colon in its name, which Windows forbids, and the checkout step stopped there
+* 🐛 [fix(roast setup)] : the ambient card in the roast setup window now reads the probe that is actually connected. It watched a second, never-started copy of the probe, so it stayed on "waiting for probe" while the probe itself showed a steady green light — and the temperature, humidity and pressure it was meant to record with the roast were never saved
+* 🐛 [fix(roast setup)] : the ambient card picks up a probe that connects after the window is already open, and no longer stops reading when the probe drops and comes back
+* 🐛 [fix(scale)] : the scale card now says what it is doing — connecting, ready, or no scale found — instead of showing an empty reading. A scale that went idle during the roast is asked to reconnect repeatedly for a minute, and tapping the empty card asks again
+* 🐛 [fix(scale)] : the scale stays connected between the roast setup window and the end-of-roast window, so the roasted weight can be captured without waking the scale by hand
+* 🐛 [fix(assistant)] : the large preheat figure is no longer sliced across the top and bottom, and the note under it is shown in full instead of losing its last line when it runs to three lines
+* 🐛 [fix(build)] : scanning a label now works in the installed macOS application. The camera request was refused by macOS before it ever reached you, so no permission dialog appeared and TilauScope never showed up in System Settings › Privacy & Security › Camera
+* 🐛 [fix(assistant)] : the bean you are roasting stays selectable in the guided assistant even once its stock has reached zero — roasting the bottom of a bag used to make it disappear from the list mid-session. It is marked "(empty stock)"
+build 2
+* ⚡ [feat(branding)] : rebranded version
+buil 1
+* ⚡ [feat(branding)] : bump
 ## [4.1.3] 2026-07-31
 build 2
 * ⚡ [feat(tilauscope)] : "About TilauScope" shows the version you are running, credits Artisan Roaster Scope and its core developers, and links to the public source code. It sits where your system expects it — in the TilauScope menu beside the Apple logo on macOS, under Help on Windows and Linux — and replaces the old technical dialog, which listed library versions and nothing you could act on

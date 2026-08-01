@@ -33,6 +33,10 @@ Before starting, two things are required: the coffee, from the **Green Bean** li
 When the roast on screen already names a coffee — a record opened from the cellar, a replay — it
 is pre-selected in the list, and the line under it shows the coffee it resolved to.
 
+The list normally offers only coffees still in stock. The one being roasted is the exception:
+it stays in the list even once its remaining stock has reached zero — roasting the bottom of a
+bag must not make the coffee disappear from its own roast — and is marked *(empty stock)*.
+
 In Guided level the assistant opens, starts and closes with the roast, whichever START you use:
 TilauScope's own, Artisan's, or the one on your phone. At Expert level it is started manually.
 

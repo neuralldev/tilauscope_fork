@@ -119,6 +119,11 @@ without one simply does not teach the plan anything about drop temperature.
 With an AI provider configured, **✦ AI Summary** writes a short account of the roast from its
 recorded figures — a starting point for notes, not a replacement for judging the cup.
 
+**🏷 Label PDF** prints the roast's label straight from the form, using the weight and colour
+just entered, so the bag can be labelled while the batch is still cooling. Saving the form
+without having printed one asks the question once. See
+[Labels and QR](labels-and-qr.md#what-each-label-carries).
+
 ![The result form: weight, colour and notes filled in. CAPTURE 8.10 — the
 AI Summary panel](assets/after-the-roast-8.8.png)
 

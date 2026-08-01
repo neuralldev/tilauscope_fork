@@ -52,6 +52,12 @@ retyping, and no leaving the sheet.
 If a weight has already been entered by hand, TilauScope asks **Replace Weight?** first,
 rather than silently overwriting it.
 
+The line under the value says what the scale is doing: *tap to use* when a reading is live,
+*connecting…* while the link is being established, *disconnected* when it is lost, and
+*no scale — tap to retry* when it could not be reached. A scale that has gone idle is asked
+again for about a minute; tapping the empty value asks once more. The scale stays connected
+after the sheet is confirmed, so it is still live at the end of the roast.
+
 <!-- CAPTURE 5.3 — the ⚖ SCALE window beside the sheet, showing a live value.
 CAPTURE 5.4 — the Replace Weight? confirmation. -->
 
