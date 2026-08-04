@@ -79,7 +79,7 @@ class GreenBeanSocialCard(CardPainter):
             out.append((bean.species.strip(), THEME['BORDER']))
         crop = int(getattr(bean, 'crop', 0) or 0)
         if crop > 0:
-            crop_label = QApplication.translate("tilauscope_beancave", "Crop")
+            crop_label = QApplication.translate("tilauscope_roast_review", "Crop")
             out.append((f"{crop_label} {crop}", THEME['BORDER']))
         return out[:4]
 
@@ -89,29 +89,29 @@ class GreenBeanSocialCard(CardPainter):
         out: list[tuple[str, str, str, bool]] = []
         sca = float(getattr(bean, 'sca', 0) or 0)
         if sca > 0:
-            out.append((QApplication.translate("tilauscope_beancave", "SCA score"), f"{sca:.1f}".rstrip('0').rstrip('.'), "", True))
+            out.append((QApplication.translate("tilauscope_roast_review", "SCA score"), f"{sca:.1f}".rstrip('0').rstrip('.'), "", True))
         alt = int(getattr(bean, 'altitude', 0) or 0)
         if alt > 0:
-            out.append((QApplication.translate("tilauscope_beancave", "Altitude"), f"{alt:,}".replace(",", " "), "m", False))
+            out.append((QApplication.translate("tilauscope_roast_review", "Altitude"), f"{alt:,}".replace(",", " "), "m", False))
         dens = float(getattr(bean, 'density', 0) or 0)
         if dens > 0:
-            out.append((QApplication.translate("tilauscope_beancave", "Density"), f"{dens:g}", "g/l", False))
+            out.append((QApplication.translate("tilauscope_roast_review", "Density"), f"{dens:g}", "g/l", False))
         hum = float(getattr(bean, 'last_humidity', 0) or 0)
         if hum > 0:
-            out.append((QApplication.translate("tilauscope_beancave", "Humidity"), f"{hum:g}", "%", False))
+            out.append((QApplication.translate("tilauscope_roast_review", "Humidity"), f"{hum:g}", "%", False))
         return out[:4]
 
     @staticmethod
     def _provenance(bean) -> list[tuple[str, str]]:
-        rows = [(QApplication.translate("tilauscope_beancave", "Farm"), bean.farm), (QApplication.translate("tilauscope_beancave", "Country"), bean.country),
-                (QApplication.translate("tilauscope_beancave", "Supplier"), bean.supplier)]
+        rows = [(QApplication.translate("tilauscope_roast_review", "Farm"), bean.farm), (QApplication.translate("tilauscope_roast_review", "Country"), bean.country),
+                (QApplication.translate("tilauscope_roast_review", "Supplier"), bean.supplier)]
         return [(k, str(v).strip()) for k, v in rows if str(v or '').strip()]
 
     @staticmethod
     def _characteristics(bean) -> list[tuple[str, str]]:
         rows: list[tuple[str, str]] = []
         if (bean.species or '').strip():
-            rows.append((QApplication.translate("tilauscope_beancave", "Species"), bean.species.strip()))
+            rows.append((QApplication.translate("tilauscope_roast_review", "Species"), bean.species.strip()))
         ## TILAU ## a blend shows its composition where a single origin shows varieties.
         ## Same semantics as the on-screen sheet: component 1 is the record itself
         ## (labelled by its varieties), and a 0 ratio means "unknown", not "absent".
@@ -123,15 +123,15 @@ class GreenBeanSocialCard(CardPainter):
                 name, ratio = str(name or '').strip(), float(ratio or 0)
                 if name or ratio > 0:
                     comps.append((name or "?", ratio))
-            rows.append((QApplication.translate("tilauscope_beancave", "Composition"), " · ".join(
+            rows.append((QApplication.translate("tilauscope_roast_review", "Composition"), " · ".join(
                 f"{n} {r:g}%" if r > 0 else n for n, r in comps)))
         elif (bean.varieties or '').strip():
-            rows.append((QApplication.translate("tilauscope_beancave", "Varieties"), bean.varieties.strip()))
+            rows.append((QApplication.translate("tilauscope_roast_review", "Varieties"), bean.varieties.strip()))
         if (bean.category or '').strip():
-            rows.append((QApplication.translate("tilauscope_beancave", "Category"), bean.category.strip()))
+            rows.append((QApplication.translate("tilauscope_roast_review", "Category"), bean.category.strip()))
         aw = float(getattr(bean, 'water_activity', 0) or 0)
         if aw > 0:
-            rows.append((QApplication.translate("tilauscope_beancave", "Water activity"), f"{aw:g} aw"))
+            rows.append((QApplication.translate("tilauscope_roast_review", "Water activity"), f"{aw:g} aw"))
         return rows[:4]
 
     # ── columns ──────────────────────────────────────────────────────────────
@@ -142,14 +142,14 @@ class GreenBeanSocialCard(CardPainter):
         p.drawLine(_LEFT_W, 0, _LEFT_W, CARD_H)
 
         y = _PAD_TOP
-        origin = (QApplication.translate("tilauscope_beancave", "Blend") if getattr(bean, 'is_blend', False)
+        origin = (QApplication.translate("tilauscope_roast_review", "Blend") if getattr(bean, 'is_blend', False)
                   else (bean.country or '').strip())
         if origin:
             y = self._text(p, x, y, origin.upper(), self._font(12, tracking=22.0),
                            THEME['ACCENT']) + 14
 
         name_font = self._font(38, bold=True)
-        for line in self._wrap(bean.name or QApplication.translate("tilauscope_beancave", "Unnamed bean"), name_font, w, 3):
+        for line in self._wrap(bean.name or QApplication.translate("tilauscope_roast_review", "Unnamed bean"), name_font, w, 3):
             y = self._text(p, x, y, line, name_font, THEME['TEXT']) + 2
 
         badges = self._badges(bean)
@@ -163,12 +163,12 @@ class GreenBeanSocialCard(CardPainter):
             p.setPen(QPen(QColor(THEME['BORDER']), 1))
             p.drawLine(x, y, x + w, y)
             y += 26
-            y = self._text(p, x, y, QApplication.translate("tilauscope_beancave", "Flavour notes").upper(),
+            y = self._text(p, x, y, QApplication.translate("tilauscope_roast_review", "Flavour notes").upper(),
                            self._font(10, tracking=16.0), THEME['SUBTEXT']) + 12
             self._flow_chips(p, x, y, w, chips)
 
         self._paint_brand(p, x, QApplication.translate(
-            "tilauscope_beancave", "green bean sheet"))
+            "tilauscope_roast_review", "green bean sheet"))
 
     def _flow_chips(self, p: QPainter, x: int, y: int, max_w: int,
                     chips: list[str]) -> int:
@@ -199,8 +199,8 @@ class GreenBeanSocialCard(CardPainter):
         if stats:
             y = self._paint_stats(p, x, y, w, stats) + 32
 
-        for title, rows in ((QApplication.translate("tilauscope_beancave", "Provenance"), self._provenance(bean)),
-                            (QApplication.translate("tilauscope_beancave", "Characteristics"), self._characteristics(bean))):
+        for title, rows in ((QApplication.translate("tilauscope_roast_review", "Provenance"), self._provenance(bean)),
+                            (QApplication.translate("tilauscope_roast_review", "Characteristics"), self._characteristics(bean))):
             if not rows:
                 continue
             y = self._text(p, x, y, title.upper(), self._font(10, tracking=16.0),

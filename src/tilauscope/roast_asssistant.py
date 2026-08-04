@@ -676,10 +676,10 @@ def _ror_deviation_advice(
     if direction == "normal":
         if target > 0:
             return _S_OK, QApplication.translate(
-                "tilauscope_beancave", "On plan (target {0} {1})").format(f"{target:.1f}", unit)
+                "tilauscope_roast_assistant", "On plan (target {0} {1})").format(f"{target:.1f}", unit)
         lo, hi = get_ror_ideal_band(phase, mode)
         return status, QApplication.translate(
-            "tilauscope_beancave", "On plan (ideal {0}–{1} {2})").format(f"{lo:.0f}", f"{hi:.0f}", unit)
+            "tilauscope_roast_assistant", "On plan (ideal {0}–{1} {2})").format(f"{lo:.0f}", f"{hi:.0f}", unit)
 
     # ── Fenêtre d'inertie : un mouvement burner vient d'avoir lieu ─────────
     watch = getattr(aw, "_tilau_burner_watch", None) if aw is not None else None
@@ -695,14 +695,14 @@ def _ror_deviation_advice(
             if 0.0 <= elapsed < lag and not worsening:
                 remain = max(1, int(round(lag - elapsed)))
                 return _S_OK, QApplication.translate(
-                    "tilauscope_beancave",
+                    "tilauscope_roast_assistant",
                     "⏳ burner {0}→{1}% — effect in ~{2} s").format(
                     f"{watch.get('from', '?')}", f"{watch.get('to', '?')}", remain)
         except (KeyError, TypeError, ValueError):
             pass
 
-    arrow = (QApplication.translate("tilauscope_beancave", "↑ above") if direction == "high"
-             else QApplication.translate("tilauscope_beancave", "↓ below"))
+    arrow = (QApplication.translate("tilauscope_roast_assistant", "↑ above") if direction == "high"
+             else QApplication.translate("tilauscope_roast_assistant", "↓ below"))
     if target > 0:
         ref = f"{ror:.1f} vs {target:.1f} {unit}"
     else:
@@ -732,19 +732,19 @@ def _ror_deviation_advice(
         if direction == "high" and gap >= res:
             _next = round(max(plan_heater, burner - _cran) / res) * res
             action = QApplication.translate(
-                "tilauscope_beancave", "burner {0}% → one notch to {1}% (plan {2}%)").format(
+                "tilauscope_roast_assistant", "burner {0}% → one notch to {1}% (plan {2}%)").format(
                 f"{burner:.0f}", f"{_next:.0f}", f"{plan_heater:.0f}")
         elif direction == "low" and gap <= -res:
             _next = round(min(plan_heater, burner + _cran) / res) * res
             action = QApplication.translate(
-                "tilauscope_beancave", "burner {0}% → one notch to {1}% (plan {2}%)").format(
+                "tilauscope_roast_assistant", "burner {0}% → one notch to {1}% (plan {2}%)").format(
                 f"{burner:.0f}", f"{_next:.0f}", f"{plan_heater:.0f}")
     if action is None:
-        action = (QApplication.translate("tilauscope_beancave", "one notch down on the burner") if direction == "high"
-                  else QApplication.translate("tilauscope_beancave", "one notch up on the burner"))
+        action = (QApplication.translate("tilauscope_roast_assistant", "one notch down on the burner") if direction == "high"
+                  else QApplication.translate("tilauscope_roast_assistant", "one notch up on the burner"))
     prefix = "⚠ " if status == _S_CRIT else ""
     return status, QApplication.translate(
-        "tilauscope_beancave", "{0}{1} plan ({2}) — {3}").format(prefix, arrow, ref, action)
+        "tilauscope_roast_assistant", "{0}{1} plan ({2}) — {3}").format(prefix, arrow, ref, action)
 
 
 def _read_slider_pct(aw, idx: int):
@@ -814,12 +814,12 @@ def _airflow_status(aw, pct, phase: str):
         return "--", "", _S_OK
     pull = getattr(aw, "_tilau_inlet_air_mode", "push") == "pull"
     if phase == "drying":
-        sub = (QApplication.translate("tilauscope_beancave", "Integrated airflow — keep low to conserve heat") if pull
-               else QApplication.translate("tilauscope_beancave", "Integrated airflow — moderate for even drying"))
+        sub = (QApplication.translate("tilauscope_roast_assistant", "Integrated airflow — keep low to conserve heat") if pull
+               else QApplication.translate("tilauscope_roast_assistant", "Integrated airflow — moderate for even drying"))
     elif phase == "maillard":
-        sub = QApplication.translate("tilauscope_beancave", "Integrated airflow — raise to manage browning & chaff")
+        sub = QApplication.translate("tilauscope_roast_assistant", "Integrated airflow — raise to manage browning & chaff")
     else:
-        sub = QApplication.translate("tilauscope_beancave", "Integrated airflow")
+        sub = QApplication.translate("tilauscope_roast_assistant", "Integrated airflow")
     return f"{pct}%", sub, _S_OK
 
 
@@ -834,10 +834,10 @@ def _extraction_status(aw, pct, phase: str = ""):
     if pct > _AIRWAVE_COOLING_PCT:
         status = _S_WARN
         sub = QApplication.translate(
-            "tilauscope_beancave", "Above ~{0}% — cooling the drum").format(_AIRWAVE_COOLING_PCT)
+            "tilauscope_roast_assistant", "Above ~{0}% — cooling the drum").format(_AIRWAVE_COOLING_PCT)
     else:
         status = _S_OK
-        sub = QApplication.translate("tilauscope_beancave", "Smoke extraction — neutral on BT")
+        sub = QApplication.translate("tilauscope_roast_assistant", "Smoke extraction — neutral on BT")
     val = f"{pct}%"
     airwave = getattr(aw, "bleAirwaveDevice", None)
     if airwave is not None:
@@ -848,7 +848,7 @@ def _extraction_status(aw, pct, phase: str = ""):
         rec = _AIRWAVE_MODE_BY_PHASE.get(phase)
         if rec:
             sub = f"{sub} · " + QApplication.translate(
-                "tilauscope_beancave", "recommend MODE {0}").format(rec)
+                "tilauscope_roast_assistant", "recommend MODE {0}").format(rec)
     return val, sub, status
 
 
@@ -991,7 +991,7 @@ class _RoRCrashDetector:
                         QApplication.beep()
                         self._last_beep_ror = ror
                     return QApplication.translate(
-                        "tilauscope_beancave",
+                        "tilauscope_roast_assistant",
                         "⚠ RoR crash — {0}°/min lost in 15s — support with AIR, never cut the fire"
                     ).format(f"{_fall:.1f}")
             else:
@@ -1013,7 +1013,7 @@ class _RoRCrashDetector:
                     QApplication.beep()
                     self._last_beep_ror = ror
                 return QApplication.translate(
-                    "tilauscope_beancave",
+                    "tilauscope_roast_assistant",
                     "⚠ RoR crash — {0}°/min/s slope, {1}° from target — raise heater now"
                 ).format(f"{slope:.1f}", f"{gap_to_target:.1f}")
         else:
@@ -1459,7 +1459,7 @@ class _RecoRow(QLabel):
             f"border-radius: 8px; color: #A6ADC8; font-size: 11px; {_FONT} "
             f"padding: 8px 10px; }}")
         self._tr_prefix = QApplication.translate(
-            "tilauscope_beancave", "Recommended settings")
+            "tilauscope_roast_assistant", "Recommended settings")
         self.hide()
 
     def set_reco(self, reco_text: str) -> None:
@@ -1730,10 +1730,10 @@ class _IdlePage(QWidget):
 
     def set_operator_level(self, level: str) -> None:  ## TILAU ##
         if level == "guided":
-            self._lbl.setText(QApplication.translate("tilauscope_beancave",
+            self._lbl.setText(QApplication.translate("tilauscope_roast_assistant",
                 "Select a green bean and a roasting target,\nthen press  ▶  in Artisan to start."))
         else:
-            self._lbl.setText(QApplication.translate("tilauscope_beancave",
+            self._lbl.setText(QApplication.translate("tilauscope_roast_assistant",
                 "Select a green bean and a color target\nthen, click on  ▶  to start the assistant."))
 
 class _PreheatPage(QWidget):
@@ -1766,7 +1766,7 @@ class _PreheatPage(QWidget):
 
         # Hero metric — relabelled per mode in refresh()
         self.hero = _HeroMetric(
-            QApplication.translate("tilauscope_beancave", "Until SV"), "°", "#A6E3A1")
+            QApplication.translate("tilauscope_roast_assistant", "Until SV"), "°", "#A6E3A1")
 
         # Progress bar BT → SV (manual fill)
         prog_row = QHBoxLayout()
@@ -1795,7 +1795,7 @@ class _PreheatPage(QWidget):
         # Quick adjust — burner only during preheat
         self.quick_adjust = _QuickAdjustRow(aw, _filter_slider_configs(
             aw, getattr(aw, "_tilau_roast_context", None), [
-                (QApplication.translate("tilauscope_beancave", "Burner"), 3, "#F38BA8"),
+                (QApplication.translate("tilauscope_roast_assistant", "Burner"), 3, "#F38BA8"),
             ]))
         # Torréfacteur sans commandes : pas de slider burner à régler.
         if _roaster_is_readonly(aw):
@@ -1803,8 +1803,8 @@ class _PreheatPage(QWidget):
 
         # Charge button (terminal action)
         self.btn_charge = _ContextButton(
-            QApplication.translate("tilauscope_beancave", "Charge"),
-            QApplication.translate("tilauscope_beancave", "BT stable ± 2° from SV"),
+            QApplication.translate("tilauscope_roast_assistant", "Charge"),
+            QApplication.translate("tilauscope_roast_assistant", "BT stable ± 2° from SV"),
             style='dim',
         )
         self.btn_charge.clicked.connect(lambda: aw.qmc.markChargeSignal.emit(False))
@@ -1820,29 +1820,29 @@ class _PreheatPage(QWidget):
         layout.addStretch(1)
 
         # ── Translation cache (hot-path: called every 1 Hz refresh) ──────────
-        self._lbl_until_sv   = QApplication.translate("tilauscope_beancave", "Until SV")
-        self._lbl_actual_bt  = QApplication.translate("tilauscope_beancave", "Actual BT")
+        self._lbl_until_sv   = QApplication.translate("tilauscope_roast_assistant", "Until SV")
+        self._lbl_actual_bt  = QApplication.translate("tilauscope_roast_assistant", "Actual BT")
         # banner / state
-        self._tr_sv_reached       = QApplication.translate("tilauscope_beancave", "✅ SV reached — stabilize then charge")
-        self._tr_approaching_sv   = QApplication.translate("tilauscope_beancave", "⚠ Approaching SV — monitor inertia")
-        self._tr_heating_to_sv    = QApplication.translate("tilauscope_beancave", "Preheating — heating to SV")
-        self._tr_no_pid_state     = QApplication.translate("tilauscope_beancave", "Preheating — no PID active")
+        self._tr_sv_reached       = QApplication.translate("tilauscope_roast_assistant", "✅ SV reached — stabilize then charge")
+        self._tr_approaching_sv   = QApplication.translate("tilauscope_roast_assistant", "⚠ Approaching SV — monitor inertia")
+        self._tr_heating_to_sv    = QApplication.translate("tilauscope_roast_assistant", "Preheating — heating to SV")
+        self._tr_no_pid_state     = QApplication.translate("tilauscope_roast_assistant", "Preheating — no PID active")
         # coach (single line)
-        self._tr_coach_ready      = QApplication.translate("tilauscope_beancave", "Hold 30–60 s, then charge once RoR drops under 5 °/min.")
-        self._tr_coach_approach   = QApplication.translate("tilauscope_beancave", "Approaching SV — PID will cut heat; slight overshoot is normal.")
-        self._tr_coach_weak       = QApplication.translate("tilauscope_beancave", "RoR weak despite active PID — check heater response.")
-        self._tr_coach_ramping    = QApplication.translate("tilauscope_beancave", "PID ramping to SV — let it work, charge when BT is stable ± 2°.")
-        self._tr_coach_raise      = QApplication.translate("tilauscope_beancave", "Raise heater — temperature is rising too slowly.")
-        self._tr_coach_reduce     = QApplication.translate("tilauscope_beancave", "Reduce heater — temperature is rising too fast.")
-        self._tr_coach_normal     = QApplication.translate("tilauscope_beancave", "Heat rate normal — wait for ET to stabilize, then charge.")
+        self._tr_coach_ready      = QApplication.translate("tilauscope_roast_assistant", "Hold 30–60 s, then charge once RoR drops under 5 °/min.")
+        self._tr_coach_approach   = QApplication.translate("tilauscope_roast_assistant", "Approaching SV — PID will cut heat; slight overshoot is normal.")
+        self._tr_coach_weak       = QApplication.translate("tilauscope_roast_assistant", "RoR weak despite active PID — check heater response.")
+        self._tr_coach_ramping    = QApplication.translate("tilauscope_roast_assistant", "PID ramping to SV — let it work, charge when BT is stable ± 2°.")
+        self._tr_coach_raise      = QApplication.translate("tilauscope_roast_assistant", "Raise heater — temperature is rising too slowly.")
+        self._tr_coach_reduce     = QApplication.translate("tilauscope_roast_assistant", "Reduce heater — temperature is rising too fast.")
+        self._tr_coach_normal     = QApplication.translate("tilauscope_roast_assistant", "Heat rate normal — wait for ET to stabilize, then charge.")
         # chip labels
-        self._cl_bt   = QApplication.translate("tilauscope_beancave", "BT")
-        self._cl_et   = QApplication.translate("tilauscope_beancave", "ET")
-        self._cl_ror  = QApplication.translate("tilauscope_beancave", "ROR")
-        self._cl_htr  = QApplication.translate("tilauscope_beancave", "HTR")
-        self._cl_sv   = QApplication.translate("tilauscope_beancave", "SV")
-        self._cl_eta  = QApplication.translate("tilauscope_beancave", "ETA")
-        self._cl_chrg = QApplication.translate("tilauscope_beancave", "CHRG")
+        self._cl_bt   = QApplication.translate("tilauscope_roast_assistant", "BT")
+        self._cl_et   = QApplication.translate("tilauscope_roast_assistant", "ET")
+        self._cl_ror  = QApplication.translate("tilauscope_roast_assistant", "ROR")
+        self._cl_htr  = QApplication.translate("tilauscope_roast_assistant", "HTR")
+        self._cl_sv   = QApplication.translate("tilauscope_roast_assistant", "SV")
+        self._cl_eta  = QApplication.translate("tilauscope_roast_assistant", "ETA")
+        self._cl_chrg = QApplication.translate("tilauscope_roast_assistant", "CHRG")
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -2001,7 +2001,7 @@ class _DryingPage(QWidget):
 
         # Hero — current RoR
         self.hero = _HeroMetric(
-            QApplication.translate("tilauscope_beancave", "Actual RoR"), "°/min", "#A6E3A1")
+            QApplication.translate("tilauscope_roast_assistant", "Actual RoR"), "°/min", "#A6E3A1")
 
         # Progress bar → DRY END (manual fill)
         prog_row = QHBoxLayout()
@@ -2035,20 +2035,20 @@ class _DryingPage(QWidget):
         _ctx_row = QHBoxLayout()
         _ctx_row.setSpacing(8)
         self.btn_cancel = _ContextButton(
-            QApplication.translate("tilauscope_beancave", "Cancel charge"),
-            QApplication.translate("tilauscope_beancave", "15s"), style='cancel')
+            QApplication.translate("tilauscope_roast_assistant", "Cancel charge"),
+            QApplication.translate("tilauscope_roast_assistant", "15s"), style='cancel')
         self.btn_cancel.clicked.connect(lambda: aw.qmc.markChargeSignal.emit(False))
         self.btn_cancel.hide()
 
         self.btn_dry_end = _ContextButton(
-            QApplication.translate("tilauscope_beancave", "Dry end"),
-            QApplication.translate("tilauscope_beancave", "near target"), style='dim')
+            QApplication.translate("tilauscope_roast_assistant", "Dry end"),
+            QApplication.translate("tilauscope_roast_assistant", "near target"), style='dim')
         self.btn_dry_end.clicked.connect(lambda: aw.qmc.markDRYSignal.emit(False))
         self.btn_dry_end.setEnabled(False)
 
         self.btn_airwave = _ContextButton(
-            QApplication.translate("tilauscope_beancave", "AirWave"),
-            QApplication.translate("tilauscope_beancave", "MODE STD"), style='dim')
+            QApplication.translate("tilauscope_roast_assistant", "AirWave"),
+            QApplication.translate("tilauscope_roast_assistant", "MODE STD"), style='dim')
         self.btn_airwave.clicked.connect(lambda: _send_airwave_mode(aw, "MODE STD"))
         self.btn_airwave.setEnabled(False)
 
@@ -2077,46 +2077,46 @@ class _DryingPage(QWidget):
         layout.addStretch(1)
 
         # ── Translation cache (hot-path: called every 1 Hz refresh) ──────────
-        self._tr_postcharge_drop                  = QApplication.translate("tilauscope_beancave", "⬇ Post-charge drop — turning point ahead")
-        self._tr_recovery_ror_rebuilding          = QApplication.translate("tilauscope_beancave", "↩ Recovery — RoR rebuilding after turning point")
-        self._tr_stabilizing_after_charge         = QApplication.translate("tilauscope_beancave", "Stabilizing after charge…")
-        self._tr_ramping_too_slow_raise_heater    = QApplication.translate("tilauscope_beancave", "Ramping too slow — raise heater")
-        self._tr_a_bit_slow_monitor_slope         = QApplication.translate("tilauscope_beancave", "A bit slow — monitor slope")
-        self._tpl_ideal_interval                  = QApplication.translate("tilauscope_beancave", "Ideal interval {0}–{1} °/min")
-        self._tr_a_bit_high                       = QApplication.translate("tilauscope_beancave", "A bit high")
-        self._tr_ror_too_high_reduce_heater       = QApplication.translate("tilauscope_beancave", "RoR too high — reduce heater")
-        self._tr_natural_honey_extended_drying    = QApplication.translate("tilauscope_beancave", "natural/honey process → extended drying phase expected")
-        self._tr_ror_too_low_for_estimation       = QApplication.translate("tilauscope_beancave", "RoR too low for estimation")
-        self._tr_stabilizing_post_tp              = QApplication.translate("tilauscope_beancave", "Stabilizing post-TP…")
-        self._tr_low_delta_uneven_conduction      = QApplication.translate("tilauscope_beancave", "Low Delta — uneven conduction?")
-        self._tr_delta_high_heating_too_strong    = QApplication.translate("tilauscope_beancave", "Delta is high — heating too strong?")
-        self._tr_drying_steady                    = QApplication.translate("tilauscope_beancave", "Drying steady")
-        self._tr_flash_drying_risk                = QApplication.translate("tilauscope_beancave", "Flash drying risk — check FIR power")
-        self._tr_premature_browning_detected      = QApplication.translate("tilauscope_beancave", "⚠️ Premature browning detected!")
-        self._tr_ror_out_of_range_check_heater    = QApplication.translate("tilauscope_beancave", "⚠ RoR out of range — check heater now")
-        self._tr_critical_gap_et_bt               = QApplication.translate("tilauscope_beancave", "⚠ Critical Gap between ET/BT — dangerous thermic gradiant")
+        self._tr_postcharge_drop                  = QApplication.translate("tilauscope_roast_assistant", "⬇ Post-charge drop — turning point ahead")
+        self._tr_recovery_ror_rebuilding          = QApplication.translate("tilauscope_roast_assistant", "↩ Recovery — RoR rebuilding after turning point")
+        self._tr_stabilizing_after_charge         = QApplication.translate("tilauscope_roast_assistant", "Stabilizing after charge…")
+        self._tr_ramping_too_slow_raise_heater    = QApplication.translate("tilauscope_roast_assistant", "Ramping too slow — raise heater")
+        self._tr_a_bit_slow_monitor_slope         = QApplication.translate("tilauscope_roast_assistant", "A bit slow — monitor slope")
+        self._tpl_ideal_interval                  = QApplication.translate("tilauscope_roast_assistant", "Ideal interval {0}–{1} °/min")
+        self._tr_a_bit_high                       = QApplication.translate("tilauscope_roast_assistant", "A bit high")
+        self._tr_ror_too_high_reduce_heater       = QApplication.translate("tilauscope_roast_assistant", "RoR too high — reduce heater")
+        self._tr_natural_honey_extended_drying    = QApplication.translate("tilauscope_roast_assistant", "natural/honey process → extended drying phase expected")
+        self._tr_ror_too_low_for_estimation       = QApplication.translate("tilauscope_roast_assistant", "RoR too low for estimation")
+        self._tr_stabilizing_post_tp              = QApplication.translate("tilauscope_roast_assistant", "Stabilizing post-TP…")
+        self._tr_low_delta_uneven_conduction      = QApplication.translate("tilauscope_roast_assistant", "Low Delta — uneven conduction?")
+        self._tr_delta_high_heating_too_strong    = QApplication.translate("tilauscope_roast_assistant", "Delta is high — heating too strong?")
+        self._tr_drying_steady                    = QApplication.translate("tilauscope_roast_assistant", "Drying steady")
+        self._tr_flash_drying_risk                = QApplication.translate("tilauscope_roast_assistant", "Flash drying risk — check FIR power")
+        self._tr_premature_browning_detected      = QApplication.translate("tilauscope_roast_assistant", "⚠️ Premature browning detected!")
+        self._tr_ror_out_of_range_check_heater    = QApplication.translate("tilauscope_roast_assistant", "⚠ RoR out of range — check heater now")
+        self._tr_critical_gap_et_bt               = QApplication.translate("tilauscope_roast_assistant", "⚠ Critical Gap between ET/BT — dangerous thermic gradiant")
         # templates
-        self._tpl_humid_keep_moderate             = QApplication.translate("tilauscope_beancave", "humid ({0}%) → keep RoR moderate, longer drying ahead")
-        self._tpl_dry_beans_flash_risk            = QApplication.translate("tilauscope_beancave", "dry beans ({0}%) → watch for flash drying")
-        self._tpl_low_density_heat_faster         = QApplication.translate("tilauscope_beancave", "low density (ρ={0}) → heat transfer faster")
-        self._tpl_dense_bean_sustained_heat       = QApplication.translate("tilauscope_beancave", "dense bean (ρ={0}) → needs sustained heat")
-        self._tpl_drying_longer_than_plan         = QApplication.translate("tilauscope_beancave", "Drying running long: ~{0} vs plan {1} — raise heater")
-        self._tpl_extended_drying                 = QApplication.translate("tilauscope_beancave", "⚠ Extended drying: ~{0} vs plan {1} — baked risk, raise heater")
+        self._tpl_humid_keep_moderate             = QApplication.translate("tilauscope_roast_assistant", "humid ({0}%) → keep RoR moderate, longer drying ahead")
+        self._tpl_dry_beans_flash_risk            = QApplication.translate("tilauscope_roast_assistant", "dry beans ({0}%) → watch for flash drying")
+        self._tpl_low_density_heat_faster         = QApplication.translate("tilauscope_roast_assistant", "low density (ρ={0}) → heat transfer faster")
+        self._tpl_dense_bean_sustained_heat       = QApplication.translate("tilauscope_roast_assistant", "dense bean (ρ={0}) → needs sustained heat")
+        self._tpl_drying_longer_than_plan         = QApplication.translate("tilauscope_roast_assistant", "Drying running long: ~{0} vs plan {1} — raise heater")
+        self._tpl_extended_drying                 = QApplication.translate("tilauscope_roast_assistant", "⚠ Extended drying: ~{0} vs plan {1} — baked risk, raise heater")
         # B-layout labels
-        self._w_phase            = QApplication.translate("tilauscope_beancave", "DRYING")
-        self._w_stabilizing      = QApplication.translate("tilauscope_beancave", "STABILIZING")
-        self._w_in_band          = QApplication.translate("tilauscope_beancave", "RoR IN BAND")
-        self._w_drifting         = QApplication.translate("tilauscope_beancave", "RoR DRIFTING")
-        self._w_out_of_band      = QApplication.translate("tilauscope_beancave", "RoR OUT OF BAND")
-        self._tpl_band           = QApplication.translate("tilauscope_beancave", "band {0}–{1}")
-        self._tpl_target         = QApplication.translate("tilauscope_beancave", "target {0}")
-        self._tpl_bt_deg         = QApplication.translate("tilauscope_beancave", "BT {0}°")
-        self._tr_dry_end_now     = QApplication.translate("tilauscope_beancave", "DRY END now")
-        self._tpl_dry_end_clock  = QApplication.translate("tilauscope_beancave", "DRY END ~{0}")
-        self._tr_dry_end_na      = QApplication.translate("tilauscope_beancave", "DRY END --")
-        self._tpl_agtron         = QApplication.translate("tilauscope_beancave", "Ag {0}")
-        self._tpl_croc           = QApplication.translate("tilauscope_beancave", "cRoC {0}")
-        self._tpl_plan_delta     = QApplication.translate("tilauscope_beancave", "plan {0}")
+        self._w_phase            = QApplication.translate("tilauscope_roast_assistant", "DRYING")
+        self._w_stabilizing      = QApplication.translate("tilauscope_roast_assistant", "STABILIZING")
+        self._w_in_band          = QApplication.translate("tilauscope_roast_assistant", "RoR IN BAND")
+        self._w_drifting         = QApplication.translate("tilauscope_roast_assistant", "RoR DRIFTING")
+        self._w_out_of_band      = QApplication.translate("tilauscope_roast_assistant", "RoR OUT OF BAND")
+        self._tpl_band           = QApplication.translate("tilauscope_roast_assistant", "band {0}–{1}")
+        self._tpl_target         = QApplication.translate("tilauscope_roast_assistant", "target {0}")
+        self._tpl_bt_deg         = QApplication.translate("tilauscope_roast_assistant", "BT {0}°")
+        self._tr_dry_end_now     = QApplication.translate("tilauscope_roast_assistant", "DRY END now")
+        self._tpl_dry_end_clock  = QApplication.translate("tilauscope_roast_assistant", "DRY END ~{0}")
+        self._tr_dry_end_na      = QApplication.translate("tilauscope_roast_assistant", "DRY END --")
+        self._tpl_agtron         = QApplication.translate("tilauscope_roast_assistant", "Ag {0}")
+        self._tpl_croc           = QApplication.translate("tilauscope_roast_assistant", "cRoC {0}")
+        self._tpl_plan_delta     = QApplication.translate("tilauscope_roast_assistant", "plan {0}")
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -2355,7 +2355,7 @@ class _MaillardPage(QWidget):
         layout.setSpacing(9)
 
         self.hero = _HeroMetric(
-            QApplication.translate("tilauscope_beancave", "RoR Maillard"), "°/min", "#F9E2AF")
+            QApplication.translate("tilauscope_roast_assistant", "RoR Maillard"), "°/min", "#F9E2AF")
 
         prog_row = QHBoxLayout()
         prog_row.setSpacing(8)
@@ -2385,16 +2385,16 @@ class _MaillardPage(QWidget):
         _ctx_row = QHBoxLayout()
         _ctx_row.setSpacing(8)
         self.btn_fcs = _ContextButton(
-            QApplication.translate("tilauscope_beancave", "FC start"),
-            QApplication.translate("tilauscope_beancave", "near FC target"), style='dim')
+            QApplication.translate("tilauscope_roast_assistant", "FC start"),
+            QApplication.translate("tilauscope_roast_assistant", "near FC target"), style='dim')
         self.btn_fcs.clicked.connect(lambda: aw.qmc.markFCsSignal.emit(False))
         self.btn_fcs.setEnabled(False)
         # SC start (second crack) vit sur la page DÉVELOPPEMENT — le SC survient
         # après FC end, jamais en Maillard où le bouton restait mort ; le
         # retirer d'ici libère un slot (le panneau ne tient que ~3 boutons).
         self.btn_airwave = _ContextButton(
-            QApplication.translate("tilauscope_beancave", "AirWave"),
-            QApplication.translate("tilauscope_beancave", "MODE EXT"), style='dim')
+            QApplication.translate("tilauscope_roast_assistant", "AirWave"),
+            QApplication.translate("tilauscope_roast_assistant", "MODE EXT"), style='dim')
         self.btn_airwave.clicked.connect(lambda: _send_airwave_mode(aw, "MODE EXT"))
         self.btn_airwave.setEnabled(False)
         # One-tap : applique le prochain step de rampe heater au brûleur. Ne
@@ -2404,10 +2404,10 @@ class _MaillardPage(QWidget):
         # ce clic (design one-tap manuel validé).
         self._aw = aw
         self._pending_ramp: "tuple[float, int] | None" = None
-        self._tpl_set_burner = QApplication.translate("tilauscope_beancave", "Set burner {0}%")
-        self._tr_ramp_hint = QApplication.translate("tilauscope_beancave", "at {0}°")
+        self._tpl_set_burner = QApplication.translate("tilauscope_roast_assistant", "Set burner {0}%")
+        self._tr_ramp_hint = QApplication.translate("tilauscope_roast_assistant", "at {0}°")
         self.btn_ramp = _ContextButton(
-            QApplication.translate("tilauscope_beancave", "Set burner"), "", style='dim')
+            QApplication.translate("tilauscope_roast_assistant", "Set burner"), "", style='dim')
         self.btn_ramp.clicked.connect(self._on_apply_ramp)
         self.btn_ramp.setVisible(False)
         _ctx_row.addWidget(self.btn_fcs)
@@ -2429,31 +2429,31 @@ class _MaillardPage(QWidget):
         layout.addStretch(1)
 
         # ── Translation cache (hot-path: called every 1 Hz refresh) ──────────
-        self._tr_ror_too_low_baked               = QApplication.translate("tilauscope_beancave", "RoR too low → risk of baked coffee")
-        self._tr_ror_high_aromas_escaping        = QApplication.translate("tilauscope_beancave", "RoR is high → volatile aromas escaping")
-        self._tr_ideal_decrease                  = QApplication.translate("tilauscope_beancave", "Ideal decrease ✓")
-        self._tr_ror_is_ok                       = QApplication.translate("tilauscope_beancave", "RoR is OK")
-        self._tr_ror_increasing_watch_slope      = QApplication.translate("tilauscope_beancave", "RoR increasing — look after the slope")
-        self._tr_high_altitude                   = QApplication.translate("tilauscope_beancave", "High altitude")
-        self._tr_maillard_slower                 = QApplication.translate("tilauscope_beancave", "+Maillard slower")
-        self._tr_floral_early_fcs                = QApplication.translate("tilauscope_beancave", " · Floral profile → early FCs recommmended")
-        self._tr_ror_too_low_baked_banner        = QApplication.translate("tilauscope_beancave", "⚠ RoR too low — risk of baked coffee!")
-        self._tr_fcs_imminent                    = QApplication.translate("tilauscope_beancave", "⚠ FCs imminent — prepare next action")
-        self._tpl_extended_maillard              = QApplication.translate("tilauscope_beancave", "⚠ Extended Maillard ({0} proj. vs {1} plan) — baked risk, raise heat or anticipate FCs")
-        self._tpl_maillard_longer_than_plan      = QApplication.translate("tilauscope_beancave", "Maillard longer than plan ({0} vs {1}) — monitor RoR")
+        self._tr_ror_too_low_baked               = QApplication.translate("tilauscope_roast_assistant", "RoR too low → risk of baked coffee")
+        self._tr_ror_high_aromas_escaping        = QApplication.translate("tilauscope_roast_assistant", "RoR is high → volatile aromas escaping")
+        self._tr_ideal_decrease                  = QApplication.translate("tilauscope_roast_assistant", "Ideal decrease ✓")
+        self._tr_ror_is_ok                       = QApplication.translate("tilauscope_roast_assistant", "RoR is OK")
+        self._tr_ror_increasing_watch_slope      = QApplication.translate("tilauscope_roast_assistant", "RoR increasing — look after the slope")
+        self._tr_high_altitude                   = QApplication.translate("tilauscope_roast_assistant", "High altitude")
+        self._tr_maillard_slower                 = QApplication.translate("tilauscope_roast_assistant", "+Maillard slower")
+        self._tr_floral_early_fcs                = QApplication.translate("tilauscope_roast_assistant", " · Floral profile → early FCs recommmended")
+        self._tr_ror_too_low_baked_banner        = QApplication.translate("tilauscope_roast_assistant", "⚠ RoR too low — risk of baked coffee!")
+        self._tr_fcs_imminent                    = QApplication.translate("tilauscope_roast_assistant", "⚠ FCs imminent — prepare next action")
+        self._tpl_extended_maillard              = QApplication.translate("tilauscope_roast_assistant", "⚠ Extended Maillard ({0} proj. vs {1} plan) — baked risk, raise heat or anticipate FCs")
+        self._tpl_maillard_longer_than_plan      = QApplication.translate("tilauscope_roast_assistant", "Maillard longer than plan ({0} vs {1}) — monitor RoR")
         # B-layout labels
-        self._w_phase     = QApplication.translate("tilauscope_beancave", "MAILLARD")
-        self._w_on_track  = QApplication.translate("tilauscope_beancave", "RoR ON TRACK")
-        self._w_drifting  = QApplication.translate("tilauscope_beancave", "RoR DRIFTING")
-        self._w_baked     = QApplication.translate("tilauscope_beancave", "BAKED RISK")
-        self._w_na        = QApplication.translate("tilauscope_beancave", "RoR --")
-        self._tr_fcs_now  = QApplication.translate("tilauscope_beancave", "FCs now")
-        self._tr_fcs_na   = QApplication.translate("tilauscope_beancave", "FCs --")
-        self._tpl_fcs     = QApplication.translate("tilauscope_beancave", "FCs ~{0}")
-        self._tpl_gap_fc  = QApplication.translate("tilauscope_beancave", "GAP {0}°")
-        self._tpl_ratio   = QApplication.translate("tilauscope_beancave", "ratio {0}%")
-        self._tpl_plan_delta = QApplication.translate("tilauscope_beancave", "plan {0}")
-        self._tpl_next_step  = QApplication.translate("tilauscope_beancave", "next {0}% @{1}°")
+        self._w_phase     = QApplication.translate("tilauscope_roast_assistant", "MAILLARD")
+        self._w_on_track  = QApplication.translate("tilauscope_roast_assistant", "RoR ON TRACK")
+        self._w_drifting  = QApplication.translate("tilauscope_roast_assistant", "RoR DRIFTING")
+        self._w_baked     = QApplication.translate("tilauscope_roast_assistant", "BAKED RISK")
+        self._w_na        = QApplication.translate("tilauscope_roast_assistant", "RoR --")
+        self._tr_fcs_now  = QApplication.translate("tilauscope_roast_assistant", "FCs now")
+        self._tr_fcs_na   = QApplication.translate("tilauscope_roast_assistant", "FCs --")
+        self._tpl_fcs     = QApplication.translate("tilauscope_roast_assistant", "FCs ~{0}")
+        self._tpl_gap_fc  = QApplication.translate("tilauscope_roast_assistant", "GAP {0}°")
+        self._tpl_ratio   = QApplication.translate("tilauscope_roast_assistant", "ratio {0}%")
+        self._tpl_plan_delta = QApplication.translate("tilauscope_roast_assistant", "plan {0}")
+        self._tpl_next_step  = QApplication.translate("tilauscope_roast_assistant", "next {0}% @{1}°")
 
     def _set_progress(self, pct: float) -> None:
         pct = max(0.0, min(100.0, pct))
@@ -2680,7 +2680,7 @@ class _DevelopmentPage(QWidget):
         layout.setSpacing(9)
 
         self.hero = _HeroMetric(
-            QApplication.translate("tilauscope_beancave", "DTR realtime"), "%", "#F38BA8")
+            QApplication.translate("tilauscope_roast_assistant", "DTR realtime"), "%", "#F38BA8")
 
         prog_row = QHBoxLayout()
         prog_row.setSpacing(8)
@@ -2709,20 +2709,20 @@ class _DevelopmentPage(QWidget):
             ]))
 
         self.btn_drop = _ContextButton(
-            QApplication.translate("tilauscope_beancave", "Drop"),
-            QApplication.translate("tilauscope_beancave", "near drop target"), style='dim')
+            QApplication.translate("tilauscope_roast_assistant", "Drop"),
+            QApplication.translate("tilauscope_roast_assistant", "near drop target"), style='dim')
         self.btn_drop.clicked.connect(lambda: aw.qmc.markDropSignal.emit(False))
         # SC start (second crack) — déplacé ici depuis Maillard : le SC survient
         # en développement, après FC end. Ne s'affiche que lorsqu'il devient
         # pertinent (FC end marqué) pour ne pas encombrer les roasts clairs.
         self.btn_scs = _ContextButton(
-            QApplication.translate("tilauscope_beancave", "SC start"),
-            QApplication.translate("tilauscope_beancave", "after FC end"), style='dim')
+            QApplication.translate("tilauscope_roast_assistant", "SC start"),
+            QApplication.translate("tilauscope_roast_assistant", "after FC end"), style='dim')
         self.btn_scs.clicked.connect(lambda: aw.qmc.markSCsSignal.emit(False))
         self.btn_scs.setVisible(False)
         self.btn_airwave = _ContextButton(
-            QApplication.translate("tilauscope_beancave", "AirWave"),
-            QApplication.translate("tilauscope_beancave", "MODE EXT"), style='dim')
+            QApplication.translate("tilauscope_roast_assistant", "AirWave"),
+            QApplication.translate("tilauscope_roast_assistant", "MODE EXT"), style='dim')
         self.btn_airwave.clicked.connect(lambda: _send_airwave_mode(aw, "MODE EXT"))
         self.btn_airwave.setEnabled(False)
 
@@ -2747,30 +2747,30 @@ class _DevelopmentPage(QWidget):
         layout.addStretch(1)
 
         # ── Translation cache (hot-path: called every 1 Hz refresh) ──────────
-        self._tr_ror_crash_baked_risk            = QApplication.translate("tilauscope_beancave", "RoR crash → baked risk, either DROP or HEAT")
-        self._tr_drop_prefix                     = QApplication.translate("tilauscope_beancave", "→ DROP ")
-        self._tr_ror_dev_normal                  = QApplication.translate("tilauscope_beancave", "RoR DEV is normal")
-        self._tr_in_target_range_envisage_drop   = QApplication.translate("tilauscope_beancave", "in target range → envisage DROP")
-        self._tr_ror_crash_drop_now              = QApplication.translate("tilauscope_beancave", "⚠ RoR crash detected — DROP now or start heating again!")
-        self._tr_drop_20sec                      = QApplication.translate("tilauscope_beancave", "⏱ DROP in less than 20 seconds — get ready!")
-        self._tr_dtr_target_reached              = QApplication.translate("tilauscope_beancave", "DTR target reached")
-        self._tr_dtr_near_target                 = QApplication.translate("tilauscope_beancave", "DTR near target")
-        self._tr_near_drop_target                = QApplication.translate("tilauscope_beancave", "near drop target")
-        self._tr_color_in_target_range           = QApplication.translate("tilauscope_beancave", "color in target range")
+        self._tr_ror_crash_baked_risk            = QApplication.translate("tilauscope_roast_assistant", "RoR crash → baked risk, either DROP or HEAT")
+        self._tr_drop_prefix                     = QApplication.translate("tilauscope_roast_assistant", "→ DROP ")
+        self._tr_ror_dev_normal                  = QApplication.translate("tilauscope_roast_assistant", "RoR DEV is normal")
+        self._tr_in_target_range_envisage_drop   = QApplication.translate("tilauscope_roast_assistant", "in target range → envisage DROP")
+        self._tr_ror_crash_drop_now              = QApplication.translate("tilauscope_roast_assistant", "⚠ RoR crash detected — DROP now or start heating again!")
+        self._tr_drop_20sec                      = QApplication.translate("tilauscope_roast_assistant", "⏱ DROP in less than 20 seconds — get ready!")
+        self._tr_dtr_target_reached              = QApplication.translate("tilauscope_roast_assistant", "DTR target reached")
+        self._tr_dtr_near_target                 = QApplication.translate("tilauscope_roast_assistant", "DTR near target")
+        self._tr_near_drop_target                = QApplication.translate("tilauscope_roast_assistant", "near drop target")
+        self._tr_color_in_target_range           = QApplication.translate("tilauscope_roast_assistant", "color in target range")
         # B-layout labels
-        self._w_phase     = QApplication.translate("tilauscope_beancave", "DEVELOPMENT")
-        self._w_on_target = QApplication.translate("tilauscope_beancave", "DTR ON TARGET")
-        self._w_drifting  = QApplication.translate("tilauscope_beancave", "DTR DRIFTING")
-        self._w_off       = QApplication.translate("tilauscope_beancave", "DTR OFF TARGET")
-        self._w_na        = QApplication.translate("tilauscope_beancave", "DTR --")
-        self._tr_drop_now = QApplication.translate("tilauscope_beancave", "DROP now")
-        self._tr_drop_na  = QApplication.translate("tilauscope_beancave", "DROP --")
-        self._tpl_target_pct = QApplication.translate("tilauscope_beancave", "target {0}%")
-        self._tpl_drop_clock = QApplication.translate("tilauscope_beancave", "DROP ~{0}")
-        self._tpl_ror        = QApplication.translate("tilauscope_beancave", "RoR {0}")
-        self._tpl_col        = QApplication.translate("tilauscope_beancave", "col {0}")
-        self._tpl_ag_pred    = QApplication.translate("tilauscope_beancave", "~Ag {0}")
-        self._tpl_dtr_proj   = QApplication.translate("tilauscope_beancave", "final {0}%")
+        self._w_phase     = QApplication.translate("tilauscope_roast_assistant", "DEVELOPMENT")
+        self._w_on_target = QApplication.translate("tilauscope_roast_assistant", "DTR ON TARGET")
+        self._w_drifting  = QApplication.translate("tilauscope_roast_assistant", "DTR DRIFTING")
+        self._w_off       = QApplication.translate("tilauscope_roast_assistant", "DTR OFF TARGET")
+        self._w_na        = QApplication.translate("tilauscope_roast_assistant", "DTR --")
+        self._tr_drop_now = QApplication.translate("tilauscope_roast_assistant", "DROP now")
+        self._tr_drop_na  = QApplication.translate("tilauscope_roast_assistant", "DROP --")
+        self._tpl_target_pct = QApplication.translate("tilauscope_roast_assistant", "target {0}%")
+        self._tpl_drop_clock = QApplication.translate("tilauscope_roast_assistant", "DROP ~{0}")
+        self._tpl_ror        = QApplication.translate("tilauscope_roast_assistant", "RoR {0}")
+        self._tpl_col        = QApplication.translate("tilauscope_roast_assistant", "col {0}")
+        self._tpl_ag_pred    = QApplication.translate("tilauscope_roast_assistant", "~Ag {0}")
+        self._tpl_dtr_proj   = QApplication.translate("tilauscope_roast_assistant", "final {0}%")
 
     def _set_progress(self, pct: float) -> None:
         pct = max(0.0, min(100.0, pct))
@@ -3006,7 +3006,7 @@ class _CoolingPage(QWidget):
 
         # ── Hero — BT (watched while it falls) ────────────────────────────
         self.hero = _HeroMetric(
-            QApplication.translate("tilauscope_beancave", "Bean Temp"), "°", "#89B4FA")
+            QApplication.translate("tilauscope_roast_assistant", "Bean Temp"), "°", "#89B4FA")
 
         # ── Progress — drop BT → safe target ──────────────────────────────
         self._prog_row = QHBoxLayout()
@@ -3031,8 +3031,8 @@ class _CoolingPage(QWidget):
 
         # ── Bouton Cool End ───────────────────────────────────────────────────
         self.btn_cool_end = _ContextButton(
-            QApplication.translate("tilauscope_beancave", "Cool end"),
-            QApplication.translate("tilauscope_beancave", "BT ≤ 40°"),
+            QApplication.translate("tilauscope_roast_assistant", "Cool end"),
+            QApplication.translate("tilauscope_roast_assistant", "BT ≤ 40°"),
             style='dim',
         )
         self.btn_cool_end.clicked.connect(lambda: aw.qmc.markCoolSignal.emit(False))
@@ -3045,14 +3045,14 @@ class _CoolingPage(QWidget):
         # franchissement du seuil ; second clic = désarmement. Mode batch :
         # pas de formulaire de résultat, alog sauvé incomplet (Repair ALogs).
         self.btn_relaunch = _ContextButton(
-            QApplication.translate("tilauscope_beancave", "Restart batch"),
-            QApplication.translate("tilauscope_beancave", "save incomplete → preheat, same bean"),
+            QApplication.translate("tilauscope_roast_assistant", "Restart batch"),
+            QApplication.translate("tilauscope_roast_assistant", "save incomplete → preheat, same bean"),
             style='dim',
         )
         self._relaunch_base_text = self.btn_relaunch.text()
         self._tpl_relaunch_armed = (
-            QApplication.translate("tilauscope_beancave", "⏳ Armed — cancel")
-            + "\n" + QApplication.translate("tilauscope_beancave", "auto relaunch at {0}°"))
+            QApplication.translate("tilauscope_roast_assistant", "⏳ Armed — cancel")
+            + "\n" + QApplication.translate("tilauscope_roast_assistant", "auto relaunch at {0}°"))
         self._relaunch_armed = False
         self._bbp_ready = False
         self.btn_relaunch.clicked.connect(self._on_relaunch)
@@ -3068,7 +3068,7 @@ class _CoolingPage(QWidget):
         eor_layout.setContentsMargins(10, 8, 10, 8)
         eor_layout.setSpacing(4)
 
-        eor_title = QLabel(QApplication.translate("tilauscope_beancave", "ROAST SUMMARY"))
+        eor_title = QLabel(QApplication.translate("tilauscope_roast_assistant", "ROAST SUMMARY"))
         eor_title.setStyleSheet(
             f"color: #585B70; font-size: 9px; font-weight: 800; {_FONT} letter-spacing: 0.8px;"
         )
@@ -3107,12 +3107,12 @@ class _CoolingPage(QWidget):
             eor_layout.addWidget(sep)
             return l, v
 
-        _, self._eor_dry_val   = _eor_row(QApplication.translate("tilauscope_beancave", "Dry"))
-        _, self._eor_mai_val   = _eor_row(QApplication.translate("tilauscope_beancave", "Maillard"))
-        _, self._eor_dev_val   = _eor_row(QApplication.translate("tilauscope_beancave", "Dev"))
-        _, self._eor_dtr2_val  = _eor_row(QApplication.translate("tilauscope_beancave", "DTR vs target"))
-        _, self._eor_col2_val  = _eor_row(QApplication.translate("tilauscope_beancave", "Color vs target"))
-        _, self._eor_fcdrop_val= _eor_row(QApplication.translate("tilauscope_beancave", "FC · Drop BT"))
+        _, self._eor_dry_val   = _eor_row(QApplication.translate("tilauscope_roast_assistant", "Dry"))
+        _, self._eor_mai_val   = _eor_row(QApplication.translate("tilauscope_roast_assistant", "Maillard"))
+        _, self._eor_dev_val   = _eor_row(QApplication.translate("tilauscope_roast_assistant", "Dev"))
+        _, self._eor_dtr2_val  = _eor_row(QApplication.translate("tilauscope_roast_assistant", "DTR vs target"))
+        _, self._eor_col2_val  = _eor_row(QApplication.translate("tilauscope_roast_assistant", "Color vs target"))
+        _, self._eor_fcdrop_val= _eor_row(QApplication.translate("tilauscope_roast_assistant", "FC · Drop BT"))
 
         # ── Colour → next plan (F1 bench integration) ── ## TILAU ## ───────────
         # Announces (display only) the correction the colour→drop_bt learning
@@ -3124,7 +3124,7 @@ class _CoolingPage(QWidget):
         _cn_v.setContentsMargins(0, 4, 0, 0)
         _cn_v.setSpacing(2)
         _cn_title = QLabel(
-            QApplication.translate("tilauscope_beancave", "COLOUR → NEXT PLAN"))
+            QApplication.translate("tilauscope_roast_assistant", "COLOUR → NEXT PLAN"))
         _cn_title.setStyleSheet(
             f"color: #585B70; font-size: 9px; font-weight: 800; {_FONT} letter-spacing: 0.8px;")
         _cn_v.addWidget(_cn_title)
@@ -3146,7 +3146,7 @@ class _CoolingPage(QWidget):
         _traj_v.setSpacing(4)
 
         _traj_title = QLabel(
-            QApplication.translate("tilauscope_beancave", "TRAJECTORY vs PLAN"))
+            QApplication.translate("tilauscope_roast_assistant", "TRAJECTORY vs PLAN"))
         _traj_title.setStyleSheet(
             f"color: #585B70; font-size: 9px; font-weight: 800; {_FONT} letter-spacing: 0.8px;")
         _traj_v.addWidget(_traj_title)
@@ -3174,11 +3174,11 @@ class _CoolingPage(QWidget):
             return dot, v
 
         self._eor_traj_dry_dot, self._eor_traj_dry_val = _traj_row(
-            QApplication.translate("tilauscope_beancave", "Drying"))
+            QApplication.translate("tilauscope_roast_assistant", "Drying"))
         self._eor_traj_mai_dot, self._eor_traj_mai_val = _traj_row(
-            QApplication.translate("tilauscope_beancave", "Maillard"))
+            QApplication.translate("tilauscope_roast_assistant", "Maillard"))
         self._eor_traj_dev_dot, self._eor_traj_dev_val = _traj_row(
-            QApplication.translate("tilauscope_beancave", "Development"))
+            QApplication.translate("tilauscope_roast_assistant", "Development"))
 
         eor_layout.addWidget(self._eor_traj_box)
         self._eor_traj_box.hide()
@@ -3187,7 +3187,7 @@ class _CoolingPage(QWidget):
         _eor_acts = QHBoxLayout()
         _eor_acts.setSpacing(8)
         self._eor_btn_notes = QPushButton(
-            QApplication.translate("tilauscope_beancave", "Notes"))
+            QApplication.translate("tilauscope_roast_assistant", "Notes"))
         self._eor_btn_notes.setStyleSheet(
             f"QPushButton {{ border: 1px solid {_BORDER}; border-radius: 6px; "
             f"color: #CDD6F4; font-size: 10px; font-weight: 700; {_FONT} "
@@ -3195,7 +3195,7 @@ class _CoolingPage(QWidget):
             f"QPushButton:hover {{ background: {_SURFACE}; }}"
         )
         self._eor_btn_result = QPushButton(
-            QApplication.translate("tilauscope_beancave", "Result form"))
+            QApplication.translate("tilauscope_roast_assistant", "Result form"))
         self._eor_btn_result.setStyleSheet(
             f"QPushButton {{ border: 1.5px solid #CBA6F7; border-radius: 6px; "
             f"color: #CBA6F7; font-size: 10px; font-weight: 700; {_FONT} "
@@ -3207,7 +3207,7 @@ class _CoolingPage(QWidget):
         # qmc.tilau_exclude_learning, persisté dans l'alog au save, et
         # l'analyse historique du plan saute le fichier pour toujours.
         self._eor_btn_exclude = QPushButton(
-            QApplication.translate("tilauscope_beancave", "🚫 Exclude from learning"))
+            QApplication.translate("tilauscope_roast_assistant", "🚫 Exclude from learning"))
         self._eor_btn_exclude.setCheckable(True)
         self._eor_btn_exclude.setStyleSheet(
             f"QPushButton {{ border: 1px solid {_BORDER}; border-radius: 6px; "
@@ -3234,48 +3234,48 @@ class _CoolingPage(QWidget):
         layout.addWidget(self._eor_frame)
 
         # ── Translation cache (hot-path: called every 1 Hz refresh) ──────────
-        self._tr_effective_cooling               = QApplication.translate("tilauscope_beancave", "Effective cooling")
-        self._tr_slow_cooling_increase_airflow   = QApplication.translate("tilauscope_beancave", "Slow cooling - Increase airflow")
-        self._tr_reached                         = QApplication.translate("tilauscope_beancave", "Reached")
-        self._tr_until                           = QApplication.translate("tilauscope_beancave", "Until")
-        self._tr_beans_not_cooling_fire          = QApplication.translate("tilauscope_beancave", "⚠ BEANS NOT COOLING - RISK OF FIRE")
-        self._tr_target_reached_proceed          = QApplication.translate("tilauscope_beancave", "✅ Target reached. You can proceed.")
+        self._tr_effective_cooling               = QApplication.translate("tilauscope_roast_assistant", "Effective cooling")
+        self._tr_slow_cooling_increase_airflow   = QApplication.translate("tilauscope_roast_assistant", "Slow cooling - Increase airflow")
+        self._tr_reached                         = QApplication.translate("tilauscope_roast_assistant", "Reached")
+        self._tr_until                           = QApplication.translate("tilauscope_roast_assistant", "Until")
+        self._tr_beans_not_cooling_fire          = QApplication.translate("tilauscope_roast_assistant", "⚠ BEANS NOT COOLING - RISK OF FIRE")
+        self._tr_target_reached_proceed          = QApplication.translate("tilauscope_roast_assistant", "✅ Target reached. You can proceed.")
         # template
-        self._tpl_back_to_back                   = QApplication.translate("tilauscope_beancave", "🔄 **Back-to-Back Mode**:\nKeep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Stabilization phase for the next batch.")
+        self._tpl_back_to_back                   = QApplication.translate("tilauscope_roast_assistant", "🔄 **Back-to-Back Mode**:\nKeep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Stabilization phase for the next batch.")
         # B-layout labels + condensed coach lines
-        self._w_phase         = QApplication.translate("tilauscope_beancave", "COOLING")
-        self._w_in_progress   = QApplication.translate("tilauscope_beancave", "IN PROGRESS")
-        self._w_safe          = QApplication.translate("tilauscope_beancave", "SAFE")
-        self._w_not_cooling   = QApplication.translate("tilauscope_beancave", "NOT COOLING")
-        self._tr_safe_na      = QApplication.translate("tilauscope_beancave", "SAFE --")
-        self._tr_safe_now     = QApplication.translate("tilauscope_beancave", "SAFE now")
-        self._tpl_safe_clock  = QApplication.translate("tilauscope_beancave", "SAFE ~{0}")
-        self._tpl_et_deg      = QApplication.translate("tilauscope_beancave", "ET {0}°")
-        self._tpl_cool_ror    = QApplication.translate("tilauscope_beancave", "RoR {0} °/min")
-        self._tr_coach_shutdown   = QApplication.translate("tilauscope_beancave", "Open drum door & cooling tray, keep drum spinning. Don't cut main power until BT < 50°.")
-        self._tpl_coach_back2back = QApplication.translate("tilauscope_beancave", "Keep airflow high until ET drops; at ~{0}° switch to preheat for the next batch.")
+        self._w_phase         = QApplication.translate("tilauscope_roast_assistant", "COOLING")
+        self._w_in_progress   = QApplication.translate("tilauscope_roast_assistant", "IN PROGRESS")
+        self._w_safe          = QApplication.translate("tilauscope_roast_assistant", "SAFE")
+        self._w_not_cooling   = QApplication.translate("tilauscope_roast_assistant", "NOT COOLING")
+        self._tr_safe_na      = QApplication.translate("tilauscope_roast_assistant", "SAFE --")
+        self._tr_safe_now     = QApplication.translate("tilauscope_roast_assistant", "SAFE now")
+        self._tpl_safe_clock  = QApplication.translate("tilauscope_roast_assistant", "SAFE ~{0}")
+        self._tpl_et_deg      = QApplication.translate("tilauscope_roast_assistant", "ET {0}°")
+        self._tpl_cool_ror    = QApplication.translate("tilauscope_roast_assistant", "RoR {0} °/min")
+        self._tr_coach_shutdown   = QApplication.translate("tilauscope_roast_assistant", "Open drum door & cooling tray, keep drum spinning. Don't cut main power until BT < 50°.")
+        self._tpl_coach_back2back = QApplication.translate("tilauscope_roast_assistant", "Keep airflow high until ET drops; at ~{0}° switch to preheat for the next batch.")
         # _soak_hint() runs on every refresh() tick during COOLING — must not
         # re-translate per tick.
         self._tpl_soak_hint = QApplication.translate(
-            "tilauscope_beancave", "next batch: charge {0}° (heat soak) — neutral in ~{1} min")
+            "tilauscope_roast_assistant", "next batch: charge {0}° (heat soak) — neutral in ~{1} min")
         # Trajectory-vs-plan verdicts (end-of-roast summary)
-        self._tr_traj_drying      = QApplication.translate("tilauscope_beancave", "Drying")
-        self._tr_traj_maillard    = QApplication.translate("tilauscope_beancave", "Maillard")
-        self._tr_traj_dev         = QApplication.translate("tilauscope_beancave", "Development")
-        self._tr_traj_inplan      = QApplication.translate("tilauscope_beancave", "on plan")
-        self._tr_traj_hotter      = QApplication.translate("tilauscope_beancave", "hotter")
-        self._tr_traj_cooler      = QApplication.translate("tilauscope_beancave", "cooler")
-        self._tr_traj_good        = QApplication.translate("tilauscope_beancave", "Trajectory well held across all phases.")
-        self._tpl_traj_slight     = QApplication.translate("tilauscope_beancave", "Well held — slight drift in {0}.")
-        self._tpl_traj_off        = QApplication.translate("tilauscope_beancave", "Marked drift in {0} ({1}).")
+        self._tr_traj_drying      = QApplication.translate("tilauscope_roast_assistant", "Drying")
+        self._tr_traj_maillard    = QApplication.translate("tilauscope_roast_assistant", "Maillard")
+        self._tr_traj_dev         = QApplication.translate("tilauscope_roast_assistant", "Development")
+        self._tr_traj_inplan      = QApplication.translate("tilauscope_roast_assistant", "on plan")
+        self._tr_traj_hotter      = QApplication.translate("tilauscope_roast_assistant", "hotter")
+        self._tr_traj_cooler      = QApplication.translate("tilauscope_roast_assistant", "cooler")
+        self._tr_traj_good        = QApplication.translate("tilauscope_roast_assistant", "Trajectory well held across all phases.")
+        self._tpl_traj_slight     = QApplication.translate("tilauscope_roast_assistant", "Well held — slight drift in {0}.")
+        self._tpl_traj_off        = QApplication.translate("tilauscope_roast_assistant", "Marked drift in {0} ({1}).")
         # Colour → next plan (F1) ── ## TILAU ##
         self._tpl_color_ontarget  = QApplication.translate(
-            "tilauscope_beancave", "🎨 Colour {0} · target {1} (±{2}) — on target, next plan unchanged")
+            "tilauscope_roast_assistant", "🎨 Colour {0} · target {1} (±{2}) — on target, next plan unchanged")
         self._tpl_color_next      = QApplication.translate(
-            "tilauscope_beancave", "🎨 Colour {0} · target {1} (±{2}) — {3} by {4} pts"
+            "tilauscope_roast_assistant", "🎨 Colour {0} · target {1} (±{2}) — {3} by {4} pts"
                 "<br>→ Next plan: <b>{5} °C at drop</b> · ≈ {6} pt DTR")
-        self._tr_color_too_light  = QApplication.translate("tilauscope_beancave", "too light")
-        self._tr_color_too_dark   = QApplication.translate("tilauscope_beancave", "too dark")
+        self._tr_color_too_light  = QApplication.translate("tilauscope_roast_assistant", "too light")
+        self._tr_color_too_dark   = QApplication.translate("tilauscope_roast_assistant", "too dark")
 
     def _set_progress(self, pct: float) -> None:
         pct = max(0.0, min(100.0, pct))
@@ -3891,11 +3891,11 @@ class _SetupBar(QFrame):
         bean_hdr = QHBoxLayout()
         bean_hdr.setContentsMargins(0, 0, 0, 0)
         bean_hdr.setSpacing(6)
-        self._lbl_bean = QLabel(QApplication.translate("tilauscope_beancave", "Green Bean").upper())
+        self._lbl_bean = QLabel(QApplication.translate("tilauscope_roast_assistant", "Green Bean").upper())
         self.btn_anchor = QPushButton("⤢")
         self.btn_anchor.setFixedSize(34, 28)
         self.btn_anchor.setToolTip(QApplication.translate(
-            "tilauscope_beancave", "Anchor / float the assistant panel"))
+            "tilauscope_roast_assistant", "Anchor / float the assistant panel"))
         # Explicit QToolTip rule so the tooltip keeps its dark style even when
         # the body is embedded in the anchored host (no inherited app style).
         self.btn_anchor.setStyleSheet(f"""
@@ -3916,7 +3916,7 @@ class _SetupBar(QFrame):
         self.combo_bean.setView(QListView())
         self.combo_bean.setItemDelegate(QStyledItemDelegate())
         self.combo_bean.setStyleSheet(self._COMBO_STYLE)
-        self.combo_bean.setToolTip(QApplication.translate("tilauscope_beancave","Green bean selected for this assistant"))
+        self.combo_bean.setToolTip(QApplication.translate("tilauscope_roast_assistant","Green bean selected for this assistant"))
         self.combo_bean.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
@@ -3928,12 +3928,12 @@ class _SetupBar(QFrame):
         row2 = QVBoxLayout()
         row2.setSpacing(4)
 
-        self._lbl_agtron = QLabel(QApplication.translate("tilauscope_beancave","ROASTING TARGET"))
+        self._lbl_agtron = QLabel(QApplication.translate("tilauscope_roast_assistant","ROASTING TARGET"))
         self.combo_agtron = QComboBox()
         self.combo_agtron.setView(QListView())
         self.combo_agtron.setItemDelegate(QStyledItemDelegate())
         self.combo_agtron.setStyleSheet(self._COMBO_STYLE)
-        self.combo_agtron.setToolTip(QApplication.translate("tilauscope_beancave","Target roasting level (Agtron scale)"))
+        self.combo_agtron.setToolTip(QApplication.translate("tilauscope_roast_assistant","Target roasting level (Agtron scale)"))
         self.combo_agtron.setMinimumHeight(32)
         for a in _AGTRON_CHOICES:
             self.combo_agtron.addItem(f"{a.name}  –  {a.description}", userData=a)
@@ -3972,7 +3972,7 @@ class _SetupBar(QFrame):
             ## TILAU ## a bean only listed because it is the one being roasted
             ## (bottom of the bag) is flagged so the operator is not surprised.
             if (getattr(b, "weight_left", 0.0) or 0.0) <= 0:
-                label += QApplication.translate("tilauscope_beancave", " (empty stock)")
+                label += QApplication.translate("tilauscope_roast_assistant", " (empty stock)")
             self.combo_bean.addItem(label, userData=b)
             if current_uuid and b.uuid == current_uuid:
                 select_idx = i
@@ -4031,7 +4031,7 @@ class _BeanHeader(QFrame):
         self.btn_toggle = QPushButton("▶")
         self.btn_toggle.setFixedSize(44, 32)
         self.btn_toggle.setCheckable(True)
-        self.btn_toggle.setToolTip(QApplication.translate("tilauscope_beancave","Start / Stop assistant"))
+        self.btn_toggle.setToolTip(QApplication.translate("tilauscope_roast_assistant","Start / Stop assistant"))
         self._set_btn_style(False)
 
         ## TILAU ## AutoPilot chip-button (AutoRoast-Spec §5) — left of ▶/⏸, the
@@ -4042,7 +4042,7 @@ class _BeanHeader(QFrame):
         self.btn_auto.setMinimumWidth(66)
         self.btn_auto.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_auto.setToolTip(QApplication.translate(
-            "tilauscope_beancave", "Auto mode: the roast plan drives the levers. Tap to arm / disarm."))
+            "tilauscope_roast_assistant", "Auto mode: the roast plan drives the levers. Tap to arm / disarm."))
         self.set_auto_state("off")
 
         name_row.addWidget(self._lbl_batch)
@@ -4116,7 +4116,7 @@ class _BeanHeader(QFrame):
     def update_bean(self, bean: GreenBean|None,
                     agtron: AgtronScale|None) -> None:
         if bean is None:
-            self._lbl_name.setText(QApplication.translate("tilauscope_beancave","No green been has been selected"))
+            self._lbl_name.setText(QApplication.translate("tilauscope_roast_assistant","No green been has been selected"))
             self._lbl_details.setText("")
             return
         self._lbl_name.setText(bean.name)
@@ -4226,7 +4226,7 @@ class _AutoCockpitPage(QWidget):
             fr.tapped.connect(self.lever_tapped)
             fr.setCursor(Qt.CursorShape.PointingHandCursor)
             fr.setToolTip(QApplication.translate(
-                "tilauscope_beancave", "Tap to take over this roast (pauses AUTO)"))
+                "tilauscope_roast_assistant", "Tap to take over this roast (pauses AUTO)"))
             tl = QVBoxLayout(fr)
             tl.setContentsMargins(4, 10, 4, 10)
             tl.setSpacing(2)
@@ -4503,9 +4503,9 @@ class RoastAssistantPanel(QWidget):
         # #10 : bandeau « jalon détecté — confirmer ? » (bip one-shot par suggestion)
         self._last_milestone_beep_t: "float | None" = None
         self._tr_confirm_de = QApplication.translate(
-            "tilauscope_beancave", "👂 DRY END detected — tap to confirm")
+            "tilauscope_roast_assistant", "👂 DRY END detected — tap to confirm")
         self._tr_confirm_fc = QApplication.translate(
-            "tilauscope_beancave", "👂 FC detected — tap to confirm")
+            "tilauscope_roast_assistant", "👂 FC detected — tap to confirm")
         self._relaunch_requested: bool = False  # relance back-to-back : forcer le redémarrage assistant
 
         # ── Fenêtre d'inertie burner (coach quantifié) ─────────────────────  ## TILAU ##
@@ -4524,38 +4524,38 @@ class RoastAssistantPanel(QWidget):
         self._ap_bt_prev: "float | None" = None   # BT du tick précédent (franchissement montant de rampe)
         self._ap_charge_settle_until: float = 0.0  # seam CHARGE : fenêtre de grâce anti-pause (handoff PID préchauffe→roast)
         self._tr_ap_blocked_lowconf = QApplication.translate(
-            "tilauscope_beancave", "AUTO unavailable — plan confidence is too low for this roast")
+            "tilauscope_roast_assistant", "AUTO unavailable — plan confidence is too low for this roast")
         self._tr_ap_blocked_noplan = QApplication.translate(
-            "tilauscope_beancave", "AUTO unavailable — no roast plan for this session")
+            "tilauscope_roast_assistant", "AUTO unavailable — no roast plan for this session")
         self._tr_ap_armed_note = QApplication.translate(
-            "tilauscope_beancave", "⚙ AUTO armed — the plan drives the levers at each phase")
+            "tilauscope_roast_assistant", "⚙ AUTO armed — the plan drives the levers at each phase")
         self._tr_ap_paused_note = QApplication.translate(
-            "tilauscope_beancave", "⏸ AUTO paused — manual input detected. Tap AUTO to resume.")
+            "tilauscope_roast_assistant", "⏸ AUTO paused — manual input detected. Tap AUTO to resume.")
         self._tr_ap_off_note = QApplication.translate(
-            "tilauscope_beancave", "AUTO off — you have full control")
-        self._tpl_ap_phase = QApplication.translate("tilauscope_beancave", "⚙ AUTO · {0} → {1}")
-        self._tpl_ap_ramp = QApplication.translate("tilauscope_beancave", "⚙ AUTO · Burner → {0}% (ramp at {1}°)")
+            "tilauscope_roast_assistant", "AUTO off — you have full control")
+        self._tpl_ap_phase = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · {0} → {1}")
+        self._tpl_ap_ramp = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · Burner → {0}% (ramp at {1}°)")
         self._tpl_ap_cool = QApplication.translate(
-            "tilauscope_beancave", "⚙ AUTO · DROP → cooling ({0}) — AUTO done, you have full control")
+            "tilauscope_roast_assistant", "⚙ AUTO · DROP → cooling ({0}) — AUTO done, you have full control")
         ## TILAU ## vue cockpit (v6) — dernière action + flashes tuiles + textes
         self._ap_last_action: "tuple[str, float] | None" = None   # (texte, t_mono)
         self._ap_lever_flash: dict[int, float] = {}               # idx → t_mono de la pose
         self._ap_automark_done: set[str] = set()                  # "DE"/"FC" one-shot
-        self._tr_cp_pilot   = QApplication.translate("tilauscope_beancave", "● AUTO PILOTING")
-        self._tr_cp_paused  = QApplication.translate("tilauscope_beancave", "⏸ AUTO PAUSED")
-        self._tr_cp_onplan  = QApplication.translate("tilauscope_beancave", "ON PLAN ✓")
-        self._tr_cp_drift_h = QApplication.translate("tilauscope_beancave", "DRIFTING ↑")
-        self._tr_cp_drift_l = QApplication.translate("tilauscope_beancave", "DRIFTING ↓")
-        self._tr_cp_follow  = QApplication.translate("tilauscope_beancave", "FOLLOWING PLAN")
-        self._tr_cp_pausest = QApplication.translate("tilauscope_beancave", "PAUSED — tap AUTO")
-        self._tr_cp_waiting = QApplication.translate("tilauscope_beancave", "⚙ following the plan")
-        self._tpl_cp_ago    = QApplication.translate("tilauscope_beancave", "{0}s ago")
-        self._tr_cp_justnow = QApplication.translate("tilauscope_beancave", "just now")
-        self._tpl_ap_marked = QApplication.translate("tilauscope_beancave", "⚙ {0} marked (auto)")
+        self._tr_cp_pilot   = QApplication.translate("tilauscope_roast_assistant", "● AUTO PILOTING")
+        self._tr_cp_paused  = QApplication.translate("tilauscope_roast_assistant", "⏸ AUTO PAUSED")
+        self._tr_cp_onplan  = QApplication.translate("tilauscope_roast_assistant", "ON PLAN ✓")
+        self._tr_cp_drift_h = QApplication.translate("tilauscope_roast_assistant", "DRIFTING ↑")
+        self._tr_cp_drift_l = QApplication.translate("tilauscope_roast_assistant", "DRIFTING ↓")
+        self._tr_cp_follow  = QApplication.translate("tilauscope_roast_assistant", "FOLLOWING PLAN")
+        self._tr_cp_pausest = QApplication.translate("tilauscope_roast_assistant", "PAUSED — tap AUTO")
+        self._tr_cp_waiting = QApplication.translate("tilauscope_roast_assistant", "⚙ following the plan")
+        self._tpl_cp_ago    = QApplication.translate("tilauscope_roast_assistant", "{0}s ago")
+        self._tr_cp_justnow = QApplication.translate("tilauscope_roast_assistant", "just now")
+        self._tpl_ap_marked = QApplication.translate("tilauscope_roast_assistant", "⚙ {0} marked (auto)")
         self._cp_phase_words = {
-            self._PHASE_DRY: QApplication.translate("tilauscope_beancave", "DRYING"),
-            self._PHASE_MAI: QApplication.translate("tilauscope_beancave", "MAILLARD"),
-            self._PHASE_DEV: QApplication.translate("tilauscope_beancave", "DEVELOPMENT"),
+            self._PHASE_DRY: QApplication.translate("tilauscope_roast_assistant", "DRYING"),
+            self._PHASE_MAI: QApplication.translate("tilauscope_roast_assistant", "MAILLARD"),
+            self._PHASE_DEV: QApplication.translate("tilauscope_roast_assistant", "DEVELOPMENT"),
         }
         self._cp_ms_words = {
             self._PHASE_DRY: "DE", self._PHASE_MAI: "FC", self._PHASE_DEV: "DROP",
@@ -4563,18 +4563,18 @@ class RoastAssistantPanel(QWidget):
         ## TILAU ## jalons en cockpit : bouton contextuel + auto-DROP plan (10 s annulables)
         self._ap_drop_deadline: "float | None" = None   # t_mono du tir auto-DROP
         self._ap_drop_cancelled: bool = False           # annulé = plus jamais re-armé (session)
-        self._tr_cp_btn_de   = QApplication.translate("tilauscope_beancave", "Mark DRY END")
-        self._tr_cp_btn_fc   = QApplication.translate("tilauscope_beancave", "Mark FC START")
-        self._tr_cp_btn_drop = QApplication.translate("tilauscope_beancave", "Mark DROP")
-        self._tr_cp_btn_cancel = QApplication.translate("tilauscope_beancave", "✕ Cancel auto-DROP")
-        self._tpl_ap_dropin  = QApplication.translate("tilauscope_beancave", "⬇ DROP in {0}s — plan target reached")
-        self._tr_ap_dropmark = QApplication.translate("tilauscope_beancave", "⚙ DROP marked (auto)")
+        self._tr_cp_btn_de   = QApplication.translate("tilauscope_roast_assistant", "Mark DRY END")
+        self._tr_cp_btn_fc   = QApplication.translate("tilauscope_roast_assistant", "Mark FC START")
+        self._tr_cp_btn_drop = QApplication.translate("tilauscope_roast_assistant", "Mark DROP")
+        self._tr_cp_btn_cancel = QApplication.translate("tilauscope_roast_assistant", "✕ Cancel auto-DROP")
+        self._tpl_ap_dropin  = QApplication.translate("tilauscope_roast_assistant", "⬇ DROP in {0}s — plan target reached")
+        self._tr_ap_dropmark = QApplication.translate("tilauscope_roast_assistant", "⚙ DROP marked (auto)")
         ## TILAU ## v1b — moteur de trim continu (autopilot_core, calé Sim-1/Sim-2)
         self._ap_core = AutoPilotCore(self._ap_trim_params())
-        self._tpl_ap_trim = QApplication.translate("tilauscope_beancave", "⚙ AUTO · {0} → {1}% ({2})")
-        self._tpl_ap_dev_ramp = QApplication.translate("tilauscope_beancave", "⚙ AUTO · DEV {0}")
+        self._tpl_ap_trim = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · {0} → {1}% ({2})")
+        self._tpl_ap_dev_ramp = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · DEV {0}")
         self._tr_ap_ceiling = QApplication.translate(
-            "tilauscope_beancave", "⚠ AUTO · trim at its ceiling — check the plan")
+            "tilauscope_roast_assistant", "⚠ AUTO · trim at its ceiling — check the plan")
         ## TILAU ## v2 — « tenir le feu » en dev (rate-limiter exotherme), filet
         ## réactif minimal AIR-d'abord, et flag A/B feedforward-seul vs +trim.
         self._ap_ff_only: bool = False           # lu depuis QSettings à l'armement
@@ -4585,12 +4585,12 @@ class RoastAssistantPanel(QWidget):
         self._ap_net_quiet_since: "float | None" = None  # début du calme post-crash
         self._drum_last_pct: "float | None" = None       # watch tambour (mute détection RoR)
         self._tpl_ap_devfire = QApplication.translate(
-            "tilauscope_beancave", "⚙ AUTO · Burner → {0}% (dev, rate-limited)")
-        self._tpl_ap_net = QApplication.translate("tilauscope_beancave", "⚙ AUTO · crash net — AIR {0}%")
+            "tilauscope_roast_assistant", "⚙ AUTO · Burner → {0}% (dev, rate-limited)")
+        self._tpl_ap_net = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · crash net — AIR {0}%")
         self._tr_ap_net_exhausted = QApplication.translate(
-            "tilauscope_beancave", "⚠ RoR crash — safety net exhausted, AUTO paused — take over")
-        self._tr_ap_mode_ff = QApplication.translate("tilauscope_beancave", "feedforward only")
-        self._tr_ap_mode_trim = QApplication.translate("tilauscope_beancave", "feedforward + trim")
+            "tilauscope_roast_assistant", "⚠ RoR crash — safety net exhausted, AUTO paused — take over")
+        self._tr_ap_mode_ff = QApplication.translate("tilauscope_roast_assistant", "feedforward only")
+        self._tr_ap_mode_trim = QApplication.translate("tilauscope_roast_assistant", "feedforward + trim")
 
         # Historique RoR : tendance ([-5:]) ET fenêtre 15 s du détecteur de crash
         # dev — 64 valeurs couvrent 15 s même à l'échantillonnage le plus rapide
@@ -4693,7 +4693,7 @@ class RoastAssistantPanel(QWidget):
         )
         tb_layout = QHBoxLayout(title_bar)
         tb_layout.setContentsMargins(12, 6, 8, 6)
-        lbl_title = QLabel(QApplication.translate("tilauscope_beancave","◉  ROAST ASSISTANT"))
+        lbl_title = QLabel(QApplication.translate("tilauscope_roast_assistant","◉  ROAST ASSISTANT"))
         lbl_title.setStyleSheet(
             f"color: {_ACCENT}; font-size: 11px; font-weight: 900; {_FONT} border: none;"
         )
@@ -4841,7 +4841,7 @@ class RoastAssistantPanel(QWidget):
             hs = (self._plan or {}).get("Heat Soak")
             if hs:
                 self._soak_note = QApplication.translate(
-                    "tilauscope_beancave",
+                    "tilauscope_roast_assistant",
                     "heat soak {0}° · heater {1}% (drop {2} min ago)").format(
                     f"{float(hs['dcharge']):+.1f}", f"{int(hs['dheater']):+d}",
                     f"{float(hs['mins']):.0f}")
@@ -4885,8 +4885,8 @@ class RoastAssistantPanel(QWidget):
             from PyQt6.QtWidgets import QInputDialog
             note, ok = QInputDialog.getMultiLineText(
                 self,
-                QApplication.translate("tilauscope_beancave", "Roast Notes"),
-                QApplication.translate("tilauscope_beancave", "Add notes for this roast:"),
+                QApplication.translate("tilauscope_roast_assistant", "Roast Notes"),
+                QApplication.translate("tilauscope_roast_assistant", "Add notes for this roast:"),
                 self.aw.qmc.roastingnotes or "",
             )
             if ok:
@@ -6731,18 +6731,18 @@ class RoasterPhysicsAdvisor:
 
         # General Machine Characteristics
         if self.ctx.airflow_dependency_index > 0.75:
-            advice.append(QApplication.translate("tilauscope_beancave", "Sensitive Airflow: use small ±5% increments to avoid BT crashes."))
+            advice.append(QApplication.translate("tilauscope_roast_assistant", "Sensitive Airflow: use small ±5% increments to avoid BT crashes."))
 
         if self.ctx.is_radiant_electric:
-            advice.append(QApplication.translate("tilauscope_beancave", "Radiant Heat: Proactive power-down needed 15°C before FC."))
+            advice.append(QApplication.translate("tilauscope_roast_assistant", "Radiant Heat: Proactive power-down needed 15°C before FC."))
 
         # Phase-Specific Logic
         if phase_label == "MAILLARD":
             if self.ctx.thermal_mass_index > 0.6:
-                advice.append(QApplication.translate("tilauscope_beancave", "High Thermal Mass: Step down heater now to control FC entry."))
+                advice.append(QApplication.translate("tilauscope_roast_assistant", "High Thermal Mass: Step down heater now to control FC entry."))
 
         elif phase_label == "DEVELOPMENT":
             if self.ctx.airflow_dependency_index > 0.8:
-                advice.append(QApplication.translate("tilauscope_beancave", "Airflow is high-impact: Avoid fan changes to keep RoR smooth."))
+                advice.append(QApplication.translate("tilauscope_roast_assistant", "Airflow is high-impact: Avoid fan changes to keep RoR smooth."))
 
         return advice

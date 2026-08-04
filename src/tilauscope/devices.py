@@ -22,6 +22,7 @@ from typing import Final, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow  # noqa: F401
+    from tilauscope.tilauscope_types import MQTTSensorConfig  # noqa: F401
 
 _log:  Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -31,10 +32,10 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QCheckBox, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QFormLayout, QPushButton, QSpinBox, QTabWidget,
     QComboBox, QGridLayout, QDialog, QGroupBox,
-    QTableWidget, QMessageBox, QHeaderView, QDoubleSpinBox,
-    QFrame, QSizeGrip, QScrollArea, QListView, QSizePolicy,
+    QTableWidget, QTableWidgetItem, QMessageBox, QHeaderView, QDoubleSpinBox,
+    QFrame, QSizeGrip, QScrollArea, QListView, QSizePolicy, QStyledItemDelegate,
 )
-from PyQt6.QtGui import QCursor
+from PyQt6.QtGui import QCursor, QPalette, QColor
 
 from tilauscope.tilauscope_types import THEME, show_styled_message
 
@@ -134,6 +135,27 @@ def _base_style() -> str:
             gridline-color: {THEME['BORDER']};
             font-family: 'JetBrains Mono';
             font-size: 12px;
+        }}
+        QTableWidget::item {{
+            padding: 2px 4px;
+        }}
+        QTableWidget::item:selected {{
+            background: {THEME['ACCENT']};
+            color: {THEME['BG']};
+        }}
+        /* Inline cell editor: Qt paints it over the cell without clearing it,
+           so an unstyled (transparent) editor shows the old text underneath. */
+        QTableWidget QLineEdit, QTableWidget QAbstractItemView QLineEdit {{
+            background: {THEME['BG']};
+            color: {THEME['TEXT']};
+            border: 1px solid {THEME['ACCENT']};
+            border-radius: 3px;
+            padding: 1px 3px;
+            margin: 0px;
+            font-family: 'JetBrains Mono';
+            font-size: 12px;
+            selection-background-color: {THEME['ACCENT']};
+            selection-color: {THEME['BG']};
         }}
         QHeaderView::section {{
             background: {THEME['BG']};
@@ -309,6 +331,58 @@ def _table_spinbox_style() -> str:
             background: transparent;
         }}
     """
+
+
+# MQTT sensor units: stored code -> label shown in the table. "" means the
+# reading is not a temperature and is recorded exactly as published.
+_MQTT_SENSOR_UNITS: Final[tuple[tuple[str, str], ...]] = (
+    ("",  "—"),
+    ("C", "°C"),
+    ("F", "°F"),
+)
+
+
+def _cell_editor_style() -> str:
+    """Explicit style for the inline cell editor of an editable QTableWidget."""
+    return f"""
+        QLineEdit {{
+            background-color: {THEME['BG']};
+            color: {THEME['TEXT']};
+            border: 1px solid {THEME['ACCENT']};
+            border-radius: 3px;
+            padding: 1px 3px;
+            font-family: 'JetBrains Mono';
+            font-size: 12px;
+            selection-background-color: {THEME['ACCENT']};
+            selection-color: {THEME['BG']};
+        }}
+    """
+
+
+class OpaqueCellDelegate(QStyledItemDelegate):
+    """Editable table cells with an editor that actually hides the cell.
+
+    Qt builds its own QLineEdit subclass for the default editor and leaves it
+    translucent under our dialog stylesheet, so the cell text stayed visible
+    through the editor while typing. Building the editor here lets us make it
+    opaque (autoFillBackground + its own stylesheet), which a descendant rule
+    in the dialog stylesheet does not reliably achieve.
+    """
+
+    def createEditor(self, parent, option, index):  # noqa: N802,ARG002
+        editor = QLineEdit(parent)
+        editor.setAutoFillBackground(True)
+        editor.setFrame(True)
+        pal = editor.palette()
+        pal.setColor(QPalette.ColorRole.Base, QColor(THEME['BG']))
+        pal.setColor(QPalette.ColorRole.Text, QColor(THEME['TEXT']))
+        editor.setPalette(pal)
+        editor.setStyleSheet(_cell_editor_style())
+        return editor
+
+    def updateEditorGeometry(self, editor, option, index):  # noqa: N802,ARG002
+        # cover the whole cell: a smaller editor leaves a rim of the cell behind
+        editor.setGeometry(option.rect)
 
 
 def _table_combobox_style() -> str:
@@ -639,7 +713,7 @@ class TilauscopeConfigDlg(QDialog):
         # ── Title bar ─────────────────────────────────────────────────────
         title_row = QHBoxLayout()
         title_lbl = QLabel(
-            QApplication.translate("tilauscope_beancave", "TILAU CONFIGURATION")
+            QApplication.translate("tilauscope_devices", "TILAU CONFIGURATION")
         )
         title_lbl.setStyleSheet(
             f"color: {THEME['ACCENT']}; font-size: 15px; font-weight: 800; "
@@ -677,10 +751,10 @@ class TilauscopeConfigDlg(QDialog):
         self._detection_tab  = QWidget(); self._detection_tab.setStyleSheet("background: transparent;")
         self._integrations_tab = QWidget(); self._integrations_tab.setStyleSheet("background: transparent;")
 
-        self._tabs.addTab(self._general_tab,     QApplication.translate("tilauscope_beancave", "⚙  GENERAL"))
-        self._tabs.addTab(self._sensors_tab,     QApplication.translate("tilauscope_beancave", "📡  SENSORS"))
-        self._tabs.addTab(self._detection_tab,   QApplication.translate("tilauscope_beancave", "🔬  DETECTION"))
-        self._tabs.addTab(self._integrations_tab, QApplication.translate("tilauscope_beancave", "🌐  INTEGRATIONS"))
+        self._tabs.addTab(self._general_tab,     QApplication.translate("tilauscope_devices", "⚙  GENERAL"))
+        self._tabs.addTab(self._sensors_tab,     QApplication.translate("tilauscope_devices", "📡  SENSORS"))
+        self._tabs.addTab(self._detection_tab,   QApplication.translate("tilauscope_devices", "🔬  DETECTION"))
+        self._tabs.addTab(self._integrations_tab, QApplication.translate("tilauscope_devices", "🌐  INTEGRATIONS"))
 
         self._setup_general_tab()
         self._setup_sensors_tab()
@@ -698,11 +772,11 @@ class TilauscopeConfigDlg(QDialog):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(12)
 
-        cancel_btn = QPushButton(QApplication.translate("tilauscope_beancave", "Cancel"))
+        cancel_btn = QPushButton(QApplication.translate("tilauscope_devices", "Cancel"))
         cancel_btn.setStyleSheet(_btn_secondary())
         cancel_btn.clicked.connect(self._on_cancel)
 
-        ok_btn = QPushButton(QApplication.translate("tilauscope_beancave", "⬥  Save"))
+        ok_btn = QPushButton(QApplication.translate("tilauscope_devices", "⬥  Save"))
         ok_btn.setStyleSheet(_btn_primary())
         ok_btn.setDefault(True)
         ok_btn.clicked.connect(self._on_ok)
@@ -729,8 +803,8 @@ class TilauscopeConfigDlg(QDialog):
         layout = scroll.widget().layout()
 
         # Roaster model
-        layout.addWidget(_section_label(QApplication.translate("tilauscope_beancave", "Roaster")))
-        roaster_group = QGroupBox(QApplication.translate("tilauscope_beancave", "Machine Profile"))
+        layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "Roaster")))
+        roaster_group = QGroupBox(QApplication.translate("tilauscope_devices", "Machine Profile"))
         rg = QFormLayout(roaster_group)
         self.tilauRoaster = QComboBox()
         # macOS: the popup is a separate top-level window that does not reliably
@@ -760,25 +834,25 @@ class TilauscopeConfigDlg(QDialog):
         )
         self.tilauRoaster.setView(_roaster_view)
         self.tilauRoaster.setToolTip(
-            QApplication.translate("tilauscope_beancave", "Select the active roaster machine profile")
+            QApplication.translate("tilauscope_devices", "Select the active roaster machine profile")
         )
         from tilauscope.roasters import RoasterManager
         rm = RoasterManager()
-        items = [QApplication.translate("tilauscope_beancave", "— select a roaster model —")]
+        items = [QApplication.translate("tilauscope_devices", "— select a roaster model —")]
         items.extend(rm.get_roaster_list())
         self.tilauRoaster.addItems(items)
         if self.aw.tilau_roaster:
             idx = self.tilauRoaster.findText(self.aw.tilau_roaster)
             if idx >= 0:
                 self.tilauRoaster.setCurrentIndex(idx)
-        rg.addRow(QApplication.translate("tilauscope_beancave", "Model:"), self.tilauRoaster)
+        rg.addRow(QApplication.translate("tilauscope_devices", "Model:"), self.tilauRoaster)
         ## TILAU ## read-only roaster: monitoring only, Artisan sends no commands
         self.tilauRoasterReadonly = QCheckBox(
-            QApplication.translate("tilauscope_beancave",
+            QApplication.translate("tilauscope_devices",
                 "Read-only (monitoring only — Artisan does not control the machine)")
         )
         self.tilauRoasterReadonly.setToolTip(
-            QApplication.translate("tilauscope_beancave",
+            QApplication.translate("tilauscope_devices",
                 "Tick for a roaster you drive by hand (Artisan only records ET/BT): "
                 "the control sliders are hidden here and in Artisan. Untick to restore "
                 "your previous slider configuration.")
@@ -790,25 +864,25 @@ class TilauscopeConfigDlg(QDialog):
         layout.addWidget(roaster_group)
 
         # UI features
-        layout.addWidget(_section_label(QApplication.translate("tilauscope_beancave", "UI Features")))
-        feat_group = QGroupBox(QApplication.translate("tilauscope_beancave", "Overlay & Notifications"))
+        layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "UI Features")))
+        feat_group = QGroupBox(QApplication.translate("tilauscope_devices", "Overlay & Notifications"))
         fg = QVBoxLayout(feat_group)
         fg.setContentsMargins(12, 14, 12, 14)
         fg.setSpacing(18)
         self.tilauScopeAnnotationCheckBox = QCheckBox(
-            QApplication.translate("tilauscope_beancave", "Enable floating annotations")
+            QApplication.translate("tilauscope_devices", "Enable floating annotations")
         )
         self.tilauScopeAnnotationCheckBox.setToolTip(
-            QApplication.translate("tilauscope_beancave", "Show phase-event annotations on the roast graph overlay")
+            QApplication.translate("tilauscope_devices", "Show phase-event annotations on the roast graph overlay")
         )
         if self.aw.TilauScopeAnnotation is not None:
             self.tilauScopeAnnotationCheckBox.setChecked(self.aw.TilauScopeAnnotation)
 
         self.tilauScopeNotificationCheckBox = QCheckBox(
-            QApplication.translate("tilauscope_beancave", "Enable BeanCave startup notifications")
+            QApplication.translate("tilauscope_devices", "Enable BeanCave startup notifications")
         )
         self.tilauScopeNotificationCheckBox.setToolTip(
-            QApplication.translate("tilauscope_beancave", "Show inventory alerts and reminders when BeanCave opens")
+            QApplication.translate("tilauscope_devices", "Show inventory alerts and reminders when BeanCave opens")
         )
         if self.aw.TilauScopeNotification is not None:
             self.tilauScopeNotificationCheckBox.setChecked(self.aw.TilauScopeNotification)
@@ -816,10 +890,10 @@ class TilauscopeConfigDlg(QDialog):
         ## TILAU ## Headless "BeanCave home" mode — persisted in QSettings and read
         ## at boot (main.py). Boot-time only, so it takes effect after a restart.
         self.headlessModeCheckBox = QCheckBox(
-            QApplication.translate("tilauscope_beancave", "BeanCave home mode (hide the Artisan window)")
+            QApplication.translate("tilauscope_devices", "BeanCave home mode (hide the Artisan window)")
         )
         self.headlessModeCheckBox.setToolTip(
-            QApplication.translate("tilauscope_beancave",
+            QApplication.translate("tilauscope_devices",
                 "Start in the BeanCave shell with the Artisan window hidden. Takes effect after a restart.")
         )
         self.headlessModeCheckBox.setChecked(
@@ -833,31 +907,31 @@ class TilauscopeConfigDlg(QDialog):
 
         ## TILAU ## QR scan / mobile record server (spec wiki/QR-Scan-Spec.md §2.1) —
         ## the port is baked into printed label QR codes, so change it knowingly.
-        layout.addWidget(_section_label(QApplication.translate("tilauscope_beancave", "Remote access")))
-        web_group = QGroupBox(QApplication.translate("tilauscope_beancave", "Record web server (phone QR scan)"))
+        layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "Remote access")))
+        web_group = QGroupBox(QApplication.translate("tilauscope_devices", "Record web server (phone QR scan)"))
         wg = QFormLayout(web_group)
         self.webPortSpin = QSpinBox()
         self.webPortSpin.setRange(1024, 65535)
         self.webPortSpin.setValue(QSettings().value('tilauscope/web_port', 8123, type=int))
         self.webPortSpin.setToolTip(
-            QApplication.translate("tilauscope_beancave",
+            QApplication.translate("tilauscope_devices",
                 "Port of the read-only record server used when scanning a label QR code "
                 "with a phone (http://tilauscope.local:port). It is encoded in printed "
                 "labels — change it only if it conflicts with another service. "
                 "Takes effect after a restart. Default: 8123.")
         )
-        wg.addRow(QApplication.translate("tilauscope_beancave", "Port:"), self.webPortSpin)
+        wg.addRow(QApplication.translate("tilauscope_devices", "Port:"), self.webPortSpin)
         layout.addWidget(web_group)
 
         ## TILAU ## remote control (phone piloting) — opt-in, boot-time (main.py
         ## start_tilau_web_host). Off by default; takes effect after a restart.
-        remote_group = QGroupBox(QApplication.translate("tilauscope_beancave", "Remote control (phone piloting)"))
+        remote_group = QGroupBox(QApplication.translate("tilauscope_devices", "Remote control (phone piloting)"))
         rgl = QFormLayout(remote_group)
         self.remoteControlCheckBox = QCheckBox(
-            QApplication.translate("tilauscope_beancave", "Enable remote control from a phone")
+            QApplication.translate("tilauscope_devices", "Enable remote control from a phone")
         )
         self.remoteControlCheckBox.setToolTip(
-            QApplication.translate("tilauscope_beancave",
+            QApplication.translate("tilauscope_devices",
                 "Run the control server so a phone on the same wifi can follow the roast "
                 "(and, later, pilot it). Off by default. Takes effect after a restart.")
         )
@@ -868,12 +942,12 @@ class TilauscopeConfigDlg(QDialog):
         self.remotePortSpin.setRange(1024, 65535)
         self.remotePortSpin.setValue(QSettings().value('tilauscope/remote_port', 8765, type=int))
         self.remotePortSpin.setToolTip(
-            QApplication.translate("tilauscope_beancave",
+            QApplication.translate("tilauscope_devices",
                 "Port of the remote-control server. Takes effect after a restart. Default: 8765.")
         )
         rgl.addRow(self.remoteControlCheckBox)
-        rgl.addRow(QApplication.translate("tilauscope_beancave", "Port:"), self.remotePortSpin)
-        self.pairPhoneBtn = QPushButton(QApplication.translate("tilauscope_beancave", "Pair a phone…"))
+        rgl.addRow(QApplication.translate("tilauscope_devices", "Port:"), self.remotePortSpin)
+        self.pairPhoneBtn = QPushButton(QApplication.translate("tilauscope_devices", "Pair a phone…"))
         self.pairPhoneBtn.clicked.connect(self._pair_phone)
         rgl.addRow(self.pairPhoneBtn)
         layout.addWidget(remote_group)
@@ -895,7 +969,7 @@ class TilauscopeConfigDlg(QDialog):
 
         # ── Ambient — TilauAmbient BLE ────────────────────────────────────
         layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_beancave", "Ambient")
+            QApplication.translate("tilauscope_devices", "Ambient")
         ))
         ambient_group = QGroupBox("TilauAmbient  (BME280 / BLE)")
         ambient_group.setContentsMargins(12, 18, 12, 12)
@@ -919,22 +993,22 @@ class TilauscopeConfigDlg(QDialog):
         )
         self.tilauAmbientCrackThresholdSpin.setToolTip(
             QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_devices",
                 "Acoustic sensitivity threshold for crack detection via TilauAmbient microphone.\n"
                 "Lower = more sensitive. Independent from the global algorithm threshold."
             )
         )
 
-        ag.addWidget(_field_label(QApplication.translate("tilauscope_beancave", "Device:")), 0, 0)
+        ag.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)
         ag.addWidget(self.tilauscopeProbeComboBoxcList, 0, 1)
         ag.addWidget(ambient_cell, 0, 2)
-        ag.addWidget(_field_label(QApplication.translate("tilauscope_beancave", "Crack audio sensitivity:")), 1, 0)
+        ag.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Crack audio sensitivity:")), 1, 0)
         ag.addWidget(self.tilauAmbientCrackThresholdSpin, 1, 1, alignment=Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(ambient_group)
 
         # ── Color & Airflow — AirWave BLE ─────────────────────────────────
         layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_beancave", "Color & Airflow")
+            QApplication.translate("tilauscope_devices", "Color & Airflow")
         ))
         airwave_group = QGroupBox("Difluid AirWave  (BLE)")
         airwave_group.setContentsMargins(12, 18, 12, 12)
@@ -950,7 +1024,7 @@ class TilauscopeConfigDlg(QDialog):
         )
 
         self.AirwavePidOnETCheckVBox = QCheckBox(
-            QApplication.translate("tilauscope_beancave", "PID target on ET (instead of BT)")
+            QApplication.translate("tilauscope_devices", "PID target on ET (instead of BT)")
         )
         self.AirwavePidOnETCheckVBox.setChecked(self.aw.bleAirwavepidOnET)
 
@@ -958,36 +1032,36 @@ class TilauscopeConfigDlg(QDialog):
         self.AirwavePidRampSpinBox.setRange(1, 10)
         self.AirwavePidRampSpinBox.setValue(self.aw.bleAirwavepidRamp)
         self.AirwavePidRampSpinBox.setToolTip(
-            QApplication.translate("tilauscope_beancave", "PID correction ramp speed (1=slow … 10=fast)")
+            QApplication.translate("tilauscope_devices", "PID correction ramp speed (1=slow … 10=fast)")
         )
 
         self.AirwaveEmulateOmnifluxCheckVBox = QCheckBox(
-            QApplication.translate("tilauscope_beancave", "Emulate Omniflux output (Agtron channel)")
+            QApplication.translate("tilauscope_devices", "Emulate Omniflux output (Agtron channel)")
         )
         self.AirwaveEmulateOmnifluxCheckVBox.setChecked(self.aw.bleAirwaveEmulateOmniflux)
 
-        aw_g.addWidget(_field_label(QApplication.translate("tilauscope_beancave", "Device:")), 0, 0)
+        aw_g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)
         aw_g.addWidget(self.AirwaveComboBox, 0, 1)
         aw_g.addWidget(airwave_cell, 0, 2)
         aw_g.addWidget(self.AirwavePidOnETCheckVBox, 1, 0, 1, 3)
-        aw_g.addWidget(_field_label(QApplication.translate("tilauscope_beancave", "Ramp speed:")), 2, 0)
+        aw_g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Ramp speed:")), 2, 0)
         aw_g.addWidget(self.AirwavePidRampSpinBox, 2, 1, alignment=Qt.AlignmentFlag.AlignLeft)
         aw_g.addWidget(self.AirwaveEmulateOmnifluxCheckVBox, 3, 0, 1, 3)
         layout.addWidget(airwave_group)
 
         # ── AirWave PID — collapsible ──────────────────────────────────────
         self._airwave_pid_section = QCollapsibleWidget(
-            QApplication.translate("tilauscope_beancave", "AirWave PID parameters"),
+            QApplication.translate("tilauscope_devices", "AirWave PID parameters"),
             collapsed=True,
         )
         self.pid_table = QTableWidget()
         pid_headers = [
             "Kp", "Ki",
-            QApplication.translate("tilauscope_beancave", "Min fan %"),
-            QApplication.translate("tilauscope_beancave", "Inlet target"),
-            QApplication.translate("tilauscope_beancave", "Inlet limit"),
-            QApplication.translate("tilauscope_beancave", "Mode"),
-            QApplication.translate("tilauscope_beancave", "Ramp %/s"),
+            QApplication.translate("tilauscope_devices", "Min fan %"),
+            QApplication.translate("tilauscope_devices", "Inlet target"),
+            QApplication.translate("tilauscope_devices", "Inlet limit"),
+            QApplication.translate("tilauscope_devices", "Mode"),
+            QApplication.translate("tilauscope_devices", "Ramp %/s"),
         ]
         self.pid_table.setColumnCount(len(pid_headers))
         self.pid_table.setHorizontalHeaderLabels(pid_headers)
@@ -1000,7 +1074,7 @@ class TilauscopeConfigDlg(QDialog):
         # ── SKyWALKER BLE ───────────────────────────────────────
         ## TILAU ##
         layout.addWidget(_section_label(
-             QApplication.translate("tilauscope_beancave", "Roaster Link")
+             QApplication.translate("tilauscope_devices", "Roaster Link")
         ))
         skywalker_group = QGroupBox("Skywalker v2  (TC4-BLE)")
         skywalker_group.setContentsMargins(12, 18, 12, 12)
@@ -1012,14 +1086,14 @@ class TilauscopeConfigDlg(QDialog):
             "Skywalker v2", self._prefixes["skywalker"], self.SkywalkerComboBox,
             "bleSkywalkerDeviceName", "bleSkywalkerDeviceslist",
         )
-        sw_g.addWidget(_field_label(QApplication.translate("tilauscope_beancave", "Device:")), 0, 0)
+        sw_g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)
         sw_g.addWidget(self.SkywalkerComboBox, 0, 1)
         sw_g.addWidget(skywalker_cell, 0, 2)
         layout.addWidget(skywalker_group)
 
         # ── Color Meter — Lebrew C1 ───────────────────────────────────────
         layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_beancave", "Color Meter")
+            QApplication.translate("tilauscope_devices", "Color Meter")
         ))
         c1_group = QGroupBox("Lebrew RoastSee C1  (BLE)")
         c1_group.setContentsMargins(12, 18, 12, 12)
@@ -1034,14 +1108,14 @@ class TilauscopeConfigDlg(QDialog):
             "bleRoastSeeDeviceName", "bleRoastSeeDeviceslist",
         )
 
-        c1g.addWidget(_field_label(QApplication.translate("tilauscope_beancave", "Device:")), 0, 0)
+        c1g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)
         c1g.addWidget(self.lebrewRoastSeeC1ComboBox, 0, 1)
         c1g.addWidget(c1_cell, 0, 2)
         layout.addWidget(c1_group)
 
         # ── Water — AquaGauge ─────────────────────────────────────────────
         layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_beancave", "Water Quality")
+            QApplication.translate("tilauscope_devices", "Water Quality")
         ))
         ag_group = QGroupBox("Lebrew AquaGauge  (BLE)")
         ag_group.setContentsMargins(12, 18, 12, 12)
@@ -1056,14 +1130,14 @@ class TilauscopeConfigDlg(QDialog):
             "bleRoastSeeAGDeviceName", "bleRoastSeeAGDeviceslist",
         )
 
-        agg.addWidget(_field_label(QApplication.translate("tilauscope_beancave", "Device:")), 0, 0)
+        agg.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)
         agg.addWidget(self.lebrewRoastSeeAGComboBox, 0, 1)
         agg.addWidget(ag_cell, 0, 2)
         layout.addWidget(ag_group)
 
         # ── Printer — Niimbot B21S ─────────────────────────────────────────
         layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_beancave", "Label Printer")
+            QApplication.translate("tilauscope_devices", "Label Printer")
         ))
         niimbot_group = QGroupBox("Niimbot B21S  (BLE)")
         niimbot_group.setContentsMargins(12, 18, 12, 12)
@@ -1078,7 +1152,7 @@ class TilauscopeConfigDlg(QDialog):
             "bleNiimbotDeviceName", "bleNiimbotDeviceslist",
         )
 
-        ng.addWidget(_field_label(QApplication.translate("tilauscope_beancave", "Device:")), 0, 0)
+        ng.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)
         ng.addWidget(self.niimbotComboBox, 0, 1)
         ng.addWidget(niimbot_cell, 0, 2)
         layout.addWidget(niimbot_group)
@@ -1098,13 +1172,13 @@ class TilauscopeConfigDlg(QDialog):
 
         # ── First Crack ───────────────────────────────────────────────────
         layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_beancave", "First Crack (FC)")
+            QApplication.translate("tilauscope_devices", "First Crack (FC)")
         ))
 
         # Source info
         src_lbl = QLabel(
             QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_devices",
                 "Signal sources: TilauAmbient (acoustic) · Omniflux (color/RoC) — fused in tilau_intelligence"
             )
         )
@@ -1114,16 +1188,16 @@ class TilauscopeConfigDlg(QDialog):
         src_lbl.setWordWrap(True)
         layout.addWidget(src_lbl)
 
-        fc_group = QGroupBox(QApplication.translate("tilauscope_beancave", "FC Algorithm"))
+        fc_group = QGroupBox(QApplication.translate("tilauscope_devices", "FC Algorithm"))
         fc_g = QGridLayout(fc_group)
 
         self.fcMarking = QCheckBox(
-            QApplication.translate("tilauscope_beancave", "Enable automatic FC detection & marking")
+            QApplication.translate("tilauscope_devices", "Enable automatic FC detection & marking")
         )
         self.fcMarking.setChecked(self.aw.TilauScopeFCMarkFlag)
         self.fcMarking.setToolTip(
             QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_devices",
                 "Activates the TilauScope multi-signal FC detection algorithm "
                 "(crack count density, color RoC, BT threshold)."
             )
@@ -1134,7 +1208,7 @@ class TilauscopeConfigDlg(QDialog):
         self.fcWindowSpin.setSuffix(" s")
         self.fcWindowSpin.setValue(self.aw.TilauScopeFCWindow)
         self.fcWindowSpin.setToolTip(
-            QApplication.translate("tilauscope_beancave", "Sliding time window for crack density analysis (seconds).")
+            QApplication.translate("tilauscope_devices", "Sliding time window for crack density analysis (seconds).")
         )
 
         self.fcThresholdSpin = QSpinBox()
@@ -1142,7 +1216,7 @@ class TilauscopeConfigDlg(QDialog):
         self.fcThresholdSpin.setValue(self.aw.TilauScopeFCTreshold)
         self.fcThresholdSpin.setToolTip(
             QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_devices",
                 "Minimum number of acoustic events within the window to confirm FC. "
                 "Independent from the TilauAmbient device sensitivity setting."
             )
@@ -1155,26 +1229,26 @@ class TilauscopeConfigDlg(QDialog):
         self.fcThresholdSpin.setEnabled(self.fcMarking.isChecked())
 
         fc_g.addWidget(self.fcMarking, 0, 0, 1, 2)
-        fc_g.addWidget(_field_label(QApplication.translate("tilauscope_beancave", "Detection window:")), 1, 0)
+        fc_g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Detection window:")), 1, 0)
         fc_g.addWidget(self.fcWindowSpin, 1, 1, alignment=Qt.AlignmentFlag.AlignLeft)
-        fc_g.addWidget(_field_label(QApplication.translate("tilauscope_beancave", "Global event threshold:")), 2, 0)
+        fc_g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Global event threshold:")), 2, 0)
         fc_g.addWidget(self.fcThresholdSpin, 2, 1, alignment=Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(fc_group)
 
         # ── Dry End ───────────────────────────────────────────────────────
         layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_beancave", "Dry End (DE)")
+            QApplication.translate("tilauscope_devices", "Dry End (DE)")
         ))
-        de_group = QGroupBox(QApplication.translate("tilauscope_beancave", "DE Algorithm"))
+        de_group = QGroupBox(QApplication.translate("tilauscope_devices", "DE Algorithm"))
         de_g = QGridLayout(de_group)
 
         self.deMarking = QCheckBox(
-            QApplication.translate("tilauscope_beancave", "Enable automatic Dry End detection & marking")
+            QApplication.translate("tilauscope_devices", "Enable automatic Dry End detection & marking")
         )
         self.deMarking.setChecked(self.aw.TilauScopeDEMarkFlag)
         self.deMarking.setToolTip(
             QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_devices",
                 "Thermodynamic multi-signal detection: RoR_BT/RoR_ET ratio convergence, "
                 "Δgap slope, BT progress toward Dry End target set in Phases. "
                 "Agtron is used as a bonus signal when a color device is configured."
@@ -1185,26 +1259,26 @@ class TilauscopeConfigDlg(QDialog):
 
         # ── Per-phase thresholds ──────────────────────────────────────────
         layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_beancave", "Per-Phase Thresholds")
+            QApplication.translate("tilauscope_devices", "Per-Phase Thresholds")
         ))
         param_group = QGroupBox(
-            QApplication.translate("tilauscope_beancave", "Detection parameters by crack event")
+            QApplication.translate("tilauscope_devices", "Detection parameters by crack event")
         )
         param_layout = QVBoxLayout(param_group)
 
         self.crack_table = QTableWidget()
         crack_headers = [
-            QApplication.translate("tilauscope_beancave", "Threshold"),
-            QApplication.translate("tilauscope_beancave", "Agtron max"),
-            QApplication.translate("tilauscope_beancave", "RoC min"),
-            QApplication.translate("tilauscope_beancave", "BT margin"),
+            QApplication.translate("tilauscope_devices", "Threshold"),
+            QApplication.translate("tilauscope_devices", "Agtron max"),
+            QApplication.translate("tilauscope_devices", "RoC min"),
+            QApplication.translate("tilauscope_devices", "BT margin"),
         ]
         self.crack_table.setColumnCount(len(crack_headers))
         self.crack_table.setHorizontalHeaderLabels(crack_headers)
         self.crack_table.setRowCount(2)
         self.crack_table.setVerticalHeaderLabels([
-            QApplication.translate("tilauscope_beancave", "First Crack"),
-            QApplication.translate("tilauscope_beancave", "Second Crack"),
+            QApplication.translate("tilauscope_devices", "First Crack"),
+            QApplication.translate("tilauscope_devices", "Second Crack"),
         ])
         self.crack_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.crack_table.setFixedHeight(100)
@@ -1224,7 +1298,7 @@ class TilauscopeConfigDlg(QDialog):
 
         # ── MQTT ──────────────────────────────────────────────────────────
         layout.addWidget(_section_label("MQTT"))
-        mqtt_group = QGroupBox(QApplication.translate("tilauscope_beancave", "MQTT Broker"))
+        mqtt_group = QGroupBox(QApplication.translate("tilauscope_devices", "MQTT Broker"))
         mqtt_layout = QFormLayout(mqtt_group)
 
         self.mqttBrokerEdit  = QLineEdit(self.aw.mqttConfig.broker_url)
@@ -1237,22 +1311,28 @@ class TilauscopeConfigDlg(QDialog):
         self.mqttPasswordEdit.setEchoMode(QLineEdit.EchoMode.Password)
 
         self.mqttTestButton  = QPushButton(
-            QApplication.translate("tilauscope_beancave", "Test Connection")
+            QApplication.translate("tilauscope_devices", "Test Connection")
         )
         self.mqttTestButton.setStyleSheet(_btn_secondary())
         self.mqttTestButton.clicked.connect(self._test_mqtt_connection)
 
-        mqtt_layout.addRow(QApplication.translate("tilauscope_beancave", "Broker URL:"), self.mqttBrokerEdit)
-        mqtt_layout.addRow(QApplication.translate("tilauscope_beancave", "Port:"),       self.mqttPortSpin)
-        mqtt_layout.addRow(QApplication.translate("tilauscope_beancave", "Topic:"),      self.mqttTopicEdit)
-        mqtt_layout.addRow(QApplication.translate("tilauscope_beancave", "Username:"),   self.mqttUsernameEdit)
-        mqtt_layout.addRow(QApplication.translate("tilauscope_beancave", "Password:"),   self.mqttPasswordEdit)
+        mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Broker URL:"), self.mqttBrokerEdit)
+        mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Port:"),       self.mqttPortSpin)
+        mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Topic:"),      self.mqttTopicEdit)
+        mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Username:"),   self.mqttUsernameEdit)
+        mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Password:"),   self.mqttPasswordEdit)
         mqtt_layout.addRow("", self.mqttTestButton)
+
+        # ── MQTT sensors ──────────────────────────────────────────────────
+        # Sensor list lives with the broker it depends on. Editable in place and
+        # without a live broker: the connection is only needed to probe a sensor.
+        self._setup_mqtt_sensors(mqtt_layout)
+
         layout.addWidget(mqtt_group)
 
         # ── AI Provider ───────────────────────────────────────────────────
-        layout.addWidget(_section_label(QApplication.translate("tilauscope_beancave", "AI Provider")))
-        ai_group = QGroupBox(QApplication.translate("tilauscope_beancave", "AI Configuration"))
+        layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "AI Provider")))
+        ai_group = QGroupBox(QApplication.translate("tilauscope_devices", "AI Configuration"))
         ai_layout = QVBoxLayout(ai_group)
         ai_layout.setSpacing(8)
 
@@ -1262,7 +1342,7 @@ class TilauscopeConfigDlg(QDialog):
         ai_layout.addWidget(self._ai_status_lbl)
 
         self._ai_configure_btn = QPushButton(
-            QApplication.translate("tilauscope_beancave", "Configure AI Provider…")
+            QApplication.translate("tilauscope_devices", "Configure AI Provider…")
         )
         self._ai_configure_btn.setStyleSheet(_btn_secondary())
         self._ai_configure_btn.clicked.connect(self._open_ai_provider_picker)
@@ -1325,7 +1405,7 @@ class TilauscopeConfigDlg(QDialog):
             ramp_sb.setStyleSheet(_ss)
             ramp_sb.setToolTip(
                 QApplication.translate(
-                    "tilauscope_beancave",
+                    "tilauscope_devices",
                     "Ramp speed toward target fan speed (% per cycle ~1 s). "
                     "0.20 = gentle (~75 s for 15% change). "
                     "0.50 = fast (~30 s for 15% change).",
@@ -1402,7 +1482,7 @@ class TilauscopeConfigDlg(QDialog):
         return prefixes
 
     def _no_device_text(self) -> str:
-        return QApplication.translate("tilauscope_beancave", "— no device —")
+        return QApplication.translate("tilauscope_devices", "— no device —")
 
     def _sensor_cell(self, label: str, prefix: str, combo: QComboBox,
                      name_attr: str, list_attr: str) -> QWidget:
@@ -1427,7 +1507,7 @@ class TilauscopeConfigDlg(QDialog):
         trash.setStyleSheet(_btn_trash())
         trash.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         trash.setToolTip(
-            QApplication.translate("tilauscope_beancave", "Forget this device (unassign)")
+            QApplication.translate("tilauscope_devices", "Forget this device (unassign)")
         )
         trash.clicked.connect(lambda _=False, gg=g: self._on_trash(gg))
         combo.activated.connect(lambda _=0, gg=g: self._on_user_selected(gg))
@@ -1484,7 +1564,7 @@ class TilauscopeConfigDlg(QDialog):
         if self._hook_attempted and not self._bt_available:
             self._set_pill(
                 g.status,
-                QApplication.translate("tilauscope_beancave", "⚠ bluetooth off"),
+                QApplication.translate("tilauscope_devices", "⚠ bluetooth off"),
                 THEME['WARNING'])
             return
         txt = g.combo.currentText()
@@ -1497,22 +1577,22 @@ class TilauscopeConfigDlg(QDialog):
             if sel_id in g.seen:
                 self._set_pill(
                     g.status,
-                    QApplication.translate("tilauscope_beancave", "detected ✓"),
+                    QApplication.translate("tilauscope_devices", "detected ✓"),
                     THEME['SUCCESS'])
             else:
                 self._set_pill(
                     g.status,
-                    QApplication.translate("tilauscope_beancave", "assigned"),
+                    QApplication.translate("tilauscope_devices", "assigned"),
                     THEME['ACCENT'])
         elif g.seen:
             self._set_pill(
                 g.status,
-                f"{len(g.seen)} " + QApplication.translate("tilauscope_beancave", "found ✓"),
+                f"{len(g.seen)} " + QApplication.translate("tilauscope_devices", "found ✓"),
                 THEME['SUCCESS'])
         else:
             self._set_pill(
                 g.status,
-                QApplication.translate("tilauscope_beancave", "scanning…"),
+                QApplication.translate("tilauscope_devices", "scanning…"),
                 THEME['SUBTEXT'])
 
     # ── scanner wiring (SENSORS tab lifetime) ──────────────────────────────
@@ -1663,7 +1743,7 @@ class TilauscopeConfigDlg(QDialog):
         identification only, nothing is paired, linked or persisted."""
         layout.addSpacing(6)
         layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_beancave", "Other hardware detected nearby")
+            QApplication.translate("tilauscope_devices", "Other hardware detected nearby")
         ))
         host = QWidget()
         host.setStyleSheet("background: transparent;")
@@ -1671,7 +1751,7 @@ class TilauscopeConfigDlg(QDialog):
         vl.setContentsMargins(0, 0, 0, 0)
         vl.setSpacing(6)
         empty = QLabel(QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_devices",
             "nothing else recognised nearby — these are identified, not configured"))
         empty.setStyleSheet(
             f"color:{THEME['SUBTEXT']}; font-size:11px; font-style:italic;"
@@ -1752,9 +1832,9 @@ class TilauscopeConfigDlg(QDialog):
     def _add_other_row(self, label: str, signature: str, is_own: bool) -> QWidget:
         """Build a single identify-only row (dot · name · signature · tag)."""
         accent = THEME['WARNING'] if is_own else "#CBA6F7"  # mauve for third-party
-        tag_txt = (QApplication.translate("tilauscope_beancave", "detected · not linked")
+        tag_txt = (QApplication.translate("tilauscope_devices", "detected · not linked")
                    if is_own else
-                   QApplication.translate("tilauscope_beancave", "recognised · not configured"))
+                   QApplication.translate("tilauscope_devices", "recognised · not configured"))
         row = QFrame()
         row.setStyleSheet(
             f"background:{THEME['SURFACE']}; border:1px solid {THEME['BORDER']};"
@@ -1785,6 +1865,216 @@ class TilauscopeConfigDlg(QDialog):
         return row
 
     # ─────────────────────────────────────────────────────────────────────────
+    # MQTT sensors
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _setup_mqtt_sensors(self, form_layout: QFormLayout) -> None:
+        """Sensor table under the broker fields. Cells are edited in place; the
+        stored list is rebuilt from the table when the dialog is applied."""
+        from tilauscope.mqttbridge import TilauMqttPorts
+        self._mqtt_ports = TilauMqttPorts(None)  # persistence only, no broker needed
+        self._mqtt_sensors = self._mqtt_ports.load_mqtt_sensors()
+
+        form_layout.addRow(_section_label(
+            QApplication.translate("tilauscope_devices", "Sensors")
+        ))
+
+        self.mqtt_sensor_table = QTableWidget()
+        self._mqtt_sensor_headers = [
+            QApplication.translate("tilauscope_devices", "ID"),
+            QApplication.translate("tilauscope_devices", "Topic"),
+            QApplication.translate("tilauscope_devices", "Command"),
+            QApplication.translate("tilauscope_devices", "Multiplier"),
+            QApplication.translate("tilauscope_devices", "Divider"),
+            QApplication.translate("tilauscope_devices", "Unit"),
+        ]
+        self.mqtt_sensor_table.setColumnCount(len(self._mqtt_sensor_headers))
+        self.mqtt_sensor_table.setHorizontalHeaderLabels(self._mqtt_sensor_headers)
+        header = self.mqtt_sensor_table.horizontalHeader()
+        if header is not None:
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self._mqtt_cell_delegate = OpaqueCellDelegate(self.mqtt_sensor_table)
+        self.mqtt_sensor_table.setItemDelegate(self._mqtt_cell_delegate)
+        self.mqtt_sensor_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.mqtt_sensor_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.mqtt_sensor_table.setMinimumHeight(140)
+        self._populate_mqtt_sensor_table()
+        form_layout.addRow(self.mqtt_sensor_table)
+
+        buttons = QWidget()
+        btn_layout = QHBoxLayout(buttons)
+        btn_layout.setContentsMargins(0, 0, 0, 0)
+        self.mqttAddSensorButton = QPushButton(
+            QApplication.translate("tilauscope_devices", "Add sensor")
+        )
+        self.mqttAddSensorButton.setStyleSheet(_btn_secondary())
+        self.mqttAddSensorButton.clicked.connect(self._mqtt_add_sensor_row)
+        self.mqttDeleteSensorButton = QPushButton(
+            QApplication.translate("tilauscope_devices", "Delete")
+        )
+        self.mqttDeleteSensorButton.setStyleSheet(_btn_secondary())
+        self.mqttDeleteSensorButton.clicked.connect(self._mqtt_delete_sensor_row)
+        self.mqttCheckSensorButton = QPushButton(
+            QApplication.translate("tilauscope_devices", "Check sensor")
+        )
+        self.mqttCheckSensorButton.setStyleSheet(_btn_secondary())
+        self.mqttCheckSensorButton.setToolTip(QApplication.translate(
+            "tilauscope_devices",
+            "Connect to the broker with the settings above and read the selected sensor once."
+        ))
+        self.mqttCheckSensorButton.clicked.connect(self._mqtt_check_sensor)
+        btn_layout.addWidget(self.mqttAddSensorButton)
+        btn_layout.addWidget(self.mqttDeleteSensorButton)
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.mqttCheckSensorButton)
+        form_layout.addRow(buttons)
+
+    def _set_mqtt_row_widgets(self, row: int, multiplier: float | None,
+                              divider: float | None, unit: str) -> None:
+        """Cell widgets of one sensor row: the two scaling factors and the unit."""
+        _ss = _table_spinbox_style()
+        for col, value in ((3, multiplier), (4, divider)):
+            sb = QDoubleSpinBox()
+            sb.setRange(0, 10000)
+            sb.setDecimals(1)
+            sb.setValue(1.0 if value is None else float(value))
+            sb.setStyleSheet(_ss)
+            self.mqtt_sensor_table.setCellWidget(row, col, sb)
+        cb = QComboBox()
+        for code, label in _MQTT_SENSOR_UNITS:
+            cb.addItem(label, code)
+        index = cb.findData(unit if unit in ("C", "F") else "")
+        cb.setCurrentIndex(max(index, 0))
+        cb.setStyleSheet(_table_combobox_style())
+        cb.setToolTip(QApplication.translate(
+            "tilauscope_devices",
+            "Unit the sensor publishes in. A temperature is converted to the unit "
+            "the application works in; leave empty for anything that is not a temperature."
+        ))
+        self.mqtt_sensor_table.setCellWidget(row, 5, cb)
+
+    def _populate_mqtt_sensor_table(self) -> None:
+        sensors = self._mqtt_sensors.sensors
+        self.mqtt_sensor_table.setRowCount(len(sensors))
+        for row, sensor in enumerate(sensors):
+            for col, value in enumerate((sensor.id, sensor.topic, sensor.command)):
+                self.mqtt_sensor_table.setItem(row, col, QTableWidgetItem(value or ""))
+            self._set_mqtt_row_widgets(row, sensor.multiplier, sensor.divider, sensor.unit)
+
+    def _get_mqtt_sensor_data(self) -> 'MQTTSensorConfig':
+        """Rebuild the sensor list from the table. Rows without an id or a topic
+        are dropped: they are half-typed rows, not sensors."""
+        from tilauscope.tilauscope_types import MQTTSensor, MQTTSensorConfig
+        sensors: list[MQTTSensor] = []
+        for row in range(self.mqtt_sensor_table.rowCount()):
+            def _text(col: int, row: int = row) -> str:
+                item = self.mqtt_sensor_table.item(row, col)
+                return item.text().strip() if item is not None else ""
+            def _num(col: int, row: int = row) -> float:
+                w = self.mqtt_sensor_table.cellWidget(row, col)
+                return float(w.value()) if isinstance(w, QDoubleSpinBox) else 1.0
+            def _unit(row: int = row) -> str:
+                w = self.mqtt_sensor_table.cellWidget(row, 5)
+                return str(w.currentData() or "") if isinstance(w, QComboBox) else ""
+            sensor_id, topic = _text(0), _text(1)
+            if not sensor_id or not topic:
+                continue
+            sensors.append(MQTTSensor(
+                id=sensor_id,
+                topic=topic,
+                command=_text(2),
+                multiplier=_num(3),
+                divider=_num(4),
+                unit=_unit(),
+            ))
+        return MQTTSensorConfig(sensors=sensors)
+
+    @pyqtSlot()
+    def _mqtt_add_sensor_row(self) -> None:
+        row = self.mqtt_sensor_table.rowCount()
+        self.mqtt_sensor_table.insertRow(row)
+        for col in range(3):
+            self.mqtt_sensor_table.setItem(row, col, QTableWidgetItem(""))
+        self._set_mqtt_row_widgets(row, 1.0, 1.0, "")
+        self.mqtt_sensor_table.selectRow(row)
+        self.mqtt_sensor_table.editItem(self.mqtt_sensor_table.item(row, 0))
+
+    @pyqtSlot()
+    def _mqtt_delete_sensor_row(self) -> None:
+        row = self.mqtt_sensor_table.currentRow()
+        if row < 0:
+            return
+        self.mqtt_sensor_table.removeRow(row)
+
+    @pyqtSlot()
+    def _mqtt_check_sensor(self) -> None:
+        """Probe the selected row against a short-lived connection built from the
+        broker fields as currently typed, so a sensor can be verified before the
+        settings have ever been saved."""
+        from tilauscope.mqttbridge import TilauscopeMQTTClient, MQTTConfig, TilauMqttPorts
+        row = self.mqtt_sensor_table.currentRow()
+        if row < 0:
+            show_styled_message(
+                self,
+                QApplication.translate("tilauscope_devices", "Check sensor"),
+                QApplication.translate("tilauscope_devices", "Select a sensor row first."),
+                QMessageBox.Icon.Warning,
+            )
+            return
+        candidates = self._get_mqtt_sensor_data().sensors
+        item = self.mqtt_sensor_table.item(row, 0)
+        sensor_id = item.text().strip() if item is not None else ""
+        sensor = next((s for s in candidates if s.id == sensor_id), None)
+        if sensor is None:
+            show_styled_message(
+                self,
+                QApplication.translate("tilauscope_devices", "Check sensor"),
+                QApplication.translate("tilauscope_devices", "This row needs an ID and a topic before it can be checked."),
+                QMessageBox.Icon.Warning,
+            )
+            return
+
+        temp_config = MQTTConfig(
+            broker_url=self.mqttBrokerEdit.text(),
+            port=self.mqttPortSpin.value(),
+            topic=self.mqttTopicEdit.text(),
+        )
+        temp_config.username = self.mqttUsernameEdit.text()
+        temp_config.password = self.mqttPasswordEdit.text()
+        client = TilauscopeMQTTClient(temp_config, self.aw)
+        result = None
+        try:
+            if client.start():
+                # same conversion the sampling loop applies, so the reported
+                # figure is the one that will be recorded
+                result = TilauMqttPorts(client).check_sensor(sensor, mode=self.aw.qmc.mode)
+        except Exception as e:  # noqa: BLE001
+            _log.error("MQTT sensor check failed: %s", e)
+        finally:
+            client.stop()
+
+        if result is not None and result.ok:
+            show_styled_message(
+                self,
+                QApplication.translate("tilauscope_devices", "MQTT Sensor OK"),
+                QApplication.translate("tilauscope_devices", "Value read for {0}: {1} {2}").format(
+                    sensor.id, result.value,
+                    f"°{self.aw.qmc.mode}" if sensor.unit else ""
+                ).strip(),
+            )
+        else:
+            detail = "" if result is None else f"{result.error.name} — {result.message or ''}"
+            show_styled_message(
+                self,
+                QApplication.translate("tilauscope_devices", "MQTT Sensor Check Failed"),
+                QApplication.translate(
+                    "tilauscope_devices",
+                    "No value could be read for {0}.\n{1}\n\nThe sensor is kept: a topic that is silent right now may still be valid."
+                ).format(sensor.id, detail),
+                QMessageBox.Icon.Warning,
+            )
+
+    # ─────────────────────────────────────────────────────────────────────────
     # MQTT test
     # ─────────────────────────────────────────────────────────────────────────
 
@@ -1804,14 +2094,14 @@ class TilauscopeConfigDlg(QDialog):
         if connected:
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "MQTT Connection Test"),
-                QApplication.translate("tilauscope_beancave", "Connection to MQTT broker successful!"),
+                QApplication.translate("tilauscope_devices", "MQTT Connection Test"),
+                QApplication.translate("tilauscope_devices", "Connection to MQTT broker successful!"),
             )
         else:
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "MQTT Connection Test"),
-                QApplication.translate("tilauscope_beancave", "Failed to connect to MQTT broker."),
+                QApplication.translate("tilauscope_devices", "MQTT Connection Test"),
+                QApplication.translate("tilauscope_devices", "Failed to connect to MQTT broker."),
                 QMessageBox.Icon.Warning,
             )
 
@@ -1830,7 +2120,7 @@ class TilauscopeConfigDlg(QDialog):
         else:
             text = (
                 "<span style='color:#E0903B;'>"
-                + QApplication.translate("tilauscope_beancave", "Not configured — AI features disabled")
+                + QApplication.translate("tilauscope_devices", "Not configured — AI features disabled")
                 + "</span>"
             )
         self._ai_status_lbl.setText(text)
@@ -1944,8 +2234,8 @@ class TilauscopeConfigDlg(QDialog):
         if host is None or not host.control_active():
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Remote control is off"),
-                QApplication.translate("tilauscope_beancave",
+                QApplication.translate("tilauscope_devices", "Remote control is off"),
+                QApplication.translate("tilauscope_devices",
                     "Enable remote control, click OK, restart TilauScope, then pair a phone."),
             )
             return
@@ -2067,6 +2357,10 @@ class TilauscopeConfigDlg(QDialog):
         aw.mqttConfig.username   = self.mqttUsernameEdit.text()
         aw.mqttConfig.password   = self.mqttPasswordEdit.text()
 
+        # sensor list is rebuilt from the table and persisted to QSettings
+        self._mqtt_sensors = self._get_mqtt_sensor_data()
+        self._mqtt_ports.save_mqtt_sensors(self._mqtt_sensors)
+
         ## TILAU ## headless "BeanCave home" mode -> QSettings (boot-time; restart)
         _h_prev = QSettings().value('tilauscope/headless_mode', False, type=bool)
         _h_new  = self.headlessModeCheckBox.isChecked()
@@ -2074,8 +2368,8 @@ class TilauscopeConfigDlg(QDialog):
             QSettings().setValue('tilauscope/headless_mode', _h_new)
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Restart required"),
-                QApplication.translate("tilauscope_beancave",
+                QApplication.translate("tilauscope_devices", "Restart required"),
+                QApplication.translate("tilauscope_devices",
                     "BeanCave home mode will take effect the next time you start TilauScope."),
             )
 
@@ -2086,8 +2380,8 @@ class TilauscopeConfigDlg(QDialog):
             QSettings().setValue('tilauscope/web_port', _p_new)
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Restart required"),
-                QApplication.translate("tilauscope_beancave",
+                QApplication.translate("tilauscope_devices", "Restart required"),
+                QApplication.translate("tilauscope_devices",
                     "The record web server port will take effect the next time you "
                     "start TilauScope. Labels printed from now on will encode the new port."),
             )
@@ -2102,8 +2396,8 @@ class TilauscopeConfigDlg(QDialog):
             QSettings().setValue('tilauscope/remote_port', _rp_new)
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Restart required"),
-                QApplication.translate("tilauscope_beancave",
+                QApplication.translate("tilauscope_devices", "Restart required"),
+                QApplication.translate("tilauscope_devices",
                     "Remote control will take effect the next time you start TilauScope."),
             )
 

@@ -1,17 +1,27 @@
 #
 # ABOUT
 # Artisan Colors dialog
-
+#
+# COPYRIGHT (C) 2010-2026 The Artisan team represented by
+#   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
+#
 # LICENSE
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 2 of the License, or
-# version 3 of the License, or (at your option) any later version. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public License for more details.
-
+# This program or module is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# MAINTAINER
+# Marko Luther, 2026
+#
 # AUTHOR
 # Marko Luther, 2023
 
@@ -824,7 +834,7 @@ class graphColorDlg(ArtisanDialog):
     # background colors
     def setbgColor(self, title:str, var:QPushButton, color:str) -> None:
         labelcolor = QColor(rgba_colorname2argb_colorname(color))
-        colorf = self.aw.colordialog(labelcolor, alphasupport=True, parent=self)
+        colorf = self.aw.colordialog(labelcolor, alphasupport=True)
         if colorf.isValid():
             color = argb_colorname2rgba_colorname(colorf.name(QColor.NameFormat.HexArgb))
             tc = self.aw.labelBorW(color)
@@ -847,7 +857,7 @@ class graphColorDlg(ArtisanDialog):
             self.aw.sendmessage(QApplication.translate('Message','Color of {0} set to {1}').format(title,str(color)))
 
     def setlcdColor(self, palette:dict[str,str], disj_palette:dict[str,str], select:str) -> None:
-        res = self.aw.colordialog(QColor(rgba_colorname2argb_colorname(palette[select])), alphasupport=True, parent=self)
+        res = self.aw.colordialog(QColor(rgba_colorname2argb_colorname(palette[select])), alphasupport=True)
         if QColor.isValid(res):
             nc = argb_colorname2rgba_colorname(res.name(QColor.NameFormat.HexArgb))
             if nc == disj_palette[select] or (nc in {'white', '#ffffff', '#fffffffff'} and disj_palette[select] in {'white', '#ffffff', '#fffffffff'}) or (nc in {'black', '#000000', '#000000ff'} and disj_palette[select] in {'black', '#000000', '#000000ff'}):
@@ -934,7 +944,7 @@ class graphColorDlg(ArtisanDialog):
     # foreground colors
     def setColor(self, title:str, var:QPushButton, color:str) -> None:
         labelcolor = QColor(rgba_colorname2argb_colorname(self.aw.qmc.palette[color]))
-        colorf = self.aw.colordialog(labelcolor, alphasupport=True, parent=self)
+        colorf = self.aw.colordialog(labelcolor, alphasupport=True)
         if colorf.isValid():
             self.aw.qmc.palette[color] = argb_colorname2rgba_colorname(colorf.name(QColor.NameFormat.HexArgb))
             self.aw.updateCanvasColors()

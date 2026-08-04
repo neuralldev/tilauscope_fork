@@ -1,0 +1,13 @@
+# Netlify / Cloudflare Pages redirect syntax.
+#
+# security.txt has to live at /security.txt on this host (its file manager
+# won't create a directory whose name starts with a dot), but the spec
+# (RFC 9116 §4) expects it at /.well-known/security.txt. A redirect from the
+# spec path to the real file is explicitly the mechanism the RFC anticipates
+# for exactly this situation — this is not a workaround, it's the documented
+# way to publish the file from a location that can't hold the dot-directory.
+#
+# 200 here means "rewrite", not "redirect": the browser's address bar and any
+# automated RFC 9116 fetcher both see content at /.well-known/security.txt,
+# with no visible bounce to /security.txt.
+/.well-known/security.txt   /security.txt   200

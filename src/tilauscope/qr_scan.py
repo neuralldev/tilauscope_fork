@@ -70,14 +70,14 @@ def _camera_settings_hint() -> str:
     """Where to re-enable camera access, per platform (shown in error texts)."""
     if sys.platform == 'darwin':
         return QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_webclient",
             "System Settings → Privacy & Security → Camera")
     if sys.platform.startswith('win'):
         return QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_webclient",
             "Settings → Privacy & security → Camera")
     return QApplication.translate(
-        "tilauscope_beancave", "your system's privacy settings")
+        "tilauscope_webclient", "your system's privacy settings")
 
 
 def _macos_request_camera_access(callback) -> bool:
@@ -172,11 +172,11 @@ def scanner_available() -> tuple[bool, str]:
     """Whether the scan feature can run, with a user-facing reason when not."""
     if not _HAS_DECODER:
         return False, QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_webclient",
             "QR decoding library (zxing-cpp) is not available in this build.")
     if not _HAS_CAMERA_STACK:
         return False, QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_webclient",
             "Camera support (QtMultimedia) is not available in this build.")
     return True, ""
 
@@ -265,7 +265,7 @@ class ScanQRDialog(QDialog):
 
         # -- custom title bar (frameless drag) --
         title_row = QHBoxLayout()
-        title = QLabel("📷  " + QApplication.translate("tilauscope_beancave", "SCAN A QR CODE"))
+        title = QLabel("📷  " + QApplication.translate("tilauscope_webclient", "SCAN A QR CODE"))
         title.setStyleSheet(f"color: {THEME['ACCENT']}; font-size: 14px; font-weight: 800; "
                             f"font-family: 'JetBrains Mono';")
         close_btn = QPushButton("✕")
@@ -295,7 +295,7 @@ class ScanQRDialog(QDialog):
 
         # -- status line --
         self._status = QLabel(QApplication.translate(
-            "tilauscope_beancave", "Point the label QR code at the camera…"))
+            "tilauscope_webclient", "Point the label QR code at the camera…"))
         self._status.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
         layout.addWidget(self._status)
 
@@ -305,7 +305,7 @@ class ScanQRDialog(QDialog):
         self._camera_combo.setVisible(False)
         bottom.addWidget(self._camera_combo)
         bottom.addStretch()
-        cancel = QPushButton(QApplication.translate("tilauscope_beancave", "Close"))
+        cancel = QPushButton(QApplication.translate("tilauscope_webclient", "Close"))
         cancel.clicked.connect(self.reject)
         bottom.addWidget(cancel)
         layout.addLayout(bottom)
@@ -317,14 +317,14 @@ class ScanQRDialog(QDialog):
     def _populate_cameras(self) -> None:
         if not _HAS_CAMERA_STACK:
             self._set_error(QApplication.translate(
-                "tilauscope_beancave", "Camera support is not available in this build."))
+                "tilauscope_webclient", "Camera support is not available in this build."))
             return
         if not self._ensure_camera_permission():
             return  # request in flight (callback re-enters here) or denied
         devices = QMediaDevices.videoInputs()
         if not devices:
             self._set_error(QApplication.translate(
-                "tilauscope_beancave", "No camera detected on this computer."))
+                "tilauscope_webclient", "No camera detected on this computer."))
             return
         if len(devices) > 1:
             for dev in devices:
@@ -350,7 +350,7 @@ class ScanQRDialog(QDialog):
             if status == Qt.PermissionStatus.Undetermined and not self._permission_requested:
                 self._permission_requested = True  # ask the system exactly once
                 self._status.setText(QApplication.translate(
-                    "tilauscope_beancave", "Waiting for the system camera authorization…"))
+                    "tilauscope_webclient", "Waiting for the system camera authorization…"))
                 # Native AVFoundation request first: it prompts even from an
                 # unbundled dev python, where Qt's request needs an Info.plist
                 # and never calls back.
@@ -371,7 +371,7 @@ class ScanQRDialog(QDialog):
 
     def _show_denied(self) -> None:
         self._set_error(QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_webclient",
             "Camera access denied — allow it in {0}, then reopen this window."
         ).format(_camera_settings_hint()))
 
@@ -431,7 +431,7 @@ class ScanQRDialog(QDialog):
         except Exception as e:
             _log.error(f"Camera start failed: {e}", exc_info=True)
             self._set_error(QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_webclient",
                 "Could not start the camera (check camera access in {0})."
             ).format(_camera_settings_hint()))
 
@@ -454,7 +454,7 @@ class ScanQRDialog(QDialog):
     def _on_camera_error(self, _error, error_string: str) -> None:
         _log.warning(f"Camera error: {error_string}")
         self._set_error(QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_webclient",
             "Camera error (check camera access in {0})."
         ).format(_camera_settings_hint()))
 
@@ -541,7 +541,7 @@ class ScanQRDialog(QDialog):
             if payload != self._last_bad_payload:
                 self._last_bad_payload = payload
                 self._set_error(QApplication.translate(
-                    "tilauscope_beancave", "QR code not recognized — not a TilauScope label."))
+                    "tilauscope_webclient", "QR code not recognized — not a TilauScope label."))
             return
         # Recognized: stop everything before leaving the dialog.
         self.result_kind, self.result_id = parsed

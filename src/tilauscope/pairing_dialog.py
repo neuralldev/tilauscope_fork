@@ -68,7 +68,7 @@ class PairingDialog(QDialog):
 
         # header
         header = QHBoxLayout()
-        title = QLabel(QApplication.translate("tilauscope_beancave", "PAIR A PHONE"))
+        title = QLabel(QApplication.translate("tilauscope_devices", "PAIR A PHONE"))
         title.setStyleSheet(f"color:{_ACCENT};font-size:14px;font-weight:800;letter-spacing:1px;")
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(30, 30)
@@ -91,7 +91,7 @@ class PairingDialog(QDialog):
         qr_l.addWidget(self._qr_label, alignment=Qt.AlignmentFlag.AlignCenter)
         inner.addWidget(qr_card, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        hint = QLabel(QApplication.translate("tilauscope_beancave",
+        hint = QLabel(QApplication.translate("tilauscope_devices",
                       "Scan or open the link on your phone (same wifi)"))
         hint.setStyleSheet(f"color:{_SUB};font-size:12px;")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -117,10 +117,10 @@ class PairingDialog(QDialog):
         _pill = (f"QPushButton {{ background:transparent; color:{_SUB}; border:1px solid {_OVERLAY};"
                  f" border-radius:8px; padding:6px 12px; }}"
                  f"QPushButton:hover {{ color:{_TEXT}; border-color:{_SUB}; }}")
-        self._copy_btn = QPushButton(QApplication.translate("tilauscope_beancave", "⧉ Copy link"))
+        self._copy_btn = QPushButton(QApplication.translate("tilauscope_devices", "⧉ Copy link"))
         self._copy_btn.clicked.connect(self._copy_url)
         self._copy_btn.setStyleSheet(_pill)
-        regen = QPushButton(QApplication.translate("tilauscope_beancave", "↻ New code"))
+        regen = QPushButton(QApplication.translate("tilauscope_devices", "↻ New code"))
         regen.clicked.connect(self._new_token)
         regen.setStyleSheet(_pill)
         ttl_row.addWidget(self._ttl_label); ttl_row.addStretch()
@@ -172,7 +172,7 @@ class PairingDialog(QDialog):
         self._url = url
         self._url_label.setText(url)
         if ip:
-            self._url_alt.setText(QApplication.translate("tilauscope_beancave",
+            self._url_alt.setText(QApplication.translate("tilauscope_devices",
                                   "or  http://tilauscope.local:{port}").format(port=self._port))
         else:
             self._url_alt.setText('')
@@ -196,9 +196,9 @@ class PairingDialog(QDialog):
         cb = QApplication.clipboard()
         if cb is not None:
             cb.setText(self._url)
-        self._copy_btn.setText(QApplication.translate("tilauscope_beancave", "✓ Copied"))
+        self._copy_btn.setText(QApplication.translate("tilauscope_devices", "✓ Copied"))
         QTimer.singleShot(1400, lambda: self._copy_btn.setText(
-            QApplication.translate("tilauscope_beancave", "⧉ Copy link")))
+            QApplication.translate("tilauscope_devices", "⧉ Copy link")))
 
     def _tick(self) -> None:
         if self._ttl_left > 0:
@@ -226,10 +226,10 @@ class PairingDialog(QDialog):
     def _update_ttl_label(self) -> None:
         if self._ttl_left > 0:
             self._ttl_label.setText(
-                QApplication.translate("tilauscope_beancave", "Code expires in {n}s").format(n=self._ttl_left))
+                QApplication.translate("tilauscope_devices", "Code expires in {n}s").format(n=self._ttl_left))
         else:
             self._ttl_label.setText(
-                QApplication.translate("tilauscope_beancave", "Code expired — tap New code"))
+                QApplication.translate("tilauscope_devices", "Code expired — tap New code"))
 
     # ---- device list --------------------------------------------------------
 
@@ -243,9 +243,9 @@ class PairingDialog(QDialog):
         devices = self._host.pairing.list_devices() if self._host.pairing else {}
         self._dev_sig = self._dev_signature(devices)
         self._dev_title.setText(
-            QApplication.translate("tilauscope_beancave", "PAIRED DEVICES ({n})").format(n=len(devices)))
+            QApplication.translate("tilauscope_devices", "PAIRED DEVICES ({n})").format(n=len(devices)))
         if not devices:
-            empty = QLabel(QApplication.translate("tilauscope_beancave", "No paired device yet."))
+            empty = QLabel(QApplication.translate("tilauscope_devices", "No paired device yet."))
             empty.setStyleSheet(f"color:{_SUB};font-size:12px;")
             self._dev_layout.insertWidget(0, empty)
             return
@@ -288,9 +288,9 @@ class PairingDialog(QDialog):
                      f"<br><span style='color:{_SUB};font-size:10px'>{when}</span>")
         txt.setStyleSheet("background:transparent;border:none;")
         rename = self._icon_btn("✏", _ACCENT)
-        rename.setToolTip(QApplication.translate("tilauscope_beancave", "Rename"))
+        rename.setToolTip(QApplication.translate("tilauscope_devices", "Rename"))
         rename.clicked.connect(lambda _=False, d=device_id: self._begin_rename(d))
-        revoke = QPushButton(QApplication.translate("tilauscope_beancave", "Revoke"))
+        revoke = QPushButton(QApplication.translate("tilauscope_devices", "Revoke"))
         revoke.clicked.connect(lambda _=False, d=device_id: self._revoke(d))
         revoke.setStyleSheet(
             f"QPushButton {{ background:transparent; color:{_RED}; border:1px solid {_RED}44;"

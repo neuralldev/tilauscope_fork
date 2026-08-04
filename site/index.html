@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!--
+  tilauscope.org front page.
+
+  Everything this page needs is served from this origin: no font CDN, no
+  analytics, no badge service, no embedded video. That is not a stylistic
+  preference, it is what lets the policy below be written without a single
+  escape hatch. Adding one third-party asset later means widening the policy,
+  so weigh it as such.
+
+  The <meta> policy is the fallback for hosts that cannot set headers. Prefer
+  the real headers in `_headers` — meta cannot carry frame-ancestors, and a
+  header cannot be stripped by an injected tag the way a meta element can.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'; upgrade-insecure-requests">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+
+<title>TilauScope — a guided roasting assistant for home coffee roasters</title>
+<meta name="description" content="TilauScope adds a guided layer to Artisan Roaster Scope: a roast plan built from your own past roasts, live recommendations while the drum turns, and a green-coffee database. Free software, AGPL v3.">
+
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32x32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#1E1E2E">
+<meta name="color-scheme" content="dark light">
+
+<link rel="stylesheet" href="site.css">
+<script src="site.js" defer></script>
+</head>
+<body>
+
+<a class="skip" href="#start">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="#top">
+    <svg class="brand-mark" viewBox="0 0 512 512" aria-hidden="true" focusable="false">
+      <defs>
+        <mask id="crease" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+          <rect x="0" y="0" width="512" height="512" fill="#fff"></rect>
+          <path d="M 256,104 C 294,170 218,212 256,256 C 294,300 218,342 256,408" fill="none" stroke="#000" stroke-width="36" stroke-linecap="round"></path>
+        </mask>
+      </defs>
+      <g transform="rotate(-28 256 256)">
+        <path mask="url(#crease)" fill="currentColor" d="M 256,51 C 338.8,51 406,142.8 406,256 C 406,369.2 338.8,461 256,461 C 173.2,461 106,369.2 106,256 C 106,142.8 173.2,51 256,51 Z"></path>
+      </g>
+    </svg>
+    <span class="brand-name">TilauScope</span>
+  </a>
+  <nav class="topnav" aria-label="Main">
+    <a href="https://github.com/neuralldev/tilauscope_fork/tree/main/docs" target="_blank" rel="noopener noreferrer">Documentation</a>
+    <a href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">Source</a>
+    <a class="topnav-cta" href="https://github.com/neuralldev/tilauscope_fork/releases/latest" target="_blank" rel="noopener noreferrer">Download</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- ————————————————————————— hero ————————————————————————— -->
+  <section class="hero">
+   <div class="hero-lead">
+    <div class="hero-copy">
+      <p class="eyebrow">Free software · macOS and Windows</p>
+      <h1>Artisan records the roast.<br><em>TilauScope tells you what to do next.</em></h1>
+      <p class="lede">
+        A guided assistant for people roasting 250&nbsp;g at a time. Before you charge, it builds
+        a plan from the coffee, the batch and your machine. While the drum turns, it says which
+        lever to move and when — and it learns those numbers from your own past roasts of the
+        same bean, not from a reference curve.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/neuralldev/tilauscope_fork/releases/latest" target="_blank" rel="noopener noreferrer">
+          Download the latest release
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">
+          Browse the source
+        </a>
+      </div>
+      <p class="cta-note">Signed and notarised on macOS · installer on Windows · AGPL&nbsp;v3</p>
+    </div>
+
+    <figure class="hero-photo">
+      <img src="hero.png" width="1000" height="1250" decoding="async"
+           alt="Roasted beans dropping from the roasting chamber into the cooling tray.">
+    </figure>
+   </div>
+
+    <figure class="scope" id="start">
+      <figcaption class="scope-head">
+        <span class="scope-title">Ethiopia Guji · Natural · 250&nbsp;g</span>
+        <span class="scope-tag" data-scope-phase>Charge</span>
+      </figcaption>
+
+      <!-- The curve is drawn to canvas rather than hand-authored as path data:
+           it comes from the same milestone list the readouts do, so the two can
+           never drift apart. -->
+      <canvas class="scope-canvas" width="1120" height="520"
+              data-roast-curve
+              role="img"
+              aria-label="Bean temperature curve of a 250 g natural Ethiopia roast: charge at 200 °C, turning point at 1:28, dry end at 4:55, first crack at 9:26, drop at 11:12 and 205 °C."></canvas>
+
+      <div class="readouts">
+        <div class="readout">
+          <span class="readout-label">Time</span>
+          <span class="readout-value" data-readout="time">00:00</span>
+        </div>
+        <div class="readout readout-bt">
+          <span class="readout-label">Bean</span>
+          <span class="readout-value" data-readout="bt">200<span class="unit">°C</span></span>
+        </div>
+        <div class="readout readout-ror">
+          <span class="readout-label">Rate of rise</span>
+          <span class="readout-value" data-readout="ror">0.0<span class="unit">°/min</span></span>
+        </div>
+        <div class="readout readout-say">
+          <span class="readout-label">TilauScope says</span>
+          <span class="readout-value readout-say-text" data-readout="say">Charge now — drum at 200&nbsp;°C</span>
+        </div>
+      </div>
+    </figure>
+  </section>
+
+  <!-- ———————————————————— what it actually is ———————————————————— -->
+  <section class="band">
+    <div class="prose">
+      <h2>It is Artisan, with an opinion added on top</h2>
+      <p>
+        <a href="https://github.com/artisan-roaster-scope/artisan" target="_blank" rel="noopener noreferrer">Artisan
+        Roaster Scope</a> is a professional-grade instrument. It records and plots everything,
+        exposes every setting it has, and leaves every decision to whoever is operating it. That
+        is exactly right for a professional, and it is a great deal to carry on a Saturday
+        morning with a 250&nbsp;g drum.
+      </p>
+      <p>
+        TilauScope changes none of that. The curve, the recording, the devices and the alarms are
+        Artisan's, untouched underneath. What TilauScope adds sits above them: a layer that has a
+        view on what should happen next, and says so out loud. You can switch it off — <span
+        class="term">Expert</span> level puts Artisan's full control panel back in front and the
+        extra layer steps back.
+      </p>
+    </div>
+  </section>
+
+  <!-- ————————————————————— the roast, in order ————————————————————— -->
+  <section class="band band-deep phases" aria-labelledby="phases-title">
+    <div class="prose">
+      <p class="eyebrow">Through one roast</p>
+      <h2 id="phases-title">What it says, and when</h2>
+      <p>
+        The order below is the order it happens in. Each phase is a different question, so the
+        assistant answers a different one at each.
+      </p>
+    </div>
+
+    <ol class="phase-list">
+      <li class="phase" data-phase>
+        <div class="phase-rail" aria-hidden="true"><span class="phase-dot"></span></div>
+        <div class="phase-body">
+          <p class="phase-clock">before 00:00</p>
+          <h3>Charge and drying</h3>
+          <p>
+            The preparation sheet already knows the coffee, reads your scale, and judges the batch
+            before it starts — too large for the drum, too dense for the heat you have. It brings
+            the machine to charge temperature on its own, using a controller that has learned how
+            your roaster overshoots. The plan exists before the beans do.
+          </p>
+        </div>
+      </li>
+
+      <li class="phase" data-phase>
+        <div class="phase-rail" aria-hidden="true"><span class="phase-dot"></span></div>
+        <div class="phase-body">
+          <p class="phase-clock">04:55 · dry end</p>
+          <h3>Maillard</h3>
+          <p>
+            Heat reductions are announced <em>before</em> they are due, not reported after. A live
+            reading tells you whether you are ahead of or behind the plan, in seconds rather than
+            in vague terms, and the assistant re-derives the phase you are aiming for from your own
+            previous roasts of this bean at a comparable batch size.
+          </p>
+        </div>
+      </li>
+
+      <li class="phase" data-phase>
+        <div class="phase-rail" aria-hidden="true"><span class="phase-dot"></span></div>
+        <div class="phase-body">
+          <p class="phase-clock">09:26 · first crack</p>
+          <h3>Development</h3>
+          <p>
+            First crack is detected and offered for marking rather than left to your ear alone. A
+            drop countdown accounts for the curve flattening out instead of extrapolating a
+            straight line, and a projected development ratio updates as it goes. If the curve
+            crashes or flicks, you hear about it while there is still time to answer.
+          </p>
+        </div>
+      </li>
+
+      <li class="phase" data-phase>
+        <div class="phase-rail" aria-hidden="true"><span class="phase-dot"></span></div>
+        <div class="phase-body">
+          <p class="phase-clock">11:12 · drop</p>
+          <h3>After the drop</h3>
+          <p>
+            A summary while it is still fresh, then the record read back against your own history —
+            not against a generic target. Finish the entry later, compare several roasts side by
+            side, correct a milestone you marked a beat late. When the coffee has rested enough to
+            brew, it says so, and hands you a recipe calculated from that roast.
+          </p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ———————————————————— around the roast ———————————————————— -->
+  <section class="band" aria-labelledby="around-title">
+    <div class="prose">
+      <p class="eyebrow">Around the drum</p>
+      <h2 id="around-title">A coffee has an identity</h2>
+      <p>
+        None of the learning above is possible without it. Two roasts of the same bag have to be
+        two roasts of <em>one coffee</em>, not two unrelated files — so the fork carries a database
+        for the green side of the shelf as well as the roasted one.
+      </p>
+    </div>
+
+    <div class="grid">
+      <article class="card">
+        <h3>BeanCave</h3>
+        <p>
+          A record per green coffee: stock, provenance, cupping notes, and assisted entry that
+          reads a supplier page for you. Every roast points back to it.
+        </p>
+      </article>
+      <article class="card">
+        <h3>Sacks and conservation</h3>
+        <p>
+          Bringing in a new bag is a guided step. Water activity is tracked per sack, and the
+          dashboard flags the ones drifting towards trouble before you taste it.
+        </p>
+      </article>
+      <article class="card">
+        <h3>Labels and QR</h3>
+        <p>
+          Printed labels for coffees, roasts and sacks, with the physical label pool tracked as
+          reusable. Scanning one opens its record — from a webcam or from your phone.
+        </p>
+      </article>
+      <article class="card">
+        <h3>Piloting from a phone</h3>
+        <p>
+          Pair a phone and drive the roast from beside the machine, with a deadman safeguard that
+          takes over if the connection drops mid-roast.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ———————————————————— hardware ———————————————————— -->
+  <section class="band band-deep" aria-labelledby="hw-title">
+    <div class="prose">
+      <p class="eyebrow">Talks to</p>
+      <h2 id="hw-title">The bench it was built on</h2>
+      <p>
+        Each device is integrated for what it actually adds, and the documentation states its
+        limits as plainly as its uses. Artisan's own long list of supported meters keeps working
+        underneath.
+      </p>
+    </div>
+    <ul class="chips">
+      <li>Skywalker V2 <span>roaster</span></li>
+      <li>DiFluid AirWave <span>extraction</span></li>
+      <li>DiFluid Omniflux <span>colour · acoustics</span></li>
+      <li>TilauAmbient <span>ambient probe</span></li>
+      <li>Acaia <span>scale</span></li>
+      <li>Niimbot B21S <span>labels</span></li>
+      <li>Lebrew AquaGauge <span>water activity</span></li>
+    </ul>
+  </section>
+
+  <!-- ———————————————————— the fork ———————————————————— -->
+  <section class="band band-fork" aria-labelledby="fork-title">
+    <div class="fork">
+      <div class="fork-copy">
+        <p class="eyebrow">Free software</p>
+        <h2 id="fork-title">All of it is on GitHub</h2>
+        <p>
+          Source, releases and issue tracker live in one public repository. Builds for macOS and
+          Windows are produced there and attached to each release.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">
+            neuralldev/tilauscope_fork
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/neuralldev/tilauscope_fork/releases/latest" target="_blank" rel="noopener noreferrer">
+            Releases
+          </a>
+        </div>
+      </div>
+
+      <aside class="notice">
+        <h3>Attribution</h3>
+        <p>
+          TilauScope is a modified version of
+          <a href="https://github.com/artisan-roaster-scope/artisan" target="_blank" rel="noopener noreferrer">Artisan
+          Roaster Scope</a>, copyright Marko Luther and the Artisan contributors. It is
+          <strong>not affiliated with, nor endorsed by, the Artisan project.</strong>
+          Modifications by Tilau began in 2025 and are ongoing.
+        </p>
+        <p>
+          Please report TilauScope problems on the TilauScope tracker, never on Artisan's.
+          Artisan's own code stays under the GPL; the combined work is distributed under the
+          <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU
+          Affero General Public License v3</a>.
+        </p>
+      </aside>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <p class="footer-privacy">
+      This page loads nothing from anywhere else. No fonts, scripts, images or badges from third
+      parties, no analytics, no cookies, no storage. Nothing you do here is recorded.
+    </p>
+    <nav class="footer-nav" aria-label="Footer">
+      <a href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">Source</a>
+      <a href="https://github.com/neuralldev/tilauscope_fork/tree/main/docs" target="_blank" rel="noopener noreferrer">Documentation</a>
+      <a href="https://github.com/neuralldev/tilauscope_fork/issues" target="_blank" rel="noopener noreferrer">Report a problem</a>
+      <a href="https://github.com/neuralldev/tilauscope_fork/blob/main/NOTICE" target="_blank" rel="noopener noreferrer">Notice</a>
+      <a href="https://github.com/neuralldev/tilauscope_fork/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">AGPL v3</a>
+    </nav>
+    <p class="footer-legal">
+      © 2025–2026 Tilau · Type set in Fraunces and JetBrains Mono, both under the SIL Open Font License.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -859,13 +859,13 @@ class NiimbotBLE(ClientBLE):
         # Émettre le statut pour que l'overlay reflète l'état réel avant impression
         self.status_updated.emit(hb, None)
         if hb.paperstate is not None and hb.paperstate != 0:
-            m = QApplication.translate("tilauscope_beancave","cover is opened, cannot print")
+            m = QApplication.translate("tilauscope_label","cover is opened, cannot print")
             _logd.error(f"{m}")
             self.error.emit(str(m))
             self._dump_trace("ABORT cover open")
             return False
         if hb.closingstate is not None and hb.closingstate != 0:
-            m = QApplication.translate("tilauscope_beancave","cover is opened, cannot print")
+            m = QApplication.translate("tilauscope_label","cover is opened, cannot print")
             _logd.error(f"{m}")
             self.error.emit(str(m))
             self._dump_trace("ABORT cover open")

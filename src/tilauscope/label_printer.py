@@ -491,7 +491,7 @@ class RoastedBeanLabelPrinter(_FontMixin):
 
         painter.setFont(QFont(self.reg_family, self.pt(2.2)))
         painter.setPen(C_ROAST_ACCENT)
-        painter.drawText(mg, int(y + self.p(scale, 4)), QApplication.translate("tilauscope_beancave", "Roasted bean").upper())
+        painter.drawText(mg, int(y + self.p(scale, 4)), QApplication.translate("tilauscope_label", "Roasted bean").upper())
         y += self.p(scale, 8.0)
 
         # Title
@@ -590,7 +590,7 @@ class RoastedBeanLabelPrinter(_FontMixin):
         y = float(header_h + self.p(scale, 4))
 
         roast_date = str(profile["roastdate"]) if profile and profile.get("roastdate") else "-"
-        self._micro_label(painter, QApplication.translate("tilauscope_beancave", "Roast date"), mg, y + self.p(scale, 3.5), C_ROAST_SPEC_LBL, scale)
+        self._micro_label(painter, QApplication.translate("tilauscope_label", "Roast date"), mg, y + self.p(scale, 3.5), C_ROAST_SPEC_LBL, scale)
         painter.setFont(QFont(self.reg_family, self.pt(2.8), QFont.Weight.DemiBold))
         painter.setPen(C_ROAST_SPEC_VAL)
         painter.drawText(QRectF(mg, y + self.p(scale, 5), W * 0.6, self.p(scale, 7)), Qt.AlignmentFlag.AlignLeft, replace_accents(roast_date))
@@ -641,12 +641,12 @@ class RoastedBeanLabelPrinter(_FontMixin):
         crop = str(bean.crop) if bean and bean.crop and bean.crop > 0 else "-"
 
         specs = [
-            (QApplication.translate("tilauscope_beancave", "Process"),    process,     mg,     col_w),
-            (QApplication.translate("tilauscope_beancave", "Variety"),    variety,     col2_x, col_w),
-            (QApplication.translate("tilauscope_beancave", "Altitude"),   altitude,    mg,     col_w),
-            (QApplication.translate("tilauscope_beancave", "Roast color"),roast_color, col2_x, col_w),
-            (QApplication.translate("tilauscope_beancave", "Density"),    density,     mg,     col_w),
-            (QApplication.translate("tilauscope_beancave", "Crop"),       crop,        col2_x, col_w),
+            (QApplication.translate("tilauscope_label", "Process"),    process,     mg,     col_w),
+            (QApplication.translate("tilauscope_label", "Variety"),    variety,     col2_x, col_w),
+            (QApplication.translate("tilauscope_label", "Altitude"),   altitude,    mg,     col_w),
+            (QApplication.translate("tilauscope_label", "Roast color"),roast_color, col2_x, col_w),
+            (QApplication.translate("tilauscope_label", "Density"),    density,     mg,     col_w),
+            (QApplication.translate("tilauscope_label", "Crop"),       crop,        col2_x, col_w),
         ]
 
         for i, (lbl, val, x, w) in enumerate(specs):
@@ -671,9 +671,9 @@ class RoastedBeanLabelPrinter(_FontMixin):
             loss = f"{profile['computed']['total_loss']} %"
 
         weight_rows = [
-            (QApplication.translate("tilauscope_beancave", "Green"), f"{green_w} {unit}".strip() or "-", C_ROAST_SPEC_VAL),
-            (QApplication.translate("tilauscope_beancave", "Roasted"), f"{roasted_w} {unit}".strip() or "-", C_ROAST_SPEC_VAL),
-            (QApplication.translate("tilauscope_beancave", "Loss"), loss or "-", C_ROAST_LOSS),
+            (QApplication.translate("tilauscope_label", "Green"), f"{green_w} {unit}".strip() or "-", C_ROAST_SPEC_VAL),
+            (QApplication.translate("tilauscope_label", "Roasted"), f"{roasted_w} {unit}".strip() or "-", C_ROAST_SPEC_VAL),
+            (QApplication.translate("tilauscope_label", "Loss"), loss or "-", C_ROAST_LOSS),
         ]
         for i, (lbl, val, vc) in enumerate(weight_rows):
             bx = mg + i * col_bar_w + self.p(scale, 2)
@@ -774,7 +774,7 @@ class GreenBeanLabelPrinter(_FontMixin):
 
         painter.setFont(QFont(self.reg_family, self.pt(2.2)))
         painter.setPen(C_GREEN_ACCENT)
-        painter.drawText(mg, int(y + self.p(scale, 4)), QApplication.translate("tilauscope_beancave", "Green bean").upper())
+        painter.drawText(mg, int(y + self.p(scale, 4)), QApplication.translate("tilauscope_label", "Green bean").upper())
         y += self.p(scale, 7)
 
         name = replace_accents(bean.name) if bean else "-"
@@ -809,11 +809,11 @@ class GreenBeanLabelPrinter(_FontMixin):
         # ---- DYNAMIC ENTRY POINT FOR PILL SYSTEM ----
         if bean and bean.is_blend:
             tag_bg, tag_bd  = C_BLEND_TAG_BG, C_BLEND_TAG_BD
-            tag_txt         = QApplication.translate("tilauscope_beancave", "Blend").upper()
+            tag_txt         = QApplication.translate("tilauscope_label", "Blend").upper()
             tag_color       = C_BLEND_TAG_TXT
         else:
             tag_bg, tag_bd  = C_GREEN_TAG_BG, C_GREEN_TAG_BD
-            tag_txt         = QApplication.translate("tilauscope_beancave", "Single origin").upper()
+            tag_txt         = QApplication.translate("tilauscope_label", "Single origin").upper()
             tag_color       = QColor(C_GREEN_ACCENT.red(), C_GREEN_ACCENT.green(), C_GREEN_ACCENT.blue(), 165)
 
         # Drop the broken hardcoded QRect drawing code completely!
@@ -873,14 +873,14 @@ class GreenBeanLabelPrinter(_FontMixin):
 
         crop = str(bean.crop) if bean and bean.crop and bean.crop > 0 else "-"
 
-        self._micro_label(painter, QApplication.translate("tilauscope_beancave", "Supplier"), mg, y + self.p(scale, 3.5), C_GREEN_SPEC_LBL, scale)
+        self._micro_label(painter, QApplication.translate("tilauscope_label", "Supplier"), mg, y + self.p(scale, 3.5), C_GREEN_SPEC_LBL, scale)
         painter.setFont(QFont(self.reg_family, self.pt(2.8), QFont.Weight.DemiBold))
         painter.setPen(C_GREEN_SPEC_VAL)
         painter.drawText(QRectF(mg, y + self.p(scale, 5), W * 0.6 - mg, self.p(scale, 7)), Qt.AlignmentFlag.AlignLeft, supplier)
 
         crop_col_w = self.p(scale, 18)   
         crop_x     = W - mg - crop_col_w
-        self._micro_label(painter, QApplication.translate("tilauscope_beancave", "Crop"), crop_x, y + self.p(scale, 3.5), C_GREEN_SPEC_LBL, scale)
+        self._micro_label(painter, QApplication.translate("tilauscope_label", "Crop"), crop_x, y + self.p(scale, 3.5), C_GREEN_SPEC_LBL, scale)
         painter.setFont(QFont(self.reg_family, self.pt(2.8), QFont.Weight.DemiBold))
         painter.setPen(C_GREEN_SPEC_VAL)
         painter.drawText(QRectF(crop_x, y + self.p(scale, 5), crop_col_w, self.p(scale, 7)), Qt.AlignmentFlag.AlignLeft, crop)
@@ -909,12 +909,12 @@ class GreenBeanLabelPrinter(_FontMixin):
         water_act = f"{bean.water_activity:.2f} aw" if bean and bean.water_activity and bean.water_activity > 0 else "-"
 
         specs = [
-            (QApplication.translate("tilauscope_beancave", "Process"),    process,   mg,     col_w),
-            (QApplication.translate("tilauscope_beancave", "Variety"),    variety,   col2_x, col_w),
-            (QApplication.translate("tilauscope_beancave", "Altitude"),   altitude,  mg,     col_w),
-            (QApplication.translate("tilauscope_beancave", "Density"),    density,   col2_x, col_w),
-            (QApplication.translate("tilauscope_beancave", "Moisture"),   moisture,  mg,     col_w),
-            (QApplication.translate("tilauscope_beancave", "Water act."), water_act, col2_x, col_w),
+            (QApplication.translate("tilauscope_label", "Process"),    process,   mg,     col_w),
+            (QApplication.translate("tilauscope_label", "Variety"),    variety,   col2_x, col_w),
+            (QApplication.translate("tilauscope_label", "Altitude"),   altitude,  mg,     col_w),
+            (QApplication.translate("tilauscope_label", "Density"),    density,   col2_x, col_w),
+            (QApplication.translate("tilauscope_label", "Moisture"),   moisture,  mg,     col_w),
+            (QApplication.translate("tilauscope_label", "Water act."), water_act, col2_x, col_w),
         ]
 
         for i, (lbl, val, x, w) in enumerate(specs):
@@ -927,7 +927,7 @@ class GreenBeanLabelPrinter(_FontMixin):
         raw_notes = replace_accents(truncate_notes(bean.flavour_notes if bean else "", max_chars=90))
         notes_h = self.p(scale, 18)
         self._rounded_rect(painter, QRectF(mg, y, W - 2 * mg, notes_h), self.p(scale, 2), C_GREEN_NOTES_BG)
-        self._micro_label(painter, QApplication.translate("tilauscope_beancave", "Cupping notes"), mg + self.p(scale, 2.5), y + self.p(scale, 4), C_GREEN_SPEC_LBL, scale)
+        self._micro_label(painter, QApplication.translate("tilauscope_label", "Cupping notes"), mg + self.p(scale, 2.5), y + self.p(scale, 4), C_GREEN_SPEC_LBL, scale)
         painter.setFont(QFont(self.reg_family, self.pt(2.5), QFont.Weight.DemiBold))
         painter.setPen(C_GREEN_SPEC_VAL)
         painter.drawText(QRectF(mg + self.p(scale, 2.5), y + self.p(scale, 5.5), W - 2 * mg - self.p(scale, 5), self.p(scale, 12)), Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, raw_notes)
@@ -956,7 +956,7 @@ class GreenBeanLabelPrinter(_FontMixin):
         today = QDate.currentDate().toString("d MMM yyyy")
         painter.setFont(QFont(self.reg_family, self.pt(1.8)))
         painter.setPen(C_GREEN_SPEC_LBL)
-        painter.drawText(int(mg), int(y + self.p(scale, 11)), QApplication.translate("tilauscope_beancave", "Stored") + f" {today}")
+        painter.drawText(int(mg), int(y + self.p(scale, 11)), QApplication.translate("tilauscope_label", "Stored") + f" {today}")
 
     def _generate_qr(self, bean: GreenBean):
         # http URL payload (spec §2.1) — phone camera opens the bean page directly
@@ -1287,7 +1287,7 @@ class NiimbotLabelBuilder:
 
         # ── Tasting Notes ─────────────────────────────────────────────────
         if current_y + 20 < MAX_TEXT_Y:
-            notes_lbl = QApplication.translate("tilauscope_beancave", "Tasting Notes:")
+            notes_lbl = QApplication.translate("tilauscope_label", "Tasting Notes:")
             draw.text((PAD, current_y), replace_accents(notes_lbl),
                       font=self._font_label, fill=0)
             current_y += draw.textbbox((0, 0), notes_lbl, font=self._font_label)[3] + 2
@@ -1386,7 +1386,7 @@ class NiimbotLabelBuilder:
         current_y += draw.textbbox((0, 0), origin_farm, font=self._font_value)[3] + 1
 
         # Ligne 2 : Bean — police subtitle
-        bean_txt = QApplication.translate("tilauscope_beancave", "Beans") + f": {roast_data['Bean']}"
+        bean_txt = QApplication.translate("tilauscope_label", "Beans") + f": {roast_data['Bean']}"
         while draw.textbbox((0, 0), bean_txt, font=self._font_subtitle)[2] > TEXT_W and len(bean_txt) > 6:
             bean_txt = bean_txt[:-1]
         draw.text((PAD, current_y), replace_accents(bean_txt), font=self._font_subtitle, fill=0)
@@ -1394,10 +1394,10 @@ class NiimbotLabelBuilder:
 
         # Lignes détails — police subtitle, pleine largeur, troncature adaptative
         detail_rows = [
-            (QApplication.translate("tilauscope_beancave", "Process"),   roast_data["Process"]),
-            (QApplication.translate("tilauscope_beancave", "Altitude"),  roast_data["Altitude"]),
-            (QApplication.translate("tilauscope_beancave", "Density"),   roast_data["Density"]),
-            (QApplication.translate("tilauscope_beancave", "SCA score"), roast_data["SCA Score"]),
+            (QApplication.translate("tilauscope_label", "Process"),   roast_data["Process"]),
+            (QApplication.translate("tilauscope_label", "Altitude"),  roast_data["Altitude"]),
+            (QApplication.translate("tilauscope_label", "Density"),   roast_data["Density"]),
+            (QApplication.translate("tilauscope_label", "SCA score"), roast_data["SCA Score"]),
         ]
         for lbl, val in detail_rows:
             if current_y + draw.textbbox((0, 0), "Ag", font=self._font_subtitle)[3] > H - PAD * 4:
@@ -1410,12 +1410,12 @@ class NiimbotLabelBuilder:
 
         current_y += 2
         # Ligne date
-        date_txt = QApplication.translate("tilauscope_beancave", "Roasted on") + f": {roast_data['Date']}"
+        date_txt = QApplication.translate("tilauscope_label", "Roasted on") + f": {roast_data['Date']}"
         draw.text((PAD, current_y), replace_accents(date_txt), font=self._font_subtitle, fill=0)
         current_y += draw.textbbox((0, 0), date_txt, font=self._font_subtitle)[3] + 2
 
         # Tasting notes — police graph, wrapping pixel-exact
-        notes_hdr = QApplication.translate("tilauscope_beancave", "Tasting notes") + ": "
+        notes_hdr = QApplication.translate("tilauscope_label", "Tasting notes") + ": "
         draw.text((PAD, current_y), replace_accents(notes_hdr), font=self._font_graph, fill=0)
         current_y += draw.textbbox((0, 0), notes_hdr, font=self._font_graph)[3] + 1
 

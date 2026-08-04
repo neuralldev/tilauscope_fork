@@ -1,5 +1,20 @@
+## [4.2.3] 2026-08-02
+build 1
+## [4.2.2] 2026-08-02
+build 1
+* ⚡ [feat(mqtt)] : MQTT sensors are now managed in Configuration ▸ INTEGRATIONS, directly under the broker they belong to, instead of a separate tab in Artisan's Ports window. The list is edited in place — one line per sensor, every cell typed directly — with Add sensor, Delete and Check sensor. It can be edited whether or not the broker is reachable; only Check sensor needs a live connection, and it reads the sensor once using the broker settings as currently typed, so a sensor can be verified before anything is saved
+* ⚡ [feat(mqtt)] : an MQTT sensor now declares the unit it publishes in — °C, °F, or none for anything that is not a temperature. A temperature is converted on arrival into the unit the session is working in, so a probe publishing in Celsius reads correctly during a Fahrenheit roast and the other way round; multiplier and divider are applied first, the conversion second. Sensors configured before this release keep their readings untouched until a unit is set on them
+* 🐛 [fix(mqtt)] : changes made to the MQTT sensor list are saved again. The list was being discarded when the window closed, so every addition, edit and deletion was lost
+* 🐛 [fix(mqtt)] : a sensor whose topic is silent at the moment you edit it can now be saved — the check reports what it found and keeps the sensor, instead of refusing the change without explanation
+* 🐛 [fix(mqtt)] : a broker that grants a subscription at quality of service 1 or 2 no longer reports a false "MQTT subscribe error" in the message line
+* 🐛 [fix(ports)] : the OK button of the Ports window now closes it in every case; without an MQTT configuration the button did nothing at all
+* ⚡ [feat(tilauscope)] : neutralize non-interesting message box when profile or aset are not genuine, just log a warning.
+build 1
+* ⚡ [feat(translations)] bump to production
 ## [4.2.1] 2026-07-31
 build 1
+* ⚡ [feat(translations)] : the interface texts are now filed under twenty-one named areas — Bean cave, Roast assistant, Brewing guide, Alarms and so on — instead of one single pile that held four fifths of them. Nothing changes on screen, but a volunteer translating TilauScope can now work area by area and stop wherever they like. Existing translations were carried over in full
+* 🐛 [fix(export)] : exporting a roast report as PDF works again. The document engine it needs was never installed, so the command failed the moment it was used, in the application as well as in the installed version. Saving a report as PDF alongside a profile was affected the same way
 ## [4.2.0] 2026-07-31
 build 3
 * ⚡ [feat(end of roast)] : the end-of-roast form can now print the roast label as a PDF on the spot, from the roasted weight and colour just entered — the label used to be available only later, from a roast already filed in BeanCave. Printing leaves the form untouched, so figures can still be corrected and the label printed again

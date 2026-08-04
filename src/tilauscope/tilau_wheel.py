@@ -317,7 +317,7 @@ class FlavorSelectorDialog(QDialog):
         header.setContentsMargins(0, 4, 0, 6)
 
         title = QLabel(
-            QApplication.translate("tilauscope_beancave", "TILAUSCOPE — FLAVOR SELECTOR")
+            QApplication.translate("tilauscope_window", "TILAUSCOPE — FLAVOR SELECTOR")
         )
         title.setStyleSheet(
             f"color:{THEME['ACCENT']};font-size:16px;font-weight:800;"
@@ -362,11 +362,11 @@ class FlavorSelectorDialog(QDialog):
         self.wheel.selectionChanged.connect(self._on_selection_changed)
 
         validate_btn = QPushButton(
-            QApplication.translate("tilauscope_beancave", "VALIDATE SELECTION")
+            QApplication.translate("tilauscope_window", "VALIDATE SELECTION")
         )
         validate_btn.setToolTip(
             QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_window",
                 "Click to confirm your flavor selection and copy it into the bean record. "
                 "Close the window to cancel."
             )
@@ -389,11 +389,11 @@ class FlavorSelectorDialog(QDialog):
         n = len(self.wheel.selected_notes)
         if n == 0:
             self._sel_label.setText(
-                QApplication.translate("tilauscope_beancave", "No notes selected — click outer ring to select")
+                QApplication.translate("tilauscope_window", "No notes selected — click outer ring to select")
             )
         else:
             self._sel_label.setText(
-                QApplication.translate("tilauscope_beancave", "%n note(s) selected", None, n)
+                QApplication.translate("tilauscope_window", "%n note(s) selected", None, n)
             )
 
     def get_notes(self) -> str:

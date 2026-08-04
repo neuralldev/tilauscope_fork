@@ -158,11 +158,11 @@ class RoastSocialCard(CardPainter):
         rows = self._green_rows(bean)
         if rows:
             y = self._section(p, x, y + 22, w,
-                              QApplication.translate("tilauscope_beancave", "Green bean"))
+                              QApplication.translate("tilauscope_roast_review", "Green bean"))
             y = self._kv_rows(p, x, y, w, rows)
 
         y = self._section(p, x, y + 16, w,
-                          QApplication.translate("tilauscope_beancave", "Roast"))
+                          QApplication.translate("tilauscope_roast_review", "Roast"))
         agtron = self.agtron_of(profile)
         if agtron > 0:
             y = self._paint_level(p, x, y, w, agtron) + 14
@@ -183,27 +183,27 @@ class RoastSocialCard(CardPainter):
         rows: list[tuple[str, str]] = []
         farm = (getattr(bean, 'farm', '') or '').strip()
         if farm:
-            rows.append((QApplication.translate("tilauscope_beancave", "Farm"),
+            rows.append((QApplication.translate("tilauscope_roast_review", "Farm"),
                          " ".join(farm.split())))
         varieties = (getattr(bean, 'varieties', '') or '').strip()
         if varieties:
-            rows.append((QApplication.translate("tilauscope_beancave", "Varieties"),
+            rows.append((QApplication.translate("tilauscope_roast_review", "Varieties"),
                          varieties))
         altitude = int(_f(getattr(bean, 'altitude', 0)))
         if altitude > 0:
-            rows.append((QApplication.translate("tilauscope_beancave", "Altitude"),
+            rows.append((QApplication.translate("tilauscope_roast_review", "Altitude"),
                          f"{altitude:,}".replace(",", " ") + " m"))
         sca = _f(getattr(bean, 'sca', 0))
         if sca > 0:
             crop = int(_f(getattr(bean, 'crop', 0)))
             label = f"{sca:g}"
             if crop > 0:
-                label += " · " + QApplication.translate("tilauscope_beancave", "crop") \
+                label += " · " + QApplication.translate("tilauscope_roast_review", "crop") \
                     + f" {crop}"
-            rows.append((QApplication.translate("tilauscope_beancave", "SCA"), label))
+            rows.append((QApplication.translate("tilauscope_roast_review", "SCA"), label))
         supplier = (getattr(bean, 'supplier', '') or '').strip()
         if supplier:
-            rows.append((QApplication.translate("tilauscope_beancave", "Supplier"),
+            rows.append((QApplication.translate("tilauscope_roast_review", "Supplier"),
                          supplier))
         return rows[:5]
 
@@ -244,7 +244,7 @@ class RoastSocialCard(CardPainter):
         p.drawText(x + w - 12 - vw, y + 12 + fm.ascent(), str(agtron))
         lfont = self._font(7, tracking=14.0)
         lfm = QFontMetrics(lfont)
-        label = QApplication.translate("tilauscope_beancave", "Agtron").upper()
+        label = QApplication.translate("tilauscope_roast_review", "Agtron").upper()
         self._text(p, x + w - 12 - lfm.horizontalAdvance(label), y + 33, label,
                    lfont, THEME['SUBTEXT'])
         return y + h
@@ -255,7 +255,7 @@ class RoastSocialCard(CardPainter):
         fcs_t = _f(computed.get("FCs_time"))
         tiles: list[tuple[str, str, str, bool]] = []
         if drop_t > 0:
-            tiles.append((QApplication.translate("tilauscope_beancave", "Duration"),
+            tiles.append((QApplication.translate("tilauscope_roast_review", "Duration"),
                           _mmss(drop_t), "", False))
         if drop_t > 0 and 0 < fcs_t < drop_t:
             tiles.append(("DTR", f"{(drop_t - fcs_t) / drop_t * 100:.0f}", "%", True))
@@ -263,10 +263,10 @@ class RoastSocialCard(CardPainter):
         if len(weight) >= 3:
             w_in, w_out, unit = _f(weight[0]), _f(weight[1]), str(weight[2])
             if w_in > 0:
-                tiles.append((QApplication.translate("tilauscope_beancave", "Charge"),
+                tiles.append((QApplication.translate("tilauscope_roast_review", "Charge"),
                               f"{w_in:g}", unit, False))
                 if w_out > 0:
-                    tiles.append((QApplication.translate("tilauscope_beancave", "Loss"),
+                    tiles.append((QApplication.translate("tilauscope_roast_review", "Loss"),
                                   f"{(w_in - w_out) / w_in * 100:.1f}", "%", False))
         col_w = w / 2
         for i, (key, value, unit, highlight) in enumerate(tiles[:4]):

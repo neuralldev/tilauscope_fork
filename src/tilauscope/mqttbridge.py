@@ -37,6 +37,7 @@ import paho.mqtt.client as mqtt
 from paho.mqtt.client import MQTTMessage
 
 from artisanlib.mqttport import mqttport as _mqttport_base
+from artisanlib.util import convertTemp
 from tilauscope.tilauscope_types import MQTTSensor, MQTT_SENSORS_KEY, MQTTSensorConfig
 
 if TYPE_CHECKING:
@@ -298,6 +299,21 @@ class MQTTSensorCheckResult:
     message: str | None = None
 
 
+def _scale_reading(data: Any, sensor: MQTTSensor, mode: str = "") -> float:
+    """Extract the sensor's field from a payload, apply multiplier/divider, then
+    convert to `mode` when the sensor declares a temperature unit.
+
+    Order matters: multiplier/divider bring the raw payload into the sensor's
+    own unit, so the temperature conversion has to come last.
+    """
+    extractor = sensor.command if sensor.command else "value"
+    raw_val = data[extractor] if isinstance(data, dict) else data
+    multiplier = sensor.multiplier if sensor.multiplier else 1.0
+    divider = sensor.divider if sensor.divider else 1.0
+    value = (float(raw_val) * multiplier) / divider
+    return convertTemp(value, sensor.unit, mode)
+
+
 # ---------------------------------------------------------------------------
 # Ports — sensor CRUD + sampling
 # ---------------------------------------------------------------------------
@@ -320,8 +336,14 @@ class TilauMqttPorts:
         settings = QSettings()
         settings.setValue(MQTT_SENSORS_KEY, config.to_json())
 
-    def poll_sensor_by_id(self, sensor_id: str, sensor_config: MQTTSensorConfig) -> float | None:
-        """Non-blocking read for the Artisan sampling thread. Returns None if no data yet."""
+    def poll_sensor_by_id(self, sensor_id: str, sensor_config: MQTTSensorConfig,
+                          mode: str = "") -> float | None:
+        """Non-blocking read for the Artisan sampling thread. Returns None if no data yet.
+
+        `mode` is the unit the application is working in ("C"/"F"). A sensor that
+        declares a temperature unit is converted into that unit here, at the
+        acquisition boundary; a sensor with no unit is passed through untouched.
+        """
         if not self.client or not self.client.is_connected:
             return None
         sensor: MQTTSensor | None = next(
@@ -332,22 +354,22 @@ class TilauMqttPorts:
         data = self.client.db.get_value(sensor.topic)
         if data is None:
             return None
-        extractor = sensor.command if sensor.command else "value"
         try:
-            raw_val = data[extractor] if isinstance(data, dict) else data
-            multiplier = sensor.multiplier if sensor.multiplier != 0 else 1.0
-            divider = sensor.divider if sensor.divider != 0 else 1.0
-            return (float(raw_val) * multiplier) / divider
+            return _scale_reading(data, sensor, mode)
         except Exception:
             return None
 
-    def check_sensor(self, sensor: MQTTSensor, timeout: float = 2.0) -> MQTTSensorCheckResult:
-        """UI-side check with QEventLoop wait. Not for use in sampling thread."""
+    def check_sensor(self, sensor: MQTTSensor, timeout: float = 2.0,
+                     mode: str = "") -> MQTTSensorCheckResult:
+        """UI-side check with QEventLoop wait. Not for use in sampling thread.
+
+        Reports the value the sampling loop would record, `mode` conversion included.
+        """
         if not self.client or not self.client.is_connected:
             return MQTTSensorCheckResult(
                 ok=False,
                 error=MQTTSensorCheckError.NO_CLIENT,
-                message=QApplication.translate("tilauscope_beancave", "MQTT client not connected")
+                message=QApplication.translate("tilauscope_devices", "MQTT client not connected")
             )
         if self.client._port.client:
             self.client._port.client.subscribe(sensor.topic, 1)
@@ -381,15 +403,12 @@ class TilauMqttPorts:
             return MQTTSensorCheckResult(
                 ok=False,
                 error=MQTTSensorCheckError.NO_MESSAGE,
-                message=QApplication.translate("tilauscope_beancave", "No message received within timeout")
+                message=QApplication.translate("tilauscope_devices", "No message received within timeout")
             )
 
-        extractor = sensor.command if sensor.command else "value"
         try:
-            raw_val = data[extractor] if isinstance(data, dict) else data
-            multiplier = sensor.multiplier if sensor.multiplier != 0 else 1.0
-            divider = sensor.divider if sensor.divider != 0 else 1.0
-            final_value = (float(raw_val) * multiplier) / divider
-            return MQTTSensorCheckResult(ok=True, value=final_value, value_type=float)
+            return MQTTSensorCheckResult(
+                ok=True, value=_scale_reading(data, sensor, mode), value_type=float
+            )
         except Exception:
             return MQTTSensorCheckResult(ok=True, value=str(data), value_type=str)

@@ -67,7 +67,9 @@ ln -s /Applications "$DIST_DIR/Applications"
 # breaks the app's sealed-resource signature inside the image, and the notary
 # service reports it — confusingly — as "the signature of the binary is
 # invalid" on Contents/MacOS/TilauScope. APFS preserves the bytes as signed.
-hdiutil create "$DMG_PATH" -volname "TilauScope" -fs APFS -srcfolder "$DIST_DIR" -ov
+## TILAU ## VOLNAME lets a second product (the Translator) reuse this script
+## without mounting a volume that claims to be TilauScope. Default unchanged.
+hdiutil create "$DMG_PATH" -volname "${VOLNAME:-TilauScope}" -fs APFS -srcfolder "$DIST_DIR" -ov
 
 echo "=== Signing DMG"
 codesign --force --timestamp --sign "$CODESIGN_IDENTITY" "$DMG_PATH"
@@ -78,6 +80,12 @@ if [ "$NOTARIZE" != "1" ]; then
 fi
 
 : "${APPLE_API_KEY_PATH:?APPLE_API_KEY_PATH is not set}"
+## TILAU ## The variable being set says nothing about the file existing; a
+## mistyped path used to surface only as a notarytool failure further down.
+[ -f "$APPLE_API_KEY_PATH" ] || {
+  echo "error: no App Store Connect key at $APPLE_API_KEY_PATH" >&2
+  exit 1
+}
 : "${APPLE_API_KEY_ID:?APPLE_API_KEY_ID is not set}"
 : "${APPLE_API_ISSUER_ID:?APPLE_API_ISSUER_ID is not set}"
 

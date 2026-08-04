@@ -47,19 +47,10 @@ from PyQt6.QtGui import QIntValidator, QStandardItemModel
 from PyQt6.QtWidgets import (QApplication, QWidget, QCheckBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
                              QPushButton, QTabWidget, QComboBox, QDialogButtonBox, QGridLayout,QSizePolicy,
                              QGroupBox, QTableWidget, QTableWidgetItem, QDialog, QTextEdit, QDoubleSpinBox,
-                             QHeaderView, QScrollArea, QFrame, QAbstractItemView, QMessageBox)
+                             QHeaderView, QScrollArea, QFrame)
 
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
-_logd: Final[logging.Logger] = logging.getLogger("tilau")
-
-## TILAU ##
-# mqtt support ********************************
-from tilauscope.mqttbridge import MQTTSensorConfig, MQTTSensor, TilauMqttPorts, TilauscopeMQTTClient
-from artisanlib.widgets import MyQDoubleSpinBox
-
-# mqtt support ********************************
-
 
 class scanModbusDlg(ArtisanDialog):
     def __init__(self, parent:QWidget, aw:'ApplicationWindow') -> None:
@@ -805,111 +796,6 @@ class comportDlg(ArtisanResizeablDialog):
         self.modbus_full_block.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.modbus_full_block.setEnabled(bool(self.aw.modbus.optimizer))
 
-## TILAU ##
-# mqtt support ********************************
-        ##########################    TAB 4 WIDGETS   MQTT
-
-        self.tilau_mqtt_input_group = QGroupBox()
-        self.mqtt_id_input = QLineEdit()
-        self.mqtt_command_input = QLineEdit()
-        self.mqtt_topic_input = QLineEdit()
-        self.mqtt_multiplier_input = MyQDoubleSpinBox()
-        self.mqtt_multiplier_input.setRange(0, 10000) # crop minimum date cannot be very far away because of bean quality expiration 2026/01/05
-        self.mqtt_multiplier_input.setDecimals(1)
-        self.mqtt_divider_input = MyQDoubleSpinBox()
-        self.mqtt_divider_input.setRange(0, 10000) # crop minimum date cannot be very far away because of bean quality expiration 2026/01/05
-        self.mqtt_divider_input.setDecimals(1)
-        self.mqtt_id_input.textChanged.connect(self._update_mqtt_action_buttons)
-        self.mqtt_command_input.textChanged.connect(self._update_mqtt_action_buttons)
-        self.mqtt_topic_input.textChanged.connect(self._update_mqtt_action_buttons)
-        # --- buttons ---
-        self.mqtt_add_button = QPushButton('Add')
-        self.mqtt_add_button.clicked.connect(self.mqtt_add_new_row)
-        self.mqtt_update_button = QPushButton('Update')
-        self.mqtt_update_button.clicked.connect(self.mqtt_update_selected_row)
-        self.mqtt_remove_button = QPushButton('Delete')
-        self.mqtt_remove_button.clicked.connect(self.mqtt_remove_row)
-        self.mqtt_clear_button = QPushButton('Clear')
-        self.mqtt_clear_button.clicked.connect(self.mqtt_clear_form)
-
-        self.mqtt_headers = [ 'ID', 'Topic', 'Command', 'Multiplier', 'Divider' ]
-        self.mqtt_columns = [
-            ("id", "ID"),
-            ("topic", "Topic"),
-            ("command", "Command"),
-            ("multiplier", "Multiplier"),
-            ("divider", "Divider"),            
-        ]
-
-        # sensor database
-        self.mqtt_sensors_database = QTableWidget()
-
-        # layout on screen part
-
-        mqtt_form_layout = QGridLayout()
-        row = 0
-        mqtt_form_layout.addWidget(QLabel(self.mqtt_headers[row]), row, 0)
-        mqtt_form_layout.addWidget(self.mqtt_id_input, row, 1)
-        row = 1
-        mqtt_form_layout.addWidget(QLabel(self.mqtt_headers[row]), row, 0)
-        mqtt_form_layout.addWidget(self.mqtt_topic_input, row, 1)
-        row = 2
-        mqtt_form_layout.addWidget(QLabel(self.mqtt_headers[row]), row, 0)
-        mqtt_form_layout.addWidget(self.mqtt_command_input, row, 1)
-        row = 3
-        mqtt_form_layout.addWidget(QLabel(self.mqtt_headers[row]), row, 0)
-        mqtt_form_layout.addWidget(self.mqtt_multiplier_input, row, 1)
-        row = 4
-        mqtt_form_layout.addWidget(QLabel(self.mqtt_headers[row]), row, 0)
-        mqtt_form_layout.addWidget(self.mqtt_divider_input, row, 1)
-
-        mqtt_tab_layout = QVBoxLayout()
-        mqtt_form_group_box = QGroupBox('Add/Modify')
-        mqtt_form_group_box.setLayout(mqtt_form_layout)
-
-        # --- INITIALISATION LAYOUT DES BOUTONS ---
-        mqtt_buttons_layout = QHBoxLayout()
-        mqtt_buttons_layout.addWidget(self.mqtt_add_button)
-        mqtt_buttons_layout.addWidget(self.mqtt_update_button)
-        mqtt_buttons_layout.addWidget(self.mqtt_remove_button)
-        mqtt_buttons_layout.addWidget(self.mqtt_clear_button)
-        mqtt_buttons_layout.addStretch()
-
-        mqtt_tab_layout.addLayout(mqtt_buttons_layout)        
-        mqtt_tab_layout.addWidget(self.mqtt_sensors_database)
-        
-        mqtt_tab_layout.addWidget(mqtt_form_group_box)
-#        mqtt_tab_layout.addWidget(self.blend_group_box)
-        mqtt_tab_layout.addStretch(1) # This forces the boxes above to use their natural size # Fix 2026/01/15
-
-        # now initialize
-        self.mqtt_add_button.setEnabled(True)
-        self.mqtt_update_button.setEnabled(False)
-        self.mqtt_remove_button.setEnabled(False)
-
-        self.mqtt_sensors_database.setColumnCount(len(self.mqtt_headers))
-        self.mqtt_sensors_database.setHorizontalHeaderLabels(self.mqtt_headers)
-        self.mqtt_sensors_database.horizontalHeader().setSectionsMovable(False) # type: ignore
-        self.mqtt_sensors_database.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)  # type: ignore
-        self.mqtt_sensors_database.itemSelectionChanged.connect(self.load_selected_sensor_into_form)
-        self.mqtt_sensors_database.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)  # type: ignore
-        self.mqtt_sensors_database.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows) # type: ignore
-        self.mqtt_sensors_database.setSortingEnabled(False)
-
-        live_mqtt_config:bool = False
-        self.mqtt_database = MQTTSensorConfig(sensors=[]) # by default set an empty database in memory
-        if self.aw.mqttConfig is not None:
-            self.aw.tilauscope_mqtt_client = TilauscopeMQTTClient(self.aw.mqttConfig, self.aw)
-            if self.aw.tilauscope_mqtt_client.start():
-                if self.aw.tilauscope_mqtt_client.is_connected:
-                    self.tilau_mqtt_ports = TilauMqttPorts(self.aw.tilauscope_mqtt_client)
-                    # there is a live mqtt config and sensors stored in configuration, load databse
-                    live_mqtt_config = True
-                    self.mqtt_database = self.tilau_mqtt_ports.load_mqtt_sensors() # initial load
-                    self.aw.tilauscope_mqtt_client.update_subscriptions(self.mqtt_database)
-                    self.populate_mqtt_table() # initial load of displayed list
-
-# mqtt support ********************************
 
         #### dialog buttons
         # connect the ArtisanDialog standard OK/Cancel buttons
@@ -1865,12 +1751,6 @@ class comportDlg(ArtisanResizeablDialog):
         C6Widget = QWidget()
         C6Widget.setLayout(tab6Layout)
         self.TabWidget.addTab(C6Widget,'MQTT')
-        ## TILAU## ####################
-        if live_mqtt_config: # display tab only when MQTT configuration has been verified and alive else hide tab
-            MQTTWidget = QWidget()
-            MQTTWidget.setLayout(mqtt_tab_layout)
-            self.TabWidget.addTab(MQTTWidget,QApplication.translate('Tab','Tilau MQTT'))
-###############################
         self.TabWidget.currentChanged.connect(self.tabSwitched)
 
         if devid == 29 or (devid == 0 and self.aw.ser.useModbusPort) : # switch to MODBUS tab if MODBUS device was selected as main device
@@ -1904,143 +1784,6 @@ class comportDlg(ArtisanResizeablDialog):
     def mqtt_user_changed(self, s:str) -> None:
         self.mqtt_password_Edit.setEnabled(s.strip() != '')
 
-## TILAU## ####################
-    @pyqtSlot()
-    def mqtt_add_new_row(self):
-        new_row_index = len(self.mqtt_database.sensors) 
-        if new_row_index >= 0:
-            new_sensor = MQTTSensor("new","new","new",1.0,1.0)      
-            self.mqtt_database.sensors.append(new_sensor)
-            self.populate_mqtt_table()
-            self.mqtt_add_button.setEnabled(False)
-
-    @pyqtSlot()
-    def mqtt_remove_row(self):
-        selected_rows = self.mqtt_sensors_database.selectionModel().selectedRows() # type: ignore
-        if not selected_rows:
-            return
-        for index in sorted(selected_rows, reverse=True):
-            self.mqtt_database.sensors.pop(index.row())
-        self.populate_mqtt_table()
-        self.mqtt_clear_form()
-    
-    @pyqtSlot()
-    def load_selected_sensor_into_form(self):
-        selected_rows = self.mqtt_sensors_database.selectionModel().selectedRows() # type: ignore
-        if not selected_rows:
-            self.mqtt_clear_form()
-            # freeze the buttons
-            self.mqtt_update_button.setEnabled(False)
-            self.mqtt_remove_button.setEnabled(False)
-            return
-
-        row = selected_rows[0].row() # Prend la première ligne sélectionnée
-        if row < len(self.mqtt_database.sensors):
-            sensor:MQTTSensor = self.mqtt_database.sensors[row]
-            self.mqtt_id_input.setText(sensor.id)
-            self.mqtt_command_input.setText(sensor.command)
-            self.mqtt_topic_input.setText(sensor.topic)
-            self.mqtt_multiplier_input.setValue(sensor.multiplier)
-            self.mqtt_divider_input.setValue(sensor.divider)
-            self.mqtt_update_button.setEnabled(True)
-            self.mqtt_remove_button.setEnabled(True) 
-        else:
-            self.mqtt_clear_form()            
-    
-    @pyqtSlot()
-    def mqtt_update_selected_row(self):
-        selected_row_index = self.mqtt_sensors_database.currentRow()
-        if selected_row_index == -1:
-            _log.warning("No row selected for update.")
-            return
-        if selected_row_index < len(self.mqtt_database.sensors):
-            # Create a new object with the current form data
-            #current_count = len(self.mqtt_database.sensors[selected_row_index])
-            new_sensor = MQTTSensor(
-                id=self.mqtt_id_input.text(),
-                command=self.mqtt_command_input.text(),
-                topic=self.mqtt_topic_input.text(),
-                multiplier=self.mqtt_multiplier_input.value(),
-                divider=self.mqtt_divider_input.value()
-            )
-            if not self._validate_mqtt_sensor_answer(new_sensor):
-                return
-            self.mqtt_database.sensors[selected_row_index] = new_sensor
-            _logd.info(f"mqtt sensor updated at {selected_row_index}: {new_sensor.id}")
-            self.populate_mqtt_table()
-            updated_items = self.mqtt_sensors_database.findItems(new_sensor.id, Qt.MatchFlag.MatchExactly)
-            if updated_items:
-                updated_item = updated_items[0]
-                self.mqtt_sensors_database.scrollToItem(updated_item, QAbstractItemView.ScrollHint.PositionAtTop)
-                self.mqtt_sensors_database.selectRow(updated_item.row())
-            self.mqtt_add_button.setEnabled(True)
-        else:
-            _logd.warning(f"Invalid row selected for update: {selected_row_index}")
-
-    @pyqtSlot()
-    def mqtt_clear_form(self):
-        self.mqtt_id_input.clear()
-        self.mqtt_command_input.clear()
-        self.mqtt_topic_input.clear()
-        self.mqtt_multiplier_input.setValue(1)
-        self.mqtt_divider_input.setValue(1)
-        return
-
-    @pyqtSlot()
-    def _update_mqtt_action_buttons(self):
-        has_id = bool(self.mqtt_id_input.text().strip())
-        has_command = bool(self.mqtt_command_input.text().strip())
-        has_topic = bool(self.mqtt_topic_input.text().strip())
-        visible = has_id and has_command and has_topic
-        self.mqtt_update_button.setEnabled(visible)
-        #self.mqtt_add_button.setEnabled(visible)
-
-    def populate_mqtt_table(self) -> None:
-        if self.mqtt_database is None or not hasattr(self.mqtt_database, 'sensors'):
-            return
-
-        mqtt_sensor_list = self.mqtt_database.sensors
-
-        self.mqtt_sensors_database.setRowCount(len(mqtt_sensor_list))
-        self.mqtt_sensors_database.setColumnCount(len(self.mqtt_headers))
-        self.mqtt_sensors_database.clearSelection()
-
-
-        for row, sensor in enumerate(mqtt_sensor_list):
-            for col, (attr, _) in enumerate(self.mqtt_columns):
-                value = getattr(sensor, attr, "")
-                self.mqtt_sensors_database.setItem(
-                    row,
-                    col,
-                    QTableWidgetItem("" if value is None else str(value))
-                )
-
-        if len(mqtt_sensor_list) > 0:
-            # Select the first row, which will trigger load_selected_bean_into_form
-            self.mqtt_sensors_database.selectRow(0)
-            self.mqtt_sensors_database.show()
-        else:
-            # If the table is empty, ensure the form is cleared
-            self.mqtt_clear_form()
-
-    def _validate_mqtt_sensor_answer(self, sensor:MQTTSensor) -> str | int | float | None :
-        result = self.tilau_mqtt_ports.check_sensor(sensor)
-        if not result.ok:
-            QMessageBox.warning(
-                self,
-                "MQTT Sensor Check Failed",
-                f"{result.error.name}\n{result.message or ''}"
-            )
-            return False
-        else:
-            QMessageBox.information(
-                self,
-                "MQTT Sensor OK",
-                f"Value fetched: {result.value}\nType: {result.value_type.__name__}"
-            )
-            return True
-
-###############################
 
     @pyqtSlot(int)
     def s7_optimize_toggle(self, i:int) -> None:
@@ -2244,10 +1987,6 @@ class comportDlg(ArtisanResizeablDialog):
         settings = QSettings()
         #save window geometry
         settings.setValue('PortsGeometry',self.saveGeometry())
-## TILAU ##
-        if self.aw.mqttConfig is not None and self.aw.tilauscope_mqtt_client is not None: # if mqtt has been started even in the case of cancelling the dialog, we must close
-            self.aw.tilauscope_mqtt_client.stop()
-            self.aw.tilauscope_mqtt_client = None
 
     @pyqtSlot()
     @override
@@ -2283,16 +2022,9 @@ class comportDlg(ArtisanResizeablDialog):
                 self.timeoutEdit.selectAll()
                 self.timeoutEdit.setFocus()
                 return
-        ## TILAU ##
-        if self.aw.mqttConfig is not None:
-            if self.aw.tilauscope_mqtt_client is not None:
-                self.aw.tilauscope_mqtt_client.stop()
-            if self.mqtt_database is not None and self.aw.tilauscope_mqtt_client is not None and self.aw.tilauscope_mqtt_client.is_connected:
-                self.tilau_mqtt_ports.save_mqtt_sensors(self.mqtt_database)
-                _logd.info("saving mqtt settings")
-            self.closeEvent(None)
-            self.aw.tilauscope_mqtt_client = None
-            QDialog.accept(self)
+        ## TILAU ## TilauScope MQTT sensors moved to Config > INTEGRATIONS > MQTT Broker.
+        # QDialog.accept must run in every case, else OK never closes this dialog.
+        QDialog.accept(self)
 
     def closeserialports(self) -> None:
         self.aw.closeserialports()

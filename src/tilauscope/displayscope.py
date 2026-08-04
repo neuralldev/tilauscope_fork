@@ -1042,7 +1042,7 @@ class BigControlCard(QFrame):
             }}
         """)
         val_frame.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        val_frame.setToolTip(QApplication.translate("tilauscope_beancave", "Click to open roller — right-click for context menu"))
+        val_frame.setToolTip(QApplication.translate("tilauscope_window", "Click to open roller — right-click for context menu"))
         # Monkey-patch mousePressEvent on the frame so the full zone is hot
         val_frame.mousePressEvent = self._open_roller
 
@@ -1191,7 +1191,7 @@ class ToggleBar(QFrame):
         self.setFixedWidth(10)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.setToolTip(QApplication.translate("tilauscope_beancave", "Toggle: horizontal sliders  ↔  card controls"))
+        self.setToolTip(QApplication.translate("tilauscope_window", "Toggle: horizontal sliders  ↔  card controls"))
         self._hovered = False
         self._refresh()
 
@@ -2062,9 +2062,9 @@ class TriggeredAlarmBadge(QFrame):
     def define_text(self, alarm:AlarmData)->str:
         if alarm.event_code == 10:
             if alarm.previous_alarm > 0:
-                header = f"#{alarm.index+1} | "+QApplication.translate("tilauscope_beancave","IF ALARM")+f" #{alarm.previous_alarm}, "+QApplication.translate("tilauscope_beancave","at")+f" +{alarm.offset}s "+QApplication.translate("tilauscope_beancave","do")
+                header = f"#{alarm.index+1} | "+QApplication.translate("tilauscope_window","IF ALARM")+f" #{alarm.previous_alarm}, "+QApplication.translate("tilauscope_window","at")+f" +{alarm.offset}s "+QApplication.translate("tilauscope_window","do")
             elif alarm.not_alarm > 0:
-                header = f"#{alarm.index+1} | "+QApplication.translate("tilauscope_beancave","IF NOT ALARM")+f" #{alarm.not_alarm}, "+QApplication.translate("tilauscope_beancave","at")+f" +{alarm.offset}s "+QApplication.translate("tilauscope_beancave","do")
+                header = f"#{alarm.index+1} | "+QApplication.translate("tilauscope_window","IF NOT ALARM")+f" #{alarm.not_alarm}, "+QApplication.translate("tilauscope_window","at")+f" +{alarm.offset}s "+QApplication.translate("tilauscope_window","do")
         else:
             header = f"{self.EVENT_NAMES.get(alarm.event_code, 'ALARM')} +{alarm.offset}s"
         # Annotation Box
@@ -2152,7 +2152,7 @@ class AlarmSidebar(QWidget):
         title_row.setContentsMargins(2, 0, 2, 0)
         title_row.setSpacing(4)
 
-        lbl = QLabel(QApplication.translate("tilauscope_beancave", "LIVE EVENTS"))
+        lbl = QLabel(QApplication.translate("tilauscope_window", "LIVE EVENTS"))
         lbl.setStyleSheet(f"color: {THEME['ACCENT']}; font-weight: bold; font-family: 'JetBrains Mono';")
         title_row.addWidget(lbl, 1)
 
@@ -2169,7 +2169,7 @@ class AlarmSidebar(QWidget):
         # Bouton clear
         clear_btn = QPushButton("✕")
         clear_btn.setFixedSize(18, 18)
-        clear_btn.setToolTip(QApplication.translate("tilauscope_beancave", "Clear all events"))
+        clear_btn.setToolTip(QApplication.translate("tilauscope_window", "Clear all events"))
         clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         clear_btn.setStyleSheet("""
             QPushButton {
@@ -2400,9 +2400,9 @@ class _GripTab(QWidget):
 
     def _update_tooltip(self):
         if self._expanded:
-            self.setToolTip(QApplication.translate("tilauscope_beancave","Hide live events  ‹"))
+            self.setToolTip(QApplication.translate("tilauscope_window","Hide live events  ‹"))
         else:
-            self.setToolTip(QApplication.translate("tilauscope_beancave","Show live events  ›"))
+            self.setToolTip(QApplication.translate("tilauscope_window","Show live events  ›"))
 
 # ─── Sidebar wrapper (thin layer around AlarmSidebar) ───────────────────────
 
@@ -2671,7 +2671,7 @@ class PlaybackWarningDlg(QDialog):
 
         icon_lbl = QLabel("🫘")
         icon_lbl.setStyleSheet("font-size: 26px;")
-        title_lbl = QLabel(QApplication.translate("tilauscope_beancave", "TilauScope Security"))
+        title_lbl = QLabel(QApplication.translate("tilauscope_window", "TilauScope Security"))
         title_lbl.setStyleSheet(f"""
             color       : {THEME['ACCENT']};
             font-family : 'JetBrains Mono', monospace;
@@ -2966,27 +2966,27 @@ class TilauScope(QWidget):
         self._view_toggle_sc.activated.connect(self.aw.tilauscopeCall)
 
         # static strings 
-        self.str_preheating  =  QApplication.translate("tilauscope_beancave","PREHEATING ")  
-        self.str_autocharge =  QApplication.translate("tilauscope_beancave","AUTO-CHARGE ENGAGED")
-        self.str_autodry    =  QApplication.translate("tilauscope_beancave","AUTO-DRY ENGAGED")
-        self.str_autofc     =  QApplication.translate("tilauscope_beancave","AUTO-FC ENGAGED")
-        self.str_autodrop   =  QApplication.translate("tilauscope_beancave","AUTO-DROP ENGAGED")
-        self.str_roastsession =  QApplication.translate("tilauscope_beancave","roast session started")
-        self.str_simulator =  QApplication.translate("tilauscope_beancave","SIMULATOR")
-        self.str_paused =  QApplication.translate("tilauscope_beancave","PAUSED")
-        self.str_nopid = QApplication.translate("tilauscope_beancave","with no PID")
-        self.str_artisanpid = QApplication.translate("tilauscope_beancave","with ArtisanPID to")
-        self.str_tilaupid= QApplication.translate("tilauscope_beancave","with Tilauscope PID to")
-        self.str_tilaupid_close = QApplication.translate("tilauscope_beancave", "<br><br>PREPARE YOURSELF TO <b>CHARGE</b> THE BEANS!")
-        self.str_tilaupidinit = QApplication.translate("tilauscope_beancave", "TilauPID is initializing, please wait...")
+        self.str_preheating  =  QApplication.translate("tilauscope_window","PREHEATING ")  
+        self.str_autocharge =  QApplication.translate("tilauscope_window","AUTO-CHARGE ENGAGED")
+        self.str_autodry    =  QApplication.translate("tilauscope_window","AUTO-DRY ENGAGED")
+        self.str_autofc     =  QApplication.translate("tilauscope_window","AUTO-FC ENGAGED")
+        self.str_autodrop   =  QApplication.translate("tilauscope_window","AUTO-DROP ENGAGED")
+        self.str_roastsession =  QApplication.translate("tilauscope_window","roast session started")
+        self.str_simulator =  QApplication.translate("tilauscope_window","SIMULATOR")
+        self.str_paused =  QApplication.translate("tilauscope_window","PAUSED")
+        self.str_nopid = QApplication.translate("tilauscope_window","with no PID")
+        self.str_artisanpid = QApplication.translate("tilauscope_window","with ArtisanPID to")
+        self.str_tilaupid= QApplication.translate("tilauscope_window","with Tilauscope PID to")
+        self.str_tilaupid_close = QApplication.translate("tilauscope_window", "<br><br>PREPARE YOURSELF TO <b>CHARGE</b> THE BEANS!")
+        self.str_tilaupidinit = QApplication.translate("tilauscope_window", "TilauPID is initializing, please wait...")
 
         # _update_automation_banner() runs once/sec from the TIMER path — these
         # must be pre-translated here, never re-translated inside the 1Hz tick.
-        self.str_automation_pid           = QApplication.translate("tilauscope", "PID")
-        self.str_automation_replay_events = QApplication.translate("tilauscope", "Replay Events")
-        self.str_automation_auto_drop     = QApplication.translate("tilauscope", "Auto-DROP")
-        self.str_automation_playback_aid  = QApplication.translate("tilauscope", "Playback Aid")
-        self.str_automation_prefix        = QApplication.translate("tilauscope", "⚠ AUTOMATED ROAST")
+        self.str_automation_pid           = QApplication.translate("tilauscope_window", "PID")
+        self.str_automation_replay_events = QApplication.translate("tilauscope_window", "Replay Events")
+        self.str_automation_auto_drop     = QApplication.translate("tilauscope_window", "Auto-DROP")
+        self.str_automation_playback_aid  = QApplication.translate("tilauscope_window", "Playback Aid")
+        self.str_automation_prefix        = QApplication.translate("tilauscope_window", "⚠ AUTOMATED ROAST")
 
         self.is_pid_active:bool = False
         self.aw.pidcontrol.activateSVSlider(True)
@@ -3351,19 +3351,19 @@ class TilauScope(QWidget):
         # check if there are phases defined on artisan
         if self.aw.qmc.phasesbuttonflag:
             if phase == "DRY": 
-                return QApplication.translate("tilauscope_beancave", "Auto")
+                return QApplication.translate("tilauscope_window", "Auto")
             if phase == "MAI" : 
-                return QApplication.translate("tilauscope_beancave", "Auto")
+                return QApplication.translate("tilauscope_window", "Auto")
             if phase == "DEV" :
-                return QApplication.translate("tilauscope_beancave", "Aims ") + str(self.aw.qmc.phases[3]) + "°" + self.aw.qmc.mode
+                return QApplication.translate("tilauscope_window", "Aims ") + str(self.aw.qmc.phases[3]) + "°" + self.aw.qmc.mode
             return ""
         else:
             if phase == "DRY": 
-                return QApplication.translate("tilauscope_beancave", "Aims ") + str(self.aw.qmc.phases[1]) + "°" + self.aw.qmc.mode
+                return QApplication.translate("tilauscope_window", "Aims ") + str(self.aw.qmc.phases[1]) + "°" + self.aw.qmc.mode
             if phase == "MAI": 
-                return QApplication.translate("tilauscope_beancave", "Aims ") + str(self.aw.qmc.phases[2]) + "°" + self.aw.qmc.mode
+                return QApplication.translate("tilauscope_window", "Aims ") + str(self.aw.qmc.phases[2]) + "°" + self.aw.qmc.mode
             if phase == "DEV": 
-                return QApplication.translate("tilauscope_beancave", "Aims ") + str(self.aw.qmc.phases[3]) + "°" + self.aw.qmc.mode            
+                return QApplication.translate("tilauscope_window", "Aims ") + str(self.aw.qmc.phases[3]) + "°" + self.aw.qmc.mode            
             return ""
 
     def init_ui(self):
@@ -3461,7 +3461,7 @@ class TilauScope(QWidget):
         self.btn_beancave.setFixedSize(32, 30)
         self.btn_beancave.setCheckable(True)
         self.btn_beancave.setIconSize(BTN_ICON_SIZE)
-        self.btn_beancave.setToolTip(QApplication.translate('tilauscope_beancave', 'Access to Bean Cave'))
+        self.btn_beancave.setToolTip(QApplication.translate('tilauscope_window', 'Access to Bean Cave'))
         self.btn_beancave.clicked.connect(self.toggle_beancave)
         self.btn_beancave.setStyleSheet(QSS_BEANCAVE)
         apply_icon(self.btn_beancave, SVG_BEANCAVE, COL_BEANCAVE_IDLE)
@@ -3472,7 +3472,7 @@ class TilauScope(QWidget):
         self.btn_assistant.setFixedSize(32, 30)
         self.btn_assistant.setCheckable(False)
         self.btn_assistant.setIconSize(BTN_ICON_SIZE)
-        self.btn_assistant.setToolTip(QApplication.translate('tilauscope_beancave', 'Engage Roast Assistant'))
+        self.btn_assistant.setToolTip(QApplication.translate('tilauscope_window', 'Engage Roast Assistant'))
         self.btn_assistant.clicked.connect(self.toggle_roast_assistant)
         self.btn_assistant.setStyleSheet(QSS_ASSISTANT)
         apply_icon(self.btn_assistant, SVG_ASSISTANT, COL_ASSISTANT_IDLE)
@@ -3483,7 +3483,7 @@ class TilauScope(QWidget):
         self.btn_dock.setFixedSize(26, 30)
         self.btn_dock.setCheckable(False)
         self.btn_dock.setToolTip(QApplication.translate(
-            'tilauscope_beancave',
+            'tilauscope_window',
             'Anchor the assistant in place of the main panel (toggle floating)'))
         self.btn_dock.setStyleSheet(QSS_DOCK)
         apply_icon(self.btn_dock, SVG_DOCK, COL_DOCK_IDLE)
@@ -3544,7 +3544,7 @@ class TilauScope(QWidget):
                        border-radius: 3px; font-size: 11px; }
         """)
         self.drag_handle.setCursor(Qt.CursorShape.SizeAllCursor)
-        self.drag_handle.setToolTip(QApplication.translate("tilauscope_beancave", "Drag to move"))
+        self.drag_handle.setToolTip(QApplication.translate("tilauscope_window", "Drag to move"))
         # Installer les événements souris sur le handle
         self.drag_handle.mousePressEvent   = self._handle_drag_press
         self.drag_handle.mouseMoveEvent    = self._handle_drag_move
@@ -3631,9 +3631,9 @@ class TilauScope(QWidget):
         self.phase_box.setSpacing(2) # Small gap between phase blocks
 
         self.phases = {
-            "DRY": PhaseWidget("DRY", QApplication.translate("tilauscope_beancave","Drying Phase").upper(), "#89B4FA", self.theme, self._update_phase_subtitle("DRY")), 
-            "MAI": PhaseWidget("MAI", QApplication.translate("tilauscope_beancave","Maillard Phase").upper(), "#F9E2AF", self.theme, self._update_phase_subtitle("MAI")), 
-            "DEV": PhaseWidget("DEV", QApplication.translate("tilauscope_beancave","Finishing Phase").upper(), "#F38BA8", self.theme, self._update_phase_subtitle("DEV"))}
+            "DRY": PhaseWidget("DRY", QApplication.translate("tilauscope_window","Drying Phase").upper(), "#89B4FA", self.theme, self._update_phase_subtitle("DRY")), 
+            "MAI": PhaseWidget("MAI", QApplication.translate("tilauscope_window","Maillard Phase").upper(), "#F9E2AF", self.theme, self._update_phase_subtitle("MAI")), 
+            "DEV": PhaseWidget("DEV", QApplication.translate("tilauscope_window","Finishing Phase").upper(), "#F38BA8", self.theme, self._update_phase_subtitle("DEV"))}
         _PHASE_IDX = {"DRY": 1, "MAI": 2, "DEV": 3}
         for key, p in self.phases.items():
             self.phase_box.addWidget(p)
@@ -4461,7 +4461,7 @@ class TilauScope(QWidget):
             widget = self.phase_box.itemAt(i).widget()
             if widget:
                 widget.hide()
-        self.msg_lbl.setText(QApplication.translate("tilauscope_beancave","▼ DROPPING ROASTED COFFEE..."))
+        self.msg_lbl.setText(QApplication.translate("tilauscope_window","▼ DROPPING ROASTED COFFEE..."))
         self.msg_lbl.show()
         self.msg_lbl.raise_()  # Force the label to the top of the stack
         self.phase_container.setStyleSheet("background: #0F0F12; border-radius: 15px; border: 1px solid #F38BA866;")
@@ -4496,7 +4496,7 @@ class TilauScope(QWidget):
             if widget:
                 widget.hide()
         self.msg_lbl.setText(QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_window",
             "❄ COOLING IN PROGRESS\nSet drum & airflow high — or prepare for back-to-back roast."))
         self.msg_lbl.show()
         self.msg_lbl.raise_()
@@ -4514,7 +4514,7 @@ class TilauScope(QWidget):
             if widget:
                 widget.hide()
         self.msg_lbl.setText(QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_window",
             "✅ ROASTER IS NOW COOLED\nSafe to switch off."))
         self.msg_lbl.show()
         self.msg_lbl.raise_()
@@ -4589,8 +4589,8 @@ class TilauScope(QWidget):
 
         # Reflect the level on the cycling button (letter + colour + tooltip).
         _meta = {
-            "guided": ("G", "#A6E3A1", QApplication.translate("tilauscope", "Guided")),
-            "expert": ("E", "#FAB387", QApplication.translate("tilauscope", "Expert")),
+            "guided": ("G", "#A6E3A1", QApplication.translate("tilauscope_window", "Guided")),
+            "expert": ("E", "#FAB387", QApplication.translate("tilauscope_window", "Expert")),
         }
         _letter, _col, _name = _meta.get(level, _meta["guided"])
         _next_name = _meta["expert" if level == "guided" else "guided"][2]
@@ -4605,7 +4605,7 @@ class TilauScope(QWidget):
             f" border-radius: 3px; font-size: 11px; }}"
         )
         self.btn_level.setToolTip(
-            QApplication.translate("tilauscope", "Operator level: {0} — click for {1}")
+            QApplication.translate("tilauscope_window", "Operator level: {0} — click for {1}")
             .format(_name, _next_name))
 
         is_guided = level == "guided"
@@ -5176,7 +5176,7 @@ class TilauScope(QWidget):
             return
         self._sv_locked = locked
         tip = QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_window",
             "Set point driven by TilauPID while preheating"
         ) if locked else ""
         for w in self._sv_widgets:
@@ -5228,7 +5228,7 @@ class TilauScope(QWidget):
         #_logd.info(f"mark_button_active event={event} state={state} button={button_key} btn_exists={btn is not None}")
         if btn:
             if disable_button:
-                btn.setToolTip(QApplication.translate("tilauscope_beancave", "This event is already recorded"))
+                btn.setToolTip(QApplication.translate("tilauscope_window", "This event is already recorded"))
                 btn.setStyleSheet(f"""
                     QPushButton:disabled {{ 
                         background: #2D2D35; 
@@ -5244,7 +5244,7 @@ class TilauScope(QWidget):
                 """)
                 return
             if not state: # button flat
-                btn.setToolTip(QApplication.translate("tilauscope_beancave", "Click to cancel marking of this event"))
+                btn.setToolTip(QApplication.translate("tilauscope_window", "Click to cancel marking of this event"))
                 btn.setStyleSheet(f"""
                     QPushButton {{ 
                         background: #313244; 
@@ -5272,7 +5272,7 @@ class TilauScope(QWidget):
                     }}
                 """)
             else: # not flat button
-                btn.setToolTip(QApplication.translate("tilauscope_beancave", "Click to mark this event"))
+                btn.setToolTip(QApplication.translate("tilauscope_window", "Click to mark this event"))
                 btn.setStyleSheet(f"""
                 QPushButton {{ 
                     background: #1E1E2E; 
@@ -5694,7 +5694,7 @@ class TilauScope(QWidget):
                 self.menu_btn.raise_()  # Pulls the button to the very front
                 self.menu_btn.activateWindow() # Ensures it captures mouse events                
                 _log.info("raise button")
-            status_text = f"ARTISAN "+QApplication.translate("tilauscope_beancave","CONNECTED") if self.aw.qmc.flagon else QApplication.translate("tilauscope_beancave","OFFLINE")
+            status_text = f"ARTISAN "+QApplication.translate("tilauscope_window","CONNECTED") if self.aw.qmc.flagon else QApplication.translate("tilauscope_window","OFFLINE")
             # if there is an alarm set selected
     
             # ## TILAU ## Guided mode is the sole control authority: suppress all
@@ -5704,9 +5704,9 @@ class TilauScope(QWidget):
             # alarm-suppression state and its banner display stay in sync.
             if getattr(self, "_operator_level", "guided") == "guided":
                 self.aw.qmc.silent_alarms = True
-                alarm_set = QApplication.translate("tilauscope_beancave", " 🔕 ALARM-SET='<b>{0}</b>' SUSPENDED").format(self.aw.qmc.alarmsetlabel.upper()) if self.aw.qmc.alarmsetlabel != "" else ""
+                alarm_set = QApplication.translate("tilauscope_window", " 🔕 ALARM-SET='<b>{0}</b>' SUSPENDED").format(self.aw.qmc.alarmsetlabel.upper()) if self.aw.qmc.alarmsetlabel != "" else ""
             else:
-                alarm_set = QApplication.translate("tilauscope_beancave", " ALARM-SET='<b>{0}</b>'").format(self.aw.qmc.alarmsetlabel.upper()) if self.aw.qmc.alarmsetlabel != "" else ""
+                alarm_set = QApplication.translate("tilauscope_window", " ALARM-SET='<b>{0}</b>'").format(self.aw.qmc.alarmsetlabel.upper()) if self.aw.qmc.alarmsetlabel != "" else ""
             status_text += alarm_set
             # if roast started
             # ## TILAU ## ground truth is Artisan's flagstart, NOT is_roasting: our
@@ -5926,7 +5926,7 @@ class TilauScope(QWidget):
 
         if not self.is_roasting and self.aw.qmc.device == 18 and self.aw.simulator is None:
             self.msg_lbl.setText(QApplication.translate(
-                "tilauscope",
+                "tilauscope_window",
                 "⚠ No meter connected — configure a device in Machine > Device."))
             self.msg_lbl.show()
             self.msg_lbl.raise_()
@@ -6088,17 +6088,17 @@ class TilauScope(QWidget):
                 content_layout.addWidget(self.collapsible_events.grip,    stretch=0)
                 content_layout.addWidget(self.artisan_graph, stretch=1)
                 content_layout.addWidget(left_widget, stretch=0)
-                self.swap_button.setToolTip(QApplication.translate('tilauscope_beancave', 'Swap panel position from right to left'))
+                self.swap_button.setToolTip(QApplication.translate('tilauscope_window', 'Swap panel position from right to left'))
             else:
                 content_layout.addWidget(left_widget, stretch=0)
                 content_layout.addWidget(self.artisan_graph, stretch=1)
                 content_layout.addWidget(self.collapsible_events.grip,    stretch=0)
                 content_layout.addWidget(self.collapsible_events.sidebar, stretch=0)
-                self.swap_button.setToolTip(QApplication.translate('tilauscope_beancave', 'Swap panel position from left to right'))
+                self.swap_button.setToolTip(QApplication.translate('tilauscope_window', 'Swap panel position from left to right'))
         finally:
             # 3. Re-enable updates and trigger one single clean repaint
             self.setUpdatesEnabled(True)
 
     def showMessage(self, message:str):
-        mb = TilauMessageBox(None, QApplication.translate("tilauscope_beancave","Roasting"), message, None, True, 500)
+        mb = TilauMessageBox(None, QApplication.translate("tilauscope_window","Roasting"), message, None, True, 500)
         mb.exec()

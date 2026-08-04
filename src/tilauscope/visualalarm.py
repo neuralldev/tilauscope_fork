@@ -68,7 +68,7 @@ class AlarmTimelineDialog(QDialog):
         self._ai_panel = AIFloatPanel(
             task_type  = AITask.ALARM_NARRATIVE,
             ai_service = self.aw.tilau_ai_service,
-            title      = QApplication.translate("tilauscope_ai", "Alarm Narrative"),
+            title      = QApplication.translate("tilauscope_alarms", "Alarm Narrative"),
             owner      = self,
             aw         = self.aw,
         )
@@ -718,18 +718,18 @@ class AlarmTimelineWidget(QWidget):
                 if alarm.data.event_code == 10:
                     if alarm.data.previous_alarm > 0:
                         header = (f"#{alarm.data.index+1} | "
-                                  + QApplication.translate("tilauscope_beancave", "IF ALARM")
+                                  + QApplication.translate("tilauscope_alarms", "IF ALARM")
                                   + f" #{alarm.data.previous_alarm}, "
-                                  + QApplication.translate("tilauscope_beancave", "at")
+                                  + QApplication.translate("tilauscope_alarms", "at")
                                   + f" +{alarm.data.offset}s "
-                                  + QApplication.translate("tilauscope_beancave", "do"))
+                                  + QApplication.translate("tilauscope_alarms", "do"))
                     elif alarm.data.not_alarm > 0:
                         header = (f"#{alarm.data.index+1} | "
-                                  + QApplication.translate("tilauscope_beancave", "IF NOT ALARM")
+                                  + QApplication.translate("tilauscope_alarms", "IF NOT ALARM")
                                   + f" #{alarm.data.not_alarm}, "
-                                  + QApplication.translate("tilauscope_beancave", "at")
+                                  + QApplication.translate("tilauscope_alarms", "at")
                                   + f" +{alarm.data.offset}s "
-                                  + QApplication.translate("tilauscope_beancave", "do"))
+                                  + QApplication.translate("tilauscope_alarms", "do"))
                 else:
                     header = f"#{alarm.data.index+1} | {self.EVENT_NAMES.get(alarm.data.event_code, 'ALARM')} +{alarm.data.offset}s"
 
@@ -837,7 +837,7 @@ class RoastNarrativeDialog(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         
-        self.setWindowTitle(QApplication.translate("tilauscope_beancave","Roast Profile Narrative").upper())
+        self.setWindowTitle(QApplication.translate("tilauscope_alarms","Roast Profile Narrative").upper())
         
         # 1. Augmenter la taille par défaut pour les longs rapports
         self.resize(700, 800) 
@@ -888,7 +888,7 @@ class RoastNarrativeDialog(QDialog):
 
          # Header
         header = QHBoxLayout()
-        title_lbl = QLabel(QApplication.translate("tilauscope_beancave","Generated Roast Strategy:").upper())
+        title_lbl = QLabel(QApplication.translate("tilauscope_alarms","Generated Roast Strategy:").upper())
         title_lbl.setStyleSheet(
             f"color: {THEME['ACCENT']}; font-size: 15px; font-weight: 900; "
             f"border: none; font-family: 'JetBrains Mono'; letter-spacing: 2px;"

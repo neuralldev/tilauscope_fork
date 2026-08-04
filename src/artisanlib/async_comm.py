@@ -1,17 +1,27 @@
 #
 # ABOUT
 # Generic asyncio communication for Artisan
-
+#
+# COPYRIGHT (C) 2010-2026 The Artisan team represented by
+#   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
+#
 # LICENSE
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 2 of the License, or
-# version 3 of the License, or (at your option) any later version. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public License for more details.
-
+# This program or module is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# MAINTAINER
+# Marko Luther, 2026
+#
 # AUTHOR
 # Marko Luther, 2026
 
@@ -392,6 +402,7 @@ class AsyncComm:
     # if serial settings are given, the host/port settings are ignored and communication is handled by the given serial port
     async def connect(self, connect_timeout:float=5) -> None:
         writer:asyncio.StreamWriter|None = None
+        was_connected:bool = False # set by successful connection and used to report ONE disconnect message
         while self._running:
             try:
                 if self._serial is not None:
@@ -415,6 +426,7 @@ class AsyncComm:
                     read_handler = asyncio.create_task(self.handle_reads(reader))
                     self._ACK_received = asyncio.Event()
                     _log.debug('connected')
+                    was_connected = True
                     if self._connected_handler is not None:
                         try:
                             self._connected_handler()
@@ -441,18 +453,19 @@ class AsyncComm:
 
             except TimeoutError:
                 _log.debug('connection timeout')
-            except SerialException as e:
-                _log.debug('serial exception: %s',e)
+            except SerialException:
+                #_log.debug('serial exception: %s',e)
+                pass
             except Exception as e: # pylint: disable=broad-except
-                _log.error(e)
+                _log.error('exception 1: %s', e)
             finally:
                 self._ACK_received = None
                 self.reset_readings()
-                if self._disconnected_handler is not None:
+                if was_connected and self._disconnected_handler is not None:
                     try:
                         self._disconnected_handler()
                     except Exception as e: # pylint: disable=broad-except
-                        _log.error(e)
+                        _log.error('exception 2: %s', e)
                 if writer is not None:
                     try:
                         writer.close()
@@ -460,8 +473,8 @@ class AsyncComm:
                     except SerialException as e:
                         _log.debug('serial exception: %s',e)
                     except Exception as e: # pylint: disable=broad-except
-                        _log.error(e)
-                await asyncio.sleep(0.5)
+                        _log.error('exception 3: %s', e)
+            await asyncio.sleep(1)
 
     def send(self, message:bytes) -> None:
         if self._asyncLoopThread is not None and self._write_queue is not None:
@@ -501,8 +514,9 @@ class AsyncComm:
                 return True
             except TimeoutError:
                 if self._logging:
-                    _log.info('write_await (msg=%s, send_timeout:%s)', message.strip(), send_timeout)
+                    _log.info('write_await (msg=%s, send_timeout:%s) timeout', message.strip(), send_timeout)
             if self.write_error_sem.locked():
+                _log.debug('write error count exhausted. Trigger disconnect.')
                 # trigger a disconnect as the allowed write errors count is exhausted
                 # disconnect by putting an empty message on the write queue which terminates the write handler
                 await self._write_queue.put(b'')

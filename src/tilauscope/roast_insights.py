@@ -137,75 +137,75 @@ class RoastInsights:
 def _density_signal(density: float, unit: str) -> Signal | None:
     if not density or density <= 0:
         return None
-    label = QApplication.translate("tilauscope_beancave", "Density")
+    label = QApplication.translate("tilauscope_roast_review", "Density")
     if density < _DENSITY_SOFT:
         return Signal("density", label,
-                      f"{density:.0f} g/L · " + QApplication.translate("tilauscope_beancave", "soft"),
+                      f"{density:.0f} g/L · " + QApplication.translate("tilauscope_roast_review", "soft"),
                       "warn",
-                      QApplication.translate("tilauscope_beancave",
+                      QApplication.translate("tilauscope_roast_review",
                           "Absorbs heat fast → develops quickly. Gentler charge, watch baking/tipping."))
     if density >= _DENSITY_VERYDENSE:
         return Signal("density", label,
-                      f"{density:.0f} g/L · " + QApplication.translate("tilauscope_beancave", "very dense"),
+                      f"{density:.0f} g/L · " + QApplication.translate("tilauscope_roast_review", "very dense"),
                       "crit",
-                      QApplication.translate("tilauscope_beancave",
+                      QApplication.translate("tilauscope_roast_review",
                           "Very hard bean → slow heat penetration. More drying energy, FC later, guard surface scorch."))
     if density >= _DENSITY_DENSE:
         return Signal("density", label,
-                      f"{density:.0f} g/L · " + QApplication.translate("tilauscope_beancave", "dense"),
+                      f"{density:.0f} g/L · " + QApplication.translate("tilauscope_roast_review", "dense"),
                       "warn",
-                      QApplication.translate("tilauscope_beancave",
+                      QApplication.translate("tilauscope_roast_review",
                           "Hard bean → solid drying energy, FC later, watch surface scorch."))
     return Signal("density", label,
-                  f"{density:.0f} g/L · " + QApplication.translate("tilauscope_beancave", "standard"),
+                  f"{density:.0f} g/L · " + QApplication.translate("tilauscope_roast_review", "standard"),
                   "ok",
-                  QApplication.translate("tilauscope_beancave",
+                  QApplication.translate("tilauscope_roast_review",
                       "Standard thermal behaviour; follow the phase bands."))
 
 
 def _moisture_signal(moisture: float) -> Signal | None:
     if not moisture or moisture <= 0:
         return None
-    label = QApplication.translate("tilauscope_beancave", "Moisture")
+    label = QApplication.translate("tilauscope_roast_review", "Moisture")
     if moisture > _MOISTURE_HIGH:
         return Signal("moisture", label,
-                      f"{moisture:.1f} % · " + QApplication.translate("tilauscope_beancave", "high"),
+                      f"{moisture:.1f} % · " + QApplication.translate("tilauscope_roast_review", "high"),
                       "warn",
-                      QApplication.translate("tilauscope_beancave",
+                      QApplication.translate("tilauscope_roast_review",
                           "High steam load → longer drying, slower TP recovery. Don't rush or it under-develops."))
     if moisture < _MOISTURE_LOW:
         return Signal("moisture", label,
-                      f"{moisture:.1f} % · " + QApplication.translate("tilauscope_beancave", "low"),
+                      f"{moisture:.1f} % · " + QApplication.translate("tilauscope_roast_review", "low"),
                       "warn",
-                      QApplication.translate("tilauscope_beancave",
+                      QApplication.translate("tilauscope_roast_review",
                           "Dry/fragile → shorter drying, scorch risk. Ease heat early."))
     return Signal("moisture", label,
-                  f"{moisture:.1f} % · " + QApplication.translate("tilauscope_beancave", "normal"),
+                  f"{moisture:.1f} % · " + QApplication.translate("tilauscope_roast_review", "normal"),
                   "ok",
-                  QApplication.translate("tilauscope_beancave",
+                  QApplication.translate("tilauscope_roast_review",
                       "Standard steam load; drying on target."))
 
 
 def _water_activity_signal(aw: float) -> Signal | None:
     if not aw or aw <= 0:
         return None
-    label = QApplication.translate("tilauscope_beancave", "Water activity")
+    label = QApplication.translate("tilauscope_roast_review", "Water activity")
     if aw < _AW_CRIT_LO or aw > _AW_CRIT_HI:
-        tag = (QApplication.translate("tilauscope_beancave", "over-dried") if aw < _AW_CRIT_LO
-               else QApplication.translate("tilauscope_beancave", "stale/mould risk"))
+        tag = (QApplication.translate("tilauscope_roast_review", "over-dried") if aw < _AW_CRIT_LO
+               else QApplication.translate("tilauscope_roast_review", "stale/mould risk"))
         return Signal("water_activity", label, f"{aw:.2f} aw · {tag}", "crit",
-                      QApplication.translate("tilauscope_beancave",
+                      QApplication.translate("tilauscope_roast_review",
                           "Out of safe range → uneven roast and storage instability."))
     if aw < _AW_LO or aw > _AW_HI:
         return Signal("water_activity", label,
-                      f"{aw:.2f} aw · " + QApplication.translate("tilauscope_beancave", "edge"),
+                      f"{aw:.2f} aw · " + QApplication.translate("tilauscope_roast_review", "edge"),
                       "warn",
-                      QApplication.translate("tilauscope_beancave",
+                      QApplication.translate("tilauscope_roast_review",
                           "Near window edge; expect slightly uneven core moisture."))
     return Signal("water_activity", label,
-                  f"{aw:.2f} aw · " + QApplication.translate("tilauscope_beancave", "in window"),
+                  f"{aw:.2f} aw · " + QApplication.translate("tilauscope_roast_review", "in window"),
                   "ok",
-                  QApplication.translate("tilauscope_beancave",
+                  QApplication.translate("tilauscope_roast_review",
                       "Free water 0.45–0.55 → even, reactive, predictable."))
 
 
@@ -231,22 +231,22 @@ def _process_class(process: str) -> str:
 
 def _process_signal(process: str) -> Signal | None:
     cls = _process_class(process)
-    label = QApplication.translate("tilauscope_beancave", "Process")
+    label = QApplication.translate("tilauscope_roast_review", "Process")
     if cls == "sugary":
         return Signal("process", label,
-                      f"{process} · " + QApplication.translate("tilauscope_beancave", "caution"),
+                      f"{process} · " + QApplication.translate("tilauscope_roast_review", "caution"),
                       "warn",
-                      QApplication.translate("tilauscope_beancave",
+                      QApplication.translate("tilauscope_roast_review",
                           "Residual sugars → faster browning, tipping risk. Ease through Maillard."))
     if cls == "washed":
         return Signal("process", label,
-                      f"{process} · " + QApplication.translate("tilauscope_beancave", "clean"),
+                      f"{process} · " + QApplication.translate("tilauscope_roast_review", "clean"),
                       "ok",
-                      QApplication.translate("tilauscope_beancave",
+                      QApplication.translate("tilauscope_roast_review",
                           "Clean, predictable drying; standard browning curve."))
     if process:
         return Signal("process", label, process, "info",
-                      QApplication.translate("tilauscope_beancave",
+                      QApplication.translate("tilauscope_roast_review",
                           "Unclassified process; rely on the phase bands."))
     return None
 
@@ -258,12 +258,12 @@ def _bean_temp_note(bean_temp: float | None, mode: str) -> str:
     warm = _BEAN_WARM if mode == "C" else _c_to_f(_BEAN_WARM)
     unit = "°F" if mode == "F" else "°C"
     if bean_temp <= cool:
-        return QApplication.translate("tilauscope_beancave",
+        return QApplication.translate("tilauscope_roast_review",
             "Charge BT {0} {1} (cool) → expect a deeper TP dip and slower recovery.").format(f"{bean_temp:.0f}", unit)
     if bean_temp >= warm:
-        return QApplication.translate("tilauscope_beancave",
+        return QApplication.translate("tilauscope_roast_review",
             "Charge BT {0} {1} (warm) → shallower TP dip, faster recovery.").format(f"{bean_temp:.0f}", unit)
-    return QApplication.translate("tilauscope_beancave",
+    return QApplication.translate("tilauscope_roast_review",
         "Charge BT {0} {1} (ambient).").format(f"{bean_temp:.0f}", unit)
 
 
@@ -276,9 +276,9 @@ def _load_info(green_weight: float, ctx: "RoasterContext | None",
     note = _bean_temp_note(bean_temp, mode)
     optimal = getattr(ctx, "batch_optimal_g", 0) if ctx else 0
     if not optimal or optimal <= 0:
-        reason = QApplication.translate("tilauscope_beancave", "Roaster optimal capacity unknown.")
+        reason = QApplication.translate("tilauscope_roast_review", "Roaster optimal capacity unknown.")
     elif not green_weight or green_weight <= 0:
-        reason = QApplication.translate("tilauscope_beancave", "Enter the green weight to compute load.")
+        reason = QApplication.translate("tilauscope_roast_review", "Enter the green weight to compute load.")
     else:
         reason = ""
     if reason:
@@ -294,14 +294,14 @@ def _load_info(green_weight: float, ctx: "RoasterContext | None",
     else:
         sev = "ok"
     text = (f"{green_weight:.0f} / {optimal:.0f} g "
-            + QApplication.translate("tilauscope_beancave", "optimal"))
+            + QApplication.translate("tilauscope_roast_review", "optimal"))
     if sev == "ok":
-        body = QApplication.translate("tilauscope_beancave", "Good fill → stable thermal buffer.")
+        body = QApplication.translate("tilauscope_roast_review", "Good fill → stable thermal buffer.")
     elif pct < _LOAD_LO:
-        body = QApplication.translate("tilauscope_beancave",
+        body = QApplication.translate("tilauscope_roast_review",
             "Under-loaded → little thermal buffer, RoR can run away.")
     else:
-        body = QApplication.translate("tilauscope_beancave",
+        body = QApplication.translate("tilauscope_roast_review",
             "Over-loaded → sluggish, longer drying, flick risk.")
     return LoadInfo(round(pct), sev, text, f"{body} {note}".strip())
 
@@ -309,9 +309,9 @@ def _load_info(green_weight: float, ctx: "RoasterContext | None",
 def _bands(mode: str) -> list[PhaseBand]:
     unit = "°F/min" if mode == "F" else "°C/min"
     names = (
-        QApplication.translate("tilauscope_beancave", "Drying"),
-        QApplication.translate("tilauscope_beancave", "Maillard"),
-        QApplication.translate("tilauscope_beancave", "Develop."),
+        QApplication.translate("tilauscope_roast_review", "Drying"),
+        QApplication.translate("tilauscope_roast_review", "Maillard"),
+        QApplication.translate("tilauscope_roast_review", "Develop."),
     )
     phases = ("drying", "maillard", "development")
     out: list[PhaseBand] = []
@@ -326,17 +326,17 @@ def _targets(ctx: "RoasterContext | None", mode: str) -> list[Target]:
         fc_c = _FC_BT_RADIANT if getattr(ctx, "is_radiant_electric", False) else _FC_BT_GENERIC
         fc_val = fc_c if mode == "C" else _c_to_f(fc_c)
         unit = "°F" if mode == "F" else "°C"
-        suffix = (" (" + QApplication.translate("tilauscope_beancave", "radiant") + ")"
+        suffix = (" (" + QApplication.translate("tilauscope_roast_review", "radiant") + ")"
                   if getattr(ctx, "is_radiant_electric", False) else "")
-        fc = Target(QApplication.translate("tilauscope_beancave", "FC BT"),
+        fc = Target(QApplication.translate("tilauscope_roast_review", "FC BT"),
                     f"≈{fc_val:.0f} {unit}{suffix}", True)
     else:
-        fc = Target(QApplication.translate("tilauscope_beancave", "FC BT"), "—", False)
+        fc = Target(QApplication.translate("tilauscope_roast_review", "FC BT"), "—", False)
     return [
         fc,
-        Target(QApplication.translate("tilauscope_beancave", "DTR"), "—", False),
-        Target(QApplication.translate("tilauscope_beancave", "Weight loss"), "—", False),
-        Target(QApplication.translate("tilauscope_beancave", "Total time"), "—", False),
+        Target(QApplication.translate("tilauscope_roast_review", "DTR"), "—", False),
+        Target(QApplication.translate("tilauscope_roast_review", "Weight loss"), "—", False),
+        Target(QApplication.translate("tilauscope_roast_review", "Total time"), "—", False),
     ]
 
 
@@ -348,47 +348,47 @@ def _strategy(density: float, moisture: float, process_cls: str,
     if density:
         if density >= _DENSITY_DENSE:
             energy += 1
-            drivers.append(QApplication.translate("tilauscope_beancave", "dense"))
+            drivers.append(QApplication.translate("tilauscope_roast_review", "dense"))
         elif density < _DENSITY_SOFT:
             energy -= 1
-            drivers.append(QApplication.translate("tilauscope_beancave", "soft"))
+            drivers.append(QApplication.translate("tilauscope_roast_review", "soft"))
     if moisture:
         if moisture > _MOISTURE_HIGH:
             energy += 1
-            drivers.append(QApplication.translate("tilauscope_beancave", "wet"))
+            drivers.append(QApplication.translate("tilauscope_roast_review", "wet"))
         elif moisture < _MOISTURE_LOW:
             energy -= 1
-            drivers.append(QApplication.translate("tilauscope_beancave", "dry"))
+            drivers.append(QApplication.translate("tilauscope_roast_review", "dry"))
     careful = process_cls == "sugary"
     if careful:
-        drivers.append(QApplication.translate("tilauscope_beancave", "sugary process"))
+        drivers.append(QApplication.translate("tilauscope_roast_review", "sugary process"))
 
     if careful and energy >= 1:
-        label = QApplication.translate("tilauscope_beancave", "standard-to-careful")
+        label = QApplication.translate("tilauscope_roast_review", "standard-to-careful")
     elif energy >= 2:
-        label = QApplication.translate("tilauscope_beancave", "energy-tolerant")
+        label = QApplication.translate("tilauscope_roast_review", "energy-tolerant")
     elif energy <= -2 or (careful and energy <= 0):
-        label = QApplication.translate("tilauscope_beancave", "gentle")
+        label = QApplication.translate("tilauscope_roast_review", "gentle")
     elif careful:
-        label = QApplication.translate("tilauscope_beancave", "careful")
+        label = QApplication.translate("tilauscope_roast_review", "careful")
     else:
-        label = QApplication.translate("tilauscope_beancave", "standard")
+        label = QApplication.translate("tilauscope_roast_review", "standard")
 
     driver_txt = " + ".join(drivers) if drivers else QApplication.translate(
-        "tilauscope_beancave", "balanced inputs")
+        "tilauscope_roast_review", "balanced inputs")
     parts = [f"{driver_txt} → {label}."]
 
     if ctx is not None and getattr(ctx, "is_radiant_electric", False):
-        parts.append(QApplication.translate("tilauscope_beancave",
+        parts.append(QApplication.translate("tilauscope_roast_review",
             "Radiant: BT leads ET after TP — commit drying energy early, then manage power down."))
     if careful:
-        parts.append(QApplication.translate("tilauscope_beancave",
+        parts.append(QApplication.translate("tilauscope_roast_review",
             "Back off through Maillard to protect sugars and avoid tipping."))
     elif energy >= 1:
-        parts.append(QApplication.translate("tilauscope_beancave",
+        parts.append(QApplication.translate("tilauscope_roast_review",
             "Sustain heat into the Maillard phase, then settle the RoR before FC."))
     else:
-        parts.append(QApplication.translate("tilauscope_beancave",
+        parts.append(QApplication.translate("tilauscope_roast_review",
             "Keep a smooth, declining RoR across all phases."))
     return " ".join(parts)
 
@@ -446,16 +446,16 @@ def targets_from_plan(plan: dict | None, mode: str = "C") -> list[Target] | None
     dtr = _num("Target DTR")
     tot = _val("Total Time")
     wl  = weight_loss_band(_val("Target Agtron"))
-    min_lbl = QApplication.translate("tilauscope_beancave", "min")
+    min_lbl = QApplication.translate("tilauscope_roast_review", "min")
 
     return [
-        Target(QApplication.translate("tilauscope_beancave", "FC BT"),
+        Target(QApplication.translate("tilauscope_roast_review", "FC BT"),
                f"{fc:.0f} {unit}" if fc is not None else "—", fc is not None),
-        Target(QApplication.translate("tilauscope_beancave", "DTR"),
+        Target(QApplication.translate("tilauscope_roast_review", "DTR"),
                f"{dtr:.1f} %" if dtr is not None else "—", dtr is not None),
-        Target(QApplication.translate("tilauscope_beancave", "Weight loss"),
+        Target(QApplication.translate("tilauscope_roast_review", "Weight loss"),
                f"{wl[0]:.0f}–{wl[1]:.0f} %" if wl else "—", wl is not None),
-        Target(QApplication.translate("tilauscope_beancave", "Total time"),
+        Target(QApplication.translate("tilauscope_roast_review", "Total time"),
                f"{tot} {min_lbl}" if tot else "—", tot is not None),
     ]
 

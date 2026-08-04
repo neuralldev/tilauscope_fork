@@ -414,14 +414,14 @@ class _TooltipWidget(QFrame):
         self._filepath = data.get("filepath", "")
         brewable = bool(data.get("brewable", False))
         if brewable:
-            self._cta.setText(QApplication.translate("tilauscope_beancave", "☕ Brew this coffee"))
+            self._cta.setText(QApplication.translate("tilauscope_roast_review", "☕ Brew this coffee"))
             self._cta.setEnabled(True)
             self._cta.setStyleSheet(
                 f"QPushButton {{ background:{self._C_ACCENT}; color:{self._C_BG};"
                 f" border:none; border-radius:7px; padding:7px 10px; font-weight:700; font-size:13px; }}"
                 f" QPushButton:hover {{ background:#B4BEFE; }}")
         else:
-            self._cta.setText(QApplication.translate("tilauscope_beancave", "Colour / bean not linked"))
+            self._cta.setText(QApplication.translate("tilauscope_roast_review", "Colour / bean not linked"))
             self._cta.setEnabled(False)
             self._cta.setStyleSheet(
                 f"QPushButton {{ background:{self._C_DIV}; color:{self._C_META_K};"
@@ -627,14 +627,14 @@ class RoastReadyDialog(QDialog):
         # ── header ────────────────────────────────────────────────────────────
         hdr = QHBoxLayout()
         title = QLabel(
-            QApplication.translate("tilauscope_beancave", "Brew planning - Tilauscope").upper()
+            QApplication.translate("tilauscope_roast_review", "Brew planning - Tilauscope").upper()
         )
         title.setStyleSheet(
             "color:white; font-size:22px; font-weight:900;"
             " font-family:'JetBrains Mono'; background:transparent; border:none;"
         )
         today_btn = QPushButton(
-            QApplication.translate("tilauscope_beancave", "◎ Today")
+            QApplication.translate("tilauscope_roast_review", "◎ Today")
         )
         today_btn.setFixedHeight(30)
         today_btn.clicked.connect(self._scroll_to_today)
@@ -658,7 +658,7 @@ class RoastReadyDialog(QDialog):
             QPushButton:hover {{ background:#F38BA8; color:{THEME['BG']}; }}
         """)
         # targeted brew method (Filter / Espresso) — shifts every window & persists
-        seg_lbl = QLabel(QApplication.translate("tilauscope_beancave", "Target"))
+        seg_lbl = QLabel(QApplication.translate("tilauscope_roast_review", "Target"))
         seg_lbl.setStyleSheet(
             f"color:{THEME['SUBTEXT']}; font-size:10px; letter-spacing:1.5px;"
             " font-family:'JetBrains Mono'; border:none; background:transparent;")
@@ -669,8 +669,8 @@ class RoastReadyDialog(QDialog):
         seg_l = QHBoxLayout(seg)
         seg_l.setContentsMargins(3, 3, 3, 3)
         seg_l.setSpacing(2)
-        self._btn_filter = QPushButton(QApplication.translate("tilauscope_beancave", "☕ Filter"))
-        self._btn_espresso = QPushButton(QApplication.translate("tilauscope_beancave", "⚙ Espresso"))
+        self._btn_filter = QPushButton(QApplication.translate("tilauscope_roast_review", "☕ Filter"))
+        self._btn_espresso = QPushButton(QApplication.translate("tilauscope_roast_review", "⚙ Espresso"))
         for b in (self._btn_filter, self._btn_espresso):
             b.setFixedHeight(26)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -728,7 +728,7 @@ class RoastReadyDialog(QDialog):
             " border-radius:3px; border:none;"
         )
         lbl_today = QLabel(
-            QApplication.translate("tilauscope_beancave", "Today (dashed)")
+            QApplication.translate("tilauscope_roast_review", "Today (dashed)")
         )
         lbl_today.setStyleSheet(
             f"color:{THEME['SUBTEXT']}; font-size:11px;"
@@ -747,7 +747,7 @@ class RoastReadyDialog(QDialog):
 
         # loading indicator (hidden once scan completes)
         self._loading_lbl = QLabel(
-            QApplication.translate("tilauscope_beancave", "⏳ Scanning roast logs…")
+            QApplication.translate("tilauscope_roast_review", "⏳ Scanning roast logs…")
         )
         self._loading_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._loading_lbl.setStyleSheet(
@@ -1062,10 +1062,10 @@ class _BrewToastWorker(QRunnable):
 
     def _scan(self) -> list[dict]:
         today      = date.today()
-        peak       = QApplication.translate("tilauscope_beancave", "PEAK")
-        drink_soon = QApplication.translate("tilauscope_beancave", "DRINK SOON")
-        age_s      = QApplication.translate("tilauscope_beancave", "Age")
-        days_s     = QApplication.translate("tilauscope_beancave", "days")
+        peak       = QApplication.translate("tilauscope_roast_review", "PEAK")
+        drink_soon = QApplication.translate("tilauscope_roast_review", "DRINK SOON")
+        age_s      = QApplication.translate("tilauscope_roast_review", "Age")
+        days_s     = QApplication.translate("tilauscope_roast_review", "days")
         ready: list[dict] = []
 
         for meta in self._cache.values():
@@ -1179,7 +1179,7 @@ class BrewReadyNotification(QDialog):
         layout.setContentsMargins(15, 10, 15, 15)
 
         title_layout = QHBoxLayout()
-        header_lbl   = QLabel(QApplication.translate("tilauscope_beancave", "☕ Brewing Recommendations"))
+        header_lbl   = QLabel(QApplication.translate("tilauscope_roast_review", "☕ Brewing Recommendations"))
         header_lbl.setObjectName("Header")
         close_btn = QPushButton("✕")
         close_btn.setObjectName("CloseBtn")

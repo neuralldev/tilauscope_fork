@@ -53,7 +53,7 @@ class TilauCrashDialog(QDialog):
     def __init__(self, mod_name, line_no, error_val, tb_text, no_display:bool=False):
         super().__init__()
         module_name = self.mod_name_map.get(mod_name,self.mod_name_map["other"])
-        self.setWindowTitle(QApplication.translate("tilauscope_beancave","TilauScope: {0}").format(module_name))
+        self.setWindowTitle(QApplication.translate("tilauscope_diagnostics","TilauScope: {0}").format(module_name))
         self.setMinimumWidth(500)
         if no_display:
             export_logs_to_zip()
@@ -69,7 +69,7 @@ class TilauCrashDialog(QDialog):
         critical_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxCritical)
         icon_label.setPixmap(critical_icon.pixmap(48, 48))
         
-        title_text = QApplication.translate("tilauscope_beancave", "<b><font size='5' color='#d32f2f'>TilauScope Interrupted</font></b><br>Something went wrong in <i>{0}</i>.").format(mod_name)
+        title_text = QApplication.translate("tilauscope_diagnostics", "<b><font size='5' color='#d32f2f'>TilauScope Interrupted</font></b><br>Something went wrong in <i>{0}</i>.").format(mod_name)
         header_label = QLabel(title_text)
         header_layout.addWidget(icon_label)
         header_layout.addWidget(header_label)
@@ -77,7 +77,7 @@ class TilauCrashDialog(QDialog):
         layout.addLayout(header_layout)
 
         # Summary
-        summary = QLabel(QApplication.translate("tilauscope_beancave","<b>Error:</b> {0}\n<b>Location:</b> Line {1}").format(error_val, line_no))
+        summary = QLabel(QApplication.translate("tilauscope_diagnostics","<b>Error:</b> {0}\n<b>Location:</b> Line {1}").format(error_val, line_no))
         layout.addWidget(summary)
 
         # Collapsible Traceback (Expert Mode)
@@ -87,21 +87,21 @@ class TilauCrashDialog(QDialog):
         self.details_box.setFont(QFont("Courier New", 10))
         self.details_box.hide()
         
-        self.toggle_btn = QPushButton(QApplication.translate("tilauscope_beancave","Show Technical Details"))
+        self.toggle_btn = QPushButton(QApplication.translate("tilauscope_diagnostics","Show Technical Details"))
         self.toggle_btn.clicked.connect(self.toggle_details)
         layout.addWidget(self.toggle_btn)
         layout.addWidget(self.details_box)
 
         # Instructions
-        instr = QLabel(QApplication.translate("tilauscope_beancave","<br>Would you like to export a Debug Bundle (Logs + Environment) to help fix this?"))
+        instr = QLabel(QApplication.translate("tilauscope_diagnostics","<br>Would you like to export a Debug Bundle (Logs + Environment) to help fix this?"))
         instr.setWordWrap(True)
         layout.addWidget(instr)
 
         # Buttons
         btn_layout = QHBoxLayout()
-        self.export_btn = QPushButton(QApplication.translate("tilauscope_beancave","Export Logs & Close"))
+        self.export_btn = QPushButton(QApplication.translate("tilauscope_diagnostics","Export Logs & Close"))
         self.export_btn.setDefault(True)
-        self.close_btn = QPushButton(QApplication.translate("tilauscope_beancave","Just Close"))
+        self.close_btn = QPushButton(QApplication.translate("tilauscope_diagnostics","Just Close"))
         
         btn_layout.addStretch()
         btn_layout.addWidget(self.close_btn)
@@ -115,11 +115,11 @@ class TilauCrashDialog(QDialog):
     def toggle_details(self):
         if self.details_box.isHidden():
             self.details_box.show()
-            self.toggle_btn.setText(QApplication.translate("tilauscope_beancave","Hide Technical Details"))
+            self.toggle_btn.setText(QApplication.translate("tilauscope_diagnostics","Hide Technical Details"))
             self.adjustSize()
         else:
             self.details_box.hide()
-            self.toggle_btn.setText(QApplication.translate("tilauscope_beancave","Show Technical Details"))
+            self.toggle_btn.setText(QApplication.translate("tilauscope_diagnostics","Show Technical Details"))
             self.adjustSize()
 
 def export_logs_to_zip():
@@ -129,7 +129,7 @@ def export_logs_to_zip():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     zip_filename = f"Tilau_Debug_{platform.system()}_{timestamp}.zip"
     other_logs_directory = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)) / "tilauscope"
-    save_path, _ = QFileDialog.getSaveFileName(None, QApplication.translate("tilauscope_beancave","Save Debug Logs"), zip_filename, "Zip Files (*.zip)")
+    save_path, _ = QFileDialog.getSaveFileName(None, QApplication.translate("tilauscope_diagnostics","Save Debug Logs"), zip_filename, "Zip Files (*.zip)")
     
     if save_path:
         try:
@@ -163,11 +163,11 @@ def report_a_bug(parent=None) -> bool:
         return False
     choice = show_styled_message(
         parent,
-        QApplication.translate("tilauscope", "Diagnostics saved"),
-        QApplication.translate("tilauscope",
+        QApplication.translate("tilauscope_diagnostics", "Diagnostics saved"),
+        QApplication.translate("tilauscope_diagnostics",
             "Attach the archive to your report so the problem can be reproduced."),
-        buttons=[QApplication.translate("tilauscope", "Open GitHub"),
-                 QApplication.translate("tilauscope", "Done")])
+        buttons=[QApplication.translate("tilauscope_diagnostics", "Open GitHub"),
+                 QApplication.translate("tilauscope_diagnostics", "Done")])
     if choice == 0:
         QDesktopServices.openUrl(QUrl(TILAUSCOPE_ISSUES_URL))
     return True
@@ -188,5 +188,5 @@ def my_exception_hook(exctype, value, tb):
     if dialog.exec() == QDialog.DialogCode.Accepted:
         if export_logs_to_zip():
             from tilauscope.tilauscope_types import show_styled_message
-            show_styled_message(None, QApplication.translate("tilauscope_beancave","Success"), QApplication.translate("tilauscope_beancave","Logs bundled. Please send this to the TilauScope team."))
+            show_styled_message(None, QApplication.translate("tilauscope_diagnostics","Success"), QApplication.translate("tilauscope_diagnostics","Logs bundled. Please send this to the TilauScope team."))
     sys.exit(1)

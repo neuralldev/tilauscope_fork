@@ -89,7 +89,7 @@ class TilauAboutDlg(QDialog):
 
     def _build_header(self) -> QHBoxLayout:
         header = QHBoxLayout()
-        title = QLabel(QApplication.translate("tilauscope", "ABOUT TILAUSCOPE"))
+        title = QLabel(QApplication.translate("tilauscope_updates", "ABOUT TILAUSCOPE"))
         title.setStyleSheet(
             f"color:{_ACCENT};font-size:14px;font-weight:800;letter-spacing:1px;")
         close_btn = QPushButton("✕")
@@ -126,14 +126,14 @@ class TilauAboutDlg(QDialog):
         inner.addWidget(name)
 
         version = QLabel(QApplication.translate(
-            "tilauscope", "Version {0} · build {1}").format(version_str, build_str))
+            "tilauscope_updates", "Version {0} · build {1}").format(version_str, build_str))
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         version.setStyleSheet(f"color:{_MUTED};font-family:'JetBrains Mono';font-size:12px;")
         inner.addWidget(version)
 
         inner.addSpacing(14)
         tagline = QLabel(QApplication.translate(
-            "tilauscope", "Guided roasting assistant for home and enthusiast roasters."))
+            "tilauscope_updates", "Guided roasting assistant for home and enthusiast roasters."))
         tagline.setAlignment(Qt.AlignmentFlag.AlignCenter)
         tagline.setWordWrap(True)
         tagline.setStyleSheet(f"color:{_SUB};font-size:13px;")
@@ -145,24 +145,24 @@ class TilauAboutDlg(QDialog):
         ## the number shown above.
         self._add_block(
             inner,
-            QApplication.translate("tilauscope", "Built on"),
+            QApplication.translate("tilauscope_updates", "Built on"),
             "Artisan Roaster Scope<br>"
             f"<a href='{_ARTISAN_URL}' style='color:{_ACCENT};'>artisan-scope.org</a>")
         inner.addSpacing(14)
         self._add_block(
             inner,
-            QApplication.translate("tilauscope", "Artisan core developers"),
+            QApplication.translate("tilauscope_updates", "Artisan core developers"),
             _ARTISAN_DEVS)
         inner.addSpacing(14)
         self._add_block(
             inner,
-            QApplication.translate("tilauscope", "Source code"),
+            QApplication.translate("tilauscope_updates", "Source code"),
             f"<a href='{_SOURCE_URL}' style='color:{_ACCENT};'>"
             "github.com/neuralldev/tilauscope_fork</a>")
 
         inner.addSpacing(20)
         legal = QLabel(QApplication.translate(
-            "tilauscope", "© Tilau — released under the GNU AGPL v3."))
+            "tilauscope_updates", "© Tilau — released under the GNU AGPL v3."))
         legal.setAlignment(Qt.AlignmentFlag.AlignCenter)
         legal.setStyleSheet(f"color:{_MUTED};font-size:11px;")
         inner.addWidget(legal)
@@ -184,14 +184,14 @@ class TilauAboutDlg(QDialog):
     def _add_actions(self, inner: QVBoxLayout) -> None:
         row = QHBoxLayout()
         row.setSpacing(10)
-        report = QPushButton(QApplication.translate("tilauscope", "Report a bug"))
+        report = QPushButton(QApplication.translate("tilauscope_updates", "Report a bug"))
         report.setMinimumWidth(118)
         report.clicked.connect(self._report_a_bug)
         report.setStyleSheet(
             f"QPushButton {{ background:transparent; color:{_ACCENT}; border:1px solid {_ACCENT};"
             f" border-radius:8px; padding:9px 18px; font-weight:600; }}"
             f"QPushButton:hover {{ background:{_ACCENT}; color:{_BG}; }}")
-        close = QPushButton(QApplication.translate("tilauscope", "Close"))
+        close = QPushButton(QApplication.translate("tilauscope_updates", "Close"))
         close.setMinimumWidth(118)
         close.clicked.connect(self.accept)
         close.setStyleSheet(

@@ -264,7 +264,7 @@ class _DownloadWorker(QObject):
             # just save that page under the installer's name.
             if "text/html" in resp.headers.get("content-type", "").lower():
                 raise _DownloadError(QApplication.translate(
-                    "tilauscope_beancave",
+                    "tilauscope_updates",
                     "The server returned a web page instead of the installer "
                     "(the release asset may have been removed)."))
 
@@ -286,7 +286,7 @@ class _DownloadWorker(QObject):
                             self.progress.emit(min(100, int(downloaded * 100 / total)))
             except OSError as exc:
                 raise _DownloadError(QApplication.translate(
-                    "tilauscope_beancave",
+                    "tilauscope_updates",
                     "Could not write the update to disk (disk full or permission "
                     "denied):\n{0}").format(exc)) from exc
 
@@ -307,18 +307,18 @@ class _DownloadWorker(QObject):
         except requests.exceptions.Timeout:
             self._safe_unlink()
             self.dl_error.emit(QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_updates",
                 "The connection timed out while downloading the update."))
         except requests.exceptions.ConnectionError:
             self._safe_unlink()
             self.dl_error.emit(QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_updates",
                 "Network connection lost during the download."))
         except requests.exceptions.HTTPError as exc:
             self._safe_unlink()
             code = exc.response.status_code if exc.response is not None else "?"
             self.dl_error.emit(QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_updates",
                 "The server refused the download (HTTP {0}).").format(code))
         except Exception as exc:
             self._safe_unlink()
@@ -342,15 +342,15 @@ class _DownloadWorker(QObject):
         p = Path(self._dest)
         if not p.exists():
             raise _DownloadError(QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_updates",
                 "The downloaded file is missing after the transfer."))
         size = p.stat().st_size
         if size == 0:
             raise _DownloadError(QApplication.translate(
-                "tilauscope_beancave", "The downloaded file is empty."))
+                "tilauscope_updates", "The downloaded file is empty."))
         if total and downloaded != total:
             raise _DownloadError(QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_updates",
                 "The download is incomplete ({0} of {1} bytes).").format(downloaded, total))
 
         try:
@@ -358,25 +358,25 @@ class _DownloadWorker(QObject):
                 head = f.read(512)
         except OSError as exc:
             raise _DownloadError(QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_updates",
                 "The downloaded file could not be read back:\n{0}").format(exc)) from exc
 
         low = head.lower()
         if b"<html" in low or b"<!doctype" in low:
             raise _DownloadError(QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_updates",
                 "Received a web page instead of the installer. The download link "
                 "could not be resolved."))
         if size < _MIN_INSTALLER_BYTES:
             raise _DownloadError(QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_updates",
                 "The downloaded file is too small to be a valid installer "
                 "({0} bytes).").format(size))
         # Windows PE installers start with "MZ"; DMG headers are not stable so
         # macOS relies on the size + non-HTML checks above.
         if _IS_WINDOWS and not head.startswith(b"MZ"):
             raise _DownloadError(QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_updates",
                 "The downloaded file is not a valid Windows installer."))
 
 
@@ -504,7 +504,7 @@ class _UpdateAvailableDialog(QDialog):
         inner.addWidget(info_frame)
 
         # ── Body text ──────────────────────────────────────────────────────
-        body = QLabel(QApplication.translate("tilauscope_beancave",
+        body = QLabel(QApplication.translate("tilauscope_updates",
             "A new version of <b>TilauScope</b> is available.\n"
             "Download now to get the latest features and fixes."
         ))
@@ -517,14 +517,14 @@ class _UpdateAvailableDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
 
-        self.btn_download = QPushButton(QApplication.translate("tilauscope_beancave","⬇  Download & Install"))
+        self.btn_download = QPushButton(QApplication.translate("tilauscope_updates","⬇  Download & Install"))
         self.btn_download.setStyleSheet(
             f"background-color: {_THEME['ACCENT']}; color: {_THEME['BG']}; "
             f"font-weight: bold; border: none; border-radius: 6px; padding: 10px 22px;"
         )
         self.btn_download.clicked.connect(self.accept)
 
-        btn_later = QPushButton(QApplication.translate("tilauscope_beancave","Later"))
+        btn_later = QPushButton(QApplication.translate("tilauscope_updates","Later"))
         btn_later.clicked.connect(self.reject)
 
         btn_layout.addStretch()
@@ -583,7 +583,7 @@ class _DownloadProgressDialog(QDialog):
         inner.setSpacing(16)
         outer.addWidget(container)
 
-        title = QLabel(QApplication.translate("tilauscope_beancave","⬇  DOWNLOADING UPDATE"))
+        title = QLabel(QApplication.translate("tilauscope_updates","⬇  DOWNLOADING UPDATE"))
         title.setStyleSheet(
             f"color: {_THEME['ACCENT']}; font-size: 16px; font-weight: 800; letter-spacing: 1px;"
         )
@@ -608,7 +608,7 @@ class _DownloadProgressDialog(QDialog):
         self._pct_label.setStyleSheet(f"color: {_THEME['TEXT']}; font-size: 13px;")
         inner.addWidget(self._pct_label)
 
-        btn_cancel = QPushButton(QApplication.translate("tilauscope_beancave","Cancel"))
+        btn_cancel = QPushButton(QApplication.translate("tilauscope_updates","Cancel"))
         btn_cancel.setFixedWidth(120)
         btn_cancel.clicked.connect(self._on_cancel)
         cancel_row = QHBoxLayout()
@@ -668,14 +668,14 @@ class _InstallReadyDialog(QDialog):
         inner.setSpacing(14)
         outer.addWidget(container)
 
-        title = QLabel(QApplication.translate("tilauscope_beancave","✅  DOWNLOAD COMPLETE"))
+        title = QLabel(QApplication.translate("tilauscope_updates","✅  DOWNLOAD COMPLETE"))
         title.setStyleSheet(
             f"color: {_THEME['SUCCESS']}; font-size: 17px; font-weight: 800; letter-spacing: 1px;"
         )
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         inner.addWidget(title)
 
-        body = QLabel(QApplication.translate("tilauscope_beancave",
+        body = QLabel(QApplication.translate("tilauscope_updates",
             "<b>{0}</b><br/><br/>"
             "Click <b>Install Now</b> to launch the installer and close TilauScope.<br/>"
             "Or <b>Later</b> to install manually from your Downloads folder."
@@ -689,14 +689,14 @@ class _InstallReadyDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
 
-        self.btn_install = QPushButton(QApplication.translate("tilauscope_beancave","🛠  Install Now & Quit"))
+        self.btn_install = QPushButton(QApplication.translate("tilauscope_updates","🛠  Install Now & Quit"))
         self.btn_install.setStyleSheet(
             f"background-color: {_THEME['SUCCESS']}; color: {_THEME['BG']}; "
             f"font-weight: bold; border: none; border-radius: 6px; padding: 10px 22px;"
         )
         self.btn_install.clicked.connect(self.accept)
 
-        btn_later = QPushButton(QApplication.translate("tilauscope_beancave","Later"))
+        btn_later = QPushButton(QApplication.translate("tilauscope_updates","Later"))
         btn_later.clicked.connect(self.reject)
 
         btn_layout.addStretch()
@@ -852,7 +852,7 @@ class TilauUpdater(QObject):
             ok = False
         if not ok:
             self._on_download_error(QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_updates",
                 "The downloaded file is no longer available."))
             return
 
@@ -875,8 +875,8 @@ class TilauUpdater(QObject):
         from tilauscope.tilauscope_types import show_styled_message
         show_styled_message(
             self._parent,
-            QApplication.translate("tilauscope_beancave","Download Failed"),
-            QApplication.translate("tilauscope_beancave",
+            QApplication.translate("tilauscope_updates","Download Failed"),
+            QApplication.translate("tilauscope_updates",
                 "The update could not be downloaded.\n\n{0}\n\n"
                 "Please download manually from:\n{1}"
             ).format(msg, _GITHUB_RELEASES_URL),
@@ -909,8 +909,8 @@ class TilauUpdater(QObject):
             from tilauscope.tilauscope_types import show_styled_message
             show_styled_message(
                 self._parent,
-                QApplication.translate("tilauscope_beancave", "Installer Not Found"),
-                QApplication.translate("tilauscope_beancave",
+                QApplication.translate("tilauscope_updates", "Installer Not Found"),
+                QApplication.translate("tilauscope_updates",
                     "The downloaded installer could not be found:\n{0}\n\n"
                     "Please download it again.").format(file_path),
                 QMessageBox.Icon.Warning,
@@ -935,8 +935,8 @@ class TilauUpdater(QObject):
             from tilauscope.tilauscope_types import show_styled_message
             show_styled_message(
                 self._parent,
-                QApplication.translate("tilauscope_beancave","Launch Failed"),
-                QApplication.translate("tilauscope_beancave","Could not open the installer automatically.\n\nPlease open it manually:\n{0}").format(file_path),
+                QApplication.translate("tilauscope_updates","Launch Failed"),
+                QApplication.translate("tilauscope_updates","Could not open the installer automatically.\n\nPlease open it manually:\n{0}").format(file_path),
                 QMessageBox.Icon.Warning,
                 )
             return  # Don't quit if we couldn't even open the file

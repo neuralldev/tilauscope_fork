@@ -135,7 +135,7 @@ class PIDAutotune(QDialog):
         
         # Header with Help Button
         header = QHBoxLayout()
-        title_lbl = QLabel(QApplication.translate("tilauscope_beancave","<b>Monitoring & Tuning</b>").upper())
+        title_lbl = QLabel(QApplication.translate("tilauscope_pid","<b>Monitoring & Tuning</b>").upper())
         title_lbl.setStyleSheet(f"color: white; font-size: 18px; font-weight: 900; font-family: 'JetBrains Mono'; border: none;")
         
         # close button
@@ -157,10 +157,10 @@ class PIDAutotune(QDialog):
         mon_layout = QHBoxLayout()
 
         # Temperatures Group
-        temp_group = self.create_group(QApplication.translate("tilauscope_beancave","Temperatures"))
-        self.lbl_bt = self.add_row(temp_group, QApplication.translate("tilauscope_beancave","Current Bean Temperature"))
-        self.lbl_sv = self.add_row(temp_group, QApplication.translate("tilauscope_beancave","Artisan PID SV"))
-        self.lbl_error = self.add_row(temp_group,QApplication.translate("tilauscope_beancave","PID Delta (BT-SV)"))
+        temp_group = self.create_group(QApplication.translate("tilauscope_pid","Temperatures"))
+        self.lbl_bt = self.add_row(temp_group, QApplication.translate("tilauscope_pid","Current Bean Temperature"))
+        self.lbl_sv = self.add_row(temp_group, QApplication.translate("tilauscope_pid","Artisan PID SV"))
+        self.lbl_error = self.add_row(temp_group,QApplication.translate("tilauscope_pid","PID Delta (BT-SV)"))
 
         # PID Values Group
         pid_group = self.create_group("PID Parameters")
@@ -173,21 +173,21 @@ class PIDAutotune(QDialog):
         self.content_layout.addLayout(mon_layout)
     
         # 3. ADVANCED (BETA/GAMMA)
-        adv_group = self.create_group(QApplication.translate("tilauscope_beancave","Configuration Structure (2-DOF)"))
+        adv_group = self.create_group(QApplication.translate("tilauscope_pid","Configuration Structure (2-DOF)"))
         self.lbl_beta = self.add_row(adv_group, "Beta")
         self.lbl_gamma = self.add_row(adv_group, "Gamma")
         self.content_layout.addWidget(adv_group)
 
         # 4. STATUS & CONSOLE
-        self.lbl_status = QLabel(QApplication.translate("tilauscope_beancave","Ready"))
+        self.lbl_status = QLabel(QApplication.translate("tilauscope_pid","Ready"))
         self.lbl_status.setStyleSheet(f"color: {THEME['ACCENT']}; font-weight: bold; font-family: 'JetBrains Mono'; border: none;")
         self.content_layout.addWidget(self.lbl_status)        # Status et Boutons
 
         # 5. BUTTONS
         btn_layout = QHBoxLayout()
-        self.btn_preset = self.create_btn(QApplication.translate("tilauscope_beancave","Load Presets").upper(), THEME['WARNING'], self.apply_default_presets)
-        self.btn_start = self.create_btn(QApplication.translate("tilauscope_beancave","Start").upper(), THEME['ACCENT'], self.start_monitoring)
-        self.btn_stop = self.create_btn(QApplication.translate("tilauscope_beancave","Stop").upper(), THEME['ACCENT'], self.stop_monitoring)
+        self.btn_preset = self.create_btn(QApplication.translate("tilauscope_pid","Load Presets").upper(), THEME['WARNING'], self.apply_default_presets)
+        self.btn_start = self.create_btn(QApplication.translate("tilauscope_pid","Start").upper(), THEME['ACCENT'], self.start_monitoring)
+        self.btn_stop = self.create_btn(QApplication.translate("tilauscope_pid","Stop").upper(), THEME['ACCENT'], self.stop_monitoring)
         self.btn_stop.setEnabled(False)
 
         btn_layout.addWidget(self.btn_preset)
@@ -274,7 +274,7 @@ class PIDAutotune(QDialog):
             # prefer PoM and DoM not PoE and DoE
             self.pid.pidPsetpointWeight = 0.0
             self.pid.pidDsetpointWeight = 0.0
-            self.lbl_status.setText(QApplication.translate("tilauscope_beancave","Presets loaded"))
+            self.lbl_status.setText(QApplication.translate("tilauscope_pid","Presets loaded"))
             _log.info("Presets PID appplied")
         except Exception as e:
             _log.error(f"Error while setting PID presets: {e}")
@@ -287,7 +287,7 @@ class PIDAutotune(QDialog):
         self.btn_start.setEnabled(False)
         self.btn_stop.setEnabled(True)
         #self.btn_reset.setEnabled(False)
-        self.lbl_status.setText(QApplication.translate("tilauscope_beancave","Analysing..."))
+        self.lbl_status.setText(QApplication.translate("tilauscope_pid","Analysing..."))
         
     def stop_monitoring(self):
         self.is_monitoring = False
@@ -295,7 +295,7 @@ class PIDAutotune(QDialog):
         self.btn_start.setEnabled(True)
         self.btn_stop.setEnabled(False)
         #self.btn_reset.setEnabled(True)
-        self.lbl_status.setText(QApplication.translate("tilauscope_beancave","Monitoring stopped"))
+        self.lbl_status.setText(QApplication.translate("tilauscope_pid","Monitoring stopped"))
 
     def get_active_pid_slots(self, bt:float):
         """Determines which PID attributes to modify based on scheduling."""
@@ -471,9 +471,9 @@ class PIDAutotune(QDialog):
     
             # ── Ramping : pas encore à la consigne ──────────────────────────────
             if not is_near_target:
-                p = QApplication.translate("tilauscope_beancave", "preheating ") if self.preheating else ""
+                p = QApplication.translate("tilauscope_pid", "preheating ") if self.preheating else ""
                 self.lbl_status.setText(
-                    QApplication.translate("tilauscope_beancave", "Ramping") + f"... {p}RoR:{current_ror:.1f}"
+                    QApplication.translate("tilauscope_pid", "Ramping") + f"... {p}RoR:{current_ror:.1f}"
                 )
                 self.lbl_kp.setText(f"{kp_val:.4f}")
                 self.lbl_ki.setText(f"{ki_val:.4f}")
@@ -481,7 +481,7 @@ class PIDAutotune(QDialog):
                 return
     
             # ── Ajustements ─────────────────────────────────────────────────────
-            action = QApplication.translate("tilauscope_beancave", "Stable")
+            action = QApplication.translate("tilauscope_pid", "Stable")
     
             if self.preheating:
                 # Point 8 : pas absolus avec bornes
@@ -578,7 +578,7 @@ class HelpDialog(QDialog):
 
         # Header
         header = QHBoxLayout()
-        title_lbl = QLabel(QApplication.translate("tilauscope_beancave","PID Parameters Help").upper())
+        title_lbl = QLabel(QApplication.translate("tilauscope_pid","PID Parameters Help").upper())
         title_lbl.setStyleSheet(f"color: white; font-size: 16px; font-weight: 900; font-family: 'JetBrains Mono'; border: none;")
         
         self.close_btn = QPushButton("✕")
@@ -616,7 +616,7 @@ class HelpDialog(QDialog):
         """)
         
         # HTML Content
-        self.text_display.setHtml(QApplication.translate("tilauscope_beancave","""
+        self.text_display.setHtml(QApplication.translate("tilauscope_pid","""
          <h3>PID Parameters Glossary</h3>
         <p><b>kP (Proportional):</b> Determines the immediate correction strength. 
         If the temperature is far from the target, kP applies a strong corrective action.</p>
@@ -649,7 +649,7 @@ class HelpDialog(QDialog):
         self.content_layout.addWidget(self.text_display)
 
         # Footer Button
-        btn_close = QPushButton(QApplication.translate("tilauscope_beancave", "CLOSE"))
+        btn_close = QPushButton(QApplication.translate("tilauscope_pid", "CLOSE"))
         btn_close.setFixedHeight(40)
         btn_close.clicked.connect(self.close)
         btn_close.setStyleSheet(f"""

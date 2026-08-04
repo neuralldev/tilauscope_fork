@@ -87,20 +87,20 @@ _ZONE_RANK: dict[AwZone, int] = {
 
 def zone_label(zone: AwZone) -> str:
     return {
-        AwZone.OPTIMAL: QApplication.translate("tilauscope_beancave", "Optimal"),
-        AwZone.WATCH: QApplication.translate("tilauscope_beancave", "To watch"),
-        AwZone.TOO_DRY: QApplication.translate("tilauscope_beancave", "Too dry"),
-        AwZone.MOLD_RISK: QApplication.translate("tilauscope_beancave", "Mould risk"),
-        AwZone.UNKNOWN: QApplication.translate("tilauscope_beancave", "aw not measured"),
+        AwZone.OPTIMAL: QApplication.translate("tilauscope_storage", "Optimal"),
+        AwZone.WATCH: QApplication.translate("tilauscope_storage", "To watch"),
+        AwZone.TOO_DRY: QApplication.translate("tilauscope_storage", "Too dry"),
+        AwZone.MOLD_RISK: QApplication.translate("tilauscope_storage", "Mould risk"),
+        AwZone.UNKNOWN: QApplication.translate("tilauscope_storage", "aw not measured"),
     }[zone]
 
 
 def trend_label(trend: MoistureTrend) -> str:
     return {
-        MoistureTrend.SEALED: QApplication.translate("tilauscope_beancave", "🔒 sealed"),
-        MoistureTrend.GAINING: QApplication.translate("tilauscope_beancave", "↑ gaining moisture"),
-        MoistureTrend.DRYING: QApplication.translate("tilauscope_beancave", "↓ slow drying"),
-        MoistureTrend.STABLE: QApplication.translate("tilauscope_beancave", "= stable"),
+        MoistureTrend.SEALED: QApplication.translate("tilauscope_storage", "🔒 sealed"),
+        MoistureTrend.GAINING: QApplication.translate("tilauscope_storage", "↑ gaining moisture"),
+        MoistureTrend.DRYING: QApplication.translate("tilauscope_storage", "↓ slow drying"),
+        MoistureTrend.STABLE: QApplication.translate("tilauscope_storage", "= stable"),
         MoistureTrend.UNKNOWN: "—",
     }[trend]
 
@@ -108,12 +108,12 @@ def trend_label(trend: MoistureTrend) -> str:
 # --- conditioning options (key stored on GreenBean, label shown) ------------ #
 def conditioning_options() -> list[tuple[str, str]]:
     return [
-        ("", QApplication.translate("tilauscope_beancave", "Not set")),
-        ("vacuum", QApplication.translate("tilauscope_beancave", "Vacuum-sealed")),
-        ("grainpro", QApplication.translate("tilauscope_beancave", "GrainPro (valve)")),
-        ("ecotact", QApplication.translate("tilauscope_beancave", "Ecotact bag")),
-        ("bocal", QApplication.translate("tilauscope_beancave", "Sealed jar")),
-        ("toile", QApplication.translate("tilauscope_beancave", "Open cloth bag")),
+        ("", QApplication.translate("tilauscope_storage", "Not set")),
+        ("vacuum", QApplication.translate("tilauscope_storage", "Vacuum-sealed")),
+        ("grainpro", QApplication.translate("tilauscope_storage", "GrainPro (valve)")),
+        ("ecotact", QApplication.translate("tilauscope_storage", "Ecotact bag")),
+        ("bocal", QApplication.translate("tilauscope_storage", "Sealed jar")),
+        ("toile", QApplication.translate("tilauscope_storage", "Open cloth bag")),
     ]
 
 
@@ -121,7 +121,7 @@ def conditioning_label(key: str) -> str:
     for k, lbl in conditioning_options():
         if k == (key or ""):
             return lbl
-    return QApplication.translate("tilauscope_beancave", "Not set")
+    return QApplication.translate("tilauscope_storage", "Not set")
 
 
 # --- settings helpers ------------------------------------------------------- #
@@ -185,13 +185,13 @@ class StorageTab(QWidget):
 
         # toolbar
         bar = QHBoxLayout()
-        title = QLabel(QApplication.translate("tilauscope_beancave", "Stock conservation"))
+        title = QLabel(QApplication.translate("tilauscope_storage", "Stock conservation"))
         title.setStyleSheet(
             f"color:{THEME['TEXT']}; font-size:16px; font-weight:700;"
         )
         bar.addWidget(title)
         bar.addStretch()
-        self.sack_tool_btn = QPushButton("🏷️  " + QApplication.translate("tilauscope_beancave", "Manage sack labels"))
+        self.sack_tool_btn = QPushButton("🏷️  " + QApplication.translate("tilauscope_storage", "Manage sack labels"))
         self.sack_tool_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.sack_tool_btn.setStyleSheet(self._btn_css())
         self.sack_tool_btn.clicked.connect(self._open_sack_labels)
@@ -223,7 +223,7 @@ class StorageTab(QWidget):
         self.orphan_lbl.setStyleSheet(
             f"color:{THEME['TEXT']}; font-size:13px; font-weight:600;"
         )
-        self.orphan_btn = QPushButton(QApplication.translate("tilauscope_beancave", "Review…"))
+        self.orphan_btn = QPushButton(QApplication.translate("tilauscope_storage", "Review…"))
         self.orphan_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.orphan_btn.setStyleSheet(self._btn_css())
         self.orphan_btn.clicked.connect(self._open_reclaim)
@@ -259,7 +259,7 @@ class StorageTab(QWidget):
         )
         self.banner_source = QLabel()
         self.banner_source.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:12px;")
-        self.banner_cfg_btn = QPushButton("⚙  " + QApplication.translate("tilauscope_beancave", "configure"))
+        self.banner_cfg_btn = QPushButton("⚙  " + QApplication.translate("tilauscope_storage", "configure"))
         self.banner_cfg_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.banner_cfg_btn.setStyleSheet(self._btn_css())
         self.banner_cfg_btn.clicked.connect(self._open_mqtt_config)
@@ -298,8 +298,8 @@ class StorageTab(QWidget):
 
     def _build_table(self) -> QWidget:
         headers = [
-            QApplication.translate("tilauscope_beancave", "Bean"), QApplication.translate("tilauscope_beancave", "Stock"), QApplication.translate("tilauscope_beancave", "Sacks"),
-            QApplication.translate("tilauscope_beancave", "aw"), QApplication.translate("tilauscope_beancave", "Conditioning"), QApplication.translate("tilauscope_beancave", "Trend"),
+            QApplication.translate("tilauscope_storage", "Bean"), QApplication.translate("tilauscope_storage", "Stock"), QApplication.translate("tilauscope_storage", "Sacks"),
+            QApplication.translate("tilauscope_storage", "aw"), QApplication.translate("tilauscope_storage", "Conditioning"), QApplication.translate("tilauscope_storage", "Trend"),
         ]
         self.table = QTableWidget(0, len(headers))
         self.table.setHorizontalHeaderLabels(headers)
@@ -396,7 +396,7 @@ class StorageTab(QWidget):
         awrow.addSpacing(12)
         awrow.addWidget(self.f_zone)
         awrow.addStretch()
-        self.f_measure_btn = QPushButton("💧  " + QApplication.translate("tilauscope_beancave", "Measure aw"))
+        self.f_measure_btn = QPushButton("💧  " + QApplication.translate("tilauscope_storage", "Measure aw"))
         self.f_measure_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.f_measure_btn.setStyleSheet(self._btn_css())
         self.f_measure_btn.clicked.connect(self._open_aw_editor)
@@ -404,7 +404,7 @@ class StorageTab(QWidget):
         v.addLayout(awrow)
 
         # conditioning selector
-        cond_lbl = QLabel(QApplication.translate("tilauscope_beancave", "CONDITIONING"))
+        cond_lbl = QLabel(QApplication.translate("tilauscope_storage", "CONDITIONING"))
         cond_lbl.setStyleSheet(
             f"color:{THEME['SUBTEXT']}; font-size:10px; font-weight:700;"
             " letter-spacing:1px;"
@@ -425,14 +425,14 @@ class StorageTab(QWidget):
         sv.setContentsMargins(0, 0, 0, 0)
         sv.setSpacing(7)
         srow = QHBoxLayout()
-        sacks_lbl = QLabel(QApplication.translate("tilauscope_beancave", "SACK LABELS"))
+        sacks_lbl = QLabel(QApplication.translate("tilauscope_storage", "SACK LABELS"))
         sacks_lbl.setStyleSheet(
             f"color:{THEME['SUBTEXT']}; font-size:10px; font-weight:700;"
             " letter-spacing:1px;"
         )
         srow.addWidget(sacks_lbl)
         srow.addStretch()
-        self.f_assign_btn = QPushButton("+ " + QApplication.translate("tilauscope_beancave", "Assign"))
+        self.f_assign_btn = QPushButton("+ " + QApplication.translate("tilauscope_storage", "Assign"))
         self.f_assign_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.f_assign_btn.setStyleSheet(self._btn_css())
         self.f_assign_btn.clicked.connect(self._assign_sack)
@@ -459,10 +459,10 @@ class StorageTab(QWidget):
 
     def _build_legend(self) -> QWidget:
         w = QLabel(
-            f"<span style='color:{Z_TOO_DRY}'>■</span> {QApplication.translate("tilauscope_beancave", '&lt; 0.45 · too dry')}"
-            f"&nbsp;&nbsp;<span style='color:{Z_OPTIMAL}'>■</span> {QApplication.translate("tilauscope_beancave", '0.45–0.60 · optimal')}"
-            f"&nbsp;&nbsp;<span style='color:{Z_WATCH}'>■</span> {QApplication.translate("tilauscope_beancave", '0.60–0.65 · to watch')}"
-            f"&nbsp;&nbsp;<span style='color:{Z_RISK}'>■</span> {QApplication.translate("tilauscope_beancave", '&gt; 0.65 · mould risk')}"
+            f"<span style='color:{Z_TOO_DRY}'>■</span> {QApplication.translate("tilauscope_storage", '&lt; 0.45 · too dry')}"
+            f"&nbsp;&nbsp;<span style='color:{Z_OPTIMAL}'>■</span> {QApplication.translate("tilauscope_storage", '0.45–0.60 · optimal')}"
+            f"&nbsp;&nbsp;<span style='color:{Z_WATCH}'>■</span> {QApplication.translate("tilauscope_storage", '0.60–0.65 · to watch')}"
+            f"&nbsp;&nbsp;<span style='color:{Z_RISK}'>■</span> {QApplication.translate("tilauscope_storage", '&gt; 0.65 · mould risk')}"
         )
         w.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:11px;")
         return w
@@ -591,18 +591,18 @@ class StorageTab(QWidget):
 
     def _render_banner(self, configured: bool) -> None:
         if not configured:
-            self.banner_value.setText(QApplication.translate("tilauscope_beancave", "Storage ambient not configured"))
-            self.banner_source.setText(QApplication.translate("tilauscope_beancave", "Set the humidity sensor topic"))
+            self.banner_value.setText(QApplication.translate("tilauscope_storage", "Storage ambient not configured"))
+            self.banner_source.setText(QApplication.translate("tilauscope_storage", "Set the humidity sensor topic"))
             return
         if self._ambient_rh is None:
-            self.banner_value.setText(QApplication.translate("tilauscope_beancave", "Waiting for the sensor…"))
-            self.banner_source.setText(QApplication.translate("tilauscope_beancave", "storage sensor · MQTT"))
+            self.banner_value.setText(QApplication.translate("tilauscope_storage", "Waiting for the sensor…"))
+            self.banner_source.setText(QApplication.translate("tilauscope_storage", "storage sensor · MQTT"))
             return
         parts = [f"{self._ambient_rh:.0f} % RH"]
         if self._ambient_temp is not None:
             parts.append(f"{self._ambient_temp:.0f} °C")
         self.banner_value.setText("  ·  ".join(parts))
-        self.banner_source.setText(QApplication.translate("tilauscope_beancave", "storage sensor · MQTT"))
+        self.banner_source.setText(QApplication.translate("tilauscope_storage", "storage sensor · MQTT"))
 
     def refresh(self) -> None:
         try:
@@ -638,7 +638,7 @@ class StorageTab(QWidget):
             trend = SA.compute_trend(aw, self._ambient_rh, getattr(b, "conditioning", ""))
             color = _ZONE_COLOR[zone]
 
-            name = getattr(b, "name", "") or QApplication.translate("tilauscope_beancave", "(unnamed)")
+            name = getattr(b, "name", "") or QApplication.translate("tilauscope_storage", "(unnamed)")
             crop = getattr(b, "crop", 0)
             sub = f" '{str(crop)[-2:]}" if crop else ""
             self._set_cell(r, 0, f"{name}{sub}")
@@ -703,7 +703,7 @@ class StorageTab(QWidget):
     def _render_fiche(self) -> None:
         b = self._selected_bean()
         if b is None:
-            self.f_name.setText(QApplication.translate("tilauscope_beancave", "No bean in stock"))
+            self.f_name.setText(QApplication.translate("tilauscope_storage", "No bean in stock"))
             self.f_meta.setText("")
             self.f_stock.setText("")
             self.f_aw.setText("—")
@@ -721,14 +721,14 @@ class StorageTab(QWidget):
         a = SA.assess(aw, self._ambient_rh, cond, thr)
         color = _ZONE_COLOR[a.zone]
 
-        self.f_name.setText(getattr(b, "name", "") or QApplication.translate("tilauscope_beancave", "(unnamed)"))
+        self.f_name.setText(getattr(b, "name", "") or QApplication.translate("tilauscope_storage", "(unnamed)"))
         meta_bits = [x for x in (getattr(b, "process", ""), getattr(b, "species", "")) if x]
         crop = getattr(b, "crop", 0)
         if crop:
-            meta_bits.append(f"{QApplication.translate("tilauscope_beancave", 'crop')} '{str(crop)[-2:]}")
+            meta_bits.append(f"{QApplication.translate("tilauscope_storage", 'crop')} '{str(crop)[-2:]}")
         self.f_meta.setText(" · ".join(meta_bits))
         nsacks = len(getattr(b, "sacks", []) or [])
-        sack_txt = f"{nsacks} {QApplication.translate("tilauscope_beancave", 'lot(s)')} · " if nsacks else ""
+        sack_txt = f"{nsacks} {QApplication.translate("tilauscope_storage", 'lot(s)')} · " if nsacks else ""
         self.f_stock.setText(f"{sack_txt}{getattr(b, 'weight_left', 0.0) / 1000:.1f} kg")
 
         self.f_aw.setText(f"{aw:.2f}" if aw > 0 else "—")
@@ -749,39 +749,39 @@ class StorageTab(QWidget):
     def _verdict_html(self, a: SA.StorageAssessment) -> str:
         lines: list[str] = []
         if a.aw <= 0:
-            lines.append(QApplication.translate("tilauscope_beancave", "Measure aw with the AquaGauge to assess conservation."))
+            lines.append(QApplication.translate("tilauscope_storage", "Measure aw with the AquaGauge to assess conservation."))
             return "<br>".join(lines)
 
         if a.trend is MoistureTrend.SEALED:
-            lines.append(QApplication.translate("tilauscope_beancave", "🔒 Sealed conditioning: negligible exchange, aw is protected."))
+            lines.append(QApplication.translate("tilauscope_storage", "🔒 Sealed conditioning: negligible exchange, aw is protected."))
         elif a.trend is MoistureTrend.GAINING:
             lines.append(
-                QApplication.translate("tilauscope_beancave", "↑ <b>Gaining moisture</b>: your storage is more humid than the bean, "
+                QApplication.translate("tilauscope_storage", "↑ <b>Gaining moisture</b>: your storage is more humid than the bean, "
                    "aw is drifting up.")
             )
         elif a.trend is MoistureTrend.DRYING:
-            lines.append(QApplication.translate("tilauscope_beancave", "↓ Slow drying: your storage is drier than the bean."))
+            lines.append(QApplication.translate("tilauscope_storage", "↓ Slow drying: your storage is drier than the bean."))
         elif a.trend is MoistureTrend.STABLE:
-            lines.append(QApplication.translate("tilauscope_beancave", "= Stable equilibrium with your current ambient."))
+            lines.append(QApplication.translate("tilauscope_storage", "= Stable equilibrium with your current ambient."))
         else:
-            lines.append(QApplication.translate("tilauscope_beancave", "Connect a storage MQTT sensor to estimate the trend."))
+            lines.append(QApplication.translate("tilauscope_storage", "Connect a storage MQTT sensor to estimate the trend."))
 
         if a.equilibrium_moisture is not None and a.trend not in (
             MoistureTrend.SEALED, MoistureTrend.UNKNOWN
         ):
             lines.append(
-                f"{QApplication.translate("tilauscope_beancave", 'Target equilibrium moisture')}: ~{a.equilibrium_moisture:.1f} %"
+                f"{QApplication.translate("tilauscope_storage", 'Target equilibrium moisture')}: ~{a.equilibrium_moisture:.1f} %"
             )
 
         if a.zone is AwZone.MOLD_RISK:
             lines.append(
-                QApplication.translate("tilauscope_beancave", "⚠ <b>Mould zone</b>: recondition or roast in priority; "
+                QApplication.translate("tilauscope_storage", "⚠ <b>Mould zone</b>: recondition or roast in priority; "
                    "aim for storage &lt; 60 % RH.")
             )
         elif a.zone is AwZone.WATCH:
-            lines.append(QApplication.translate("tilauscope_beancave", "To watch: keep the ambient below 65 % RH."))
+            lines.append(QApplication.translate("tilauscope_storage", "To watch: keep the ambient below 65 % RH."))
         elif a.zone is AwZone.TOO_DRY:
-            lines.append(QApplication.translate("tilauscope_beancave", "Dry bean: more fragile aromatics, faster staling."))
+            lines.append(QApplication.translate("tilauscope_storage", "Dry bean: more fragile aromatics, faster staling."))
 
         return "<br>".join(lines)
 
@@ -899,7 +899,7 @@ class StorageTab(QWidget):
         n = sum(len(ids) for _b, ids in self._orphans)
         if n:
             self.orphan_lbl.setText(QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_storage",
                 "{0} label(s) are held by beans with no stock left.").format(n))
         self.orphan_banner.setVisible(bool(n))
 
@@ -970,10 +970,10 @@ class StorageMqttConfigDialog(QDialog):
         v.setContentsMargins(20, 18, 20, 18)
         v.setSpacing(12)
 
-        title = QLabel("🌡️  " + QApplication.translate("tilauscope_beancave", "Storage sensor (MQTT)"))
+        title = QLabel("🌡️  " + QApplication.translate("tilauscope_storage", "Storage sensor (MQTT)"))
         title.setStyleSheet(f"color:{THEME['TEXT']}; font-size:15px; font-weight:700;")
         v.addWidget(title)
-        hint = QLabel(QApplication.translate("tilauscope_beancave", 
+        hint = QLabel(QApplication.translate("tilauscope_storage", 
             "Humidity and temperature can be on different topics. "
             "Leave the field empty if the topic already publishes a bare value; "
             "otherwise give the key (e.g. humidity) or a path (e.g. data.rh)."
@@ -985,22 +985,22 @@ class StorageMqttConfigDialog(QDialog):
         grid = QGridLayout()
         grid.setHorizontalSpacing(10)
         grid.setVerticalSpacing(8)
-        grid.addWidget(self._lbl(QApplication.translate("tilauscope_beancave", "Humidity — topic")), 0, 0)
+        grid.addWidget(self._lbl(QApplication.translate("tilauscope_storage", "Humidity — topic")), 0, 0)
         self.h_topic = QLineEdit(s.value(STORAGE_HUMIDITY_TOPIC_KEY, "", type=str) or "")
         self.h_topic.setPlaceholderText("tilauscope/storage/humidity")
         grid.addWidget(self.h_topic, 0, 1)
-        grid.addWidget(self._lbl(QApplication.translate("tilauscope_beancave", "Humidity — field")), 1, 0)
+        grid.addWidget(self._lbl(QApplication.translate("tilauscope_storage", "Humidity — field")), 1, 0)
         self.h_field = QLineEdit(s.value(STORAGE_HUMIDITY_FIELD_KEY, DEFAULT_HUMIDITY_FIELD, type=str))
         self.h_field.setPlaceholderText(DEFAULT_HUMIDITY_FIELD)
         grid.addWidget(self.h_field, 1, 1)
         self.h_preview = self._preview_lbl()
         grid.addWidget(self.h_preview, 2, 1)
 
-        grid.addWidget(self._lbl(QApplication.translate("tilauscope_beancave", "Temperature — topic")), 3, 0)
+        grid.addWidget(self._lbl(QApplication.translate("tilauscope_storage", "Temperature — topic")), 3, 0)
         self.t_topic = QLineEdit(s.value(STORAGE_TEMP_TOPIC_KEY, "", type=str) or "")
         self.t_topic.setPlaceholderText("tilauscope/storage/temperature")
         grid.addWidget(self.t_topic, 3, 1)
-        grid.addWidget(self._lbl(QApplication.translate("tilauscope_beancave", "Temperature — field")), 4, 0)
+        grid.addWidget(self._lbl(QApplication.translate("tilauscope_storage", "Temperature — field")), 4, 0)
         self.t_field = QLineEdit(s.value(STORAGE_TEMP_FIELD_KEY, DEFAULT_TEMP_FIELD, type=str))
         self.t_field.setPlaceholderText(DEFAULT_TEMP_FIELD)
         grid.addWidget(self.t_field, 4, 1)
@@ -1010,15 +1010,15 @@ class StorageMqttConfigDialog(QDialog):
         v.addLayout(grid)
 
         btns = QHBoxLayout()
-        test_btn = QPushButton("🔍  " + QApplication.translate("tilauscope_beancave", "Test"))
+        test_btn = QPushButton("🔍  " + QApplication.translate("tilauscope_storage", "Test"))
         test_btn.setStyleSheet(self._tab._btn_css())
         test_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         test_btn.clicked.connect(self._test)
-        cancel_btn = QPushButton(QApplication.translate("tilauscope_beancave", "Cancel"))
+        cancel_btn = QPushButton(QApplication.translate("tilauscope_storage", "Cancel"))
         cancel_btn.setStyleSheet(self._tab._btn_css())
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
-        save_btn = QPushButton(QApplication.translate("tilauscope_beancave", "Save"))
+        save_btn = QPushButton(QApplication.translate("tilauscope_storage", "Save"))
         save_btn.setStyleSheet(self._accent_css())
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         save_btn.clicked.connect(self._save)
@@ -1064,7 +1064,7 @@ class StorageMqttConfigDialog(QDialog):
             payload = self._tab._poll_topic(topic)
             mono = "font-size:10px; font-family: monospace;"
             if payload is None:
-                prev.setText("⚠ " + QApplication.translate("tilauscope_beancave", "no data received on this topic"))
+                prev.setText("⚠ " + QApplication.translate("tilauscope_storage", "no data received on this topic"))
                 prev.setStyleSheet(f"color:{THEME['WARNING']}; {mono}")
                 continue
             val = SA.extract_value(payload, field_edit.text().strip())
@@ -1072,7 +1072,7 @@ class StorageMqttConfigDialog(QDialog):
             if len(raw) > 90:
                 raw = raw[:90] + "…"
             if val is None:
-                prev.setText("⚠ " + QApplication.translate("tilauscope_beancave", "field not found") + f"  ·  {raw}")
+                prev.setText("⚠ " + QApplication.translate("tilauscope_storage", "field not found") + f"  ·  {raw}")
                 prev.setStyleSheet(f"color:{THEME['WARNING']}; {mono}")
             else:
                 prev.setText(f"✓ {val:.1f}  ·  {raw}")

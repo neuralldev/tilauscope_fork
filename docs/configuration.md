@@ -153,6 +153,30 @@ algorithm above actually reads; most setups will never need to touch them.
 that checks the connection before it is relied on. This is what the
 [ambient humidity tracking](beancave.md) and any [MQTT-fed device](the-window.md) depend on.
 
+Below the broker settings, **Sensors** lists the individual readings taken from that broker. Each
+line names one sensor: an **ID** to refer to it by, the **Topic** it is published on, the
+**Command** — the field to read inside the message when the message carries several values —
+a **Multiplier** and **Divider** to bring the raw figure into the unit you want, and the **Unit**
+that figure is then expressed in. Every cell is edited directly in the list.
+
+**Unit** is where you declare that a sensor publishes a temperature: **°C**, **°F**, or the dash
+for anything that is not one — humidity, fan speed, pressure. A temperature is converted on
+arrival into the unit the application is working in, so a probe publishing in Celsius reads
+correctly during a Fahrenheit session and the other way round. Multiplier and divider are applied
+first, the conversion second: a probe sending tenths of a degree needs a divider of 10 *and* its
+unit set. A sensor left on the dash is recorded exactly as published, whatever the session unit. **Add sensor** appends a line, **Delete** removes the selected one,
+and **Check sensor** reads the selected sensor once from the broker and reports the value it
+obtained. A sensor whose topic happens to be silent at that moment is still kept — the check is
+there to confirm a reading, not to grant permission.
+
+The list is saved along with the rest of the settings when the window is closed with OK, and
+discarded on Cancel. It can be edited whether or not the broker is reachable; only **Check
+sensor** needs a live connection.
+
+<!-- CAPTURE 4.11 — the INTEGRATIONS tab, MQTT Broker group with two sensors in the list, one row
+selected, and the Unit column showing °C on one of them. -->
+
+
 ### AI Provider
 
 A status line states whether a provider is configured, and **Configure AI Provider…** opens the

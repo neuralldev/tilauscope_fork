@@ -56,12 +56,7 @@ if TYPE_CHECKING:
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
-## TILAU ## Fork identity. Sharing Artisan's identity meant sharing its settings
-## store and data directory byte-for-byte, so installing both silently clobbered
-## one with the other. Existing state is carried across on first launch by
-## tilauscope.settings_migration (copy-only, the Artisan-named store survives).
-## These names drive: the QSettings file, ~/Application Support/<org>/<app>, and
-## the macOS Quit/About menu labels.
+## TILAU ## 
 application_name: Final[str] = 'TilauScope'
 application_viewer_name: Final[str] = 'TilauScopeViewer'
 application_organization_name: Final[str] = 'tilauscope'
@@ -481,7 +476,7 @@ def getDataDirectory() -> str|None:
 # internal function to return
 @functools.cache
 def _getAppDataDirectory(app:'Artisan') -> str|None:
-    # temporarily switch app name to Artisan (as it might be ArtisanViewer)
+    # temporarily switch app name to Artisan (as it might be artisanViewer)
     appName = app.applicationName()
     app.setApplicationName(application_name)
     data_dir = QStandardPaths.standardLocations(
@@ -491,7 +486,6 @@ def _getAppDataDirectory(app:'Artisan') -> str|None:
     try:
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
-        _log.debug("logging to Data directory:", data_dir)
         return data_dir
     except Exception:  # pylint: disable=broad-except
         return None
@@ -519,7 +513,6 @@ def _getAppDocumentsDirectory(app:'Artisan') -> str|None:
     try:
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
-        _log.debug("logging to Documents directory:", data_dir)
         return data_dir
     except Exception:  # pylint: disable=broad-except
         return None
@@ -688,11 +681,11 @@ def setDeviceDebugLogLevel(state: bool) -> None:
 def setDebugLogLevel(state: bool) -> None:
     if state:
         # debug logging on
-        setFileLogLevels(logging.DEBUG, ['artisanlib', 'plus', 'tilau'])
+        setFileLogLevels(logging.DEBUG, ['artisanlib', 'plus', 'tilau']) ## TILAU ##
         _log.info('debug logging ON')
     else:
         # debug logging off
-        setFileLogLevels(logging.INFO, ['artisanlib', 'plus','tilau'])
+        setFileLogLevels(logging.INFO, ['artisanlib', 'plus','tilau']) ## TILAU ##
         _log.info('debug logging OFF')
 
 def setFileLogLevel(logger: logging.Logger, level:int) -> None:
@@ -822,9 +815,15 @@ def weightVolumeDigits(v:float) -> int:
         return 3
     return 4
 
+
+def round_base(x:float, base:int = 5) -> int:
+    return base * round(x/base)
+
+
 def float2floatWeightVolume(v:float) -> float:
     d = weightVolumeDigits(v)
     return float2float(v,d)
+
 
 # the int n specifies the number of digits
 def float2floatNone(f:float|None, n:int=1) -> float|None:
@@ -834,7 +833,7 @@ def float2floatNone(f:float|None, n:int=1) -> float|None:
 
 ## TILAU ##
 #import math
-
+@functools.lru_cache(maxsize=500)
 def float2float(f: float | str, n: int = 1) -> float:
     try:
         val = float(f)

@@ -93,7 +93,7 @@ class RoastCardDialog(QDialog):
         # ---- header --------------------------------------------------------
         title_txt = str(profile.get("title") or "").strip()
         display_title = bean_name or title_txt or QApplication.translate(
-            "tilauscope_beancave", "Roast")
+            "tilauscope_roast_review", "Roast")
         batch = format_batch_label(str(profile.get("roastbatchprefix", "") or ""),
                                    int(profile.get("roastbatchnr", 0) or 0))
 
@@ -121,7 +121,7 @@ class RoastCardDialog(QDialog):
         rt = str(profile.get("roasttime") or "").strip()
         if rt:
             date_bits.append(rt[:5])
-        sub = QLabel(QApplication.translate("tilauscope_beancave", "roasted on")
+        sub = QLabel(QApplication.translate("tilauscope_roast_review", "roasted on")
                      + " " + " · ".join(b for b in date_bits if b))
         sub.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
         layout.addWidget(sub)
@@ -144,7 +144,7 @@ class RoastCardDialog(QDialog):
                     if w_out > 0:
                         loss = (w_in - w_out) / w_in * 100.0
                         w_line += f"   →   DROP {w_out:g} {unit}      " \
-                                  + QApplication.translate("tilauscope_beancave", "loss") \
+                                  + QApplication.translate("tilauscope_roast_review", "loss") \
                                   + f" {loss:.1f} %"
             except (TypeError, ValueError):
                 w_line = ""
@@ -166,7 +166,7 @@ class RoastCardDialog(QDialog):
         if drop_t > 0 and 0 < fcs_t < drop_t:
             stats.append(f"DTR {(drop_t - fcs_t) / drop_t * 100.0:.0f} %")
         if drop_t > 0:
-            stats.append(QApplication.translate("tilauscope_beancave", "duration")
+            stats.append(QApplication.translate("tilauscope_roast_review", "duration")
                          + f" {_fmt_mmss(drop_t)}")
         if stats:
             sl = QLabel("   ·   ".join(stats))
@@ -194,7 +194,7 @@ class RoastCardDialog(QDialog):
         notes = str(profile.get("cuppingnotes") or "").strip()
         if notes:
             layout.addWidget(self._separator())
-            nt = QLabel(QApplication.translate("tilauscope_beancave", "Tasting notes"))
+            nt = QLabel(QApplication.translate("tilauscope_roast_review", "Tasting notes"))
             nt.setStyleSheet(f"color: {THEME['ACCENT']}; font-size: 12px; font-weight: 700;")
             layout.addWidget(nt)
             nb = QLabel("« " + notes + " »")
@@ -206,7 +206,7 @@ class RoastCardDialog(QDialog):
         if on_open_bean is not None:
             layout.addSpacing(4)
             bean_btn = QPushButton("🌱  " + QApplication.translate(
-                "tilauscope_beancave", "Open the source bean sheet"))
+                "tilauscope_roast_review", "Open the source bean sheet"))
             bean_btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
             def _open_bean() -> None:

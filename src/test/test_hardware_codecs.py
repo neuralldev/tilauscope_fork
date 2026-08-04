@@ -328,3 +328,54 @@ def test_a_falsy_reading_is_still_a_reading() -> None:
     db.update('tilau/fan/speed', 0)
     assert db.get_value('tilau/fan/speed') == 0
     assert db.get_value('tilau/fan/speed') is not None
+
+
+def test_a_sensor_reading_is_scaled_before_it_is_converted() -> None:
+    """Multiplier/divider bring the payload into the sensor's own unit.
+
+    A probe publishing tenths of a degree Celsius (``683`` for 68.3 °C) has to be
+    divided first and converted second; converting the raw figure would report a
+    temperature an order of magnitude off.
+    """
+    from tilauscope.mqttbridge import _scale_reading
+    from tilauscope.tilauscope_types import MQTTSensor
+
+    sensor = MQTTSensor(id='bt', topic='t', command='value', multiplier=1.0,
+                        divider=10.0, unit='C')
+
+    assert _scale_reading({'value': 683}, sensor, 'C') == 68.3
+    assert _scale_reading({'value': 683}, sensor, 'F') == pytest.approx(154.94)
+
+
+def test_a_sensor_without_a_declared_unit_is_never_converted() -> None:
+    """Humidity, fan speed or pressure must survive a °F session untouched."""
+    from tilauscope.mqttbridge import _scale_reading
+    from tilauscope.tilauscope_types import MQTTSensor
+
+    sensor = MQTTSensor(id='hum', topic='t', command='humidity', unit='')
+
+    assert _scale_reading({'humidity': 55.0}, sensor, 'F') == 55.0
+    assert _scale_reading({'humidity': 55.0}, sensor, 'C') == 55.0
+
+
+def test_a_sensor_already_in_the_working_unit_is_passed_through() -> None:
+    """No round-trip through a conversion that would only add float noise."""
+    from tilauscope.mqttbridge import _scale_reading
+    from tilauscope.tilauscope_types import MQTTSensor
+
+    sensor_f = MQTTSensor(id='et', topic='t', command='value', unit='F')
+
+    assert _scale_reading({'value': 392.0}, sensor_f, 'F') == 392.0
+    assert _scale_reading({'value': 392.0}, sensor_f, 'C') == pytest.approx(200.0)
+
+
+def test_sensors_stored_before_the_unit_field_existed_still_load() -> None:
+    """The stored JSON has no `unit` key; it must default to "no conversion"."""
+    from tilauscope.tilauscope_types import MQTTSensorConfig
+
+    cfg = MQTTSensorConfig.from_json(
+        '{"sensors": [{"id": "bt", "topic": "t", "command": "value",'
+        ' "multiplier": 1.0, "divider": 1.0}]}'
+    )
+
+    assert cfg.sensors[0].unit == ''

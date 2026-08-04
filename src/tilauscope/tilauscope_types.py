@@ -474,6 +474,11 @@ class MQTTSensor(DataClassDictMixin):
     command: str = ""
     multiplier: float | None = 1.0
     divider: float | None = 1.0
+    # unit of the reading once multiplier/divider are applied: "C", "F", or ""
+    # for a non-temperature sensor. Read at acquisition to convert into the
+    # unit the application is currently working in. Defaults to "" so sensors
+    # stored before this field existed keep their raw value.
+    unit: str = ""
 
 @dataclass
 class MQTTSensorConfig(DataClassJSONMixin):

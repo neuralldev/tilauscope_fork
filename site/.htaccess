@@ -1,0 +1,47 @@
+# tilauscope.org — Apache header layer.
+#
+# _headers (Cloudflare Pages / Netlify syntax) never applies on IONOS Espace
+# Web: the front end is nginx, but the actual document root is served through
+# an Apache-compatible layer that DOES read .htaccess — this file is what
+# actually reaches the browser on this host. Without it, only the weaker
+# <meta http-equiv="Content-Security-Policy"> in index.html is in effect: no
+# HSTS, no X-Frame-Options, no frame-ancestors, no Permissions-Policy, because
+# none of those can be expressed as a <meta> tag at all.
+#
+# Verify after upload:
+#   curl -sI https://tilauscope.org | grep -iE 'strict-transport|x-frame|content-security|permissions-policy'
+
+<IfModule mod_headers.c>
+  Header always set Content-Security-Policy "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'; upgrade-insecure-requests"
+  Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=(), xr-spatial-tracking=()"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set Cross-Origin-Resource-Policy "same-origin"
+
+  # Fonts are renamed rather than revalidated when they change, so caching
+  # them hard costs nothing. index.html gets the opposite treatment: it must
+  # go stale within the hour, or a correction to the attribution notice would
+  # take a year to reach anybody.
+  <FilesMatch "\.(woff2?|ttf|otf)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "^index\.html$">
+    Header set Cache-Control "public, max-age=0, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+ServerSignature Off
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Kept as a fallback in case a future upload ever loses the real
+  # .well-known/security.txt directory again — RFC 9116 explicitly allows
+  # serving the file from elsewhere via redirect, this is not a hack.
+  RewriteCond %{REQUEST_URI} ^/\.well-known/security\.txt$
+  RewriteCond %{DOCUMENT_ROOT}/.well-known/security.txt !-f
+  RewriteRule ^ /security.txt [L]
+</IfModule>

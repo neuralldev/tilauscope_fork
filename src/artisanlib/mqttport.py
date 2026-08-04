@@ -127,7 +127,9 @@ class mqttport:
         _log.debug('on_subscribe_handler: %s', [(rc.getId(rc.getName()), rc.getName()) for rc in reason_code_list]) # type:ignore[no-untyped-call]
         for rc in reason_code_list:
             name = rc.getName() # type:ignore[no-untyped-call]
-            if rc.getId(name) != 0: # type:ignore[no-untyped-call]
+            ## TILAU ## 0x00/0x01/0x02 are "Granted QoS 0/1/2" (success); only codes >= 0x80 are failures.
+            # The upstream test (!= 0) reported a subscription granted at QoS 1 or 2 as an error.
+            if rc.getId(name) >= 0x80: # type:ignore[no-untyped-call]
                 self.aw.qmc.adderror(QApplication.translate('Error Message','MQTT subscribe error: {0}').format(name))
 
 

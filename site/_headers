@@ -1,0 +1,32 @@
+# Response headers for tilauscope.org.
+#
+# Read by Cloudflare Pages and by Netlify as-is. Any other host needs the same
+# headers expressed in its own syntax — site/README.md carries an nginx and an
+# Apache translation of this exact file.
+#
+# The policy below has no escape hatch in it: no 'unsafe-inline', no wildcard,
+# no third-party origin. That is only possible because every byte the page
+# needs is served from this origin. Adding one hosted font, one analytics
+# snippet or one badge image means widening it, so treat a change here as the
+# real decision rather than a formality.
+
+/*
+  Content-Security-Policy: default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=(), xr-spatial-tracking=()
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+
+# Fonts and icons are content-addressed by nothing, so they are cached hard and
+# renamed when they change rather than revalidated on every visit.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The page itself must be allowed to go stale for at most an hour, otherwise a
+# correction to the attribution notice waits a year to reach anybody.
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate

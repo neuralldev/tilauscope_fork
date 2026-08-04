@@ -228,7 +228,7 @@ class OnboardingWizard(QDialog):
 
         icon = QLabel("🌱")
         icon.setStyleSheet("font-size:20px; background:transparent;")
-        title = QLabel(QApplication.translate("tilauscope","Welcome — first-time setup"))
+        title = QLabel(QApplication.translate("tilauscope_onboarding","Welcome — first-time setup"))
         title.setStyleSheet(
             f"color:{_T['TEXT']}; font-family:'JetBrains Mono',monospace;"
             f" font-size:14px; font-weight:700; background:transparent;"
@@ -299,7 +299,7 @@ class OnboardingWizard(QDialog):
         row = QHBoxLayout(foot)
         row.setContentsMargins(26, 16, 26, 20)
 
-        self._skip_btn = QPushButton(QApplication.translate("tilauscope","Skip for now"))
+        self._skip_btn = QPushButton(QApplication.translate("tilauscope_onboarding","Skip for now"))
         self._skip_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._skip_btn.setStyleSheet(
             f"QPushButton {{ background:transparent; color:{_T['MUTED']}; border:none;"
@@ -311,12 +311,12 @@ class OnboardingWizard(QDialog):
         self._count_lbl.setStyleSheet(
             f"color:{_T['MUTED']}; font-family:'JetBrains Mono',monospace; font-size:11px;"
         )
-        self._back_btn = QPushButton(QApplication.translate("tilauscope","Back"))
+        self._back_btn = QPushButton(QApplication.translate("tilauscope_onboarding","Back"))
         self._back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._back_btn.setStyleSheet(self._ghost_style())
         self._back_btn.clicked.connect(lambda: self._show_step(self._index - 1))
 
-        self._next_btn = QPushButton(QApplication.translate("tilauscope","Next"))
+        self._next_btn = QPushButton(QApplication.translate("tilauscope_onboarding","Next"))
         self._next_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._next_btn.setStyleSheet(self._primary_style())
         self._next_btn.clicked.connect(self._on_next)
@@ -332,8 +332,8 @@ class OnboardingWizard(QDialog):
     # ── page 1: unit ──────────────────────────────────────────────────────
     def _page_unit(self) -> QWidget:
         page = self._page_base(
-            QApplication.translate("tilauscope","Which unit do you want to work in?"),
-            QApplication.translate("tilauscope","All temperatures — curves, milestones, setpoints — will be shown in "
+            QApplication.translate("tilauscope_onboarding","Which unit do you want to work in?"),
+            QApplication.translate("tilauscope_onboarding","All temperatures — curves, milestones, setpoints — will be shown in "
                 "this unit. You can change it later in the settings."),
         )
         seg = QHBoxLayout()
@@ -358,8 +358,8 @@ class OnboardingWizard(QDialog):
     # ── page 2: roaster ───────────────────────────────────────────────────
     def _page_roaster(self) -> QWidget:
         page = self._page_base(
-            QApplication.translate("tilauscope","Which roaster do you use?"),
-            QApplication.translate("tilauscope","The machine sets the roast plan, slider labels and recommendations. "
+            QApplication.translate("tilauscope_onboarding","Which roaster do you use?"),
+            QApplication.translate("tilauscope_onboarding","The machine sets the roast plan, slider labels and recommendations. "
                 "If a device profile is bundled, it is loaded when you finish."),
         )
         scroll = QScrollArea()
@@ -405,11 +405,11 @@ class OnboardingWizard(QDialog):
 
     def _page_hardware(self) -> QWidget:
         page = self._page_base(
-            QApplication.translate("tilauscope","Connect your hardware"),
-            QApplication.translate("tilauscope","TilauScope scans for your gear and registers what it finds. "
+            QApplication.translate("tilauscope_onboarding","Connect your hardware"),
+            QApplication.translate("tilauscope_onboarding","TilauScope scans for your gear and registers what it finds. "
                 "Anything already set up shows as detected. Everything is optional."),
         )
-        g = QLabel(QApplication.translate("tilauscope","Search & auto-register").upper())
+        g = QLabel(QApplication.translate("tilauscope_onboarding","Search & auto-register").upper())
         g.setStyleSheet(self._group_style())
         page.layout().addWidget(g)
 
@@ -439,18 +439,18 @@ class OnboardingWizard(QDialog):
         # Skywalker also drives the USB→BLE profile switch: detected ⇒ BLE.
         self._periph: list[tuple[tuple[str, ...], QLabel, bool, str]] = []
         for icon, name, desc, attrs, is_roaster, prefix in (
-            ("🔥", "Skywalker V2", QApplication.translate("tilauscope","roaster · USB by default, BLE if detected"),
+            ("🔥", "Skywalker V2", QApplication.translate("tilauscope_onboarding","roaster · USB by default, BLE if detected"),
              ("bleSkywalkerDeviceName", "bleSkywalkerDeviceslist"), True, SKYWALKER_PREFIX),
-            ("🌫️", "DiFluid AirWave", QApplication.translate("tilauscope","smoke extractor · PID"),
+            ("🌫️", "DiFluid AirWave", QApplication.translate("tilauscope_onboarding","smoke extractor · PID"),
              ("bleAirwaveDeviceName", "bleAirwaveDeviceslist"), False, AIRWAVE_PREFIX),
-            ("⚖️", "Acaia scale", QApplication.translate("tilauscope","charge & output weighing"),
+            ("⚖️", "Acaia scale", QApplication.translate("tilauscope_onboarding","charge & output weighing"),
              ("scale1_name", "scale1_id", "scale2_name", "scale2_id"), False, ""),
-            ("🌡️", "TilauAmbient", QApplication.translate("tilauscope","ESP32 probe · BME280 / I²S mic"),
+            ("🌡️", "TilauAmbient", QApplication.translate("tilauscope_onboarding","ESP32 probe · BME280 / I²S mic"),
              ("bleTilauAmbientDeviceslist", "bleTilauAmbientDevice"), False, TILAUAMBIENT_PREFIX),
-            ("💧", "Lebrew AquaGauge", QApplication.translate("tilauscope","water activity (Aw)"),
+            ("💧", "Lebrew AquaGauge", QApplication.translate("tilauscope_onboarding","water activity (Aw)"),
              ("bleRoastSeeAGDeviceName", "bleRoastSeeAGDeviceslist", "bleRoastSeeAGDevice"),
              False, AG_PREFIX),
-            ("🎨", "Lebrew RoastSee C1", QApplication.translate("tilauscope","bean colour reader"),
+            ("🎨", "Lebrew RoastSee C1", QApplication.translate("tilauscope_onboarding","bean colour reader"),
              ("bleRoastSeeDeviceName", "bleRoastSeeDeviceslist"), False, C1_PREFIX),
         ):
             row, status = self._device_row(icon, name, desc, action=False)
@@ -461,7 +461,7 @@ class OnboardingWizard(QDialog):
         # Live-only: whatever advertises nearby and matches an Artisan signature
         # is surfaced by name — no pairing, no linking, no persistence.
         page.layout().addSpacing(8)
-        g2 = QLabel(QApplication.translate("tilauscope","Other Artisan BLE devices detected").upper())
+        g2 = QLabel(QApplication.translate("tilauscope_onboarding","Other Artisan BLE devices detected").upper())
         g2.setStyleSheet(self._group_style())
         page.layout().addWidget(g2)
 
@@ -472,7 +472,7 @@ class OnboardingWizard(QDialog):
         self._known_ble_layout.setContentsMargins(0, 0, 0, 0)
         self._known_ble_layout.setSpacing(6)
         self._known_ble_empty: QLabel | None = QLabel(
-            QApplication.translate("tilauscope","nothing recognised nearby — these are identified, not configured"))
+            QApplication.translate("tilauscope_onboarding","nothing recognised nearby — these are identified, not configured"))
         self._known_ble_empty.setStyleSheet(
             f"color:{_T['MUTED']}; font-size:11px; font-family:'JetBrains Mono',monospace;"
             f" background:transparent; padding:2px 0;"
@@ -486,14 +486,14 @@ class OnboardingWizard(QDialog):
     # ── page 4: directories ───────────────────────────────────────────────
     def _page_dirs(self) -> QWidget:
         page = self._page_base(
-            QApplication.translate("tilauscope","Where should your files live?"),
-            QApplication.translate("tilauscope","Choose the folders for your BeanCave green-bean database and your "
+            QApplication.translate("tilauscope_onboarding","Where should your files live?"),
+            QApplication.translate("tilauscope_onboarding","Choose the folders for your BeanCave green-bean database and your "
                 "roast logs (.alog). Existing folders are pre-filled."),
         )
         self._dir_path_lbls: dict[str, QLabel] = {}
         for kind, icon, title in (
-            ("beancave", "🫘", QApplication.translate("tilauscope","BeanCave folder")),
-            ("alog", "📈", QApplication.translate("tilauscope","Roast logs folder")),
+            ("beancave", "🫘", QApplication.translate("tilauscope_onboarding","BeanCave folder")),
+            ("alog", "📈", QApplication.translate("tilauscope_onboarding","Roast logs folder")),
         ):
             page.layout().addWidget(self._dir_row(kind, icon, title))
         page.layout().addStretch()
@@ -521,7 +521,7 @@ class OnboardingWizard(QDialog):
         self._dir_path_lbls[kind] = pl
         box.addWidget(nl)
         box.addWidget(pl)
-        btn = QPushButton(QApplication.translate("tilauscope","Choose…"))
+        btn = QPushButton(QApplication.translate("tilauscope_onboarding","Choose…"))
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setStyleSheet(self._pair_style())
         btn.clicked.connect(lambda _=False, k=kind: self._pick_dir(k))
@@ -543,7 +543,7 @@ class OnboardingWizard(QDialog):
         else:
             key = "beancaveDirectory" if kind == "beancave" else "alogDirectory"
             start = QSettings().value(key, os.path.expanduser("~"), str) or os.path.expanduser("~")
-            d = QFileDialog.getExistingDirectory(self, QApplication.translate("tilauscope","Select folder"), start)
+            d = QFileDialog.getExistingDirectory(self, QApplication.translate("tilauscope_onboarding","Select folder"), start)
             if d:
                 QSettings().setValue(key, d)
         self._refresh_dir_labels()
@@ -558,7 +558,7 @@ class OnboardingWizard(QDialog):
         for kind, val in (("beancave", self._beancave_dir), ("alog", self._alog_dir)):
             lbl = getattr(self, "_dir_path_lbls", {}).get(kind)
             if lbl is not None:
-                lbl.setText(val if val else QApplication.translate("tilauscope","not set — click Choose…"))
+                lbl.setText(val if val else QApplication.translate("tilauscope_onboarding","not set — click Choose…"))
                 lbl.setStyleSheet(
                     f"color:{_T['GREEN'] if val else _T['MUTED']}; font-size:11px;"
                     f" font-family:'JetBrains Mono',monospace; background:transparent;"
@@ -575,10 +575,10 @@ class OnboardingWizard(QDialog):
         seal = QLabel("🌱")
         seal.setAlignment(Qt.AlignmentFlag.AlignCenter)
         seal.setStyleSheet("font-size:44px; background:transparent;")
-        h = QLabel(QApplication.translate("tilauscope","Ready to apply."))
+        h = QLabel(QApplication.translate("tilauscope_onboarding","Ready to apply."))
         h.setAlignment(Qt.AlignmentFlag.AlignCenter)
         h.setStyleSheet(f"color:{_T['TEXT']}; font-size:22px; font-weight:700; background:transparent;")
-        sub = QLabel(QApplication.translate("tilauscope","On finish, TilauScope applies these settings then takes you to "
+        sub = QLabel(QApplication.translate("tilauscope_onboarding","On finish, TilauScope applies these settings then takes you to "
                          "create your first green bean. If you leave now, nothing changes."))
         sub.setWordWrap(True)
         sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -605,21 +605,21 @@ class OnboardingWizard(QDialog):
             if w is not None:
                 w.deleteLater()
         rows = [
-            (QApplication.translate("tilauscope","Unit"), "°C" if self._unit == "C" else "°F"),
-            (QApplication.translate("tilauscope","Roaster"), self._roaster or "—"),
+            (QApplication.translate("tilauscope_onboarding","Unit"), "°C" if self._unit == "C" else "°F"),
+            (QApplication.translate("tilauscope_onboarding","Roaster"), self._roaster or "—"),
         ]
         # show which device profile will load, when one is bundled
         if _machine_aset_for(self._roaster, paired=self._skywalker_ready):
-            rows.append((QApplication.translate("tilauscope","Device profile"),
+            rows.append((QApplication.translate("tilauscope_onboarding","Device profile"),
                          "BLE" if self._skywalker_ready else "USB"))
         rows += [
-            (QApplication.translate("tilauscope","Theme & curves"), "Catppuccin"),
-            (QApplication.translate("tilauscope","Axes & smoothing"), QApplication.translate("tilauscope","reference profile")),
+            (QApplication.translate("tilauscope_onboarding","Theme & curves"), "Catppuccin"),
+            (QApplication.translate("tilauscope_onboarding","Axes & smoothing"), QApplication.translate("tilauscope_onboarding","reference profile")),
         ]
         if self._beancave_dir:
-            rows.append((QApplication.translate("tilauscope","BeanCave folder"), os.path.basename(self._beancave_dir.rstrip("/\\")) or self._beancave_dir))
+            rows.append((QApplication.translate("tilauscope_onboarding","BeanCave folder"), os.path.basename(self._beancave_dir.rstrip("/\\")) or self._beancave_dir))
         if self._alog_dir:
-            rows.append((QApplication.translate("tilauscope","Roast logs folder"), os.path.basename(self._alog_dir.rstrip("/\\")) or self._alog_dir))
+            rows.append((QApplication.translate("tilauscope_onboarding","Roast logs folder"), os.path.basename(self._alog_dir.rstrip("/\\")) or self._alog_dir))
         for k, v in rows:
             row = QFrame()
             row.setStyleSheet(
@@ -685,12 +685,12 @@ class OnboardingWizard(QDialog):
         hl.addLayout(box)
         hl.addStretch()
         if action:
-            btn = QPushButton(QApplication.translate("tilauscope","Pair"))
+            btn = QPushButton(QApplication.translate("tilauscope_onboarding","Pair"))
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setStyleSheet(self._pair_style())
             hl.addWidget(btn)
             return row, btn
-        status = QLabel(QApplication.translate("tilauscope","searching…"))
+        status = QLabel(QApplication.translate("tilauscope_onboarding","searching…"))
         status.setStyleSheet(
             f"color:{_T['MUTED']}; font-size:12px; font-family:'JetBrains Mono',monospace;"
             f" background:transparent;"
@@ -726,7 +726,7 @@ class OnboardingWizard(QDialog):
 
         self._back_btn.setEnabled(index > 0)
         last = index == len(self.STEPS) - 1
-        self._next_btn.setText(QApplication.translate("tilauscope","Finish") if last else QApplication.translate("tilauscope","Next"))
+        self._next_btn.setText(QApplication.translate("tilauscope_onboarding","Finish") if last else QApplication.translate("tilauscope_onboarding","Next"))
         self._count_lbl.setText(f"{index + 1} / {len(self.STEPS)}")
 
         if index == 2:
@@ -749,7 +749,7 @@ class OnboardingWizard(QDialog):
 
     # ── hardware detection (best-effort, non-blocking) ────────────────────
     def _mark_detected(self, status: QLabel, is_roaster: bool) -> None:
-        status.setText(QApplication.translate("tilauscope","detected ✓"))
+        status.setText(QApplication.translate("tilauscope_onboarding","detected ✓"))
         status.setStyleSheet(
             f"color:{_T['GREEN']}; font-size:12px;"
             f" font-family:'JetBrains Mono',monospace; background:transparent;"
@@ -856,7 +856,7 @@ class OnboardingWizard(QDialog):
             f"color:{_T['MUTED']}; font-size:11px; font-family:'JetBrains Mono',monospace;"
             f" background:transparent;"
         )
-        tag = QLabel(QApplication.translate("tilauscope","recognised · not configured"))
+        tag = QLabel(QApplication.translate("tilauscope_onboarding","recognised · not configured"))
         tag.setStyleSheet(
             f"color:{_T['MAUVE']}; font-size:11px; font-family:'JetBrains Mono',monospace;"
             f" background:transparent;"

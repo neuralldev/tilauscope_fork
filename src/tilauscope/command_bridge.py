@@ -399,11 +399,11 @@ class _ControlRequestDialog(QDialog):
         inner.setContentsMargins(24, 20, 24, 20)
         inner.setSpacing(12)
 
-        title = QLabel(QApplication.translate("tilauscope_beancave", "📱 CONTROL REQUEST"))
+        title = QLabel(QApplication.translate("tilauscope_webclient", "📱 CONTROL REQUEST"))
         title.setStyleSheet(f"color:{_YELLOW};font-size:14px;font-weight:800;letter-spacing:1px;")
         inner.addWidget(title)
 
-        body = QLabel(QApplication.translate("tilauscope_beancave",
+        body = QLabel(QApplication.translate("tilauscope_webclient",
                       "“{name}” wants to take over piloting.\n"
                       "The current controller will be switched to observer.").format(name=requester_name))
         body.setWordWrap(True)
@@ -415,13 +415,13 @@ class _ControlRequestDialog(QDialog):
         inner.addWidget(self._count)
 
         btns = QHBoxLayout()
-        deny = QPushButton(QApplication.translate("tilauscope_beancave", "Deny"))
+        deny = QPushButton(QApplication.translate("tilauscope_webclient", "Deny"))
         deny.clicked.connect(self.reject)
         deny.setStyleSheet(
             f"QPushButton {{ background:transparent; color:{_SUB}; border:1px solid {_OVERLAY};"
             f" border-radius:8px; padding:8px 16px; }}"
             f"QPushButton:hover {{ color:{_TEXT}; border-color:{_SUB}; }}")
-        allow = QPushButton(QApplication.translate("tilauscope_beancave", "Allow"))
+        allow = QPushButton(QApplication.translate("tilauscope_webclient", "Allow"))
         allow.clicked.connect(self.accept)
         allow.setStyleSheet(
             f"QPushButton {{ background:{_GREEN}; color:{_BG}; border:none;"
@@ -455,5 +455,5 @@ class _ControlRequestDialog(QDialog):
         self._update_count()
 
     def _update_count(self) -> None:
-        self._count.setText(QApplication.translate("tilauscope_beancave",
+        self._count.setText(QApplication.translate("tilauscope_webclient",
                             "Auto-denies in {n}s").format(n=self._left))

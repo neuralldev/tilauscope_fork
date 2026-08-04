@@ -118,7 +118,7 @@ class AlarmDlg(ArtisanResizeablDialog):
         exportButton.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
 ## TILAU ## 
-        self.btn_visualize = QPushButton(QApplication.translate("tilauscope_beancave","Visual Timeline"))
+        self.btn_visualize = QPushButton(QApplication.translate("tilauscope_alarms","Visual Timeline"))
         self.btn_visualize.clicked.connect(self.show_visual_timeline)
 
         # connect the ArtisanDialog standard OK/Cancel buttons

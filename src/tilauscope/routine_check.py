@@ -228,7 +228,7 @@ class TilauRoutineCheck(QDialog):
         p = self._section_padding()
         row.setContentsMargins(p["left"], 14, p["right"], 14)
 
-        title = QLabel("🧹 " + QApplication.translate("tilauscope_beancave","ROUTINE CHECK"))
+        title = QLabel("🧹 " + QApplication.translate("tilauscope_diagnostics","ROUTINE CHECK"))
         title.setStyleSheet(
             f"color: {THEME['TEXT']}; font-size: 14px; font-weight: bold;"
             " font-family: 'JetBrains Mono'; letter-spacing: 1px; border: none;"
@@ -258,7 +258,7 @@ class TilauRoutineCheck(QDialog):
 
         # Top row: label left / counter right
         top = QHBoxLayout()
-        cycle_label = QLabel(QApplication.translate("tilauscope_beancave","Cleaning cycle").upper())
+        cycle_label = QLabel(QApplication.translate("tilauscope_diagnostics","Cleaning cycle").upper())
         cycle_label.setStyleSheet(
             f"color: {THEME['SUBTEXT']}; font-size: 9px; font-family: 'JetBrains Mono';"
             " letter-spacing: 1px; border: none;"
@@ -309,7 +309,7 @@ class TilauRoutineCheck(QDialog):
 
         # Last clean date
         last_clean_str = self.last_clean.date().toString(Qt.DateFormat.ISODate)
-        self._last_clean_lbl = QLabel(QApplication.translate("tilauscope_beancave","Last cleaning: ") + last_clean_str)
+        self._last_clean_lbl = QLabel(QApplication.translate("tilauscope_diagnostics","Last cleaning: ") + last_clean_str)
         self._last_clean_lbl.setStyleSheet(
             f"color: {THEME['SUBTEXT']}; font-size: 10px; font-family: 'JetBrains Mono';"
             " border: none;"
@@ -326,9 +326,9 @@ class TilauRoutineCheck(QDialog):
         layout.setContentsMargins(p["left"], p["top"], p["right"], p["bottom"])
         layout.setSpacing(8)
 
-        self._stat_total  = _StatCard(QApplication.translate("tilauscope_beancave","Total"))
-        self._stat_avg    = _StatCard(QApplication.translate("tilauscope_beancave","Avg / roast"))
-        self._stat_last   = _StatCard(QApplication.translate("tilauscope_beancave","Last roast"))
+        self._stat_total  = _StatCard(QApplication.translate("tilauscope_diagnostics","Total"))
+        self._stat_avg    = _StatCard(QApplication.translate("tilauscope_diagnostics","Avg / roast"))
+        self._stat_last   = _StatCard(QApplication.translate("tilauscope_diagnostics","Last roast"))
 
         layout.addWidget(self._stat_total, 0, 0)
         layout.addWidget(self._stat_avg,   0, 1)
@@ -344,7 +344,7 @@ class TilauRoutineCheck(QDialog):
         outer_layout.setContentsMargins(p["left"], p["top"], p["right"], p["bottom"])
         outer_layout.setSpacing(6)
 
-        section_lbl = QLabel(QApplication.translate("tilauscope_beancave","Recent roasts").upper())
+        section_lbl = QLabel(QApplication.translate("tilauscope_diagnostics","Recent roasts").upper())
         section_lbl.setStyleSheet(
             f"color: {THEME['SUBTEXT']}; font-size: 9px; font-family: 'JetBrains Mono';"
             " letter-spacing: 1px; border: none;"
@@ -371,7 +371,7 @@ class TilauRoutineCheck(QDialog):
         outer_layout.addWidget(self._scroll)
  
         # Placeholder while scanning
-        self._history_placeholder = QLabel(QApplication.translate("tilauscope_beancave","Scanning logs…"))
+        self._history_placeholder = QLabel(QApplication.translate("tilauscope_diagnostics","Scanning logs…"))
         self._history_placeholder.setStyleSheet(
             f"color: {THEME['SUBTEXT']}; font-size: 11px; font-family: 'JetBrains Mono';"
             " border: none;"
@@ -387,7 +387,7 @@ class TilauRoutineCheck(QDialog):
         row.setContentsMargins(p["left"], 12, p["right"], 12)
         row.setSpacing(10)
 
-        self._clean_btn = QPushButton(QApplication.translate("tilauscope_beancave","MARK AS CLEANED"))
+        self._clean_btn = QPushButton(QApplication.translate("tilauscope_diagnostics","MARK AS CLEANED"))
         self._clean_btn.setFixedHeight(38)
         self._clean_btn.clicked.connect(self.mark_as_cleaned)
         self._clean_btn.setStyleSheet(
@@ -397,7 +397,7 @@ class TilauRoutineCheck(QDialog):
             f"QPushButton:hover {{ opacity: 0.9; }}"
         )
 
-        self._later_btn = QPushButton(QApplication.translate("tilauscope_beancave","Later").upper())
+        self._later_btn = QPushButton(QApplication.translate("tilauscope_diagnostics","Later").upper())
         self._later_btn.setFixedHeight(38)
         self._later_btn.clicked.connect(self.fade_out_and_close)
         self._later_btn.setStyleSheet(
@@ -520,7 +520,7 @@ class TilauRoutineCheck(QDialog):
             self._timer.stop()
         now = QDateTime.currentDateTime()
         self.settings.setValue("lastCleaningDate", now.toString(Qt.DateFormat.ISODate))
-        show_styled_message(self, QApplication.translate("tilauscope_beancave","Success"), QApplication.translate("tilauscope_beancave","Cleaning cycle reset!"))
+        show_styled_message(self, QApplication.translate("tilauscope_diagnostics","Success"), QApplication.translate("tilauscope_diagnostics","Cleaning cycle reset!"))
         self.fade_out_and_close()
 
     def fade_out_and_close(self) -> None:

@@ -1,17 +1,27 @@
 #
 # ABOUT
 # Artisan Wheels Dialog
-
+#
+# COPYRIGHT (C) 2010-2026 The Artisan team represented by
+#   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
+#
 # LICENSE
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 2 of the License, or
-# version 3 of the License, or (at your option) any later version. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public License for more details.
-
+# This program or module is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# MAINTAINER
+# Marko Luther, 2026
+#
 # AUTHOR
 # Marko Luther, 2023
 
@@ -31,18 +41,10 @@ from PyQt6.QtWidgets import (QApplication, QLabel, QTableWidget, QPushButton,
     QComboBox, QHBoxLayout, QVBoxLayout, QTableWidgetItem, QDialogButtonBox,
     QDoubleSpinBox, QGroupBox, QLineEdit, QSpinBox, QHeaderView)
 
-import logging
-from typing import Final
-_log: Final[logging.Logger] = logging.getLogger(__name__)
 
-#graphwheel
-#roastCompare
 class WheelDlg(ArtisanDialog):
-    def __init__(self, parent:'QWidget', aw:'ApplicationWindow', foreground:str|None = None, background:str|None = None) -> None:
+    def __init__(self, parent:'QWidget', aw:'ApplicationWindow') -> None:
         super().__init__(parent, aw)
-        self.foreground = foreground
-        self.background = background
-
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False) # overwrite the ArtisanDialog class default here!!
 
         self.setModal(True)
@@ -181,42 +183,10 @@ class WheelDlg(ArtisanDialog):
         mainlayout.addLayout(buttonlayout)
         self.setLayout(mainlayout)
 
-    @pyqtSlot('QCloseEvent')
     @override
-    def closeEvent(self, a0:'QCloseEvent|None' = None) -> None:
-        del a0
-        self.aw.wheeleditorAction.setChecked(False)
-        self.aw.qmc.reset()
-        if self.foreground is not None and self.foreground.strip() != '':
-            self.aw.loadFile(self.foreground)
-        if self.background is not None and self.background.strip() != '':
-            self.aw.loadbackground(self.background)
-            self.aw.qmc.background = True
-            self.aw.qmc.timealign(redraw=False)
-            self.aw.qmc.redraw(forceRenewAxis=True)
-        if (self.foreground is None or self.foreground.strip() == '') and (self.background is None or self.background.strip() == ''):
-            #selected = [self.aw.findWidgetsRow(self.profileTable,si,2) for si in self.profileTable.selectedItems()]
-            selected = self.profileTable.getselectedRowsFast()
-            if len(selected) == 1:
-                self.aw.loadFile(self.profiles[selected[0]].filepath)
-        else:
-            self.aw.qmc.timealign()
-        self.enableButtons()
-        self.aw.enableEditMenus()
-        # enable "green flag" menu:
-        try:
-            self.aw.ntb.enable_edit_curve_parameters()
-        except Exception as e: # pylint: disable=broad-except
-            _log.exception(e)
-        if self.aw.qpc is not None:
-            self.aw.qpc.update_phases(None)
-        #self.accept()
-        #return True
-
-    #@override
-    #def close(self) -> bool:
-    #    self.accept()
-    #    return True
+    def close(self) -> bool:
+        self.accept()
+        return True
 
     #creates config table for wheel with index x
     @pyqtSlot(bool)
@@ -692,11 +662,11 @@ class WheelDlg(ArtisanDialog):
             self.createdatatable()
             self.aw.qmc.drawWheel()
 
-    #@pyqtSlot('QCloseEvent')
-    #@override
-    #def closeEvent(self, a0:'QCloseEvent|None' = None) -> None:
-    #    del a0
-    #    self.viewmode(False)
+    @pyqtSlot('QCloseEvent')
+    @override
+    def closeEvent(self, a0:'QCloseEvent|None' = None) -> None:
+        del a0
+        self.viewmode(False)
 
     @pyqtSlot(bool)
     def viewmode(self, _:bool = False) -> None:

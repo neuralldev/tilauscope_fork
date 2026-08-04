@@ -1,17 +1,27 @@
 #
 # ABOUT
 # This program realizes a PID controller as part of the open-source roast logging software Artisan.
-
+#
+# COPYRIGHT (C) 2010-2026 The Artisan team represented by
+#   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
+#
 # LICENSE
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 2 of the License, or
-# version 3 of the License, or (at your option) any later version. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public License for more details.
-
+# This program or module is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# MAINTAINER
+# Marko Luther, 2026
+#
 # AUTHOR
 # Marko Luther, 2023
 
@@ -20,6 +30,7 @@
 import logging
 import time
 import functools
+import warnings
 import numpy
 from collections.abc import Callable
 from typing import Final, TYPE_CHECKING
@@ -37,7 +48,6 @@ from PyQt6.QtCore import QSemaphore
 
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
-_logd: Final[logging.Logger] = logging.getLogger("tilau")
 
 
 @functools.lru_cache(maxsize=4)
@@ -65,11 +75,15 @@ def _calculate_integral_limits(outMin:int, outMax:int, integral_limit_factor:flo
 
 @functools.lru_cache(maxsize=3)
 def _getParameterLinearFit(x1:float, x2:float, y1:float, y2:float) -> 'npt.NDArray[numpy.floating]':
-    return numpy.polyfit([x1,x2], [y1,y2], 1)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        return numpy.polyfit([x1,x2], [y1,y2], 1)
 
 @functools.lru_cache(maxsize=3)
 def _getParameterQuadraticFit(x1:float, x2:float, x3:float, y1:float, y2:float, y3:float) -> 'npt.NDArray[numpy.floating]':
-    return numpy.polyfit([x1,x2,x3], [y1,y2,y3], 2)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        return numpy.polyfit([x1,x2,x3], [y1,y2,y3], 2)
 
 
 # expects a function control that takes a value from [<outMin>,<outMax>] to control the heater as called on each update()
@@ -373,9 +387,9 @@ class PID:
             coefficients:npt.NDArray[numpy.floating] | None = None
             try:
                 with suppress_stdout_stderr():
-                    if self.gain_scheduling_quadratic:
+                    if self.gain_scheduling_quadratic and not self.Schedule0 == self.Schedule1 == self.Schedule2 == 0:
                         coefficients = _getParameterQuadraticFit(self.Schedule0,self.Schedule1,self.Schedule2,y1,y2,y3)
-                    else:
+                    elif not self.Schedule0 == self.Schedule1 == 0:
                         coefficients = _getParameterLinearFit(self.Schedule0,self.Schedule1,y1,y2)
             except Exception:  # pylint: disable=broad-except
                 pass
@@ -653,7 +667,7 @@ class PID:
         return LiveSosFilter(
             iirfilter(
                 1,         # order (higher-order, sharper cut-off, but incr. delay)
-                Wn=max(0., min(wn, 0.5*sampling_rate - 0.001)),  # 0 < Wn < fs/2 (fs=1 -> fs/2=0.5) # cut-off frequency
+                Wn=max(0., min(wn, sampling_rate/2 - 0.001)),  # 0 < Wn < fs/2 (fs=1 -> fs/2=0.5) # cut-off frequency
                 fs=sampling_rate,    # sampling rate, Hz
                 btype='low',
                 ftype='butter',

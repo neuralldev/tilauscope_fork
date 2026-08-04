@@ -237,7 +237,7 @@ class CoachViewToggle(QToolButton):
         self.setText("📊" if expert else "🎯")
         if expert:
             self.setToolTip(QApplication.translate(
-                "tilauscope", "Expert data view — click for the simplified coach view"))
+                "tilauscope_graph", "Expert data view — click for the simplified coach view"))
         else:
             self.setToolTip(QApplication.translate(
-                "tilauscope", "Coach view — click for the full expert data view"))
+                "tilauscope_graph", "Coach view — click for the full expert data view"))

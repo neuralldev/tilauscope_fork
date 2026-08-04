@@ -1004,31 +1004,31 @@ class TilauScopeRoastPlan:
         #charge_in_sec = time_index[0] if len(time_index) > 0 and time_index[0] > -1 else 0
 
         for crash in crashes_detected:
-            phase = crash.get("phase", QApplication.translate("tilauscope_beancave","OUT OF SCOPE"))
+            phase = crash.get("phase", QApplication.translate("tilauscope_roast_plan","OUT OF SCOPE"))
             occurrences = crash.get("occurrence_count", 1)
             time_str = self.format_time((crash["time"])/60.0)
             
-            msg = QApplication.translate("tilauscope_beancave","CRASH")+f" ({occurrences}x) "+QApplication.translate("tilauscope_beancave","at")+f" {time_str} "+QApplication.translate("tilauscope_beancave","during")+f" {phase}. "+QApplication.translate("tilauscope_beancave","Severity")+f": {crash['severity']}"
+            msg = QApplication.translate("tilauscope_roast_plan","CRASH")+f" ({occurrences}x) "+QApplication.translate("tilauscope_roast_plan","at")+f" {time_str} "+QApplication.translate("tilauscope_roast_plan","during")+f" {phase}. "+QApplication.translate("tilauscope_roast_plan","Severity")+f": {crash['severity']}"
             feedback_notes.append(msg)
             
             # Specific advice based on phase
             if "Maillard" in phase or "Development" in phase:
-                adjustments.append(QApplication.translate("tilauscope_beancave","Action: Boost heater")+" 5% "+QApplication.translate("tilauscope_beancave","at")+f" {self.format_time((crash['time']-30)/60.0)} "+QApplication.translate("tilauscope_beancave","to prevent crash."))
+                adjustments.append(QApplication.translate("tilauscope_roast_plan","Action: Boost heater")+" 5% "+QApplication.translate("tilauscope_roast_plan","at")+f" {self.format_time((crash['time']-30)/60.0)} "+QApplication.translate("tilauscope_roast_plan","to prevent crash."))
             else:
-                adjustments.append(QApplication.translate("tilauscope_beancave","Action: Monitor momentum; consider reducing airflow."))
+                adjustments.append(QApplication.translate("tilauscope_roast_plan","Action: Monitor momentum; consider reducing airflow."))
 
         for flick in flicks_detected:
-            phase = flick.get("phase", QApplication.translate("tilauscope_beancave","OUT OF SCOPE"))
+            phase = flick.get("phase", QApplication.translate("tilauscope_roast_plan","OUT OF SCOPE"))
             occurrences = flick.get("occurrence_count", 1)
             time_str = self.format_time(flick["time"]/60.0)
             
-            msg = QApplication.translate("tilauscope_beancave","FLICK")+f" ({occurrences}x) "+QApplication.translate("tilauscope_beancave","at")+f" {time_str} "+QApplication.translate("tilauscope_beancave","during")+f" {phase}. "+QApplication.translate("tilauscope_beancave","Severity")+f": {flick['severity']}"
+            msg = QApplication.translate("tilauscope_roast_plan","FLICK")+f" ({occurrences}x) "+QApplication.translate("tilauscope_roast_plan","at")+f" {time_str} "+QApplication.translate("tilauscope_roast_plan","during")+f" {phase}. "+QApplication.translate("tilauscope_roast_plan","Severity")+f": {flick['severity']}"
             feedback_notes.append(msg)
             
             if "Development" in phase:
-                adjustments.append(QApplication.translate("tilauscope_beancave","Action: Reduce burner 10% 45s before")+f" {time_str} "+QApplication.translate("tilauscope_beancave","to smooth RoR."))
+                adjustments.append(QApplication.translate("tilauscope_roast_plan","Action: Reduce burner 10% 45s before")+f" {time_str} "+QApplication.translate("tilauscope_roast_plan","to smooth RoR."))
             else:
-                adjustments.append(QApplication.translate("tilauscope_beancave","Action: Increase extraction/airflow to shed thermal energy."))
+                adjustments.append(QApplication.translate("tilauscope_roast_plan","Action: Increase extraction/airflow to shed thermal energy."))
     
         master_graph_data = self._prepare_historical_graph_data(relevant_logs_data)
         return {
@@ -1993,7 +1993,7 @@ class TilauScopeRoastPlan:
                 if abs(_dry_gap) > 0.3:
                     _cal_heater_dry = _clamp(_dry_gap * _HEATER_PER_MIN, -_HEATER_CAP, _HEATER_CAP)
                     _cal_notes.append(QApplication.translate(
-                        "tilauscope_beancave",
+                        "tilauscope_roast_plan",
                         "Calibration: this bean's drying runs {0} min on this machine (plan window {1}-{2}) — dry heater adjusted {3}%").format(
                         f"{_t_dry_raw:.1f}", f"{roast_constraints.drying_time[0]:.2g}",
                         f"{roast_constraints.drying_time[1]:.2g}", f"{_cal_heater_dry:+.0f}"))
@@ -2001,7 +2001,7 @@ class TilauScopeRoastPlan:
                 if abs(_mai_gap) > 0.3:
                     _cal_heater_mai = _clamp(_mai_gap * _HEATER_PER_MIN, -_HEATER_CAP, _HEATER_CAP)
                     _cal_notes.append(QApplication.translate(
-                        "tilauscope_beancave",
+                        "tilauscope_roast_plan",
                         "Calibration: this bean's Maillard runs {0} min on this machine (plan window {1}-{2}) — Maillard heater adjusted {3}%").format(
                         f"{_mai_raw:.1f}", f"{roast_constraints.maillard_time[0]:.2g}",
                         f"{roast_constraints.maillard_time[1]:.2g}", f"{_cal_heater_mai:+.0f}"))
@@ -2114,7 +2114,7 @@ class TilauScopeRoastPlan:
                 drop_bt_temperature, _drop_cal, _drop_n)
             if drop_source != "grid" and history is not None:
                 history["actions"] = (history.get("actions") or []) + [QApplication.translate(
-                    "tilauscope_beancave",
+                    "tilauscope_roast_plan",
                     "Colour feedback ({0} measured roast(s)): drop target adjusted {1}°C vs grid ({2}°)").format(
                     _drop_n, f"{drop_bt_temperature - _drop_grid:+.1f}", f"{_drop_grid:.1f}")]
                 _logd.info(
@@ -2256,7 +2256,7 @@ class TilauScopeRoastPlan:
             heater_dev, _             = self._adopt_learned(_grid_dev, float(_hl_dev), _h_n)
             if heater_source != "grid" and history is not None:
                 history["actions"] = (history.get("actions") or []) + [QApplication.translate(
-                    "tilauscope_beancave",
+                    "tilauscope_roast_plan",
                     "Heater profile learned from {0} matched roast(s): {1}/{2}/{3}% (dry/Maillard/dev)").format(
                     _h_n, f"{heater_dry:.0f}", f"{heater_maillard:.0f}", f"{heater_dev:.0f}")]
                 _logd.info(f"RoastPlan: heater from history {heater_dry:.0f}/{heater_maillard:.0f}/"
@@ -2552,9 +2552,9 @@ class TilauScopeRoastPlan:
             _conf_level = "medium"
         _tol_factor = {"low": 1.35, "medium": 1.0, "high": 0.8}[_conf_level]
         _conf_display = {
-            "low":    QApplication.translate("tilauscope_beancave", "low (grid)"),
-            "medium": QApplication.translate("tilauscope_beancave", "medium (partial history)"),
-            "high":   QApplication.translate("tilauscope_beancave", "high (consistent history)"),
+            "low":    QApplication.translate("tilauscope_roast_plan", "low (grid)"),
+            "medium": QApplication.translate("tilauscope_roast_plan", "medium (partial history)"),
+            "high":   QApplication.translate("tilauscope_roast_plan", "high (consistent history)"),
         }[_conf_level]
         _logd.info(f"RoastPlan: confidence={_conf_level} (score={_conf_score}, "
                    f"fc_mad={_fc_mad}) → tolerance ×{_tol_factor}")
@@ -2563,7 +2563,7 @@ class TilauScopeRoastPlan:
         _small_batch_note: 'str | None' = None
         if _w_charge_offset < 0.0:
             _small_batch_note = QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_roast_plan",
                 "Small batch ({0} g): charge softened {1}°").format(
                 f"{charge_weight:.0f}", f"{_w_charge_offset * _ror_scale:+.1f}")
 
@@ -2571,7 +2571,7 @@ class TilauScopeRoastPlan:
         _soak_note: 'str | None' = None
         if _soak_dcharge_c < 0.0 and minutes_since_last_drop is not None:
             _soak_note = QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_roast_plan",
                 "Back-to-back ({0} min since last drop): charge {1}°, dry heater {2}%").format(
                 f"{minutes_since_last_drop:.0f}",
                 f"{_soak_dcharge_c * _ror_scale:+.1f}", f"{_soak_dheater:+d}")
@@ -2770,7 +2770,7 @@ class TilauScopeRoastPlan:
         dtr_final = t_dev / t_drop * 100.0
         if not (band_lo * 100.0 - 0.05 <= dtr_final <= band_hi * 100.0 + 0.05):
             return QApplication.translate(
-                "tilauscope_beancave",
+                "tilauscope_roast_plan",
                 "Projected DTR {0}% is outside the style band {1}–{2}% — watch development").format(
                 f"{dtr_final:.1f}", f"{band_lo * 100.0:.0f}", f"{band_hi * 100.0:.0f}")
         return None
@@ -2983,17 +2983,17 @@ class TilauScopeRoastPlan:
             # Operator-facing note (shown once by the assistant coach line).
             if milestone == "tp":
                 note = QApplication.translate(
-                    "tilauscope_beancave",
+                    "tilauscope_roast_plan",
                     "Plan re-anchored at TP ({0}° @ {1})").format(
                     f"{_nat(bt_c):.0f}", self.format_time(t_min))
             elif milestone == "dry_end":
                 note = QApplication.translate(
-                    "tilauscope_beancave",
+                    "tilauscope_roast_plan",
                     "Plan re-anchored at DRY END ({0} vs plan) — FC forecast {1}, projected DTR {2}%").format(
                     self._fmt_signed_sec(t_min - _old_dry_t), self.format_time(t_fc), f"{dtr_calc:.1f}")
             else:
                 note = QApplication.translate(
-                    "tilauscope_beancave",
+                    "tilauscope_roast_plan",
                     "Plan re-anchored at FC ({0} vs plan) — DROP forecast {1}, projected DTR {2}%").format(
                     self._fmt_signed_sec(t_min - _old_fc_t), self.format_time(t_drop), f"{dtr_calc:.1f}")
 
@@ -3278,7 +3278,7 @@ class BuildPRoastPlanPDF(FPDF):
         
     def header(self)->None:
         self.set_font('helvetica', 'B', 15)
-        self.cell(0, 10, QApplication.translate("tilauscope_beancave",'Automated Roast Profile Plan'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
+        self.cell(0, 10, QApplication.translate("tilauscope_roast_plan",'Automated Roast Profile Plan'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
         self.ln(2)
         self.set_font('helvetica', 'B', 12)
         self.cell(0, 10, f"({self._target})", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
@@ -3590,7 +3590,7 @@ class BuildPRoastPlanPDF(FPDF):
             QApplication.translate("Label", "BT") + f": (°{self.mode})")
         self.text(
             x_pos + width / 2 - 5, y_pos + height + 12,
-            QApplication.translate("tilauscope_beancave", "Time") + " (min)"
+            QApplication.translate("tilauscope_roast_plan", "Time") + " (min)"
         )
 
         # ── H. LEGEND ────────────────────────────────────────────────────────────
@@ -3606,7 +3606,7 @@ class BuildPRoastPlanPDF(FPDF):
         self.set_text_color(0, 0, 0)
         self.text(x_pos + 13, leg_y + 2.5,
                   QApplication.translate("Label", "RoR") +
-                  QApplication.translate("tilauscope_beancave", " Average (hist.)"))
+                  QApplication.translate("tilauscope_roast_plan", " Average (hist.)"))
 
         self.set_fill_color(200, 220, 255)
         self.rect(x_pos + 58, leg_y - 2, 8, 5, style="F")
@@ -3615,7 +3615,7 @@ class BuildPRoastPlanPDF(FPDF):
         self.rect(x_pos + 58, leg_y - 2, 8, 5, style="D")
         self.set_text_color(0, 0, 0)
         self.text(x_pos + 68, leg_y + 2.5,
-                  QApplication.translate("tilauscope_beancave", "RoR variance"))
+                  QApplication.translate("tilauscope_roast_plan", "RoR variance"))
 
         self.set_draw_color(0, 160, 0)
         self.set_line_width(0.4)
@@ -3624,7 +3624,7 @@ class BuildPRoastPlanPDF(FPDF):
         self.set_dash_pattern()
         self.set_text_color(0, 0, 0)
         self.text(x_pos + 123, leg_y + 2.5,
-                  QApplication.translate("tilauscope_beancave", "BT Average (hist.)"))
+                  QApplication.translate("tilauscope_roast_plan", "BT Average (hist.)"))
 
         # Row 2 (only when plan curve exists) ─ planned BT solid + planned ROR dashed
         if bt_plan_curve:
@@ -3635,7 +3635,7 @@ class BuildPRoastPlanPDF(FPDF):
             self.line(x_pos, leg_y, x_pos + 10, leg_y)
             self.set_text_color(0, 0, 0)
             self.text(x_pos + 13, leg_y + 2.5,
-                      QApplication.translate("tilauscope_beancave", "Planned BT (PCHIP)"))
+                      QApplication.translate("tilauscope_roast_plan", "Planned BT (PCHIP)"))
 
             self.set_draw_color(200, 120, 20)
             self.set_line_width(0.4)
@@ -3644,7 +3644,7 @@ class BuildPRoastPlanPDF(FPDF):
             self.set_dash_pattern()
             self.set_text_color(0, 0, 0)
             self.text(x_pos + 78, leg_y + 2.5,
-                      QApplication.translate("tilauscope_beancave", "Planned RoR"))
+                      QApplication.translate("tilauscope_roast_plan", "Planned RoR"))
 
         # Row 3 ─ phase colour chips
         leg_y += 8
@@ -3654,7 +3654,7 @@ class BuildPRoastPlanPDF(FPDF):
         self.set_fill_color(255, 252, 230)
         self.rect(x_pos, leg_y - 2, 4, 4, style="F")
         self.text(x_pos + 6, leg_y + 1,
-                  QApplication.translate("tilauscope_beancave", "Drying (DRY)"))
+                  QApplication.translate("tilauscope_roast_plan", "Drying (DRY)"))
 
         self.set_fill_color(255, 240, 210)
         self.rect(x_pos + 45, leg_y - 2, 4, 4, style="F")
@@ -3695,18 +3695,18 @@ class BuildPRoastPlanPDF(FPDF):
         # Set background color for section header
         self.set_fill_color(220, 220, 220) 
         self.set_font('helvetica', 'B', 12)
-        self.cell(0, 7, QApplication.translate("tilauscope_beancave",'1. Bean and Environment Information'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+        self.cell(0, 7, QApplication.translate("tilauscope_roast_plan",'1. Bean and Environment Information'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
         self.ln(1)
         
         info_data = [
-            (QApplication.translate("tilauscope_beancave","Roaster"), plan_data.get("Roaster")),
-            (QApplication.translate("tilauscope_beancave","Bean Name"), plan_data.get("Bean Name")),
-            (QApplication.translate("tilauscope_beancave","Process Type"), plan_data.get("Process Type")),
-            (QApplication.translate("tilauscope_beancave","Density")+" (g/L)", plan_data.get("Density")),
-            (QApplication.translate("tilauscope_beancave","Bean Humidity")+" (%)", plan_data.get("Bean Humidity")),
-            (QApplication.translate("tilauscope_beancave","Ambient Temp")+f" (°{self.mode})", plan_data.get("Ambient Temp")),
-            (QApplication.translate("tilauscope_beancave","Ambient Humidity")+" (%)", plan_data.get("Ambient Humidity")),
-            (QApplication.translate("tilauscope_beancave","Weight to roast")+" (g)", plan_data.get("Weight")),
+            (QApplication.translate("tilauscope_roast_plan","Roaster"), plan_data.get("Roaster")),
+            (QApplication.translate("tilauscope_roast_plan","Bean Name"), plan_data.get("Bean Name")),
+            (QApplication.translate("tilauscope_roast_plan","Process Type"), plan_data.get("Process Type")),
+            (QApplication.translate("tilauscope_roast_plan","Density")+" (g/L)", plan_data.get("Density")),
+            (QApplication.translate("tilauscope_roast_plan","Bean Humidity")+" (%)", plan_data.get("Bean Humidity")),
+            (QApplication.translate("tilauscope_roast_plan","Ambient Temp")+f" (°{self.mode})", plan_data.get("Ambient Temp")),
+            (QApplication.translate("tilauscope_roast_plan","Ambient Humidity")+" (%)", plan_data.get("Ambient Humidity")),
+            (QApplication.translate("tilauscope_roast_plan","Weight to roast")+" (g)", plan_data.get("Weight")),
         ]
         
         self.set_font('helvetica', '', 10)
@@ -3718,7 +3718,7 @@ class BuildPRoastPlanPDF(FPDF):
         self.ln(2)
         self.set_fill_color(220, 220, 220)
         self.set_font('helvetica', 'B', 12)
-        self.cell(0, 7, QApplication.translate("tilauscope_beancave",'2. Thermal Profile & Timing'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+        self.cell(0, 7, QApplication.translate("tilauscope_roast_plan",'2. Thermal Profile & Timing'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
         self.ln(1)
 
         # Helper function to combine Time and Phase % for presentation
@@ -3738,20 +3738,20 @@ class BuildPRoastPlanPDF(FPDF):
             return f"{time}{percent_str}"
 
         profile_data = [
-            (QApplication.translate("tilauscope_beancave","Charge Temp")+f" (°{self.mode})", plan_data.get("Charge Temp")), 
-            (QApplication.translate("tilauscope_beancave","End of Dry Temp")+f" (°{self.mode})", plan_data.get("End of Dry Temp")),     
-            (QApplication.translate("tilauscope_beancave","First Crack Temp")+f" (°{self.mode})", plan_data.get("First Crack Temp")),
-            (QApplication.translate("tilauscope_beancave","First Crack source"), plan_data.get("FC Temp Source", "grid")),
-            (QApplication.translate("tilauscope_beancave","Phase timing source"), plan_data.get("Phase Timing Source", "grid")),
-            (QApplication.translate("tilauscope_beancave","Drop Temp")+f" (°{self.mode})", plan_data.get("Drop Temp")),
-            (QApplication.translate("tilauscope_beancave","Drop RoR source"), plan_data.get("Drop ROR Source", "grid")),  ## TILAU ## item A         
+            (QApplication.translate("tilauscope_roast_plan","Charge Temp")+f" (°{self.mode})", plan_data.get("Charge Temp")), 
+            (QApplication.translate("tilauscope_roast_plan","End of Dry Temp")+f" (°{self.mode})", plan_data.get("End of Dry Temp")),     
+            (QApplication.translate("tilauscope_roast_plan","First Crack Temp")+f" (°{self.mode})", plan_data.get("First Crack Temp")),
+            (QApplication.translate("tilauscope_roast_plan","First Crack source"), plan_data.get("FC Temp Source", "grid")),
+            (QApplication.translate("tilauscope_roast_plan","Phase timing source"), plan_data.get("Phase Timing Source", "grid")),
+            (QApplication.translate("tilauscope_roast_plan","Drop Temp")+f" (°{self.mode})", plan_data.get("Drop Temp")),
+            (QApplication.translate("tilauscope_roast_plan","Drop RoR source"), plan_data.get("Drop ROR Source", "grid")),  ## TILAU ## item A         
             # --- PHASE TIME & % COMBINED ---
-            (QApplication.translate("tilauscope_beancave","Dry Phase Time")+" (%)", get_phase_info("Dry Phase", "Dry Phase %")),           
-            (QApplication.translate("tilauscope_beancave","Maillard Phase Time")+" (%)", get_phase_info("Maillard Phase", "Maillard Phase %")),         
-            (QApplication.translate("tilauscope_beancave","Development Phase Time")+" (%)", get_phase_info("Development Phase", "Development Phase %")), # Assumes a key for Dev Phase Time/Duration
+            (QApplication.translate("tilauscope_roast_plan","Dry Phase Time")+" (%)", get_phase_info("Dry Phase", "Dry Phase %")),           
+            (QApplication.translate("tilauscope_roast_plan","Maillard Phase Time")+" (%)", get_phase_info("Maillard Phase", "Maillard Phase %")),         
+            (QApplication.translate("tilauscope_roast_plan","Development Phase Time")+" (%)", get_phase_info("Development Phase", "Development Phase %")), # Assumes a key for Dev Phase Time/Duration
             # --- END OF PHASE TIME & % COMBINED ---
-            (QApplication.translate("tilauscope_beancave","First Crack Time")+" ("+QApplication.translate("tilauscope_beancave","FC")+")", plan_data.get("FC Time")),    
-            (QApplication.translate("tilauscope_beancave","Total Time")+" ("+QApplication.translate("tilauscope_beancave","Drop")+")", plan_data.get("Total Time")),             
+            (QApplication.translate("tilauscope_roast_plan","First Crack Time")+" ("+QApplication.translate("tilauscope_roast_plan","FC")+")", plan_data.get("FC Time")),    
+            (QApplication.translate("tilauscope_roast_plan","Total Time")+" ("+QApplication.translate("tilauscope_roast_plan","Drop")+")", plan_data.get("Total Time")),             
         ]
 
         self.set_font('helvetica', '', 10)
@@ -3763,17 +3763,17 @@ class BuildPRoastPlanPDF(FPDF):
         self.ln(2)
         self.set_fill_color(220, 220, 220)
         self.set_font('helvetica', 'B', 12)
-        self.cell(0, 7, QApplication.translate("tilauscope_beancave",'3. Development Ratios (DTR) and Rates of Rise (RoR)'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+        self.cell(0, 7, QApplication.translate("tilauscope_roast_plan",'3. Development Ratios (DTR) and Rates of Rise (RoR)'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
         self.ln(1)
 
         ratio_data = [
-            (QApplication.translate("tilauscope_beancave","Target Agtron Profile"), plan_data.get("Target Agtron")),
-            (QApplication.translate("tilauscope_beancave","Plan confidence"), plan_data.get("Plan Confidence", "low (grid)")),
-            (QApplication.translate("tilauscope_beancave","Target DTR")+" (%)", plan_data.get("Target DTR")),
-            (QApplication.translate("tilauscope_beancave","Calculated Final DTR")+" (%)", plan_data.get("Calculated Final DTR")),
-            (QApplication.translate("tilauscope_beancave","Target ROR Maillard")+f" (°{self.mode}/min)", plan_data.get("Target ROR Maillard")),
-            (QApplication.translate("tilauscope_beancave","Target ROR Dev")+" ("+QApplication.translate("tilauscope_beancave","Average")+f" °{self.mode}/min)", plan_data.get("Target ROR Dev (Avg)")), 
-            (QApplication.translate("tilauscope_beancave","Target ROR at Drop")+f" (°{self.mode}/min)", plan_data.get("Target ROR at Drop")),
+            (QApplication.translate("tilauscope_roast_plan","Target Agtron Profile"), plan_data.get("Target Agtron")),
+            (QApplication.translate("tilauscope_roast_plan","Plan confidence"), plan_data.get("Plan Confidence", "low (grid)")),
+            (QApplication.translate("tilauscope_roast_plan","Target DTR")+" (%)", plan_data.get("Target DTR")),
+            (QApplication.translate("tilauscope_roast_plan","Calculated Final DTR")+" (%)", plan_data.get("Calculated Final DTR")),
+            (QApplication.translate("tilauscope_roast_plan","Target ROR Maillard")+f" (°{self.mode}/min)", plan_data.get("Target ROR Maillard")),
+            (QApplication.translate("tilauscope_roast_plan","Target ROR Dev")+" ("+QApplication.translate("tilauscope_roast_plan","Average")+f" °{self.mode}/min)", plan_data.get("Target ROR Dev (Avg)")), 
+            (QApplication.translate("tilauscope_roast_plan","Target ROR at Drop")+f" (°{self.mode}/min)", plan_data.get("Target ROR at Drop")),
         ]
 
         self.set_font('helvetica', '', 10)
@@ -3785,7 +3785,7 @@ class BuildPRoastPlanPDF(FPDF):
         self.ln(3)
         self.set_fill_color(220, 220, 220)
         self.set_font('helvetica', 'B', 12)
-        self.cell(0, 7, QApplication.translate("tilauscope_beancave",'4. Machine Controls (Phases: Dry | Maillard | Development)'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+        self.cell(0, 7, QApplication.translate("tilauscope_roast_plan",'4. Machine Controls (Phases: Dry | Maillard | Development)'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
         self.ln(1)
         
         # Prepare Table Data - Keys match the output of generate_roast_plan
@@ -3800,23 +3800,23 @@ class BuildPRoastPlanPDF(FPDF):
             _raw_air    = [self._fmt_ctrl(v, _ctx.pct_to_airflow_label) for v in _raw_air]
 
         controls = {
-            QApplication.translate("tilauscope_beancave","Drum Speed")+" (%)": _raw_drum,
-            QApplication.translate("tilauscope_beancave","Heater")+" (%)":     _raw_heater,
-            QApplication.translate("tilauscope_beancave","Airflow")+" (%)":    _raw_air,
+            QApplication.translate("tilauscope_roast_plan","Drum Speed")+" (%)": _raw_drum,
+            QApplication.translate("tilauscope_roast_plan","Heater")+" (%)":     _raw_heater,
+            QApplication.translate("tilauscope_roast_plan","Airflow")+" (%)":    _raw_air,
         }
         # AirWave (extraction) rows only when an AirWave was detected at plan time.
         _ext = plan_data.get("Extraction (%) (Dry|Mai|Dev)", "").strip()
         if _ext:
-            controls[QApplication.translate("tilauscope_beancave","AirWave")+" (% "+QApplication.translate("tilauscope_beancave","Fan")+")"] = _ext.split(' | ')
+            controls[QApplication.translate("tilauscope_roast_plan","AirWave")+" (% "+QApplication.translate("tilauscope_roast_plan","Fan")+")"] = _ext.split(' | ')
         _awm = plan_data.get("AirWave Mode (Dry|Mai|Dev)", "").strip()
         if _awm:
-            controls[QApplication.translate("tilauscope_beancave","AirWave Mode")] = _awm.split(' | ')
+            controls[QApplication.translate("tilauscope_roast_plan","AirWave Mode")] = _awm.split(' | ')
         
         col_widths = [42, 38, 38, 42]
         
         # Table Header
         self.set_font('helvetica', 'B', 10)
-        self.cell(col_widths[0], 7, QApplication.translate("tilauscope_beancave","Control"), 1, align='C', fill=True)
+        self.cell(col_widths[0], 7, QApplication.translate("tilauscope_roast_plan","Control"), 1, align='C', fill=True)
         self.cell(col_widths[1], 7, QApplication.translate("Label","Dry"), 1, align='C', fill=True)
         self.cell(col_widths[2], 7, QApplication.translate("Label","Maillard"), 1, align='C', fill=True)
         self.cell(col_widths[3], 7, QApplication.translate("Label","Development"), 1, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C', fill=True)
@@ -3840,12 +3840,12 @@ class BuildPRoastPlanPDF(FPDF):
                 f"{e['heater']:.0f}% @ {e['bt']:.0f} °{self.mode}" for e in _ramp)
             _lead = plan_data.get("FC Anticipation (s)", "")
             if _lead:
-                _ramp_str += "  (" + QApplication.translate("tilauscope_beancave", "last step {0} s before FC").format(_lead) + ")"
+                _ramp_str += "  (" + QApplication.translate("tilauscope_roast_plan", "last step {0} s before FC").format(_lead) + ")"
             ## TILAU ## bug fix : la chaîne de rampe (jusqu'à ~10 paliers) débordait
             ## de la marge droite et du bas de page dans un cell() mono-ligne ;
             ## multi_cell replie sur la largeur restante et laisse fpdf gérer le
             ## saut de page.
-            self.cell(80, _row_h, QApplication.translate("tilauscope_beancave", "Heater ramp (anticipated)") + ':', border=0)
+            self.cell(80, _row_h, QApplication.translate("tilauscope_roast_plan", "Heater ramp (anticipated)") + ':', border=0)
             self.multi_cell(0, _row_h, _ramp_str, new_x=XPos.LMARGIN, new_y=YPos.NEXT, border=0)
 
         # Heater provenance (learned from matched history vs grid) — same
@@ -3858,15 +3858,15 @@ class BuildPRoastPlanPDF(FPDF):
         if _hfc != "grid":
             _hsrc = f"{_hsrc}  |  pre-FC: {_hfc}"
         self.set_font('helvetica', '', 10)
-        self.cell(80, _row_h, QApplication.translate("tilauscope_beancave", "Heater source") + ':', border=0)
+        self.cell(80, _row_h, QApplication.translate("tilauscope_roast_plan", "Heater source") + ':', border=0)
         self.multi_cell(0, _row_h, str(_hsrc), new_x=XPos.LMARGIN, new_y=YPos.NEXT, border=0)
 
         self.ln(3)
         self.set_font('helvetica', 'I', 9)
         self.multi_cell(0, 4, 
-                        QApplication.translate("tilauscope_beancave","Note: The plan is generated for a Target Agtron profile of ")+
+                        QApplication.translate("tilauscope_roast_plan","Note: The plan is generated for a Target Agtron profile of ")+
                         f"{plan_data.get('Target Agtron', 'N/A')} (Target DTR: {plan_data.get('Target DTR', 'N/A')}). "+
-                        QApplication.translate("tilauscope_beancave","All temperatures are in BT (Bean Temperature) and times in Minutes:Seconds."), 
+                        QApplication.translate("tilauscope_roast_plan","All temperatures are in BT (Bean Temperature) and times in Minutes:Seconds."), 
                         border=0)
         
         # 5. Historical Feedback (Notes and Actions)
@@ -3878,7 +3878,7 @@ class BuildPRoastPlanPDF(FPDF):
             try:
                 self.set_fill_color(220, 220, 220)
                 self.set_font('helvetica', 'B', 12)
-                self.cell(0, 7, QApplication.translate("tilauscope_beancave",'5. Historical Feedback & Actions'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+                self.cell(0, 7, QApplication.translate("tilauscope_roast_plan",'5. Historical Feedback & Actions'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
                 self.ln(2)
 
                 # Standard loop for lists of strings
@@ -3907,7 +3907,7 @@ class BuildPRoastPlanPDF(FPDF):
         if graph_data:
             self.add_page()
             self.set_font("helvetica", "B", 14)
-            self.cell(0, 10, QApplication.translate("tilauscope_beancave", "Historical Profile vs. Calculated Plan"), align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            self.cell(0, 10, QApplication.translate("tilauscope_roast_plan", "Historical Profile vs. Calculated Plan"), align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             self.ln(5)            
             self.ensure_space(80) # S'assure qu'il y a de la place pour le graph
             

@@ -1,0 +1,12 @@
+# Reporting a security problem in TilauScope or in this site.
+# Format: RFC 9116.
+
+Contact: https://github.com/neuralldev/tilauscope_fork/security/advisories/new
+Contact: https://github.com/neuralldev/tilauscope_fork/issues
+Expires: 2027-08-02T00:00:00.000Z
+Preferred-Languages: en, fr
+Canonical: https://tilauscope.org/.well-known/security.txt
+
+# Please use the private advisory link above for anything exploitable, and the
+# public issue tracker for everything else. This site is static and stores
+# nothing; reports about it are almost always about headers or dependencies.

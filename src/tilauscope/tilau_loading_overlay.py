@@ -234,7 +234,7 @@ class TilauRoasterSplash(QSplashScreen):
 
         # Product label
         self._lbl = QLabel(
-            QApplication.translate("tilauscope_beancave", "TilauScope is loading…"),
+            QApplication.translate("tilauscope_window", "TilauScope is loading…"),
             self,
         )
         self._lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -284,7 +284,7 @@ class TilauRoasterOverlay(QWidget):
         self._anim = _RoasterAnimWidget(self)
 
         self._lbl = QLabel(
-            QApplication.translate("tilauscope_beancave", "Loading…"),
+            QApplication.translate("tilauscope_window", "Loading…"),
             self,
         )
         self._lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)

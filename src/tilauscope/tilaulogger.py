@@ -392,7 +392,7 @@ class ZonePanel(QWidget):
         self._filter_btn.setText("🔍")
         self._filter_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._filter_btn.setToolTip(
-            QApplication.translate("tilauscope_beancave", "Filter this zone")
+            QApplication.translate("tilauscope_diagnostics", "Filter this zone")
         )
         self._filter_btn.setStyleSheet(
             f"QToolButton {{ color: {THEME['SUBTEXT']}; border: none; font-size: 12px; }}"
@@ -406,7 +406,7 @@ class ZonePanel(QWidget):
         self._focus_btn.setText("⛶")
         self._focus_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._focus_btn.setToolTip(
-            QApplication.translate("tilauscope_beancave", "Focus / restore (Esc)")
+            QApplication.translate("tilauscope_diagnostics", "Focus / restore (Esc)")
         )
         self._focus_btn.setStyleSheet(
             f"QToolButton {{ color: {THEME['SUBTEXT']}; border: none; font-size: 13px; }}"
@@ -456,7 +456,7 @@ class ZonePanel(QWidget):
 
         self._filter_edit = QLineEdit()
         self._filter_edit.setPlaceholderText(
-            QApplication.translate("tilauscope_beancave", "filter…")
+            QApplication.translate("tilauscope_diagnostics", "filter…")
         )
         self._filter_edit.setClearButtonEnabled(True)
         self._apply_filter_edit_style(valid=True)
@@ -468,7 +468,7 @@ class ZonePanel(QWidget):
         self._regex_btn.setText(".*")
         self._regex_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._regex_btn.setToolTip(
-            QApplication.translate("tilauscope_beancave", "Regular expression")
+            QApplication.translate("tilauscope_diagnostics", "Regular expression")
         )
         self._regex_btn.setStyleSheet(
             f"QToolButton {{ color: {THEME['SUBTEXT']}; border: 1px solid {THEME['BORDER']}; "
@@ -766,7 +766,7 @@ class SystemDashboard(QWidget):
         )
         self._chevron.clicked.connect(self.toggle)
         title = QLabel(
-            QApplication.translate("tilauscope_beancave", "SYSTEM · OBSERVABILITY")
+            QApplication.translate("tilauscope_diagnostics", "SYSTEM · OBSERVABILITY")
         )
         title.setStyleSheet(
             f"color: {THEME['ACCENT']}; font-size: 11px; font-weight: bold; "
@@ -791,29 +791,29 @@ class SystemDashboard(QWidget):
 
         cards = QHBoxLayout()
         cards.setSpacing(6)
-        self._v_mem = self._add_card(cards, QApplication.translate("tilauscope_beancave", "PROC MEM"))
-        self._v_free = self._add_card(cards, QApplication.translate("tilauscope_beancave", "FREE MEM"))
-        self._v_cpu = self._add_card(cards, QApplication.translate("tilauscope_beancave", "CPU"))
-        self._v_thr = self._add_card(cards, QApplication.translate("tilauscope_beancave", "THREADS"))
-        self._v_lag = self._add_card(cards, QApplication.translate("tilauscope_beancave", "UI LATENCY"))
-        self._v_up = self._add_card(cards, QApplication.translate("tilauscope_beancave", "UPTIME"))
+        self._v_mem = self._add_card(cards, QApplication.translate("tilauscope_diagnostics", "PROC MEM"))
+        self._v_free = self._add_card(cards, QApplication.translate("tilauscope_diagnostics", "FREE MEM"))
+        self._v_cpu = self._add_card(cards, QApplication.translate("tilauscope_diagnostics", "CPU"))
+        self._v_thr = self._add_card(cards, QApplication.translate("tilauscope_diagnostics", "THREADS"))
+        self._v_lag = self._add_card(cards, QApplication.translate("tilauscope_diagnostics", "UI LATENCY"))
+        self._v_up = self._add_card(cards, QApplication.translate("tilauscope_diagnostics", "UPTIME"))
         body.addLayout(cards)
 
         # Trend sparklines (last 60 samples).
         sparks = QHBoxLayout()
         sparks.setSpacing(10)
-        self._spk_cpu = self._add_spark(sparks, QApplication.translate("tilauscope_beancave", "CPU"), THEME['ACCENT'])
-        self._spk_mem = self._add_spark(sparks, QApplication.translate("tilauscope_beancave", "MEM"), THEME['SUCCESS'])
-        self._spk_bus = self._add_spark(sparks, QApplication.translate("tilauscope_beancave", "BUS/s"), THEME['TODAY'])
-        self._spk_lag = self._add_spark(sparks, QApplication.translate("tilauscope_beancave", "LAT"), THEME['WARNING'])
+        self._spk_cpu = self._add_spark(sparks, QApplication.translate("tilauscope_diagnostics", "CPU"), THEME['ACCENT'])
+        self._spk_mem = self._add_spark(sparks, QApplication.translate("tilauscope_diagnostics", "MEM"), THEME['SUCCESS'])
+        self._spk_bus = self._add_spark(sparks, QApplication.translate("tilauscope_diagnostics", "BUS/s"), THEME['TODAY'])
+        self._spk_lag = self._add_spark(sparks, QApplication.translate("tilauscope_diagnostics", "LAT"), THEME['WARNING'])
         body.addLayout(sparks)
 
         self._lbl_tasks = self._add_section(
-            body, QApplication.translate("tilauscope_beancave", "RUNNING TASKS"))
+            body, QApplication.translate("tilauscope_diagnostics", "RUNNING TASKS"))
         self._lbl_bus = self._add_section(
-            body, QApplication.translate("tilauscope_beancave", "BUS · BUFFERS"))
+            body, QApplication.translate("tilauscope_diagnostics", "BUS · BUFFERS"))
         self._lbl_conn = self._add_section(
-            body, QApplication.translate("tilauscope_beancave", "CONNECTIONS · GC · I/O"))
+            body, QApplication.translate("tilauscope_diagnostics", "CONNECTIONS · GC · I/O"))
 
         self._body.setVisible(False)
         root.addWidget(self._body)
@@ -997,20 +997,20 @@ class ArtisanLogTailWorker(QObject):
             self._inode = stat.st_ino
             self._pos = stat.st_size   # start at EOF — only new lines shown
             self.status_changed.emit(
-                QApplication.translate("tilauscope_beancave", "🟢 tailing")
+                QApplication.translate("tilauscope_diagnostics", "🟢 tailing")
             )
         except OSError:
             self._pos = 0
             self._inode = None
             self.status_changed.emit(
-                QApplication.translate("tilauscope_beancave", "🟡 waiting for file…")
+                QApplication.translate("tilauscope_diagnostics", "🟡 waiting for file…")
             )
         self._timer.start()
 
     def stop(self) -> None:
         self._timer.stop()
         self.status_changed.emit(
-            QApplication.translate("tilauscope_beancave", "⚫ inactive")
+            QApplication.translate("tilauscope_diagnostics", "⚫ inactive")
         )
 
     def _poll(self) -> None:
@@ -1020,7 +1020,7 @@ class ArtisanLogTailWorker(QObject):
         except OSError:
             # File not yet created or temporarily missing
             self.status_changed.emit(
-                QApplication.translate("tilauscope_beancave", "🟡 waiting for file…")
+                QApplication.translate("tilauscope_diagnostics", "🟡 waiting for file…")
             )
             return
 
@@ -1029,7 +1029,7 @@ class ArtisanLogTailWorker(QObject):
             self._pos = 0
             self._inode = stat.st_ino
             self.status_changed.emit(
-                QApplication.translate("tilauscope_beancave", "🔄 log rotated")
+                QApplication.translate("tilauscope_diagnostics", "🔄 log rotated")
             )
 
         if stat.st_size == self._pos:
@@ -1047,7 +1047,7 @@ class ArtisanLogTailWorker(QObject):
         if clean:
             self.lines_ready.emit(clean)
             self.status_changed.emit(
-                QApplication.translate("tilauscope_beancave", "🟢 tailing")
+                QApplication.translate("tilauscope_diagnostics", "🟢 tailing")
             )
 
 
@@ -1074,7 +1074,7 @@ class SerialWorker(QObject):
             self.baud = baud
         # Emit outside the lock — actual open happens in run()
         self.message_received.emit(
-            QApplication.translate("tilauscope_beancave", "🔄 Connecting to ")
+            QApplication.translate("tilauscope_diagnostics", "🔄 Connecting to ")
             + f"{port} @ {baud}..."
         )
 
@@ -1086,7 +1086,7 @@ class SerialWorker(QObject):
                 self.ser.close()
                 self.ser = None
         self.message_received.emit(
-            QApplication.translate("tilauscope_beancave", "🔌 Disconnected")
+            QApplication.translate("tilauscope_diagnostics", "🔌 Disconnected")
         )
 
     def send_line(self, text: str) -> bool:
@@ -1121,7 +1121,7 @@ class SerialWorker(QObject):
                         self.ser.reset_input_buffer()
                         self.synchronized = True
                     self.message_received.emit(
-                        QApplication.translate("tilauscope_beancave", "✅ Connected to ")
+                        QApplication.translate("tilauscope_diagnostics", "✅ Connected to ")
                         + f"{port_target} @ {baud_target}"
                     )
                 except Exception as e:
@@ -1236,11 +1236,11 @@ class TilauscopeLoggerWindow(QWidget):
         # Bus must exist before _build_ui, which registers the zones.
         # ## TILAU ## — translate recurring status strings once (no per-update translate).
         # Full translate() form (no alias) so pylupdate6 can extract the literals.
-        self._tr_ser_connected = QApplication.translate("tilauscope_beancave", "🟢 connected")
-        self._tr_ser_error = QApplication.translate("tilauscope_beancave", "🔴 error")
-        self._tr_ser_inactive = QApplication.translate("tilauscope_beancave", "⚫ inactive")
-        self._tr_ser_connecting = QApplication.translate("tilauscope_beancave", "🟡 connecting...")
-        self._tr_tcp_receiving = QApplication.translate("tilauscope_beancave", "🟢 receiving")
+        self._tr_ser_connected = QApplication.translate("tilauscope_diagnostics", "🟢 connected")
+        self._tr_ser_error = QApplication.translate("tilauscope_diagnostics", "🔴 error")
+        self._tr_ser_inactive = QApplication.translate("tilauscope_diagnostics", "⚫ inactive")
+        self._tr_ser_connecting = QApplication.translate("tilauscope_diagnostics", "🟡 connecting...")
+        self._tr_tcp_receiving = QApplication.translate("tilauscope_diagnostics", "🟢 receiving")
 
         self.bus = LogBus(self)
         self.bus.event.connect(self._on_bus_event)
@@ -1416,7 +1416,7 @@ class TilauscopeLoggerWindow(QWidget):
 
         self._search_edit = QLineEdit()
         self._search_edit.setPlaceholderText(
-            QApplication.translate("tilauscope_beancave", "search all zones…")
+            QApplication.translate("tilauscope_diagnostics", "search all zones…")
         )
         self._search_edit.setClearButtonEnabled(True)
         self._search_edit.setStyleSheet(
@@ -1572,7 +1572,7 @@ class TilauscopeLoggerWindow(QWidget):
         title_row = QHBoxLayout()
 
         title_lbl = QLabel(
-            QApplication.translate("tilauscope_beancave", "TILAU DEBUG MONITOR")
+            QApplication.translate("tilauscope_diagnostics", "TILAU DEBUG MONITOR")
         )
         title_lbl.setStyleSheet(
             f"color: {THEME['ACCENT']}; font-size: 15px; font-weight: 800; "
@@ -1612,7 +1612,7 @@ class TilauscopeLoggerWindow(QWidget):
         ctrl_row.setSpacing(10)
 
         port_lbl = QLabel(
-            QApplication.translate("tilauscope_beancave", "Serial port:")
+            QApplication.translate("tilauscope_diagnostics", "Serial port:")
         )
         port_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
 
@@ -1624,7 +1624,7 @@ class TilauscopeLoggerWindow(QWidget):
         refresh_btn = QPushButton("↺")
         refresh_btn.setFixedSize(30, 30)
         refresh_btn.setToolTip(
-            QApplication.translate("tilauscope_beancave", "Refresh port list")
+            QApplication.translate("tilauscope_diagnostics", "Refresh port list")
         )
         refresh_btn.setStyleSheet(f"""
             QPushButton {{
@@ -1640,7 +1640,7 @@ class TilauscopeLoggerWindow(QWidget):
 
         # ## TILAU ## — baud rate selector
         baud_lbl = QLabel(
-            QApplication.translate("tilauscope_beancave", "Baud:")
+            QApplication.translate("tilauscope_diagnostics", "Baud:")
         )
         baud_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
 
@@ -1656,7 +1656,7 @@ class TilauscopeLoggerWindow(QWidget):
         # ## TILAU ## — explicit connect/disconnect button
         self._connected = False
         self.connect_btn = QPushButton(
-            QApplication.translate("tilauscope_beancave", "Connect")
+            QApplication.translate("tilauscope_diagnostics", "Connect")
         )
         self.connect_btn.setFixedHeight(30)
         self.connect_btn.setCheckable(True)
@@ -1667,11 +1667,11 @@ class TilauscopeLoggerWindow(QWidget):
         # sends "HELLO TRP/1.0" and, once INFO.../OK come back, the status label
         # switches from the plain "connected" text to the identified TRP device/profile.
         self.trp_hello_btn = QPushButton(
-            QApplication.translate("tilauscope_beancave", "🤝 HELLO")
+            QApplication.translate("tilauscope_diagnostics", "🤝 HELLO")
         )
         self.trp_hello_btn.setFixedHeight(30)
         self.trp_hello_btn.setToolTip(
-            QApplication.translate("tilauscope_beancave",
+            QApplication.translate("tilauscope_diagnostics",
                 "Send the TRP handshake (HELLO TRP/1.0) and detect the connected roaster")
         )
         self.trp_hello_btn.clicked.connect(self._send_trp_hello)
@@ -1692,7 +1692,7 @@ class TilauscopeLoggerWindow(QWidget):
             b = QToolButton()
             b.setText(glyph)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
-            b.setToolTip(QApplication.translate("tilauscope_beancave", tip))
+            b.setToolTip(QApplication.translate("tilauscope_diagnostics", tip))
             b.setStyleSheet(
                 f"QToolButton {{ color: {THEME['TEXT']}; background: {THEME['SURFACE']}; "
                 f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; "
@@ -1704,11 +1704,11 @@ class TilauscopeLoggerWindow(QWidget):
             ctrl_row.addWidget(b)
             return b
 
-        _action("📌", QT_TRANSLATE_NOOP("tilauscope_beancave", "Insert marker in all zones"), self._insert_marker)
-        self._pause_btn = _action("⏸", QT_TRANSLATE_NOOP("tilauscope_beancave", "Pause / resume rendering"), self._toggle_pause)
+        _action("📌", QT_TRANSLATE_NOOP("tilauscope_diagnostics", "Insert marker in all zones"), self._insert_marker)
+        self._pause_btn = _action("⏸", QT_TRANSLATE_NOOP("tilauscope_diagnostics", "Pause / resume rendering"), self._toggle_pause)
         self._pause_btn.setCheckable(True)
-        _action("💾", QT_TRANSLATE_NOOP("tilauscope_beancave", "Save snapshot to file"), self._take_snapshot)
-        _action("♻", QT_TRANSLATE_NOOP("tilauscope_beancave", "Run garbage collection now"), self._gc_now)
+        _action("💾", QT_TRANSLATE_NOOP("tilauscope_diagnostics", "Save snapshot to file"), self._take_snapshot)
+        _action("♻", QT_TRANSLATE_NOOP("tilauscope_diagnostics", "Run garbage collection now"), self._gc_now)
 
         ctrl_row.addStretch()
 
@@ -1765,7 +1765,7 @@ class TilauscopeLoggerWindow(QWidget):
             "serial",
             ZonePanel(self._serial_zone_title(),
                       THEME['SUCCESS'],
-                      QApplication.translate("tilauscope_beancave", "⚫ inactive"),
+                      QApplication.translate("tilauscope_diagnostics", "⚫ inactive"),
                       extra_header=self._serial_ctrls),
             self.serial_logger, _LIVE_MAX_LINES, THEME['SUCCESS'],
         )
@@ -1775,9 +1775,9 @@ class TilauscopeLoggerWindow(QWidget):
         # Application TCP flow
         self.tcp_panel = _register(
             "tcp",
-            ZonePanel(QApplication.translate("tilauscope_beancave", "APPLICATION FLOW  (TCP)"),
+            ZonePanel(QApplication.translate("tilauscope_diagnostics", "APPLICATION FLOW  (TCP)"),
                       THEME['ACCENT'],
-                      QApplication.translate("tilauscope_beancave", "⚫ inactive")),
+                      QApplication.translate("tilauscope_diagnostics", "⚫ inactive")),
             self.tcp_logger, _LIVE_MAX_LINES, THEME['ACCENT'],
         )
         self.tcp_display = self.tcp_panel.display
@@ -1786,7 +1786,7 @@ class TilauscopeLoggerWindow(QWidget):
         # Artisan log tail — Start/Stop button hosted in the zone header
         self._tail_running = False
         self.tail_btn = QPushButton(
-            QApplication.translate("tilauscope_beancave", "Start")
+            QApplication.translate("tilauscope_diagnostics", "Start")
         )
         self.tail_btn.setFixedHeight(28)
         self.tail_btn.setCheckable(True)
@@ -1795,9 +1795,9 @@ class TilauscopeLoggerWindow(QWidget):
 
         self.tail_panel = _register(
             "tail",
-            ZonePanel(QApplication.translate("tilauscope_beancave", "ARTISAN LOG  (tail)"),
+            ZonePanel(QApplication.translate("tilauscope_diagnostics", "ARTISAN LOG  (tail)"),
                       THEME['WARNING'],
-                      QApplication.translate("tilauscope_beancave", "⚫ inactive"),
+                      QApplication.translate("tilauscope_diagnostics", "⚫ inactive"),
                       extra_header=[self.tail_btn]),
             None, _TAIL_MAX_LINES, THEME['WARNING'],
         )
@@ -1912,8 +1912,8 @@ class TilauscopeLoggerWindow(QWidget):
         historical default for the non-TRP serial boards this panel was
         built for)."""
         if self._trp_device_configured():
-            return QApplication.translate("tilauscope_beancave", "TRP FLOW  (Serial)")
-        return QApplication.translate("tilauscope_beancave", "ESP32 FLOW  (Serial)")
+            return QApplication.translate("tilauscope_diagnostics", "TRP FLOW  (Serial)")
+        return QApplication.translate("tilauscope_diagnostics", "ESP32 FLOW  (Serial)")
 
     def _trp_device_configured(self) -> bool:
         """## TILAU ## True only if the currently configured Meter (main
@@ -1938,10 +1938,10 @@ class TilauscopeLoggerWindow(QWidget):
             self.serial_panel.set_title(self._serial_zone_title())
             self.trp_hello_btn.setEnabled(trp_configured)
             self.trp_hello_btn.setToolTip(
-                QApplication.translate("tilauscope_beancave",
+                QApplication.translate("tilauscope_diagnostics",
                     "Send the TRP handshake (HELLO TRP/1.0) and detect the connected roaster")
                 if trp_configured else
-                QApplication.translate("tilauscope_beancave",
+                QApplication.translate("tilauscope_diagnostics",
                     "Set the Meter or an Extra Device to a TRP Roaster device to enable this probe")
             )
             if trp_configured:
@@ -2148,20 +2148,20 @@ class TilauscopeLoggerWindow(QWidget):
         active = debugLogLevelActive()
         self.debug_btn.setChecked(active)
         if active:
-            self.debug_btn.setText(QApplication.translate("tilauscope_beancave", "🔴 DEBUG ON"))
+            self.debug_btn.setText(QApplication.translate("tilauscope_diagnostics", "🔴 DEBUG ON"))
             self.debug_btn.setStyleSheet(
                 f"QPushButton {{ background-color: {THEME['CRITICAL']}; color: {THEME['BG']}; "
                 f"font-weight: bold; border-radius: 6px; padding: 4px 14px; "
                 f"font-family: 'JetBrains Mono'; font-size: 12px; }}"
             )
             self.debug_status.setText(
-                QApplication.translate("tilauscope_beancave", "all modules at DEBUG level")
+                QApplication.translate("tilauscope_diagnostics", "all modules at DEBUG level")
             )
             self.debug_status.setStyleSheet(
                 f"color: {THEME['CRITICAL']}; font-size: 12px;"
             )
         else:
-            self.debug_btn.setText(QApplication.translate("tilauscope_beancave", "⚪ DEBUG OFF"))
+            self.debug_btn.setText(QApplication.translate("tilauscope_diagnostics", "⚪ DEBUG OFF"))
             self.debug_btn.setStyleSheet(
                 f"QPushButton {{ background-color: transparent; color: {THEME['SUBTEXT']}; "
                 f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; padding: 4px 14px; "
@@ -2169,7 +2169,7 @@ class TilauscopeLoggerWindow(QWidget):
                 f"QPushButton:hover {{ border-color: {THEME['ACCENT']}; color: {THEME['ACCENT']}; }}"
             )
             self.debug_status.setText(
-                QApplication.translate("tilauscope_beancave", "INFO level (normal)")
+                QApplication.translate("tilauscope_diagnostics", "INFO level (normal)")
             )
             self.debug_status.setStyleSheet(
                 f"color: {THEME['SUBTEXT']}; font-size: 12px;"
@@ -2179,7 +2179,7 @@ class TilauscopeLoggerWindow(QWidget):
         """Update connect button appearance to reflect current state."""
         if connected:
             self.connect_btn.setText(
-                QApplication.translate("tilauscope_beancave", "Disconnect")
+                QApplication.translate("tilauscope_diagnostics", "Disconnect")
             )
             self.connect_btn.setStyleSheet(
                 f"QPushButton {{ background-color: {THEME['CRITICAL']}; color: {THEME['BG']}; "
@@ -2189,7 +2189,7 @@ class TilauscopeLoggerWindow(QWidget):
             )
         else:
             self.connect_btn.setText(
-                QApplication.translate("tilauscope_beancave", "Connect")
+                QApplication.translate("tilauscope_diagnostics", "Connect")
             )
             self.connect_btn.setStyleSheet(
                 f"QPushButton {{ background-color: {THEME['SUCCESS']}; color: {THEME['BG']}; "
@@ -2222,7 +2222,7 @@ class TilauscopeLoggerWindow(QWidget):
         """Update tail Start/Stop button appearance."""
         if running:
             self.tail_btn.setText(
-                QApplication.translate("tilauscope_beancave", "Stop")
+                QApplication.translate("tilauscope_diagnostics", "Stop")
             )
             self.tail_btn.setStyleSheet(
                 f"QPushButton {{ background-color: {THEME['CRITICAL']}; color: {THEME['BG']}; "
@@ -2232,7 +2232,7 @@ class TilauscopeLoggerWindow(QWidget):
             )
         else:
             self.tail_btn.setText(
-                QApplication.translate("tilauscope_beancave", "Start")
+                QApplication.translate("tilauscope_diagnostics", "Start")
             )
             self.tail_btn.setStyleSheet(
                 f"QPushButton {{ background-color: transparent; color: {THEME['SUBTEXT']}; "

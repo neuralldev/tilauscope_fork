@@ -278,7 +278,7 @@ class _AgtronPicker(QDialog):
 
         # title bar
         bar = QHBoxLayout()
-        title_lbl = QLabel(QApplication.translate("tilauscope_beancave", "Agtron estimate"))
+        title_lbl = QLabel(QApplication.translate("tilauscope_repair", "Agtron estimate"))
         title_lbl.setStyleSheet(
             f"font-size:13px; font-weight:bold; color:{THEME['ACCENT']}; background:transparent;")
         btn_x = QPushButton("\u2715")
@@ -294,7 +294,7 @@ class _AgtronPicker(QDialog):
         lay.addLayout(bar)
 
         hint = QLabel(QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_repair",
             "Pick a roast level to prefill the median Agtron of its range."))
         hint.setWordWrap(True)
         hint.setStyleSheet(
@@ -457,7 +457,7 @@ class AlogRepairDialog(QDialog):
         # custom title bar (drag handle + close)
         bar = QHBoxLayout()
         title_lbl = QLabel(
-            QApplication.translate("tilauscope_beancave", "\U0001f527  Repair ALogs"))
+            QApplication.translate("tilauscope_repair", "\U0001f527  Repair ALogs"))
         title_lbl.setStyleSheet(
             f"font-size:15px; font-weight:bold; color:{THEME['ACCENT']}; background:transparent;")
         btn_x = QPushButton("\u2715")
@@ -480,7 +480,7 @@ class AlogRepairDialog(QDialog):
         self._summary_lbl.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:11px;")
         left_lay.addWidget(self._summary_lbl)
         self._incomplete_only = QCheckBox(
-            QApplication.translate("tilauscope_beancave", "Show incomplete only"))
+            QApplication.translate("tilauscope_repair", "Show incomplete only"))
         self._incomplete_only.toggled.connect(lambda _on: self._reload_file_list())
         left_lay.addWidget(self._incomplete_only)
         self._list = QListWidget()
@@ -507,22 +507,22 @@ class AlogRepairDialog(QDialog):
         bean_row = QHBoxLayout()
         self._bean_combo = QComboBox()
         self._bean_combo.currentIndexChanged.connect(self._on_field_changed)
-        bean_row.addWidget(QLabel(QApplication.translate("tilauscope_beancave", "Green bean:")))
+        bean_row.addWidget(QLabel(QApplication.translate("tilauscope_repair", "Green bean:")))
         bean_row.addWidget(self._bean_combo, 1)
         form.addLayout(bean_row)
 
         self._complete_btn = QPushButton(
-            QApplication.translate("tilauscope_beancave", "Complete from bean (empty fields only)"))
+            QApplication.translate("tilauscope_repair", "Complete from bean (empty fields only)"))
         self._complete_btn.clicked.connect(self._complete_from_bean)
         form.addWidget(self._complete_btn)
 
         # title
-        form.addWidget(self._field_label(QApplication.translate("tilauscope_beancave", "TITLE")))
+        form.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "TITLE")))
         self._title_edit = QLineEdit()
         form.addWidget(self._title_edit)
 
         # beans
-        form.addWidget(self._field_label(QApplication.translate("tilauscope_beancave", "BEANS")))
+        form.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "BEANS")))
         self._beans_edit = QPlainTextEdit()
         self._beans_edit.setFixedHeight(82)
         form.addWidget(self._beans_edit)
@@ -552,44 +552,44 @@ class AlogRepairDialog(QDialog):
         self._ambient_edit.setPlaceholderText("\u00b0C")
         self._humidity_edit.setPlaceholderText("20\u201380")
         self._density_edit.setToolTip(QApplication.translate(
-            "tilauscope_beancave", "Green bean density, typical 550\u2013900 g/l"))
+            "tilauscope_repair", "Green bean density, typical 550\u2013900 g/l"))
         self._moisture_edit.setToolTip(QApplication.translate(
-            "tilauscope_beancave", "Green moisture, typical 8\u201314 %"))
+            "tilauscope_repair", "Green moisture, typical 8\u201314 %"))
         self._ambient_edit.setToolTip(QApplication.translate(
-            "tilauscope_beancave", "Ambient temperature at roast (feeds historical analysis)"))
+            "tilauscope_repair", "Ambient temperature at roast (feeds historical analysis)"))
         self._humidity_edit.setToolTip(QApplication.translate(
-            "tilauscope_beancave", "Ambient humidity at roast (feeds historical analysis)"))
+            "tilauscope_repair", "Ambient humidity at roast (feeds historical analysis)"))
 
         grid = QGridLayout()
         grid.addWidget(self._w_in_lbl,  0, 0)
         grid.addWidget(self._w_out_lbl, 0, 1)
-        grid.addWidget(self._field_label(QApplication.translate("tilauscope_beancave", "WEIGHT LOSS")), 0, 2)
+        grid.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "WEIGHT LOSS")), 0, 2)
         grid.addWidget(self._w_in_edit,  1, 0)
         grid.addWidget(self._w_out_edit, 1, 1)
         grid.addWidget(self._loss_lbl,   1, 2)
-        grid.addWidget(self._field_label(QApplication.translate("tilauscope_beancave", "DENSITY")),    2, 0)
-        grid.addWidget(self._field_label(QApplication.translate("tilauscope_beancave", "MOISTURE %")), 2, 1)
-        grid.addWidget(self._field_label(QApplication.translate("tilauscope_beancave", "GREENS TEMP")),2, 2)
+        grid.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "DENSITY")),    2, 0)
+        grid.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "MOISTURE %")), 2, 1)
+        grid.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "GREENS TEMP")),2, 2)
         grid.addWidget(self._density_edit,  3, 0)
         grid.addWidget(self._moisture_edit, 3, 1)
         grid.addWidget(self._greens_edit,   3, 2)
-        grid.addWidget(self._field_label(QApplication.translate("tilauscope_beancave", "AMBIENT \u00b0C")), 4, 0)
-        grid.addWidget(self._field_label(QApplication.translate("tilauscope_beancave", "HUMIDITY %")),     4, 1)
+        grid.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "AMBIENT \u00b0C")), 4, 0)
+        grid.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "HUMIDITY %")),     4, 1)
         grid.addWidget(self._ambient_edit,  5, 0)
         grid.addWidget(self._humidity_edit, 5, 1)
-        grid.addWidget(self._field_label(QApplication.translate("tilauscope_beancave", "COLOR WHOLE")),   6, 0)
-        grid.addWidget(self._field_label(QApplication.translate("tilauscope_beancave", "COLOR GROUND")),  6, 1)
-        grid.addWidget(self._field_label(QApplication.translate("tilauscope_beancave", "COLOR SYSTEM")),  6, 2)
+        grid.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "COLOR WHOLE")),   6, 0)
+        grid.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "COLOR GROUND")),  6, 1)
+        grid.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "COLOR SYSTEM")),  6, 2)
         grid.addWidget(self._whole_edit,      7, 0)
         grid.addWidget(self._ground_edit,     7, 1)
         grid.addWidget(self._color_sys_combo, 7, 2)
-        agtron_btn = QPushButton(QApplication.translate("tilauscope_beancave", "Agtron\u2026"))
+        agtron_btn = QPushButton(QApplication.translate("tilauscope_repair", "Agtron\u2026"))
         agtron_btn.clicked.connect(self._open_agtron)
         grid.addWidget(agtron_btn, 8, 2)
         form.addLayout(grid)
 
         # filename preview
-        form.addWidget(self._field_label(QApplication.translate("tilauscope_beancave", "\u2192 NEW FILENAME")))
+        form.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "\u2192 NEW FILENAME")))
         self._fname_lbl = QLabel("")
         self._fname_lbl.setWordWrap(True)
         self._fname_lbl.setStyleSheet(
@@ -601,16 +601,16 @@ class AlogRepairDialog(QDialog):
 
         # buttons
         btn_row = QHBoxLayout()
-        self._record_btn = QPushButton(QApplication.translate("tilauscope_beancave", "Record"))
+        self._record_btn = QPushButton(QApplication.translate("tilauscope_repair", "Record"))
         self._record_btn.setObjectName("btnPrimary")
         self._record_btn.clicked.connect(self._record)
-        self._next_btn = QPushButton(QApplication.translate("tilauscope_beancave", "Next incomplete \u25b8"))
+        self._next_btn = QPushButton(QApplication.translate("tilauscope_repair", "Next incomplete \u25b8"))
         self._next_btn.clicked.connect(lambda: self._select_next_incomplete(self._list.currentRow()))
         ## TILAU ## — batch stamp tilau_name_map on legacy alogs
         self._stamp_btn = QPushButton(
-            QApplication.translate("tilauscope_beancave", "Stamp device map"))
+            QApplication.translate("tilauscope_repair", "Stamp device map"))
         self._stamp_btn.setToolTip(QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_repair",
             "Rebuild tilau_name_map in all ALogs that pre-date automatic device-index stamping."))
         self._stamp_btn.clicked.connect(self._stamp_device_map_batch)
         # Toggle « exclure de l'apprentissage » sur l'alog sélectionné : pose /
@@ -618,17 +618,17 @@ class AlogRepairDialog(QDialog):
         # immédiate, pas de Record) — l'analyse historique du plan saute les
         # fichiers flaggés (FC, timings, drop couleur, courbe maître).
         self._exclude_btn = QPushButton(
-            QApplication.translate("tilauscope_beancave", "\U0001f6ab Exclude from learning"))
+            QApplication.translate("tilauscope_repair", "\U0001f6ab Exclude from learning"))
         self._exclude_btn.setCheckable(True)
         self._exclude_btn.setToolTip(QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_repair",
             "Flag the selected ALog so plan learning skips it (written to the file immediately; click again to re-admit it)."))
         self._exclude_btn.setStyleSheet(
             f"QPushButton:checked {{ border:1.5px solid {THEME.get('CRITICAL', '#F38BA8')};"
             f" color:{THEME.get('CRITICAL', '#F38BA8')};"
             f" background-color: rgba(243,139,168,0.10); }}")
         self._exclude_btn.clicked.connect(self._toggle_exclude_learning)
-        close_btn = QPushButton(QApplication.translate("tilauscope_beancave", "Close"))
+        close_btn = QPushButton(QApplication.translate("tilauscope_repair", "Close"))
         close_btn.setObjectName("btnGhost")
         close_btn.clicked.connect(self.close)
         btn_row.addWidget(self._record_btn)
@@ -669,7 +669,7 @@ class AlogRepairDialog(QDialog):
         directory = Path(self._bc.alog_directory) if self._bc.alog_directory else None
         if not directory or not directory.is_dir():
             self._summary_lbl.setText(QApplication.translate(
-                "tilauscope_beancave", "ALog directory not set."))
+                "tilauscope_repair", "ALog directory not set."))
             return
         files = sorted(directory.glob("*.alog"), key=lambda p: p.name.lower())
         incomplete = 0
@@ -702,7 +702,7 @@ class AlogRepairDialog(QDialog):
             self._list.addItem(item)
             shown += 1
         self._summary_lbl.setText(QApplication.translate(
-            "tilauscope_beancave", "{0} files \u00b7 {1} incomplete \u00b7 {2} shown").format(
+            "tilauscope_repair", "{0} files \u00b7 {1} incomplete \u00b7 {2} shown").format(
                 len(files), incomplete, shown))
 
     # ── selection (with unsaved-changes guard) ──────────────────────────────
@@ -719,8 +719,8 @@ class AlogRepairDialog(QDialog):
         # guard unsaved edits before switching away
         if self._dirty and self._current_path is not None and path != self._current_path:
             if not self._confirm(
-                    QApplication.translate("tilauscope_beancave", "Unsaved changes"),
-                    QApplication.translate("tilauscope_beancave",
+                    QApplication.translate("tilauscope_repair", "Unsaved changes"),
+                    QApplication.translate("tilauscope_repair",
                         "Discard unsaved changes to this profile?")):
                 self._reselect(self._current_path)
                 return
@@ -740,9 +740,9 @@ class AlogRepairDialog(QDialog):
         self._loading = True
         unit = self._weight_unit(data)
         self._w_in_lbl.setText(QApplication.translate(
-            "tilauscope_beancave", "WEIGHT IN ({0})").format(unit))
+            "tilauscope_repair", "WEIGHT IN ({0})").format(unit))
         self._w_out_lbl.setText(QApplication.translate(
-            "tilauscope_beancave", "WEIGHT OUT ({0})").format(unit))
+            "tilauscope_repair", "WEIGHT OUT ({0})").format(unit))
 
         self._title_edit.setText(data.get('title', '') or '')
         self._beans_edit.setPlainText(data.get('beans', '') or '')
@@ -768,7 +768,7 @@ class AlogRepairDialog(QDialog):
         beans = self._green_beans()
         self._bean_combo.blockSignals(True)
         self._bean_combo.clear()
-        self._bean_combo.addItem(QApplication.translate("tilauscope_beancave", "\u2014 none \u2014"), userData=None)
+        self._bean_combo.addItem(QApplication.translate("tilauscope_repair", "\u2014 none \u2014"), userData=None)
         matched = match_bean(data, beans)
         sel_idx = 0
         for i, b in enumerate(beans, start=1):
@@ -790,8 +790,8 @@ class AlogRepairDialog(QDialog):
         if bean is None:
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "No bean"),
-                QApplication.translate("tilauscope_beancave", "Select a green bean first."),
+                QApplication.translate("tilauscope_repair", "No bean"),
+                QApplication.translate("tilauscope_repair", "Select a green bean first."),
                 QMessageBox.Icon.Information)
             return
 
@@ -831,8 +831,8 @@ class AlogRepairDialog(QDialog):
         if not directory or not directory.is_dir():
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "No directory"),
-                QApplication.translate("tilauscope_beancave", "ALog directory not set."),
+                QApplication.translate("tilauscope_repair", "No directory"),
+                QApplication.translate("tilauscope_repair", "ALog directory not set."),
                 QMessageBox.Icon.Warning)
             return
 
@@ -847,8 +847,8 @@ class AlogRepairDialog(QDialog):
             return
 
         progress = QProgressDialog(
-            QApplication.translate("tilauscope_beancave", "Stamping device map…"),
-            QApplication.translate("tilauscope_beancave", "Cancel"),
+            QApplication.translate("tilauscope_repair", "Stamping device map…"),
+            QApplication.translate("tilauscope_repair", "Cancel"),
             0, total, self,
         )
         progress.setWindowModality(Qt.WindowModality.WindowModal)
@@ -864,7 +864,7 @@ class AlogRepairDialog(QDialog):
                 break
             progress.setLabelText(
                 QApplication.translate(
-                    "tilauscope_beancave", "Processing {0}…").format(fp.name))
+                    "tilauscope_repair", "Processing {0}…").format(fp.name))
             progress.setValue(idx)
             QApplication.processEvents()
 
@@ -901,12 +901,12 @@ class AlogRepairDialog(QDialog):
         progress.setValue(total)
 
         msg = QApplication.translate(
-            "tilauscope_beancave",
+            "tilauscope_repair",
             "{0} file(s) stamped · {1} already up-to-date · {2} error(s)").format(
                 stamped, skipped, errors)
         show_styled_message(
             self,
-            QApplication.translate("tilauscope_beancave", "Stamp device map"),
+            QApplication.translate("tilauscope_repair", "Stamp device map"),
             msg,
             QMessageBox.Icon.Information)
         if stamped:
@@ -922,8 +922,8 @@ class AlogRepairDialog(QDialog):
         if wi > 0.0 and wo > 0.0 and wo >= wi:
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Invalid weights"),
-                QApplication.translate("tilauscope_beancave",
+                QApplication.translate("tilauscope_repair", "Invalid weights"),
+                QApplication.translate("tilauscope_repair",
                     "Weight out ({0}) must be lower than weight in ({1}).").format(
                         self._fmt(wo), self._fmt(wi)),
                 QMessageBox.Icon.Warning)
@@ -956,8 +956,8 @@ class AlogRepairDialog(QDialog):
         # collision guard: never silently clobber a different existing file
         if new_path.exists() and new_path.resolve() != self._current_path.resolve():
             if not self._confirm(
-                    QApplication.translate("tilauscope_beancave", "File exists"),
-                    QApplication.translate("tilauscope_beancave",
+                    QApplication.translate("tilauscope_repair", "File exists"),
+                    QApplication.translate("tilauscope_repair",
                         "{0} already exists. Overwrite it?").format(new_name)):
                 return
 
@@ -969,8 +969,8 @@ class AlogRepairDialog(QDialog):
             _log.error("ALog repair write failed: %s", exc)
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Save Error"),
-                QApplication.translate("tilauscope_beancave",
+                QApplication.translate("tilauscope_repair", "Save Error"),
+                QApplication.translate("tilauscope_repair",
                     "Could not write the ALog file:<br><b>{0}</b>").format(exc),
                 QMessageBox.Icon.Warning, rich=True)
             return
@@ -1007,8 +1007,8 @@ class AlogRepairDialog(QDialog):
             self._exclude_btn.setChecked(not checked)
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Save Error"),
-                QApplication.translate("tilauscope_beancave",
+                QApplication.translate("tilauscope_repair", "Save Error"),
+                QApplication.translate("tilauscope_repair",
                     "Could not write the ALog file:<br><b>{0}</b>").format(exc),
                 QMessageBox.Icon.Warning, rich=True)
             return
@@ -1093,10 +1093,10 @@ class AlogRepairDialog(QDialog):
         if missing_keys:
             labels = ', '.join(_FIELD_LABELS.get(k, k) for k in missing_keys)
             self._missing_lbl.setText(
-                QApplication.translate("tilauscope_beancave", "Missing: {0}").format(labels))
+                QApplication.translate("tilauscope_repair", "Missing: {0}").format(labels))
         else:
             self._missing_lbl.setText(
-                QApplication.translate("tilauscope_beancave", "\u2713 All required fields filled"))
+                QApplication.translate("tilauscope_repair", "\u2713 All required fields filled"))
 
         # weight loss badge
         loss = weight_loss_pct(
@@ -1104,7 +1104,7 @@ class AlogRepairDialog(QDialog):
         wi = _safe_float(self._w_in_edit.text())
         wo = _safe_float(self._w_out_edit.text())
         if wi > 0.0 and wo > 0.0 and wo >= wi:
-            self._loss_lbl.setText(QApplication.translate("tilauscope_beancave", "out \u2265 in!"))
+            self._loss_lbl.setText(QApplication.translate("tilauscope_repair", "out \u2265 in!"))
             self._loss_lbl.setStyleSheet(f"color:{THEME.get('CRITICAL', '#F38BA8')}; font-size:12px;")
         elif loss is None:
             self._loss_lbl.setText("\u2014")
@@ -1119,7 +1119,7 @@ class AlogRepairDialog(QDialog):
         checks = plausibility_checks(self._current_values())
         if checks:
             self._check_lbl.setText(
-                QApplication.translate("tilauscope_beancave", "Check: {0}").format('; '.join(checks)))
+                QApplication.translate("tilauscope_repair", "Check: {0}").format('; '.join(checks)))
             self._check_lbl.setVisible(True)
         else:
             self._check_lbl.setText("")
@@ -1185,8 +1185,8 @@ class AlogRepairDialog(QDialog):
 
     def closeEvent(self, event) -> None:  # noqa: N802 (Qt override)
         if self._dirty and not self._confirm(
-                QApplication.translate("tilauscope_beancave", "Unsaved changes"),
-                QApplication.translate("tilauscope_beancave",
+                QApplication.translate("tilauscope_repair", "Unsaved changes"),
+                QApplication.translate("tilauscope_repair",
                     "Discard unsaved changes and close?")):
             event.ignore()
             return

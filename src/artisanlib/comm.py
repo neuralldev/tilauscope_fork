@@ -2115,6 +2115,7 @@ class serialport:
         FIX: guard explicite sur tilauscope_mqtt_client (était None-unsafe).
         FIX: multiplier/divider maintenant appliqués (étaient ignorés).
         FIX: résolution par sensor.id plutôt que par index brut (robuste au réordonnancement).
+        Conversion °C/°F selon l'unité déclarée du capteur, à la frontière d'acquisition.
         """
         if (self.aw.mqtt_database is None
                 or self.aw.tilauscope_mqtt_client is None
@@ -2124,7 +2125,11 @@ class serialport:
         if index >= len(sensors):
             return -1.0
         sensor_id = sensors[index].id
-        val = self.aw.qmc.tilau_mqtt_ports.poll_sensor_by_id(sensor_id, self.aw.mqtt_database)
+        # qmc.mode is the unit the application works in: a sensor that declares a
+        # temperature unit is converted into it, a unitless one passes through.
+        val = self.aw.qmc.tilau_mqtt_ports.poll_sensor_by_id(
+            sensor_id, self.aw.mqtt_database, self.aw.qmc.mode
+        )
         return val if val is not None else -1.0
 
     def TILAUMQTTBRIDGE12(self) -> tuple[float, float, float]:
