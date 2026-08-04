@@ -32,7 +32,7 @@ pytest-datadir==1.8.0
 hypothesis>=6.155.7
 coverage>=7.14.3
 coverage-badge==1.1.2
-codespell==2.4.2
+codespell==2.4.3
 # the following 2 packages are not installed along aiohttp on Python3.12 and make mypy complain
 async_timeout==5.0.1
 cycler==0.12.1
