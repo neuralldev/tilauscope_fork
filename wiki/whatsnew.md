@@ -1,3 +1,37 @@
+# TilauScope 4.2
+
+This release rewrites how the roast plan reasons about heat, and finishes turning TilauScope into an application of its own.
+
+## 🔥 The roast plan now reasons about the bean, not just the curve
+
+* **The burner is held to what the coffee needs, not to a grid.** Maillard reactions absorb heat: cutting the burner there does not slow the roast down gently, it starves the reaction while bean temperature keeps climbing on the drum's own heat. The plan now works out that demand from the batch itself — its process first, then variety and origin, then density, moisture, water activity and the room the machine is breathing — and keeps the heat above it for the whole phase. Washed coffees are held highest and longest; naturals and fermented lots, whose sugars are already part-broken-down, are released earlier.
+* **The development setting is reached after first crack, never before it.** The plan used to ask for it a full minute early, which is the classic way to produce a flat, bread-like cup while the curve still looks perfectly correct.
+* **The plan replays your own hand before dry end.** When your past roasts of a coffee show you bringing the burner down during drying to put a flattening rate of rise back on a slope, the plan now schedules that descent — starting as early as you actually start, in steps the size of yours, landing on the value you actually land on. A coffee you have never had to correct keeps its charge setting straight through drying.
+* **The plan says when a roast is not achievable** instead of printing numbers that cannot be held: when the rate of rise would have to climb through Maillard rather than fall, when it would have to collapse before first crack, or when the burner would have to come down faster than you can see what you are doing. In each case it names the setup that caused it and stops there — a chain reaction is not recovered mid-roast, and the answer belongs to the next roast.
+* **Charge temperature is set by the process** — washed, natural, decaf — rather than by the target roast level, and small batches now charge at the same temperature as any other.
+* **Phase durations follow standard practice**: drying is about half the roast, development is the professional duration for the target level, Maillard is the balance. Drying is never planned under 4:30 nor Maillard under 3:00; below that the roast is not reachable on a drum of this size. The development ratio is now reported as a consequence rather than targeted.
+* **The plan states the rate of rise it expects to arrive at first crack with**, not only the Maillard average — an average says nothing about where the roast lands, and the landing is what sets first crack.
+* Planned burner power now respects each machine's own safe ceiling, and never plans below the point where the burner stops being a usable lever.
+
+## 🖥️ TilauScope is now its own application
+
+* The main window carries a **TilauScope title bar** in the Catppuccin theme, extended to the menu bar, dropdown menus, tooltips and scrollbars.
+* macOS identifies TilauScope as itself rather than borrowing Artisan's identity, so the two no longer compete over which one opens a roast file, and links back to a roast from an exported report open the right application.
+* Starting TilauScope while a copy is already running now **says so and closes the copy you just started**, instead of quietly opening a second window that competed with the first for the meter, the Bluetooth devices and the bean database.
+
+## 📡 MQTT and preheating
+
+* **MQTT sensors are managed in Configuration ▸ INTEGRATIONS**, under the broker they belong to, edited in place. Each sensor declares the unit it publishes in, and temperatures are converted on arrival into the unit the session is working in.
+* TilauScope can now **ask a gateway for a reading** instead of waiting for one — a plug reporting once a minute no longer leaves its channel empty for most of the roast. Brokers can be reached over **TLS**, and sensors keep reporting after a connection drops and comes back.
+* The roast graph shows a **Preheat panel** while TilauPID heats the machine — setpoint, the temperature being steered on, the gap left, rate of rise, applied power and time remaining — turning to *Ready to charge* once the band is reached.
+
+## 🏷️ End of roast and labels
+
+* The end-of-roast form can **print the roast label as a PDF on the spot**, from the weight and colour just entered, and asks once before closing if you have not printed one.
+* A curve snapshot now opens as soon as it is saved, like the roast card already did.
+
+---
+
 # TilauScope 4.1
 
 A major update that makes TilauScope easier for beginners while providing more powerful tools to explore and improve your roasts. Here's what's new.

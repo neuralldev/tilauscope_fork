@@ -1,7 +1,7 @@
 Version: 0.0.0.0
-CompanyName: artisan-scope.org
-FileDescription: Artisan Roaster Scope
-InternalName: Artisan
-LegalCopyright: Copyright 2010-yyyy, Artisan developers. GNU General Public License
-OriginalFilename: artisan.exe
-ProductName: Artisan
+CompanyName: TilauScope
+FileDescription: TilauScope, Roast Logger
+InternalName: TilauScope
+LegalCopyright: GNU General Public License (GPL)
+OriginalFilename: TilauScope.exe
+ProductName: TilauScope

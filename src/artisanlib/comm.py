@@ -1,8 +1,8 @@
 #
 # ABOUT
-# Artisan Device Communication
+# artisan scope device communication
 #
-# COPYRIGHT (C) 2010-2026 The Artisan team represented by
+# COPYRIGHT (C) 2010-2026 The artisan team represented by
 #   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
 #
 # LICENSE
@@ -2137,7 +2137,7 @@ class serialport:
         tx = self.aw.qmc.timeclock.elapsedMilli()
         t2 = self._get_mqtt_data(0)
         t1 = self._get_mqtt_data(1)
-        #_logd.debug(f"tilauscope debug read mqtt broker")
+        #_logd.debug(f"tilauscope debug read mqtt broker tx={tx} t1={t1} t2={t2}")
         return tx, t1, t2
     
     def TILAUMQTTBRIDGE34(self) -> tuple[float, float, float]:
@@ -2145,7 +2145,7 @@ class serialport:
         tx = self.aw.qmc.timeclock.elapsedMilli()
         t2 = self._get_mqtt_data(2)
         t1 = self._get_mqtt_data(3)
-        #_logd.debug(f"tilauscope debug read mqtt broker")
+        #_logd.debug(f"tilauscope debug read mqtt broker tx={tx} t1={t1} t2={t2}")
         return tx, t1, t2
 
     def TILAUMQTTBRIDGE56(self) -> tuple[float, float, float]:

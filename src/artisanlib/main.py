@@ -2,7 +2,7 @@
 # This program shows how to plot the temperature and its rate of change from a
 # roasting machine, PID or a thermocouple meter.
 #
-# COPYRIGHT (C) 2010-2026 The Artisan team represented by
+# COPYRIGHT (C) 2010-2026 The artisan team represented by
 #   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
 #
 # LICENSE
@@ -99,7 +99,7 @@ try: # activate support for hiDPI screens on Windows
 except Exception: # pylint: disable=broad-except
     pass
 
-# write logtrace to Console on OS X:
+# write logtrace to Console on macOS:
 #try:
 #..
 #except Exception as e: # pylint: disable=broad-except
@@ -114,7 +114,7 @@ from PyQt6.QtWidgets import (QApplication, QWidget, QMessageBox, QLabel, QMainWi
                          QInputDialog, QGroupBox, QLineEdit,
                          QSizePolicy, QVBoxLayout, QHBoxLayout, QPushButton,
                          QLCDNumber, QSpinBox, QComboBox,
-                         QSlider, 
+                         QSlider,
                          QColorDialog, QFrame, QScrollArea, QProgressDialog,
                          QStyleFactory, QMenuBar, QMenu, QLayout, QDockWidget)
 from PyQt6.QtGui import (QScreen, QPageLayout, QAction, QImageReader, QWindow,
@@ -464,14 +464,14 @@ class Artisan(QtSingleApplication):
                 elif instance_id == self._id:
                     res = self._sendMessage2ArtisanInstance(message,self._id)
                 if not res:
-                    # get the path of the artisan.exe file
+                    # get the path of the tilauscope.exe file
                     if getattr(sys, 'frozen', False):
                         application_path = os.path.dirname(sys.executable)
-                        application_path += '\\artisan.exe'
-                    # or the artisan py file if running from source
+                        application_path += '\\tilauscope.exe' ## TILAU ## use the tilauscope.exe file if running from frozen
+                    # or the tilauscope py file if running from source
                     else:
                         application_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))  #grandparent path
-                        application_path += '\\artisan.py'
+                        application_path += '\\tilauscope.py' ## TILAU ## fork entry point, was artisan.py
                     application_path = re.sub(r'\\',r'/',application_path)
                     # must start viewer without an argv else it thinks it was started from a link and sends back to artisan
                     os.startfile(application_path) # type:ignore[unused-ignore,attr-defined] # @UndefinedVariable # pylint: disable=maybe-no-member
@@ -578,49 +578,7 @@ if qsettings.contains('scale_factor'):
     os.environ['QT_SCALE_FACTOR'] = f"{float(qsettings.value('scale_factor')):.2f}"
 
 app = Artisan(app_args)
-
-
-
-# On the first run if there are legacy settings under "YourQuest" but no new settings under "artisan-scope" then the legacy settings
-# will be copied to the new settings location. Once settings exist under "artisan-scope" the legacy settings under "YourQuest" will
-# no longer be read or saved.  At start-up, versions of Artisan before to v2.0 will no longer share settings with versions v2.0 and after.
-# Settings can be shared among all versions of Artisan by explicitly saving and loading them using Help>Save/Load Settings.
-
-settingsRelocated:bool = False
-try:
-    app.setApplicationName(application_name)                                #needed by QSettings() to store windows geometry in operating system
-
-    app.setOrganizationName('YourQuest')                                    #needed by QSettings() to store windows geometry in operating system
-    app.setOrganizationDomain('p.code.google.com')                          #needed by QSettings() to store windows geometry in operating system
-    legacysettings = QSettings()
-    app.setOrganizationName(application_organization_name)                  #needed by QSettings() to store windows geometry in operating system
-    app.setOrganizationDomain(application_organization_domain)              #needed by QSettings() to store windows geometry in operating system
-    newsettings = QSettings()
-
-    # copy settings from legacy to new if newsettings do not exist, legacysettings do exist, and were not previously copied
-    if not newsettings.contains('Mode') and legacysettings.contains('Mode') and legacysettings.contains('_settingsCopied') and legacysettings.value('_settingsCopied') != 1:
-        settingsRelocated = True
-        # copy Artisan settings
-        for key in legacysettings.allKeys():
-            newsettings.setValue(key,legacysettings.value(key))
-        legacysettings.setValue('_settingsCopied', 1)  # prevents copying again in the future, this key not cleared by a Factory Reset
-
-        # copy ArtisanViewer settings
-        app.setApplicationName(application_viewer_name)                         #needed by QSettings() to store windows geometry in operating system
-
-        app.setOrganizationName('YourQuest')                                    #needed by QSettings() to store windows geometry in operating system
-        app.setOrganizationDomain('p.code.google.com')                          #needed by QSettings() to store windows geometry in operating system
-        legacysettings = QSettings()
-        app.setOrganizationName(application_organization_name)                  #needed by QSettings() to store windows geometry in operating system
-        app.setOrganizationDomain(application_organization_domain)              #needed by QSettings() to store windows geometry in operating system
-        newsettings = QSettings()
-        for key in legacysettings.allKeys():
-            newsettings.setValue(key,legacysettings.value(key))
-    del legacysettings   #free up memory?
-    del newsettings      #free up memory?
-except Exception: # pylint: disable=broad-except
-    pass
-
+app.setApplicationName(application_name)                                #needed by QSettings() to store windows geometry in operating system
 ## TILAU ## Carry an Artisan-identity install onto the fork's own store. Must run
 ## here: after the app identity is known, but before the first QSettings() read
 ## and before getDataDirectory() memoises its path for the session. Copy-only —
@@ -1536,7 +1494,7 @@ class ApplicationWindow(QMainWindow):
         'taskWebDisplayGreenActive', 'taskWebDisplayGreenPort', 'taskWebDisplayRoastedActive', 'taskWebDisplayRoastedPort',
         'taskWebDisplayRoastedIndexPath', 'taskWebDisplayRoastedWebSocketPath', 'taskWebDisplayGreen_server', 'taskWebDisplayRoasted_server',
         'custom_scale_ids', 'custom_scale_names',
-        'scale_manager', 'scale1_model', 'scale1_name', 'scale1_id', 'container1_idx', 'two_bucket_mode', 'green_task_precision', 'scale2_model', 'scale2_name', 'scale2_id', 'container2_idx',
+        'scale_manager', 'scale1_model', 'scale1_name', 'scale1_id', 'container1_idx', 'two_bucket_mode', 'green_task_precision', 'scale2_model', 'scale2_name', 'scale2_id', 'container2_idx', 'scale1_dedicated_for_green_only', 'scale2_dedicated_for_roasted_only',
         'WebLCDsAlerts', 'EventsDlg_activeTab', 'graphColorDlg_activeTab', 'PID_DlgControl_activeTab', 'CurveDlg_activeTab', 'editGraphDlg_activeTab',
         'backgroundDlg_activeTab', 'DeviceAssignmentDlg_activeTab', 'AlarmDlg_activeTab', 'schedule_activeTab', 'StatisticsDlg_activeTab', 'resetqsettings', 'settingspath', 'wheelpath', 'profilepath',
         'userprofilepath', 'printer', 'main_widget', 'defaultdpi', 'dpi', 'qmc', 'HottopControlActive', 'AsyncSamplingTimer', 'wheeldialog',
@@ -1711,9 +1669,6 @@ class ApplicationWindow(QMainWindow):
         self.scheduler_filters_visible:bool = False # scheduler filter pane visible?
         self.scheduler_auto_open:bool = True # if set the scheduler is activated (window opened) automatically if there are scheduled items
 
-        # initialize the BBP metrics
-        self.resetBBPMetrics()
-
         # large LCDs
         self.largeLCDs_dialog:LargeMainLCDs|None = None
         self.LargeLCDsFlag:bool = False
@@ -1752,6 +1707,8 @@ class ApplicationWindow(QMainWindow):
         self.scale1_id:str|None = None    # the id, eg. the BT address (like "24:71:89:cc:09:05")
         self.container1_idx:int = -1 # -1: no container set; otherwise index into selected qmc.container_names/qmc.container_weights
         self.two_bucket_mode:bool = False # if True, the TaskManager allows to split green task weight into two buckets
+        self.scale1_dedicated_for_green_only:bool = False
+        self.scale2_dedicated_for_roasted_only:bool = False
         self.green_task_precision:float = 10 # precision in percent (range [0.1 - 10%]; if set to 0 all "non-overlapping" weights are accepted)
         # scale2: just for green
         self.scale2_model:int|None = None
@@ -2625,6 +2582,7 @@ class ApplicationWindow(QMainWindow):
         self.deviceAction.triggered.connect(self.deviceassigment)
         self.deviceAction.setShortcut('Ctrl+D')
 
+        ## TILAU ##
         self.tilauscopeConfigAction:QAction = QAction(QApplication.translate('Menu', 'TilauScope Config...'), self)
         self.tilauscopeConfigAction.triggered.connect(self.tilauscope_config)
 
@@ -3079,6 +3037,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: #147bb3;
                     background-color: white;
+                    border-radius:4;
                 }
                 QPushButton:!enabled {
                     color: darkgrey;
@@ -3101,7 +3060,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: #cc0f50;
                     background-color: white;
-
+                    border-radius:4;
                 }
                 QPushButton:!enabled {
                     color: darkgrey;
@@ -3124,6 +3083,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: #147bb3;
                     background-color: white;
+                    border-radius:4;
                 }
                 QPushButton:!enabled {
                     color: #EFEFEF;
@@ -3146,6 +3106,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: yellow;
                     background-color: #ff3d00;
+                    border-radius:4;
                 }
                 QPushButton:!enabled {
                     color: darkgrey;
@@ -3171,6 +3132,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: white;
                     background-color: #4c97c3;
+                    border-radius:4;
                 }
                 QPushButton:!enabled {
                     color: darkgrey;
@@ -3193,6 +3155,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: white;
                     background-color: #3979ae;
+                    border-radius:4;
                 }
                 QPushButton:!enabled {
                     color: darkgrey;
@@ -3215,6 +3178,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: white;
                     background-color: #cc0f50;
+                    border-radius:4;
                 }
                 QPushButton:!enabled {
                     color: darkgrey;
@@ -3237,6 +3201,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: white;
                     background-color: #3979ae;
+                    border-radius:4;
                 }
                 QPushButton:!enabled {
                     color: darkgrey;
@@ -3259,6 +3224,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: yellow;
                     background-color: #ff3d00;
+                    border-radius:4;
                 }
                 QPushButton:!enabled {
                     color: darkgrey;
@@ -3281,6 +3247,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: white;
                     background-color: #4c97c3;
+                    border-radius:4;
                 }
                 QPushButton:!enabled {
                     color: darkgrey;
@@ -3303,6 +3270,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: white;
                     background-color: #cc0f50;
+                    border-radius:4;
                 }
                 QPushButton:!enabled {
                     color: darkgrey;
@@ -3325,6 +3293,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: white;
                     background-color:""" + createGradient('#db5785') + """ ;
+                    border-radius:4;
                 }
                 QPushButton:pressed {
                     color: #EEEEEE;
@@ -3343,6 +3312,7 @@ class ApplicationWindow(QMainWindow):
                     font-weight: bold;
                     color: white;
                     background-color:""" + createGradient('#64b7d8') + """ ;
+                    border-radius:4;
                 }
                 QPushButton:pressed {
                     color: #EEEEEE;
@@ -4321,18 +4291,6 @@ class ApplicationWindow(QMainWindow):
 
         self.editgraphdialog:editGraphDlg|bool|None = None
 
-#        # provide information message to user about sharing settings at start-up
-        if settingsRelocated:
-            string =  QApplication.translate('Message','Welcome to version {0} of artisan!').format(__version__) + '\n\n'
-            string += QApplication.translate('Message','This is a one time message to inform you about a change in artisan.') + '\n\n'
-            string += QApplication.translate('Message','If you never run older versions of artisan you can skip this message, the change does not affect you.') + '  '
-            string += QApplication.translate('Message','artisan preserves all your configuration settings when you exit so they will automatically be available the next time you start artisan.') + '  '
-            string += QApplication.translate('Message','Beginning with release v2.0, settings will no longer be automatically shared at start-up with versions before v2.0.') + '\n\n'
-            string += QApplication.translate('Message','Do not worry. Since this is the first time you opened this new version artisan has already loaded your last used settings.') + '\n\n'
-            string += QApplication.translate('Message',"To share settings between this version and artisan versions before v2.0 use 'Help>Save Settings' and 'Help>Load Settings'.") + '\n\n'
-            string += QApplication.translate('Message','Enjoy using artisan, The artisan team')
-            QMessageBox.information(self, QApplication.translate('Message','One time message about loading settings at start-up'),string)
-
         # provide information message to user about artisanViewer the first time it is started
         if self.artisanviewerFirstStart:
             string =  QApplication.translate('Message','Welcome to the artisanViewer!').format(__version__) + '\n\n'
@@ -4416,8 +4374,9 @@ class ApplicationWindow(QMainWindow):
 #            self.installEventFilter(self)
 
 #PLUS
+        ## TILAU ##
         # self.updatePlusStatusSignal.connect(self.updatePlusStatusSlot)
-
+        ## TILAU ##
         # QTimer.singleShot(2000,self.donate)
 
         QTimer.singleShot(0, self.logStartupTime)
@@ -5161,11 +5120,11 @@ class ApplicationWindow(QMainWindow):
                 if self.comparator is None and not self.qmc.designerflag and not self.qmc.wheelflag and self.qmc.ax is not None:
                     self.setWindowFilePath(self.curFile)
             # no profile loaded
-            elif __release_sponsor_name__ != '': # pyright:ignore[reportUnnecessaryComparison]
-                self.setWindowTitle(f"{dirtySign}{appTitle} – {__release_sponsor_name__} ({QApplication.translate('About','Release Sponsor')})")
-                self.setWindowFilePath('')
+            #elif __release_sponsor_name__ != '': # pyright:ignore[reportUnnecessaryComparison]
+            #    self.setWindowTitle(f"{dirtySign}{appTitle} – {__release_sponsor_name__} ({QApplication.translate('About','Release Sponsor')})")
+            #    self.setWindowFilePath('')
             elif __tilau__:
-                self.setWindowTitle(f"{dirtySign}{appTitle} - plus TilauScope by Tilau")
+                self.setWindowTitle(f"{dirtySign}{appTitle}")
                 self.setWindowFilePath('')
             else:
                 self.setWindowTitle(f'{dirtySign}{appTitle}')
@@ -5702,6 +5661,7 @@ class ApplicationWindow(QMainWindow):
         if not self.qmc.flagstart or self.qmc.title_show_always:
             self.qmc.setProfileTitle(self.qmc.title,updatebackground=True)
         self.qmc.weight = (rr['weightIn'],self.qmc.weight[1],rr['weightUnit'])
+        self.qmc.end_weight_est = 0
         if 'weightOut' in rr:
             self.qmc.weight = (self.qmc.weight[0],rr['weightOut'],rr['weightUnit'])
         else:
@@ -6161,6 +6121,7 @@ class ApplicationWindow(QMainWindow):
                             weight_unit = self.qmc.weight[2]
                             self.qmc.last_batchsize = convertWeight(self.qmc.roastersize_setup,1,0) # nominal batch size in g
                             nominal_batch_size = convertWeight(self.qmc.roastersize_setup,1,weight_units.index(weight_unit))
+                            self.qmc.end_weight_est = 0
                             self.qmc.weight = (nominal_batch_size,0,weight_unit)
                         # size set, ask for heating
                         resi:int|None
@@ -6244,6 +6205,7 @@ class ApplicationWindow(QMainWindow):
                         self.sendmessage(QApplication.translate('Message','Action canceled'))
                     else:
                         # setup not canceled, we establish the last_batchsize
+                        self.qmc.end_weight_est = 0
                         self.qmc.weight = (convertWeight(self.qmc.last_batchsize,0,weight_units.index(self.qmc.weight[2])),0,self.qmc.weight[2])
                     self.establish_etypes()
                 self.qmc.redraw(False,False)
@@ -7992,6 +7954,18 @@ class ApplicationWindow(QMainWindow):
             else:
                 rcParams['font.family'] = ['Comic Neue', 'Comic Sans MS']
             self.set_mpl_fontproperties(getResourcePath() + 'ComicNeue-Regular.ttf')
+        elif self.qmc.graphfont == 12:
+            # font Nunito  selected
+            # https://fonts.google.com/specimen/Nunito
+            rcParams['font.size'] = 12.0
+            rcParams['font.family'] = ['Nunito']
+            self.set_mpl_fontproperties(getResourcePath() + 'Nunito-Regular.ttf')
+        elif self.qmc.graphfont == 13:
+            # font Nunito  selected
+            # https://fonts.google.com/noto/specimen/Noto+Sans+Mono
+            rcParams['font.size'] = 12.0
+            rcParams['font.family'] = ['NotoSansMono']
+            self.set_mpl_fontproperties(getResourcePath() + 'NotoSansMono-Regular.ttf')
         elif self.qmc.graphfont == 2 and platform.system() != 'Linux':
             # font Comic selected
             rcParams['axes.unicode_minus'] = True
@@ -9864,7 +9838,7 @@ class ApplicationWindow(QMainWindow):
                                         if args.startswith('(') and args.endswith(')'):
                                             comma_pos = args.index(',')
                                             target = args[1:comma_pos].strip()
-                                            vs:str = args[comma_pos+1:-1].strip()
+                                            vs = args[comma_pos+1:-1].strip()
                                             try:
                                                 # <value> can be a formula like "1 - _" or "1 - $"
                                                 vs = str(eval(vs[:eval_limit])) # pylint: disable=eval-used
@@ -10657,7 +10631,6 @@ class ApplicationWindow(QMainWindow):
                                     self.updatePlaybackIndicatorSignal.emit()
                                 except Exception as e: # pylint: disable=broad-except
                                     _log.exception(e)
-
                             # playbackdropmode(<n>) with 0: off, 1: time, 2: BT, 3: ET
                             elif cs.startswith('playbackdropmode(') and cs.endswith(')'):
                                 try:
@@ -10680,7 +10653,52 @@ class ApplicationWindow(QMainWindow):
                                         self.sendmessage(QApplication.translate('Message','playback DROP by ET'))
                                 except Exception as e: # pylint: disable=broad-except
                                     _log.exception(e)
-
+                            # pidDerivativeFilter(<n>) : 0 <= n < 6
+                            elif cs.startswith('pidDerivativeFilter(') and cs.endswith(')'):
+                                try:
+                                    value_int = max(0, min(5, int(cs[len('pidDerivativeFilter('):-1])))
+                                    self.pidcontrol.derivative_filter = value_int
+                                    self.pidcontrol.confSoftwarePID()
+                                except Exception as e: # pylint: disable=broad-except
+                                    _log.exception(e)
+                            # pidDerivativeLimit(<n>) : n >= 0
+                            elif cs.startswith('pidDerivativeLimit(') and cs.endswith(')'):
+                                try:
+                                    value_int = max(0, int(cs[len('pidDerivativeLimit('):-1]))
+                                    self.pidcontrol.pidDlimit = value_int
+                                    self.pidcontrol.confSoftwarePID()
+                                except Exception as e: # pylint: disable=broad-except
+                                    _log.exception(e)
+                            # pidILF(<n>) 0 <= n <= 1
+                            elif cs.startswith('pidILF(') and cs.endswith(')'):
+                                try:
+                                    value_float = max(0, min(1, float(eval(cs[len('pidILF('):-1][:eval_limit])))) # pylint: disable=eval-used
+                                    self.pidcontrol.pidIlimitFactor = value_float
+                                    self.pidcontrol.confSoftwarePID()
+                                except Exception as e: # pylint: disable=broad-except
+                                    _log.exception(e)
+                            # pidIWP(<bool>) enable/disable PID IWP
+                            elif cs.startswith('pidIWP(') and cs.endswith(')'):
+                                try:
+                                    value_str = cs[len('pidIWP('):-1].strip()
+                                    if value_str.lower() in {'yes', 'true', 't', '1'}:
+                                        self.pidcontrol.pidIWP = True
+                                    else:
+                                        self.pidcontrol.pidIWP = False
+                                    self.pidcontrol.confSoftwarePID()
+                                except Exception as e: # pylint: disable=broad-except
+                                    _log.exception(e)
+                            # pidIRoC(<bool>) enable/disable PID IRoC
+                            elif cs.startswith('pidIRoC(') and cs.endswith(')'):
+                                try:
+                                    value_str = cs[len('pidIRoC('):-1].strip()
+                                    if value_str.lower() in {'yes', 'true', 't', '1'}:
+                                        self.pidcontrol.pidIRoC = True
+                                    else:
+                                        self.pidcontrol.pidIRoC = False
+                                    self.pidcontrol.confSoftwarePID()
+                                except Exception as e: # pylint: disable=broad-except
+                                    _log.exception(e)
                             # openProperties : open Roast Properties dialog
                             elif cs == 'openProperties':
                                 self.openPropertiesSignal.emit()
@@ -12767,7 +12785,7 @@ class ApplicationWindow(QMainWindow):
                             self.sendmessage(QApplication.translate('Message','Auto Axis Graph Mode is off'))
                 elif self.buttonpalette_shortcuts and control_modifier and k in numberkeys: # palette switch via COMMAND-NUM-Keys
                     self.setbuttonsfrom(numberkeys.index(Qt.Key(k)), only_non_empty=True)
-#                elif k == Qt.Key.Key_J and no_modifier: # 74:       #J (toggle Playback Events) # deactivated as it might be activated accidentally
+#                elif k == Qt.Key.Key_J and no_modifier: # 74:      #J (toggle Playback Events) # deactivated as it might be activated accidentally
 #                    self.togglePlaybackEvents()
                 elif k == Qt.Key.Key_I and no_modifier: # 73:       #I (toggle foreground showfull flag)
                     self.toggleForegroundShowfullFlag()
@@ -13315,14 +13333,12 @@ class ApplicationWindow(QMainWindow):
                     else:
                         nextcmd = self.nextActiveButton(self.keyboardmoveindex)
                     # activate the button at index nextcmd
-                    self.keyboardButtonList[nextcmd].setSelected(True)
-                    self.keyboardButtonList[self.keyboardmoveindex].setSelected(False)
-                    # update self.keyboardmoveindex
-                    self.keyboardmoveindex = nextcmd
-                else:
-                    # last visible enabled button pressed
-                    self.keyboardmoveindex += 1
-                    self.keyboardButtonList[self.keyboardmoveindex].setSelected(True)
+                    if not (self.keyboardButtonList[self.keyboardmoveindex].isFlat() and self.keyboardButtonList[nextcmd].isFlat()):
+                        # only move if source and destination are not both flat
+                        self.keyboardButtonList[nextcmd].setSelected(True)
+                        self.keyboardButtonList[self.keyboardmoveindex].setSelected(False)
+                        # update self.keyboardmoveindex
+                        self.keyboardmoveindex = nextcmd
 
     #sound feedback when pressing a push button
     @pyqtSlot()
@@ -14851,6 +14867,7 @@ class ApplicationWindow(QMainWindow):
                 #  - scheduler is not active
                 if self.qmc.setBatchSizeFromBackground and (self.qmc.flagon or not self.curFile) and self.schedule_window is None:
                     self.qmc.weight = (profile['weight'][0],self.qmc.weight[1],profile['weight'][2])
+                    self.qmc.end_weight_est = 1 # this weight out is an estimate as it was not measure nor manual set
 
 
                 message = QApplication.translate('Message', 'Background {0} loaded successfully {1}').format(filename, '')
@@ -16364,8 +16381,10 @@ class ApplicationWindow(QMainWindow):
                     convertWeight(float(weight[0]), weight_unit_idx, current_weight_unit_idx),
                     convertWeight(float(weight[1]), weight_unit_idx, current_weight_unit_idx),
                     self.qmc.weight[2])
+                self.qmc.end_weight_est = profile.get('end_weight_est', 0)
             else:
                 self.qmc.weight = (0., 0., self.qmc.weight[2])
+                self.qmc.end_weight_est = 0
             #
             if 'defects_weight' in profile:
                 defects = profile['defects_weight']
@@ -16990,53 +17009,61 @@ class ApplicationWindow(QMainWindow):
         self.bbp_dropevents = []
         self.bbp_drop_to_end = 0
 
+        # clear bbpPrevRoast
+        self.qmc.bbpPrevRoast = {}
+
 
     #TODO Decide where else to display BBP metrics # pylint: disable=fixme
     # bbpCache holds data from the previous roast.  Set in cacheforBbp() which is called from OffRecorder()
-    # Needs to be called from somewhere betw CHARGE and OFF
-    def calcBBPMetrics(self,checkCache:bool=False) -> None:
+    # At CHARGE+5 the bbpCache data is copied to bbpPrevRoast
+    def calcBBPMetrics(self) -> None:
         try:
             #TODO revisit these preset times  # pylint: disable=fixme
             maxAllowedTime_fromPrevEnd_toStart = 60 #seconds, max gap time between roast recordings
             minBbpTime = 90 #seconds, the minimum amount of time recorded in the current roast before CHARGE
             # is there data from a prev roast?
-            if (self.qmc.bbpCache and checkCache and
-                    'end_roastepoch_msec' in self.qmc.bbpCache and
-                    'drop_to_end' in self.qmc.bbpCache and
-                    'drop_bt' in self.qmc.bbpCache and
-                    'drop_et' in self.qmc.bbpCache and
-                    'end_events' in self.qmc.bbpCache and
-                    'drop_events' in self.qmc.bbpCache and
-                    'drop_to_end' in self.qmc.bbpCache):
-                #_log.debug('bbpCache exists')
-                bbpGap = self.qmc.roastepoch - (self.qmc.bbpCache['end_roastepoch_msec']/1000)
-                # did the prev roast end shortly before this roast began?  If not clear bbpCache
+            if (self.qmc.bbpPrevRoast and
+                    'end_roastepoch_msec' in self.qmc.bbpPrevRoast and
+                    'drop_to_end' in self.qmc.bbpPrevRoast and
+                    'drop_bt' in self.qmc.bbpPrevRoast and
+                    'drop_et' in self.qmc.bbpPrevRoast and
+                    'end_events' in self.qmc.bbpPrevRoast and
+                    'drop_events' in self.qmc.bbpPrevRoast and
+                    'drop_to_end' in self.qmc.bbpPrevRoast):
+                bbpGap = self.qmc.roastepoch - (self.qmc.bbpPrevRoast['end_roastepoch_msec']/1000)
+                # did the prev roast end shortly before this roast began?  If not clear qmc.bbpPrevRoast
                 if bbpGap < maxAllowedTime_fromPrevEnd_toStart:
-                    self.bbp_time_added_from_prev = bbpGap + self.qmc.bbpCache['drop_to_end']
+                    self.bbp_time_added_from_prev = bbpGap + self.qmc.bbpPrevRoast['drop_to_end']
                     self.bbp_begin = 'DROP'
-                    self.bbp_dropbt = self.qmc.bbpCache['drop_bt']
-                    self.bbp_dropet = self.qmc.bbpCache['drop_et']
-                    self.bbp_endroast_epoch_msec = self.qmc.bbpCache['end_roastepoch_msec']
-                    self.bbp_endevents = self.qmc.bbpCache['end_events']
-                    self.bbp_dropevents = self.qmc.bbpCache['drop_events']
-                    self.bbp_drop_to_end = self.qmc.bbpCache['drop_to_end']
+                    self.bbp_dropbt = self.qmc.bbpPrevRoast['drop_bt']
+                    self.bbp_dropet = self.qmc.bbpPrevRoast['drop_et']
+                    self.bbp_endroast_epoch_msec = self.qmc.bbpPrevRoast['end_roastepoch_msec']
+                    self.bbp_endevents = self.qmc.bbpPrevRoast['end_events']
+                    self.bbp_dropevents = self.qmc.bbpPrevRoast['drop_events']
+                    self.bbp_drop_to_end = self.qmc.bbpPrevRoast['drop_to_end']
                 else:
-                    self.qmc.bbpCache = {}  # make empty to use as easy test later, "if self.qmc.bbpCache:"
-                    _log.debug('clearing bbpCache')
+                    self.qmc.bbpPrevRoast = {}  # make empty to use as easy test later, "if self.qmc.bbpPrevRoast:"
+
             # now calculate all the bbp data
             # does the current profile have the minimum time for bbp?
-            if (len(self.qmc.timeindex) > 0 and len(self.qmc.timex) > self.qmc.timeindex[0] > -1 and (self.qmc.timex[self.qmc.timeindex[0]] > 0) and
-                (self.qmc.timex[self.qmc.timeindex[0]] - self.qmc.timex[0] >= minBbpTime)):
+            if (len(self.qmc.timeindex) > 0 and
+                len(self.qmc.timex) > self.qmc.timeindex[0] > -1 and
+                (self.qmc.timex[self.qmc.timeindex[0]] > 0)):
+
+                # calculate the total BBP time
                 self.bbp_total_time = self.qmc.timex[self.qmc.timeindex[0]] - self.qmc.timex[0] + self.bbp_time_added_from_prev
-                # fake the events to use with findTPint
-                bbp_timeindex = [0, 0, self.qmc.timeindex[0], 0, 0, 0, self.qmc.timeindex[0], 0]
-                bbp_tpidx = findTPint(bbp_timeindex, self.qmc.timex, self.qmc.temp2)
-                if bbp_tpidx > 0:
-                    self.bbp_bottom_temp = self.qmc.temp2[bbp_tpidx]
-                    self.bbp_begin_to_bottom_time = self.qmc.timex[bbp_tpidx] - self.qmc.timex[0] + self.bbp_time_added_from_prev
-                    self.bbp_bottom_to_charge_time = self.qmc.timex[self.qmc.timeindex[0]] - self.qmc.timex[bbp_tpidx]
-                    self.bbp_begin_to_bottom_ror = 60 * (self.bbp_bottom_temp - self.qmc.temp2[0]) / (self.qmc.timex[bbp_tpidx] - self.qmc.timex[0] + self.bbp_time_added_from_prev)
-                    self.bbp_bottom_to_charge_ror = 60 * (self.qmc.temp2[self.qmc.timeindex[0]] - self.bbp_bottom_temp) / (self.qmc.timex[self.qmc.timeindex[0]] - self.qmc.timex[bbp_tpidx])
+
+                # calculate current roast metrics
+                if self.bbp_total_time >= minBbpTime:
+                    # fake the events to use with findTPint
+                    bbp_timeindex = [0, 0, self.qmc.timeindex[0], 0, 0, 0, self.qmc.timeindex[0], 0]
+                    bbp_tpidx = findTPint(bbp_timeindex, self.qmc.timex, self.qmc.temp2)
+                    if bbp_tpidx > 0:
+                        self.bbp_bottom_temp = self.qmc.temp2[bbp_tpidx]
+                        self.bbp_begin_to_bottom_time = self.qmc.timex[bbp_tpidx] - self.qmc.timex[0] + self.bbp_time_added_from_prev
+                        self.bbp_bottom_to_charge_time = self.qmc.timex[self.qmc.timeindex[0]] - self.qmc.timex[bbp_tpidx]
+                        self.bbp_begin_to_bottom_ror = 60 * (self.bbp_bottom_temp - self.qmc.temp2[0]) / (self.qmc.timex[bbp_tpidx] - self.qmc.timex[0] + self.bbp_time_added_from_prev)
+                        self.bbp_bottom_to_charge_ror = 60 * (self.qmc.temp2[self.qmc.timeindex[0]] - self.bbp_bottom_temp) / (self.qmc.timex[self.qmc.timeindex[0]] - self.qmc.timex[bbp_tpidx])
             #TODO now deal with the special events from the previous roast  # pylint: disable=fixme
 
         except Exception as e: # pylint: disable=broad-except
@@ -17409,6 +17436,7 @@ class ApplicationWindow(QMainWindow):
 
             profile['beans'] = encodeLocalStrict(self.qmc.beans)
             profile['weight'] = [self.qmc.weight[0],self.qmc.weight[1],encodeLocalStrict(self.qmc.weight[2], 'g')]
+            profile['end_weight_est'] = self.qmc.end_weight_est
             profile['defects_weight'] = self.qmc.roasted_defects_weight
             profile['volume'] = [self.qmc.volume[0],self.qmc.volume[1],encodeLocalStrict(self.qmc.volume[2], 'l')]
             profile['density'] = [self.qmc.density[0],encodeLocalStrict(self.qmc.density[1], 'g'),self.qmc.density[2],encodeLocalStrict(self.qmc.density[3], 'l')]
@@ -20003,6 +20031,8 @@ class ApplicationWindow(QMainWindow):
                     self.scale1_id = None
             self.container1_idx = toInt(settings.value('container1_idx',int(self.container1_idx)))
             self.two_bucket_mode = toBool(settings.value('two_bucket_mode',int(self.two_bucket_mode)))
+            self.scale1_dedicated_for_green_only = toBool(settings.value('scale1_dedicated_for_green_only',int(self.scale1_dedicated_for_green_only)))
+            self.scale2_dedicated_for_roasted_only = toBool(settings.value('scale2_dedicated_for_roasted_only',int(self.scale2_dedicated_for_roasted_only)))
             self.green_task_precision = toFloat(settings.value('green_task_precision', self.green_task_precision))
             if settings.contains('scale2_model'):
                 try:
@@ -21791,6 +21821,8 @@ class ApplicationWindow(QMainWindow):
             self.settingsSetValue(settings, default_settings, 'scale1_id',self.scale1_id, read_defaults)
             self.settingsSetValue(settings, default_settings, 'container1_idx',self.container1_idx, read_defaults)
             self.settingsSetValue(settings, default_settings, 'two_bucket_mode',self.two_bucket_mode, read_defaults)
+            self.settingsSetValue(settings, default_settings, 'scale1_dedicated_for_green_only',self.scale1_dedicated_for_green_only, read_defaults)
+            self.settingsSetValue(settings, default_settings, 'scale2_dedicated_for_roasted_only',self.scale2_dedicated_for_roasted_only, read_defaults)
             self.settingsSetValue(settings, default_settings, 'green_task_precision',self.green_task_precision, read_defaults)
             self.settingsSetValue(settings, default_settings, 'scale2_model',self.scale2_model, read_defaults)
             self.settingsSetValue(settings, default_settings, 'scale2_name',self.scale2_name, read_defaults)
@@ -21973,6 +22005,7 @@ class ApplicationWindow(QMainWindow):
             else:
                 settings = QSettings()
             #save Events settings
+#--- BEGIN GROUP events
             settings.beginGroup('events')
             settings.setValue('EvalueColor',self.qmc.EvalueColor)
             settings.setValue('EvalueTextColor',self.qmc.EvalueTextColor)
@@ -21981,6 +22014,7 @@ class ApplicationWindow(QMainWindow):
             settings.setValue('EvalueMarkerSize',self.qmc.EvalueMarkerSize)
             settings.setValue('Evaluealpha',self.qmc.Evaluealpha)
             settings.endGroup()
+#--- END GROUP events
             #save phases watermarks flag
             settings.setValue('watermarks',self.qmc.watermarksflag)
             #save colors
@@ -21993,15 +22027,116 @@ class ApplicationWindow(QMainWindow):
             settings.setValue('ETBdeltaColor',self.qmc.backgrounddeltaetcolor)
             settings.setValue('BTBdeltaColor',self.qmc.backgrounddeltabtcolor)
             settings.setValue('BackgroundAlpha',self.qmc.backgroundalpha)
+            settings.setValue('foregroundShowFullflag',self.qmc.foregroundShowFullflag)
+#--- BEGIN GROUP background
+            settings.beginGroup('background')
+            settings.setValue('backgroundShowFullflag',self.qmc.backgroundShowFullflag)
+            settings.endGroup()
+#--- END GROUP background
+#--- BEGIN GROUP XT
             settings.beginGroup('XT')
             settings.setValue('color',self.qmc.backgroundxtcolor)
             settings.setValue('color2',self.qmc.backgroundytcolor)
             settings.setValue('index',self.qmc.xtcurveidx)
             settings.setValue('index2',self.qmc.ytcurveidx)
             settings.endGroup()
+#--- END GROUP XT
+#--- BEGIN GROUP grid
             settings.beginGroup('grid')
             settings.setValue('gridalpha',self.qmc.gridalpha)
             settings.endGroup()
+#--- END GROUP grid
+#--- BEGIN GROUP style
+            settings.beginGroup('Style')
+            settings.setValue('patheffects',self.qmc.patheffects)
+            settings.setValue('glow',self.qmc.glow)
+            settings.setValue('graphstyle',self.qmc.graphstyle)
+            settings.setValue('graphfont',self.qmc.graphfont)
+            settings.endGroup()
+#--- END GROUP style
+#--- BEGIN GROUP CurveStyles
+            #curve styles
+            settings.beginGroup('CurveStyles')
+            settings.setValue('BTlinestyle',self.qmc.BTlinestyle)
+            settings.setValue('BTdrawstyle',self.qmc.BTdrawstyle)
+            settings.setValue('BTlinewidth',self.qmc.BTlinewidth)
+            settings.setValue('BTmarker',self.qmc.BTmarker)
+            settings.setValue('BTmarkersize',self.qmc.BTmarkersize)
+            settings.setValue('ETlinestyle',self.qmc.ETlinestyle)
+            settings.setValue('ETdrawstyle',self.qmc.ETdrawstyle)
+            settings.setValue('ETlinewidth',self.qmc.ETlinewidth)
+            settings.setValue('ETmarker',self.qmc.ETmarker)
+            settings.setValue('ETmarkersize',self.qmc.ETmarkersize)
+            settings.setValue('BTdeltalinestyle',self.qmc.BTdeltalinestyle)
+            settings.setValue('BTdeltadrawstyle',self.qmc.BTdeltadrawstyle)
+            settings.setValue('BTdeltalinewidth',self.qmc.BTdeltalinewidth)
+            settings.setValue('BTdeltamarker',self.qmc.BTdeltamarker)
+            settings.setValue('BTdeltamarkersize',self.qmc.BTdeltamarkersize)
+            settings.setValue('ETdeltalinestyle',self.qmc.ETdeltalinestyle)
+            settings.setValue('ETdeltadrawstyle',self.qmc.ETdeltadrawstyle)
+            settings.setValue('ETdeltalinewidth',self.qmc.ETdeltalinewidth)
+            settings.setValue('ETdeltamarker',self.qmc.ETdeltamarker)
+            settings.setValue('ETdeltamarkersize',self.qmc.ETdeltamarkersize)
+            settings.setValue('BTbacklinestyle',self.qmc.BTbacklinestyle)
+            settings.setValue('BTbackdrawstyle',self.qmc.BTbackdrawstyle)
+            settings.setValue('BTbacklinewidth',self.qmc.BTbacklinewidth)
+            settings.setValue('BTbackmarker',self.qmc.BTbackmarker)
+            settings.setValue('BTbackmarkersize',self.qmc.BTbackmarkersize)
+            settings.setValue('ETbacklinestyle',self.qmc.ETbacklinestyle)
+            settings.setValue('ETbackdrawstyle',self.qmc.ETbackdrawstyle)
+            settings.setValue('ETbacklinewidth',self.qmc.ETbacklinewidth)
+            settings.setValue('ETbackmarker',self.qmc.ETbackmarker)
+            settings.setValue('ETbackmarkersize',self.qmc.ETbackmarkersize)
+            settings.setValue('XTbacklinestyle',self.qmc.XTbacklinestyle)
+            settings.setValue('XTbackdrawstyle',self.qmc.XTbackdrawstyle)
+            settings.setValue('XTbacklinewidth',self.qmc.XTbacklinewidth)
+            settings.setValue('XTbackmarker',self.qmc.XTbackmarker)
+            settings.setValue('XTbackmarkersize',self.qmc.XTbackmarkersize)
+            settings.setValue('YTbacklinestyle',self.qmc.YTbacklinestyle)
+            settings.setValue('YTbackdrawstyle',self.qmc.YTbackdrawstyle)
+            settings.setValue('YTbacklinewidth',self.qmc.YTbacklinewidth)
+            settings.setValue('YTbackmarker',self.qmc.YTbackmarker)
+            settings.setValue('YTbackmarkersize',self.qmc.YTbackmarkersize)
+            settings.setValue('BTBdeltalinestyle',self.qmc.BTBdeltalinestyle)
+            settings.setValue('BTBdeltadrawstyle',self.qmc.BTBdeltadrawstyle)
+            settings.setValue('BTBdeltalinewidth',self.qmc.BTBdeltalinewidth)
+            settings.setValue('BTBdeltamarker',self.qmc.BTBdeltamarker)
+            settings.setValue('BTBdeltamarkersize',self.qmc.BTBdeltamarkersize)
+            settings.setValue('ETBdeltalinestyle',self.qmc.ETBdeltalinestyle)
+            settings.setValue('ETBdeltadrawstyle',self.qmc.ETBdeltadrawstyle)
+            settings.setValue('ETBdeltalinewidth',self.qmc.ETBdeltalinewidth)
+            settings.setValue('ETBdeltamarker',self.qmc.ETBdeltamarker)
+            settings.setValue('ETBdeltamarkersize',self.qmc.ETBdeltamarkersize)
+            settings.endGroup()
+#--- END GROUP CurveStyles
+#--- BEGIN GROUP Axis
+            settings.beginGroup('Axis')
+            xmin = self.qmc.startofx
+            if self.qmc.timeindex[0] != -1:
+                xmin -= self.qmc.timex[self.qmc.timeindex[0]]
+            settings.setValue('xmin',xmin)
+            settings.setValue('xmax',self.qmc.endofx)
+            settings.setValue('ymax',self.qmc.ylimit)
+            settings.setValue('ymin',self.qmc.ylimit_min)
+            settings.setValue('zmax',self.qmc.zlimit)
+            settings.setValue('zmin',self.qmc.zlimit_min)
+            settings.setValue('resetmaxtime',self.qmc.resetmaxtime)
+            settings.setValue('chargemintime',self.qmc.chargemintime)
+            settings.setValue('legendloc',self.qmc.legendloc)
+            settings.setValue('temp_grid',self.qmc.temp_grid)
+            settings.setValue('time_grid',self.qmc.time_grid)
+            settings.endGroup()
+#--- END GROUP Axis
+#--- BEGIN GROUP grid
+            settings.beginGroup('grid')
+            settings.setValue('xgrid',self.qmc.xgrid)
+            settings.setValue('ygrid',self.qmc.ygrid)
+            settings.setValue('zgrid',self.qmc.zgrid)
+            settings.setValue('gridlinestyle',self.qmc.gridlinestyle)
+            settings.setValue('gridthickness',self.qmc.gridthickness)
+            settings.setValue('gridalpha',self.qmc.gridalpha)
+            settings.endGroup()
+#--- END GROUP grid
 
         except Exception as e: # pylint: disable=broad-except
             _log.exception(e)
@@ -25340,7 +25475,7 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot()
     @pyqtSlot(bool)
     def helpHelp(self, _:bool = False) -> None:  # pylint: disable=no-self-use # used as slot
-        QDesktopServices.openUrl(QUrl('https://artisan-scope.org/help/', QUrl.ParsingMode.TolerantMode))
+        QDesktopServices.openUrl(QUrl('https://artisan-scope.org/docs/', QUrl.ParsingMode.TolerantMode))
 
     @pyqtSlot()
     @pyqtSlot(bool)
@@ -28634,8 +28769,6 @@ class ApplicationWindow(QMainWindow):
     def handlePIDAutotune(self, _:bool = False) -> None:   
         from tilauscope.pid_autotune import PIDAutotune
         self.pidAutotuneWindow = PIDAutotune(self, self)
-#        self.pidAutotuneWindow.setWindowFlags(Qt.WindowType.Tool)
-#        self.pidAutotuneWindow.setWindowModality(Qt.WindowModality.NonModal)
         self.pidAutotuneWindow.show()
 
     @pyqtSlot()
@@ -28744,79 +28877,80 @@ class ApplicationWindow(QMainWindow):
 ###########################################################################################################################################
 
 
-def excepthook(excType:type, excValue:BaseException, tracebackobj:'TracebackType|None') -> None:
-    """Global function to catch unhandled exceptions.
-
-    @param excType exception type
-    @param excValue exception value
-    @param tracebackobj traceback object
-    """
-    _log.error('Logging an uncaught exception',
-                 exc_info=(excType, excValue, tracebackobj))
-    import traceback
-    separator = '-' * 80
-#    logFile = 'simple.log'
-    notice = \
-        """An unhandled exception occurred. Please report the problem on Github:<br>"""\
-        """<a href='https://github.com/artisan-roaster-scope/artisan/issues'>https://github.com/artisan-roaster-scope/artisan/issues</a><br><br>"""\
-        """When reporting this issue, please include your settings file (export <br>"""\
-        """via menu Help >> Save Settings) and the details below.<br><br>"""\
-        """An entry has been written to the error log (menu Help >> Error).<br><br>"""
-    versionInfo= f'Version: {__version__}, revision: {__revision__}<br>'
-    timeString = libtime.strftime('%Y-%m-%d, %H:%M:%S')
-
-    tbinfofile = io.StringIO()
-
-    traceback.print_tb(tracebackobj, None, tbinfofile)
-    tbinfofile.seek(0)
-    tbinfo = tbinfofile.read()
-    errmsg = f"{str(excType)}: \n{str(excValue)} (line: {getattr(tracebackobj, 'tb_lineno', '?')})"
-    stack = []
-    variables = ''
-    tb:TracebackType|None = tracebackobj
-    while tb:
-        stack.append(tb.tb_frame)
-        tb = tb.tb_next
-
-    for frame in stack:
-        variables += f'{frame.f_code.co_filename}::{frame.f_code.co_name}:{frame.f_lineno}\n'
-        for k, value in frame.f_locals.items():
-            variables += f'\t{k:>20}'
-            try:
-                s = str(value) # pyright:ignore[reportUnknownArgumentType]
-            except Exception: # pylint: disable=broad-except
-                s = '<???>'
-            variables += f'{s}\n'
-    sections = [timeString, separator, errmsg]
-    msg = '\n'.join(sections)
-    detailedmsg = '\n'.join([tbinfo, separator, variables])
-
-#    try:
-#        with open(logFile, 'w', encoding='utf-8') as f:
-#            f.write(msg)
-#            f.write(detailedmsg)
-#            f.write(versionInfo)
-#    except OSError:
-#        pass
-    try:
-        aw = None
-        for widget in QApplication.topLevelWidgets():
-            if isinstance(widget, ApplicationWindow):
-                aw = widget
-                break
-        if aw is not None:
-            if hasattr(aw, 'qmc'):
-                aw.qmc.adderror('Error: ' + detailedmsg)
-            errorbox = QMessageBox()
-            errorbox.about(aw, detailedmsg, f'{notice}{versionInfo}{msg}')
-
-            # using a (native) QErrorMessage dialog which does not allow styled text like bold/links
-#            from PyQt6.QtWidgets import QErrorMessage
-#            em = QErrorMessage(aw)
-#            em.showMessage(f'{notice}{versionInfo}{msg}')
-
-    except Exception as e:
-        _log.exception(e)
+## TILAU ## dead code: superseded by tilauscope.tilau_exceptions.my_exception_hook (assigned to sys.excepthook below); never called
+# def excepthook(excType:type, excValue:BaseException, tracebackobj:'TracebackType|None') -> None:
+#     """Global function to catch unhandled exceptions.
+#
+#     @param excType exception type
+#     @param excValue exception value
+#     @param tracebackobj traceback object
+#     """
+#     _log.error('Logging an uncaught exception',
+#                  exc_info=(excType, excValue, tracebackobj))
+#     import traceback
+#     separator = '-' * 80
+# #    logFile = 'simple.log'
+#     notice = \
+#         """An unhandled exception occurred. Please report the problem on Github:<br>"""\
+#         """<a href='https://github.com/artisan-roaster-scope/artisan/issues'>https://github.com/artisan-roaster-scope/artisan/issues</a><br><br>"""\
+#         """When reporting this issue, please include your settings file (export <br>"""\
+#         """via menu Help >> Save Settings) and the details below.<br><br>"""\
+#         """An entry has been written to the error log (menu Help >> Error).<br><br>"""
+#     versionInfo= f'Version: {__version__}, revision: {__revision__}<br>'
+#     timeString = libtime.strftime('%Y-%m-%d, %H:%M:%S')
+#
+#     tbinfofile = io.StringIO()
+#
+#     traceback.print_tb(tracebackobj, None, tbinfofile)
+#     tbinfofile.seek(0)
+#     tbinfo = tbinfofile.read()
+#     errmsg = f"{str(excType)}: \n{str(excValue)} (line: {getattr(tracebackobj, 'tb_lineno', '?')})"
+#     stack = []
+#     variables = ''
+#     tb:TracebackType|None = tracebackobj
+#     while tb:
+#         stack.append(tb.tb_frame)
+#         tb = tb.tb_next
+#
+#     for frame in stack:
+#         variables += f'{frame.f_code.co_filename}::{frame.f_code.co_name}:{frame.f_lineno}\n'
+#         for k, value in frame.f_locals.items():
+#             variables += f'\t{k:>20}'
+#             try:
+#                 s = str(value) # pyright:ignore[reportUnknownArgumentType]
+#             except Exception: # pylint: disable=broad-except
+#                 s = '<???>'
+#             variables += f'{s}\n'
+#     sections = [timeString, separator, errmsg]
+#     msg = '\n'.join(sections)
+#     detailedmsg = '\n'.join([tbinfo, separator, variables])
+#
+# #    try:
+# #        with open(logFile, 'w', encoding='utf-8') as f:
+# #            f.write(msg)
+# #            f.write(detailedmsg)
+# #            f.write(versionInfo)
+# #    except OSError:
+# #        pass
+#     try:
+#         aw = None
+#         for widget in QApplication.topLevelWidgets():
+#             if isinstance(widget, ApplicationWindow):
+#                 aw = widget
+#                 break
+#         if aw is not None:
+#             if hasattr(aw, 'qmc'):
+#                 aw.qmc.adderror('Error: ' + detailedmsg)
+#             errorbox = QMessageBox()
+#             errorbox.about(aw, detailedmsg, f'{notice}{versionInfo}{msg}')
+#
+#             # using a (native) QErrorMessage dialog which does not allow styled text like bold/links
+# #            from PyQt6.QtWidgets import QErrorMessage
+# #            em = QErrorMessage(aw)
+# #            em.showMessage(f'{notice}{versionInfo}{msg}')
+#
+#     except Exception as e:
+#         _log.exception(e)
 
 ## TILAU ##
 from tilauscope.tilau_exceptions import my_exception_hook
@@ -28968,6 +29102,73 @@ def initialize_locale(my_app:Artisan) -> str:
 
     return locale
 
+## TILAU ## Second-instance gate. Artisan turns a second launch into ArtisanViewer,
+## which is a UI-level restriction only (it hides ON/OFF, START/STOP and CONTROL).
+## TilauScope has no viewer notion: its own START/STOP calls ToggleRecorder directly,
+## and the fork's layer would claim the meter link, the BLE scanner, the MQTT bridge,
+## the bean database and the web host ports a second time. So a bare relaunch stops
+## here instead, offering the phone control client when the running instance is
+## actually serving it.
+## Called from main() after initialize_locale (so the dialog is translated) and before
+## ApplicationWindow is constructed — nothing is built and no device is opened yet.
+## A launch carrying a file/url argument is left alone: that is the file-association
+## path, forwarded to the running instance at the end of main().
+def tilau_second_instance_gate() -> None:
+    if not getattr(app, 'artisanviewerMode', False):
+        return
+    # only a bare relaunch; '-psn_…' style OS arguments do not count as a file
+    if any(not a.startswith('-') for a in sys.argv[1:]):
+        return
+
+    control_port = 8765
+    offer_web_client = False
+    try:
+        ## TILAU ## main() already switched the application name to the viewer one,
+        ## so a plain QSettings() would read the viewer store. The remote-control
+        ## configuration belongs to the instance that is running: read its store.
+        if sys.platform.startswith('darwin'):
+            settings = QSettings(application_organization_domain, application_name)
+        else:
+            settings = QSettings(application_organization_name, application_name)
+        control_port = settings.value('tilauscope/remote_port', 8765, type=int)
+        offer_web_client = (settings.value('tilauscope/remote_enabled', False, type=bool)
+                            or os.environ.get('TILAU_REMOTE') == '1')
+        if offer_web_client:
+            ## TILAU ## the setting can be on while the running instance failed to
+            ## bind (TilauWebHost swallows a start failure by design), so only offer
+            ## a port that actually answers — never send the user to a dead page.
+            import socket
+            try:
+                with socket.create_connection(('127.0.0.1', control_port), timeout=0.5):
+                    pass
+            except OSError:
+                offer_web_client = False
+    except Exception as e: # pylint: disable=broad-except
+        _log.exception(e)
+        offer_web_client = False
+
+    try:
+        from tilauscope.tilauscope_types import show_styled_message
+        title = QApplication.translate('tilauscope', 'TilauScope is already running')
+        ## TILAU ## one literal per translate() call, on a single line: the string
+        ## extractor skips anything it cannot read as a plain literal argument.
+        text = QApplication.translate('tilauscope', 'TilauScope is already open on this computer.\n\nA second window cannot drive the roaster: the meter connection, the Bluetooth devices and the bean database belong to the instance already running. Switch to that window to keep roasting.')
+        quit_label = QApplication.translate('tilauscope', 'Quit')
+        if offer_web_client:
+            text += QApplication.translate('tilauscope', '\n\nRemote control is enabled, so you can open the control client in your browser instead.')
+            open_label = QApplication.translate('tilauscope', 'Open the control client')
+            if show_styled_message(None, title, text, icon=QMessageBox.Icon.Warning,
+                                   buttons=[open_label, quit_label]) == 0:
+                import webbrowser
+                webbrowser.open(f'http://127.0.0.1:{control_port}/')
+        else:
+            show_styled_message(None, title, text, icon=QMessageBox.Icon.Warning,
+                                buttons=[quit_label])
+    except Exception as e: # pylint: disable=broad-except
+        _log.exception(e)
+    sys.exit(0) # never leave a half-started second instance behind
+
+
 def main() -> None:
 
 
@@ -28988,6 +29189,10 @@ def main() -> None:
 
     locale_str = initialize_locale(app)
     _log.info('locale: %s',locale_str)
+
+    ## TILAU ## a second copy stops here (see tilau_second_instance_gate): translations
+    ## are installed so the dialog is in the user's language, and nothing is built yet.
+    tilau_second_instance_gate()
 
     appWindow = ApplicationWindow(locale=locale_str, artisanviewerFirstStart=artisanviewerFirstStart)
 
@@ -29034,6 +29239,11 @@ def main() -> None:
 #    _log.debug("PRINT mpl.get_cachedir(): %s",mpl.get_cachedir())
 
     appWindow.set_ui_mode(appWindow.ui_mode)
+
+    ## TILAU ## frameless custom title bar + Catppuccin styling for the main window
+    ## (first, cautious iteration: native resize borders are kept, see tilauscope/main_window_style.py)
+    from tilauscope.main_window_style import apply_frameless_style
+    apply_frameless_style(appWindow)
 
     # inform the user the debug logging is on
     if debugLogLevelActive():

@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'ui/SetupWidget.ui'
+# Form implementation generated from reading ui file '/Users/thierrygluzman/Documents/Dev/artisan4/src/ui/SetupWidget.ui'
 #
 # Created by: PyQt6 UI code generator 6.11.0
 #

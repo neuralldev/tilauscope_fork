@@ -13,6 +13,7 @@ sys.path.insert(1, SPECPATH)
 import artisanlib 
 
 VERSION = artisanlib.__version__
+BUILD = artisanlib.__build__
 LICENSE = 'GPL-3.0-only'
 PYTHON_V = os.environ.get("PYTHON_V", '43')
 PYTHON_VERSION_STR = f'python{PYTHON_V}'
@@ -144,7 +145,7 @@ else:
 
 # --- 3. Analysis ---
 a = Analysis(
-    ['artisan.py'],
+    ['tilauscope.py'],
     pathex=[SPECPATH],
     binaries=BINARIES,
     datas=DATA_FILES,
@@ -185,7 +186,7 @@ coll = COLLECT(
     a.datas,
     strip=False,
     upx=False,
-    name='artisan_build'
+    name='tilauscope_build'
 )
 
 # --- 4. Info.plist ---
@@ -195,7 +196,11 @@ with open('Info.plist', 'rb') as f:
 plist.update({
     'CFBundleDisplayName': 'TilauScope',
     'CFBundleShortVersionString': VERSION,
-    'CFBundleVersion': VERSION,
+    ## TILAU ## CFBundleVersion is the build version, distinct from the marketing
+    ## version above — includes __build__ so two builds of the same VERSION
+    ## (e.g. "build 1" then "build 2" of 4.2.4, per ReleaseHistory.md) get
+    ## different bundle versions instead of colliding.
+    'CFBundleVersion': f'{VERSION}.{BUILD}',
     'NSHumanReadableCopyright': LICENSE,
     'LSMinimumSystemVersion': '14.0',
     'LSArchitecturePriority': ['arm64', 'x86_64'],
@@ -250,7 +255,7 @@ res_lib_target = APP_PATH / f"Contents/Resources/lib/{PYTHON_VERSION_STR}/yoctop
 res_lib_target.mkdir(parents=True, exist_ok=True)
 
 # PyInstaller places them in MacOS/_internal/yoctopuce/cdll initially
-internal_yocto = DIST_DIR / 'artisan_build/_internal/yoctopuce/cdll'
+internal_yocto = DIST_DIR / 'tilauscope_build/_internal/yoctopuce/cdll'
 if internal_yocto.exists():
     for lib in internal_yocto.glob('*.dylib'):
         shutil.copy2(lib, res_lib_target)
@@ -273,7 +278,7 @@ os.chdir(SPECPATH)
 DMG_NAME = f'tilauscope-mac-{VERSION}.dmg'
 
 # 1. REMOVE the intermediate build folder so it doesn't show up in the DMG
-build_folder = DIST_DIR / 'artisan_build'
+build_folder = DIST_DIR / 'tilauscope_build'
 if build_folder.exists():
     print(f"*** Removing intermediate build folder: {build_folder} ***")
     shutil.rmtree(build_folder)
@@ -297,7 +302,7 @@ else:
 
     # 4. Generate DMG
     print(f"*** Generating DMG: {DMG_NAME} ***")
-    # Now that artisan_build is gone, the DMG will only contain TilauScope.app and the shortcut
+    # Now that tilauscope_build is gone, the DMG will only contain TilauScope.app and the shortcut
     os.system(f'hdiutil create "{DMG_NAME}" -volname "TilauScope" -fs HFS+ -srcfolder "dist"')
 
 # Logging final size

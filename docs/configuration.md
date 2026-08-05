@@ -153,6 +153,19 @@ algorithm above actually reads; most setups will never need to touch them.
 that checks the connection before it is relied on. This is what the
 [ambient humidity tracking](beancave.md) and any [MQTT-fed device](the-window.md) depend on.
 
+**TLS** encrypts the link to a broker that asks for it — see [TLS](glossary.md#tls). Ticking it
+moves the port from 1883 to 8883, the usual pair, unless you have entered a port of your own, in
+which case yours is kept. The broker's certificate has to come from a recognised authority; a
+certificate the broker issued to itself is refused and the connection fails.
+
+**Protocol** is the version spoken to the broker: **MQTT v3.1**, **MQTT v3.1.1** or **MQTT v5**.
+Leave it on v3.1.1, which every broker accepts, unless yours states otherwise.
+
+**Timeout** is how long the broker is given to accept the connection before it is declared
+unreachable — a broker on the other side of the internet, or an encrypted one whose handshake
+takes a moment, needs more than the three seconds used by default. **Keepalive** is the idle time
+after which the connection is checked; see [keepalive](glossary.md#keepalive).
+
 Below the broker settings, **Sensors** lists the individual readings taken from that broker. Each
 line names one sensor: an **ID** to refer to it by, the **Topic** it is published on, the
 **Command** — the field to read inside the message when the message carries several values —
@@ -173,8 +186,33 @@ The list is saved along with the rest of the settings when the window is closed 
 discarded on Cancel. It can be edited whether or not the broker is reachable; only **Check
 sensor** needs a live connection.
 
-<!-- CAPTURE 4.11 — the INTEGRATIONS tab, MQTT Broker group with two sensors in the list, one row
-selected, and the Unit column showing °C on one of them. -->
+A sensor only ever shows what its publisher sends. Two settings on the publishing side decide
+whether a reading is there when a roast starts: messages have to be published as
+[retained readings](glossary.md#retained-reading), so the last known value is handed over the
+moment TilauScope subscribes, and the publication interval has to be short enough to be useful —
+thirty seconds or less. Without the retained flag a channel stays empty until the publisher
+speaks of its own accord, which on a home automation gateway can take several minutes. When that
+happens the channel reads nothing, and the topics still silent half a minute after connecting
+are named in the diagnostic log.
+
+**Poll request topic** and **Poll every** cover the other half of the problem, for a sensor that
+reports too slowly rather than not at all. Rather than wait,
+[polling](glossary.md#polling) asks the gateway for a reading. Fill in the topic the gateway
+accepts requests on — a Z-Wave gateway typically publishes it as
+`zwave/_CLIENTS/ZWAVE_GATEWAY-<name>/api/pollValue/set` — and choose how often, or leave the
+topic empty to never request anything. Below ten seconds the network cannot keep up, so ten
+seconds is used instead.
+
+What to ask for is worked out from each sensor's own topic, so there is nothing else to fill in.
+A sensor whose topic does not identify a device and a value that way is left alone, and so is
+one the gateway refuses or one that never answers — a battery sensor sleeps between its own
+reports and cannot be reached in between. Each of those cases is named once in the diagnostic
+log, and the sensor is dropped from the rotation rather than asked again every cycle.
+
+<!-- CAPTURE 4.11 — the INTEGRATIONS tab, MQTT Broker group with TLS ticked (port showing 8883),
+Protocol on MQTT v3.1.1, Timeout and Keepalive visible, the Poll request topic and Poll every
+fields filled in, two sensors in the list, one row selected, and the Unit column showing °C on
+one of them. -->
 
 
 ### AI Provider
@@ -186,7 +224,9 @@ needs — nothing that reads or writes a bean record silently sends data anywher
 being set up first.
 
 
-![the INTEGRATIONS tab, MQTT group with Test Connection just clicked](assets/configuration-4.9.png)
+<!-- CAPTURE 4.9 — the INTEGRATIONS tab, MQTT Broker group filled in with TLS, Protocol, Timeout
+and Keepalive showing, Test Connection just clicked and the success message on screen.
+(Replaces assets/configuration-4.9.png, taken before those fields existed.) -->
 
 ![the AI Provider status line, configured](assets/configuration-4.10.png)
 

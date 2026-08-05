@@ -45,6 +45,18 @@ if TYPE_CHECKING:
 
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
+# Grace delay before naming the sensor topics that have not produced a single
+# message yet. Long enough for a slow-reporting node, short enough to be read
+# before the roast starts.
+_PENDING_REPORT_DELAY_MS: Final[int] = 30000
+
+# Polling. The floor protects the mesh: Z-Wave is slow and narrow, and a roast
+# is a long series of cycles. A target that produces nothing after this many
+# consecutive polls leaves the rotation — a sleeping battery node answers on its
+# own wake schedule and cannot be polled at all.
+_POLL_MIN_INTERVAL_S: Final[int] = 10
+_POLL_MISS_LIMIT: Final[int] = 3
+
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -77,6 +89,13 @@ class MQTTDatabase(DataClassDictMixin):
             entry = self.values.get(topic)
         return entry.value if entry else None
 
+    def get_timestamp(self, topic: str) -> float | None:
+        """Arrival time of the last message on `topic`, None if never received.
+        The poller compares it across cycles to tell a live target from a silent one."""
+        with self._lock:
+            entry = self.values.get(topic)
+        return entry.timestamp if entry else None
+
 
 @dataclass
 class MQTTConfig(DataClassDictMixin):
@@ -90,6 +109,13 @@ class MQTTConfig(DataClassDictMixin):
     _password: str = field(default="mqtt", repr=False)
     keepalive: int = 60
     qos: int = 1
+    tls: bool = False  # encrypted broker; the CA bundle is the system one, self-signed certificates are rejected
+    protocol_version: int = 1  # index into mqttport.PROTOCOL_VERSIONS: 0 = v3.1, 1 = v3.1.1, 2 = v5
+    connect_timeout: float = 3.0  # seconds waited for the broker to confirm the connection
+    # Gateway API topic a read request is published on, empty when the broker
+    # offers nothing of the sort. Z-Wave JS UI: zwave/_CLIENTS/<gateway>/api/pollValue/set
+    poll_topic: str = ""
+    poll_interval: int = 0  # seconds, 0 = no polling
 
     @property
     def username(self) -> str:
@@ -123,6 +149,43 @@ class MQTTConfig(DataClassDictMixin):
 
 
 # ---------------------------------------------------------------------------
+# Polling — asking the gateway for a reading instead of waiting for one
+# ---------------------------------------------------------------------------
+
+@dataclass
+class _PollTarget:
+    """One sensor topic and the request that makes the gateway publish on it."""
+    topic: str
+    request: dict[str, Any]
+    last_seen: float | None = None
+    misses: int = 0
+
+
+def derive_poll_request(topic: str) -> dict[str, Any] | None:
+    """Build a Z-Wave JS UI pollValue request from the topic a sensor publishes on.
+
+    A value topic ends with nodeId/commandClass/endpoint/property, whatever the
+    prefix before it: zwave/135/49/0/Power -> node 135, class 49, endpoint 0,
+    property "Power". The gateway sanitises value names for the topic, turning
+    spaces into underscores, while its API expects the original label — so the
+    underscores are put back. Returns None for a topic that is not of that shape,
+    which simply means the sensor cannot be polled.
+    """
+    parts = [p for p in topic.strip("/").split("/") if p]
+    if len(parts) < 5:  # at least one prefix segment plus the four value segments
+        return None
+    node, command_class, endpoint, prop = parts[-4:]
+    if not (node.isdigit() and command_class.isdigit() and endpoint.isdigit()) or not prop:
+        return None
+    return {"args": [{
+        "nodeId": int(node),
+        "commandClass": int(command_class),
+        "endpoint": int(endpoint),
+        "property": prop.replace("_", " "),
+    }]}
+
+
+# ---------------------------------------------------------------------------
 # Transport subclass — overrides mqttport handlers (slots-safe)
 # ---------------------------------------------------------------------------
 
@@ -145,7 +208,15 @@ class _TilauMqttTransport(_mqttport_base):
                 data = json.loads(payload_str)
             except json.JSONDecodeError:
                 data = payload_str
+            if message.topic == self.owner.poll_response_topic:
+                self.owner.on_poll_response(data)
+                return
             self.owner.db.update(message.topic, data)
+            # First message of a topic is logged once: until it arrives the channel
+            # reads -1 and nothing else in the chain says why.
+            if message.topic not in self.owner.seen_topics:
+                self.owner.seen_topics.add(message.topic)
+                _logd.info("TilauMQTT first message on %s: %s", message.topic, data)
         except ValueError:
             _logd.error("TilauMQTT: failed to parse payload: %s", message.payload)
 
@@ -161,6 +232,20 @@ class _TilauMqttTransport(_mqttport_base):
                 client.subscribe(full_topic, qos=self.owner.config.qos)
             except Exception as e:
                 _logd.error("TilauMQTT subscribe failed: %s", e)
+            # Sensor topics usually sit outside the configured base topic
+            # (zwave/…, zigbee2mqtt/…) so they are subscribed one by one, and from
+            # inside this handler: paho reconnects on its own, and a reconnect
+            # would otherwise drop every sensor subscription for good.
+            for sensor_topic in self.owner.sensor_topics:
+                try:
+                    client.subscribe(sensor_topic, qos=self.owner.config.qos)
+                except Exception as e:
+                    _logd.error("TilauMQTT subscribe %s failed: %s", sensor_topic, e)
+            if self.owner.poll_response_topic:
+                try:
+                    client.subscribe(self.owner.poll_response_topic, qos=self.owner.config.qos)
+                except Exception as e:
+                    _logd.error("TilauMQTT subscribe %s failed: %s", self.owner.poll_response_topic, e)
             self.owner.connected_signal.emit()
         else:
             _logd.error("TilauMQTT connection failed, code: %s", status)
@@ -191,15 +276,32 @@ class TilauscopeMQTTClient(QObject):
         self.config = config
         self.db = MQTTDatabase()
         self.is_connected: bool = False
+        # Sensor topics are held here, not in the transport, because they have to
+        # be re-subscribed on every (re)connection — see on_connect_handler.
+        self.sensor_topics: list[str] = []
+        self.seen_topics: set[str] = set()
+        self._poll_targets: list[_PollTarget] = []
+        self._poll_timer: Any = None
 
         self._port = _TilauMqttTransport(aw)
         self._port.owner = self  # back-reference for callbacks
         self._port.host = config.broker_url
         self._port.port = config.port
         self._port.keepalive = config.keepalive
+        self._port.tls = config.tls
+        self._port.protocol_version = config.protocol_version
         self._port.user = config.username
         self._port.password = config.password
         self._port.topic = config.topic if config.topic else "/#"
+
+    @property
+    def poll_response_topic(self) -> str:
+        """Where the gateway answers a poll request: the request topic without its
+        trailing /set, as Z-Wave JS UI does. Empty when polling is not configured."""
+        topic = self.config.poll_topic.strip()
+        if not topic:
+            return ""
+        return topic[:-4] if topic.endswith("/set") else topic
 
     # -- paho client passthrough (legacy callers use .client.is_connected()) --
 
@@ -210,7 +312,9 @@ class TilauscopeMQTTClient(QObject):
     # -- lifecycle -----------------------------------------------------------
 
     def start(self, device_logging: bool = False) -> bool:
-        """Start transport. Returns True when connected (2 s timeout)."""
+        """Start transport. Returns True once the broker confirms the connection,
+        False when it stays silent for longer than the configured timeout (a TLS
+        broker needs more than a plain one: the handshake happens in there)."""
         if not self.config.username:
             _logd.error("TilauMQTT start(): missing credentials")
             return False
@@ -225,7 +329,7 @@ class TilauscopeMQTTClient(QObject):
         timer.setSingleShot(True)
         timer.timeout.connect(loop.quit)
         self.connected_signal.connect(loop.quit)
-        timer.start(2000)
+        timer.start(max(500, int(self.config.connect_timeout * 1000)))
         loop.exec()
         try:
             self.connected_signal.disconnect(loop.quit)
@@ -236,15 +340,121 @@ class TilauscopeMQTTClient(QObject):
     def stop(self) -> None:
         """Stop transport."""
         self.is_connected = False
+        self.stop_polling()
         self._port.stop()
 
     # -- subscriptions -------------------------------------------------------
 
     def update_subscriptions(self, sensor_list: MQTTSensorConfig) -> None:
+        """Record the sensor topics and subscribe them now.
+
+        The list is kept on the client so that on_connect_handler can restore the
+        subscriptions after an automatic reconnection.
+        """
+        self.sensor_topics = list(dict.fromkeys(s.topic for s in sensor_list.sensors if s.topic))
         if not self._port.client or not self._port.client.is_connected():
             return
-        for s in sensor_list.sensors:
-            self._port.client.subscribe(s.topic, qos=self.config.qos)
+        for topic in self.sensor_topics:
+            self._port.client.subscribe(topic, qos=self.config.qos)
+        self._schedule_pending_report()
+        self.start_polling()
+
+    def _schedule_pending_report(self) -> None:
+        """Report, once, the sensor topics still silent after the grace delay.
+
+        A broker publishing without the retain flag delivers nothing on subscribe:
+        the cache stays empty until the next spontaneous publication, and every
+        channel reads -1 in the meantime without a single trace.
+        """
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(_PENDING_REPORT_DELAY_MS, self._report_pending_sensors)
+
+    @pyqtSlot()
+    def _report_pending_sensors(self) -> None:
+        if not self.sensor_topics:
+            return
+        pending = [t for t in self.sensor_topics if self.db.get_value(t) is None]
+        if pending:
+            _logd.warning(
+                "TilauMQTT: still no message on %s — check the broker retain flag "
+                "and the publication interval of these topics", ", ".join(pending)
+            )
+        else:
+            _logd.info("TilauMQTT: all %d sensor topics received", len(self.sensor_topics))
+
+    # -- polling -------------------------------------------------------------
+
+    def start_polling(self) -> None:
+        """Ask the gateway for a reading on every pollable sensor topic, now and
+        then at the configured interval.
+
+        Nodes that publish only when they feel like it leave their channel empty
+        for minutes; a poll produces a value on demand instead. Runs on the main
+        thread — publishing is queued by paho, so nothing here blocks, and the
+        sampling loop is never involved.
+        """
+        self.stop_polling()
+        interval = self.config.poll_interval
+        if not self.config.poll_topic.strip() or interval <= 0:
+            return
+        interval = max(interval, _POLL_MIN_INTERVAL_S)
+        self._poll_targets = []
+        for topic in self.sensor_topics:
+            request = derive_poll_request(topic)
+            if request is None:
+                _logd.info("TilauMQTT: %s cannot be polled, its topic is not a gateway value path", topic)
+                continue
+            self._poll_targets.append(_PollTarget(topic=topic, request=request))
+        if not self._poll_targets:
+            return
+        from PyQt6.QtCore import QTimer
+        self._poll_timer = QTimer(self)
+        self._poll_timer.setInterval(interval * 1000)
+        self._poll_timer.timeout.connect(self._poll_tick)
+        self._poll_timer.start()
+        _logd.info("TilauMQTT: polling %d topics every %d s", len(self._poll_targets), interval)
+        self._poll_tick()  # prime immediately, the first roast minute matters
+
+    def stop_polling(self) -> None:
+        if self._poll_timer is not None:
+            self._poll_timer.stop()
+            self._poll_timer = None
+        self._poll_targets = []
+
+    @pyqtSlot()
+    def _poll_tick(self) -> None:
+        if not self.is_connected:
+            return
+        for target in list(self._poll_targets):
+            seen = self.db.get_timestamp(target.topic)
+            if target.last_seen is not None and seen == target.last_seen:
+                target.misses += 1
+                if target.misses >= _POLL_MISS_LIMIT:
+                    self._drop_poll_target(target, "no answer after %d polls" % _POLL_MISS_LIMIT)
+                    continue
+            else:
+                target.misses = 0
+            target.last_seen = seen
+            self.publish(self.config.poll_topic, target.request, qos=0)
+
+    def on_poll_response(self, data: Any) -> None:
+        """Handle the gateway's answer to a poll request. A refusal is definitive —
+        a wrong property name will not become right on the next cycle — so the
+        target leaves the rotation at once, named in the log."""
+        if not isinstance(data, dict) or data.get("success", True):
+            return
+        args = data.get("args") or []
+        node = args[0].get("nodeId") if args and isinstance(args[0], dict) else None
+        message = data.get("message", "")
+        for target in list(self._poll_targets):
+            if node is not None and target.request["args"][0]["nodeId"] != node:
+                continue
+            self._drop_poll_target(target, f"gateway refused the request: {message}")
+
+    def _drop_poll_target(self, target: _PollTarget, reason: str) -> None:
+        if target in self._poll_targets:
+            self._poll_targets.remove(target)
+        _logd.warning("TilauMQTT: stopped polling %s — %s", target.topic, reason)
 
     # -- publish (alarm commands) -------------------------------------------
 

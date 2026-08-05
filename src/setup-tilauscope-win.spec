@@ -193,7 +193,7 @@ binaries = collect_dynamic_libs('bleak')
 block_cipher = None
 
 logging.info(">>>>> Starting PyInstaller build")
-a = Analysis(['artisan.py'],
+a = Analysis(['tilauscope.py'],
              pathex=[PYQT_QT_BIN, TILAUSCOPE_SRC, SCIPY_BIN, PHIDGET22_BIN],
              binaries=binaries,
              datas=datas, # + copy_metadata('tzdata')
@@ -269,8 +269,6 @@ copy_file(SOURCE / 'tilauscope' / 'A101HLVN.TTF', TARGETSTR + '_internal\\tilaus
 for fn in [
     'tilauscope.png',
     'tilauscope.ico',
-    'artisan.png',
-    'artisan.ico',
     'artisanAlarms.ico',
     'artisanProfile.ico',
     'artisanPalettes.ico',

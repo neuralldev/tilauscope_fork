@@ -16,7 +16,7 @@
 			<key>CFBundleTypeIconFile</key>
 			<string>artisanProfile.icns</string>
 			<key>CFBundleTypeName</key>
-			<string>artisan Profile</string>
+			<string>TilauScope Profile</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSTypeIsPackage</key>
@@ -32,7 +32,7 @@
 			<key>CFBundleTypeIconFile</key>
 			<string>artisanAlarms.icns</string>
 			<key>CFBundleTypeName</key>
-			<string>artisan Alarms</string>
+			<string>TilauScope Alarms</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSTypeIsPackage</key>
@@ -48,7 +48,7 @@
 			<key>CFBundleTypeIconFile</key>
 			<string>artisanPalettes.icns</string>
 			<key>CFBundleTypeName</key>
-			<string>artisan Palettes</string>
+			<string>TilauScope Palettes</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSTypeIsPackage</key>
@@ -64,7 +64,7 @@
 			<key>CFBundleTypeIconFile</key>
 			<string>artisanSettings.icns</string>
 			<key>CFBundleTypeName</key>
-			<string>artisan Settings</string>
+			<string>TilauScope Settings</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSTypeIsPackage</key>
@@ -80,7 +80,7 @@
 			<key>CFBundleTypeIconFile</key>
 			<string>artisanWheel.icns</string>
 			<key>CFBundleTypeName</key>
-			<string>artisan Wheel</string>
+			<string>TilauScope Wheel</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSTypeIsPackage</key>
@@ -96,7 +96,7 @@
 			<key>CFBundleTypeIconFile</key>
 			<string>artisanTheme.icns</string>
 			<key>CFBundleTypeName</key>
-			<string>artisan Theme</string>
+			<string>TilauScope Theme</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSTypeIsPackage</key>
@@ -119,8 +119,10 @@
 	<string>TilauScope</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<!-- CFBundleShortVersionString/CFBundleVersion below are placeholders: setup-tilauscope-mac.spec overwrites
+	     both from artisanlib.__version__/__build__ at build time. Never read the values in this source file. -->
 	<key>CFBundleShortVersionString</key>
-	<string>4.1.0</string>
+	<string>0.0.0</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -133,7 +135,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>artisan 4.1.0</string>
+	<string>0.0.0.0</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
 	<key>LSArchitecturePriority</key>
@@ -148,9 +150,9 @@
 	<key>LSMultipleInstancesProhibited</key>
 	<string>false</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>artiisan wants to access bluetooth</string>
+	<string>TilauScope wants to access bluetooth</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>artisan wants to access bluetooth</string>
+	<string>TilauScope wants to access bluetooth</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>

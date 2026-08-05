@@ -38,6 +38,13 @@ The middle phase, from [dry end](#de--dry-end) to [first crack](#fc--first-crack
 and amino acids react and produce most of the roast's aromatic complexity. The phase where
 heat reductions are staged.
 
+These reactions **absorb** heat rather than release it, so the burner is feeding them, not
+merely warming the bean. Cutting the heat here does not slow the reaction gently — it starves
+it, and the bean temperature keeps climbing on the drum's own heat while the chemistry
+stalls. This is why the plan holds the heat through Maillard instead of stepping it down
+early, and why it is a phase to judge by the settings held rather than by the curve. See
+[baked](#baked).
+
 #### FC — first crack
 
 The audible cracking as bean structure fails under internal pressure. It marks the start of
@@ -123,6 +130,31 @@ standard reference for a coffee's quality independent of any particular roast.
 How much of the water in green coffee is chemically available, on a 0 to 1 scale. It
 predicts how well a bag will keep far better than moisture content alone.
 
+#### Retained reading
+
+A network sensor's last published value, kept by the message broker and handed to
+TilauScope the moment it starts listening. Without it a channel stays empty until the
+sensor next speaks of its own accord, which on a home automation network can take minutes.
+
+#### TLS
+
+The encryption a message broker can require on the link, so that readings and the password
+used to obtain them do not travel in clear text. The broker proves its identity with a
+certificate, which must come from a recognised authority: a certificate the broker issued
+to itself is refused, and the connection simply fails.
+
+#### Keepalive
+
+The idle time after which a quiet connection to the broker is checked. Short values notice
+a broker that has gone away sooner, at the cost of talking to it more often.
+
+#### Polling
+
+Asking a network sensor for a reading instead of waiting for one. Some sensors report only
+on their own schedule, far too slowly to follow a roast; polling requests a fresh value at
+a chosen interval. Only sensors on mains power can be polled — a battery sensor sleeps
+between its own reports and cannot be reached in between.
+
 ---
 
 ## Machine behaviour
@@ -207,7 +239,12 @@ usually producing harsh, ashy notes.
 #### Baked
 
 A flat, hollow, bread-like cup, caused by spending too long in a phase with too little
-thermal momentum — most often a drying or Maillard phase that ran long.
+thermal momentum — most often a drying or [Maillard](#maillard) phase that ran long, or one
+run on too little heat.
+
+The second case is the harder one to see: because the drum keeps radiating, bean temperature
+and [RoR](#ror--rate-of-rise) can both look impeccable while the reaction underneath has
+already stalled. A smooth curve is not proof that the roast is being fed.
 
 #### Flash drying
 

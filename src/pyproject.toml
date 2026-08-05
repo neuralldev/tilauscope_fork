@@ -303,7 +303,7 @@ omit = [
     "help/*",
     "dist/*",
     "build/*",
-    "artisan.py",
+    "tilauscope.py",
     "conftest.py",
     "pylupdate6pro.py",
     "setup-*.py",

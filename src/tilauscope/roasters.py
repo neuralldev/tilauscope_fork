@@ -24,6 +24,7 @@ from enum import StrEnum, auto
 from dataclasses import dataclass, field
 from mashumaro.mixins.dict import DataClassDictMixin
 import json
+import math
 from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS
 from typing import Final
 import logging
@@ -329,6 +330,20 @@ class Roaster(DataClassDictMixin):
     dev_thermal_inertia_factor: float | None = None   # 0.0–1.0; lower = faster response
     expected_tp_bt: float | None = None               # machine-specific TP BT (°C)
 
+    ## Heater ceiling: hardware limit, not a style choice. Some
+    ## elements (e.g. the ITOP Cyberroaster's FIR/NIR emitter) degrade above a
+    ## machine-specific power fraction — the plan must never target above it.
+    ## None (default) → no declared ceiling, RoasterContext falls back to 100.0.
+    heater_max_pct: float | None = None
+
+    ## Maillard RoR decay exponent: the exponent `k` of RoR(u) = R_FC + (R_DE -
+    ## R_FC) * (1-u)^k, where u is the fraction of Maillard elapsed. Machine
+    ## property, not bean/style: low-inertia radiant electric heaters (FIR/NIR:
+    ## Skywalker, Kaleido, ITOP Cyberroaster) decay at 2.0; classic drum
+    ## roasters decay steeper at 3.0.
+    ## None (default) → no declared exponent, RoasterContext falls back to 2.0.
+    maillard_ror_decay: float | None = None
+
     # --------------------------------------------------------
     # Preheat PID Learning Model Kernel
     # --------------------------------------------------------
@@ -488,6 +503,13 @@ class RoasterContext:
 
     # ── Heater resolution ────────────────────────────────────
     heater_resolution_pct: float = 1.0  # step size for rounding heater values
+    ## Heater ceiling: hardware limit, not a style choice — see
+    ## Roaster.heater_max_pct. 100.0 = no declared ceiling.
+    heater_max_pct: float = 100.0
+
+    ## Maillard RoR decay exponent — see Roaster.maillard_ror_decay.
+    ## 2.0 = default (low-inertia radiant electric machines).
+    maillard_ror_decay: float = 2.0
 
     ## TILAU ## see comment in the Drum block above — populated by from_roaster
     ## from DrumControl.smooth_speed_transition (safe default: locked).
@@ -544,6 +566,10 @@ class RoasterContext:
             is_radiant_electric      = roaster.is_radiant_electric,
             airflow_resolution_pct   = airflow_res,
             heater_resolution_pct    = heater_res,
+            heater_max_pct           = (roaster.heater_max_pct
+                                        if roaster.heater_max_pct is not None else 100.0),
+            maillard_ror_decay       = (roaster.maillard_ror_decay
+                                        if roaster.maillard_ror_decay is not None else 2.0),
             drum_variable_speed      = dc.variable_speed if dc else False,
             drum_min_rpm             = drum_min,
             drum_max_rpm             = drum_max,
@@ -621,9 +647,14 @@ class RoasterContext:
         span_rpm = self.drum_max_rpm - self.drum_min_rpm
         span_set = 100.0 - self.drum_min_setting
         pct = self.drum_min_setting + ((rpm - self.drum_min_rpm) / span_rpm) * span_set
-        pct = round(pct / self.drum_step_rpm) * self.drum_step_rpm  # snap to step in % space as well
+        # Snap to step in % space, rounded DOWN (fix 2026-08-04): rounding to
+        # nearest pushed borderline batches (e.g. 267 g → 72.86%) above the
+        # doctrine ceiling (250 g → 65-70%). Floor keeps the setting on or
+        # below the physically achievable step instead of overshooting it.
+        pct = math.floor(pct / self.drum_step_rpm) * self.drum_step_rpm
+        pct = max(self.drum_min_setting, min(100.0, pct))
 
-        return f"{max(0.0, min(100.0, pct)):.0f}%"
+        return f"{pct:.0f}%"
 
     def round_airflow(self, value: float) -> float:
         """Round an airflow % to this roaster's resolution step."""

@@ -23,6 +23,7 @@ from typing import Final, TYPE_CHECKING
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow  # noqa: F401
     from tilauscope.tilauscope_types import MQTTSensorConfig  # noqa: F401
+    from tilauscope.mqttbridge import MQTTConfig  # noqa: F401
 
 _log:  Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -331,6 +332,20 @@ def _table_spinbox_style() -> str:
             background: transparent;
         }}
     """
+
+
+# Standard broker ports; the TLS switch moves between the two as long as the
+# user has not typed a port of their own.
+_MQTT_PORT_PLAIN: Final[int] = 1883
+_MQTT_PORT_TLS: Final[int] = 8883
+
+# Width of the broker spin boxes: enough for five digits, a unit suffix and the
+# arrows with the dialog padding — the rest of the row belongs to its label.
+_MQTT_SPIN_W: Final[int] = 96
+
+# Indicator (16 px) plus its spacing (8 px) plus a margin, added to the measured
+# text width to give a check box the room its label needs.
+_CHECKBOX_EXTRA_W: Final[int] = 34
 
 
 # MQTT sensor units: stored code -> label shown in the table. "" means the
@@ -1305,10 +1320,112 @@ class TilauscopeConfigDlg(QDialog):
         self.mqttPortSpin    = QSpinBox()
         self.mqttPortSpin.setRange(1, 65535)
         self.mqttPortSpin.setValue(self.aw.mqttConfig.port)
+        # A spin box expands horizontally by default and would take the whole row,
+        # leaving the label next to it clipped: five digits is all it ever needs.
+        self.mqttPortSpin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.mqttPortSpin.setMinimumWidth(_MQTT_SPIN_W)
+        # TLS and protocol version are handled by the underlying transport; the
+        # certificate is checked against the system CA bundle, so a self-signed
+        # broker certificate is rejected — there is no "accept anyway" here.
+        self.mqttTlsCheck = QCheckBox(
+            QApplication.translate("tilauscope_devices", "TLS (encrypted)")
+        )
+        self.mqttTlsCheck.setChecked(self.aw.mqttConfig.tls)
+        self.mqttTlsCheck.setToolTip(QApplication.translate(
+            "tilauscope_devices",
+            "Encrypts the link to the broker. The broker certificate must be issued "
+            "by a recognised authority; a self-signed certificate is refused."
+        ))
+        self.mqttTlsCheck.toggled.connect(self._mqtt_tls_toggled)
+        # A squeezed check box clips its own text rather than refusing to shrink,
+        # so the width its label needs is claimed explicitly — measured, because a
+        # translated label is not the same length as the English one.
+        self.mqttTlsCheck.setMinimumWidth(
+            self.mqttTlsCheck.fontMetrics().horizontalAdvance(self.mqttTlsCheck.text())
+            + _CHECKBOX_EXTRA_W
+        )
+        self.mqttTlsCheck.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        port_row = QHBoxLayout()
+        port_row.setContentsMargins(0, 0, 0, 0)
+        port_row.addWidget(self.mqttPortSpin)
+        port_row.addWidget(self.mqttTlsCheck)
+        port_row.addStretch()
+        self._mqtt_port_row = QWidget()
+        self._mqtt_port_row.setLayout(port_row)
+
+        self.mqttProtocolCombo = QComboBox()
+        for label in ("MQTT v3.1", "MQTT v3.1.1", "MQTT v5"):
+            self.mqttProtocolCombo.addItem(label)
+        self.mqttProtocolCombo.setCurrentIndex(
+            min(max(self.aw.mqttConfig.protocol_version, 0), 2)
+        )
+        # macOS draws the popup as a top-level window that ignores the dialog QSS
+        self.mqttProtocolCombo.setView(_styled_combo_view())
+        self.mqttProtocolCombo.setToolTip(QApplication.translate(
+            "tilauscope_devices",
+            "Version spoken to the broker. Leave on v3.1.1 unless the broker "
+            "requires otherwise."
+        ))
+
         self.mqttTopicEdit   = QLineEdit(self.aw.mqttConfig.topic)
         self.mqttUsernameEdit = QLineEdit(self.aw.mqttConfig.username)
         self.mqttPasswordEdit = QLineEdit(self.aw.mqttConfig.password)
         self.mqttPasswordEdit.setEchoMode(QLineEdit.EchoMode.Password)
+
+        self.mqttTimeoutSpin = QDoubleSpinBox()
+        self.mqttTimeoutSpin.setRange(0.5, 30.0)
+        self.mqttTimeoutSpin.setSingleStep(0.5)
+        self.mqttTimeoutSpin.setDecimals(1)
+        self.mqttTimeoutSpin.setValue(self.aw.mqttConfig.connect_timeout)
+        self.mqttTimeoutSpin.setSuffix(QApplication.translate("tilauscope_devices", " s"))
+        self.mqttTimeoutSpin.setToolTip(QApplication.translate(
+            "tilauscope_devices",
+            "How long the broker is given to accept the connection before it is "
+            "declared unreachable. A distant or encrypted broker needs more."
+        ))
+        self.mqttKeepaliveSpin = QSpinBox()
+        self.mqttKeepaliveSpin.setRange(5, 600)
+        self.mqttKeepaliveSpin.setValue(self.aw.mqttConfig.keepalive)
+        self.mqttKeepaliveSpin.setSuffix(QApplication.translate("tilauscope_devices", " s"))
+        self.mqttKeepaliveSpin.setToolTip(QApplication.translate(
+            "tilauscope_devices",
+            "Idle time after which the connection is checked. A short value detects "
+            "a lost broker sooner but talks to it more often."
+        ))
+        _keepalive_label = QLabel(QApplication.translate("tilauscope_devices", "Keepalive:"))
+        conn_row = QHBoxLayout()
+        conn_row.setContentsMargins(0, 0, 0, 0)
+        for _spin in (self.mqttTimeoutSpin, self.mqttKeepaliveSpin):
+            _spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            _spin.setMinimumWidth(_MQTT_SPIN_W)
+        conn_row.addWidget(self.mqttTimeoutSpin)
+        conn_row.addSpacing(12)
+        conn_row.addWidget(_keepalive_label)
+        conn_row.addWidget(self.mqttKeepaliveSpin)
+        conn_row.addStretch()
+        self._mqtt_conn_row = QWidget()
+        self._mqtt_conn_row.setLayout(conn_row)
+
+        # Polling: some gateways publish a value only when asked, or far too
+        # slowly for a roast. Left empty, nothing is ever requested.
+        self.mqttPollTopicEdit = QLineEdit(self.aw.mqttConfig.poll_topic)
+        self.mqttPollTopicEdit.setPlaceholderText(
+            "zwave/_CLIENTS/ZWAVE_GATEWAY-<name>/api/pollValue/set"
+        )
+        self.mqttPollIntervalSpin = QSpinBox()
+        self.mqttPollIntervalSpin.setRange(0, 600)
+        self.mqttPollIntervalSpin.setValue(self.aw.mqttConfig.poll_interval)
+        self.mqttPollIntervalSpin.setSuffix(
+            QApplication.translate("tilauscope_devices", " s")
+        )
+        self.mqttPollIntervalSpin.setSpecialValueText(
+            QApplication.translate("tilauscope_devices", "off")
+        )
+        self.mqttPollIntervalSpin.setToolTip(QApplication.translate(
+            "tilauscope_devices",
+            "How often a reading is requested from the gateway. Below 10 seconds "
+            "the network cannot keep up, so 10 seconds is used instead."
+        ))
 
         self.mqttTestButton  = QPushButton(
             QApplication.translate("tilauscope_devices", "Test Connection")
@@ -1317,10 +1434,14 @@ class TilauscopeConfigDlg(QDialog):
         self.mqttTestButton.clicked.connect(self._test_mqtt_connection)
 
         mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Broker URL:"), self.mqttBrokerEdit)
-        mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Port:"),       self.mqttPortSpin)
+        mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Port:"),       self._mqtt_port_row)
+        mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Protocol:"),   self.mqttProtocolCombo)
         mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Topic:"),      self.mqttTopicEdit)
         mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Username:"),   self.mqttUsernameEdit)
         mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Password:"),   self.mqttPasswordEdit)
+        mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Timeout:"),    self._mqtt_conn_row)
+        mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Poll request topic:"), self.mqttPollTopicEdit)
+        mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Poll every:"), self.mqttPollIntervalSpin)
         mqtt_layout.addRow("", self.mqttTestButton)
 
         # ── MQTT sensors ──────────────────────────────────────────────────
@@ -2011,7 +2132,7 @@ class TilauscopeConfigDlg(QDialog):
         """Probe the selected row against a short-lived connection built from the
         broker fields as currently typed, so a sensor can be verified before the
         settings have ever been saved."""
-        from tilauscope.mqttbridge import TilauscopeMQTTClient, MQTTConfig, TilauMqttPorts
+        from tilauscope.mqttbridge import TilauscopeMQTTClient, TilauMqttPorts
         row = self.mqtt_sensor_table.currentRow()
         if row < 0:
             show_styled_message(
@@ -2034,14 +2155,7 @@ class TilauscopeConfigDlg(QDialog):
             )
             return
 
-        temp_config = MQTTConfig(
-            broker_url=self.mqttBrokerEdit.text(),
-            port=self.mqttPortSpin.value(),
-            topic=self.mqttTopicEdit.text(),
-        )
-        temp_config.username = self.mqttUsernameEdit.text()
-        temp_config.password = self.mqttPasswordEdit.text()
-        client = TilauscopeMQTTClient(temp_config, self.aw)
+        client = TilauscopeMQTTClient(self._mqtt_config_from_form(), self.aw)
         result = None
         try:
             if client.start():
@@ -2079,16 +2193,35 @@ class TilauscopeConfigDlg(QDialog):
     # ─────────────────────────────────────────────────────────────────────────
 
     @pyqtSlot()
-    def _test_mqtt_connection(self) -> None:
-        from tilauscope.mqttbridge import TilauscopeMQTTClient, MQTTConfig
-        temp_config = MQTTConfig(
+    def _mqtt_config_from_form(self) -> 'MQTTConfig':
+        """Broker settings exactly as typed, without waiting for OK — both the
+        connection test and the sensor check work on what is on screen."""
+        from tilauscope.mqttbridge import MQTTConfig
+        config = MQTTConfig(
             broker_url=self.mqttBrokerEdit.text(),
             port=self.mqttPortSpin.value(),
             topic=self.mqttTopicEdit.text(),
+            tls=self.mqttTlsCheck.isChecked(),
+            protocol_version=self.mqttProtocolCombo.currentIndex(),
+            connect_timeout=self.mqttTimeoutSpin.value(),
+            keepalive=self.mqttKeepaliveSpin.value(),
         )
-        temp_config.username = self.mqttUsernameEdit.text()
-        temp_config.password = self.mqttPasswordEdit.text()
-        mqtt_client = TilauscopeMQTTClient(temp_config, self.aw)
+        config.username = self.mqttUsernameEdit.text()
+        config.password = self.mqttPasswordEdit.text()
+        return config
+
+    def _mqtt_tls_toggled(self, checked: bool) -> None:
+        """Follow the standard port pair when TLS is switched, but only while the
+        port still holds the default of the other mode — a port typed by hand is
+        never overwritten."""
+        if checked and self.mqttPortSpin.value() == _MQTT_PORT_PLAIN:
+            self.mqttPortSpin.setValue(_MQTT_PORT_TLS)
+        elif not checked and self.mqttPortSpin.value() == _MQTT_PORT_TLS:
+            self.mqttPortSpin.setValue(_MQTT_PORT_PLAIN)
+
+    def _test_mqtt_connection(self) -> None:
+        from tilauscope.mqttbridge import TilauscopeMQTTClient
+        mqtt_client = TilauscopeMQTTClient(self._mqtt_config_from_form(), self.aw)
         connected = mqtt_client.start()
         mqtt_client.stop()
         if connected:
@@ -2353,9 +2486,15 @@ class TilauscopeConfigDlg(QDialog):
         # ── Integrations — MQTT ───────────────────────────────────────────
         aw.mqttConfig.broker_url = self.mqttBrokerEdit.text()
         aw.mqttConfig.port       = self.mqttPortSpin.value()
+        aw.mqttConfig.tls        = self.mqttTlsCheck.isChecked()
+        aw.mqttConfig.protocol_version = self.mqttProtocolCombo.currentIndex()
+        aw.mqttConfig.connect_timeout  = self.mqttTimeoutSpin.value()
+        aw.mqttConfig.keepalive        = self.mqttKeepaliveSpin.value()
         aw.mqttConfig.topic      = self.mqttTopicEdit.text()
         aw.mqttConfig.username   = self.mqttUsernameEdit.text()
         aw.mqttConfig.password   = self.mqttPasswordEdit.text()
+        aw.mqttConfig.poll_topic    = self.mqttPollTopicEdit.text().strip()
+        aw.mqttConfig.poll_interval = self.mqttPollIntervalSpin.value()
 
         # sensor list is rebuilt from the table and persisted to QSettings
         self._mqtt_sensors = self._get_mqtt_sensor_data()

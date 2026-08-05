@@ -62,6 +62,8 @@
         "dev_thermal_inertia_factor": 0.45,
         "notes": "bt_offsets calibrated on 68 real roasts (Light n=23, Medium n=45) from Beast Edition raw BT values. Residual error \u00b13\u00b0C. Deeper roasts show larger divergence handled by dev_thermal_inertia_factor. FIR radiant electric heater.",
         "expected_tp_bt": 95.0,
+        "heater_max_pct": 80.0,
+        "maillard_ror_decay": 2.0,
         "thermal_model_kernel": "triangular",
         "thermal_model_sigma": 1.0
     },
@@ -72,6 +74,7 @@
         "roaster_type": "drum",
         "heating_type": "electric",
         "is_radiant_electric": true,
+        "maillard_ror_decay": 2.0,
         "technology": [
             "radiation"
         ],
@@ -136,6 +139,7 @@
         "roaster_type": "drum",
         "heating_type": "induction",
         "is_radiant_electric": false,
+        "maillard_ror_decay": 3.0,
         "technology": [
             "convection",
             "radiation"
@@ -199,6 +203,7 @@
         "roaster_type": "drum",
         "heating_type": "gas",
         "is_radiant_electric": false,
+        "maillard_ror_decay": 3.0,
         "technology": [
             "radiation",
             "convection",
@@ -300,6 +305,7 @@
         "roaster_type": "drum",
         "heating_type": "electric",
         "is_radiant_electric": false,
+        "maillard_ror_decay": 3.0,
         "technology": [
             "radiation",
             "convection",
@@ -415,6 +421,7 @@
         "roaster_type": "drum",
         "heating_type": "electric",
         "is_radiant_electric": false,
+        "maillard_ror_decay": 3.0,
         "technology": [
             "radiation",
             "convection",
@@ -508,6 +515,7 @@
         "roaster_type": "drum",
         "heating_type": "infrared",
         "is_radiant_electric": true,
+        "maillard_ror_decay": 2.0,
         "technology": [
             "radiation",
             "convection"
@@ -572,6 +580,7 @@
         "roaster_type": "drum",
         "heating_type": "infrared",
         "is_radiant_electric": true,
+        "maillard_ror_decay": 2.0,
         "technology": [
             "radiation",
             "convection"
@@ -659,6 +668,7 @@
         "roaster_type": "drum",
         "heating_type": "infrared",
         "is_radiant_electric": true,
+        "maillard_ror_decay": 2.0,
         "technology": [
             "radiation",
             "convection"
@@ -722,6 +732,7 @@
         "roaster_type": "drum",
         "heating_type": "infrared",
         "is_radiant_electric": true,
+        "maillard_ror_decay": 2.0,
         "technology": [
             "radiation",
             "convection"
@@ -786,6 +797,7 @@
         "roaster_type": "fluid_bed",
         "heating_type": "electric",
         "is_radiant_electric": false,
+        "maillard_ror_decay": 3.0,
         "technology": [
             "convection"
         ],
@@ -846,6 +858,7 @@
         "roaster_type": "drum",
         "heating_type": "electric",
         "is_radiant_electric": false,
+        "maillard_ror_decay": 3.0,
         "technology": [
             "conduction",
             "convection"
@@ -909,6 +922,7 @@
         "roaster_type": "drum",
         "heating_type": "electric",
         "is_radiant_electric": false,
+        "maillard_ror_decay": 3.0,
         "technology": [
             "conduction",
             "convection"
@@ -972,6 +986,7 @@
         "roaster_type": "fluid_bed",
         "heating_type": "electric",
         "is_radiant_electric": false,
+        "maillard_ror_decay": 3.0,
         "technology": [
             "convection"
         ],
@@ -1033,6 +1048,7 @@
         "roaster_type": "fluid_bed",
         "heating_type": "electric",
         "is_radiant_electric": false,
+        "maillard_ror_decay": 3.0,
         "technology": [
             "convection"
         ],
@@ -1094,6 +1110,7 @@
         "roaster_type": "drum",
         "heating_type": "electric",
         "is_radiant_electric": true,
+        "maillard_ror_decay": 2.0,
         "technology": [
             "radiation"
         ],

@@ -45,13 +45,22 @@ a batch on a day, not to a coffee in the abstract.
 Time*, *Drop Temp*.
 
 **Phase durations.** *Dry Phase Time*, *Maillard Phase Time*, *Development Phase Time* and
-*Total Time* — a target per phase rather than one figure for the whole roast.
+*Total Time* — a target per phase rather than one figure for the whole roast. Two of them have
+a floor that comes from the machine rather than from the style: drying is never planned under
+4:30, Maillard never under 3:00. Below those the roast is not reachable on a drum of this size —
+the first belongs to sample roasters, the second would mean heating hard enough to scorch the
+bean. When a floor applies, the **total extends**; no other phase is shortened to pay for it.
 
-**RoR targets.** *Target ROR Maillard*, *Target ROR Dev* and *Target ROR at Drop*: the slope
-to hold at each stage.
+**RoR targets.** *Target ROR Maillard*, *Target ROR at FC*, *Target ROR Dev* and *Target ROR at
+Drop*: the slope to hold at each stage. The Maillard figure is an average, and an average says
+nothing about where the roast lands — *Target ROR at FC* is the arrival value, worked out from
+how quickly this machine's rate of rise decays, and it is the one that decides first crack.
 
-**Development.** *Target DTR* and *Calculated Final DTR* — where development should end up,
-known before charging rather than discovered at the end.
+**Development.** *Resulting DTR (%)* — development itself is planned as a duration at the
+right temperature and rate of rise for the batch, and the ratio is the figure that comes out
+of it, known before charging rather than discovered at the end. When it falls outside the
+usual range for the roast level, the plan notes it as a sign to look at the front of the
+roast, not at development.
 
 **The curve.** *Planned BT* and *Planned RoR*, a smooth curve the real roast can be laid over.
 
@@ -59,6 +68,23 @@ known before charging rather than discovered at the end.
 before [first crack](glossary.md#fc--first-crack), not applied after it**, down to
 *last step {n} s before FC*. This is the difference between a heat cut that controls first
 crack and one that arrives too late and flattens the curve.
+
+Before dry end the ladder normally does nothing: a charge temperature and an initial heat
+that suit the coffee carry it through drying untouched. When they do not — when this coffee has
+shown a rate of rise that flattens too early — you bring the burner down during drying to put
+the curve back on a slope. **The plan learns that from your own roasts** rather than inventing
+it: when it starts, how large your steps are, and the value you land on at dry end. A coffee
+you have never had to correct gets no reduction scheduled at all.
+
+After dry end the ladder descends, but never below what the coffee needs to keep
+[Maillard](glossary.md#maillard) running. That demand is read from the batch itself — its
+process first, then variety and origin, then density, moisture, water activity and the room
+the machine is breathing — and it holds the heat up through the whole phase, releasing by one
+step only at the end, shortly before first crack. Washed coffees carry the highest demand and
+hold it longest; naturals and fermented lots have had part of their sugars broken down
+already and sustain themselves earlier. **The development setting is reached after first
+crack, never before it** — arriving at it early is the classic way to produce a
+[baked](glossary.md#baked) cup while the curve still looks correct.
 
 **Airflow.** *Airflow*, *AirWave*, *AirWave Mode*, with the reason attached — *to smooth RoR*,
 *to prevent crash*, *Action: Increase extraction/airflow to shed thermal energy*.
@@ -73,6 +99,17 @@ orders is not.
 **Risk markers.** *CRASH* and *FLICK* points with a *Severity*, plus *RoR variance* — the plan
 knows where this coffee is likely to [crash](glossary.md#crash) or
 [flick](glossary.md#flick) before it happens.
+
+**Setup conflicts.** Sometimes the roast being asked for cannot be held, and the plan says so
+rather than printing numbers that will not work. Three cases: the rate of rise would have to
+*climb* through [Maillard](glossary.md#maillard) instead of falling — too much temperature to
+cover in the time, and a [flick](glossary.md#flick) is certain; it would have to *collapse*
+before first crack — a flat, [baked](glossary.md#baked) cup; or the burner would have to come
+down faster than five percent every thirty seconds, which is the point past which you can no
+longer see what a change did. In all three the plan names the setup that caused it and stops
+there. It does not invent a correction: a chain reaction is not recovered once it has started,
+and the answer belongs to the *next* roast — a different charge temperature, a different
+initial heat, a different planned Maillard.
 
 !!! note
     Every temperature in the plan is a [bean temperature](glossary.md#bt--bean-temperature) and

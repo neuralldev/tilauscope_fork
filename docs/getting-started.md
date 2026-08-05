@@ -173,11 +173,33 @@ a progress view while it downloads, and then **🛠 Install Now & Quit** once it
 **Later** postpones the whole thing — an update never interrupts a roasting session in
 progress.
 
+![one per tab](assets/getting-started-1.17.png)
+![one per tab](assets/getting-started-1.18.png)
+![one per tab](assets/getting-started-1.19.png)
+
 If the installer cannot be launched automatically, TilauScope reports it and gives the path
 to the installer, rather than failing silently.
 
 The first time a new version is opened, a **What's new** screen summarises what changed. It
 appears once per version.
+
+---
+
+## Opening TilauScope twice
+
+TilauScope runs as a single copy on a machine. Opening it again while it is already
+running does not give you a second window: it tells you a copy is already open, and
+offers to close the one you just started.
+
+Only one copy can talk to the roaster. The meter connection, the Bluetooth devices and
+the green-bean database all belong to the copy already running, and a second one would
+compete with it for them in the middle of a roast.
+
+If remote control is switched on and the running copy is serving it, the message also
+offers **Open the control client**, which opens the piloting page in your browser rather
+than a second window. See [Piloting from a phone](phone-piloting.md).
+
+![TilauScope is already running](assets/getting-started-1.20.png)
 
 ---
 

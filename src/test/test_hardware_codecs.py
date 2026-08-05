@@ -379,3 +379,60 @@ def test_sensors_stored_before_the_unit_field_existed_still_load() -> None:
     )
 
     assert cfg.sensors[0].unit == ''
+
+
+def test_a_poll_request_is_derived_from_the_value_topic() -> None:
+    """Payload verified against a live Z-Wave JS UI gateway: the four trailing
+    segments are the value id, whatever the prefix in front of them."""
+    from tilauscope.mqttbridge import derive_poll_request
+
+    assert derive_poll_request('zwave/135/49/0/Power') == {
+        'args': [{'nodeId': 135, 'commandClass': 49, 'endpoint': 0, 'property': 'Power'}]
+    }
+
+
+def test_a_polled_property_gets_its_spaces_back() -> None:
+    """The gateway sanitises value names for the topic but its API expects the
+    original label: `Air_temperature` is refused, `Air temperature` is accepted."""
+    from tilauscope.mqttbridge import derive_poll_request
+
+    request = derive_poll_request('zwave/7/49/0/Air_temperature')
+
+    assert request is not None
+    assert request['args'][0]['property'] == 'Air temperature'
+
+
+@pytest.mark.parametrize('topic', [
+    'zigbee2mqtt/0x8c73dafffeb678fb',  # no value id at all
+    'zwave/7/lastActive',              # too short to carry one
+    'zwave/x/49/0/Power',              # node id is not a number
+])
+def test_a_topic_that_is_not_a_value_path_cannot_be_polled(topic: str) -> None:
+    """Sensors on such a topic are simply left out of the rotation, never guessed at."""
+    from tilauscope.mqttbridge import derive_poll_request
+
+    assert derive_poll_request(topic) is None
+
+
+def test_a_broker_configured_before_polling_existed_still_loads() -> None:
+    """The stored dict has no poll keys; polling must default to off."""
+    from tilauscope.mqttbridge import MQTTConfig
+
+    config = MQTTConfig.from_dict({'broker_url': 'h', 'port': 1883, 'topic': 't'})
+
+    assert config.poll_topic == ''
+    assert config.poll_interval == 0
+
+
+def test_the_poll_answer_is_read_on_the_request_topic_without_set() -> None:
+    """Z-Wave JS UI answers on the request topic stripped of its /set suffix."""
+    from tilauscope.mqttbridge import MQTTConfig, TilauscopeMQTTClient
+
+    config = MQTTConfig(poll_topic='zwave/_CLIENTS/GW/api/pollValue/set')
+    client = TilauscopeMQTTClient.__new__(TilauscopeMQTTClient)
+    client.config = config
+
+    assert client.poll_response_topic == 'zwave/_CLIENTS/GW/api/pollValue'
+
+    client.config = MQTTConfig(poll_topic='')
+    assert client.poll_response_topic == ''

@@ -19,7 +19,7 @@ DMG_PATH="${2:?usage: sign-notarize-macos.sh <app-path> <dmg-path>}"
 NOTARIZE="${NOTARIZE:-1}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENTITLEMENTS="$SCRIPT_DIR/artisan.entitlements"
+ENTITLEMENTS="$SCRIPT_DIR/tilauscope.entitlements"
 CHILD_ENTITLEMENTS="$SCRIPT_DIR/Child.entitlements"
 
 : "${CODESIGN_IDENTITY:?CODESIGN_IDENTITY is not set}"

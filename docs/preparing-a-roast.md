@@ -217,6 +217,22 @@ becomes available once bean temperature is stable.
 The page carries a **Burner** slider, so preheating can be corrected by hand without leaving
 the assistant. On a read-only machine the slider is hidden.
 
+### Following the preheat on the roast graph
+
+The assistant window is not required to see what preheating is doing. Whenever TilauPID is
+running, a **Preheat** panel is drawn on the roast graph itself, next to the bean temperature
+curve, and stays there until [CHARGE](glossary.md#charge) is marked. It reports the target
+[setpoint](glossary.md#sv--setpoint-value), the temperature being steered on — bean or air,
+whichever the **Input** setting selects — the remaining gap to the setpoint, the current
+[RoR](glossary.md#ror--rate-of-rise), the burner power TilauPID is applying, and how long the
+climb still has to run. The header changes colour as the machine closes in, and the remaining
+time is replaced by *Ready to charge* once the setpoint band is reached.
+
+This is the same information the assistant's Preheat page gives, minus the commentary and the
+burner slider, for roasting straight from the Artisan window.
+
+![the roast graph during preheating](assets/preparing-a-roasdt-5.16.png)
+
 ### It learns your machine
 
 **Preheating calibrates itself across roasts.** Two things are re-derived from your own
@@ -244,7 +260,7 @@ reached with the charge button available. -->
     to the preheating described above, which needs no calibration from you. Use it only to
     tune Artisan's PID itself; it has its own **PID Parameters Help** for what the gains mean.
 
-<!-- CAPTURE 5.15 — the PID Autotune window. -->
+![the roast graph during preheating](assets/preparing-a-roasdt-5.15.png)
 
 ---
 

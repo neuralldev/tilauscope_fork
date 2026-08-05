@@ -1,7 +1,10 @@
 #
 # ABOUT
-# Artisan Dialogs
-
+# artisan scope dialogs
+#
+# COPYRIGHT (C) 2010-2026 The artisan team represented by
+#   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
+#
 # LICENSE
 # This program or module is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
@@ -199,7 +202,10 @@ class HelpDlg(ArtisanDialog):
 
         # Build the dialog layout
         homeLabel = QLabel()
-        homeLabel.setText(f"{QApplication.translate('Label', 'For more details visit')} <a href='https://artisan-scope.org/help/'>artisan-scope.org/help/</a>")
+        homeLabel.setText(f"{QApplication.translate('Label', 'For more details visit')} <a href='https://artisan-scope.org/help/'>artisan-scope.org/docs/</a>")
+        homeLabel.setText(f"{QApplication.translate('Label', 'For more details visit')} <a href='https://artisan-scope.org/help/'>artisan-scope.org/docs/</a>")
+        homeLabel.setText(f"{QApplication.translate('Label', 'For more details visit')} <a href='https://artisan-scope.org/help/'>artisan-scope.org/docs/</a>")
+        homeLabel.setText(f"{QApplication.translate('Label', 'For more details visit')} <a href='https://artisan-scope.org/help/'>artisan-scope.org/docs/</a>")
         homeLabel.setOpenExternalLinks(True)
         buttonLayout = QHBoxLayout()
         buttonLayout.addWidget(homeLabel)

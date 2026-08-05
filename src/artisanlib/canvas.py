@@ -1,8 +1,8 @@
 #
 # ABOUT
-# Artisan Main Canvas
+# artisan main canvas
 #
-# COPYRIGHT (C) 2010-2026 The Artisan team represented by
+# COPYRIGHT (C) 2010-2026 The artisan team represented by
 #   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
 #
 # LICENSE
@@ -1784,6 +1784,20 @@ class tgraphcanvas(QObject):
         self.glow:int = 0
         self.graphstyle:int = 0
         self.graphfont:int = 0
+        # 0: Qt system default (system)
+        # 1: Humor (included)
+        # 2: Comic (system)
+        # 3: WenQuanYi Zen Hei (included)
+        # 4: Source Han Sans CN (included)
+        # 5: Source Han Sans TW (included)
+        # 6: Source Han Sans HK (included)
+        # 7: Source Han Sans KR (included)
+        # 8: Source Han Sans JP (included)
+        # 9: Dijkstra (included)
+        # 10: xkcd Script (included)
+        # 11: Comic Neue (included)
+        # 12: Nunito  (included)
+        # 13: Noto Sans Mono  (included)
 
         #variables to configure the 8 default buttons
         # button = 0:CHARGE, 1:DRY_END, 2:FC_START, 3:FC_END, 4:SC_START, 5:SC_END, 6:DROP, 7:COOL_END;
@@ -1921,7 +1935,7 @@ class tgraphcanvas(QObject):
         self.EvalueColor:list[str] = self.EvalueColor_default.copy()
         self.EvalueTextColor:list[str] = self.EvalueTextColor_default.copy()
         self.EvalueMarker:list[str] = ['o','s','h','D']
-        self.EvalueMarkerSize:list[float] = [4,4,4,4]
+        self.EvalueMarkerSize:list[float] = [3,3,3,3]
         self.Evaluelinethickness:list[float] = [1,1,1,1]
         self.Evaluealpha:list[float] = [.8,.8,.8,.8]
         #the event value position bars are calculated at redraw()
@@ -1941,21 +1955,21 @@ class tgraphcanvas(QObject):
         self.linestyle_default: Final[str] = '-'
         self.drawstyle_default: Final[str] = 'default'
         self.linewidth_default: Final[float] = 1.5
-        self.back_linewidth_default: Final[float] = 2
-        self.delta_linewidth_default: Final[float] = 1
-        self.back_delta_linewidth_default: Final[float] = 1.5
+        self.back_linewidth_default: Final[float] = 1.8
+        self.delta_linewidth_default: Final[float] = 0.8
+        self.back_delta_linewidth_default: Final[float] = 1.3
         self.extra_linewidth_default: Final[float] = 1
         self.marker_default: Final[str] = 'None'
         self.markersize_default: Final[float] = 6
 
         self.BTlinestyle:str = self.linestyle_default
         self.BTdrawstyle:str = self.drawstyle_default
-        self.BTlinewidth:float = self.linewidth_default
+        self.BTlinewidth:float = 2 # self.linewidth_default
         self.BTmarker:str = self.marker_default
         self.BTmarkersize:float = self.markersize_default
         self.ETlinestyle:str = self.linestyle_default
         self.ETdrawstyle:str = self.drawstyle_default
-        self.ETlinewidth:float = self.linewidth_default
+        self.ETlinewidth:float = 1.5 # self.linewidth_default
         self.ETmarker:str = self.marker_default
         self.ETmarkersize:float = self.markersize_default
         self.BTdeltalinestyle:str = self.linestyle_default
@@ -2460,6 +2474,10 @@ class tgraphcanvas(QObject):
         ## TILAU ## temporary storage to pass additional information than temps
         self.AirwaveFan:int  = 0
         self.AirwaveMode:int = 0
+        ## TILAU ## set by startTilauMqttManager once the broker is connected; the
+        ## sampling thread reads it on every MQTT bridge channel, so it must exist
+        ## even when no broker is configured at all
+        self.tilau_mqtt_ports:TilauMqttPorts|None = None
         
         # used by device +ShellyPlusPlug_EnergyTotalLastMinute to pass values
         self.shellyPlusPlug_TX:float = -1.
@@ -4320,7 +4338,7 @@ class tgraphcanvas(QObject):
                         s = fig.get_size_inches()*fig.dpi
                         if event.x > s[0]*2/3 and event.y > s[1]*2/3:
                             if not self.flagstart and not self.flagon and self.backgroundprofile is None and __release_sponsor_domain__ and __release_sponsor_url__:
-                                QDesktopServices.openUrl(QUrl(__release_sponsor_url__, QUrl.ParsingMode.TolerantMode))
+                                #QDesktopServices.openUrl(QUrl(__release_sponsor_url__, QUrl.ParsingMode.TolerantMode))
                                 return
                             if self.backgroundprofile is not None:
                                 modifiers = QApplication.keyboardModifiers()
@@ -4725,6 +4743,10 @@ class tgraphcanvas(QObject):
             'FCcounter':QApplication.translate('tilauscope_graph', 'FC counter'),
             'from':QApplication.translate('Label', 'from'),
             'Preheat': QApplication.translate('Label', 'Preheat'),
+            ## TILAU ## TilauPID preheat annotation (Artisan canvas, no TilauScope window needed)
+            'Burner': QApplication.translate('tilauscope_graph', 'Burner'),
+            'ReadyIn': QApplication.translate('tilauscope_graph', 'Ready in'),
+            'ReadyToCharge': QApplication.translate('tilauscope_graph', 'Ready to charge'),
             'DryingPhase': QApplication.translate('tilauscope_graph', 'Drying Phase'),
             'CoolingPhase': QApplication.translate('Button', 'Cooling Phase'),
             # ── Coach (guided simplified view) — cached once, never on the hot path
@@ -4765,14 +4787,115 @@ class tgraphcanvas(QObject):
         if initialize == 2:
             self.tilau_pid_label.hide() 
  
-        pid = self.aw.pidcontrol
         tx = self.timex[-1] if self.timex else 0.0
         et = self.temp1[-1] if self.temp1 and len(self.temp1) > 0 else 0.0
         bt = self.temp2[-1] if self.temp2 and len(self.temp2) > 0 else 0.0
-        
-        text = self._get_pid_text(pid, tx, et, bt)
-        
+
+        ## TILAU ## The TilauPID preheat never turns Artisan's own PID on (it only pushes
+        ## the SV and drives the burner slider), so pidcontrol holds nothing meaningful
+        ## while it runs — it gets its own formatter. Preheat wins when both are live.
+        tilau_pid = getattr(self.aw, 'tilauPreheatingPid', None)
+        if tilau_pid is not None and tilau_pid.active:
+            text = self._get_tilaupid_text(tilau_pid, tx, et, bt)
+        else:
+            text = self._get_pid_text(self.aw.pidcontrol, tx, et, bt)
+
         self.tilau_pid_label.show_at(tx, bt, text)
+
+    ## TILAU ## Whether the PID annotation slot must be painted this cycle: Artisan's
+    ## own PID running, or the TilauScope preheat PID driving the roaster. O(1), hot path.
+    def _tilau_pid_annotation_due(self) -> bool:
+        if self.aw.pidcontrol.pidActive:
+            return True
+        tilau_pid = getattr(self.aw, 'tilauPreheatingPid', None)
+        return tilau_pid is not None and tilau_pid.active
+
+    def _get_tilaupid_text(self, pid, tx: float, et: float, bt: float) -> str:
+        """## TILAU ## Preheat monitor drawn on the Artisan canvas while TilauPID ramps
+        the roaster to its target SV (recording started, CHARGE not marked yet). Reads
+        only qmc + the PID object — never the TilauScope window, which may well be closed.
+        All values stay in the current Artisan unit; sv_native() is the single conversion."""
+        L = self._tilau_labels
+        mode = self.mode
+        colors = self._PID_COLORS
+
+        sv = float(pid.sv_native())
+        # same input channel the PID cycle is fed with (see sample(): BT for pidSource 0/1)
+        on_bt = self.aw.pidcontrol.pidSource in (0, 1)
+        pid_input = bt if on_bt else et
+        delta = sv - pid_input
+
+        # proximity band: identical rule to the TilauScope SV mirror (5 % of SV, or past SV)
+        close = (delta <= 0) or (sv > 0 and abs(delta) <= 0.05 * sv)
+        if close:
+            header_color = colors['close']
+            delta_color = colors['close']
+        elif abs(delta) < 15:
+            header_color = colors['highlighted']
+            delta_color = colors['middle']
+        else:
+            header_color = '#89B4FA'
+            delta_color = colors['value']
+
+        # elapsed preheat time (perf_counter based, like PID.start_time)
+        elapsed_str = '--:--'
+        try:
+            if pid.start_time:
+                elapsed_str = stringfromseconds(max(0.0, libtime.perf_counter() - pid.start_time))
+        except (TypeError, ValueError):
+            pass
+
+        ror_list = self.delta2 if on_bt else self.delta1
+        ror = ror_list[-1] if ror_list and ror_list[-1] is not None else None
+
+        # ETA to SV — same convention as the phase predictions: only meaningful while climbing
+        if close:
+            eta_str = L['ReadyToCharge']
+        elif ror is not None and ror > 0 and delta > 0:
+            eta_str = f"~{stringfromseconds(delta / ror * 60.)}"
+        else:
+            eta_str = '--:--'
+
+        ror_str = f'{ror:.1f}' if ror is not None else '--'
+        burner = getattr(pid, 'prev_power', -1)
+        burner_str = f'{burner:.0f} %' if burner is not None and burner >= 0 else '--'
+        input_label = L['BT'] if on_bt else L['ET']
+
+        return f"""
+                <div style="min-width: 140px; background-color: rgba(24, 24, 37, 0.7); border: 1px solid #45475A; border-radius: 8px; padding: 10px;">
+                    <div style="border-bottom: 1px solid {header_color}; margin-bottom: 6px; padding-bottom: 2px;">
+                        <span style="color: {header_color}; font-weight: bold; font-size: 14px; letter-spacing: 1px;">
+                            {L['Preheat']} &middot; TilauPID &nbsp; {elapsed_str}
+                        </span>
+                    </div>
+                    <table border="0" cellspacing="0" cellpadding="2" style="width: 100%;">
+                    <tr>
+                        <td style="color: {colors['label']}; font-size: 11px;">{L['Target']} {L['SV']}</td>
+                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{sv:.0f}&deg;{mode}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: {colors['label']}; font-size: 11px;">{input_label}</td>
+                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{pid_input:.1f}&deg;{mode}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: {colors['label']}; font-size: 11px;">{L['Delta']} {L['SV']}</td>
+                        <td align="right" style="color: {delta_color}; font-weight: bold; font-size: 12px;">{delta:+.1f}&deg;{mode}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: {colors['label']}; font-size: 11px;">RoR</td>
+                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{ror_str}&deg;{mode}/min</td>
+                    </tr>
+                    <tr>
+                        <td style="color: {colors['label']}; font-size: 11px;">{L['Burner']}</td>
+                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{burner_str}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: {colors['label']}; font-size: 11px;">{L['ReadyIn']}</td>
+                        <td align="right" style="color: {header_color}; font-weight: bold; font-size: 12px;">{eta_str}</td>
+                    </tr>
+                    </table>
+                </div>
+                """
 
     def _get_pid_text(self, pid, tx, et, bt):
         L = self._tilau_labels # Use cached translations
@@ -7073,12 +7196,14 @@ class tgraphcanvas(QObject):
                                             if self.BTcurve and self.l_temp2 is not None:
                                                 try:
                                                     self.ax.draw_artist(self.l_temp2)
-                                                    ## TILAU ## add annotation on PID Ramp Soak mode
-                                                    if self.aw.pidcontrol.pidActive: # if PID is being activated display a summary of action in an annotation displayed at tx 
+                                                    ## TILAU ## add annotation on PID Ramp Soak mode (or on the TilauPID preheat)
+                                                    if self._tilau_pid_annotation_due(): # if a PID is running display a summary of action in an annotation displayed at tx
 #                                                        self.adderror((QApplication.translate('Error Message','Exception:') + ' updategraphics() swaplcd {0}').format(str('DrawPIDRampSoak ')),-1)
                                                         self.DrawPIDRampSoak(self.l_temp2,0) # update only
 #                                                        if self.pid_point_annotation is not None:
 #                                                            self.ax.draw_artist(self.pid_point_annotation)
+                                                    elif self.tilau_pid_label.isVisible(): # PID stopped without a CHARGE: drop the label
+                                                        self.tilau_pid_label.hide()
                                                     ts_anno_drawn = False
                                                     if self.l_BTprojection is not None and self.BTprojectFlag: 
                                                         if self.aw.TilauScopeAnnotation and self.timeindex[0] >= 0:
@@ -7106,9 +7231,11 @@ class tgraphcanvas(QObject):
                                             if self.BTcurve and self.l_temp2 is not None:
                                                 try:
                                                     self.ax.draw_artist(self.l_temp2)
-                                                    ## TILAU ## add annotation on PID Ramp Soak mode
-                                                    if self.aw.pidcontrol.pidActive: # if PID is being activated display a summary of action in an annotation displayed at tx 
+                                                    ## TILAU ## add annotation on PID Ramp Soak mode (or on the TilauPID preheat)
+                                                    if self._tilau_pid_annotation_due(): # if a PID is running display a summary of action in an annotation displayed at tx
                                                         self.DrawPIDRampSoak(self.l_temp2, 0) # update only
+                                                    elif self.tilau_pid_label.isVisible(): # PID stopped without a CHARGE: drop the label
+                                                        self.tilau_pid_label.hide()
                                                     ts_anno_drawn = False
                                                     if self.l_BTprojection is not None and self.BTprojectFlag:
                                                         if self.aw.TilauScopeAnnotation and self.timeindex[0]>=0:
@@ -10729,9 +10856,9 @@ class tgraphcanvas(QObject):
                                 titleB = self.titleB
                             else:
                                 titleB = f'{self.roastbatchprefixB}{self.roastbatchnrB} {self.titleB}'
-                        elif __release_sponsor_domain__ != '':
-                            sponsor = QApplication.translate('About','sponsored by {}').format(__release_sponsor_domain__)
-                            titleB = f'\n{sponsor}'
+                        #elif __release_sponsor_domain__ != '':
+                        #    sponsor = QApplication.translate('About','sponsored by {}').format(__release_sponsor_domain__)
+                        #    titleB = f'\n{sponsor}'
 
                     # extra event names with substitution of event names applied
                     extraname1_subst = self.extraname1[:]
@@ -12692,7 +12819,7 @@ class tgraphcanvas(QObject):
                                                 linestyle = '-', linewidth= 1, alpha = .5,sketch_params=None,path_effects=[])
                 ## TILAU ## if PID is active, draw the Ramp/Soak segments or manual mode information
                 if self.l_temp2 is not None :
-                    if len(self.timex)>0 and len(self.timeindex)>0 and self.timeindex[0] <= 0 and self.timeindex[0] <= 0 and self.aw.pidcontrol.pidActive: # if PID is being activated display a summary of action in an annotation displayed at tx
+                    if len(self.timex)>0 and len(self.timeindex)>0 and self.timeindex[0] <= 0 and self._tilau_pid_annotation_due(): # if a PID is running display a summary of action in an annotation displayed at tx
                         self.DrawPIDRampSoak(self.l_temp2,0)
                     ts_anno_drawn = False
                     if self.l_BTprojection is not None:
@@ -13654,7 +13781,7 @@ class tgraphcanvas(QObject):
                 bbox_data = self.ax.transData.inverted().transform(bb)  # zuban:ignore[arg-type] # bounding box in data space
                 bbox = Bbox(bbox_data)
                 t.remove()
-                return cast(tuple[float,float,float,float], bbox.bounds)  # x0, y0, width, height.  Relative to the start of the curve and self.ylimit_min
+                return bbox.bounds # type:ignore[no-any-return] # x0, y0, width, height.  Relative to the start of the curve and self.ylimit_min
             return 0,0,0,0
 
     # Find the bounds for an event annotation text box
@@ -14569,14 +14696,29 @@ class tgraphcanvas(QObject):
                 self.aw.tilauscope_mqtt_client.connected_signal.connect(self.slotStartTilauScopeMqtt)
                 self.aw.tilauscope_mqtt_client.disconnected_signal.connect(self.slotStopTilauScopeMqtt)
                 self.aw.tilauscope_mqtt_client.start()
-                if self.aw.tilauscope_mqtt_client.is_connected:
-                    self.tilau_mqtt_ports = TilauMqttPorts(self.aw.tilauscope_mqtt_client)
-                    self.aw.mqtt_database = self.tilau_mqtt_ports.load_mqtt_sensors() # initial load
-                    self.aw.tilauscope_mqtt_client.update_subscriptions(self.aw.mqtt_database)
-                    for sensor in self.aw.mqtt_database.sensors:
-                        _logd.info(f'Tilau MQTT sensor loaded: {sensor}')
+                self.loadTilauMqttSensors()
                 _logd.info('TilauScope MQTT manager started')
-            
+            else:
+                _logd.warning('Tilau MQTT manager not started: broker username or password is empty')
+
+    ## TILAU ##
+    def loadTilauMqttSensors(self) -> None:
+        """Load the sensor list and subscribe it. Idempotent.
+
+        Called both after start() and from the connected slot: start() only waits
+        2 s for the CONNACK, and a broker answering later used to leave the sensor
+        list unloaded for the whole session.
+        """
+        if self.aw.tilauscope_mqtt_client is None or not self.aw.tilauscope_mqtt_client.is_connected:
+            return
+        if self.tilau_mqtt_ports is not None:
+            return
+        self.tilau_mqtt_ports = TilauMqttPorts(self.aw.tilauscope_mqtt_client)
+        self.aw.mqtt_database = self.tilau_mqtt_ports.load_mqtt_sensors() # initial load
+        self.aw.tilauscope_mqtt_client.update_subscriptions(self.aw.mqtt_database)
+        for sensor in self.aw.mqtt_database.sensors:
+            _logd.info(f'Tilau MQTT sensor loaded: {sensor}')
+
     @pyqtSlot()
     def stopTilauMqttManager(self) -> None:
         ## TILAU ##
@@ -14584,6 +14726,7 @@ class tgraphcanvas(QObject):
             if self.aw.tilauscope_mqtt_client is not None : # TilauScope support
                 self.aw.tilauscope_mqtt_client.stop()
                 self.aw.tilauscope_mqtt_client = None
+            self.tilau_mqtt_ports = None # dropped with the client, so the next start reloads the sensors
             _logd.info('TilauScope MQTT manager stopped')
 
     @pyqtSlot()
@@ -15735,6 +15878,7 @@ class tgraphcanvas(QObject):
         _logd.debug("tilauscope mqtt is connected")
         if self.aw.tilauscope_mqtt_client is not None :
             self.aw.tilauscope_mqtt_client.is_connected = True
+            self.loadTilauMqttSensors() # no-op if the start path already loaded them
 
     @pyqtSlot()
     def slotStopTilauScopeMqtt(self):
