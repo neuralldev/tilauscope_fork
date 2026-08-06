@@ -2388,6 +2388,8 @@ class TilauscopeConfigDlg(QDialog):
             else ""
         )
         aw.tilau_roaster_readonly = self.tilauRoasterReadonly.isChecked()  ## TILAU ##
+        from tilauscope.roasters import sync_roaster_to_qmc
+        sync_roaster_to_qmc(aw, aw.tilau_roaster) # mirror onto the canvas machine label
         self._apply_roaster_slider_visibilities()  ## TILAU ##
         aw.TilauScopeAnnotation  = self.tilauScopeAnnotationCheckBox.isChecked()
         aw.TilauScopeNotification = self.tilauScopeNotificationCheckBox.isChecked()

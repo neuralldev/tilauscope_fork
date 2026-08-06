@@ -110,6 +110,31 @@ _CENTRAL_QSS = f"""
 """
 
 
+def take_body(aw: QMainWindow) -> QWidget:
+    """Detach and return the wrapped central content (below the custom title bar),
+    leaving the title bar itself in place. Used when TilauScope embeds the Artisan
+    graph in its own window — without this, TilauScope would grab centralWidget()
+    (the title bar + graph wrapper) instead of just the graph.
+    """
+    wrapper = aw.centralWidget()
+    body = aw.main_widget
+    if wrapper is not None and wrapper.layout() is not None:
+        wrapper.layout().removeWidget(body)
+    return body
+
+
+def give_body(aw: QMainWindow, body: QWidget) -> None:
+    """Re-attach content previously detached via take_body(), restoring it below
+    the custom title bar.
+    """
+    wrapper = aw.centralWidget()
+    if wrapper is not None and wrapper.layout() is not None:
+        wrapper.layout().addWidget(body)
+    else:
+        aw.setCentralWidget(body)
+    body.show()
+
+
 def apply_frameless_style(aw: QMainWindow) -> None:
     """Replace the native title bar of the main Artisan window with a Catppuccin-themed custom one,
     and extend the Catppuccin theme to the window chrome (menu bar, menus, tooltips, scrollbars).

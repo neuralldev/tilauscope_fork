@@ -634,6 +634,35 @@ def test_development_is_the_professional_band_untouched_by_the_floors(
         assert 1.0 <= dev <= 4.0, f"{plan['Bean Name']}: dev={plan['Development Phase']}"
 
 
+@pytest.mark.parametrize(('column', 'lever'), [
+    ('Heater (%) (Dry|Mai|Dev)', 'heater'),
+    ('Airflow (%) (Dry|Mai|Dev)', 'airflow'),
+])
+def test_the_dev_column_states_where_the_dev_ramp_actually_lands(
+    corpus_plans: list[dict], column: str, lever: str,
+) -> None:
+    """Le plan ne peut pas annoncer une cible de dev que sa propre rampe ne tient pas.
+
+    Cette colonne n'est pas décorative : l'AutoPilot en fait sa cible DEV
+    (`_AP_LEVER_KEYS`) et, sur torréfacteur read-only, elle est lue mot pour mot
+    par l'opérateur (`_phase_reco_text`). Un écart, c'est une consigne fausse,
+    pas une coquille de PDF.
+
+    L'air a divergé du brûleur pendant un moment : la colonne sortait de la
+    grille de base alors que la rampe adoptait la cible apprise ET le plancher
+    de soutien qui ouvre l'air à mesure que le feu descend.
+    """
+    for plan in corpus_plans:
+        posted = [e[lever] for e in (plan.get('Dev Ramp') or []) if lever in e]
+        if not posted:
+            continue
+        column_value = float(str(plan[column]).split('|')[2].strip().rstrip('%'))
+        assert column_value == pytest.approx(float(posted[-1])), (
+            f"{plan['Bean Name']}: la colonne {lever} dev annonce {column_value:.0f}% "
+            f"mais la Dev Ramp finit à {posted[-1]}%"
+        )
+
+
 def test_the_maillard_ror_verification_is_reported_on_every_plan(
     corpus_plans: list[dict],
 ) -> None:
@@ -785,6 +814,55 @@ def test_water_activity_effect_low_reading_shortens_drying_and_leaves_heater_alo
     assert effect.d_heater_dry_pct == 0.0
     assert effect.d_airflow_pct == 0.0
     assert effect.d_extraction_pct == 0.0
+
+
+# ── Un plan complet SUR un grain dont l'activité de l'eau est mesurée ────────
+# Les quatre tests ci-dessus couvrent l'étage ; ils n'ont pas couvert
+# l'assemblage qui le consomme. Aucun grain du corpus gelé ne porte de mesure
+# d'aw, donc "Water Activity Used" prenait toujours sa branche "Not measured" —
+# et un nom orphelin dans l'autre branche a atteint l'opérateur en NameError
+# (2026-08-06). Le plan doit se générer de bout en bout, aw renseignée.
+
+@pytest.mark.parametrize('wa_reading', [0.72, 0.45])
+def test_a_plan_generates_end_to_end_when_water_activity_is_measured(
+    wa_reading: float,
+) -> None:
+    import corpus_harness as H
+    import corpus_snapshot as S
+
+    H.install_qt_shims()
+    scenario = S.SCENARIOS[0]
+    model = H.make_plan_model(H.CORPUS_DIR)
+    bean = H.make_bean(scenario.uuid, scenario.bean_name,
+                       process=scenario.process,
+                       altitude=int(scenario.altitude_m),
+                       water_activity=wa_reading)
+    result = model.generate_roast_plan(
+        bean, H.agtron(scenario.target), scenario.ambient_c,
+        scenario.humidity_pct, scenario.charge_g, scenario.altitude_m,
+        None, False, scenario.minutes_since_drop)
+    plan = result[0] if isinstance(result, tuple) else result
+    assert plan['Water Activity Used'] == f'{wa_reading:.3f}'
+
+
+def test_an_unmeasured_water_activity_still_reads_not_measured() -> None:
+    """The other side of the branch, so the fix above cannot regress into
+    always formatting a number."""
+    import corpus_harness as H
+    import corpus_snapshot as S
+
+    H.install_qt_shims()
+    scenario = S.SCENARIOS[0]
+    model = H.make_plan_model(H.CORPUS_DIR)
+    bean = H.make_bean(scenario.uuid, scenario.bean_name,
+                       process=scenario.process,
+                       altitude=int(scenario.altitude_m))
+    result = model.generate_roast_plan(
+        bean, H.agtron(scenario.target), scenario.ambient_c,
+        scenario.humidity_pct, scenario.charge_g, scenario.altitude_m,
+        None, False, scenario.minutes_since_drop)
+    plan = result[0] if isinstance(result, tuple) else result
+    assert plan['Water Activity Used'] == 'Not measured'
 
 
 # ── _base_phase_durations — nominal total/dry/development split ─────────────
@@ -1404,6 +1482,31 @@ def test_pre_fc_setpoint_is_raised_to_the_floors_released_end(
     assert result.heater_pre_fc == pytest.approx(65.0)   # 70 - RELEASE_DROP_PCT(5)
 
 
+def test_pre_fc_setpoint_never_exceeds_the_maillard_level(
+    plan_model: TilauScopeRoastPlan,
+) -> None:
+    """A pre-FC value learned hotter than the Maillard median (a separate
+    cohort — heater_fc_learned vs the phase median) must be capped to it: the
+    fire never climbs back up before first crack. Without this cap,
+    _build_heater_ramp_c falls into its non-monotone fallback and faithfully
+    draws the descend-then-rise staircase — a gesture no operator can execute
+    (2026-08-06 field report, Costa Rica Catuai natural, light, 400 g)."""
+    result = _heater_ramp(plan_model, heater_maillard=46.0, heater_pre_fc=51.0)
+    assert result.heater_pre_fc == pytest.approx(46.0)
+
+
+def test_pre_fc_setpoint_capped_by_maillard_still_respects_the_floor(
+    plan_model: TilauScopeRoastPlan,
+) -> None:
+    """The Maillard cap applies AFTER the floor raise, not instead of it: a
+    floor-raised pre-FC that is still below the (also floor-raised) Maillard
+    level must pass through unchanged."""
+    floor = FloorProfile(level_pct=70.0, release_fraction=0.75)
+    result = _heater_ramp(
+        plan_model, heater_maillard=68.0, heater_pre_fc=50.0, floor=floor)
+    assert result.heater_pre_fc == pytest.approx(65.0)   # 70 - RELEASE_DROP_PCT(5)
+
+
 def test_development_setpoint_never_drops_more_than_the_cap_below_pre_fc(
     plan_model: TilauScopeRoastPlan,
 ) -> None:
@@ -1668,3 +1771,349 @@ def test_the_back_to_back_note_needs_both_a_negative_correction_and_a_time(
     no_correction = _confidence(plan_model, soak_dcharge_c=0.0,
                                  soak_dheater_pct=0, minutes_since_last_drop=6.0)
     assert no_correction.soak_note is None
+
+
+# ── Section 5 of the PDF — the heater/airflow trajectories ──────────────────
+# The drawing is not tested (it is FPDF geometry); what is tested is the DATA
+# behind it, because it is derived and can be silently wrong: the plan anchors
+# every step on bean temperature, and the graph has to place them on a time
+# axis. See _control_trajectories for why the scan starts at the turning point.
+
+def _new_pdf():
+    """A fresh builder. Registering the Unicode family opens the font files,
+    and fpdf2 only releases them at output(), so use this only for tests that
+    actually render."""
+    from tilauscope.roast_plan_model import BuildPRoastPlanPDF
+    return BuildPRoastPlanPDF(orientation='P', unit='mm', format='A4', temp_unit='C')
+
+
+_PDF_SHARED: Any = None
+
+
+def _pdf():
+    """One shared builder for the data-only tests below.
+
+    They exercise _control_trajectories / _entry_settings / _control_gestures,
+    which read the plan dict and never touch typography. Building one instance
+    per test would hold four font descriptors open per test for nothing."""
+    global _PDF_SHARED
+    if _PDF_SHARED is None:
+        _PDF_SHARED = _new_pdf()
+    return _PDF_SHARED
+
+
+def _traj_plan(**overrides: Any) -> dict:
+    """A plan carrying the four keys the trajectories are built from, over a
+    BT curve that falls to a turning point before rising — the real shape."""
+    times = [i * 0.1 for i in range(101)]            # 0 .. 10 min
+    # 180 -> 90 (TP at 1 min) -> 210 at 10 min
+    bts: list[float] = []
+    for t in times:
+        bts.append(180.0 - 90.0 * (t / 1.0) if t <= 1.0
+                   else 90.0 + 120.0 * ((t - 1.0) / 9.0))
+    plan = {
+        "bt_plan_curve": {
+            "time_min": times, "bt_plan": bts,
+            "waypoints": [
+                {"key": "charge", "time_min": 0.0, "bt": 180.0},
+                {"key": "tp", "time_min": 1.0, "bt": 90.0},
+                {"key": "dry_end", "time_min": 5.5, "bt": 150.0},
+                {"key": "fc_start", "time_min": 8.5, "bt": 190.0},
+                {"key": "drop", "time_min": 10.0, "bt": 210.0},
+            ],
+        },
+        "Heater (%) (Dry|Mai|Dev)": "70% | 60% | 45%",
+        "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 40%",
+        "Drum Speed (%) (Dry|Mai|Dev)": "85% | 85% | 85%",
+        "Heater Ramp": [{"heater": 65, "bt": 152.0}, {"heater": 55, "bt": 175.0}],
+        "Air Ramp": [{"bt": 178.0, "airflow": 35}],
+        "Dev Ramp": [{"bt": 195.0, "heater": 50, "airflow": 45}],
+    }
+    plan.update(overrides)
+    return plan
+
+
+def test_control_trajectories_hold_the_charge_value_until_the_ramp_takes_over() -> None:
+    """The burner does not move at CHARGE and does not move at DRY END: it
+    holds its charge value until the anticipated ramp's first step."""
+    heater, _, ms = _pdf()._control_trajectories(_traj_plan())
+    assert heater[0] == (0.0, 70.0)
+    # First move lands after the turning point and near dry end, not at t=0.
+    assert heater[1][0] > ms["tp"]
+    assert heater[1][1] == 65.0
+
+
+def test_control_trajectories_place_steps_after_the_turning_point() -> None:
+    """The guard that matters: BT falls from the charge temperature to the TP
+    before it rises, so 152 °C exists TWICE on the curve. A scan from t=0 would
+    resolve the first dry-end step against the charge descent and draw it in the
+    first seconds of the roast."""
+    heater, _, ms = _pdf()._control_trajectories(_traj_plan())
+    for t, _v in heater[1:]:
+        assert t > ms["tp"], f'step placed at {t:.2f} min, before TP {ms["tp"]}'
+
+
+def test_control_trajectories_descend_the_heater_and_climb_the_airflow() -> None:
+    """The plan's shape: burner only ever comes down, airflow only ever goes
+    up. A trajectory that reversed would mean the ramps were mis-assembled."""
+    heater, airflow, _ = _pdf()._control_trajectories(_traj_plan())
+    assert [v for _t, v in heater] == sorted((v for _t, v in heater), reverse=True)
+    assert [v for _t, v in airflow] == sorted(v for _t, v in airflow)
+
+
+def test_control_trajectories_step_the_airflow_up_at_dry_end() -> None:
+    """Airflow is posted per phase, so the Maillard value lands exactly on the
+    dry-end milestone — unlike the burner, which is ramp-governed."""
+    _, airflow, ms = _pdf()._control_trajectories(_traj_plan())
+    assert (ms["dry_end"], 30.0) in airflow
+
+
+def test_control_trajectories_carry_both_levers_through_development() -> None:
+    """The Dev Ramp governs heater AND airflow after first crack; both final
+    values must come from it, not from the phase summary."""
+    heater, airflow, _ = _pdf()._control_trajectories(_traj_plan())
+    assert heater[-1][1] == 50.0
+    assert airflow[-1][1] == 45.0
+
+
+def test_control_trajectories_are_empty_without_a_planned_curve() -> None:
+    """No curve means no time axis, so the PDF section is skipped rather than
+    printing a titled blank page."""
+    heater, airflow, ms = _pdf()._control_trajectories({"Heater Ramp": [{"heater": 60, "bt": 150}]})
+    assert heater == [] and airflow == [] and ms == {}
+
+
+# ── Section 4 — settings AT PHASE ENTRY ─────────────────────────────────────
+# The old table printed a per-phase average. A mean is not a setting anyone
+# dials, and reading it as one posts the middle of the ramp at the start of the
+# phase. These tests pin the entry reading instead.
+
+def test_entry_settings_read_the_value_held_when_the_milestone_is_crossed() -> None:
+    """Burner: the charge value is still held at dry end (the descent starts
+    just after it), and the pre-FC value is what arrives at first crack."""
+    rows = dict(_pdf()._entry_settings(_traj_plan()))
+    assert rows['Heater (%)'] == ['70%', '70%', '55%']
+
+
+def test_entry_settings_step_the_airflow_at_dry_end_but_not_at_fc() -> None:
+    """Airflow is posted at each phase, so it moves at dry end; at first crack
+    the Dev Ramp takes over, so the value crossing FC is still the Maillard one."""
+    rows = dict(_pdf()._entry_settings(_traj_plan()))
+    assert rows['Airflow (%)'] == ['20%', '30%', '35%']
+
+
+def test_entry_settings_are_not_the_phase_average() -> None:
+    """The guard against a silent revert to the old table: the summary string
+    says 60% for Maillard, and the entry column must not echo it."""
+    plan = _traj_plan()
+    assert plan['Heater (%) (Dry|Mai|Dev)'].split('|')[1].strip() == '60%'
+    rows = dict(_pdf()._entry_settings(plan))
+    assert rows['Heater (%)'][1] != '60%'
+
+
+def test_entry_settings_repeat_the_drum_across_every_column() -> None:
+    """Drum speed is a setup value: one setting for the whole roast."""
+    rows = dict(_pdf()._entry_settings(_traj_plan()))
+    assert rows['Drum Speed (%)'] == ['85%', '85%', '85%']
+
+
+# ── Section 5 — the gesture checklist ───────────────────────────────────────
+
+def test_control_gestures_are_chronological_and_carry_both_levers() -> None:
+    gestures = _pdf()._control_gestures(_traj_plan())
+    assert [g['t'] for g in gestures] == sorted(g['t'] for g in gestures)
+    assert {g['lever'] for g in gestures} == {'Heater', 'Airflow'}
+
+
+def test_control_gestures_state_the_move_not_the_level() -> None:
+    """Each row is a gesture: where the lever comes from and where it goes.
+    A row whose from == to would be an instruction to do nothing."""
+    for g in _pdf()._control_gestures(_traj_plan()):
+        assert g['frm'] != g['to']
+
+
+def test_control_gestures_label_the_phase_each_move_falls_in() -> None:
+    gestures = _pdf()._control_gestures(_traj_plan())
+    _, _, ms = _pdf()._control_trajectories(_traj_plan())
+    for g in gestures:
+        expected = ('Dry' if g['t'] < ms['dry_end']
+                    else 'Maillard' if g['t'] < ms['fc_start'] else 'Development')
+        assert g['phase'] == expected
+
+
+def test_control_gestures_are_empty_without_a_planned_curve() -> None:
+    assert _pdf()._control_gestures({'Heater Ramp': [{'heater': 60, 'bt': 150}]}) == []
+
+
+# ── The roast-plan PDF must survive every shipped language ──────────────────
+# FPDF's core fonts are latin-1 and RAISE on anything else, which took the whole
+# plan down for 18 of the 35 languages (2026-08-06): a single word like CHARGE
+# translated to "ÚČTOVAT" or "投豆" was enough. A registered Unicode family
+# renders an unknown glyph blank instead, so the worst case is a gap, never a
+# missing report.
+
+_HARD_STRINGS = [
+    ('cs', 'ÚČTOVAT'), ('ru', 'Загрузить бобы'), ('el', 'ΦΟΡΤΩΜΑ'),
+    ('zh', '投豆'), ('ja', '/分'), ('ko', '투입'),
+    ('he', 'טען'), ('ar', 'تحميل'), ('th', 'เริ่มใส่เมล็ด'),
+    ('fr', 'Brûleur à 70 %'), ('tr', 'Giriş'), ('vi', 'Nạp Liệu'),
+]
+
+
+@pytest.mark.parametrize(('lang', 'text'), _HARD_STRINGS, ids=[l for l, _ in _HARD_STRINGS])
+def test_the_pdf_renders_every_shipped_language_without_raising(lang: str, text: str) -> None:
+    pdf = _new_pdf()
+    pdf.add_page()
+    pdf.set_font('helvetica', '', 12)
+    pdf.cell(0, 8, f'{lang}: {text}')      # must not raise
+    assert pdf.output()
+
+
+def test_the_pdf_uses_the_unicode_family_not_a_core_font() -> None:
+    """The guard against a silent revert: if the bundled fonts go missing the
+    builder degrades to 'helvetica' on purpose, and the languages above break
+    again. Ship-time, the Unicode family must be the one in use."""
+    assert _pdf()._family == 'tilauplan'
+
+
+@pytest.mark.parametrize('style', ['', 'B', 'I'])
+def test_every_font_style_the_report_uses_is_registered(style: str) -> None:
+    """A style the report asks for but never registered raises 'Undefined
+    font' at render time - only on the page that happens to use it."""
+    pdf = _new_pdf()
+    pdf.add_page()
+    pdf.set_font('helvetica', style, 10)
+    pdf.cell(0, 6, 'Séquence des paliers')
+    assert pdf.output()
+
+
+# ── Bidirectional scripts in the PDF ────────────────────────────────────────
+# FPDF draws glyphs in the order given, with no shaping and no reordering, so
+# Arabic would come out as disconnected letters and a number inside a
+# right-to-left sentence would land on the wrong side. Same pair as Artisan's
+# own graph labels: arabic_reshaper (joining) then get_display (visual order).
+
+_AR = 'تحميل الحبوب 200 درجة'
+_HE = 'טען פולים 200 מעלות'
+
+
+def _is_presentation_form(ch: str) -> bool:
+    """Arabic contextual forms live in FE70-FEFF (and FB50-FDFF)."""
+    cp = ord(ch)
+    return 0xFE70 <= cp <= 0xFEFF or 0xFB50 <= cp <= 0xFDFF
+
+
+def test_bidi_leaves_left_to_right_text_untouched() -> None:
+    """The common path must not pay for the rare one, and must not risk
+    mangling a French or Cyrillic string."""
+    from tilauscope.roast_plan_model import BuildPRoastPlanPDF as B
+    for text in ('Brûleur à 70 %', 'Загрузить 200', '投豆 200°C', 'Step sequence', ''):
+        assert B._bidi(text) == text
+
+
+def test_bidi_joins_arabic_letters() -> None:
+    """Joining is what makes the script readable: the output must be in
+    contextual forms, not the isolated letters of the source."""
+    from tilauscope.roast_plan_model import BuildPRoastPlanPDF as B
+    out = B._bidi(_AR)
+    assert any(_is_presentation_form(c) for c in out)
+    assert not any(_is_presentation_form(c) for c in _AR)
+
+
+def test_bidi_reorders_so_numbers_land_inside_the_sentence() -> None:
+    """A right-to-left run puts its digits in visual order; without the bidi
+    pass '200' drifts to the end of the line."""
+    from tilauscope.roast_plan_model import BuildPRoastPlanPDF as B
+    for src in (_AR, _HE):
+        out = B._bidi(src)
+        assert out != src
+        assert '200' in out
+
+
+def test_bidi_does_not_reshape_hebrew() -> None:
+    """Hebrew does not join; running the Arabic reshaper over it would be
+    wrong. Only the reordering step applies."""
+    from tilauscope.roast_plan_model import BuildPRoastPlanPDF as B
+    out = B._bidi(_HE)
+    assert not any(_is_presentation_form(c) for c in out)
+    assert sorted(out) == sorted(_HE)      # a pure permutation
+
+
+def test_bidi_order_of_the_two_steps_is_not_interchangeable() -> None:
+    """Reshaping AFTER reordering computes the joining forms on a reversed
+    string and unjoins it again. This pins the correct order."""
+    import arabic_reshaper
+    from bidi import get_display
+    from tilauscope.roast_plan_model import BuildPRoastPlanPDF as B
+    correct = B._bidi(_AR)
+    inverted = arabic_reshaper.reshape(get_display(_AR))
+    assert correct != inverted
+
+
+@pytest.mark.parametrize('method', ['cell', 'multi_cell', 'text'])
+def test_every_text_method_routes_through_the_bidi_pass(method: str) -> None:
+    """Routed centrally on purpose: one un-routed call site would leave a
+    single label unjoined, which is what nobody catches in review."""
+    from tilauscope.roast_plan_model import BuildPRoastPlanPDF
+    seen: list = []
+
+    class Spy(BuildPRoastPlanPDF):
+        @classmethod
+        def _bidi(cls, text):
+            seen.append(text)
+            return super()._bidi(text)
+
+    pdf = Spy(orientation='P', unit='mm', format='A4', temp_unit='C')
+    pdf.add_page()
+    pdf.set_font('helvetica', '', 10)
+    if method == 'cell':
+        pdf.cell(0, 6, _AR)
+    elif method == 'multi_cell':
+        pdf.multi_cell(0, 6, _AR)
+    else:
+        pdf.text(10, 10, _AR)
+    assert _AR in seen
+    assert pdf.output()
+
+
+def test_a_full_plan_page_renders_with_arabic_content() -> None:
+    """End to end: a bean name in Arabic must not break the report."""
+    pdf = _new_pdf()
+    pdf.add_page()
+    pdf.set_font('helvetica', 'B', 12)
+    pdf.cell(0, 7, _AR)
+    pdf.ln(9)                    # cell(w=0) leaves the cursor at the right margin
+    pdf.set_font('helvetica', 'I', 9)
+    pdf.multi_cell(0, 4, _HE)
+    assert pdf.output()
+
+
+@pytest.mark.parametrize('style', ['positional', 'text_kwarg', 'txt_alias'])
+def test_the_bidi_pass_survives_every_fpdf_call_style(style: str) -> None:
+    """fpdf accepts the string third, as text= or as the deprecated txt=
+    alias. An override that assumed one form broke the graph labels (which use
+    txt=) with 'multiple values for argument text' - and only on the page that
+    draws them, so no unit test would have caught it."""
+    from tilauscope.roast_plan_model import BuildPRoastPlanPDF
+    seen: list = []
+
+    class Spy(BuildPRoastPlanPDF):
+        @classmethod
+        def _bidi(cls, text):
+            seen.append(text)
+            return super()._bidi(text)
+
+    pdf = Spy(orientation='P', unit='mm', format='A4', temp_unit='C')
+    pdf.add_page()
+    pdf.set_font('helvetica', '', 10)
+    if style == 'positional':
+        pdf.multi_cell(60, 5, _AR)
+    elif style == 'text_kwarg':
+        pdf.multi_cell(w=60, h=5, text=_AR)
+    else:
+        # Still accepted by fpdf, and still reached the graph labels until this
+        # batch renamed them; the warning is expected, the routing is the point.
+        with pytest.warns(DeprecationWarning):
+            pdf.multi_cell(w=60, h=5, txt=_AR)
+    assert _AR in seen
+    assert pdf.output()

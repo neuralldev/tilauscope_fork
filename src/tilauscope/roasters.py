@@ -816,3 +816,69 @@ class RoasterManager:
             return exact
         # Tolerate roastertype values stored as model-only (e.g. "Cyberroaster")
         return next((r for r in self._roasters if r.model == name), None)
+
+
+# ============================================================
+# QMC SYNC — push the TilauScope-configured roaster into Artisan
+# ============================================================
+
+## TILAU ## HeatingType -> qmc.roasterheating code (0: ??, 1: LPG, 2: NG, 3: Elec)
+_QMC_HEATING_CODE: dict[HeatingType, int] = {
+    HeatingType.GAS: 2,
+    HeatingType.ELECTRIC: 3,
+    HeatingType.INFRARED: 3,
+    HeatingType.INDUCTION: 3,
+    HeatingType.HYBRID: 3,
+    HeatingType.WOOD: 0,
+    HeatingType.COAL: 0,
+}
+
+
+def sync_roaster_to_qmc(aw: object, name: str | None) -> bool:
+    """## TILAU ## Single call site to mirror the TilauScope-configured
+    roaster (aw.tilau_roaster) into Artisan's Machine-setup qmc fields
+    (roastertype_setup/roastersize_setup/roasterheating_setup/machinesetup),
+    so the canvas x-axis label / stats annotation (built from those _setup
+    fields, see canvas.py default_xlabel_text/buildStat) reflect the roaster
+    picked in TilauScope config instead of a stale manual Artisan setup.
+    No-op if *name* is empty or not found in the registry, or if qmc is
+    mid-roast (never rewrite an in-progress roast's machine identity).
+    Returns True if qmc was updated."""
+    if not name:
+        return False
+    qmc = getattr(aw, 'qmc', None)
+    if qmc is None or getattr(qmc, 'flagstart', False):
+        return False
+
+    manager = RoasterManager()
+    roaster = manager.get_by_display_name(name)
+    ctx = manager.get_roast_context(name)
+    if roaster is None or ctx is None:
+        return False
+
+    qmc.roastertype_setup = ctx.display_name
+    qmc.machinesetup = ctx.display_name
+
+    batch_g = ctx.batch_optimal_g or ctx.batch_max_g
+    if batch_g:
+        kg = batch_g / 1000.0
+        qmc.roastersize_setup = kg
+        qmc.roastersize_setup_default = kg
+
+    heating_code = _QMC_HEATING_CODE.get(roaster.heating_type, 0)
+    qmc.roasterheating_setup = heating_code
+    qmc.roasterheating_setup_default = heating_code
+
+    # mirror into the live (non-"_setup") fields too: they only get copied
+    # from *_setup at CHARGE otherwise, and the canvas label reads *_setup
+    # directly, but stats annotation (buildStat n==5) reads the live field.
+    qmc.roastertype = qmc.roastertype_setup
+    qmc.roastersize = qmc.roastersize_setup
+    qmc.roasterheating = qmc.roasterheating_setup
+
+    try:
+        qmc.redraw()
+    except Exception:
+        _logd.exception('TilauScope: sync_roaster_to_qmc redraw failed')
+
+    return True

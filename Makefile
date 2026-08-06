@@ -4,7 +4,7 @@
 # build workflows are inert there, so CI is not a safety net for this project.
 #
 #   make test      fast suite (< 10 s target) — run this constantly
-#   make check     lint of the test perimeter + fast suite — before a build
+#   make check     lint of the test perimeter + fatal-rule lint of the app + fast suite
 #   make portico   headless import of every tilauscope module (subprocess-isolated)
 #   make test-all  everything, including the portico
 #   make tripwires house rules + frozen contracts only — after a rename or a new dep
@@ -22,7 +22,7 @@ PYTEST  := $(PY) -m pytest
 RUFF    := $(PY) -m ruff
 MYPY    := $(PY) -m mypy
 
-.PHONY: test check portico test-all tripwires codecs lint types clean-test help
+.PHONY: test check portico test-all tripwires codecs lint lint-app lint-fatal types clean-test help
 
 help:
 	@grep -E '^#   make' Makefile | sed 's/^#   //'
@@ -77,6 +77,18 @@ lint:
 lint-app:
 	cd $(SRC) && $(RUFF) check tilauscope
 
+# The style debt above is informational, but a handful of ruff rules do not
+# report style at all — they report code that cannot run: a name that is not
+# defined (F821), a definition shadowed before use (F811), an __all__ entry that
+# does not exist (F822), a local read before assignment (F823). These are zero
+# over tilauscope/ and must stay zero, so they gate. (A syntax error needs no
+# rule: ruff reports it natively and fails the run.)
+# Added 2026-08-06 after a NameError shipped to the plan generator: the orphan
+# name sat in the unevaluated branch of a conditional, so no test reached it and
+# only a linter could have seen it.
+lint-fatal:
+	cd $(SRC) && $(RUFF) check --select F821,F811,F822,F823 tilauscope
+
 # Currently blocked, and NOT by the test suite: [tool.mypy] files lists both
 # "*.py" and "artisanlib/*.py", so mypy reports artisanlib/__init__.py "found
 # twice under different module names" and stops before checking anything. This
@@ -85,7 +97,7 @@ lint-app:
 types:
 	cd $(SRC) && $(MYPY) tilauscope/roast_plan_model.py test
 
-check: lint test
+check: lint lint-fatal test
 
 clean-test:
 	rm -rf $(SRC)/.pytest_cache $(SRC)/.htmlcov

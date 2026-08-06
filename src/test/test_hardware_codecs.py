@@ -254,39 +254,54 @@ def test_the_print_trace_stays_off_and_writes_nothing(niimprint: Any) -> None:
 
 # ── label text ───────────────────────────────────────────────────────────────
 
-def test_label_text_keeps_the_micro_sign() -> None:
-    """Grind sizes print as ``µm``; NFKD would turn µ into a Greek mu.
+def test_label_text_survives_intact() -> None:
+    """A brew label prints what the operator typed, accents included.
 
-    The A101 fonts in the printer do not carry that glyph, so the label comes
-    out with an empty box where the unit should be. The label path therefore has
-    its own NFD stripper, and this is what keeps the two from being merged.
+    The label path stripped accents for as long as it was drawn in a 223-glyph
+    display face. It no longer is, and the stripping is what this guards against
+    coming back: it was never only about accents, it flattened every script
+    built on combining marks.
     """
     from tilauscope.label_printer import _brew_clean
 
     cleaned = _brew_clean('Café 250 µm à 93 °C')
-    assert 'µm' in cleaned, (
-        f'the micro sign did not survive: {cleaned!r}. NFD keeps µ; NFKD '
-        'decomposes it to a Greek mu the printer fonts cannot draw.'
+    assert cleaned == 'Café 250 µm à 93 °C', (
+        f'the label text was altered: {cleaned!r}. Nothing may be dropped here.'
     )
-    assert '°C' in cleaned, 'the degree sign must survive too'
-    assert 'Cafe' in cleaned, 'accents are still stripped'
 
 
-def test_the_general_accent_stripper_is_the_one_that_breaks_micro() -> None:
-    """Characterises *why* there are two strippers, so nobody merges them.
+def test_label_text_keeps_the_micro_sign() -> None:
+    """Grind sizes print as ``µm``, which NFKD would turn into a Greek mu.
 
-    This is not a bug report — the general helper is fine for its own callers.
-    It is the reason the label path may not use it, written down where a future
-    tidy-up will trip over it.
+    Not a font question any more — the bundled face carries both — but a
+    correctness one: µm and μm are different units to a reader, and the general
+    ``replace_accents`` helper still conflates them. This is why the label path
+    does not call it.
     """
     from tilauscope.label_printer import _brew_clean
     from tilauscope.tilauscope_types import replace_accents
 
+    assert 'µm' in _brew_clean('250 µm'), 'the micro sign must survive'
     assert replace_accents('250 µm') != _brew_clean('250 µm'), (
-        'the two accent strippers now agree on µ. If replace_accents was fixed, '
-        'merge them deliberately and delete this test; if _brew_clean was '
-        'pointed at it, labels are about to print a blank box.'
+        'the two helpers now agree on µ. If replace_accents was fixed, merge '
+        'them deliberately and delete this test.'
     )
+
+
+def test_label_text_preserves_non_latin_scripts() -> None:
+    """Korean, Devanagari and Arabic reach the printer unflattened.
+
+    Decomposing a Hangul syllable and dropping what is not a base character
+    leaves loose jamo; doing it to Devanagari or Arabic removes the vowel signs
+    and changes the word. This is the damage the old stripper did silently to
+    every language but French.
+    """
+    from tilauscope.label_printer import _brew_clean
+
+    for sample in ('커피 원두', 'कॉफ़ी', 'قهوة', 'Cà phê'):
+        assert _brew_clean(sample) == sample, (
+            f'{sample!r} came back as {_brew_clean(sample)!r}'
+        )
 
 
 # ── MQTT cache ───────────────────────────────────────────────────────────────

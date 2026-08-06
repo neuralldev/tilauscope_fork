@@ -30,7 +30,8 @@ from PIL import Image, ImageDraw, ImageFont
 from collections.abc import Sequence
 from artisanlib.atypes import ProfileData
 
-from tilauscope.tilauscope_types import GreenBean, replace_accents, _IS_WINDOWS, _IS_MACOS, _IS_LINUX
+from tilauscope.tilauscope_types import GreenBean, _IS_WINDOWS, _IS_MACOS, _IS_LINUX
+from tilauscope import text_shaping
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -190,11 +191,11 @@ def short_uuid(uuid: str) -> str:
 
 def blend_ratio_line(bean: GreenBean) -> str:
     main_ratio = 100 - (bean.bean2_ratio or 0) - (bean.bean3_ratio or 0)
-    parts = [f"{replace_accents(bean.name)} {main_ratio}%"]
+    parts = [f"{bean.name} {main_ratio}%"]
     if bean.bean2_ratio and bean.bean2_ratio > 0 and bean.bean2_name:
-        parts.append(f"{replace_accents(bean.bean2_name)} {bean.bean2_ratio}%")
+        parts.append(f"{bean.bean2_name} {bean.bean2_ratio}%")
     if bean.bean3_ratio and bean.bean3_ratio > 0 and bean.bean3_name:
-        parts.append(f"{replace_accents(bean.bean3_name)} {bean.bean3_ratio}%")
+        parts.append(f"{bean.bean3_name} {bean.bean3_ratio}%")
     line = " - ".join(parts)
     return line[:42] + "..." if len(line) > 42 else line
 
@@ -212,21 +213,33 @@ class _FontMixin:
     _FONT_SCALE = 1.2   # global font boost applied on top of geometric scale
 
     def _init_fonts(self):
-        bold_path    = Path(__file__).parent / "A101HLVB.TTF"
-        regular_path = Path(__file__).parent / "A101HLVN.TTF"
-        try:
-            self.bold_family = self._load_font(str(bold_path))
-            self.reg_family  = self._load_font(str(regular_path))
-        except Exception:
-            _logd.error("Failed to load custom fonts, falling back to Arial.")
-            self.bold_family = "Arial"
-            self.reg_family  = "Arial"
+        """Load the shared Unicode body face.
 
-    def _load_font(self, path: str) -> str:
-        fid = QFontDatabase.addApplicationFont(path)
-        if fid != -1:
-            return QFontDatabase.applicationFontFamilies(fid)[0]
-        return "Arial"
+        These two sheets used to be drawn in a display face carrying 223 glyphs
+        — latin only. A Cyrillic, Greek, Arabic, Hebrew or CJK bean name fell
+        through to whatever Qt found on the machine, so the label came out in a
+        second typeface, or blank on a system without a matching font. DejaVu
+        covers all of those but CJK, which Qt substitutes on its own.
+        """
+        try:
+            self.bold_family = self._load_font(text_shaping.sans_path(bold=True))
+            self.reg_family  = self._load_font(text_shaping.sans_path())
+        except Exception:
+            _logd.error("Failed to load the label fonts, falling back to the system sans.")
+            self.bold_family = self.reg_family = self._system_sans()
+
+    def _load_font(self, path: "Path | None") -> str:
+        if path is not None:
+            fid = QFontDatabase.addApplicationFont(str(path))
+            if fid != -1:
+                return QFontDatabase.applicationFontFamilies(fid)[0]
+        return self._system_sans()
+
+    @staticmethod
+    def _system_sans() -> str:
+        """A sans the running system actually has. 'Arial' does not exist on
+        most Linux desktops, where Qt would silently pick something at random."""
+        return QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont).family()
 
     def _dims(self, painter: QPainter):
         dev = painter.device()
@@ -272,7 +285,7 @@ class _FontMixin:
         w = QFont.Weight.DemiBold if bold else QFont.Weight.Normal
         painter.setFont(QFont(self.reg_family, self.pt(2.8), w))
         painter.setPen(color)
-        painter.drawText(rect, Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, replace_accents(text))
+        painter.drawText(rect, Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, text)
 
     def _rounded_rect(self, painter, rect, radius, fill, border=None, bw=1.0):
         painter.setPen(Qt.PenStyle.NoPen if border is None else QPen(border, bw))
@@ -292,7 +305,7 @@ class _FontMixin:
         fm = QFontMetrics(font, painter.device()) # Pass device context explicitly
         
         # Clean text string measurements
-        clean_text = replace_accents(text)
+        clean_text = text
         tw = fm.horizontalAdvance(clean_text)
         th = fm.height()
         
@@ -495,7 +508,7 @@ class RoastedBeanLabelPrinter(_FontMixin):
         y += self.p(scale, 8.0)
 
         # Title
-        name = replace_accents(bean.name) if bean else "-"
+        name = bean.name if bean else "-"
         fs_pt = self.pt(8.5) if len(name) <= 10 else self.pt(6.5)
         painter.setFont(QFont(self.bold_family, fs_pt, QFont.Weight.Bold))
         painter.setPen(C_ROAST_HEAD_TXT)
@@ -508,9 +521,9 @@ class RoastedBeanLabelPrinter(_FontMixin):
         # Origin
         parts = []
         if bean and bean.country:
-            parts.append(replace_accents(bean.country))
+            parts.append(bean.country)
         if bean and bean.farm:
-            parts.append(replace_accents(bean.farm))
+            parts.append(bean.farm)
         origin = " - ".join(parts)
         
         fm_orig = QFontMetrics(QFont(self.reg_family, self.pt(2.5)))
@@ -540,7 +553,7 @@ class RoastedBeanLabelPrinter(_FontMixin):
         if not flavor_src and profile:
             flavor_src = profile.get("cuppingnotes", "") or ""
 
-        tokens = [t.strip().rstrip(".").title() for t in replace_accents(flavor_src).split(",") if t.strip()]
+        tokens = [t.strip().rstrip(".").title() for t in flavor_src.split(",") if t.strip()]
         
         # Define an explicit, isolated tracking context
         px = float(mg)
@@ -562,7 +575,7 @@ class RoastedBeanLabelPrinter(_FontMixin):
 
         for tok in tokens[:12]:
             # Predictive wrap-check using string measurement rules
-            estimated_tw = fm_pill.horizontalAdvance(replace_accents(tok))
+            estimated_tw = fm_pill.horizontalAdvance(tok)
             estimated_pw = estimated_tw + (2 * self.p(scale, 2.5))
             
             # If the current tracking cursor + element width breaches the right wall, wrap downwards
@@ -593,7 +606,7 @@ class RoastedBeanLabelPrinter(_FontMixin):
         self._micro_label(painter, QApplication.translate("tilauscope_label", "Roast date"), mg, y + self.p(scale, 3.5), C_ROAST_SPEC_LBL, scale)
         painter.setFont(QFont(self.reg_family, self.pt(2.8), QFont.Weight.DemiBold))
         painter.setPen(C_ROAST_SPEC_VAL)
-        painter.drawText(QRectF(mg, y + self.p(scale, 5), W * 0.6, self.p(scale, 7)), Qt.AlignmentFlag.AlignLeft, replace_accents(roast_date))
+        painter.drawText(QRectF(mg, y + self.p(scale, 5), W * 0.6, self.p(scale, 7)), Qt.AlignmentFlag.AlignLeft, roast_date)
 
         sca_val = bean.sca if bean and bean.sca and bean.sca > 0 else 0
         sca_str = f"{sca_val:.1f}" if sca_val > 0 else "-"
@@ -618,12 +631,12 @@ class RoastedBeanLabelPrinter(_FontMixin):
         row_h  = self.p(scale, 11)
 
         process = normalise_process(bean.process if bean else "")
-        variety = replace_accents(bean.varieties if bean and bean.varieties else "-")
+        variety = bean.varieties if bean and bean.varieties else "-"
         fm_v = QFontMetrics(QFont(self.reg_family, self.pt(2.8), QFont.Weight.DemiBold))
         max_v_w = int(col_w - self.p(scale, 1))
         while fm_v.horizontalAdvance(variety) > max_v_w and len(variety) > 3:
             variety = variety[:-1]
-        if variety != replace_accents(bean.varieties if bean and bean.varieties else "-"):
+        if variety != (bean.varieties if bean and bean.varieties else "-"):
             variety = variety.rstrip() + "..."
 
         altitude = f"{bean.altitude} m" if bean and bean.altitude and bean.altitude > 0 else "-"
@@ -651,7 +664,7 @@ class RoastedBeanLabelPrinter(_FontMixin):
 
         for i, (lbl, val, x, w) in enumerate(specs):
             ry = y + (i // 2) * row_h
-            self._micro_label(painter, replace_accents(lbl), x, ry + self.p(scale, 3), C_ROAST_SPEC_LBL, scale)
+            self._micro_label(painter, lbl, x, ry + self.p(scale, 3), C_ROAST_SPEC_LBL, scale)
             self._spec_value(painter, val, QRectF(x, ry + self.p(scale, 4), w - self.p(scale, 1), self.p(scale, 7)), C_ROAST_SPEC_VAL, scale)
 
         y += (len(specs) // 2) * row_h + self.p(scale, 3)
@@ -677,10 +690,10 @@ class RoastedBeanLabelPrinter(_FontMixin):
         ]
         for i, (lbl, val, vc) in enumerate(weight_rows):
             bx = mg + i * col_bar_w + self.p(scale, 2)
-            self._micro_label(painter, replace_accents(lbl), bx, y + self.p(scale, 5), C_ROAST_SPEC_LBL, scale)
+            self._micro_label(painter, lbl, bx, y + self.p(scale, 5), C_ROAST_SPEC_LBL, scale)
             painter.setFont(QFont(self.bold_family, self.pt(3.5), QFont.Weight.DemiBold))
             painter.setPen(vc)
-            painter.drawText(QRectF(bx, y + self.p(scale, 6.5), col_bar_w - self.p(scale, 2), self.p(scale, 9)), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, replace_accents(val))
+            painter.drawText(QRectF(bx, y + self.p(scale, 6.5), col_bar_w - self.p(scale, 2), self.p(scale, 9)), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, val)
 
         # ## TILAU ## traceability footer — QR encodes the Artisan roastUUID of this profile
         roast_uuid = str(profile.get("roastUUID") or "") if profile else ""
@@ -777,7 +790,7 @@ class GreenBeanLabelPrinter(_FontMixin):
         painter.drawText(mg, int(y + self.p(scale, 4)), QApplication.translate("tilauscope_label", "Green bean").upper())
         y += self.p(scale, 7)
 
-        name = replace_accents(bean.name) if bean else "-"
+        name = bean.name if bean else "-"
         name_w = W - 2 * mg - self.p(scale, 16)
         for fs_mm in (4.0, 3.4, 2.9):
             fs = self.pt(fs_mm)
@@ -791,9 +804,9 @@ class GreenBeanLabelPrinter(_FontMixin):
 
         parts = []
         if bean and bean.country:
-            parts.append(replace_accents(bean.country))
+            parts.append(bean.country)
         if bean and bean.farm:
-            parts.append(replace_accents(bean.farm))
+            parts.append(bean.farm)
         origin = " - ".join(parts)
         fm_orig = QFontMetrics(QFont(self.reg_family, self.pt(2.5)))
         max_orig_w = W - 2 * mg
@@ -863,12 +876,12 @@ class GreenBeanLabelPrinter(_FontMixin):
 
         y = float(header_h + self.p(scale, 4))
 
-        supplier = replace_accents(bean.supplier if bean and bean.supplier else "-")
+        supplier = bean.supplier if bean and bean.supplier else "-"
         fm_sup = QFontMetrics(QFont(self.reg_family, self.pt(2.8), QFont.Weight.DemiBold))
         max_sup_w = int(W * 0.6 - mg)
         while fm_sup.horizontalAdvance(supplier) > max_sup_w and len(supplier) > 3:
             supplier = supplier[:-1]
-        if supplier != replace_accents(bean.supplier if bean and bean.supplier else "-"):
+        if supplier != (bean.supplier if bean and bean.supplier else "-"):
             supplier = supplier.rstrip() + "..."
 
         crop = str(bean.crop) if bean and bean.crop and bean.crop > 0 else "-"
@@ -894,7 +907,7 @@ class GreenBeanLabelPrinter(_FontMixin):
         row_h  = self.p(scale, 11)
 
         process = normalise_process(bean.process if bean else "")
-        variety = replace_accents(bean.varieties if bean and bean.varieties else "-")
+        variety = bean.varieties if bean and bean.varieties else "-"
         fm_v    = QFontMetrics(QFont(self.reg_family, self.pt(2.8), QFont.Weight.DemiBold))
         max_v_w = int(col_w - self.p(scale, 1))
         orig_variety = variety
@@ -919,12 +932,12 @@ class GreenBeanLabelPrinter(_FontMixin):
 
         for i, (lbl, val, x, w) in enumerate(specs):
             ry = y + (i // 2) * row_h
-            self._micro_label(painter, replace_accents(lbl), x, ry + self.p(scale, 3), C_GREEN_SPEC_LBL, scale)
+            self._micro_label(painter, lbl, x, ry + self.p(scale, 3), C_GREEN_SPEC_LBL, scale)
             self._spec_value(painter, val, QRectF(x, ry + self.p(scale, 4), w - self.p(scale, 1), self.p(scale, 7)), C_GREEN_SPEC_VAL, scale)
 
         y += (len(specs) // 2) * row_h + self.p(scale, 2)
 
-        raw_notes = replace_accents(truncate_notes(bean.flavour_notes if bean else "", max_chars=90))
+        raw_notes = truncate_notes(bean.flavour_notes if bean else "", max_chars=90)
         notes_h = self.p(scale, 18)
         self._rounded_rect(painter, QRectF(mg, y, W - 2 * mg, notes_h), self.p(scale, 2), C_GREEN_NOTES_BG)
         self._micro_label(painter, QApplication.translate("tilauscope_label", "Cupping notes"), mg + self.p(scale, 2.5), y + self.p(scale, 4), C_GREEN_SPEC_LBL, scale)
@@ -998,9 +1011,9 @@ _LAYOUT: dict[int, tuple[int, int, int, bool]] = {
     30: (384, 240, 10, False),
 }
 
-# ── Noms de police ───────────────────────────────────────────────────────────
-_FONT_BOLD    = "A101HLVB.ttf"
-_FONT_REGULAR = "A101HLVN.ttf"
+# ── Polices ──────────────────────────────────────────────────────────────────
+# Résolues par tilauscope.text_shaping : même face que le plan PDF et que les
+# planches A4, avec bascule CJK et passe bidi assurées par shaping_draw().
 
 # ---------------------------------------------------------------------------
 class NiimbotLabelBuilder:
@@ -1011,30 +1024,15 @@ class NiimbotLabelBuilder:
     """
 
     def __init__(self) -> None:
-        font_dir = Path(__file__).parent
-        bold_path    = font_dir / _FONT_BOLD
-        regular_path = font_dir / _FONT_REGULAR
-        try:
-            self._font_label    = ImageFont.truetype(str(regular_path), 20)
-            self._font_header   = ImageFont.truetype(str(bold_path),    24)
-            self._font_subtitle = ImageFont.truetype(str(bold_path),    16)
-            self._font_value    = ImageFont.truetype(str(regular_path), 24)
-            self._font_notes    = ImageFont.truetype(str(regular_path), 20)
-            self._font_graph    = ImageFont.truetype(str(regular_path), 12)
-            self._font_sizes_value: list[ImageFont.FreeTypeFont] = [
-                ImageFont.truetype(str(regular_path), sz)
-                for sz in (20, 18, 16, 14, 12, 10)
-            ]
-        except OSError as exc:
-            _logd.warning(f"NiimbotLabelBuilder: polices custom introuvables ({exc}), fallback PIL.")
-            fb = ImageFont.load_default()
-            self._font_label    = fb
-            self._font_header   = fb
-            self._font_subtitle = fb
-            self._font_value    = fb
-            self._font_notes    = fb
-            self._font_graph    = fb
-            self._font_sizes_value = [fb] * 6
+        self._font_label    = text_shaping.pil_font(20)
+        self._font_header   = text_shaping.pil_font(24, bold=True)
+        self._font_subtitle = text_shaping.pil_font(16, bold=True)
+        self._font_value    = text_shaping.pil_font(24)
+        self._font_notes    = text_shaping.pil_font(20)
+        self._font_graph    = text_shaping.pil_font(12)
+        self._font_sizes_value: list[ImageFont.FreeTypeFont] = [
+            text_shaping.pil_font(sz) for sz in (20, 18, 16, 14, 12, 10)
+        ]
 
     # ── API publique ─────────────────────────────────────────────────────────
 
@@ -1066,7 +1064,7 @@ class NiimbotLabelBuilder:
         roast_data, qr_data, phases = self._extract_data(bean, alog_data)
 
         img  = Image.new("1", (W, H), 1)
-        draw = ImageDraw.Draw(img)
+        draw = text_shaping.shaping_draw(img)
 
         if paper_height == 80:
             self._build_80mm(draw, img, W, H, PAD, roast_data, qr_data, phases)
@@ -1233,7 +1231,7 @@ class NiimbotLabelBuilder:
             if draw.textbbox((0, 0), roast_data["Bean"], font=f)[2] <= TEXT_W:
                 title_font = f
                 break
-        draw.text((PAD, current_y), replace_accents(roast_data["Bean"]),
+        draw.text((PAD, current_y), roast_data["Bean"],
                   font=title_font, fill=0)
         current_y += draw.textbbox((0, 0), roast_data["Bean"], font=title_font)[3] + 3
 
@@ -1256,7 +1254,7 @@ class NiimbotLabelBuilder:
             if current_y + 16 > MAX_TEXT_Y:
                 break
             current_y += self._draw_adapting_text_line(
-                draw, replace_accents(lbl), replace_accents(val),
+                draw, lbl, val,
                 PAD, current_y, TEXT_W,
                 self._font_label, self._font_sizes_value,
             )
@@ -1278,7 +1276,7 @@ class NiimbotLabelBuilder:
             if current_y + 16 > MAX_TEXT_Y:
                 break
             current_y += self._draw_adapting_text_line(
-                draw, replace_accents(lbl), replace_accents(val),
+                draw, lbl, val,
                 PAD, current_y, TEXT_W,
                 self._font_label, self._font_sizes_value,
             )
@@ -1288,7 +1286,7 @@ class NiimbotLabelBuilder:
         # ── Tasting Notes ─────────────────────────────────────────────────
         if current_y + 20 < MAX_TEXT_Y:
             notes_lbl = QApplication.translate("tilauscope_label", "Tasting Notes:")
-            draw.text((PAD, current_y), replace_accents(notes_lbl),
+            draw.text((PAD, current_y), notes_lbl,
                       font=self._font_label, fill=0)
             current_y += draw.textbbox((0, 0), notes_lbl, font=self._font_label)[3] + 2
 
@@ -1357,7 +1355,7 @@ class NiimbotLabelBuilder:
             x_pos = int(center_x - w_txt / 2)
             # Garder dans les bornes
             x_pos = max(PAD, min(x_pos, W - PAD - w_txt))
-            draw.text((x_pos, label_y), replace_accents(label_txt),
+            draw.text((x_pos, label_y), label_txt,
                       font=self._font_graph, fill=0)
 
     # ── Layout 30 mm ─────────────────────────────────────────────────────────
@@ -1376,11 +1374,11 @@ class NiimbotLabelBuilder:
         current_y = PAD
 
         # Ligne 1 : Origin + Farm  — police valeur, pleine largeur
-        origin_farm = replace_accents(f"{roast_data['Origin']} {roast_data['Farm']}")
+        origin_farm = f"{roast_data['Origin']} {roast_data['Farm']}"
         # Troncature pixel-exacte
         while draw.textbbox((0, 0), origin_farm, font=self._font_value)[2] > TEXT_W and len(origin_farm) > 3:
             origin_farm = origin_farm[:-1]
-        if origin_farm != replace_accents(f"{roast_data['Origin']} {roast_data['Farm']}"):
+        if origin_farm != f"{roast_data['Origin']} {roast_data['Farm']}":
             origin_farm = origin_farm.rstrip() + "…"
         draw.text((PAD, current_y), origin_farm, font=self._font_value, fill=0)
         current_y += draw.textbbox((0, 0), origin_farm, font=self._font_value)[3] + 1
@@ -1389,7 +1387,7 @@ class NiimbotLabelBuilder:
         bean_txt = QApplication.translate("tilauscope_label", "Beans") + f": {roast_data['Bean']}"
         while draw.textbbox((0, 0), bean_txt, font=self._font_subtitle)[2] > TEXT_W and len(bean_txt) > 6:
             bean_txt = bean_txt[:-1]
-        draw.text((PAD, current_y), replace_accents(bean_txt), font=self._font_subtitle, fill=0)
+        draw.text((PAD, current_y), bean_txt, font=self._font_subtitle, fill=0)
         current_y += draw.textbbox((0, 0), bean_txt, font=self._font_subtitle)[3] + 2
 
         # Lignes détails — police subtitle, pleine largeur, troncature adaptative
@@ -1403,7 +1401,7 @@ class NiimbotLabelBuilder:
             if current_y + draw.textbbox((0, 0), "Ag", font=self._font_subtitle)[3] > H - PAD * 4:
                 break
             current_y += self._draw_adapting_text_line(
-                draw, replace_accents(lbl), replace_accents(val),
+                draw, lbl, val,
                 PAD, current_y, TEXT_W,
                 self._font_subtitle, self._font_sizes_value,
             )
@@ -1411,12 +1409,12 @@ class NiimbotLabelBuilder:
         current_y += 2
         # Ligne date
         date_txt = QApplication.translate("tilauscope_label", "Roasted on") + f": {roast_data['Date']}"
-        draw.text((PAD, current_y), replace_accents(date_txt), font=self._font_subtitle, fill=0)
+        draw.text((PAD, current_y), date_txt, font=self._font_subtitle, fill=0)
         current_y += draw.textbbox((0, 0), date_txt, font=self._font_subtitle)[3] + 2
 
         # Tasting notes — police graph, wrapping pixel-exact
         notes_hdr = QApplication.translate("tilauscope_label", "Tasting notes") + ": "
-        draw.text((PAD, current_y), replace_accents(notes_hdr), font=self._font_graph, fill=0)
+        draw.text((PAD, current_y), notes_hdr, font=self._font_graph, fill=0)
         current_y += draw.textbbox((0, 0), notes_hdr, font=self._font_graph)[3] + 1
 
         self._draw_wrapped_text(
@@ -1494,12 +1492,12 @@ class NiimbotLabelBuilder:
                 if current_line:
                     if y + line_h > max_y:
                         break
-                    draw.text((x, y), replace_accents(current_line), font=font, fill=0)
+                    draw.text((x, y), current_line, font=font, fill=0)
                     y += line_h
                 current_line = word
 
         if current_line and y + line_h <= max_y:
-            draw.text((x, y), replace_accents(current_line), font=font, fill=0)
+            draw.text((x, y), current_line, font=font, fill=0)
             y += line_h
 
         return y
@@ -1540,7 +1538,7 @@ def build_sack_label_image(sack_id: str) -> Image.Image:
     """Return a 384×240 1-bit PIL image for a sack ID label (30 mm roll)."""
     W, H, PAD, _rot = _LAYOUT[30]
     img  = Image.new("1", (W, H), 1)
-    draw = ImageDraw.Draw(img)
+    draw = text_shaping.shaping_draw(img)
 
     # ── QR left ──────────────────────────────────────────────────────────────
     qr_size = H - 2 * PAD                      # 220 px
@@ -1559,33 +1557,27 @@ def build_sack_label_image(sack_id: str) -> Image.Image:
     # ── Human-readable id right ─────────────────────────────────────────────
     text_x = PAD + qr_size + PAD
     text_w = W - text_x - PAD                  # ~144 px
-    font_dir = Path(__file__).parent
     def _fit(text: str, sizes: tuple[int, ...]) -> "ImageFont.FreeTypeFont":
-        f = ImageFont.truetype(str(font_dir / _FONT_BOLD), sizes[-1])
+        f = text_shaping.pil_font(sizes[-1], bold=True)
         for sz in sizes:
-            f = ImageFont.truetype(str(font_dir / _FONT_BOLD), sz)
+            f = text_shaping.pil_font(sz, bold=True)
             if draw.textlength(text, font=f) <= text_w:
                 break
         return f
 
-    try:
-        caption_font = ImageFont.truetype(str(font_dir / _FONT_REGULAR), 14)
-        font = _fit(sack_id, (44, 38, 32, 28, 24, 20, 16))
-        if draw.textlength(sack_id, font=font) <= text_w:
-            lines = [sack_id]
-        else:
-            # too long for one readable line: split near the middle,
-            # preferring a separator, and fit each half independently
-            mid = len(sack_id) // 2
-            seps = [i for i, ch in enumerate(sack_id) if ch in "-_ ."]
-            cut = min(seps, key=lambda i: abs(i - mid)) + 1 if seps else mid
-            lines = [sack_id[:cut], sack_id[cut:]]
-            font = min((_fit(ln, (32, 28, 24, 20, 16, 12)) for ln in lines),
-                       key=lambda f: f.size)
-    except OSError:
-        font = ImageFont.load_default()
-        caption_font = font
+    caption_font = text_shaping.pil_font(14)
+    font = _fit(sack_id, (44, 38, 32, 28, 24, 20, 16))
+    if draw.textlength(sack_id, font=font) <= text_w:
         lines = [sack_id]
+    else:
+        # too long for one readable line: split near the middle,
+        # preferring a separator, and fit each half independently
+        mid = len(sack_id) // 2
+        seps = [i for i, ch in enumerate(sack_id) if ch in "-_ ."]
+        cut = min(seps, key=lambda i: abs(i - mid)) + 1 if seps else mid
+        lines = [sack_id[:cut], sack_id[cut:]]
+        font = min((_fit(ln, (32, 28, 24, 20, 16, 12)) for ln in lines),
+                   key=lambda f: f.size)
 
     line_hs = []
     for ln in lines:
@@ -1613,13 +1605,20 @@ def build_sack_label_image(sack_id: str) -> Image.Image:
 
 
 def _brew_clean(text: str) -> str:
-    """Strip accents (NFD) while KEEPING µ (micro sign) and ° — NFKD would turn
-    µ into a Greek mu the A101 fonts don't carry, printing a blank box."""
+    """Normalise a label string without losing any of it.
+
+    This used to strip accents, because the display face the labels were drawn
+    in carried 223 glyphs and no `é`. That worked for French and destroyed
+    everything else: decomposing Korean splits a syllable into separate jamo,
+    and dropping the combining marks of Devanagari, Arabic or Vietnamese changes
+    the words outright. The bundled face covers those scripts, so the text is
+    now printed as written. NFC is applied so a decomposed `e`+`́` from an
+    external source occupies one glyph rather than two overlapping ones.
+    """
     import unicodedata
     if not text:
         return ""
-    n = unicodedata.normalize("NFD", str(text))
-    return "".join(c for c in n if not unicodedata.combining(c))
+    return unicodedata.normalize("NFC", str(text))
 
 
 # ── Method pictograms (drawn 1-bit, black on white, in a size×size box) ─────
@@ -1726,14 +1725,8 @@ _BREW_ICONS = {
 
 def _brew_fonts(draw, text, bold, sizes, max_w):
     """Largest of `sizes` whose `text` fits `max_w`; else smallest + ellipsis."""
-    font_dir = Path(__file__).parent
-    name = _FONT_BOLD if bold else _FONT_REGULAR
-
     def _load(sz):
-        try:
-            return ImageFont.truetype(str(font_dir / name), sz)
-        except OSError:
-            return ImageFont.load_default()
+        return text_shaping.pil_font(sz, bold=bold)
 
     f = _load(sizes[-1])
     for sz in sizes:
@@ -1764,7 +1757,7 @@ def build_brew_recipe_label_image(
     localised and formatted by the caller."""
     W, H, PAD, _rot = _LAYOUT[30]
     img = Image.new("1", (W, H), 1)
-    d = ImageDraw.Draw(img)
+    d = text_shaping.shaping_draw(img)
     text_w = W - 2 * PAD
 
     # ── Header: pictogram (top-right) + name + method + grain line ───────────

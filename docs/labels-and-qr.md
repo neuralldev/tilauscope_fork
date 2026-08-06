@@ -62,6 +62,18 @@ paper size). -->
 
 ---
 
+## What a label can spell
+
+Labels print the text as it was typed. Accents and other marks are kept, and a name written
+in Greek, Cyrillic, Arabic, Hebrew, Chinese, Japanese, Korean or Vietnamese prints in its own
+script — Arabic, Persian and Hebrew read right to left, as they should. Earlier versions
+dropped accents and could leave a non-Latin name blank.
+
+Thai is the one exception: it has no letterforms available and prints blank. Written in the
+Latin alphabet, a Thai coffee prints normally.
+
+---
+
 ## Scanning a label
 
 A printed label can be opened back up two ways.

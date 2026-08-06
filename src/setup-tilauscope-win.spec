@@ -263,8 +263,6 @@ copy_file(SOURCE / 'tilauscope' / 'roasters.json', TARGETSTR + '_internal\\tilau
 # against os.path.dirname(__file__) → the 'tilauscope' package folder.
 copy_file(SOURCE / 'tilauscope' / 'JetBrainsMono-Bold.ttf', TARGETSTR + '_internal\\tilauscope')
 copy_file(SOURCE / 'tilauscope' / 'JetBrainsMono-Regular.ttf', TARGETSTR + '_internal\\tilauscope')
-copy_file(SOURCE / 'tilauscope' / 'A101HLVB.TTF', TARGETSTR + '_internal\\tilauscope')
-copy_file(SOURCE / 'tilauscope' / 'A101HLVN.TTF', TARGETSTR + '_internal\\tilauscope')
 
 for fn in [
     'tilauscope.png',
@@ -296,6 +294,12 @@ for fn in [
     r'includes\JetBrainsMono-Bold.ttf',
     r'includes\JetBrainsMono-OFL.txt',
     r'includes\JetBrainsMono-Regular.ttf',
+    # Unicode family for the roast-plan PDF. Without these three the report
+    # falls back to a latin-1 core font and cannot be generated in Czech,
+    # Russian, Greek, Japanese, Chinese, Korean, Hebrew or Arabic.
+    r'includes\DejaVuSans.ttf',
+    r'includes\DejaVuSans-Bold.ttf',
+    r'includes\DejaVuSans-Oblique.ttf',
     r'includes\tilauscope.tpl',
     r'includes\scale_widget.tpl',
     r'includes\fitty_patched.js',
@@ -322,8 +326,6 @@ for fn in [
     r'includes\mstile-310x310.png',
     r'includes\safari-pinned-tab.svg',
     r'includes\site.webmanifest',
-    r'includes\A101HLVB.TTF',
-    r'includes\A101HLVN.TTF',
     r'includes\logging.yaml',
     r'includes\tilauscope_public_key.pem',
     ]:

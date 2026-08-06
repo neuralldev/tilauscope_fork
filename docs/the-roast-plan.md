@@ -16,7 +16,10 @@
 
 The plan is not a screen inside TilauScope. It is produced in **BeanCave → Roasting plan**, a
 short step-by-step form: pick the coffee, enter the parameters, adjust probe offsets if needed.
-Two actions close it out:
+The **batch weight** and **roast level** come back as you last left them, since a bag is usually
+worked through at one batch size and one roast level over several sessions. The ambient fields
+do not: they describe the room as it is now, and are filled from the online weather or the
+ambient probe. Two actions close it out:
 
 - **⚡ Generate Roast Plan** — becomes available only once every required field is filled, and
   produces **a PDF**. That document is the plan: everything described below is in it.
@@ -27,9 +30,16 @@ Two actions close it out:
 The same engine also feeds the *Predicted targets* and *STRATEGY* blocks on the ROAST SETUP
 sheet, which is why those predictions and this PDF agree with each other.
 
+The plan prints in the language TilauScope is set to, whichever alphabet that language uses:
+Greek, Cyrillic, Chinese, Japanese, Korean, and Arabic, Persian or Hebrew read right to left.
+Coffee and farm names print in their own script too. Thai is the one exception — it has no
+letterforms available and prints blank.
+
 <!-- CAPTURE 6.1 — the BeanCave "Roasting plan" tab, form completed, with the ⚡ Generate Roast
 Plan button enabled. CAPTURE 6.2 — the injection confirmation message. CAPTURE 6.3 and 6.4 —
 one or two pages of a generated PDF, on a coffee with enough history to show "learned" sources.
+CAPTURE 6.7 — the "Control Ramps (Heater & Airflow)" page of a generated PDF, on a coffee whose
+plan carries a full heater ramp and a development ramp.
 -->
 
 ---
@@ -85,6 +95,23 @@ hold it longest; naturals and fermented lots have had part of their sugars broke
 already and sustain themselves earlier. **The development setting is reached after first
 crack, never before it** — arriving at it early is the classic way to produce a
 [baked](glossary.md#baked) cup while the curve still looks correct.
+
+**Machine settings at phase entry.** A table of what each lever must read as a phase begins:
+at charge, when bean temperature reaches dry end, and at first crack. Not an average for the
+phase — an average is not a setting anyone dials, and treating one as an instruction puts the
+middle of the descent at the start of the phase. Expect the burner to show the **same value at
+charge and at dry end**: the drying fire is held through dry end, and the descent starts just
+after it.
+
+**The control ramps, on their own page.** The heat ladder used to be a run of
+*value @ temperature* pairs — exact, unreadable while roasting. It is now a chart plus a
+checklist. The chart draws the whole roast with **burner in red and airflow in blue**, the
+drying, Maillard and development bands behind them, the dry-end and first-crack marks, and the
+value each lever finishes on in the right margin. Each level is a step held until the next
+change, because that is what the plan asks for — one move, then time to read its effect, never a
+continuous slide. Below it, every gesture in order: its time, the bean temperature that triggers
+it, which lever, and from what to what. Then *At a glance* — charge and drop temperatures, first
+crack, total time, and the duration of each phase with its share of the roast.
 
 **Airflow.** *Airflow*, *AirWave*, *AirWave Mode*, with the reason attached — *to smooth RoR*,
 *to prevent crash*, *Action: Increase extraction/airflow to shed thermal energy*.

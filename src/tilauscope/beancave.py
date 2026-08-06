@@ -2604,6 +2604,60 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         return False
 
+    # ── Roasting-plan batch preferences, remembered across sessions ──────────
+    # The roast level is stored by SCALE NAME, never by combo index: the combo is
+    # built from reversed(AGTRON_SCALES), so an index means nothing on its own and
+    # would silently point at a different roast level if that list ever changes.
+    _PLAN_PREF_WEIGHT: str = 'tilauscope/plan_last_batch_weight'
+    _PLAN_PREF_LEVEL: str  = 'tilauscope/plan_last_roast_level'
+
+    def _restore_plan_batch_prefs(self) -> None:
+        """Reload the last batch weight and roast level, then start saving them.
+
+        Never raises: an unreadable preference simply leaves the field on its
+        built-in default, which is the pre-existing behaviour.
+        """
+        try:
+            settings = QSettings()
+            weight = settings.value(self._PLAN_PREF_WEIGHT, 0.0, type=float)
+            spin = self.roast_plan_inputs.get("Batch Weight")
+            if spin is not None and weight > 0.0:
+                spin.setValue(min(weight, spin.maximum()))
+
+            level_name = settings.value(self._PLAN_PREF_LEVEL, '', type=str)
+            if level_name:
+                names = [a.name for a in AGTRON_SCALES]
+                if level_name in names:
+                    # combo is reversed(AGTRON_SCALES) — mirror the position
+                    idx = len(names) - 1 - names.index(level_name)
+                    if 0 <= idx < self.roast_level_combo.count():
+                        self.roast_level_combo.setCurrentIndex(idx)
+        except Exception as e:
+            _logd.debug(f"_restore_plan_batch_prefs: {e}")
+
+        try:
+            spin = self.roast_plan_inputs.get("Batch Weight")
+            if spin is not None:
+                spin.valueChanged.connect(self._save_plan_batch_prefs)
+            self.roast_level_combo.currentIndexChanged.connect(self._save_plan_batch_prefs)
+        except Exception as e:
+            _logd.debug(f"_restore_plan_batch_prefs (connect): {e}")
+
+    def _save_plan_batch_prefs(self) -> None:
+        """Persist the current batch weight and roast level."""
+        try:
+            settings = QSettings()
+            spin = self.roast_plan_inputs.get("Batch Weight")
+            if spin is not None:
+                settings.setValue(self._PLAN_PREF_WEIGHT, float(spin.value()))
+            idx = self.roast_level_combo.currentIndex()
+            if 0 <= idx < len(AGTRON_SCALES):
+                # mirror of the reversed() build order used by the combo
+                settings.setValue(self._PLAN_PREF_LEVEL,
+                                  AGTRON_SCALES[len(AGTRON_SCALES) - 1 - idx].name)
+        except Exception as e:
+            _logd.debug(f"_save_plan_batch_prefs: {e}")
+
     def setup_roast_plan_tab_ui(self) -> None:
         """Creates and returns the Roast Plan tab UI with a 3-column layout."""
         tab_widget = QWidget()
@@ -2734,6 +2788,14 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             spin_box.setToolTip(tooltip)
             spin_box.valueChanged.connect(self._check_plan_inputs)
             self.roast_plan_inputs[label] = spin_box
+
+        # Batch weight and roast level survive a restart: a roaster
+        # works through a bag at one batch size, on one roast level, over many
+        # sessions. The ambient fields are deliberately NOT remembered — they
+        # describe the room right now and are refilled from the weather or the
+        # probe. Restored before the save handlers are connected, so restoring
+        # does not write back what it just read.
+        self._restore_plan_batch_prefs()
 
         # ── flat wrapper card group (Conditions + Target) ─────────────────────────
         self.input_group.setTitle("")   #type:ignore

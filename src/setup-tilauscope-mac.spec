@@ -86,8 +86,6 @@ DATA_FILES = [
     # (resolved against os.path.dirname(__file__) → the 'tilauscope' folder).
     ('tilauscope/JetBrainsMono-Bold.ttf', 'tilauscope'),
     ('tilauscope/JetBrainsMono-Regular.ttf', 'tilauscope'),
-    ('tilauscope/A101HLVB.TTF', 'tilauscope'),
-    ('tilauscope/A101HLVN.TTF', 'tilauscope'),
 ]
 
 # Add Translations [cite: 54]

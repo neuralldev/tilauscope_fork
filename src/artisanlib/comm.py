@@ -1978,6 +1978,8 @@ class serialport:
                     # selection in the device dialog (spec Sec19.2); generic
                     # mode (no match) leaves the existing selection untouched.
                     self.aw.tilau_roaster = self.trpRoasterContext.display_name
+                    from tilauscope.roasters import sync_roaster_to_qmc  ## TILAU ##
+                    sync_roaster_to_qmc(self.aw, self.aw.tilau_roaster) ## TILAU ## mirror onto the canvas machine label
                 if self.aw.seriallogflag:
                     profile = 'generic' if self.trpRoasterContext is None else self.trpRoasterContext.display_name
                     self.aw.addserial(

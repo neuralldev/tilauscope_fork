@@ -27,6 +27,7 @@ import numpy as np
 
 from tilauscope.tilauscope_types import AGTRON_SCALES, AgtronScale, ProbeDeviation, RoasterBasicPlan, RoasterBasicPlanPerPhase, GreenBean, RoastingPhase, get_ror_ideal_band, to_agtron
 from tilauscope.roasters import RoasterContext
+from tilauscope import text_shaping
 from tilauscope.bean_energy import Ambient, BeanProps, FloorProfile, maillard_floor
 from artisanlib.atypes import ProfileData
 from artisanlib.util import cast, fromCtoFstrict
@@ -2509,6 +2510,18 @@ class TilauScopeRoastPlan:
         if heater_pre_fc > _h_pfc_free + 0.5:
             _logd.info(f"RoastPlan: pre-FC heater raised {_h_pfc_free:.0f}→"
                        f"{heater_pre_fc:.0f}% by the bean energy floor")
+        # Le palier pre-FC ne peut jamais dépasser le palier mi-Maillard : le feu
+        # ne remonte pas en Maillard (doctrine Tilau — un geste cumulé descend ou
+        # tient, jamais l'inverse avant le FC). Sans ce plafond, un feu pre-FC
+        # appris (heater_fc_learned, cohorte séparée du mi-Maillard) plus chaud
+        # que le mi-Maillard fait basculer _build_heater_ramp_c dans son repli
+        # non monotone, qui redessine fidèlement le creux-puis-remontée — un
+        # geste que personne ne peut exécuter sur la machine.
+        if heater_pre_fc > heater_maillard:
+            _logd.info(f"RoastPlan: pre-FC heater {heater_pre_fc:.0f}% capped to "
+                       f"the Maillard level {heater_maillard:.0f}% — fire never "
+                       f"climbs back up before first crack")
+            heater_pre_fc = heater_maillard
 
         # ── Cohérence du résumé de phase avec la Dev Ramp ──────────────────────
         # La Dev Ramp part du palier pre-FC et ne descend jamais de plus de
@@ -2866,6 +2879,23 @@ class TilauScopeRoastPlan:
             if len(_entry) > 2:   # bt + _f + au moins un levier
                 _dev_ramp.append(_entry)
         _dev_ramp_source = (f"learned (n={_dev_traj_n})" if _dev_use_learned else "default")
+
+        # ── La colonne DEV d'airflow dit ce que la Dev Ramp fait ─────────────── ## TILAU ##
+        # Symétrique du brûleur (_DEV_BURNER_DROP_CAP plus haut). La colonne
+        # sortait de la grille de base : ni la cible APPRISE (f=0.75), ni le
+        # plancher de soutien qui ouvre l'air à mesure que le feu descend, ne la
+        # touchaient. Elle annonçait donc « Air 40 % » pendant que le plan monte
+        # à 50 % — et cette colonne n'est pas décorative : l'AutoPilot en fait sa
+        # cible DEV et la recommandation lue par l'opérateur sur machine
+        # read-only en sort mot pour mot.
+        # Reprise de la DERNIÈRE valeur RÉELLEMENT posée par la rampe plutôt que
+        # de `_dev_end[0]` : la rampe quantifie au pas machine, et recopier la
+        # formule laisserait les deux diverger d'un pas au prochain changement de
+        # résolution. Ici l'accord est structurel.
+        if 0 in _dev_end and len(airflow) > 2:
+            _air_posted = [e["airflow"] for e in _dev_ramp if "airflow" in e]
+            if _air_posted:
+                airflow[2] = f"{_air_posted[-1]:.0f}%"
 
         return _AirflowExtraction(
             airflow=airflow, extraction=extraction, airwave_mode=airwave_mode,
@@ -3701,7 +3731,7 @@ class TilauScopeRoastPlan:
             "Process Type": process_type,
             "Density": f"{density:.1f}",
             "Bean Humidity": f"{humidity:.1f}",
-            "Water Activity Used": f"{wa:.3f}" if bean.water_activity > 0.0 else "Not measured",
+            "Water Activity Used": f"{bean.water_activity:.3f}" if bean.water_activity > 0.0 else "Not measured",
             f"Ambient Temp": f"{_to_native(ambient_temp_c):.1f}",
             "Ambient Humidity": f"{ambient_humidity:.1f}",
             f"Charge Temp":    f"{_to_native(charge_bt_temperature):.1f}",
@@ -4461,6 +4491,25 @@ class TilauscopeAlarmFactory:
             
 class BuildPRoastPlanPDF(FPDF):
     """Custom FPDF class for the roast plan report."""
+
+    #: Unicode family registered in place of FPDF's latin-1 core fonts. The core
+    #: fonts RAISE on any character outside latin-1, which took down the whole
+    #: plan for 18 of the 35 shipped languages — a single word like CHARGE
+    #: translated to "ÚČTOVAT" (cs) or "投豆" (zh) was enough. A registered
+    #: TrueType font renders an unknown glyph blank instead of raising, so the
+    #: worst case becomes a gap in the page rather than no page at all.
+    #: DejaVu Sans is proportional like the Helvetica it replaces, carries the
+    #: three styles the report uses, and is freely redistributable
+    #: (licenses/DejaVu-Fonts.txt).
+    _FONT: Final[str] = "tilauplan"
+    #: fpdf style code → (bold, italic), resolved through tilauscope.text_shaping
+    #: so the report, the label sheets and the Niimbot bitmaps all use one face.
+    _FONT_STYLES: Final[dict] = {'': (False, False), 'B': (True, False),
+                                 'I': (False, True)}
+    #: Class-level default so the set_font override is safe even if FPDF's own
+    #: __init__ reaches it before ours has run.
+    _family: str = "helvetica"
+
     def __init__(self, orientation="P", unit="mm", format="A4", temp_unit="C",
                  roaster_ctx: "RoasterContext | None" = None):
         super().__init__(orientation, unit, format)
@@ -4468,6 +4517,108 @@ class BuildPRoastPlanPDF(FPDF):
         self._target = ""
         self._roaster = ""
         self._roaster_ctx: "RoasterContext | None" = roaster_ctx
+        self._family: str = self._register_unicode_font()
+
+    def _register_unicode_font(self) -> str:
+        """Register the Unicode family; fall back to the core font if absent.
+
+        A source checkout without the bundled fonts must still produce a plan,
+        so a missing file degrades to 'helvetica' rather than raising — the same
+        report as before, with the same latin-1 limit.
+        """
+        try:
+            for style, (bold, italic) in self._FONT_STYLES.items():
+                path = text_shaping.sans_path(bold=bold, italic=italic)
+                if path is None:
+                    _logd.warning(
+                        "RoastPlanPDF: body face missing, falling back to a latin-1 core font")
+                    return "helvetica"
+                self.add_font(self._FONT, style, str(path))
+            cjk = text_shaping.cjk_path()
+            if cjk is not None:
+                self.add_font("tilauplancjk", "", str(cjk))
+                self.set_fallback_fonts(["tilauplancjk"])
+        except Exception as e:      # never let typography stop a roast plan
+            _logd.warning("RoastPlanPDF: Unicode font unavailable (%s), using core font", e)
+            return "helvetica"
+        return self._FONT
+
+    # ── Bidirectional scripts ────────────────────────────────────────────────
+    # The pass itself lives in tilauscope.text_shaping: the Niimbot labels need
+    # exactly the same treatment (Pillow shapes no better than fpdf), and two
+    # copies would drift.
+    _RTL_RANGES: Final[tuple] = text_shaping.RTL_RANGES
+    _ARABIC_RANGES: Final[tuple] = text_shaping.ARABIC_RANGES
+
+    @classmethod
+    def _bidi(cls, text: Any) -> Any:
+        """Join and reorder Arabic/Persian/Hebrew — see text_shaping.shape_bidi."""
+        return text_shaping.shape_bidi(text)
+
+    @staticmethod
+    def _in_ranges(ch: str, ranges: tuple) -> bool:
+        return text_shaping.in_ranges(ch, ranges)
+
+    # Routed centrally, like set_font: one missed call site would leave a single
+    # label unjoined, which is exactly the defect nobody notices in review.
+    def _bidi_call(self, args: tuple, kwargs: dict) -> "tuple[tuple, dict]":
+        """Apply the bidi pass whichever way the caller passed the string.
+
+        cell/multi_cell/text all take it third; it can also arrive as ``text=``
+        or as the deprecated ``txt=`` alias fpdf still accepts and rewrites. A
+        signature that assumed one form broke the graph labels, which use
+        ``txt=``, so the argument is located rather than assumed.
+        """
+        for key in ("text", "txt"):
+            if key in kwargs:
+                kwargs[key] = self._bidi(kwargs[key])
+                return args, kwargs
+        if len(args) > 2:
+            mutable = list(args)
+            mutable[2] = self._bidi(mutable[2])
+            return tuple(mutable), kwargs
+        return args, kwargs
+
+    def cell(self, *args, **kwargs):            # type: ignore[override]
+        args, kwargs = self._bidi_call(args, kwargs)
+        return super().cell(*args, **kwargs)
+
+    def multi_cell(self, *args, **kwargs):      # type: ignore[override]
+        args, kwargs = self._bidi_call(args, kwargs)
+        return super().multi_cell(*args, **kwargs)
+
+    def text(self, *args, **kwargs):            # type: ignore[override]
+        args, kwargs = self._bidi_call(args, kwargs)
+        return super().text(*args, **kwargs)
+
+    def output(self, *args, **kwargs):   # type: ignore[override]
+        """Write the document, then release the font file handles.
+
+        fpdf2 keeps every registered TrueType open — fontTools reads it lazily
+        for subsetting — and never closes it. A session generating several plans
+        would accumulate descriptors for nothing. Closing after `output` is safe
+        because subsetting is done by then; the instance is single-use
+        afterwards, which is how the report is built.
+        """
+        try:
+            return super().output(*args, **kwargs)
+        finally:
+            for font in getattr(self, 'fonts', {}).values():
+                tt = getattr(font, 'ttfont', None)
+                if tt is not None:
+                    try:
+                        tt.close()
+                    except Exception:   # noqa: S110 - releasing a handle must never fail a report
+                        pass
+
+    def set_font(self, family=None, style="", size=0):   # type: ignore[override]
+        """Route every call to the registered Unicode family.
+
+        Overridden rather than edited at ~38 call sites: a single missed site
+        would reintroduce the crash for one string only, which is exactly the
+        kind of defect that ships unnoticed.
+        """
+        super().set_font(self._family if family else family, style, size)
 
     def _fmt_ctrl(self, raw: str, label_fn) -> str:
         """Enrich '75%' → '75% (1800 W)' when physical range is available."""
@@ -4738,9 +4889,9 @@ class BuildPRoastPlanPDF(FPDF):
             # align='C' ensures both lines are centered relative to each other
             self.set_xy(lx, current_lane_y - (line_height * 2) - 1)
             self.multi_cell(
-                w=text_w, 
-                h=line_height, 
-                txt=label_txt, 
+                w=text_w,
+                h=line_height,
+                text=label_txt,
                 border=0, 
                 align='C'
             )
@@ -4866,6 +5017,435 @@ class BuildPRoastPlanPDF(FPDF):
         self.text(x_pos + 91, leg_y + 1,
                   QApplication.translate("Label", "Development"))
 
+    @staticmethod
+    def _phase_pct(raw: Any, col: int) -> "float | None":
+        """One phase value out of a 'Dry | Mai | Dev' summary string."""
+        try:
+            return float(str(raw).split('|')[col].strip().rstrip('%'))
+        except (ValueError, IndexError, AttributeError):
+            return None
+
+    def _control_trajectories(self, plan_data: dict) -> "tuple[list, list, dict]":
+        """Heater and airflow as (time_min, percent) points, plus milestones.
+
+        Both are STAIRCASES: a setting is posted once and held until the next
+        change. Drawing a slope between two settings would picture a continuous
+        knob movement that never happens — the operator makes one step, then
+        waits to read its effect.
+
+        The sequence mirrors what the assistant actually applies (see
+        ``roast_asssistant._ap_phase_targets``), not the phase summary table:
+        the burner holds its charge value until the anticipated ramp takes over,
+        then the Dev Ramp carries it through development; airflow is posted at
+        each phase, refined by the Maillard Air Ramp, then also carried by the
+        Dev Ramp. Reading the summary instead would draw three flat plateaus and
+        hide every gesture the plan actually asks for.
+        """
+        curve = plan_data.get("bt_plan_curve") or {}
+        times = list(curve.get("time_min") or [])
+        bts = list(curve.get("bt_plan") or [])
+        if len(times) < 2 or len(times) != len(bts):
+            return [], [], {}
+
+        # Milestones by stable key, never by translated label.
+        wps = {w.get("key"): w for w in (curve.get("waypoints") or [])}
+
+        def _wp_t(key: str) -> float:
+            try:
+                return float(wps.get(key, {}).get("time_min", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                return 0.0
+
+        t_end = float(times[-1])
+        milestones = {"dry_end": _wp_t("dry_end"), "fc_start": _wp_t("fc_start"),
+                      "tp": _wp_t("tp"), "t_end": t_end}
+
+        # BT -> time, scanning forward from the TURNING POINT: bean temperature
+        # falls to TP before it rises, so a scan from t=0 would resolve a
+        # Maillard threshold against the charge descent and place the step at
+        # the wrong end of the roast.
+        i_tp = min(range(len(bts)), key=lambda i: bts[i])
+
+        def t_at_bt(target: float) -> float:
+            for i in range(i_tp + 1, len(bts)):
+                if bts[i] >= target:
+                    b0, b1 = bts[i - 1], bts[i]
+                    if b1 > b0:
+                        f = (target - b0) / (b1 - b0)
+                        return times[i - 1] + f * (times[i] - times[i - 1])
+                    return times[i]
+            return t_end
+
+        def _collect(ramp_key: str, value_key: str, out: list) -> None:
+            for e in (plan_data.get(ramp_key) or []):
+                if not isinstance(e, dict) or value_key not in e:
+                    continue
+                try:
+                    out.append((t_at_bt(float(e["bt"])), float(e[value_key])))
+                except (KeyError, TypeError, ValueError):
+                    continue
+
+        heater: list = []
+        h_dry = self._phase_pct(plan_data.get("Heater (%) (Dry|Mai|Dev)", ""), 0)
+        if h_dry is not None:
+            heater.append((0.0, h_dry))
+        _collect("Heater Ramp", "heater", heater)
+        _collect("Dev Ramp", "heater", heater)
+
+        airflow: list = []
+        a_dry = self._phase_pct(plan_data.get("Airflow (%) (Dry|Mai|Dev)", ""), 0)
+        if a_dry is not None:
+            airflow.append((0.0, a_dry))
+        a_mai = self._phase_pct(plan_data.get("Airflow (%) (Dry|Mai|Dev)", ""), 1)
+        if a_mai is not None and milestones["dry_end"] > 0.0:
+            airflow.append((milestones["dry_end"], a_mai))
+        _collect("Air Ramp", "airflow", airflow)
+        _collect("Dev Ramp", "airflow", airflow)
+
+        def _tidy(points: list) -> list:
+            """Chronological, and one value per instant — a later entry for the
+            same time wins, so a ramp step overrides the phase feedforward it
+            lands on rather than drawing a spike."""
+            points.sort(key=lambda p: p[0])
+            out: list = []
+            for t, v in points:
+                if out and abs(out[-1][0] - t) < 1e-6:
+                    out[-1] = (t, v)
+                elif not out or out[-1][1] != v:
+                    out.append((t, v))
+            return out
+
+        return _tidy(heater), _tidy(airflow), milestones
+
+    def _entry_settings(self, plan_data: dict) -> "list[tuple[str, list[str]]]":
+        """Rows for the phase-entry table: what each lever must READ when the
+        milestone is crossed — at CHARGE, at DRY END, at FIRST CRACK.
+
+        Deliberately not the phase average. A figure like 59 % for Maillard is
+        the mean of a descent, and the operator never dials a mean; reading it
+        as an instruction posts the middle of the ramp at the start of the
+        phase, half a phase too low too early. The entry values are read off the
+        same trajectories the section 5 chart draws, so table and chart cannot
+        disagree.
+
+        The burner can therefore show the same value at CHARGE and at DRY END.
+        That is the doctrine made visible: the drying fire is held through dry
+        end, and the descent starts just after it.
+        """
+        heater, airflow, ms = self._control_trajectories(plan_data)
+        marks = [0.0, float(ms.get("dry_end") or 0.0), float(ms.get("fc_start") or 0.0)]
+        ctx = self._roaster_ctx
+
+        def _held(points: list, t: float) -> "float | None":
+            held = None
+            for pt, pv in points:
+                if pt <= t + 1e-9:
+                    held = pv
+                else:
+                    break
+            return held
+
+        def _fmt(values: list, label_fn) -> list:
+            out = []
+            for v in values:
+                if v is None:
+                    out.append("N/A")
+                    continue
+                raw = f"{v:.0f}%"
+                out.append(self._fmt_ctrl(raw, label_fn) if ctx is not None else raw)
+            return out
+
+        def _phase(key: str, cols: "tuple[int, int, int]") -> "list[float | None]":
+            parts = str(plan_data.get(key, "")).split('|')
+            out: "list[float | None]" = []
+            for c in cols:
+                try:
+                    out.append(float(parts[c].strip().rstrip('%')))
+                except (ValueError, IndexError):
+                    out.append(None)
+            return out
+
+        rows: "list[tuple[str, list[str]]]" = []
+        if heater:
+            rows.append((QApplication.translate("tilauscope_roast_plan", "Heater") + " (%)",
+                         _fmt([_held(heater, t) for t in marks],
+                              ctx.pct_to_heater_label if ctx else None)))
+        if airflow:
+            rows.append((QApplication.translate("tilauscope_roast_plan", "Airflow") + " (%)",
+                         _fmt([_held(airflow, t) for t in marks],
+                              ctx.pct_to_airflow_label if ctx else None)))
+        # Drum is a SETUP value: one setting for the whole roast, so its three
+        # columns are the same figure by construction, not by accident.
+        _drum = _phase("Drum Speed (%) (Dry|Mai|Dev)", (0, 1, 2))
+        if any(v is not None for v in _drum):
+            rows.append((QApplication.translate("tilauscope_roast_plan", "Drum Speed") + " (%)",
+                         _fmt(_drum, ctx.pct_to_drum_label if ctx else None)))
+        # AirWave: posted at CHARGE and at DRY END, then carried by the Dev Ramp
+        # — so the value at FC entry is still the Maillard one, as for airflow.
+        if str(plan_data.get("Extraction (%) (Dry|Mai|Dev)", "")).strip():
+            _ext = _phase("Extraction (%) (Dry|Mai|Dev)", (0, 1, 1))
+            rows.append((QApplication.translate("tilauscope_roast_plan", "AirWave")
+                         + " (% " + QApplication.translate("tilauscope_roast_plan", "Fan") + ")",
+                         _fmt(_ext, None)))
+        return rows
+
+    def _control_gestures(self, plan_data: dict) -> "list[dict]":
+        """Every lever change the plan asks for, in order.
+
+        One row per gesture rather than one per lever: at the machine the
+        question is always "what do I do next", and two levers moving at the
+        same threshold are two distinct hands on two distinct knobs.
+        """
+        heater, airflow, ms = self._control_trajectories(plan_data)
+        if not heater and not airflow:
+            return []
+        curve = plan_data.get("bt_plan_curve") or {}
+        times = list(curve.get("time_min") or [])
+        bts = list(curve.get("bt_plan") or [])
+
+        def bt_at(t: float) -> "float | None":
+            for i in range(len(times)):
+                if times[i] >= t:
+                    return bts[i]
+            return bts[-1] if bts else None
+
+        t_de = float(ms.get("dry_end") or 0.0)
+        t_fc = float(ms.get("fc_start") or 0.0)
+        out: "list[dict]" = []
+        for points, lever in ((heater, QApplication.translate("tilauscope_roast_plan", "Heater")),
+                              (airflow, QApplication.translate("tilauscope_roast_plan", "Airflow"))):
+            for i in range(1, len(points)):
+                out.append({"t": points[i][0], "lever": lever,
+                            "frm": points[i - 1][1], "to": points[i][1],
+                            "bt": bt_at(points[i][0])})
+        out.sort(key=lambda g: g["t"])
+        for g in out:
+            g["phase"] = (QApplication.translate("Label", "Dry") if g["t"] < t_de
+                          else QApplication.translate("Label", "Maillard") if g["t"] < t_fc
+                          else QApplication.translate("Label", "Development"))
+        return out
+
+    @staticmethod
+    def _mmss(t_min: float) -> str:
+        total = int(round(float(t_min) * 60.0))
+        return f"{total // 60:d}:{total % 60:02d}"
+
+    def draw_control_ramp_graph(self, plan_data: dict, x_pos: float, y_pos: float,
+                                 width: float, height: float) -> bool:
+        """Heater (red) and airflow (blue) setpoints over the whole roast.
+
+        Returns False when the plan carries no trajectory to draw, so the caller
+        can skip the section rather than print an empty frame.
+        """
+        heater, airflow, ms = self._control_trajectories(plan_data)
+        if not heater and not airflow:
+            return False
+
+        t_end = float(ms.get("t_end") or 0.0)
+        if t_end <= 0.0:
+            return False
+
+        def sx(t: float) -> float:
+            return x_pos + (max(0.0, min(t_end, t)) / t_end) * width
+
+        def sy(pct: float) -> float:
+            return y_pos + height - (max(0.0, min(100.0, pct)) / 100.0) * height
+
+        # ── Phase bands (same palette as the BT/RoR graph, so the two pages
+        # read as one document) ──────────────────────────────────────────────
+        for name, t0, t1, rgb in (
+            ("DRY", 0.0, ms.get("dry_end", 0.0), (255, 252, 230)),
+            ("MAILLARD", ms.get("dry_end", 0.0), ms.get("fc_start", 0.0), (255, 240, 210)),
+            ("DEVELOPMENT", ms.get("fc_start", 0.0), t_end, (245, 230, 220)),
+        ):
+            if t1 <= t0:
+                continue
+            self.set_fill_color(*rgb)
+            self.rect(sx(t0), y_pos, sx(t1) - sx(t0), height, style="F")
+
+        # ── Grid: every 20 % and every 2 min ─────────────────────────────────
+        self.set_draw_color(205, 205, 205)
+        self.set_line_width(0.15)
+        self.set_dash_pattern()
+        self.set_font("Helvetica", "", 7)
+        self.set_text_color(90, 90, 90)
+        for pct in range(0, 101, 20):
+            y = sy(pct)
+            self.line(x_pos, y, x_pos + width, y)
+            self.text(x_pos - 8, y + 1.2, f"{pct}%")
+        _t = 0.0
+        while _t <= t_end + 1e-9:
+            x = sx(_t)
+            self.line(x, y_pos, x, y_pos + height)
+            self.text(x - 3, y_pos + height + 4, f"{int(_t)}'")
+            _t += 2.0
+
+        # ── Milestone verticals (DRY END, FC) ────────────────────────────────
+        self.set_line_width(0.4)
+        self.set_dash_pattern(dash=1.2, gap=1.2)
+        self.set_draw_color(120, 120, 120)
+        for key, label in (("dry_end", QApplication.translate("Button", "DRY END")),
+                           ("fc_start", QApplication.translate("Button", "FC START"))):
+            t = float(ms.get(key) or 0.0)
+            if t <= 0.0 or t >= t_end:
+                continue
+            self.line(sx(t), y_pos, sx(t), y_pos + height)
+            self.set_font("Helvetica", "B", 6)
+            self.set_text_color(110, 110, 110)
+            self.text(sx(t) + 1, y_pos + 3.5, label)
+        self.set_dash_pattern()
+
+        def _staircase(points: list, rgb: tuple, label_above: bool) -> None:
+            """Hold-then-step: horizontal to the next change, then vertical to
+            the new value. The last value is held to the drop."""
+            if not points:
+                return
+            self.set_draw_color(*rgb)
+            self.set_line_width(0.9)
+            self.set_dash_pattern()
+            last_label_x = -99.0
+            for i, (t, v) in enumerate(points):
+                t_next = points[i + 1][0] if i + 1 < len(points) else t_end
+                self.line(sx(t), sy(v), sx(t_next), sy(v))
+                if i + 1 < len(points):
+                    self.line(sx(t_next), sy(v), sx(t_next), sy(points[i + 1][1]))
+                # Label sparsely: a value every 9 mm stays readable, and the
+                # operator reads levels off the axis anyway.
+                if sx(t) - last_label_x >= 9.0:
+                    self.set_font("Helvetica", "B", 6)
+                    self.set_text_color(*rgb)
+                    self.text(sx(t) + 0.6,
+                              sy(v) - 1.6 if label_above else sy(v) + 3.4,
+                              f"{v:.0f}")
+                    last_label_x = sx(t)
+            # The value held to the DROP, in the right margin: it is the one the
+            # operator finishes on, and the spacing rule above would drop it
+            # whenever the last steps bunch up in development. Outside the plot
+            # so the two curves cannot collide here even when they cross.
+            self.set_font("Helvetica", "B", 7)
+            self.set_text_color(*rgb)
+            self.text(x_pos + width + 1.5, sy(points[-1][1]) + 1.0,
+                      f"{points[-1][1]:.0f}%")
+
+        _RED = (200, 40, 40)
+        _BLUE = (40, 90, 200)
+        _staircase(airflow, _BLUE, label_above=False)
+        _staircase(heater, _RED, label_above=True)
+
+        # ── Border ───────────────────────────────────────────────────────────
+        self.set_draw_color(80, 80, 80)
+        self.set_line_width(0.3)
+        self.set_dash_pattern()
+        self.rect(x_pos, y_pos, width, height, style="D")
+
+        # ── Legend ───────────────────────────────────────────────────────────
+        leg_y = y_pos + height + 10
+        self.set_font("Helvetica", "", 8)
+        self.set_draw_color(*_RED)
+        self.set_line_width(0.9)
+        self.line(x_pos, leg_y, x_pos + 10, leg_y)
+        self.set_text_color(0, 0, 0)
+        self.text(x_pos + 13, leg_y + 2.5,
+                  QApplication.translate("tilauscope_roast_plan", "Heater (%)"))
+        self.set_draw_color(*_BLUE)
+        self.line(x_pos + 55, leg_y, x_pos + 65, leg_y)
+        self.set_text_color(0, 0, 0)
+        self.text(x_pos + 68, leg_y + 2.5,
+                  QApplication.translate("tilauscope_roast_plan", "Airflow (%)"))
+        self.set_text_color(0, 0, 0)
+        return True
+
+    def _draw_step_sequence(self, plan_data: dict) -> None:
+        """The heat ladder as a checklist instead of a run-on line of pairs.
+
+        This is the moved 'Heater ramp (anticipated)' and 'Heater source' from
+        section 4: the same data, one gesture per row, next to the chart it
+        belongs with.
+        """
+        gestures = self._control_gestures(plan_data)
+        if not gestures:
+            return
+        _HEAD = (225, 225, 225)
+        _ALT = (246, 246, 246)
+        self.set_font('helvetica', 'B', 10)
+        self.set_text_color(0, 0, 0)
+        self.cell(0, 6, QApplication.translate("tilauscope_roast_plan", "Step sequence"),
+                  new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.ln(0.5)
+
+        cols = [14, 20, 22, 28, 34, 44]
+        heads = ["#",
+                 QApplication.translate("tilauscope_roast_plan", "Time"),
+                 QApplication.translate("Label", "BT"),
+                 QApplication.translate("tilauscope_roast_plan", "Lever"),
+                 QApplication.translate("tilauscope_roast_plan", "Change"),
+                 QApplication.translate("tilauscope_roast_plan", "Phase")]
+        self.set_font('helvetica', 'B', 8.5)
+        self.set_fill_color(*_HEAD)
+        for w, h in zip(cols, heads):
+            self.cell(w, 5.5, h, 1, align='C', fill=True)
+        self.ln()
+
+        self.set_font('helvetica', '', 8.5)
+        for i, g in enumerate(gestures):
+            self.ensure_space(12)
+            self.set_fill_color(*(_ALT if i % 2 else (255, 255, 255)))
+            bt = f"{g['bt']:.0f}°{self.mode}" if g.get('bt') is not None else "-"
+            row = [str(i + 1), self._mmss(g['t']), bt, g['lever'],
+                   f"{g['frm']:.0f} -> {g['to']:.0f}%", g['phase']]
+            for w, v in zip(cols, row):
+                self.cell(w, 5.0, v, 1, align='C', fill=True)
+            self.ln()
+
+        # Provenance, kept with the ladder it qualifies.
+        _hsrc = str(plan_data.get("Heater Source", "grid"))
+        _hfc = str(plan_data.get("Heater FC Source", "grid"))
+        if _hfc != "grid":
+            _hsrc = f"{_hsrc}  |  pre-FC: {_hfc}"
+        _lead = plan_data.get("FC Anticipation (s)", "")
+        self.ln(1.5)
+        self.set_font('helvetica', '', 8.5)
+        _line = QApplication.translate("tilauscope_roast_plan", "Heater source") + f": {_hsrc}"
+        if _lead:
+            _line += "   |   " + QApplication.translate(
+                "tilauscope_roast_plan", "last step {0} s before FC").format(_lead)
+        self.multi_cell(0, 5, _line, new_x=XPos.LMARGIN, new_y=YPos.NEXT, border=0)
+        self.ln(2)
+
+    def _draw_plan_recap(self, plan_data: dict) -> None:
+        """The five figures worth carrying in your head, under the sequence:
+        where you charge, where you drop, and how long each phase should take."""
+        _deg = f" °{self.mode}"
+        rows = [
+            [(QApplication.translate("Label", "CHARGE"), f"{plan_data.get('Charge Temp', 'N/A')}{_deg}"),
+             (QApplication.translate("Label", "DROP"), f"{plan_data.get('Drop Temp', 'N/A')}{_deg}"),
+             (QApplication.translate("Button", "FC START"), f"{plan_data.get('First Crack Temp', 'N/A')}{_deg}"),
+             (QApplication.translate("tilauscope_roast_plan", "Total time"), str(plan_data.get('Total Time', 'N/A')))],
+            [(QApplication.translate("Label", "Dry"), f"{plan_data.get('Dry Phase', 'N/A')} ({plan_data.get('Dry Phase %', '-')}%)"),
+             (QApplication.translate("Label", "Maillard"), f"{plan_data.get('Maillard Phase', 'N/A')} ({plan_data.get('Maillard Phase %', '-')}%)"),
+             (QApplication.translate("Label", "Development"), f"{plan_data.get('Development Phase', 'N/A')} ({plan_data.get('Development Phase %', '-')}%)"),
+             (QApplication.translate("tilauscope_roast_plan", "Resulting DTR (%)"), f"{plan_data.get('Target DTR', 'N/A')}%")],
+        ]
+        self.ensure_space(30)
+        self.set_font('helvetica', 'B', 10)
+        self.set_text_color(0, 0, 0)
+        self.cell(0, 6, QApplication.translate("tilauscope_roast_plan", "At a glance"),
+                  new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.ln(0.5)
+        widths = [40, 40, 42, 40]
+        for row in rows:
+            self.set_font('helvetica', '', 7.5)
+            self.set_text_color(110, 110, 110)
+            for w, (k, _v) in zip(widths, row):
+                self.cell(w, 4, "  " + k.upper(), 0, align='L')
+            self.ln()
+            self.set_font('helvetica', 'B', 10)
+            self.set_text_color(0, 0, 0)
+            for w, (_k, v) in zip(widths, row):
+                self.cell(w, 6, "  " + str(v), 0, align='L')
+            self.ln(7)
+        self.set_text_color(0, 0, 0)
+
     def ensure_space(self, needed_height:int):
         if self.get_y() + needed_height > self.page_break_trigger:
             self.add_page()
@@ -4980,85 +5560,52 @@ class BuildPRoastPlanPDF(FPDF):
             self.cell(80, _row_h, label + ':', border=0)
             self.cell(0, _row_h, str(value), new_x=XPos.LMARGIN, new_y=YPos.NEXT, border=0)
 
-        # 4. Machine Controls (Table)
+        # 4. Machine settings AT PHASE ENTRY — see _entry_settings for why this
+        # is no longer a per-phase average.
         self.ln(3)
         self.set_fill_color(220, 220, 220)
         self.set_font('helvetica', 'B', 12)
-        self.cell(0, 7, QApplication.translate("tilauscope_roast_plan",'4. Machine Controls (Phases: Dry | Maillard | Development)'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+        self.cell(0, 7, QApplication.translate("tilauscope_roast_plan",
+            '4. Machine Settings at Phase Entry (what to be on when you cross the milestone)'),
+            new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
         self.ln(1)
-        
-        # Prepare Table Data - Keys match the output of generate_roast_plan
-        _ctx = self._roaster_ctx
-        _raw_drum   = plan_data.get("Drum Speed (%) (Dry|Mai|Dev)", "N/A | N/A | N/A").split(' | ')
-        _raw_heater = plan_data.get("Heater (%) (Dry|Mai|Dev)",     "N/A | N/A | N/A").split(' | ')
-        _raw_air    = plan_data.get("Airflow (%) (Dry|Mai|Dev)",    "N/A | N/A | N/A").split(' | ')
+        self.set_font('helvetica', 'I', 8.5)
+        self.multi_cell(0, 4, QApplication.translate("tilauscope_roast_plan",
+            "The value the machine must read as each phase begins. Between these points the "
+            "plan steps the levers: the full sequence is in section 5."), border=0)
+        self.ln(1)
 
-        if _ctx is not None:
-            _raw_drum   = [self._fmt_ctrl(v, _ctx.pct_to_drum_label)    for v in _raw_drum]
-            _raw_heater = [self._fmt_ctrl(v, _ctx.pct_to_heater_label)  for v in _raw_heater]
-            _raw_air    = [self._fmt_ctrl(v, _ctx.pct_to_airflow_label) for v in _raw_air]
-
-        controls = {
-            QApplication.translate("tilauscope_roast_plan","Drum Speed")+" (%)": _raw_drum,
-            QApplication.translate("tilauscope_roast_plan","Heater")+" (%)":     _raw_heater,
-            QApplication.translate("tilauscope_roast_plan","Airflow")+" (%)":    _raw_air,
-        }
-        # AirWave (extraction) rows only when an AirWave was detected at plan time.
-        _ext = plan_data.get("Extraction (%) (Dry|Mai|Dev)", "").strip()
-        if _ext:
-            controls[QApplication.translate("tilauscope_roast_plan","AirWave")+" (% "+QApplication.translate("tilauscope_roast_plan","Fan")+")"] = _ext.split(' | ')
-        _awm = plan_data.get("AirWave Mode (Dry|Mai|Dev)", "").strip()
-        if _awm:
-            controls[QApplication.translate("tilauscope_roast_plan","AirWave Mode")] = _awm.split(' | ')
-        
+        _entry_rows = self._entry_settings(plan_data)
         col_widths = [42, 38, 38, 42]
-        
+
         # Table Header
+        self.set_fill_color(220, 220, 220)
         self.set_font('helvetica', 'B', 10)
         self.cell(col_widths[0], 7, QApplication.translate("tilauscope_roast_plan","Control"), 1, align='C', fill=True)
-        self.cell(col_widths[1], 7, QApplication.translate("Label","Dry"), 1, align='C', fill=True)
-        self.cell(col_widths[2], 7, QApplication.translate("Label","Maillard"), 1, align='C', fill=True)
-        self.cell(col_widths[3], 7, QApplication.translate("Label","Development"), 1, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C', fill=True)
-        
+        self.cell(col_widths[1], 7, QApplication.translate("tilauscope_roast_plan","At CHARGE"), 1, align='C', fill=True)
+        self.cell(col_widths[2], 7, QApplication.translate("Button","DRY END"), 1, align='C', fill=True)
+        self.cell(col_widths[3], 7, QApplication.translate("Button","FC START"), 1, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C', fill=True)
+
         # Table Rows
         self.set_font('helvetica', '', 10)
-        for label, values in controls.items():
-            # Ensure there are 3 values, pad with 'N/A' if needed
-            v = (values + ['N/A', 'N/A', 'N/A'])[:3]
+        for label, values in _entry_rows:
+            v = (list(values) + ['N/A', 'N/A', 'N/A'])[:3]
             self.cell(col_widths[0], _row_h, label, 1)
             self.cell(col_widths[1], _row_h, v[0], 1, align='C')
             self.cell(col_widths[2], _row_h, v[1], 1, align='C')
             self.cell(col_widths[3], _row_h, v[2], 1, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
 
-        # Anticipated heater ramp (BT-triggered steps between Maillard and FC)
-        _ramp = plan_data.get("Heater Ramp") or []
-        if _ramp:
-            self.ln(2)
-            self.set_font('helvetica', '', 10)
-            _ramp_str = "  ->  ".join(
-                f"{e['heater']:.0f}% @ {e['bt']:.0f} °{self.mode}" for e in _ramp)
-            _lead = plan_data.get("FC Anticipation (s)", "")
-            if _lead:
-                _ramp_str += "  (" + QApplication.translate("tilauscope_roast_plan", "last step {0} s before FC").format(_lead) + ")"
-            ## TILAU ## bug fix : la chaîne de rampe (jusqu'à ~10 paliers) débordait
-            ## de la marge droite et du bas de page dans un cell() mono-ligne ;
-            ## multi_cell replie sur la largeur restante et laisse fpdf gérer le
-            ## saut de page.
-            self.cell(80, _row_h, QApplication.translate("tilauscope_roast_plan", "Heater ramp (anticipated)") + ':', border=0)
-            self.multi_cell(0, _row_h, _ramp_str, new_x=XPos.LMARGIN, new_y=YPos.NEXT, border=0)
-
-        # Heater provenance (learned from matched history vs grid) — same
-        # "source" disclosure as First Crack / phase timing in section 2.
-        _hsrc = plan_data.get("Heater Source", "grid")
-        ## TILAU ## item C : provenance du palier pre-FC (feu au FC appris) —
-        ## seulement affichée quand elle vient de l'historique (sinon = calcul
-        ## du plan, l'info « grid » du heater principal suffit).
-        _hfc = str(plan_data.get("Heater FC Source", "grid"))
-        if _hfc != "grid":
-            _hsrc = f"{_hsrc}  |  pre-FC: {_hfc}"
-        self.set_font('helvetica', '', 10)
-        self.cell(80, _row_h, QApplication.translate("tilauscope_roast_plan", "Heater source") + ':', border=0)
-        self.multi_cell(0, _row_h, str(_hsrc), new_x=XPos.LMARGIN, new_y=YPos.NEXT, border=0)
+        # AirWave mode is a regime for the phase, not a value crossed at an
+        # instant, so it keeps its per-phase reading and says so.
+        _awm = str(plan_data.get("AirWave Mode (Dry|Mai|Dev)", "")).strip()
+        if _awm:
+            _m = (_awm.split(' | ') + ['N/A', 'N/A', 'N/A'])[:3]
+            self.cell(col_widths[0], _row_h,
+                      QApplication.translate("tilauscope_roast_plan","AirWave Mode")
+                      + " " + QApplication.translate("tilauscope_roast_plan","(per phase)"), 1)
+            self.cell(col_widths[1], _row_h, _m[0], 1, align='C')
+            self.cell(col_widths[2], _row_h, _m[1], 1, align='C')
+            self.cell(col_widths[3], _row_h, _m[2], 1, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
 
         self.ln(3)
         self.set_font('helvetica', 'I', 9)
@@ -5068,16 +5615,55 @@ class BuildPRoastPlanPDF(FPDF):
                         QApplication.translate("tilauscope_roast_plan","All temperatures are in BT (Bean Temperature) and times in Minutes:Seconds."), 
                         border=0)
         
-        # 5. Historical Feedback (Notes and Actions)
+        # 5. Control ramps — the section 4 table gives one value per phase, which
+        # is unreadable as a gesture sequence: the heater ramp alone is up to a
+        # dozen "x% @ y°" pairs in a run-on line. Drawn over time, the same data
+        # says at a glance when to move, by how much, and in which direction.
+        # Its own page: it is what the operator keeps in front of them.
+        try:
+            # Ask for the trajectories BEFORE opening the page: a plan with
+            # nothing to draw must not leave a titled blank page behind.
+            _h_traj, _a_traj, _ = self._control_trajectories(plan_data)
+        except Exception as e:
+            _logd.error(f"error building control trajectories : {e}")
+            _h_traj, _a_traj = [], []
+
+        if _h_traj or _a_traj:
+            try:
+                self.add_page()
+                self.set_fill_color(220, 220, 220)
+                self.set_font('helvetica', 'B', 12)
+                self.cell(0, 7, QApplication.translate(
+                    "tilauscope_roast_plan", '5. Control Ramps (Heater & Airflow)'),
+                    new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+                self.ln(4)
+                self.set_font('helvetica', 'I', 9)
+                self.multi_cell(0, 4, QApplication.translate(
+                    "tilauscope_roast_plan",
+                    "Each level is held until the next step: the plan asks for one move at a time, "
+                    "then time to read its effect. Steps are anchored on bean temperature and shown "
+                    "here at the time the planned curve reaches them."),
+                    border=0)
+                self.ln(4)
+                if self.draw_control_ramp_graph(
+                        plan_data, x_pos=self.get_x() + 12, y_pos=self.get_y(),
+                        width=160, height=62):
+                    self.set_y(self.get_y() + 82)
+                self._draw_step_sequence(plan_data)
+                self._draw_plan_recap(plan_data)
+            except Exception as e:
+                _logd.error(f"error drawing control ramp graph : {e}")
+
+        # 6. Historical Feedback (Notes and Actions)
         notes = plan_data.get("notes", [])
         actions = plan_data.get("actions", [])
-        
+
         if notes is not None and len(notes)>0:
             self.add_page(same=True)
             try:
                 self.set_fill_color(220, 220, 220)
                 self.set_font('helvetica', 'B', 12)
-                self.cell(0, 7, QApplication.translate("tilauscope_roast_plan",'5. Historical Feedback & Actions'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+                self.cell(0, 7, QApplication.translate("tilauscope_roast_plan",'6. Historical Feedback & Actions'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
                 self.ln(2)
 
                 # Standard loop for lists of strings

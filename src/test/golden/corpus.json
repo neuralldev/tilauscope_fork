@@ -538,7 +538,7 @@
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
-   "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 40%",
+   "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 50%",
    "Ambient Humidity": "48.0",
    "Ambient Temp": "20.0",
    "Bean Humidity": "10.5",
@@ -1131,7 +1131,7 @@
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
-   "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 40%",
+   "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 50%",
    "Ambient Humidity": "55.0",
    "Ambient Temp": "21.0",
    "Bean Humidity": "10.5",
@@ -1454,7 +1454,7 @@
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
-   "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 40%",
+   "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 50%",
    "Ambient Humidity": "55.0",
    "Ambient Temp": "21.0",
    "Bean Humidity": "10.5",

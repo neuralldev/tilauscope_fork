@@ -56,6 +56,7 @@ from tilauscope.header_icons import (
 )
 from tilauscope.visualalarm import AlarmData
 from tilauscope.artisan_message_ticker import ArtisanMessageTicker, ArtisanMessageHook
+from tilauscope.main_window_style import take_body, give_body
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -3251,10 +3252,11 @@ class TilauScope(QWidget):
                     content_layout.removeWidget(self.collapsible_events.sidebar)
                 content_layout.removeWidget(self.artisan_graph)
 
-        # 4. Restaurer comme central widget — rend ownership à QMainWindow
+        # 4. Restaurer le graph sous la barre de titre custom (jamais via
+        #    setCentralWidget directement, sinon on perdrait le wrapper de
+        #    main_window_style.py et donc la barre de titre)
         if hasattr(self, 'artisan_graph'):
-            aw.setCentralWidget(self.artisan_graph)
-            self.artisan_graph.show()
+            give_body(aw, self.artisan_graph)
 
         # 5. Restaurer l'opacité
         aw.setWindowOpacity(1.0)
@@ -3899,10 +3901,10 @@ class TilauScope(QWidget):
         left_pane.addWidget(self._panel_stack, 1)
 
         # --- RIGHT PANE: ARTISAN GRAPH ---
-        # centralWidget() can be None if a previous TilauScope session left the
-        # graph reparented (e.g. a close refused while sampling); fall back to the
-        # stable main_widget reference so we never crash on .parent(). ## TILAU ##
-        self.artisan_graph = self.aw.centralWidget() or self.aw.main_widget
+        # centralWidget() is the frameless-style wrapper (custom title bar + graph,
+        # see main_window_style.py), not the graph itself — take_body() detaches
+        # just the graph so we don't embed our own title bar in the panel.
+        self.artisan_graph = take_body(self.aw)
         self.old_parent = self.artisan_graph.parent()
         self.artisan_graph.setParent(self.container)
         self.artisan_graph.setStyleSheet("background: transparent; border-radius: 15px;")
