@@ -2211,8 +2211,8 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self.tab_widget.addTab(self.main_tab, QApplication.translate("tilauscope_beancave","Green Beans"))
         self.tab_widget.addTab(self.roast_viewer_tab, QApplication.translate("tilauscope_beancave","Roast Viewer"))
         self.tab_widget.addTab(self.roast_plan_tab, QApplication.translate("tilauscope_beancave","Roasting plan"))
-        self.tab_widget.addTab(self.file_management_tab, QApplication.translate("tilauscope_beancave","File Management")) # moved to the last position
         self.tab_widget.addTab(self.storage_tab, QApplication.translate("tilauscope_beancave","Stockage"))  ## TILAU ##
+        self.tab_widget.addTab(self.file_management_tab, QApplication.translate("tilauscope_beancave","File Management")) # moved to the last position
         # ## TILAU ## refresh the TilauAmbient probe button state on entering the plan tab
         self.tab_widget.currentChanged.connect(self._on_beancave_tab_changed)
         self.setup_main_tab_ui()

@@ -56,6 +56,8 @@ from tilauscope.header_icons import (
 )
 from tilauscope.visualalarm import AlarmData
 from tilauscope.artisan_message_ticker import ArtisanMessageTicker, ArtisanMessageHook
+from tilauscope.axes_config import AxesConfigHook
+from tilauscope.canvas_style import CanvasStyleHook
 from tilauscope.main_window_style import take_body, give_body
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -80,6 +82,22 @@ _CTRL_TOGGLE_RESERVE_PX: Final[int] = 16
 ## 0 — which is exactly what left the SV row out of line. Vertical is kept small: the
 ## inherited default put ~11 px above AND below each row, spreading them far apart.
 _SLIDER_ROW_MARGINS: Final[tuple[int, int, int, int]] = (11, 2, 11, 2)
+
+## TILAU ## Header control sizes. The row is width-bound (pane 390 − pane margins
+## = 370 px), and the timer box is pinned to its widest reading, so button size and
+## timer size trade against each other directly: 2 px off each button is what pays
+## for a legibly larger timer.
+_HDR_BTN: Final[int] = 26        # power / start-stop / reset / beancave / level
+_HDR_BTN_SMALL: Final[int] = 22  # menu / swap
+
+## TILAU ## Header timer: the label is pinned to the width of "-88:88" — the format
+## really can be negative (countdown before CHARGE, see util.stringfromseconds), so
+## the box must hold 6 characters and that width is a hard constraint on the row.
+## Single authority for the size: every timer state (idle / roasting / paused /
+## emergency) rewrites the whole stylesheet, and those rewrites used to carry
+## their own 36 px and 80 px — which is what clipped the reading against the
+## pinned box, whatever the size set at build time.
+_TIMER_FONT_PX: Final[int] = 30
 
 
 def _mono_font_family() -> str:
@@ -431,11 +449,14 @@ class TickerLabel(QWidget):
     ) -> None:
         super().__init__(parent)
         self.setFixedHeight(height)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
+        _mono = _mono_font_family()
         self._lbl = QLabel("", self)
         self._lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self._lbl.setStyleSheet(
             f"color: {color}; font-size: {font_size}px; font-weight: {font_weight}; "
+            f"font-family: '{_mono}', 'JetBrains Mono', monospace; "
             f"border: none; background: transparent;"
         )
         self._lbl.move(0, 0)
@@ -465,8 +486,14 @@ class TickerLabel(QWidget):
             self._timer.stop()
 
     def setStyleSheet(self, style: str) -> None:  # type: ignore[override]
-        """Forward stylesheet to internal label (color changes, etc.)."""
-        self._lbl.setStyleSheet(style)
+        """Forward stylesheet to internal label (color changes, etc.).
+
+        Callers only ever pass color/weight tweaks; the JetBrains Mono
+        font-family set in __init__ must survive those, so it's re-appended
+        here rather than relying on every call site to repeat it.
+        """
+        _mono = _mono_font_family()
+        self._lbl.setStyleSheet(f"{style} font-family: '{_mono}', 'JetBrains Mono', monospace;")
         self._lbl.adjustSize()
         self._overflow = max(0, self._lbl.width() - self.width())
 
@@ -1707,9 +1734,13 @@ class LCDReadout(QFrame):
         self._last_ror_color = None  # Couleur RoR précédente : évite un reparse de style à chaque échantillon
 
         # Define hierarchy: Main (RoR) is larger, others are smaller
-        fixed_width = 100 if is_main else 80  
-        font_size_val = 24 if not is_main else 28 # On réduit un peu la police
-        font_size_lab = 11
+        fixed_width = 100 if is_main else 80
+        ## TILAU ## The readouts stretch to fill the row, and at the previous
+        ## sizes the digits floated in a mostly empty box. Widest reading is
+        ## "-100.5" (6 chars ≈ 101 px at 28 px in JetBrains Mono) against a
+        ## ~118 px column, so the block still fits with room to spare.
+        font_size_val = 28 if not is_main else 30
+        font_size_lab = 12
         min_height    = 80 if is_main else 70
     
         self.setMinimumWidth(80) # Sécurité minimale
@@ -1979,7 +2010,7 @@ class TilauscopePanel(QWidget):
         self.metrics_layout.addWidget(self.ror_lcd, stretch=3)
 
         self.setStyleSheet("background-color: #0b0b0b;")
-        self.setFixedWidth(360)
+        self.setFixedWidth(320)   ## TILAU ## compaction scenario B (was 360)
 
 # --- ALARM SIDEBAR ---
 
@@ -3027,6 +3058,18 @@ class TilauScope(QWidget):
         )
         self._msg_hook.install()
 
+        # ── Réglages menu Axes Artisan (fenêtre temps, grille, légende, delta…) ─
+        # Appliqués une première fois ici, puis ré-appliqués à chaque chargement
+        # de profil (.alog) via patch de aw.loadFile. Aucune modification de main.py.
+        self._axes_hook = AxesConfigHook(self.aw)
+        self._axes_hook.install()
+        self._axes_hook.apply_now()
+
+        # ── Typo du titre du roast sur le canvas Artisan (taille + JetBrains Mono) ─
+        self._canvas_style_hook = CanvasStyleHook(self.aw)
+        self._canvas_style_hook.install()
+        self._canvas_style_hook.apply_now()
+
         # Masquer messagelabel si TilauScope s'ouvre pendant une torréfaction déjà active
         self.aw.messagelabel.setVisible(False)
 
@@ -3342,6 +3385,10 @@ class TilauScope(QWidget):
         # 13. Retirer le hook messages Artisan et restaurer messagelabel
         if hasattr(self, '_msg_hook'):
             self._msg_hook.remove()
+        if hasattr(self, '_axes_hook'):
+            self._axes_hook.remove()
+        if hasattr(self, '_canvas_style_hook'):
+            self._canvas_style_hook.remove()
         self.aw.messagelabel.setVisible(True)
 
         ## TILAU ##
@@ -3399,9 +3446,9 @@ class TilauScope(QWidget):
         # --- LEFT PANE: ROASTER CONTROLS ---
         left_widget = QWidget()
         left_pane = QVBoxLayout(left_widget)
-        left_pane.setContentsMargins(15, 15, 15, 15)
-        left_pane.setSpacing(15) # Tightened spacing to ensure full display
-        left_widget.setFixedWidth(440)
+        left_pane.setContentsMargins(10, 10, 10, 10)   ## TILAU ## compaction scenario A
+        left_pane.setSpacing(10) # Tightened spacing to ensure full display
+        left_widget.setFixedWidth(390)   ## TILAU ## compaction scenario B (was 440)
 
         # values for counters
         self.bt_label =f"0.0"
@@ -3417,20 +3464,24 @@ class TilauScope(QWidget):
         # 1. HEADER (Timer + Préchauffage)
         header = QHBoxLayout()
         header.setSpacing(8)
-        header.setContentsMargins(0, 0, 5, 0) # Add a small right margin to protect the border
+        ## TILAU ## The row is width-bound: buttons + separator + level + handle
+        ## + timer must fit the pane. Breathing room on both edges is bought back
+        ## by tightening the gaps between the buttons (set below), not by letting
+        ## the first and last control sit against the border.
+        header.setContentsMargins(4, 0, 6, 0)
         # Group controls and status on the left
         left_header_group = QHBoxLayout()
 
         # Create and add the Artisan Menu Button
         self.btn_main_menu = QPushButton()
-        self.btn_main_menu.setFixedSize(26, 30)
+        self.btn_main_menu.setFixedSize(_HDR_BTN_SMALL, _HDR_BTN)   ## TILAU ## header budget (was 26,30 then 24,26)
         self.btn_main_menu.setIconSize(BTN_ICON_SIZE)
         self.btn_main_menu.setStyleSheet(QSS_MENU)
         apply_icon(self.btn_main_menu, SVG_MENU, COL_MENU)
         self.btn_main_menu.clicked.connect(self.open_main_menu)
 
         self.btn_power = QPushButton()
-        self.btn_power.setFixedSize(32, 30)
+        self.btn_power.setFixedSize(_HDR_BTN, _HDR_BTN)   ## TILAU ## header budget (was 32,30 then 28,28)
         self.btn_power.setCheckable(True)
         self.btn_power.setIconSize(BTN_ICON_SIZE)
         self.btn_power.setToolTip(QApplication.translate('Tooltip', 'Start monitoring'))
@@ -3440,7 +3491,7 @@ class TilauScope(QWidget):
         self.btn_power.clicked.connect(self.toggle_power)
         
         self.btn_start_stop = QPushButton()
-        self.btn_start_stop.setFixedSize(32, 30)
+        self.btn_start_stop.setFixedSize(_HDR_BTN, _HDR_BTN)   ## TILAU ## header budget (was 32,30 then 28,28)
         self.btn_start_stop.setCheckable(False)
         self.btn_start_stop.setIconSize(BTN_ICON_SIZE)
         self.btn_start_stop.setToolTip(QApplication.translate('Tooltip', 'Start recording'))
@@ -3450,7 +3501,7 @@ class TilauScope(QWidget):
         self.update_button_style(self.btn_start_stop, False)
 
         self.btn_reset = QPushButton()
-        self.btn_reset.setFixedSize(32, 30)
+        self.btn_reset.setFixedSize(_HDR_BTN, _HDR_BTN)   ## TILAU ## header budget (was 32,30 then 28,28)
         self.btn_reset.setCheckable(False)
         self.btn_reset.setIconSize(BTN_ICON_SIZE)
         self.btn_reset.setToolTip(QApplication.translate('Tooltip', 'Reset'))
@@ -3460,7 +3511,7 @@ class TilauScope(QWidget):
         self.update_button_style(self.btn_reset, True)
 
         self.btn_beancave = QPushButton()
-        self.btn_beancave.setFixedSize(32, 30)
+        self.btn_beancave.setFixedSize(_HDR_BTN, _HDR_BTN)   ## TILAU ## header budget (was 32,30 then 28,28)
         self.btn_beancave.setCheckable(True)
         self.btn_beancave.setIconSize(BTN_ICON_SIZE)
         self.btn_beancave.setToolTip(QApplication.translate('tilauscope_window', 'Access to Bean Cave'))
@@ -3493,7 +3544,7 @@ class TilauScope(QWidget):
         self.update_button_style(self.btn_dock, False)
 
         self.swap_button = QPushButton()
-        self.swap_button.setFixedSize(26, 30)
+        self.swap_button.setFixedSize(_HDR_BTN_SMALL, _HDR_BTN)   ## TILAU ## header budget (was 26,30 then 24,26)
         self.swap_button.setCheckable(False)
         self.swap_button.setIconSize(BTN_ICON_SIZE)
         self.swap_button.clicked.connect(lambda: self.toggle_panels(left_widget, content_layout, True))
@@ -3514,7 +3565,7 @@ class TilauScope(QWidget):
         self.btn_assistant.hide()
         self.btn_dock.hide()
         left_header_group.addWidget(self.swap_button)
-        left_header_group.setSpacing(8)
+        left_header_group.setSpacing(4)   ## TILAU ## compaction scenario B (was 8, then 6)
         header.addLayout(left_header_group)
 
         # ── Operator level selector (single cycling button) ## TILAU ## ──────
@@ -3524,12 +3575,12 @@ class TilauScope(QWidget):
         _lvl_sep.setFrameShape(QFrame.Shape.VLine)
         _lvl_sep.setFixedHeight(22)
         _lvl_sep.setStyleSheet("color: #313244; background: #313244; border: none; max-width: 1px;")
-        header.addSpacing(4)
+        header.addSpacing(2)   ## TILAU ## these spacers pay the layout spacing twice (was 4)
         header.addWidget(_lvl_sep)
-        header.addSpacing(4)
+        header.addSpacing(2)
 
         self.btn_level = QPushButton()
-        self.btn_level.setFixedSize(32, 30)
+        self.btn_level.setFixedSize(_HDR_BTN, _HDR_BTN)   ## TILAU ## header budget (was 32,30 then 28,28)
         self.btn_level.clicked.connect(self._cycle_operator_level)
         header.addWidget(self.btn_level)
 
@@ -3540,7 +3591,7 @@ class TilauScope(QWidget):
         self.drag_handle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.drag_handle.setStyleSheet("""
             QLabel { color: #45475A; font-size: 18px; border: none;
-                     background: transparent; padding: 0 8px; }
+                     background: transparent; padding: 0 2px; }   /* TILAU: header budget (was 0 8px, then 0 4px) */
             QToolTip { background-color: #2D2F3F; color: white;
                        border: 1px solid #585B70; padding: 5px;
                        border-radius: 3px; font-size: 11px; }
@@ -3554,7 +3605,7 @@ class TilauScope(QWidget):
         header.addWidget(self.drag_handle)
 
         header.addStretch(1) # Pushes the timer to the far right
-        header.setSpacing(6)
+        header.setSpacing(3)   ## TILAU ## applies to every item, spacers included (was 6)
 
         # Adjust Timer Font Size
         self.timer_lbl = ClickableLabel("00:00")
@@ -3562,24 +3613,29 @@ class TilauScope(QWidget):
         # Use the bundled JetBrains Mono (monospaced — every digit same width)
         # so the timer never reflows the header as the value changes.
         _mono = _mono_font_family()
-        self.timer_lbl.setStyleSheet(f"font-size: 28px; font-weight: 700; color: #313244; font-family: '{_mono}', 'Menlo', monospace; border: none; background: transparent;")
+        # 20px: at 24px the pinned box ("-88:88") no longer fitted the compacted
+        # pane and the reading was clipped on its left edge.
+        self.timer_lbl.setStyleSheet(f"font-size: {_TIMER_FONT_PX}px; font-weight: 700; color: #313244; font-family: '{_mono}', 'Menlo', monospace; border: none; background: transparent;")   ## TILAU ## compaction scenario B (was 28px, then 24px)
         self.timer_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.timer_lbl.clicked.connect(self.timer_clicked)
         # Belt-and-suspenders: pin the box to the widest reading so the timer
         # zone never resizes regardless of the resolved font.
         _timer_font = QFont(_mono)
-        _timer_font.setPixelSize(28)
-        _timer_font.setWeight(QFont.Weight.Bold)
+        _timer_font.setPixelSize(_TIMER_FONT_PX)   ## TILAU ## compaction scenario B (was 28, then 24)
+        # Measured at the heaviest weight any timer state uses (900), so a
+        # fallback family that is not truly monospaced still fits the box.
+        _timer_font.setWeight(QFont.Weight.Black)
         _fm = QFontMetrics(_timer_font)
-        self.timer_lbl.setFixedWidth(_fm.horizontalAdvance("-88:88") + 6)
+        self.timer_lbl.setFixedWidth(_fm.horizontalAdvance("-88:88") + 4)
 
         header.addWidget(self.timer_lbl)
         left_pane.addLayout(header)
 
         # Status label — affiche l'état de la session (monitoring, recording, emergency)
         # Status label — TickerLabel : défile si le texte dépasse la largeur
-        self.status_lbl = TickerLabel(height=18, color="#A6E3A1", font_size=11, font_weight=700)
+        self.status_lbl = TickerLabel(height=18, color="#A6E3A1", font_size=9, font_weight=700)
         left_pane.addWidget(self.status_lbl, 0)
+        left_pane.setStretchFactor(self.status_lbl, 1)
 
         ## TILAU ## Automation banner — red text on amber, shown only while the
         ## roast is driven by Artisan automations (PID from CHARGE, or any
@@ -3615,7 +3671,7 @@ class TilauScope(QWidget):
 
         # 3. PHASES & OVERLAY MESSAGE
         self.phase_container = QFrame()
-        self.phase_container.setMinimumHeight(130) # Force une zone de respiration
+        self.phase_container.setMinimumHeight(110) # Force une zone de respiration  ## TILAU ## compaction scenario A
         self.phase_container.setStyleSheet(f"background: {self.theme["BG"]}; border-radius: 10px; border: 1px solid #313244; margin-top: 10px;")
         self.phase_stack = QGridLayout(self.phase_container)
         
@@ -3653,7 +3709,6 @@ class TilauScope(QWidget):
         mc_lay.addWidget(self.phase_container,1)   ## TILAU ##
 
         # 4. PILOTAGE MACHINE
-        mc_lay.addSpacing(10)   ## TILAU ##
         self.sld_list: list[TilauscopeSlider] = []
 
         # ── Slider configurations (unchanged from your original loop) ──────────
@@ -3858,8 +3913,14 @@ class TilauScope(QWidget):
         mc_lay.addWidget(self._sv_row_widget)   ## TILAU ##
 
         # 5. ÉVÉNEMENTS
-        mc_lay.addSpacing(15)   ## TILAU ##
         grid = QGridLayout()
+        ## TILAU ## Nested layouts inherit no margin, so the milestone buttons ran
+        ## into both edges of the panel. Same horizontal inset as the slider rows
+        ## so the two blocks line up, and tighter gaps to buy that inset back —
+        ## with 4 columns each button gains rather than loses width.
+        grid.setContentsMargins(_SLIDER_ROW_MARGINS[0], 4, _SLIDER_ROW_MARGINS[2], 0)
+        grid.setHorizontalSpacing(6)
+        grid.setVerticalSpacing(6)
         self.event_buttons:dict[str,QPushButton] = {}  # Dictionary to store button references
         self.events = [
             (QApplication.translate("Button","CHARGE"), "#A6E3A1"), 
@@ -3872,7 +3933,7 @@ class TilauScope(QWidget):
             (QApplication.translate("Button","COOL END"), "#94E2D5")]
         for i, (n, c) in enumerate(self.events):
             btn = QPushButton(n)
-            btn.setFixedHeight(45)
+            btn.setFixedHeight(38)   ## TILAU ## compaction scenario A
             btn.setEnabled(False)
             if i == 0: btn.clicked.connect(lambda: self.aw.qmc.markChargeSignal.emit(False))
             elif i == 1: btn.clicked.connect(lambda: self.aw.qmc.markDRYSignal.emit(False))
@@ -4228,7 +4289,7 @@ class TilauScope(QWidget):
                 self.timer_lbl.setGraphicsEffect(None)
             self.timer_opacity = None
             self.timer_lbl.setStyleSheet(
-                "font-size: 36px; font-weight: 900; color: #CDD6F4; " # Lighter gray/white
+                f"font-size: {_TIMER_FONT_PX}px; font-weight: 900; color: #CDD6F4; " # Lighter gray/white
                 "border: none; background: transparent; font-family: 'JetBrains Mono';"
             )
             
@@ -4238,7 +4299,7 @@ class TilauScope(QWidget):
                 self.timer_opacity = QGraphicsOpacityEffect(self.timer_lbl)
             self.timer_lbl.setGraphicsEffect(self.timer_opacity)
             self.timer_lbl.setStyleSheet(
-                "font-size: 36px; font-weight: 900; color: #FAB387; " # Orange
+                f"font-size: {_TIMER_FONT_PX}px; font-weight: 900; color: #FAB387; " # Orange
                 "border: none; background: transparent; font-family: 'JetBrains Mono';"
             )
             
@@ -4248,7 +4309,7 @@ class TilauScope(QWidget):
                 self.timer_opacity = QGraphicsOpacityEffect(self.timer_lbl)
             self.timer_lbl.setGraphicsEffect(self.timer_opacity)
             self.timer_lbl.setStyleSheet(
-                "font-size: 36px; font-weight: 900; color: #313244; " # Dark gray
+                f"font-size: {_TIMER_FONT_PX}px; font-weight: 900; color: #313244; " # Dark gray
                 "border: none; background: transparent; font-family: 'JetBrains Mono';"
             )
 
@@ -4932,7 +4993,7 @@ class TilauScope(QWidget):
         self.bridge.send_to_artisan({"set": {"heater": 0, "fan": 100}}) 
         
         # Interface visuelle d'urgence
-        self.timer_lbl.setStyleSheet("font-size: 80px; font-weight: 900; color: #F38BA8; border: none;")
+        self.timer_lbl.setStyleSheet(f"font-size: {_TIMER_FONT_PX}px; font-weight: 900; color: #F38BA8; border: none;")
         self.status_lbl.setText("EMERGENCY EXIT")
         self.status_lbl.setStyleSheet("color: #F38BA8; font-size: 11px; font-weight: 900;border: none; background: transparent;")
         

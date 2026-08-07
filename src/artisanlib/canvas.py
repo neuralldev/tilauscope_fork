@@ -4747,6 +4747,7 @@ class tgraphcanvas(QObject):
             'Burner': QApplication.translate('tilauscope_graph', 'Burner'),
             'ReadyIn': QApplication.translate('tilauscope_graph', 'Ready in'),
             'ReadyToCharge': QApplication.translate('tilauscope_graph', 'Ready to charge'),
+            'Stabilizing': QApplication.translate('tilauscope_graph', 'Stabilizing'),
             'DryingPhase': QApplication.translate('tilauscope_graph', 'Drying Phase'),
             'CoolingPhase': QApplication.translate('Button', 'Cooling Phase'),
             # ── Coach (guided simplified view) — cached once, never on the hot path
@@ -4779,14 +4780,54 @@ class tgraphcanvas(QObject):
             'DROP':   (L['CoolingPhase'],'#26C6DA'),  # Cyan   — après DROP
         }
 
+    def _hide_tilaupid_target_marker(self) -> None:
+        """## TILAU ## Hide the preheat target-forecast marker without discarding the artists."""
+        self._tilaupid_marker_visible = False
+        for artist in (getattr(self, 'tilaupid_target_line', None), getattr(self, 'tilaupid_target_dot', None)):
+            if artist is not None:
+                artist.set_visible(False)
+
+    def _draw_tilaupid_target_marker(self) -> None:
+        """## TILAU ## Dashed vertical line + red dot at the time TilauPID is projected
+        to reach its target SV — same style as the roast coach's own milestone forecast
+        (DrawIntersectionBetweenCurveandProjection), positioned by _get_tilaupid_text via
+        self._tilaupid_marker_x/y. Uses its own artists rather than the coach's
+        intersection_point/intersection_point_line: autoCHARGE can fire mid-ramp (BT dips
+        then climbs, matching the TP pattern), which would make the coach's own forecast
+        run concurrently with preheat and fight over a shared pair of artists."""
+        if not getattr(self, '_tilaupid_marker_visible', False) or self.ax is None:
+            self._hide_tilaupid_target_marker()
+            return
+        x_val, y_val = self._tilaupid_marker_x, self._tilaupid_marker_y
+        try:
+            line = getattr(self, 'tilaupid_target_line', None)
+            if line is None or line.axes is None:
+                self.tilaupid_target_line = self.ax.axvline(x=x_val, color='yellow', ls='--', lw=1, alpha=0.3)
+            else:
+                line.set_xdata([x_val, x_val])
+                line.set_visible(True)
+            dot = getattr(self, 'tilaupid_target_dot', None)
+            if dot is None or dot.axes is None:
+                self.tilaupid_target_dot = self.ax.plot(x_val, y_val, 'ro')[0]
+            else:
+                dot.set_data([x_val], [y_val])
+                dot.set_visible(True)
+            for artist in (self.tilaupid_target_line, self.tilaupid_target_dot):
+                if artist is not None and artist.axes is not None:
+                    self.ax.draw_artist(artist)
+        except Exception as e: # pylint: disable=broad-except
+            _log.exception(e)
+
     def DrawPIDRampSoak(self, visible_bt: Line2D, initialize: int = 0) -> None:
         if initialize == 3 or visible_bt is None:
             self.tilau_pid_label.hide()
+            self._hide_tilaupid_target_marker()
             return
 
         if initialize == 2:
-            self.tilau_pid_label.hide() 
- 
+            self.tilau_pid_label.hide()
+            self._hide_tilaupid_target_marker()
+
         tx = self.timex[-1] if self.timex else 0.0
         et = self.temp1[-1] if self.temp1 and len(self.temp1) > 0 else 0.0
         bt = self.temp2[-1] if self.temp2 and len(self.temp2) > 0 else 0.0
@@ -4797,8 +4838,10 @@ class tgraphcanvas(QObject):
         tilau_pid = getattr(self.aw, 'tilauPreheatingPid', None)
         if tilau_pid is not None and tilau_pid.active:
             text = self._get_tilaupid_text(tilau_pid, tx, et, bt)
+            self._draw_tilaupid_target_marker()
         else:
             text = self._get_pid_text(self.aw.pidcontrol, tx, et, bt)
+            self._hide_tilaupid_target_marker()
 
         self.tilau_pid_label.show_at(tx, bt, text)
 
@@ -4837,24 +4880,42 @@ class tgraphcanvas(QObject):
             header_color = '#89B4FA'
             delta_color = colors['value']
 
-        # elapsed preheat time (perf_counter based, like PID.start_time)
-        elapsed_str = '--:--'
-        try:
-            if pid.start_time:
-                elapsed_str = stringfromseconds(max(0.0, libtime.perf_counter() - pid.start_time))
-        except (TypeError, ValueError):
-            pass
+        # self.delta1/self.delta2 hold the RoR *display* value, clipped to None by RoRlimitFlag
+        # (default -10..45 C/min) whenever it exits that band — a bound sized for a normal roast,
+        # routinely exceeded during an aggressive preheat ramp. self.rateofchange1/2 is the same
+        # smoothed RoR before that clipping (also what the PID itself is fed), so it stays a real
+        # number here instead of flipping to None mid-ramp.
+        ror = self.rateofchange2 if on_bt else self.rateofchange1
 
-        ror_list = self.delta2 if on_bt else self.delta1
-        ror = ror_list[-1] if ror_list and ror_list[-1] is not None else None
-
-        # ETA to SV — same convention as the phase predictions: only meaningful while climbing
+        # ETA to SV — same convention as the phase predictions: only meaningful while climbing.
+        # A tapering burner (lead-based anticipation, see TilauPreheatPID.compute_fuzzy_power)
+        # lets the displayed RoR sag to <=0 well before the close band is reached; that is
+        # normal deceleration, not a stall, so it gets its own label instead of a frozen --:--.
+        # Early in the ramp the RoR is still building thermal momentum, so a linear projection
+        # from that low instantaneous value can wildly overshoot (e.g. hours) — cap it and fall
+        # back to the same label rather than show an implausible countdown.
+        _TILAUPID_ETA_CAP_SEC = 600.  # 10 min
+        eta_seconds = (delta / ror * 60.) if (ror is not None and ror > 0 and delta > 0) else None
         if close:
             eta_str = L['ReadyToCharge']
-        elif ror is not None and ror > 0 and delta > 0:
-            eta_str = f"~{stringfromseconds(delta / ror * 60.)}"
+        elif eta_seconds is not None and eta_seconds <= _TILAUPID_ETA_CAP_SEC:
+            eta_str = stringfromseconds(eta_seconds)
+        elif delta > 0:
+            eta_str = L['Stabilizing']
         else:
             eta_str = '--:--'
+
+        # ## TILAU ## Same forecast-marker idea as the roast coach's own milestone dot
+        # (dashed vertical line + red dot), positioning the projected time TilauPID reaches
+        # its target SV. self.timex (and tx here) is in raw seconds — the axis tick LABELS
+        # are minutes, formatted for display only (see formtime_formatter) — so the offset
+        # is added in seconds too, not divided by 60.
+        if eta_seconds is not None and eta_seconds <= _TILAUPID_ETA_CAP_SEC and not close:
+            self._tilaupid_marker_visible = True
+            self._tilaupid_marker_x = tx + eta_seconds
+            self._tilaupid_marker_y = sv
+        else:
+            self._tilaupid_marker_visible = False
 
         ror_str = f'{ror:.1f}' if ror is not None else '--'
         burner = getattr(pid, 'prev_power', -1)
@@ -4865,7 +4926,7 @@ class tgraphcanvas(QObject):
                 <div style="min-width: 140px; background-color: rgba(24, 24, 37, 0.7); border: 1px solid #45475A; border-radius: 8px; padding: 10px;">
                     <div style="border-bottom: 1px solid {header_color}; margin-bottom: 6px; padding-bottom: 2px;">
                         <span style="color: {header_color}; font-weight: bold; font-size: 14px; letter-spacing: 1px;">
-                            {L['Preheat']} &middot; TilauPID &nbsp; {elapsed_str}
+                            {L['Preheat']} &middot; TilauPID
                         </span>
                     </div>
                     <table border="0" cellspacing="0" cellpadding="2" style="width: 100%;">
@@ -7204,6 +7265,7 @@ class tgraphcanvas(QObject):
 #                                                            self.ax.draw_artist(self.pid_point_annotation)
                                                     elif self.tilau_pid_label.isVisible(): # PID stopped without a CHARGE: drop the label
                                                         self.tilau_pid_label.hide()
+                                                        self._hide_tilaupid_target_marker()
                                                     ts_anno_drawn = False
                                                     if self.l_BTprojection is not None and self.BTprojectFlag: 
                                                         if self.aw.TilauScopeAnnotation and self.timeindex[0] >= 0:
@@ -7236,6 +7298,7 @@ class tgraphcanvas(QObject):
                                                         self.DrawPIDRampSoak(self.l_temp2, 0) # update only
                                                     elif self.tilau_pid_label.isVisible(): # PID stopped without a CHARGE: drop the label
                                                         self.tilau_pid_label.hide()
+                                                        self._hide_tilaupid_target_marker()
                                                     ts_anno_drawn = False
                                                     if self.l_BTprojection is not None and self.BTprojectFlag:
                                                         if self.aw.TilauScopeAnnotation and self.timeindex[0]>=0:
@@ -7536,6 +7599,10 @@ class tgraphcanvas(QObject):
             self.DrawIntersection_remove_artist(self.intersection_point)
             self.DrawIntersection_remove_artist(self.intersection_point_line)
             self.tilau_roast_annotation.hide()
+            self.DrawIntersection_remove_artist(getattr(self, 'tilaupid_target_line', None))
+            self.DrawIntersection_remove_artist(getattr(self, 'tilaupid_target_dot', None))
+            self.tilaupid_target_line = None
+            self.tilaupid_target_dot = None
 
 
     @pyqtSlot(int)

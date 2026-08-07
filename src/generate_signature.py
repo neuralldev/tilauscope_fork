@@ -220,10 +220,12 @@ def main() -> None:
     artisan_os: str = get_artisan_os(content)
     print(f'INFO: {version=}, {revision=}, {artisan_os=}')
 
-    # Warn if fields are missing but continue
+    # Warn if fields are missing but continue. __revision__ is an upstream
+    # Artisan CI field TilauScope's own stamping never populates locally, so
+    # it is always empty outside CI — warning about it there is just noise.
     if not version:
         print('WARNING: __version__ value not found in __init__.py')
-    if not revision:
+    if not revision and build_service != 'LOCAL':
         print('WARNING: __revision__ value not found in __init__.py')
 
     # Load the private key

@@ -402,11 +402,13 @@ class ArtisanMessageHook:
         self._aw = aw
         self._ticker = ticker
         self._original: object | None = None   # référence à la méthode originale
+        self._original_off_recorder: object | None = None
 
     def install(self) -> None:
         if self._original is not None:
             return  # already installed — idempotent
 
+        self._install_off_recorder_guard()
         self._original = self._aw.sendmessage_internal
 
         ticker   = self._ticker
@@ -433,7 +435,41 @@ class ArtisanMessageHook:
         self._aw.sendmessage_internal = _hooked  # type: ignore[method-assign]
         _log.debug("ArtisanMessageHook: installed")
 
+    def _install_off_recorder_guard(self) -> None:
+        """Keep Artisan's status line hidden across a STOP.
+
+        `qmc.OffRecorder()` unconditionally does `messagelabel.setVisible(True)`
+        (artisanlib/canvas.py), so pressing STOP brought the Artisan status line
+        back above the canvas even though TilauScope routes those messages to
+        its own ticker. Hiding it once at startup is not enough — it has to be
+        re-hidden after every stop, whoever triggered it (TilauScope button,
+        Artisan button, alarm).
+        """
+        if self._original_off_recorder is not None:
+            return
+        qmc = self._aw.qmc
+        self._original_off_recorder = qmc.OffRecorder
+        original = self._original_off_recorder
+        aw = self._aw
+
+        def _hooked_off_recorder(*args, **kwargs):
+            result = original(*args, **kwargs)  # type: ignore[misc,operator]
+            try:
+                aw.messagelabel.setVisible(False)
+            except Exception as exc:
+                _log.debug("ArtisanMessageHook: could not re-hide messagelabel: %s", exc)
+            return result
+
+        qmc.OffRecorder = _hooked_off_recorder
+
     def remove(self) -> None:
+        if self._original_off_recorder is not None:
+            try:
+                self._aw.qmc.OffRecorder = self._original_off_recorder
+            except Exception as exc:
+                _log.warning("ArtisanMessageHook: could not restore OffRecorder: %s", exc)
+            finally:
+                self._original_off_recorder = None
         if self._original is None:
             return
         try:

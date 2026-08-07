@@ -1,6 +1,23 @@
-## [4.2.6] 2026-08-07
+## [4.2.7] 2026-08-07
 build 1
 * ⚡ [feat(config)] : summer build
+## [4.2.6] 2026-08-07
+build 1
+* ⚡ [feat(i18n)] : the German interface is now fully translated (2151 phrases) — machine-translated and not yet reviewed by a native speaker, so corrections are welcome through the translator app
+* ⚡ [feat(i18n)] : the Spanish interface is now fully translated (2143 phrases) — machine-translated and not yet reviewed by a native speaker, so corrections are welcome through the translator app
+* ⚡ [feat(i18n)] : the Italian interface is now fully translated (2146 phrases) — machine-translated and not yet reviewed by a native speaker, so corrections are welcome through the translator app
+* ⚡ [feat(axes)] : Artisan's Axes menu (time window, temperature range, event scaling, grid, legend, delta axis) is now configured automatically by TilauScope on startup and on every profile load — no manual setup needed
+* 🐛 [fix(canvas)] : the roast title on the graph is no longer oversized — shown at a readable size in JetBrains Mono
+* 🐛 [fix(canvas)] : the roast title no longer jumps back to full size when monitoring is switched ON — switching ON rewrites the title outside the normal redraw, and the reduced size was not being re-applied on that path
+* 🐛 [fix(displayscope)] : the timer is no longer clipped in the panel header, and the control buttons no longer sit against the window edges — the row now has a margin on both sides, paid for by tighter gaps between the buttons and a slightly smaller timer. Each timer state (idle, roasting, paused, emergency) was applying its own, much larger size, which is what pushed the reading past its box
+* 🐛 [fix(displayscope)] : pressing STOP no longer brings Artisan's status line back above the graph — stopping a recording made it reappear even though TilauScope shows those messages in its own message ticker
+* ⚡ [feat(displayscope)] : the BT, ET and RoR readouts use a larger font, filling the space they occupy, and the header timer is back to a readable size — the control buttons next to it give up two pixels each to make room
+* 🐛 [fix(displayscope)] : the milestone buttons (CHARGE, DRY END … COOL END) no longer run into the edges of the panel — they are inset like the slider rows above them, with tighter gaps so each button keeps its width
+* 🐛 [fix(canvas)] : the bottom stats line on the graph (date, title, DROP, weight, weight loss) no longer gets cut off ("...") — smaller JetBrains Mono font gives it enough room to fit
+* 🐛 [fix(displayscope)] : the status line now spans the full width of the panel instead of being squeezed, in a smaller JetBrains Mono font
+* ⚡ [feat(build)] : upgraded python-snap7 to 3.1.0 (pure Python implementation, no more native snap7 library to bundle) and updated the macOS/Windows build scripts accordingly
+* 🐛 [fix(canvas)] : the TilauPID preheat overlay's RoR and "Ready in" no longer get stuck blank mid-ramp — they were reading the roast-oriented RoR display value, which Artisan clips to blank above 45°C/min, routinely exceeded by an aggressive preheat ramp; an implausible multi-hour "Ready in" right at ramp start (RoR not yet representative) now reads "Stabilizing" too, and the leftover "~" prefix and redundant elapsed-time readout were dropped for a narrower, clearer card
+* ⚡ [feat(canvas)] : the TilauPID preheat overlay now marks its projected target-SV crossing on the graph with a dashed line and red dot, the same style used for roast milestone forecasts
 ## [4.2.5] 2026-08-06
 build 1
 * ⚡ [feat(config)] : Configuration → Colors, Configuration → Themes and Configuration → Mode are now hidden — TilauScope's own theme is the sole authority over the app's look, and the app always starts in Artisan's Expert mode

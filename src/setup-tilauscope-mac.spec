@@ -96,10 +96,7 @@ for root, dirs, files in os.walk('translations'):
 
 BINARIES = []
 
-# Snap7 [cite: 54]
-snap7_path = os.path.join(get_package_paths('snap7')[1], 'lib/libsnap7.dylib')
-if os.path.exists(snap7_path):
-    BINARIES.append((snap7_path, 'snap7/lib'))
+# Note: python-snap7 >=3.0 is a pure Python implementation, no native lib to bundle
 
 # Yoctopuce (.dylib collection) [cite: 54]
 yocto_cdll = os.path.join(get_package_paths('yoctopuce')[1], 'cdll')

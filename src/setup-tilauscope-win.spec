@@ -128,13 +128,11 @@ PYQT_QT_BIN = str(PYQT_QT / 'bin')
 #QT_TRANSL = PYQT_QT / 'translations'
 
 YOCTO_BIN = Path(os.path.join(PYTHON_PACKAGES, 'yoctopuce', 'cdll'))
-SNAP7_BIN = Path(os.path.join(PYTHON_PACKAGES, 'snap7', 'lib'))
 PHIDGET22_BIN = Path(os.path.join(PYTHON_PACKAGES, 'Phidget22', '.libs'))
 QT_TRANSL = Path(os.path.join(os.path.dirname(PyQt6.__file__), "Qt6", "translations"))
 
 
 #YOCTO_BIN = PYTHON_PACKAGES / 'yoctopuce' / 'cdll'
-#SNAP7_BIN = PYTHON_PACKAGES / 'snap7' / 'lib'
 #PHIDGET22_BIN = PYTHON_PACKAGES / 'Phidget22' / '.libs'
 
 logging.info(f"**Root: {ROOT}")
@@ -254,7 +252,7 @@ xcopy_files(QT_TRANSL, TARGETSTR + 'translations', 'qtbase_*.qm')
 
 make_dir(TARGETSTR + '_internal\\yoctopuce\\cdll')
 copy_file(YOCTO_BIN / 'yapi64.dll', TARGETSTR + '_internal\\yoctopuce\\cdll')
-copy_file(SNAP7_BIN / 'snap7.dll', TARGETSTR + '_internal')
+# Note: python-snap7 >=3.0 is a pure Python implementation, no native DLL to bundle
 
 make_dir(TARGETSTR + '_internal\\tilauscope')
 copy_file(SOURCE / 'tilauscope' / 'beancave_beans.json', TARGETSTR + '_internal\\tilauscope')
