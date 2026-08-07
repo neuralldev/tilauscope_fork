@@ -1,0 +1,161 @@
+/* TilauScope documentation theme.
+ *
+ * Material's own palette, re-pointed at the colours the application and
+ * tilauscope.org already use: Catppuccin Mocha in the dark scheme, Latte in the
+ * light one. Only variables are set here — no Material internals are targeted by
+ * class name, because those are private and rename between releases. If a future
+ * Material version drops one of these variables the page degrades to the stock
+ * theme, which is survivable; overriding `.md-nav__item--active > .md-nav__link`
+ * would instead break silently.
+ *
+ * The accent is the brand cream: it means "TilauScope", nothing more. Instrument
+ * colours (BT, ET, RoR) are deliberately absent — a curve colour identifies a
+ * probe, and must not be reachable as decoration.
+ */
+
+/* ————————————————————————— fonts —————————————————————————
+ * Served from this origin. mkdocs.yml sets `theme.font: false`, which stops
+ * Material requesting Google Fonts; these four files are what replaces them.
+ * Only the weights actually used are shipped, which is why there is no light or
+ * semibold: an unused weight is a download nobody asked for.
+ */
+@font-face {
+  font-family: "Fraunces Display";
+  src: url("../assets/fonts/fraunces-display.woff") format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Fraunces Display";
+  src: url("../assets/fonts/fraunces-display-italic.woff") format("woff");
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../assets/fonts/jbm-regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../assets/fonts/jbm-bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Body text is a system serif rather than Fraunces: Fraunces is a display cut,
+     shipped at one weight, and a chapter set in it is harder to read, not more
+     characterful. It earns its place in headings only. */
+  --md-text-font: "Charter", "Bitstream Charter", "Iowan Old Style",
+    "Source Serif 4", Georgia, "Times New Roman", serif;
+  --md-code-font: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
+  --md-text-font-family: var(--md-text-font);
+  --md-code-font-family: var(--md-code-font);
+
+  --tilau-display: "Fraunces Display", Charter, "Iowan Old Style", Georgia, serif;
+}
+
+/* ————————————————————————— light (Latte) ————————————————————————— */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #8a5a2b;
+  --md-primary-fg-color--light: #a4713f;
+  --md-primary-fg-color--dark: #6d4620;
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
+
+  --md-accent-fg-color: #8a5a2b;
+  --md-accent-fg-color--transparent: rgba(138, 90, 43, 0.1);
+
+  --md-default-fg-color: #4c4f69;
+  --md-default-fg-color--light: #5c5f77;
+  --md-default-fg-color--lighter: #8c8fa1;
+  --md-default-fg-color--lightest: #ccd0da;
+  --md-default-bg-color: #eff1f5;
+
+  --md-code-fg-color: #4c4f69;
+  --md-code-bg-color: #e6e9ef;
+
+  --md-typeset-a-color: #8a5a2b;
+  --md-footer-bg-color: #e6e9ef;
+  --md-footer-bg-color--dark: #dce0e8;
+  --md-footer-fg-color: #4c4f69;
+}
+
+/* ————————————————————————— dark (Mocha) ————————————————————————— */
+[data-md-color-scheme="slate"] {
+  --md-hue: 250;
+
+  --md-primary-fg-color: #1e1e2e;
+  --md-primary-fg-color--light: #313244;
+  --md-primary-fg-color--dark: #181825;
+  --md-primary-bg-color: #cdd6f4;
+  --md-primary-bg-color--light: #a6adc8;
+
+  --md-accent-fg-color: #e6d3b5;
+  --md-accent-fg-color--transparent: rgba(230, 211, 181, 0.13);
+
+  --md-default-fg-color: #cdd6f4;
+  --md-default-fg-color--light: #a6adc8;
+  --md-default-fg-color--lighter: #6c7086;
+  --md-default-fg-color--lightest: #313244;
+  --md-default-bg-color: #1e1e2e;
+
+  --md-code-fg-color: #cdd6f4;
+  --md-code-bg-color: #181825;
+
+  --md-typeset-a-color: #e6d3b5;
+  --md-footer-bg-color: #181825;
+  --md-footer-bg-color--dark: #11111b;
+  --md-footer-fg-color: #cdd6f4;
+}
+
+/* ————————————————————————— typography ————————————————————————— */
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-family: var(--tilau-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.md-typeset h1 {
+  color: var(--md-default-fg-color);
+}
+
+/* A chapter opens with an "Artisan does / TilauScope adds" blockquote — the
+   shape of the whole fork, and the one element worth making unmistakable. */
+.md-typeset blockquote {
+  border-left: 3px solid var(--md-accent-fg-color);
+  background: var(--md-accent-fg-color--transparent);
+  border-radius: 0 6px 6px 0;
+  padding: 0.6rem 0.9rem;
+  color: var(--md-default-fg-color);
+}
+.md-typeset blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* Screenshots carry the documentation as much as the prose does. A border keeps
+   a dark-UI capture from bleeding into a dark page. */
+.md-typeset img {
+  border-radius: 6px;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  max-width: 100%;
+}
+
+/* Wide tables scroll inside themselves rather than widening the page. */
+.md-typeset__table {
+  overflow-x: auto;
+}
+
+.md-typeset code {
+  font-size: 0.86em;
+}

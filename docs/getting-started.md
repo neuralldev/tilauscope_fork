@@ -67,7 +67,7 @@ ever see — curves, milestones, setpoints — follows this choice. It is set on
 **2. Your roaster.** *Which roaster do you use?* This is the most consequential answer in
 the wizard: the machine determines the roast plan, the slider labels, and the recommendations
 given during a roast. A recommendation that suits a high-[thermal-mass](glossary.md#thermal-mass)
-drum is wrong on a [radiant](glossary.md#radiant-heat-firnir) machine, so TilauScope needs
+drum is wrong on a [radiant](glossary.md#radiant-heat--firnir) machine, so TilauScope needs
 to know which type it is.
 
 **3. Hardware.** *Connect your hardware* → **Search & auto-register**. TilauScope scans

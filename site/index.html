@@ -16,8 +16,14 @@
   The <meta> policy is the fallback for hosts that cannot set headers. Prefer
   the real headers in `_headers` — meta cannot carry frame-ancestors, and a
   header cannot be stripped by an injected tag the way a meta element can.
+
+  No `upgrade-insecure-requests` here on purpose: the site is served over plain
+  HTTP for now, and that directive would rewrite every stylesheet, script, font
+  and image request to https:// — where nothing answers. The page would arrive
+  as unstyled markup. Put it back the same day TLS goes live, together with the
+  HSTS header in `.htaccess`; the two belong to that change, not to this one.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 
 <title>TilauScope — a guided roasting assistant for home coffee roasters</title>

@@ -131,7 +131,7 @@ here...* — and TilauScope fills the record from that page, blends and componen
 The result is presented for review before anything is saved.
 
 !!! note
-    This needs an AI provider configured — see [Configuration](configuration.md#integrations).
+    This needs an AI provider configured — see [Configuration](configuration.md#-integrations--outside-services).
     Extraction reads a web page written for humans, so **check the result**: it is a first draft
     to correct, not an authority.
 

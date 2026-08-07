@@ -1,0 +1,73 @@
+# Build docs/*.md and publish it to GitHub Pages as docs.tilauscope.org.
+#
+# This workflow only ever runs on the public fork. The private repository is the
+# source of truth for docs/, and tools/publish/publish.sh copies this file across
+# with the rest of the snapshot; Pages on a private repository would need a paid
+# plan, while the fork is public and gets it for nothing.
+#
+# One-time setup on the fork, none of which this file can do for you:
+#   1. Settings > Pages > Source: GitHub Actions.
+#   2. Settings > Pages > Custom domain: docs.tilauscope.org, then tick
+#      "Enforce HTTPS" once the certificate has been issued (a few minutes).
+#   3. At the registrar, a CNAME record: docs -> neuralldev.github.io
+# The docs/CNAME file in the snapshot keeps step 2 from being undone on each
+# deploy, which is what happens if you only set it in the web interface.
+
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs.yml'
+  # Lets a rebuild be triggered by hand after a Pages setting changes, without
+  # having to touch a documentation file to do it.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# A queued run is always building a newer commit than the one in flight, but the
+# in-flight one is not cancelled: a half-deployed documentation site is worse
+# than one that is a few minutes stale.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install MkDocs Material
+        run: pip install 'mkdocs-material>=9.5,<10'
+
+      - name: Build
+        # --strict turns a broken internal link or a page missing from the nav
+        # into a failed build. These pages cross-reference each other heavily,
+        # so a silently dead link is the most likely defect by far.
+        run: mkdocs build --strict
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site_build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

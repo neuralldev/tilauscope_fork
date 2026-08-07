@@ -1,0 +1,130 @@
+# Documentation site for docs.tilauscope.org.
+#
+# The sources are docs/*.md, unchanged: the same files that render on GitHub and
+# that ship in the published fork. MkDocs rewrites the relative `page.md#anchor`
+# links between them, so nothing in the markdown has to know it is being built.
+#
+# Everything the built site loads comes from the site itself. `theme.font: false`
+# is the load-bearing line — without it Material pulls Fraunces and Roboto from
+# Google Fonts at runtime, which would put a third-party origin in front of every
+# reader and contradict the policy the rest of tilauscope.org is built on. The
+# two fonts are served from docs/assets/fonts/ instead, the same files the front
+# page uses.
+#
+#   pip install mkdocs-material
+#   mkdocs serve     # http://127.0.0.1:8000, live reload
+#   mkdocs build     # static output in site_build/
+
+site_name: TilauScope
+site_description: >-
+  Guided roasting assistant for home and amateur coffee roasters, built on
+  Artisan Roaster Scope.
+site_url: https://docs.tilauscope.org/
+site_author: TilauScope
+copyright: Free software under the AGPL v3 — documentation included.
+
+docs_dir: docs
+# Not `site/`: that directory already holds the hand-written front page, and
+# `mkdocs build` empties its output directory before writing to it.
+site_dir: site_build
+
+repo_url: https://github.com/neuralldev/tilauscope_fork
+repo_name: neuralldev/tilauscope_fork
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: en
+  font: false
+  # Holds one file: a copy of the repository-link partial with the attribute
+  # that triggers a runtime call to api.github.com taken out. See the comment
+  # in overrides/partials/source.html.
+  custom_dir: overrides
+  favicon: assets/favicon.png
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    # Dark first: it is what the application itself looks like, and what a
+    # roaster reads next to a lit machine.
+    - media: '(prefers-color-scheme: dark)'
+      scheme: slate
+      toggle:
+        icon: material/weather-night
+        name: Switch to light
+    - media: '(prefers-color-scheme: light)'
+      scheme: default
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+
+extra_css:
+  - stylesheets/tilauscope.css
+
+# No social/analytics block on purpose: it is what injects third-party requests.
+extra:
+  generator: false
+
+plugins:
+  - search
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+      # GitHub's heading-slug rules, not Python-Markdown's. The chapters link to
+      # each other with anchors written for GitHub — `glossary.md#bt--bean-temperature`
+      # for "#### BT — bean temperature", where the em dash leaves a doubled
+      # hyphen behind. The default slugifier collapses that to a single one and
+      # every such link lands at the top of the page instead of the entry. This
+      # keeps one set of anchors valid in both places.
+      slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.snippets
+  - pymdownx.smartsymbols
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+
+# Reading order, not alphabetical: this follows a roast from opening the app to
+# what happens after the beans come out. A new chapter has to be added here to
+# appear in the navigation.
+nav:
+  - What TilauScope adds: index.md
+  - Getting started: getting-started.md
+  - The window: the-window.md
+  - BeanCave — your coffees: beancave.md
+  - Preparing a roast: preparing-a-roast.md
+  - The roast plan: the-roast-plan.md
+  - The guided roast: the-guided-roast.md
+  - After the roast: after-the-roast.md
+  - Brewing and dial-in: brew.md
+  - Sacks and storage: sacks-and-storage.md
+  - Labels and QR codes: labels-and-qr.md
+  - Piloting from a phone: phone-piloting.md
+  - Hardware: hardware.md
+  - Configuration: configuration.md
+  - Glossary: glossary.md
+
+watch:
+  - docs

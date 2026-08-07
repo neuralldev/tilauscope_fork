@@ -231,7 +231,7 @@ time is replaced by *Ready to charge* once the setpoint band is reached.
 This is the same information the assistant's Preheat page gives, minus the commentary and the
 burner slider, for roasting straight from the Artisan window.
 
-![the roast graph during preheating](assets/preparing-a-roasdt-5.16.png)
+![the roast graph during preheating](assets/preparing-a-roast-5.16.png)
 
 ### It learns your machine
 
@@ -260,7 +260,7 @@ reached with the charge button available. -->
     to the preheating described above, which needs no calibration from you. Use it only to
     tune Artisan's PID itself; it has its own **PID Parameters Help** for what the gains mean.
 
-![the roast graph during preheating](assets/preparing-a-roasdt-5.15.png)
+![the roast graph during preheating](assets/preparing-a-roast-5.15.png)
 
 ---
 

@@ -65,6 +65,8 @@ server {
 
     add_header Content-Security-Policy "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'; upgrade-insecure-requests" always;
     add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    # Both of the above assume a working certificate — see "Serving over plain
+    # HTTP" below before copying them onto a host that has none.
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
@@ -97,6 +99,19 @@ Header always set Cross-Origin-Opener-Policy "same-origin"
 Header always set Cross-Origin-Resource-Policy "same-origin"
 ServerSignature Off
 ```
+
+### Serving over plain HTTP
+
+The shipped `.htaccess`, `_headers` and `<meta>` policy omit two directives
+that the blocks above include, because the live host has no certificate yet:
+
+| Directive | Why it is out |
+|---|---|
+| `upgrade-insecure-requests` | Rewrites every subresource request to `https://`. With no certificate the stylesheet, script, fonts and hero image all fail and the page arrives as unstyled markup — the site looks broken while returning 200 on every file. |
+| `Strict-Transport-Security` | Ignored by browsers when it arrives over plain HTTP, so it protects nothing today. Its `preload` token is also irreversible in practice: once the domain is on that list, browsers refuse HTTP outright. |
+
+Add both back the day TLS is installed — they are the correct settings for an
+HTTPS deployment, and nothing else in this directory needs to change with them.
 
 ## What "secured" covers here, and what it does not
 
@@ -134,7 +149,7 @@ Not covered, because a static page cannot cover it:
 ### Verifying a deploy
 
 ```sh
-curl -sI https://tilauscope.org | grep -iE 'content-security|strict-transport|x-frame|x-content|referrer|permissions|cross-origin'
+curl -sI http://tilauscope.org | grep -iE 'content-security|strict-transport|x-frame|x-content|referrer|permissions|cross-origin'
 ```
 
 Then open the page and confirm the browser console is empty: a CSP violation

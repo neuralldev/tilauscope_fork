@@ -9,10 +9,19 @@
 # needs is served from this origin. Adding one hosted font, one analytics
 # snippet or one badge image means widening it, so treat a change here as the
 # real decision rather than a formality.
+#
+# `upgrade-insecure-requests` and `Strict-Transport-Security` are deliberately
+# absent: the live deployment is plain HTTP with no certificate. The first
+# would upgrade every subresource to an https:// that does not answer, leaving
+# the page unstyled; the second is ignored over HTTP anyway, and its `preload`
+# token cannot be taken back once submitted. Restore both lines below the day
+# TLS is in place, alongside the same two in `.htaccess`.
+#
+#   Content-Security-Policy: … ; upgrade-insecure-requests
+#   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
 
 /*
-  Content-Security-Policy: default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'; upgrade-insecure-requests
-  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin

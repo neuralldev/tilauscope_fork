@@ -10,7 +10,7 @@
 
 Every device fiche below follows the same shape: what it adds, how it pairs, what changes on
 screen once it is paired, and its known limits. Setup fields for a device live in
-[Configuration](configuration.md#-sensors--every-coupled-device); this chapter is the
+[Configuration](configuration.md#-sensors--every-device-by-role); this chapter is the
 reference for what each device *is*.
 
 !!! note
@@ -80,7 +80,7 @@ starts around 30%.
 - **A genuine Omniflux unit** connects over a wired sensor link and needs its channels set up
   once in Artisan's own generic sensor configuration, matched to a specific register layout —
   this is the one device in this chapter that is not set up from
-  [Configuration → SENSORS](configuration.md#-sensors--every-coupled-device). TilauScope
+  [Configuration → SENSORS](configuration.md#-sensors--every-device-by-role). TilauScope
   detects it automatically once that configuration matches, and quietly does nothing if it
   doesn't.
 - **An AirWave can be switched into emulating one**, from a checkbox in the AirWave's own
@@ -112,7 +112,7 @@ detection gains a second possible source alongside Omniflux.
 **Known limits.** This is TiLau's own probe design — it needs its own firmware installed
 before it will be found at all, unlike the off-the-shelf devices in this chapter. Its
 crack-listening sensitivity is a setting of its own, independent of the general first-crack
-detection settings in [Configuration → DETECTION](configuration.md#-detection--milestone-tuning).
+detection settings in [Configuration → DETECTION](configuration.md#-detection--how-milestones-get-marked-automatically).
 
 <!-- CAPTURE 9.5 — the AMBIENT window with a live reading. -->
 
@@ -224,7 +224,7 @@ both visible. -->
 Alarms appear in three different places, each answering a different question:
 
 - Written as **rule sentences**, they say *when* an alarm fires — see
-  [The guided roast](the-guided-roast.md#alerts).
+  [The guided roast](the-guided-roast.md#alarms-written-as-sentences).
 - As **colour-coded badges** in the live column, they say *what just fired* — see
   [The TilauScope window](the-window.md).
 - As a **visual timeline**, opened from the alarm editor, they lay out every configured alarm

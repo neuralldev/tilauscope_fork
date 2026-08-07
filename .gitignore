@@ -82,3 +82,5 @@ FeatureBaclog.md
 Roadmap.md
 AutoRoast-Spec.md
 /src/misc/*
+# MkDocs output for docs.tilauscope.org (built by .github/workflows/docs.yml).
+site_build/

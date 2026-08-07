@@ -1,5 +1,10 @@
+## [4.2.8] 2026-08-07
+build 1
+* ⚡ [feat(docs)] : the user documentation is now published as a searchable website at docs.tilauscope.org, in the same colours and typefaces as the application — the same chapters remain readable on GitHub
 ## [4.2.7] 2026-08-07
 build 1
+* 🐛 [fix(docs)] : two screenshots in "Preparing a roast" were referenced under a misspelled filename and never appeared; five cross-references between chapters pointed at headings that had since been renamed and landed at the top of the page instead of the right section
+* 🐛 [fix(site)] : tilauscope.org now displays correctly — the page was arriving as unstyled text because its security policy forced every stylesheet, script, font and image to be fetched over HTTPS, which the host does not yet serve
 * ⚡ [feat(config)] : summer build
 ## [4.2.6] 2026-08-07
 build 1
