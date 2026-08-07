@@ -19013,7 +19013,11 @@ class ApplicationWindow(QMainWindow):
             self.qmc.AUCLCDmode = toInt(settings.value('AUCLCDmode',self.qmc.AUCLCDmode))
             self.qmc.AUCshowFlag = toBool(settings.value('AUCshowFlag',self.qmc.AUCshowFlag))
             self.keyboardmoveflag = toInt(settings.value('keyboardmoveflag',int(self.keyboardmoveflag)))
-            self.ui_mode = UI_MODE(toInt(settings.value('UI_mode',int(self.ui_mode))))
+            ## TILAU ## TilauScope is the sole supported experience: always start
+            ## in Artisan's Expert UI mode, ignoring any persisted UI_mode value.
+            ## Config/Mode is hidden (see tilauscope/menu_extension.py) so the
+            ## user has no way to switch away from it either.
+            self.ui_mode = UI_MODE.EXPERT
             self.set_ui_mode(self.ui_mode)
             self.qt_scale_factor = toFloat(settings.value('scale_factor',self.qt_scale_factor))
             self.qmc.ambientTempSource = toInt(settings.value('AmbientTempSource',int(self.qmc.ambientTempSource)))

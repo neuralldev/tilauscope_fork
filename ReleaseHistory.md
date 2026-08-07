@@ -1,6 +1,15 @@
+## [4.2.6] 2026-08-07
+build 1
+* ⚡ [feat(config)] : summer build
 ## [4.2.5] 2026-08-06
 build 1
+* ⚡ [feat(config)] : Configuration → Colors, Configuration → Themes and Configuration → Mode are now hidden — TilauScope's own theme is the sole authority over the app's look, and the app always starts in Artisan's Expert mode
+* ⚡ [feat(config)] : Tools → Wheel Graph and Roast → Cup Profile are now hidden — not part of TilauScope's guided workflow
+* ⚡ [feat(help)] : Help → Documentation now opens tilauscope.org instead of Artisan's own docs; Help → Check for Updates now checks TilauScope's own releases instead of upstream Artisan's, and always confirms when you're already up to date
+* ⚡ [feat(help)] : Help → Errors, Messages, Serial, Platform and Factory Reset are now hidden — Artisan-core debug tools not part of TilauScope's supported workflow
 * 🐛 [fix(main_window)] : the new Catppuccin title bar (minimize/maximize/close) no longer gets embedded inside TilauScope's own graph panel — it now correctly stays put at the top of the Artisan window whenever TilauScope is open
+* 🐛 [fix(label_printer)] : green bean and roasted bean PDF labels now print at their real 10×15cm size instead of an oversized A4 sheet, so they come out of the printer ready for the pochette at 100% scale with no manual shrink; the green bean label's title is also enlarged to match the roasted label's readability
+* ⚡ [feat(config)] : added a Label size choice (10×15cm / 7×9cm) under Configuration → 🖨 Printing, for a smaller pochette — both label PDFs scale to whichever size is selected
 ## [4.2.4] 2026-08-05
 build 1
 * ⚡ [feat(roasters)] : the roast canvas's bottom machine label, and Artisan's own machine-setup fields (type, batch size, heating), now follow the roaster picked in TilauScope's configuration automatically — no more manually re-typing the machine name after switching roasters

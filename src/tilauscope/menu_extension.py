@@ -60,6 +60,7 @@ class TilauMenuExtension:
         self._aw = aw
         # Top-level menu kept as instance var — prevents GC on macOS
         self.tilau_top_menu: QMenu | None = None
+        self._help_menu_rewired = False
         self._build_actions()
 
     # ------------------------------------------------------------------
@@ -188,7 +189,65 @@ class TilauMenuExtension:
     # ------------------------------------------------------------------
 
     def _patch_config_menu(self, ui_mode: 'UI_MODE') -> None:
-        """No-op — act_config is now in the TilauScope top-level menu."""
+        """Hide Artisan menu items TilauScope's guided workflow doesn't use.
+
+        - Config/Colors, Config/Themes, Config/Mode: TilauScope's own theme has
+          sole authority over the app's look, and the UI mode is forced to
+          Expert at startup (see main.py readSettings) — none of these three
+          are reachable from the menu.
+        - Tools/Wheel Graph, Roast/Cup Profile: not part of the guided
+          workflow.
+        - Help/Errors, Messages, Serial, Platform, Factory Reset: Artisan-core
+          debug tools, not exposed to TilauScope's guided workflow.
+        Re-applied on every set_menu() call (mode switches rebuild the menus).
+        """
+        aw = self._aw
+        for attr, hide in (
+            ('colorsAction', lambda a: a.setVisible(False)),
+            ('themeMenu', lambda m: m.menuAction().setVisible(False)),
+            ('UIModeMenu', lambda m: m.menuAction().setVisible(False)),
+            ('wheeleditorAction', lambda a: a.setVisible(False)),
+            ('flavorAction', lambda a: a.setVisible(False)),
+            ('errorAction', lambda a: a.setVisible(False)),
+            ('messageAction', lambda a: a.setVisible(False)),
+            ('serialAction', lambda a: a.setVisible(False)),
+            ('platformAction', lambda a: a.setVisible(False)),
+            ('resetAction', lambda a: a.setVisible(False)),
+        ):
+            obj = getattr(aw, attr, None)
+            if obj is not None:
+                hide(obj)
+
+        self._rewire_help_actions()
+
+    def _rewire_help_actions(self) -> None:
+        """Point Help/Documentation and Help/Check for Updates at TilauScope's
+        own doc URL and update routine instead of Artisan's. Runs once — the
+        QAction objects are created once and persist across set_menu() calls.
+        """
+        if self._help_menu_rewired:
+            return
+        aw = self._aw
+
+        doc_action = getattr(aw, 'helpDocumentationAction', None)
+        if doc_action is not None and hasattr(aw, 'helpHelp'):
+            doc_action.triggered.disconnect(aw.helpHelp)
+            doc_action.triggered.connect(self._open_tilau_documentation)
+
+        update_action = getattr(aw, 'checkUpdateAction', None)
+        updater = getattr(aw, '_tilau_updater', None)
+        if update_action is not None and updater is not None and hasattr(aw, 'checkUpdate'):
+            update_action.triggered.disconnect(aw.checkUpdate)
+            update_action.triggered.connect(updater.check_now)
+
+        if doc_action is not None or update_action is not None:
+            self._help_menu_rewired = True
+
+    @staticmethod
+    def _open_tilau_documentation(_checked: bool = False) -> None:
+        from PyQt6.QtCore import QUrl
+        from PyQt6.QtGui import QDesktopServices
+        QDesktopServices.openUrl(QUrl('https://tilauscope.org'))
 
     def _insert_tilau_top_menu(self, menu_bar: QMenuBar, ui_mode: 'UI_MODE') -> None:
         """Insert TilauScope menu between Tools/View (or View/Help in PRODUCTION)."""

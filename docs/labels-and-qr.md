@@ -22,9 +22,11 @@ tracks — the pool of ids, assigning and releasing one — is covered in
 | **Green bean label** | A coffee's record → **Print label** | Supplier, crop, process, altitude, density, cupping notes, a QR | The coffee's record |
 | **Sack label** | The sack labels tool (see [Sacks, stock and conservation](sacks-and-storage.md)) | A label id and a QR — nothing else | Whichever coffee currently holds that id |
 
-Roast and bean labels print as a PDF, sized to a full page with cut guides, so they can be
-printed on any printer and trimmed by hand. Sack labels print directly to a Niimbot thermal
-printer, sized for its 50×30 mm roll.
+Roast and bean labels print as a PDF sized to the label itself — 10×15 cm by default, or 7×9 cm
+for a compact pochette, set once in [Configuration → 🖨 Printing](configuration.md) — so any
+printer set to print at 100% (no "fit to page") puts it straight onto a sleeve of that size, no
+cutting needed. Sack labels print directly to a Niimbot thermal printer, sized for its 50×30 mm
+roll.
 
 A roast label can be printed the moment the roast ends, from the result form itself, without
 waiting for the roast to be filed — it uses the roasted weight and colour just entered, so
@@ -33,9 +35,9 @@ nothing in the record: the form can still be corrected and printed again, or aba
 the form is saved without a label having been printed, TilauScope asks once whether to print
 one before closing.
 
-<!-- CAPTURE 4.1 — a printed roast label PDF, full page with cut guides visible.
-CAPTURE 4.2 — a printed green bean label PDF. CAPTURE 4.3 — a sack label, actual size,
-QR and id both legible. -->
+<!-- CAPTURE 4.1 — a printed roast label PDF, actual 10x15cm size, no cut guides.
+CAPTURE 4.2 — a printed green bean label PDF, actual 10x15cm size. CAPTURE 4.3 — a sack
+label, actual size, QR and id both legible. -->
 
 ---
 

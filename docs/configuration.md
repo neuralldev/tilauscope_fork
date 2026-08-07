@@ -4,17 +4,17 @@
     **Artisan does** — configures each device in its own dialog, spread across menus, with no
     single place that says what a working setup looks like.
 
-    **TilauScope adds** — one dialog, four tabs, covering everything the fork needs to work: the
-    machine, the sensors, how milestones get detected, and the outside services it can talk to.
-    This chapter exists because a wrong or missing setting here is the most common reason a
-    guided feature seems broken when it is simply unconfigured.
+    **TilauScope adds** — one dialog, five tabs, covering everything the fork needs to work: the
+    machine, the sensors, how milestones get detected, the outside services it can talk to, and
+    printing. This chapter exists because a wrong or missing setting here is the most common
+    reason a guided feature seems broken when it is simply unconfigured.
 
 Open it from **TilauScope → TilauScope Config...**. Nothing here is required to start
 TilauScope — the [first-time setup wizard](getting-started.md#first-time-setup) already covers
 the essentials — but this is where every one of those choices can be revisited, and where the
 finer settings live that the wizard does not ask about.
 
-![the config dialog with all four tabs visible in the tab strip](assets/configuration-4.1.png)
+![the config dialog with all five tabs visible in the tab strip](assets/configuration-4.1.png)
 
 ---
 
@@ -229,6 +229,17 @@ and Keepalive showing, Test Connection just clicked and the success message on s
 (Replaces assets/configuration-4.9.png, taken before those fields existed.) -->
 
 ![the AI Provider status line, configured](assets/configuration-4.10.png)
+
+---
+
+## 🖨 PRINTING — label size
+
+**Label size** picks the physical size the [green bean and roasted bean labels](labels-and-qr.md)
+are generated at: **10 × 15 cm** (a standard pochette) or **7 × 9 cm** (a compact one). The PDF
+is built at exactly that size, so the printer should be set to print at 100% — no "fit to page" —
+for it to come out at the size chosen here.
+
+<!-- CAPTURE 4.12 — the PRINTING tab, Label size dropdown open showing both choices. -->
 
 ---
 

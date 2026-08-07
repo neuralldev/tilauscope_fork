@@ -739,6 +739,7 @@ class TilauUpdater(QObject):
         self._dl_dialog:    _DownloadProgressDialog | None = None
         self._dest_path:    str = ""
         self._cancelled:    bool = False
+        self._manual:       bool = False
 
     # ── public API ───────────────────────────────────────────────────────────
 
@@ -746,6 +747,16 @@ class TilauUpdater(QObject):
         """Schedule the update check after *delay_ms*."""
         QTimer.singleShot(self._delay_ms, self._run_check)
         _log.debug("[TilauUpdater] Scheduled update check.")
+
+    def check_now(self) -> None:
+        """Run an immediate check, triggered from Help -> Check for Updates.
+
+        Unlike the silent startup check, this always gives feedback — an "up
+        to date" message when there is nothing new, since the user explicitly
+        asked.
+        """
+        self._manual = True
+        self._run_check()
 
     # ── step 1 : background version check ────────────────────────────────────
 
@@ -774,10 +785,32 @@ class TilauUpdater(QObject):
     @pyqtSlot()
     def _cleanup_check_thread(self) -> None:
         _log.debug("[TilauUpdater] No update found or error – done.")
+        if self._manual:
+            self._manual = False
+            from PyQt6.QtWidgets import QMessageBox
+            from tilauscope.tilauscope_types import show_styled_message
+            show_styled_message(
+                self._parent,
+                QApplication.translate("tilauscope_updates", "Check for Updates"),
+                QApplication.translate("tilauscope_updates",
+                    "You are running the latest version of TilauScope."),
+                QMessageBox.Icon.Information,
+            )
 
     @pyqtSlot(str)
     def _on_check_error(self, msg: str) -> None:
         _log.warning(f"[TilauUpdater] Check error: {msg}")
+        if self._manual:
+            self._manual = False
+            from PyQt6.QtWidgets import QMessageBox
+            from tilauscope.tilauscope_types import show_styled_message
+            show_styled_message(
+                self._parent,
+                QApplication.translate("tilauscope_updates", "Check for Updates"),
+                QApplication.translate("tilauscope_updates",
+                    "Could not check for updates. Please check your internet connection."),
+                QMessageBox.Icon.Warning,
+            )
 
     # ── step 2 : offer the update ─────────────────────────────────────────────
 

@@ -20,7 +20,7 @@ from typing import Final
 from PyQt6.QtGui import (QPainter, QFont, QPageLayout, QPageSize, QPixmap, QPainterPath,
                           QPen, QBrush, QColor, QFontDatabase, QFontMetrics)
 from PyQt6.QtPrintSupport import QPrinter
-from PyQt6.QtCore import QRectF, Qt, QMarginsF, QDate, QPointF
+from PyQt6.QtCore import QRectF, Qt, QMarginsF, QDate, QPointF, QSizeF
 from PyQt6.QtWidgets import QApplication
 
 from pathlib import Path
@@ -204,13 +204,26 @@ def blend_ratio_line(bean: GreenBean) -> str:
 # Shared Base Mixin
 # ---------------------------------------------------------------------------
 class _FontMixin:
-    LABEL_WIDTH_MM  = 100
-    LABEL_HEIGHT_MM = 150
-    # ## TILAU ## page geometry for A4 print with cutting bleed
-    _PAGE_W_MM  = 210.0
-    _PAGE_H_MM  = 297.0
-    _BLEED_MM   = 5.0   # white margin on each side for cutting guides
-    _FONT_SCALE = 1.2   # global font boost applied on top of geometric scale
+    # ## TILAU ## the whole layout below (margins, header height, font mm sizes)
+    # was authored against this reference canvas — LABEL_WIDTH_MM/HEIGHT_MM is the
+    # physical output size, read from the user's config (default = the reference,
+    # so nothing scales for the size the layout was actually drawn for)
+    REF_WIDTH_MM  = 100.0
+    REF_HEIGHT_MM = 150.0
+    LABEL_WIDTH_MM  = REF_WIDTH_MM
+    LABEL_HEIGHT_MM = REF_HEIGHT_MM
+    _FONT_SCALE = 1.2   # global font boost on top of native mm→pt conversion
+
+    def _load_label_size(self):
+        from PyQt6.QtCore import QSettings
+        raw = QSettings().value("tilauscope/label_size_mm", "100x150", type=str)
+        try:
+            w_str, h_str = raw.lower().split("x")
+            self.LABEL_WIDTH_MM  = float(w_str)
+            self.LABEL_HEIGHT_MM = float(h_str)
+        except (ValueError, AttributeError):
+            self.LABEL_WIDTH_MM  = self.REF_WIDTH_MM
+            self.LABEL_HEIGHT_MM = self.REF_HEIGHT_MM
 
     def _init_fonts(self):
         """Load the shared Unicode body face.
@@ -221,6 +234,7 @@ class _FontMixin:
         second typeface, or blank on a system without a matching font. DejaVu
         covers all of those but CJK, which Qt substitutes on its own.
         """
+        self._load_label_size()
         try:
             self.bold_family = self._load_font(text_shaping.sans_path(bold=True))
             self.reg_family  = self._load_font(text_shaping.sans_path())
@@ -242,39 +256,28 @@ class _FontMixin:
         return QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont).family()
 
     def _dims(self, painter: QPainter):
+        # ## TILAU ## page IS the label (native LABEL_WIDTH_MM x LABEL_HEIGHT_MM,
+        # set on the QPrinter by _make_printer) — print at 100%, no fit-to-page
+        # scaling. The layout below is authored against REF_WIDTH/HEIGHT_MM; fit
+        # that reference canvas into the chosen physical size, aspect-preserving.
         dev = painter.device()
-        # ## TILAU ## scale so label fills A4 page minus bleed margins on both axes
-        px_per_mm = dev.width() / self._PAGE_W_MM
-        usable_w  = dev.width()  - 2 * self._BLEED_MM * px_per_mm
-        usable_h  = dev.height() - 2 * self._BLEED_MM * px_per_mm
-        scale = min(usable_w / self.LABEL_WIDTH_MM, usable_h / self.LABEL_HEIGHT_MM)
-        # Geometric ratio label-design-mm → printed-mm, used by pt() for font scaling
+        scale = min(dev.width() / self.REF_WIDTH_MM, dev.height() / self.REF_HEIGHT_MM)
+        # Geometric ratio physical-mm → reference-mm, used by pt() for font scaling
         self._scale_mm = min(
-            (self._PAGE_W_MM - 2 * self._BLEED_MM) / self.LABEL_WIDTH_MM,
-            (self._PAGE_H_MM - 2 * self._BLEED_MM) / self.LABEL_HEIGHT_MM,
+            self.LABEL_WIDTH_MM  / self.REF_WIDTH_MM,
+            self.LABEL_HEIGHT_MM / self.REF_HEIGHT_MM,
         )
-        W = self.p(scale, self.LABEL_WIDTH_MM)
-        H = self.p(scale, self.LABEL_HEIGHT_MM)
+        W = self.p(scale, self.REF_WIDTH_MM)
+        H = self.p(scale, self.REF_HEIGHT_MM)
         return W, H, scale
 
     def p(self, scale: float, mm: float) -> int:
         return int(mm * scale)
 
     def pt(self, mm: float) -> int:
-        # ## TILAU ## fonts scale with layout geometry × _FONT_SCALE boost for legibility
+        # ## TILAU ## fonts scale with the chosen physical label size × legibility boost
         scale_mm = getattr(self, "_scale_mm", 1.0)
         return max(1, round(mm * scale_mm * self._FONT_SCALE * 72.0 / 25.4))
-
-    def _draw_cutting_guides(self, painter: QPainter, W: float, H: float, radius: float, scale: float):
-        """Draws a dashed boundary outline that perfectly matches the label's corners."""
-        painter.save()
-        pen = QPen(QColor("#A0A0A0"), self.p(scale, 0.3))
-        pen.setStyle(Qt.PenStyle.DashLine)
-        painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        # Use drawRoundedRect so the bottom corners don't square off outside the label
-        painter.drawRoundedRect(QRectF(0, 0, W, H), radius, radius)
-        painter.restore()
 
     def _micro_label(self, painter, text, x, y, color, scale):
         painter.setFont(QFont(self.reg_family, self.pt(2.2)))
@@ -423,13 +426,17 @@ class _FontMixin:
         return 2 * R
 
     def _make_printer(self, output_path: str) -> QPrinter:
+        # ## TILAU ## PDF page = native label size (100x150mm) so it prints at 100%
+        # straight into the pochette, no manual scale-down and no cut-to-size step
+        page_size = QPageSize(QSizeF(self.LABEL_WIDTH_MM, self.LABEL_HEIGHT_MM),
+                               QPageSize.Unit.Millimeter)
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
         printer.setResolution(300)
         printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
         printer.setOutputFileName(output_path)
-        printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
+        printer.setPageSize(page_size)
         printer.setPageLayout(QPageLayout(
-            QPageSize(QPageSize.PageSizeId.A4),
+            page_size,
             QPageLayout.Orientation.Portrait,
             QMarginsF(0, 0, 0, 0)
         ))
@@ -447,7 +454,7 @@ class RoastedBeanLabelPrinter(_FontMixin):
     def render(self, painter: QPainter, profile: ProfileData, bean: GreenBean):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # ## TILAU ## _dims sets scale + _scale_mm for pt() font scaling
+        # ## TILAU ## _dims returns native label geometry (page = label, no upscale)
         lbl_w, lbl_h, scale = self._dims(painter)
         dev = painter.device()
         offset_x = (dev.width()  - lbl_w) / 2.0
@@ -465,9 +472,7 @@ class RoastedBeanLabelPrinter(_FontMixin):
         header_h = self._header_height(bean, scale)
         self._draw_header(painter, bean, profile, lbl_w, header_h, mg, scale)
         self._draw_body(painter, profile, bean, lbl_w, lbl_h, header_h, mg, scale)
-        
-        self._draw_cutting_guides(painter, lbl_w, lbl_h, r, scale)
-        
+
         painter.restore()
 
     def _header_height(self, bean, scale) -> int:
@@ -745,7 +750,7 @@ class GreenBeanLabelPrinter(_FontMixin):
     def render(self, painter: QPainter, bean: GreenBean):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # ## TILAU ## _dims sets scale + _scale_mm for pt() font scaling
+        # ## TILAU ## _dims returns native label geometry (page = label, no upscale)
         lbl_w, lbl_h, scale = self._dims(painter)
         dev = painter.device()
         offset_x = (dev.width()  - lbl_w) / 2.0
@@ -759,13 +764,17 @@ class GreenBeanLabelPrinter(_FontMixin):
 
         self._rounded_rect(painter, QRectF(0, 0, lbl_w, lbl_h), r, C_GREEN_BODY_BG)
 
-        header_h = self.p(scale, 48)
+        header_h = self._header_height(bean, scale)
         self._draw_header(painter, bean, lbl_w, header_h, mg, scale)
         self._draw_body(painter, bean, lbl_w, lbl_h, header_h, mg, scale)
-        
-        self._draw_cutting_guides(painter, lbl_w, lbl_h, r, scale)
-        
+
         painter.restore()
+
+    def _header_height(self, bean, scale) -> int:
+        h = self.p(scale, 54)
+        if bean and bean.is_blend:
+            h += self.p(scale, 7)
+        return h
 
     def _draw_header(self, painter, bean, W, header_h, mg, scale):
         r = self.p(scale, 4.0)
@@ -788,19 +797,21 @@ class GreenBeanLabelPrinter(_FontMixin):
         painter.setFont(QFont(self.reg_family, self.pt(2.2)))
         painter.setPen(C_GREEN_ACCENT)
         painter.drawText(mg, int(y + self.p(scale, 4)), QApplication.translate("tilauscope_label", "Green bean").upper())
-        y += self.p(scale, 7)
+        y += self.p(scale, 8)
 
+        # ## TILAU ## title sized to match the roasted label's masthead (was 4.0/3.4/2.9mm,
+        # unreadable once printed) — shrink-to-fit still guards long names
         name = bean.name if bean else "-"
         name_w = W - 2 * mg - self.p(scale, 16)
-        for fs_mm in (4.0, 3.4, 2.9):
+        for fs_mm in (7.5, 6.0, 4.8):
             fs = self.pt(fs_mm)
             fm_n = QFontMetrics(QFont(self.bold_family, fs, QFont.Weight.DemiBold))
-            if fm_n.horizontalAdvance(name) <= name_w or fs_mm <= 2.9:
+            if fm_n.horizontalAdvance(name) <= name_w or fs_mm <= 4.8:
                 break
         painter.setFont(QFont(self.bold_family, fs, QFont.Weight.DemiBold))
         painter.setPen(C_GREEN_HEAD_TXT)
-        painter.drawText(QRectF(mg, y, name_w, self.p(scale, 16)), Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, name)
-        y += self.p(scale, 13)
+        painter.drawText(QRectF(mg, y, name_w, self.p(scale, 20)), Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, name)
+        y += self.p(scale, 18)
 
         parts = []
         if bean and bean.country:

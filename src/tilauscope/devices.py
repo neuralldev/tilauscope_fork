@@ -765,16 +765,19 @@ class TilauscopeConfigDlg(QDialog):
         self._sensors_tab    = QWidget(); self._sensors_tab.setStyleSheet("background: transparent;")
         self._detection_tab  = QWidget(); self._detection_tab.setStyleSheet("background: transparent;")
         self._integrations_tab = QWidget(); self._integrations_tab.setStyleSheet("background: transparent;")
+        self._printing_tab   = QWidget(); self._printing_tab.setStyleSheet("background: transparent;")
 
         self._tabs.addTab(self._general_tab,     QApplication.translate("tilauscope_devices", "⚙  GENERAL"))
         self._tabs.addTab(self._sensors_tab,     QApplication.translate("tilauscope_devices", "📡  SENSORS"))
         self._tabs.addTab(self._detection_tab,   QApplication.translate("tilauscope_devices", "🔬  DETECTION"))
         self._tabs.addTab(self._integrations_tab, QApplication.translate("tilauscope_devices", "🌐  INTEGRATIONS"))
+        self._tabs.addTab(self._printing_tab,    QApplication.translate("tilauscope_devices", "🖨  PRINTING"))
 
         self._setup_general_tab()
         self._setup_sensors_tab()
         self._setup_detection_tab()
         self._setup_integrations_tab()
+        self._setup_printing_tab()
 
         ## TILAU ## background sensor scan is scoped to the SENSORS tab: hook the
         ## central BLE scanner on enter, release it on leave (and on close).
@@ -1469,6 +1472,65 @@ class TilauscopeConfigDlg(QDialog):
         self._ai_configure_btn.clicked.connect(self._open_ai_provider_picker)
         ai_layout.addWidget(self._ai_configure_btn)
         layout.addWidget(ai_group)
+
+        layout.addStretch()
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # TAB 5 — PRINTING
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _setup_printing_tab(self) -> None:
+        scroll = _scrollable(self._printing_tab)
+        layout = scroll.widget().layout()
+
+        layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "Labels")))
+        label_group = QGroupBox(QApplication.translate("tilauscope_devices", "Green bean & roasted bean labels"))
+        lg = QFormLayout(label_group)
+
+        self.labelSizeCombo = QComboBox()
+        _label_size_view = QListView()
+        _label_size_view.setStyleSheet(
+            f"""
+            QListView {{
+                background-color: #1E1E2E;
+                color: {THEME['TEXT']};
+                border: 1px solid {THEME['ACCENT']};
+                border-radius: 4px;
+                outline: none;
+                padding: 2px;
+            }}
+            QListView::item {{
+                background-color: #1E1E2E;
+                color: {THEME['TEXT']};
+                padding: 4px 6px;
+            }}
+            QListView::item:selected {{
+                background-color: {THEME['ACCENT']};
+                color: #11111B;
+            }}
+            """
+        )
+        self.labelSizeCombo.setView(_label_size_view)
+        self.labelSizeCombo.setToolTip(
+            QApplication.translate("tilauscope_devices",
+                "Physical size the label PDF is generated at. Print at 100% (no "
+                "\"fit to page\") so it comes out the printer at this exact size.")
+        )
+        # ## TILAU ## value is the "WxH" string persisted to QSettings and read
+        # back by label_printer's _FontMixin._load_label_size(); 100x150 is the
+        # reference size the whole label layout is authored against, so it's the
+        # only choice that needs no geometric scaling.
+        label_size_choices = [
+            ("100x150", QApplication.translate("tilauscope_devices", "10 × 15 cm (standard pochette)")),
+            ("70x90",   QApplication.translate("tilauscope_devices", "7 × 9 cm (compact pochette)")),
+        ]
+        for value, text in label_size_choices:
+            self.labelSizeCombo.addItem(text, value)
+        current = QSettings().value("tilauscope/label_size_mm", "100x150", type=str)
+        idx = self.labelSizeCombo.findData(current)
+        self.labelSizeCombo.setCurrentIndex(idx if idx >= 0 else 0)
+        lg.addRow(QApplication.translate("tilauscope_devices", "Label size:"), self.labelSizeCombo)
+        layout.addWidget(label_group)
 
         layout.addStretch()
 
@@ -2541,6 +2603,9 @@ class TilauscopeConfigDlg(QDialog):
                 QApplication.translate("tilauscope_devices",
                     "Remote control will take effect the next time you start TilauScope."),
             )
+
+        ## TILAU ## label size — takes effect on the next print, no restart needed
+        QSettings().setValue("tilauscope/label_size_mm", self.labelSizeCombo.currentData())
 
         # AI config saved immediately in _open_ai_provider_picker
         self.accept()
