@@ -1,0 +1,107 @@
+---
+name: Feature Request
+description: Suggest an idea for TilauScope. For questions, please open a Discussion instead.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      # yamllint disable rule:line-length
+      value: "
+        ### **Thanks for taking the time to suggest this.**
+
+        <img src='https://github.com/neuralldev/tilauscope_fork/raw/main/src/tilauscope.png' align='left' width='100' height='100'>
+        ***Tell us what you'd like to see and why. Screenshots or mockups help a lot — drag
+        and drop them into the Description field below.***
+        <br clear='left'/>"
+      # yamllint enable rule:line-length
+
+  - type: dropdown
+    attributes:
+      label: Area
+      description: Which part of TilauScope is this about?
+      options:
+        -
+        - Tilauscope Guided roast assistant
+        - Tilauscope Roast plan / milestone detection
+        - BeanCave (bean database, storage, labels, features)
+        - Preheat PID
+        - Remote control from smartphone or tablet
+        - Bluetooth device (AirWave, Omniflux, scale, ambient probe, other)
+        - Roasting machine connection (serial / Modbus / USB / BLE / WiFi / other)
+        - Tilauscope core behaviour
+        - Other - include in Description
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Feature Description
+      description: A clear description of what you'd like to happen, and the problem it solves. Drag and drop mockups or screenshots here.
+      placeholder: |
+          Example: I'm always frustrated when [...]. It would help if TilauScope could [...].
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions or workarounds you've already tried.
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Reference Material
+      description: Screenshots from another app, a roasting log, a sketch — anything that shows what you mean. Screenshots of other software are welcome to illustrate the idea; just note where each one is from.
+      placeholder: |
+          Example: this is how [other app] handles it — see attached screenshot.
+    validations:
+      required: false
+
+  - type: input
+    attributes:
+      label: TilauScope Version and Build
+      description: Shown in the window title bar, or in 'Help >> About'.
+      placeholder: "Example: 4.1.0"
+    validations:
+      required: false
+
+  - type: dropdown
+    attributes:
+      label: Operating System
+      options:
+        -
+        - macOS
+        - Windows
+        - Other - include in Description
+      default: 0
+    validations:
+      required: false
+
+  - type: input
+    attributes:
+      label: OS Version
+      placeholder: "Example: macOS 15.5, or Windows 11 24H2"
+    validations:
+      required: false
+
+  - type: input
+    attributes:
+      label: Roasting machine
+      description: Which roaster are you using, and how is it connected?
+      placeholder: "Example: Skywalker V2, USB serial or Skywalker v1 throught ESP32 Skycommmand"
+    validations:
+      required: false
+
+  - type: input
+    attributes:
+      label: Connected devices
+      description: Anything else talking to TilauScope during a roast.
+      placeholder: "Example: DiFluid AirWave, Acaia scale, Ambient probe, Omniflux, other"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: "Thanks for your support!"

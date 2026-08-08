@@ -40,8 +40,8 @@ stock in BeanCave, with no second entry.
 **↺ Rebuild from bean** regenerates the descriptive bean text that Artisan stores in the
 roast file, straight from the BeanCave record.
 
-<!-- CAPTURE 5.1 — the ⬥ ROAST tab, fully populated, on a bean whose record carries origin,
-farm, process and altitude. CAPTURE 5.2 — the Batch block, checked and unchecked. -->
+![ROAST tab, fully populated](assets/preparing-a-roast-5.1.png)
+![the Batch block, checked and unchecked.](assets/preparing-a-roast-5.2.png)
 
 ### Weighing from the scale
 
@@ -58,8 +58,7 @@ The line under the value says what the scale is doing: *tap to use* when a readi
 again for about a minute; tapping the empty value asks once more. The scale stays connected
 after the sheet is confirmed, so it is still live at the end of the roast.
 
-<!-- CAPTURE 5.3 — the ⚖ SCALE window beside the sheet, showing a live value.
-CAPTURE 5.4 — the Replace Weight? confirmation. -->
+![the ⚖ SCALE window beside the sheet, showing a live value](assets/preparing-a-roast-5.3.png)
 
 ---
 
@@ -78,8 +77,8 @@ being typed in.
 **Target roast profile** sets the [Agtron](glossary.md#agtron) level being aimed for. It
 drives the roast plan and the predictions on the INSIGHTS tab.
 
-<!-- CAPTURE 5.5 — the ⚙ OPTIONS tab with Physical properties filled and a target profile
-selected. CAPTURE 5.6 — the 🌡 AMBIENT window showing live readings. -->
+![the ⚖ SCALE window beside the sheet, showing a live value](assets/preparing-a-roast-5.5.png)
+![AMBIENT window showing live readings](assets/preparing-a-roast-5.6.png)
 
 ---
 
@@ -107,8 +106,8 @@ this target.
     the message *Select a roast plan in OPTIONS to predict DTR, weight loss and time.* is a
     prerequisite, not a failure.
 
-<!-- CAPTURE 5.7 — the ⓘ INSIGHTS tab in full, on a batch that triggers at least one green
-signal. CAPTURE 5.8 — the Load & setup fill bar on a deliberately overloaded batch. -->
+![AMBIENT window showing live readings](assets/preparing-a-roast-5.7.png)
+![AMBIENT window showing live readings](assets/preparing-a-roast-5.8.png)
 
 ---
 
@@ -140,9 +139,7 @@ Under *Roast automation*, four milestones can be marked automatically:
     Automatic first-crack marking listens for cracks, so it needs an acoustic source: the
     TilauAmbient probe or an Omniflux. See [Hardware and peripherals](hardware.md).
 
-<!-- CAPTURE 5.9 — the ⚙ MORE OPTIONS tab with TilauPID enabled and a target temperature
-set. CAPTURE 5.10 — the Roast automation block. CAPTURE 5.11 — the Auto Dry End warning,
-captured with no Dry-phase target set in Artisan. -->
+![the ⚙ MORE OPTIONS tab](assets/preparing-a-roast-5.9.png)
 
 ---
 
@@ -172,8 +169,7 @@ overwritten by a trip through read-only mode.
 An uncatalogued roaster needs no profile at all: leave **Model** on *— select a roaster
 model —* and tick read-only.
 
-<!-- CAPTURE 5.12 — Machine Profile with the model list open. CAPTURE 5.13 — the assistant
-in read-only mode, sliders absent. -->
+![ Machine Profile with the model list open](assets/preparing-a-roast-5.12.png)
 
 ---
 
@@ -251,8 +247,7 @@ setpoint starts a fresh model for the new one.
     reasoning behind the preheat, or to understand why a preheat behaved differently from the
     last one. Nothing needs to be read for TilauPID to work.
 
-<!-- CAPTURE 5.14 — the Preheat page, three states: far from setpoint, approaching, setpoint
-reached with the charge button available. -->
+![the Preheat page](assets/preparing-a-roast-5.14.png)
 
 !!! note "PID Autotune is a different tool"
     **TilauScope → PID Autotune** is an advanced, separate tool. It calibrates *Artisan's own*
@@ -269,7 +264,7 @@ reached with the charge button available. -->
 Confirming the sheet closes it with a **Start a new roast** message naming the coffee, and
 the guided assistant opens and docks itself, ready for the roast.
 
-<!-- CAPTURE 5.16 — the Start a new roast confirmation. -->
+![guiding assistant](assets/preparing-a-roast-5.16.png)
 
 ---
 

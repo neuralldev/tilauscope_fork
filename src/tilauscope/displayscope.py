@@ -2004,13 +2004,16 @@ class TilauscopePanel(QWidget):
         )
 
         # Adding to layout with Stretch Factors:
-        # TG=1, TE=1, RoR=1.5 (RoR takes up 50% more width than the others)
-        self.metrics_layout.addWidget(self.tg_lcd, stretch=2)
-        self.metrics_layout.addWidget(self.te_lcd, stretch=2)
-        self.metrics_layout.addWidget(self.ror_lcd, stretch=3)
+        ## TILAU ## BT/ET widened: at 320px/stretch(2,2,3) the "NNN.N" reading
+        ## (3 integer digits) didn't fit the BT/ET box and got clipped on the
+        ## right. Restoring the panel to 360px and giving BT/ET a bigger share
+        ## fixes it without shrinking RoR below its previous width.
+        self.metrics_layout.addWidget(self.tg_lcd, stretch=3)
+        self.metrics_layout.addWidget(self.te_lcd, stretch=3)
+        self.metrics_layout.addWidget(self.ror_lcd, stretch=4)
 
         self.setStyleSheet("background-color: #0b0b0b;")
-        self.setFixedWidth(320)   ## TILAU ## compaction scenario B (was 360)
+        self.setFixedWidth(360)   ## TILAU ## widened back from 320 to stop BT/ET readouts truncating
 
 # --- ALARM SIDEBAR ---
 

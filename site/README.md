@@ -100,18 +100,22 @@ Header always set Cross-Origin-Resource-Policy "same-origin"
 ServerSignature Off
 ```
 
-### Serving over plain HTTP
+### Serving through Cloudflare (Flexible SSL)
 
-The shipped `.htaccess`, `_headers` and `<meta>` policy omit two directives
-that the blocks above include, because the live host has no certificate yet:
+The live deployment is DNS-proxied through Cloudflare in *Flexible* mode:
+Cloudflare terminates HTTPS for the visitor with its own edge certificate;
+the Cloudflare→IONOS hop behind it stays plain HTTP, because the origin has
+no certificate of its own. `.htaccess` and `_headers` both ship
+`upgrade-insecure-requests` and `Strict-Transport-Security` (no `preload`)
+on that basis — see the comment block at the top of `.htaccess` for the
+reasoning and for why the origin must never add its own http→https redirect
+under Flexible mode (it loops, since Apache never sees an HTTPS request to
+redirect from). The http→https upgrade for visitors is handled at the
+Cloudflare edge instead: SSL/TLS → Edge Certificates → "Always Use HTTPS".
 
-| Directive | Why it is out |
-|---|---|
-| `upgrade-insecure-requests` | Rewrites every subresource request to `https://`. With no certificate the stylesheet, script, fonts and hero image all fail and the page arrives as unstyled markup — the site looks broken while returning 200 on every file. |
-| `Strict-Transport-Security` | Ignored by browsers when it arrives over plain HTTP, so it protects nothing today. Its `preload` token is also irreversible in practice: once the domain is on that list, browsers refuse HTTP outright. |
-
-Add both back the day TLS is installed — they are the correct settings for an
-HTTPS deployment, and nothing else in this directory needs to change with them.
+If the origin ever gets its own certificate, switch the Cloudflare SSL/TLS
+mode to Full or Full (strict) — Flexible then becomes unnecessary overhead —
+and reconsider adding `preload` to the HSTS header at that point.
 
 ## What "secured" covers here, and what it does not
 
@@ -149,7 +153,7 @@ Not covered, because a static page cannot cover it:
 ### Verifying a deploy
 
 ```sh
-curl -sI http://tilauscope.org | grep -iE 'content-security|strict-transport|x-frame|x-content|referrer|permissions|cross-origin'
+curl -sI https://tilauscope.org | grep -iE 'content-security|strict-transport|x-frame|x-content|referrer|permissions|cross-origin'
 ```
 
 Then open the page and confirm the browser console is empty: a CSP violation

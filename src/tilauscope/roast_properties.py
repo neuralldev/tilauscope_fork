@@ -609,19 +609,21 @@ def _hum_color(hum: float) -> str:
 class _AmbientFloatWindow(QDialog):
     """
     Small always-on-top card displaying live ambient temperature, humidity
-    and pressure from the TilauScope probe (aw.bleTilauScopeDevice).
+    and pressure from the TilauScope probe.
 
-    The probe is managed externally by Artisan (startTilauAmbientManager /
-    stopTilauAmbientManager).  This card simply observes:
+    The probe is managed externally: by BeanCave (bleTilauAmbientDevice)
+    during pre-roast setup, or by Artisan (aw.bleTilauScopeDevice, via
+    startTilauAmbientManager / stopTilauAmbientManager) once monitoring has
+    started. This card simply observes:
 
-    · It connects to bleTilauScopeDevice.connected_signal /
-      disconnected_signal at show-time, then detaches at close.
-    · While the probe is connected it polls askAmbient() every
+    · It connects to the device's connected_signal / disconnected_signal at
+      show-time, then detaches at close.
+    · While the probe is connected it polls get_ambient() every
       POLL_INTERVAL_MS via a QTimer (main-thread, no extra thread needed –
-      askAmbient() is a fast BLE read).
-    · If bleTilauScopeDevice is None when the card opens it waits,
-      showing "waiting for probe", and wires up as soon as the device
-      appears (checked on each timer tick).
+      get_ambient() is a fast BLE read).
+    · If no device is available when the card opens it waits, showing
+      "waiting for probe", and wires up as soon as one appears (checked on
+      each timer tick).
     """
 
     POLL_INTERVAL_MS: Final[int] = 4_000
@@ -682,13 +684,22 @@ class _AmbientFloatWindow(QDialog):
     # ── Device wiring ─────────────────────────────────────────────────────────
 
     def _attach_device(self) -> None:
-        """Wire to the LIVE probe owned by Artisan (aw.bleTilauScopeDevice).
+        """Wire to the LIVE probe. During pre-roast setup (this dialog's
+        lifecycle) the probe is managed by BeanCave (self._parent_widget.
+        bleTilauAmbientDevice), not by Artisan's aw.bleTilauScopeDevice —
+        the latter stays None until roast monitoring is started via
+        ToggleMonitor, which is why the card used to stay stuck on
+        "waiting for probe" while BeanCave showed the probe as connected.
+        Fall back to aw.bleTilauScopeDevice in case the dialog is ever
+        reused outside BeanCave.                                    ## TILAU ##
 
-        Never instantiate a private TilauAmbient here: nobody would ever start
-        that second BLE client, so the card stayed stuck on "waiting for probe"
-        while the real probe was connected (green LED).            ## TILAU ##
+        Never instantiate a private TilauAmbient here: BeanCave already owns
+        the one BLE client for this probe UUID; a second client here would
+        just fight it for the connection.
         """
-        device = getattr(self._aw, 'bleTilauScopeDevice', None)
+        beancave = getattr(self._parent_dialog, '_parent_widget', None)
+        device = getattr(beancave, 'bleTilauAmbientDevice', None) \
+            or getattr(self._aw, 'bleTilauScopeDevice', None)
         if device is None or device is self._device_ref:
             return
         self._detach_device()
@@ -696,7 +707,7 @@ class _AmbientFloatWindow(QDialog):
             device.connected_signal.connect(self._on_probe_connected)
             device.disconnected_signal.connect(self._on_probe_disconnected)
             self._device_ref = device
-            _logd.debug("AmbientCard: attached to bleTilauScopeDevice")
+            _logd.debug("AmbientCard: attached to ambient probe device")
             # If the device is already connected, reflect that immediately
             if getattr(device, 'is_connected', False):
                 self._on_probe_connected()

@@ -40,8 +40,8 @@ bag must not make the coffee disappear from its own roast — and is marked *(em
 In Guided level the assistant opens, starts and closes with the roast, whichever START you use:
 TilauScope's own, Artisan's, or the one on your phone. At Expert level it is started manually.
 
-<!-- CAPTURE 7.1 — the docked assistant mid-roast. CAPTURE 7.2 — the bean and target selection
-before starting. -->
+![the docked assistant mid-roast](assets/the-guided-roast-7.1.png)
+![the expert view](assets/the-guided-roast-7.2.png)
 
 ### Coach view and Expert view
 
@@ -51,7 +51,8 @@ the same roast:
 - **Coach view** — one recommendation and a phase verdict. Nothing else.
 - **Expert view** — the full set of readings.
 
-<!-- CAPTURE 7.3 — Coach view. CAPTURE 7.4 — Expert view, same moment in the roast. -->
+![the Coach view](assets/the-guided-roast-7.3.png)
+![the Expert view](assets/the-guided-roast-7.4.png)
 
 ---
 
@@ -94,8 +95,8 @@ density → heat transfer faster*, *humid → keep RoR moderate, longer drying a
 watch for flash drying*, *natural/honey process → extended drying phase expected*. Two coffees
 at the same batch size are not steered identically.
 
-<!-- CAPTURE 7.5 — a Maillard page showing an announced next reduction. CAPTURE 7.6 — a phase
-page showing bean-specific advice. -->
+![Maillard page showing an announced next reduction.](assets/the-guided-roast-7.5.png)
+![page showing bean-specific advice](assets/the-guided-roast-7.6.png)
 
 ---
 
@@ -115,7 +116,7 @@ escaping*, *RoR too low → risk of baked coffee*, *RoR increasing — look afte
 
 **Milestones ahead.** *DRY END ~1:20*, *FCs ~2:45*, and when they arrive, *now*.
 
-<!-- CAPTURE 7.7 — the plan lead/lag and RoR band indicators, cropped and legible. -->
+![the plan lead/lag and RoR band indicators](assets/the-guided-roast-7.7.png)
 
 ---
 
@@ -129,11 +130,12 @@ happened in the drum.
 Each confirmed milestone re-plans the rest of the roast against reality, so targets and estimates
 after it are recomputed rather than left stale.
 
+![the plan lead/lag and RoR band indicators](assets/the-guided-roast-7.8.png)
+
 **Charge** is marked from the panel too. If it was marked by mistake, **Cancel charge** appears
 for 15 seconds and undoes it.
 
-<!-- CAPTURE 7.8 — a milestone suggestion active, with the highlighted Mark button.
-CAPTURE 7.9 — the Cancel charge button visible just after charge. -->
+![the plan lead/lag and RoR band indicators](assets/the-guided-roast-7.9.png)
 
 ---
 
@@ -154,7 +156,8 @@ is still time to influence it.
     to the drop decision, not a replacement for it. See
     [Hardware and peripherals](hardware.md#omniflux--colour-and-crack-sensor).
 
-<!-- CAPTURE 7.10 — the DROP countdown and DTR indicators during development. -->
+![the plan lead/lag and RoR band indicators coach](assets/the-guided-roast-7.10.png)
+![the plan lead/lag and RoR band indicators expert view](assets/the-guided-roast-7.11.png)
 
 ---
 
@@ -180,8 +183,6 @@ or start heating again*. An alert you cannot act on is noise.
     instructions cannot contradict each other. See
     [Getting started](getting-started.md#guided-or-expert).
 
-<!-- CAPTURE 7.11 — a crash alert in situ. CAPTURE 7.12 — an extended-drying alert. -->
-
 ---
 
 ## Cooling, and the next batch
@@ -200,10 +201,9 @@ threshold is crossed. A second click disarms it.
 !!! note
     A batch relaunched this way is saved without its result form, so its finishing details —
     weights, colour, notes — are simply filled in later, from *Repair ALogs*. Nothing is lost.
-    See [After the roast](after-the-roast.md#repairing-incomplete-roast-files).
+    See [the cooling page.](after-the-roast.md#repairing-incomplete-roast-files).
 
-<!-- CAPTURE 7.13 — the cooling page. CAPTURE 7.14 — Restart batch in both states, immediate
-and armed. -->
+![the cooling page](assets/the-guided-roast-7.13.png)
 
 ---
 
@@ -246,7 +246,7 @@ than as rows in a table, and can show the resulting strategy as a narrative befo
 starts. The alarms themselves are Artisan's; what changes is that the rule can be read back and
 checked.
 
-<!-- CAPTURE 7.17 — the alarm rule-sentence editor. -->
+![the cooling page](assets/the-guided-roast-7.17.png)
 
 ---
 

@@ -9,22 +9,33 @@
 # none of those can be expressed as a <meta> tag at all.
 #
 # Verify after upload:
-#   curl -sI http://tilauscope.org | grep -iE 'strict-transport|x-frame|content-security|permissions-policy'
+#   curl -sI https://tilauscope.org | grep -iE 'strict-transport|x-frame|content-security|permissions-policy'
 #
-# This host currently serves plain HTTP: port 443 answers but presents no
-# certificate. Two directives that assume TLS are therefore left out below, and
-# both go back in on the day a certificate is installed:
+# TLS topology: the domain is DNS-proxied through Cloudflare in *Flexible* SSL
+# mode. Cloudflare terminates HTTPS for the visitor using its own edge
+# certificate; the Cloudflare→origin hop behind it is still plain HTTP,
+# because IONOS itself presents no certificate on port 443. Two consequences:
 #
-#   * `upgrade-insecure-requests` on the CSP — it rewrites every subresource
-#     request to https://, so with no certificate the stylesheet, the script,
-#     the fonts and the hero image all fail and the page renders unstyled.
-#   * `Strict-Transport-Security` — a browser ignores it over plain HTTP, so it
-#     protects nothing today, and the `preload` token in it is a one-way door:
-#     once that list ships, HTTP is refused outright and only a working
-#     certificate can serve the site at all.
+#   * Do NOT add an origin-side http→https redirect here (no `RewriteCond
+#     %{HTTPS} off` block). Behind Flexible mode, every request Apache sees is
+#     HTTP regardless of what the visitor's browser used, so such a rule would
+#     redirect Cloudflare's own request back to itself — Cloudflare re-fetches
+#     over HTTP again, %{HTTPS} is off again, and the loop is infinite from
+#     the visitor's side (ERR_TOO_MANY_REDIRECTS). The http→https upgrade is
+#     handled at the edge instead — Cloudflare dashboard → SSL/TLS → Edge
+#     Certificates → "Always Use HTTPS".
+#   * `Strict-Transport-Security` is safe to send now: it travels through
+#     Cloudflare unchanged and reaches the visitor over the real HTTPS
+#     connection they made to the edge. `preload` is left out on purpose — it
+#     is a one-way door (once submitted, browsers refuse HTTP outright for the
+#     whole domain, including any future subdomain), and worth adding only
+#     once the origin itself is known-stable on HTTPS. Re-evaluate if/when the
+#     Cloudflare SSL/TLS mode moves to Full or Full (strict) with a real
+#     origin certificate.
 
 <IfModule mod_headers.c>
-  Header always set Content-Security-Policy "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'"
+  Header always set Content-Security-Policy "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'; upgrade-insecure-requests"
+  Header always set Strict-Transport-Security "max-age=63072000; includeSubDomains"
   Header always set X-Content-Type-Options "nosniff"
   Header always set X-Frame-Options "DENY"
   Header always set Referrer-Policy "strict-origin-when-cross-origin"

@@ -35,9 +35,8 @@ nothing in the record: the form can still be corrected and printed again, or aba
 the form is saved without a label having been printed, TilauScope asks once whether to print
 one before closing.
 
-<!-- CAPTURE 4.1 — a printed roast label PDF, actual 10x15cm size, no cut guides.
-CAPTURE 4.2 — a printed green bean label PDF, actual 10x15cm size. CAPTURE 4.3 — a sack
-label, actual size, QR and id both legible. -->
+![a printed roast label PDF](assets/labels-and-qr-4.1.png)
+![a printed green bean label PDF](assets/labels-and-qr-4.1.png)
 
 ---
 
@@ -58,9 +57,8 @@ the loaded paper isn't recognised, or when it doesn't match the size the label n
     automatically; recognising a roll it has never seen needs an internet connection the
     first time, after which that roll size is remembered.
 
-<!-- CAPTURE 4.4 — the print preview with the copies count. CAPTURE 4.5 — the background
-print progress strip. CAPTURE 4.6 — a print blocked with a plain-language reason (wrong
-paper size). -->
+![the print preview with the copies count](assets/labels-and-qr-4.4.png)
+![a print blocked with a plain-language reason](assets/labels-and-qr-4.5.png)
 
 ---
 
@@ -99,8 +97,9 @@ A sack label works the same way as the other two: scanning it, from either path,
 whichever coffee currently holds that label. A label not currently attached to any coffee
 says so plainly rather than opening a blank or wrong record.
 
-<!-- CAPTURE 4.7 — the 📷 SCAN camera preview, mid-scan. CAPTURE 4.8 — a roast record page
-open in a phone's browser. CAPTURE 4.9 — a bean record page open in a phone's browser. -->
+![a print blocked with a plain-language reason](assets/labels-and-qr-4.5.png)
+![SCAN camera preview](assets/labels-and-qr-4.6.png)
+![a bean record page open in a phone's browser](assets/labels-and-qr-4.7.png)
 
 ---
 

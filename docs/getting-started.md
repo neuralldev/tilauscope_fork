@@ -44,8 +44,9 @@ usually cannot be acted on.
 ![the TilauScope menu, fully open](assets/getting-started-1.1.2.png)
 
 !!! note
-    The same archive is still available from the green-bean database, under **Export
-    Logs**. Both do exactly the same thing.
+    The same archive is also available from the **Help** menu, under **Export Logs...**,
+    and from the green-bean database, under **Export Logs**. All three do exactly the
+    same thing.
 
 
 ---

@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "generated": "2026-08-07T15:08:09Z",
-  "app_version": "4.2.8",
-  "source_revision": "0f56ac1d1",
+  "generated": "2026-08-08T05:19:34Z",
+  "app_version": "4.2.9",
+  "source_revision": "b1bd22c98",
   "string_count": 2308,
   "sections": [
     {
@@ -130,6 +130,12 @@
       "label": "Message ticker",
       "order": 21,
       "specialist": false
+    },
+    {
+      "context": "tilauscope",
+      "label": "Startup",
+      "order": 22,
+      "specialist": false
     }
   ],
   "languages": [
@@ -161,10 +167,10 @@
       "native": "简体中文",
       "rtl": false,
       "total": 2308,
-      "done": 3,
+      "done": 2146,
       "draft": 161,
-      "empty": 2144,
-      "bytes": 1503635
+      "empty": 1,
+      "bytes": 1557785
     },
     {
       "code": "zh_TW",
@@ -172,10 +178,10 @@
       "native": "繁體中文",
       "rtl": false,
       "total": 2308,
-      "done": 3,
+      "done": 2146,
       "draft": 161,
-      "empty": 2144,
-      "bytes": 1501717
+      "empty": 1,
+      "bytes": 1557072
     },
     {
       "code": "cs",

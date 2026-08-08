@@ -71,6 +71,7 @@ class TilauMenuExtension:
         """Called at the end of ApplicationWindow.set_menu()."""
         self._sync_checked_states()
         self._patch_config_menu(ui_mode)
+        self._insert_export_logs_action()
         self._insert_tilau_top_menu(menu_bar, ui_mode)
 
     def shortcut_actions(self) -> list[QAction | None]:
@@ -115,6 +116,12 @@ class TilauMenuExtension:
         self.act_pid_autotune.setCheckable(True)
         self.act_pid_autotune.triggered.connect(aw.handlePIDAutotune)
 
+        # Inserted into Artisan's general Help menu — shares report_a_bug() with
+        # the About dialog and BeanCave's Export Logs button (never drift apart).
+        self.act_export_logs = QAction(
+            QApplication.translate('Menu', 'Export Logs...'), aw)
+        self.act_export_logs.triggered.connect(self._export_logs)
+
         ## TILAU ## No About entry here on purpose: renaming the application made
         ## Artisan's own About action read "About TilauScope" in the conventional
         ## slot (application menu on macOS, Help menu elsewhere). It opens the
@@ -128,8 +135,12 @@ class TilauMenuExtension:
         ## (main.py:2219 and below) — same treatment here.
         for _action in (self.act_main, self.act_beancave, self.act_config,
                         self.act_first_config, self.act_debug,
-                        self.act_pid_autotune):
+                        self.act_pid_autotune, self.act_export_logs):
             _action.setMenuRole(QAction.MenuRole.NoRole)
+
+    def _export_logs(self, _checked: bool = False) -> None:
+        from tilauscope.tilau_exceptions import report_a_bug
+        report_a_bug(self._aw)
 
     def _run_first_config(self, _checked: bool = False) -> None:
         """Force-replay the first-run configuration assistant."""
@@ -242,6 +253,18 @@ class TilauMenuExtension:
 
         if doc_action is not None or update_action is not None:
             self._help_menu_rewired = True
+
+    def _insert_export_logs_action(self) -> None:
+        """Add 'Export Logs...' to Artisan's general Help menu, right after the
+        keyboard-shortcuts entry. helpMenu is rebuilt from scratch on every
+        set_menu() call, so this re-inserts every time rather than once.
+        """
+        help_menu = getattr(self._aw, 'helpMenu', None)
+        if help_menu is None:
+            return
+        ref = getattr(self._aw, 'KshortCAction', None) \
+            or getattr(self._aw, 'helpDocumentationAction', None)
+        self._insert_action_after(help_menu, ref, self.act_export_logs)
 
     @staticmethod
     def _open_tilau_documentation(_checked: bool = False) -> None:

@@ -23,14 +23,14 @@ body:
       description: Which part of TilauScope is affected?
       options:
         -
-        - Guided roast assistant
-        - Roast plan / milestone detection
-        - BeanCave (bean database, storage, labels)
+        - Tilauscope Guided roast assistant
+        - Tilauscope Roast plan / milestone detection
+        - BeanCave (bean database, storage, labels, features)
         - Preheat PID
-        - Remote control from phone
-        - Bluetooth device (AirWave, Omniflux, scale, ambient probe)
-        - Roasting machine connection (serial / Modbus)
-        - Artisan core behaviour
+        - Remote control from smartphone or tablet
+        - Bluetooth device (AirWave, Omniflux, scale, ambient probe, other)
+        - Roasting machine connection (serial / Modbus / USB / BLE / WiFi / other)
+        - Tilauscope core behaviour
         - Other - include in Description
       default: 0
     validations:
@@ -59,7 +59,7 @@ body:
     attributes:
       label: TilauScope Version and Build
       description: Shown in the window title bar, or in 'Help >> About'.
-      placeholder: "Example: 4.1.0 build 40"
+      placeholder: "Example: 4.1.0"
     validations:
       required: true
 
@@ -86,7 +86,7 @@ body:
     attributes:
       label: Roasting machine
       description: Which roaster were you using, and how is it connected?
-      placeholder: "Example: Skywalker V2, USB serial"
+      placeholder: "Example: Skywalker V2, USB serial or Skywalker v1 throught ESP32 Skycommmand"
     validations:
       required: false
 
@@ -94,7 +94,7 @@ body:
     attributes:
       label: Connected devices
       description: Anything else talking to TilauScope during the roast.
-      placeholder: "Example: DiFluid AirWave, Acaia scale"
+      placeholder: "Example: DiFluid AirWave, Acaia scale, Ambient probe, Omniflux, other"
     validations:
       required: false
 
@@ -103,6 +103,8 @@ body:
       label: Files
       description: Before you hit SUBMIT, please check the appropriate boxes.
       options:
+        - label: >
+            A zip file from the Tilauscope log report (Help >> Export Logs...) is attached.
         - label: >
             A profile file *.alog, renamed to *.alog.txt, is attached.
         - label: >

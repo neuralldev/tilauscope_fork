@@ -64,8 +64,6 @@ phone — see [Piloting from a phone](phone-piloting.md). Both take effect only 
 restart, and are covered in their own chapters, since what they enable matters more than the
 toggle itself.
 
-<!-- CAPTURE 4.4 — the UI Features and Remote access groups. -->
-
 ![the UI Features and Remote access groups](assets/configuration-4.4.png)
 
 ---
@@ -208,6 +206,8 @@ A sensor whose topic does not identify a device and a value that way is left alo
 one the gateway refuses or one that never answers — a battery sensor sleeps between its own
 reports and cannot be reached in between. Each of those cases is named once in the diagnostic
 log, and the sensor is dropped from the rotation rather than asked again every cycle.
+
+![the INTEGRATIONS tab, MQTT Broker group with TLS](assets/configuration-4.11.png)
 
 <!-- CAPTURE 4.11 — the INTEGRATIONS tab, MQTT Broker group with TLS ticked (port showing 8883),
 Protocol on MQTT v3.1.1, Timeout and Keepalive visible, the Poll request topic and Poll every

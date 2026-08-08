@@ -1,5 +1,10 @@
+## [4.2.9] 2026-08-07
+build 1
 ## [4.2.8] 2026-08-07
 build 1
+* ⚡ [feat(menu)] : "Export Logs..." is now available in the general Help menu, not just BeanCave — one click bundles diagnostics for a bug report
+* 🐛 [fix(displayscope)] : the BT and ET readouts no longer clip the last digit on a three-digit reading — the boxes are wider now
+* 🐛 [fix(beancave)] : the ambient probe card in the Roast Setup dialog now shows live temperature, humidity and pressure — it was watching a different probe connection than the one BeanCave actually establishes before a roast, so it stayed stuck on "waiting for probe" even while the probe was connected
 * ⚡ [feat(docs)] : the user documentation is now published as a searchable website at docs.tilauscope.org, in the same colours and typefaces as the application — the same chapters remain readable on GitHub
 ## [4.2.7] 2026-08-07
 build 1

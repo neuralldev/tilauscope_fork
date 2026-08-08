@@ -14,16 +14,18 @@
   so weigh it as such.
 
   The <meta> policy is the fallback for hosts that cannot set headers. Prefer
-  the real headers in `_headers` — meta cannot carry frame-ancestors, and a
+  the real headers in `.htaccess` — meta cannot carry frame-ancestors, and a
   header cannot be stripped by an injected tag the way a meta element can.
 
-  No `upgrade-insecure-requests` here on purpose: the site is served over plain
-  HTTP for now, and that directive would rewrite every stylesheet, script, font
-  and image request to https:// — where nothing answers. The page would arrive
-  as unstyled markup. Put it back the same day TLS goes live, together with the
-  HSTS header in `.htaccess`; the two belong to that change, not to this one.
+  TLS is live via Cloudflare (DNS-proxied, Flexible mode): the edge terminates
+  HTTPS for the visitor, but the Cloudflare→IONOS hop behind it is still plain
+  HTTP — the origin itself has no certificate. `upgrade-insecure-requests` is
+  safe here because every asset is same-origin: the browser's https:// request
+  for it lands on the Cloudflare edge, same as the page did, not on the origin
+  directly. See `.htaccess` for why the origin must NOT add its own http→https
+  redirect under Flexible mode.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'; upgrade-insecure-requests">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 
 <title>TilauScope — a guided roasting assistant for home coffee roasters</title>
@@ -58,7 +60,7 @@
     <span class="brand-name">TilauScope</span>
   </a>
   <nav class="topnav" aria-label="Main">
-    <a href="https://github.com/neuralldev/tilauscope_fork/tree/main/docs" target="_blank" rel="noopener noreferrer">Documentation</a>
+    <a href="https://docs.tilauscope.org" target="_blank" rel="noopener noreferrer">Documentation</a>
     <a href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">Source</a>
     <a class="topnav-cta" href="https://github.com/neuralldev/tilauscope_fork/releases/latest" target="_blank" rel="noopener noreferrer">Download</a>
   </nav>
@@ -336,7 +338,7 @@
     </p>
     <nav class="footer-nav" aria-label="Footer">
       <a href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">Source</a>
-      <a href="https://github.com/neuralldev/tilauscope_fork/tree/main/docs" target="_blank" rel="noopener noreferrer">Documentation</a>
+      <a href="https://docs.tilauscope.org" target="_blank" rel="noopener noreferrer">Documentation</a>
       <a href="https://github.com/neuralldev/tilauscope_fork/issues" target="_blank" rel="noopener noreferrer">Report a problem</a>
       <a href="https://github.com/neuralldev/tilauscope_fork/blob/main/NOTICE" target="_blank" rel="noopener noreferrer">Notice</a>
       <a href="https://github.com/neuralldev/tilauscope_fork/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">AGPL v3</a>

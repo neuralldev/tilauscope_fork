@@ -214,147 +214,6 @@
 </context><context>
     <name>Button</name>
     <message>
-        <location filename="../tilauscope/visualalarm.py" line="133" />
-        <source>Generate explanation (AI)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/visualalarm.py" line="162" />
-        <source>Auto-center timeline</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/dialogs.py" line="630" />
-        <location filename="../artisanlib/dialogs.py" line="91" />
-        <location filename="../artisanlib/comm.py" line="228" />
-        <location filename="../artisanlib/pid_dialogs.py" line="3133" />
-        <location filename="../plus/login.py" line="78" />
-        <location filename="../tilauscope/beancave.py" line="12281" />
-        <location filename="../tilauscope/beancave.py" line="11123" />
-        <source>Cancel</source>
-        <translation>取消</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/devices.py" line="172" />
-        <location filename="../artisanlib/devices.py" line="157" />
-        <location filename="../artisanlib/wheels.py" line="449" />
-        <location filename="../tilauscope/beancave.py" line="11699" />
-        <location filename="../tilauscope/beancave.py" line="11664" />
-        <source>Select</source>
-        <translation>選擇</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="2775" />
-        <source>Cancel Roasting</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="2777" />
-        <source>Deactivate all and Roast</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="2779" />
-        <source>Continue as is</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="3401" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4845" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4843" />
-        <location filename="../tilauscope/roast_plan_model.py" line="2986" />
-        <location filename="../tilauscope/displayscope.py" line="3926" />
-        <source>CHARGE</source>
-        <translation>入豆</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_plan_model.py" line="5586" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5287" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4843" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4716" />
-        <location filename="../tilauscope/roast_plan_model.py" line="2988" />
-        <location filename="../tilauscope/displayscope.py" line="3927" />
-        <source>DRY END</source>
-        <translation type="unfinished">脫水結束</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_plan_model.py" line="5587" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5422" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5288" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4845" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4843" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4717" />
-        <location filename="../tilauscope/roast_plan_model.py" line="2989" />
-        <location filename="../tilauscope/displayscope.py" line="3928" />
-        <source>FC START</source>
-        <translation type="unfinished">一爆開始</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="3929" />
-        <source>FC END</source>
-        <translation type="unfinished">一爆結束</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="3930" />
-        <source>SC START</source>
-        <translation type="unfinished">二爆開始</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="3931" />
-        <source>SC END</source>
-        <translation type="unfinished">二爆結束</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="3406" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4843" />
-        <location filename="../tilauscope/roast_plan_model.py" line="2991" />
-        <location filename="../tilauscope/displayscope.py" line="3932" />
-        <source>DROP</source>
-        <translation>下豆</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="3933" />
-        <source>COOL END</source>
-        <translation type="unfinished">冷卻結束</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/cup_profile.py" line="98" />
-        <location filename="../artisanlib/devices.py" line="281" />
-        <location filename="../artisanlib/alarms.py" line="90" />
-        <location filename="../artisanlib/dialogs.py" line="620" />
-        <location filename="../artisanlib/statistics.py" line="287" />
-        <location filename="../artisanlib/roast_properties.py" line="807" />
-        <location filename="../artisanlib/events.py" line="681" />
-        <location filename="../artisanlib/comparator.py" line="1002" />
-        <location filename="../artisanlib/wheels.py" line="112" />
-        <location filename="../tilauscope/alarms.py" line="1309" />
-        <source>Add</source>
-        <translation>加入</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/devices.py" line="303" />
-        <location filename="../artisanlib/alarms.py" line="101" />
-        <location filename="../artisanlib/dialogs.py" line="622" />
-        <location filename="../artisanlib/statistics.py" line="292" />
-        <location filename="../artisanlib/curves.py" line="1391" />
-        <location filename="../artisanlib/roast_properties.py" line="812" />
-        <location filename="../artisanlib/background.py" line="93" />
-        <location filename="../artisanlib/events.py" line="686" />
-        <location filename="../artisanlib/comparator.py" line="1005" />
-        <location filename="../artisanlib/wheels.py" line="444" />
-        <location filename="../tilauscope/alarms.py" line="1316" />
-        <source>Delete</source>
-        <translation>刪除</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/designer.py" line="242" />
-        <location filename="../artisanlib/wheels.py" line="145" />
-        <location filename="../artisanlib/wheels.py" line="60" />
-        <location filename="../tilauscope/alarms.py" line="1356" />
-        <source>Close</source>
-        <translation>關閉</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/dialogs.py" line="629" />
         <location filename="../artisanlib/dialogs.py" line="90" />
         <location filename="../artisanlib/comm.py" line="227" />
@@ -364,6 +223,17 @@
         <location filename="../plus/login.py" line="73" />
         <source>OK</source>
         <translation>確認</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave.py" line="12281" />
+        <location filename="../tilauscope/beancave.py" line="11123" />
+        <location filename="../artisanlib/dialogs.py" line="630" />
+        <location filename="../artisanlib/dialogs.py" line="91" />
+        <location filename="../artisanlib/comm.py" line="228" />
+        <location filename="../artisanlib/pid_dialogs.py" line="3133" />
+        <location filename="../plus/login.py" line="78" />
+        <source>Cancel</source>
+        <translation>取消</translation>
     </message>
     <message>
         <location filename="../artisanlib/colors.py" line="577" />
@@ -379,6 +249,14 @@
         <translation>還原預設值</translation>
     </message>
     <message>
+        <location filename="../tilauscope/alarms.py" line="1356" />
+        <location filename="../artisanlib/designer.py" line="242" />
+        <location filename="../artisanlib/wheels.py" line="145" />
+        <location filename="../artisanlib/wheels.py" line="60" />
+        <source>Close</source>
+        <translation>關閉</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/wheels.py" line="99" />
         <source>Line Color</source>
         <translation>線條顏色</translation>
@@ -387,6 +265,20 @@
         <location filename="../artisanlib/wheels.py" line="102" />
         <source>Text Color</source>
         <translation>文字顏色</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="1309" />
+        <location filename="../artisanlib/cup_profile.py" line="98" />
+        <location filename="../artisanlib/devices.py" line="281" />
+        <location filename="../artisanlib/alarms.py" line="90" />
+        <location filename="../artisanlib/dialogs.py" line="620" />
+        <location filename="../artisanlib/statistics.py" line="287" />
+        <location filename="../artisanlib/roast_properties.py" line="807" />
+        <location filename="../artisanlib/events.py" line="681" />
+        <location filename="../artisanlib/comparator.py" line="1002" />
+        <location filename="../artisanlib/wheels.py" line="112" />
+        <source>Add</source>
+        <translation>加入</translation>
     </message>
     <message>
         <location filename="../artisanlib/wheels.py" line="124" />
@@ -404,10 +296,34 @@
         <translation>開啟</translation>
     </message>
     <message>
+        <location filename="../tilauscope/alarms.py" line="1316" />
+        <location filename="../artisanlib/devices.py" line="303" />
+        <location filename="../artisanlib/alarms.py" line="101" />
+        <location filename="../artisanlib/dialogs.py" line="622" />
+        <location filename="../artisanlib/statistics.py" line="292" />
+        <location filename="../artisanlib/curves.py" line="1391" />
+        <location filename="../artisanlib/roast_properties.py" line="812" />
+        <location filename="../artisanlib/background.py" line="93" />
+        <location filename="../artisanlib/events.py" line="686" />
+        <location filename="../artisanlib/comparator.py" line="1005" />
+        <location filename="../artisanlib/wheels.py" line="444" />
+        <source>Delete</source>
+        <translation>刪除</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="3689" />
         <location filename="../artisanlib/wheels.py" line="447" />
         <source>Update</source>
         <translation>更新</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave.py" line="11699" />
+        <location filename="../tilauscope/beancave.py" line="11664" />
+        <location filename="../artisanlib/devices.py" line="172" />
+        <location filename="../artisanlib/devices.py" line="157" />
+        <location filename="../artisanlib/wheels.py" line="449" />
+        <source>Select</source>
+        <translation>選擇</translation>
     </message>
     <message>
         <location filename="../artisanlib/wheels.py" line="472" />
@@ -980,6 +896,23 @@ END</source>
         <translation>重置</translation>
     </message>
     <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="4845" />
+        <location filename="../tilauscope/roast_plan_model.py" line="4843" />
+        <location filename="../tilauscope/roast_plan_model.py" line="2986" />
+        <location filename="../tilauscope/displayscope.py" line="3929" />
+        <location filename="../artisanlib/main.py" line="3401" />
+        <source>CHARGE</source>
+        <translation>入豆</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="4843" />
+        <location filename="../tilauscope/roast_plan_model.py" line="2991" />
+        <location filename="../tilauscope/displayscope.py" line="3935" />
+        <location filename="../artisanlib/main.py" line="3406" />
+        <source>DROP</source>
+        <translation>下豆</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="3411" />
         <source>CONTROL</source>
         <translation>控制</translation>
@@ -1243,26 +1176,75 @@ END</source>
         <source>Del</source>
         <translation>刪除</translation>
     </message>
+    <message>
+        <location filename="../tilauscope/visualalarm.py" line="133" />
+        <source>Generate explanation (AI)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/visualalarm.py" line="162" />
+        <source>Auto-center timeline</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="2778" />
+        <source>Cancel Roasting</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="2780" />
+        <source>Deactivate all and Roast</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="2782" />
+        <source>Continue as is</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="5586" />
+        <location filename="../tilauscope/roast_plan_model.py" line="5287" />
+        <location filename="../tilauscope/roast_plan_model.py" line="4843" />
+        <location filename="../tilauscope/roast_plan_model.py" line="4716" />
+        <location filename="../tilauscope/roast_plan_model.py" line="2988" />
+        <location filename="../tilauscope/displayscope.py" line="3930" />
+        <source>DRY END</source>
+        <translation type="unfinished">脫水結束</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="5587" />
+        <location filename="../tilauscope/roast_plan_model.py" line="5422" />
+        <location filename="../tilauscope/roast_plan_model.py" line="5288" />
+        <location filename="../tilauscope/roast_plan_model.py" line="4845" />
+        <location filename="../tilauscope/roast_plan_model.py" line="4843" />
+        <location filename="../tilauscope/roast_plan_model.py" line="4717" />
+        <location filename="../tilauscope/roast_plan_model.py" line="2989" />
+        <location filename="../tilauscope/displayscope.py" line="3931" />
+        <source>FC START</source>
+        <translation type="unfinished">一爆開始</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="3932" />
+        <source>FC END</source>
+        <translation type="unfinished">一爆結束</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="3933" />
+        <source>SC START</source>
+        <translation type="unfinished">二爆開始</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="3934" />
+        <source>SC END</source>
+        <translation type="unfinished">二爆結束</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="3936" />
+        <source>COOL END</source>
+        <translation type="unfinished">冷卻結束</translation>
+    </message>
 </context><context>
     <name>CheckBox</name>
-    <message>
-        <location filename="../artisanlib/background.py" line="228" />
-        <location filename="../tilauscope/displayscope.py" line="5949" />
-        <source>Playback Aid</source>
-        <translation>重撥輔助</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/background.py" line="237" />
-        <location filename="../tilauscope/displayscope.py" line="5951" />
-        <source>Playback Events</source>
-        <translation>重撥事件</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/background.py" line="242" />
-        <location filename="../tilauscope/displayscope.py" line="5953" />
-        <source>Playback DROP</source>
-        <translation>重播 下豆</translation>
-    </message>
     <message>
         <location filename="../artisanlib/curves.py" line="1044" />
         <location filename="../artisanlib/curves.py" line="955" />
@@ -1477,10 +1459,28 @@ END</source>
         <translation>顯示全域</translation>
     </message>
     <message>
+        <location filename="../tilauscope/displayscope.py" line="5952" />
+        <location filename="../artisanlib/background.py" line="228" />
+        <source>Playback Aid</source>
+        <translation>重撥輔助</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/curves.py" line="1224" />
         <location filename="../artisanlib/background.py" line="232" />
         <source>Beep</source>
         <translation>嗶嗶聲</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="5954" />
+        <location filename="../artisanlib/background.py" line="237" />
+        <source>Playback Events</source>
+        <translation>重撥事件</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="5956" />
+        <location filename="../artisanlib/background.py" line="242" />
+        <source>Playback DROP</source>
+        <translation>重播 下豆</translation>
     </message>
     <message>
         <location filename="../artisanlib/background.py" line="256" />
@@ -1776,221 +1776,6 @@ END</source>
 </context><context>
     <name>ComboBox</name>
     <message>
-        <location filename="../artisanlib/alarms.py" line="922" />
-        <location filename="../artisanlib/pid_dialogs.py" line="845" />
-        <location filename="../tilauscope/alarms.py" line="554" />
-        <location filename="../tilauscope/displayscope.py" line="2252" />
-        <location filename="../tilauscope/visualalarm.py" line="463" />
-        <source>Pop Up</source>
-        <translation>彈出</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="923" />
-        <location filename="../artisanlib/events.py" line="1287" />
-        <location filename="../artisanlib/events.py" line="778" />
-        <location filename="../artisanlib/events.py" line="136" />
-        <location filename="../artisanlib/pid_dialogs.py" line="846" />
-        <location filename="../tilauscope/alarms.py" line="555" />
-        <location filename="../tilauscope/displayscope.py" line="2253" />
-        <location filename="../tilauscope/visualalarm.py" line="464" />
-        <source>Call Program</source>
-        <translation>呼叫程式</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="924" />
-        <location filename="../artisanlib/events.py" line="294" />
-        <location filename="../artisanlib/pid_dialogs.py" line="847" />
-        <location filename="../tilauscope/alarms.py" line="556" />
-        <location filename="../tilauscope/displayscope.py" line="2254" />
-        <location filename="../tilauscope/visualalarm.py" line="465" />
-        <source>Event Button</source>
-        <translation>事件按鈕</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="928" />
-        <location filename="../artisanlib/alarms.py" line="927" />
-        <location filename="../artisanlib/alarms.py" line="926" />
-        <location filename="../artisanlib/alarms.py" line="925" />
-        <location filename="../artisanlib/pid_dialogs.py" line="851" />
-        <location filename="../artisanlib/pid_dialogs.py" line="850" />
-        <location filename="../artisanlib/pid_dialogs.py" line="849" />
-        <location filename="../artisanlib/pid_dialogs.py" line="848" />
-        <location filename="../tilauscope/displayscope.py" line="2258" />
-        <location filename="../tilauscope/displayscope.py" line="2257" />
-        <location filename="../tilauscope/displayscope.py" line="2256" />
-        <location filename="../tilauscope/displayscope.py" line="2255" />
-        <location filename="../tilauscope/visualalarm.py" line="469" />
-        <location filename="../tilauscope/visualalarm.py" line="468" />
-        <location filename="../tilauscope/visualalarm.py" line="467" />
-        <location filename="../tilauscope/visualalarm.py" line="466" />
-        <source>Slider</source>
-        <translation>控制滑桿</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="929" />
-        <location filename="../artisanlib/alarms.py" line="871" />
-        <location filename="../artisanlib/pid_dialogs.py" line="852" />
-        <location filename="../tilauscope/displayscope.py" line="2259" />
-        <location filename="../tilauscope/visualalarm.py" line="470" />
-        <source>START</source>
-        <translation>開始</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="20619" />
-        <location filename="../artisanlib/alarms.py" line="936" />
-        <location filename="../artisanlib/alarms.py" line="880" />
-        <location filename="../artisanlib/curves.py" line="2149" />
-        <location filename="../artisanlib/roast_properties.py" line="4506" />
-        <location filename="../artisanlib/roast_properties.py" line="758" />
-        <location filename="../artisanlib/background.py" line="1089" />
-        <location filename="../artisanlib/events.py" line="1403" />
-        <location filename="../artisanlib/pid_dialogs.py" line="859" />
-        <location filename="../tilauscope/alarms.py" line="568" />
-        <location filename="../tilauscope/alarms.py" line="94" />
-        <location filename="../tilauscope/displayscope.py" line="2266" />
-        <location filename="../tilauscope/visualalarm.py" line="477" />
-        <source>COOL END</source>
-        <translation>冷卻結束</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="937" />
-        <location filename="../artisanlib/events.py" line="2828" />
-        <location filename="../artisanlib/pid_dialogs.py" line="860" />
-        <location filename="../tilauscope/displayscope.py" line="2267" />
-        <location filename="../tilauscope/visualalarm.py" line="478" />
-        <source>OFF</source>
-        <translation>關閉</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="939" />
-        <location filename="../artisanlib/pid_dialogs.py" line="862" />
-        <location filename="../tilauscope/alarms.py" line="571" />
-        <location filename="../tilauscope/displayscope.py" line="2269" />
-        <location filename="../tilauscope/visualalarm.py" line="480" />
-        <source>RampSoak ON</source>
-        <translation>RampSoak 開啟</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="940" />
-        <location filename="../artisanlib/pid_dialogs.py" line="863" />
-        <location filename="../tilauscope/alarms.py" line="572" />
-        <location filename="../tilauscope/displayscope.py" line="2270" />
-        <location filename="../tilauscope/visualalarm.py" line="481" />
-        <source>RampSoak OFF</source>
-        <translation>RampSoak 關閉</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="941" />
-        <location filename="../artisanlib/pid_dialogs.py" line="864" />
-        <location filename="../tilauscope/alarms.py" line="573" />
-        <location filename="../tilauscope/displayscope.py" line="2271" />
-        <location filename="../tilauscope/visualalarm.py" line="482" />
-        <source>PID ON</source>
-        <translation>PID開啟</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="942" />
-        <location filename="../artisanlib/pid_dialogs.py" line="865" />
-        <location filename="../tilauscope/alarms.py" line="574" />
-        <location filename="../tilauscope/displayscope.py" line="2272" />
-        <location filename="../tilauscope/visualalarm.py" line="483" />
-        <source>PID OFF</source>
-        <translation>PID關閉</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="943" />
-        <location filename="../artisanlib/pid_dialogs.py" line="866" />
-        <location filename="../tilauscope/displayscope.py" line="2273" />
-        <location filename="../tilauscope/visualalarm.py" line="484" />
-        <source>SV</source>
-        <translation>SV</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="12677" />
-        <location filename="../artisanlib/alarms.py" line="944" />
-        <location filename="../artisanlib/pid_dialogs.py" line="867" />
-        <location filename="../tilauscope/alarms.py" line="576" />
-        <location filename="../tilauscope/displayscope.py" line="2274" />
-        <location filename="../tilauscope/visualalarm.py" line="485" />
-        <source>Playback ON</source>
-        <translation>開啟重播</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="12679" />
-        <location filename="../artisanlib/alarms.py" line="945" />
-        <location filename="../artisanlib/pid_dialogs.py" line="868" />
-        <location filename="../tilauscope/alarms.py" line="577" />
-        <location filename="../tilauscope/displayscope.py" line="2275" />
-        <location filename="../tilauscope/visualalarm.py" line="486" />
-        <source>Playback OFF</source>
-        <translation>關閉重播</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="946" />
-        <location filename="../artisanlib/pid_dialogs.py" line="869" />
-        <location filename="../tilauscope/alarms.py" line="578" />
-        <location filename="../tilauscope/displayscope.py" line="2276" />
-        <location filename="../tilauscope/visualalarm.py" line="487" />
-        <source>Set Canvas Color</source>
-        <translation>設定畫布顏色</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="947" />
-        <location filename="../artisanlib/pid_dialogs.py" line="870" />
-        <location filename="../tilauscope/alarms.py" line="579" />
-        <location filename="../tilauscope/displayscope.py" line="2277" />
-        <location filename="../tilauscope/visualalarm.py" line="488" />
-        <source>Reset Canvas Color</source>
-        <translation>重置畫布顏色</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="1900" />
-        <location filename="../artisanlib/canvas.py" line="1893" />
-        <location filename="../artisanlib/canvas.py" line="1886" />
-        <location filename="../artisanlib/canvas.py" line="1643" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5773" />
-        <location filename="../tilauscope/hibean.py" line="686" />
-        <location filename="../tilauscope/hibean.py" line="685" />
-        <source>Drum</source>
-        <translation>滾筒</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="1902" />
-        <location filename="../tilauscope/hibean.py" line="688" />
-        <source>Heater</source>
-        <translation>加熱器</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="1892" />
-        <location filename="../artisanlib/canvas.py" line="1885" />
-        <location filename="../artisanlib/canvas.py" line="1642" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5772" />
-        <source>Air</source>
-        <translation>風量</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="1894" />
-        <location filename="../artisanlib/canvas.py" line="1887" />
-        <location filename="../artisanlib/canvas.py" line="1644" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5774" />
-        <source>Damper</source>
-        <translation>風門</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="1895" />
-        <location filename="../artisanlib/canvas.py" line="1888" />
-        <location filename="../artisanlib/canvas.py" line="1645" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5775" />
-        <source>Burner</source>
-        <translation>火電</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="881" />
-        <location filename="../tilauscope/alarms.py" line="95" />
-        <source>If Alarm</source>
-        <translation>警報響時</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/axis.py" line="138" />
         <source>upper right</source>
         <translation>右上</translation>
@@ -2137,6 +1922,174 @@ END</source>
         <location filename="../artisanlib/wheels.py" line="465" />
         <source>Radial</source>
         <translation>徑向</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="554" />
+        <location filename="../tilauscope/displayscope.py" line="2255" />
+        <location filename="../tilauscope/visualalarm.py" line="463" />
+        <location filename="../artisanlib/alarms.py" line="922" />
+        <location filename="../artisanlib/pid_dialogs.py" line="845" />
+        <source>Pop Up</source>
+        <translation>彈出</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="555" />
+        <location filename="../tilauscope/displayscope.py" line="2256" />
+        <location filename="../tilauscope/visualalarm.py" line="464" />
+        <location filename="../artisanlib/alarms.py" line="923" />
+        <location filename="../artisanlib/events.py" line="1287" />
+        <location filename="../artisanlib/events.py" line="778" />
+        <location filename="../artisanlib/events.py" line="136" />
+        <location filename="../artisanlib/pid_dialogs.py" line="846" />
+        <source>Call Program</source>
+        <translation>呼叫程式</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="556" />
+        <location filename="../tilauscope/displayscope.py" line="2257" />
+        <location filename="../tilauscope/visualalarm.py" line="465" />
+        <location filename="../artisanlib/alarms.py" line="924" />
+        <location filename="../artisanlib/events.py" line="294" />
+        <location filename="../artisanlib/pid_dialogs.py" line="847" />
+        <source>Event Button</source>
+        <translation>事件按鈕</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="2261" />
+        <location filename="../tilauscope/displayscope.py" line="2260" />
+        <location filename="../tilauscope/displayscope.py" line="2259" />
+        <location filename="../tilauscope/displayscope.py" line="2258" />
+        <location filename="../tilauscope/visualalarm.py" line="469" />
+        <location filename="../tilauscope/visualalarm.py" line="468" />
+        <location filename="../tilauscope/visualalarm.py" line="467" />
+        <location filename="../tilauscope/visualalarm.py" line="466" />
+        <location filename="../artisanlib/alarms.py" line="928" />
+        <location filename="../artisanlib/alarms.py" line="927" />
+        <location filename="../artisanlib/alarms.py" line="926" />
+        <location filename="../artisanlib/alarms.py" line="925" />
+        <location filename="../artisanlib/pid_dialogs.py" line="851" />
+        <location filename="../artisanlib/pid_dialogs.py" line="850" />
+        <location filename="../artisanlib/pid_dialogs.py" line="849" />
+        <location filename="../artisanlib/pid_dialogs.py" line="848" />
+        <source>Slider</source>
+        <translation>控制滑桿</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="2262" />
+        <location filename="../tilauscope/visualalarm.py" line="470" />
+        <location filename="../artisanlib/alarms.py" line="929" />
+        <location filename="../artisanlib/alarms.py" line="871" />
+        <location filename="../artisanlib/pid_dialogs.py" line="852" />
+        <source>START</source>
+        <translation>開始</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="568" />
+        <location filename="../tilauscope/alarms.py" line="94" />
+        <location filename="../tilauscope/displayscope.py" line="2269" />
+        <location filename="../tilauscope/visualalarm.py" line="477" />
+        <location filename="../artisanlib/canvas.py" line="20619" />
+        <location filename="../artisanlib/alarms.py" line="936" />
+        <location filename="../artisanlib/alarms.py" line="880" />
+        <location filename="../artisanlib/curves.py" line="2149" />
+        <location filename="../artisanlib/roast_properties.py" line="4506" />
+        <location filename="../artisanlib/roast_properties.py" line="758" />
+        <location filename="../artisanlib/background.py" line="1089" />
+        <location filename="../artisanlib/events.py" line="1403" />
+        <location filename="../artisanlib/pid_dialogs.py" line="859" />
+        <source>COOL END</source>
+        <translation>冷卻結束</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="2270" />
+        <location filename="../tilauscope/visualalarm.py" line="478" />
+        <location filename="../artisanlib/alarms.py" line="937" />
+        <location filename="../artisanlib/events.py" line="2828" />
+        <location filename="../artisanlib/pid_dialogs.py" line="860" />
+        <source>OFF</source>
+        <translation>關閉</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="571" />
+        <location filename="../tilauscope/displayscope.py" line="2272" />
+        <location filename="../tilauscope/visualalarm.py" line="480" />
+        <location filename="../artisanlib/alarms.py" line="939" />
+        <location filename="../artisanlib/pid_dialogs.py" line="862" />
+        <source>RampSoak ON</source>
+        <translation>RampSoak 開啟</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="572" />
+        <location filename="../tilauscope/displayscope.py" line="2273" />
+        <location filename="../tilauscope/visualalarm.py" line="481" />
+        <location filename="../artisanlib/alarms.py" line="940" />
+        <location filename="../artisanlib/pid_dialogs.py" line="863" />
+        <source>RampSoak OFF</source>
+        <translation>RampSoak 關閉</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="573" />
+        <location filename="../tilauscope/displayscope.py" line="2274" />
+        <location filename="../tilauscope/visualalarm.py" line="482" />
+        <location filename="../artisanlib/alarms.py" line="941" />
+        <location filename="../artisanlib/pid_dialogs.py" line="864" />
+        <source>PID ON</source>
+        <translation>PID開啟</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="574" />
+        <location filename="../tilauscope/displayscope.py" line="2275" />
+        <location filename="../tilauscope/visualalarm.py" line="483" />
+        <location filename="../artisanlib/alarms.py" line="942" />
+        <location filename="../artisanlib/pid_dialogs.py" line="865" />
+        <source>PID OFF</source>
+        <translation>PID關閉</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="2276" />
+        <location filename="../tilauscope/visualalarm.py" line="484" />
+        <location filename="../artisanlib/alarms.py" line="943" />
+        <location filename="../artisanlib/pid_dialogs.py" line="866" />
+        <source>SV</source>
+        <translation>SV</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="576" />
+        <location filename="../tilauscope/displayscope.py" line="2277" />
+        <location filename="../tilauscope/visualalarm.py" line="485" />
+        <location filename="../artisanlib/main.py" line="12677" />
+        <location filename="../artisanlib/alarms.py" line="944" />
+        <location filename="../artisanlib/pid_dialogs.py" line="867" />
+        <source>Playback ON</source>
+        <translation>開啟重播</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="577" />
+        <location filename="../tilauscope/displayscope.py" line="2278" />
+        <location filename="../tilauscope/visualalarm.py" line="486" />
+        <location filename="../artisanlib/main.py" line="12679" />
+        <location filename="../artisanlib/alarms.py" line="945" />
+        <location filename="../artisanlib/pid_dialogs.py" line="868" />
+        <source>Playback OFF</source>
+        <translation>關閉重播</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="578" />
+        <location filename="../tilauscope/displayscope.py" line="2279" />
+        <location filename="../tilauscope/visualalarm.py" line="487" />
+        <location filename="../artisanlib/alarms.py" line="946" />
+        <location filename="../artisanlib/pid_dialogs.py" line="869" />
+        <source>Set Canvas Color</source>
+        <translation>設定畫布顏色</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="579" />
+        <location filename="../tilauscope/displayscope.py" line="2280" />
+        <location filename="../tilauscope/visualalarm.py" line="488" />
+        <location filename="../artisanlib/alarms.py" line="947" />
+        <location filename="../artisanlib/pid_dialogs.py" line="870" />
+        <source>Reset Canvas Color</source>
+        <translation>重置畫布顏色</translation>
     </message>
     <message>
         <location filename="../artisanlib/events.py" line="1286" />
@@ -2507,9 +2460,50 @@ END</source>
         <translation>回溫點</translation>
     </message>
     <message>
+        <location filename="../tilauscope/alarms.py" line="95" />
+        <location filename="../artisanlib/alarms.py" line="881" />
+        <source>If Alarm</source>
+        <translation>警報響時</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/transposer.py" line="155" />
         <source>discrete</source>
         <translation>離散</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="5772" />
+        <location filename="../artisanlib/canvas.py" line="1892" />
+        <location filename="../artisanlib/canvas.py" line="1885" />
+        <location filename="../artisanlib/canvas.py" line="1642" />
+        <source>Air</source>
+        <translation>風量</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="5773" />
+        <location filename="../tilauscope/hibean.py" line="686" />
+        <location filename="../tilauscope/hibean.py" line="685" />
+        <location filename="../artisanlib/canvas.py" line="1900" />
+        <location filename="../artisanlib/canvas.py" line="1893" />
+        <location filename="../artisanlib/canvas.py" line="1886" />
+        <location filename="../artisanlib/canvas.py" line="1643" />
+        <source>Drum</source>
+        <translation>滾筒</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="5774" />
+        <location filename="../artisanlib/canvas.py" line="1894" />
+        <location filename="../artisanlib/canvas.py" line="1887" />
+        <location filename="../artisanlib/canvas.py" line="1644" />
+        <source>Damper</source>
+        <translation>風門</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="5775" />
+        <location filename="../artisanlib/canvas.py" line="1895" />
+        <location filename="../artisanlib/canvas.py" line="1888" />
+        <location filename="../artisanlib/canvas.py" line="1645" />
+        <source>Burner</source>
+        <translation>火電</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="1672" />
@@ -2537,6 +2531,12 @@ END</source>
         <translation type="unfinished">冷卻</translation>
     </message>
     <message>
+        <location filename="../tilauscope/hibean.py" line="688" />
+        <location filename="../artisanlib/canvas.py" line="1902" />
+        <source>Heater</source>
+        <translation>加熱器</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/canvas.py" line="2577" />
         <source>Elec</source>
         <translation>電</translation>
@@ -2544,42 +2544,42 @@ END</source>
 </context><context>
     <name>Combobox</name>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="2278" />
+        <location filename="../tilauscope/alarms.py" line="580" />
+        <location filename="../artisanlib/alarms.py" line="949" />
+        <location filename="../artisanlib/pid_dialogs.py" line="872" />
+        <source>Difluid Airwave command</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="581" />
+        <location filename="../artisanlib/alarms.py" line="950" />
+        <location filename="../artisanlib/pid_dialogs.py" line="873" />
+        <source>TilauScope Ambient command</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="582" />
+        <location filename="../artisanlib/alarms.py" line="951" />
+        <location filename="../artisanlib/pid_dialogs.py" line="874" />
+        <source>TilauScope command</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="2281" />
         <location filename="../tilauscope/visualalarm.py" line="489" />
         <source>Airwave</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="2279" />
+        <location filename="../tilauscope/displayscope.py" line="2282" />
         <location filename="../tilauscope/visualalarm.py" line="490" />
         <source>TilauScope Ambient</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="2280" />
+        <location filename="../tilauscope/displayscope.py" line="2283" />
         <location filename="../tilauscope/visualalarm.py" line="491" />
         <source>TilauScope kernel</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="949" />
-        <location filename="../artisanlib/pid_dialogs.py" line="872" />
-        <location filename="../tilauscope/alarms.py" line="580" />
-        <source>Difluid Airwave command</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="950" />
-        <location filename="../artisanlib/pid_dialogs.py" line="873" />
-        <location filename="../tilauscope/alarms.py" line="581" />
-        <source>TilauScope Ambient command</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="951" />
-        <location filename="../artisanlib/pid_dialogs.py" line="874" />
-        <location filename="../tilauscope/alarms.py" line="582" />
-        <source>TilauScope command</source>
         <translation type="unfinished" />
     </message>
 </context><context>
@@ -11493,590 +11493,6 @@ https://artisan-roasterscope.blogspot.com/2015/10/signals-symbolic-assignments-a
 </context><context>
     <name>Label</name>
     <message>
-        <location filename="../tilauscope/visualalarm.py" line="97" />
-        <source>Visual Alarm Timeline</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="20601" />
-        <location filename="../artisanlib/canvas.py" line="4392" />
-        <location filename="../artisanlib/transposer.py" line="1209" />
-        <location filename="../artisanlib/transposer.py" line="1138" />
-        <location filename="../artisanlib/alarms.py" line="930" />
-        <location filename="../artisanlib/alarms.py" line="874" />
-        <location filename="../artisanlib/statistics.py" line="102" />
-        <location filename="../artisanlib/curves.py" line="2143" />
-        <location filename="../artisanlib/curves.py" line="1005" />
-        <location filename="../artisanlib/curves.py" line="973" />
-        <location filename="../artisanlib/designer.py" line="632" />
-        <location filename="../artisanlib/designer.py" line="345" />
-        <location filename="../artisanlib/designer.py" line="50" />
-        <location filename="../artisanlib/roast_properties.py" line="4488" />
-        <location filename="../artisanlib/roast_properties.py" line="672" />
-        <location filename="../artisanlib/background.py" line="1071" />
-        <location filename="../artisanlib/events.py" line="1325" />
-        <location filename="../artisanlib/pid_dialogs.py" line="853" />
-        <location filename="../tilauscope/alarms.py" line="562" />
-        <location filename="../tilauscope/alarms.py" line="88" />
-        <location filename="../tilauscope/displayscope.py" line="2260" />
-        <location filename="../tilauscope/visualalarm.py" line="471" />
-        <source>DRY END</source>
-        <translation>脫水結束</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="20604" />
-        <location filename="../artisanlib/canvas.py" line="4393" />
-        <location filename="../artisanlib/transposer.py" line="1210" />
-        <location filename="../artisanlib/transposer.py" line="1139" />
-        <location filename="../artisanlib/alarms.py" line="931" />
-        <location filename="../artisanlib/alarms.py" line="875" />
-        <location filename="../artisanlib/statistics.py" line="103" />
-        <location filename="../artisanlib/curves.py" line="2144" />
-        <location filename="../artisanlib/designer.py" line="633" />
-        <location filename="../artisanlib/designer.py" line="346" />
-        <location filename="../artisanlib/designer.py" line="52" />
-        <location filename="../artisanlib/roast_properties.py" line="4491" />
-        <location filename="../artisanlib/roast_properties.py" line="686" />
-        <location filename="../artisanlib/background.py" line="1074" />
-        <location filename="../artisanlib/events.py" line="1338" />
-        <location filename="../artisanlib/pid_dialogs.py" line="854" />
-        <location filename="../tilauscope/alarms.py" line="563" />
-        <location filename="../tilauscope/alarms.py" line="89" />
-        <location filename="../tilauscope/displayscope.py" line="2261" />
-        <location filename="../tilauscope/visualalarm.py" line="472" />
-        <source>FC START</source>
-        <translation>一爆開始</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="20607" />
-        <location filename="../artisanlib/canvas.py" line="4394" />
-        <location filename="../artisanlib/alarms.py" line="932" />
-        <location filename="../artisanlib/alarms.py" line="876" />
-        <location filename="../artisanlib/curves.py" line="2145" />
-        <location filename="../artisanlib/designer.py" line="634" />
-        <location filename="../artisanlib/designer.py" line="347" />
-        <location filename="../artisanlib/designer.py" line="54" />
-        <location filename="../artisanlib/roast_properties.py" line="4494" />
-        <location filename="../artisanlib/roast_properties.py" line="701" />
-        <location filename="../artisanlib/background.py" line="1077" />
-        <location filename="../artisanlib/events.py" line="1351" />
-        <location filename="../artisanlib/pid_dialogs.py" line="855" />
-        <location filename="../tilauscope/alarms.py" line="564" />
-        <location filename="../tilauscope/alarms.py" line="90" />
-        <location filename="../tilauscope/displayscope.py" line="2262" />
-        <location filename="../tilauscope/visualalarm.py" line="473" />
-        <source>FC END</source>
-        <translation>一爆結束</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="20610" />
-        <location filename="../artisanlib/canvas.py" line="4736" />
-        <location filename="../artisanlib/canvas.py" line="4395" />
-        <location filename="../artisanlib/transposer.py" line="1211" />
-        <location filename="../artisanlib/transposer.py" line="1140" />
-        <location filename="../artisanlib/alarms.py" line="933" />
-        <location filename="../artisanlib/alarms.py" line="877" />
-        <location filename="../artisanlib/curves.py" line="2146" />
-        <location filename="../artisanlib/designer.py" line="635" />
-        <location filename="../artisanlib/designer.py" line="348" />
-        <location filename="../artisanlib/designer.py" line="56" />
-        <location filename="../artisanlib/roast_properties.py" line="4497" />
-        <location filename="../artisanlib/roast_properties.py" line="715" />
-        <location filename="../artisanlib/background.py" line="1080" />
-        <location filename="../artisanlib/events.py" line="1364" />
-        <location filename="../artisanlib/pid_dialogs.py" line="856" />
-        <location filename="../tilauscope/alarms.py" line="565" />
-        <location filename="../tilauscope/alarms.py" line="91" />
-        <location filename="../tilauscope/displayscope.py" line="2263" />
-        <location filename="../tilauscope/visualalarm.py" line="474" />
-        <source>SC START</source>
-        <translation>二爆開始</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="20613" />
-        <location filename="../artisanlib/canvas.py" line="4737" />
-        <location filename="../artisanlib/canvas.py" line="4396" />
-        <location filename="../artisanlib/alarms.py" line="934" />
-        <location filename="../artisanlib/alarms.py" line="878" />
-        <location filename="../artisanlib/curves.py" line="2147" />
-        <location filename="../artisanlib/designer.py" line="636" />
-        <location filename="../artisanlib/designer.py" line="349" />
-        <location filename="../artisanlib/designer.py" line="58" />
-        <location filename="../artisanlib/roast_properties.py" line="4500" />
-        <location filename="../artisanlib/roast_properties.py" line="729" />
-        <location filename="../artisanlib/background.py" line="1083" />
-        <location filename="../artisanlib/events.py" line="1377" />
-        <location filename="../artisanlib/pid_dialogs.py" line="857" />
-        <location filename="../tilauscope/alarms.py" line="566" />
-        <location filename="../tilauscope/alarms.py" line="92" />
-        <location filename="../tilauscope/displayscope.py" line="2264" />
-        <location filename="../tilauscope/visualalarm.py" line="475" />
-        <source>SC END</source>
-        <translation>二爆結束</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="20616" />
-        <location filename="../artisanlib/canvas.py" line="13364" />
-        <location filename="../artisanlib/canvas.py" line="4739" />
-        <location filename="../artisanlib/canvas.py" line="4397" />
-        <location filename="../artisanlib/canvas.py" line="1420" />
-        <location filename="../artisanlib/transposer.py" line="1212" />
-        <location filename="../artisanlib/transposer.py" line="1141" />
-        <location filename="../artisanlib/devices.py" line="1187" />
-        <location filename="../artisanlib/alarms.py" line="935" />
-        <location filename="../artisanlib/alarms.py" line="879" />
-        <location filename="../artisanlib/curves.py" line="2148" />
-        <location filename="../artisanlib/designer.py" line="637" />
-        <location filename="../artisanlib/designer.py" line="350" />
-        <location filename="../artisanlib/designer.py" line="60" />
-        <location filename="../artisanlib/roast_properties.py" line="4503" />
-        <location filename="../artisanlib/roast_properties.py" line="744" />
-        <location filename="../artisanlib/background.py" line="1086" />
-        <location filename="../artisanlib/background.py" line="110" />
-        <location filename="../artisanlib/ports.py" line="1381" />
-        <location filename="../artisanlib/events.py" line="1390" />
-        <location filename="../artisanlib/events.py" line="621" />
-        <location filename="../artisanlib/events.py" line="593" />
-        <location filename="../artisanlib/events.py" line="590" />
-        <location filename="../artisanlib/pid_dialogs.py" line="858" />
-        <location filename="../artisanlib/comparator.py" line="1034" />
-        <location filename="../tilauscope/alarms.py" line="567" />
-        <location filename="../tilauscope/alarms.py" line="93" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5421" />
-        <location filename="../tilauscope/displayscope.py" line="2265" />
-        <location filename="../tilauscope/visualalarm.py" line="476" />
-        <source>DROP</source>
-        <translation>下豆</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="20598" />
-        <location filename="../artisanlib/canvas.py" line="16372" />
-        <location filename="../artisanlib/canvas.py" line="16298" />
-        <location filename="../artisanlib/canvas.py" line="13684" />
-        <location filename="../artisanlib/canvas.py" line="13363" />
-        <location filename="../artisanlib/canvas.py" line="10103" />
-        <location filename="../artisanlib/canvas.py" line="10098" />
-        <location filename="../artisanlib/canvas.py" line="4391" />
-        <location filename="../artisanlib/canvas.py" line="1414" />
-        <location filename="../artisanlib/transposer.py" line="1208" />
-        <location filename="../artisanlib/devices.py" line="1181" />
-        <location filename="../artisanlib/alarms.py" line="938" />
-        <location filename="../artisanlib/alarms.py" line="872" />
-        <location filename="../artisanlib/statistics.py" line="100" />
-        <location filename="../artisanlib/curves.py" line="2141" />
-        <location filename="../artisanlib/designer.py" line="631" />
-        <location filename="../artisanlib/designer.py" line="344" />
-        <location filename="../artisanlib/designer.py" line="47" />
-        <location filename="../artisanlib/roast_properties.py" line="4485" />
-        <location filename="../artisanlib/roast_properties.py" line="661" />
-        <location filename="../artisanlib/background.py" line="1068" />
-        <location filename="../artisanlib/background.py" line="104" />
-        <location filename="../artisanlib/ports.py" line="1379" />
-        <location filename="../artisanlib/events.py" line="1312" />
-        <location filename="../artisanlib/events.py" line="583" />
-        <location filename="../artisanlib/events.py" line="572" />
-        <location filename="../artisanlib/events.py" line="568" />
-        <location filename="../artisanlib/events.py" line="565" />
-        <location filename="../artisanlib/events.py" line="562" />
-        <location filename="../artisanlib/pid_dialogs.py" line="861" />
-        <location filename="../artisanlib/comparator.py" line="1027" />
-        <location filename="../tilauscope/alarms.py" line="570" />
-        <location filename="../tilauscope/alarms.py" line="86" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5420" />
-        <location filename="../tilauscope/displayscope.py" line="2268" />
-        <location filename="../tilauscope/visualalarm.py" line="479" />
-        <source>CHARGE</source>
-        <translation>入豆</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="20245" />
-        <location filename="../artisanlib/canvas.py" line="20235" />
-        <location filename="../artisanlib/canvas.py" line="10652" />
-        <location filename="../artisanlib/canvas.py" line="10596" />
-        <location filename="../artisanlib/canvas.py" line="4725" />
-        <location filename="../artisanlib/main.py" line="19548" />
-        <location filename="../artisanlib/main.py" line="6316" />
-        <location filename="../artisanlib/main.py" line="6310" />
-        <location filename="../artisanlib/main.py" line="6286" />
-        <location filename="../artisanlib/main.py" line="6262" />
-        <location filename="../artisanlib/main.py" line="6256" />
-        <location filename="../artisanlib/main.py" line="3811" />
-        <location filename="../artisanlib/main.py" line="3567" />
-        <location filename="../artisanlib/main.py" line="3557" />
-        <location filename="../artisanlib/curves.py" line="2260" />
-        <location filename="../artisanlib/curves.py" line="1598" />
-        <location filename="../artisanlib/curves.py" line="1360" />
-        <location filename="../artisanlib/curves.py" line="554" />
-        <location filename="../artisanlib/curves.py" line="517" />
-        <location filename="../artisanlib/curves.py" line="454" />
-        <location filename="../artisanlib/curves.py" line="434" />
-        <location filename="../artisanlib/curves.py" line="346" />
-        <location filename="../artisanlib/designer.py" line="222" />
-        <location filename="../artisanlib/designer.py" line="77" />
-        <location filename="../artisanlib/events.py" line="307" />
-        <location filename="../artisanlib/events.py" line="307" />
-        <location filename="../artisanlib/events.py" line="304" />
-        <location filename="../artisanlib/events.py" line="302" />
-        <location filename="../artisanlib/comm.py" line="215" />
-        <location filename="../artisanlib/comparator.py" line="862" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5379" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4941" />
-        <location filename="../tilauscope/displayscope.py" line="2050" />
-        <location filename="../tilauscope/beancave.py" line="7488" />
-        <location filename="../tilauscope/beancave.py" line="6785" />
-        <location filename="../tilauscope/beancave.py" line="6747" />
-        <location filename="../tilauscope/beancave.py" line="4692" />
-        <location filename="../tilauscope/beancave.py" line="4427" />
-        <source>BT</source>
-        <translation>豆溫</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="4734" />
-        <location filename="../artisanlib/events.py" line="770" />
-        <location filename="../tilauscope/beancave.py" line="4644" />
-        <source>Temp</source>
-        <translation>溫度</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="18031" />
-        <location filename="../artisanlib/canvas.py" line="18020" />
-        <location filename="../artisanlib/main.py" line="28355" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4959" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4935" />
-        <location filename="../tilauscope/displayscope.py" line="1999" />
-        <location filename="../tilauscope/beancave.py" line="6786" />
-        <location filename="../tilauscope/beancave.py" line="6785" />
-        <location filename="../tilauscope/beancave.py" line="6783" />
-        <location filename="../tilauscope/beancave.py" line="4696" />
-        <location filename="../tilauscope/beancave.py" line="4663" />
-        <source>RoR</source>
-        <translation />
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="20242" />
-        <location filename="../artisanlib/canvas.py" line="20231" />
-        <location filename="../artisanlib/canvas.py" line="10625" />
-        <location filename="../artisanlib/canvas.py" line="10574" />
-        <location filename="../artisanlib/canvas.py" line="4724" />
-        <location filename="../artisanlib/main.py" line="19541" />
-        <location filename="../artisanlib/main.py" line="6313" />
-        <location filename="../artisanlib/main.py" line="6307" />
-        <location filename="../artisanlib/main.py" line="6283" />
-        <location filename="../artisanlib/main.py" line="6265" />
-        <location filename="../artisanlib/main.py" line="6259" />
-        <location filename="../artisanlib/main.py" line="3810" />
-        <location filename="../artisanlib/main.py" line="3562" />
-        <location filename="../artisanlib/main.py" line="3552" />
-        <location filename="../artisanlib/curves.py" line="2255" />
-        <location filename="../artisanlib/curves.py" line="1607" />
-        <location filename="../artisanlib/curves.py" line="1357" />
-        <location filename="../artisanlib/curves.py" line="553" />
-        <location filename="../artisanlib/curves.py" line="511" />
-        <location filename="../artisanlib/curves.py" line="453" />
-        <location filename="../artisanlib/curves.py" line="434" />
-        <location filename="../artisanlib/curves.py" line="341" />
-        <location filename="../artisanlib/designer.py" line="221" />
-        <location filename="../artisanlib/designer.py" line="79" />
-        <location filename="../artisanlib/events.py" line="621" />
-        <location filename="../artisanlib/events.py" line="307" />
-        <location filename="../artisanlib/comparator.py" line="878" />
-        <location filename="../tilauscope/displayscope.py" line="2049" />
-        <location filename="../tilauscope/beancave.py" line="7491" />
-        <location filename="../tilauscope/beancave.py" line="6786" />
-        <location filename="../tilauscope/beancave.py" line="6748" />
-        <location filename="../tilauscope/beancave.py" line="4698" />
-        <source>ET</source>
-        <translation>出風溫</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="4732" />
-        <location filename="../artisanlib/main.py" line="1317" />
-        <location filename="../artisanlib/designer.py" line="75" />
-        <location filename="../tilauscope/beancave.py" line="7487" />
-        <location filename="../tilauscope/beancave.py" line="4852" />
-        <source>Time</source>
-        <translation>時間</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="24646" />
-        <location filename="../artisanlib/roast_properties.py" line="1738" />
-        <location filename="../plus/schedule.py" line="2085" />
-        <location filename="../tilauscope/beancave.py" line="6186" />
-        <source>Defects</source>
-        <translation type="unfinished">瑕疵</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/alarms.py" line="143" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5426" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5225" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5018" />
-        <location filename="../tilauscope/beancave.py" line="6506" />
-        <source>Development</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/beancave.py" line="7493" />
-        <source>RoR BT</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/beancave.py" line="7495" />
-        <source>RoR ET</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27668" />
-        <location filename="../artisanlib/main.py" line="27667" />
-        <location filename="../artisanlib/main.py" line="27665" />
-        <location filename="../artisanlib/ports.py" line="1159" />
-        <location filename="../artisanlib/ports.py" line="695" />
-        <location filename="../artisanlib/events.py" line="1437" />
-        <location filename="../tilauscope/alarms.py" line="569" />
-        <location filename="../tilauscope/displayscope.py" line="234" />
-        <location filename="../tilauscope/displayscope.py" line="231" />
-        <source>OFF</source>
-        <translation>關閉</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27668" />
-        <location filename="../artisanlib/main.py" line="27667" />
-        <location filename="../artisanlib/main.py" line="27666" />
-        <location filename="../artisanlib/ports.py" line="1162" />
-        <location filename="../artisanlib/ports.py" line="698" />
-        <location filename="../artisanlib/events.py" line="1416" />
-        <location filename="../artisanlib/comparator.py" line="1579" />
-        <location filename="../tilauscope/alarms.py" line="84" />
-        <location filename="../tilauscope/displayscope.py" line="233" />
-        <location filename="../tilauscope/displayscope.py" line="232" />
-        <source>ON</source>
-        <translation>開啟</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27683" />
-        <location filename="../artisanlib/main.py" line="27670" />
-        <location filename="../artisanlib/main.py" line="27669" />
-        <location filename="../tilauscope/displayscope.py" line="249" />
-        <location filename="../tilauscope/displayscope.py" line="235" />
-        <source>AUTO</source>
-        <translation>自動</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27683" />
-        <location filename="../artisanlib/main.py" line="27682" />
-        <location filename="../artisanlib/main.py" line="27670" />
-        <location filename="../tilauscope/displayscope.py" line="248" />
-        <location filename="../tilauscope/displayscope.py" line="236" />
-        <source>MANUAL</source>
-        <translation>手動</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27671" />
-        <location filename="../tilauscope/displayscope.py" line="237" />
-        <source>FLAP</source>
-        <translation>襟翼</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27685" />
-        <location filename="../artisanlib/main.py" line="27673" />
-        <location filename="../artisanlib/main.py" line="27672" />
-        <location filename="../tilauscope/displayscope.py" line="251" />
-        <location filename="../tilauscope/displayscope.py" line="238" />
-        <source>CLOSE</source>
-        <translation>關閉</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27685" />
-        <location filename="../artisanlib/main.py" line="27684" />
-        <location filename="../artisanlib/main.py" line="27673" />
-        <location filename="../tilauscope/displayscope.py" line="250" />
-        <location filename="../tilauscope/displayscope.py" line="239" />
-        <source>OPEN</source>
-        <translation>打開</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27674" />
-        <location filename="../tilauscope/displayscope.py" line="240" />
-        <source>CONTROL</source>
-        <translation type="unfinished">控制</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27675" />
-        <location filename="../tilauscope/displayscope.py" line="241" />
-        <source>DISCHARGE</source>
-        <translation>釋放</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27677" />
-        <location filename="../tilauscope/displayscope.py" line="243" />
-        <source>HEATING</source>
-        <translation>加熱</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27678" />
-        <location filename="../tilauscope/displayscope.py" line="244" />
-        <source>STIRRER</source>
-        <translation>攪拌器</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27679" />
-        <location filename="../tilauscope/displayscope.py" line="245" />
-        <source>FILL</source>
-        <translation>充滿</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27681" />
-        <location filename="../tilauscope/displayscope.py" line="247" />
-        <source>COOLING</source>
-        <translation>冷卻</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27692" />
-        <location filename="../artisanlib/main.py" line="27687" />
-        <location filename="../artisanlib/main.py" line="27686" />
-        <location filename="../tilauscope/displayscope.py" line="258" />
-        <location filename="../tilauscope/displayscope.py" line="252" />
-        <source>STOP</source>
-        <translation>停止</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27692" />
-        <location filename="../artisanlib/main.py" line="27691" />
-        <location filename="../artisanlib/main.py" line="27687" />
-        <location filename="../artisanlib/events.py" line="1474" />
-        <location filename="../artisanlib/events.py" line="583" />
-        <location filename="../artisanlib/events.py" line="572" />
-        <location filename="../tilauscope/alarms.py" line="561" />
-        <location filename="../tilauscope/alarms.py" line="85" />
-        <location filename="../tilauscope/displayscope.py" line="257" />
-        <location filename="../tilauscope/displayscope.py" line="253" />
-        <source>START</source>
-        <translation>開始</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27690" />
-        <location filename="../tilauscope/displayscope.py" line="256" />
-        <source>RELEASE</source>
-        <translation>發布</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="4722" />
-        <location filename="../tilauscope/displayscope.py" line="2044" />
-        <source>Delta</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="2046" />
-        <source>None</source>
-        <translation type="unfinished">無</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="2056" />
-        <location filename="../tilauscope/displayscope.py" line="2054" />
-        <source>Extra</source>
-        <translation type="unfinished">額外</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="2075" />
-        <source>Alarm</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="8408" />
-        <location filename="../artisanlib/main.py" line="8402" />
-        <location filename="../artisanlib/main.py" line="8235" />
-        <location filename="../artisanlib/main.py" line="8203" />
-        <location filename="../artisanlib/main.py" line="3918" />
-        <location filename="../artisanlib/statistics.py" line="101" />
-        <location filename="../artisanlib/events.py" line="621" />
-        <location filename="../artisanlib/events.py" line="612" />
-        <location filename="../artisanlib/comparator.py" line="1028" />
-        <location filename="../tilauscope/alarms.py" line="87" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4843" />
-        <location filename="../tilauscope/roast_plan_model.py" line="2987" />
-        <source>TP</source>
-        <translation>回溫點</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_plan_model.py" line="2990" />
-        <source>Pre-Drop</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/comparator.py" line="1339" />
-        <location filename="../artisanlib/comparator.py" line="1221" />
-        <location filename="../tilauscope/roast_plan_model.py" line="4937" />
-        <source>/min</source>
-        <translation>/分鐘</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/transposer.py" line="1039" />
-        <location filename="../artisanlib/statistics.py" line="228" />
-        <location filename="../artisanlib/phases.py" line="57" />
-        <location filename="../tilauscope/alarms.py" line="142" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5425" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5224" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5013" />
-        <source>Maillard</source>
-        <translation>梅納反應</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_plan_model.py" line="5424" />
-        <location filename="../tilauscope/roast_plan_model.py" line="5223" />
-        <source>Dry</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/transposer.py" line="1038" />
-        <location filename="../artisanlib/statistics.py" line="229" />
-        <location filename="../artisanlib/phases.py" line="56" />
-        <location filename="../tilauscope/alarms.py" line="141" />
-        <source>Drying</source>
-        <translation>脫水</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="6371" />
-        <location filename="../artisanlib/pid_dialogs.py" line="479" />
-        <location filename="../artisanlib/pid_dialogs.py" line="347" />
-        <location filename="../tilauscope/alarms.py" line="560" />
-        <location filename="../tilauscope/alarms.py" line="559" />
-        <location filename="../tilauscope/alarms.py" line="558" />
-        <location filename="../tilauscope/alarms.py" line="557" />
-        <source>Slider</source>
-        <translation>控制滑桿</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="4719" />
-        <location filename="../artisanlib/main.py" line="8635" />
-        <location filename="../artisanlib/main.py" line="4209" />
-        <location filename="../artisanlib/ports.py" line="1076" />
-        <location filename="../artisanlib/ports.py" line="613" />
-        <location filename="../artisanlib/events.py" line="767" />
-        <location filename="../artisanlib/pid_dialogs.py" line="4795" />
-        <location filename="../artisanlib/pid_dialogs.py" line="447" />
-        <location filename="../artisanlib/pid_dialogs.py" line="178" />
-        <location filename="../tilauscope/alarms.py" line="575" />
-        <source>SV</source>
-        <translation>設定溫度</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="4744" />
-        <location filename="../tilauscope/alarms.py" line="1063" />
-        <source>from</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_asssistant.py" line="4136" />
-        <location filename="../tilauscope/alarms.py" line="1120" />
-        <source>target</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/devices.py" line="1136" />
-        <location filename="../tilauscope/roast_asssistant.py" line="4134" />
-        <source>Humidity</source>
-        <translation>濕度</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/canvas.py" line="13467" />
         <location filename="../artisanlib/roast_properties.py" line="910" />
         <location filename="../artisanlib/roast_properties.py" line="224" />
@@ -12100,6 +11516,14 @@ https://artisan-roasterscope.blogspot.com/2015/10/signals-symbolic-assignments-a
         <location filename="../plus/schedule.py" line="2075" />
         <source>Yield</source>
         <translation>屈服</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave.py" line="6186" />
+        <location filename="../artisanlib/main.py" line="24646" />
+        <location filename="../artisanlib/roast_properties.py" line="1738" />
+        <location filename="../plus/schedule.py" line="2085" />
+        <source>Defects</source>
+        <translation type="unfinished">瑕疵</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="13411" />
@@ -12268,6 +11692,84 @@ https://artisan-roasterscope.blogspot.com/2015/10/signals-symbolic-assignments-a
         <translation />
     </message>
     <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="5379" />
+        <location filename="../tilauscope/roast_plan_model.py" line="4941" />
+        <location filename="../tilauscope/displayscope.py" line="2053" />
+        <location filename="../tilauscope/beancave.py" line="7488" />
+        <location filename="../tilauscope/beancave.py" line="6785" />
+        <location filename="../tilauscope/beancave.py" line="6747" />
+        <location filename="../tilauscope/beancave.py" line="4692" />
+        <location filename="../tilauscope/beancave.py" line="4427" />
+        <location filename="../artisanlib/canvas.py" line="20245" />
+        <location filename="../artisanlib/canvas.py" line="20235" />
+        <location filename="../artisanlib/canvas.py" line="10652" />
+        <location filename="../artisanlib/canvas.py" line="10596" />
+        <location filename="../artisanlib/canvas.py" line="4725" />
+        <location filename="../artisanlib/main.py" line="19548" />
+        <location filename="../artisanlib/main.py" line="6316" />
+        <location filename="../artisanlib/main.py" line="6310" />
+        <location filename="../artisanlib/main.py" line="6286" />
+        <location filename="../artisanlib/main.py" line="6262" />
+        <location filename="../artisanlib/main.py" line="6256" />
+        <location filename="../artisanlib/main.py" line="3811" />
+        <location filename="../artisanlib/main.py" line="3567" />
+        <location filename="../artisanlib/main.py" line="3557" />
+        <location filename="../artisanlib/curves.py" line="2260" />
+        <location filename="../artisanlib/curves.py" line="1598" />
+        <location filename="../artisanlib/curves.py" line="1360" />
+        <location filename="../artisanlib/curves.py" line="554" />
+        <location filename="../artisanlib/curves.py" line="517" />
+        <location filename="../artisanlib/curves.py" line="454" />
+        <location filename="../artisanlib/curves.py" line="434" />
+        <location filename="../artisanlib/curves.py" line="346" />
+        <location filename="../artisanlib/designer.py" line="222" />
+        <location filename="../artisanlib/designer.py" line="77" />
+        <location filename="../artisanlib/events.py" line="307" />
+        <location filename="../artisanlib/events.py" line="307" />
+        <location filename="../artisanlib/events.py" line="304" />
+        <location filename="../artisanlib/events.py" line="302" />
+        <location filename="../artisanlib/comm.py" line="215" />
+        <location filename="../artisanlib/comparator.py" line="862" />
+        <source>BT</source>
+        <translation>豆溫</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="2052" />
+        <location filename="../tilauscope/beancave.py" line="7491" />
+        <location filename="../tilauscope/beancave.py" line="6786" />
+        <location filename="../tilauscope/beancave.py" line="6748" />
+        <location filename="../tilauscope/beancave.py" line="4698" />
+        <location filename="../artisanlib/canvas.py" line="20242" />
+        <location filename="../artisanlib/canvas.py" line="20231" />
+        <location filename="../artisanlib/canvas.py" line="10625" />
+        <location filename="../artisanlib/canvas.py" line="10574" />
+        <location filename="../artisanlib/canvas.py" line="4724" />
+        <location filename="../artisanlib/main.py" line="19541" />
+        <location filename="../artisanlib/main.py" line="6313" />
+        <location filename="../artisanlib/main.py" line="6307" />
+        <location filename="../artisanlib/main.py" line="6283" />
+        <location filename="../artisanlib/main.py" line="6265" />
+        <location filename="../artisanlib/main.py" line="6259" />
+        <location filename="../artisanlib/main.py" line="3810" />
+        <location filename="../artisanlib/main.py" line="3562" />
+        <location filename="../artisanlib/main.py" line="3552" />
+        <location filename="../artisanlib/curves.py" line="2255" />
+        <location filename="../artisanlib/curves.py" line="1607" />
+        <location filename="../artisanlib/curves.py" line="1357" />
+        <location filename="../artisanlib/curves.py" line="553" />
+        <location filename="../artisanlib/curves.py" line="511" />
+        <location filename="../artisanlib/curves.py" line="453" />
+        <location filename="../artisanlib/curves.py" line="434" />
+        <location filename="../artisanlib/curves.py" line="341" />
+        <location filename="../artisanlib/designer.py" line="221" />
+        <location filename="../artisanlib/designer.py" line="79" />
+        <location filename="../artisanlib/events.py" line="621" />
+        <location filename="../artisanlib/events.py" line="307" />
+        <location filename="../artisanlib/comparator.py" line="878" />
+        <source>ET</source>
+        <translation>出風溫</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/comparator.py" line="910" />
         <location filename="../artisanlib/comparator.py" line="893" />
         <source>Events</source>
@@ -12277,6 +11779,62 @@ https://artisan-roasterscope.blogspot.com/2015/10/signals-symbolic-assignments-a
         <location filename="../artisanlib/comparator.py" line="1025" />
         <source>Align</source>
         <translation type="unfinished">對齊</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="570" />
+        <location filename="../tilauscope/alarms.py" line="86" />
+        <location filename="../tilauscope/roast_plan_model.py" line="5420" />
+        <location filename="../tilauscope/displayscope.py" line="2271" />
+        <location filename="../tilauscope/visualalarm.py" line="479" />
+        <location filename="../artisanlib/canvas.py" line="20598" />
+        <location filename="../artisanlib/canvas.py" line="16372" />
+        <location filename="../artisanlib/canvas.py" line="16298" />
+        <location filename="../artisanlib/canvas.py" line="13684" />
+        <location filename="../artisanlib/canvas.py" line="13363" />
+        <location filename="../artisanlib/canvas.py" line="10103" />
+        <location filename="../artisanlib/canvas.py" line="10098" />
+        <location filename="../artisanlib/canvas.py" line="4391" />
+        <location filename="../artisanlib/canvas.py" line="1414" />
+        <location filename="../artisanlib/transposer.py" line="1208" />
+        <location filename="../artisanlib/devices.py" line="1181" />
+        <location filename="../artisanlib/alarms.py" line="938" />
+        <location filename="../artisanlib/alarms.py" line="872" />
+        <location filename="../artisanlib/statistics.py" line="100" />
+        <location filename="../artisanlib/curves.py" line="2141" />
+        <location filename="../artisanlib/designer.py" line="631" />
+        <location filename="../artisanlib/designer.py" line="344" />
+        <location filename="../artisanlib/designer.py" line="47" />
+        <location filename="../artisanlib/roast_properties.py" line="4485" />
+        <location filename="../artisanlib/roast_properties.py" line="661" />
+        <location filename="../artisanlib/background.py" line="1068" />
+        <location filename="../artisanlib/background.py" line="104" />
+        <location filename="../artisanlib/ports.py" line="1379" />
+        <location filename="../artisanlib/events.py" line="1312" />
+        <location filename="../artisanlib/events.py" line="583" />
+        <location filename="../artisanlib/events.py" line="572" />
+        <location filename="../artisanlib/events.py" line="568" />
+        <location filename="../artisanlib/events.py" line="565" />
+        <location filename="../artisanlib/events.py" line="562" />
+        <location filename="../artisanlib/pid_dialogs.py" line="861" />
+        <location filename="../artisanlib/comparator.py" line="1027" />
+        <source>CHARGE</source>
+        <translation>入豆</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="87" />
+        <location filename="../tilauscope/roast_plan_model.py" line="4843" />
+        <location filename="../tilauscope/roast_plan_model.py" line="2987" />
+        <location filename="../artisanlib/main.py" line="8408" />
+        <location filename="../artisanlib/main.py" line="8402" />
+        <location filename="../artisanlib/main.py" line="8235" />
+        <location filename="../artisanlib/main.py" line="8203" />
+        <location filename="../artisanlib/main.py" line="3918" />
+        <location filename="../artisanlib/statistics.py" line="101" />
+        <location filename="../artisanlib/events.py" line="621" />
+        <location filename="../artisanlib/events.py" line="612" />
+        <location filename="../artisanlib/comparator.py" line="1028" />
+        <source>TP</source>
+        <translation>回溫點</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4738" />
@@ -12340,6 +11898,61 @@ https://artisan-roasterscope.blogspot.com/2015/10/signals-symbolic-assignments-a
         <translation>二爆結束</translation>
     </message>
     <message>
+        <location filename="../tilauscope/alarms.py" line="567" />
+        <location filename="../tilauscope/alarms.py" line="93" />
+        <location filename="../tilauscope/roast_plan_model.py" line="5421" />
+        <location filename="../tilauscope/displayscope.py" line="2268" />
+        <location filename="../tilauscope/visualalarm.py" line="476" />
+        <location filename="../artisanlib/canvas.py" line="20616" />
+        <location filename="../artisanlib/canvas.py" line="13364" />
+        <location filename="../artisanlib/canvas.py" line="4739" />
+        <location filename="../artisanlib/canvas.py" line="4397" />
+        <location filename="../artisanlib/canvas.py" line="1420" />
+        <location filename="../artisanlib/transposer.py" line="1212" />
+        <location filename="../artisanlib/transposer.py" line="1141" />
+        <location filename="../artisanlib/devices.py" line="1187" />
+        <location filename="../artisanlib/alarms.py" line="935" />
+        <location filename="../artisanlib/alarms.py" line="879" />
+        <location filename="../artisanlib/curves.py" line="2148" />
+        <location filename="../artisanlib/designer.py" line="637" />
+        <location filename="../artisanlib/designer.py" line="350" />
+        <location filename="../artisanlib/designer.py" line="60" />
+        <location filename="../artisanlib/roast_properties.py" line="4503" />
+        <location filename="../artisanlib/roast_properties.py" line="744" />
+        <location filename="../artisanlib/background.py" line="1086" />
+        <location filename="../artisanlib/background.py" line="110" />
+        <location filename="../artisanlib/ports.py" line="1381" />
+        <location filename="../artisanlib/events.py" line="1390" />
+        <location filename="../artisanlib/events.py" line="621" />
+        <location filename="../artisanlib/events.py" line="593" />
+        <location filename="../artisanlib/events.py" line="590" />
+        <location filename="../artisanlib/pid_dialogs.py" line="858" />
+        <location filename="../artisanlib/comparator.py" line="1034" />
+        <source>DROP</source>
+        <translation>下豆</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="4937" />
+        <location filename="../artisanlib/comparator.py" line="1339" />
+        <location filename="../artisanlib/comparator.py" line="1221" />
+        <source>/min</source>
+        <translation>/分鐘</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="84" />
+        <location filename="../tilauscope/displayscope.py" line="233" />
+        <location filename="../tilauscope/displayscope.py" line="232" />
+        <location filename="../artisanlib/main.py" line="27668" />
+        <location filename="../artisanlib/main.py" line="27667" />
+        <location filename="../artisanlib/main.py" line="27666" />
+        <location filename="../artisanlib/ports.py" line="1162" />
+        <location filename="../artisanlib/ports.py" line="698" />
+        <location filename="../artisanlib/events.py" line="1416" />
+        <location filename="../artisanlib/comparator.py" line="1579" />
+        <source>ON</source>
+        <translation>開啟</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="24120" />
         <location filename="../artisanlib/main.py" line="22754" />
         <location filename="../artisanlib/main.py" line="6298" />
@@ -12360,6 +11973,20 @@ https://artisan-roasterscope.blogspot.com/2015/10/signals-symbolic-assignments-a
         <location filename="../artisanlib/pid_dialogs.py" line="175" />
         <source>PV</source>
         <translation>光電</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="575" />
+        <location filename="../artisanlib/canvas.py" line="4719" />
+        <location filename="../artisanlib/main.py" line="8635" />
+        <location filename="../artisanlib/main.py" line="4209" />
+        <location filename="../artisanlib/ports.py" line="1076" />
+        <location filename="../artisanlib/ports.py" line="613" />
+        <location filename="../artisanlib/events.py" line="767" />
+        <location filename="../artisanlib/pid_dialogs.py" line="4795" />
+        <location filename="../artisanlib/pid_dialogs.py" line="447" />
+        <location filename="../artisanlib/pid_dialogs.py" line="178" />
+        <source>SV</source>
+        <translation>設定溫度</translation>
     </message>
     <message>
         <location filename="../artisanlib/pid_dialogs.py" line="243" />
@@ -12387,6 +12014,17 @@ https://artisan-roasterscope.blogspot.com/2015/10/signals-symbolic-assignments-a
         <location filename="../artisanlib/pid_dialogs.py" line="339" />
         <source>Negative</source>
         <translation>冷卻</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="560" />
+        <location filename="../tilauscope/alarms.py" line="559" />
+        <location filename="../tilauscope/alarms.py" line="558" />
+        <location filename="../tilauscope/alarms.py" line="557" />
+        <location filename="../artisanlib/main.py" line="6371" />
+        <location filename="../artisanlib/pid_dialogs.py" line="479" />
+        <location filename="../artisanlib/pid_dialogs.py" line="347" />
+        <source>Slider</source>
+        <translation>控制滑桿</translation>
     </message>
     <message>
         <location filename="../artisanlib/pid_dialogs.py" line="348" />
@@ -12541,6 +12179,123 @@ https://artisan-roasterscope.blogspot.com/2015/10/signals-symbolic-assignments-a
         <location filename="../artisanlib/pid_dialogs.py" line="815" />
         <source>Label</source>
         <translation>標籤</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="562" />
+        <location filename="../tilauscope/alarms.py" line="88" />
+        <location filename="../tilauscope/displayscope.py" line="2263" />
+        <location filename="../tilauscope/visualalarm.py" line="471" />
+        <location filename="../artisanlib/canvas.py" line="20601" />
+        <location filename="../artisanlib/canvas.py" line="4392" />
+        <location filename="../artisanlib/transposer.py" line="1209" />
+        <location filename="../artisanlib/transposer.py" line="1138" />
+        <location filename="../artisanlib/alarms.py" line="930" />
+        <location filename="../artisanlib/alarms.py" line="874" />
+        <location filename="../artisanlib/statistics.py" line="102" />
+        <location filename="../artisanlib/curves.py" line="2143" />
+        <location filename="../artisanlib/curves.py" line="1005" />
+        <location filename="../artisanlib/curves.py" line="973" />
+        <location filename="../artisanlib/designer.py" line="632" />
+        <location filename="../artisanlib/designer.py" line="345" />
+        <location filename="../artisanlib/designer.py" line="50" />
+        <location filename="../artisanlib/roast_properties.py" line="4488" />
+        <location filename="../artisanlib/roast_properties.py" line="672" />
+        <location filename="../artisanlib/background.py" line="1071" />
+        <location filename="../artisanlib/events.py" line="1325" />
+        <location filename="../artisanlib/pid_dialogs.py" line="853" />
+        <source>DRY END</source>
+        <translation>脫水結束</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="563" />
+        <location filename="../tilauscope/alarms.py" line="89" />
+        <location filename="../tilauscope/displayscope.py" line="2264" />
+        <location filename="../tilauscope/visualalarm.py" line="472" />
+        <location filename="../artisanlib/canvas.py" line="20604" />
+        <location filename="../artisanlib/canvas.py" line="4393" />
+        <location filename="../artisanlib/transposer.py" line="1210" />
+        <location filename="../artisanlib/transposer.py" line="1139" />
+        <location filename="../artisanlib/alarms.py" line="931" />
+        <location filename="../artisanlib/alarms.py" line="875" />
+        <location filename="../artisanlib/statistics.py" line="103" />
+        <location filename="../artisanlib/curves.py" line="2144" />
+        <location filename="../artisanlib/designer.py" line="633" />
+        <location filename="../artisanlib/designer.py" line="346" />
+        <location filename="../artisanlib/designer.py" line="52" />
+        <location filename="../artisanlib/roast_properties.py" line="4491" />
+        <location filename="../artisanlib/roast_properties.py" line="686" />
+        <location filename="../artisanlib/background.py" line="1074" />
+        <location filename="../artisanlib/events.py" line="1338" />
+        <location filename="../artisanlib/pid_dialogs.py" line="854" />
+        <source>FC START</source>
+        <translation>一爆開始</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="564" />
+        <location filename="../tilauscope/alarms.py" line="90" />
+        <location filename="../tilauscope/displayscope.py" line="2265" />
+        <location filename="../tilauscope/visualalarm.py" line="473" />
+        <location filename="../artisanlib/canvas.py" line="20607" />
+        <location filename="../artisanlib/canvas.py" line="4394" />
+        <location filename="../artisanlib/alarms.py" line="932" />
+        <location filename="../artisanlib/alarms.py" line="876" />
+        <location filename="../artisanlib/curves.py" line="2145" />
+        <location filename="../artisanlib/designer.py" line="634" />
+        <location filename="../artisanlib/designer.py" line="347" />
+        <location filename="../artisanlib/designer.py" line="54" />
+        <location filename="../artisanlib/roast_properties.py" line="4494" />
+        <location filename="../artisanlib/roast_properties.py" line="701" />
+        <location filename="../artisanlib/background.py" line="1077" />
+        <location filename="../artisanlib/events.py" line="1351" />
+        <location filename="../artisanlib/pid_dialogs.py" line="855" />
+        <source>FC END</source>
+        <translation>一爆結束</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="565" />
+        <location filename="../tilauscope/alarms.py" line="91" />
+        <location filename="../tilauscope/displayscope.py" line="2266" />
+        <location filename="../tilauscope/visualalarm.py" line="474" />
+        <location filename="../artisanlib/canvas.py" line="20610" />
+        <location filename="../artisanlib/canvas.py" line="4736" />
+        <location filename="../artisanlib/canvas.py" line="4395" />
+        <location filename="../artisanlib/transposer.py" line="1211" />
+        <location filename="../artisanlib/transposer.py" line="1140" />
+        <location filename="../artisanlib/alarms.py" line="933" />
+        <location filename="../artisanlib/alarms.py" line="877" />
+        <location filename="../artisanlib/curves.py" line="2146" />
+        <location filename="../artisanlib/designer.py" line="635" />
+        <location filename="../artisanlib/designer.py" line="348" />
+        <location filename="../artisanlib/designer.py" line="56" />
+        <location filename="../artisanlib/roast_properties.py" line="4497" />
+        <location filename="../artisanlib/roast_properties.py" line="715" />
+        <location filename="../artisanlib/background.py" line="1080" />
+        <location filename="../artisanlib/events.py" line="1364" />
+        <location filename="../artisanlib/pid_dialogs.py" line="856" />
+        <source>SC START</source>
+        <translation>二爆開始</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="566" />
+        <location filename="../tilauscope/alarms.py" line="92" />
+        <location filename="../tilauscope/displayscope.py" line="2267" />
+        <location filename="../tilauscope/visualalarm.py" line="475" />
+        <location filename="../artisanlib/canvas.py" line="20613" />
+        <location filename="../artisanlib/canvas.py" line="4737" />
+        <location filename="../artisanlib/canvas.py" line="4396" />
+        <location filename="../artisanlib/alarms.py" line="934" />
+        <location filename="../artisanlib/alarms.py" line="878" />
+        <location filename="../artisanlib/curves.py" line="2147" />
+        <location filename="../artisanlib/designer.py" line="636" />
+        <location filename="../artisanlib/designer.py" line="349" />
+        <location filename="../artisanlib/designer.py" line="58" />
+        <location filename="../artisanlib/roast_properties.py" line="4500" />
+        <location filename="../artisanlib/roast_properties.py" line="729" />
+        <location filename="../artisanlib/background.py" line="1083" />
+        <location filename="../artisanlib/events.py" line="1377" />
+        <location filename="../artisanlib/pid_dialogs.py" line="857" />
+        <source>SC END</source>
+        <translation>二爆結束</translation>
     </message>
     <message>
         <location filename="../artisanlib/pid_dialogs.py" line="1943" />
@@ -12767,6 +12522,20 @@ https://artisan-roasterscope.blogspot.com/2015/10/signals-symbolic-assignments-a
         <translation>大小</translation>
     </message>
     <message>
+        <location filename="../tilauscope/alarms.py" line="561" />
+        <location filename="../tilauscope/alarms.py" line="85" />
+        <location filename="../tilauscope/displayscope.py" line="257" />
+        <location filename="../tilauscope/displayscope.py" line="253" />
+        <location filename="../artisanlib/main.py" line="27692" />
+        <location filename="../artisanlib/main.py" line="27691" />
+        <location filename="../artisanlib/main.py" line="27687" />
+        <location filename="../artisanlib/events.py" line="1474" />
+        <location filename="../artisanlib/events.py" line="583" />
+        <location filename="../artisanlib/events.py" line="572" />
+        <source>START</source>
+        <translation>開始</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/canvas.py" line="18030" />
         <location filename="../artisanlib/canvas.py" line="18021" />
         <location filename="../artisanlib/events.py" line="617" />
@@ -12835,6 +12604,13 @@ https://artisan-roasterscope.blogspot.com/2015/10/signals-symbolic-assignments-a
         <translation>白努力值</translation>
     </message>
     <message>
+        <location filename="../tilauscope/beancave.py" line="4644" />
+        <location filename="../artisanlib/canvas.py" line="4734" />
+        <location filename="../artisanlib/events.py" line="770" />
+        <source>Temp</source>
+        <translation>溫度</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/roast_properties.py" line="2995" />
         <location filename="../artisanlib/roast_properties.py" line="2994" />
         <location filename="../artisanlib/roast_properties.py" line="2975" />
@@ -12854,6 +12630,19 @@ https://artisan-roasterscope.blogspot.com/2015/10/signals-symbolic-assignments-a
         <location filename="../artisanlib/events.py" line="1198" />
         <source>Cluster</source>
         <translation>群組</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="569" />
+        <location filename="../tilauscope/displayscope.py" line="234" />
+        <location filename="../tilauscope/displayscope.py" line="231" />
+        <location filename="../artisanlib/main.py" line="27668" />
+        <location filename="../artisanlib/main.py" line="27667" />
+        <location filename="../artisanlib/main.py" line="27665" />
+        <location filename="../artisanlib/ports.py" line="1159" />
+        <location filename="../artisanlib/ports.py" line="695" />
+        <location filename="../artisanlib/events.py" line="1437" />
+        <source>OFF</source>
+        <translation>關閉</translation>
     </message>
     <message>
         <location filename="../artisanlib/events.py" line="1463" />
@@ -13473,6 +13262,25 @@ https://artisan-roasterscope.blogspot.com/2015/10/signals-symbolic-assignments-a
         <translation type="unfinished" />
     </message>
     <message>
+        <location filename="../tilauscope/alarms.py" line="141" />
+        <location filename="../artisanlib/transposer.py" line="1038" />
+        <location filename="../artisanlib/statistics.py" line="229" />
+        <location filename="../artisanlib/phases.py" line="56" />
+        <source>Drying</source>
+        <translation>脫水</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="142" />
+        <location filename="../tilauscope/roast_plan_model.py" line="5425" />
+        <location filename="../tilauscope/roast_plan_model.py" line="5224" />
+        <location filename="../tilauscope/roast_plan_model.py" line="5013" />
+        <location filename="../artisanlib/transposer.py" line="1039" />
+        <location filename="../artisanlib/statistics.py" line="228" />
+        <location filename="../artisanlib/phases.py" line="57" />
+        <source>Maillard</source>
+        <translation>梅納反應</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/transposer.py" line="1040" />
         <location filename="../artisanlib/statistics.py" line="227" />
         <location filename="../artisanlib/phases.py" line="58" />
@@ -13512,6 +13320,15 @@ LCDs All</source>
         <location filename="../artisanlib/logs.py" line="108" />
         <source>Number of errors found {0}</source>
         <translation>找到的錯誤數 {0}</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave.py" line="7487" />
+        <location filename="../tilauscope/beancave.py" line="4852" />
+        <location filename="../artisanlib/canvas.py" line="4732" />
+        <location filename="../artisanlib/main.py" line="1317" />
+        <location filename="../artisanlib/designer.py" line="75" />
+        <source>Time</source>
+        <translation>時間</translation>
     </message>
     <message>
         <location filename="../artisanlib/designer.py" line="220" />
@@ -14215,6 +14032,99 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation type="unfinished" />
     </message>
     <message>
+        <location filename="../tilauscope/displayscope.py" line="249" />
+        <location filename="../tilauscope/displayscope.py" line="235" />
+        <location filename="../artisanlib/main.py" line="27683" />
+        <location filename="../artisanlib/main.py" line="27670" />
+        <location filename="../artisanlib/main.py" line="27669" />
+        <source>AUTO</source>
+        <translation>自動</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="248" />
+        <location filename="../tilauscope/displayscope.py" line="236" />
+        <location filename="../artisanlib/main.py" line="27683" />
+        <location filename="../artisanlib/main.py" line="27682" />
+        <location filename="../artisanlib/main.py" line="27670" />
+        <source>MANUAL</source>
+        <translation>手動</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="237" />
+        <location filename="../artisanlib/main.py" line="27671" />
+        <source>FLAP</source>
+        <translation>襟翼</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="251" />
+        <location filename="../tilauscope/displayscope.py" line="238" />
+        <location filename="../artisanlib/main.py" line="27685" />
+        <location filename="../artisanlib/main.py" line="27673" />
+        <location filename="../artisanlib/main.py" line="27672" />
+        <source>CLOSE</source>
+        <translation>關閉</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="250" />
+        <location filename="../tilauscope/displayscope.py" line="239" />
+        <location filename="../artisanlib/main.py" line="27685" />
+        <location filename="../artisanlib/main.py" line="27684" />
+        <location filename="../artisanlib/main.py" line="27673" />
+        <source>OPEN</source>
+        <translation>打開</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="240" />
+        <location filename="../artisanlib/main.py" line="27674" />
+        <source>CONTROL</source>
+        <translation type="unfinished">控制</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="241" />
+        <location filename="../artisanlib/main.py" line="27675" />
+        <source>DISCHARGE</source>
+        <translation>釋放</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="243" />
+        <location filename="../artisanlib/main.py" line="27677" />
+        <source>HEATING</source>
+        <translation>加熱</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="244" />
+        <location filename="../artisanlib/main.py" line="27678" />
+        <source>STIRRER</source>
+        <translation>攪拌器</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="245" />
+        <location filename="../artisanlib/main.py" line="27679" />
+        <source>FILL</source>
+        <translation>充滿</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="247" />
+        <location filename="../artisanlib/main.py" line="27681" />
+        <source>COOLING</source>
+        <translation>冷卻</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="258" />
+        <location filename="../tilauscope/displayscope.py" line="252" />
+        <location filename="../artisanlib/main.py" line="27692" />
+        <location filename="../artisanlib/main.py" line="27687" />
+        <location filename="../artisanlib/main.py" line="27686" />
+        <source>STOP</source>
+        <translation>停止</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="256" />
+        <location filename="../artisanlib/main.py" line="27690" />
+        <source>RELEASE</source>
+        <translation>發布</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="28352" />
         <source>Fit</source>
         <comment>Curve Fit Type</comment>
@@ -14229,6 +14139,21 @@ Fewer nodes: simpler curve but may lose detail</source>
         <location filename="../artisanlib/main.py" line="28354" />
         <source>MSE BT</source>
         <translation>均方誤差</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="4959" />
+        <location filename="../tilauscope/roast_plan_model.py" line="4935" />
+        <location filename="../tilauscope/displayscope.py" line="1999" />
+        <location filename="../tilauscope/beancave.py" line="6786" />
+        <location filename="../tilauscope/beancave.py" line="6785" />
+        <location filename="../tilauscope/beancave.py" line="6783" />
+        <location filename="../tilauscope/beancave.py" line="4696" />
+        <location filename="../tilauscope/beancave.py" line="4663" />
+        <location filename="../artisanlib/canvas.py" line="18031" />
+        <location filename="../artisanlib/canvas.py" line="18020" />
+        <location filename="../artisanlib/main.py" line="28355" />
+        <source>RoR</source>
+        <translation />
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="28355" />
@@ -14381,6 +14306,12 @@ Fewer nodes: simpler curve but may lose detail</source>
         <location filename="../artisanlib/devices.py" line="1135" />
         <source>Temperature</source>
         <translation>溫度</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_asssistant.py" line="4134" />
+        <location filename="../artisanlib/devices.py" line="1136" />
+        <source>Humidity</source>
+        <translation>濕度</translation>
     </message>
     <message>
         <location filename="../artisanlib/devices.py" line="1137" />
@@ -14583,6 +14514,12 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation>冷卻</translation>
     </message>
     <message>
+        <location filename="../tilauscope/displayscope.py" line="2047" />
+        <location filename="../artisanlib/canvas.py" line="4722" />
+        <source>Delta</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <location filename="../artisanlib/canvas.py" line="4728" />
         <source>Segment</source>
         <translation type="unfinished" />
@@ -14603,6 +14540,12 @@ Fewer nodes: simpler curve but may lose detail</source>
         <location filename="../artisanlib/canvas.py" line="4742" />
         <source>Maillard Phase</source>
         <translation type="unfinished">梅納反應階段</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="1063" />
+        <location filename="../artisanlib/canvas.py" line="4744" />
+        <source>from</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="11279" />
@@ -14720,6 +14663,63 @@ Fewer nodes: simpler curve but may lose detail</source>
         <source>Aspect Ratio</source>
         <translation>縱橫比</translation>
     </message>
+    <message>
+        <location filename="../tilauscope/visualalarm.py" line="97" />
+        <source>Visual Alarm Timeline</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="143" />
+        <location filename="../tilauscope/roast_plan_model.py" line="5426" />
+        <location filename="../tilauscope/roast_plan_model.py" line="5225" />
+        <location filename="../tilauscope/roast_plan_model.py" line="5018" />
+        <location filename="../tilauscope/beancave.py" line="6506" />
+        <source>Development</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave.py" line="7493" />
+        <source>RoR BT</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave.py" line="7495" />
+        <source>RoR ET</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="2049" />
+        <source>None</source>
+        <translation type="unfinished">無</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="2059" />
+        <location filename="../tilauscope/displayscope.py" line="2057" />
+        <source>Extra</source>
+        <translation type="unfinished">額外</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="2078" />
+        <source>Alarm</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="2990" />
+        <source>Pre-Drop</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_plan_model.py" line="5424" />
+        <location filename="../tilauscope/roast_plan_model.py" line="5223" />
+        <source>Dry</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_asssistant.py" line="4136" />
+        <location filename="../tilauscope/alarms.py" line="1120" />
+        <source>target</source>
+        <translation type="unfinished" />
+    </message>
 </context><context>
     <name>MAC_APPLICATION_MENU</name>
     <message>
@@ -14814,42 +14814,6 @@ Fewer nodes: simpler curve but may lose detail</source>
     </message>
 </context><context>
     <name>Menu</name>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="95" />
-        <source>BeanCave</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="2586" />
-        <location filename="../tilauscope/menu_extension.py" line="101" />
-        <source>TilauScope Config...</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="106" />
-        <source>Redo First-Time Setup...</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="110" />
-        <source>TilauScope Debug</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="114" />
-        <source>PID Autotune</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="161" />
-        <source>Switch to Artisan window</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/menu_extension.py" line="164" />
-        <source>Switch to TilauScope</source>
-        <translation type="unfinished" />
-    </message>
     <message>
         <location filename="../artisanlib/main.py" line="2819" />
         <location filename="../plus/schedule.py" line="2431" />
@@ -15147,6 +15111,12 @@ Fewer nodes: simpler curve but may lose detail</source>
         <location filename="../artisanlib/main.py" line="2581" />
         <source>Device...</source>
         <translation>設備...</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="101" />
+        <location filename="../artisanlib/main.py" line="2586" />
+        <source>TilauScope Config...</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="2589" />
@@ -15453,22 +15423,41 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation>儲存主題...</translation>
     </message>
     <message>
+        <location filename="../tilauscope/menu_extension.py" line="95" />
+        <source>BeanCave</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="106" />
+        <source>Redo First-Time Setup...</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="110" />
+        <source>TilauScope Debug</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="114" />
+        <source>PID Autotune</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="161" />
+        <source>Switch to Artisan window</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/menu_extension.py" line="164" />
+        <source>Switch to TilauScope</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Artisan CSV...</source>
         <translation type="vanished">工匠 CSV...</translation>
     </message>
 </context><context>
     <name>Message</name>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="2735" />
-        <source>WARNING REPLAY AUTOMATISM ARE ACTIVE</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="13648" />
-        <location filename="../tilauscope/displayscope.py" line="5057" />
-        <source>Profile {0} saved in: {1}</source>
-        <translation>曲線 {0} 已儲存到: {1}</translation>
-    </message>
     <message>
         <location filename="../plus/schedule.py" line="1527" />
         <source>Register the currently loaded roast profile&lt;br&gt;in the selected entry.&lt;br&gt;This will overwrite some roast properties.</source>
@@ -16937,6 +16926,12 @@ Artisan將會重啟!</translation>
         <translation>已關閉鍵盤操控動作</translation>
     </message>
     <message>
+        <location filename="../tilauscope/displayscope.py" line="5060" />
+        <location filename="../artisanlib/main.py" line="13648" />
+        <source>Profile {0} saved in: {1}</source>
+        <translation>曲線 {0} 已儲存到: {1}</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="13652" />
         <source>Autosave path does not exist. Autosave failed.</source>
         <translation>自動儲存路徑不存在.自動儲存失敗.</translation>
@@ -18049,6 +18044,11 @@ Profile missing [CHARGE] or [DROP]</source>
         <translation>沒有發現背景曲線</translation>
     </message>
     <message>
+        <location filename="../tilauscope/displayscope.py" line="2738" />
+        <source>WARNING REPLAY AUTOMATISM ARE ACTIVE</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
         <source>Beginning with release v2.0, settings will no longer be automatically shared at start-up with versions before v2.0.</source>
         <translation type="vanished">從版本v2.0開始，在啟動時將不再自動與v2.0之前的版本共享設定。</translation>
     </message>
@@ -18496,6 +18496,12 @@ To keep it free and current please support us with your donation and subscribe t
 </context><context>
     <name>Scope Title</name>
     <message>
+        <location filename="../plus/schedule.py" line="2977" />
+        <source>Roaster Scope</source>
+        <translation>烘焙紀錄儀</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="6081" />
         <location filename="../artisanlib/canvas.py" line="10487" />
         <location filename="../artisanlib/canvas.py" line="9673" />
         <location filename="../artisanlib/canvas.py" line="1451" />
@@ -18507,14 +18513,8 @@ To keep it free and current please support us with your donation and subscribe t
         <location filename="../artisanlib/roast_properties.py" line="2196" />
         <location filename="../artisanlib/roast_properties.py" line="2183" />
         <location filename="../artisanlib/orbiter.py" line="567" />
-        <location filename="../tilauscope/displayscope.py" line="6078" />
         <source>TilauScope</source>
         <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2977" />
-        <source>Roaster Scope</source>
-        <translation>烘焙紀錄儀</translation>
     </message>
 </context><context>
     <name>StatusBar</name>
@@ -18883,19 +18883,6 @@ To keep it free and current please support us with your donation and subscribe t
 </context><context>
     <name>Tab</name>
     <message>
-        <location filename="../artisanlib/pid_dialogs.py" line="3364" />
-        <location filename="../artisanlib/pid_dialogs.py" line="2203" />
-        <location filename="../tilauscope/displayscope.py" line="3728" />
-        <source>SV</source>
-        <translation>SV</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/roast_properties.py" line="1674" />
-        <location filename="../tilauscope/alarms.py" line="140" />
-        <source>Setup</source>
-        <translation>設定</translation>
-    </message>
-    <message>
         <location filename="../plus/schedule.py" line="2332" />
         <source>To-Do</source>
         <translation>去做</translation>
@@ -18924,6 +18911,13 @@ To keep it free and current please support us with your donation and subscribe t
         <location filename="../artisanlib/pid_dialogs.py" line="1087" />
         <source>RS</source>
         <translation />
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="3731" />
+        <location filename="../artisanlib/pid_dialogs.py" line="3364" />
+        <location filename="../artisanlib/pid_dialogs.py" line="2203" />
+        <source>SV</source>
+        <translation>SV</translation>
     </message>
     <message>
         <location filename="../artisanlib/pid_dialogs.py" line="3370" />
@@ -19011,6 +19005,12 @@ To keep it free and current please support us with your donation and subscribe t
         <location filename="../artisanlib/roast_properties.py" line="1671" />
         <source>Energy</source>
         <translation>能量</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/alarms.py" line="140" />
+        <location filename="../artisanlib/roast_properties.py" line="1674" />
+        <source>Setup</source>
+        <translation>設定</translation>
     </message>
     <message>
         <location filename="../artisanlib/roast_properties.py" line="2928" />
@@ -19557,13 +19557,6 @@ To keep it free and current please support us with your donation and subscribe t
 </context><context>
     <name>Textbox</name>
     <message>
-        <location filename="../artisanlib/canvas.py" line="578" />
-        <location filename="../artisanlib/canvas.py" line="546" />
-        <location filename="../tilauscope/alarms.py" line="144" />
-        <source>Finish</source>
-        <translation>結束</translation>
-    </message>
-    <message>
         <location filename="../artisanlib/canvas.py" line="595" />
         <location filename="../artisanlib/canvas.py" line="585" />
         <location filename="../artisanlib/canvas.py" line="576" />
@@ -19706,6 +19699,13 @@ To keep it free and current please support us with your donation and subscribe t
         <translation>複雜性</translation>
     </message>
     <message>
+        <location filename="../tilauscope/alarms.py" line="144" />
+        <location filename="../artisanlib/canvas.py" line="578" />
+        <location filename="../artisanlib/canvas.py" line="546" />
+        <source>Finish</source>
+        <translation>結束</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/canvas.py" line="549" />
         <source>Brightness</source>
         <translation>明亮感</translation>
@@ -19806,72 +19806,6 @@ To keep it free and current please support us with your donation and subscribe t
     </message>
 </context><context>
     <name>Tooltip</name>
-    <message>
-        <location filename="../tilauscope/visualalarm.py" line="183" />
-        <source>Automatically center the timeline in the visualization window.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/visualalarm.py" line="202" />
-        <source>Zoom out (Ctrl+scroll down / pinch)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/visualalarm.py" line="214" />
-        <source>Zoom in (Ctrl+scroll up / pinch)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27814" />
-        <location filename="../tilauscope/displayscope.py" line="804" />
-        <source>&lt;b&gt;Type &lt;/b&gt;= </source>
-        <translation>&lt;b&gt;類型&lt;/b&gt;= </translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27816" />
-        <location filename="../tilauscope/displayscope.py" line="806" />
-        <source>&lt;b&gt;Value &lt;/b&gt;= </source>
-        <translation>&lt;b&gt;數值&lt;/b&gt;= </translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="27818" />
-        <location filename="../tilauscope/displayscope.py" line="808" />
-        <source>&lt;b&gt;Documentation &lt;/b&gt;= </source>
-        <translation>&lt;b&gt;動作指令 &lt;/b&gt;= </translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="15362" />
-        <location filename="../artisanlib/main.py" line="3345" />
-        <location filename="../tilauscope/displayscope.py" line="4967" />
-        <location filename="../tilauscope/displayscope.py" line="3487" />
-        <source>Start monitoring</source>
-        <translation>開啟監看</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="3359" />
-        <location filename="../tilauscope/displayscope.py" line="6043" />
-        <location filename="../tilauscope/displayscope.py" line="3497" />
-        <source>Start recording</source>
-        <translation>開始記錄</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/main.py" line="3397" />
-        <location filename="../tilauscope/displayscope.py" line="3507" />
-        <source>Reset</source>
-        <translation>重置</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="15165" />
-        <location filename="../tilauscope/displayscope.py" line="4948" />
-        <source>Stop monitoring</source>
-        <translation>停止監看</translation>
-    </message>
-    <message>
-        <location filename="../artisanlib/canvas.py" line="16077" />
-        <location filename="../tilauscope/displayscope.py" line="6023" />
-        <source>Stop recording</source>
-        <translation>停止記錄</translation>
-    </message>
     <message>
         <location filename="../plus/schedule.py" line="2266" />
         <source>Update schedule</source>
@@ -21322,6 +21256,21 @@ Unchecked: Fits a smooth spline to preserve curve shape.</source>
         <translation>線條樣式</translation>
     </message>
     <message>
+        <location filename="../tilauscope/displayscope.py" line="4970" />
+        <location filename="../tilauscope/displayscope.py" line="3490" />
+        <location filename="../artisanlib/canvas.py" line="15362" />
+        <location filename="../artisanlib/main.py" line="3345" />
+        <source>Start monitoring</source>
+        <translation>開啟監看</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="6046" />
+        <location filename="../tilauscope/displayscope.py" line="3500" />
+        <location filename="../artisanlib/main.py" line="3359" />
+        <source>Start recording</source>
+        <translation>開始記錄</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="3373" />
         <source>First Crack Start</source>
         <translation>一爆開始</translation>
@@ -21340,6 +21289,12 @@ Unchecked: Fits a smooth spline to preserve curve shape.</source>
         <location filename="../artisanlib/main.py" line="3385" />
         <source>Second Crack End</source>
         <translation>二爆結束</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="3510" />
+        <location filename="../artisanlib/main.py" line="3397" />
+        <source>Reset</source>
+        <translation>重置</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="3402" />
@@ -21516,6 +21471,24 @@ Currently in TEMP MODE</source>
         <translation>&lt;b&gt;描述&lt;/b&gt;= </translation>
     </message>
     <message>
+        <location filename="../tilauscope/displayscope.py" line="804" />
+        <location filename="../artisanlib/main.py" line="27814" />
+        <source>&lt;b&gt;Type &lt;/b&gt;= </source>
+        <translation>&lt;b&gt;類型&lt;/b&gt;= </translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="806" />
+        <location filename="../artisanlib/main.py" line="27816" />
+        <source>&lt;b&gt;Value &lt;/b&gt;= </source>
+        <translation>&lt;b&gt;數值&lt;/b&gt;= </translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="808" />
+        <location filename="../artisanlib/main.py" line="27818" />
+        <source>&lt;b&gt;Documentation &lt;/b&gt;= </source>
+        <translation>&lt;b&gt;動作指令 &lt;/b&gt;= </translation>
+    </message>
+    <message>
         <location filename="../artisanlib/main.py" line="27819" />
         <source>&lt;b&gt;Button# &lt;/b&gt;= </source>
         <translation>&lt;b&gt;按鈕#&lt;/b&gt;= </translation>
@@ -21677,6 +21650,18 @@ enabling the addition of more batches</source>
         <translation>例如: 100 + x</translation>
     </message>
     <message>
+        <location filename="../tilauscope/displayscope.py" line="4951" />
+        <location filename="../artisanlib/canvas.py" line="15165" />
+        <source>Stop monitoring</source>
+        <translation>停止監看</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="6026" />
+        <location filename="../artisanlib/canvas.py" line="16077" />
+        <source>Stop recording</source>
+        <translation>停止記錄</translation>
+    </message>
+    <message>
         <location filename="../artisanlib/colors.py" line="123" />
         <source>Background curve: 0=fully transparent, 10=fully opaque</source>
         <translation>背景曲線：0=完全透明，10=完全不透明</translation>
@@ -21710,6 +21695,21 @@ enabling the addition of more batches</source>
         <location filename="../artisanlib/colors.py" line="581" />
         <source>Sets button colors to grey scale and LCD colors to black and white</source>
         <translation>將按鈕顏色設為灰度，將 LCD 顏色設定為黑白</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/visualalarm.py" line="183" />
+        <source>Automatically center the timeline in the visualization window.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/visualalarm.py" line="202" />
+        <source>Zoom out (Ctrl+scroll down / pinch)</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/visualalarm.py" line="214" />
+        <source>Zoom in (Ctrl+scroll up / pinch)</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>Syncing with artisan.plus</source>
@@ -21754,48 +21754,52 @@ enabling the addition of more batches</source>
     <message>
         <location filename="../artisanlib/main.py" line="29156" />
         <source>TilauScope is already running</source>
-        <translation type="unfinished" />
+        <translation>TilauScope 已在執行中</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="29159" />
         <source>TilauScope is already open on this computer.
 
 A second window cannot drive the roaster: the meter connection, the Bluetooth devices and the bean database belong to the instance already running. Switch to that window to keep roasting.</source>
-        <translation type="unfinished" />
+        <translation>TilauScope 已在這部電腦上開啟。
+
+第二個視窗無法控制烘焙機：量測計連線、藍牙裝置和豆類資料庫屬於已在執行的實例。切換到該視窗以繼續烘焙。</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="29160" />
         <source>Quit</source>
-        <translation type="unfinished" />
+        <translation>結束</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="29162" />
         <source>
 
 Remote control is enabled, so you can open the control client in your browser instead.</source>
-        <translation type="unfinished" />
+        <translation>
+
+遠端控制已啟用，因此您可以在瀏覽器中開啟控制客戶端。</translation>
     </message>
     <message>
         <location filename="../artisanlib/main.py" line="29163" />
         <source>Open the control client</source>
-        <translation type="unfinished" />
+        <translation>開啟控制客戶端</translation>
     </message>
 </context><context>
     <name>tilauscope_ai</name>
     <message>
         <location filename="../tilauscope/ai_float_panel.py" line="268" />
         <source>Press ▶ Generate to start…</source>
-        <translation type="unfinished" />
+        <translation>按下 ▶ 生成開始…</translation>
     </message>
     <message>
         <location filename="../tilauscope/ai_float_panel.py" line="297" />
         <source>Generate</source>
-        <translation type="unfinished" />
+        <translation>生成</translation>
     </message>
     <message>
         <location filename="../tilauscope/ai_float_panel.py" line="312" />
         <source>Stop</source>
-        <translation type="unfinished" />
+        <translation>停止</translation>
     </message>
     <message>
         <location filename="../tilauscope/ai_float_panel.py" line="328" />
@@ -21805,17 +21809,17 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/ai_float_panel.py" line="384" />
         <source>⏳  Thinking…</source>
-        <translation type="unfinished" />
+        <translation>⏳  思考中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/ai_support.py" line="385" />
         <source>AI PROVIDER</source>
-        <translation type="unfinished" />
+        <translation>AI 提供商</translation>
     </message>
     <message>
         <location filename="../tilauscope/ai_support.py" line="414" />
         <source>Provider</source>
-        <translation type="unfinished" />
+        <translation>提供商</translation>
     </message>
     <message>
         <location filename="../tilauscope/ai_support.py" line="424" />
@@ -21827,22 +21831,22 @@ Remote control is enabled, so you can open the control client in your browser in
         <location filename="../tilauscope/ai_support.py" line="639" />
         <location filename="../tilauscope/ai_support.py" line="428" />
         <source>↗ Browse</source>
-        <translation type="unfinished" />
+        <translation>↗ 瀏覽</translation>
     </message>
     <message>
         <location filename="../tilauscope/ai_support.py" line="450" />
         <source>API Key</source>
-        <translation type="unfinished" />
+        <translation>API 金鑰</translation>
     </message>
     <message>
         <location filename="../tilauscope/ai_support.py" line="454" />
         <source>↗ Get a key</source>
-        <translation type="unfinished" />
+        <translation>↗ 取得金鑰</translation>
     </message>
     <message>
         <location filename="../tilauscope/ai_support.py" line="480" />
         <source>Show key</source>
-        <translation type="unfinished" />
+        <translation>顯示金鑰</translation>
     </message>
     <message>
         <location filename="../tilauscope/ai_support.py" line="509" />
@@ -21852,17 +21856,17 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/ai_support.py" line="521" />
         <source>⬥  Save</source>
-        <translation type="unfinished" />
+        <translation>⬥  保存</translation>
     </message>
     <message>
         <location filename="../tilauscope/ai_support.py" line="599" />
         <source>✓ Key entered</source>
-        <translation type="unfinished" />
+        <translation>✓ 已輸入金鑰</translation>
     </message>
     <message>
         <location filename="../tilauscope/ai_support.py" line="606" />
         <source>No API key – AI features disabled</source>
-        <translation type="unfinished" />
+        <translation>無 API 金鑰 – AI 功能已停用</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -21883,260 +21887,260 @@ Remote control is enabled, so you can open the control client in your browser in
 </context><context>
     <name>tilauscope_alarms</name>
     <message>
+        <location filename="../artisanlib/alarms.py" line="121" />
+        <source>Visual Timeline</source>
+        <translation>視覺時間軸</translation>
+    </message>
+    <message>
         <location filename="../tilauscope/visualalarm.py" line="71" />
         <source>Alarm Narrative</source>
-        <translation type="unfinished" />
+        <translation>警報敘述</translation>
     </message>
     <message>
         <location filename="../tilauscope/visualalarm.py" line="721" />
         <source>IF ALARM</source>
-        <translation type="unfinished" />
+        <translation>如果 警報</translation>
     </message>
     <message>
         <location filename="../tilauscope/visualalarm.py" line="730" />
         <location filename="../tilauscope/visualalarm.py" line="723" />
         <source>at</source>
-        <translation type="unfinished" />
+        <translation>於</translation>
     </message>
     <message>
         <location filename="../tilauscope/visualalarm.py" line="732" />
         <location filename="../tilauscope/visualalarm.py" line="725" />
         <source>do</source>
-        <translation type="unfinished" />
+        <translation>執行</translation>
     </message>
     <message>
         <location filename="../tilauscope/visualalarm.py" line="728" />
         <source>IF NOT ALARM</source>
-        <translation type="unfinished" />
+        <translation>如果 非 警報</translation>
     </message>
     <message>
         <location filename="../tilauscope/visualalarm.py" line="840" />
         <source>Roast Profile Narrative</source>
-        <translation type="unfinished" />
+        <translation>烘焙設定檔敘述</translation>
     </message>
     <message>
         <location filename="../tilauscope/visualalarm.py" line="891" />
         <source>Generated Roast Strategy:</source>
-        <translation type="unfinished" />
+        <translation>生成的烘焙策略：</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="145" />
         <source>Conditional</source>
-        <translation type="unfinished" />
+        <translation>條件式</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="434" />
         <source>Alarm #{0}: dangling {1} reference</source>
-        <translation type="unfinished" />
+        <translation>警報 #{0}：懸空的 {1} 參考</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="438" />
         <source>Alarm #{0}: references itself</source>
-        <translation type="unfinished" />
+        <translation>警報 #{0}：自我參考</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="441" />
         <source>Alarm #{0}: conditional without a guard</source>
-        <translation type="unfinished" />
+        <translation>警報 #{0}：無保護的條件式</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="447" />
         <source>Alarm #{0}: never fires (offset 0 with no condition)</source>
-        <translation type="unfinished" />
+        <translation>警報 #{0}：永不觸發（偏移 0 且無條件）</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="685" />
         <source>Drag to reorder</source>
-        <translation type="unfinished" />
+        <translation>拖曳以重新排序</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="846" />
         <source>when</source>
-        <translation type="unfinished" />
+        <translation>當</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="860" />
         <location filename="../tilauscope/alarms.py" line="851" />
         <source>if</source>
-        <translation type="unfinished" />
+        <translation>如果</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="855" />
         <source>condition</source>
-        <translation type="unfinished" />
+        <translation>條件</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="864" />
         <source>and</source>
-        <translation type="unfinished" />
+        <translation>且</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1095" />
         <location filename="../tilauscope/alarms.py" line="872" />
         <source>action</source>
-        <translation type="unfinished" />
+        <translation>動作</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="904" />
         <source>Enable / disable</source>
-        <translation type="unfinished" />
+        <translation>啟用 / 停用</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="919" />
         <source>Beep on alarm</source>
-        <translation type="unfinished" />
+        <translation>警報時發出嗶聲</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="921" />
         <source>Beep off</source>
-        <translation type="unfinished" />
+        <translation>嗶聲關閉</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="963" />
         <source>(no guard)</source>
-        <translation type="unfinished" />
+        <translation>（無保護）</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1107" />
         <location filename="../tilauscope/alarms.py" line="967" />
         <source>not fired</source>
-        <translation type="unfinished" />
+        <translation>未觸發</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1106" />
         <location filename="../tilauscope/alarms.py" line="969" />
         <source>fired</source>
-        <translation type="unfinished" />
+        <translation>已觸發</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1026" />
         <source>edit timing</source>
-        <translation type="unfinished" />
+        <translation>編輯時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1027" />
         <source>edit condition</source>
-        <translation type="unfinished" />
+        <translation>編輯條件</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1028" />
         <source>edit action</source>
-        <translation type="unfinished" />
+        <translation>編輯動作</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1029" />
         <source>edit guard</source>
-        <translation type="unfinished" />
+        <translation>編輯保護</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1046" />
         <source>Done</source>
-        <translation type="unfinished" />
+        <translation>完成</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1136" />
         <location filename="../tilauscope/alarms.py" line="1064" />
         <source>offset</source>
-        <translation type="unfinished" />
+        <translation>偏移</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1090" />
         <location filename="../tilauscope/alarms.py" line="1069" />
         <source>(none)</source>
-        <translation type="unfinished" />
+        <translation>（無）</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1074" />
         <source>source</source>
-        <translation type="unfinished" />
+        <translation>來源</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1079" />
         <source>operator</source>
-        <translation type="unfinished" />
+        <translation>運算子</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1086" />
         <source>value</source>
-        <translation type="unfinished" />
+        <translation>值</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1100" />
         <source>value / message / command</source>
-        <translation type="unfinished" />
+        <translation>值 / 訊息 / 命令</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1103" />
         <source>argument</source>
-        <translation type="unfinished" />
+        <translation>引數</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1109" />
         <source>when target</source>
-        <translation type="unfinished" />
+        <translation>當目標</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1288" />
         <source>Alarm editor</source>
-        <translation type="unfinished" />
+        <translation>警報編輯器</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1312" />
         <source>Insert below</source>
-        <translation type="unfinished" />
+        <translation>在下方插入</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1314" />
         <source>Duplicate</source>
-        <translation type="unfinished" />
+        <translation>複製</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1323" />
         <source>Check consistency (AI)</source>
-        <translation type="unfinished" />
+        <translation>檢查一致性 (AI)</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1331" />
         <source>Group by phase</source>
-        <translation type="unfinished" />
+        <translation>按階段分組</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1341" />
         <source>Pop-up timeout</source>
-        <translation type="unfinished" />
+        <translation>彈出逾時</translation>
     </message>
     <message>
         <location filename="../tilauscope/alarms.py" line="1666" />
         <source>Alarm consistency check</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../artisanlib/alarms.py" line="121" />
-        <source>Visual Timeline</source>
-        <translation type="unfinished" />
+        <translation>警報一致性檢查</translation>
     </message>
 </context><context>
     <name>tilauscope_beancave</name>
     <message>
         <location filename="../tilauscope/beancave.py" line="273" />
         <source>Toggle full-screen curve</source>
-        <translation type="unfinished" />
+        <translation>切換全螢幕曲線</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="318" />
         <source>💾 Save markers</source>
-        <translation type="unfinished" />
+        <translation>💾 保存標記</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="843" />
         <location filename="../tilauscope/beancave.py" line="791" />
         <source>Copy to Clipboard</source>
-        <translation type="unfinished" />
+        <translation>複製到剪貼簿</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="797" />
         <source>Save as PNG</source>
-        <translation type="unfinished" />
+        <translation>另存為 PNG</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11029" />
@@ -22149,17 +22153,17 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="840" />
         <source>Copied! ✓</source>
-        <translation type="unfinished" />
+        <translation>已複製！✓</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="858" />
         <source>Save QR Code</source>
-        <translation type="unfinished" />
+        <translation>保存二維條碼</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="860" />
         <source>PNG Files (*.png);;All Files (*)</source>
-        <translation type="unfinished" />
+        <translation>PNG 檔案 (*.png);;所有檔案 (*)</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9573" />
@@ -22169,140 +22173,140 @@ Remote control is enabled, so you can open the control client in your browser in
         <location filename="../tilauscope/beancave.py" line="4970" />
         <location filename="../tilauscope/beancave.py" line="874" />
         <source>Save Error</source>
-        <translation type="unfinished" />
+        <translation>保存錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="875" />
         <source>The QR code could not be saved:</source>
-        <translation type="unfinished" />
+        <translation>二維條碼無法保存：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="953" />
         <source>🧪  DENSITY</source>
-        <translation type="unfinished" />
+        <translation>🧪  密度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="969" />
         <source>Click to transfer density</source>
-        <translation type="unfinished" />
+        <translation>點擊以轉移密度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="134" />
         <location filename="../tilauscope/beancave.py" line="973" />
         <source>tap to use</source>
-        <translation type="unfinished" />
+        <translation>點擊以使用</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="983" />
         <source>volume</source>
-        <translation type="unfinished" />
+        <translation>體積</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="1048" />
         <location filename="../tilauscope/beancave.py" line="1004" />
         <source>net –– g</source>
-        <translation type="unfinished" />
+        <translation>淨重 –– g</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="1009" />
         <source>TARE</source>
-        <translation type="unfinished" />
+        <translation>皮重</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="1041" />
         <source>net {0} g</source>
-        <translation type="unfinished" />
+        <translation>淨重 {0} g</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="1363" />
         <source>Printer: Bluetooth N/A</source>
-        <translation type="unfinished" />
+        <translation>印表機：藍牙 N/A</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="1687" />
         <source>Beancave directory is missing or not writable</source>
-        <translation type="unfinished" />
+        <translation>BeanCave 目錄遺失或無法寫入</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="1698" />
         <source>ALog directory is missing or not writable</source>
-        <translation type="unfinished" />
+        <translation>ALog 目錄遺失或無法寫入</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="1712" />
         <source>One or more directories configured at startup are no longer valid. Please select them again in the File Management tab.</source>
-        <translation type="unfinished" />
+        <translation>啟動時設定的一個或多個目錄已不再有效。請在「檔案管理」分頁中重新選擇。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8881" />
         <location filename="../tilauscope/beancave.py" line="1722" />
         <source>Directory Error</source>
-        <translation type="unfinished" />
+        <translation>目錄錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2132" />
         <source>BEANCAVE</source>
-        <translation type="unfinished" />
+        <translation>BEANCAVE</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2159" />
         <source>Scan a label QR code (roast or green bean)</source>
-        <translation type="unfinished" />
+        <translation>掃描標籤二維條碼（烘焙或生豆）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2182" />
         <source>Open the roasting view</source>
-        <translation type="unfinished" />
+        <translation>開啟烘焙檢視</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2211" />
         <source>Green Beans</source>
-        <translation type="unfinished" />
+        <translation>生豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2212" />
         <source>Roast Viewer</source>
-        <translation type="unfinished" />
+        <translation>烘焙檢視器</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2213" />
         <source>Roasting plan</source>
-        <translation type="unfinished" />
+        <translation>烘焙計劃</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2214" />
         <source>Stockage</source>
-        <translation type="unfinished" />
+        <translation>儲存</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2215" />
         <source>File Management</source>
-        <translation type="unfinished" />
+        <translation>檔案管理</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2344" />
         <source>— no roasts found for this bean —</source>
-        <translation type="unfinished" />
+        <translation>— 找不到此豆的烘焙 —</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2355" />
         <source>Status: please select a green bean above.</source>
-        <translation type="unfinished" />
+        <translation>狀態：請在上方選擇生豆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2366" />
         <source>Status: Generating plan for</source>
-        <translation type="unfinished" />
+        <translation>狀態：正在生成計劃</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2479" />
         <source>Injection in Artisan</source>
-        <translation type="unfinished" />
+        <translation>注入 Artisan</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2479" />
         <source>The base of the roasting plan, phases and alarms have been injected into Artisan. Get ready to roast!</source>
-        <translation type="unfinished" />
+        <translation>烘焙計劃的基礎、階段和警報已注入 Artisan。準備好烘焙！</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11734" />
@@ -22328,17 +22332,17 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="2536" />
         <source>Please select a green bean in the selection bar above.</source>
-        <translation type="unfinished" />
+        <translation>請在上方選擇欄中選擇生豆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2560" />
         <source>Roast plan</source>
-        <translation type="unfinished" />
+        <translation>烘焙計劃</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2561" />
         <source>Your roast plan is ready !</source>
-        <translation type="unfinished" />
+        <translation>您的烘焙計劃已準備好！</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2564" />
@@ -22348,77 +22352,77 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="2565" />
         <source>Could not generate roast plan file: </source>
-        <translation type="unfinished" />
+        <translation>無法生成烘焙計劃檔案： </translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2581" />
         <source>Save profile to PDF</source>
-        <translation type="unfinished" />
+        <translation>將設定檔保存為 PDF</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2583" />
         <source>PDF Files (*.pdf);;All Files (*)</source>
-        <translation type="unfinished" />
+        <translation>PDF 檔案 (*.pdf);;所有檔案 (*)</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2682" />
         <source>Green bean:</source>
-        <translation type="unfinished" />
+        <translation>生豆：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2689" />
         <source>Select the green bean you want to plan for. Independent from the Green Beans tab selection.</source>
-        <translation type="unfinished" />
+        <translation>選擇您想計劃的生豆。與「生豆」分頁選擇無關。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2695" />
         <source>Reference roast:</source>
-        <translation type="unfinished" />
+        <translation>參考烘焙：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2702" />
         <source>Optionally pick a past roast to pre-fill ambient conditions (temperature, humidity, pressure). Independent from the Roast Viewer tab.</source>
-        <translation type="unfinished" />
+        <translation>選擇性地選擇過去的烘焙以預先填入環境條件（溫度、濕度、壓力）。與「烘焙檢視器」分頁無關。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2772" />
         <source>Select the desired final roast color (Agtron reference).</source>
-        <translation type="unfinished" />
+        <translation>選擇所需的最終烘焙顏色（Agtron 參考）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2776" />
         <source>Current ambient temperature in the roasting area. Important for charge temperature calculation.</source>
-        <translation type="unfinished" />
+        <translation>烘焙區域的目前環境溫度。對於計算進料溫度很重要。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2777" />
         <source>Relative humidity in the roasting area. Affects heat transfer.</source>
-        <translation type="unfinished" />
+        <translation>烘焙區域的相對濕度。影響熱傳遞。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2778" />
         <source>Current atmospheric pressure. Used for boiling point and thermodynamics.</source>
-        <translation type="unfinished" />
+        <translation>目前大氣壓力。用於計算沸點和熱力學。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2779" />
         <source>Altitude of the roasting location. Affects thermodynamic calculations.</source>
-        <translation type="unfinished" />
+        <translation>烘焙位置的海拔高度。影響熱力學計算。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2780" />
         <source>Total weight of green beans to roast in this batch.</source>
-        <translation type="unfinished" />
+        <translation>本批次要烘焙的生豆總重量。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2845" />
         <source>Ambient conditions</source>
-        <translation type="unfinished" />
+        <translation>環境條件</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2847" />
         <source>weather sync</source>
-        <translation type="unfinished" />
+        <translation>天氣同步</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2855" />
@@ -22442,174 +22446,174 @@ Remote control is enabled, so you can open the control client in your browser in
         <location filename="../tilauscope/beancave.py" line="8276" />
         <location filename="../tilauscope/beancave.py" line="2858" />
         <source>Altitude</source>
-        <translation type="unfinished" />
+        <translation>海拔高度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2874" />
         <source>Online weather</source>
-        <translation type="unfinished" />
+        <translation>線上天氣</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3203" />
         <location filename="../tilauscope/beancave.py" line="2875" />
         <source>Fill temperature, humidity, pressure and altitude from the online weather for your location.</source>
-        <translation type="unfinished" />
+        <translation>從您位置的線上天氣填入溫度、濕度、壓力和海拔高度。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3220" />
         <location filename="../tilauscope/beancave.py" line="2888" />
         <source>TilauAmbient probe</source>
-        <translation type="unfinished" />
+        <translation>TilauAmbient 探針</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2911" />
         <source>Target profile &amp; batch</source>
-        <translation type="unfinished" />
+        <translation>目標設定檔和批次</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2914" />
         <source>Roaster model</source>
-        <translation type="unfinished" />
+        <translation>烘豆機型號</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2915" />
         <source>Roast level</source>
-        <translation type="unfinished" />
+        <translation>烘焙度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2933" />
         <source>Batch weight</source>
-        <translation type="unfinished" />
+        <translation>批次重量</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2936" />
         <source>Green to load — sizes the plan</source>
-        <translation type="unfinished" />
+        <translation>待烘豆量 — 決定計畫規模</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2961" />
         <source>Probe Deviation Offsets</source>
-        <translation type="unfinished" />
+        <translation>探針偏差值</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2963" />
         <source>Use offsets from Roaster Model (Disable manual override)</source>
-        <translation type="unfinished" />
+        <translation>使用烘豆機型號的偏差值（停用手動覆蓋）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2975" />
         <source>Minimum deviation from target temperature at this milestone.</source>
-        <translation type="unfinished" />
+        <translation>此里程碑的目標溫度最小偏差。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2979" />
         <source>Maximum deviation from target temperature at this milestone.</source>
-        <translation type="unfinished" />
+        <translation>此里程碑的目標溫度最大偏差。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2985" />
         <source>Save settings</source>
-        <translation type="unfinished" />
+        <translation>儲存設定</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2986" />
         <source>save settings for further usage of roasting plans</source>
-        <translation type="unfinished" />
+        <translation>儲存設定供進一步使用烘焙計畫</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2989" />
         <source>Default settings</source>
-        <translation type="unfinished" />
+        <translation>預設設定</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="2990" />
         <source>Reset parameters to default values on GUI only. Please save them if needed.</source>
-        <translation type="unfinished" />
+        <translation>將參數重設為預設值（僅在 GUI 上）。如需要，請儲存。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3003" />
         <source>Generate Roast Plan</source>
-        <translation type="unfinished" />
+        <translation>生成烘焙計畫</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3004" />
         <source>Creates a suggested roasting strategy based on the current parameters.</source>
-        <translation type="unfinished" />
+        <translation>根據目前參數建立建議的烘焙策略。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3021" />
         <source>Inject in Artisan</source>
-        <translation type="unfinished" />
+        <translation>注入 Artisan</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3022" />
         <source>Inject all the suggestions in various artisan parameters including background curve.</source>
-        <translation type="unfinished" />
+        <translation>將所有建議注入至 Artisan 的各項參數，包括背景曲線。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3039" />
         <source>Bean</source>
-        <translation type="unfinished" />
+        <translation>豆種</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3040" />
         <source>Conditions</source>
-        <translation type="unfinished" />
+        <translation>條件</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3041" />
         <source>Target &amp; plan</source>
-        <translation type="unfinished" />
+        <translation>目標與計畫</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3135" />
         <source>Probe deviation offsets — locked to roaster model</source>
-        <translation type="unfinished" />
+        <translation>探針偏差值 — 鎖定至烘豆機型號</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3188" />
         <source>Read temperature, humidity and pressure from the connected TilauAmbient probe.</source>
-        <translation type="unfinished" />
+        <translation>從已連接的 TilauAmbient 探針讀取溫度、濕度和氣壓。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3191" />
         <source>TilauAmbient probe not detected. Connect it in the device settings first.</source>
-        <translation type="unfinished" />
+        <translation>TilauAmbient 探針未偵測到。請先在裝置設定中連接。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3200" />
         <source>The TilauAmbient probe is connected and used as the ambient source.</source>
-        <translation type="unfinished" />
+        <translation>TilauAmbient 探針已連接，用作環境源。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3221" />
         <source>No valid reading from the TilauAmbient probe. Please try again.</source>
-        <translation type="unfinished" />
+        <translation>TilauAmbient 探針無有效讀取。請重試。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3251" />
         <source>Could not detect location.</source>
-        <translation type="unfinished" />
+        <translation>無法偵測位置。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3293" />
         <source>Weather Error</source>
-        <translation type="unfinished" />
+        <translation>天氣錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3293" />
         <source>Failed to retrieve weather data: </source>
-        <translation type="unfinished" />
+        <translation>無法擷取天氣資料： </translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3405" />
         <source>Load in Artisan</source>
-        <translation type="unfinished" />
+        <translation>在 Artisan 中載入</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3409" />
         <source>Load the selected ALog file into Artisan for detailed analysis.</source>
-        <translation type="unfinished" />
+        <translation>將選定的 ALog 檔案載入 Artisan 進行詳細分析。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3414" />
@@ -22619,78 +22623,78 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="3417" />
         <source>Load the selected ALog file into Artisan's background for comparison.</source>
-        <translation type="unfinished" />
+        <translation>將選定的 ALog 檔案載入 Artisan 背景以進行比較。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3422" />
         <source>Roast finished!</source>
-        <translation type="unfinished" />
+        <translation>烘焙完成！</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3425" />
         <source>Load the roast in Artisan and record results.</source>
-        <translation type="unfinished" />
+        <translation>在 Artisan 中載入烘焙並記錄結果。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3431" />
         <source>PDF</source>
-        <translation type="unfinished" />
+        <translation>PDF</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3434" />
         <source>Generate and print the label to PDF for the selected roast.</source>
-        <translation type="unfinished" />
+        <translation>為選定烘焙生成並列印標籤至 PDF。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3439" />
         <source>B21S</source>
-        <translation type="unfinished" />
+        <translation>B21S</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3442" />
         <source>Generate and print the label for the selected roast (requires Niimbot B21S).</source>
-        <translation type="unfinished" />
+        <translation>為選定烘焙生成並列印標籤（需要 Niimbot B21S）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3447" />
         <source>Snapshot</source>
-        <translation type="unfinished" />
+        <translation>快照</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3449" />
         <source>Take a PNG snapshot of the current curve.</source>
-        <translation type="unfinished" />
+        <translation>擷取目前曲線的 PNG 快照。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8016" />
         <location filename="../tilauscope/beancave.py" line="3457" />
         <source>Card</source>
-        <translation type="unfinished" />
+        <translation>卡片</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3458" />
         <source>Export this roast as a shareable landscape image (JPEG), sized for social networks: green bean, roast level, key figures and the curve.</source>
-        <translation type="unfinished" />
+        <translation>將此烘焙匯出為可分享的橫向影像 (JPEG)，尺寸適合社群網路：綠豆、烘焙度、關鍵數值和曲線。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3465" />
         <source>Planning</source>
-        <translation type="unfinished" />
+        <translation>計畫</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3467" />
         <source>Open the roast planning view to get roasting time repartition based on the selected roast profile.</source>
-        <translation type="unfinished" />
+        <translation>開啟烘焙計畫檢視，根據選定的烘焙檔案取得烘焙時間分配。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3473" />
         <source>Dial-in</source>
-        <translation type="unfinished" />
+        <translation>Dial-in</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3475" />
         <source>Show espresso/filter extraction parameters based on roast color.</source>
-        <translation type="unfinished" />
+        <translation>根據烘焙色度顯示濃縮咖啡／濾滴式萃取參數。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3481" />
@@ -22700,95 +22704,95 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="3483" />
         <source>Open a readable, navigable view of the recorded roast data (milestones, events, columns).</source>
-        <translation type="unfinished" />
+        <translation>開啟可讀且易於導覽的烘焙資料記錄檢視（里程碑、事件、欄位）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3489" />
         <source>Refresh</source>
-        <translation type="unfinished" />
+        <translation>重新整理</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3492" />
         <source>Refresh the roast list.</source>
-        <translation type="unfinished" />
+        <translation>重新整理烘焙清單。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3540" />
         <source>Roast Files (.alog)</source>
-        <translation type="unfinished" />
+        <translation>烘焙檔案 (.alog)</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3614" />
         <source>&lt;b&gt;Consistency view&lt;/b&gt;&lt;br&gt;The reference roast as a solid line, with a shaded &lt;b&gt;min–max band&lt;/b&gt; of all the selected roasts (bean temp &amp;amp; RoR).&lt;br&gt;A &lt;span style='color:#A6E3A1'&gt;tight band&lt;/span&gt; means your roasts are repeatable; a &lt;span style='color:#F38BA8'&gt;wide band&lt;/span&gt; shows where they drift apart.</source>
-        <translation type="unfinished" />
+        <translation>&lt;b&gt;一致性檢視&lt;/b&gt;&lt;br&gt;將參考烘焙顯示為實線，所有選定烘焙的陰影 &lt;b&gt;最小–最大帶狀圖&lt;/b&gt;（豆溫與 RoR）。&lt;br&gt;&lt;span style='color:#A6E3A1'&gt;緊密帶狀圖&lt;/span&gt;表示您的烘焙可重複；&lt;span style='color:#F38BA8'&gt;寬鬆帶狀圖&lt;/span&gt;顯示它們分散的地方。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3624" />
         <source>&lt;b&gt;Aligned view (time-warp)&lt;/b&gt;&lt;br&gt;Stretches each roast in time so its milestones (CHARGE, TP, DRY END, FC start, DROP) line up with the reference.&lt;br&gt;Lets you compare the &lt;b&gt;shape of the bean-temperature rise within each phase&lt;/b&gt;, regardless of how long that phase actually lasted.&lt;br&gt;&lt;i&gt;BT only — RoR is hidden because warping time distorts its scale.&lt;/i&gt;</source>
-        <translation type="unfinished" />
+        <translation>&lt;b&gt;對齊檢視（時間扭曲）&lt;/b&gt;&lt;br&gt;將每次烘焙在時間上進行拉伸，使其里程碑（CHARGE、TP、DRY END、FC 開始、DROP）與參考檔案對齊。&lt;br&gt;讓您比較 &lt;b&gt;每個階段內豆溫上升的形狀&lt;/b&gt;，無論該階段實際持續多長時間。&lt;br&gt;&lt;i&gt;僅 BT — RoR 被隱藏，因為時間扭曲會扭曲其尺度。&lt;/i&gt;</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3646" />
         <source>Select a roast to display the graphs.</source>
-        <translation type="unfinished" />
+        <translation>選擇烘焙以顯示圖表。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3650" />
         <source>Roasting Curve</source>
-        <translation type="unfinished" />
+        <translation>烘焙曲線</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3656" />
         <source>Statistics and detailed information (Delta BT, RoR, etc.) will appear here.</source>
-        <translation type="unfinished" />
+        <translation>統計資訊和詳細資料（Delta BT、RoR 等）將顯示在此。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3682" />
         <source>Roasting statistics and information</source>
-        <translation type="unfinished" />
+        <translation>烘焙統計資訊和資料</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3685" />
         <source>Advanced Stats</source>
-        <translation type="unfinished" />
+        <translation>進階統計</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3721" />
         <source>Curve Full Screen - Press ESC to exit</source>
-        <translation type="unfinished" />
+        <translation>曲線全螢幕 - 按 ESC 鍵退出</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3753" />
         <source>No file found.</source>
-        <translation type="unfinished" />
+        <translation>找不到檔案。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3801" />
         <location filename="../tilauscope/beancave.py" line="3776" />
         <source>Could not open this roast file.</source>
-        <translation type="unfinished" />
+        <translation>無法開啟此烘焙檔案。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3891" />
         <source>The specified ALog directory does not exist or is not a directory.</source>
-        <translation type="unfinished" />
+        <translation>指定的 ALog 目錄不存在或非目錄。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="3923" />
         <source>No alog files found in the directory.</source>
-        <translation type="unfinished" />
+        <translation>目錄中找不到 alog 檔案。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10982" />
         <location filename="../tilauscope/beancave.py" line="4008" />
         <source>Select a roast file to see the curve preview.</source>
-        <translation type="unfinished" />
+        <translation>選擇烘焙檔案以查看曲線預覽。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10986" />
         <location filename="../tilauscope/beancave.py" line="4009" />
         <source>Roast Information will appear here.</source>
-        <translation type="unfinished" />
+        <translation>烘焙資訊將顯示在此。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="4369" />
@@ -22803,72 +22807,72 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="4371" />
         <source>Dev</source>
-        <translation type="unfinished" />
+        <translation>開發</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6835" />
         <location filename="../tilauscope/beancave.py" line="4433" />
         <source>Time (min)</source>
-        <translation type="unfinished" />
+        <translation>時間（分）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="4742" />
         <location filename="../tilauscope/beancave.py" line="4739" />
         <source>Overlay</source>
-        <translation type="unfinished" />
+        <translation>覆蓋</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="4740" />
         <source>Consistency</source>
-        <translation type="unfinished" />
+        <translation>一致性</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="4741" />
         <source>Aligned</source>
-        <translation type="unfinished" />
+        <translation>對齊</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="4744" />
         <source>Comparing {n} roasts · {mode} view — select one to return to single view.</source>
-        <translation type="unfinished" />
+        <translation>比較 {n} 次烘焙 · {mode} 檢視 — 選擇一個以返回單一檢視。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="4854" />
         <source>Aligned time</source>
-        <translation type="unfinished" />
+        <translation>對齊時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="4874" />
         <source>BT spread</source>
-        <translation type="unfinished" />
+        <translation>BT 分散</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5050" />
         <location filename="../tilauscope/beancave.py" line="4990" />
         <location filename="../tilauscope/beancave.py" line="4894" />
         <source>Please, select a roast session first.</source>
-        <translation type="unfinished" />
+        <translation>請先選擇烘焙階段。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11366" />
         <location filename="../tilauscope/beancave.py" line="4938" />
         <source>Missing Bean</source>
-        <translation type="unfinished" />
+        <translation>缺少豆種</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="4939" />
         <source>This roast is not linked to any bean in your cave. Please select the bean in the 'Green Beans' tab first.</source>
-        <translation type="unfinished" />
+        <translation>此烘焙未連結至您豆洞中的任何豆種。請先在「綠豆」標籤中選擇豆種。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="4971" />
         <source>The roast results could not be written back to the profile file.</source>
-        <translation type="unfinished" />
+        <translation>烘焙結果無法寫回檔案。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5019" />
         <source>Save Roast Card</source>
-        <translation type="unfinished" />
+        <translation>儲存烘焙卡片</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11729" />
@@ -22876,316 +22880,316 @@ Remote control is enabled, so you can open the control client in your browser in
         <location filename="../tilauscope/beancave.py" line="11386" />
         <location filename="../tilauscope/beancave.py" line="5034" />
         <source>Success</source>
-        <translation type="unfinished" />
+        <translation>成功</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5035" />
         <source>Roast card saved to</source>
-        <translation type="unfinished" />
+        <translation>烘焙卡片已儲存至</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5041" />
         <source>The roast card could not be generated.</source>
-        <translation type="unfinished" />
+        <translation>無法生成烘焙卡片。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5070" />
         <source>Error reading/parsing file</source>
-        <translation type="unfinished" />
+        <translation>檔案讀取／解析錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5071" />
         <source>Error reading/parsing file.</source>
-        <translation type="unfinished" />
+        <translation>檔案讀取／解析錯誤。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5139" />
         <source>Length: N/A (profile to compute)</source>
-        <translation type="unfinished" />
+        <translation>長度：N/A（待計算的檔案）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5675" />
         <location filename="../tilauscope/beancave.py" line="5145" />
         <source>Too short</source>
-        <translation type="unfinished" />
+        <translation>太短</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5677" />
         <location filename="../tilauscope/beancave.py" line="5147" />
         <source>Too long</source>
-        <translation type="unfinished" />
+        <translation>太長</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5148" />
         <source>Length OK</source>
-        <translation type="unfinished" />
+        <translation>長度正常</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5153" />
         <source>too short</source>
-        <translation type="unfinished" />
+        <translation>太短</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5155" />
         <source>too long</source>
-        <translation type="unfinished" />
+        <translation>太長</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5398" />
         <source>Impossible to predict (data on BT or weight loss missing or null).</source>
-        <translation type="unfinished" />
+        <translation>無法預測（BT 或重量損失資料缺失或為空）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5407" />
         <source>Very bitter, burnt flavors, suitable for espresso blends.</source>
-        <translation type="unfinished" />
+        <translation>非常苦澀，燒焦風味，適合濃縮咖啡混合。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5408" />
         <source>Strong bitterness, smoky notes, often used for espresso.</source>
-        <translation type="unfinished" />
+        <translation>強烈苦味，煙燻風味，通常用於濃縮咖啡。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5409" />
         <source>Balanced bitterness and body, with chocolatey undertones.</source>
-        <translation type="unfinished" />
+        <translation>平衡的苦味和身體，帶有巧克力底韻。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5410" />
         <source>Rich flavor with a balance of acidity and body.</source>
-        <translation type="unfinished" />
+        <translation>豐富風味，酸度與身體平衡。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5411" />
         <source>Balanced acidity and body, with a variety of flavor notes.</source>
-        <translation type="unfinished" />
+        <translation>平衡的酸度和身體，具有多種風味。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5412" />
         <source>Bright acidity, fruity and floral notes.</source>
-        <translation type="unfinished" />
+        <translation>明亮酸度，果香和花香。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5413" />
         <source>High acidity, pronounced fruity and floral characteristics.</source>
-        <translation type="unfinished" />
+        <translation>高酸度，明顯的果香和花香特色。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5414" />
         <source>Very high acidity, pronounced  floral characteristics.</source>
-        <translation type="unfinished" />
+        <translation>非常高的酸度，明顯的花香特色。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5427" />
         <source>❌ Unknown</source>
-        <translation type="unfinished" />
+        <translation>❌ 未知</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5428" />
         <source>Input data out of usual training range.</source>
-        <translation type="unfinished" />
+        <translation>輸入資料超出通常訓練範圍。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5434" />
         <source>Profile : </source>
-        <translation type="unfinished" />
+        <translation>檔案： </translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5434" />
         <source>(Predicted color: </source>
-        <translation type="unfinished" />
+        <translation>（預測色度： </translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5452" />
         <source>No Data</source>
-        <translation type="unfinished" />
+        <translation>無資料</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5453" />
         <source>Please select a roast file first.</source>
-        <translation type="unfinished" />
+        <translation>請先選擇烘焙檔案。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5485" />
         <source>Missing color data</source>
-        <translation type="unfinished" />
+        <translation>缺少色度資料</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5486" />
         <source>Please enter color information in the roast property first.</source>
-        <translation type="unfinished" />
+        <translation>請先在烘焙屬性中輸入色度資訊。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5496" />
         <source>Association Error</source>
-        <translation type="unfinished" />
+        <translation>關聯錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5497" />
         <source>This roast is not associated with a green bean in your Beancave. Please link it using the 'Set UUID' tool to see expert recommendations.</source>
-        <translation type="unfinished" />
+        <translation>此烘焙未與您 BeanCave 中的綠豆關聯。請使用「設定 UUID」工具進行連結，以查看專家建議。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5630" />
         <source>not present</source>
-        <translation type="unfinished" />
+        <translation>不存在</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5640" />
         <source>ground {0} · whole {1} · Δ {2}</source>
-        <translation type="unfinished" />
+        <translation>磨粉 {0} · 整豆 {1} · Δ {2}</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5645" />
         <source>ground</source>
-        <translation type="unfinished" />
+        <translation>磨粉</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5647" />
         <source>whole bean</source>
-        <translation type="unfinished" />
+        <translation>整豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5702" />
         <location filename="../tilauscope/beancave.py" line="5673" />
         <source>Normal weight loss</source>
-        <translation type="unfinished" />
+        <translation>正常重量損失</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5688" />
         <source>Optimal DTR</source>
-        <translation type="unfinished" />
+        <translation>最佳 DTR</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5690" />
         <source>Low DTR</source>
-        <translation type="unfinished" />
+        <translation>低 DTR</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5692" />
         <source>High DTR</source>
-        <translation type="unfinished" />
+        <translation>高 DTR</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5908" />
         <location filename="../tilauscope/beancave.py" line="5704" />
         <source>Low weight loss</source>
-        <translation type="unfinished" />
+        <translation>低重量損失</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5706" />
         <source>High  weight loss</source>
-        <translation type="unfinished" />
+        <translation>高重量損失</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5772" />
         <source>Drying (Charge -&gt; Dry)</source>
-        <translation type="unfinished" />
+        <translation>乾燥（CHARGE → DRY END）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5773" />
         <source>Maillard (Dry -&gt; FCs)</source>
-        <translation type="unfinished" />
+        <translation>Maillard（DRY END → FIRST CRACK）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5774" />
         <source>Development (FCs -&gt; Drop)</source>
-        <translation type="unfinished" />
+        <translation>發展（FIRST CRACK → DROP）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5819" />
         <source>Roast data (events) is incomplete in the file.</source>
-        <translation type="unfinished" />
+        <translation>檔案中的烘焙資料（事件）不完整。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5834" />
         <source>(light roast)</source>
-        <translation type="unfinished" />
+        <translation>（淺焙）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5835" />
         <source>(dark roast)</source>
-        <translation type="unfinished" />
+        <translation>（深焙）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5853" />
         <source>(natural/honey)</source>
-        <translation type="unfinished" />
+        <translation>（日曬／蜜處理）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5855" />
         <source>(washed)</source>
-        <translation type="unfinished" />
+        <translation>（水洗）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5862" />
         <source>(light roast range)</source>
-        <translation type="unfinished" />
+        <translation>（淺焙範圍）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5864" />
         <source>(dark roast range)</source>
-        <translation type="unfinished" />
+        <translation>（深焙範圍）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5878" />
         <source>DTR low but development time is adequate</source>
-        <translation type="unfinished" />
+        <translation>DTR 偏低但發展階段時間充足</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5880" />
         <source>the ratio is low because the front (drying/Maillard) is long; shorten the front if you want a higher ratio, no need to extend development.</source>
-        <translation type="unfinished" />
+        <translation>比例偏低是因為前段（乾燥／美拉德反應）較長；如果要提高比例，請縮短前段，無需延長發展階段。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5885" />
         <source>Short development</source>
-        <translation type="unfinished" />
+        <translation>短發展時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5887" />
         <source>Underdeveloped risk: baked/grassy notes. Extend dev phase or raise drop temp.</source>
-        <translation type="unfinished" />
+        <translation>發展不足風險：烤焙／草本風味。請延長發展階段或提高落豆溫度。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5892" />
         <source>Long development</source>
-        <translation type="unfinished" />
+        <translation>長發展時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5894" />
         <source>Over-development risk: flat, roasty notes dominate. Consider an earlier drop.</source>
-        <translation type="unfinished" />
+        <translation>過度發展風險：平淡、烘焙風味主導。請考慮提前落豆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5899" />
         <source>DTR in range</source>
-        <translation type="unfinished" />
+        <translation>DTR 在範圍內</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5910" />
         <source>Bean may be under-roasted or the batch was unusually dense. Verify scale calibration.</source>
-        <translation type="unfinished" />
+        <translation>豆子可能未充分烘焙，或這批豆子密度異常高。請驗證秤的校準。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5915" />
         <source>High weight loss</source>
-        <translation type="unfinished" />
+        <translation>重量損失高</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5917" />
         <source>Roast may be over-developed or airflow too high. Watch for flat cup.</source>
-        <translation type="unfinished" />
+        <translation>烘焙可能過度發展或氣流過高。須注意杯測風味平淡。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5922" />
         <source>Weight loss in range</source>
-        <translation type="unfinished" />
+        <translation>重量損失在範圍內</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5935" />
         <source>Dry Phase</source>
-        <translation type="unfinished" />
+        <translation>乾燥階段</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5936" />
@@ -23195,117 +23199,117 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="5937" />
         <source>Development Phase</source>
-        <translation type="unfinished" />
+        <translation>發展階段</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5945" />
         <source>standard for this level</source>
-        <translation type="unfinished" />
+        <translation>此等級的標準</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5947" />
         <source>your usual range</source>
-        <translation type="unfinished" />
+        <translation>你的常用範圍</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5957" />
         <source>If the cup tastes grassy or green, give the beans a little longer to dry before browning.</source>
-        <translation type="unfinished" />
+        <translation>若杯測嚐出草本或青草味，請給豆子更長的乾燥時間再進行美拉德反應。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5959" />
         <source>Less time for caramelization — body may be lighter and acidity sharper.</source>
-        <translation type="unfinished" />
+        <translation>焦糖化時間較短——酒體可能偏淡，酸度更尖銳。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5961" />
         <source>Below the professional minimum for this level — real under-development risk (grassy/baked). Carry more momentum into first crack or drop a little later.</source>
-        <translation type="unfinished" />
+        <translation>低於此等級的專業最低標準——真正存在發展不足風險（草本／烤焙味）。請在一爆前保持更多動能，或稍微延遲落豆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5965" />
         <source>shorter than usual</source>
-        <translation type="unfinished" />
+        <translation>比常用時間短</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5970" />
         <source>Long drying can reduce caramelization potential and flatten sweetness.</source>
-        <translation type="unfinished" />
+        <translation>過長的乾燥會降低焦糖化潛力並削弱甜感。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5972" />
         <source>Excessive Maillard may push toward flat, bready notes.</source>
-        <translation type="unfinished" />
+        <translation>過度美拉德反應可能導致平淡、麵包風味。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5974" />
         <source>Over-development: roasty, dark tones may dominate origin character.</source>
-        <translation type="unfinished" />
+        <translation>過度發展：烘焙、深色調可能掩蓋豆子特性。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5978" />
         <source>longer than usual</source>
-        <translation type="unfinished" />
+        <translation>比常用時間長</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="5983" />
         <source>on target</source>
-        <translation type="unfinished" />
+        <translation>達到目標</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6003" />
         <source>Both the drop temperature and the development ratio land below the window expected for this roast level — two signals agreeing on under-development. Watch for grassy or baked notes; consider a hotter charge or a slower Maillard.</source>
-        <translation type="unfinished" />
+        <translation>落豆溫度和發展比例都低於此烘焙等級的預期範圍——雙重訊號確認發展不足。須注意草本或烤焙風味；請考慮更高的裝豆溫度或更緩慢的美拉德反應。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6011" />
         <source>Drop temperature is higher than expected for this level yet the development ratio is short — the bean colour may be darker than intended. Watch for scorching; reduce end-heat or drop earlier.</source>
-        <translation type="unfinished" />
+        <translation>落豆溫度高於此等級預期，但發展比例偏短——豆色可能比預期更深。須注意焦化；請降低末段火力或提前落豆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6030" />
         <source>Flat or negative RoR entering first crack: the roast lost momentum right at FC, a strong stall/crash signal. Add a touch of heat just before FC next time to carry momentum into development.</source>
-        <translation type="unfinished" />
+        <translation>進入一爆時 RoR 平坦或負值：烘焙在一爆時失去動能，強烈的停滯／崩潰訊號。下次烘焙在一爆前稍加熱力以維持發展動能。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6039" />
         <source>Low RoR entering first crack: little momentum into development — watch for a stall and baked, flat character.</source>
-        <translation type="unfinished" />
+        <translation>進入一爆時 RoR 偏低：進入發展的動能不足——須注意停滯和烤焙、平淡風味。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6054" />
         <source>Negative RoR in development: temperature crashed before drop. This can cause baked character. Maintain at least 1–2°/min through drop.</source>
-        <translation type="unfinished" />
+        <translation>發展階段出現負 RoR：溫度在落豆前崩潰。這會導致烤焙風味。請在落豆時保持至少 1–2°／分的 RoR。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6060" />
         <source>RoR flick detected: rate accelerated significantly in development. This may indicate a heat spike. Reduce burner earlier to avoid scorching.</source>
-        <translation type="unfinished" />
+        <translation>偵測到 RoR 陡升：發展階段升溫速率明顯加速。這可能表示火力突增。請提前降低火力以避免焦化。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6073" />
         <source>Very high density bean (&gt;780 g/l): needs strong initial charge energy. If DTR or weight loss is low, consider raising charge temp by 5–8°C next roast.</source>
-        <translation type="unfinished" />
+        <translation>高密度豆（&gt;780 g/l）：需要強大的初始裝豆能量。若 DTR 或重量損失偏低，下次烘焙請考慮將裝豆溫度提高 5–8°C。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6079" />
         <source>Low density bean (&lt;650 g/l): absorbs heat quickly — watch for early FC. Reduce heat in Maillard to avoid rushing development.</source>
-        <translation type="unfinished" />
+        <translation>低密度豆（&lt;650 g/l）：快速吸熱——須注意提前一爆。請在美拉德反應階段降低火力以避免匆促發展。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6086" />
         <source>All measured parameters are within the recommended ranges.</source>
-        <translation type="unfinished" />
+        <translation>所有測量參數均在建議範圍內。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6093" />
         <source>&lt;li&gt;&lt;b&gt;High Density:&lt;/b&gt; Ensure high energy at start to penetrate the core.&lt;/li&gt;</source>
-        <translation type="unfinished" />
+        <translation>&lt;li&gt;&lt;b&gt;高密度：&lt;/b&gt;確保起始能量充足以穿透豆芯。&lt;/li&gt;</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6100" />
         <source>✅ All the phases are within the recommendation ranges</source>
-        <translation type="unfinished" />
+        <translation>✅ 所有階段均在建議範圍內</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6104" />
@@ -23316,33 +23320,33 @@ Remote control is enabled, so you can open the control client in your browser in
         <location filename="../tilauscope/beancave.py" line="6509" />
         <location filename="../tilauscope/beancave.py" line="6105" />
         <source>Weight loss</source>
-        <translation type="unfinished" />
+        <translation>重量損失</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6106" />
         <source>Green beans weight</source>
-        <translation type="unfinished" />
+        <translation>生豆重量</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6107" />
         <source>Roasted weight</source>
-        <translation type="unfinished" />
+        <translation>烘焙後重量</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6194" />
         <location filename="../tilauscope/beancave.py" line="6108" />
         <source>Charge BT</source>
-        <translation type="unfinished" />
+        <translation>裝豆 BT</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6109" />
         <source>Turn Point BT</source>
-        <translation type="unfinished" />
+        <translation>轉折點 BT</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6110" />
         <source>Dry End BT</source>
-        <translation type="unfinished" />
+        <translation>乾燥末 BT</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6111" />
@@ -23353,63 +23357,63 @@ Remote control is enabled, so you can open the control client in your browser in
         <location filename="../tilauscope/beancave.py" line="6508" />
         <location filename="../tilauscope/beancave.py" line="6112" />
         <source>Drop BT</source>
-        <translation type="unfinished" />
+        <translation>落豆 BT</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6216" />
         <location filename="../tilauscope/beancave.py" line="6113" />
         <source>RoR Dry Phase</source>
-        <translation type="unfinished" />
+        <translation>乾燥階段 RoR</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6114" />
         <source>RoR Mid Phase</source>
-        <translation type="unfinished" />
+        <translation>中段 RoR</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6115" />
         <source>RoR Finish Phase</source>
-        <translation type="unfinished" />
+        <translation>終段 RoR</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6116" />
         <source>RoR Total</source>
-        <translation type="unfinished" />
+        <translation>RoR 總計</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6117" />
         <source>AUC Dry Phase</source>
-        <translation type="unfinished" />
+        <translation>乾燥階段 AUC</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6118" />
         <source>AUC Maillard Phase</source>
-        <translation type="unfinished" />
+        <translation>美拉德反應階段 AUC</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6119" />
         <source>AUC Finish phase</source>
-        <translation type="unfinished" />
+        <translation>終段 AUC</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6120" />
         <source>AUC Total</source>
-        <translation type="unfinished" />
+        <translation>AUC 總計</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6121" />
         <source> - AUC begins from </source>
-        <translation type="unfinished" />
+        <translation> - AUC 起始於 </translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6122" />
         <source>Coach's Advice 🎯</source>
-        <translation type="unfinished" />
+        <translation>教練建議 🎯</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6175" />
         <source>Summary</source>
-        <translation type="unfinished" />
+        <translation>摘要</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6190" />
@@ -23419,142 +23423,142 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="6298" />
         <source>DTR closest to 20%: {best} ({bv:.1f}%) — furthest: {worst} ({wv:.1f}%)</source>
-        <translation type="unfinished" />
+        <translation>DTR 最接近 20%：{best}（{bv:.1f}%）——最遠：{worst}（{wv:.1f}%）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6304" />
         <source>Weight loss closest to 15%: {best} ({bv:.1f}%)</source>
-        <translation type="unfinished" />
+        <translation>重量損失最接近 15%：{best}（{bv:.1f}%）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6313" />
         <source>RoR Total closest to {tgt:.0f}°/min: {best} ({bv:.2f}) — furthest: {worst} ({wv:.2f})</source>
-        <translation type="unfinished" />
+        <translation>RoR 總計最接近 {tgt:.0f}°／分：{best}（{bv:.2f}）——最遠：{worst}（{wv:.2f}）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6320" />
         <source>consistent ✓</source>
-        <translation type="unfinished" />
+        <translation>一致 ✓</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6321" />
         <source>variable — check profile consistency</source>
-        <translation type="unfinished" />
+        <translation>變化中——檢查烘焙曲線一致性</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6322" />
         <source>Drop BT spread: {v} — {note}</source>
-        <translation type="unfinished" />
+        <translation>落豆 BT 差異：{v}——{note}</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6329" />
         <source>tight ✓</source>
-        <translation type="unfinished" />
+        <translation>緊湊 ✓</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6330" />
         <source>consider aligning development phases</source>
-        <translation type="unfinished" />
+        <translation>考慮統一發展階段</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6331" />
         <source>Development spread: {v} — {note}</source>
-        <translation type="unfinished" />
+        <translation>發展差異：{v}——{note}</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6391" />
         <source>very consistent</source>
-        <translation type="unfinished" />
+        <translation>極度一致</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6394" />
         <source>fairly consistent</source>
-        <translation type="unfinished" />
+        <translation>相當一致</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6397" />
         <source>uneven</source>
-        <translation type="unfinished" />
+        <translation>不均勻</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6399" />
         <source>These {n} roasts are {verdict}.</source>
-        <translation type="unfinished" />
+        <translation>這 {n} 次烘焙 {verdict}。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6405" />
         <source>drop temperature</source>
-        <translation type="unfinished" />
+        <translation>落豆溫度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6408" />
         <source>development time</source>
-        <translation type="unfinished" />
+        <translation>發展時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6411" />
         <source>development ratio</source>
-        <translation type="unfinished" />
+        <translation>發展比例</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6414" />
         <source>total time</source>
-        <translation type="unfinished" />
+        <translation>總時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6419" />
         <source>The biggest difference is in {name} ({val} spread).</source>
-        <translation type="unfinished" />
+        <translation>最大差異在 {name}（{val} 差異）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6423" />
         <source>All the key milestones line up closely.</source>
-        <translation type="unfinished" />
+        <translation>所有關鍵里程碑都相當一致。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6431" />
         <source>Development ratios average {v} — a touch low; a longer development could add sweetness.</source>
-        <translation type="unfinished" />
+        <translation>發展比例平均 {v}——略偏低；更長的發展時間可增加甜感。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6435" />
         <source>Development ratios average {v} — on the high side; a shorter development would brighten the cup.</source>
-        <translation type="unfinished" />
+        <translation>發展比例平均 {v}——略偏高；較短的發展時間會使杯測更明亮。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6439" />
         <source>Development ratios sit around {v}, in the usual window.</source>
-        <translation type="unfinished" />
+        <translation>發展比例約在 {v}，處於常用範圍。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6450" />
         <source>All roasts keep a clean, declining RoR through development.</source>
-        <translation type="unfinished" />
+        <translation>所有烘焙在發展階段都保持清晰、遞減的 RoR。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6456" />
         <source>crash</source>
-        <translation type="unfinished" />
+        <translation>崩潰</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6458" />
         <source>flick</source>
-        <translation type="unfinished" />
+        <translation>陡升</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6461" />
         <source>Roast {name} shows a RoR {kind} after first crack — watch for stalled, uneven development.</source>
-        <translation type="unfinished" />
+        <translation>烘焙 {name} 在一爆後出現 RoR {kind}——須注意停滯、不均勻發展。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6466" />
         <source>{k} of {n} roasts show a RoR {kind} after first crack — watch for stalled, uneven development.</source>
-        <translation type="unfinished" />
+        <translation>在 {n} 次烘焙中，{k} 次在一爆後出現 RoR {kind}——須注意停滯、不均勻發展。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6503" />
         <source>Total</source>
-        <translation type="unfinished" />
+        <translation>總計</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6504" />
@@ -23569,47 +23573,47 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="6507" />
         <source>DTR</source>
-        <translation type="unfinished" />
+        <translation>DTR</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6516" />
         <source>Area total</source>
-        <translation type="unfinished" />
+        <translation>面積總計</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6517" />
         <source>Area development</source>
-        <translation type="unfinished" />
+        <translation>發展面積</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6555" />
         <source>Comparison — ◉ = reference roast</source>
-        <translation type="unfinished" />
+        <translation>比較——◉ = 參考烘焙</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6566" />
         <source>Analysis</source>
-        <translation type="unfinished" />
+        <translation>分析</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6571" />
         <source>Notable differences</source>
-        <translation type="unfinished" />
+        <translation>顯著差異</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6672" />
         <source>Roast data (BT) is missing in the file.</source>
-        <translation type="unfinished" />
+        <translation>檔案中缺少烘焙資料（BT）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6712" />
         <source>Roast data (sliced) is empty. Check charge/drop points.</source>
-        <translation type="unfinished" />
+        <translation>烘焙資料（切片）為空。請檢查裝豆／落豆點。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6834" />
         <source>Curve Preview</source>
-        <translation type="unfinished" />
+        <translation>曲線預覽</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="6836" />
@@ -23619,12 +23623,12 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="6960" />
         <source>Settings %</source>
-        <translation type="unfinished" />
+        <translation>設定 %</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7005" />
         <source>Error generating plot: </source>
-        <translation type="unfinished" />
+        <translation>產生圖表時出錯： </translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7210" />
@@ -23634,33 +23638,33 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="7543" />
         <source>Save Curve Snapshot as PNG</source>
-        <translation type="unfinished" />
+        <translation>將曲線快照儲存為 PNG</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7545" />
         <source>PN Files (*.png);;All Files (*)</source>
-        <translation type="unfinished" />
+        <translation>PNG 檔案 (*.png);;所有檔案 (*)</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7553" />
         <source>Snapshot Successful</source>
-        <translation type="unfinished" />
+        <translation>快照已成功儲存</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7554" />
         <source>The curve has been successfully saved to:</source>
-        <translation type="unfinished" />
+        <translation>曲線已成功儲存到：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7559" />
         <source>An error occurred while saving the figure:</source>
-        <translation type="unfinished" />
+        <translation>儲存圖表時發生錯誤：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7586" />
         <location filename="../tilauscope/beancave.py" line="7570" />
         <source>Other</source>
-        <translation type="unfinished" />
+        <translation>其他</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9066" />
@@ -23668,83 +23672,83 @@ Remote control is enabled, so you can open the control client in your browser in
         <location filename="../tilauscope/beancave.py" line="8059" />
         <location filename="../tilauscope/beancave.py" line="7681" />
         <source>N/A - Select a bean</source>
-        <translation type="unfinished" />
+        <translation>N/A - 選擇豆子</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7741" />
         <source>Name of the green beans, often commercial name.</source>
-        <translation type="unfinished" />
+        <translation>生豆的名稱，通常是商業名稱。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7743" />
         <source>Name of the farm, region, typical information to understand from where the beans are issued.</source>
-        <translation type="unfinished" />
+        <translation>農場名稱、地區及典型資訊，用於了解豆子的來源。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7745" />
         <source>Name of the supplier where the beans were purchased.</source>
-        <translation type="unfinished" />
+        <translation>購買豆子的供應商名稱。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7747" />
         <source>Flavour notes as given by supplier or cupping session</source>
-        <translation type="unfinished" />
+        <translation>供應商或杯測階段提供的風味記錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9133" />
         <location filename="../tilauscope/beancave.py" line="7753" />
         <source>Year of Harvesting.</source>
-        <translation type="unfinished" />
+        <translation>收穫年份。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7766" />
         <source>Density of green beans in g/l.</source>
-        <translation type="unfinished" />
+        <translation>生豆密度（g/l）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7774" />
         <source>Green beans humidity in percentage. In general between 9%-13%</source>
-        <translation type="unfinished" />
+        <translation>生豆濕度百分比。一般介於 9%-13%</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7784" />
         <source>Water activity of green beans, a ratio from 0 to 1 (not a percentage). Specialty green is typically 0.45-0.60.</source>
-        <translation type="unfinished" />
+        <translation>生豆水活性，介於 0 到 1 的比例（不是百分比）。精品生豆通常為 0.45-0.60。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7791" />
         <source>Volume of green beans based on density in l.</source>
-        <translation type="unfinished" />
+        <translation>根據密度計算生豆體積（升）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7798" />
         <source>Altitude of beans.</source>
-        <translation type="unfinished" />
+        <translation>豆子海拔。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7806" />
         <source>Store the stock weight of this bean in g.</source>
-        <translation type="unfinished" />
+        <translation>儲存此豆子的庫存重量（克）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7815" />
         <source>Calculated — total weight roasted for this bean type.</source>
-        <translation type="unfinished" />
+        <translation>計算所得——此豆子類型烘焙的總重量。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7821" />
         <source>SCA cupping score (80+ = specialty grade).</source>
-        <translation type="unfinished" />
+        <translation>SCA 杯測分數（80+ = 精品級）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7853" />
         <source>Select if this record is for a Single Origin green bean or a Blend.</source>
-        <translation type="unfinished" />
+        <translation>選擇此記錄是單一原產地生豆或混合豆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7861" />
         <source>Percentage of first bean in the blend.</source>
-        <translation type="unfinished" />
+        <translation>混合豆中第一種豆的百分比。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7969" />
@@ -23754,7 +23758,7 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="7971" />
         <source>Update the selected green bean record with the values filled in the form.</source>
-        <translation type="unfinished" />
+        <translation>用表單中填入的數值更新已選擇的生豆記錄。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7974" />
@@ -23764,7 +23768,7 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="7977" />
         <source>Create a new green bean record in a single expert form. For a guided entry, use « + New sack ».</source>
-        <translation type="unfinished" />
+        <translation>在單一專家表單中建立新的綠豆紀錄。如需導引式輸入，請使用「+ 新麻袋」。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7980" />
@@ -23774,7 +23778,7 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="7983" />
         <source>Clear all input fields to their default state.</source>
-        <translation type="unfinished" />
+        <translation>將所有輸入欄位清除至預設狀態。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9399" />
@@ -23785,7 +23789,7 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="7989" />
         <source>Delete the selected green bean record. A confirmation dialog will appear.</source>
-        <translation type="unfinished" />
+        <translation>刪除所選的綠豆紀錄。將會出現確認對話框。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="7994" />
@@ -23795,7 +23799,7 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="7997" />
         <source>Set a roast session based on the current selection.</source>
-        <translation type="unfinished" />
+        <translation>根據目前選擇設定烘焙工作階段。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8001" />
@@ -23805,58 +23809,58 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="8004" />
         <source>Generate a printable label for this green bean record.</source>
-        <translation type="unfinished" />
+        <translation>為此綠豆紀錄產生可列印的標籤。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8008" />
         <source>QR</source>
-        <translation type="unfinished" />
+        <translation>QR</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8011" />
         <source>Generate a QR code for this green bean record.</source>
-        <translation type="unfinished" />
+        <translation>為此綠豆紀錄產生 QR 碼。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8019" />
         <source>Export this green bean sheet as a shareable landscape image (JPEG), sized for social networks.</source>
-        <translation type="unfinished" />
+        <translation>將此綠豆表單以可分享的橫向影像 (JPEG) 形式匯出，尺寸適合社群網路。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8023" />
         <source>AI</source>
-        <translation type="unfinished" />
+        <translation>AI</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8027" />
         <source>Use AI to parse unstructured text and fill the form automatically.</source>
-        <translation type="unfinished" />
+        <translation>使用 AI 剖析非結構化文字並自動填入表單。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="482" />
         <location filename="../tilauscope/beancave.py" line="8053" />
         <source>Flavors</source>
-        <translation type="unfinished" />
+        <translation>風味</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8056" />
         <source>Select flavor notes based on a Flavor Wheel.</source>
-        <translation type="unfinished" />
+        <translation>根據風味輪選擇風味特徵。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8068" />
         <source>Percentage of second bean type in the blend.</source>
-        <translation type="unfinished" />
+        <translation>混合豆中第二種豆類的百分比。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8078" />
         <source>Percentage of third bean type in the blend.</source>
-        <translation type="unfinished" />
+        <translation>混合豆中第三種豆類的百分比。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8169" />
         <source>Origin &amp; Identity</source>
-        <translation type="unfinished" />
+        <translation>原產地與身份</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8179" />
@@ -23866,38 +23870,38 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="8186" />
         <source>Farm / Region</source>
-        <translation type="unfinished" />
+        <translation>農場 / 地區</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8187" />
         <source>Country</source>
-        <translation type="unfinished" />
+        <translation>國家</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="244" />
         <location filename="../tilauscope/beancave.py" line="8190" />
         <source>Supplier</source>
-        <translation type="unfinished" />
+        <translation>供應商</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8191" />
         <source>Crop year</source>
-        <translation type="unfinished" />
+        <translation>收穫年份</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8194" />
         <source>Flavour Notes</source>
-        <translation type="unfinished" />
+        <translation>風味特徵</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8202" />
         <source>SCA score</source>
-        <translation type="unfinished" />
+        <translation>SCA 評分</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8207" />
         <source>Botany &amp; Process</source>
-        <translation type="unfinished" />
+        <translation>植物學與處理</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8216" />
@@ -23908,34 +23912,34 @@ Remote control is enabled, so you can open the control client in your browser in
         <location filename="../tilauscope/beancave_bean_sheet.py" line="257" />
         <location filename="../tilauscope/beancave.py" line="8220" />
         <source>Species</source>
-        <translation type="unfinished" />
+        <translation>物種</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8224" />
         <source>Variety</source>
-        <translation type="unfinished" />
+        <translation>品種</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="259" />
         <location filename="../tilauscope/beancave.py" line="8235" />
         <source>Category</source>
-        <translation type="unfinished" />
+        <translation>類別</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="260" />
         <location filename="../tilauscope/beancave.py" line="8236" />
         <source>Process</source>
-        <translation type="unfinished" />
+        <translation>處理法</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8244" />
         <source>Physical measures</source>
-        <translation type="unfinished" />
+        <translation>物理測量</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8257" />
         <source>Measure density with the scale</source>
-        <translation type="unfinished" />
+        <translation>使用秤測量密度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="276" />
@@ -23947,42 +23951,42 @@ Remote control is enabled, so you can open the control client in your browser in
         <location filename="../tilauscope/beancave_bean_sheet.py" line="278" />
         <location filename="../tilauscope/beancave.py" line="8279" />
         <source>Water activity</source>
-        <translation type="unfinished" />
+        <translation>水活性</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8294" />
         <source>Blend components</source>
-        <translation type="unfinished" />
+        <translation>混合成分</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8311" />
         <source>Bean 1</source>
-        <translation type="unfinished" />
+        <translation>豆 1</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8316" />
         <source>Ratio 1</source>
-        <translation type="unfinished" />
+        <translation>比率 1</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8317" />
         <source>Bean 2</source>
-        <translation type="unfinished" />
+        <translation>豆 2</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8318" />
         <source>Ratio 2</source>
-        <translation type="unfinished" />
+        <translation>比率 2</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8331" />
         <source>Bean 3</source>
-        <translation type="unfinished" />
+        <translation>豆 3</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8334" />
         <source>Ratio 3</source>
-        <translation type="unfinished" />
+        <translation>比率 3</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8343" />
@@ -23992,185 +23996,186 @@ Remote control is enabled, so you can open the control client in your browser in
     <message>
         <location filename="../tilauscope/beancave.py" line="8351" />
         <source>Computed</source>
-        <translation type="unfinished" />
+        <translation>已計算</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8360" />
         <source>Stock left (g)</source>
-        <translation type="unfinished" />
+        <translation>庫存數量 (克)</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8367" />
         <source>Total roasted (g)</source>
-        <translation type="unfinished" />
+        <translation>烘焙總量 (克)</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8372" />
         <source>computed — read only</source>
-        <translation type="unfinished" />
+        <translation>已計算 — 唯讀</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="324" />
         <location filename="../tilauscope/beancave.py" line="8388" />
         <source>Sacks</source>
-        <translation type="unfinished" />
+        <translation>麻袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8428" />
         <source>Bean:</source>
-        <translation type="unfinished" />
+        <translation>豆：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8463" />
         <source>New sack</source>
-        <translation type="unfinished" />
+        <translation>新麻袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8469" />
         <source>Register an incoming bag of green coffee with a step-by-step assistant: new bean, restock or new crop — sack labelling stays optional.</source>
-        <translation type="unfinished" />
+        <translation>使用逐步助手登記傳入的綠咖啡袋：新豆、補貨或新收穫 — 麻袋標籤保持選擇性。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8581" />
         <source>Please select your directories in the 'File Management' tab first.</source>
-        <translation type="unfinished" />
+        <translation>請先在「檔案管理」標籤中選擇您的目錄。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8587" />
         <source>Your bean cave is empty. Please define your first bean using the 'Add' button.</source>
-        <translation type="unfinished" />
+        <translation>您的豆庫為空。請使用「新增」按鈕定義您的第一個豆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9927" />
         <location filename="../tilauscope/beancave.py" line="8607" />
         <source>Select Beancave directory</source>
-        <translation type="unfinished" />
+        <translation>選擇豆庫目錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8609" />
         <source>Beancave directory</source>
-        <translation type="unfinished" />
+        <translation>豆庫目錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8613" />
         <source>Select ALog directory</source>
-        <translation type="unfinished" />
+        <translation>選擇 ALog 目錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8615" />
         <source>ALog directory</source>
-        <translation type="unfinished" />
+        <translation>ALog 目錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8619" />
         <source>Update Roast Sessions</source>
-        <translation type="unfinished" />
+        <translation>更新烘焙工作階段</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8621" />
         <source>Scan the ALog directory to count the number of roast sessions associated with each green bean type. This information will be displayed in the main table and can help you track how many times each type of green bean has been roasted.</source>
-        <translation type="unfinished" />
+        <translation>掃描 ALog 目錄以計算與各綠豆類型相關的烘焙工作階段數量。此資訊將顯示在主表格中，可幫助您追蹤各種綠豆被烘焙的次數。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8625" />
         <source>Repair ALogs</source>
-        <translation type="unfinished" />
+        <translation>修復 ALog</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8626" />
         <source>Browse the ALog directory, audit incomplete roast profiles, link a green bean and complete missing fields one file at a time. A file is rewritten and renamed to its Artisan filename only when you press Record.</source>
-        <translation type="unfinished" />
+        <translation>瀏覽 ALog 目錄、稽核不完整的烘焙設定檔、連結綠豆並逐個檔案完成遺漏欄位。檔案只在您按下「記錄」時才會重寫並重新命名為其 Artisan 檔名。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8630" />
         <source>Export Roasts for LLM</source>
-        <translation type="unfinished" />
+        <translation>匯出烘焙用於 LLM</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8632" />
         <source>Export roast session data to a CSV file formatted for use with Large Language Models (LLMs). This can be useful for training AI models, performing data analysis, or sharing roast data in a structured format. The exported CSV will include details of each roast session, such as date, duration, temperature profiles, and associated green bean types.</source>
-        <translation type="unfinished" />
+        <translation>將烘焙工作階段資料匯出到為大型語言模型 (LLM) 格式化的 CSV 檔案。這可用於訓練 AI 模型、執行資料分析或以結構化格式共享烘焙資料。匯出的 CSV 將包含各烘焙工作階段的詳細資訊，例如日期、持續時間、溫度設定檔和相關的綠豆類型。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8636" />
         <source>Export Logs</source>
-        <translation type="unfinished" />
+        <translation>匯出日誌</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8637" />
         <source>Export logs for diagnostics.</source>
-        <translation type="unfinished" />
+        <translation>匯出診斷日誌。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8641" />
         <source>DEV TEST : Roasts for PID</source>
-        <translation type="unfinished" />
+        <translation>DEV TEST : PID 烘焙測試</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8647" />
         <source>Edit Alarms</source>
-        <translation type="unfinished" />
+        <translation>編輯警報</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8649" />
         <source>Open the TilauScope alarm editor</source>
-        <translation type="unfinished" />
+        <translation>開啟 TilauScope 警報編輯器</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8659" />
         <source>Set UUID in old roast files</source>
-        <translation type="unfinished" />
+        <translation>在舊烘焙檔案中設定 UUID</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8661" />
         <source>Update existing ALog roast session files with the UUIDs of the green beans as defined in the Beancave. This will allow for better tracking and association between your green bean records and roast sessions, especially for older roasts that were recorded before UUIDs were implemented. Use this function after defining your green beans and before performing any analysis that relies on UUIDs.</source>
-        <translation type="unfinished" />
+        <translation>使用豆庫中定義的綠豆 UUID 更新現有 ALog 烘焙工作階段檔案。這將允許在您的綠豆紀錄和烘焙工作階段之間進行更好的追蹤和關聯，特別是對於在實施 UUID 之前記錄的較舊烘焙。在定義綠豆之後以及執行任何依賴 UUID 的分析之前使用此功能。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8786" />
         <source>QR scan unavailable</source>
-        <translation type="unfinished" />
+        <translation>QR 掃描不可用</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8807" />
         <source>Roast not found</source>
-        <translation type="unfinished" />
+        <translation>找不到烘焙</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8808" />
         <source>No roast with this identifier in the ALog directory.
 If the application just started, indexing may still be running — try again in a few seconds.</source>
-        <translation type="unfinished" />
+        <translation>ALog 目錄中沒有此識別碼的烘焙。
+如果應用程式剛啟動，索引可能仍在執行中 — 請在幾秒鐘後重試。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8818" />
         <source>The roast file could not be read.</source>
-        <translation type="unfinished" />
+        <translation>無法讀取烘焙檔案。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8845" />
         <source>Bean not found</source>
-        <translation type="unfinished" />
+        <translation>找不到豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8846" />
         <source>No green bean with this identifier in the BeanCave catalogue.</source>
-        <translation type="unfinished" />
+        <translation>豆庫目錄中沒有此識別碼的綠豆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8863" />
         <source>Sack not found</source>
-        <translation type="unfinished" />
+        <translation>找不到麻袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8864" />
         <source>This label is not currently attached to any coffee in the BeanCave catalogue.</source>
-        <translation type="unfinished" />
+        <translation>此標籤目前未附加到豆庫目錄中的任何咖啡。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="8882" />
         <source>Please select a valid ALog directory in the File Management tab first.</source>
-        <translation type="unfinished" />
+        <translation>請先在「檔案管理」標籤中選擇有效的 ALog 目錄。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_catalogue.py" line="104" />
@@ -24178,7 +24183,7 @@ If the application just started, indexing may still be running — try again in 
         <location filename="../tilauscope/beancave.py" line="9138" />
         <location filename="../tilauscope/beancave.py" line="8949" />
         <source>Harvest is {0} years old</source>
-        <translation type="unfinished" />
+        <translation>收穫已有 {0} 年</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="363" />
@@ -24189,32 +24194,32 @@ If the application just started, indexing may still be running — try again in 
     <message>
         <location filename="../tilauscope/beancave.py" line="9088" />
         <source>Single Origin</source>
-        <translation type="unfinished" />
+        <translation>單一產地</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9102" />
         <source>Start a roast with this bean</source>
-        <translation type="unfinished" />
+        <translation>使用此豆開始烘焙</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9104" />
         <source>Out of stock — refill this bean before roasting</source>
-        <translation type="unfinished" />
+        <translation>缺貨 — 烘焙前補充此豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9210" />
         <source>untitled</source>
-        <translation type="unfinished" />
+        <translation>未命名</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9392" />
         <source>Confirm Deletion</source>
-        <translation type="unfinished" />
+        <translation>確認刪除</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9393" />
         <source>Delete &lt;b&gt;{0}&lt;/b&gt;?&lt;br&gt;This action cannot be undone.</source>
-        <translation type="unfinished" />
+        <translation>刪除 &lt;b&gt;{0}&lt;/b&gt;?&lt;br&gt;此動作無法復原。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9400" />
@@ -24224,224 +24229,225 @@ If the application just started, indexing may still be running — try again in 
     <message>
         <location filename="../tilauscope/beancave.py" line="9532" />
         <source>Read Error</source>
-        <translation type="unfinished" />
+        <translation>讀取錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9533" />
         <source>Unable to read file</source>
-        <translation type="unfinished" />
+        <translation>無法讀取檔案</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9535" />
         <source>The file might be corrupted.</source>
-        <translation type="unfinished" />
+        <translation>檔案可能已損毀。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9537" />
         <source>Unexpected error while reading beancave.json</source>
-        <translation type="unfinished" />
+        <translation>讀取 beancave.json 時發生非預期的錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9538" />
         <source>An unexpected error occurred</source>
-        <translation type="unfinished" />
+        <translation>發生非預期的錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9544" />
         <location filename="../tilauscope/beancave.py" line="9543" />
         <source>Directory or file access is not possible</source>
-        <translation type="unfinished" />
+        <translation>無法存取目錄或檔案</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9568" />
         <source>Unable to save file</source>
-        <translation type="unfinished" />
+        <translation>無法儲存檔案</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9574" />
         <source>Please,  go to the file tab, select a directory to store the JSON beancave file and where your alog file are located. Then exit bean cave and relaunch it!</source>
-        <translation type="unfinished" />
+        <translation>請先進入檔案標籤，選擇儲存 JSON 豆庫檔案以及您 alog 檔案所在位置的目錄。然後退出豆庫並重新啟動它！</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9709" />
         <source>Beancave directory: {0}</source>
-        <translation type="unfinished" />
+        <translation>豆庫目錄：{0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9710" />
         <source>ALog directory: {0}</source>
-        <translation type="unfinished" />
+        <translation>ALog 目錄：{0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9734" />
         <source>No scale configured</source>
-        <translation type="unfinished" />
+        <translation>未設定秤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="763" />
         <location filename="../tilauscope/beancave.py" line="9735" />
         <source>Configure scale 1 in Artisan to measure density.</source>
-        <translation type="unfinished" />
+        <translation>在 Artisan 中設定秤 1 以測量密度。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9802" />
         <source>Replace Density?</source>
-        <translation type="unfinished" />
+        <translation>替換密度？</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9803" />
         <source>Current density is &lt;b&gt;{0} g/l&lt;/b&gt;.&lt;br&gt;Replace with measured &lt;b&gt;{1} g/l&lt;/b&gt;?</source>
-        <translation type="unfinished" />
+        <translation>目前密度為 &lt;b&gt;{0} g/l&lt;/b&gt;。&lt;br&gt;替換為測量的 &lt;b&gt;{1} g/l&lt;/b&gt;？</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9894" />
         <source>Invalid Directory</source>
-        <translation type="unfinished" />
+        <translation>無效的目錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9895" />
         <source>The selected path is not a valid directory.</source>
-        <translation type="unfinished" />
+        <translation>所選路徑不是有效的目錄。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9904" />
         <source>On macOS, please ensure TilauScope has 'Full Disk Access' in System Settings if this is a protected folder.</source>
-        <translation type="unfinished" />
+        <translation>在 macOS 上，如果這是受保護的資料夾，請確保 TilauScope 在「系統設定」中具有「完全磁碟存取」權限。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9906" />
         <source>On Windows, ensure the folder is not marked 'Read-only' and your user has modify permissions.</source>
-        <translation type="unfinished" />
+        <translation>在 Windows 上，確保資料夾未標記為「唯讀」，且您的使用者具有修改權限。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9908" />
         <source>Permission Denied</source>
-        <translation type="unfinished" />
+        <translation>拒絕存取</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9909" />
         <source>You do not have write permissions for this directory. TilauScope needs to save logs and metadata here.</source>
-        <translation type="unfinished" />
+        <translation>您沒有此目錄的寫入權限。TilauScope 需要在此儲存日誌和中繼資料。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9965" />
         <location filename="../tilauscope/beancave.py" line="9931" />
         <source>Selection Cancelled</source>
-        <translation type="unfinished" />
+        <translation>選擇已取消</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9932" />
         <source>Beancave directory selection was cancelled.</source>
-        <translation type="unfinished" />
+        <translation>豆庫目錄選擇已取消。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9945" />
         <source>Beancave Directory Selected</source>
-        <translation type="unfinished" />
+        <translation>豆庫目錄已選擇</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9979" />
         <location filename="../tilauscope/beancave.py" line="9946" />
         <source>The directory</source>
-        <translation type="unfinished" />
+        <translation>目錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9947" />
         <source>has been selected.
 The beancave.json file is now loaded from this location.</source>
-        <translation type="unfinished" />
+        <translation>已選擇。
+beancave.json 檔案現在從此位置載入。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9961" />
         <source>Select ALog Directory</source>
-        <translation type="unfinished" />
+        <translation>選擇 ALog 目錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9966" />
         <source>ALog directory selection was cancelled.</source>
-        <translation type="unfinished" />
+        <translation>ALog 目錄選擇已取消。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9974" />
         <source>ALog directory selected</source>
-        <translation type="unfinished" />
+        <translation>ALog 目錄已選擇</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9978" />
         <source>ALog Directory Selected</source>
-        <translation type="unfinished" />
+        <translation>ALog 目錄已選擇</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9979" />
         <source>has been selected.</source>
-        <translation type="unfinished" />
+        <translation>已選擇。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="9990" />
         <source>Please, select a valid ALog directory first.</source>
-        <translation type="unfinished" />
+        <translation>請先選擇有效的 ALog 目錄。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10211" />
         <location filename="../tilauscope/beancave.py" line="10001" />
         <source>Scanning roast profiles...</source>
-        <translation type="unfinished" />
+        <translation>掃描烘焙設定檔...</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10064" />
         <source>Information has been updated successfully.</source>
-        <translation type="unfinished" />
+        <translation>資訊已成功更新。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10067" />
         <source>Orphaned roasts were detected and logged.</source>
-        <translation type="unfinished" />
+        <translation>已偵測並記錄孤立的烘焙。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10070" />
         <source>Update finished</source>
-        <translation type="unfinished" />
+        <translation>更新已完成</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10076" />
         <source>Select a line to start a Roast!</source>
-        <translation type="unfinished" />
+        <translation>選擇一行以開始烘焙！</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10092" />
         <source>Select a line to generate a QRCODE!</source>
-        <translation type="unfinished" />
+        <translation>選擇一行以產生 QR 碼！</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10128" />
         <source>An error happened while generating the QRCode:</source>
-        <translation type="unfinished" />
+        <translation>產生 QR 碼時發生錯誤：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10264" />
         <source>Update Complete</source>
-        <translation type="unfinished" />
+        <translation>更新完成</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10265" />
         <source>Finished! Updated {} roast profiles with UUIDs.</source>
-        <translation type="unfinished" />
+        <translation>完成！使用 UUID 更新了 {} 個烘焙設定檔。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10278" />
         <source>Export PID Analysis Data</source>
-        <translation type="unfinished" />
+        <translation>匯出 PID 分析資料</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10439" />
         <location filename="../tilauscope/beancave.py" line="10280" />
         <source>CSV Files (*.csv);;All Files (*)</source>
-        <translation type="unfinished" />
+        <translation>CSV 檔案 (*.csv);;所有檔案 (*)</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10284" />
         <source>Extracting time-series data...</source>
-        <translation type="unfinished" />
+        <translation>正在擷取時間序列資料...</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10655" />
@@ -24452,187 +24458,187 @@ The beancave.json file is now loaded from this location.</source>
     <message>
         <location filename="../tilauscope/beancave.py" line="10412" />
         <source>Extended PID analysis data exported.</source>
-        <translation type="unfinished" />
+        <translation>擴充 PID 分析資料已匯出。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10662" />
         <location filename="../tilauscope/beancave.py" line="10415" />
         <source>Export Error</source>
-        <translation type="unfinished" />
+        <translation>匯出錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10416" />
         <source>Failed: </source>
-        <translation type="unfinished" />
+        <translation>失敗： </translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10437" />
         <source>Export Roast Data</source>
-        <translation type="unfinished" />
+        <translation>匯出烘焙資料</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10445" />
         <source>Exporting roast data...</source>
-        <translation type="unfinished" />
+        <translation>正在匯出烘焙資料...</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10656" />
         <source>Extended data exported successfully.</source>
-        <translation type="unfinished" />
+        <translation>擴充資料匯出成功。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10663" />
         <source>Could not save CSV: </source>
-        <translation type="unfinished" />
+        <translation>無法儲存 CSV： </translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10689" />
         <location filename="../tilauscope/beancave.py" line="10671" />
         <source>Load in TilauScope</source>
-        <translation type="unfinished" />
+        <translation>在 TilauScope 中載入</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10672" />
         <source>Plese, select a roast session first.</source>
-        <translation type="unfinished" />
+        <translation>請先選擇一個烘焙工作階段。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10681" />
         <source>File error</source>
-        <translation type="unfinished" />
+        <translation>檔案錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11349" />
         <location filename="../tilauscope/beancave.py" line="10716" />
         <location filename="../tilauscope/beancave.py" line="10682" />
         <source>File not found</source>
-        <translation type="unfinished" />
+        <translation>找不到檔案</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10690" />
         <source>has been loaded in TilauScope.</source>
-        <translation type="unfinished" />
+        <translation>已在 TilauScope 中載入。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10692" />
         <source>Configuration error</source>
-        <translation type="unfinished" />
+        <translation>設定錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10693" />
         <source>Error accessing to main TilauScope routine.</source>
-        <translation type="unfinished" />
+        <translation>無法存取主要 TilauScope 例行程式。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10695" />
         <source>Loading error</source>
-        <translation type="unfinished" />
+        <translation>載入錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10696" />
         <source>An error occurred while loading file</source>
-        <translation type="unfinished" />
+        <translation>載入檔案時發生錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11337" />
         <location filename="../tilauscope/beancave.py" line="10705" />
         <source>TilauScope load</source>
-        <translation type="unfinished" />
+        <translation>TilauScope 載入</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11338" />
         <location filename="../tilauscope/beancave.py" line="10706" />
         <source>Please, select a roast fist from the list.</source>
-        <translation type="unfinished" />
+        <translation>請先從列表中選擇一個烘焙。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11348" />
         <location filename="../tilauscope/beancave.py" line="10715" />
         <source>File Error</source>
-        <translation type="unfinished" />
+        <translation>檔案錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10722" />
         <source>TilauScope Load</source>
-        <translation type="unfinished" />
+        <translation>TilauScope 載入</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10723" />
         <source> has been loaded in main TilauScope window.</source>
-        <translation type="unfinished" />
+        <translation> 已在主要 TilauScope 視窗中載入。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10725" />
         <source>Confugration error</source>
-        <translation type="unfinished" />
+        <translation>設定錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10726" />
         <source>Error accessing to background TilauScope routine</source>
-        <translation type="unfinished" />
+        <translation>無法存取背景 TilauScope 例行程式</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10728" />
         <source>Load error</source>
-        <translation type="unfinished" />
+        <translation>載入錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10729" />
         <source>Une erreur s'est produite lors du chargement</source>
-        <translation type="unfinished" />
+        <translation>載入期間發生錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10761" />
         <source>Printer: Connecting…</source>
-        <translation type="unfinished" />
+        <translation>印表機：連線中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10796" />
         <source>Printer: Power low</source>
-        <translation type="unfinished" />
+        <translation>印表機：電力不足</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10799" />
         <source>Printer: RFID Error</source>
-        <translation type="unfinished" />
+        <translation>印表機：RFID 錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10803" />
         <source>Printer: Cover opened</source>
-        <translation type="unfinished" />
+        <translation>印表機：蓋子已開啟</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10807" />
         <source>Printer: Status error</source>
-        <translation type="unfinished" />
+        <translation>印表機：狀態錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10961" />
         <location filename="../tilauscope/beancave.py" line="10818" />
         <source>Printer: Invalid paper</source>
-        <translation type="unfinished" />
+        <translation>印表機：紙張無效</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11996" />
         <location filename="../tilauscope/beancave.py" line="10832" />
         <source>Printer: Disconnected</source>
-        <translation type="unfinished" />
+        <translation>印表機：已中斷連線</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10906" />
         <source>labels left</source>
-        <translation type="unfinished" />
+        <translation>標籤剩餘</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10930" />
         <source>Printer: No paper</source>
-        <translation type="unfinished" />
+        <translation>印表機：無紙張</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10934" />
         <location filename="../tilauscope/beancave.py" line="10932" />
         <source>Printer: Cover open</source>
-        <translation type="unfinished" />
+        <translation>印表機：蓋子開啟</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="10993" />
@@ -24642,44 +24648,44 @@ The beancave.json file is now loaded from this location.</source>
     <message>
         <location filename="../tilauscope/beancave.py" line="10994" />
         <source>Please, select a green bean first in the first tab, then the roast.</source>
-        <translation type="unfinished" />
+        <translation>請先在第一個標籤中選擇生豆，然後選擇烘焙。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11007" />
         <source>There is no more labels on the roll, please load a new roll</source>
-        <translation type="unfinished" />
+        <translation>捲筒上已沒有標籤，請裝入新捲筒</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11021" />
         <source>Label size or type of paper was not correctly detected, please close and retry to open bean cave</source>
-        <translation type="unfinished" />
+        <translation>標籤大小或紙張類型偵測不正確，請關閉並重新開啟豆窖</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11030" />
         <source>unsupported paper size</source>
-        <translation type="unfinished" />
+        <translation>不支援的紙張尺寸</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11092" />
         <location filename="../tilauscope/beancave.py" line="11064" />
         <source>Preview for Niimbot B21S</source>
-        <translation type="unfinished" />
+        <translation>Niimbot B21S 預覽</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11122" />
         <source>Print now</source>
-        <translation type="unfinished" />
+        <translation>立即列印</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11163" />
         <source>Copies</source>
-        <translation type="unfinished" />
+        <translation>份數</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11244" />
         <location filename="../tilauscope/beancave.py" line="11195" />
         <source>Printing...</source>
-        <translation type="unfinished" />
+        <translation>正在列印...</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11291" />
@@ -24687,136 +24693,138 @@ The beancave.json file is now loaded from this location.</source>
         <location filename="../tilauscope/beancave.py" line="11220" />
         <location filename="../tilauscope/beancave.py" line="11215" />
         <source>Niimbot B21S Print</source>
-        <translation type="unfinished" />
+        <translation>Niimbot B21S 列印</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11254" />
         <location filename="../tilauscope/beancave.py" line="11242" />
         <source>Printing copy</source>
-        <translation type="unfinished" />
+        <translation>正在列印副本</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11275" />
         <source>{0} labels correctly printed.
 </source>
-        <translation type="unfinished" />
+        <translation>{0} 個標籤已正確列印。
+</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11277" />
         <source>Label correctly printed.
 </source>
-        <translation type="unfinished" />
+        <translation>標籤已正確列印。
+</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11280" />
         <source>label(s) remaining on the roll, consider changing the roll.</source>
-        <translation type="unfinished" />
+        <translation>標籤在捲筒上剩餘，請考慮更換捲筒。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11283" />
         <source>label printed</source>
-        <translation type="unfinished" />
+        <translation>標籤已列印</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11303" />
         <source>Printer not ready</source>
-        <translation type="unfinished" />
+        <translation>印表機尚未就緒</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11306" />
         <source>A print is already in progress</source>
-        <translation type="unfinished" />
+        <translation>已有一個列印作業進行中</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11367" />
         <source>This roast is linked to a bean that no longer exists in your cave.</source>
-        <translation type="unfinished" />
+        <translation>此烘焙連結到的豆子已不存在於您的豆窖中。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11374" />
         <source>Save Label PDF</source>
-        <translation type="unfinished" />
+        <translation>儲存標籤 PDF</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11374" />
         <source>PDF Files (*.pdf)</source>
-        <translation type="unfinished" />
+        <translation>PDF 檔案 (*.pdf)</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11691" />
         <location filename="../tilauscope/beancave.py" line="11387" />
         <source>Label saved to</source>
-        <translation type="unfinished" />
+        <translation>標籤已儲存至</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11392" />
         <source>PDF file was not generated.</source>
-        <translation type="unfinished" />
+        <translation>未產生 PDF 檔案。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="529" />
         <location filename="../tilauscope/beancave.py" line="11418" />
         <source>Fetching and analyzing website content...</source>
-        <translation type="unfinished" />
+        <translation>正在擷取和分析網站內容...</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="598" />
         <location filename="../tilauscope/beancave.py" line="11605" />
         <source>AI Error</source>
-        <translation type="unfinished" />
+        <translation>AI 錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="599" />
         <location filename="../tilauscope/beancave.py" line="11606" />
         <source>Failed to extract bean data</source>
-        <translation type="unfinished" />
+        <translation>無法擷取豆子資料</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11700" />
         <location filename="../tilauscope/beancave.py" line="11665" />
         <source>Please select a bean from the table first.</source>
-        <translation type="unfinished" />
+        <translation>請先從表格中選擇一個豆子。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11715" />
         <source>Save Bean Card</source>
-        <translation type="unfinished" />
+        <translation>儲存豆子卡</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11730" />
         <source>Bean card saved to</source>
-        <translation type="unfinished" />
+        <translation>豆子卡已儲存至</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11735" />
         <source>The bean card could not be generated.</source>
-        <translation type="unfinished" />
+        <translation>無法產生豆子卡。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11819" />
         <source>Add New Bean</source>
-        <translation type="unfinished" />
+        <translation>新增豆子</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11842" />
         <source>The form contains data for</source>
-        <translation type="unfinished" />
+        <translation>表單包含</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11849" />
         <location filename="../tilauscope/beancave.py" line="11845" />
         <source>How do you want to create the new entry?</source>
-        <translation type="unfinished" />
+        <translation>您要如何建立新項目？</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11915" />
         <source>From current fields</source>
-        <translation type="unfinished" />
+        <translation>從目前的欄位</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11922" />
         <source>Blank bean</source>
-        <translation type="unfinished" />
+        <translation>空白豆子</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11929" />
@@ -24826,38 +24834,38 @@ The beancave.json file is now loaded from this location.</source>
     <message>
         <location filename="../tilauscope/beancave.py" line="11935" />
         <source>Pre-fill from what you have typed so far</source>
-        <translation type="unfinished" />
+        <translation>根據您目前輸入的內容預先填入</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="11943" />
         <source>Start fresh with default values</source>
-        <translation type="unfinished" />
+        <translation>使用預設值重新開始</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="108" />
         <location filename="../tilauscope/beancave.py" line="12056" />
         <source>WATER ACTIVITY</source>
-        <translation type="unfinished" />
+        <translation>水分活度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="12172" />
         <source>Search for bean data using AI</source>
-        <translation type="unfinished" />
+        <translation>使用 AI 搜尋豆子資料</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="12206" />
         <source>Enter URL of supplier here...</source>
-        <translation type="unfinished" />
+        <translation>在此輸入供應商網址...</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="12266" />
         <source>Paste URL</source>
-        <translation type="unfinished" />
+        <translation>貼上網址</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave.py" line="12277" />
         <source>Extract data</source>
-        <translation type="unfinished" />
+        <translation>擷取資料</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="163" />
@@ -24870,12 +24878,12 @@ The beancave.json file is now loaded from this location.</source>
         <location filename="../tilauscope/beancave_zone_editors.py" line="69" />
         <location filename="../tilauscope/beancave_bean_sheet.py" line="143" />
         <source>Essentials</source>
-        <translation type="unfinished" />
+        <translation>基本資訊</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="144" />
         <source>Edit name, origin, year and stock</source>
-        <translation type="unfinished" />
+        <translation>編輯名稱、產地、年份和庫存</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="174" />
@@ -24885,33 +24893,33 @@ The beancave.json file is now loaded from this location.</source>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="187" />
         <source>Crop</source>
-        <translation type="unfinished" />
+        <translation>收穫</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="192" />
         <source>SCA</source>
-        <translation type="unfinished" />
+        <translation>SCA</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="193" />
         <source>Roasts</source>
-        <translation type="unfinished" />
+        <translation>烘焙</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="70" />
         <location filename="../tilauscope/beancave_bean_sheet.py" line="238" />
         <source>Provenance</source>
-        <translation type="unfinished" />
+        <translation>來源</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="239" />
         <source>Edit farm, supplier and altitude</source>
-        <translation type="unfinished" />
+        <translation>編輯農場、供應商和海拔</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="243" />
         <source>Farm</source>
-        <translation type="unfinished" />
+        <translation>農場</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="71" />
@@ -24922,68 +24930,68 @@ The beancave.json file is now loaded from this location.</source>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="251" />
         <source>Edit type, category, process, species, varieties, density, humidity</source>
-        <translation type="unfinished" />
+        <translation>編輯類型、分類、製程、物種、品種、密度和濕度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="258" />
         <source>Varieties</source>
-        <translation type="unfinished" />
+        <translation>品種</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="274" />
         <source>Composition</source>
-        <translation type="unfinished" />
+        <translation>成分</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="72" />
         <location filename="../tilauscope/beancave_bean_sheet.py" line="284" />
         <source>Sensory &amp; notes</source>
-        <translation type="unfinished" />
+        <translation>感官與筆記</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="285" />
         <source>Edit SCA score, flavour notes and memo</source>
-        <translation type="unfinished" />
+        <translation>編輯 SCA 評分、風味筆記和備忘</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_bean_sheet.py" line="333" />
         <source>✕ releases the label (reusable)</source>
-        <translation type="unfinished" />
+        <translation>✕ 釋放標籤（可重複使用）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="73" />
         <source>New bean (expert)</source>
-        <translation type="unfinished" />
+        <translation>新豆子（專家）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="119" />
         <source>Click to transfer the reading</source>
-        <translation type="unfinished" />
+        <translation>按一下以傳輸讀數</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="121" />
         <source>waiting for probe…</source>
-        <translation type="unfinished" />
+        <translation>等待探針…</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="216" />
         <source>Fill from URL</source>
-        <translation type="unfinished" />
+        <translation>從網址填入</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="218" />
         <source>Fetch a supplier's product page and let AI fill this form automatically.</source>
-        <translation type="unfinished" />
+        <translation>擷取供應商的產品頁面，讓 AI 自動填入此表單。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="226" />
         <source>Fill what you know — everything can be refined later from the sheet.</source>
-        <translation type="unfinished" />
+        <translation>填入您知道的內容—所有項目稍後都可以從表單中調整。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="228" />
         <source>Only this section is changed. Save writes the record immediately.</source>
-        <translation type="unfinished" />
+        <translation>僅此部分已變更。儲存會立即寫入記錄。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="265" />
@@ -24993,7 +25001,7 @@ The beancave.json file is now loaded from this location.</source>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="269" />
         <source>Create</source>
-        <translation type="unfinished" />
+        <translation>建立</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="269" />
@@ -25003,97 +25011,97 @@ The beancave.json file is now loaded from this location.</source>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="317" />
         <source>Bean name:</source>
-        <translation type="unfinished" />
+        <translation>豆子名稱：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="324" />
         <source>Country:</source>
-        <translation type="unfinished" />
+        <translation>國家：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="333" />
         <source>Crop year:</source>
-        <translation type="unfinished" />
+        <translation>收穫年份：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="340" />
         <source>Remaining stock. With a scale configured, click the ⚖ reading to capture the exact weight.</source>
-        <translation type="unfinished" />
+        <translation>剩餘庫存。已設定刻度盤時，按一下 ⚖ 讀數以擷取確切的重量。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="341" />
         <source>Stock:</source>
-        <translation type="unfinished" />
+        <translation>庫存：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="347" />
         <source>Farm:</source>
-        <translation type="unfinished" />
+        <translation>農場：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="350" />
         <source>Supplier:</source>
-        <translation type="unfinished" />
+        <translation>供應商：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="355" />
         <source>Altitude:</source>
-        <translation type="unfinished" />
+        <translation>海拔：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="363" />
         <source>Single origin</source>
-        <translation type="unfinished" />
+        <translation>單一產地</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="366" />
         <source>Type:</source>
-        <translation type="unfinished" />
+        <translation>類型：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="381" />
         <source>This bean:</source>
-        <translation type="unfinished" />
+        <translation>此豆子：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="394" />
         <source>Component 2:</source>
-        <translation type="unfinished" />
+        <translation>成分 2：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="407" />
         <source>Component 3:</source>
-        <translation type="unfinished" />
+        <translation>成分 3：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="415" />
         <source>Category:</source>
-        <translation type="unfinished" />
+        <translation>分類：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="421" />
         <source>Process:</source>
-        <translation type="unfinished" />
+        <translation>製程：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="428" />
         <source>Species:</source>
-        <translation type="unfinished" />
+        <translation>品種：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="435" />
         <source>Varieties:</source>
-        <translation type="unfinished" />
+        <translation>品種：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="445" />
         <source>Measure</source>
-        <translation type="unfinished" />
+        <translation>測量</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="447" />
         <source>Measure density with the connected scale (fixed-volume container).</source>
-        <translation type="unfinished" />
+        <translation>使用連接的刻度盤測量密度（固定容量容器）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="454" />
@@ -25104,104 +25112,104 @@ The beancave.json file is now loaded from this location.</source>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="461" />
         <source>Humidity:</source>
-        <translation type="unfinished" />
+        <translation>濕度：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="468" />
         <source>Water activity:</source>
-        <translation type="unfinished" />
+        <translation>水分活度：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="478" />
         <source>SCA score:</source>
-        <translation type="unfinished" />
+        <translation>SCA 評分：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="488" />
         <source>Flavour notes:</source>
-        <translation type="unfinished" />
+        <translation>風味筆記：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="492" />
         <source>Roasting tips / memo:</source>
-        <translation type="unfinished" />
+        <translation>烘焙貼士／備忘錄：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="624" />
         <source>Fill the required fields (*) : name, country, category, process, species, varieties.</source>
-        <translation type="unfinished" />
+        <translation>填寫必填欄位（*）：名稱、國家、類別、處理法、品種、次品種。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="735" />
         <location filename="../tilauscope/beancave_zone_editors.py" line="713" />
         <source>probe not connected…</source>
-        <translation type="unfinished" />
+        <translation>探針未連接…</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="731" />
         <source>probe connected — measure to read</source>
-        <translation type="unfinished" />
+        <translation>探針已連接 — 量測即可讀取</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="762" />
         <source>No scale configured</source>
-        <translation type="unfinished" />
+        <translation>未設定秤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="823" />
         <source>Missing name</source>
-        <translation type="unfinished" />
+        <translation>缺少名稱</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="824" />
         <source>The bean needs a name.</source>
-        <translation type="unfinished" />
+        <translation>咖啡豆需要名稱。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="906" />
         <location filename="../tilauscope/beancave_zone_editors.py" line="890" />
         <source>Save failed</source>
-        <translation type="unfinished" />
+        <translation>保存失敗</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="891" />
         <source>The bean cave is not available.</source>
-        <translation type="unfinished" />
+        <translation>豆庫目前無法使用。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_zone_editors.py" line="907" />
         <source>The record could not be saved. See the log for details.</source>
-        <translation type="unfinished" />
+        <translation>無法保存記錄。詳見日誌。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_catalogue.py" line="119" />
         <source>out of stock</source>
-        <translation type="unfinished" />
+        <translation>缺貨</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_catalogue.py" line="132" />
         <source>Attached sack labels</source>
-        <translation type="unfinished" />
+        <translation>已附加麻袋標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_catalogue.py" line="196" />
         <source>Search name, country, farm…</source>
-        <translation type="unfinished" />
+        <translation>搜尋名稱、國家、農場…</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_catalogue.py" line="206" />
         <source>In stock</source>
-        <translation type="unfinished" />
+        <translation>有貨</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_catalogue.py" line="209" />
         <source>Hide out-of-stock beans</source>
-        <translation type="unfinished" />
+        <translation>隱藏缺貨豆款</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_catalogue.py" line="237" />
         <source>No bean matches the current filter.</source>
-        <translation type="unfinished" />
+        <translation>沒有豆款符合目前的篩選條件。</translation>
     </message>
     <message>
         <source>Save</source>
@@ -25232,689 +25240,689 @@ The beancave.json file is now loaded from this location.</source>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="65" />
         <source>Espresso</source>
-        <translation type="unfinished" />
+        <translation>意式濃縮</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="65" />
         <source>V60 / Pour-over</source>
-        <translation type="unfinished" />
+        <translation>V60／手沖</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="66" />
         <source>French Press</source>
-        <translation type="unfinished" />
+        <translation>法式塞壺</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="66" />
         <source>AeroPress</source>
-        <translation type="unfinished" />
+        <translation>AeroPress</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="67" />
         <source>Pulsar (no-bypass)</source>
-        <translation type="unfinished" />
+        <translation>Pulsar（無旁通）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="67" />
         <source>Weber Bird (no-bypass)</source>
-        <translation type="unfinished" />
+        <translation>Weber Bird（無旁通）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="68" />
         <source>Moka pot</source>
-        <translation type="unfinished" />
+        <translation>摩卡壺</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="74" />
         <source>E61 group (SB/DB)</source>
-        <translation type="unfinished" />
+        <translation>E61 沖頭（SB/DB）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="75" />
         <source>HX (E61)</source>
-        <translation type="unfinished" />
+        <translation>HX（E61）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="76" />
         <source>Dual boiler (programmable PI)</source>
-        <translation type="unfinished" />
+        <translation>雙鍋爐（可編程 PI）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="77" />
         <source>La Marzocco (paddle / line PI)</source>
-        <translation type="unfinished" />
+        <translation>La Marzocco（槳式／線性 PI）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="78" />
         <source>Slayer (needle-valve pre-brew)</source>
-        <translation type="unfinished" />
+        <translation>Slayer（針閥預浸）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="79" />
         <source>Manual lever (Flair / Cafelat Robot)</source>
-        <translation type="unfinished" />
+        <translation>手動槓桿（Flair／Cafelat Robot）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="80" />
         <source>Flow / pressure profiler</source>
-        <translation type="unfinished" />
+        <translation>流量／壓力分析器</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="81" />
         <source>Basic single boiler (no PI)</source>
-        <translation type="unfinished" />
+        <translation>基礎單鍋爐（無 PI）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="82" />
         <source>Other / unknown</source>
-        <translation type="unfinished" />
+        <translation>其他／未知</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="115" />
         <source>Classic long</source>
-        <translation type="unfinished" />
+        <translation>經典長型</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="116" />
         <source>Turbo (short, coarse)</source>
-        <translation type="unfinished" />
+        <translation>渦輪（短型、粗）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="122" />
         <source>Extremely Light (Nordic)</source>
-        <translation type="unfinished" />
+        <translation>極淺（北歐式）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="122" />
         <source>Very Light</source>
-        <translation type="unfinished" />
+        <translation>很淺</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="123" />
         <source>Light</source>
-        <translation type="unfinished" />
+        <translation>淺</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="123" />
         <source>Medium Light</source>
-        <translation type="unfinished" />
+        <translation>中淺</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="123" />
         <source>Medium</source>
-        <translation type="unfinished" />
+        <translation>中</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="124" />
         <source>Medium Dark</source>
-        <translation type="unfinished" />
+        <translation>中深</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="124" />
         <source>Dark / Very Dark</source>
-        <translation type="unfinished" />
+        <translation>深／很深</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="130" />
         <source>Ultra-fine (Turkish)</source>
-        <translation type="unfinished" />
+        <translation>超細（土耳其式）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="130" />
         <source>Fine (espresso)</source>
-        <translation type="unfinished" />
+        <translation>細（意式濃縮）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="131" />
         <source>Medium-fine (AeroPress / Moka)</source>
-        <translation type="unfinished" />
+        <translation>中細（AeroPress／摩卡壺）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="131" />
         <source>Medium (pour-over)</source>
-        <translation type="unfinished" />
+        <translation>中（手沖）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="132" />
         <source>Medium-coarse (no-bypass)</source>
-        <translation type="unfinished" />
+        <translation>中粗（無旁通）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="132" />
         <source>Coarse (French Press)</source>
-        <translation type="unfinished" />
+        <translation>粗（法式塞壺）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="133" />
         <source>Extra-coarse (cold brew)</source>
-        <translation type="unfinished" />
+        <translation>超粗（冷萃）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="139" />
         <source>None (puck prep / WDT)</source>
-        <translation type="unfinished" />
+        <translation>無（粉餅準備／WDT）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="140" />
         <source>Medium (pulse + light swirl)</source>
-        <translation type="unfinished" />
+        <translation>中（脈衝 + 輕旋轉）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="141" />
         <source>Low (break crust at 4:00)</source>
-        <translation type="unfinished" />
+        <translation>低（在 4:00 打破積層）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="142" />
         <source>Medium (stir 10 s)</source>
-        <translation type="unfinished" />
+        <translation>中（攪拌 10 秒）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="143" />
         <source>Spin / WWDT during bloom</source>
-        <translation type="unfinished" />
+        <translation>旋轉／WWDT（悶蒸期間）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="144" />
         <source>Vortex stir, then pull pod</source>
-        <translation type="unfinished" />
+        <translation>漩渦攪拌，然後拉出膠囊</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="145" />
         <source>None (pre-heated water)</source>
-        <translation type="unfinished" />
+        <translation>無（預熱水）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="146" />
         <source>High (dense high-altitude)</source>
-        <translation type="unfinished" />
+        <translation>高（密集高海拔）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="147" />
         <source>Reduced (uneven roast)</source>
-        <translation type="unfinished" />
+        <translation>降低（烘焙不勻）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="152" />
         <source>TDS 8-11%</source>
-        <translation type="unfinished" />
+        <translation>TDS 8-11%</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="152" />
         <source>Remove at first gurgle</source>
-        <translation type="unfinished" />
+        <translation>第一次咕嘟聲時移除</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="157" />
         <source>Very high density: coarsen slightly and add agitation to keep flow.</source>
-        <translation type="unfinished" />
+        <translation>極高密度：略微加粗並增加攪動以保持流量。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="158" />
         <source>High density: slightly coarser grind to maintain flow.</source>
-        <translation type="unfinished" />
+        <translation>高密度：略微加粗研磨以保持流量。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="159" />
         <source>Low density: finer grind; watch for fast/thin flow.</source>
-        <translation type="unfinished" />
+        <translation>低密度：更細研磨；注意快速／清薄流量。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="160" />
         <source>High weight-loss: well-developed/porous bean, extracts easily — watch for over-extraction.</source>
-        <translation type="unfinished" />
+        <translation>高失重：充分發展／多孔豆款，易於萃取 — 注意過度萃取。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="161" />
         <source>Low weight-loss: under-developed, harder to extract — add agitation.</source>
-        <translation type="unfinished" />
+        <translation>低失重：發展不足，難以萃取 — 增加攪動。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="162" />
         <source>Short development: expect bright acidity, wider ratio to balance.</source>
-        <translation type="unfinished" />
+        <translation>短發展期：預期明亮酸度，使用更寬比例以平衡。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="163" />
         <source>Long development: tighter ratio keeps body, lower risk of flatness.</source>
-        <translation type="unfinished" />
+        <translation>長發展期：緊密比例保持醇厚，平順風險降低。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="164" />
         <source>Dense high-altitude structure: tolerates high-yield, wider ratio.</source>
-        <translation type="unfinished" />
+        <translation>密集高海拔結構：容許高萃率、更寬比例。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="165" />
         <source>Lower-grown / less dense: tighter ratio to keep body.</source>
-        <translation type="unfinished" />
+        <translation>低地種植／低密度：緊密比例以保持醇厚。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="166" />
         <source>Turbo shot: coarse grind and a short pull. It needs a machine that holds its pressure — if yours dips, the shot will read sour and under-extracted rather than fast.</source>
-        <translation type="unfinished" />
+        <translation>渦輪萃取：粗研磨和短萃。它需要一台能保持壓力的機器 — 如果你的壓力下降，萃取會呈現酸澀和不足萃取，而不是快速。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="167" />
         <source>Those two ratio signals pull opposite ways and cancel — the ratio above is the balance of both, not a compromise you need to resolve.</source>
-        <translation type="unfinished" />
+        <translation>那兩個比例信號以相反方向拉動並抵消 — 上面的比例是兩者的平衡，而不是你需要解決的折衷方案。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="168" />
         <source>This recipe needs {w} g of water — more than a typical brewer of this kind holds (~{cap} g). Brew a smaller dose, or check yours is a large model.</source>
-        <translation type="unfinished" />
+        <translation>此配方需要 {w} g 的水 — 超過此類沖泡器的容量（～{cap} g）。使用更小劑量沖泡，或確認你的機型是否為大型。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="169" />
         <source>A {d} g dose will not fit a normal espresso basket (~{cap} g maximum).</source>
-        <translation type="unfinished" />
+        <translation>{d} g 的劑量無法放入普通意式濃縮粉籃（～{cap} g 最大）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="170" />
         <source>High hardness (GH, Ca/Mg): raises extraction — grind a touch coarser to stay in range.</source>
-        <translation type="unfinished" />
+        <translation>高硬度（GH、Ca/Mg）：提高萃取 — 研磨略微加粗以保持在範圍內。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="171" />
         <source>Low hardness (GH): lowers extraction and body — grind slightly finer.</source>
-        <translation type="unfinished" />
+        <translation>低硬度（GH）：降低萃取和醇厚 — 研磨略微加細。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="172" />
         <source>High alkalinity (KH): buffers and mutes acidity — bright/acid-forward coffees taste flatter.</source>
-        <translation type="unfinished" />
+        <translation>高鹼度（KH）：緩衝並抑制酸度 — 明亮／酸質豆款品嚐起來更平順。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="173" />
         <source>Low alkalinity (KH): little buffering — acidity reads sharp, watch for sourness.</source>
-        <translation type="unfinished" />
+        <translation>低鹼度（KH）：緩衝不足 — 酸度讀數銳利，注意酸澀。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="174" />
         <source>Water near SCA target (≈GH 68 / KH 40): balanced extraction window.</source>
-        <translation type="unfinished" />
+        <translation>水接近 SCA 目標（≈GH 68／KH 40）：平衡萃取窗口。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="175" />
         <source>Very fresh ({d}d): heavy degassing → unstable extraction. Longer bloom / pre-infusion.</source>
-        <translation type="unfinished" />
+        <translation>非常新鮮（{d}d）：大量脫氣 → 萃取不穩定。延長悶蒸／預浸。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="176" />
         <source>Optimal rest ({d}d): stable degassing window.</source>
-        <translation type="unfinished" />
+        <translation>最佳休息期（{d}d）：穩定脫氣窗口。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="177" />
         <source>Rested ({d}d): nearing peak, slightly finer is fine.</source>
-        <translation type="unfinished" />
+        <translation>已休息（{d}d）：接近高峰，略微加細也沒問題。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="178" />
         <source>Stale ({d}d): oxidative staling is largely irreversible — flavors will read flat/papery whatever the brew.</source>
-        <translation type="unfinished" />
+        <translation>陳舊（{d}d）：氧化變質基本不可逆 — 無論如何沖泡，風味都會呈現平順／紙質感。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="179" />
         <source>Green aw {aw}: below your storage window — dried-out beans lose aromatics, expect a flatter cup.</source>
-        <translation type="unfinished" />
+        <translation>綠豆含水率 {aw}：低於你的儲存窗口 — 乾燥豆款失去香氣，預期風味更平順。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="180" />
         <source>Green aw {aw}: in your storage watch zone — faster staling, brew within the optimal rest.</source>
-        <translation type="unfinished" />
+        <translation>綠豆含水率 {aw}：在你的儲存監視區 — 更快變質，在最佳休息內沖泡。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="181" />
         <source>Green aw {aw}: above your storage risk threshold — check the bean in the Storage tab before brewing.</source>
-        <translation type="unfinished" />
+        <translation>綠豆含水率 {aw}：超過你的儲存風險閾值 — 沖泡前在「儲存」標籤中檢查豆款。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="182" />
         <source>Green moisture {m}% (high): extraction may run slow.</source>
-        <translation type="unfinished" />
+        <translation>綠豆含水量 {m}%（高）：萃取可能會緩慢進行。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="183" />
         <source>High spread: shell over-developed vs core. Lower temp, gentler, longer brew.</source>
-        <translation type="unfinished" />
+        <translation>高分散度：殼層過度發展 vs 內核。降低溫度、更溫和、更長萃取時間。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="184" />
         <source>Excellent uniformity: you can push extraction (finer) without fear.</source>
-        <translation type="unfinished" />
+        <translation>優異均勻度：你可以放心地推動萃取（更細研磨）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="197" />
         <source>Cooling flush to drop brew temperature</source>
-        <translation type="unfinished" />
+        <translation>冷卻沖洗以降低沖泡溫度</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="198" />
         <source>Pre-heat group with a hot-water flush (cold group otherwise)</source>
-        <translation type="unfinished" />
+        <translation>用熱水沖洗預熱沖頭（否則冷沖頭）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="199" />
         <source>Pre-wet: low-pressure puck saturation</source>
-        <translation type="unfinished" />
+        <translation>預潤濕：低壓粉餅飽和</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="200" />
         <source>Low-flow pre-brew ~{s} s</source>
-        <translation type="unfinished" />
+        <translation>低流量預浸～{s} 秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="201" />
         <source>Pre-infusion ~{s} s</source>
-        <translation type="unfinished" />
+        <translation>預浸～{s} 秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="206" />
         <source>Paddle to pre-infusion: water fills the puck, ~{s} s</source>
-        <translation type="unfinished" />
+        <translation>槳至預浸：水填滿粉餅，～{s} 秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="207" />
         <source>Hold there — nothing flows, the puck settles, ~{s} s</source>
-        <translation type="unfinished" />
+        <translation>保持在此 — 無流量，粉餅沉降，～{s} 秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="208" />
         <source>Lever half-up: water in at line pressure, ~{s} s</source>
-        <translation type="unfinished" />
+        <translation>槓桿半抬起：水進入管線壓力，～{s} 秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="209" />
         <source>Keep it half-up — nothing flows, the puck settles, ~{s} s</source>
-        <translation type="unfinished" />
+        <translation>保持半抬起 — 無流量，粉餅沉降，～{s} 秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="210" />
         <source>Full pressure, watch first drops ~6-9 s</source>
-        <translation type="unfinished" />
+        <translation>全壓，注視前幾滴～6-9 秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="211" />
         <source>Open the paddle fully, watch first drops ~6-9 s</source>
-        <translation type="unfinished" />
+        <translation>完全打開槳，注視前幾滴～6-9 秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="212" />
         <source>Lever all the way up, watch first drops ~6-9 s</source>
-        <translation type="unfinished" />
+        <translation>槓桿完全抬起，注視前幾滴～6-9 秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="213" />
         <source>Stop at yield {g} g</source>
-        <translation type="unfinished" />
+        <translation>停止於產量 {g} g</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="214" />
         <source>Fill base with pre-heated water below the valve</source>
-        <translation type="unfinished" />
+        <translation>用預熱的水填滿閥門下方的底座</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="215" />
         <source>Add grounds (level, no tamp), assemble</source>
-        <translation type="unfinished" />
+        <translation>加入咖啡粉（平整、不壓實），組裝</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="216" />
         <source>Medium heat, lid open</source>
-        <translation type="unfinished" />
+        <translation>中火、蓋打開</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="217" />
         <source>Remove at first gurgle, cool the base</source>
-        <translation type="unfinished" />
+        <translation>第一次咕嘟聲時移除，冷卻底座</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="218" />
         <source>Add all water {g} g, stir</source>
-        <translation type="unfinished" />
+        <translation>加入所有水 {g} g，攪拌</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="219" />
         <source>Steep (lid on, plunger up)</source>
-        <translation type="unfinished" />
+        <translation>悶泡（蓋上、活塞上）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="220" />
         <source>Break + skim the crust</source>
-        <translation type="unfinished" />
+        <translation>打破 + 撇去積層</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="221" />
         <source>Press slowly &amp; decant</source>
-        <translation type="unfinished" />
+        <translation>緩慢下壓 &amp; 倒出</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="222" />
         <source>Add all water {g} g</source>
-        <translation type="unfinished" />
+        <translation>加入所有水 {g} g</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="223" />
         <source>Stir 10 s, cap</source>
-        <translation type="unfinished" />
+        <translation>攪拌 10 秒，蓋上</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="228" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="224" />
         <source>Steep</source>
-        <translation type="unfinished" />
+        <translation>悶泡</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="225" />
         <source>Press slowly (~30 s)</source>
-        <translation type="unfinished" />
+        <translation>緩慢下壓（～30 秒）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="226" />
         <source>Add grounds + all water {g} g</source>
-        <translation type="unfinished" />
+        <translation>加入咖啡粉 + 所有水 {g} g</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="227" />
         <source>Vortex stir with the arm</source>
-        <translation type="unfinished" />
+        <translation>用臂部進行漩渦攪拌</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="229" />
         <source>Wind wingnut, pull the pod (vacuum)</source>
-        <translation type="unfinished" />
+        <translation>擰動翼螺帽，拉出膠囊（真空）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="230" />
         <source>Bloom {g} g, swirl / WDT</source>
-        <translation type="unfinished" />
+        <translation>悶蒸 {g} g，旋轉／WDT</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="231" />
         <source>Valve closed, spin to flatten the bed</source>
-        <translation type="unfinished" />
+        <translation>閥門關閉，旋轉以平整粉床</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="232" />
         <source>Open valve, main pour to {g} g</source>
-        <translation type="unfinished" />
+        <translation>打開閥門，主倒至 {g} g</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="233" />
         <source>Spin between pours; drawdown</source>
-        <translation type="unfinished" />
+        <translation>各倒之間旋轉；萃取結束</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="235" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="234" />
         <source>Pour to {g} g</source>
-        <translation type="unfinished" />
+        <translation>倒至 {g} 克</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="236" />
         <source>Drawdown complete</source>
-        <translation type="unfinished" />
+        <translation>萃取完成</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="250" />
         <source>Under-extracted — it ran fast</source>
-        <translation type="unfinished" />
+        <translation>萃取不足 —— 流速過快</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="251" />
         <source>Water passed too quickly to dissolve enough. The grind is the lever.</source>
-        <translation type="unfinished" />
+        <translation>水流速度過快，無法充分溶解。研磨度是關鍵。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="254" />
         <source>Under-extracted — but on time</source>
-        <translation type="unfinished" />
+        <translation>萃取不足 —— 但時間正常</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="255" />
         <source>The grind is about right, so push extraction another way: hotter water, or more agitation during the brew.</source>
-        <translation type="unfinished" />
+        <translation>研磨度大約正確，所以用其他方式加強萃取：更熱的水，或沖煮時更多的攪拌。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="259" />
         <source>Over-extracted — it ran slow</source>
-        <translation type="unfinished" />
+        <translation>過度萃取 —— 流速過慢</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="260" />
         <source>Water stayed in contact too long and pulled out the harsh compounds.</source>
-        <translation type="unfinished" />
+        <translation>水接觸時間過長，萃取了刺激的物質。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="263" />
         <source>Sour — most likely under-extracted</source>
-        <translation type="unfinished" />
+        <translation>酸 —— 最可能是萃取不足</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="264" />
         <source>A finer grind is the usual fix. Without a measured brew time this cannot be told apart from channelling though — so if the brew also felt slow, leave the grind alone and fix the distribution instead.</source>
-        <translation type="unfinished" />
+        <translation>更細的研磨度是常見的解決方法。但沒有精確的沖煮時間無法區分是否因為通道效應——所以如果沖煮也感覺緩慢，就保持研磨度不變，改善佈粉方式。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="269" />
         <source>Bitter — most likely over-extracted</source>
-        <translation type="unfinished" />
+        <translation>苦 —— 最可能是過度萃取</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="270" />
         <source>A coarser grind is the usual fix. Without a measured brew time this cannot be told apart from channelling though — so if the brew also felt fast, leave the grind alone and fix the distribution instead.</source>
-        <translation type="unfinished" />
+        <translation>更粗的研磨度是常見的解決方法。但沒有精確的沖煮時間無法區分是否因為通道效應——所以如果沖煮也感覺迅速，就保持研磨度不變，改善佈粉方式。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="275" />
         <source>Over-extracted</source>
-        <translation type="unfinished" />
+        <translation>過度萃取</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="276" />
         <source>Too much was dissolved. Coarsen a step to slow the extraction down.</source>
-        <translation type="unfinished" />
+        <translation>溶解過多。粗一級研磨度來減緩萃取速度。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="279" />
         <source>Channelling — slow AND sour</source>
-        <translation type="unfinished" />
+        <translation>通道效應 —— 緩慢且酸</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="280" />
         <source>Slow and sour together means the water found a path through the bed instead of extracting it evenly. Grinding finer would make this worse. Fix the distribution: WDT, level the bed, gentler first pour.</source>
-        <translation type="unfinished" />
+        <translation>緩慢且酸表示水找到了通過床層的路徑而不是均勻萃取。更細研磨會使情況惡化。改善佈粉方式：WDT、平整床層、溫和的初次注水。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="285" />
         <source>Channelling — fast AND bitter</source>
-        <translation type="unfinished" />
+        <translation>通道效應 —— 迅速且苦</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="286" />
         <source>Fast but bitter means part of the bed over-extracted while the rest was bypassed — usually fines migrating. Improve distribution before touching the grind size.</source>
-        <translation type="unfinished" />
+        <translation>迅速但苦表示床層的一部分過度萃取而其餘被繞過——通常是細粉遷移。改善佈粉方式，然後再調整研磨度。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="291" />
         <source>Uneven extraction</source>
-        <translation type="unfinished" />
+        <translation>不均勻萃取</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="292" />
         <source>Sour and bitter at once means part of the bed under-extracted while part over-extracted. No single grind size fixes that — only better distribution does (WDT, level bed, even pouring).</source>
-        <translation type="unfinished" />
+        <translation>同時酸且苦表示床層的一部分萃取不足而另一部分過度萃取。單一研磨度無法解決——只有更好的佈粉方式才能（WDT、平整床層、均勻注水）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="297" />
         <source>Astringent / drying</source>
-        <translation type="unfinished" />
+        <translation>澀/乾澀</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="298" />
         <source>That drying, mouth-puckering edge is over-extraction. Coarsen a step and drop the temperature slightly.</source>
-        <translation type="unfinished" />
+        <translation>那種乾澀、收斂的口感是過度萃取。粗一級研磨度並稍微降低溫度。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="302" />
         <source>Thin body</source>
-        <translation type="unfinished" />
+        <translation>薄弱的醇厚度</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="303" />
         <source>Body is the ratio's job, not the grind's. Use less water for the same dose.</source>
-        <translation type="unfinished" />
+        <translation>醇厚度取決於比例，不是研磨度。用相同的粉量減少水量。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="306" />
         <source>The bean is past its window</source>
-        <translation type="unfinished" />
+        <translation>咖啡豆已過最佳時期</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="307" />
         <source>This roast is stale, and oxidative staling cannot be brewed back. Nothing is adjusted — the cup is explained by the bean, not by the recipe.</source>
-        <translation type="unfinished" />
+        <translation>這個烘焙已經陳舊，氧化的陳舊無法通過沖煮恢復。不需要調整——杯中表現由豆子決定，而不是食譜。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="311" />
         <source>Balanced — nothing to change</source>
-        <translation type="unfinished" />
+        <translation>平衡 —— 無需改變</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="312" />
         <source>Save it and the next brew of this bean will open on this setting.</source>
-        <translation type="unfinished" />
+        <translation>儲存它，下次沖這個豆子就會用這個設定打開。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="323" />
         <source>Auto / measured</source>
-        <translation type="unfinished" />
+        <translation>自動/精確測量</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="324" />
         <source>SCA target</source>
-        <translation type="unfinished" />
+        <translation>SCA 目標</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="325" />
         <source>Soft</source>
-        <translation type="unfinished" />
+        <translation>軟</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="326" />
         <source>Hard</source>
-        <translation type="unfinished" />
+        <translation>硬</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="497" />
         <source>1 diagnostic</source>
-        <translation type="unfinished" />
+        <translation>1 個診斷</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="498" />
         <source>{n} diagnostics</source>
-        <translation type="unfinished" />
+        <translation>{n} 個診斷</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1049" />
@@ -25924,7 +25932,7 @@ The beancave.json file is now loaded from this location.</source>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1227" />
         <source>Barista Expert — Brew Advisor</source>
-        <translation type="unfinished" />
+        <translation>咖啡師專家 —— 沖煮顧問</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1245" />
@@ -25934,12 +25942,12 @@ The beancave.json file is now loaded from this location.</source>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1245" />
         <source>WL</source>
-        <translation type="unfinished" />
+        <translation>WL</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1246" />
         <source>Rest</source>
-        <translation type="unfinished" />
+        <translation>靜置</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1272" />
@@ -25955,19 +25963,20 @@ The beancave.json file is now loaded from this location.</source>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1288" />
         <source>Classic long: keeps the grind the roast asks for and lets the shot run as long as the ratio needs.
 Turbo: fixes the shot around 25 s and opens the grind to get the flow — the roast is then expressed by the ratio alone.</source>
-        <translation type="unfinished" />
+        <translation>經典長萃：保持烘焙要求的研磨度，讓萃取按比例運行。
+渦輪：約 25 秒固定萃取時間並開大研磨度以獲得流速——烘焙特色由比例單獨表現。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1295" />
         <source>Method</source>
-        <translation type="unfinished" />
+        <translation>方法</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2037" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1315" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1297" />
         <source>Dose</source>
-        <translation type="unfinished" />
+        <translation>粉量</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3346" />
@@ -25976,7 +25985,7 @@ Turbo: fixes the shot around 25 s and opens the grind to get the flow — the ro
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1316" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1299" />
         <source>Water</source>
-        <translation type="unfinished" />
+        <translation>水量</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3187" />
@@ -25997,7 +26006,7 @@ Turbo: fixes the shot around 25 s and opens the grind to get the flow — the ro
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2041" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1319" />
         <source>Grind</source>
-        <translation type="unfinished" />
+        <translation>研磨度</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1320" />
@@ -26007,75 +26016,75 @@ Turbo: fixes the shot around 25 s and opens the grind to get the flow — the ro
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1339" />
         <source>PROTOCOL</source>
-        <translation type="unfinished" />
+        <translation>沖煮方案</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1363" />
         <source>HOW DOES IT TASTE?</source>
-        <translation type="unfinished" />
+        <translation>味道如何？</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1369" />
         <source>Tell the advisor and it will adjust the recipe.</source>
-        <translation type="unfinished" />
+        <translation>告訴顧問它將調整食譜。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1379" />
         <source>Sour</source>
-        <translation type="unfinished" />
+        <translation>酸</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1380" />
         <source>Bitter</source>
-        <translation type="unfinished" />
+        <translation>苦</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1381" />
         <source>Harsh</source>
-        <translation type="unfinished" />
+        <translation>刺激</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1382" />
         <source>Thin</source>
-        <translation type="unfinished" />
+        <translation>薄弱</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1383" />
         <source>✓ Balanced</source>
-        <translation type="unfinished" />
+        <translation>✓ 平衡</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3167" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1414" />
         <source>Apply to next brew</source>
-        <translation type="unfinished" />
+        <translation>應用於下次沖煮</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1478" />
         <source>Live extraction</source>
-        <translation type="unfinished" />
+        <translation>即時萃取</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2258" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1508" />
         <source>Flow: –– g/s</source>
-        <translation type="unfinished" />
+        <translation>流速：–– 克/秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1537" />
         <source>SHOT RESULT</source>
-        <translation type="unfinished" />
+        <translation>萃取結果</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2960" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1545" />
         <source>Shot time</source>
-        <translation type="unfinished" />
+        <translation>萃取時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1550" />
         <source>In the cup</source>
-        <translation type="unfinished" />
+        <translation>杯中重量</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1576" />
@@ -26085,59 +26094,59 @@ Turbo: fixes the shot around 25 s and opens the grind to get the flow — the ro
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1581" />
         <source>Record</source>
-        <translation type="unfinished" />
+        <translation>記錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1601" />
         <source>BREW COMPLETE</source>
-        <translation type="unfinished" />
+        <translation>沖煮完成</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2143" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1662" />
         <source>▶ Start brew</source>
-        <translation type="unfinished" />
+        <translation>▶ 開始沖煮</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1664" />
         <source>Auto-stop</source>
-        <translation type="unfinished" />
+        <translation>自動停止</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1669" />
         <source>Stop the shot on its own when the cup reaches the target yield.</source>
-        <translation type="unfinished" />
+        <translation>當杯子達到目標重量時自動停止萃取。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1685" />
         <source>✎ Enter manually</source>
-        <translation type="unfinished" />
+        <translation>✎ 手動輸入</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1688" />
         <source>Type the shot time and the weight in the cup, for machines whose scale is built in and leaves no room for an Acaia.</source>
-        <translation type="unfinished" />
+        <translation>輸入萃取時間和杯中重量，適用於內建秤量的機器而沒有空間放置 Acaia。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1986" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1709" />
         <source>✦ Refine (AI)</source>
-        <translation type="unfinished" />
+        <translation>✦ 優化（AI）</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1713" />
         <source>Configure an AI engine in the settings to enable refinement.</source>
-        <translation type="unfinished" />
+        <translation>在設定中配置 AI 引擎以啟用優化功能。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1715" />
         <source>50×30 label</source>
-        <translation type="unfinished" />
+        <translation>50×30 標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1721" />
         <source>Connect the Niimbot B21S in BeanCave to print a 50×30 recipe label.</source>
-        <translation type="unfinished" />
+        <translation>連接 BeanCave 中的 Niimbot B21S 以列印 50×30 食譜標籤。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1725" />
@@ -26147,7 +26156,7 @@ Turbo: fixes the shot around 25 s and opens the grind to get the flow — the ro
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="1941" />
         <source>✦ Refining…</source>
-        <translation type="unfinished" />
+        <translation>✦ 優化中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2023" />
@@ -26157,7 +26166,7 @@ Turbo: fixes the shot around 25 s and opens the grind to get the flow — the ro
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2024" />
         <source>Brew labels need the 50×30 mm roll (detected: {0}×{1} mm).</source>
-        <translation type="unfinished" />
+        <translation>沖煮標籤需要 50×30 毫米紙卷（檢測到：{0}×{1} 毫米）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3346" />
@@ -26175,249 +26184,249 @@ Turbo: fixes the shot around 25 s and opens the grind to get the flow — the ro
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2078" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2059" />
         <source>Print error</source>
-        <translation type="unfinished" />
+        <translation>列印錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2062" />
         <source>Printing…</source>
-        <translation type="unfinished" />
+        <translation>列印中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2071" />
         <source>Printed ✓</source>
-        <translation type="unfinished" />
+        <translation>已列印 ✓</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2131" />
         <source>■ Stop brew</source>
-        <translation type="unfinished" />
+        <translation>■ 停止沖煮</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2153" />
         <source>⟳  Searching for the scale…</source>
-        <translation type="unfinished" />
+        <translation>⟳  正在搜尋秤…</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2154" />
         <source>Switch the scale on and it will connect by itself.</source>
-        <translation type="unfinished" />
+        <translation>打開秤，它會自動連接。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2159" />
         <source>No scale configured</source>
-        <translation type="unfinished" />
+        <translation>未配置秤</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2160" />
         <source>Configure an Acaia scale in the settings to enable live brewing.</source>
-        <translation type="unfinished" />
+        <translation>在設定中配置 Acaia 秤以啟用即時沖煮。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2196" />
         <source>● scale lost</source>
-        <translation type="unfinished" />
+        <translation>● 秤已斷開</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2393" />
         <source>Target: {g} g in {t}</source>
-        <translation type="unfinished" />
+        <translation>目標：{g} 克，時間 {t}</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2614" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2433" />
         <source>{p}% of {t} g</source>
-        <translation type="unfinished" />
+        <translation>{p}% / {t} 克</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2606" />
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2436" />
         <source>Flow: {f} g/s</source>
-        <translation type="unfinished" />
+        <translation>流速：{f} 克/秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2503" />
         <source>● {g} g ahead</source>
-        <translation type="unfinished" />
+        <translation>● 領先 {g} 克</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2506" />
         <source>● {g} g behind</source>
-        <translation type="unfinished" />
+        <translation>● 落後 {g} 克</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2509" />
         <source>● on plan</source>
-        <translation type="unfinished" />
+        <translation>● 按計畫進行</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2584" />
         <source>● scale silent</source>
-        <translation type="unfinished" />
+        <translation>● 秤無回應</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2586" />
         <source>The scale is connected but has not sent a single weight since the brew started. Take the cup off and put it back, or switch the scale off and on again — the app reconnects by itself.</source>
-        <translation type="unfinished" />
+        <translation>秤已連接但沖煮開始後未發送任何重量。取下杯子再放回，或關閉秤再打開——應用會自動重新連接。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2705" />
         <source>today</source>
-        <translation type="unfinished" />
+        <translation>今天</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2707" />
         <source>{n} d</source>
-        <translation type="unfinished" />
+        <translation>{n} 天</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2709" />
         <source>{n} wk</source>
-        <translation type="unfinished" />
+        <translation>{n} 週</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2710" />
         <source>{n} mo</source>
-        <translation type="unfinished" />
+        <translation>{n} 個月</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2713" />
         <source>This recipe carries the correction you saved for this bean on this brew method, applied on top of today's recommendation.</source>
-        <translation type="unfinished" />
+        <translation>這個食譜包含您為這個豆子在此沖煮方法上保存的修正，應用在今天的建議之上。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2720" />
         <source>It was saved before TilauScope kept the date, so its age is unknown.</source>
-        <translation type="unfinished" />
+        <translation>它是在 TilauScope 記錄日期之前保存的，所以年齡未知。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2723" />
         <source>Saved on {d}.</source>
-        <translation type="unfinished" />
+        <translation>儲存於 {d}。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2727" />
         <source>That is a while ago: it was dialled on a different roast of this bean, and the green itself has aged since. Treat it as a starting point and taste before trusting it.</source>
-        <translation type="unfinished" />
+        <translation>那是一段時間前的：它是在這個豆子的不同烘焙上調整的，綠豆本身也已經老化。把它當作起點並先試味再信任。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2940" />
         <source>PREVIOUS ATTEMPT — {d}</source>
-        <translation type="unfinished" />
+        <translation>上次嘗試 —— {d}</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2950" />
         <source>Grind {a} → {b} µm  ({p:+.0f} %)</source>
-        <translation type="unfinished" />
+        <translation>研磨度 {a} → {b} µm  ({p:+.0f} %)</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2954" />
         <source>Grind unchanged — {a} µm</source>
-        <translation type="unfinished" />
+        <translation>研磨度未改變 —— {a} µm</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2964" />
         <source>Drawdown</source>
-        <translation type="unfinished" />
+        <translation>萃取</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2971" />
         <source>Flow was not measured: no scale was connected. The total time depends mostly on how you poured, so it says nothing about the grind.</source>
-        <translation type="unfinished" />
+        <translation>流速未測量：未連接秤。總時間主要取決於你的注水方式，對研磨度說不出什麼。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2990" />
         <source>Same grind as the attempt before: this is the spread between two brews at the same setting.</source>
-        <translation type="unfinished" />
+        <translation>與上次嘗試的研磨度相同：這是同一設定下兩次沖煮之間的差異。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="2993" />
         <source>Same grind, yet the flow moved: something other than the grind changed between these two brews.</source>
-        <translation type="unfinished" />
+        <translation>研磨度相同，但流速改變：這兩次沖煮之間除了研磨度外還有其他變化。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3003" />
         <source>The bed resists more: that step bit.</source>
-        <translation type="unfinished" />
+        <translation>床層阻力更大：那一級有影響。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3006" />
         <source>The flow moved the other way to the grind — worth a second look before trusting it.</source>
-        <translation type="unfinished" />
+        <translation>流速與研磨度變化方向相反——信任之前值得再看一遍。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3012" />
         <source>That step changed nothing in the flow.</source>
-        <translation type="unfinished" />
+        <translation>那一級變化對流速沒有影響。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3018" />
         <source>Can come from: play on that step of your grinder · a different dose or pour · a bean still very fresh.</source>
-        <translation type="unfinished" />
+        <translation>可能來自：研磨機那一級的遊差 · 不同的粉量或注水 · 仍然很新鮮的豆子。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3146" />
         <source>No brew time was measured, so this reads the taste alone.</source>
-        <translation type="unfinished" />
+        <translation>未測量沖煮時間，所以只能靠味道判斷。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3165" />
         <source>Save this dial-in</source>
-        <translation type="unfinished" />
+        <translation>儲存這個調整</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3175" />
         <source>finer</source>
-        <translation type="unfinished" />
+        <translation>更細</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3176" />
         <source>coarser</source>
-        <translation type="unfinished" />
+        <translation>更粗</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3202" />
         <source>✓ Applied and saved to {bean}</source>
-        <translation type="unfinished" />
+        <translation>✓ 已應用並儲存至 {bean}</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3208" />
         <source>Applied — but could not be saved to this bean</source>
-        <translation type="unfinished" />
+        <translation>已應用——但無法儲存到這個豆子</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3290" />
         <source>over</source>
-        <translation type="unfinished" />
+        <translation>過量</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3291" />
         <source>under</source>
-        <translation type="unfinished" />
+        <translation>不足</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3295" />
         <source>slow</source>
-        <translation type="unfinished" />
+        <translation>緩慢</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3296" />
         <source>fast</source>
-        <translation type="unfinished" />
+        <translation>迅速</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3304" />
         <source>Ran fast: grind one step finer next time.</source>
-        <translation type="unfinished" />
+        <translation>流速快：下次研磨度細一級。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3307" />
         <source>Ran slow: grind one step coarser next time.</source>
-        <translation type="unfinished" />
+        <translation>流速慢：下次研磨度粗一級。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3310" />
         <source>Overshot the target weight: stop earlier or enable auto-stop.</source>
-        <translation type="unfinished" />
+        <translation>超過目標重量：提前停止或啟用自動停止。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3328" />
@@ -26427,42 +26436,42 @@ Turbo: fixes the shot around 25 s and opens the grind to get the flow — the ro
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3361" />
         <source>Bloom {g} g / {s} s</source>
-        <translation type="unfinished" />
+        <translation>悶蒸 {g} 克 / {s} 秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3365" />
         <source>EY {ey}</source>
-        <translation type="unfinished" />
+        <translation>EY {ey}</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3369" />
         <source>✓ your dial-in</source>
-        <translation type="unfinished" />
+        <translation>✓ 你的試飲</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3377" />
         <source>coarse</source>
-        <translation type="unfinished" />
+        <translation>粗</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3378" />
         <source>fine</source>
-        <translation type="unfinished" />
+        <translation>細</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3379" />
         <source>⌁ setup runs ~{p}% {w} — adjusted</source>
-        <translation type="unfinished" />
+        <translation>⌁ 設定約執行 {p}% {w} — 已調整</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3382" />
         <source>Learned from {n} dial-ins across your beans: they all needed a correction in the same direction, so it is applied up front to a bean you have not dialled in yet. This covers your whole setup — grinder, water, palate and technique — not the grinder alone.</source>
-        <translation type="unfinished" />
+        <translation>從你的多款豆子上 {n} 次試飲中學習：它們都需要相同方向的修正，因此預先應用於你尚未試飲過的豆子。這涵蓋你的整個設定 — 研磨機、水、味覺和技術 — 而非僅研磨機。</translation>
     </message>
     <message>
         <location filename="../tilauscope/brew_advisor_dialog.py" line="3390" />
         <source>✦ AI-refined</source>
-        <translation type="unfinished" />
+        <translation>✦ AI精化</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -26501,103 +26510,103 @@ Turbo: fixes the shot around 25 s and opens the grind to get the flow — the ro
     <message>
         <location filename="../tilauscope/pairing_dialog.py" line="71" />
         <source>PAIR A PHONE</source>
-        <translation type="unfinished" />
+        <translation>配對手機</translation>
     </message>
     <message>
         <location filename="../tilauscope/pairing_dialog.py" line="94" />
         <source>Scan or open the link on your phone (same wifi)</source>
-        <translation type="unfinished" />
+        <translation>掃描或在手機上開啟連結（同一個 WiFi）</translation>
     </message>
     <message>
         <location filename="../tilauscope/pairing_dialog.py" line="201" />
         <location filename="../tilauscope/pairing_dialog.py" line="120" />
         <source>⧉ Copy link</source>
-        <translation type="unfinished" />
+        <translation>⧉ 複製連結</translation>
     </message>
     <message>
         <location filename="../tilauscope/pairing_dialog.py" line="123" />
         <source>↻ New code</source>
-        <translation type="unfinished" />
+        <translation>↻ 新代碼</translation>
     </message>
     <message>
         <location filename="../tilauscope/pairing_dialog.py" line="175" />
         <source>or  http://tilauscope.local:{port}</source>
-        <translation type="unfinished" />
+        <translation>或 http://tilauscope.local:{port}</translation>
     </message>
     <message>
         <location filename="../tilauscope/pairing_dialog.py" line="199" />
         <source>✓ Copied</source>
-        <translation type="unfinished" />
+        <translation>✓ 已複製</translation>
     </message>
     <message>
         <location filename="../tilauscope/pairing_dialog.py" line="229" />
         <source>Code expires in {n}s</source>
-        <translation type="unfinished" />
+        <translation>代碼於 {n} 秒後過期</translation>
     </message>
     <message>
         <location filename="../tilauscope/pairing_dialog.py" line="232" />
         <source>Code expired — tap New code</source>
-        <translation type="unfinished" />
+        <translation>代碼已過期 — 點選「新代碼」</translation>
     </message>
     <message>
         <location filename="../tilauscope/pairing_dialog.py" line="246" />
         <source>PAIRED DEVICES ({n})</source>
-        <translation type="unfinished" />
+        <translation>配對的設備（{n}）</translation>
     </message>
     <message>
         <location filename="../tilauscope/pairing_dialog.py" line="248" />
         <source>No paired device yet.</source>
-        <translation type="unfinished" />
+        <translation>尚無配對設備。</translation>
     </message>
     <message>
         <location filename="../tilauscope/pairing_dialog.py" line="291" />
         <source>Rename</source>
-        <translation type="unfinished" />
+        <translation>重新命名</translation>
     </message>
     <message>
         <location filename="../tilauscope/pairing_dialog.py" line="293" />
         <source>Revoke</source>
-        <translation type="unfinished" />
+        <translation>撤銷</translation>
     </message>
     <message>
         <location filename="../tilauscope/mqttbridge.py" line="582" />
         <source>MQTT client not connected</source>
-        <translation type="unfinished" />
+        <translation>MQTT 用戶端未連接</translation>
     </message>
     <message>
         <location filename="../tilauscope/mqttbridge.py" line="616" />
         <source>No message received within timeout</source>
-        <translation type="unfinished" />
+        <translation>逾時內未收到訊息</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="731" />
         <source>TILAU CONFIGURATION</source>
-        <translation type="unfinished" />
+        <translation>TILAU 設定</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="770" />
         <source>⚙  GENERAL</source>
-        <translation type="unfinished" />
+        <translation>⚙  一般</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="771" />
         <source>📡  SENSORS</source>
-        <translation type="unfinished" />
+        <translation>📡  感測器</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="772" />
         <source>🔬  DETECTION</source>
-        <translation type="unfinished" />
+        <translation>🔬  偵測</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="773" />
         <source>🌐  INTEGRATIONS</source>
-        <translation type="unfinished" />
+        <translation>🌐  整合</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="774" />
         <source>🖨  PRINTING</source>
-        <translation type="unfinished" />
+        <translation>🖨  列印</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="793" />
@@ -26607,7 +26616,7 @@ Turbo: fixes the shot around 25 s and opens the grind to get the flow — the ro
     <message>
         <location filename="../tilauscope/devices.py" line="797" />
         <source>⬥  Save</source>
-        <translation type="unfinished" />
+        <translation>⬥  儲存</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="824" />
@@ -26617,119 +26626,119 @@ Turbo: fixes the shot around 25 s and opens the grind to get the flow — the ro
     <message>
         <location filename="../tilauscope/devices.py" line="825" />
         <source>Machine Profile</source>
-        <translation type="unfinished" />
+        <translation>機器設定檔</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="855" />
         <source>Select the active roaster machine profile</source>
-        <translation type="unfinished" />
+        <translation>選擇使用中的烘焙機設定檔</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="859" />
         <source>— select a roaster model —</source>
-        <translation type="unfinished" />
+        <translation>— 選擇烘焙機型號 —</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="866" />
         <source>Model:</source>
-        <translation type="unfinished" />
+        <translation>型號：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="869" />
         <source>Read-only (monitoring only — Artisan does not control the machine)</source>
-        <translation type="unfinished" />
+        <translation>唯讀（僅監控 — Artisan 不控制機器）</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="873" />
         <source>Tick for a roaster you drive by hand (Artisan only records ET/BT): the control sliders are hidden here and in Artisan. Untick to restore your previous slider configuration.</source>
-        <translation type="unfinished" />
+        <translation>勾選用於手動操作的烘焙機（Artisan 僅記錄 ET/BT）：此處及 Artisan 中隱藏控制滑桿。取消勾選可恢復先前的滑桿設定。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="885" />
         <source>UI Features</source>
-        <translation type="unfinished" />
+        <translation>UI 功能</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="886" />
         <source>Overlay &amp; Notifications</source>
-        <translation type="unfinished" />
+        <translation>覆蓋與通知</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="891" />
         <source>Enable floating annotations</source>
-        <translation type="unfinished" />
+        <translation>啟用浮動註釋</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="894" />
         <source>Show phase-event annotations on the roast graph overlay</source>
-        <translation type="unfinished" />
+        <translation>在烘焙曲線覆蓋上顯示階段事件註釋</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="900" />
         <source>Enable BeanCave startup notifications</source>
-        <translation type="unfinished" />
+        <translation>啟用 BeanCave 啟動通知</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="903" />
         <source>Show inventory alerts and reminders when BeanCave opens</source>
-        <translation type="unfinished" />
+        <translation>BeanCave 開啟時顯示庫存警報和提醒</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="911" />
         <source>BeanCave home mode (hide the Artisan window)</source>
-        <translation type="unfinished" />
+        <translation>BeanCave 主畫面模式（隱藏 Artisan 視窗）</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="914" />
         <source>Start in the BeanCave shell with the Artisan window hidden. Takes effect after a restart.</source>
-        <translation type="unfinished" />
+        <translation>在 BeanCave 殼中啟動並隱藏 Artisan 視窗。重新啟動後生效。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="928" />
         <source>Remote access</source>
-        <translation type="unfinished" />
+        <translation>遠端存取</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="929" />
         <source>Record web server (phone QR scan)</source>
-        <translation type="unfinished" />
+        <translation>記錄網頁伺服器（手機 QR 掃描）</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="935" />
         <source>Port of the read-only record server used when scanning a label QR code with a phone (http://tilauscope.local:port). It is encoded in printed labels — change it only if it conflicts with another service. Takes effect after a restart. Default: 8123.</source>
-        <translation type="unfinished" />
+        <translation>掃描標籤 QR 碼時使用的唯讀記錄伺服器的連接埠（http://tilauscope.local:port）。編碼於列印標籤中 — 僅在與其他服務衝突時更改。重新啟動後生效。預設值：8123。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1440" />
         <location filename="../tilauscope/devices.py" line="967" />
         <location filename="../tilauscope/devices.py" line="941" />
         <source>Port:</source>
-        <translation type="unfinished" />
+        <translation>連接埠：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="946" />
         <source>Remote control (phone piloting)</source>
-        <translation type="unfinished" />
+        <translation>遠端控制（手機操作）</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="949" />
         <source>Enable remote control from a phone</source>
-        <translation type="unfinished" />
+        <translation>啟用手機遠端控制</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="952" />
         <source>Run the control server so a phone on the same wifi can follow the roast (and, later, pilot it). Off by default. Takes effect after a restart.</source>
-        <translation type="unfinished" />
+        <translation>執行控制伺服器，以便同一 WiFi 上的手機可以跟隨烘焙（稍後也可操作）。預設為關閉。重新啟動後生效。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="963" />
         <source>Port of the remote-control server. Takes effect after a restart. Default: 8765.</source>
-        <translation type="unfinished" />
+        <translation>遠端控制伺服器的連接埠。重新啟動後生效。預設值：8765。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="968" />
         <source>Pair a phone…</source>
-        <translation type="unfinished" />
+        <translation>配對手機…</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="990" />
@@ -26740,7 +26749,8 @@ Turbo: fixes the shot around 25 s and opens the grind to get the flow — the ro
         <location filename="../tilauscope/devices.py" line="1013" />
         <source>Acoustic sensitivity threshold for crack detection via TilauAmbient microphone.
 Lower = more sensitive. Independent from the global algorithm threshold.</source>
-        <translation type="unfinished" />
+        <translation>透過 TilauAmbient 麥克風進行裂紋偵測的音頻敏感度閾值。
+較低 = 更敏感。獨立於全域演算法閾值。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1173" />
@@ -26750,57 +26760,57 @@ Lower = more sensitive. Independent from the global algorithm threshold.</source
         <location filename="../tilauscope/devices.py" line="1061" />
         <location filename="../tilauscope/devices.py" line="1020" />
         <source>Device:</source>
-        <translation type="unfinished" />
+        <translation>設備：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1023" />
         <source>Crack audio sensitivity:</source>
-        <translation type="unfinished" />
+        <translation>裂紋音頻敏感度：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1029" />
         <source>Color &amp; Airflow</source>
-        <translation type="unfinished" />
+        <translation>顏色與氣流</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1045" />
         <source>PID target on ET (instead of BT)</source>
-        <translation type="unfinished" />
+        <translation>PID 目標在 ET（而不是 BT）</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1053" />
         <source>PID correction ramp speed (1=slow … 10=fast)</source>
-        <translation type="unfinished" />
+        <translation>PID 修正斜坡速度（1=慢 … 10=快）</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1057" />
         <source>Emulate Omniflux output (Agtron channel)</source>
-        <translation type="unfinished" />
+        <translation>模擬 Omniflux 輸出（Agtron 頻道）</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1065" />
         <source>Ramp speed:</source>
-        <translation type="unfinished" />
+        <translation>斜坡速度：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1072" />
         <source>AirWave PID parameters</source>
-        <translation type="unfinished" />
+        <translation>AirWave PID 參數</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1078" />
         <source>Min fan %</source>
-        <translation type="unfinished" />
+        <translation>最小風扇 %</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1079" />
         <source>Inlet target</source>
-        <translation type="unfinished" />
+        <translation>進氣口目標</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1080" />
         <source>Inlet limit</source>
-        <translation type="unfinished" />
+        <translation>進氣口限制</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1081" />
@@ -26810,339 +26820,339 @@ Lower = more sensitive. Independent from the global algorithm threshold.</source
     <message>
         <location filename="../tilauscope/devices.py" line="1082" />
         <source>Ramp %/s</source>
-        <translation type="unfinished" />
+        <translation>斜坡 %/秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1095" />
         <source>Roaster Link</source>
-        <translation type="unfinished" />
+        <translation>烘焙機連結</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1114" />
         <source>Color Meter</source>
-        <translation type="unfinished" />
+        <translation>色度計</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1136" />
         <source>Water Quality</source>
-        <translation type="unfinished" />
+        <translation>水質</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1158" />
         <source>Label Printer</source>
-        <translation type="unfinished" />
+        <translation>標籤印表機</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1193" />
         <source>First Crack (FC)</source>
-        <translation type="unfinished" />
+        <translation>First Crack (FC)</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1198" />
         <source>Signal sources: TilauAmbient (acoustic) · Omniflux (color/RoC) — fused in tilau_intelligence</source>
-        <translation type="unfinished" />
+        <translation>訊號來源：TilauAmbient（音頻）· Omniflux（顏色/RoC）— 在 tilau_intelligence 中融合</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1209" />
         <source>FC Algorithm</source>
-        <translation type="unfinished" />
+        <translation>FC 演算法</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1213" />
         <source>Enable automatic FC detection &amp; marking</source>
-        <translation type="unfinished" />
+        <translation>啟用自動 FC 偵測與標記</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1217" />
         <source>Activates the TilauScope multi-signal FC detection algorithm (crack count density, color RoC, BT threshold).</source>
-        <translation type="unfinished" />
+        <translation>啟用 TilauScope 多訊號 FC 偵測演算法（裂紋計數密度、顏色 RoC、BT 閾值）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1229" />
         <source>Sliding time window for crack density analysis (seconds).</source>
-        <translation type="unfinished" />
+        <translation>用於裂紋密度分析的滑動時間視窗（秒）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1236" />
         <source>Minimum number of acoustic events within the window to confirm FC. Independent from the TilauAmbient device sensitivity setting.</source>
-        <translation type="unfinished" />
+        <translation>視窗內確認 FC 所需的最少音頻事件數。獨立於 TilauAmbient 設備敏感度設定。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1250" />
         <source>Detection window:</source>
-        <translation type="unfinished" />
+        <translation>偵測視窗：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1252" />
         <source>Global event threshold:</source>
-        <translation type="unfinished" />
+        <translation>全域事件閾值：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1258" />
         <source>Dry End (DE)</source>
-        <translation type="unfinished" />
+        <translation>Dry End (DE)</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1260" />
         <source>DE Algorithm</source>
-        <translation type="unfinished" />
+        <translation>DE 演算法</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1264" />
         <source>Enable automatic Dry End detection &amp; marking</source>
-        <translation type="unfinished" />
+        <translation>啟用自動 Dry End 偵測與標記</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1268" />
         <source>Thermodynamic multi-signal detection: RoR_BT/RoR_ET ratio convergence, Δgap slope, BT progress toward Dry End target set in Phases. Agtron is used as a bonus signal when a color device is configured.</source>
-        <translation type="unfinished" />
+        <translation>熱動力多訊號偵測：RoR_BT/RoR_ET 比率收斂、Δgap 斜率、BT 進展朝向在「階段」中設定的 Dry End 目標。配置色度設備時，Agtron 用作額外訊號。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1280" />
         <source>Per-Phase Thresholds</source>
-        <translation type="unfinished" />
+        <translation>各階段閾值</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1283" />
         <source>Detection parameters by crack event</source>
-        <translation type="unfinished" />
+        <translation>依裂紋事件的偵測參數</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1289" />
         <source>Threshold</source>
-        <translation type="unfinished" />
+        <translation>閾值</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1290" />
         <source>Agtron max</source>
-        <translation type="unfinished" />
+        <translation>Agtron max</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1291" />
         <source>RoC min</source>
-        <translation type="unfinished" />
+        <translation>RoC min</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1292" />
         <source>BT margin</source>
-        <translation type="unfinished" />
+        <translation>BT margin</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1298" />
         <source>First Crack</source>
-        <translation type="unfinished" />
+        <translation>First Crack</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1299" />
         <source>Second Crack</source>
-        <translation type="unfinished" />
+        <translation>Second Crack</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1319" />
         <source>MQTT Broker</source>
-        <translation type="unfinished" />
+        <translation>MQTT 代理伺服器</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1334" />
         <source>TLS (encrypted)</source>
-        <translation type="unfinished" />
+        <translation>TLS（加密）</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1337" />
         <source>Encrypts the link to the broker. The broker certificate must be issued by a recognised authority; a self-signed certificate is refused.</source>
-        <translation type="unfinished" />
+        <translation>加密至代理伺服器的連結。代理伺服器憑證必須由認可的授權單位簽發；自簽憑證將被拒絕。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1367" />
         <source>Version spoken to the broker. Leave on v3.1.1 unless the broker requires otherwise.</source>
-        <translation type="unfinished" />
+        <translation>與代理伺服器通訊的版本。除非代理伺服器另有要求，否則保留 v3.1.1。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1422" />
         <location filename="../tilauscope/devices.py" line="1392" />
         <location filename="../tilauscope/devices.py" line="1383" />
         <source> s</source>
-        <translation type="unfinished" />
+        <translation> 秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1384" />
         <source>How long the broker is given to accept the connection before it is declared unreachable. A distant or encrypted broker needs more.</source>
-        <translation type="unfinished" />
+        <translation>在宣告代理伺服器無法連接前給予其接受連接的時間。遠端或加密的代理伺服器需要更多時間。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1393" />
         <source>Idle time after which the connection is checked. A short value detects a lost broker sooner but talks to it more often.</source>
-        <translation type="unfinished" />
+        <translation>檢查連接的閒置時間。較短的值可更快偵測遺失的代理伺服器，但會更頻繁地與其通訊。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1398" />
         <source>Keepalive:</source>
-        <translation type="unfinished" />
+        <translation>保持活動：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1425" />
         <source>off</source>
-        <translation type="unfinished" />
+        <translation>關閉</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1427" />
         <source>How often a reading is requested from the gateway. Below 10 seconds the network cannot keep up, so 10 seconds is used instead.</source>
-        <translation type="unfinished" />
+        <translation>從閘道請求讀取的頻率。低於 10 秒時網路無法跟上，因此改用 10 秒。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1434" />
         <source>Test Connection</source>
-        <translation type="unfinished" />
+        <translation>測試連接</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1439" />
         <source>Broker URL:</source>
-        <translation type="unfinished" />
+        <translation>代理伺服器 URL：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1441" />
         <source>Protocol:</source>
-        <translation type="unfinished" />
+        <translation>協議：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1442" />
         <source>Topic:</source>
-        <translation type="unfinished" />
+        <translation>主題：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1443" />
         <source>Username:</source>
-        <translation type="unfinished" />
+        <translation>使用者名稱：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1444" />
         <source>Password:</source>
-        <translation type="unfinished" />
+        <translation>密碼：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1445" />
         <source>Timeout:</source>
-        <translation type="unfinished" />
+        <translation>逾時：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1446" />
         <source>Poll request topic:</source>
-        <translation type="unfinished" />
+        <translation>輪詢要求主題：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1447" />
         <source>Poll every:</source>
-        <translation type="unfinished" />
+        <translation>輪詢頻率：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1458" />
         <source>AI Provider</source>
-        <translation type="unfinished" />
+        <translation>AI 提供者</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1459" />
         <source>AI Configuration</source>
-        <translation type="unfinished" />
+        <translation>AI 設定</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1469" />
         <source>Configure AI Provider…</source>
-        <translation type="unfinished" />
+        <translation>設定 AI 提供者…</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1486" />
         <source>Labels</source>
-        <translation type="unfinished" />
+        <translation>標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1487" />
         <source>Green bean &amp; roasted bean labels</source>
-        <translation type="unfinished" />
+        <translation>綠豆與烘焙豆標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1515" />
         <source>Physical size the label PDF is generated at. Print at 100% (no "fit to page") so it comes out the printer at this exact size.</source>
-        <translation type="unfinished" />
+        <translation>生成標籤 PDF 的實際尺寸。以 100% 列印（無「符合頁面」），使其以此確切尺寸從印表機輸出。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1524" />
         <source>10 × 15 cm (standard pochette)</source>
-        <translation type="unfinished" />
+        <translation>10 × 15 公分（標準小包）</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1525" />
         <source>7 × 9 cm (compact pochette)</source>
-        <translation type="unfinished" />
+        <translation>7 × 9 公分（緊湊小包）</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1532" />
         <source>Label size:</source>
-        <translation type="unfinished" />
+        <translation>標籤大小：</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1590" />
         <source>Ramp speed toward target fan speed (% per cycle ~1 s). 0.20 = gentle (~75 s for 15% change). 0.50 = fast (~30 s for 15% change).</source>
-        <translation type="unfinished" />
+        <translation>朝向目標風扇速度的斜坡速度（% 每個週期 ~1 秒）。0.20 = 輕柔（~75 秒以改變 15%）。0.50 = 快速（~30 秒以改變 15%）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1668" />
         <source>— no device —</source>
-        <translation type="unfinished" />
+        <translation>— 無設備 —</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1693" />
         <source>Forget this device (unassign)</source>
-        <translation type="unfinished" />
+        <translation>忘記此設備（取消指派）</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1750" />
         <source>⚠ bluetooth off</source>
-        <translation type="unfinished" />
+        <translation>⚠ 藍牙已關閉</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1763" />
         <source>detected ✓</source>
-        <translation type="unfinished" />
+        <translation>已檢測 ✓</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1768" />
         <source>assigned</source>
-        <translation type="unfinished" />
+        <translation>已分配</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1773" />
         <source>found ✓</source>
-        <translation type="unfinished" />
+        <translation>已找到 ✓</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1778" />
         <source>scanning…</source>
-        <translation type="unfinished" />
+        <translation>掃描中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1929" />
         <source>Other hardware detected nearby</source>
-        <translation type="unfinished" />
+        <translation>附近檢測到其他硬體</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="1936" />
         <source>nothing else recognised nearby — these are identified, not configured</source>
-        <translation type="unfinished" />
+        <translation>附近未識別其他裝置 — 已識別但未設定</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2018" />
         <source>detected · not linked</source>
-        <translation type="unfinished" />
+        <translation>已檢測 · 未連接</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2020" />
         <source>recognised · not configured</source>
-        <translation type="unfinished" />
+        <translation>已識別 · 未設定</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2062" />
         <source>Sensors</source>
-        <translation type="unfinished" />
+        <translation>感測器</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2067" />
@@ -27152,7 +27162,7 @@ Lower = more sensitive. Independent from the global algorithm threshold.</source
     <message>
         <location filename="../tilauscope/devices.py" line="2068" />
         <source>Topic</source>
-        <translation type="unfinished" />
+        <translation>主題</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2069" />
@@ -27162,7 +27172,7 @@ Lower = more sensitive. Independent from the global algorithm threshold.</source
     <message>
         <location filename="../tilauscope/devices.py" line="2070" />
         <source>Multiplier</source>
-        <translation type="unfinished" />
+        <translation>乘數</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2071" />
@@ -27177,7 +27187,7 @@ Lower = more sensitive. Independent from the global algorithm threshold.</source
     <message>
         <location filename="../tilauscope/devices.py" line="2091" />
         <source>Add sensor</source>
-        <translation type="unfinished" />
+        <translation>新增感測器</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2096" />
@@ -27189,42 +27199,42 @@ Lower = more sensitive. Independent from the global algorithm threshold.</source
         <location filename="../tilauscope/devices.py" line="2202" />
         <location filename="../tilauscope/devices.py" line="2101" />
         <source>Check sensor</source>
-        <translation type="unfinished" />
+        <translation>檢查感測器</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2104" />
         <source>Connect to the broker with the settings above and read the selected sensor once.</source>
-        <translation type="unfinished" />
+        <translation>使用上述設定連接到代理伺服器並讀取選定的感測器一次。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2132" />
         <source>Unit the sensor publishes in. A temperature is converted to the unit the application works in; leave empty for anything that is not a temperature.</source>
-        <translation type="unfinished" />
+        <translation>感測器發佈的單位。溫度將轉換為應用程式使用的單位；非溫度值請留空。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2203" />
         <source>Select a sensor row first.</source>
-        <translation type="unfinished" />
+        <translation>請先選擇感測器列。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2215" />
         <source>This row needs an ID and a topic before it can be checked.</source>
-        <translation type="unfinished" />
+        <translation>此列需要 ID 和主題才能進行檢查。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2235" />
         <source>MQTT Sensor OK</source>
-        <translation type="unfinished" />
+        <translation>MQTT 感測器正常</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2236" />
         <source>Value read for {0}: {1} {2}</source>
-        <translation type="unfinished" />
+        <translation>{0} 的讀取值：{1} {2}</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2245" />
         <source>MQTT Sensor Check Failed</source>
-        <translation type="unfinished" />
+        <translation>MQTT 感測器檢查失敗</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2246" />
@@ -27232,60 +27242,63 @@ Lower = more sensitive. Independent from the global algorithm threshold.</source
 {1}
 
 The sensor is kept: a topic that is silent right now may still be valid.</source>
-        <translation type="unfinished" />
+        <translation>無法讀取 {0} 的值。
+{1}
+
+感測器已保留：目前沉默的主題仍可能有效。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2298" />
         <location filename="../tilauscope/devices.py" line="2292" />
         <source>MQTT Connection Test</source>
-        <translation type="unfinished" />
+        <translation>MQTT 連接測試</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2293" />
         <source>Connection to MQTT broker successful!</source>
-        <translation type="unfinished" />
+        <translation>成功連接到 MQTT 代理伺服器！</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2299" />
         <source>Failed to connect to MQTT broker.</source>
-        <translation type="unfinished" />
+        <translation>無法連接到 MQTT 代理伺服器。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2318" />
         <source>Not configured — AI features disabled</source>
-        <translation type="unfinished" />
+        <translation>未設定 — AI 功能已停用</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2432" />
         <source>Remote control is off</source>
-        <translation type="unfinished" />
+        <translation>遠端控制已關閉</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2433" />
         <source>Enable remote control, click OK, restart TilauScope, then pair a phone.</source>
-        <translation type="unfinished" />
+        <translation>啟用遠端控制、按一下「確定」、重新啟動 TilauScope，然後配對手機。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2602" />
         <location filename="../tilauscope/devices.py" line="2586" />
         <location filename="../tilauscope/devices.py" line="2574" />
         <source>Restart required</source>
-        <translation type="unfinished" />
+        <translation>需要重新啟動</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2575" />
         <source>BeanCave home mode will take effect the next time you start TilauScope.</source>
-        <translation type="unfinished" />
+        <translation>BeanCave 主頁模式將在下次啟動 TilauScope 時生效。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2587" />
         <source>The record web server port will take effect the next time you start TilauScope. Labels printed from now on will encode the new port.</source>
-        <translation type="unfinished" />
+        <translation>記錄網頁伺服器連接埠將在下次啟動 TilauScope 時生效。從現在起列印的標籤將編碼新的連接埠。</translation>
     </message>
     <message>
         <location filename="../tilauscope/devices.py" line="2603" />
         <source>Remote control will take effect the next time you start TilauScope.</source>
-        <translation type="unfinished" />
+        <translation>遠端控制將在下次啟動 TilauScope 時生效。</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -27308,100 +27321,100 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="395" />
         <source>Filter this zone</source>
-        <translation type="unfinished" />
+        <translation>篩選此區域</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="409" />
         <source>Focus / restore (Esc)</source>
-        <translation type="unfinished" />
+        <translation>焦點 / 還原 (Esc)</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="459" />
         <source>filter…</source>
-        <translation type="unfinished" />
+        <translation>篩選…</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="471" />
         <source>Regular expression</source>
-        <translation type="unfinished" />
+        <translation>正規表示式</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="769" />
         <source>SYSTEM · OBSERVABILITY</source>
-        <translation type="unfinished" />
+        <translation>系統 · 可觀測性</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="794" />
         <source>PROC MEM</source>
-        <translation type="unfinished" />
+        <translation>程序記憶體</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="795" />
         <source>FREE MEM</source>
-        <translation type="unfinished" />
+        <translation>可用記憶體</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="805" />
         <location filename="../tilauscope/tilaulogger.py" line="796" />
         <source>CPU</source>
-        <translation type="unfinished" />
+        <translation>CPU</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="797" />
         <source>THREADS</source>
-        <translation type="unfinished" />
+        <translation>執行緒</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="798" />
         <source>UI LATENCY</source>
-        <translation type="unfinished" />
+        <translation>UI 延遲</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="799" />
         <source>UPTIME</source>
-        <translation type="unfinished" />
+        <translation>正常運行時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="806" />
         <source>MEM</source>
-        <translation type="unfinished" />
+        <translation>記憶體</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="807" />
         <source>BUS/s</source>
-        <translation type="unfinished" />
+        <translation>BUS/s</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="808" />
         <source>LAT</source>
-        <translation type="unfinished" />
+        <translation>延遲</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="812" />
         <source>RUNNING TASKS</source>
-        <translation type="unfinished" />
+        <translation>執行中的工作</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="814" />
         <source>BUS · BUFFERS</source>
-        <translation type="unfinished" />
+        <translation>BUS · 緩衝區</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="816" />
         <source>CONNECTIONS · GC · I/O</source>
-        <translation type="unfinished" />
+        <translation>連接 · GC · I/O</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1050" />
         <location filename="../tilauscope/tilaulogger.py" line="1000" />
         <source>🟢 tailing</source>
-        <translation type="unfinished" />
+        <translation>🟢 尾隨</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1023" />
         <location filename="../tilauscope/tilaulogger.py" line="1006" />
         <source>🟡 waiting for file…</source>
-        <translation type="unfinished" />
+        <translation>🟡 等待檔案…</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1800" />
@@ -27410,72 +27423,72 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
         <location filename="../tilauscope/tilaulogger.py" line="1241" />
         <location filename="../tilauscope/tilaulogger.py" line="1013" />
         <source>⚫ inactive</source>
-        <translation type="unfinished" />
+        <translation>⚫ 不活躍</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1032" />
         <source>🔄 log rotated</source>
-        <translation type="unfinished" />
+        <translation>🔄 日誌已旋轉</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1077" />
         <source>🔄 Connecting to </source>
-        <translation type="unfinished" />
+        <translation>🔄 連接到 </translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1089" />
         <source>🔌 Disconnected</source>
-        <translation type="unfinished" />
+        <translation>🔌 已中斷連接</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1124" />
         <source>✅ Connected to </source>
-        <translation type="unfinished" />
+        <translation>✅ 已連接到 </translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1239" />
         <source>🟢 connected</source>
-        <translation type="unfinished" />
+        <translation>🟢 已連接</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1240" />
         <source>🔴 error</source>
-        <translation type="unfinished" />
+        <translation>🔴 錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1242" />
         <source>🟡 connecting...</source>
-        <translation type="unfinished" />
+        <translation>🟡 連接中...</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1243" />
         <source>🟢 receiving</source>
-        <translation type="unfinished" />
+        <translation>🟢 接收中</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1419" />
         <source>search all zones…</source>
-        <translation type="unfinished" />
+        <translation>搜尋所有區域…</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1575" />
         <source>TILAU DEBUG MONITOR</source>
-        <translation type="unfinished" />
+        <translation>TILAU 除錯監視器</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1615" />
         <source>Serial port:</source>
-        <translation type="unfinished" />
+        <translation>序列埠：</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1627" />
         <source>Refresh port list</source>
-        <translation type="unfinished" />
+        <translation>重新整理連接埠清單</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1643" />
         <source>Baud:</source>
-        <translation type="unfinished" />
+        <translation>鮑率：</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="2192" />
@@ -27486,38 +27499,38 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1670" />
         <source>🤝 HELLO</source>
-        <translation type="unfinished" />
+        <translation>🤝 HELLO</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1941" />
         <location filename="../tilauscope/tilaulogger.py" line="1674" />
         <source>Send the TRP handshake (HELLO TRP/1.0) and detect the connected roaster</source>
-        <translation type="unfinished" />
+        <translation>傳送 TRP 握手 (HELLO TRP/1.0) 並偵測連接的烘豆機</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1707" />
         <source>Insert marker in all zones</source>
-        <translation type="unfinished" />
+        <translation>在所有區域插入標記</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1708" />
         <source>Pause / resume rendering</source>
-        <translation type="unfinished" />
+        <translation>暫停 / 繼續呈現</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1710" />
         <source>Save snapshot to file</source>
-        <translation type="unfinished" />
+        <translation>將快照儲存到檔案</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1711" />
         <source>Run garbage collection now</source>
-        <translation type="unfinished" />
+        <translation>立即執行垃圾回收</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1778" />
         <source>APPLICATION FLOW  (TCP)</source>
-        <translation type="unfinished" />
+        <translation>應用程式流程  (TCP)</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="2235" />
@@ -27528,202 +27541,193 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1798" />
         <source>ARTISAN LOG  (tail)</source>
-        <translation type="unfinished" />
+        <translation>ARTISAN 日誌  (tail)</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1915" />
         <source>TRP FLOW  (Serial)</source>
-        <translation type="unfinished" />
+        <translation>TRP 流程  (Serial)</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1916" />
         <source>ESP32 FLOW  (Serial)</source>
-        <translation type="unfinished" />
+        <translation>ESP32 流程  (Serial)</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="1944" />
         <source>Set the Meter or an Extra Device to a TRP Roaster device to enable this probe</source>
-        <translation type="unfinished" />
+        <translation>將計量器或額外裝置設定為 TRP 烘豆機裝置以啟用此探針</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="2151" />
         <source>🔴 DEBUG ON</source>
-        <translation type="unfinished" />
+        <translation>🔴 除錯開啟</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="2158" />
         <source>all modules at DEBUG level</source>
-        <translation type="unfinished" />
+        <translation>所有模組均在除錯層級</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="2164" />
         <source>⚪ DEBUG OFF</source>
-        <translation type="unfinished" />
+        <translation>⚪ 除錯關閉</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="2172" />
         <source>INFO level (normal)</source>
-        <translation type="unfinished" />
+        <translation>資訊層級 (正常)</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="2182" />
         <source>Disconnect</source>
-        <translation type="unfinished" />
+        <translation>中斷連接</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilaulogger.py" line="2225" />
         <source>Stop</source>
-        <translation type="unfinished" />
+        <translation>停止</translation>
     </message>
     <message>
         <location filename="../tilauscope/routine_check.py" line="231" />
         <source>ROUTINE CHECK</source>
-        <translation type="unfinished" />
+        <translation>例行檢查</translation>
     </message>
     <message>
         <location filename="../tilauscope/routine_check.py" line="261" />
         <source>Cleaning cycle</source>
-        <translation type="unfinished" />
+        <translation>清潔週期</translation>
     </message>
     <message>
         <location filename="../tilauscope/routine_check.py" line="312" />
         <source>Last cleaning: </source>
-        <translation type="unfinished" />
+        <translation>上次清潔： </translation>
     </message>
     <message>
         <location filename="../tilauscope/routine_check.py" line="329" />
         <source>Total</source>
-        <translation type="unfinished" />
+        <translation>總計</translation>
     </message>
     <message>
         <location filename="../tilauscope/routine_check.py" line="330" />
         <source>Avg / roast</source>
-        <translation type="unfinished" />
+        <translation>平均 / 烘烤</translation>
     </message>
     <message>
         <location filename="../tilauscope/routine_check.py" line="331" />
         <source>Last roast</source>
-        <translation type="unfinished" />
+        <translation>上次烘烤</translation>
     </message>
     <message>
         <location filename="../tilauscope/routine_check.py" line="347" />
         <source>Recent roasts</source>
-        <translation type="unfinished" />
+        <translation>最近的烘烤</translation>
     </message>
     <message>
         <location filename="../tilauscope/routine_check.py" line="374" />
         <source>Scanning logs…</source>
-        <translation type="unfinished" />
+        <translation>掃描日誌…</translation>
     </message>
     <message>
         <location filename="../tilauscope/routine_check.py" line="390" />
         <source>MARK AS CLEANED</source>
-        <translation type="unfinished" />
+        <translation>標記為已清潔</translation>
     </message>
     <message>
         <location filename="../tilauscope/routine_check.py" line="400" />
         <source>Later</source>
-        <translation type="unfinished" />
+        <translation>稍後</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="191" />
         <location filename="../tilauscope/routine_check.py" line="523" />
         <source>Success</source>
-        <translation type="unfinished" />
+        <translation>成功</translation>
     </message>
     <message>
         <location filename="../tilauscope/routine_check.py" line="523" />
         <source>Cleaning cycle reset!</source>
-        <translation type="unfinished" />
+        <translation>清潔週期已重設！</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="56" />
         <source>TilauScope: {0}</source>
-        <translation type="unfinished" />
+        <translation>TilauScope: {0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="72" />
         <source>&lt;b&gt;&lt;font size='5' color='#d32f2f'&gt;TilauScope Interrupted&lt;/font&gt;&lt;/b&gt;&lt;br&gt;Something went wrong in &lt;i&gt;{0}&lt;/i&gt;.</source>
-        <translation type="unfinished" />
+        <translation>&lt;b&gt;&lt;font size='5' color='#d32f2f'&gt;TilauScope 已中斷&lt;/font&gt;&lt;/b&gt;&lt;br&gt;在 &lt;i&gt;{0}&lt;/i&gt; 中發生問題。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="80" />
         <source>&lt;b&gt;Error:&lt;/b&gt; {0}
 &lt;b&gt;Location:&lt;/b&gt; Line {1}</source>
-        <translation type="unfinished" />
+        <translation>&lt;b&gt;錯誤：&lt;/b&gt; {0}
+&lt;b&gt;位置：&lt;/b&gt; 第 {1} 行</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="122" />
         <location filename="../tilauscope/tilau_exceptions.py" line="90" />
         <source>Show Technical Details</source>
-        <translation type="unfinished" />
+        <translation>顯示技術詳細資訊</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="96" />
         <source>&lt;br&gt;Would you like to export a Debug Bundle (Logs + Environment) to help fix this?</source>
-        <translation type="unfinished" />
+        <translation>&lt;br&gt;您要匯出除錯套件 (日誌 + 環境) 以協助修復此問題嗎？</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="102" />
         <source>Export Logs &amp; Close</source>
-        <translation type="unfinished" />
+        <translation>匯出日誌並關閉</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="104" />
         <source>Just Close</source>
-        <translation type="unfinished" />
+        <translation>只是關閉</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="118" />
         <source>Hide Technical Details</source>
-        <translation type="unfinished" />
+        <translation>隱藏技術詳細資訊</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="132" />
         <source>Save Debug Logs</source>
-        <translation type="unfinished" />
+        <translation>儲存除錯日誌</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="166" />
         <source>Diagnostics saved</source>
-        <translation type="unfinished" />
+        <translation>診斷已儲存</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="167" />
         <source>Attach the archive to your report so the problem can be reproduced.</source>
-        <translation type="unfinished" />
+        <translation>將檔案附加到報告中以便能夠重現問題。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="169" />
         <source>Open GitHub</source>
-        <translation type="unfinished" />
+        <translation>開啟 GitHub</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="170" />
         <source>Done</source>
-        <translation type="unfinished" />
+        <translation>完成</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_exceptions.py" line="191" />
         <source>Logs bundled. Please send this to the TilauScope team.</source>
-        <translation type="unfinished" />
+        <translation>日誌已包裝。請將此傳送給 TilauScope 團隊。</translation>
     </message>
 </context><context>
     <name>tilauscope_graph</name>
     <message>
-        <location filename="../tilauscope/annotations.py" line="239" />
-        <source>Expert data view — click for the simplified coach view</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/annotations.py" line="242" />
-        <source>Coach view — click for the full expert data view</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
         <location filename="../artisanlib/canvas.py" line="4743" />
         <source>FC counter</source>
-        <translation type="unfinished" />
+        <translation>FC 計數器</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4747" />
@@ -27733,17 +27737,17 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../artisanlib/canvas.py" line="4748" />
         <source>Ready in</source>
-        <translation type="unfinished" />
+        <translation>準備於</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4749" />
         <source>Ready to charge</source>
-        <translation type="unfinished" />
+        <translation>準備投豆</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4750" />
         <source>Stabilizing</source>
-        <translation type="unfinished" />
+        <translation>穩定中</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4751" />
@@ -27753,119 +27757,129 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../artisanlib/canvas.py" line="4754" />
         <source>to DRY END</source>
-        <translation type="unfinished" />
+        <translation>至 DRY END</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4755" />
         <source>to 1C</source>
-        <translation type="unfinished" />
+        <translation>至 1C</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4756" />
         <source>to DROP</source>
-        <translation type="unfinished" />
+        <translation>至 DROP</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4757" />
         <source>DRY END in</source>
-        <translation type="unfinished" />
+        <translation>DRY END 在</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4758" />
         <source>1C in</source>
-        <translation type="unfinished" />
+        <translation>1C 在</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4759" />
         <source>✓ On track</source>
-        <translation type="unfinished" />
+        <translation>✓ 正常進行</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4760" />
         <source>⚠ Approaching DRY END — ease the heat</source>
-        <translation type="unfinished" />
+        <translation>⚠ 接近 DRY END — 減少火力</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4761" />
         <source>👂 1C imminent — get ready to cut power</source>
-        <translation type="unfinished" />
+        <translation>👂 1C 即將來臨 — 準備好斷電</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4762" />
         <source>⚠ 1C approaching — get ready to reduce</source>
-        <translation type="unfinished" />
+        <translation>⚠ 1C 即將到來 — 準備好減火</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4763" />
         <source>👂 Cracks starting…</source>
-        <translation type="unfinished" />
+        <translation>👂 開始爆聲…</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4764" />
         <source>✓ Steady browning</source>
-        <translation type="unfinished" />
+        <translation>✓ 穩定上色</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4765" />
         <source>✓ Development on track</source>
-        <translation type="unfinished" />
+        <translation>✓ 發展進行中</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4766" />
         <source>⚠ Under-developed — let it ride</source>
-        <translation type="unfinished" />
+        <translation>⚠ 發展不足 — 繼續烘</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4767" />
         <source>⏏ Ready to DROP</source>
-        <translation type="unfinished" />
+        <translation>⏏ 準備好 DROP</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4768" />
         <source>Cool down fast</source>
-        <translation type="unfinished" />
+        <translation>快速冷卻</translation>
     </message>
     <message>
         <location filename="../artisanlib/canvas.py" line="4769" />
         <source>DEV</source>
-        <translation type="unfinished" />
+        <translation>DEV</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/annotations.py" line="239" />
+        <source>Expert data view — click for the simplified coach view</source>
+        <translation>專家資料檢視 — 按一下以查看簡化教練檢視</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/annotations.py" line="242" />
+        <source>Coach view — click for the full expert data view</source>
+        <translation>教練檢視 — 按一下以查看完整專家資料檢視</translation>
     </message>
 </context><context>
     <name>tilauscope_label</name>
     <message>
         <location filename="../tilauscope/label_printer.py" line="512" />
         <source>Roasted bean</source>
-        <translation type="unfinished" />
+        <translation>烘焙豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="611" />
         <source>Roast date</source>
-        <translation type="unfinished" />
+        <translation>烘焙日期</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="1406" />
         <location filename="../tilauscope/label_printer.py" line="936" />
         <location filename="../tilauscope/label_printer.py" line="662" />
         <source>Process</source>
-        <translation type="unfinished" />
+        <translation>處理法</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="937" />
         <location filename="../tilauscope/label_printer.py" line="663" />
         <source>Variety</source>
-        <translation type="unfinished" />
+        <translation>品種</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="1407" />
         <location filename="../tilauscope/label_printer.py" line="938" />
         <location filename="../tilauscope/label_printer.py" line="664" />
         <source>Altitude</source>
-        <translation type="unfinished" />
+        <translation>海拔</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="665" />
         <source>Roast color</source>
-        <translation type="unfinished" />
+        <translation>烘焙顏色</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="1408" />
@@ -27878,7 +27892,7 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
         <location filename="../tilauscope/label_printer.py" line="907" />
         <location filename="../tilauscope/label_printer.py" line="667" />
         <source>Crop</source>
-        <translation type="unfinished" />
+        <translation>採收年份</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="692" />
@@ -27898,7 +27912,7 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/label_printer.py" line="799" />
         <source>Green bean</source>
-        <translation type="unfinished" />
+        <translation>生豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="836" />
@@ -27908,12 +27922,12 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/label_printer.py" line="840" />
         <source>Single origin</source>
-        <translation type="unfinished" />
+        <translation>單一莊園</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="900" />
         <source>Supplier</source>
-        <translation type="unfinished" />
+        <translation>供應商</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="940" />
@@ -27923,22 +27937,22 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/label_printer.py" line="941" />
         <source>Water act.</source>
-        <translation type="unfinished" />
+        <translation>水活性</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="954" />
         <source>Cupping notes</source>
-        <translation type="unfinished" />
+        <translation>杯測筆記</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="983" />
         <source>Stored</source>
-        <translation type="unfinished" />
+        <translation>儲存</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="1299" />
         <source>Tasting Notes:</source>
-        <translation type="unfinished" />
+        <translation>品嚐筆記：</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="1398" />
@@ -27948,35 +27962,35 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/label_printer.py" line="1409" />
         <source>SCA score</source>
-        <translation type="unfinished" />
+        <translation>SCA 評分</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="1422" />
         <source>Roasted on</source>
-        <translation type="unfinished" />
+        <translation>烘焙於</translation>
     </message>
     <message>
         <location filename="../tilauscope/label_printer.py" line="1427" />
         <source>Tasting notes</source>
-        <translation type="unfinished" />
+        <translation>品嚐筆記</translation>
     </message>
     <message>
         <location filename="../tilauscope/niimprint.py" line="868" />
         <location filename="../tilauscope/niimprint.py" line="862" />
         <source>cover is opened, cannot print</source>
-        <translation type="unfinished" />
+        <translation>蓋子已打開，無法列印</translation>
     </message>
 </context><context>
     <name>tilauscope_onboarding</name>
     <message>
         <location filename="../tilauscope/onboarding.py" line="231" />
         <source>Welcome — first-time setup</source>
-        <translation type="unfinished" />
+        <translation>歡迎 — 首次設定</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="302" />
         <source>Skip for now</source>
-        <translation type="unfinished" />
+        <translation>暫時略過</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="314" />
@@ -27986,129 +28000,129 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/onboarding.py" line="319" />
         <source>Next</source>
-        <translation type="unfinished" />
+        <translation>下一步</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="335" />
         <source>Which unit do you want to work in?</source>
-        <translation type="unfinished" />
+        <translation>您想用哪個單位工作？</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="336" />
         <source>All temperatures — curves, milestones, setpoints — will be shown in this unit. You can change it later in the settings.</source>
-        <translation type="unfinished" />
+        <translation>所有溫度 — 曲線、里程碑、設定值 — 將以此單位顯示。您可以稍後在設定中變更。</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="361" />
         <source>Which roaster do you use?</source>
-        <translation type="unfinished" />
+        <translation>您使用哪台烘焙機？</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="362" />
         <source>The machine sets the roast plan, slider labels and recommendations. If a device profile is bundled, it is loaded when you finish.</source>
-        <translation type="unfinished" />
+        <translation>機器決定烘焙計畫、滑桿標籤和建議。如果包含裝置設定檔，將在完成時載入。</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="408" />
         <source>Connect your hardware</source>
-        <translation type="unfinished" />
+        <translation>連接您的硬體</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="409" />
         <source>TilauScope scans for your gear and registers what it finds. Anything already set up shows as detected. Everything is optional.</source>
-        <translation type="unfinished" />
+        <translation>TilauScope 掃描您的設備並登錄發現的內容。已設定的任何東西都顯示為已檢測。所有項目都是可選的。</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="412" />
         <source>Search &amp; auto-register</source>
-        <translation type="unfinished" />
+        <translation>搜尋及自動登錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="442" />
         <source>roaster · USB by default, BLE if detected</source>
-        <translation type="unfinished" />
+        <translation>烘焙機 · 預設 USB，如偵測到則為 BLE</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="444" />
         <source>smoke extractor · PID</source>
-        <translation type="unfinished" />
+        <translation>排煙機 · PID</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="446" />
         <source>charge &amp; output weighing</source>
-        <translation type="unfinished" />
+        <translation>進豆及產出稱重</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="448" />
         <source>ESP32 probe · BME280 / I²S mic</source>
-        <translation type="unfinished" />
+        <translation>ESP32 感應器 · BME280 / I²S 麥克風</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="450" />
         <source>water activity (Aw)</source>
-        <translation type="unfinished" />
+        <translation>水活性 (Aw)</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="453" />
         <source>bean colour reader</source>
-        <translation type="unfinished" />
+        <translation>豆子顏色讀取器</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="464" />
         <source>Other Artisan BLE devices detected</source>
-        <translation type="unfinished" />
+        <translation>檢測到其他 Artisan BLE 裝置</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="475" />
         <source>nothing recognised nearby — these are identified, not configured</source>
-        <translation type="unfinished" />
+        <translation>附近未識別任何內容 — 已識別但未配置</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="489" />
         <source>Where should your files live?</source>
-        <translation type="unfinished" />
+        <translation>您的檔案應該放在哪裡？</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="490" />
         <source>Choose the folders for your BeanCave green-bean database and your roast logs (.alog). Existing folders are pre-filled.</source>
-        <translation type="unfinished" />
+        <translation>選擇 BeanCave 生豆資料庫和烘焙日誌 (.alog) 的資料夾。現有資料夾已預先填入。</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="620" />
         <location filename="../tilauscope/onboarding.py" line="495" />
         <source>BeanCave folder</source>
-        <translation type="unfinished" />
+        <translation>BeanCave 資料夾</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="622" />
         <location filename="../tilauscope/onboarding.py" line="496" />
         <source>Roast logs folder</source>
-        <translation type="unfinished" />
+        <translation>烘焙日誌資料夾</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="524" />
         <source>Choose…</source>
-        <translation type="unfinished" />
+        <translation>選擇…</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="546" />
         <source>Select folder</source>
-        <translation type="unfinished" />
+        <translation>選擇資料夾</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="561" />
         <source>not set — click Choose…</source>
-        <translation type="unfinished" />
+        <translation>未設定 — 按一下「選擇…」</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="578" />
         <source>Ready to apply.</source>
-        <translation type="unfinished" />
+        <translation>準備好套用。</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="581" />
         <source>On finish, TilauScope applies these settings then takes you to create your first green bean. If you leave now, nothing changes.</source>
-        <translation type="unfinished" />
+        <translation>完成後，TilauScope 將套用這些設定，然後引導您建立第一個生豆。如果您現在離開，將不會進行任何變更。</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="608" />
@@ -28123,32 +28137,32 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/onboarding.py" line="613" />
         <source>Device profile</source>
-        <translation type="unfinished" />
+        <translation>裝置設定檔</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="616" />
         <source>Theme &amp; curves</source>
-        <translation type="unfinished" />
+        <translation>佈景主題與曲線</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="617" />
         <source>Axes &amp; smoothing</source>
-        <translation type="unfinished" />
+        <translation>軸與平滑</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="617" />
         <source>reference profile</source>
-        <translation type="unfinished" />
+        <translation>參考設定檔</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="688" />
         <source>Pair</source>
-        <translation type="unfinished" />
+        <translation>配對</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="693" />
         <source>searching…</source>
-        <translation type="unfinished" />
+        <translation>搜尋中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="729" />
@@ -28158,17 +28172,17 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/onboarding.py" line="729" />
         <source>Next</source>
-        <translation type="unfinished" />
+        <translation>下一步</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="752" />
         <source>detected ✓</source>
-        <translation type="unfinished" />
+        <translation>已檢測 ✓</translation>
     </message>
     <message>
         <location filename="../tilauscope/onboarding.py" line="859" />
         <source>recognised · not configured</source>
-        <translation type="unfinished" />
+        <translation>已識別 · 未配置</translation>
     </message>
     <message>
         <source>Back</source>
@@ -28183,32 +28197,32 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="138" />
         <source>&lt;b&gt;Monitoring &amp; Tuning&lt;/b&gt;</source>
-        <translation type="unfinished" />
+        <translation>&lt;b&gt;監控與調整&lt;/b&gt;</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="160" />
         <source>Temperatures</source>
-        <translation type="unfinished" />
+        <translation>溫度</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="161" />
         <source>Current Bean Temperature</source>
-        <translation type="unfinished" />
+        <translation>目前豆子溫度</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="162" />
         <source>Artisan PID SV</source>
-        <translation type="unfinished" />
+        <translation>Artisan PID SV</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="163" />
         <source>PID Delta (BT-SV)</source>
-        <translation type="unfinished" />
+        <translation>PID Delta (BT-SV)</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="176" />
         <source>Configuration Structure (2-DOF)</source>
-        <translation type="unfinished" />
+        <translation>配置結構 (2-DOF)</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="182" />
@@ -28218,7 +28232,7 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="188" />
         <source>Load Presets</source>
-        <translation type="unfinished" />
+        <translation>載入預設</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="189" />
@@ -28228,42 +28242,42 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="190" />
         <source>Stop</source>
-        <translation type="unfinished" />
+        <translation>停止</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="277" />
         <source>Presets loaded</source>
-        <translation type="unfinished" />
+        <translation>預設已載入</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="290" />
         <source>Analysing...</source>
-        <translation type="unfinished" />
+        <translation>分析中...</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="298" />
         <source>Monitoring stopped</source>
-        <translation type="unfinished" />
+        <translation>監控已停止</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="474" />
         <source>preheating </source>
-        <translation type="unfinished" />
+        <translation>預熱中 </translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="476" />
         <source>Ramping</source>
-        <translation type="unfinished" />
+        <translation>升溫中</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="484" />
         <source>Stable</source>
-        <translation type="unfinished" />
+        <translation>穩定</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="581" />
         <source>PID Parameters Help</source>
-        <translation type="unfinished" />
+        <translation>PID 參數說明</translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="619" />
@@ -28296,7 +28310,24 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
         kP, kI, kD, beta and gamme if required. You can stop it and restart it at any time while Artisan PID
         is running.&lt;/p&gt;
         </source>
-        <translation type="unfinished" />
+        <translation>
+         &lt;h3&gt;PID 參數詞彙表&lt;/h3&gt;
+        &lt;p&gt;&lt;b&gt;kP (Proportional 比例):&lt;/b&gt; 決定即時修正強度。
+        如果溫度遠離目標，kP 會施加強烈的修正作用。&lt;/p&gt;
+        &lt;p&gt;&lt;b&gt;kI (Integral 積分):&lt;/b&gt; 消除長期殘差。
+        它隨著時間累積小偏差，以確保溫度達到精確目標。&lt;/p&gt;
+        &lt;p&gt;&lt;b&gt;kD (Derivative 微分):&lt;/b&gt; 充當「煞車」。它通過反應變化率 (RoR) 來預期超調，以在系統超過目標之前穩定系統。&lt;/p&gt;
+        &lt;hr&gt;
+        &lt;h3&gt;進階設定&lt;/h3&gt;
+        &lt;p&gt;&lt;b&gt;Beta (P-Weighting):&lt;/b&gt; 調整比例作用對設定值 (SV) 變化與實際溫度 (BT) 變化的反應程度。&lt;/p&gt;
+        &lt;p&gt;&lt;b&gt;Gamma (D-Weighting):&lt;/b&gt; 調整微分作用對設定值變化的反應程度，以防止在移動目標溫度時輸出突然激增。&lt;/p&gt;
+        &lt;p&gt;&lt;b&gt;Gain Scheduling:&lt;/b&gt; 根據目前溫度範圍自動切換 PID 值，以優化不同烘焙階段的穩定性。&lt;/p&gt;
+        &lt;hr&gt;
+        &lt;h3&gt;如何使用&lt;/h3&gt;
+        &lt;p&gt;&lt;b&gt;在 SV 或排程模式之間選擇&lt;/b&gt; 在 Artisan PID 對話框中調整使用模式，可選擇一般 SV (排程未勾選)、線性 (x)、二次方 (x2) 模式的排程模式。關閉對話框並執行 PID Autotune 視窗。&lt;/p&gt;
+        &lt;p&gt;&lt;b&gt;載入預設&lt;/b&gt;：按一下 &lt;b&gt;載入預設&lt;/b&gt; 按鈕以注入預設 PID 設定以開始調整。這不是強制性的，您可以在不變更目前值的情況下開始程序。&lt;/p&gt;
+        &lt;p&gt;&lt;b&gt;按一下「開始」&lt;/b&gt; 以啟動 PID Autotune 程序，它會監視 Artisan 的操作，如果偵測到設定不是最佳狀態，可以動態調整設定。例程會在必要時更新 kP、kI、kD、beta 和 gamma。在 Artisan PID 執行時，您可以隨時停止並重新啟動它。&lt;/p&gt;
+        </translation>
     </message>
     <message>
         <location filename="../tilauscope/pid_autotune.py" line="652" />
@@ -28308,148 +28339,148 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/alog_repair.py" line="281" />
         <source>Agtron estimate</source>
-        <translation type="unfinished" />
+        <translation>Agtron 估計</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="296" />
         <source>Pick a roast level to prefill the median Agtron of its range.</source>
-        <translation type="unfinished" />
+        <translation>選擇烘焙等級以預填其範圍的中位數 Agtron。</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="460" />
         <source>🔧  Repair ALogs</source>
-        <translation type="unfinished" />
+        <translation>🔧  修復 ALog</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="483" />
         <source>Show incomplete only</source>
-        <translation type="unfinished" />
+        <translation>僅顯示未完成</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="510" />
         <source>Green bean:</source>
-        <translation type="unfinished" />
+        <translation>生豆：</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="515" />
         <source>Complete from bean (empty fields only)</source>
-        <translation type="unfinished" />
+        <translation>從生豆補完（僅空白欄位）</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="520" />
         <source>TITLE</source>
-        <translation type="unfinished" />
+        <translation>標題</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="525" />
         <source>BEANS</source>
-        <translation type="unfinished" />
+        <translation>豆子</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="554" />
         <source>Green bean density, typical 550–900 g/l</source>
-        <translation type="unfinished" />
+        <translation>生豆密度，典型 550–900 g/l</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="556" />
         <source>Green moisture, typical 8–14 %</source>
-        <translation type="unfinished" />
+        <translation>生豆含水率，典型 8–14 %</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="558" />
         <source>Ambient temperature at roast (feeds historical analysis)</source>
-        <translation type="unfinished" />
+        <translation>烘焙時環境溫度（供歷史分析使用）</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="560" />
         <source>Ambient humidity at roast (feeds historical analysis)</source>
-        <translation type="unfinished" />
+        <translation>烘焙時環境濕度（供歷史分析使用）</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="566" />
         <source>WEIGHT LOSS</source>
-        <translation type="unfinished" />
+        <translation>重量損失</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="570" />
         <source>DENSITY</source>
-        <translation type="unfinished" />
+        <translation>密度</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="571" />
         <source>MOISTURE %</source>
-        <translation type="unfinished" />
+        <translation>含水率 %</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="572" />
         <source>GREENS TEMP</source>
-        <translation type="unfinished" />
+        <translation>生豆溫度</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="576" />
         <source>AMBIENT °C</source>
-        <translation type="unfinished" />
+        <translation>環境 °C</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="577" />
         <source>HUMIDITY %</source>
-        <translation type="unfinished" />
+        <translation>濕度 %</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="580" />
         <source>COLOR WHOLE</source>
-        <translation type="unfinished" />
+        <translation>整豆顏色</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="581" />
         <source>COLOR GROUND</source>
-        <translation type="unfinished" />
+        <translation>磨粉顏色</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="582" />
         <source>COLOR SYSTEM</source>
-        <translation type="unfinished" />
+        <translation>顏色系統</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="586" />
         <source>Agtron…</source>
-        <translation type="unfinished" />
+        <translation>Agtron…</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="592" />
         <source>→ NEW FILENAME</source>
-        <translation type="unfinished" />
+        <translation>→ 新檔名</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="604" />
         <source>Record</source>
-        <translation type="unfinished" />
+        <translation>紀錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="607" />
         <source>Next incomplete ▸</source>
-        <translation type="unfinished" />
+        <translation>下一個未完成 ▸</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="909" />
         <location filename="../tilauscope/alog_repair.py" line="611" />
         <source>Stamp device map</source>
-        <translation type="unfinished" />
+        <translation>標記裝置地圖</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="612" />
         <source>Rebuild tilau_name_map in all ALogs that pre-date automatic device-index stamping.</source>
-        <translation type="unfinished" />
+        <translation>在所有先於自動裝置索引標記的 ALog 中重建 tilau_name_map。</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="621" />
         <source>🚫 Exclude from learning</source>
-        <translation type="unfinished" />
+        <translation>🚫 從學習中排除</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="623" />
         <source>Flag the selected ALog so plan learning skips it (written to the file immediately; click again to re-admit it).</source>
-        <translation type="unfinished" />
+        <translation>標記選定的 ALog，以便計畫學習略過它（立即寫入檔案；再按一次以重新接受）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="631" />
@@ -28460,58 +28491,58 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
         <location filename="../tilauscope/alog_repair.py" line="835" />
         <location filename="../tilauscope/alog_repair.py" line="671" />
         <source>ALog directory not set.</source>
-        <translation type="unfinished" />
+        <translation>未設定 ALog 目錄。</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="704" />
         <source>{0} files · {1} incomplete · {2} shown</source>
-        <translation type="unfinished" />
+        <translation>{0} 個檔案 · {1} 個未完成 · {2} 個顯示</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="1188" />
         <location filename="../tilauscope/alog_repair.py" line="722" />
         <source>Unsaved changes</source>
-        <translation type="unfinished" />
+        <translation>未保存的變更</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="723" />
         <source>Discard unsaved changes to this profile?</source>
-        <translation type="unfinished" />
+        <translation>捨棄此設定檔的未保存變更？</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="742" />
         <source>WEIGHT IN ({0})</source>
-        <translation type="unfinished" />
+        <translation>進豆重量 ({0})</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="744" />
         <source>WEIGHT OUT ({0})</source>
-        <translation type="unfinished" />
+        <translation>產出重量 ({0})</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="771" />
         <source>— none —</source>
-        <translation type="unfinished" />
+        <translation>— 無 —</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="793" />
         <source>No bean</source>
-        <translation type="unfinished" />
+        <translation>無豆子</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="794" />
         <source>Select a green bean first.</source>
-        <translation type="unfinished" />
+        <translation>請先選擇生豆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="834" />
         <source>No directory</source>
-        <translation type="unfinished" />
+        <translation>無目錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="850" />
         <source>Stamping device map…</source>
-        <translation type="unfinished" />
+        <translation>標記裝置地圖中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="851" />
@@ -28521,69 +28552,69 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/alog_repair.py" line="866" />
         <source>Processing {0}…</source>
-        <translation type="unfinished" />
+        <translation>處理 {0}…</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="903" />
         <source>{0} file(s) stamped · {1} already up-to-date · {2} error(s)</source>
-        <translation type="unfinished" />
+        <translation>{0} 個檔案已標記 · {1} 個已是最新版本 · {2} 個錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="925" />
         <source>Invalid weights</source>
-        <translation type="unfinished" />
+        <translation>無效的重量</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="926" />
         <source>Weight out ({0}) must be lower than weight in ({1}).</source>
-        <translation type="unfinished" />
+        <translation>出重量 ({0}) 必須低於進重量 ({1})。</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="959" />
         <source>File exists</source>
-        <translation type="unfinished" />
+        <translation>檔案已存在</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="960" />
         <source>{0} already exists. Overwrite it?</source>
-        <translation type="unfinished" />
+        <translation>{0} 已存在。要覆蓋嗎？</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="1010" />
         <location filename="../tilauscope/alog_repair.py" line="972" />
         <source>Save Error</source>
-        <translation type="unfinished" />
+        <translation>儲存錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="1011" />
         <location filename="../tilauscope/alog_repair.py" line="973" />
         <source>Could not write the ALog file:&lt;br&gt;&lt;b&gt;{0}&lt;/b&gt;</source>
-        <translation type="unfinished" />
+        <translation>無法寫入 ALog 檔案：&lt;br&gt;&lt;b&gt;{0}&lt;/b&gt;</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="1096" />
         <source>Missing: {0}</source>
-        <translation type="unfinished" />
+        <translation>缺少：{0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="1099" />
         <source>✓ All required fields filled</source>
-        <translation type="unfinished" />
+        <translation>✓ 所有必填欄位已完成</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="1107" />
         <source>out ≥ in!</source>
-        <translation type="unfinished" />
+        <translation>出 ≥ 進！</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="1122" />
         <source>Check: {0}</source>
-        <translation type="unfinished" />
+        <translation>檢查：{0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/alog_repair.py" line="1189" />
         <source>Discard unsaved changes and close?</source>
-        <translation type="unfinished" />
+        <translation>放棄未儲存的變更並關閉？</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -28610,116 +28641,118 @@ The sensor is kept: a topic that is silent right now may still be valid.</source
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="678" />
         <source>On plan (target {0} {1})</source>
-        <translation type="unfinished" />
+        <translation>符合計畫（目標 {0} {1}）</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="681" />
         <source>On plan (ideal {0}–{1} {2})</source>
-        <translation type="unfinished" />
+        <translation>符合計畫（理想 {0}–{1} {2}）</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="697" />
         <source>⏳ burner {0}→{1}% — effect in ~{2} s</source>
-        <translation type="unfinished" />
+        <translation>⏳ 火力 {0}→{1}% — 約 {2} 秒後生效</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="704" />
         <source>↑ above</source>
-        <translation type="unfinished" />
+        <translation>↑ 上方</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="705" />
         <source>↓ below</source>
-        <translation type="unfinished" />
+        <translation>↓ 下方</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="739" />
         <location filename="../tilauscope/roast_asssistant.py" line="734" />
         <source>burner {0}% → one notch to {1}% (plan {2}%)</source>
-        <translation type="unfinished" />
+        <translation>火力 {0}% → 轉一格至 {1}%（計畫 {2}%）</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="743" />
         <source>one notch down on the burner</source>
-        <translation type="unfinished" />
+        <translation>火力轉一格下降</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="744" />
         <source>one notch up on the burner</source>
-        <translation type="unfinished" />
+        <translation>火力轉一格上升</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="746" />
         <source>{0}{1} plan ({2}) — {3}</source>
-        <translation type="unfinished" />
+        <translation>{0}{1} 計畫（{2}）— {3}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="817" />
         <source>Integrated airflow — keep low to conserve heat</source>
-        <translation type="unfinished" />
+        <translation>整合氣流 — 保持低檔以節省熱量</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="818" />
         <source>Integrated airflow — moderate for even drying</source>
-        <translation type="unfinished" />
+        <translation>整合氣流 — 中等檔位以均勻乾燥</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="820" />
         <source>Integrated airflow — raise to manage browning &amp; chaff</source>
-        <translation type="unfinished" />
+        <translation>整合氣流 — 提高檔位以管理焙焦和雜質</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="822" />
         <source>Integrated airflow</source>
-        <translation type="unfinished" />
+        <translation>整合氣流</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="836" />
         <source>Above ~{0}% — cooling the drum</source>
-        <translation type="unfinished" />
+        <translation>超過約 {0}% — 冷卻鼓筒</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="840" />
         <source>Smoke extraction — neutral on BT</source>
-        <translation type="unfinished" />
+        <translation>排煙 — 對 BT 無影響</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="850" />
         <source>recommend MODE {0}</source>
-        <translation type="unfinished" />
+        <translation>建議模式 {0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="993" />
         <source>⚠ RoR crash — {0}°/min lost in 15s — support with AIR, never cut the fire</source>
-        <translation type="unfinished" />
+        <translation>⚠ RoR 崩潰 — 15 秒內下降 {0}°/分 — 用氣流支撐，不要關火</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1015" />
         <source>⚠ RoR crash — {0}°/min/s slope, {1}° from target — raise heater now</source>
-        <translation type="unfinished" />
+        <translation>⚠ RoR 崩潰 — {0}°/分/秒 斜率，距目標 {1}° — 立即提高火力</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1461" />
         <source>Recommended settings</source>
-        <translation type="unfinished" />
+        <translation>建議設定</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1733" />
         <source>Select a green bean and a roasting target,
 then press  ▶  in Artisan to start.</source>
-        <translation type="unfinished" />
+        <translation>選擇一種生豆和烘焙目標，
+然後在 Artisan 中按  ▶  以開始。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1736" />
         <source>Select a green bean and a color target
 then, click on  ▶  to start the assistant.</source>
-        <translation type="unfinished" />
+        <translation>選擇一種生豆和顏色目標，
+然後按一下  ▶  以啟動助手。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1823" />
         <location filename="../tilauscope/roast_asssistant.py" line="1769" />
         <source>Until SV</source>
-        <translation type="unfinished" />
+        <translation>直至 SV</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1798" />
@@ -28734,67 +28767,67 @@ then, click on  ▶  to start the assistant.</source>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1807" />
         <source>BT stable ± 2° from SV</source>
-        <translation type="unfinished" />
+        <translation>BT 穩定 ± 2° 自 SV</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1824" />
         <source>Actual BT</source>
-        <translation type="unfinished" />
+        <translation>實際 BT</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1826" />
         <source>✅ SV reached — stabilize then charge</source>
-        <translation type="unfinished" />
+        <translation>✅ 已達到 SV — 穩定後投豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1827" />
         <source>⚠ Approaching SV — monitor inertia</source>
-        <translation type="unfinished" />
+        <translation>⚠ 接近 SV — 監控慣性</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1828" />
         <source>Preheating — heating to SV</source>
-        <translation type="unfinished" />
+        <translation>預熱 — 加熱至 SV</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1829" />
         <source>Preheating — no PID active</source>
-        <translation type="unfinished" />
+        <translation>預熱 — 無 PID 作動</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1831" />
         <source>Hold 30–60 s, then charge once RoR drops under 5 °/min.</source>
-        <translation type="unfinished" />
+        <translation>保持 30–60 秒，然後在 RoR 降至 5 °/分以下時投豆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1832" />
         <source>Approaching SV — PID will cut heat; slight overshoot is normal.</source>
-        <translation type="unfinished" />
+        <translation>接近 SV — PID 將減少熱量；輕微過衝是正常的。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1833" />
         <source>RoR weak despite active PID — check heater response.</source>
-        <translation type="unfinished" />
+        <translation>RoR 虛弱儘管 PID 作動 — 檢查加熱器反應。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1834" />
         <source>PID ramping to SV — let it work, charge when BT is stable ± 2°.</source>
-        <translation type="unfinished" />
+        <translation>PID 斜升至 SV — 讓它運作，當 BT 穩定 ± 2° 時投豆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1835" />
         <source>Raise heater — temperature is rising too slowly.</source>
-        <translation type="unfinished" />
+        <translation>提高火力 — 溫度上升太慢。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1836" />
         <source>Reduce heater — temperature is rising too fast.</source>
-        <translation type="unfinished" />
+        <translation>降低火力 — 溫度上升太快。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1837" />
         <source>Heat rate normal — wait for ET to stabilize, then charge.</source>
-        <translation type="unfinished" />
+        <translation>加熱速率正常 — 等待 ET 穩定，然後投豆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1839" />
@@ -28809,12 +28842,12 @@ then, click on  ▶  to start the assistant.</source>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1841" />
         <source>ROR</source>
-        <translation type="unfinished" />
+        <translation>ROR</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1842" />
         <source>HTR</source>
-        <translation type="unfinished" />
+        <translation>火力</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1843" />
@@ -28824,394 +28857,394 @@ then, click on  ▶  to start the assistant.</source>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1844" />
         <source>ETA</source>
-        <translation type="unfinished" />
+        <translation>ETA</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="1845" />
         <source>CHRG</source>
-        <translation type="unfinished" />
+        <translation>投豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2004" />
         <source>Actual RoR</source>
-        <translation type="unfinished" />
+        <translation>實際 RoR</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2038" />
         <source>Cancel charge</source>
-        <translation type="unfinished" />
+        <translation>取消投豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2039" />
         <source>15s</source>
-        <translation type="unfinished" />
+        <translation>15秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2044" />
         <source>Dry end</source>
-        <translation type="unfinished" />
+        <translation>乾燥結束</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2045" />
         <source>near target</source>
-        <translation type="unfinished" />
+        <translation>接近目標</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2724" />
         <location filename="../tilauscope/roast_asssistant.py" line="2396" />
         <location filename="../tilauscope/roast_asssistant.py" line="2050" />
         <source>AirWave</source>
-        <translation type="unfinished" />
+        <translation>AirWave</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2051" />
         <source>MODE STD</source>
-        <translation type="unfinished" />
+        <translation>模式 STD</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2080" />
         <source>⬇ Post-charge drop — turning point ahead</source>
-        <translation type="unfinished" />
+        <translation>⬇ 投豆後下降 — 轉折點即將到來</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2081" />
         <source>↩ Recovery — RoR rebuilding after turning point</source>
-        <translation type="unfinished" />
+        <translation>↩ 恢復 — RoR 在轉折點後重建</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2082" />
         <source>Stabilizing after charge…</source>
-        <translation type="unfinished" />
+        <translation>投豆後穩定中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2083" />
         <source>Ramping too slow — raise heater</source>
-        <translation type="unfinished" />
+        <translation>斜升太慢 — 提高火力</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2084" />
         <source>A bit slow — monitor slope</source>
-        <translation type="unfinished" />
+        <translation>有點慢 — 監控斜率</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2085" />
         <source>Ideal interval {0}–{1} °/min</source>
-        <translation type="unfinished" />
+        <translation>理想間隔 {0}–{1} °/分</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2086" />
         <source>A bit high</source>
-        <translation type="unfinished" />
+        <translation>有點高</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2087" />
         <source>RoR too high — reduce heater</source>
-        <translation type="unfinished" />
+        <translation>RoR 太高 — 降低火力</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2088" />
         <source>natural/honey process → extended drying phase expected</source>
-        <translation type="unfinished" />
+        <translation>自然/蜂蜜處理 → 預期延長乾燥階段</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2089" />
         <source>RoR too low for estimation</source>
-        <translation type="unfinished" />
+        <translation>RoR 太低無法估計</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2090" />
         <source>Stabilizing post-TP…</source>
-        <translation type="unfinished" />
+        <translation>TP 後穩定中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2091" />
         <source>Low Delta — uneven conduction?</source>
-        <translation type="unfinished" />
+        <translation>低 Delta — 導熱不均？</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2092" />
         <source>Delta is high — heating too strong?</source>
-        <translation type="unfinished" />
+        <translation>Delta 過高 — 加熱太強？</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2093" />
         <source>Drying steady</source>
-        <translation type="unfinished" />
+        <translation>乾燥穩定</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2094" />
         <source>Flash drying risk — check FIR power</source>
-        <translation type="unfinished" />
+        <translation>閃乾風險 — 檢查 FIR 功率</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2095" />
         <source>⚠️ Premature browning detected!</source>
-        <translation type="unfinished" />
+        <translation>⚠️ 檢測到過早焙焦！</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2096" />
         <source>⚠ RoR out of range — check heater now</source>
-        <translation type="unfinished" />
+        <translation>⚠ RoR 超出範圍 — 立即檢查加熱器</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2097" />
         <source>⚠ Critical Gap between ET/BT — dangerous thermic gradiant</source>
-        <translation type="unfinished" />
+        <translation>⚠ ET/BT 之間嚴重間隙 — 危險的熱梯度</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2099" />
         <source>humid ({0}%) → keep RoR moderate, longer drying ahead</source>
-        <translation type="unfinished" />
+        <translation>濕潤 ({0}%) → 保持 RoR 適中，乾燥預期更長</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2100" />
         <source>dry beans ({0}%) → watch for flash drying</source>
-        <translation type="unfinished" />
+        <translation>乾豆 ({0}%) → 注意閃乾</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2101" />
         <source>low density (ρ={0}) → heat transfer faster</source>
-        <translation type="unfinished" />
+        <translation>低密度 (ρ={0}) → 熱傳遞更快</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2102" />
         <source>dense bean (ρ={0}) → needs sustained heat</source>
-        <translation type="unfinished" />
+        <translation>密集豆 (ρ={0}) → 需要持續熱量</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2103" />
         <source>Drying running long: ~{0} vs plan {1} — raise heater</source>
-        <translation type="unfinished" />
+        <translation>乾燥時間過長：~{0} 對 計畫 {1} — 提高火力</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2104" />
         <source>⚠ Extended drying: ~{0} vs plan {1} — baked risk, raise heater</source>
-        <translation type="unfinished" />
+        <translation>⚠ 延長乾燥：~{0} 對 計畫 {1} — 烘烤風險，提高火力</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4556" />
         <location filename="../tilauscope/roast_asssistant.py" line="2106" />
         <source>DRYING</source>
-        <translation type="unfinished" />
+        <translation>乾燥</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2107" />
         <source>STABILIZING</source>
-        <translation type="unfinished" />
+        <translation>穩定中</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2108" />
         <source>RoR IN BAND</source>
-        <translation type="unfinished" />
+        <translation>RoR 在範圍內</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2447" />
         <location filename="../tilauscope/roast_asssistant.py" line="2109" />
         <source>RoR DRIFTING</source>
-        <translation type="unfinished" />
+        <translation>RoR 漂移</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2110" />
         <source>RoR OUT OF BAND</source>
-        <translation type="unfinished" />
+        <translation>RoR 超出範圍</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2111" />
         <source>band {0}–{1}</source>
-        <translation type="unfinished" />
+        <translation>範圍 {0}–{1}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2112" />
         <source>target {0}</source>
-        <translation type="unfinished" />
+        <translation>目標 {0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2113" />
         <source>BT {0}°</source>
-        <translation type="unfinished" />
+        <translation>BT {0}°</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2114" />
         <source>DRY END now</source>
-        <translation type="unfinished" />
+        <translation>DRY END 現在</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2115" />
         <source>DRY END ~{0}</source>
-        <translation type="unfinished" />
+        <translation>DRY END ~{0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2116" />
         <source>DRY END --</source>
-        <translation type="unfinished" />
+        <translation>DRY END --</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2117" />
         <source>Ag {0}</source>
-        <translation type="unfinished" />
+        <translation>Ag {0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2118" />
         <source>cRoC {0}</source>
-        <translation type="unfinished" />
+        <translation>cRoC {0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2455" />
         <location filename="../tilauscope/roast_asssistant.py" line="2119" />
         <source>plan {0}</source>
-        <translation type="unfinished" />
+        <translation>計畫 {0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2358" />
         <source>RoR Maillard</source>
-        <translation type="unfinished" />
+        <translation>RoR Maillard</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2388" />
         <source>FC start</source>
-        <translation type="unfinished" />
+        <translation>FC 開始</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2389" />
         <source>near FC target</source>
-        <translation type="unfinished" />
+        <translation>接近 FC 目標</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2725" />
         <location filename="../tilauscope/roast_asssistant.py" line="2397" />
         <source>MODE EXT</source>
-        <translation type="unfinished" />
+        <translation>模式 EXT</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2407" />
         <source>Set burner {0}%</source>
-        <translation type="unfinished" />
+        <translation>設定火力 {0}%</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2408" />
         <source>at {0}°</source>
-        <translation type="unfinished" />
+        <translation>在 {0}°</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2410" />
         <source>Set burner</source>
-        <translation type="unfinished" />
+        <translation>設定火力</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2432" />
         <source>RoR too low → risk of baked coffee</source>
-        <translation type="unfinished" />
+        <translation>RoR 太低 → 烘烤風險</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2433" />
         <source>RoR is high → volatile aromas escaping</source>
-        <translation type="unfinished" />
+        <translation>RoR 過高 → 揮發性香氣逸出</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2434" />
         <source>Ideal decrease ✓</source>
-        <translation type="unfinished" />
+        <translation>理想下降 ✓</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2435" />
         <source>RoR is OK</source>
-        <translation type="unfinished" />
+        <translation>RoR 正常</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2436" />
         <source>RoR increasing — look after the slope</source>
-        <translation type="unfinished" />
+        <translation>RoR 上升 — 照看斜率</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2437" />
         <source>High altitude</source>
-        <translation type="unfinished" />
+        <translation>高海拔</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2438" />
         <source>+Maillard slower</source>
-        <translation type="unfinished" />
+        <translation>+Maillard 更慢</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2439" />
         <source> · Floral profile → early FCs recommmended</source>
-        <translation type="unfinished" />
+        <translation> · 花香風味 → 建議早期 FCs</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2440" />
         <source>⚠ RoR too low — risk of baked coffee!</source>
-        <translation type="unfinished" />
+        <translation>⚠ RoR 太低 — 烘烤風險！</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2441" />
         <source>⚠ FCs imminent — prepare next action</source>
-        <translation type="unfinished" />
+        <translation>⚠ FCs 即將到來 — 準備下一個動作</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2442" />
         <source>⚠ Extended Maillard ({0} proj. vs {1} plan) — baked risk, raise heat or anticipate FCs</source>
-        <translation type="unfinished" />
+        <translation>⚠ 延長 Maillard（{0} 預計 vs {1} 計畫）— 烘烤風險，提高熱量或預期 FCs</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2443" />
         <source>Maillard longer than plan ({0} vs {1}) — monitor RoR</source>
-        <translation type="unfinished" />
+        <translation>Maillard 超過計畫（{0} vs {1}）— 監控 RoR</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4557" />
         <location filename="../tilauscope/roast_asssistant.py" line="2445" />
         <source>MAILLARD</source>
-        <translation type="unfinished" />
+        <translation>MAILLARD</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2446" />
         <source>RoR ON TRACK</source>
-        <translation type="unfinished" />
+        <translation>RoR 正常</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2448" />
         <source>BAKED RISK</source>
-        <translation type="unfinished" />
+        <translation>烘烤風險</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2449" />
         <source>RoR --</source>
-        <translation type="unfinished" />
+        <translation>RoR --</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2450" />
         <source>FCs now</source>
-        <translation type="unfinished" />
+        <translation>FCs 現在</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2451" />
         <source>FCs --</source>
-        <translation type="unfinished" />
+        <translation>FCs --</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2452" />
         <source>FCs ~{0}</source>
-        <translation type="unfinished" />
+        <translation>FC ~{0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2453" />
         <source>GAP {0}°</source>
-        <translation type="unfinished" />
+        <translation>溫差 {0}°</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2454" />
         <source>ratio {0}%</source>
-        <translation type="unfinished" />
+        <translation>比例 {0}%</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2456" />
         <source>next {0}% @{1}°</source>
-        <translation type="unfinished" />
+        <translation>下一步 {0}% @{1}°</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2683" />
         <source>DTR realtime</source>
-        <translation type="unfinished" />
+        <translation>DTR 即時</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2712" />
@@ -29222,128 +29255,128 @@ then, click on  ▶  to start the assistant.</source>
         <location filename="../tilauscope/roast_asssistant.py" line="2758" />
         <location filename="../tilauscope/roast_asssistant.py" line="2713" />
         <source>near drop target</source>
-        <translation type="unfinished" />
+        <translation>接近降溫點</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2719" />
         <source>SC start</source>
-        <translation type="unfinished" />
+        <translation>SC 開始</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2720" />
         <source>after FC end</source>
-        <translation type="unfinished" />
+        <translation>FC 結束後</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2750" />
         <source>RoR crash → baked risk, either DROP or HEAT</source>
-        <translation type="unfinished" />
+        <translation>升溫速率崩潰 → 過度烘焙風險，選擇降溫或加熱</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2751" />
         <source>→ DROP </source>
-        <translation type="unfinished" />
+        <translation>→ DROP </translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2752" />
         <source>RoR DEV is normal</source>
-        <translation type="unfinished" />
+        <translation>升溫速率變化正常</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2753" />
         <source>in target range → envisage DROP</source>
-        <translation type="unfinished" />
+        <translation>在目標範圍 → 考慮降溫</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2754" />
         <source>⚠ RoR crash detected — DROP now or start heating again!</source>
-        <translation type="unfinished" />
+        <translation>⚠ 升溫速率崩潰已偵測 — 立即降溫或重新加熱！</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2755" />
         <source>⏱ DROP in less than 20 seconds — get ready!</source>
-        <translation type="unfinished" />
+        <translation>⏱ 20 秒內降溫 — 準備好！</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2756" />
         <source>DTR target reached</source>
-        <translation type="unfinished" />
+        <translation>DTR 目標達成</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2757" />
         <source>DTR near target</source>
-        <translation type="unfinished" />
+        <translation>DTR 接近目標</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2759" />
         <source>color in target range</source>
-        <translation type="unfinished" />
+        <translation>顏色在目標範圍</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4558" />
         <location filename="../tilauscope/roast_asssistant.py" line="2761" />
         <source>DEVELOPMENT</source>
-        <translation type="unfinished" />
+        <translation>Development</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2762" />
         <source>DTR ON TARGET</source>
-        <translation type="unfinished" />
+        <translation>DTR 準確命中</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2763" />
         <source>DTR DRIFTING</source>
-        <translation type="unfinished" />
+        <translation>DTR 偏離</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2764" />
         <source>DTR OFF TARGET</source>
-        <translation type="unfinished" />
+        <translation>DTR 偏離目標</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2765" />
         <source>DTR --</source>
-        <translation type="unfinished" />
+        <translation>DTR --</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2766" />
         <source>DROP now</source>
-        <translation type="unfinished" />
+        <translation>立即降溫</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2767" />
         <source>DROP --</source>
-        <translation type="unfinished" />
+        <translation>降溫 --</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2768" />
         <source>target {0}%</source>
-        <translation type="unfinished" />
+        <translation>目標 {0}%</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2769" />
         <source>DROP ~{0}</source>
-        <translation type="unfinished" />
+        <translation>降溫 ~{0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2770" />
         <source>RoR {0}</source>
-        <translation type="unfinished" />
+        <translation>升溫速率 {0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2771" />
         <source>col {0}</source>
-        <translation type="unfinished" />
+        <translation>顏色 {0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2772" />
         <source>~Ag {0}</source>
-        <translation type="unfinished" />
+        <translation>~Ag {0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="2773" />
         <source>final {0}%</source>
-        <translation type="unfinished" />
+        <translation>最終 {0}%</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3009" />
@@ -29353,42 +29386,42 @@ then, click on  ▶  to start the assistant.</source>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3034" />
         <source>Cool end</source>
-        <translation type="unfinished" />
+        <translation>Cool end</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3035" />
         <source>BT ≤ 40°</source>
-        <translation type="unfinished" />
+        <translation>BT ≤ 40°</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3048" />
         <source>Restart batch</source>
-        <translation type="unfinished" />
+        <translation>重新開始批次</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3049" />
         <source>save incomplete → preheat, same bean</source>
-        <translation type="unfinished" />
+        <translation>保存未完成 → 預熱，相同豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3054" />
         <source>⏳ Armed — cancel</source>
-        <translation type="unfinished" />
+        <translation>⏳ 已啟動 — 取消</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3055" />
         <source>auto relaunch at {0}°</source>
-        <translation type="unfinished" />
+        <translation>自動在 {0}° 重新啟動</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3071" />
         <source>ROAST SUMMARY</source>
-        <translation type="unfinished" />
+        <translation>烘焙摘要</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3110" />
         <source>Dry</source>
-        <translation type="unfinished" />
+        <translation>乾燥</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3263" />
@@ -29399,32 +29432,32 @@ then, click on  ▶  to start the assistant.</source>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3112" />
         <source>Dev</source>
-        <translation type="unfinished" />
+        <translation>發展</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3113" />
         <source>DTR vs target</source>
-        <translation type="unfinished" />
+        <translation>DTR 對比目標</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3114" />
         <source>Color vs target</source>
-        <translation type="unfinished" />
+        <translation>顏色對比目標</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3115" />
         <source>FC · Drop BT</source>
-        <translation type="unfinished" />
+        <translation>FC · 降溫時 BT</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3127" />
         <source>COLOUR → NEXT PLAN</source>
-        <translation type="unfinished" />
+        <translation>顏色 → 下一步計畫</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3149" />
         <source>TRAJECTORY vs PLAN</source>
-        <translation type="unfinished" />
+        <translation>軌跡對比計畫</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3177" />
@@ -29439,7 +29472,7 @@ then, click on  ▶  to start the assistant.</source>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3181" />
         <source>Development</source>
-        <translation type="unfinished" />
+        <translation>發展</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3190" />
@@ -29449,48 +29482,49 @@ then, click on  ▶  to start the assistant.</source>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3198" />
         <source>Result form</source>
-        <translation type="unfinished" />
+        <translation>結果表單</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3210" />
         <source>🚫 Exclude from learning</source>
-        <translation type="unfinished" />
+        <translation>🚫 從學習中排除</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3237" />
         <source>Effective cooling</source>
-        <translation type="unfinished" />
+        <translation>有效冷卻</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3238" />
         <source>Slow cooling - Increase airflow</source>
-        <translation type="unfinished" />
+        <translation>冷卻緩慢 - 增加氣流</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3239" />
         <source>Reached</source>
-        <translation type="unfinished" />
+        <translation>已達成</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3240" />
         <source>Until</source>
-        <translation type="unfinished" />
+        <translation>直到</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3241" />
         <source>⚠ BEANS NOT COOLING - RISK OF FIRE</source>
-        <translation type="unfinished" />
+        <translation>⚠ 豆子未冷卻 - 火災風險</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3242" />
         <source>✅ Target reached. You can proceed.</source>
-        <translation type="unfinished" />
+        <translation>✅ 目標已達成。您可以繼續。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3244" />
         <source>🔄 **Back-to-Back Mode**:
 Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Stabilization phase for the next batch.</source>
-        <translation type="unfinished" />
+        <translation>🔄 **連續烘焙模式**：
+保持高氣流直到 ET 下降。一旦 BT 達到 ~{0}°C，切換至預熱/穩定化階段進行下一批。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3246" />
@@ -29500,57 +29534,57 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3247" />
         <source>IN PROGRESS</source>
-        <translation type="unfinished" />
+        <translation>進行中</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3248" />
         <source>SAFE</source>
-        <translation type="unfinished" />
+        <translation>安全</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3249" />
         <source>NOT COOLING</source>
-        <translation type="unfinished" />
+        <translation>未冷卻</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3250" />
         <source>SAFE --</source>
-        <translation type="unfinished" />
+        <translation>安全 --</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3251" />
         <source>SAFE now</source>
-        <translation type="unfinished" />
+        <translation>現在安全</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3252" />
         <source>SAFE ~{0}</source>
-        <translation type="unfinished" />
+        <translation>安全 ~{0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3253" />
         <source>ET {0}°</source>
-        <translation type="unfinished" />
+        <translation>ET {0}°</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3254" />
         <source>RoR {0} °/min</source>
-        <translation type="unfinished" />
+        <translation>升溫速率 {0} °/分鐘</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3255" />
         <source>Open drum door &amp; cooling tray, keep drum spinning. Don't cut main power until BT &lt; 50°.</source>
-        <translation type="unfinished" />
+        <translation>打開鼓門和冷卻盤，保持鼓轉動。在 BT &lt; 50° 前不要切斷主電源。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3256" />
         <source>Keep airflow high until ET drops; at ~{0}° switch to preheat for the next batch.</source>
-        <translation type="unfinished" />
+        <translation>保持高氣流直到 ET 下降；在 ~{0}° 時切換至預熱階段進行下一批。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3259" />
         <source>next batch: charge {0}° (heat soak) — neutral in ~{1} min</source>
-        <translation type="unfinished" />
+        <translation>下一批：charge {0}° (熱浸) — 約 {1} 分鐘中性</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3262" />
@@ -29560,322 +29594,322 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3264" />
         <source>Development</source>
-        <translation type="unfinished" />
+        <translation>發展</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3265" />
         <source>on plan</source>
-        <translation type="unfinished" />
+        <translation>按計畫</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3266" />
         <source>hotter</source>
-        <translation type="unfinished" />
+        <translation>更熱</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3267" />
         <source>cooler</source>
-        <translation type="unfinished" />
+        <translation>更涼</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3268" />
         <source>Trajectory well held across all phases.</source>
-        <translation type="unfinished" />
+        <translation>軌跡在所有階段皆保持良好。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3269" />
         <source>Well held — slight drift in {0}.</source>
-        <translation type="unfinished" />
+        <translation>保持良好 — {0} 中略微偏離。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3270" />
         <source>Marked drift in {0} ({1}).</source>
-        <translation type="unfinished" />
+        <translation>在 {0} ({1}) 中標明偏離。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3272" />
         <source>🎨 Colour {0} · target {1} (±{2}) — on target, next plan unchanged</source>
-        <translation type="unfinished" />
+        <translation>🎨 顏色 {0} · 目標 {1} (±{2}) — 準確命中，下一步計畫不變</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3274" />
         <source>🎨 Colour {0} · target {1} (±{2}) — {3} by {4} pts&lt;br&gt;→ Next plan: &lt;b&gt;{5} °C at drop&lt;/b&gt; · ≈ {6} pt DTR</source>
-        <translation type="unfinished" />
+        <translation>🎨 顏色 {0} · 目標 {1} (±{2}) — {3} {4} 點&lt;br&gt;→ 下一步計畫：&lt;b&gt;{5} °C 降溫時&lt;/b&gt; · ≈ {6} 點 DTR</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3277" />
         <source>too light</source>
-        <translation type="unfinished" />
+        <translation>太淡</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3278" />
         <source>too dark</source>
-        <translation type="unfinished" />
+        <translation>太深</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3894" />
         <source>Green Bean</source>
-        <translation type="unfinished" />
+        <translation>生豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3897" />
         <source>Anchor / float the assistant panel</source>
-        <translation type="unfinished" />
+        <translation>固定 / 浮動助手面板</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3919" />
         <source>Green bean selected for this assistant</source>
-        <translation type="unfinished" />
+        <translation>為此助手選擇的生豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3931" />
         <source>ROASTING TARGET</source>
-        <translation type="unfinished" />
+        <translation>烘焙目標</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3936" />
         <source>Target roasting level (Agtron scale)</source>
-        <translation type="unfinished" />
+        <translation>目標烘焙等級 (Agtron 量表)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="3975" />
         <source> (empty stock)</source>
-        <translation type="unfinished" />
+        <translation> (庫存為空)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4034" />
         <source>Start / Stop assistant</source>
-        <translation type="unfinished" />
+        <translation>啟動 / 停止助手</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4044" />
         <source>Auto mode: the roast plan drives the levers. Tap to arm / disarm.</source>
-        <translation type="unfinished" />
+        <translation>自動模式：烘焙計畫驅動控制桿。點擊以啟動 / 停用。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4119" />
         <source>No green been has been selected</source>
-        <translation type="unfinished" />
+        <translation>尚未選擇生豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4228" />
         <source>Tap to take over this roast (pauses AUTO)</source>
-        <translation type="unfinished" />
+        <translation>點擊以接管此烘焙 (暫停 AUTO)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4505" />
         <source>👂 DRY END detected — tap to confirm</source>
-        <translation type="unfinished" />
+        <translation>👂 DRY END 已偵測 — 點擊以確認</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4507" />
         <source>👂 FC detected — tap to confirm</source>
-        <translation type="unfinished" />
+        <translation>👂 FC 已偵測 — 點擊以確認</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4526" />
         <source>AUTO unavailable — plan confidence is too low for this roast</source>
-        <translation type="unfinished" />
+        <translation>AUTO 不可用 — 此烘焙的計畫信心度過低</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4528" />
         <source>AUTO unavailable — no roast plan for this session</source>
-        <translation type="unfinished" />
+        <translation>AUTO 不可用 — 此會話無烘焙計畫</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4530" />
         <source>⚙ AUTO armed — the plan drives the levers at each phase</source>
-        <translation type="unfinished" />
+        <translation>⚙ AUTO 已啟動 — 計畫在各階段驅動控制桿</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4532" />
         <source>⏸ AUTO paused — manual input detected. Tap AUTO to resume.</source>
-        <translation type="unfinished" />
+        <translation>⏸ AUTO 已暫停 — 檢測到手動輸入。點擊 AUTO 以繼續。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4534" />
         <source>AUTO off — you have full control</source>
-        <translation type="unfinished" />
+        <translation>AUTO 關閉 — 您擁有完全控制</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4536" />
         <source>⚙ AUTO · {0} → {1}</source>
-        <translation type="unfinished" />
+        <translation>⚙ AUTO · {0} → {1}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4537" />
         <source>⚙ AUTO · Burner → {0}% (ramp at {1}°)</source>
-        <translation type="unfinished" />
+        <translation>⚙ AUTO · 燃燒器 → {0}% (升溫速率 {1}°)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4538" />
         <source>⚙ AUTO · DROP → cooling ({0}) — AUTO done, you have full control</source>
-        <translation type="unfinished" />
+        <translation>⚙ AUTO · DROP → 冷卻 ({0}) — AUTO 完成，您擁有完全控制</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4544" />
         <source>● AUTO PILOTING</source>
-        <translation type="unfinished" />
+        <translation>● AUTO 自動控制</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4545" />
         <source>⏸ AUTO PAUSED</source>
-        <translation type="unfinished" />
+        <translation>⏸ AUTO 已暫停</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4546" />
         <source>ON PLAN ✓</source>
-        <translation type="unfinished" />
+        <translation>按計畫 ✓</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4547" />
         <source>DRIFTING ↑</source>
-        <translation type="unfinished" />
+        <translation>偏離 ↑</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4548" />
         <source>DRIFTING ↓</source>
-        <translation type="unfinished" />
+        <translation>偏離 ↓</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4549" />
         <source>FOLLOWING PLAN</source>
-        <translation type="unfinished" />
+        <translation>遵循計畫</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4550" />
         <source>PAUSED — tap AUTO</source>
-        <translation type="unfinished" />
+        <translation>已暫停 — 點擊 AUTO</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4551" />
         <source>⚙ following the plan</source>
-        <translation type="unfinished" />
+        <translation>⚙ 遵循計畫</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4552" />
         <source>{0}s ago</source>
-        <translation type="unfinished" />
+        <translation>{0} 秒前</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4553" />
         <source>just now</source>
-        <translation type="unfinished" />
+        <translation>剛才</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4554" />
         <source>⚙ {0} marked (auto)</source>
-        <translation type="unfinished" />
+        <translation>⚙ {0} 已標記 (自動)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4566" />
         <source>Mark DRY END</source>
-        <translation type="unfinished" />
+        <translation>標記 DRY END</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4567" />
         <source>Mark FC START</source>
-        <translation type="unfinished" />
+        <translation>標記 FC 開始</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4568" />
         <source>Mark DROP</source>
-        <translation type="unfinished" />
+        <translation>標記 DROP</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4569" />
         <source>✕ Cancel auto-DROP</source>
-        <translation type="unfinished" />
+        <translation>✕ 取消自動降溫</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4570" />
         <source>⬇ DROP in {0}s — plan target reached</source>
-        <translation type="unfinished" />
+        <translation>⬇ {0} 秒內降溫 — 計畫目標達成</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4571" />
         <source>⚙ DROP marked (auto)</source>
-        <translation type="unfinished" />
+        <translation>⚙ DROP 已標記 (自動)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4574" />
         <source>⚙ AUTO · {0} → {1}% ({2})</source>
-        <translation type="unfinished" />
+        <translation>⚙ AUTO · {0} → {1}% ({2})</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4575" />
         <source>⚙ AUTO · DEV {0}</source>
-        <translation type="unfinished" />
+        <translation>⚙ AUTO · 發展 {0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4576" />
         <source>⚠ AUTO · trim at its ceiling — check the plan</source>
-        <translation type="unfinished" />
+        <translation>⚠ AUTO · 微調達到上限 — 檢查計畫</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4587" />
         <source>⚙ AUTO · Burner → {0}% (dev, rate-limited)</source>
-        <translation type="unfinished" />
+        <translation>⚙ AUTO · 燃燒器 → {0}% (發展，速率限制)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4589" />
         <source>⚙ AUTO · crash net — AIR {0}%</source>
-        <translation type="unfinished" />
+        <translation>⚙ AUTO · 防崩潰網 — 氣流 {0}%</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4590" />
         <source>⚠ RoR crash — safety net exhausted, AUTO paused — take over</source>
-        <translation type="unfinished" />
+        <translation>⚠ 升溫速率崩潰 — 防護網已耗盡，AUTO 已暫停 — 接管</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4592" />
         <source>feedforward only</source>
-        <translation type="unfinished" />
+        <translation>只有前饋</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4593" />
         <source>feedforward + trim</source>
-        <translation type="unfinished" />
+        <translation>前饋 + 微調</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4696" />
         <source>◉  ROAST ASSISTANT</source>
-        <translation type="unfinished" />
+        <translation>◉  ROAST ASSISTANT</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4843" />
         <source>heat soak {0}° · heater {1}% (drop {2} min ago)</source>
-        <translation type="unfinished" />
+        <translation>熱浸泡 {0}° · 加熱器 {1}% (落豆已 {2} 分鐘)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4888" />
         <source>Roast Notes</source>
-        <translation type="unfinished" />
+        <translation>烘焙筆記</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="4889" />
         <source>Add notes for this roast:</source>
-        <translation type="unfinished" />
+        <translation>為此烘焙添加筆記:</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="6734" />
         <source>Sensitive Airflow: use small ±5% increments to avoid BT crashes.</source>
-        <translation type="unfinished" />
+        <translation>敏感氣流: 使用小型 ±5% 增量以避免 BT 崩潰。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="6737" />
         <source>Radiant Heat: Proactive power-down needed 15°C before FC.</source>
-        <translation type="unfinished" />
+        <translation>輻射熱: 需要在 FC 前 15°C 進行主動降功率。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="6742" />
         <source>High Thermal Mass: Step down heater now to control FC entry.</source>
-        <translation type="unfinished" />
+        <translation>高熱容量: 立即降低加熱器以控制進入 FC。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_asssistant.py" line="6746" />
         <source>Airflow is high-impact: Avoid fan changes to keep RoR smooth.</source>
-        <translation type="unfinished" />
+        <translation>氣流影響很大: 避免改變風扇以保持 RoR 平穩。</translation>
     </message>
 </context><context>
     <name>tilauscope_roast_plan</name>
@@ -29883,161 +29917,161 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
         <location filename="../tilauscope/roast_plan_model.py" line="1320" />
         <location filename="../tilauscope/roast_plan_model.py" line="1306" />
         <source>OUT OF SCOPE</source>
-        <translation type="unfinished" />
+        <translation>範圍外</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1310" />
         <source>CRASH</source>
-        <translation type="unfinished" />
+        <translation>崩潰</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1324" />
         <location filename="../tilauscope/roast_plan_model.py" line="1315" />
         <location filename="../tilauscope/roast_plan_model.py" line="1310" />
         <source>at</source>
-        <translation type="unfinished" />
+        <translation>在</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1324" />
         <location filename="../tilauscope/roast_plan_model.py" line="1310" />
         <source>during</source>
-        <translation type="unfinished" />
+        <translation>期間</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1324" />
         <location filename="../tilauscope/roast_plan_model.py" line="1310" />
         <source>Severity</source>
-        <translation type="unfinished" />
+        <translation>嚴重程度</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1315" />
         <source>Action: Boost heater</source>
-        <translation type="unfinished" />
+        <translation>操作: 提升加熱器</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1315" />
         <source>to prevent crash.</source>
-        <translation type="unfinished" />
+        <translation>以防止崩潰。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1317" />
         <source>Action: Monitor momentum; consider reducing airflow.</source>
-        <translation type="unfinished" />
+        <translation>操作: 監控動力; 考慮減少氣流。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1324" />
         <source>FLICK</source>
-        <translation type="unfinished" />
+        <translation>FLICK</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1328" />
         <source>Action: Reduce burner 10% 45s before</source>
-        <translation type="unfinished" />
+        <translation>操作: 於…前 45 秒降低燃燒器 10%</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1328" />
         <source>to smooth RoR.</source>
-        <translation type="unfinished" />
+        <translation>以平滑 RoR。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1330" />
         <source>Action: Increase extraction/airflow to shed thermal energy.</source>
-        <translation type="unfinished" />
+        <translation>操作: 增加萃取/氣流以散發熱能。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1819" />
         <source>Setup conflict: covering {0}°{1} in {2} of Maillard would need the rate of rise to climb rather than fall. Expect a flick. Charge hotter or plan a longer Maillard next time — this roast cannot be recovered mid-way.</source>
-        <translation type="unfinished" />
+        <translation>設置衝突: 在 Maillard 的 {2} 內覆蓋 {0}°{1} 需要上升速率上升而非下降。預計會有 FLICK。下次以更高溫度進豆或計畫更長的 Maillard — 此烘焙無法在中途挽救。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1822" />
         <source>Setup conflict: the rate of rise has to fall to {3}°{1}/min before first crack to cover {0}°{1} in {2}. Expect a flat, bread-like cup. Charge cooler or shorten Maillard next time.</source>
-        <translation type="unfinished" />
+        <translation>設置衝突: 上升速率必須在第一爆前降至 {3}°{1}/分鐘以在 {2} 內覆蓋 {0}°{1}。預計會有平坦、麵包般的口感。下次以更低溫度進豆或縮短 Maillard。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1825" />
         <source>Setup conflict: the burner would have to come down {4}% across a {2} Maillard — faster than you can see what you are doing. The initial heat setting was too high for this plan.</source>
-        <translation type="unfinished" />
+        <translation>設置衝突: 在 {2} Maillard 期間燃燒器必須降低 {4}% — 速度快於您能看到您在做什麼。初始熱設置對此計畫過高。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1872" />
         <source>low (grid)</source>
-        <translation type="unfinished" />
+        <translation>低 (基準)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1873" />
         <source>medium (partial history)</source>
-        <translation type="unfinished" />
+        <translation>中 (部分歷史)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1874" />
         <source>high (consistent history)</source>
-        <translation type="unfinished" />
+        <translation>高 (一致歷史)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="1885" />
         <source>Back-to-back ({0} min since last drop): charge {1}°, dry heater {2}%</source>
-        <translation type="unfinished" />
+        <translation>連續烘焙 ({0} 分鐘自上次落豆): 初始溫度 {1}°、乾燥加熱器 {2}%</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="2124" />
         <source>Calibration: this bean's drying runs {0} min on this machine (plan window {1}-{2}) — dry heater adjusted {3}%</source>
-        <translation type="unfinished" />
+        <translation>校準: 此豆在此機器上的乾燥運行 {0} 分鐘 (計畫窗口 {1}-{2}) — 乾燥加熱器調整 {3}%</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="2132" />
         <source>Calibration: this bean's Maillard runs {0} min on this machine (plan window {1}-{2}) — Maillard heater adjusted {3}%</source>
-        <translation type="unfinished" />
+        <translation>校準: 此豆在此機器上的 Maillard 運行 {0} 分鐘 (計畫窗口 {1}-{2}) — Maillard 加熱器調整 {3}%</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="2198" />
         <source>Colour feedback ({0} measured roast(s)): drop target adjusted {1}°C vs grid ({2}°)</source>
-        <translation type="unfinished" />
+        <translation>顏色反饋 ({0} 次測量烘焙): 落豆目標調整 {1}°C 相比基準 ({2}°)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="2362" />
         <source>Heater profile learned from {0} matched roast(s): {1}/{2}/{3}% (dry/Maillard/dev)</source>
-        <translation type="unfinished" />
+        <translation>加熱器配置文件從 {0} 匹配烘焙學到: {1}/{2}/{3}% (乾燥/Maillard/發展)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="2580" />
         <source>On your last roasts of this coffee you brought the burner down to {0}% before dry end rather than waiting — the plan schedules that same reduction {1}s ahead of dry end. It heads off the rate-of-rise bump this bean shows there.</source>
-        <translation type="unfinished" />
+        <translation>在您最後一次烘焙此咖啡時,您在乾燥結束前將燃燒器降低至 {0}% 而不是等待 — 計畫在乾燥結束前 {1} 秒安排相同的降低。它防止了此豆在那裡顯示的上升速率跳躍。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="3455" />
         <source>The planned development ratio ({0}%) lands outside the usual window for this roast level ({1}-{2}%) — the roast reaches first crack {3} than the style expects.</source>
-        <translation type="unfinished" />
+        <translation>計畫的發展比率 ({0}%) 落在此烘焙級別的通常窗口外 ({1}-{2}%) — 烘焙到達第一爆 {3} 比風格預期的。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="3874" />
         <source>First crack landed hot relative to the drop target — only {0}°/min of rise left over the planned {1} of development (projected DTR {2}%). Watch for a flat or falling curve into drop.</source>
-        <translation type="unfinished" />
+        <translation>第一爆相對於落豆目標落點較熱 — 計畫發展 {1} 中僅剩餘上升 {0}°/分鐘 (預計 DTR {2}%)。注意落豆時平坦或下降的曲線。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="3881" />
         <source>First crack landed cold relative to the drop target — reaching it in the planned {0} of development now needs a steep {1}°/min climb (projected DTR {2}%). Watch for a rushed development.</source>
-        <translation type="unfinished" />
+        <translation>第一爆相對於落豆目標落點較冷 — 在計畫發展的 {0} 內到達它現在需要陡峭的 {1}°/分鐘爬升 (預計 DTR {2}%)。注意匆促的發展。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="4215" />
         <source>Plan re-anchored at TP ({0}° @ {1})</source>
-        <translation type="unfinished" />
+        <translation>計畫重新錨定在 TP ({0}° @ {1})</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="4220" />
         <source>Plan re-anchored at DRY END ({0} vs plan) — FC forecast {1}, projected DTR {2}%</source>
-        <translation type="unfinished" />
+        <translation>計畫重新錨定在 DRY END ({0} 相比計畫) — FC 預報 {1}、預計 DTR {2}%</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="4225" />
         <source>Plan re-anchored at FC ({0} vs plan) — DROP forecast {1}, projected DTR {2}%</source>
-        <translation type="unfinished" />
+        <translation>計畫重新錨定在 FC ({0} 相比計畫) — DROP 預報 {1}、預計 DTR {2}%</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="4632" />
         <source>Automated Roast Profile Plan</source>
-        <translation type="unfinished" />
+        <translation>自動烘焙配置文件計畫</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="4944" />
@@ -30047,32 +30081,32 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="4960" />
         <source> Average (hist.)</source>
-        <translation type="unfinished" />
+        <translation> 平均值 (歷史)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="4969" />
         <source>RoR variance</source>
-        <translation type="unfinished" />
+        <translation>RoR 變異</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="4978" />
         <source>BT Average (hist.)</source>
-        <translation type="unfinished" />
+        <translation>BT 平均值 (歷史)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="4989" />
         <source>Planned BT (PCHIP)</source>
-        <translation type="unfinished" />
+        <translation>計畫的 BT (PCHIP)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="4998" />
         <source>Planned RoR</source>
-        <translation type="unfinished" />
+        <translation>計畫的 RoR</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5008" />
         <source>Drying (DRY)</source>
-        <translation type="unfinished" />
+        <translation>乾燥 (DRY)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5215" />
@@ -30084,7 +30118,7 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
         <location filename="../tilauscope/roast_plan_model.py" line="5216" />
         <location filename="../tilauscope/roast_plan_model.py" line="5174" />
         <source>Airflow</source>
-        <translation type="unfinished" />
+        <translation>氣流</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5181" />
@@ -30094,7 +30128,7 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5187" />
         <source>AirWave</source>
-        <translation type="unfinished" />
+        <translation>AirWave</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5188" />
@@ -30104,17 +30138,17 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5349" />
         <source>Heater (%)</source>
-        <translation type="unfinished" />
+        <translation>加熱器 (%)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5354" />
         <source>Airflow (%)</source>
-        <translation type="unfinished" />
+        <translation>氣流 (%)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5372" />
         <source>Step sequence</source>
-        <translation type="unfinished" />
+        <translation>步驟序列</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5378" />
@@ -30124,7 +30158,7 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5380" />
         <source>Lever</source>
-        <translation type="unfinished" />
+        <translation>控制桿</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5381" />
@@ -30134,38 +30168,38 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5382" />
         <source>Phase</source>
-        <translation type="unfinished" />
+        <translation>階段</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5408" />
         <source>Heater source</source>
-        <translation type="unfinished" />
+        <translation>加熱器來源</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5410" />
         <source>last step {0} s before FC</source>
-        <translation type="unfinished" />
+        <translation>FC 前最後一步 {0} 秒</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5423" />
         <source>Total time</source>
-        <translation type="unfinished" />
+        <translation>總時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5552" />
         <location filename="../tilauscope/roast_plan_model.py" line="5427" />
         <source>Resulting DTR (%)</source>
-        <translation type="unfinished" />
+        <translation>生成的 DTR (%)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5432" />
         <source>At a glance</source>
-        <translation type="unfinished" />
+        <translation>一目瞭然</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5478" />
         <source>1. Bean and Environment Information</source>
-        <translation type="unfinished" />
+        <translation>1. 豆類和環境信息</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5482" />
@@ -30175,12 +30209,12 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5483" />
         <source>Bean Name</source>
-        <translation type="unfinished" />
+        <translation>豆類名稱</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5484" />
         <source>Process Type</source>
-        <translation type="unfinished" />
+        <translation>過程類型</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5485" />
@@ -30190,12 +30224,12 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5486" />
         <source>Bean Humidity</source>
-        <translation type="unfinished" />
+        <translation>豆類濕度</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5487" />
         <source>Ambient Temp</source>
-        <translation type="unfinished" />
+        <translation>環境溫度</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5488" />
@@ -30205,47 +30239,47 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5489" />
         <source>Weight to roast</source>
-        <translation type="unfinished" />
+        <translation>要烘焙的重量</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5501" />
         <source>2. Thermal Profile &amp; Timing</source>
-        <translation type="unfinished" />
+        <translation>2. 熱配置文件和時序</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5521" />
         <source>Charge Temp</source>
-        <translation type="unfinished" />
+        <translation>進豆溫度</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5522" />
         <source>End of Dry Temp</source>
-        <translation type="unfinished" />
+        <translation>乾燥結束溫度</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5523" />
         <source>First Crack Temp</source>
-        <translation type="unfinished" />
+        <translation>第一爆溫度</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5524" />
         <source>First Crack source</source>
-        <translation type="unfinished" />
+        <translation>第一爆來源</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5525" />
         <source>Phase timing source</source>
-        <translation type="unfinished" />
+        <translation>階段時序來源</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5526" />
         <source>Drop Temp</source>
-        <translation type="unfinished" />
+        <translation>落豆溫度</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5527" />
         <source>Drop RoR source</source>
-        <translation type="unfinished" />
+        <translation>落豆 RoR 來源</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5529" />
@@ -30255,17 +30289,17 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5530" />
         <source>Maillard Phase Time</source>
-        <translation type="unfinished" />
+        <translation>Maillard 階段時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5531" />
         <source>Development Phase Time</source>
-        <translation type="unfinished" />
+        <translation>發展階段時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5533" />
         <source>First Crack Time</source>
-        <translation type="unfinished" />
+        <translation>第一爆時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5533" />
@@ -30285,47 +30319,47 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5546" />
         <source>3. Development Ratios (DTR) and Rates of Rise (RoR)</source>
-        <translation type="unfinished" />
+        <translation>3. 發展比率 (DTR) 和上升速率 (RoR)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5550" />
         <source>Target Agtron Profile</source>
-        <translation type="unfinished" />
+        <translation>目標 Agtron 配置文件</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5551" />
         <source>Plan confidence</source>
-        <translation type="unfinished" />
+        <translation>計畫信心度</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5553" />
         <source>Target ROR Maillard</source>
-        <translation type="unfinished" />
+        <translation>目標 RoR Maillard</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5554" />
         <source>Target ROR Dev</source>
-        <translation type="unfinished" />
+        <translation>目標 RoR 發展</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5554" />
         <source>Average</source>
-        <translation type="unfinished" />
+        <translation>平均值</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5555" />
         <source>Target ROR at Drop</source>
-        <translation type="unfinished" />
+        <translation>落豆時目標 RoR</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5568" />
         <source>4. Machine Settings at Phase Entry (what to be on when you cross the milestone)</source>
-        <translation type="unfinished" />
+        <translation>4. 階段進入時的機器設置 (跨越里程碑時應該設置的內容)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5573" />
         <source>The value the machine must read as each phase begins. Between these points the plan steps the levers: the full sequence is in section 5.</source>
-        <translation type="unfinished" />
+        <translation>當每個階段開始時機器必須讀取的值。在這些點之間,計畫會改變控制桿: 完整序列在第 5 部分。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5584" />
@@ -30335,47 +30369,47 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5585" />
         <source>At CHARGE</source>
-        <translation type="unfinished" />
+        <translation>在 CHARGE 時</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5604" />
         <source>AirWave Mode</source>
-        <translation type="unfinished" />
+        <translation>AirWave 模式</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5605" />
         <source>(per phase)</source>
-        <translation type="unfinished" />
+        <translation>(每個階段)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5613" />
         <source>Note: The plan is generated for a Target Agtron profile of </source>
-        <translation type="unfinished" />
+        <translation>注意: 計畫是為目標 Agtron 配置文件生成的 </translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5615" />
         <source>All temperatures are in BT (Bean Temperature) and times in Minutes:Seconds.</source>
-        <translation type="unfinished" />
+        <translation>所有溫度均以 BT (豆類溫度) 表示,時間以分鐘:秒表示。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5636" />
         <source>5. Control Ramps (Heater &amp; Airflow)</source>
-        <translation type="unfinished" />
+        <translation>5. 控制斜坡 (加熱器與氣流)</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5641" />
         <source>Each level is held until the next step: the plan asks for one move at a time, then time to read its effect. Steps are anchored on bean temperature and shown here at the time the planned curve reaches them.</source>
-        <translation type="unfinished" />
+        <translation>每個級別保持到下一步: 計畫一次要求一個動作,然後有時間讀取其效果。步驟以豆溫為錨點,在此處顯示計畫曲線到達時的時間。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5666" />
         <source>6. Historical Feedback &amp; Actions</source>
-        <translation type="unfinished" />
+        <translation>6. 歷史反饋與操作</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_plan_model.py" line="5695" />
         <source>Historical Profile vs. Calculated Plan</source>
-        <translation type="unfinished" />
+        <translation>歷史配置文件相比計算的計畫</translation>
     </message>
     <message>
         <source>Roaster</source>
@@ -30393,44 +30427,44 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
         <location filename="../tilauscope/roast_insights.py" line="354" />
         <location filename="../tilauscope/roast_insights.py" line="143" />
         <source>soft</source>
-        <translation type="unfinished" />
+        <translation>軟</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="145" />
         <source>Absorbs heat fast → develops quickly. Gentler charge, watch baking/tipping.</source>
-        <translation type="unfinished" />
+        <translation>吸熱快 → 發展快。溫和進豆,注意烘焙/尖端。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="149" />
         <source>very dense</source>
-        <translation type="unfinished" />
+        <translation>非常緻密</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="151" />
         <source>Very hard bean → slow heat penetration. More drying energy, FC later, guard surface scorch.</source>
-        <translation type="unfinished" />
+        <translation>非常硬的豆 → 熱穿透慢。更多乾燥能量,FC 更晚,防止表面焦黑。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="351" />
         <location filename="../tilauscope/roast_insights.py" line="155" />
         <source>dense</source>
-        <translation type="unfinished" />
+        <translation>緻密</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="157" />
         <source>Hard bean → solid drying energy, FC later, watch surface scorch.</source>
-        <translation type="unfinished" />
+        <translation>硬豆 → 固體乾燥能量,FC 更晚,注意表面焦黑。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="375" />
         <location filename="../tilauscope/roast_insights.py" line="160" />
         <source>standard</source>
-        <translation type="unfinished" />
+        <translation>標準</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="162" />
         <source>Standard thermal behaviour; follow the phase bands.</source>
-        <translation type="unfinished" />
+        <translation>標準熱行為; 遵循階段帶。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="169" />
@@ -30440,148 +30474,148 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_insights.py" line="172" />
         <source>high</source>
-        <translation type="unfinished" />
+        <translation>高</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="174" />
         <source>High steam load → longer drying, slower TP recovery. Don't rush or it under-develops.</source>
-        <translation type="unfinished" />
+        <translation>高蒸氣負荷 → 更長乾燥,TP 恢復更慢。別催進,否則會發展不足。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="178" />
         <source>low</source>
-        <translation type="unfinished" />
+        <translation>低</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="180" />
         <source>Dry/fragile → shorter drying, scorch risk. Ease heat early.</source>
-        <translation type="unfinished" />
+        <translation>乾燥/易碎 → 更短乾燥,焦黑風險。及早降低加熱。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="183" />
         <source>normal</source>
-        <translation type="unfinished" />
+        <translation>正常</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="185" />
         <source>Standard steam load; drying on target.</source>
-        <translation type="unfinished" />
+        <translation>標準蒸氣負荷; 乾燥符合目標。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="134" />
         <location filename="../tilauscope/roast_insights.py" line="192" />
         <source>Water activity</source>
-        <translation type="unfinished" />
+        <translation>水活性</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="194" />
         <source>over-dried</source>
-        <translation type="unfinished" />
+        <translation>過度乾燥</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="195" />
         <source>stale/mould risk</source>
-        <translation type="unfinished" />
+        <translation>陳舊/發黴風險</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="197" />
         <source>Out of safe range → uneven roast and storage instability.</source>
-        <translation type="unfinished" />
+        <translation>超出安全範圍 → 烘焙不均勻和儲存不穩定。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="201" />
         <source>edge</source>
-        <translation type="unfinished" />
+        <translation>邊緣</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="203" />
         <source>Near window edge; expect slightly uneven core moisture.</source>
-        <translation type="unfinished" />
+        <translation>靠近窗口邊緣; 預計核心濕度略微不均勻。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="206" />
         <source>in window</source>
-        <translation type="unfinished" />
+        <translation>在窗口內</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="208" />
         <source>Free water 0.45–0.55 → even, reactive, predictable.</source>
-        <translation type="unfinished" />
+        <translation>自由水 0.45–0.55 → 均勻、反應靈敏、可預測。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="234" />
         <source>Process</source>
-        <translation type="unfinished" />
+        <translation>過程</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="237" />
         <source>caution</source>
-        <translation type="unfinished" />
+        <translation>注意</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="239" />
         <source>Residual sugars → faster browning, tipping risk. Ease through Maillard.</source>
-        <translation type="unfinished" />
+        <translation>殘糖 → 更快變褐色,尖端風險。通過 Maillard 緩和。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="243" />
         <source>clean</source>
-        <translation type="unfinished" />
+        <translation>清潔</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="245" />
         <source>Clean, predictable drying; standard browning curve.</source>
-        <translation type="unfinished" />
+        <translation>清潔、可預測乾燥; 標準變褐色曲線。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="249" />
         <source>Unclassified process; rely on the phase bands.</source>
-        <translation type="unfinished" />
+        <translation>未分類過程; 依靠階段帶。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="261" />
         <source>Charge BT {0} {1} (cool) → expect a deeper TP dip and slower recovery.</source>
-        <translation type="unfinished" />
+        <translation>裝豆溫度 BT {0} {1}（涼）→ 預期 TP 下降幅度較大，恢復較慢。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="264" />
         <source>Charge BT {0} {1} (warm) → shallower TP dip, faster recovery.</source>
-        <translation type="unfinished" />
+        <translation>裝豆溫度 BT {0} {1}（溫暖）→ TP 下降幅度較淺，恢復較快。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="266" />
         <source>Charge BT {0} {1} (ambient).</source>
-        <translation type="unfinished" />
+        <translation>裝豆溫度 BT {0} {1}（環境溫度）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="279" />
         <source>Roaster optimal capacity unknown.</source>
-        <translation type="unfinished" />
+        <translation>烘焙機最佳容量未知。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="281" />
         <source>Enter the green weight to compute load.</source>
-        <translation type="unfinished" />
+        <translation>輸入生豆重量以計算裝豆量。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="297" />
         <source>optimal</source>
-        <translation type="unfinished" />
+        <translation>最佳</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="299" />
         <source>Good fill → stable thermal buffer.</source>
-        <translation type="unfinished" />
+        <translation>裝豆量適當 → 熱穩定緩衝充足。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="301" />
         <source>Under-loaded → little thermal buffer, RoR can run away.</source>
-        <translation type="unfinished" />
+        <translation>裝豆量不足 → 熱緩衝缺乏，RoR 可能失控。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="304" />
         <source>Over-loaded → sluggish, longer drying, flick risk.</source>
-        <translation type="unfinished" />
+        <translation>裝豆量過多 → 反應遲緩，乾燥時間長，爆裂風險。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="312" />
@@ -30596,97 +30630,97 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_insights.py" line="314" />
         <source>Develop.</source>
-        <translation type="unfinished" />
+        <translation>發展期。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="329" />
         <source>radiant</source>
-        <translation type="unfinished" />
+        <translation>輻射</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="452" />
         <location filename="../tilauscope/roast_insights.py" line="334" />
         <location filename="../tilauscope/roast_insights.py" line="331" />
         <source>FC BT</source>
-        <translation type="unfinished" />
+        <translation>FC BT</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="454" />
         <location filename="../tilauscope/roast_insights.py" line="337" />
         <source>DTR</source>
-        <translation type="unfinished" />
+        <translation>DTR</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="456" />
         <location filename="../tilauscope/roast_insights.py" line="338" />
         <source>Weight loss</source>
-        <translation type="unfinished" />
+        <translation>重量損失</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="458" />
         <location filename="../tilauscope/roast_insights.py" line="339" />
         <source>Total time</source>
-        <translation type="unfinished" />
+        <translation>總時間</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="358" />
         <source>wet</source>
-        <translation type="unfinished" />
+        <translation>溼潤</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="361" />
         <source>dry</source>
-        <translation type="unfinished" />
+        <translation>乾燥</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="364" />
         <source>sugary process</source>
-        <translation type="unfinished" />
+        <translation>含糖製程</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="367" />
         <source>standard-to-careful</source>
-        <translation type="unfinished" />
+        <translation>標準到謹慎</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="369" />
         <source>energy-tolerant</source>
-        <translation type="unfinished" />
+        <translation>耐能量</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="371" />
         <source>gentle</source>
-        <translation type="unfinished" />
+        <translation>溫和</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="373" />
         <source>careful</source>
-        <translation type="unfinished" />
+        <translation>謹慎</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="377" />
         <source>balanced inputs</source>
-        <translation type="unfinished" />
+        <translation>平衡輸入</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="382" />
         <source>Radiant: BT leads ET after TP — commit drying energy early, then manage power down.</source>
-        <translation type="unfinished" />
+        <translation>輻射：TP 之後 BT 領先 ET — 早期投入乾燥能量，然後逐步降低火力。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="385" />
         <source>Back off through Maillard to protect sugars and avoid tipping.</source>
-        <translation type="unfinished" />
+        <translation>通過 Maillard 階段回撤以保護糖分並避免翻覆。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="388" />
         <source>Sustain heat into the Maillard phase, then settle the RoR before FC.</source>
-        <translation type="unfinished" />
+        <translation>持續供熱至 Maillard 階段，然後在 FC 前穩定 RoR。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="391" />
         <source>Keep a smooth, declining RoR across all phases.</source>
-        <translation type="unfinished" />
+        <translation>保持整個烘焙過程中 RoR 平順下降。</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_insights.py" line="449" />
@@ -30701,43 +30735,43 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_card.py" line="124" />
         <source>roasted on</source>
-        <translation type="unfinished" />
+        <translation>烘焙於</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_card.py" line="147" />
         <source>loss</source>
-        <translation type="unfinished" />
+        <translation>損失</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_card.py" line="169" />
         <source>duration</source>
-        <translation type="unfinished" />
+        <translation>時長</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_card.py" line="197" />
         <source>Tasting notes</source>
-        <translation type="unfinished" />
+        <translation>品味筆記</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_card.py" line="208" />
         <source>Open the source bean sheet</source>
-        <translation type="unfinished" />
+        <translation>開啟來源豆單</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="82" />
         <source>Crop</source>
-        <translation type="unfinished" />
+        <translation>收成</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="92" />
         <source>SCA score</source>
-        <translation type="unfinished" />
+        <translation>SCA 分數</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_roast_card.py" line="194" />
         <location filename="../tilauscope/beancave_social_card.py" line="95" />
         <source>Altitude</source>
-        <translation type="unfinished" />
+        <translation>海拔</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="101" />
@@ -30748,39 +30782,39 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
         <location filename="../tilauscope/beancave_roast_card.py" line="186" />
         <location filename="../tilauscope/beancave_social_card.py" line="106" />
         <source>Farm</source>
-        <translation type="unfinished" />
+        <translation>農場</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="106" />
         <source>Country</source>
-        <translation type="unfinished" />
+        <translation>國家</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_roast_card.py" line="206" />
         <location filename="../tilauscope/beancave_social_card.py" line="107" />
         <source>Supplier</source>
-        <translation type="unfinished" />
+        <translation>供應商</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="114" />
         <source>Species</source>
-        <translation type="unfinished" />
+        <translation>物種</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="126" />
         <source>Composition</source>
-        <translation type="unfinished" />
+        <translation>成分</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_roast_card.py" line="190" />
         <location filename="../tilauscope/beancave_social_card.py" line="129" />
         <source>Varieties</source>
-        <translation type="unfinished" />
+        <translation>品種</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="131" />
         <source>Category</source>
-        <translation type="unfinished" />
+        <translation>分類</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="145" />
@@ -30790,22 +30824,22 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="152" />
         <source>Unnamed bean</source>
-        <translation type="unfinished" />
+        <translation>未命名的豆子</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="166" />
         <source>Flavour notes</source>
-        <translation type="unfinished" />
+        <translation>風味筆記</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="170" />
         <source>green bean sheet</source>
-        <translation type="unfinished" />
+        <translation>生豆單</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="202" />
         <source>Provenance</source>
-        <translation type="unfinished" />
+        <translation>產地</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_social_card.py" line="203" />
@@ -30815,7 +30849,7 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/beancave_roast_card.py" line="161" />
         <source>Green bean</source>
-        <translation type="unfinished" />
+        <translation>生豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_roast_card.py" line="165" />
@@ -30825,17 +30859,17 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/beancave_roast_card.py" line="201" />
         <source>crop</source>
-        <translation type="unfinished" />
+        <translation>收成</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_roast_card.py" line="203" />
         <source>SCA</source>
-        <translation type="unfinished" />
+        <translation>SCA</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_roast_card.py" line="247" />
         <source>Agtron</source>
-        <translation type="unfinished" />
+        <translation>Agtron</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_roast_card.py" line="258" />
@@ -30855,22 +30889,22 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="417" />
         <source>☕ Brew this coffee</source>
-        <translation type="unfinished" />
+        <translation>☕ 沖煮此咖啡</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="424" />
         <source>Colour / bean not linked</source>
-        <translation type="unfinished" />
+        <translation>顏色 / 豆子未連結</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="630" />
         <source>Brew planning - Tilauscope</source>
-        <translation type="unfinished" />
+        <translation>沖煮計畫 - TilauScope</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="637" />
         <source>◎ Today</source>
-        <translation type="unfinished" />
+        <translation>◎ 今天</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="661" />
@@ -30880,47 +30914,47 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="672" />
         <source>☕ Filter</source>
-        <translation type="unfinished" />
+        <translation>☕ 濾泡</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="673" />
         <source>⚙ Espresso</source>
-        <translation type="unfinished" />
+        <translation>⚙ 義式濃縮</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="731" />
         <source>Today (dashed)</source>
-        <translation type="unfinished" />
+        <translation>今天（虛線）</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="750" />
         <source>⏳ Scanning roast logs…</source>
-        <translation type="unfinished" />
+        <translation>⏳ 掃描烘焙日誌中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="1065" />
         <source>PEAK</source>
-        <translation type="unfinished" />
+        <translation>高峰</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="1066" />
         <source>DRINK SOON</source>
-        <translation type="unfinished" />
+        <translation>儘快享用</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="1067" />
         <source>Age</source>
-        <translation type="unfinished" />
+        <translation>陳年度</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="1068" />
         <source>days</source>
-        <translation type="unfinished" />
+        <translation>天</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_timeline.py" line="1182" />
         <source>☕ Brewing Recommendations</source>
-        <translation type="unfinished" />
+        <translation>☕ 沖煮建議</translation>
     </message>
     <message>
         <source>Drying</source>
@@ -30939,852 +30973,856 @@ Keep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Sta
     <message>
         <location filename="../tilauscope/roast_properties.py" line="311" />
         <source>track batches</source>
-        <translation type="unfinished" />
+        <translation>追蹤批次</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="319" />
         <source>prefix</source>
-        <translation type="unfinished" />
+        <translation>前綴</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="338" />
         <source>Unlock to correct the assigned batch number</source>
-        <translation type="unfinished" />
+        <translation>解鎖以修正指定的批次號</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="343" />
         <source>n°</source>
-        <translation type="unfinished" />
+        <translation>編號</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="346" />
         <source>pos</source>
-        <translation type="unfinished" />
+        <translation>位置</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="397" />
         <source>forecast</source>
-        <translation type="unfinished" />
+        <translation>預測</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="398" />
         <source>assigned at DROP</source>
-        <translation type="unfinished" />
+        <translation>在 DROP 指定</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="402" />
         <source>off</source>
-        <translation type="unfinished" />
+        <translation>關閉</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="403" />
         <source>batch tracking disabled</source>
-        <translation type="unfinished" />
+        <translation>批次追蹤已停用</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="409" />
         <source>assigned</source>
-        <translation type="unfinished" />
+        <translation>已指定</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="410" />
         <source>unassigned</source>
-        <translation type="unfinished" />
+        <translation>未指定</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="411" />
         <source>no batch number for this roast</source>
-        <translation type="unfinished" />
+        <translation>此烘焙無批次號</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="476" />
         <source>⚖  SCALE</source>
-        <translation type="unfinished" />
+        <translation>⚖  磅秤</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="490" />
         <source>Click to transfer weight&lt;br&gt;Double-click to TARE</source>
-        <translation type="unfinished" />
+        <translation>點擊傳輸重量&lt;br&gt;雙擊進行去皮</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="530" />
         <location filename="../tilauscope/roast_properties.py" line="494" />
         <source>tap to use</source>
-        <translation type="unfinished" />
+        <translation>點擊使用</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="517" />
         <source>disconnected</source>
-        <translation type="unfinished" />
+        <translation>已斷線</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2836" />
+        <location filename="../tilauscope/roast_properties.py" line="2847" />
         <location filename="../tilauscope/roast_properties.py" line="527" />
         <source>connecting…</source>
-        <translation type="unfinished" />
+        <translation>連線中…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="738" />
+        <location filename="../tilauscope/roast_properties.py" line="749" />
         <source>🌡  AMBIENT</source>
-        <translation type="unfinished" />
+        <translation>🌡  環境</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="755" />
+        <location filename="../tilauscope/roast_properties.py" line="766" />
         <source>waiting for probe</source>
-        <translation type="unfinished" />
+        <translation>等待探針</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2858" />
-        <location filename="../tilauscope/roast_properties.py" line="799" />
+        <location filename="../tilauscope/roast_properties.py" line="2869" />
+        <location filename="../tilauscope/roast_properties.py" line="810" />
         <source>live</source>
-        <translation type="unfinished" />
+        <translation>即時</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2878" />
-        <location filename="../tilauscope/roast_properties.py" line="817" />
+        <location filename="../tilauscope/roast_properties.py" line="2889" />
+        <location filename="../tilauscope/roast_properties.py" line="828" />
         <source>offline</source>
-        <translation type="unfinished" />
+        <translation>離線</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="946" />
+        <location filename="../tilauscope/roast_properties.py" line="957" />
         <source>Plan</source>
-        <translation type="unfinished" />
+        <translation>計畫</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="986" />
-        <location filename="../tilauscope/roast_properties.py" line="949" />
+        <location filename="../tilauscope/roast_properties.py" line="997" />
+        <location filename="../tilauscope/roast_properties.py" line="960" />
         <source>No plan selected — choose one in OPTIONS</source>
-        <translation type="unfinished" />
+        <translation>未選擇計畫 — 在選項中選擇一個</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1006" />
-        <location filename="../tilauscope/roast_properties.py" line="961" />
+        <location filename="../tilauscope/roast_properties.py" line="1017" />
+        <location filename="../tilauscope/roast_properties.py" line="972" />
         <source>Computing…</source>
-        <translation type="unfinished" />
+        <translation>計算中…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1000" />
+        <location filename="../tilauscope/roast_properties.py" line="1011" />
         <source>Enter a green weight to generate insights</source>
-        <translation type="unfinished" />
+        <translation>輸入生豆重量以產生見解</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1093" />
+        <location filename="../tilauscope/roast_properties.py" line="1104" />
         <source>Insights unavailable</source>
-        <translation type="unfinished" />
+        <translation>無法提供見解</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1107" />
+        <location filename="../tilauscope/roast_properties.py" line="1118" />
         <source>Plan unavailable — see log for details.</source>
-        <translation type="unfinished" />
+        <translation>計畫無法使用 — 查看日誌以瞭解詳情。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1216" />
+        <location filename="../tilauscope/roast_properties.py" line="1227" />
         <source>Green signals</source>
-        <translation type="unfinished" />
+        <translation>生豆訊號</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1224" />
+        <location filename="../tilauscope/roast_properties.py" line="1235" />
         <source>Load &amp; setup</source>
-        <translation type="unfinished" />
+        <translation>裝豆與設置</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1262" />
+        <location filename="../tilauscope/roast_properties.py" line="1273" />
         <source>Phase cheat-sheet (RoR)</source>
-        <translation type="unfinished" />
+        <translation>階段速記表（RoR）</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1270" />
+        <location filename="../tilauscope/roast_properties.py" line="1281" />
         <source>Predicted targets</source>
-        <translation type="unfinished" />
+        <translation>預測目標</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1285" />
+        <location filename="../tilauscope/roast_properties.py" line="1296" />
         <source>Select a roast plan in OPTIONS to predict DTR, weight loss and time.</source>
-        <translation type="unfinished" />
+        <translation>在選項中選擇烘焙計畫以預測 DTR、重量損失和時間。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1289" />
+        <location filename="../tilauscope/roast_properties.py" line="1300" />
         <source>Predicting targets from plan…</source>
-        <translation type="unfinished" />
+        <translation>從計畫預測目標中…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1301" />
+        <location filename="../tilauscope/roast_properties.py" line="1312" />
         <source>STRATEGY</source>
-        <translation type="unfinished" />
+        <translation>策略</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3164" />
-        <location filename="../tilauscope/roast_properties.py" line="1479" />
+        <location filename="../tilauscope/roast_properties.py" line="3175" />
+        <location filename="../tilauscope/roast_properties.py" line="1490" />
         <source>Replace Weight?</source>
-        <translation type="unfinished" />
+        <translation>替換重量？</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3165" />
-        <location filename="../tilauscope/roast_properties.py" line="1480" />
+        <location filename="../tilauscope/roast_properties.py" line="3176" />
+        <location filename="../tilauscope/roast_properties.py" line="1491" />
         <source>Current weight is &lt;b&gt;{0} g&lt;/b&gt;.&lt;br&gt;Replace with scale reading &lt;b&gt;{1} g&lt;/b&gt;?</source>
-        <translation type="unfinished" />
+        <translation>目前重量為 &lt;b&gt;{0} g&lt;/b&gt;。&lt;br&gt;用磅秤讀數 &lt;b&gt;{1} g&lt;/b&gt; 替換？</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1523" />
+        <location filename="../tilauscope/roast_properties.py" line="1534" />
         <source>ROAST SETUP</source>
-        <translation type="unfinished" />
+        <translation>烘焙設置</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1603" />
+        <location filename="../tilauscope/roast_properties.py" line="1614" />
         <source>⬥  ROAST</source>
-        <translation type="unfinished" />
+        <translation>⬥  烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1606" />
+        <location filename="../tilauscope/roast_properties.py" line="1617" />
         <source>Bean</source>
-        <translation type="unfinished" />
+        <translation>豆子</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1642" />
+        <location filename="../tilauscope/roast_properties.py" line="1653" />
         <source>Roast title</source>
-        <translation type="unfinished" />
+        <translation>烘焙標題</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3494" />
-        <location filename="../tilauscope/roast_properties.py" line="1650" />
+        <location filename="../tilauscope/roast_properties.py" line="3505" />
+        <location filename="../tilauscope/roast_properties.py" line="1661" />
         <source>Batch</source>
         <translation type="unfinished">批次</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1658" />
+        <location filename="../tilauscope/roast_properties.py" line="1669" />
         <source>Green weight</source>
-        <translation type="unfinished" />
+        <translation>生豆重量</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1671" />
+        <location filename="../tilauscope/roast_properties.py" line="1682" />
         <source>g</source>
         <translation type="unfinished">克</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1683" />
+        <location filename="../tilauscope/roast_properties.py" line="1694" />
         <source>Decrease bean stock by this weight after OK</source>
-        <translation type="unfinished" />
+        <translation>確定後按此重量減少豆子庫存</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1691" />
+        <location filename="../tilauscope/roast_properties.py" line="1702" />
         <source>Bean info injected into Artisan …</source>
-        <translation type="unfinished" />
+        <translation>豆子資訊已注入 Artisan …</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1696" />
+        <location filename="../tilauscope/roast_properties.py" line="1707" />
         <source>↺  Rebuild from bean</source>
-        <translation type="unfinished" />
+        <translation>↺  從豆子重建</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1706" />
+        <location filename="../tilauscope/roast_properties.py" line="1717" />
         <source>⚙  OPTIONS</source>
-        <translation type="unfinished" />
+        <translation>⚙  選項</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1712" />
+        <location filename="../tilauscope/roast_properties.py" line="1723" />
         <source>⚙  MORE OPTIONS</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_properties.py" line="1718" />
-        <source>ⓘ  INSIGHTS</source>
-        <translation type="unfinished" />
+        <translation>⚙  更多選項</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="1729" />
+        <source>ⓘ  INSIGHTS</source>
+        <translation>ⓘ  見解</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_properties.py" line="1740" />
         <source>Cancel</source>
         <translation type="unfinished">取消</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1733" />
+        <location filename="../tilauscope/roast_properties.py" line="1744" />
         <source>⬥  Start Roast</source>
-        <translation type="unfinished" />
+        <translation>⬥  開始烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1769" />
+        <location filename="../tilauscope/roast_properties.py" line="1780" />
         <source>Farm:</source>
-        <translation type="unfinished" />
+        <translation>農場：</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1771" />
+        <location filename="../tilauscope/roast_properties.py" line="1782" />
         <source>Process</source>
-        <translation type="unfinished" />
+        <translation>製程</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1773" />
+        <location filename="../tilauscope/roast_properties.py" line="1784" />
         <source>Variety</source>
-        <translation type="unfinished" />
+        <translation>品種</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1800" />
-        <location filename="../tilauscope/roast_properties.py" line="1775" />
-        <source>Altitude:</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_properties.py" line="1777" />
-        <source>SCA: {0}</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_properties.py" line="1779" />
-        <source>uuid: {0}</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
+        <location filename="../tilauscope/roast_properties.py" line="1811" />
         <location filename="../tilauscope/roast_properties.py" line="1786" />
+        <source>Altitude:</source>
+        <translation>海拔：</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_properties.py" line="1788" />
+        <source>SCA: {0}</source>
+        <translation>SCA：{0}</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_properties.py" line="1790" />
+        <source>uuid: {0}</source>
+        <translation>uuid：{0}</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_properties.py" line="1797" />
         <source>(no name)</source>
-        <translation type="unfinished" />
+        <translation>（無名稱）</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1802" />
+        <location filename="../tilauscope/roast_properties.py" line="1813" />
         <source>Crop</source>
-        <translation type="unfinished" />
+        <translation>收成</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1814" />
-        <location filename="../tilauscope/roast_properties.py" line="1804" />
+        <location filename="../tilauscope/roast_properties.py" line="1825" />
+        <location filename="../tilauscope/roast_properties.py" line="1815" />
         <source>SCA {0}</source>
-        <translation type="unfinished" />
+        <translation>SCA {0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1826" />
+        <location filename="../tilauscope/roast_properties.py" line="1837" />
         <source>Stock: {0} g</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_properties.py" line="1924" />
-        <source>Target roast profile</source>
-        <translation type="unfinished" />
+        <translation>庫存：{0} g</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="1935" />
-        <source>Link a roast plan profile to guide this session.</source>
-        <translation type="unfinished" />
+        <source>Target roast profile</source>
+        <translation>目標烘焙配置</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="1946" />
+        <source>Link a roast plan profile to guide this session.</source>
+        <translation>連結烘焙計畫配置以引導此烘焙。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_properties.py" line="1957" />
         <source>Select a roast plan profile.
 Phase injection will be available in a future version.</source>
-        <translation type="unfinished" />
+        <translation>選擇烘焙計畫配置。
+階段注射功能將在未來版本提供。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1959" />
+        <location filename="../tilauscope/roast_properties.py" line="1970" />
         <source>⟳  Phase injection will be available in the next version</source>
-        <translation type="unfinished" />
+        <translation>⟳  階段注射功能將在下個版本提供</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1971" />
+        <location filename="../tilauscope/roast_properties.py" line="1982" />
         <source>Physical properties</source>
-        <translation type="unfinished" />
+        <translation>物理特性</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1977" />
+        <location filename="../tilauscope/roast_properties.py" line="1988" />
         <source>Density:</source>
         <translation type="unfinished">密度:</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1987" />
+        <location filename="../tilauscope/roast_properties.py" line="1998" />
         <source>Moisture</source>
         <translation type="unfinished">含水量</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="1997" />
+        <location filename="../tilauscope/roast_properties.py" line="2008" />
         <source>Bean temp (°{0})</source>
-        <translation type="unfinished" />
+        <translation>豆溫 (°{0})</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2016" />
+        <location filename="../tilauscope/roast_properties.py" line="2027" />
         <source>TilauPID on START</source>
-        <translation type="unfinished" />
+        <translation>TilauPID 啟動時</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2028" />
+        <location filename="../tilauscope/roast_properties.py" line="2039" />
         <source>Activates TilauPID automatically at roast start by injecting
 an IOCommand on the START event.</source>
-        <translation type="unfinished" />
+        <translation>於烘焙啟動時自動啟動 TilauPID，方式是在啟動事件上注入
+IOCommand。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2035" />
+        <location filename="../tilauscope/roast_properties.py" line="2046" />
         <source>Enable TilauPID at start of roast</source>
-        <translation type="unfinished" />
+        <translation>於烘焙啟動時啟用 TilauPID</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2048" />
+        <location filename="../tilauscope/roast_properties.py" line="2059" />
         <source>Target temp</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_properties.py" line="2051" />
-        <source>e.g. 200</source>
-        <translation type="unfinished" />
+        <translation>目標溫度</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="2062" />
-        <source>°{0}</source>
-        <translation type="unfinished" />
+        <source>e.g. 200</source>
+        <translation>例：200</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2072" />
+        <location filename="../tilauscope/roast_properties.py" line="2073" />
+        <source>°{0}</source>
+        <translation>°{0}</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_properties.py" line="2083" />
         <source>Input</source>
         <translation type="unfinished">輸入</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2082" />
+        <location filename="../tilauscope/roast_properties.py" line="2093" />
         <source>BT</source>
         <translation type="unfinished">豆溫</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2088" />
+        <location filename="../tilauscope/roast_properties.py" line="2099" />
         <source>ET</source>
         <translation type="unfinished">出風溫</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2118" />
+        <location filename="../tilauscope/roast_properties.py" line="2129" />
         <source>Roast automation</source>
-        <translation type="unfinished" />
+        <translation>烘焙自動化</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2130" />
+        <location filename="../tilauscope/roast_properties.py" line="2141" />
         <source>Automatic detection of key roast events.</source>
-        <translation type="unfinished" />
+        <translation>自動偵測關鍵烘焙事件。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2151" />
+        <location filename="../tilauscope/roast_properties.py" line="2162" />
         <source>Auto Charge</source>
-        <translation type="unfinished" />
+        <translation>自動 CHARGE</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2152" />
+        <location filename="../tilauscope/roast_properties.py" line="2163" />
         <source>Automatically detect and mark the CHARGE event</source>
-        <translation type="unfinished" />
+        <translation>自動偵測並標記 CHARGE 事件</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2156" />
+        <location filename="../tilauscope/roast_properties.py" line="2167" />
         <source>Auto Drop</source>
-        <translation type="unfinished" />
+        <translation>自動 DROP</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2157" />
+        <location filename="../tilauscope/roast_properties.py" line="2168" />
         <source>Automatically detect and mark the DROP event</source>
-        <translation type="unfinished" />
+        <translation>自動偵測並標記 DROP 事件</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2525" />
-        <location filename="../tilauscope/roast_properties.py" line="2171" />
+        <location filename="../tilauscope/roast_properties.py" line="2536" />
+        <location filename="../tilauscope/roast_properties.py" line="2182" />
         <source>Auto Dry End</source>
-        <translation type="unfinished" />
+        <translation>自動 DRY END</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2172" />
+        <location filename="../tilauscope/roast_properties.py" line="2183" />
         <source>Detect DRY END from the thermodynamic model (requires a Dry phase BT target in Artisan Phases)</source>
-        <translation type="unfinished" />
+        <translation>從熱力學模型偵測 DRY END（需要在 Artisan 階段中設定乾燥階段 BT 目標）</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2176" />
+        <location filename="../tilauscope/roast_properties.py" line="2187" />
         <source>Auto First Crack</source>
-        <translation type="unfinished" />
+        <translation>自動 FIRST CRACK</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2177" />
+        <location filename="../tilauscope/roast_properties.py" line="2188" />
         <source>Detect FIRST CRACK from the crack counter (TilauAmbient probe or Omniflux)</source>
-        <translation type="unfinished" />
+        <translation>從裂紋計數器偵測 FIRST CRACK（TilauAmbient 探針或 Omniflux）</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2195" />
+        <location filename="../tilauscope/roast_properties.py" line="2206" />
         <source>— No profile —</source>
-        <translation type="unfinished" />
+        <translation>— 無配置 —</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2430" />
+        <location filename="../tilauscope/roast_properties.py" line="2441" />
         <source>Injection Error</source>
-        <translation type="unfinished" />
+        <translation>注射錯誤</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2431" />
+        <location filename="../tilauscope/roast_properties.py" line="2442" />
         <source>Could not update Artisan properties:&lt;br&gt;&lt;b&gt;{0}&lt;/b&gt;</source>
-        <translation type="unfinished" />
+        <translation>無法更新 Artisan 屬性：&lt;br&gt;&lt;b&gt;{0}&lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2526" />
+        <location filename="../tilauscope/roast_properties.py" line="2537" />
         <source>Set a Dry-phase BT target in Artisan Phases first.&lt;br&gt;Auto Dry End was left disabled.</source>
-        <translation type="unfinished" />
+        <translation>請先在 Artisan 階段中設定乾燥階段 BT 目標。&lt;br&gt;自動 DRY END 保持停用。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2560" />
+        <location filename="../tilauscope/roast_properties.py" line="2571" />
         <source>Your '%s' green bean is ready for a new roast. Switch Tilauscope monitor ON, then press on START when you are ready to begin the magic!</source>
-        <translation type="unfinished" />
+        <translation>您的 '%s' 生豆已準備好進行新烘焙。開啟 Tilauscope 監測，然後當您準備好開始時按下啟動！</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2583" />
+        <location filename="../tilauscope/roast_properties.py" line="2594" />
         <source>Start a new roast</source>
-        <translation type="unfinished" />
+        <translation>開始新烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2752" />
+        <location filename="../tilauscope/roast_properties.py" line="2763" />
         <source>no device configured</source>
-        <translation type="unfinished" />
+        <translation>未設定設備</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2766" />
+        <location filename="../tilauscope/roast_properties.py" line="2777" />
         <source>device error</source>
-        <translation type="unfinished" />
+        <translation>設備錯誤</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2802" />
+        <location filename="../tilauscope/roast_properties.py" line="2813" />
         <source>◉  COLOR</source>
-        <translation type="unfinished" />
+        <translation>◉  顏色</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2824" />
+        <location filename="../tilauscope/roast_properties.py" line="2835" />
         <source>Click to assign this reading</source>
-        <translation type="unfinished" />
+        <translation>點擊以指派此讀數</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2829" />
+        <location filename="../tilauscope/roast_properties.py" line="2840" />
         <source>tap to capture</source>
-        <translation type="unfinished" />
+        <translation>點擊以擷取</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="2987" />
+        <location filename="../tilauscope/roast_properties.py" line="2998" />
         <source>Roast Summary</source>
-        <translation type="unfinished" />
+        <translation>烘焙摘要</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3110" />
+        <location filename="../tilauscope/roast_properties.py" line="3121" />
         <source>no scale — tap to retry</source>
-        <translation type="unfinished" />
+        <translation>無秤子 — 點擊重試</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3184" />
+        <location filename="../tilauscope/roast_properties.py" line="3195" />
         <source>Which sample?</source>
-        <translation type="unfinished" />
+        <translation>哪個樣本？</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3185" />
+        <location filename="../tilauscope/roast_properties.py" line="3196" />
         <source>Reading: &lt;b&gt;{0}&lt;/b&gt;&lt;br&gt;&lt;br&gt;Is this a &lt;b&gt;Whole bean&lt;/b&gt; or &lt;b&gt;Ground&lt;/b&gt; measurement?</source>
-        <translation type="unfinished" />
+        <translation>讀數：&lt;b&gt;{0}&lt;/b&gt;&lt;br&gt;&lt;br&gt;這是&lt;b&gt;整粒豆&lt;/b&gt;或&lt;b&gt;研磨&lt;/b&gt;測量嗎？</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3606" />
-        <location filename="../tilauscope/roast_properties.py" line="3193" />
+        <location filename="../tilauscope/roast_properties.py" line="3617" />
+        <location filename="../tilauscope/roast_properties.py" line="3204" />
         <source>Whole bean</source>
-        <translation type="unfinished" />
+        <translation>整粒豆</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3635" />
-        <location filename="../tilauscope/roast_properties.py" line="3194" />
+        <location filename="../tilauscope/roast_properties.py" line="3646" />
+        <location filename="../tilauscope/roast_properties.py" line="3205" />
         <source>Ground</source>
         <translation type="unfinished">粉色</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3195" />
+        <location filename="../tilauscope/roast_properties.py" line="3206" />
         <source>Cancel</source>
         <translation type="unfinished">取消</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3358" />
+        <location filename="../tilauscope/roast_properties.py" line="3369" />
         <source>Total</source>
-        <translation type="unfinished" />
+        <translation>總計</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3359" />
+        <location filename="../tilauscope/roast_properties.py" line="3370" />
         <source>Charge BT</source>
-        <translation type="unfinished" />
+        <translation>裝豆 BT</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3360" />
+        <location filename="../tilauscope/roast_properties.py" line="3371" />
         <source>Drop BT</source>
-        <translation type="unfinished" />
+        <translation>落豆 BT</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3361" />
+        <location filename="../tilauscope/roast_properties.py" line="3372" />
         <source>Dev</source>
-        <translation type="unfinished" />
+        <translation>發展</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3362" />
+        <location filename="../tilauscope/roast_properties.py" line="3373" />
         <source>DTR</source>
-        <translation type="unfinished" />
+        <translation>DTR</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3428" />
+        <location filename="../tilauscope/roast_properties.py" line="3439" />
         <source>POST-ROAST</source>
-        <translation type="unfinished" />
+        <translation>POST-ROAST</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3457" />
+        <location filename="../tilauscope/roast_properties.py" line="3468" />
         <source>(unknown bean)</source>
-        <translation type="unfinished" />
+        <translation>（未知豆）</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3484" />
+        <location filename="../tilauscope/roast_properties.py" line="3495" />
         <source>g green</source>
-        <translation type="unfinished" />
+        <translation>g 生豆</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3507" />
+        <location filename="../tilauscope/roast_properties.py" line="3518" />
         <source>Roasted weight</source>
-        <translation type="unfinished" />
+        <translation>烘焙後重量</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3545" />
+        <location filename="../tilauscope/roast_properties.py" line="3556" />
         <source>Defects</source>
         <translation type="unfinished">瑕疵</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3576" />
+        <location filename="../tilauscope/roast_properties.py" line="3587" />
         <source>Colour (Agtron)</source>
-        <translation type="unfinished" />
+        <translation>顏色 (Agtron)</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3582" />
+        <location filename="../tilauscope/roast_properties.py" line="3593" />
         <source>◉  RoastSee C1</source>
-        <translation type="unfinished" />
+        <translation>◉  RoastSee C1</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3589" />
+        <location filename="../tilauscope/roast_properties.py" line="3600" />
         <source>Open the RoastSee C1 colour reader card</source>
-        <translation type="unfinished" />
+        <translation>開啟 RoastSee C1 顏色讀數卡</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3622" />
+        <location filename="../tilauscope/roast_properties.py" line="3633" />
         <source>Agtron reading on whole roasted beans.
 You can tap the RoastSee C1 card to populate this field automatically.</source>
-        <translation type="unfinished" />
+        <translation>整粒烘焙豆的 Agtron 讀數。
+您可以點擊 RoastSee C1 卡自動填充此欄位。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3651" />
+        <location filename="../tilauscope/roast_properties.py" line="3662" />
         <source>Agtron reading on ground beans.
 You can tap the RoastSee C1 card to populate this field automatically.</source>
-        <translation type="unfinished" />
+        <translation>研磨豆的 Agtron 讀數。
+您可以點擊 RoastSee C1 卡自動填充此欄位。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3670" />
+        <location filename="../tilauscope/roast_properties.py" line="3681" />
         <source>Difference: whole − ground</source>
-        <translation type="unfinished" />
+        <translation>差異：整粒 − 研磨</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3687" />
+        <location filename="../tilauscope/roast_properties.py" line="3698" />
         <source>How did it go?</source>
-        <translation type="unfinished" />
+        <translation>這次烘焙如何？</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3689" />
+        <location filename="../tilauscope/roast_properties.py" line="3700" />
         <source>free notes → injected into roast log</source>
-        <translation type="unfinished" />
+        <translation>自由筆記 → 注入烘焙日誌</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3696" />
+        <location filename="../tilauscope/roast_properties.py" line="3707" />
         <source>How was the development? Any surprises with this bean? Cracking point, smell, colour progression…</source>
-        <translation type="unfinished" />
+        <translation>發展過程如何？這個豆子有什麼驚喜嗎？裂紋點、香氣、顏色進展…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3714" />
+        <location filename="../tilauscope/roast_properties.py" line="3725" />
         <source>Cancel</source>
         <translation type="unfinished">取消</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3717" />
+        <location filename="../tilauscope/roast_properties.py" line="3728" />
         <source>⬥  Save roast</source>
-        <translation type="unfinished" />
+        <translation>⬥  儲存烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3725" />
+        <location filename="../tilauscope/roast_properties.py" line="3736" />
         <source>✦  AI Summary</source>
-        <translation type="unfinished" />
+        <translation>✦  AI 摘要</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4149" />
-        <location filename="../tilauscope/roast_properties.py" line="3749" />
+        <location filename="../tilauscope/roast_properties.py" line="4160" />
+        <location filename="../tilauscope/roast_properties.py" line="3760" />
         <source>🏷  Label PDF</source>
-        <translation type="unfinished" />
+        <translation>🏷  標籤 PDF</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3752" />
+        <location filename="../tilauscope/roast_properties.py" line="3763" />
         <source>Generate the roast label as a PDF from the values entered above</source>
-        <translation type="unfinished" />
+        <translation>從上方輸入的值生成烘焙標籤 PDF</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3812" />
+        <location filename="../tilauscope/roast_properties.py" line="3823" />
         <source>{0:.1f} % loss  (green: {1:.0f} g)</source>
-        <translation type="unfinished" />
+        <translation>{0:.1f} % 損失 （生豆：{1:.0f} g）</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3818" />
+        <location filename="../tilauscope/roast_properties.py" line="3829" />
         <source>green: {0:.0f} g</source>
-        <translation type="unfinished" />
+        <translation>生豆：{0:.0f} g</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3860" />
+        <location filename="../tilauscope/roast_properties.py" line="3871" />
         <source>Very light roast</source>
-        <translation type="unfinished" />
+        <translation>極淺度烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3861" />
+        <location filename="../tilauscope/roast_properties.py" line="3872" />
         <source>Light roast</source>
-        <translation type="unfinished" />
+        <translation>淺度烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3862" />
+        <location filename="../tilauscope/roast_properties.py" line="3873" />
         <source>Medium-light roast</source>
-        <translation type="unfinished" />
+        <translation>中淺度烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3863" />
+        <location filename="../tilauscope/roast_properties.py" line="3874" />
         <source>Medium roast</source>
-        <translation type="unfinished" />
+        <translation>中度烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3864" />
+        <location filename="../tilauscope/roast_properties.py" line="3875" />
         <source>Medium-dark roast</source>
-        <translation type="unfinished" />
+        <translation>中深度烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="3865" />
+        <location filename="../tilauscope/roast_properties.py" line="3876" />
         <source>Dark roast</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_properties.py" line="4095" />
-        <source>Save Label PDF</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_properties.py" line="4097" />
-        <source>PDF Files (*.pdf)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/roast_properties.py" line="4105" />
-        <source>Error</source>
-        <translation type="unfinished">錯誤</translation>
+        <translation>深度烘焙</translation>
     </message>
     <message>
         <location filename="../tilauscope/roast_properties.py" line="4106" />
-        <source>PDF file was not generated.</source>
-        <translation type="unfinished" />
+        <source>Save Label PDF</source>
+        <translation>儲存標籤 PDF</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4117" />
+        <location filename="../tilauscope/roast_properties.py" line="4108" />
+        <source>PDF Files (*.pdf)</source>
+        <translation>PDF 檔案 (*.pdf)</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_properties.py" line="4116" />
         <source>Error</source>
         <translation type="unfinished">錯誤</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4118" />
+        <location filename="../tilauscope/roast_properties.py" line="4117" />
+        <source>PDF file was not generated.</source>
+        <translation>PDF 檔案未生成。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_properties.py" line="4128" />
+        <source>Error</source>
+        <translation type="unfinished">錯誤</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/roast_properties.py" line="4129" />
         <source>Could not generate the roast label:&lt;br&gt;&lt;b&gt;{0}&lt;/b&gt;</source>
-        <translation type="unfinished" />
+        <translation>無法生成烘焙標籤：&lt;br&gt;&lt;b&gt;{0}&lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4143" />
+        <location filename="../tilauscope/roast_properties.py" line="4154" />
         <source>Roast label</source>
-        <translation type="unfinished" />
+        <translation>烘焙標籤</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4144" />
+        <location filename="../tilauscope/roast_properties.py" line="4155" />
         <source>You have not generated the label for this roast yet.&lt;br&gt;Do you want to print it before closing?</source>
-        <translation type="unfinished" />
+        <translation>您尚未為此烘焙生成標籤。&lt;br&gt;您想在關閉前列印嗎？</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4150" />
+        <location filename="../tilauscope/roast_properties.py" line="4161" />
         <source>Save without label</source>
-        <translation type="unfinished" />
+        <translation>不含標籤儲存</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4206" />
+        <location filename="../tilauscope/roast_properties.py" line="4217" />
         <source>Save Error</source>
-        <translation type="unfinished" />
+        <translation>儲存錯誤</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4207" />
+        <location filename="../tilauscope/roast_properties.py" line="4218" />
         <source>Could not save roast result:&lt;br&gt;&lt;b&gt;{0}&lt;/b&gt;</source>
-        <translation type="unfinished" />
+        <translation>無法儲存烘焙結果：&lt;br&gt;&lt;b&gt;{0}&lt;/b&gt;</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4377" />
-        <location filename="../tilauscope/roast_properties.py" line="4375" />
+        <location filename="../tilauscope/roast_properties.py" line="4388" />
+        <location filename="../tilauscope/roast_properties.py" line="4386" />
         <source>event</source>
-        <translation type="unfinished" />
+        <translation>事件</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4422" />
+        <location filename="../tilauscope/roast_properties.py" line="4433" />
         <source>↑/↓ milestone  ·  click to jump  ·  double-click = center row</source>
-        <translation type="unfinished" />
+        <translation>↑/↓ 里程碑  ·  點擊以跳轉  ·  雙擊 = 置中列</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4438" />
+        <location filename="../tilauscope/roast_properties.py" line="4449" />
         <source>DATA READER</source>
-        <translation type="unfinished" />
+        <translation>資料讀取器</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4462" />
+        <location filename="../tilauscope/roast_properties.py" line="4473" />
         <source>Close</source>
         <translation type="unfinished">關閉</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4480" />
+        <location filename="../tilauscope/roast_properties.py" line="4491" />
         <source>Show</source>
         <translation type="unfinished">顯示</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4487" />
+        <location filename="../tilauscope/roast_properties.py" line="4498" />
         <source>All</source>
-        <translation type="unfinished" />
+        <translation>全部</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4488" />
+        <location filename="../tilauscope/roast_properties.py" line="4499" />
         <source>Milestones</source>
-        <translation type="unfinished" />
+        <translation>里程碑</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4489" />
+        <location filename="../tilauscope/roast_properties.py" line="4500" />
         <source>Events</source>
         <translation type="unfinished">事件</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4512" />
+        <location filename="../tilauscope/roast_properties.py" line="4523" />
         <source>Charge {0}°</source>
-        <translation type="unfinished" />
+        <translation>裝豆 {0}°</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4516" />
+        <location filename="../tilauscope/roast_properties.py" line="4527" />
         <source>Drop {0}</source>
-        <translation type="unfinished" />
+        <translation>落豆 {0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4528" />
+        <location filename="../tilauscope/roast_properties.py" line="4539" />
         <source>Journey</source>
-        <translation type="unfinished" />
+        <translation>過程</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4540" />
+        <location filename="../tilauscope/roast_properties.py" line="4551" />
         <source>Time</source>
         <translation type="unfinished">時間</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4542" />
+        <location filename="../tilauscope/roast_properties.py" line="4553" />
         <source>Marker</source>
         <translation type="unfinished">標記</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4658" />
+        <location filename="../tilauscope/roast_properties.py" line="4669" />
         <source>START</source>
         <translation type="unfinished">開始</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4660" />
+        <location filename="../tilauscope/roast_properties.py" line="4671" />
         <source>preheat</source>
-        <translation type="unfinished" />
+        <translation>預熱</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4665" />
+        <location filename="../tilauscope/roast_properties.py" line="4676" />
         <source>TURNING POINT</source>
-        <translation type="unfinished" />
+        <translation>TURNING POINT</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_properties.py" line="4692" />
+        <location filename="../tilauscope/roast_properties.py" line="4703" />
         <source>EVENTS ({0})</source>
-        <translation type="unfinished" />
+        <translation>事件 ({0})</translation>
     </message>
     <message>
         <source>Close</source>
@@ -31807,18 +31845,18 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="241" />
         <source>Essentials</source>
-        <translation type="unfinished" />
+        <translation>基本資訊</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="242" />
         <source>Sack ID</source>
-        <translation type="unfinished" />
+        <translation>麻袋編號</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="818" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="243" />
         <source>Provenance</source>
-        <translation type="unfinished" />
+        <translation>來源</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="244" />
@@ -31829,24 +31867,24 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="985" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="245" />
         <source>Sensory &amp; notes</source>
-        <translation type="unfinished" />
+        <translation>感官 &amp; 筆記</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="246" />
         <source>Review</source>
-        <translation type="unfinished" />
+        <translation>檢查</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1336" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1330" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="249" />
         <source>New sack</source>
-        <translation type="unfinished" />
+        <translation>新麻袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="293" />
         <source>NEW SACK</source>
-        <translation type="unfinished" />
+        <translation>新麻袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="338" />
@@ -31856,12 +31894,12 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="346" />
         <source>Skip</source>
-        <translation type="unfinished" />
+        <translation>略過</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="349" />
         <source>Next</source>
-        <translation type="unfinished" />
+        <translation>下一步</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="357" />
@@ -31871,42 +31909,42 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="360" />
         <source>Create the sack</source>
-        <translation type="unfinished" />
+        <translation>建立麻袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="394" />
         <source>optional</source>
-        <translation type="unfinished" />
+        <translation>選擇性的</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="436" />
         <source>How do you want to start?</source>
-        <translation type="unfinished" />
+        <translation>您想如何開始？</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="441" />
         <source>Pre-fill with AI</source>
-        <translation type="unfinished" />
+        <translation>用 AI 預填</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="442" />
         <source>Paste the supplier's product page URL — the assistant fills the bean description, you only review.</source>
-        <translation type="unfinished" />
+        <translation>貼上供應商的產品頁面網址 — 助手會填充豆描述，您只需檢查。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="445" />
         <source>Fill in step by step</source>
-        <translation type="unfinished" />
+        <translation>逐步填入</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="446" />
         <source>Six short steps; only the first one is required, everything else can be skipped.</source>
-        <translation type="unfinished" />
+        <translation>六個簡短步驟；只有第一個是必需的，其他步驟都可以略過。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="460" />
         <source>Enter URL of supplier here...</source>
-        <translation type="unfinished" />
+        <translation>在此輸入供應商網址...</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="461" />
@@ -31916,199 +31954,199 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="467" />
         <source>The extraction runs in the background — you land on the identification step with everything pre-filled.</source>
-        <translation type="unfinished" />
+        <translation>提取在背景執行 — 您進入識別步驟，一切已預填。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="482" />
         <source>Configure an AI engine and API key in TilauScope settings to enable this.</source>
-        <translation type="unfinished" />
+        <translation>在 TilauScope 設定中設定 AI 引擎和 API 金鑰以啟用此功能。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="505" />
         <source>Fetching and analyzing website content...</source>
-        <translation type="unfinished" />
+        <translation>擷取和分析網站內容...</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="524" />
         <source>No data could be extracted from this page.</source>
-        <translation type="unfinished" />
+        <translation>無法從此頁面提取資料。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="538" />
         <source>AI Error</source>
-        <translation type="unfinished" />
+        <translation>AI 錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="539" />
         <source>Failed to extract bean data</source>
-        <translation type="unfinished" />
+        <translation>無法提取豆資料</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="548" />
         <source>This sack contains</source>
-        <translation type="unfinished" />
+        <translation>此麻袋含有</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="553" />
         <source>A new bean</source>
-        <translation type="unfinished" />
+        <translation>新豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="554" />
         <source>First bag of a coffee not yet in your catalogue.</source>
-        <translation type="unfinished" />
+        <translation>您的目錄中尚未有的咖啡的第一袋。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="556" />
         <source>A bean already in the catalogue</source>
-        <translation type="unfinished" />
+        <translation>目錄中已有的豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="557" />
         <source>Restock, or a new crop of a coffee you know.</source>
-        <translation type="unfinished" />
+        <translation>補貨，或您認識的咖啡的新收成。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="567" />
         <source>New bean</source>
-        <translation type="unfinished" />
+        <translation>新豆</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="586" />
         <source>Bean name:</source>
-        <translation type="unfinished" />
+        <translation>豆子名稱：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="587" />
         <source>Origin / country:</source>
-        <translation type="unfinished" />
+        <translation>原產地 / 國家：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="644" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="588" />
         <source>Harvest year:</source>
-        <translation type="unfinished" />
+        <translation>收成年份：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="645" />
         <location filename="../tilauscope/beancave_sack_wizard.py" line="589" />
         <source>Initial weight (stock):</source>
-        <translation type="unfinished" />
+        <translation>初始重量（庫存）：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="594" />
         <source>Catalogue bean</source>
-        <translation type="unfinished" />
+        <translation>目錄中的豆子</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="602" />
         <source>Restock — same crop</source>
-        <translation type="unfinished" />
+        <translation>補貨 — 同一批次</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="603" />
         <source>New crop of the same bean</source>
-        <translation type="unfinished" />
+        <translation>新批次的同一豆子</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="624" />
         <source>Weight of the new sack:</source>
-        <translation type="unfinished" />
+        <translation>新麻袋的重量：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="647" />
         <source>A new bean record is created with everything copied from the existing one — you will just confirm the copied values at the review step and adjust what changed (density, humidity, score…).</source>
-        <translation type="unfinished" />
+        <translation>系統會建立新的豆子記錄，並複製現有記錄的所有內容 — 您只需在檢查步驟確認複製的數值，並調整已變更的項目（密度、含水量、評分…）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="673" />
         <source>Your catalogue is still empty.</source>
-        <translation type="unfinished" />
+        <translation>您的目錄仍然是空的。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="701" />
         <source>Added to the current stock</source>
-        <translation type="unfinished" />
+        <translation>已新增至目前的庫存</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="703" />
         <source>Nothing else on the record changes.</source>
-        <translation type="unfinished" />
+        <translation>記錄上的其他內容不變。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="714" />
         <source>Sack identification</source>
-        <translation type="unfinished" />
+        <translation>麻袋識別</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="716" />
         <source>Do you label your bags? Type or pick the sack number here so the bean record keeps track of the physical bag. If you don't label your bags, simply skip this step — nothing depends on it.</source>
-        <translation type="unfinished" />
+        <translation>您有替袋子編號嗎？在此輸入或選擇麻袋編號，以便豆子記錄追蹤實體袋子。如果您沒有替袋子編號，只需略過此步驟 — 沒有東西取決於它。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="747" />
         <source>Print a batch of ID labels</source>
-        <translation type="unfinished" />
+        <translation>列印一批 ID 標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="748" />
         <source>Open the label tool to print a numbered batch of sack labels on the Niimbot.</source>
-        <translation type="unfinished" />
+        <translation>開啟標籤工具，在 Niimbot 上列印編號的麻袋標籤批次。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="751" />
         <source>Reprint a label</source>
-        <translation type="unfinished" />
+        <translation>重新列印標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="752" />
         <source>Reprint one damaged or lost label without touching the number sequence.</source>
-        <translation type="unfinished" />
+        <translation>重新列印一個受損或遺失的標籤，不會改變編號順序。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="774" />
         <source>Recycled label from an emptied sack</source>
-        <translation type="unfinished" />
+        <translation>從空麻袋回收的標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="775" />
         <source>Printed label, not assigned yet</source>
-        <translation type="unfinished" />
+        <translation>已列印的標籤，尚未分配</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="781" />
         <source>{0} label(s) available</source>
-        <translation type="unfinished" />
+        <translation>{0} 個可用標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="799" />
         <source>This sack number is already assigned to</source>
-        <translation type="unfinished" />
+        <translation>這個麻袋編號已分配給</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="800" />
         <source>You can still use it, but double-check the physical bags.</source>
-        <translation type="unfinished" />
+        <translation>您仍然可以使用它，但請雙重檢查實體袋子。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="820" />
         <source>Where this coffee comes from. Leave anything blank if you don't know it — you can complete the record later in the bean form.</source>
-        <translation type="unfinished" />
+        <translation>咖啡的來源地。如果您不確定任何資訊，可先留白 — 稍後可在豆子表單中補充。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="834" />
         <source>Farm:</source>
-        <translation type="unfinished" />
+        <translation>農莊：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="835" />
         <source>Supplier:</source>
-        <translation type="unfinished" />
+        <translation>供應商：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="836" />
         <source>Altitude:</source>
-        <translation type="unfinished" />
+        <translation>海拔：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="849" />
@@ -32118,7 +32156,7 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="853" />
         <source>Single origin</source>
-        <translation type="unfinished" />
+        <translation>單一產地</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1136" />
@@ -32129,47 +32167,47 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="903" />
         <source>This bean's share:</source>
-        <translation type="unfinished" />
+        <translation>此豆子的比例：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="904" />
         <source>Component 2:</source>
-        <translation type="unfinished" />
+        <translation>成分 2：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="905" />
         <source>Component 3:</source>
-        <translation type="unfinished" />
+        <translation>成分 3：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="911" />
         <source>Bean characteristics</source>
-        <translation type="unfinished" />
+        <translation>豆子特徵</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="913" />
         <source>Physical data, usually found on the supplier sheet. Density and humidity feed the roast plan — fill them in if you have them.</source>
-        <translation type="unfinished" />
+        <translation>實體數據，通常可在供應商資料表上找到。密度和含水量帶入焙烤計畫 — 如果您有這些資料，請填入。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="940" />
         <source>Category:</source>
-        <translation type="unfinished" />
+        <translation>分類：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="941" />
         <source>Process:</source>
-        <translation type="unfinished" />
+        <translation>處理法：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="942" />
         <source>Species:</source>
-        <translation type="unfinished" />
+        <translation>品種：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="943" />
         <source>Varieties:</source>
-        <translation type="unfinished" />
+        <translation>變種：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="944" />
@@ -32179,52 +32217,52 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="945" />
         <source>Humidity:</source>
-        <translation type="unfinished" />
+        <translation>含水量：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="946" />
         <source>Water activity:</source>
-        <translation type="unfinished" />
+        <translation>水活性：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="987" />
         <source>What this coffee should taste like, plus any memo for future you.</source>
-        <translation type="unfinished" />
+        <translation>這種咖啡應該品嚐的風味，以及給自己的任何備忘錄。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="997" />
         <source>e.g. red fruits, floral, honey</source>
-        <translation type="unfinished" />
+        <translation>例如：紅果類、花香、蜂蜜</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1003" />
         <source>Flavors</source>
-        <translation type="unfinished" />
+        <translation>風味</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1004" />
         <source>Select flavor notes based on a Flavor Wheel.</source>
-        <translation type="unfinished" />
+        <translation>根據風味輪選擇風味特徵。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1011" />
         <source>Roasting tips / memo</source>
-        <translation type="unfinished" />
+        <translation>焙烤提示／備忘錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1013" />
         <source>SCA score:</source>
-        <translation type="unfinished" />
+        <translation>SCA 評分：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1014" />
         <source>Flavour notes:</source>
-        <translation type="unfinished" />
+        <translation>風味特徵：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1015" />
         <source>Tips / memo:</source>
-        <translation type="unfinished" />
+        <translation>提示／備忘錄：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1043" />
@@ -32234,149 +32272,149 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1057" />
         <source>Edit name, origin, year and weight</source>
-        <translation type="unfinished" />
+        <translation>編輯名稱、產地、年份和重量</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1071" />
         <source>Edit farm, supplier and altitude</source>
-        <translation type="unfinished" />
+        <translation>編輯農莊、供應商和海拔</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1073" />
         <source>Edit type, category, process, species, varieties, density, humidity</source>
-        <translation type="unfinished" />
+        <translation>編輯類型、分類、處理法、品種、變種、密度、含水量</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1075" />
         <source>Sensory</source>
-        <translation type="unfinished" />
+        <translation>感官評估</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1076" />
         <source>Edit SCA score, flavour notes and memo</source>
-        <translation type="unfinished" />
+        <translation>編輯 SCA 評分、風味特徵和備忘錄</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1110" />
         <source>Stock:</source>
-        <translation type="unfinished" />
+        <translation>庫存：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1166" />
         <source>farm</source>
-        <translation type="unfinished" />
+        <translation>農莊</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1168" />
         <source>altitude</source>
-        <translation type="unfinished" />
+        <translation>海拔</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1170" />
         <source>density</source>
-        <translation type="unfinished" />
+        <translation>密度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1172" />
         <source>humidity</source>
-        <translation type="unfinished" />
+        <translation>含水量</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1174" />
         <source>SCA score</source>
-        <translation type="unfinished" />
+        <translation>SCA 評分</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1177" />
         <source>Not extracted by the AI:</source>
-        <translation type="unfinished" />
+        <translation>AI 未提取的項目：</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1181" />
         <source>Initial weight is 0 g — use the Essentials ✎ Edit if you know how much the sack weighs.</source>
-        <translation type="unfinished" />
+        <translation>初始重量為 0 g — 如果您知道麻袋的重量，請使用「基本資訊」✎ 編輯。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1193" />
         <source>Sack</source>
-        <translation type="unfinished" />
+        <translation>麻袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1331" />
         <source>Please give the bean a name before continuing.</source>
-        <translation type="unfinished" />
+        <translation>請在繼續前給豆子命名。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1337" />
         <source>Please pick the catalogue bean this sack belongs to.</source>
-        <translation type="unfinished" />
+        <translation>請選擇此麻袋所屬的目錄豆子。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1427" />
         <source>Save Error</source>
-        <translation type="unfinished" />
+        <translation>儲存錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_sack_wizard.py" line="1428" />
         <source>An unexpected error occurred</source>
-        <translation type="unfinished" />
+        <translation>發生意外錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="612" />
         <location filename="../tilauscope/sack_manager.py" line="424" />
         <location filename="../tilauscope/sack_manager.py" line="228" />
         <source>(unnamed)</source>
-        <translation type="unfinished" />
+        <translation>（未命名）</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="231" />
         <source>Stock exhausted</source>
-        <translation type="unfinished" />
+        <translation>庫存已耗盡</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="232" />
         <source>« {0} » is down to 0 g.</source>
-        <translation type="unfinished" />
+        <translation>「{0}」已減至 0 g。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="233" />
         <source>Its {0} label(s) can go back to the pool and be reused:</source>
-        <translation type="unfinished" />
+        <translation>其 {0} 個標籤可回收並用於未來的麻袋：</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="237" />
         <source>Keep them attached</source>
-        <translation type="unfinished" />
+        <translation>保持附加</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="238" />
         <source>Release the labels</source>
-        <translation type="unfinished" />
+        <translation>釋放標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="263" />
         <source>Release sack</source>
-        <translation type="unfinished" />
+        <translation>釋放麻袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="281" />
         <source>RELEASE SACK</source>
-        <translation type="unfinished" />
+        <translation>釋放麻袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="288" />
         <source>Is this sack empty?</source>
-        <translation type="unfinished" />
+        <translation>此麻袋是空的嗎？</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="289" />
         <source>The label {0} will become reusable for a future sack.</source>
-        <translation type="unfinished" />
+        <translation>標籤 {0} 將可重新用於未來的麻袋。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="294" />
         <source>Don't ask me again</source>
-        <translation type="unfinished" />
+        <translation>不要再問我</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="299" />
@@ -32386,32 +32424,32 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="300" />
         <source>Release</source>
-        <translation type="unfinished" />
+        <translation>釋放</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="359" />
         <source>Sack empty — release this label for reuse</source>
-        <translation type="unfinished" />
+        <translation>麻袋空 — 釋放此標籤以供重新使用</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="425" />
         <source>Assign a label</source>
-        <translation type="unfinished" />
+        <translation>分配標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="449" />
         <source>ASSIGN A LABEL</source>
-        <translation type="unfinished" />
+        <translation>分配標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="466" />
         <source>No label available. Print a batch, or register a label you already have, from the sack labels tool.</source>
-        <translation type="unfinished" />
+        <translation>沒有可用標籤。請使用麻袋標籤工具列印一批新標籤，或註冊您已有的標籤。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="475" />
         <source>Sack labels…</source>
-        <translation type="unfinished" />
+        <translation>麻袋標籤…</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="479" />
@@ -32421,47 +32459,47 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="481" />
         <source>Assign</source>
-        <translation type="unfinished" />
+        <translation>分配</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="501" />
         <source>RECYCLED</source>
-        <translation type="unfinished" />
+        <translation>已回收</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="504" />
         <source>freed on {0}</source>
-        <translation type="unfinished" />
+        <translation>於 {0} 釋放</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="505" />
         <source>recycled</source>
-        <translation type="unfinished" />
+        <translation>已回收</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="508" />
         <source>PRINTED, NEVER USED</source>
-        <translation type="unfinished" />
+        <translation>已列印，未使用</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="510" />
         <source>not assigned yet</source>
-        <translation type="unfinished" />
+        <translation>尚未分配</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="575" />
         <source>Reclaim labels</source>
-        <translation type="unfinished" />
+        <translation>回收標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="594" />
         <source>RECLAIM LABELS</source>
-        <translation type="unfinished" />
+        <translation>回收標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="600" />
         <source>These beans have no stock left but still hold labels. Releasing makes them reusable for a future sack.</source>
-        <translation type="unfinished" />
+        <translation>這些豆子沒有庫存，但仍持有標籤。釋放可使其在未來的麻袋中重新使用。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="625" />
@@ -32471,12 +32509,12 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="638" />
         <source>Release {0} label(s)</source>
-        <translation type="unfinished" />
+        <translation>釋放 {0} 個標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="677" />
         <source>Printer error</source>
-        <translation type="unfinished" />
+        <translation>印表機錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="1094" />
@@ -32486,32 +32524,32 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
         <location filename="../tilauscope/sack_manager.py" line="953" />
         <location filename="../tilauscope/sack_manager.py" line="701" />
         <source>Sack ID labels</source>
-        <translation type="unfinished" />
+        <translation>麻袋 ID 標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="739" />
         <source>SACK ID LABELS</source>
-        <translation type="unfinished" />
+        <translation>麻袋 ID 標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="760" />
         <source>Give each green coffee bag a printed number so you always know which physical sack a bean comes from.</source>
-        <translation type="unfinished" />
+        <translation>為每個生豆袋賦予一個列印編號，以便您始終知道豆子來自哪個實體麻袋。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="791" />
         <source>Print a small stock of numbered labels ahead of time. Stick one on each new bag when it arrives, then type its number in the bean form. The next number follows on from your last batch — you can still edit it if your sequence ever drifts.</source>
-        <translation type="unfinished" />
+        <translation>提前列印一小批編號標籤。每當新袋子到達時，貼上一個，然後在豆子表單中輸入其編號。下一個編號接續您上一批 — 如果您的序列漂移，您仍然可以編輯它。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="805" />
         <source>Prefilled from the counter but editable — fix a drift here.</source>
-        <translation type="unfinished" />
+        <translation>從計數器預先填入但可編輯 — 在此修正漂移。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="809" />
         <source>Number of labels</source>
-        <translation type="unfinished" />
+        <translation>標籤數量</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="810" />
@@ -32521,137 +32559,137 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="811" />
         <source>Next number</source>
-        <translation type="unfinished" />
+        <translation>下一個編號</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="812" />
         <source>Will print</source>
-        <translation type="unfinished" />
+        <translation>將列印</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="814" />
         <source>Print batch</source>
-        <translation type="unfinished" />
+        <translation>列印批次</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="818" />
         <source>New batch</source>
-        <translation type="unfinished" />
+        <translation>新批次</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="823" />
         <source>A label came out damaged, unreadable, or got lost? Reprint just that one here: type its exact number — any text works, including a supplier's own bag number. This prints a single label and never advances the batch counter.</source>
-        <translation type="unfinished" />
+        <translation>標籤損毀、無法讀取或遺失？只需在此重新列印那一個：輸入其確切編號 — 任何文字都可以，包括供應商的包裝編號。這會列印單一標籤，不會推進批次計數器。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="832" />
         <source>Number to print</source>
-        <translation type="unfinished" />
+        <translation>要列印的編號</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="834" />
         <source>Print one label</source>
-        <translation type="unfinished" />
+        <translation>列印一個標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="838" />
         <source>Reprint</source>
-        <translation type="unfinished" />
+        <translation>重新列印</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="843" />
         <source>Every label you can stick on a future bag lives here: numbers released by clicking ✕ on an emptied sack, and printed labels not assigned to a bean yet. They are offered first when you identify a new sack. Use Remove only when the physical label itself was destroyed.</source>
-        <translation type="unfinished" />
+        <translation>您可以貼在未來袋子上的每個標籤都在這裡：通過點擊空麻袋上的 ✕ 釋放的編號，以及尚未分配給豆子的已列印標籤。當您識別新麻袋時，它們會首先被提供。僅當實體標籤本身被摧毀時，才使用「移除」。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="852" />
         <source>No label available yet — everything is in use.</source>
-        <translation type="unfinished" />
+        <translation>尚無可用標籤 — 所有標籤都在使用中。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="861" />
         <source>e.g. GV-0001</source>
-        <translation type="unfinished" />
+        <translation>例如：GV-0001</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="864" />
         <source>Add label</source>
-        <translation type="unfinished" />
+        <translation>新增標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="866" />
         <source>Register a label you already printed so it is offered again when identifying a sack — nothing is printed.</source>
-        <translation type="unfinished" />
+        <translation>註冊您已列印的標籤，以便在識別麻袋時再次提供 — 不會列印任何內容。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="872" />
         <source>I already have this label:</source>
-        <translation type="unfinished" />
+        <translation>我已經有這個標籤：</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="877" />
         <source>Remove</source>
-        <translation type="unfinished" />
+        <translation>移除</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="878" />
         <source>Take this label out of the pool (physically destroyed).</source>
-        <translation type="unfinished" />
+        <translation>從標籤庫中移除此標籤（物理銷毀）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="883" />
         <source>Free sacks</source>
-        <translation type="unfinished" />
+        <translation>空閒麻袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="932" />
         <source>released on</source>
-        <translation type="unfinished" />
+        <translation>於…釋放</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="937" />
         <source>printed, not assigned yet</source>
-        <translation type="unfinished" />
+        <translation>已列印，尚未分配</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="954" />
         <source>This label is already assigned to</source>
-        <translation type="unfinished" />
+        <translation>此標籤已分配給</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="973" />
         <source>Niimbot ready</source>
-        <translation type="unfinished" />
+        <translation>Niimbot 已就緒</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="980" />
         <source>Niimbot printer not connected — you can prepare everything, printing will unlock when it is.</source>
-        <translation type="unfinished" />
+        <translation>Niimbot 印表機未連接 — 您可以準備所有內容，連接時列印將解鎖。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="1017" />
         <source>Sack labels need the 50×30 mm roll (detected: {0}×{1} mm).</source>
-        <translation type="unfinished" />
+        <translation>麻袋標籤需要 50×30 毫米卷紙（偵測到：{0}×{1} 毫米）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="1028" />
         <source>Label rendering failed</source>
-        <translation type="unfinished" />
+        <translation>標籤渲染失敗</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="1059" />
         <source>Printing...</source>
-        <translation type="unfinished" />
+        <translation>列印中...</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="1088" />
         <source>{0} label(s) printed.</source>
-        <translation type="unfinished" />
+        <translation>已列印 {0} 個標籤。</translation>
     </message>
     <message>
         <location filename="../tilauscope/sack_manager.py" line="1095" />
         <source>Printing stopped after {0} label(s): {1}</source>
-        <translation type="unfinished" />
+        <translation>在列印 {0} 個標籤後停止：{1}</translation>
     </message>
     <message>
         <source>Back</source>
@@ -32666,103 +32704,103 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="90" />
         <source>Optimal</source>
-        <translation type="unfinished" />
+        <translation>最佳</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="91" />
         <source>To watch</source>
-        <translation type="unfinished" />
+        <translation>需監控</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="92" />
         <source>Too dry</source>
-        <translation type="unfinished" />
+        <translation>太乾燥</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="93" />
         <source>Mould risk</source>
-        <translation type="unfinished" />
+        <translation>發霉風險</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="94" />
         <source>aw not measured</source>
-        <translation type="unfinished" />
+        <translation>未測量水活度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="100" />
         <source>🔒 sealed</source>
-        <translation type="unfinished" />
+        <translation>🔒 已密封</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="101" />
         <source>↑ gaining moisture</source>
-        <translation type="unfinished" />
+        <translation>↑ 吸濕中</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="102" />
         <source>↓ slow drying</source>
-        <translation type="unfinished" />
+        <translation>↓ 緩慢乾燥</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="103" />
         <source>= stable</source>
-        <translation type="unfinished" />
+        <translation>= 穩定</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="124" />
         <location filename="../tilauscope/beancave_storage_tab.py" line="111" />
         <source>Not set</source>
-        <translation type="unfinished" />
+        <translation>未設定</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="112" />
         <source>Vacuum-sealed</source>
-        <translation type="unfinished" />
+        <translation>真空密封</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="113" />
         <source>GrainPro (valve)</source>
-        <translation type="unfinished" />
+        <translation>GrainPro（活門）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="114" />
         <source>Ecotact bag</source>
-        <translation type="unfinished" />
+        <translation>Ecotact 袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="115" />
         <source>Sealed jar</source>
-        <translation type="unfinished" />
+        <translation>密封罐</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="116" />
         <source>Open cloth bag</source>
-        <translation type="unfinished" />
+        <translation>開放式布袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="188" />
         <source>Stock conservation</source>
-        <translation type="unfinished" />
+        <translation>庫存保存</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="194" />
         <source>Manage sack labels</source>
-        <translation type="unfinished" />
+        <translation>管理麻袋標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="226" />
         <source>Review…</source>
-        <translation type="unfinished" />
+        <translation>檢查…</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="262" />
         <source>configure</source>
-        <translation type="unfinished" />
+        <translation>設定</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="301" />
         <source>Bean</source>
-        <translation type="unfinished" />
+        <translation>豆子</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="301" />
@@ -32772,194 +32810,194 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="301" />
         <source>Sacks</source>
-        <translation type="unfinished" />
+        <translation>麻袋</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="302" />
         <source>aw</source>
-        <translation type="unfinished" />
+        <translation>水活度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="302" />
         <source>Conditioning</source>
-        <translation type="unfinished" />
+        <translation>調理</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="302" />
         <source>Trend</source>
-        <translation type="unfinished" />
+        <translation>趨勢</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="399" />
         <source>Measure aw</source>
-        <translation type="unfinished" />
+        <translation>測量水活度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="407" />
         <source>CONDITIONING</source>
-        <translation type="unfinished" />
+        <translation>調理</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="428" />
         <source>SACK LABELS</source>
-        <translation type="unfinished" />
+        <translation>麻袋標籤</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="435" />
         <source>Assign</source>
-        <translation type="unfinished" />
+        <translation>指派</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="462" />
         <source>&amp;lt; 0.45 · too dry</source>
-        <translation type="unfinished" />
+        <translation>&amp;lt; 0.45 · 太乾燥</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="463" />
         <source>0.45–0.60 · optimal</source>
-        <translation type="unfinished" />
+        <translation>0.45–0.60 · 最佳</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="464" />
         <source>0.60–0.65 · to watch</source>
-        <translation type="unfinished" />
+        <translation>0.60–0.65 · 需監控</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="465" />
         <source>&amp;gt; 0.65 · mould risk</source>
-        <translation type="unfinished" />
+        <translation>&amp;gt; 0.65 · 發霉風險</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="594" />
         <source>Storage ambient not configured</source>
-        <translation type="unfinished" />
+        <translation>未設定儲存環境</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="595" />
         <source>Set the humidity sensor topic</source>
-        <translation type="unfinished" />
+        <translation>設定濕度感測器主題</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="598" />
         <source>Waiting for the sensor…</source>
-        <translation type="unfinished" />
+        <translation>等待感測器…</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="605" />
         <location filename="../tilauscope/beancave_storage_tab.py" line="599" />
         <source>storage sensor · MQTT</source>
-        <translation type="unfinished" />
+        <translation>儲存感測器 · MQTT</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="724" />
         <location filename="../tilauscope/beancave_storage_tab.py" line="641" />
         <source>(unnamed)</source>
-        <translation type="unfinished" />
+        <translation>（未命名）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="706" />
         <source>No bean in stock</source>
-        <translation type="unfinished" />
+        <translation>庫存中無豆子</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="728" />
         <source>crop</source>
-        <translation type="unfinished" />
+        <translation>收穫</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="731" />
         <source>lot(s)</source>
-        <translation type="unfinished" />
+        <translation>批次</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="752" />
         <source>Measure aw with the AquaGauge to assess conservation.</source>
-        <translation type="unfinished" />
+        <translation>使用 AquaGauge 測量水活度以評估保存。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="756" />
         <source>🔒 Sealed conditioning: negligible exchange, aw is protected.</source>
-        <translation type="unfinished" />
+        <translation>🔒 密閉調理：幾乎無交換，水活度受保護。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="759" />
         <source>↑ &lt;b&gt;Gaining moisture&lt;/b&gt;: your storage is more humid than the bean, aw is drifting up.</source>
-        <translation type="unfinished" />
+        <translation>↑ &lt;b&gt;吸濕中&lt;/b&gt;：你的儲存環境比豆子更潮濕，水活度上升。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="763" />
         <source>↓ Slow drying: your storage is drier than the bean.</source>
-        <translation type="unfinished" />
+        <translation>↓ 緩慢乾燥：你的儲存環境比豆子更乾燥。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="765" />
         <source>= Stable equilibrium with your current ambient.</source>
-        <translation type="unfinished" />
+        <translation>= 與目前環境維持穩定平衡。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="767" />
         <source>Connect a storage MQTT sensor to estimate the trend.</source>
-        <translation type="unfinished" />
+        <translation>連接儲存 MQTT 感測器以估計趨勢。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="773" />
         <source>Target equilibrium moisture</source>
-        <translation type="unfinished" />
+        <translation>目標平衡濕度</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="778" />
         <source>⚠ &lt;b&gt;Mould zone&lt;/b&gt;: recondition or roast in priority; aim for storage &amp;lt; 60 % RH.</source>
-        <translation type="unfinished" />
+        <translation>⚠ &lt;b&gt;發霉區域&lt;/b&gt;：優先重新調理或烘焙；目標儲存 &amp;lt; 60 % RH。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="782" />
         <source>To watch: keep the ambient below 65 % RH.</source>
-        <translation type="unfinished" />
+        <translation>需監控：保持環境在 65 % RH 以下。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="784" />
         <source>Dry bean: more fragile aromatics, faster staling.</source>
-        <translation type="unfinished" />
+        <translation>乾豆：更易碎的香氣，更快老化。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="901" />
         <source>{0} label(s) are held by beans with no stock left.</source>
-        <translation type="unfinished" />
+        <translation>{0} 個標籤由庫存已盡的豆子持有。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="973" />
         <source>Storage sensor (MQTT)</source>
-        <translation type="unfinished" />
+        <translation>儲存感測器（MQTT）</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="976" />
         <source>Humidity and temperature can be on different topics. Leave the field empty if the topic already publishes a bare value; otherwise give the key (e.g. humidity) or a path (e.g. data.rh).</source>
-        <translation type="unfinished" />
+        <translation>濕度和溫度可在不同主題上。若主題已發佈原始值，請保留欄位空白；否則給出鍵（例如 humidity）或路徑（例如 data.rh）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="988" />
         <source>Humidity — topic</source>
-        <translation type="unfinished" />
+        <translation>濕度 — 主題</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="992" />
         <source>Humidity — field</source>
-        <translation type="unfinished" />
+        <translation>濕度 — 欄位</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="999" />
         <source>Temperature — topic</source>
-        <translation type="unfinished" />
+        <translation>溫度 — 主題</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="1003" />
         <source>Temperature — field</source>
-        <translation type="unfinished" />
+        <translation>溫度 — 欄位</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="1013" />
         <source>Test</source>
-        <translation type="unfinished" />
+        <translation>測試</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="1017" />
@@ -32974,12 +33012,12 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="1067" />
         <source>no data received on this topic</source>
-        <translation type="unfinished" />
+        <translation>未在此主題上收到資料</translation>
     </message>
     <message>
         <location filename="../tilauscope/beancave_storage_tab.py" line="1075" />
         <source>field not found</source>
-        <translation type="unfinished" />
+        <translation>欄位未找到</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -33002,98 +33040,101 @@ You can tap the RoastSee C1 card to populate this field automatically.</source>
     <message>
         <location filename="../tilauscope/artisan_message_ticker.py" line="274" />
         <source>ARTISAN</source>
-        <translation type="unfinished" />
+        <translation>ARTISAN</translation>
     </message>
     <message>
         <location filename="../tilauscope/artisan_message_ticker.py" line="295" />
         <source>Clear Artisan messages</source>
-        <translation type="unfinished" />
+        <translation>清除 Artisan 訊息</translation>
     </message>
 </context><context>
     <name>tilauscope_updates</name>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="266" />
         <source>The server returned a web page instead of the installer (the release asset may have been removed).</source>
-        <translation type="unfinished" />
+        <translation>伺服器返回網頁而非安裝程式（發行資產可能已被移除）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="288" />
         <source>Could not write the update to disk (disk full or permission denied):
 {0}</source>
-        <translation type="unfinished" />
+        <translation>無法將更新寫入磁碟（磁碟已滿或權限被拒絕）：
+{0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="309" />
         <source>The connection timed out while downloading the update.</source>
-        <translation type="unfinished" />
+        <translation>下載更新時連線逾時。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="314" />
         <source>Network connection lost during the download.</source>
-        <translation type="unfinished" />
+        <translation>下載期間網路連線中斷。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="320" />
         <source>The server refused the download (HTTP {0}).</source>
-        <translation type="unfinished" />
+        <translation>伺服器拒絕下載（HTTP {0}）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="344" />
         <source>The downloaded file is missing after the transfer.</source>
-        <translation type="unfinished" />
+        <translation>傳輸後下載的檔案遺失。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="349" />
         <source>The downloaded file is empty.</source>
-        <translation type="unfinished" />
+        <translation>下載的檔案為空。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="352" />
         <source>The download is incomplete ({0} of {1} bytes).</source>
-        <translation type="unfinished" />
+        <translation>下載未完成（{0} / {1} 位元組）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="360" />
         <source>The downloaded file could not be read back:
 {0}</source>
-        <translation type="unfinished" />
+        <translation>無法讀回下載的檔案：
+{0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="366" />
         <source>Received a web page instead of the installer. The download link could not be resolved.</source>
-        <translation type="unfinished" />
+        <translation>收到網頁而非安裝程式。無法解析下載連結。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="371" />
         <source>The downloaded file is too small to be a valid installer ({0} bytes).</source>
-        <translation type="unfinished" />
+        <translation>下載的檔案太小，無法成為有效的安裝程式（{0} 位元組）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="378" />
         <source>The downloaded file is not a valid Windows installer.</source>
-        <translation type="unfinished" />
+        <translation>下載的檔案不是有效的 Windows 安裝程式。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="507" />
         <source>A new version of &lt;b&gt;TilauScope&lt;/b&gt; is available.
 Download now to get the latest features and fixes.</source>
-        <translation type="unfinished" />
+        <translation>新版本的 &lt;b&gt;TilauScope&lt;/b&gt; 已推出。
+立即下載以取得最新功能和修正。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="520" />
         <source>⬇  Download &amp; Install</source>
-        <translation type="unfinished" />
+        <translation>⬇  下載並安裝</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="699" />
         <location filename="../tilauscope/tilau_updater.py" line="527" />
         <source>Later</source>
-        <translation type="unfinished" />
+        <translation>稍後</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="586" />
         <source>⬇  DOWNLOADING UPDATE</source>
-        <translation type="unfinished" />
+        <translation>⬇  下載更新中</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="611" />
@@ -33103,17 +33144,17 @@ Download now to get the latest features and fixes.</source>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="671" />
         <source>✅  DOWNLOAD COMPLETE</source>
-        <translation type="unfinished" />
+        <translation>✅  下載完成</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="678" />
         <source>&lt;b&gt;{0}&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;Click &lt;b&gt;Install Now&lt;/b&gt; to launch the installer and close TilauScope.&lt;br/&gt;Or &lt;b&gt;Later&lt;/b&gt; to install manually from your Downloads folder.</source>
-        <translation type="unfinished" />
+        <translation>&lt;b&gt;{0}&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;按一下 &lt;b&gt;立即安裝&lt;/b&gt; 以啟動安裝程式並關閉 TilauScope。&lt;br/&gt;或按 &lt;b&gt;稍後&lt;/b&gt; 以從你的下載資料夾手動安裝。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="692" />
         <source>🛠  Install Now &amp; Quit</source>
-        <translation type="unfinished" />
+        <translation>🛠  立即安裝並結束</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="809" />
@@ -33124,22 +33165,22 @@ Download now to get the latest features and fixes.</source>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="795" />
         <source>You are running the latest version of TilauScope.</source>
-        <translation type="unfinished" />
+        <translation>你正在執行最新版本的 TilauScope。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="810" />
         <source>Could not check for updates. Please check your internet connection.</source>
-        <translation type="unfinished" />
+        <translation>無法檢查更新。請檢查你的網際網路連線。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="887" />
         <source>The downloaded file is no longer available.</source>
-        <translation type="unfinished" />
+        <translation>下載的檔案已不可用。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="911" />
         <source>Download Failed</source>
-        <translation type="unfinished" />
+        <translation>下載失敗</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="912" />
@@ -33149,12 +33190,17 @@ Download now to get the latest features and fixes.</source>
 
 Please download manually from:
 {1}</source>
-        <translation type="unfinished" />
+        <translation>無法下載更新。
+
+{0}
+
+請從以下位置手動下載：
+{1}</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="945" />
         <source>Installer Not Found</source>
-        <translation type="unfinished" />
+        <translation>安裝程式未找到</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="946" />
@@ -33162,12 +33208,15 @@ Please download manually from:
 {0}
 
 Please download it again.</source>
-        <translation type="unfinished" />
+        <translation>找不到下載的安裝程式：
+{0}
+
+請重新下載。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="971" />
         <source>Launch Failed</source>
-        <translation type="unfinished" />
+        <translation>啟動失敗</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_updater.py" line="972" />
@@ -33175,47 +33224,50 @@ Please download it again.</source>
 
 Please open it manually:
 {0}</source>
-        <translation type="unfinished" />
+        <translation>無法自動開啟安裝程式。
+
+請手動開啟：
+{0}</translation>
     </message>
     <message>
         <location filename="../tilauscope/about_dialog.py" line="92" />
         <source>ABOUT TILAUSCOPE</source>
-        <translation type="unfinished" />
+        <translation>關於 TilauScope</translation>
     </message>
     <message>
         <location filename="../tilauscope/about_dialog.py" line="128" />
         <source>Version {0} · build {1}</source>
-        <translation type="unfinished" />
+        <translation>版本 {0} · 組建 {1}</translation>
     </message>
     <message>
         <location filename="../tilauscope/about_dialog.py" line="135" />
         <source>Guided roasting assistant for home and enthusiast roasters.</source>
-        <translation type="unfinished" />
+        <translation>家庭和愛好者烘焙師的引導烘焙助手。</translation>
     </message>
     <message>
         <location filename="../tilauscope/about_dialog.py" line="148" />
         <source>Built on</source>
-        <translation type="unfinished" />
+        <translation>建置於</translation>
     </message>
     <message>
         <location filename="../tilauscope/about_dialog.py" line="154" />
         <source>Artisan core developers</source>
-        <translation type="unfinished" />
+        <translation>Artisan 核心開發者</translation>
     </message>
     <message>
         <location filename="../tilauscope/about_dialog.py" line="159" />
         <source>Source code</source>
-        <translation type="unfinished" />
+        <translation>原始碼</translation>
     </message>
     <message>
         <location filename="../tilauscope/about_dialog.py" line="164" />
         <source>© Tilau — released under the GNU AGPL v3.</source>
-        <translation type="unfinished" />
+        <translation>© Tilau — 依 GNU AGPL v3 發行。</translation>
     </message>
     <message>
         <location filename="../tilauscope/about_dialog.py" line="187" />
         <source>Report a bug</source>
-        <translation type="unfinished" />
+        <translation>報告錯誤</translation>
     </message>
     <message>
         <location filename="../tilauscope/about_dialog.py" line="194" />
@@ -33247,63 +33299,64 @@ Please open it manually:
     <message>
         <location filename="../tilauscope/command_bridge.py" line="402" />
         <source>📱 CONTROL REQUEST</source>
-        <translation type="unfinished" />
+        <translation>📱 控制要求</translation>
     </message>
     <message>
         <location filename="../tilauscope/command_bridge.py" line="406" />
         <source>“{name}” wants to take over piloting.
 The current controller will be switched to observer.</source>
-        <translation type="unfinished" />
+        <translation>「{name}」想要接管控制。
+目前的控制者將被切換為觀察者。</translation>
     </message>
     <message>
         <location filename="../tilauscope/command_bridge.py" line="418" />
         <source>Deny</source>
-        <translation type="unfinished" />
+        <translation>拒絕</translation>
     </message>
     <message>
         <location filename="../tilauscope/command_bridge.py" line="424" />
         <source>Allow</source>
-        <translation type="unfinished" />
+        <translation>允許</translation>
     </message>
     <message>
         <location filename="../tilauscope/command_bridge.py" line="458" />
         <source>Auto-denies in {n}s</source>
-        <translation type="unfinished" />
+        <translation>將在 {n} 秒後自動拒絕</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="72" />
         <source>System Settings → Privacy &amp; Security → Camera</source>
-        <translation type="unfinished" />
+        <translation>系統設定 → 隱私與安全 → 相機</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="76" />
         <source>Settings → Privacy &amp; security → Camera</source>
-        <translation type="unfinished" />
+        <translation>設定 → 隱私與安全 → 相機</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="79" />
         <source>your system's privacy settings</source>
-        <translation type="unfinished" />
+        <translation>你系統的隱私設定</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="174" />
         <source>QR decoding library (zxing-cpp) is not available in this build.</source>
-        <translation type="unfinished" />
+        <translation>QR 解碼程式庫（zxing-cpp）在此組建中不可用。</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="178" />
         <source>Camera support (QtMultimedia) is not available in this build.</source>
-        <translation type="unfinished" />
+        <translation>相機支援（QtMultimedia）在此組建中不可用。</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="268" />
         <source>SCAN A QR CODE</source>
-        <translation type="unfinished" />
+        <translation>掃描 QR 碼</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="297" />
         <source>Point the label QR code at the camera…</source>
-        <translation type="unfinished" />
+        <translation>將標籤 QR 碼指向相機…</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="308" />
@@ -33313,67 +33366,67 @@ The current controller will be switched to observer.</source>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="319" />
         <source>Camera support is not available in this build.</source>
-        <translation type="unfinished" />
+        <translation>相機支援在此組建中不可用。</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="326" />
         <source>No camera detected on this computer.</source>
-        <translation type="unfinished" />
+        <translation>此電腦上未偵測到相機。</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="352" />
         <source>Waiting for the system camera authorization…</source>
-        <translation type="unfinished" />
+        <translation>等待系統相機授權…</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="373" />
         <source>Camera access denied — allow it in {0}, then reopen this window.</source>
-        <translation type="unfinished" />
+        <translation>相機存取被拒絕 — 在 {0} 中允許，然後重新開啟此視窗。</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="433" />
         <source>Could not start the camera (check camera access in {0}).</source>
-        <translation type="unfinished" />
+        <translation>無法啟動相機（檢查 {0} 中的相機存取）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="456" />
         <source>Camera error (check camera access in {0}).</source>
-        <translation type="unfinished" />
+        <translation>相機錯誤（檢查 {0} 中的相機存取）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/qr_scan.py" line="543" />
         <source>QR code not recognized — not a TilauScope label.</source>
-        <translation type="unfinished" />
+        <translation>QR 碼未識別 — 不是 TilauScope 標籤。</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="923" />
         <source>Take control</source>
-        <translation type="unfinished" />
+        <translation>接管控制</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="924" />
         <source>Release control</source>
-        <translation type="unfinished" />
+        <translation>釋放控制</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="925" />
         <source>Undo last milestone</source>
-        <translation type="unfinished" />
+        <translation>復原上一個里程碑</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="926" />
         <source>Mark</source>
-        <translation type="unfinished" />
+        <translation>標記</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="927" />
         <source>Mark {m}</source>
-        <translation type="unfinished" />
+        <translation>標記 {m}</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="928" />
         <source>Roast complete</source>
-        <translation type="unfinished" />
+        <translation>烘焙完成</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="929" />
@@ -33388,22 +33441,22 @@ The current controller will be switched to observer.</source>
     <message>
         <location filename="../tilauscope/webclient.py" line="931" />
         <source>Connecting…</source>
-        <translation type="unfinished" />
+        <translation>連接中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="932" />
         <source>Reconnecting…</source>
-        <translation type="unfinished" />
+        <translation>重新連接中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="933" />
         <source>Stop the roast?</source>
-        <translation type="unfinished" />
+        <translation>停止烘焙？</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="934" />
         <source>Two ways to finish — neither discards the roast.</source>
-        <translation type="unfinished" />
+        <translation>兩種完成方式 — 都不會丟棄烘焙。</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="935" />
@@ -33413,17 +33466,17 @@ The current controller will be switched to observer.</source>
     <message>
         <location filename="../tilauscope/webclient.py" line="936" />
         <source>Saves the .alog · fill in the weight and colour at the desktop</source>
-        <translation type="unfinished" />
+        <translation>儲存 .alog · 在桌面填入重量和顏色</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="937" />
         <source>Finish on Artisan</source>
-        <translation type="unfinished" />
+        <translation>在 Artisan 上完成</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="938" />
         <source>Stops without writing · you finish at the desktop</source>
-        <translation type="unfinished" />
+        <translation>停止而不寫入 · 您在桌面上完成</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="939" />
@@ -33433,52 +33486,52 @@ The current controller will be switched to observer.</source>
     <message>
         <location filename="../tilauscope/webclient.py" line="940" />
         <source>Adjust</source>
-        <translation type="unfinished" />
+        <translation>調整</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="941" />
         <source>Confirm</source>
-        <translation type="unfinished" />
+        <translation>確認</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="942" />
         <source>Drag to the value, then Confirm</source>
-        <translation type="unfinished" />
+        <translation>拖曳到該值，然後確認</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="943" />
         <source>Connecting to the roaster…</source>
-        <translation type="unfinished" />
+        <translation>正在連接烘焙機…</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="944" />
         <source>Paste the pairing link</source>
-        <translation type="unfinished" />
+        <translation>貼上配對連結</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="945" />
         <source>Pair</source>
-        <translation type="unfinished" />
+        <translation>配對</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="946" />
         <source>Pairing…</source>
-        <translation type="unfinished" />
+        <translation>配對中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="947" />
         <source>To pilot from this app, paste the pairing link (TilauScope ▸ Pair a phone ▸ Copy link).</source>
-        <translation type="unfinished" />
+        <translation>若要從此應用程式操控，請貼上配對連結（TilauScope ▸ 配對手機 ▸ 複製連結）。</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="948" />
         <source>Pairing expired or revoked. Paste a new pairing link from TilauScope.</source>
-        <translation type="unfinished" />
+        <translation>配對已過期或被撤銷。從 TilauScope 貼上新的配對連結。</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="949" />
         <source>Hardware frozen</source>
-        <translation type="unfinished" />
+        <translation>硬體已凍結</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="950" />
@@ -33488,57 +33541,57 @@ The current controller will be switched to observer.</source>
     <message>
         <location filename="../tilauscope/webclient.py" line="951" />
         <source>Link lost. The desktop keeps control for {n} more s.</source>
-        <translation type="unfinished" />
+        <translation>連結已遺失。桌面將保持控制 {n} 秒。</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="952" />
         <source>Link lost · the roast carries on at the desktop.</source>
-        <translation type="unfinished" />
+        <translation>連結已遺失 · 烘焙在桌面上繼續進行。</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="953" />
         <source>Grace elapsed · the hardware stays frozen, control can be taken over.</source>
-        <translation type="unfinished" />
+        <translation>寬限已過期 · 硬體保持凍結，可以接管控制。</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="954" />
         <source>Request sent · confirm on the desktop…</source>
-        <translation type="unfinished" />
+        <translation>已送出請求 · 在桌面上確認…</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="955" />
         <source>You're in control</source>
-        <translation type="unfinished" />
+        <translation>您已在控制中</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="956" />
         <source>Control taken over elsewhere</source>
-        <translation type="unfinished" />
+        <translation>控制在他處被接管</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="957" />
         <source>Control denied</source>
-        <translation type="unfinished" />
+        <translation>控制被拒絕</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="958" />
         <source>Take control first</source>
-        <translation type="unfinished" />
+        <translation>先接管控制</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="959" />
         <source>Busy, try again</source>
-        <translation type="unfinished" />
+        <translation>忙碌中，請重試</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="960" />
         <source>Read-only control</source>
-        <translation type="unfinished" />
+        <translation>唯讀控制</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="961" />
         <source>Offline</source>
-        <translation type="unfinished" />
+        <translation>離線</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="962" />
@@ -33548,62 +33601,62 @@ The current controller will be switched to observer.</source>
     <message>
         <location filename="../tilauscope/webclient.py" line="963" />
         <source>{m} marked</source>
-        <translation type="unfinished" />
+        <translation>{m} 已標記</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="964" />
         <source>{m} undone</source>
-        <translation type="unfinished" />
+        <translation>{m} 已復原</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="965" />
         <source>Recording started</source>
-        <translation type="unfinished" />
+        <translation>錄製已開始</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="966" />
         <source>Recording stopped</source>
-        <translation type="unfinished" />
+        <translation>錄製已停止</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="967" />
         <source>Roast saved</source>
-        <translation type="unfinished" />
+        <translation>烘焙已儲存</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="968" />
         <source>CHARGE and DROP required to save</source>
-        <translation type="unfinished" />
+        <translation>儲存需要 CHARGE 和 DROP</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="969" />
         <source>Nothing to save</source>
-        <translation type="unfinished" />
+        <translation>無內容可儲存</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="970" />
         <source>Drag to set · tap the value for the wheel</source>
-        <translation type="unfinished" />
+        <translation>拖曳以設定 · 輕按該值以轉輪</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="971" />
         <source>Observer · take control to pilot</source>
-        <translation type="unfinished" />
+        <translation>觀察者 · 接管控制以操控</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="972" />
         <source>Desktop stopped measuring · view frozen</source>
-        <translation type="unfinished" />
+        <translation>桌面已停止測量 · 檢視已凍結</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="973" />
         <source>Idle</source>
-        <translation type="unfinished" />
+        <translation>閒置</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="974" />
         <source>Preheat</source>
-        <translation type="unfinished" />
+        <translation>預熱</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="975" />
@@ -33618,7 +33671,7 @@ The current controller will be switched to observer.</source>
     <message>
         <location filename="../tilauscope/webclient.py" line="977" />
         <source>Development</source>
-        <translation type="unfinished" />
+        <translation>發展</translation>
     </message>
     <message>
         <location filename="../tilauscope/webclient.py" line="978" />
@@ -33666,320 +33719,322 @@ The current controller will be switched to observer.</source>
     <message>
         <location filename="../tilauscope/tilau_loading_overlay.py" line="237" />
         <source>TilauScope is loading…</source>
-        <translation type="unfinished" />
+        <translation>TilauScope 正在載入…</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_loading_overlay.py" line="287" />
         <source>Loading…</source>
-        <translation type="unfinished" />
+        <translation>載入中…</translation>
     </message>
     <message>
         <location filename="../tilauscope/displayscope.py" line="1073" />
         <source>Click to open roller — right-click for context menu</source>
-        <translation type="unfinished" />
+        <translation>按一下以開啟滾軸 — 按右鍵以取得快捷選單</translation>
     </message>
     <message>
         <location filename="../tilauscope/displayscope.py" line="1222" />
         <source>Toggle: horizontal sliders  ↔  card controls</source>
-        <translation type="unfinished" />
+        <translation>切換：水平滑桿  ↔  卡片控制</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="2097" />
+        <location filename="../tilauscope/displayscope.py" line="2100" />
         <source>IF ALARM</source>
-        <translation type="unfinished" />
+        <translation>若警報</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="2099" />
-        <location filename="../tilauscope/displayscope.py" line="2097" />
+        <location filename="../tilauscope/displayscope.py" line="2102" />
+        <location filename="../tilauscope/displayscope.py" line="2100" />
         <source>at</source>
-        <translation type="unfinished" />
+        <translation>於</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="2099" />
-        <location filename="../tilauscope/displayscope.py" line="2097" />
+        <location filename="../tilauscope/displayscope.py" line="2102" />
+        <location filename="../tilauscope/displayscope.py" line="2100" />
         <source>do</source>
-        <translation type="unfinished" />
+        <translation>執行</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="2099" />
+        <location filename="../tilauscope/displayscope.py" line="2102" />
         <source>IF NOT ALARM</source>
-        <translation type="unfinished" />
+        <translation>若無警報</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="2187" />
+        <location filename="../tilauscope/displayscope.py" line="2190" />
         <source>LIVE EVENTS</source>
-        <translation type="unfinished" />
+        <translation>即時事件</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="2204" />
+        <location filename="../tilauscope/displayscope.py" line="2207" />
         <source>Clear all events</source>
-        <translation type="unfinished" />
+        <translation>清除所有事件</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="2435" />
+        <location filename="../tilauscope/displayscope.py" line="2438" />
         <source>Hide live events  ‹</source>
-        <translation type="unfinished" />
+        <translation>隱藏即時事件  ‹</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="2437" />
+        <location filename="../tilauscope/displayscope.py" line="2440" />
         <source>Show live events  ›</source>
-        <translation type="unfinished" />
+        <translation>顯示即時事件  ›</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="2706" />
+        <location filename="../tilauscope/displayscope.py" line="2709" />
         <source>TilauScope Security</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="3001" />
-        <source>PREHEATING </source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="3002" />
-        <source>AUTO-CHARGE ENGAGED</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/displayscope.py" line="3003" />
-        <source>AUTO-DRY ENGAGED</source>
-        <translation type="unfinished" />
+        <translation>TilauScope 安全性</translation>
     </message>
     <message>
         <location filename="../tilauscope/displayscope.py" line="3004" />
-        <source>AUTO-FC ENGAGED</source>
-        <translation type="unfinished" />
+        <source>PREHEATING </source>
+        <translation>預熱中 </translation>
     </message>
     <message>
         <location filename="../tilauscope/displayscope.py" line="3005" />
-        <source>AUTO-DROP ENGAGED</source>
-        <translation type="unfinished" />
+        <source>AUTO-CHARGE ENGAGED</source>
+        <translation>自動 CHARGE 已啟用</translation>
     </message>
     <message>
         <location filename="../tilauscope/displayscope.py" line="3006" />
-        <source>roast session started</source>
-        <translation type="unfinished" />
+        <source>AUTO-DRY ENGAGED</source>
+        <translation>自動 DRY 已啟用</translation>
     </message>
     <message>
         <location filename="../tilauscope/displayscope.py" line="3007" />
-        <source>SIMULATOR</source>
-        <translation type="unfinished" />
+        <source>AUTO-FC ENGAGED</source>
+        <translation>自動 FC 已啟用</translation>
     </message>
     <message>
         <location filename="../tilauscope/displayscope.py" line="3008" />
-        <source>PAUSED</source>
-        <translation type="unfinished" />
+        <source>AUTO-DROP ENGAGED</source>
+        <translation>自動 DROP 已啟用</translation>
     </message>
     <message>
         <location filename="../tilauscope/displayscope.py" line="3009" />
-        <source>with no PID</source>
-        <translation type="unfinished" />
+        <source>roast session started</source>
+        <translation>烘焙工作階段已開始</translation>
     </message>
     <message>
         <location filename="../tilauscope/displayscope.py" line="3010" />
-        <source>with ArtisanPID to</source>
-        <translation type="unfinished" />
+        <source>SIMULATOR</source>
+        <translation>模擬器</translation>
     </message>
     <message>
         <location filename="../tilauscope/displayscope.py" line="3011" />
-        <source>with Tilauscope PID to</source>
-        <translation type="unfinished" />
+        <source>PAUSED</source>
+        <translation>已暫停</translation>
     </message>
     <message>
         <location filename="../tilauscope/displayscope.py" line="3012" />
-        <source>&lt;br&gt;&lt;br&gt;PREPARE YOURSELF TO &lt;b&gt;CHARGE&lt;/b&gt; THE BEANS!</source>
-        <translation type="unfinished" />
+        <source>with no PID</source>
+        <translation>無 PID</translation>
     </message>
     <message>
         <location filename="../tilauscope/displayscope.py" line="3013" />
-        <source>TilauPID is initializing, please wait...</source>
-        <translation type="unfinished" />
+        <source>with ArtisanPID to</source>
+        <translation>使用 ArtisanPID 至</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3017" />
+        <location filename="../tilauscope/displayscope.py" line="3014" />
+        <source>with Tilauscope PID to</source>
+        <translation>使用 Tilauscope PID 至</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="3015" />
+        <source>&lt;br&gt;&lt;br&gt;PREPARE YOURSELF TO &lt;b&gt;CHARGE&lt;/b&gt; THE BEANS!</source>
+        <translation>&lt;br&gt;&lt;br&gt;準備好要 &lt;b&gt;CHARGE&lt;/b&gt; 豆子！</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="3016" />
+        <source>TilauPID is initializing, please wait...</source>
+        <translation>TilauPID 正在初始化，請稍候...</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/displayscope.py" line="3020" />
         <source>PID</source>
         <translation type="unfinished">PID</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3018" />
+        <location filename="../tilauscope/displayscope.py" line="3021" />
         <source>Replay Events</source>
-        <translation type="unfinished" />
+        <translation>重新播放事件</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3019" />
+        <location filename="../tilauscope/displayscope.py" line="3022" />
         <source>Auto-DROP</source>
-        <translation type="unfinished" />
+        <translation>自動 DROP</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3020" />
+        <location filename="../tilauscope/displayscope.py" line="3023" />
         <source>Playback Aid</source>
         <translation type="unfinished">重撥輔助</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3021" />
+        <location filename="../tilauscope/displayscope.py" line="3024" />
         <source>⚠ AUTOMATED ROAST</source>
-        <translation type="unfinished" />
+        <translation>⚠ 自動烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3405" />
-        <location filename="../tilauscope/displayscope.py" line="3403" />
+        <location filename="../tilauscope/displayscope.py" line="3408" />
+        <location filename="../tilauscope/displayscope.py" line="3406" />
         <source>Auto</source>
         <translation type="unfinished">自動</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3415" />
-        <location filename="../tilauscope/displayscope.py" line="3413" />
-        <location filename="../tilauscope/displayscope.py" line="3411" />
-        <location filename="../tilauscope/displayscope.py" line="3407" />
+        <location filename="../tilauscope/displayscope.py" line="3418" />
+        <location filename="../tilauscope/displayscope.py" line="3416" />
+        <location filename="../tilauscope/displayscope.py" line="3414" />
+        <location filename="../tilauscope/displayscope.py" line="3410" />
         <source>Aims </source>
-        <translation type="unfinished" />
+        <translation>目標 </translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3517" />
+        <location filename="../tilauscope/displayscope.py" line="3520" />
         <source>Access to Bean Cave</source>
-        <translation type="unfinished" />
+        <translation>存取 Bean Cave</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3528" />
+        <location filename="../tilauscope/displayscope.py" line="3531" />
         <source>Engage Roast Assistant</source>
-        <translation type="unfinished" />
+        <translation>啟用烘焙助手</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3538" />
+        <location filename="../tilauscope/displayscope.py" line="3541" />
         <source>Anchor the assistant in place of the main panel (toggle floating)</source>
-        <translation type="unfinished" />
+        <translation>將助手錨定在主面板的位置（切換浮動）</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3600" />
+        <location filename="../tilauscope/displayscope.py" line="3603" />
         <source>Drag to move</source>
-        <translation type="unfinished" />
+        <translation>拖曳以移動</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3692" />
+        <location filename="../tilauscope/displayscope.py" line="3695" />
         <source>Drying Phase</source>
         <translation type="unfinished">脫水階段</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3693" />
+        <location filename="../tilauscope/displayscope.py" line="3696" />
         <source>Maillard Phase</source>
         <translation type="unfinished">梅納反應階段</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="3694" />
+        <location filename="../tilauscope/displayscope.py" line="3697" />
         <source>Finishing Phase</source>
         <translation type="unfinished">完成階段</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="4527" />
+        <location filename="../tilauscope/displayscope.py" line="4530" />
         <source>▼ DROPPING ROASTED COFFEE...</source>
-        <translation type="unfinished" />
+        <translation>▼ DROP 烤咖啡中...</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="4561" />
+        <location filename="../tilauscope/displayscope.py" line="4564" />
         <source>❄ COOLING IN PROGRESS
 Set drum &amp; airflow high — or prepare for back-to-back roast.</source>
-        <translation type="unfinished" />
+        <translation>❄ 冷卻進行中
+設定鼓和氣流高 — 或為連續烘焙做準備。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="4579" />
+        <location filename="../tilauscope/displayscope.py" line="4582" />
         <source>✅ ROASTER IS NOW COOLED
 Safe to switch off.</source>
-        <translation type="unfinished" />
+        <translation>✅ 烘焙機現已冷卻
+可以安全關閉。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="4655" />
+        <location filename="../tilauscope/displayscope.py" line="4658" />
         <source>Guided</source>
-        <translation type="unfinished" />
+        <translation>引導</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="4656" />
+        <location filename="../tilauscope/displayscope.py" line="4659" />
         <source>Expert</source>
         <translation type="unfinished">專家</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="4671" />
+        <location filename="../tilauscope/displayscope.py" line="4674" />
         <source>Operator level: {0} — click for {1}</source>
-        <translation type="unfinished" />
+        <translation>操作員級別：{0} — 按一下以進行 {1}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="5241" />
+        <location filename="../tilauscope/displayscope.py" line="5244" />
         <source>Set point driven by TilauPID while preheating</source>
-        <translation type="unfinished" />
+        <translation>預熱時由 TilauPID 驅動的設定點</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="5294" />
+        <location filename="../tilauscope/displayscope.py" line="5297" />
         <source>This event is already recorded</source>
-        <translation type="unfinished" />
+        <translation>此事件已被記錄</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="5310" />
+        <location filename="../tilauscope/displayscope.py" line="5313" />
         <source>Click to cancel marking of this event</source>
-        <translation type="unfinished" />
+        <translation>按一下以取消標記此事件</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="5338" />
+        <location filename="../tilauscope/displayscope.py" line="5341" />
         <source>Click to mark this event</source>
-        <translation type="unfinished" />
+        <translation>按一下以標記此事件</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="5760" />
+        <location filename="../tilauscope/displayscope.py" line="5763" />
         <source>CONNECTED</source>
-        <translation type="unfinished" />
+        <translation>已連接</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="5760" />
+        <location filename="../tilauscope/displayscope.py" line="5763" />
         <source>OFFLINE</source>
-        <translation type="unfinished" />
+        <translation>離線</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="5770" />
+        <location filename="../tilauscope/displayscope.py" line="5773" />
         <source> 🔕 ALARM-SET='&lt;b&gt;{0}&lt;/b&gt;' SUSPENDED</source>
-        <translation type="unfinished" />
+        <translation> 🔕 ALARM-SET='&lt;b&gt;{0}&lt;/b&gt;' 已暫停</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="5772" />
+        <location filename="../tilauscope/displayscope.py" line="5775" />
         <source> ALARM-SET='&lt;b&gt;{0}&lt;/b&gt;'</source>
-        <translation type="unfinished" />
+        <translation> ALARM-SET='&lt;b&gt;{0}&lt;/b&gt;'</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="5991" />
+        <location filename="../tilauscope/displayscope.py" line="5994" />
         <source>⚠ No meter connected — configure a device in Machine &gt; Device.</source>
-        <translation type="unfinished" />
+        <translation>⚠ 未連接儀表 — 在機器 &gt; 裝置中設定裝置。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="6154" />
+        <location filename="../tilauscope/displayscope.py" line="6157" />
         <source>Swap panel position from right to left</source>
-        <translation type="unfinished" />
+        <translation>將面板位置從右側交換到左側</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="6160" />
+        <location filename="../tilauscope/displayscope.py" line="6163" />
         <source>Swap panel position from left to right</source>
-        <translation type="unfinished" />
+        <translation>將面板位置從左側交換到右側</translation>
     </message>
     <message>
-        <location filename="../tilauscope/displayscope.py" line="6166" />
+        <location filename="../tilauscope/displayscope.py" line="6169" />
         <source>Roasting</source>
-        <translation type="unfinished" />
+        <translation>烘焙</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_wheel.py" line="320" />
         <source>TILAUSCOPE — FLAVOR SELECTOR</source>
-        <translation type="unfinished" />
+        <translation>TILAUSCOPE — 風味選擇器</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_wheel.py" line="365" />
         <source>VALIDATE SELECTION</source>
-        <translation type="unfinished" />
+        <translation>驗證選擇</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_wheel.py" line="368" />
         <source>Click to confirm your flavor selection and copy it into the bean record. Close the window to cancel.</source>
-        <translation type="unfinished" />
+        <translation>按一下以確認您的風味選擇並將其複製到豆紀錄中。關閉視窗以取消。</translation>
     </message>
     <message>
         <location filename="../tilauscope/tilau_wheel.py" line="392" />
         <source>No notes selected — click outer ring to select</source>
-        <translation type="unfinished" />
+        <translation>未選擇備註 — 按外圈以選擇</translation>
     </message>
     <message numerus="yes">
         <location filename="../tilauscope/tilau_wheel.py" line="396" />

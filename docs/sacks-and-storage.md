@@ -58,9 +58,9 @@ as above.
 without restarting, and a warning if a starting weight of 0 g is about to be confirmed.
 **✓ Create the sack** writes the record and, if a label id was chosen, marks it assigned.
 
-<!-- CAPTURE 3.1 — the + New sack button and the Start page (AI vs step-by-step).
-CAPTURE 3.2 — the "what kind of bag" step, all three choices visible.
-CAPTURE 3.3 — the Review page with at least one section warning flagged. -->
+![the + New sack button and the Start page](assets/sacks-and-storage-3.1.png)
+![the "what kind of bag" step](assets/sacks-and-storage-3.2.png)
+![the Review page](assets/sacks-and-storage-3.3.png)
 
 ---
 
@@ -95,9 +95,8 @@ id space does not grow faster than the bags actually on the shelf.
     externally-printed one — and scanning one back open, are covered in
     [Labels and QR](labels-and-qr.md), from the same tool this section's ids come from.
 
-<!-- CAPTURE 3.4 — sack chips on a bean record, one selected for release, showing the "Is
-this bag empty?" confirmation. CAPTURE 3.5 — the Storage tab's + Assign picker.
-CAPTURE 3.6 — the orphaned-labels notice with at least one entry. -->
+![sack chips on a bean record](assets/sacks-and-storage-3.4.png)
+![the Storage tab's + Assign picker](assets/sacks-and-storage-3.5.png)
 
 ---
 
@@ -146,10 +145,9 @@ calibrated reading of the bean itself.
 field included. With an AquaGauge probe paired, a floating reading window appears alongside
 it — click the live value to drop it straight into the field.
 
-<!-- CAPTURE 3.7 — the Storage tab bean list, sorted with at least one entry in every risk
-band. CAPTURE 3.8 — a coffee's panel: aw number, zone, conditioning dropdown, trend, verdict
-text. CAPTURE 3.9 — the AquaGauge floating reading window next to the characteristics
-editor. -->
+![the Storage tab bean listr](assets/sacks-and-storage-3.6.png)
+![ the AquaGauge floating reading ](assets/sacks-and-storage-3.7.png)
+![ the density and aquagauge floating reading ](assets/sacks-and-storage-3.8.png)
 
 ### Storage-room humidity
 
@@ -163,8 +161,7 @@ configured. This reading comes from a network broker rather than a paired probe 
     MQTT-capable humidity sensor. It is independent of the ambient probe paired for roast
     day, which is not read here.
 
-<!-- CAPTURE 3.10 — the storage-room ambient banner, both configured and unconfigured
-states. CAPTURE 3.11 — the ⚙ configure dialog with a live test reading. -->
+![the Storage tab bean listr](assets/sacks-and-storage-3.10.png)
 
 ---
 
