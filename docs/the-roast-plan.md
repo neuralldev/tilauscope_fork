@@ -55,11 +55,14 @@ a batch on a day, not to a coffee in the abstract.
 Time*, *Drop Temp*.
 
 **Phase durations.** *Dry Phase Time*, *Maillard Phase Time*, *Development Phase Time* and
-*Total Time* — a target per phase rather than one figure for the whole roast. Two of them have
-a floor that comes from the machine rather than from the style: drying is never planned under
-4:30, Maillard never under 3:00. Below those the roast is not reachable on a drum of this size —
-the first belongs to sample roasters, the second would mean heating hard enough to scorch the
-bean. When a floor applies, the **total extends**; no other phase is shortened to pay for it.
+*Total Time* — a target per phase rather than one figure for the whole roast. A valid historical
+Maillard duration is not lengthened merely because it is under 3:00; only a 2:00 technical
+plausibility guard rejects likely bad milestone data. Style ranges remain guidance.
+
+The Skywalker V2's post-turning-point [rate of rise](glossary.md#ror--rate-of-rise) is centred
+near 16°C/min in the available history. The plan treats this as a typical reference, not a
+physical maximum. Values above 16 are common, and the initial placeholder turning point is not
+used to declare a plan impossible.
 
 **RoR targets.** *Target ROR Maillard*, *Target ROR at FC*, *Target ROR Dev* and *Target ROR at
 Drop*: the slope to hold at each stage. The Maillard figure is an average, and an average says
@@ -86,15 +89,11 @@ the curve back on a slope. **The plan learns that from your own roasts** rather 
 it: when it starts, how large your steps are, and the value you land on at dry end. A coffee
 you have never had to correct gets no reduction scheduled at all.
 
-After dry end the ladder descends, but never below what the coffee needs to keep
-[Maillard](glossary.md#maillard) running. That demand is read from the batch itself — its
-process first, then variety and origin, then density, moisture, water activity and the room
-the machine is breathing — and it holds the heat up through the whole phase, releasing by one
-step only at the end, shortly before first crack. Washed coffees carry the highest demand and
-hold it longest; naturals and fermented lots have had part of their sugars broken down
-already and sustain themselves earlier. **The development setting is reached after first
-crack, never before it** — arriving at it early is the classic way to produce a
-[baked](glossary.md#baked) cup while the curve still looks correct.
+After dry end the ladder follows its grid or learned settings. Coffee properties do not impose
+a heater floor. On the Skywalker V2, a pre-first-crack setting below about 45% is reported as a
+low-authority zone and 45–50% as a low-margin zone; the plan does not raise either setting.
+These are machine observations, not electrical cut-offs or bean-chemistry laws. They do not
+apply as warnings during development, where losing momentum can be intentional.
 
 **Machine settings at phase entry.** A table of what each lever must read as a phase begins:
 at charge, when bean temperature reaches dry end, and at first crack. Not an average for the
@@ -127,16 +126,9 @@ orders is not.
 knows where this coffee is likely to [crash](glossary.md#crash) or
 [flick](glossary.md#flick) before it happens.
 
-**Setup conflicts.** Sometimes the roast being asked for cannot be held, and the plan says so
-rather than printing numbers that will not work. Three cases: the rate of rise would have to
-*climb* through [Maillard](glossary.md#maillard) instead of falling — too much temperature to
-cover in the time, and a [flick](glossary.md#flick) is certain; it would have to *collapse*
-before first crack — a flat, [baked](glossary.md#baked) cup; or the burner would have to come
-down faster than five percent every thirty seconds, which is the point past which you can no
-longer see what a change did. In all three the plan names the setup that caused it and stops
-there. It does not invent a correction: a chain reaction is not recovered once it has started,
-and the answer belongs to the *next* roast — a different charge temperature, a different
-initial heat, a different planned Maillard.
+**Geometry notes.** An unusual Maillard reference shape is reported as information to compare
+with live measurements. The fallback decay exponent is a drawing aid, not proof that a flick,
+a sensory defect, or an unrecoverable roast will follow.
 
 !!! note
     Every temperature in the plan is a [bean temperature](glossary.md#bt--bean-temperature) and
@@ -152,18 +144,19 @@ This is the part that distinguishes the plan from a reference curve: **it never 
 it is speaking from your experience or from a reference table.**
 
 Alongside the values, the plan carries *First Crack source*, *Heater source*, *Phase timing
-source*, *Drop RoR source* and *Drop Temp Source*. Each reads either `learned (n=N)` — derived
-from N of your own roasts — or a reference value, or a blend of the two. Above them sits
-*Plan confidence*, in plain words:
+source*, *Drop RoR source* and *Drop Temp Source*. They identify the shared historical profile:
+`medoid (n=N)` for the representative real roast, `grid/profile blend (n=2)`, or `grid`.
+With one complete roast, *History profile* says `reference only (n=1)` while the individual
+targets remain on the grid. Above them sits *History support*, in plain words. It describes the amount and consistency of
+available history; it is not a probability that the plan will be accurate:
 
-| Plan confidence | Meaning |
+| History support | Meaning |
 |---|---|
-| **high (consistent history)** | Enough of your own roasts, and they agree with each other. |
-| **medium (partial history)** | Some history, not enough to lead on everything. |
-| **low (grid)** | Reference values. This coffee is new to the machine, or too few roasts exist. |
+| **consistent history** | Enough of your own roasts, and their measurements agree. |
+| **partial history** | Some history, not enough to support every value. |
+| **grid only** | Reference values; too few matching roasts exist. |
 
-A first roast of a new coffee is honestly labelled low confidence. That is not a defect — it is
-the plan declining to pretend.
+A first roast of a new coffee is labelled grid only.
 
 ### Which previous roasts count
 
@@ -172,34 +165,49 @@ not on a similar-looking name — and at a **comparable batch size**. A 250 g ro
 as a reference for a 450 g one, because it never was one. This is what stops a plan from being
 steered by a curve that had nothing to do with the batch in the drum.
 
-<!-- CAPTURE 6.5 — the source and Plan confidence lines of a PDF, cropped, on a coffee with
+<!-- CAPTURE 6.5 — the source and History support lines of a PDF, cropped, on a coffee with
 "learned (n=…)" values. CAPTURE 6.6 — the historical profile vs calculated plan comparison. -->
 
 ---
 
-## What the plan learns, and when
+## How history becomes a plan
 
-Learning is not a single switch: each quantity has its own threshold, and until it is met the
-plan uses reference values for that quantity alone.
+The plan no longer combines separate medians for phase times, heater, airflow, first crack and
+drop. That could describe a synthetic roast that was never performed. Instead it selects one
+complete historical roast and keeps its timings, milestone settings and development trajectory
+together.
 
-| What is learned | From when |
-|---|---|
-| **First crack temperature** | From the **3rd roast** of the same coffee. At **2 roasts**, your measured value and the reference are blended. |
-| **First crack corrected for batch size** | Needs **3 roasts** with both first crack and charge weight recorded. Removes the bias that comes from comparing different batch sizes. |
-| **Phase durations** | From the **2nd roast**; carries full weight from the **3rd**. |
-| **Heat profile and development ramp** | From the **2nd roast**. |
-| **Drop temperature, from colour feedback** | Progressively, as measured colours accumulate — the colour you record at the end of a roast corrects the next plan's drop target. |
-| **RoR at drop** | From your own recorded roast endings. |
+- With no complete matching observation, the reference grid is used.
+- With one observation, the grid remains authoritative and the roast is shown as a reference.
+- With two observations, the roast closest in batch mass and target colour is blended cautiously
+  with the grid.
+- With three or more, the plan selects the most representative real roast: the one with the
+  smallest robust overall distance to the others across phase durations, heater, airflow,
+  first crack, drop and finishing rate of rise.
 
-So the second roast of a coffee is already better informed than the first, and the third is
-where the plan genuinely starts speaking from your machine.
+Whole-bean and ground-colour histories remain separate. A ground-colour cohort is preferred
+once it contains two complete roasts; otherwise whole-bean history is used. The PDF's *History
+profile* line states whether the source is grid, reference only, a grid/profile blend or a
+representative historical roast.
 
-!!! note "What the plan learns without showing it"
-    Two things are learned but not printed: the expected [RoR](glossary.md#ror--rate-of-rise)
-    peak for your machine (from the 2nd roast, and **discarded if it falls outside a sane
-    range**, so one freak roast cannot poison it), and your probe offsets (from four
-    measurements onward). They are mentioned here so that nothing in the plan's behaviour is
-    unaccounted for.
+### Predictive validation
+
+When a plan is used by the guided assistant, TilauScope freezes its initial prediction before
+charge and stores it with the roast profile. The record includes the plan and model identifiers,
+its grid/history sources, predicted dry end, first crack and drop, the target colour, and the
+heater and airflow expected at those milestones. Replanning during the roast does not rewrite
+this starting prediction.
+
+When the profile is saved, the observed milestone times and bean temperatures are added. Whole
+and ground colour readings are converted to Agtron and retained separately. TilauScope can then
+calculate absolute timing, temperature and colour errors using only predictions that existed
+before their roasts. Entering a colour later and saving the profile again updates the observation
+without changing the original prediction.
+
+These records do not yet produce a `low`, `medium` or `high` confidence label. Such a label will
+only be introduced when enough pre-roast predictions exist to validate meaningful error bands;
+the current *History support* label continues to describe available history, not forecast
+accuracy.
 
 ### Guardrails
 

@@ -1,9 +1,10 @@
-"""
-Demande énergétique du grain vert — plancher de brûleur en Maillard.
+"""Experimental, non-constraining bean-energy research model.  ## TILAU ##
 
-Spec de référence : `wiki/BeanEnergy-MaillardFloor-Spec.md`.
+This compatibility API is not consumed by roast-plan generation. Its historical
+tables are retained only for isolated experiments and old callers; none of
+their percentages should be interpreted as physical laws or machine settings.
 
-Pourquoi ce module existe
+Historical rationale (not validated for active planning)
 -------------------------
 En Maillard les réactions sont ENDOTHERMIQUES : elles consomment l'énergie qu'on
 leur donne. Baisser le brûleur n'y décélère pas doucement, ça AFFAME la réaction.

@@ -152,8 +152,11 @@ detail of that dialog.
 
 The profile is what makes the guidance specific: the roast plan, the pre-roast benchmarks,
 the slider labels and the load checks all follow from the machine's real characteristics —
-its [thermal mass](glossary.md#thermal-mass), its expected turning point, how finely its
-controls can be set.
+its [thermal mass](glossary.md#thermal-mass), the top rate of rise it can reach, how finely its
+controls can be set. The [turning point](glossary.md#tp--turning-point) is not among them: how
+far the temperature dives after charging depends on how hard you are firing and on what went in,
+so the plan does not pretend to predict it — it draws a placeholder and replaces it with the real
+turning point the moment it happens, about a minute in.
 
 ### Machines TilauScope cannot drive
 
@@ -200,6 +203,12 @@ reached, by which point the machine's stored heat is still arriving and the temp
 past. TilauPID instead steers on where the temperature is *projected* to end up, so it eases
 off before the setpoint rather than after it.
 
+Once the machine has remained close to the setpoint with an almost flat rate of rise for ten
+seconds, a deliberately slow integral trim removes any small remaining temperature offset. It
+cannot act during the ramp or a fast approach, is limited to six burner percentage points and
+unwinds when the machine leaves the hold zone. This gives the steady hold time to settle
+without allowing accumulated correction to drive the next approach or an overshoot.
+
 ### During preheating
 
 Between START and [CHARGE](glossary.md#charge), the assistant shows its **Preheat** page: how
@@ -212,6 +221,19 @@ becomes available once bean temperature is stable.
 
 The page carries a **Burner** slider, so preheating can be corrected by hand without leaving
 the assistant. On a read-only machine the slider is hidden.
+
+TilauPID stops applying heat immediately if its selected temperature reading disappears,
+becomes invalid or changes in a way the machine cannot physically produce. A single bad
+reading holds the burner at zero until three valid readings have followed it. Repeated bad
+readings, a frozen sensor while the machine should be heating, or several seconds without a
+reading stop preheating and show a message; press START again only after checking the probe
+and its connection. An interrupted or sensor-degraded preheat is never used to recalibrate
+the controller.
+
+In **Simulator**, replay can run faster than real time. TilauPID therefore does not apply its
+wall-clock jump, frozen-sensor or missing-update tests to replayed samples; a fast but valid
+recorded temperature cannot latch the controller off. Missing, non-numeric and out-of-range
+values are still rejected, while all temporal protections remain active on a real machine.
 
 ### Following the preheat on the roast graph
 
@@ -236,14 +258,45 @@ previous roasts at the same setpoint: the power needed to *hold* that temperatur
 early to ease off to arrive without overshooting. Both are properties of your machine and your
 room, not of a specification sheet — which is why they are measured rather than assumed.
 
-There is no button and nothing to maintain. The second roast at a given setpoint already
-benefits from the first, and the model keeps sharpening as that setpoint is reused. Changing
-setpoint starts a fresh model for the new one.
+There is no calibration button and nothing to maintain. A completed preheat can benefit the
+next one once it contains enough trustworthy evidence: at least a minute of observation, a
+complete temperature window and, for holding power, a continuous stable hold around the
+setpoint. TilauPID uses filtered, robust measurements and limits how far one session may move
+either setting, so one probe spike or unusual start cannot dominate the model.
+
+Learning is kept separate for each machine and selected BT/ET input. Each qualified setpoint
+becomes a learned point at its actual temperature; between two nearby learned points, holding
+power and lead time are interpolated continuously. This avoids a control change simply because
+the requested setpoint crossed an arbitrary 10 °C boundary. Outside the learned range, the
+nearest point fades back to the physical or historical fallback over 15 °C, and points more
+than 40 °C apart are not joined as though they described one thermal regime. Existing learned
+10 °C values are retained as initial interpolation points during migration. Historical profiles
+from another machine or input, simulated profiles, interrupted sessions and sensor-degraded
+sessions are ignored. Excluding a roast from cooking-plan learning does not discard its
+separate preheat evidence. The controller
+also keeps the preceding learned values and the evidence behind each update, so a bad update
+can be diagnosed and rolled back without changing Artisan's profile format.
+
+The slow hold correction itself starts from zero on every preheat. When it produces a genuinely
+stable hold, the resulting burner power is included in the qualified holding-power evidence;
+the next preheat can therefore begin with a better base value and need less integral correction.
+
+An advanced offline identification tool can also build a thermal-model candidate from saved
+real preheats. The archive is analysed outside START, so this work cannot freeze the controls.
+The candidate then enters [shadow validation](glossary.md#shadow-validation): for three
+consecutive qualified real preheats it predicts temperature from the measured burner commands
+without controlling the heater. Only a candidate that remains within the prediction-error
+limits becomes a bounded fallback for holding power and response lead. Simulation and
+interrupted, short or poorly excited sessions never qualify; a later qualified
+failure withdraws the fallback. Direct stable-hold evidence and learned setpoint values always
+take priority, and no Artisan profile structure is changed.
 
 !!! note "Checking what it learned"
     Each time the model is consulted, TilauPID writes a short diagnostic to the application
-    log stating what your history suggests for that setpoint — the holding power it settled on
-    and how much lead time it expects to need. It is there for the roaster who wants to see the
+    log stating what your history suggests for that machine, input and setpoint — the holding
+    power it settled on, how much lead time it expects to need, the thermal candidate's
+    shadow/active state, the number of qualified updates and the evidence used for the latest
+    one. It is there for the roaster who wants to see the
     reasoning behind the preheat, or to understand why a preheat behaved differently from the
     last one. Nothing needs to be read for TilauPID to work.
 

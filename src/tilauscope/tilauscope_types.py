@@ -504,10 +504,12 @@ class ProbeDeviation(DataClassDictMixin):
 
 @dataclass
 class RoasterBasicPlanPerPhase:
-   #  "Light"          : ((0.85,0.70,0.50), (175,185), (08.5, 11.0), (3.5, 5.5), (3.0,4.0), (1.0,1.5), (0.12,0.15), (192,196)),
+   # No charge temperature here: since 2026-08-04 the charge is owned by
+   # _CHARGE_BAND_BY_PROCESS in roast_plan_model (band by process, in measured
+   # BT). The per-Agtron charge_temp field this grid used to carry was the
+   # first-version design and had been dead for a while — removed 2026-08-08.
    name: str
    heater_cmfc: tuple[float, float, float]
-   charge_temp: tuple[int, int]
    total_time: tuple[float, float]
    drying_time: tuple[float, float]
    maillard_time: tuple[float, float]

@@ -562,10 +562,13 @@ def test_planned_ror_at_never_returns_a_negative_slope() -> None:
 
 
 # ── Garde-fous physiques de durée, sur de vrais plans ────────────────────────
-# Ils viennent de la MACHINE, pas de la grille de style : sous 4:30 le séchage
+# Ils viennent de la MACHINE, pas de la grille de style : sous 3:30 le séchage
 # est hors d'atteinte sur un tambour de cette taille, sous 3:00 il faudrait
 # chauffer au point de brûler le grain. Les constantes sont locales à
 # generate_roast_plan — on teste l'invariant observable, pas la valeur.
+# ⚠️ Le plancher séchage était à 4:30 jusqu'au 2026-08-08 : il contredisait la
+# grille (Very Light demande 3,5-4,0) et écrasait la durée APPRISE. À 3:30 il
+# vaut le bas de la plus basse bande de grille — il ne peut plus écrire le style.
 
 def _mmss(value: str) -> float:
     """"MM:SS" -> minutes."""
@@ -599,7 +602,7 @@ def test_planned_drying_never_falls_under_the_machine_floor(
 ) -> None:
     assert corpus_plans
     for plan in corpus_plans:
-        assert _mmss(plan['Dry Phase']) >= 4.5 - 1e-9, plan['Bean Name']
+        assert _mmss(plan['Dry Phase']) >= 3.5 - 1e-9, plan['Bean Name']
 
 
 def test_planned_maillard_never_falls_under_the_machine_floor(
@@ -869,11 +872,13 @@ def test_an_unmeasured_water_activity_still_reads_not_measured() -> None:
 # Pure stage 1 of the phase-duration split (banc 2026-08-05): the geometry-only
 # numbers, before water activity or cross-roast calibration ever touch them.
 
-def _constraints(total_time=(24.0, 26.0), development_time=(2.0, 3.0)) -> Any:
-    """Minimal stand-in for RoasterBasicPlanPerPhase — only the two fields
+def _constraints(total_time=(24.0, 26.0), development_time=(2.0, 3.0),
+                 drying_time=(11.0, 13.0)) -> Any:
+    """Minimal stand-in for RoasterBasicPlanPerPhase — only the three fields
     _base_phase_durations reads."""
     from types import SimpleNamespace
-    return SimpleNamespace(total_time=total_time, development_time=development_time)
+    return SimpleNamespace(total_time=total_time, development_time=development_time,
+                           drying_time=drying_time)
 
 
 def test_base_phase_durations_total_is_the_style_band_mean() -> None:
@@ -890,16 +895,23 @@ def test_base_phase_durations_development_is_the_professional_band_mean() -> Non
     assert dev == pytest.approx(2.0)
 
 
-def test_base_phase_durations_dry_is_half_the_total_at_neutral_density_and_humidity() -> None:
+def test_base_phase_durations_dry_is_the_style_band_mean_at_neutral_density_and_humidity() -> None:
     """density=700 g/L and humidity=12% are the zero points of their respective
-    correction terms — drying collapses to exactly half the total."""
-    total, dry, _dev = TilauScopeRoastPlan._base_phase_durations(
-        roast_constraints=_constraints(total_time=(20.0, 20.0)), density=700.0, humidity=12.0)
-    assert dry == pytest.approx(total * 0.5)
+    correction terms — drying collapses to exactly its own grid band mean.
+
+    It is NOT a share of the total: the flat 50 % share was removed 2026-08-08
+    because it overshot the grid's drying band and squeezed Maillard, which is
+    computed as the remainder. Band mean here is 5.0, deliberately far from
+    half of the 20 min total, so a regression to the share would fail loudly.
+    """
+    _total, dry, _dev = TilauScopeRoastPlan._base_phase_durations(
+        roast_constraints=_constraints(total_time=(20.0, 20.0), drying_time=(4.5, 5.5)),
+        density=700.0, humidity=12.0)
+    assert dry == pytest.approx(5.0)
 
 
 def test_base_phase_durations_denser_or_wetter_beans_dry_longer() -> None:
-    """Both correction terms are additive on top of the 50 % share."""
+    """Both correction terms are additive on top of the drying band mean."""
     _t, dry_neutral, _d = TilauScopeRoastPlan._base_phase_durations(
         roast_constraints=_constraints(total_time=(20.0, 20.0)), density=700.0, humidity=12.0)
     _t, dry_denser, _d = TilauScopeRoastPlan._base_phase_durations(
@@ -921,17 +933,19 @@ def test_a_low_drying_duration_is_raised_to_the_floor(plan_model: TilauScopeRoas
     result = plan_model._calibrate_and_floor_phase_durations(
         dry_time_min=3.0, total_time_min=20.0, dev_time_min=2.0,
         drying_time_band=(4.0, 6.0), maillard_time_band=(3.0, 6.0),
-        t_dry_raw=None, t_fc_raw=None, t_n=0)
-    assert result.dry_time_min == pytest.approx(4.5)
+        t_dry_raw=None, t_fc_raw=None, t_n=0,
+        charge_weight_g=400.0, batch_optimal_g=400.0)
+    assert result.dry_time_min == pytest.approx(4.0)
 
 
-def test_a_low_maillard_duration_is_raised_to_the_floor(plan_model: TilauScopeRoastPlan) -> None:
+def test_a_low_maillard_duration_is_raised_to_the_data_guard(plan_model: TilauScopeRoastPlan) -> None:
     # dry=10, dev=2, total=12.5 -> baseline maillard = 0.5, well under the floor.
     result = plan_model._calibrate_and_floor_phase_durations(
         dry_time_min=10.0, total_time_min=12.5, dev_time_min=2.0,
         drying_time_band=(4.0, 6.0), maillard_time_band=(3.0, 6.0),
-        t_dry_raw=None, t_fc_raw=None, t_n=0)
-    assert result.maillard_time_min == pytest.approx(3.0)
+        t_dry_raw=None, t_fc_raw=None, t_n=0,
+        charge_weight_g=400.0, batch_optimal_g=400.0)
+    assert result.maillard_time_min == pytest.approx(2.0)
 
 
 def test_a_drying_floor_leaves_maillard_untouched(plan_model: TilauScopeRoastPlan) -> None:
@@ -940,8 +954,9 @@ def test_a_drying_floor_leaves_maillard_untouched(plan_model: TilauScopeRoastPla
     result = plan_model._calibrate_and_floor_phase_durations(
         dry_time_min=3.0, total_time_min=20.0, dev_time_min=2.0,
         drying_time_band=(4.0, 6.0), maillard_time_band=(3.0, 6.0),
-        t_dry_raw=None, t_fc_raw=None, t_n=0)
-    assert result.dry_time_min == pytest.approx(4.5)
+        t_dry_raw=None, t_fc_raw=None, t_n=0,
+        charge_weight_g=400.0, batch_optimal_g=400.0)
+    assert result.dry_time_min == pytest.approx(4.0)
     assert result.maillard_time_min == pytest.approx(15.0)
 
 
@@ -951,9 +966,10 @@ def test_a_maillard_floor_leaves_drying_untouched(plan_model: TilauScopeRoastPla
     result = plan_model._calibrate_and_floor_phase_durations(
         dry_time_min=10.0, total_time_min=12.5, dev_time_min=2.0,
         drying_time_band=(4.0, 6.0), maillard_time_band=(3.0, 6.0),
-        t_dry_raw=None, t_fc_raw=None, t_n=0)
+        t_dry_raw=None, t_fc_raw=None, t_n=0,
+        charge_weight_g=400.0, batch_optimal_g=400.0)
     assert result.dry_time_min == pytest.approx(10.0)
-    assert result.maillard_time_min == pytest.approx(3.0)
+    assert result.maillard_time_min == pytest.approx(2.0)
 
 
 def test_development_duration_never_appears_in_the_floored_result(
@@ -965,13 +981,15 @@ def test_development_duration_never_appears_in_the_floored_result(
     result = plan_model._calibrate_and_floor_phase_durations(
         dry_time_min=8.0, total_time_min=20.0, dev_time_min=2.0,
         drying_time_band=(4.0, 6.0), maillard_time_band=(3.0, 6.0),
-        t_dry_raw=None, t_fc_raw=None, t_n=0)
+        t_dry_raw=None, t_fc_raw=None, t_n=0,
+        charge_weight_g=400.0, batch_optimal_g=400.0)
     assert not hasattr(result, 'dev_time_min')
     # changing dev only shifts the maillard baseline linearly, one-for-one
     result_more_dev = plan_model._calibrate_and_floor_phase_durations(
         dry_time_min=8.0, total_time_min=20.0, dev_time_min=3.0,
         drying_time_band=(4.0, 6.0), maillard_time_band=(3.0, 6.0),
-        t_dry_raw=None, t_fc_raw=None, t_n=0)
+        t_dry_raw=None, t_fc_raw=None, t_n=0,
+        charge_weight_g=400.0, batch_optimal_g=400.0)
     assert result.maillard_time_min - result_more_dev.maillard_time_min == pytest.approx(1.0)
 
 
@@ -985,9 +1003,123 @@ def test_a_learned_drying_duration_admitted_by_the_adoption_window_is_still_floo
     result = plan_model._calibrate_and_floor_phase_durations(
         dry_time_min=5.0, total_time_min=20.0, dev_time_min=3.0,
         drying_time_band=(2.0, 6.0), maillard_time_band=(3.0, 6.0),
-        t_dry_raw=2.5, t_fc_raw=6.5, t_n=3)
+        t_dry_raw=2.5, t_fc_raw=6.5, t_n=3,
+        charge_weight_g=400.0, batch_optimal_g=400.0)
     assert result.timing_source.startswith('learned')
-    assert result.dry_time_min == pytest.approx(4.5)
+    assert result.dry_time_min == pytest.approx(4.0)
+
+
+# ── _dry_floor_min — the drying floor scales with how loaded the machine is ──
+# Arbitrage Tilau 2026-08-08: 4:30 at the machine's optimal batch, and a small
+# batch may dry faster because the energy to drive the water off scales with the
+# charged mass while the lamp's power does not. Before this the floor was a flat
+# 4.5 min and the phase durations never read the batch weight at all.
+
+def test_the_drying_floor_is_its_anchor_at_the_optimal_batch() -> None:
+    assert TilauScopeRoastPlan._dry_floor_min(400.0, 400.0) == pytest.approx(4.0)
+
+
+def test_a_smaller_batch_may_dry_faster_a_larger_one_may_not() -> None:
+    light = TilauScopeRoastPlan._dry_floor_min(250.0, 400.0)
+    heavy = TilauScopeRoastPlan._dry_floor_min(450.0, 400.0)
+    assert light < 4.0 < heavy
+    assert light == pytest.approx(3.325, abs=0.005)   # 3:20
+    assert heavy == pytest.approx(4.225, abs=0.005)   # 4:14
+
+
+def test_the_drying_floor_meets_tilau_s_small_batch_anchor() -> None:
+    """'150-200 g can dry in 3:00 on full fire' — the floor must sit at or under
+    that, never above, or it would forbid a roast the machine really does."""
+    for grams in (150.0, 175.0, 200.0):
+        assert TilauScopeRoastPlan._dry_floor_min(grams, 400.0) <= 3.11
+
+
+def test_the_drying_floor_stays_over_what_the_lamp_cannot_do_at_full_batch() -> None:
+    """'the lamp cannot dry 400 g in 3:30' — so the floor there must exceed it."""
+    assert TilauScopeRoastPlan._dry_floor_min(400.0, 400.0) > 3.5
+
+
+def test_a_more_inert_machine_gets_a_longer_floor() -> None:
+    """The floor of another roaster comes from its own thermal inertia rather
+    than from a field of its own — that coefficient exists for this."""
+    skywalker = TilauScopeRoastPlan._dry_floor_min(400.0, 400.0, 0.45)
+    heavy_drum = TilauScopeRoastPlan._dry_floor_min(400.0, 400.0, 0.90)
+    fluid_bed = TilauScopeRoastPlan._dry_floor_min(400.0, 400.0, 0.15)
+    assert fluid_bed < skywalker < heavy_drum
+    assert heavy_drum == pytest.approx(2 * skywalker)
+
+
+def test_the_drying_floor_keeps_a_fixed_share_that_the_batch_weight_cannot_remove() -> None:
+    """Heating the drum itself costs time no matter how little coffee is in it,
+    so the floor must not collapse toward zero with the weight."""
+    assert TilauScopeRoastPlan._dry_floor_min(0.0, 400.0) == pytest.approx(4.0 * 0.55)
+
+
+def test_an_unknown_optimal_batch_falls_back_to_the_anchor() -> None:
+    """A roaster with no declared optimal batch must not divide by zero."""
+    assert TilauScopeRoastPlan._dry_floor_min(300.0, 0.0) == pytest.approx(4.0)
+
+
+# ── Peak RoR ceiling — machine signature, bean modulation ────────────────────
+# Banc 2026-08-08: the planned curve was drawing peaks the machine never reaches
+# (up to 23.3 °C/min against a measured Skywalker median of 16.2 over 96 roasts).
+# The MACHINE sets the level (16.2 vs 21.1 on a Cormorant, 30% apart); the bean
+# only modulates it (per-bean medians 15.3-17.3, ±6%).
+
+def test_without_history_the_ceiling_is_the_machine_value(
+    plan_model: TilauScopeRoastPlan,
+) -> None:
+    ceiling, source = plan_model._resolve_peak_ror_ceiling(16.0, None, 0, 400.0)
+    assert ceiling == pytest.approx(16.0)
+    assert source == 'machine'
+
+
+def test_a_small_batch_never_learns_the_ceiling(
+    plan_model: TilauScopeRoastPlan,
+) -> None:
+    """Under 270 g the BT probe loses contact with the bean mass and under-reads
+    the peak, so learning from those roasts would encode a probe artefact."""
+    ceiling, source = plan_model._resolve_peak_ror_ceiling(16.0, 13.0, 5, 250.0)
+    assert ceiling == pytest.approx(16.0)
+    assert source == 'machine'
+
+
+def test_a_gently_roasted_bean_cannot_drag_the_ceiling_below_its_band(
+    plan_model: TilauScopeRoastPlan,
+) -> None:
+    """A habit is not a physical limit: the clamp is what stops a bean that
+    merely happens to have been roasted gently from redefining the machine."""
+    ceiling, _src = plan_model._resolve_peak_ror_ceiling(16.0, 10.0, 5, 400.0)
+    assert ceiling == pytest.approx(16.0 * 0.90)
+
+
+def test_a_bean_above_the_machine_median_may_raise_the_ceiling(
+    plan_model: TilauScopeRoastPlan,
+) -> None:
+    """The band is symmetric — gr2 really does peak at 17.3 on a machine whose
+    median is 16.2, and holding it down to the median would over-dry it."""
+    ceiling, _src = plan_model._resolve_peak_ror_ceiling(16.0, 17.3, 5, 400.0)
+    assert ceiling == pytest.approx(17.3)
+    assert plan_model._resolve_peak_ror_ceiling(16.0, 25.0, 5, 400.0)[0] == pytest.approx(17.6)
+
+
+def test_the_ceiling_fixes_the_shortest_reachable_drying() -> None:
+    """TP at 1.17 min, 96 -> 152 °C to climb, ceiling 16: the mean the curve can
+    hold is 0.75 x 16 = 12 °C/min, so the climb needs 56/12 min on top of TP."""
+    assert TilauScopeRoastPlan._dry_floor_from_ceiling(
+        1.17, 152.0, 96.0, 16.0) == pytest.approx(1.17 + 56.0 / 12.0)
+
+
+def test_a_more_powerful_machine_reaches_the_dry_end_sooner() -> None:
+    """The Cormorant's 21 against the Skywalker's 16, same climb."""
+    sw = TilauScopeRoastPlan._dry_floor_from_ceiling(1.17, 152.0, 96.0, 16.0)
+    cormorant = TilauScopeRoastPlan._dry_floor_from_ceiling(1.17, 152.0, 96.0, 21.0)
+    assert cormorant < sw
+
+
+def test_a_degenerate_climb_imposes_no_floor() -> None:
+    assert TilauScopeRoastPlan._dry_floor_from_ceiling(1.17, 96.0, 96.0, 16.0) == 0.0
+    assert TilauScopeRoastPlan._dry_floor_from_ceiling(1.17, 152.0, 96.0, 0.0) == 0.0
 
 
 # ── _resolve_drop_and_dev_ror — learned drop, FC→DROP coherence, drop/dev RoR
@@ -1380,7 +1512,7 @@ def test_learned_heater_profile_at_three_samples_replaces_the_grid_without_reapp
     assert result.heater_dev == pytest.approx(58.0)
 
 
-def test_the_energy_floor_raises_a_maillard_setpoint_below_it_and_leaves_a_higher_one_untouched(
+def test_the_experimental_energy_floor_does_not_constrain_active_setpoints(
     plan_model: TilauScopeRoastPlan,
 ) -> None:
     """The floor can only RAISE — every application is a max(). Here the grid
@@ -1389,7 +1521,7 @@ def test_the_energy_floor_raises_a_maillard_setpoint_below_it_and_leaves_a_highe
     grid dry setpoint (75), already above the floor, is left untouched."""
     result = _burner(plan_model, heater_cmfc=(0.80, 0.55, 0.45))
     assert result.heater_dry == pytest.approx(75.0)        # 80 - 5, already above floor
-    assert result.heater_maillard == pytest.approx(62.0)   # 55 - 5 = 50, raised to the floor
+    assert result.heater_maillard == pytest.approx(50.0)
 
 
 def test_the_energy_floor_never_lowers_a_setpoint_above_it(
@@ -1429,7 +1561,7 @@ def test_the_machine_ceiling_caps_every_setpoint(
 
 def _heater_ramp(plan_model: TilauScopeRoastPlan, *, dry_bt_temperature=150.0,
                   fc_bt=189.0, maillard_time_min=6.0, dev_inertia=0.5,
-                  expected_tp_bt=95.0, dry_ror_average=8.0,
+                  tp_bt_c=95.0, dry_ror_average=8.0,
                   heater_dry=75.0, heater_maillard=65.0, heater_dev=50.0,
                   heater_pre_fc=50.0, dev_free_pct=50.0,
                   floor=None, heater_max_pct=100.0,
@@ -1442,7 +1574,7 @@ def _heater_ramp(plan_model: TilauScopeRoastPlan, *, dry_bt_temperature=150.0,
     return plan_model._resolve_heater_ramp(
         dry_bt_temperature=dry_bt_temperature, fc_bt=fc_bt,
         maillard_time_min=maillard_time_min, dev_inertia=dev_inertia,
-        expected_tp_bt=expected_tp_bt, dry_ror_average=dry_ror_average,
+        tp_bt_c=tp_bt_c, dry_ror_average=dry_ror_average,
         to_native=lambda v: v,
         heater_dry=heater_dry, heater_maillard=heater_maillard, heater_dev=heater_dev,
         heater_pre_fc=heater_pre_fc, dev_free_pct=dev_free_pct,
@@ -1696,7 +1828,7 @@ def test_three_grid_sources_give_the_lowest_confidence(
     """All three sources "grid" score 0 — the floor of the scale."""
     result = _confidence(plan_model, fc_source="grid", timing_source="grid",
                           drop_source="grid")
-    assert result.level == "low"
+    assert result.level == "grid only"
 
 
 def test_three_fully_learned_sources_give_the_highest_confidence(
@@ -1706,7 +1838,7 @@ def test_three_fully_learned_sources_give_the_highest_confidence(
     result = _confidence(
         plan_model, fc_source="learned (n=5)", timing_source="learned (n=5)",
         drop_source="learned (n=5)")
-    assert result.level == "high"
+    assert result.level == "consistent history"
 
 
 def test_a_blend_label_scores_as_a_blend_not_as_fully_learned(
@@ -1719,7 +1851,7 @@ def test_a_blend_label_scores_as_a_blend_not_as_fully_learned(
     result = _confidence(
         plan_model, fc_source="learned/grid blend (n=2)",
         timing_source="learned/grid blend (n=2)", drop_source="grid")
-    assert result.level == "medium"
+    assert result.level == "partial history"
 
 
 def test_a_scattered_first_crack_history_demotes_high_to_medium(
@@ -1731,14 +1863,14 @@ def test_a_scattered_first_crack_history_demotes_high_to_medium(
     full_learned = _confidence(
         plan_model, fc_source="learned (n=5)", timing_source="learned (n=5)",
         drop_source="learned (n=5)")
-    assert full_learned.level == "high"
+    assert full_learned.level == "consistent history"
     scattered = _confidence(
         plan_model, fc_source="learned (n=5)", timing_source="learned (n=5)",
         drop_source="learned (n=5)", fc_bt_mad_c=2.6)
-    assert scattered.level == "medium"
+    assert scattered.level == "partial history"
 
 
-def test_the_tolerance_factor_tightens_as_confidence_rises(
+def test_history_alone_never_tightens_tolerance_below_one(
     plan_model: TilauScopeRoastPlan,
 ) -> None:
     """1.35 (low) relaxes the bands, 0.8 (high) tightens them — the factor
@@ -1751,8 +1883,8 @@ def test_the_tolerance_factor_tightens_as_confidence_rises(
                         timing_source="learned (n=5)", drop_source="learned (n=5)")
     assert low.tol_factor == pytest.approx(1.35)
     assert medium.tol_factor == pytest.approx(1.0)
-    assert high.tol_factor == pytest.approx(0.8)
-    assert low.tol_factor > medium.tol_factor > high.tol_factor
+    assert high.tol_factor == pytest.approx(1.0)
+    assert low.tol_factor > medium.tol_factor == high.tol_factor
 
 
 def test_the_back_to_back_note_needs_both_a_negative_correction_and_a_time(

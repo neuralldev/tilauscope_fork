@@ -16001,6 +16001,14 @@ class ApplicationWindow(QMainWindow):
     def validateProfileDict(self, profile_dict:dict[str,Any], quiet:bool=True, validate_signature:bool = False) -> ProfileData:
         ta:TypeAdapter[ProfileData] = self.getProfileDataTypeAdapter()
         profile:ProfileData = ta.validate_python(profile_dict)
+        ## TILAU ## P2 extension key: validate the untouched Artisan contract,
+        ## then restore the opaque fork payload before hash verification. This
+        ## keeps signed/hashed .alogs round-trippable without adding a field to
+        ## ProfileData.
+        _tilau_snapshot = profile_dict.get('tilau_roast_plan_snapshot')
+        if isinstance(_tilau_snapshot, dict):
+            cast(dict[str, Any], profile)['tilau_roast_plan_snapshot'] = copyd.deepcopy(
+                _tilau_snapshot)
         if self.official_build and validate_signature and ('version' not in profile or QVersionNumber.fromString(profile['version'])[0] >= QVersionNumber(4,2,0)):
 #        # testing:
 #        if validate_signature and 'version' in profile and 'signature' in profile:
@@ -16068,6 +16076,8 @@ class ApplicationWindow(QMainWindow):
             ## tilau_exclude_learning, re-admitting the roast into plan learning
             self.qmc.tilau_simulated_loaded = bool(profile.get('tilau_simulated', False)) if profile else False
             self.qmc.tilau_exclude_learning = bool(profile.get('tilau_exclude_learning', False)) if profile else False
+            self.qmc.tilau_roast_plan_snapshot = copyd.deepcopy(
+                profile.get('tilau_roast_plan_snapshot')) if profile else None  ## TILAU ## P2 round-trip
             ## TILAU ## — round-trip the preheat SV so re-saving a loaded PID roast keeps it
             _tilau_psv_loaded = profile.get('tilau_preheat_sv_c') if profile else None
             self.qmc.tilau_preheat_sv_c = float(_tilau_psv_loaded) if _tilau_psv_loaded is not None else None
@@ -17634,6 +17644,19 @@ class ApplicationWindow(QMainWindow):
                 pass
             profile['elevation'] = self.qmc.elevation
             profile['computed'] = self.computedProfileInformation()
+            ## TILAU ## P2 — complete the immutable pre-roast prediction with
+            ## observations at save time. This also catches colours entered
+            ## after DROP and keeps re-saved .alogs current.
+            _tilau_snapshot = getattr(self.qmc, 'tilau_roast_plan_snapshot', None)
+            if isinstance(_tilau_snapshot, dict):
+                try:
+                    from tilauscope.roast_plan_snapshot import complete_prediction_snapshot
+                    _tilau_snapshot = complete_prediction_snapshot(
+                        _tilau_snapshot, cast(dict[str, Any], profile))
+                    self.qmc.tilau_roast_plan_snapshot = copyd.deepcopy(_tilau_snapshot)
+                    cast(dict[str, Any], profile)['tilau_roast_plan_snapshot'] = _tilau_snapshot
+                except Exception as e:  # pylint: disable=broad-except
+                    _log.warning('could not complete roast-plan prediction snapshot: %s', e)
             # add positions of main event annotations and custom event flags
             profile['anno_positions'] = self.qmc.getAnnoPositions()
             profile['flag_positions'] = self.qmc.getFlagPositions()

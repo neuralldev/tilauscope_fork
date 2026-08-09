@@ -131,16 +131,30 @@ class _BleLoop(threading.Thread):
     def run(self) -> None:
         asyncio.set_event_loop(self._loop)
         self._ready.set()
-        self._loop.run_forever()
+        try:
+            self._loop.run_forever()
+        finally:
+            ## TILAU ## Drain cancellation before Python finalization; otherwise
+            ## CoreBluetooth may deliver into callback objects already destroyed.
+            pending = list(asyncio.all_tasks(self._loop))
+            for task in pending:
+                task.cancel()
+            if pending:
+                self._loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True))
+            self._loop.close()
 
     def submit(self, coro):
         """Schedule a coroutine on the loop from any thread; returns a Future."""
         self._ready.wait()
         return asyncio.run_coroutine_threadsafe(coro, self._loop)
 
-    def stop(self) -> None:
+    def stop(self) -> bool:
         if self._loop.is_running():
             self._loop.call_soon_threadsafe(self._loop.stop)
+        if threading.current_thread() is not self:
+            self.join(timeout=3.0)
+        return not self.is_alive()
 
 
 class TilauTC4BLE(QObject):
@@ -321,7 +335,8 @@ class TilauTC4BLE(QObject):
             self._ble.submit(self._disconnect()).result(timeout=3)
         except Exception:  # noqa: BLE001 - best-effort shutdown
             pass
-        self._ble.stop()
+        if not self._ble.stop():
+            _logd.warning("TilauTC4BLE: BLE loop did not stop cleanly")
 
     # ── coroutines (run on the private BLE loop) ────────────────────────────
     async def _connect(self) -> None:

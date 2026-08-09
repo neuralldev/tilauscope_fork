@@ -54,6 +54,7 @@ import bisect
 import logging
 import math
 import time
+import uuid
 from collections import deque
 from typing import TYPE_CHECKING, Final
 from dataclasses import dataclass
@@ -75,6 +76,7 @@ from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, 
     format_batch_label, to_agtron)
 from tilauscope.roasters import RoasterManager, RoasterContext
 from tilauscope.roast_plan_model import TilauScopeRoastPlan, heat_soak_correction
+from tilauscope.roast_plan_snapshot import build_prediction_snapshot
 ## TILAU ## moteur de trim pur (v1b) — calé hors-app sur le corpus de roasts
 from tilauscope.autopilot_core import (AutoPilotCore, TrimParams,
                                        Phase as _APPhase, Lever as _APLever)
@@ -3629,14 +3631,11 @@ class _CoolingPage(QWidget):
         tag  = "" if is_measured else "~"
         val_txt = f"{tag}{colour_val:.0f}"
 
-        # 2) écart depuis le centre de cible (Agtron ↑ = plus clair)
+        # 2) écart depuis le centre de cible (Agtron ↑ = plus clair). No
+        # universal colour-to-DROP-temperature correction is validated.
         miss = colour_val - mid
-        # canal réel : 0,323 °C/pt ; lisibilité DTR : 1 pt DTR ≈ 1,5 pt Agtron
-        drop_c  = max(-6.0, min(6.0, miss * 0.323))
-        dtr_pts = max(-6.0, min(6.0, miss / 1.5))
 
-        # Dans la bande (ou correction négligeable) → rien à corriger
-        if (tmin <= colour_val <= tmax) or abs(drop_c) < 0.5:
+        if tmin <= colour_val <= tmax:
             self._eor_color_next_line.setText(
                 "<span style='color:#A6E3A1'>"
                 + self._tpl_color_ontarget.format(val_txt, f"{mid:.0f}", f"{band:.0f}")
@@ -3646,12 +3645,13 @@ class _CoolingPage(QWidget):
 
         # 3) correction directionnelle annoncée
         dir_txt = self._tr_color_too_light if miss > 0 else self._tr_color_too_dark
-        col = "#F38BA8" if abs(drop_c) >= 4.0 else "#F9E2AF"
+        col = "#F9E2AF"
         self._eor_color_next_line.setText(
             f"<span style='color:{col}'>"
-            + self._tpl_color_next.format(
-                val_txt, f"{mid:.0f}", f"{band:.0f}", dir_txt,
-                f"{abs(miss):.0f}", f"{drop_c:+.0f}", f"{dtr_pts:+.0f}")
+            + QApplication.translate(
+                "tilauscope",
+                "Measured colour {0} is {1} by {2} Agtron points. Review development time and the live curve; no universal DROP-temperature correction is applied.").format(
+                    val_txt, dir_txt, f"{abs(miss):.0f}")
             + "</span>")
         box.show()
 
@@ -5006,6 +5006,10 @@ class RoastAssistantPanel(QWidget):
         # (il ne se reset PAS au stop : le toggle se pose au bilan EOR, après
         # l'arrêt de l'enregistrement, et doit survivre jusqu'au save).
         self.aw.qmc.tilau_exclude_learning = False
+        # A plan snapshot belongs to one roast. Do not erase a completed roast
+        # merely because the panel was reopened before RESET. ## TILAU ##
+        if self.aw.qmc.timeindex[0] < 0:
+            self.aw.qmc.tilau_roast_plan_snapshot = None
         try:
             self._page_drop._eor_btn_exclude.setChecked(False)
         except (AttributeError, RuntimeError):
@@ -5045,6 +5049,7 @@ class RoastAssistantPanel(QWidget):
             )
             self._plan = plan_dict
             self._plan_initial = plan_dict   ## TILAU ## référence figée pour le bilan EOR
+            self._capture_prediction_snapshot(plan_dict)  ## TILAU ## P2 pre-roast truth
             self._build_soak_note()
             _logd.debug(
                 f"RoastAssistant: plan généré pour {bean.name} → {agtron.name}"
@@ -5284,6 +5289,21 @@ class RoastAssistantPanel(QWidget):
 
     # ── Régénération partielle du plan ─────────────────────────────────────────
 
+    def _capture_prediction_snapshot(self, plan: dict) -> None:
+        """Freeze the latest plan only while CHARGE is still unmarked. ## TILAU ##"""
+        qmc = self.aw.qmc
+        if qmc.timeindex[0] >= 0:
+            return
+        if qmc.roastUUID is None:
+            qmc.roastUUID = uuid.uuid4().hex
+        target = self._agtron
+        if target is None:
+            return
+        target_mid = (target.agtron_range.min_value + target.agtron_range.max_value) / 2.0
+        qmc.tilau_roast_plan_snapshot = build_prediction_snapshot(
+            plan, plan_id=qmc.roastUUID, target_color_agtron=target_mid,
+            expected_color_basis="ground", mode=qmc.mode)
+
     def _read_probe_deviation(self):
         """
         Lit la déviation sonde manuelle depuis QSettings (groupe ProbeDeviation).
@@ -5347,6 +5367,7 @@ class RoastAssistantPanel(QWidget):
             )
             self._plan = plan_dict
             self._plan_initial = plan_dict                                   ## TILAU ##
+            self._capture_prediction_snapshot(plan_dict)                     ## TILAU ## P2
             self._build_soak_note()
             # Ré-applique les recalages jalons déjà actés (ex. TP pendant     ## TILAU ##
             # DRY) — sinon la régénération ambiante les effacerait.           ## TILAU ##
@@ -5619,8 +5640,8 @@ class RoastAssistantPanel(QWidget):
         if self._plan is None:
             self._ap_notice = (self._tr_ap_blocked_noplan, _S_WARN, now + 8)
             return
-        conf = str(self._plan.get("Plan Confidence", "low")).lower()
-        if conf.startswith("low"):
+        support = str(self._plan.get("History Support", "grid only")).lower()
+        if support.startswith("grid only"):
             self._ap_notice = (self._tr_ap_blocked_lowconf, _S_WARN, now + 8)
             return
         # ── Flag A/B (QSettings caché, lu à CHAQUE armement off→armé — jamais ── ## TILAU ##
@@ -5783,8 +5804,17 @@ class RoastAssistantPanel(QWidget):
         flashed = {i for i, t0 in self._ap_lever_flash.items() if _now - t0 < 10.0}
         # barre jalon : progression BT vers la cible de phase + ETA grossier
         if p == self._PHASE_DRY:
-            _tp_c = float(getattr(self.roast_context, "expected_tp_bt", 100.0) or 100.0)
-            lo = fromCtoFstrict(_tp_c) if mode == 'F' else _tp_c
+            ## Borne basse = le TP du PLAN, en unités natives. Avant, c'était le
+            ## champ roaster expected_tp_bt, supprimé le 2026-08-08 : il figeait
+            ## un TP « machine » que rien n'étayait. Le plan porte déjà le point,
+            ## et le replan TP y écrit le TP RÉELLEMENT observé dès qu'il a lieu —
+            ## donc pendant le séchage cette borne est la vraie, pas une théorie.
+            _tp_wp = _waypoint(
+                ((self._plan or {}).get("bt_plan_curve") or {}).get("waypoints") or [],
+                "tp", 1)
+            ## Repli inatteignable avec un plan généré (les waypoints existent
+            ## toujours) : on dégrade sans jamais diviser par zéro.
+            lo = float(_tp_wp["bt"]) if _tp_wp else min(bt, dry_end_temp - 1.0)
             hi = dry_end_temp
         elif p == self._PHASE_MAI:
             lo, hi = dry_end_temp, fc_temp

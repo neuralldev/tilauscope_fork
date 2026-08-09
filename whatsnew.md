@@ -24,6 +24,8 @@ This release rewrites how the roast plan reasons about heat, and finishes turnin
 * **MQTT sensors are managed in Configuration ▸ INTEGRATIONS**, under the broker they belong to, edited in place. Each sensor declares the unit it publishes in, and temperatures are converted on arrival into the unit the session is working in.
 * TilauScope can now **ask a gateway for a reading** instead of waiting for one — a plug reporting once a minute no longer leaves its channel empty for most of the roast. Brokers can be reached over **TLS**, and sensors keep reporting after a connection drops and comes back.
 * The roast graph shows a **Preheat panel** while TilauPID heats the machine — setpoint, the temperature being steered on, the gap left, rate of rise, applied power and time remaining — turning to *Ready to charge* once the band is reached.
+* **TilauPID now settles onto the target instead of switching around it.** It anticipates the temperature still to come, varies its learned holding power continuously between setpoints, and applies a deliberately slow final trim only once the machine is genuinely stable.
+* **Preheating learning is safer.** Invalid, frozen or missing probe readings cut the heater and cannot train the controller. An optional offline thermal model must first predict three complete real preheats successfully in shadow — with no authority over the heater — before it may contribute a bounded starting estimate.
 
 ## 🏷️ End of roast and labels
 

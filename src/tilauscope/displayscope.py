@@ -6042,7 +6042,7 @@ class TilauScope(QWidget):
             ## TILAU ## only the TilauScope preheating PID is piloted here;
             ## Artisan's own PID is left untouched (no longer driven by TilauScope).
             if self.aw.tilauPreheatingPid is not None and self.aw.tilauPreheatingPid.active:
-                self.aw.tilauPreheatingPid.stop()
+                self.aw.tilauPreheatingPid.stop(reason="recording_stop")
             self.btn_start_stop.setToolTip(QApplication.translate('Tooltip', 'Start recording'))
             # Ouvrir roast properties 800ms après la fin pour laisser Artisan terminer.
             # Mode batch (relance back-to-back) : PAS de formulaire — la saisie

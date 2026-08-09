@@ -5,6 +5,57 @@
     "Action: Monitor momentum; consider reducing airflow.",
     "Action: Increase extraction/airflow to shed thermal energy."
    ],
+   "airflow_dev_learned": 40.0,
+   "airflow_dry_learned": 30.0,
+   "airflow_mai_learned": 35.0,
+   "airflow_samples": 2,
+   "coherent_profile": {
+    "agtron": 53.4,
+    "airflow_dev": 40.0,
+    "airflow_dry": 30.0,
+    "airflow_maillard": 35.0,
+    "batch_g": 400.0,
+    "color_basis": "whole",
+    "dev_time_min": 1.7,
+    "dev_trajectory": {
+     "0": {
+      "0.25": 40.0,
+      "0.5": 40.0,
+      "0.75": 40.0,
+      "1.0": 40.0
+     },
+     "2": {
+      "0.25": 35.0,
+      "0.5": 37.0,
+      "0.75": 40.0,
+      "1.0": 40.0
+     },
+     "3": {
+      "0.25": 50.0,
+      "0.5": 45.0,
+      "0.75": 45.0,
+      "1.0": 45.0
+     }
+    },
+    "drop_bt_c": 200.1,
+    "drop_ror_c": 6.608,
+    "dry_time_min": 5.9,
+    "fc_bt_c": 187.1,
+    "heater_de": 74.0,
+    "heater_dev": 45.0,
+    "heater_dry": 75.0,
+    "heater_fc": 55.0,
+    "heater_maillard": 70.0,
+    "id": "Cortes - Washed  Wet Process - 2024_26-02-15_0908.alog",
+    "maillard_time_min": 4.367,
+    "pre_de_descent": [
+     70.0,
+     2.0
+    ]
+   },
+   "coherent_profile_basis": "whole",
+   "coherent_profile_samples": 2,
+   "coherent_profile_source": "grid/profile blend (n=2)",
    "crashes": [
     {
      "occurrence_count": 2,
@@ -17,32 +68,45 @@
    "dev_traj_samples": 2,
    "dev_trajectory_learned": {
     "0": {
-     "0.25": 45.0,
-     "0.5": 47.5,
-     "0.75": 50.0,
-     "1.0": 50.0
+     "0.25": 40.0,
+     "0.5": 40.0,
+     "0.75": 40.0,
+     "1.0": 40.0
     },
     "2": {
-     "0.25": 40.5,
-     "0.5": 41.0,
-     "0.75": 42.5,
-     "1.0": 42.5
+     "0.25": 35.0,
+     "0.5": 37.0,
+     "0.75": 40.0,
+     "1.0": 40.0
     },
     "3": {
      "0.25": 50.0,
-     "0.5": 47.5,
-     "0.75": 46.5,
-     "1.0": 48.0
+     "0.5": 45.0,
+     "0.75": 45.0,
+     "1.0": 45.0
     }
    },
-   "drop_bt_learned_c": 198.6,
-   "drop_bt_mad_c": 0.65,
+   "drop_bt_learned_c": 200.1,
+   "drop_bt_mad_c": 1.8,
    "drop_bt_samples": 2,
+   "drop_color_basis": "whole",
    "drop_ror_learned_c": 6.7,
    "drop_ror_samples": 2,
-   "fc_bt_learned_c": 185.3,
+   "fc_bt_learned_c": 187.1,
    "fc_bt_mad_c": 1.8,
    "fc_bt_samples": 2,
+   "fc_regression": {
+    "baseline_mae_c": null,
+    "charge_max_c": null,
+    "charge_min_c": null,
+    "charge_range_c": 0.0,
+    "n": 2,
+    "offset": null,
+    "reason": "insufficient samples",
+    "regression_mae_c": null,
+    "slope": null,
+    "status": "refused"
+   },
    "fc_regression_offset": null,
    "fc_regression_slope": null,
    "flicks": [
@@ -67,13 +131,13 @@
     ],
     "n_points": 717
    },
-   "heater_de_learned": 70.0,
+   "heater_de_learned": 74.0,
    "heater_de_samples": 2,
-   "heater_dev_learned": 47.5,
-   "heater_dry_learned": 77.5,
-   "heater_fc_learned": 52.5,
+   "heater_dev_learned": 45.0,
+   "heater_dry_learned": 75.0,
+   "heater_fc_learned": 55.0,
    "heater_fc_samples": 2,
-   "heater_mai_learned": 69.5,
+   "heater_mai_learned": 70.0,
    "heater_samples": 2,
    "notes": [
     "CRASH (2x) at 04:42 during DRY. Severity: 1.16",
@@ -82,37 +146,14 @@
    "peak_ror_learned": 15.8,
    "peak_ror_n": 2,
    "pre_de_descent_samples": 2,
-   "pre_de_lead_learned": 57.0,
-   "pre_de_step_learned": 3.5,
-   "timing_dry_min_learned": 5.63,
-   "timing_fc_min_learned": 9.47,
+   "pre_de_lead_learned": 70.0,
+   "pre_de_step_learned": 2.0,
+   "prediction_error_summary": {},
+   "timing_dry_min_learned": 5.9,
+   "timing_fc_min_learned": 10.27,
    "timing_samples": 2
   },
-  "gr2-250-medium": {
-   "actions": [],
-   "crashes": [],
-   "dev_traj_samples": 0,
-   "dev_trajectory_learned": {},
-   "drop_bt_learned_c": null,
-   "drop_bt_mad_c": null,
-   "drop_bt_samples": 0,
-   "fc_bt_learned_c": 183.3,
-   "fc_bt_mad_c": null,
-   "fc_bt_samples": 1,
-   "fc_regression_offset": null,
-   "fc_regression_slope": null,
-   "flicks": [],
-   "graph_summary": {
-    "keys": [],
-    "n_points": 0
-   },
-   "notes": [],
-   "peak_ror_learned": 15.5,
-   "peak_ror_n": 1,
-   "timing_dry_min_learned": 4.93,
-   "timing_fc_min_learned": 9.1,
-   "timing_samples": 1
-  },
+  "gr2-250-medium": null,
   "gr2-400-medium": {
    "actions": [
     "Action: Monitor momentum; consider reducing airflow.",
@@ -124,6 +165,54 @@
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy."
    ],
+   "airflow_dev_learned": null,
+   "airflow_dry_learned": null,
+   "airflow_mai_learned": null,
+   "airflow_samples": 1,
+   "coherent_profile": {
+    "agtron": 55.8,
+    "airflow_dev": 45.0,
+    "airflow_dry": 30.0,
+    "airflow_maillard": 35.0,
+    "batch_g": 400.0,
+    "color_basis": "whole",
+    "dev_time_min": 1.467,
+    "dev_trajectory": {
+     "0": {
+      "0.25": 45.0,
+      "0.5": 45.0,
+      "0.75": 45.0,
+      "1.0": 50.0
+     },
+     "2": {
+      "0.25": 42.0,
+      "0.5": 40.0,
+      "0.75": 40.0,
+      "1.0": 40.0
+     },
+     "3": {
+      "0.25": 55.0,
+      "0.5": 45.0,
+      "0.75": 45.0,
+      "1.0": 40.0
+     }
+    },
+    "drop_bt_c": 213.8,
+    "drop_ror_c": 7.34,
+    "dry_time_min": 5.833,
+    "fc_bt_c": 200.7,
+    "heater_de": 75.0,
+    "heater_dev": 45.0,
+    "heater_dry": 75.0,
+    "heater_fc": 60.0,
+    "heater_maillard": 70.0,
+    "id": "74110 GR2 - Natural  Dry Process - 2025_26-04-30_1240.alog",
+    "maillard_time_min": 3.167,
+    "pre_de_descent": null
+   },
+   "coherent_profile_basis": "whole",
+   "coherent_profile_samples": 1,
+   "coherent_profile_source": "reference only (n=1)",
    "crashes": [
     {
      "occurrence_count": 1,
@@ -154,37 +243,31 @@
      "time": 543.0
     }
    ],
-   "dev_traj_samples": 2,
-   "dev_trajectory_learned": {
-    "0": {
-     "0.25": 52.5,
-     "0.5": 52.5,
-     "0.75": 52.5,
-     "1.0": 55.0
-    },
-    "2": {
-     "0.25": 41.0,
-     "0.5": 40.0,
-     "0.75": 40.0,
-     "1.0": 40.0
-    },
-    "3": {
-     "0.25": 50.0,
-     "0.5": 45.0,
-     "0.75": 42.5,
-     "1.0": 40.0
-    }
+   "dev_traj_samples": 0,
+   "dev_trajectory_learned": {},
+   "drop_bt_learned_c": null,
+   "drop_bt_mad_c": null,
+   "drop_bt_samples": 0,
+   "drop_color_basis": null,
+   "drop_ror_learned_c": null,
+   "drop_ror_samples": 0,
+   "fc_bt_learned_c": null,
+   "fc_bt_mad_c": null,
+   "fc_bt_samples": 0,
+   "fc_regression": {
+    "baseline_mae_c": null,
+    "charge_max_c": null,
+    "charge_min_c": null,
+    "charge_range_c": 0.0,
+    "n": 3,
+    "offset": null,
+    "reason": "insufficient samples",
+    "regression_mae_c": null,
+    "slope": null,
+    "status": "refused"
    },
-   "drop_bt_learned_c": 211.4,
-   "drop_bt_mad_c": 2.35,
-   "drop_bt_samples": 2,
-   "drop_ror_learned_c": 6.0,
-   "drop_ror_samples": 2,
-   "fc_bt_learned_c": 197.8,
-   "fc_bt_mad_c": 2.9,
-   "fc_bt_samples": 3,
-   "fc_regression_offset": -382.89,
-   "fc_regression_slope": 3.15,
+   "fc_regression_offset": null,
+   "fc_regression_slope": null,
    "flicks": [
     {
      "occurrence_count": 1,
@@ -228,14 +311,14 @@
     ],
     "n_points": 730
    },
-   "heater_de_learned": 71.0,
-   "heater_de_samples": 2,
-   "heater_dev_learned": 45.0,
-   "heater_dry_learned": 72.5,
-   "heater_fc_learned": 55.0,
-   "heater_fc_samples": 2,
-   "heater_mai_learned": 67.5,
-   "heater_samples": 2,
+   "heater_de_learned": null,
+   "heater_de_samples": 0,
+   "heater_dev_learned": null,
+   "heater_dry_learned": null,
+   "heater_fc_learned": null,
+   "heater_fc_samples": 0,
+   "heater_mai_learned": null,
+   "heater_samples": 0,
    "notes": [
     "CRASH (1x) at 02:24 during DRY. Severity: 10.13",
     "CRASH (1x) at 04:22 during DRY. Severity: 1.22",
@@ -248,12 +331,13 @@
    ],
    "peak_ror_learned": 17.3,
    "peak_ror_n": 3,
-   "pre_de_descent_samples": 1,
-   "pre_de_lead_learned": 188.0,
-   "pre_de_step_learned": 4.0,
-   "timing_dry_min_learned": 5.97,
-   "timing_fc_min_learned": 10.13,
-   "timing_samples": 3
+   "pre_de_descent_samples": 0,
+   "pre_de_lead_learned": null,
+   "pre_de_step_learned": null,
+   "prediction_error_summary": {},
+   "timing_dry_min_learned": null,
+   "timing_fc_min_learned": null,
+   "timing_samples": 0
   },
   "gr2-400-medium-back-to-back": {
    "actions": [
@@ -266,6 +350,54 @@
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy."
    ],
+   "airflow_dev_learned": null,
+   "airflow_dry_learned": null,
+   "airflow_mai_learned": null,
+   "airflow_samples": 1,
+   "coherent_profile": {
+    "agtron": 55.8,
+    "airflow_dev": 45.0,
+    "airflow_dry": 30.0,
+    "airflow_maillard": 35.0,
+    "batch_g": 400.0,
+    "color_basis": "whole",
+    "dev_time_min": 1.467,
+    "dev_trajectory": {
+     "0": {
+      "0.25": 45.0,
+      "0.5": 45.0,
+      "0.75": 45.0,
+      "1.0": 50.0
+     },
+     "2": {
+      "0.25": 42.0,
+      "0.5": 40.0,
+      "0.75": 40.0,
+      "1.0": 40.0
+     },
+     "3": {
+      "0.25": 55.0,
+      "0.5": 45.0,
+      "0.75": 45.0,
+      "1.0": 40.0
+     }
+    },
+    "drop_bt_c": 213.8,
+    "drop_ror_c": 7.34,
+    "dry_time_min": 5.833,
+    "fc_bt_c": 200.7,
+    "heater_de": 75.0,
+    "heater_dev": 45.0,
+    "heater_dry": 75.0,
+    "heater_fc": 60.0,
+    "heater_maillard": 70.0,
+    "id": "74110 GR2 - Natural  Dry Process - 2025_26-04-30_1240.alog",
+    "maillard_time_min": 3.167,
+    "pre_de_descent": null
+   },
+   "coherent_profile_basis": "whole",
+   "coherent_profile_samples": 1,
+   "coherent_profile_source": "reference only (n=1)",
    "crashes": [
     {
      "occurrence_count": 1,
@@ -296,37 +428,31 @@
      "time": 543.0
     }
    ],
-   "dev_traj_samples": 2,
-   "dev_trajectory_learned": {
-    "0": {
-     "0.25": 52.5,
-     "0.5": 52.5,
-     "0.75": 52.5,
-     "1.0": 55.0
-    },
-    "2": {
-     "0.25": 41.0,
-     "0.5": 40.0,
-     "0.75": 40.0,
-     "1.0": 40.0
-    },
-    "3": {
-     "0.25": 50.0,
-     "0.5": 45.0,
-     "0.75": 42.5,
-     "1.0": 40.0
-    }
+   "dev_traj_samples": 0,
+   "dev_trajectory_learned": {},
+   "drop_bt_learned_c": null,
+   "drop_bt_mad_c": null,
+   "drop_bt_samples": 0,
+   "drop_color_basis": null,
+   "drop_ror_learned_c": null,
+   "drop_ror_samples": 0,
+   "fc_bt_learned_c": null,
+   "fc_bt_mad_c": null,
+   "fc_bt_samples": 0,
+   "fc_regression": {
+    "baseline_mae_c": null,
+    "charge_max_c": null,
+    "charge_min_c": null,
+    "charge_range_c": 0.0,
+    "n": 3,
+    "offset": null,
+    "reason": "insufficient samples",
+    "regression_mae_c": null,
+    "slope": null,
+    "status": "refused"
    },
-   "drop_bt_learned_c": 211.4,
-   "drop_bt_mad_c": 2.35,
-   "drop_bt_samples": 2,
-   "drop_ror_learned_c": 6.0,
-   "drop_ror_samples": 2,
-   "fc_bt_learned_c": 197.8,
-   "fc_bt_mad_c": 2.9,
-   "fc_bt_samples": 3,
-   "fc_regression_offset": -382.89,
-   "fc_regression_slope": 3.15,
+   "fc_regression_offset": null,
+   "fc_regression_slope": null,
    "flicks": [
     {
      "occurrence_count": 1,
@@ -370,14 +496,14 @@
     ],
     "n_points": 730
    },
-   "heater_de_learned": 71.0,
-   "heater_de_samples": 2,
-   "heater_dev_learned": 45.0,
-   "heater_dry_learned": 72.5,
-   "heater_fc_learned": 55.0,
-   "heater_fc_samples": 2,
-   "heater_mai_learned": 67.5,
-   "heater_samples": 2,
+   "heater_de_learned": null,
+   "heater_de_samples": 0,
+   "heater_dev_learned": null,
+   "heater_dry_learned": null,
+   "heater_fc_learned": null,
+   "heater_fc_samples": 0,
+   "heater_mai_learned": null,
+   "heater_samples": 0,
    "notes": [
     "CRASH (1x) at 02:24 during DRY. Severity: 10.13",
     "CRASH (1x) at 04:22 during DRY. Severity: 1.22",
@@ -390,12 +516,13 @@
    ],
    "peak_ror_learned": 17.3,
    "peak_ror_n": 3,
-   "pre_de_descent_samples": 1,
-   "pre_de_lead_learned": 188.0,
-   "pre_de_step_learned": 4.0,
-   "timing_dry_min_learned": 5.97,
-   "timing_fc_min_learned": 10.13,
-   "timing_samples": 3
+   "pre_de_descent_samples": 0,
+   "pre_de_lead_learned": null,
+   "pre_de_step_learned": null,
+   "prediction_error_summary": {},
+   "timing_dry_min_learned": null,
+   "timing_fc_min_learned": null,
+   "timing_samples": 0
   },
   "mbinga-400-medium-decaf": {
    "actions": [
@@ -406,6 +533,57 @@
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy."
    ],
+   "airflow_dev_learned": null,
+   "airflow_dry_learned": null,
+   "airflow_mai_learned": null,
+   "airflow_samples": 1,
+   "coherent_profile": {
+    "agtron": 54.7,
+    "airflow_dev": 50.0,
+    "airflow_dry": 40.0,
+    "airflow_maillard": 40.0,
+    "batch_g": 400.0,
+    "color_basis": "whole",
+    "dev_time_min": 1.667,
+    "dev_trajectory": {
+     "0": {
+      "0.25": 50.0,
+      "0.5": 50.0,
+      "0.75": 50.0,
+      "1.0": 50.0
+     },
+     "2": {
+      "0.25": 32.0,
+      "0.5": 32.0,
+      "0.75": 30.0,
+      "1.0": 30.0
+     },
+     "3": {
+      "0.25": 45.0,
+      "0.5": 45.0,
+      "0.75": 45.0,
+      "1.0": 45.0
+     }
+    },
+    "drop_bt_c": 199.8,
+    "drop_ror_c": 6.903,
+    "dry_time_min": 4.2,
+    "fc_bt_c": 187.2,
+    "heater_de": 70.0,
+    "heater_dev": 45.0,
+    "heater_dry": 75.0,
+    "heater_fc": 50.0,
+    "heater_maillard": 60.0,
+    "id": "Mbinga - Washed Decaf (Sugarcane) - 2025_26-01-24_1732.alog",
+    "maillard_time_min": 3.733,
+    "pre_de_descent": [
+     138.0,
+     4.0
+    ]
+   },
+   "coherent_profile_basis": "whole",
+   "coherent_profile_samples": 1,
+   "coherent_profile_source": "reference only (n=1)",
    "crashes": [
     {
      "occurrence_count": 1,
@@ -429,35 +607,29 @@
      "time": 554.0
     }
    ],
-   "dev_traj_samples": 1,
-   "dev_trajectory_learned": {
-    "0": {
-     "0.25": 50.0,
-     "0.5": 50.0,
-     "0.75": 50.0,
-     "1.0": 50.0
-    },
-    "2": {
-     "0.25": 32.0,
-     "0.5": 32.0,
-     "0.75": 30.0,
-     "1.0": 30.0
-    },
-    "3": {
-     "0.25": 45.0,
-     "0.5": 45.0,
-     "0.75": 45.0,
-     "1.0": 45.0
-    }
-   },
-   "drop_bt_learned_c": 199.4,
+   "dev_traj_samples": 0,
+   "dev_trajectory_learned": {},
+   "drop_bt_learned_c": null,
    "drop_bt_mad_c": null,
-   "drop_bt_samples": 1,
-   "drop_ror_learned_c": 6.9,
-   "drop_ror_samples": 1,
-   "fc_bt_learned_c": 187.2,
+   "drop_bt_samples": 0,
+   "drop_color_basis": null,
+   "drop_ror_learned_c": null,
+   "drop_ror_samples": 0,
+   "fc_bt_learned_c": null,
    "fc_bt_mad_c": null,
-   "fc_bt_samples": 1,
+   "fc_bt_samples": 0,
+   "fc_regression": {
+    "baseline_mae_c": null,
+    "charge_max_c": null,
+    "charge_min_c": null,
+    "charge_range_c": 0.0,
+    "n": 1,
+    "offset": null,
+    "reason": "insufficient samples",
+    "regression_mae_c": null,
+    "slope": null,
+    "status": "refused"
+   },
    "fc_regression_offset": null,
    "fc_regression_slope": null,
    "flicks": [
@@ -496,14 +668,14 @@
     ],
     "n_points": 574
    },
-   "heater_de_learned": 70.0,
-   "heater_de_samples": 1,
-   "heater_dev_learned": 45.0,
-   "heater_dry_learned": 75.0,
-   "heater_fc_learned": 50.0,
-   "heater_fc_samples": 1,
-   "heater_mai_learned": 60.0,
-   "heater_samples": 1,
+   "heater_de_learned": null,
+   "heater_de_samples": 0,
+   "heater_dev_learned": null,
+   "heater_dry_learned": null,
+   "heater_fc_learned": null,
+   "heater_fc_samples": 0,
+   "heater_mai_learned": null,
+   "heater_samples": 0,
    "notes": [
     "CRASH (1x) at 05:02 during MAILLARD. Severity: 1.9",
     "CRASH (1x) at 07:02 during MAILLARD. Severity: 1.05",
@@ -514,12 +686,13 @@
    ],
    "peak_ror_learned": 15.3,
    "peak_ror_n": 1,
-   "pre_de_descent_samples": 1,
-   "pre_de_lead_learned": 138.0,
-   "pre_de_step_learned": 4.0,
-   "timing_dry_min_learned": 4.2,
-   "timing_fc_min_learned": 7.93,
-   "timing_samples": 1
+   "pre_de_descent_samples": 0,
+   "pre_de_lead_learned": null,
+   "pre_de_step_learned": null,
+   "prediction_error_summary": {},
+   "timing_dry_min_learned": null,
+   "timing_fc_min_learned": null,
+   "timing_samples": 0
   },
   "unknown-350-light": null
  },
@@ -527,123 +700,111 @@
   "cortes-400-medium": {
    "Air Ramp": [
     {
-     "_af": 0.25,
+     "_af": 0.5,
      "airflow": 35,
-     "bt": 170.3
-    },
-    {
-     "_af": 0.75,
-     "airflow": 40,
-     "bt": 174.7
+     "bt": 173.7
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
-   "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 50%",
+   "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 40%",
    "Ambient Humidity": "48.0",
    "Ambient Temp": "20.0",
    "Bean Humidity": "10.5",
    "Bean Name": "Cortes",
    "Charge Temp": "187.2",
    "Density": "700.0",
-   "Dev Profile Source": "learned (n=2)",
+   "Dev Profile Source": "grid/profile blend (n=2)",
    "Dev Ramp": [
     {
-     "_f": 0.167,
-     "bt": 186.5,
-     "heater": 56
-    },
-    {
-     "_f": 0.333,
-     "airflow": 45,
-     "bt": 188.9,
-     "heater": 55
-    },
-    {
      "_f": 0.5,
-     "bt": 191.2,
-     "heater": 54
+     "airflow": 40,
+     "bt": 192.1,
+     "heater": 47
     },
     {
-     "_f": 0.667,
-     "bt": 193.6,
-     "heater": 53
-    },
-    {
-     "_f": 0.833,
-     "airflow": 50,
-     "bt": 195.9,
-     "heater": 52
+     "_f": 0.75,
+     "bt": 195.6,
+     "heater": 46
     },
     {
      "_f": 1.0,
-     "bt": 198.3,
-     "heater": 51
+     "bt": 199.1,
+     "heater": 45
     }
    ],
    "Development Phase": "02:22",
-   "Development Phase %": "20.0",
-   "Drop ROR Source": "learned/grid blend (n=2)",
-   "Drop Temp": "201.3",
-   "Drop Temp Source": "learned/grid blend (n=2)",
+   "Development Phase %": "19.0",
+   "Drop ROR Source": "grid/profile blend (n=2)",
+   "Drop Temp": "202.1",
+   "Drop Temp Source": "grid/profile blend (n=2)",
    "Drum Speed (%) (Dry|Mai|Dev)": "85% | 85% | 85%",
    "Drum Variable Speed": true,
-   "Dry Phase": "05:42",
-   "Dry Phase %": "48.0",
+   "Dry Phase": "05:22",
+   "Dry Phase %": "44.0",
    "End of Dry Temp": "152.0",
    "Estimated TP": "150.8",
    "Extraction (%) (Dry|Mai|Dev)": "",
    "FC Anticipation (s)": "52",
-   "FC Temp Source": "learned/grid blend (n=2)",
-   "FC Time": "09:29",
-   "First Crack Temp": "184.2",
+   "FC Temp Source": "grid/profile blend (n=2)",
+   "FC Time": "09:53",
+   "First Crack Temp": "185.1",
    "Heat Soak": null,
-   "Heater (%) (Dry|Mai|Dev)": "74% | 62% | 51%",
-   "Heater FC Source": "learned/grid blend (n=2)",
+   "Heater (%) (Dry|Mai|Dev)": "72% | 62% | 45%",
+   "Heater FC Source": "grid/profile blend (n=2)",
    "Heater Ramp": [
     {
-     "bt": 150.6,
-     "heater": 70
+     "bt": 151.9,
+     "heater": 67
     },
     {
-     "bt": 158.9,
-     "heater": 66
+     "bt": 163.0,
+     "heater": 62
     },
     {
-     "bt": 172.6,
-     "heater": 60
-    },
-    {
-     "bt": 176.9,
+     "bt": 170.6,
      "heater": 57
+    },
+    {
+     "bt": 174.6,
+     "heater": 52
+    },
+    {
+     "bt": 177.7,
+     "heater": 49
     }
    ],
-   "Heater Source": "learned/grid blend (n=2)",
-   "Heater at TP": "69",
+   "Heater Source": "grid/profile blend (n=2)",
+   "Heater at TP": "68",
+   "History Profile Source": "grid/profile blend (n=2)",
+   "History Reference Roast": "Cortes - Washed  Wet Process - 2024_26-02-15_0908.alog",
+   "History Support": "partial history",
    "Maillard Conflict": "",
-   "Maillard Phase": "03:47",
-   "Maillard Phase %": "32.0",
-   "Phase Timing Source": "learned/grid blend (n=2)",
-   "Plan Confidence": "medium (partial history)",
+   "Maillard Phase": "04:31",
+   "Maillard Phase %": "37.0",
+   "Peak ROR Warning": "",
+   "Phase Timing Source": "grid/profile blend (n=2)",
+   "Plan Confidence": "partial history",
    "Plan Tolerances": {
     "adher_ok": 3.0,
     "adher_warn": 7.0,
-    "level": "medium",
+    "level": "partial history",
     "ror_rel_ok": 0.15,
     "ror_rel_warn": 0.3
    },
+   "Prediction Error Summary": {},
    "Preheat Profile Available": false,
    "Process Type": "Washed",
    "Profile Replay Available": false,
-   "ROR Dry End": "13",
+   "ROR Dry End": "12",
    "ROR Dry Peak": "12",
    "Roaster": "ITOP Cyberroaster",
    "Target Agtron": "Medium",
-   "Target DTR": "20.0",
+   "Target DTR": "19.4",
    "Target ROR Dev (Avg)": "7.2",
-   "Target ROR Maillard": "8.5",
+   "Target ROR Maillard": "7.3",
    "Target ROR at Drop": "5.5",
-   "Target ROR at FC": "7.5",
-   "Total Time": "11:52",
+   "Target ROR at FC": "6.3",
+   "Total Time": "12:16",
    "Water Activity Used": "Not measured",
    "Weight": 400.0,
    "_airwave_present": "no",
@@ -656,7 +817,7 @@
       "time_min": 0.0
      },
      {
-      "bt": 95.5,
+      "bt": 103.5,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -665,65 +826,63 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 5.69
+      "time_min": 5.36
      },
      {
-      "bt": 184.2,
+      "bt": 185.1,
       "key": "fc_start",
       "label": "FC START",
-      "time_min": 9.48
+      "time_min": 9.88
      },
      {
-      "bt": 198.1,
+      "bt": 198.9,
       "key": "pre_drop",
       "label": "Pre-Drop",
-      "time_min": 11.36
+      "time_min": 11.76
      },
      {
-      "bt": 201.3,
+      "bt": 202.1,
       "key": "drop",
       "label": "DROP",
-      "time_min": 11.86
+      "time_min": 12.26
      }
     ],
-    "dev_ror_c": 7.221,
+    "dev_ror_c": 7.158,
     "dev_time_min": 2.375,
     "dev_window_min": [
      2.0,
      2.75
     ],
     "drop_ror_c": 5.5,
-    "dry_ror_c": 12.591,
+    "dry_ror_c": 11.688,
     "fc_anticipation_sec": 51.5,
     "has_heater": true,
-    "heater_dev_pct": 51.0,
-    "heater_dry_pct": 73.75,
-    "heater_maillard_pct": 62.25,
+    "heater_dev_pct": 45.0,
+    "heater_dry_pct": 72.5,
+    "heater_maillard_pct": 62.5,
     "heater_max_pct": 80.0,
-    "heater_pre_de_pct": 71.875,
-    "heater_pre_fc_pct": 57.0,
+    "heater_pre_de_pct": 0.0,
+    "heater_pre_fc_pct": 48.75,
     "heater_res": 1.0,
     "mai_window_min": [
      4.25,
      4.75
     ],
-    "maillard_floor_pct": 62.0,
-    "maillard_floor_release": 0.75,
-    "pre_de_lead_sec": 57.0,
-    "pre_de_step_pct": 3.5,
+    "pre_de_lead_sec": 30.0,
+    "pre_de_step_pct": 5.0,
     "replans": [],
-    "ror_maillard_c": 8.48,
+    "ror_maillard_c": 7.304,
     "unit_f": false
    },
    "actions": [
     "Action: Monitor momentum; consider reducing airflow.",
     "Action: Increase extraction/airflow to shed thermal energy.",
-    "Colour feedback (2 measured roast(s)): drop target adjusted -2.7\u00b0C vs grid (204.0\u00b0)",
-    "Heater profile learned from 2 matched roast(s): 74/62/44% (dry/Maillard/dev)",
-    "On your last roasts of this coffee you brought the burner down to 72% before dry end rather than waiting \u2014 the plan schedules that same reduction 30s ahead of dry end. It heads off the rate-of-rise bump this bean shows there."
+    "Colour feedback (2 measured roast(s)): drop target adjusted -1.9\u00b0C vs grid (204.0\u00b0)",
+    "Heater profile learned from 2 matched roast(s): 72/62/42% (dry/Maillard/dev)",
+    "The planned pre-first-crack heater enters the 45\u201350% low-margin zone; use the live rate of rise to decide whether to hold or adjust it."
    ],
    "bt_plan_curve": {
-    "n_points": 713,
+    "n_points": 737,
     "per_minute": [
      {
       "bt": 187.2,
@@ -731,59 +890,64 @@
       "ror": -2.0
      },
      {
-      "bt": 98.7,
+      "bt": 106.39,
       "min": 1,
       "ror": -2.0
      },
      {
-      "bt": 99.26,
+      "bt": 107.27,
       "min": 2,
-      "ror": 8.45
+      "ror": 8.41
      },
      {
-      "bt": 111.35,
+      "bt": 119.12,
       "min": 3,
-      "ror": 14.79
+      "ror": 14.3
      },
      {
-      "bt": 127.55,
+      "bt": 134.41,
       "min": 4,
-      "ror": 16.75
+      "ror": 15.35
      },
      {
-      "bt": 143.47,
+      "bt": 148.28,
       "min": 5,
-      "ror": 14.31
+      "ror": 11.56
      },
      {
-      "bt": 155.06,
+      "bt": 157.48,
       "min": 6,
-      "ror": 9.69
+      "ror": 8.16
      },
      {
-      "bt": 164.2,
+      "bt": 165.12,
       "min": 7,
-      "ror": 8.69
+      "ror": 7.24
      },
      {
-      "bt": 172.53,
+      "bt": 172.09,
       "min": 8,
-      "ror": 8.07
+      "ror": 6.8
      },
      {
-      "bt": 180.44,
+      "bt": 178.88,
       "min": 9,
-      "ror": 7.83
+      "ror": 6.87
      },
      {
-      "bt": 188.23,
+      "bt": 185.98,
       "min": 10,
-      "ror": 7.65
+      "ror": 7.39
      },
      {
-      "bt": 195.61,
+      "bt": 193.48,
       "min": 11,
-      "ror": 7.06
+      "ror": 7.41
+     },
+     {
+      "bt": 200.47,
+      "min": 12,
+      "ror": 6.42
      }
     ],
     "waypoints": [
@@ -794,7 +958,7 @@
       "time_min": 0.0
      },
      {
-      "bt": 95.5,
+      "bt": 103.5,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -803,25 +967,25 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 5.69
+      "time_min": 5.36
      },
      {
-      "bt": 184.2,
+      "bt": 185.1,
       "key": "fc_start",
       "label": "FC START",
-      "time_min": 9.48
+      "time_min": 9.88
      },
      {
-      "bt": 198.1,
+      "bt": 198.9,
       "key": "pre_drop",
       "label": "Pre-Drop",
-      "time_min": 11.36
+      "time_min": 11.76
      },
      {
-      "bt": 201.3,
+      "bt": 202.1,
       "key": "drop",
       "label": "DROP",
-      "time_min": 11.86
+      "time_min": 12.26
      }
     ]
    },
@@ -835,7 +999,7 @@
     {
      "_af": 0.5,
      "airflow": 35,
-     "bt": 171.1
+     "bt": 171.7
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
@@ -849,35 +1013,9 @@
    "Dev Profile Source": "default",
    "Dev Ramp": [
     {
-     "_f": 0.167,
-     "bt": 185.2,
-     "heater": 49
-    },
-    {
-     "_f": 0.333,
-     "bt": 188.3,
-     "heater": 48
-    },
-    {
-     "_f": 0.5,
-     "airflow": 40,
-     "bt": 191.5,
-     "heater": 47
-    },
-    {
      "_f": 0.667,
-     "bt": 194.7,
-     "heater": 46
-    },
-    {
-     "_f": 0.833,
-     "bt": 197.8,
-     "heater": 45
-    },
-    {
-     "_f": 1.0,
-     "bt": 201.0,
-     "heater": 44
+     "airflow": 40,
+     "bt": 194.7
     }
    ],
    "Development Phase": "02:22",
@@ -887,8 +1025,8 @@
    "Drop Temp Source": "grid",
    "Drum Speed (%) (Dry|Mai|Dev)": "70% | 70% | 70%",
    "Drum Variable Speed": true,
-   "Dry Phase": "05:45",
-   "Dry Phase %": "48.0",
+   "Dry Phase": "04:49",
+   "Dry Phase %": "41.0",
    "End of Dry Temp": "152.0",
    "Estimated TP": "145.1",
    "Extraction (%) (Dry|Mai|Dev)": "",
@@ -897,48 +1035,65 @@
    "FC Time": "09:30",
    "First Crack Temp": "182.0",
    "Heat Soak": null,
-   "Heater (%) (Dry|Mai|Dev)": "65% | 55% | 44%",
+   "Heater (%) (Dry|Mai|Dev)": "65% | 50% | 35%",
    "Heater FC Source": "grid",
    "Heater Ramp": [
     {
-     "bt": 151.3,
+     "bt": 148.7,
      "heater": 60
     },
     {
-     "bt": 161.7,
+     "bt": 156.0,
      "heater": 55
     },
     {
-     "bt": 175.1,
+     "bt": 163.4,
      "heater": 50
+    },
+    {
+     "bt": 168.6,
+     "heater": 45
+    },
+    {
+     "bt": 171.8,
+     "heater": 40
+    },
+    {
+     "bt": 174.9,
+     "heater": 35
     }
    ],
    "Heater Source": "grid",
    "Heater at TP": "60",
+   "History Profile Source": "grid",
+   "History Reference Roast": null,
+   "History Support": "grid only",
    "Maillard Conflict": "",
-   "Maillard Phase": "03:45",
-   "Maillard Phase %": "32.0",
+   "Maillard Phase": "04:41",
+   "Maillard Phase %": "39.0",
+   "Peak ROR Warning": "",
    "Phase Timing Source": "grid",
-   "Plan Confidence": "low (grid)",
+   "Plan Confidence": "grid only",
    "Plan Tolerances": {
     "adher_ok": 4.1,
     "adher_warn": 9.5,
-    "level": "low",
+    "level": "grid only",
     "ror_rel_ok": 0.203,
     "ror_rel_warn": 0.405
    },
+   "Prediction Error Summary": {},
    "Preheat Profile Available": false,
    "Process Type": "Natural",
    "Profile Replay Available": false,
-   "ROR Dry End": "12",
+   "ROR Dry End": "14",
    "ROR Dry Peak": "12",
    "Roaster": "ITOP Cyberroaster",
    "Target Agtron": "Medium",
    "Target DTR": "20.0",
    "Target ROR Dev (Avg)": "9.3",
-   "Target ROR Maillard": "8.0",
+   "Target ROR Maillard": "6.4",
    "Target ROR at Drop": "3.8",
-   "Target ROR at FC": "7.1",
+   "Target ROR at FC": "4.8",
    "Total Time": "11:52",
    "Water Activity Used": "Not measured",
    "Weight": 250.0,
@@ -952,7 +1107,7 @@
       "time_min": 0.0
      },
      {
-      "bt": 96.2,
+      "bt": 99.5,
       "key": "tp",
       "label": "TP",
       "time_min": 1.07
@@ -961,7 +1116,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 5.76
+      "time_min": 4.82
      },
      {
       "bt": 182.0,
@@ -989,29 +1144,29 @@
      2.75
     ],
     "drop_ror_c": 3.83,
-    "dry_ror_c": 12.151,
+    "dry_ror_c": 14.0,
     "fc_anticipation_sec": 51.5,
     "has_heater": true,
-    "heater_dev_pct": 44.0,
+    "heater_dev_pct": 35.0,
     "heater_dry_pct": 65.0,
-    "heater_maillard_pct": 55.0,
+    "heater_maillard_pct": 50.0,
     "heater_max_pct": 80.0,
     "heater_pre_de_pct": 0.0,
-    "heater_pre_fc_pct": 50.0,
+    "heater_pre_fc_pct": 35.0,
     "heater_res": 1.0,
     "mai_window_min": [
      4.25,
      4.75
     ],
-    "maillard_floor_pct": 55.0,
-    "maillard_floor_release": 0.6,
     "pre_de_lead_sec": 30.0,
     "pre_de_step_pct": 5.0,
     "replans": [],
-    "ror_maillard_c": 8.016,
+    "ror_maillard_c": 6.41,
     "unit_f": false
    },
-   "actions": null,
+   "actions": [
+    "Below about 45% on the Skywalker V2, the remaining heater power generally no longer sustains the rate of rise. This is a low-authority zone, not an electrical cut-off."
+   ],
    "bt_plan_curve": {
     "n_points": 714,
     "per_minute": [
@@ -1021,59 +1176,59 @@
       "ror": -2.0
      },
      {
-      "bt": 96.81,
+      "bt": 100.07,
       "min": 1,
       "ror": -2.0
      },
      {
-      "bt": 100.51,
+      "bt": 106.04,
       "min": 2,
-      "ror": 8.59
+      "ror": 12.72
      },
      {
-      "bt": 112.32,
+      "bt": 122.61,
       "min": 3,
-      "ror": 14.22
+      "ror": 18.79
      },
      {
-      "bt": 127.79,
+      "bt": 141.1,
       "min": 4,
-      "ror": 15.95
+      "ror": 16.71
      },
      {
-      "bt": 143.0,
+      "bt": 153.56,
       "min": 5,
-      "ror": 13.78
+      "ror": 8.52
      },
      {
-      "bt": 154.22,
+      "bt": 160.85,
       "min": 6,
-      "ror": 9.06
+      "ror": 6.38
      },
      {
-      "bt": 162.51,
+      "bt": 166.65,
       "min": 7,
-      "ror": 7.72
+      "ror": 5.43
      },
      {
-      "bt": 169.99,
+      "bt": 172.07,
       "min": 8,
-      "ror": 7.44
+      "ror": 5.62
      },
      {
-      "bt": 177.71,
+      "bt": 178.26,
       "min": 9,
-      "ror": 8.2
+      "ror": 6.95
      },
      {
-      "bt": 186.94,
+      "bt": 186.69,
       "min": 10,
-      "ror": 10.47
+      "ror": 10.3
      },
      {
-      "bt": 197.42,
+      "bt": 197.36,
       "min": 11,
-      "ror": 9.47
+      "ror": 9.72
      }
     ],
     "waypoints": [
@@ -1084,7 +1239,7 @@
       "time_min": 0.0
      },
      {
-      "bt": 96.2,
+      "bt": 99.5,
       "key": "tp",
       "label": "TP",
       "time_min": 1.07
@@ -1093,7 +1248,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 5.76
+      "time_min": 4.82
      },
      {
       "bt": 182.0,
@@ -1115,128 +1270,109 @@
      }
     ]
    },
-   "notes": []
+   "notes": null
   },
   "gr2-400-medium": {
    "Air Ramp": [
     {
-     "_af": 0.25,
+     "_af": 0.5,
      "airflow": 35,
-     "bt": 178.3
-    },
-    {
-     "_af": 0.75,
-     "airflow": 40,
-     "bt": 185.0
+     "bt": 171.7
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
-   "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 50%",
+   "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 40%",
    "Ambient Humidity": "55.0",
    "Ambient Temp": "21.0",
    "Bean Humidity": "10.5",
    "Bean Name": "74110 GR2",
    "Charge Temp": "178.6",
    "Density": "700.0",
-   "Dev Profile Source": "learned (n=2)",
+   "Dev Profile Source": "default",
    "Dev Ramp": [
     {
-     "_f": 0.167,
-     "bt": 198.3,
-     "heater": 49
-    },
-    {
-     "_f": 0.333,
-     "airflow": 45,
-     "bt": 198.9,
-     "heater": 48
-    },
-    {
-     "_f": 0.5,
-     "bt": 199.4,
-     "heater": 47
-    },
-    {
      "_f": 0.667,
-     "airflow": 50,
-     "bt": 199.9,
-     "heater": 46
-    },
-    {
-     "_f": 0.833,
-     "bt": 200.5,
-     "heater": 45
-    },
-    {
-     "_f": 1.0,
-     "bt": 201.0,
-     "heater": 44
+     "airflow": 40,
+     "bt": 194.7
     }
    ],
    "Development Phase": "02:22",
-   "Development Phase %": "19.0",
-   "Drop ROR Source": "learned/grid blend (n=2)",
+   "Development Phase %": "20.0",
+   "Drop ROR Source": "grid",
    "Drop Temp": "204.0",
-   "Drop Temp Source": "coherence",
+   "Drop Temp Source": "grid",
    "Drum Speed (%) (Dry|Mai|Dev)": "85% | 85% | 85%",
    "Drum Variable Speed": true,
-   "Dry Phase": "05:45",
-   "Dry Phase %": "47.0",
+   "Dry Phase": "04:49",
+   "Dry Phase %": "41.0",
    "End of Dry Temp": "152.0",
    "Estimated TP": "142.1",
    "Extraction (%) (Dry|Mai|Dev)": "",
    "FC Anticipation (s)": "52",
-   "FC Temp Source": "learned (n=3)",
-   "FC Time": "09:55",
-   "First Crack Temp": "197.8",
+   "FC Temp Source": "grid",
+   "FC Time": "09:30",
+   "First Crack Temp": "182.0",
    "Heat Soak": null,
-   "Heater (%) (Dry|Mai|Dev)": "70% | 59% | 44%",
-   "Heater FC Source": "learned/grid blend (n=2)",
+   "Heater (%) (Dry|Mai|Dev)": "65% | 50% | 35%",
+   "Heater FC Source": "grid",
    "Heater Ramp": [
     {
-     "bt": 152.5,
-     "heater": 65
-    },
-    {
-     "bt": 165.6,
+     "bt": 148.7,
      "heater": 60
     },
     {
-     "bt": 177.2,
+     "bt": 156.0,
      "heater": 55
     },
     {
-     "bt": 188.4,
+     "bt": 163.4,
      "heater": 50
+    },
+    {
+     "bt": 168.6,
+     "heater": 45
+    },
+    {
+     "bt": 171.8,
+     "heater": 40
+    },
+    {
+     "bt": 174.9,
+     "heater": 35
     }
    ],
-   "Heater Source": "learned/grid blend (n=2)",
-   "Heater at TP": "65",
+   "Heater Source": "grid",
+   "Heater at TP": "60",
+   "History Profile Source": "reference only (n=1)",
+   "History Reference Roast": "74110 GR2 - Natural  Dry Process - 2025_26-04-30_1240.alog",
+   "History Support": "grid only",
    "Maillard Conflict": "",
-   "Maillard Phase": "04:10",
-   "Maillard Phase %": "34.0",
-   "Phase Timing Source": "learned (n=3)",
-   "Plan Confidence": "medium (partial history)",
+   "Maillard Phase": "04:41",
+   "Maillard Phase %": "39.0",
+   "Peak ROR Warning": "",
+   "Phase Timing Source": "grid",
+   "Plan Confidence": "grid only",
    "Plan Tolerances": {
-    "adher_ok": 3.0,
-    "adher_warn": 7.0,
-    "level": "medium",
-    "ror_rel_ok": 0.15,
-    "ror_rel_warn": 0.3
+    "adher_ok": 4.1,
+    "adher_warn": 9.5,
+    "level": "grid only",
+    "ror_rel_ok": 0.203,
+    "ror_rel_warn": 0.405
    },
+   "Prediction Error Summary": {},
    "Preheat Profile Available": false,
    "Process Type": "Natural",
    "Profile Replay Available": false,
-   "ROR Dry End": "12",
+   "ROR Dry End": "14",
    "ROR Dry Peak": "12",
    "Roaster": "ITOP Cyberroaster",
    "Target Agtron": "Medium",
-   "Target DTR": "19.3",
-   "Target ROR Dev (Avg)": "4.0",
-   "Target ROR Maillard": "11.0",
-   "Target ROR at Drop": "3.7",
-   "Target ROR at FC": "10.4",
-   "Total Time": "12:17",
+   "Target DTR": "20.0",
+   "Target ROR Dev (Avg)": "9.3",
+   "Target ROR Maillard": "6.4",
+   "Target ROR at Drop": "3.9",
+   "Target ROR at FC": "4.7",
+   "Total Time": "11:52",
    "Water Activity Used": "Not measured",
    "Weight": 400.0,
    "_airwave_present": "no",
@@ -1249,7 +1385,7 @@
       "time_min": 0.0
      },
      {
-      "bt": 95.5,
+      "bt": 98.7,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -1258,54 +1394,52 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 5.75
+      "time_min": 4.82
      },
      {
-      "bt": 197.8,
+      "bt": 182.0,
       "key": "fc_start",
       "label": "FC START",
-      "time_min": 9.91
+      "time_min": 9.5
      },
      {
-      "bt": 202.1,
+      "bt": 200.7,
       "key": "pre_drop",
       "label": "Pre-Drop",
-      "time_min": 11.79
+      "time_min": 11.38
      },
      {
       "bt": 204.0,
       "key": "drop",
       "label": "DROP",
-      "time_min": 12.29
+      "time_min": 11.88
      }
     ],
-    "dev_ror_c": 4.032,
+    "dev_ror_c": 9.263,
     "dev_time_min": 2.375,
     "dev_window_min": [
      2.0,
      2.75
     ],
-    "drop_ror_c": 3.73,
-    "dry_ror_c": 12.436,
+    "drop_ror_c": 3.88,
+    "dry_ror_c": 14.0,
     "fc_anticipation_sec": 51.5,
     "has_heater": true,
-    "heater_dev_pct": 44.0,
-    "heater_dry_pct": 69.83,
-    "heater_maillard_pct": 58.75,
+    "heater_dev_pct": 35.0,
+    "heater_dry_pct": 65.0,
+    "heater_maillard_pct": 50.0,
     "heater_max_pct": 80.0,
     "heater_pre_de_pct": 0.0,
-    "heater_pre_fc_pct": 50.0,
+    "heater_pre_fc_pct": 35.0,
     "heater_res": 1.0,
     "mai_window_min": [
      4.25,
      4.75
     ],
-    "maillard_floor_pct": 55.0,
-    "maillard_floor_release": 0.6,
     "pre_de_lead_sec": 30.0,
     "pre_de_step_pct": 5.0,
     "replans": [],
-    "ror_maillard_c": 11.01,
+    "ror_maillard_c": 6.41,
     "unit_f": false
    },
    "actions": [
@@ -1317,12 +1451,10 @@
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy.",
-    "Calibration: this bean's drying runs 6.0 min on this machine (plan window 4.8-5.2) \u2014 dry heater adjusted +2%",
-    "Colour feedback (2 measured roast(s)): drop target adjusted +1.5\u00b0C vs grid (204.0\u00b0)",
-    "Heater profile learned from 2 matched roast(s): 70/59/40% (dry/Maillard/dev)"
+    "Below about 45% on the Skywalker V2, the remaining heater power generally no longer sustains the rate of rise. This is a low-authority zone, not an electrical cut-off."
    ],
    "bt_plan_curve": {
-    "n_points": 739,
+    "n_points": 714,
     "per_minute": [
      {
       "bt": 178.6,
@@ -1330,64 +1462,59 @@
       "ror": -2.0
      },
      {
-      "bt": 98.4,
+      "bt": 101.4,
       "min": 1,
       "ror": -2.0
      },
      {
-      "bt": 98.96,
+      "bt": 104.39,
       "min": 2,
-      "ror": 7.81
+      "ror": 12.49
      },
      {
-      "bt": 110.25,
+      "bt": 121.32,
       "min": 3,
-      "ror": 13.96
+      "ror": 19.54
      },
      {
-      "bt": 125.79,
+      "bt": 140.67,
       "min": 4,
-      "ror": 16.38
+      "ror": 17.51
      },
      {
-      "bt": 141.85,
+      "bt": 153.58,
       "min": 5,
-      "ror": 15.07
+      "ror": 8.64
      },
      {
-      "bt": 154.99,
+      "bt": 160.95,
       "min": 6,
-      "ror": 12.26
+      "ror": 6.41
      },
      {
-      "bt": 168.11,
+      "bt": 166.73,
       "min": 7,
-      "ror": 13.51
+      "ror": 5.41
      },
      {
-      "bt": 181.26,
+      "bt": 172.12,
       "min": 8,
-      "ror": 12.36
+      "ror": 5.58
      },
      {
-      "bt": 192.05,
+      "bt": 178.27,
       "min": 9,
-      "ror": 8.83
+      "ror": 6.92
      },
      {
-      "bt": 198.1,
+      "bt": 186.69,
       "min": 10,
-      "ror": 3.36
+      "ror": 10.3
      },
      {
-      "bt": 200.34,
+      "bt": 197.36,
       "min": 11,
-      "ror": 1.84
-     },
-     {
-      "bt": 202.83,
-      "min": 12,
-      "ror": 3.68
+      "ror": 9.72
      }
     ],
     "waypoints": [
@@ -1398,7 +1525,7 @@
       "time_min": 0.0
      },
      {
-      "bt": 95.5,
+      "bt": 98.7,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -1407,25 +1534,25 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 5.75
+      "time_min": 4.82
      },
      {
-      "bt": 197.8,
+      "bt": 182.0,
       "key": "fc_start",
       "label": "FC START",
-      "time_min": 9.91
+      "time_min": 9.5
      },
      {
-      "bt": 202.1,
+      "bt": 200.7,
       "key": "pre_drop",
       "label": "Pre-Drop",
-      "time_min": 11.79
+      "time_min": 11.38
      },
      {
       "bt": 204.0,
       "key": "drop",
       "label": "DROP",
-      "time_min": 12.29
+      "time_min": 11.88
      }
     ]
    },
@@ -1443,127 +1570,108 @@
   "gr2-400-medium-back-to-back": {
    "Air Ramp": [
     {
-     "_af": 0.25,
+     "_af": 0.5,
      "airflow": 35,
-     "bt": 178.3
-    },
-    {
-     "_af": 0.75,
-     "airflow": 40,
-     "bt": 185.0
+     "bt": 171.7
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
-   "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 50%",
+   "Airflow (%) (Dry|Mai|Dev)": "20% | 30% | 40%",
    "Ambient Humidity": "55.0",
    "Ambient Temp": "21.0",
    "Bean Humidity": "10.5",
    "Bean Name": "74110 GR2",
    "Charge Temp": "172.9",
    "Density": "700.0",
-   "Dev Profile Source": "learned (n=2)",
+   "Dev Profile Source": "default",
    "Dev Ramp": [
     {
-     "_f": 0.167,
-     "bt": 198.3,
-     "heater": 49
-    },
-    {
-     "_f": 0.333,
-     "airflow": 45,
-     "bt": 198.9,
-     "heater": 48
-    },
-    {
-     "_f": 0.5,
-     "bt": 199.4,
-     "heater": 47
-    },
-    {
      "_f": 0.667,
-     "airflow": 50,
-     "bt": 199.9,
-     "heater": 46
-    },
-    {
-     "_f": 0.833,
-     "bt": 200.5,
-     "heater": 45
-    },
-    {
-     "_f": 1.0,
-     "bt": 201.0,
-     "heater": 44
+     "airflow": 40,
+     "bt": 194.7
     }
    ],
    "Development Phase": "02:22",
-   "Development Phase %": "19.0",
-   "Drop ROR Source": "learned/grid blend (n=2)",
+   "Development Phase %": "20.0",
+   "Drop ROR Source": "grid",
    "Drop Temp": "204.0",
-   "Drop Temp Source": "coherence",
+   "Drop Temp Source": "grid",
    "Drum Speed (%) (Dry|Mai|Dev)": "85% | 85% | 85%",
    "Drum Variable Speed": true,
-   "Dry Phase": "05:45",
-   "Dry Phase %": "47.0",
+   "Dry Phase": "04:49",
+   "Dry Phase %": "41.0",
    "End of Dry Temp": "152.0",
    "Estimated TP": "136.4",
    "Extraction (%) (Dry|Mai|Dev)": "",
    "FC Anticipation (s)": "52",
-   "FC Temp Source": "learned (n=3)",
-   "FC Time": "09:55",
-   "First Crack Temp": "197.8",
+   "FC Temp Source": "grid",
+   "FC Time": "09:30",
+   "First Crack Temp": "182.0",
    "Heat Soak": {
     "dcharge": -5.7,
     "dheater": -4,
     "mins": 8.0
    },
-   "Heater (%) (Dry|Mai|Dev)": "66% | 59% | 44%",
-   "Heater FC Source": "learned/grid blend (n=2)",
+   "Heater (%) (Dry|Mai|Dev)": "61% | 50% | 35%",
+   "Heater FC Source": "grid",
    "Heater Ramp": [
     {
-     "bt": 156.2,
-     "heater": 61
-    },
-    {
-     "bt": 175.8,
+     "bt": 150.1,
      "heater": 56
     },
     {
-     "bt": 185.5,
+     "bt": 160.1,
      "heater": 51
     },
     {
-     "bt": 188.4,
-     "heater": 50
+     "bt": 168.0,
+     "heater": 46
+    },
+    {
+     "bt": 171.1,
+     "heater": 41
+    },
+    {
+     "bt": 174.4,
+     "heater": 36
+    },
+    {
+     "bt": 176.2,
+     "heater": 35
     }
    ],
-   "Heater Source": "learned/grid blend (n=2)",
-   "Heater at TP": "61",
+   "Heater Source": "grid",
+   "Heater at TP": "56",
+   "History Profile Source": "reference only (n=1)",
+   "History Reference Roast": "74110 GR2 - Natural  Dry Process - 2025_26-04-30_1240.alog",
+   "History Support": "grid only",
    "Maillard Conflict": "",
-   "Maillard Phase": "04:10",
-   "Maillard Phase %": "34.0",
-   "Phase Timing Source": "learned (n=3)",
-   "Plan Confidence": "medium (partial history)",
+   "Maillard Phase": "04:41",
+   "Maillard Phase %": "39.0",
+   "Peak ROR Warning": "",
+   "Phase Timing Source": "grid",
+   "Plan Confidence": "grid only",
    "Plan Tolerances": {
-    "adher_ok": 3.0,
-    "adher_warn": 7.0,
-    "level": "medium",
-    "ror_rel_ok": 0.15,
-    "ror_rel_warn": 0.3
+    "adher_ok": 4.1,
+    "adher_warn": 9.5,
+    "level": "grid only",
+    "ror_rel_ok": 0.203,
+    "ror_rel_warn": 0.405
    },
+   "Prediction Error Summary": {},
    "Preheat Profile Available": false,
    "Process Type": "Natural",
    "Profile Replay Available": false,
-   "ROR Dry End": "12",
+   "ROR Dry End": "14",
    "ROR Dry Peak": "12",
    "Roaster": "ITOP Cyberroaster",
    "Target Agtron": "Medium",
-   "Target DTR": "19.3",
-   "Target ROR Dev (Avg)": "4.0",
-   "Target ROR Maillard": "11.0",
-   "Target ROR at Drop": "3.7",
-   "Target ROR at FC": "10.4",
-   "Total Time": "12:17",
+   "Target DTR": "20.0",
+   "Target ROR Dev (Avg)": "9.3",
+   "Target ROR Maillard": "6.4",
+   "Target ROR at Drop": "3.9",
+   "Target ROR at FC": "4.6",
+   "Total Time": "11:52",
    "Water Activity Used": "Not measured",
    "Weight": 400.0,
    "_airwave_present": "no",
@@ -1576,7 +1684,7 @@
       "time_min": 0.0
      },
      {
-      "bt": 95.5,
+      "bt": 95.6,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -1585,54 +1693,52 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 5.75
+      "time_min": 4.82
      },
      {
-      "bt": 197.8,
+      "bt": 182.0,
       "key": "fc_start",
       "label": "FC START",
-      "time_min": 9.91
+      "time_min": 9.5
      },
      {
-      "bt": 202.1,
+      "bt": 200.7,
       "key": "pre_drop",
       "label": "Pre-Drop",
-      "time_min": 11.79
+      "time_min": 11.38
      },
      {
       "bt": 204.0,
       "key": "drop",
       "label": "DROP",
-      "time_min": 12.29
+      "time_min": 11.88
      }
     ],
-    "dev_ror_c": 4.032,
+    "dev_ror_c": 9.263,
     "dev_time_min": 2.375,
     "dev_window_min": [
      2.0,
      2.75
     ],
-    "drop_ror_c": 3.73,
-    "dry_ror_c": 12.436,
+    "drop_ror_c": 3.88,
+    "dry_ror_c": 14.0,
     "fc_anticipation_sec": 51.5,
     "has_heater": true,
-    "heater_dev_pct": 44.0,
-    "heater_dry_pct": 65.83,
-    "heater_maillard_pct": 58.75,
+    "heater_dev_pct": 35.0,
+    "heater_dry_pct": 61.0,
+    "heater_maillard_pct": 50.0,
     "heater_max_pct": 80.0,
     "heater_pre_de_pct": 0.0,
-    "heater_pre_fc_pct": 50.0,
+    "heater_pre_fc_pct": 35.0,
     "heater_res": 1.0,
     "mai_window_min": [
      4.25,
      4.75
     ],
-    "maillard_floor_pct": 55.0,
-    "maillard_floor_release": 0.6,
     "pre_de_lead_sec": 30.0,
     "pre_de_step_pct": 5.0,
     "replans": [],
-    "ror_maillard_c": 11.01,
+    "ror_maillard_c": 6.41,
     "unit_f": false
    },
    "actions": [
@@ -1644,13 +1750,11 @@
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy.",
-    "Calibration: this bean's drying runs 6.0 min on this machine (plan window 4.8-5.2) \u2014 dry heater adjusted +2%",
-    "Colour feedback (2 measured roast(s)): drop target adjusted +1.5\u00b0C vs grid (204.0\u00b0)",
-    "Heater profile learned from 2 matched roast(s): 70/59/40% (dry/Maillard/dev)",
+    "Below about 45% on the Skywalker V2, the remaining heater power generally no longer sustains the rate of rise. This is a low-authority zone, not an electrical cut-off.",
     "Back-to-back (8 min since last drop): charge -5.7\u00b0, dry heater -4%"
    ],
    "bt_plan_curve": {
-    "n_points": 739,
+    "n_points": 714,
     "per_minute": [
      {
       "bt": 172.9,
@@ -1658,64 +1762,59 @@
       "ror": -2.0
      },
      {
-      "bt": 98.19,
+      "bt": 98.21,
       "min": 1,
       "ror": -2.0
      },
      {
-      "bt": 98.96,
+      "bt": 101.68,
       "min": 2,
-      "ror": 7.81
+      "ror": 13.32
      },
      {
-      "bt": 110.25,
+      "bt": 119.7,
       "min": 3,
-      "ror": 13.96
+      "ror": 20.76
      },
      {
-      "bt": 125.79,
+      "bt": 140.2,
       "min": 4,
-      "ror": 16.38
+      "ror": 18.44
      },
      {
-      "bt": 141.85,
+      "bt": 153.61,
       "min": 5,
-      "ror": 15.07
+      "ror": 8.79
      },
      {
-      "bt": 154.99,
+      "bt": 161.05,
       "min": 6,
-      "ror": 12.26
+      "ror": 6.44
      },
      {
-      "bt": 168.11,
+      "bt": 166.84,
       "min": 7,
-      "ror": 13.51
+      "ror": 5.37
      },
      {
-      "bt": 181.26,
+      "bt": 172.17,
       "min": 8,
-      "ror": 12.36
+      "ror": 5.52
      },
      {
-      "bt": 192.05,
+      "bt": 178.28,
       "min": 9,
-      "ror": 8.83
+      "ror": 6.89
      },
      {
-      "bt": 198.1,
+      "bt": 186.69,
       "min": 10,
-      "ror": 3.36
+      "ror": 10.3
      },
      {
-      "bt": 200.34,
+      "bt": 197.36,
       "min": 11,
-      "ror": 1.84
-     },
-     {
-      "bt": 202.83,
-      "min": 12,
-      "ror": 3.68
+      "ror": 9.72
      }
     ],
     "waypoints": [
@@ -1726,7 +1825,7 @@
       "time_min": 0.0
      },
      {
-      "bt": 95.5,
+      "bt": 95.6,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -1735,25 +1834,25 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 5.75
+      "time_min": 4.82
      },
      {
-      "bt": 197.8,
+      "bt": 182.0,
       "key": "fc_start",
       "label": "FC START",
-      "time_min": 9.91
+      "time_min": 9.5
      },
      {
-      "bt": 202.1,
+      "bt": 200.7,
       "key": "pre_drop",
       "label": "Pre-Drop",
-      "time_min": 11.79
+      "time_min": 11.38
      },
      {
       "bt": 204.0,
       "key": "drop",
       "label": "DROP",
-      "time_min": 12.29
+      "time_min": 11.88
      }
     ]
    },
@@ -1773,7 +1872,7 @@
     {
      "_af": 0.5,
      "airflow": 35,
-     "bt": 171.9
+     "bt": 172.6
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
@@ -1787,35 +1886,9 @@
    "Dev Profile Source": "default",
    "Dev Ramp": [
     {
-     "_f": 0.167,
-     "bt": 186.3,
-     "heater": 49
-    },
-    {
-     "_f": 0.333,
-     "bt": 189.2,
-     "heater": 48
-    },
-    {
-     "_f": 0.5,
-     "airflow": 40,
-     "bt": 192.2,
-     "heater": 47
-    },
-    {
      "_f": 0.667,
-     "bt": 195.1,
-     "heater": 46
-    },
-    {
-     "_f": 0.833,
-     "bt": 198.1,
-     "heater": 45
-    },
-    {
-     "_f": 1.0,
-     "bt": 201.0,
-     "heater": 44
+     "airflow": 40,
+     "bt": 195.1
     }
    ],
    "Development Phase": "02:22",
@@ -1825,8 +1898,8 @@
    "Drop Temp Source": "grid",
    "Drum Speed (%) (Dry|Mai|Dev)": "85% | 85% | 85%",
    "Drum Variable Speed": true,
-   "Dry Phase": "05:45",
-   "Dry Phase %": "48.0",
+   "Dry Phase": "04:49",
+   "Dry Phase %": "41.0",
    "End of Dry Temp": "152.0",
    "Estimated TP": "129.8",
    "Extraction (%) (Dry|Mai|Dev)": "",
@@ -1835,52 +1908,65 @@
    "FC Time": "09:30",
    "First Crack Temp": "183.3",
    "Heat Soak": null,
-   "Heater (%) (Dry|Mai|Dev)": "70% | 55% | 44%",
+   "Heater (%) (Dry|Mai|Dev)": "70% | 55% | 40%",
    "Heater FC Source": "grid",
    "Heater Ramp": [
     {
-     "bt": 149.5,
+     "bt": 148.8,
      "heater": 65
     },
     {
-     "bt": 156.8,
+     "bt": 156.4,
      "heater": 60
     },
     {
-     "bt": 164.1,
+     "bt": 164.0,
      "heater": 55
     },
     {
-     "bt": 172.0,
+     "bt": 169.4,
      "heater": 50
+    },
+    {
+     "bt": 172.7,
+     "heater": 45
+    },
+    {
+     "bt": 176.0,
+     "heater": 40
     }
    ],
    "Heater Source": "grid",
    "Heater at TP": "65",
+   "History Profile Source": "reference only (n=1)",
+   "History Reference Roast": "Mbinga - Washed Decaf (Sugarcane) - 2025_26-01-24_1732.alog",
+   "History Support": "grid only",
    "Maillard Conflict": "",
-   "Maillard Phase": "03:45",
-   "Maillard Phase %": "32.0",
+   "Maillard Phase": "04:41",
+   "Maillard Phase %": "39.0",
+   "Peak ROR Warning": "",
    "Phase Timing Source": "grid",
-   "Plan Confidence": "low (grid)",
+   "Plan Confidence": "grid only",
    "Plan Tolerances": {
     "adher_ok": 4.1,
     "adher_warn": 9.5,
-    "level": "low",
+    "level": "grid only",
     "ror_rel_ok": 0.203,
     "ror_rel_warn": 0.405
    },
+   "Prediction Error Summary": {},
    "Preheat Profile Available": false,
    "Process Type": "Washed Decaf",
    "Profile Replay Available": false,
-   "ROR Dry End": "12",
+   "ROR Dry End": "14",
    "ROR Dry Peak": "12",
    "Roaster": "ITOP Cyberroaster",
    "Target Agtron": "Medium",
    "Target DTR": "20.0",
    "Target ROR Dev (Avg)": "8.7",
-   "Target ROR Maillard": "8.4",
+   "Target ROR Maillard": "6.7",
    "Target ROR at Drop": "4.0",
-   "Target ROR at FC": "7.4",
+   "Target ROR at FC": "4.8",
    "Total Time": "11:52",
    "Water Activity Used": "Not measured",
    "Weight": 400.0,
@@ -1894,7 +1980,7 @@
       "time_min": 0.0
      },
      {
-      "bt": 95.5,
+      "bt": 92.0,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -1903,7 +1989,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 5.76
+      "time_min": 4.82
      },
      {
       "bt": 183.3,
@@ -1931,26 +2017,24 @@
      2.75
     ],
     "drop_ror_c": 4.0,
-    "dry_ror_c": 12.416,
+    "dry_ror_c": 14.0,
     "fc_anticipation_sec": 51.5,
     "has_heater": true,
-    "heater_dev_pct": 44.0,
+    "heater_dev_pct": 40.0,
     "heater_dry_pct": 70.0,
     "heater_maillard_pct": 55.0,
     "heater_max_pct": 80.0,
     "heater_pre_de_pct": 0.0,
-    "heater_pre_fc_pct": 50.0,
+    "heater_pre_fc_pct": 40.0,
     "heater_res": 1.0,
     "mai_window_min": [
      4.25,
      4.75
     ],
-    "maillard_floor_pct": 50.0,
-    "maillard_floor_release": 0.55,
     "pre_de_lead_sec": 30.0,
     "pre_de_step_pct": 5.0,
     "replans": [],
-    "ror_maillard_c": 8.372,
+    "ror_maillard_c": 6.695,
     "unit_f": false
    },
    "actions": [
@@ -1959,7 +2043,8 @@
     "Action: Monitor momentum; consider reducing airflow.",
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy.",
-    "Action: Increase extraction/airflow to shed thermal energy."
+    "Action: Increase extraction/airflow to shed thermal energy.",
+    "Below about 45% on the Skywalker V2, the remaining heater power generally no longer sustains the rate of rise. This is a low-authority zone, not an electrical cut-off."
    ],
    "bt_plan_curve": {
     "n_points": 714,
@@ -1970,59 +2055,59 @@
       "ror": -2.0
      },
      {
-      "bt": 97.96,
+      "bt": 94.5,
       "min": 1,
       "ror": -2.0
      },
      {
-      "bt": 99.16,
+      "bt": 98.49,
       "min": 2,
-      "ror": 8.22
+      "ror": 14.21
      },
      {
-      "bt": 110.94,
+      "bt": 117.7,
       "min": 3,
-      "ror": 14.46
+      "ror": 22.12
      },
      {
-      "bt": 126.83,
+      "bt": 139.51,
       "min": 4,
-      "ror": 16.5
+      "ror": 19.58
      },
      {
-      "bt": 142.63,
+      "bt": 153.69,
       "min": 5,
-      "ror": 14.35
+      "ror": 9.25
      },
      {
-      "bt": 154.32,
+      "bt": 161.58,
       "min": 6,
-      "ror": 9.49
+      "ror": 6.86
      },
      {
-      "bt": 163.09,
+      "bt": 167.74,
       "min": 7,
-      "ror": 8.22
+      "ror": 5.71
      },
      {
-      "bt": 171.03,
+      "bt": 173.36,
       "min": 8,
-      "ror": 7.83
+      "ror": 5.73
      },
      {
-      "bt": 179.02,
+      "bt": 179.59,
       "min": 9,
-      "ror": 8.3
+      "ror": 6.93
      },
      {
-      "bt": 188.03,
+      "bt": 187.79,
       "min": 10,
-      "ror": 9.83
+      "ror": 9.67
      },
      {
-      "bt": 197.72,
+      "bt": 197.66,
       "min": 11,
-      "ror": 8.79
+      "ror": 9.03
      }
     ],
     "waypoints": [
@@ -2033,7 +2118,7 @@
       "time_min": 0.0
      },
      {
-      "bt": 95.5,
+      "bt": 92.0,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -2042,7 +2127,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 5.76
+      "time_min": 4.82
      },
      {
       "bt": 183.3,
@@ -2078,7 +2163,7 @@
     {
      "_af": 0.5,
      "airflow": 35,
-     "bt": 168.3
+     "bt": 168.7
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
@@ -2092,35 +2177,9 @@
    "Dev Profile Source": "default",
    "Dev Ramp": [
     {
-     "_f": 0.167,
-     "bt": 181.7,
-     "heater": 57
-    },
-    {
-     "_f": 0.333,
-     "bt": 182.3,
-     "heater": 56
-    },
-    {
-     "_f": 0.5,
-     "airflow": 40,
-     "bt": 183.0,
-     "heater": 55
-    },
-    {
      "_f": 0.667,
-     "bt": 183.7,
-     "heater": 54
-    },
-    {
-     "_f": 0.833,
-     "bt": 184.3,
-     "heater": 53
-    },
-    {
-     "_f": 1.0,
-     "bt": 185.0,
-     "heater": 52
+     "airflow": 40,
+     "bt": 183.7
     }
    ],
    "Development Phase": "01:21",
@@ -2130,42 +2189,55 @@
    "Drop Temp Source": "grid",
    "Drum Speed (%) (Dry|Mai|Dev)": "80% | 80% | 80%",
    "Drum Variable Speed": true,
-   "Dry Phase": "04:30",
-   "Dry Phase %": "48.0",
+   "Dry Phase": "04:04",
+   "Dry Phase %": "44.0",
    "End of Dry Temp": "147.0",
    "Estimated TP": "150.4",
    "Extraction (%) (Dry|Mai|Dev)": "",
    "FC Anticipation (s)": "52",
    "FC Temp Source": "grid",
-   "FC Time": "07:57",
+   "FC Time": "07:54",
    "First Crack Temp": "181.0",
    "Heat Soak": null,
-   "Heater (%) (Dry|Mai|Dev)": "65% | 63% | 52%",
+   "Heater (%) (Dry|Mai|Dev)": "65% | 60% | 45%",
    "Heater FC Source": "grid",
    "Heater Ramp": [
     {
-     "bt": 170.1,
+     "bt": 152.1,
      "heater": 60
     },
     {
-     "bt": 172.6,
-     "heater": 58
+     "bt": 165.6,
+     "heater": 55
+    },
+    {
+     "bt": 168.8,
+     "heater": 50
+    },
+    {
+     "bt": 171.9,
+     "heater": 45
     }
    ],
    "Heater Source": "grid",
    "Heater at TP": "57",
+   "History Profile Source": "grid",
+   "History Reference Roast": null,
+   "History Support": "grid only",
    "Maillard Conflict": "",
-   "Maillard Phase": "03:27",
-   "Maillard Phase %": "37.0",
+   "Maillard Phase": "03:50",
+   "Maillard Phase %": "41.0",
+   "Peak ROR Warning": "",
    "Phase Timing Source": "grid",
-   "Plan Confidence": "low (grid)",
+   "Plan Confidence": "grid only",
    "Plan Tolerances": {
     "adher_ok": 4.1,
     "adher_warn": 9.5,
-    "level": "low",
+    "level": "grid only",
     "ror_rel_ok": 0.203,
     "ror_rel_warn": 0.405
    },
+   "Prediction Error Summary": {},
    "Preheat Profile Available": false,
    "Process Type": "Washed",
    "Profile Replay Available": false,
@@ -2173,12 +2245,12 @@
    "ROR Dry Peak": "10",
    "Roaster": "ITOP Cyberroaster",
    "Target Agtron": "Light",
-   "Target DTR": "14.5",
+   "Target DTR": "14.6",
    "Target ROR Dev (Avg)": "5.2",
-   "Target ROR Maillard": "9.8",
+   "Target ROR Maillard": "8.9",
    "Target ROR at Drop": "4.9",
-   "Target ROR at FC": "8.4",
-   "Total Time": "09:18",
+   "Target ROR at FC": "7.2",
+   "Total Time": "09:15",
    "Water Activity Used": "Not measured",
    "Weight": 350.0,
    "_airwave_present": "no",
@@ -2191,7 +2263,7 @@
       "time_min": 0.0
      },
      {
-      "bt": 95.8,
+      "bt": 103.0,
       "key": "tp",
       "label": "TP",
       "time_min": 1.13
@@ -2200,25 +2272,25 @@
       "bt": 147.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 4.5
+      "time_min": 4.07
      },
      {
       "bt": 181.0,
       "key": "fc_start",
       "label": "FC START",
-      "time_min": 7.96
+      "time_min": 7.9
      },
      {
       "bt": 185.5,
       "key": "pre_drop",
       "label": "Pre-Drop",
-      "time_min": 8.8
+      "time_min": 8.75
      },
      {
       "bt": 188.0,
       "key": "drop",
       "label": "DROP",
-      "time_min": 9.3
+      "time_min": 9.25
      }
     ],
     "dev_ror_c": 5.185,
@@ -2231,28 +2303,28 @@
     "dry_ror_c": 14.0,
     "fc_anticipation_sec": 51.5,
     "has_heater": true,
-    "heater_dev_pct": 52.0,
+    "heater_dev_pct": 45.0,
     "heater_dry_pct": 65.0,
-    "heater_maillard_pct": 63.0,
+    "heater_maillard_pct": 60.0,
     "heater_max_pct": 80.0,
     "heater_pre_de_pct": 0.0,
-    "heater_pre_fc_pct": 58.0,
+    "heater_pre_fc_pct": 45.0,
     "heater_res": 1.0,
     "mai_window_min": [
      3.0,
      4.0
     ],
-    "maillard_floor_pct": 63.0,
-    "maillard_floor_release": 0.75,
     "pre_de_lead_sec": 30.0,
     "pre_de_step_pct": 5.0,
     "replans": [],
-    "ror_maillard_c": 9.841,
+    "ror_maillard_c": 8.877,
     "unit_f": false
    },
-   "actions": null,
+   "actions": [
+    "The planned pre-first-crack heater enters the 45\u201350% low-margin zone; use the live rate of rise to decide whether to hold or adjust it."
+   ],
    "bt_plan_curve": {
-    "n_points": 560,
+    "n_points": 557,
     "per_minute": [
      {
       "bt": 185.9,
@@ -2260,49 +2332,49 @@
       "ror": -2.0
      },
      {
-      "bt": 97.73,
+      "bt": 104.74,
       "min": 1,
       "ror": -2.0
      },
      {
-      "bt": 102.28,
+      "bt": 110.24,
       "min": 2,
-      "ror": 13.48
+      "ror": 14.77
      },
      {
-      "bt": 120.08,
+      "bt": 128.88,
       "min": 3,
-      "ror": 20.18
+      "ror": 20.0
      },
      {
-      "bt": 139.62,
+      "bt": 146.17,
       "min": 4,
-      "ror": 17.13
+      "ror": 12.72
      },
      {
-      "bt": 152.89,
+      "bt": 156.97,
       "min": 5,
-      "ror": 11.6
+      "ror": 10.18
      },
      {
-      "bt": 163.97,
+      "bt": 166.52,
       "min": 6,
-      "ror": 10.47
+      "ror": 8.92
      },
      {
-      "bt": 173.62,
+      "bt": 174.76,
       "min": 7,
-      "ror": 8.75
+      "ror": 7.58
      },
      {
-      "bt": 181.26,
+      "bt": 181.61,
       "min": 8,
-      "ror": 6.32
+      "ror": 5.92
      },
      {
-      "bt": 186.52,
+      "bt": 186.76,
       "min": 9,
-      "ror": 5.03
+      "ror": 5.0
      }
     ],
     "waypoints": [
@@ -2313,7 +2385,7 @@
       "time_min": 0.0
      },
      {
-      "bt": 95.8,
+      "bt": 103.0,
       "key": "tp",
       "label": "TP",
       "time_min": 1.13
@@ -2322,25 +2394,25 @@
       "bt": 147.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 4.5
+      "time_min": 4.07
      },
      {
       "bt": 181.0,
       "key": "fc_start",
       "label": "FC START",
-      "time_min": 7.96
+      "time_min": 7.9
      },
      {
       "bt": 185.5,
       "key": "pre_drop",
       "label": "Pre-Drop",
-      "time_min": 8.8
+      "time_min": 8.75
      },
      {
       "bt": 188.0,
       "key": "drop",
       "label": "DROP",
-      "time_min": 9.3
+      "time_min": 9.25
      }
     ]
    },

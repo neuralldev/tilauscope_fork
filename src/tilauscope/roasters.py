@@ -328,20 +328,23 @@ class Roaster(DataClassDictMixin):
     heat_retention_index: float | None = None
     airflow_dependency_index: float | None = None
     dev_thermal_inertia_factor: float | None = None   # 0.0–1.0; lower = faster response
-    expected_tp_bt: float | None = None               # machine-specific TP BT (°C)
+
+    ## TILAU ## Typical post-TP RoR reference (°C/min), not a physical ceiling.
+    peak_ror_reference_c: float | None = None
+    ## TILAU ## Temporary read compatibility for older roaster JSON.
+    peak_ror_ceiling_c: float | None = None
 
     ## Heater ceiling: hardware limit, not a style choice. Some
     ## elements (e.g. the ITOP Cyberroaster's FIR/NIR emitter) degrade above a
     ## machine-specific power fraction — the plan must never target above it.
     ## None (default) → no declared ceiling, RoasterContext falls back to 100.0.
     heater_max_pct: float | None = None
+    ## TILAU ## Machine-specific guidance thresholds; neither clamps a plan.
+    heater_support_threshold_pct: float | None = None
+    heater_caution_pct: float | None = None
 
-    ## Maillard RoR decay exponent: the exponent `k` of RoR(u) = R_FC + (R_DE -
-    ## R_FC) * (1-u)^k, where u is the fraction of Maillard elapsed. Machine
-    ## property, not bean/style: low-inertia radiant electric heaters (FIR/NIR:
-    ## Skywalker, Kaleido, ITOP Cyberroaster) decay at 2.0; classic drum
-    ## roasters decay steeper at 3.0.
-    ## None (default) → no declared exponent, RoasterContext falls back to 2.0.
+    ## TILAU ## Empirical geometric fallback for a reference curve. It is not a
+    ## stable physical machine signature.
     maillard_ror_decay: float | None = None
 
     # --------------------------------------------------------
@@ -469,7 +472,8 @@ class RoasterContext:
     airflow_dependency_index: float  # 0.0 – 1.0
     thermal_response_speed: float    # 0.0 – 1.0
     dev_thermal_inertia_factor: float  # 0.0 – 1.0 (lower = faster response)
-    expected_tp_bt: float              # machine-specific TP BT (°C)
+    ## TILAU ## Typical post-TP peak RoR reference (°C/min).
+    peak_ror_reference_c: float
 
     # ── Heater ───────────────────────────────────────────────
     is_radiant_electric: bool        # replaces string-match is_fir_nir
@@ -506,6 +510,8 @@ class RoasterContext:
     ## Heater ceiling: hardware limit, not a style choice — see
     ## Roaster.heater_max_pct. 100.0 = no declared ceiling.
     heater_max_pct: float = 100.0
+    heater_support_threshold_pct: "float | None" = None
+    heater_caution_pct: "float | None" = None
 
     ## Maillard RoR decay exponent — see Roaster.maillard_ror_decay.
     ## 2.0 = default (low-inertia radiant electric machines).
@@ -568,6 +574,8 @@ class RoasterContext:
             heater_resolution_pct    = heater_res,
             heater_max_pct           = (roaster.heater_max_pct
                                         if roaster.heater_max_pct is not None else 100.0),
+            heater_support_threshold_pct = roaster.heater_support_threshold_pct,
+            heater_caution_pct       = roaster.heater_caution_pct,
             maillard_ror_decay       = (roaster.maillard_ror_decay
                                         if roaster.maillard_ror_decay is not None else 2.0),
             drum_variable_speed      = dc.variable_speed if dc else False,
@@ -582,8 +590,10 @@ class RoasterContext:
             inlet_air_mode           = (ac.inlet_air_mode if ac else "push"),
             dev_thermal_inertia_factor = (roaster.dev_thermal_inertia_factor
                                          if roaster.dev_thermal_inertia_factor is not None else 0.8),
-            expected_tp_bt             = (roaster.expected_tp_bt
-                                         if roaster.expected_tp_bt is not None else 100.0),
+            peak_ror_reference_c       = (roaster.peak_ror_reference_c
+                                         if roaster.peak_ror_reference_c is not None
+                                         else (roaster.peak_ror_ceiling_c
+                                               if roaster.peak_ror_ceiling_c is not None else 21.0)),
             has_heater_control       = has_heater_control,
             has_airflow_control      = has_airflow_control,
             heater_physical          = hc.physical_range if hc else None,

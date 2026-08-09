@@ -30,6 +30,9 @@ from asyncio import CancelledError  # <--- Add this line
 import logging
 import platform
 import subprocess
+import threading
+
+from concurrent.futures import CancelledError as FutureCancelledError, Future
 
 from bleak import BleakScanner, BleakClient
 from bleak.exc import BleakError, BleakCharacteristicNotFoundError, BleakBluetoothNotAvailableError
@@ -104,18 +107,53 @@ class BLE:
         self._asyncLoopThread: AsyncLoopThread|None = None
         self._scan_and_connect_lock: asyncio.Lock = asyncio.Lock() # lock to prevent overlapping scan/connect calls
         self._terminate_scan_event: asyncio.Event = asyncio.Event() # event to terminate ongoing scan
+        ## TILAU ## Operations submitted to the shared CoreBluetooth loop. They
+        ## must be cancelled before the loop is joined during application exit.
+        self._pending_futures: set[Future] = set()
+        self._pending_futures_lock = threading.Lock()
 
     def __del__(self) -> None:
         self.close()
 
     # close() needs to be called on terminating the app to get rid of the singular thread/asyncloop running the bleak scan and connect
     def close(self) -> None:
+        self.terminate_scan()
         if hasattr(self, '_asyncLoopThread') and self._asyncLoopThread is not None:
-            del self._asyncLoopThread
+            loop_thread = self._asyncLoopThread
             self._asyncLoopThread = None
+            if not loop_thread.stop(timeout=5.0):
+                _log.warning('BLE shared async loop did not stop cleanly')
+            else:
+                _log.debug('BLE shared async loop stopped')
 
     def terminate_scan(self) -> None:
-        self._terminate_scan_event.set()
+        loop_thread = self._asyncLoopThread
+        if loop_thread is not None and not loop_thread.loop.is_closed():
+            try:
+                loop_thread.loop.call_soon_threadsafe(self._terminate_scan_event.set)
+            except RuntimeError:
+                pass
+        else:
+            self._terminate_scan_event.set()
+        with self._pending_futures_lock:
+            pending = list(self._pending_futures)
+        for fut in pending:
+            fut.cancel()
+
+    def _submit_operation(self, coroutine) -> Future:  # noqa: ANN001
+        """Submit and track one operation on the shared BLE event loop."""
+        if self._asyncLoopThread is None:
+            self._asyncLoopThread = AsyncLoopThread()
+        fut = asyncio.run_coroutine_threadsafe(coroutine, self._asyncLoopThread.loop)
+        with self._pending_futures_lock:
+            self._pending_futures.add(fut)
+
+        def discard(done: Future) -> None:
+            with self._pending_futures_lock:
+                self._pending_futures.discard(done)
+
+        fut.add_done_callback(discard)
+        return fut
 
     # returns True if the given device_name is a prefix of the devices name or the local_name of the advertisement
     # returns True also in case the local_name is None, but the given service_uuid is within ad.service_uuids
@@ -263,12 +301,12 @@ class BLE:
         if self._asyncLoopThread is None:
             self._asyncLoopThread = AsyncLoopThread()
         assert self._asyncLoopThread is not None
-        fut = asyncio.run_coroutine_threadsafe(
-            self._connect_known(known_device, service_uuid, disconnected_callback, connect_timeout),
-            self._asyncLoopThread.loop,
-        )
+        fut = self._submit_operation(
+            self._connect_known(known_device, service_uuid, disconnected_callback, connect_timeout))
         try:
             return fut.result(timeout=connect_timeout + 2)
+        except FutureCancelledError:
+            return None, None, None
         except BleakBluetoothNotAvailableError:
             _log.error("[BLE] connect_known: Bluetooth not available")
             return None, None, None
@@ -329,7 +367,7 @@ class BLE:
         if hasattr(self, '_asyncLoopThread') and self._asyncLoopThread is None:
             self._asyncLoopThread = AsyncLoopThread()
         assert self._asyncLoopThread is not None
-        fut = asyncio.run_coroutine_threadsafe(
+        fut = self._submit_operation(
                 self._scan_and_connect(
                     device_descriptions,
                     blacklist,
@@ -337,10 +375,11 @@ class BLE:
                     disconnected_callback,
                     scan_timeout,
                     connect_timeout,
-                    address),
-                self._asyncLoopThread.loop)
+                    address))
         try:
             return fut.result()
+        except FutureCancelledError:
+            return None, None, None
         except BleakBluetoothNotAvailableError:
             _log.error('Bluetooth is not supported, turned off or permission is denied')
             return None, None, None
@@ -408,6 +447,9 @@ class ClientBLE(QObject):
         self._disconnected_event:asyncio.Event               = asyncio.Event() # event set on disconnect
         self._active_notification_uuids:set[str]             = set() # uuids of characteristics were notification are active
         self._sleep_between_scans:float                      = self.SCAN_BETWEEN_SCANS_START
+        ## TILAU ## runner submitted to the per-client loop; retained so stop()
+        ## can cancel it before joining that loop.
+        self._runner_future: Future | None                   = None
 
         # configuration
         self._device_descriptions:dict[str|None, set[str]|None] = {} # maps service UUIDs to a set of device name prefixes
@@ -595,15 +637,20 @@ class ClientBLE(QObject):
                 coro = BleakScanner.discover(
                     timeout=scan_timeout,
                     return_adv=True)
+                self._runner_future = asyncio.run_coroutine_threadsafe(
+                    coro, self._async_loop_thread.loop)
                 try: # Fix 2026/02/26: if the scan is cancelled or stopped while running, we catch the exception and return an empty list instead of crashing
                     ## TILAU ## hard cap on the blocking wait: discover() occupies the full
                     # scan window, so a healthy scan always completes within scan_timeout;
                     # if Core Bluetooth hangs, we degrade to [] instead of blocking the
                     # caller (and the config dialog) forever.
-                    res = asyncio.run_coroutine_threadsafe(coro, self._async_loop_thread.loop).result(timeout=scan_timeout + grace)
+                    res = self._runner_future.result(timeout=scan_timeout + grace)
                 except (CancelledError, Exception) as e:
+                    self._runner_future.cancel()
                     _log.debug(f"Scan cancelled or stopped: {e}")
                     return []
+                finally:
+                    self._runner_future = None
                 _log.debug('scan_ble ended')
                 if res:
                     return list(res.values())
@@ -627,7 +674,7 @@ class ClientBLE(QObject):
                     self._running = True # enable automatic reconnects
                     self._async_loop_thread = AsyncLoopThread()
                     # run _connect in async loop
-                    asyncio.run_coroutine_threadsafe(
+                    self._runner_future = asyncio.run_coroutine_threadsafe(
                         self._connect_and_keep_alive(case_sensitive, scan_timeout, connect_timeout, address),
                         self._async_loop_thread.loop)
                     _log.debug('BLE client started')
@@ -642,10 +689,16 @@ class ClientBLE(QObject):
             self._running = False # disable automatic reconnects
             if self._ble_client is None:
                 ble.terminate_scan() # we stop ongoing scanning
+            runner = self._runner_future
+            self._runner_future = None
+            if runner is not None:
+                runner.cancel()
             self._disconnect()
             if self._async_loop_thread is not None:
-                del self._async_loop_thread
+                loop_thread = self._async_loop_thread
                 self._async_loop_thread = None
+                if not loop_thread.stop(timeout=2.0):
+                    _log.warning('BLE client async loop did not stop cleanly')
             self._ble_client = None
             self._connected_service_uuid = None
             self._connected_device_name = None

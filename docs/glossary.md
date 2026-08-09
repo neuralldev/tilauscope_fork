@@ -175,6 +175,12 @@ relate to each other.
 A control loop that holds a temperature at a target by continuously adjusting power.
 TilauScope uses one to bring the machine to its preheat target.
 
+#### Shadow validation
+
+Running a candidate model beside the active controller using the same measurements, while
+giving it no authority over the heater. Its predictions can therefore be checked on the real
+machine before it is allowed to contribute even a bounded fallback setting.
+
 #### SV — setpoint value
 
 The temperature a [PID](#pid) is aiming for.

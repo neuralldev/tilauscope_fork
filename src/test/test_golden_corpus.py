@@ -132,22 +132,22 @@ def test_generated_plan_is_unchanged(
 # branch the snapshot could still pass while the coverage quietly vanished.
 
 def test_corpus_covers_every_adoption_branch(current: dict[str, Any]) -> None:
-    """Grid, n=2 blend and n>=3 learned must each be reached by some scenario.
+    """The fixed corpus reaches the P1 grid, reference and two-roast paths.
 
-    Note the blend label is 'learned/grid blend (n=2)' — a `startswith('learned')`
-    test would accept it as the learned branch and let the fully-learned path
-    disappear unnoticed. Match the pure form explicitly.
+    The n>=3 medoid branch is covered with purpose-built profiles in
+    test_roast_plan_p1.py; this corpus deliberately contains no three-roast
+    cohort with every timing, heater, airflow and finish field populated.
     """
     sources = {
-        name: plan.get('FC Temp Source', '')
+        name: plan.get('History Profile Source', '')
         for name, plan in current['plans'].items()
     }
     joined = ' | '.join(f'{k}={v}' for k, v in sorted(sources.items()))
     assert any(s == 'grid' for s in sources.values()), f'no grid path: {joined}'
-    assert any('blend' in s for s in sources.values()), f'no blend path: {joined}'
-    assert any(s.startswith('learned (') for s in sources.values()), (
-        f'no fully-learned path: {joined}'
-    )
+    assert any(s == 'reference only (n=1)' for s in sources.values()), (
+        f'no one-roast reference path: {joined}')
+    assert any(s == 'grid/profile blend (n=2)' for s in sources.values()), (
+        f'no two-roast blend path: {joined}')
 
 
 def test_weight_filter_shrinks_history_for_a_mismatched_batch(
@@ -161,10 +161,8 @@ def test_weight_filter_shrinks_history_for_a_mismatched_batch(
     """
     big = current['history']['gr2-400-medium']
     small = current['history']['gr2-250-medium']
-    assert big['fc_bt_samples'] > small['fc_bt_samples'], (
-        f"400 g saw {big['fc_bt_samples']} samples, 250 g saw "
-        f"{small['fc_bt_samples']} — the weight filter is not excluding anything"
-    )
+    assert big is not None, 'the matching 400 g reference unexpectedly disappeared'
+    assert small is None, 'the mismatched 400 g histories leaked into the 250 g plan'
 
 
 def test_a_bean_with_no_history_falls_back_entirely_to_the_grid(
@@ -172,7 +170,7 @@ def test_a_bean_with_no_history_falls_back_entirely_to_the_grid(
 ) -> None:
     assert current['history']['unknown-350-light'] is None
     plan = current['plans']['unknown-350-light']
-    assert plan['Plan Confidence'] == 'low (grid)'
+    assert plan['History Support'] == 'grid only'
     for field in ('FC Temp Source', 'Phase Timing Source', 'Drop Temp Source',
                   'Heater Source', 'Drop ROR Source'):
         assert plan[field] == 'grid', f'{field} claims history it does not have'

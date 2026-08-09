@@ -6513,7 +6513,9 @@ class tgraphcanvas(QObject):
                     if local_flagstart: # only during recording
                         try:
                             if self.timeindex[0] > -1 and len(sample_timex) == self.timeindex[0] + 5:
-                                self.aw.calcBBPMetrics(checkCache=True)
+                                ## TILAU ## Current ApplicationWindow API has no
+                                ## checkCache argument; the method owns its cache policy.
+                                self.aw.calcBBPMetrics()
                         except Exception as e: # pylint: disable=broad-except
                             _log.exception(e)
 
@@ -9556,6 +9558,21 @@ class tgraphcanvas(QObject):
     # if keepProperties=True (a call from OnMonitor()), we keep all the pre-set roast properties
     # onMonitor is set if called from onMonitor
     def reset(self,redraw:bool = True, soundOn:bool = True, keepProperties:bool = False, fireResetAction:bool = True, onMonitor:bool = False) -> bool:
+        ## TILAU ## P2 — ON performs a technical reset after RoastSetup has
+        ## already generated the plan. Preserve only that unobserved pre-roast
+        ## snapshot (and its UUID); normal RESET and loaded completed profiles
+        ## must still start clean.
+        _tilau_snapshot_candidate = getattr(self, 'tilau_roast_plan_snapshot', None)
+        _tilau_snapshot_keep = (
+            _tilau_snapshot_candidate
+            if (onMonitor and keepProperties and self.timeindex[0] < 0
+                and isinstance(_tilau_snapshot_candidate, dict)
+                and _tilau_snapshot_candidate.get('status') == 'planned')
+            else None)
+        _tilau_roast_uuid_keep = (
+            self.roastUUID if (_tilau_snapshot_keep is not None
+                               and _tilau_snapshot_keep.get('plan_id') == self.roastUUID)
+            else None)
         try:
             focused_widget = QApplication.focusWidget()
             if focused_widget and focused_widget != self.aw.centralWidget():
@@ -9603,7 +9620,7 @@ class tgraphcanvas(QObject):
             #reset time
             self.resetTimer()
 
-            self.roastUUID = None # reset UUID
+            self.roastUUID = _tilau_roast_uuid_keep # reset UUID, except P2 pre-roast plan ## TILAU ##
             self.roastbatchnr = 0 # initialized to 0, set to increased batchcounter on DROP
             self.roastbatchpos = 1 # initialized to 1, set to increased batchsequence on DROP
             self.roastbatchprefix = self.batchprefix
@@ -9618,6 +9635,7 @@ class tgraphcanvas(QObject):
             self.tilau_simulated_loaded = False
             self.tilau_exclude_learning = False
             self.tilau_preheat_sv_c = None   ## TILAU ## preheat SV (°C) used this roast; set by TilauPID.start
+            self.tilau_roast_plan_snapshot = _tilau_snapshot_keep  ## TILAU ## P2 prediction is per-roast
             self._tilau_coach_pub = None   ## TILAU ## clear graph-coach proximity
             self._tilau_milestone_suggest = None   ## TILAU ## clear milestone suggestion (#10)
 
@@ -14881,11 +14899,16 @@ class tgraphcanvas(QObject):
     def stopTilauPidManager(self):
         _logd.info('tilau preheating pid manager stopping')
         if self.aw.tilauPreheatingPid is not None : # pid for preheating support  
-            self.aw.tilauPreheatingPid.stop() # stop pid if running
+            self.aw.tilauPreheatingPid.stop(reason="manager_shutdown") # stop pid if running
             self.aw.tilauPreheatingPid = None
 
     @pyqtSlot()
     def startSkywalkerManager(self) -> None:
+        ## TILAU ## A replay must never open the physical Skywalker BLE link.
+        ## Besides being unnecessary, it leaves CoreBluetooth callbacks racing
+        ## application shutdown when a short simulator test exits immediately.
+        if self.aw.simulator is not None:
+            return
         from artisanlib.ble_port import bluetooth_enabled
         # Take roaster control only when the Cyberroaster is the selected device
         # (connecting asserts the verified burner safe-off and locks the panel).
@@ -14908,12 +14931,12 @@ class tgraphcanvas(QObject):
 
     @pyqtSlot()
     def stopSkywalkerManager(self) -> None:
-        from artisanlib.ble_port import bluetooth_enabled
-        if bluetooth_enabled():
-            if self.aw.bleSkywalkerDevice is not None:
-                self.aw.bleSkywalkerDevice.close()   # asserts OT1,0 then unlinks
-                self.aw.bleSkywalkerDevice = None
-                _logd.info('skywalker manager stopped')
+        ## TILAU ## Cleanup must not depend on the adapter still being enabled:
+        ## an existing transport always owns a loop that has to be joined.
+        if self.aw.bleSkywalkerDevice is not None:
+            self.aw.bleSkywalkerDevice.close()   # asserts OT1,0 then unlinks
+            self.aw.bleSkywalkerDevice = None
+            _logd.info('skywalker manager stopped')
 
     @pyqtSlot(str, float, int)
     def _on_skywalker_interrupted(self, reason: str, last_bt: float, burner_echo: int) -> None:  ## TILAU ##
@@ -15319,7 +15342,7 @@ class tgraphcanvas(QObject):
                 if not bool(self.aw.simulator) and self.device in (self.tilau_devices["mqtt12"]["id"],self.tilau_devices["mqtt34"]["id"],self.tilau_devices["mqtt56"]["id"],self.tilau_devices["mqtt78"]["id"],self.tilau_devices["mqtt910"]["id"]):
                     self.stopTilauMqttManager()
                 # disconnect skywalker ## TILAU ##
-                if not bool(self.aw.simulator) and self.device == self.tilau_devices["skywalker"]["id"]:
+                if self.aw.bleSkywalkerDevice is not None:
                     self.stopSkywalkerManager()
                 self.stopTilauPidManager()
                 # disconnect tilauscope
@@ -16276,7 +16299,7 @@ class tgraphcanvas(QObject):
                     # disable preheating PID — appel direct à stop() qui utilise
                     # eventRecordActionSignal (QueuedConnection) — safe dans le sémaphore
                     if self.aw.tilauPreheatingPid is not None and self.aw.tilauPreheatingPid.active:
-                        self.aw.tilauPreheatingPid.stop()
+                        self.aw.tilauPreheatingPid.stop(reason="charge")
                     self.tilau_pid_label.hide() # hide PID label if visible, as it might be shown at the wrong time after marking CHARGE if the PID was active before
                     ## TILAU — reset BOTH detectors at each CHARGE, then re-discover
                     ## devices (reset() clears the device cache → must re-run

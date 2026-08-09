@@ -19,12 +19,17 @@
 # Marko Luther, 2026
 
 import snap7.client
+from typing import override
 
-# python-snap7 >=3.0 is a pure Python implementation (no ctypes-loaded shared
-# library, hence no risk of a partially-initialized instance on __del__), so
-# no patching of Client is required anymore; this subclass is kept only for
-# the stable artisanlib.s7client.S7Client import path.
-
+# patch S7 client
+## TILAU ##
 
 class S7Client(snap7.client.Client):
-    pass
+    def __init__(self) -> None:
+        super().__init__()
+
+    # avoiding an exception on __del__ as self.library might not yet be set if loading of shared lib failed!
+    @override
+    def destroy(self) -> None:
+        if hasattr(self, 'library'):
+            super().destroy()
