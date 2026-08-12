@@ -13,11 +13,9 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ## QR scan module — BeanCave webcam scanner (spec: wiki/QR-Scan-Spec.md).
-## Decodes TilauScope label QR codes (roast / bean / sack) from the webcam and
-## returns a normalized (kind, id) result. The camera runs ONLY while the dialog
-## is open (operator requirement). Decoding is throttled (~5 Hz) so the preview
-## stays fluid; everything here is user-action driven — never on the 1 Hz path.
+# QR scan module — BeanCave webcam scanner (spec: wiki/QR-Scan-Spec.md). Decodes
+# TilauScope label QR codes (roast/bean/sack) into a normalized (kind, id) result.
+# The camera runs only while the dialog is open; decoding is throttled (~5 Hz).
 
 import os
 import re
@@ -36,6 +34,7 @@ from PyQt6.QtWidgets import (
 )
 
 from tilauscope.tilauscope_types import THEME
+from tilauscope.theme_qss import base_qss
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -226,12 +225,10 @@ class ScanQRDialog(QDialog):
         self._drag_pos: Optional[QPoint] = None
         self._native_permission_result.connect(self._on_native_permission)
 
-        # Decode pipeline: the timer pulls the LATEST camera frame (stored by
-        # _on_frame, no per-frame conversion cost) and converts it via
-        # QVideoFrame.toImage(). If that yields nothing usable (some backends
-        # deliver GPU-texture frames whose readback fails silently), it falls
-        # back to grabbing the rendered preview widget. Proven data point: the
-        # frame path decodes fine with macOS Continuity Camera.
+        # Decode pipeline: the timer pulls the latest camera frame (stored by
+        # _on_frame) and converts via QVideoFrame.toImage(); falls back to grabbing
+        # the rendered preview widget if that yields nothing (some GPU-texture
+        # backends fail readback silently).
         self._latest_frame = None
         self._diag_logged = False  # one-shot pipeline diagnostics at INFO
         self._decode_timer = QTimer(self)
@@ -240,7 +237,7 @@ class ScanQRDialog(QDialog):
 
         self.setModal(True)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setStyleSheet(f"""
+        self.setStyleSheet(base_qss() + f"""
             QDialog {{
                 background: {THEME['BG']};
                 border: 1px solid {THEME['BORDER']};
@@ -266,10 +263,10 @@ class ScanQRDialog(QDialog):
         # -- custom title bar (frameless drag) --
         title_row = QHBoxLayout()
         title = QLabel("📷  " + QApplication.translate("tilauscope_webclient", "SCAN A QR CODE"))
-        title.setStyleSheet(f"color: {THEME['ACCENT']}; font-size: 14px; font-weight: 800; "
-                            f"font-family: 'JetBrains Mono';")
+        title.setStyleSheet(f"color: {THEME['ACCENT']}; font-size: 14px; font-weight: 800; ")
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(26, 26)
+        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         close_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {THEME['BORDER']}; color: {THEME['CRITICAL']};
@@ -296,7 +293,7 @@ class ScanQRDialog(QDialog):
         # -- status line --
         self._status = QLabel(QApplication.translate(
             "tilauscope_webclient", "Point the label QR code at the camera…"))
-        self._status.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
+        self._status.setProperty('variant', 'secondary')
         layout.addWidget(self._status)
 
         # -- bottom row: camera selector + close --

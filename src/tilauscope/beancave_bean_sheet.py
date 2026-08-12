@@ -13,24 +13,9 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ##
-"""Read-first bean sheet for BeanCave (Lot 5, step B — validated mock).
-
-Replaces the permanent editing form of the Green Beans tab with a
-presentation view structured in zones, mirroring the wizard's review page:
-
-    ESSENTIALS  — hero: name + BLEND badge, origin · process · supplier,
-                  stat tiles (Stock / Crop / SCA / Roasts)
-    PROVENANCE  — farm, supplier, altitude
-    CHARACTERISTICS — species, varieties, category, blend composition,
-                  density, humidity, water activity
-    SENSORY     — flavour notes as chips + roasting tips
-    SACKS       — attached sack labels (chips with ✕ release);
-                  the zone is absent when the bean has no sacks
-
-Each zone carries a ✎ Edit button that emits ``editRequested(zone_key)`` —
-the host decides what editing means (step B: switch to the legacy form;
-step C: targeted zone editors). The sheet itself never writes anything.
+"""Read-first bean sheet for BeanCave: zoned presentation view of the Green Beans
+tab (ESSENTIALS, PROVENANCE, CHARACTERISTICS, SENSORY, SACKS). Each zone's ✎ Edit
+button emits ``editRequested(zone_key)``; the sheet itself never writes anything.
 """
 
 from __future__ import annotations
@@ -58,7 +43,7 @@ from tilauscope.tilauscope_types import THEME
 _logd = logging.getLogger('tilaudebug')
 
 _MONO = "'JetBrains Mono', monospace"
-_DIM = "#6C7086"
+_DIM = THEME['OVERLAY0']
 
 
 
@@ -77,7 +62,7 @@ class _Zone(QFrame):
         head = QHBoxLayout()
         t = QLabel(title.upper())
         t.setStyleSheet(
-            f"color:{_DIM};font-family:{_MONO};font-size:10px;"
+            f"color:{_DIM};font-size:10px;"
             f"letter-spacing:2px;background:transparent;border:none;")
         head.addWidget(t, 1)
         self.edit_btn = QPushButton("✎ " + QApplication.translate("tilauscope_beancave", "Edit"))
@@ -155,7 +140,7 @@ class BeanSheetWidget(QWidget):
         if getattr(bean, 'is_blend', False):
             b = QLabel("BLEND")
             b.setStyleSheet(
-                f"color:{THEME['ACCENT']};font-family:{_MONO};font-size:9px;"
+                f"color:{THEME['ACCENT']};font-size:9px;"
                 f"font-weight:600;border:1px solid {THEME['ACCENT']};"
                 f"border-radius:8px;padding:1px 6px;background:transparent;")
             name_row.addWidget(b, 0, Qt.AlignmentFlag.AlignTop)

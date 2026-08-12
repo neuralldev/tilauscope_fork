@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from tilauscope.roast_plan_model import (
+    _PlanSource,
     TilauScopeRoastPlan,
     _fit_fc_charge_regression,
     _heater_authority_notes,
@@ -79,11 +80,133 @@ def test_valid_245_maillard_is_not_raised_to_three_minutes(plan_model: TilauScop
     assert result.maillard_time_min == pytest.approx(2.75)
 
 
-def test_history_support_never_tightens_tolerance_below_one() -> None:
+def test_consistent_history_tightens_the_tolerance_band() -> None:
+    """Three sources learned and a tight FC dispersion: the plan knows this
+    coffee, so the coach and the EOR bilan read it more strictly (×0.8)."""
     result = TilauScopeRoastPlan._resolve_plan_confidence(
-        fc_source="learned (n=5)", timing_source="learned (n=5)",
-        drop_source="learned (n=5)", fc_bt_mad_c=0.2,
+        fc_source=_PlanSource("learned", 5, "learned (n=5)"), timing_source=_PlanSource("learned", 5, "learned (n=5)"),
+        drop_source=_PlanSource("learned", 5, "learned (n=5)"), fc_bt_mad_c=0.2,
         soak_dcharge_c=0.0, soak_dheater_pct=0,
         minutes_since_last_drop=None, ror_scale=1.0)
     assert result.display == "consistent history"
-    assert result.tol_factor == 1.0
+    assert result.tol_factor == 0.8
+
+
+def test_the_authority_note_names_the_roaster_it_is_talking_about() -> None:
+    """The wording used to hard-code "the Skywalker V2" and "45–50%", so any
+    other machine declaring these fields quoted the wrong name and the wrong
+    numbers at its owner. Both now come from the roaster being planned for."""
+    note = _heater_authority_notes([40.0], 38.0, 44.0, "Cormorant CR600g")[0]
+    assert "Cormorant CR600g" in note
+    assert "38" in note and "44" in note
+    assert "Skywalker" not in note
+
+
+def test_the_authority_note_stays_readable_without_a_roaster_name() -> None:
+    note = _heater_authority_notes([40.0], 45.0, 50.0)[0]
+    assert "this roaster" in note
+
+
+# ── Provenance: a key for the code, a label for the eye ──────────────────────
+
+def test_a_source_key_never_carries_the_sample_count() -> None:
+    """The count belongs to the label. A key that moved with n is a key every
+    caller has to parse — which is how `== "learned"` came to be written."""
+    _value, source = TilauScopeRoastPlan._adopt_learned(200.0, 210.0, 7)
+    assert source.key == "learned"
+    assert source.n == 7
+    assert source.label == "learned (n=7)"
+
+
+def test_the_fc_charge_regression_is_gated_on_the_key_not_the_label() -> None:
+    """Regression test for a condition that was never true. The gate read
+    `fc_source == "learned"` while the label has always been "learned (n=3)",
+    so the validated FC/charge regression had never run once. Anything that
+    compares a source to display text is the same bug waiting to happen."""
+    _value, source = TilauScopeRoastPlan._adopt_learned(196.0, 199.0, 4)
+    assert source != "learned"          # the old gate: silently false forever
+    assert source.key == "learned"      # what the code must ask instead
+
+
+def test_a_small_batch_is_a_sample_like_any_other() -> None:
+    """Batch mass is no longer grounds for refusal (doctrine corrected
+    2026-08-11): the rear-elevation loading technique keeps the probe immersed,
+    so a 244 g roast measures its own first crack as truthfully as a 400 g one.
+    These are the six real roasts of the one bean whose fit validates; four of
+    them used to be discarded on weight alone, which left the fit below the
+    minimum sample count and silently refused."""
+    charges = [171.0, 179.0, 184.0, 185.0, 185.5, 193.0]
+    fcs = [177.8, 189.0, 191.4, 185.9, 180.5, 196.2]
+    assert _fit_fc_charge_regression(charges, fcs)["status"] == "adopted"
+
+
+def test_leave_one_out_is_the_only_gate_the_regression_has() -> None:
+    """Nothing upstream of the validation may reject a sample, so a refusal can
+    only ever mean the fit failed to beat the median baseline."""
+    charges = [171.0, 179.0, 184.0, 185.0, 185.5, 193.0]
+    noise = [190.0, 184.0, 193.0, 181.0, 196.0, 186.0]
+    refused = _fit_fc_charge_regression(charges, noise)
+    assert refused["status"] == "refused"
+    assert refused["n"] == 6          # every roast took part in the attempt
+
+
+# ── The turning point follows the MASS, not the charge temperature ───────────
+# Measured 2026-08-11 on the 94 usable Skywalker roasts: r(TP, charge) = +0.29,
+# r(TP, mass) = -0.75. The old `charge x 0.55` was unbiased on average and wrong
+# everywhere, the two errors cancelling: +9 C on a full drum, -25 C on a small
+# batch. Nothing in the suite noticed a 25 C move, hence these tests.
+
+_TP = TilauScopeRoastPlan._tp_placeholder_c
+
+
+def test_a_small_batch_turns_higher_than_a_full_drum_at_the_same_charge() -> None:
+    """Same charge temperature, less coffee: less mass to heat, so the bean
+    probe never falls as far. This is the whole point of the correction."""
+    small = _TP(180.0, 250.0, 400.0)
+    full = _TP(180.0, 400.0, 400.0)
+    assert small > full + 15.0
+
+
+def test_the_turning_point_matches_what_the_machine_actually_does() -> None:
+    """Both medians come from the corpus: 119 C under 320 g, 93 C above, at the
+    charge temperatures actually used in each class."""
+    assert _TP(171.7, 250.0, 400.0) == pytest.approx(119.0, abs=6.0)
+    assert _TP(184.9, 400.0, 400.0) == pytest.approx(93.1, abs=6.0)
+
+
+def test_the_old_fixed_share_is_the_behaviour_at_the_nominal_batch() -> None:
+    """The mass term is a DEVIATION from the machine's operating point, so a
+    roaster loaded exactly to nominal keeps a pure share-of-charge dip."""
+    assert _TP(180.0, 400.0, 400.0) == pytest.approx(180.0 * (1.0 - 0.487))
+
+
+def test_an_unknown_batch_or_machine_falls_back_to_the_fixed_share() -> None:
+    """Neither argument may be required: the curve must still be drawable when
+    the roaster is unknown or the weight has not been entered."""
+    assert _TP(180.0) == pytest.approx(180.0 * (1.0 - 0.487))
+    assert _TP(180.0, 250.0, 0.0) == pytest.approx(_TP(180.0))
+    assert _TP(180.0, 0.0, 400.0) == pytest.approx(_TP(180.0))
+
+
+def test_an_absurd_batch_cannot_push_the_turning_point_out_of_the_drum() -> None:
+    """A 50 g sample or a triple overload must still yield a drawable curve."""
+    assert _TP(180.0, 50.0, 400.0) == pytest.approx(180.0 * 0.75)
+    assert _TP(180.0, 1200.0, 400.0) == pytest.approx(180.0 * 0.35)
+
+
+def test_the_mass_term_is_relative_to_each_machine_nominal_weight() -> None:
+    """Checked against the Cormorant corpus (nominal 450 g, roasts at 500 g):
+    predicted dip share 0.531 for 0.544 measured. A machine-neutral form is what
+    lets one measured law serve a roaster it was not fitted on."""
+    cormorant = _TP(190.6, 500.0, 450.0)
+    assert cormorant == pytest.approx(190.6 * (1.0 - 0.544), abs=3.0)
+
+
+def test_the_curve_and_the_announced_turning_point_are_one_model() -> None:
+    """There used to be a second, independent formula publishing "Estimated TP"
+    (charge - 30x(1.5-inertia) - mass/50). It read +43 C high on the corpus and
+    contradicted the printed curve by ~50 C."""
+    import inspect
+    source = inspect.getsource(TilauScopeRoastPlan.generate_roast_plan)
+    assert "_tp_dip_const" not in source
+    assert "tp_temperature: float = _tp_bt_c" in source

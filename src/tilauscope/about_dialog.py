@@ -16,13 +16,8 @@
 #
 # about_dialog.py
 #
-# ## TILAU ## "About TilauScope" window, opened from the TilauScope menu.
-#
-# Frameless Catppuccin modal: logo, version/build, upstream Artisan attribution
-# and its core developers (AGPL credit), link to the public source repository,
-# and the single entry point to file a bug report. Deliberately carries no
-# Python/Qt/library version list — the diagnostics archive already ships a
-# system_info.txt for the cases where those numbers matter.
+# "About TilauScope" window, opened from the TilauScope menu.
+# Frameless Catppuccin modal: logo, version/build, Artisan attribution, source link, bug report entry.
 
 import logging
 from pathlib import Path
@@ -35,15 +30,15 @@ from PyQt6.QtWidgets import (
 
 _log = logging.getLogger(__name__)
 
-_BG = "#1E1E2E"; _SURFACE = "#313244"; _OVERLAY = "#45475A"
-_TEXT = "#CDD6F4"; _SUB = "#A6ADC8"; _MUTED = "#6C7086"; _ACCENT = "#89B4FA"
-_RED = "#F38BA8"
-
 _ARTISAN_URL = "https://artisan-scope.org"
 _SOURCE_URL = "https://github.com/neuralldev/tilauscope_fork"
-## TILAU ## AGPL attribution — Artisan core developers, kept in sync with
-## ApplicationWindow.helpAbout() in artisanlib/main.py.
+# AGPL attribution — Artisan core developers, kept in sync with
+# ApplicationWindow.helpAbout() in artisanlib/main.py.
 _ARTISAN_DEVS = "Rafael Cobo, Marko Luther &amp; Dave Baxter"
+
+
+from tilauscope.theme_qss import apply_tilau_theme
+from tilauscope.tilauscope_types import THEME
 
 
 class TilauAboutDlg(QDialog):
@@ -51,6 +46,10 @@ class TilauAboutDlg(QDialog):
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self._drag_from: QPoint | None = None
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
@@ -62,9 +61,9 @@ class TilauAboutDlg(QDialog):
         container = QFrame()
         container.setObjectName("AboutContainer")
         container.setStyleSheet(
-            f"#AboutContainer {{ background-color:{_BG}; border:2px solid {_SURFACE};"
-            f" border-radius:15px; }}"
-            f"QLabel {{ color:{_TEXT}; background:transparent; border:none; }}")
+            f"#AboutContainer {{ background-color:{THEME['BG']};"
+            f" border:2px solid {THEME['BORDER']};"
+            f" border-radius:15px; }}")
         root.addWidget(container)
         inner = QVBoxLayout(container)
         inner.setContentsMargins(26, 16, 26, 22)
@@ -91,14 +90,16 @@ class TilauAboutDlg(QDialog):
         header = QHBoxLayout()
         title = QLabel(QApplication.translate("tilauscope_updates", "ABOUT TILAUSCOPE"))
         title.setStyleSheet(
-            f"color:{_ACCENT};font-size:14px;font-weight:800;letter-spacing:1px;")
+            f"QLabel {{ color:{THEME['ACCENT']}; font-size:14px;"
+            f" font-weight:800; letter-spacing:1px; }}")
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(30, 30)
+        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         close_btn.clicked.connect(self.reject)
         close_btn.setStyleSheet(
-            f"QPushButton {{ background:{_SURFACE}; color:{_RED}; border-radius:15px;"
-            f" border:1px solid {_RED}; font-weight:bold; }}"
-            f"QPushButton:hover {{ background:{_RED}; color:{_BG}; }}")
+            f"QPushButton {{ background:{THEME['BORDER']}; color:{THEME['CRITICAL']}; border-radius:15px;"
+            f" border:1px solid {THEME['CRITICAL']}; font-weight:bold; }}"
+            f"QPushButton:hover {{ background:{THEME['CRITICAL']}; color:{THEME['BG']}; }}")
         header.addWidget(title)
         header.addStretch()
         header.addWidget(close_btn)
@@ -113,13 +114,11 @@ class TilauAboutDlg(QDialog):
             inner.addWidget(logo)
             inner.addSpacing(16)
 
-        ## TILAU ## Version comes from artisanlib/__init__.py — the only file
-        ## scripts/update-build-files.py stamps from ReleaseHistory.md, and so the
-        ## single source of truth. tilauscope/__init__.py carries a stale
-        ## __version__ that nothing updates; never read it here.
+        # Version comes from artisanlib/__init__.py, the single source of truth
+        # (tilauscope/__init__.py's __version__ is stale; never read it here).
         from artisanlib import __version__ as version_str, __build__ as build_str
 
-        name = QLabel("Tilau<span style='color:%s'>Scope</span>" % _ACCENT)
+        name = QLabel("Tilau<span style='color:%s'>Scope</span>" % THEME['ACCENT'])
         name.setTextFormat(Qt.TextFormat.RichText)
         name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         name.setStyleSheet("font-size:22px;font-weight:700;")
@@ -128,7 +127,7 @@ class TilauAboutDlg(QDialog):
         version = QLabel(QApplication.translate(
             "tilauscope_updates", "Version {0} · build {1}").format(version_str, build_str))
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        version.setStyleSheet(f"color:{_MUTED};font-family:'JetBrains Mono';font-size:12px;")
+        version.setStyleSheet(f"QLabel {{ color:{THEME['OVERLAY0']}; font-size:12px; }}")
         inner.addWidget(version)
 
         inner.addSpacing(14)
@@ -136,18 +135,16 @@ class TilauAboutDlg(QDialog):
             "tilauscope_updates", "Guided roasting assistant for home and enthusiast roasters."))
         tagline.setAlignment(Qt.AlignmentFlag.AlignCenter)
         tagline.setWordWrap(True)
-        tagline.setStyleSheet(f"color:{_SUB};font-size:13px;")
+        tagline.setStyleSheet(f"QLabel {{ color:{THEME['SUBTEXT']}; font-size:13px; }}")
         inner.addWidget(tagline)
 
     def _add_credits(self, inner: QVBoxLayout) -> None:
-        ## TILAU ## No version number repeated here: the fork is versioned in
-        ## lockstep with the Artisan release it tracks, so it would just restate
-        ## the number shown above.
+        # No version number repeated here — the fork tracks Artisan's release lockstep.
         self._add_block(
             inner,
             QApplication.translate("tilauscope_updates", "Built on"),
             "Artisan Roaster Scope<br>"
-            f"<a href='{_ARTISAN_URL}' style='color:{_ACCENT};'>artisan-scope.org</a>")
+            f"<a href='{_ARTISAN_URL}' style='color:{THEME['ACCENT']};'>artisan-scope.org</a>")
         inner.addSpacing(14)
         self._add_block(
             inner,
@@ -157,28 +154,27 @@ class TilauAboutDlg(QDialog):
         self._add_block(
             inner,
             QApplication.translate("tilauscope_updates", "Source code"),
-            f"<a href='{_SOURCE_URL}' style='color:{_ACCENT};'>"
+            f"<a href='{_SOURCE_URL}' style='color:{THEME['ACCENT']};'>"
             "github.com/neuralldev/tilauscope_fork</a>")
 
         inner.addSpacing(20)
         legal = QLabel(QApplication.translate(
             "tilauscope_updates", "© Tilau — released under the GNU AGPL v3."))
         legal.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        legal.setStyleSheet(f"color:{_MUTED};font-size:11px;")
+        legal.setStyleSheet(f"QLabel {{ color:{THEME['OVERLAY0']}; font-size:11px; }}")
         inner.addWidget(legal)
 
     def _add_block(self, inner: QVBoxLayout, label: str, body_html: str) -> None:
         key = QLabel(label.upper())
         key.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        key.setStyleSheet(
-            f"color:{_MUTED};font-family:'JetBrains Mono';font-size:10px;letter-spacing:1px;")
+        key.setProperty('variant', 'eyebrow')
         inner.addWidget(key)
         body = QLabel(body_html)
         body.setTextFormat(Qt.TextFormat.RichText)
         body.setAlignment(Qt.AlignmentFlag.AlignCenter)
         body.setWordWrap(True)
         body.setOpenExternalLinks(True)
-        body.setStyleSheet(f"color:{_SUB};font-size:12px;")
+        body.setStyleSheet(f"QLabel {{ color:{THEME['SUBTEXT']}; font-size:12px; }}")
         inner.addWidget(body)
 
     def _add_actions(self, inner: QVBoxLayout) -> None:
@@ -188,16 +184,16 @@ class TilauAboutDlg(QDialog):
         report.setMinimumWidth(118)
         report.clicked.connect(self._report_a_bug)
         report.setStyleSheet(
-            f"QPushButton {{ background:transparent; color:{_ACCENT}; border:1px solid {_ACCENT};"
+            f"QPushButton {{ background:transparent; color:{THEME['ACCENT']}; border:1px solid {THEME['ACCENT']};"
             f" border-radius:8px; padding:9px 18px; font-weight:600; }}"
-            f"QPushButton:hover {{ background:{_ACCENT}; color:{_BG}; }}")
+            f"QPushButton:hover {{ background:{THEME['ACCENT']}; color:{THEME['BG']}; }}")
         close = QPushButton(QApplication.translate("tilauscope_updates", "Close"))
         close.setMinimumWidth(118)
         close.clicked.connect(self.accept)
         close.setStyleSheet(
-            f"QPushButton {{ background:{_SURFACE}; color:{_TEXT}; border:1px solid {_OVERLAY};"
+            f"QPushButton {{ background:{THEME['BORDER']}; color:{THEME['TEXT']}; border:1px solid {THEME['SURFACE1']};"
             f" border-radius:8px; padding:9px 18px; font-weight:600; }}"
-            f"QPushButton:hover {{ border-color:{_SUB}; }}")
+            f"QPushButton:hover {{ border-color:{THEME['SUBTEXT']}; }}")
         row.addStretch()
         row.addWidget(report)
         row.addWidget(close)
@@ -207,16 +203,14 @@ class TilauAboutDlg(QDialog):
     def _rule(self) -> QFrame:
         line = QFrame()
         line.setFixedHeight(1)
-        line.setStyleSheet(f"background:{_SURFACE};border:none;")
+        line.setProperty('variant', 'sep')
         return line
 
     @staticmethod
     def _load_logo() -> QPixmap | None:
         try:
-            ## TILAU ## The transparent glyph, not the tiled window icon: this sits
-            ## on the dialog's own Catppuccin ground, which owns the background.
-            ## getResourcePath() (not getAppPath) is the one that resolves includes/
-            ## both in dev and inside the frozen bundle, on all three platforms.
+            # Transparent glyph on the dialog's own ground. getResourcePath()
+            # (not getAppPath) resolves includes/ both in dev and frozen bundles.
             from artisanlib.util import getResourcePath
             path = Path(getResourcePath()) / "Icons" / "tilauscope-large.png"
             if not path.exists():

@@ -229,7 +229,11 @@ def build() -> dict[str, Any]:
     for path in H.corpus_files():
         # A fresh model per roast: _get_delta_bt caches the last profile on the
         # instance, and the history memo must not leak between fixtures.
-        roasts[path.name] = snapshot_roast(H.make_plan_model(H.CORPUS_DIR), path)
+        # Rooted on the roast's OWN directory: the corpus grew subdirectories
+        # for the other machine types (cormorant, kaleido) and the model
+        # resolves a roast by name inside its alog directory — rooted on the
+        # corpus top level, every one of those raised FileNotFoundError.
+        roasts[path.name] = snapshot_roast(H.make_plan_model(path.parent), path)
 
     history: dict[str, Any] = {}
     plans: dict[str, Any] = {}

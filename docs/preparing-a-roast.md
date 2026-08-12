@@ -74,6 +74,11 @@ room temperature, humidity and pressure, and those readings are stored in the ro
 when the sheet is confirmed. The day's conditions are recorded and accounted for without
 being typed in.
 
+Room **temperature** matters more here than it looks: the beans start at it, and ten degrees
+between a winter morning and a summer afternoon is worth roughly twenty seconds of drying on a
+400 g batch. The plan accounts for it. Room **humidity** is recorded but does not change the
+plan — it acts on green coffee in storage, not on the roast in progress.
+
 **Target roast profile** sets the [Agtron](glossary.md#agtron) level being aimed for. It
 drives the roast plan and the predictions on the INSIGHTS tab.
 
@@ -153,10 +158,12 @@ detail of that dialog.
 The profile is what makes the guidance specific: the roast plan, the pre-roast benchmarks,
 the slider labels and the load checks all follow from the machine's real characteristics —
 its [thermal mass](glossary.md#thermal-mass), the top rate of rise it can reach, how finely its
-controls can be set. The [turning point](glossary.md#tp--turning-point) is not among them: how
-far the temperature dives after charging depends on how hard you are firing and on what went in,
-so the plan does not pretend to predict it — it draws a placeholder and replaces it with the real
-turning point the moment it happens, about a minute in.
+controls can be set. The [turning point](glossary.md#tp--turning-point) is a special case: how
+far the temperature dives after charging depends above all on how much coffee went in, so the
+plan places its opening dip from the batch size — a small batch turns markedly higher than a
+full drum charged to the same temperature. It remains a placeholder rather than a prediction,
+because the firing decides the rest: the plan replaces it with the real turning point the moment
+it happens, about a minute in, and re-times everything that follows.
 
 ### Machines TilauScope cannot drive
 

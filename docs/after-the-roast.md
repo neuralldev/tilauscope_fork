@@ -111,6 +111,12 @@ The result form — whether filled at DROP or reopened later — records roasted
 defect weight, whole-bean and ground colour, and free notes. Colour can be typed, judged by
 eye against named roast levels, or read live from a colour meter where one is paired.
 
+Across the top the form recalls which roast this is — the coffee, its batch number, and the
+five figures the roast produced: total time, charge and drop temperature, development time
+and DTR. Below that, the fields to fill sit on the left and the notes box on the right. On a
+screen too short for the whole form, this middle part scrolls while the title and **⬥ Save
+roast** stay in place.
+
 **Recording a colour is what closes the loop.** A roast with a colour on file becomes part of
 what the next plan for that coffee learns from — see
 [The roast plan](the-roast-plan.md#what-the-plan-learns-and-when) for how. A roast left
@@ -124,12 +130,12 @@ just entered, so the bag can be labelled while the batch is still cooling. Savin
 without having printed one asks the question once. See
 [Labels and QR](labels-and-qr.md#what-each-label-carries).
 
-![The result form: weight, colour and notes filled in. CAPTURE 8.10 — the
-AI Summary panel](assets/after-the-roast-8.8.png)
+<!-- CAPTURE 8.8 — the result form, two columns: weight and colour filled in on the left, notes written on the right -->
 
-![The result form: weight, colour and notes filled in](assets/after-the-roast-8.9.png)
+<!-- CAPTURE 8.9 — the result form reopened from Roast finished! on an older roast, batch and metrics shown across the top -->
 
-![The AI Summary panel](assets/after-the-roast-8.10.png)
+<!-- CAPTURE 8.10 — the AI Summary panel docked beside the result form -->
+
 
 ---
 
@@ -166,17 +172,43 @@ completeness mark — missing its coffee link, or missing a field the plan or th
 on (weights, density, moisture, colour, ambient conditions). Selecting one opens it for
 editing directly.
 
+The window opens on its full list straight away. Should the reading take longer — a very
+large folder, or one on a slow network drive — the list fills in as it goes and a progress
+bar appears with a **Cancel** button: the files already listed stay usable, and **Scan
+again** picks the reading back up.
+
 **Complete from bean** fills only the fields still empty, from the linked coffee's own
 record — nothing already filled is touched. **Record** validates and writes the file, and
-moves on to the next incomplete one, so a backlog of half-finished roasts can be cleared in
-one pass rather than one file open at a time.
+keeps the same roast selected so you can check what was saved. **Next incomplete ▸** moves on
+to the following file needing attention, so a backlog of half-finished roasts can be cleared
+in one pass rather than one file open at a time.
 
 !!! note
     A file is only rewritten to disk when **Record** is pressed. Browsing the list, or
     closing without pressing it, changes nothing.
 
-**🚫 Exclude from learning** can also be toggled here, per file, alongside the completeness
-fields — the same switch as the one shown right after DROP.
+**Plan learning** is set here too, per file, at the top of the editing panel — three states
+rather than a switch:
+
+| State | What it means | Does the plan learn from it? |
+|---|---|---|
+| **✓ Admitted** | You opened this roast, checked it, and it is sound. | Yes |
+| **– Not reviewed** | No decision recorded. Every file starts here. | Yes |
+| **🚫 Excluded** | You judged this roast unfit to teach anything. | No |
+
+Only **Excluded** keeps a roast out of the history. **Admitted** does not make the plan trust
+it more — it records that *you* looked, so a long list shows at a glance what has been vetted
+and what has merely never been opened. An imperfect roast still teaches something, which is why
+*Not reviewed* is learned from.
+
+The state is written to the file the moment you press it, without **Record**, and the list marks
+it: ✅ for admitted, 🚫 for excluded, nothing for not reviewed. Browsing the list never changes a
+state — only pressing a button does.
+
+<!-- CAPTURE 8.15 — the Repair ALogs editor pane, PLAN LEARNING segmented control visible with
+"– Not reviewed" selected, and a file list showing one ✅ row and one 🚫 row. -->
+
+The 🚫 switch shown right after DROP sets the same **Excluded** state.
 
 ![Repair ALogs, the file list with completeness marks](assets/after-the-roast-8.13.png)
 

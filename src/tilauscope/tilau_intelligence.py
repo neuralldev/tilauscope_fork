@@ -22,7 +22,7 @@ from typing import Final, NamedTuple
 from typing import TYPE_CHECKING
 import logging
 from artisanlib.main import ApplicationWindow # pylint: disable=unused-import
-from tilauscope.tilauscope_types import resolve_de_window, resolve_fc_window  ## TILAU ##
+from tilauscope.tilauscope_types import resolve_de_window, resolve_fc_window
 
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ def classify_extra_channel(name: str) -> str | None:
 
 class FirstCrackDetector:
     """
-    Advanced First Crack detection using a sliding time window and 
+    Advanced First Crack detection using a sliding time window and
     thermodynamic gating.
     """
 
@@ -77,22 +77,22 @@ class FirstCrackDetector:
         self.crack_timestamps = deque()
         self.last_count: int = 0
         self.is_fired: bool = False
-        ## TILAU ## position-anchored FC state
+        # position-anchored FC state
         self._armed: bool = False              # BT approached the FC window from below
         self._pos_since: float | None = None   # position-base confirmation timer
         self._CONFIRM_S: float = 4.0
         self.aw_qmc = None
-        ## TILAU ## FC + SC crack counters. Attribution inverts between builds
-        ## (a roast may route ALL pops to FCcounter on one build, to SCcounter on
-        ## another). Pre-fire we fuse both; at fire we snapshot the SC offset so a
-        ## downstream SC count is corrected for pops already attributed to FC.
+        # FC + SC crack counters. Attribution inverts between builds
+        # (a roast may route ALL pops to FCcounter on one build, to SCcounter on
+        # another). Pre-fire we fuse both; at fire we snapshot the SC offset so a
+        # downstream SC count is corrected for pops already attributed to FC.
         self._cached_crack_device_idx: int = -1      # FC counter channel
         self._cached_crack_device_channel: int = -1
         self._cached_sc_device_idx: int = -1         # SC counter channel
         self._cached_sc_device_channel: int = -1
         self._sc_raw_at_fc: int | None = None        # SC raw snapshot at FC fire (offset)
         self._fc_tally: int = 0                      # our own FC pop tally beside raw counters
-        
+
         self.params: dict = {
             "FC": [4, 90.0, 2.0, 25.0],
             "SC": [4, 50.0, 1.0, 45.0]
@@ -102,15 +102,15 @@ class FirstCrackDetector:
         self.crack_timestamps.clear()
         self.last_count = 0
         self.is_fired = False
-        self._armed = False               ## TILAU ##
-        self._pos_since = None            ## TILAU ##
-        self._banked_count = None         ## TILAU ##
+        self._armed = False
+        self._pos_since = None
+        self._banked_count = None
         self._cached_crack_device_idx = -1
         self._cached_crack_device_channel = -1
-        self._cached_sc_device_idx = -1            ## TILAU ##
-        self._cached_sc_device_channel = -1        ## TILAU ##
-        self._sc_raw_at_fc = None                  ## TILAU ##
-        self._fc_tally = 0                         ## TILAU ##
+        self._cached_sc_device_idx = -1
+        self._cached_sc_device_channel = -1
+        self._sc_raw_at_fc = None
+        self._fc_tally = 0
 
     def detect_extradevice(self, aw: ApplicationWindow) -> int | None:
         self.aw_qmc = aw.qmc
@@ -134,8 +134,8 @@ class FirstCrackDetector:
                     found_crack_idx = i
                     _log.info(f"FC_Detector: FC counter @ extra {i} ch{ch} ({name})")
                 elif cat == "sc" and self._cached_sc_device_idx == -1:
-                    ## TILAU ## SC counter is fused with FC pre-fire (attribution
-                    ## inverts between builds), and offset-corrected post-fire.
+                    # SC counter is fused with FC pre-fire (attribution
+                    # inverts between builds), and offset-corrected post-fire.
                     self._cached_sc_device_idx     = i
                     self._cached_sc_device_channel = ch
                     _log.info(f"FC_Detector: SC counter @ extra {i} ch{ch} ({name})")
@@ -147,7 +147,7 @@ class FirstCrackDetector:
 
     def check_detection(self, current_bt: float, target_fcs: float,
                       current_time: float, mode: str = 'C') -> float | bool:
-        """## TILAU ## Position-anchored First Crack (same proven architecture as
+        """Position-anchored First Crack (same proven architecture as
         DryEnd). The crack counter over-counts pre-FC noise on real setups, so pops
         are NOT the primary trigger: the physical window is the base, and a pop
         BURST only corroborates AT/ABOVE the target (never below -> cannot fire on
@@ -186,7 +186,7 @@ class FirstCrackDetector:
         # --- fail-safe: FC cannot be later than band_hi + half ---
         if current_bt >= fc_hi:
             self.is_fired = True
-            self._snapshot_at_fire()                   ## TILAU ##
+            self._snapshot_at_fire()
             _log.info(f"FC_Detector: FIRED force@FC_hi (BT={current_bt:.1f}>={fc_hi:.1f})")
             return current_time
 
@@ -206,7 +206,7 @@ class FirstCrackDetector:
         # --- pop BURST advancer: only AT/ABOVE the band (>= target / band_lo) ---
         if audio >= self.threshold and current_bt >= band_lo:
             self.is_fired = True
-            self._snapshot_at_fire()                   ## TILAU ##
+            self._snapshot_at_fire()
             _log.info(f"FC_Detector: FIRED burst ({audio} pops, BT={current_bt:.1f})")
             return self.crack_timestamps[0]
 
@@ -216,7 +216,7 @@ class FirstCrackDetector:
                 self._pos_since = current_time
             if (current_time - self._pos_since) >= self._CONFIRM_S:
                 self.is_fired = True
-                self._snapshot_at_fire()               ## TILAU ##
+                self._snapshot_at_fire()
                 _log.info(f"FC_Detector: FIRED position (BT={current_bt:.1f}>={band_hi:.1f})")
                 return current_time
         else:
@@ -287,7 +287,7 @@ class FirstCrackDetector:
         if sc is None:
             return 0
         return max(0, sc - self._sc_raw_at_fc)
-        
+
     def get_window_count(self) -> int:
         return len(self.crack_timestamps)
 
@@ -319,7 +319,7 @@ class DryEndResult(NamedTuple):
 
 
 class DryEndDetector:
-    """## TILAU ## Dry-End detector — physical window + sensor-priority cascade.
+    """Dry-End detector — physical window + sensor-priority cascade.
 
     Roaster-agnostic. No RoR_BT/RoR_ET ratio, no ET-BT gap assumption (both are
     roaster-type dependent). DE is physically bounded to [band-5, band+5] in the

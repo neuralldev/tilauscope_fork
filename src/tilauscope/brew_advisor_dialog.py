@@ -17,6 +17,8 @@
 
 from __future__ import annotations
 
+from tilauscope.theme_qss import apply_tilau_theme
+
 import copy
 import json
 import re as _re
@@ -33,7 +35,7 @@ from PyQt6.QtWidgets import (
 )
 
 from artisanlib.util import fromCtoFstrict
-from tilauscope.tilauscope_types import THEME, show_styled_message
+from tilauscope.tilauscope_types import THEME, show_styled_message, print_progress_pill
 from tilauscope.ai_support import normalize_engine, get_suppress_thinking_params, provider_base_url
 from tilauscope.brew_advisor import (
     BrewAdvisor, BrewInput, BrewRecipe, BrewFamily, WaterProfile, Severity,
@@ -44,13 +46,6 @@ from tilauscope.brew_advisor import (
 )
 
 _log: Final = logging.getLogger(__name__)
-
-## TILAU ## Hover/pressed shades for the panel's one primary action (accept the
-## taste correction). THEME['HOVER'] is a shared olive that reads as "already
-## pressed" under a blue accent, so this button keeps its own pair rather than
-## borrowing a colour the rest of the app tunes for other purposes.
-_APPLY_HOVER: Final[str] = "#A9C7FF"    # ACCENT, lighter
-_APPLY_PRESSED: Final[str] = "#6C9BE0"  # ACCENT, darker
 
 # AITask.BREW_ADVICE if present (add to the enum), else literal string.
 try:
@@ -86,14 +81,8 @@ def _machine_label(mc: EspressoMachine) -> str:
 class _StepSpinBox(QSpinBox):
     """A spin box whose arrows step exactly once per click.
 
-    ## TILAU ## On macOS this dialog (frameless + translucent + Tool) can lose
-    ## the mouse release that stops QAbstractSpinBox's auto-repeat, and the value
-    ## then runs away to the end of the range on a single click. Rather than try
-    ## to interrupt the repeat once it has started — its timers belong to Qt's
-    ## private implementation and cannot be cancelled from here — the arrows are
-    ## handled directly, so the repeat never starts and there is no release to
-    ## depend on. Clicks in the text area still go to Qt, so selecting, typing
-    ## and the arrow keys are untouched and a large jump stays one gesture.
+    On macOS this frameless/translucent/Tool dialog can lose the mouse release that
+    stops QAbstractSpinBox's auto-repeat, so the arrows are handled directly instead.
     """
 
     def mousePressEvent(self, e: QMouseEvent) -> None:
@@ -199,10 +188,10 @@ def _step_text(key: str, params: dict) -> str:
         "step_es_prewet": QApplication.translate("tilauscope_brew", "Pre-wet: low-pressure puck saturation"),
         "step_es_prebrew": QApplication.translate("tilauscope_brew", "Low-flow pre-brew ~{s} s"),
         "step_es_pi": QApplication.translate("tilauscope_brew", "Pre-infusion ~{s} s"),
-        ## TILAU ## Pre-infusion split into the two gestures it really is, so a
-        ## paddle or lever owner knows where his hand goes and when nothing
-        ## should be flowing. Line-pressure wording for a paddle machine, lever
-        ## wording for an E61 or a manual group.
+        # Pre-infusion split into the two gestures it really is, so a
+        # paddle or lever owner knows where his hand goes and when nothing
+        # should be flowing. Line-pressure wording for a paddle machine, lever
+        # wording for an E61 or a manual group.
         "step_es_pi_wet_line": QApplication.translate("tilauscope_brew", "Paddle to pre-infusion: water fills the puck, ~{s} s"),
         "step_es_pi_dwell_line": QApplication.translate("tilauscope_brew", "Hold there — nothing flows, the puck settles, ~{s} s"),
         "step_es_pi_wet_lever": QApplication.translate("tilauscope_brew", "Lever half-up: water in at line pressure, ~{s} s"),
@@ -358,16 +347,13 @@ class _KpiTile(QFrame):
         lay.setContentsMargins(10, 7, 10, 7)
         lay.setSpacing(1)
         self._cap = QLabel(caption.upper())
-        self._cap.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-size:9px;letter-spacing:1.5px;"
-            f"font-family:'JetBrains Mono';font-weight:bold;")
+        self._cap.setProperty('variant', 'eyebrow')
         self._val = QLabel("—")
-        self._val.setStyleSheet(
-            f"color:{THEME['TEXT']};font-size:19px;font-weight:bold;"
-            f"font-family:'JetBrains Mono';")
+        self._val.setProperty('variant', 'readout-sm')
+        self._val.setStyleSheet(f"color: {THEME['TEXT']};")
         self._sub = QLabel("")
         self._sub.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-size:10px;font-family:'JetBrains Mono';")
+            f"color:{THEME['SUBTEXT']};font-size:10px;")
         self._sub.setVisible(False)
         lay.addWidget(self._cap)
         lay.addWidget(self._val)
@@ -389,7 +375,7 @@ def _make_chip(text: str, color: Optional[str] = None) -> QLabel:
     lbl.setStyleSheet(
         f"color:{c}; background:{THEME['SURFACE']};"
         f" border:1px solid {THEME['BORDER']}; border-radius:9px;"
-        f" padding:2px 9px; font-family:'JetBrains Mono'; font-size:11px;")
+        f" padding:2px 9px; font-size:11px;")
     return lbl
 
 
@@ -445,13 +431,13 @@ class _StepRow(QFrame):
         self._rail.setStyleSheet(f"background:{rail}; border:none; border-radius:1px;")
         self.setStyleSheet(f"QFrame#stepRow {{ background:{bg}; border-radius:6px; }}")
         self._time.setStyleSheet(
-            f"color:{time_c};font-family:'JetBrains Mono';font-size:12px;"
+            f"color:{time_c};font-size:12px;"
             f"font-weight:bold;background:transparent;border:none;")
         self._text.setStyleSheet(
-            f"color:{text_c};font-family:'JetBrains Mono';font-size:12px;"
+            f"color:{text_c};font-size:12px;"
             f"background:transparent;border:none;")
         self._target.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-family:'JetBrains Mono';font-size:11px;"
+            f"color:{THEME['SUBTEXT']};font-size:11px;"
             f"font-weight:bold;background:{THEME['SURFACE']};"
             f"border:1px solid {THEME['BORDER']};border-radius:8px;padding:1px 7px;")
 
@@ -470,14 +456,14 @@ class _DiagnosticsBox(QWidget):
         self._btn.setStyleSheet(
             f"QPushButton {{ background:transparent; color:{THEME['SUBTEXT']};"
             f" border:none; padding:4px 0; text-align:left;"
-            f" font-family:'JetBrains Mono'; font-size:12px; font-weight:bold; }}"
+            f" font-size:12px; font-weight:bold; }}"
             f" QPushButton:hover {{ color:{THEME['ACCENT']}; }}")
         self._btn.clicked.connect(self._toggle)
         self._body = QLabel("")
         self._body.setWordWrap(True)
         self._body.setTextFormat(Qt.TextFormat.RichText)
         self._body.setStyleSheet(
-            f"color:{THEME['TEXT']};font-family:'JetBrains Mono';font-size:12px;"
+            f"color:{THEME['TEXT']};font-size:12px;"
             f"background:{THEME['SURFACE']};border:1px solid {THEME['BORDER']};"
             f"border-radius:8px;padding:8px 10px;")
         self._body.setVisible(False)
@@ -806,24 +792,24 @@ class BrewAdvisorService(QObject):
         # Accepted taste corrections, per method. Re-applied on every recompute
         # so a dial-in survives a dose change instead of being recomputed away.
         self._dialin: dict[str, BrewCorrection] = {}
-        ## TILAU ## Dialled-in dose, per method, for PRESSURE brewing only. On a
-        ## pressure brewer the dose is not a preference: the basket sets it, and
-        ## reopening on the method default silently changes the puck the whole
-        ## dial-in was built on. Filter doses stay on the method default — there
-        ## the dose is a free choice (cup size), and pinning last time's would
-        ## fight the operator every time they brew a different volume.
+        # Dialled-in dose, per method, for PRESSURE brewing only. On a
+        # pressure brewer the dose is not a preference: the basket sets it, and
+        # reopening on the method default silently changes the puck the whole
+        # dial-in was built on. Filter doses stay on the method default — there
+        # the dose is a free choice (cup size), and pinning last time's would
+        # fight the operator every time they brew a different volume.
         self._dialin_dose: dict[str, float] = {}
-        ## TILAU ## When each dial-in was accepted (ISO date, '' if unknown). A
-        ## dial-in never expires on its own — it was made on ONE roast of this
-        ## green bean, and reopening it a season later is plausible but not
-        ## guaranteed. Showing its age lets the operator judge instead of
-        ## trusting a setting whose origin is invisible.
+        # When each dial-in was accepted (ISO date, '' if unknown). A
+        # dial-in never expires on its own — it was made on ONE roast of this
+        # green bean, and reopening it a season later is plausible but not
+        # guaranteed. Showing its age lets the operator judge instead of
+        # trusting a setting whose origin is invisible.
         self._dialin_date: dict[str, str] = {}
-        ## TILAU ## Methods whose dose the operator has set BY HAND this session.
-        ## Restoring the dialled-in dose is right when you arrive on a method; doing
-        ## it again after you have deliberately typed another one is the app arguing
-        ## with you — the change simply vanished on a round-trip through another
-        ## method. Their gesture wins until they accept a new dial-in at that dose.
+        # Methods whose dose the operator has set BY HAND this session.
+        # Restoring the dialled-in dose is right when you arrive on a method; doing
+        # it again after you have deliberately typed another one is the app arguing
+        # with you — the change simply vanished on a round-trip through another
+        # method. Their gesture wins until they accept a new dial-in at that dose.
         self._dose_touched: dict[str, float] = {}
         # Learned cross-bean offset, per family key ("pressure"/"other"). Applied
         # ONLY when this bean has no dial-in of its own — a bean dial-in already
@@ -944,12 +930,8 @@ class BrewAdvisorService(QObject):
                 rec.ratio_str = f"1:{base:.0f}" if abs(base - round(base)) < 0.05 else f"1:{base:.1f}"
                 old_w = rec.water_g
                 rec.water_g = round(rec.dose_g * base, 0)
-                ## TILAU ## The steps carry the pour plan the operator actually
-                ## brews to (checklist, corridor, auto-stop). Moving the total
-                ## without moving them leaves the KPI promising less water while
-                ## the brew still drives to the old target — the correction shows
-                ## on screen and is undone in the cup. Scale the plan with it,
-                ## which preserves the pour shape.
+                # The steps carry the pour plan the operator actually brews to;
+                # scale them with the total so the correction reaches the cup, not just the on-screen KPI.
                 if old_w > 0 and rec.steps:
                     k = rec.water_g / old_w
                     for st in rec.steps:
@@ -1003,13 +985,10 @@ class BrewAdvisorService(QObject):
             return False
         rec = copy.deepcopy(self._last)
         changed = False
-        ## TILAU ## Routed through _apply_correction rather than reimplemented.
-        ## This path used to carry its own copy of the ratio arithmetic, and it
-        ## drifted: it moved the water without moving the pour steps (so the
-        ## checklist and auto-stop kept driving to the old target), it skipped
-        ## espresso entirely, and it had no floor at all — twenty refinements in
-        ## a row produced a ratio of 1:-0.5 and -8 g of water. One implementation
-        ## of "fold an adjustment into a recipe" is the fix for all three.
+        # Routed through _apply_correction rather than reimplemented, so the water,
+        # pour steps, checklist, auto-stop target and espresso path — and the ratio
+        # floor — all move together instead of drifting apart. One implementation
+        # of "fold an adjustment into a recipe" is the fix for all three.
         td = _clamp(float(data.get("temp_delta_c", 0) or 0), -2.0, 2.0)
         gp = _clamp(float(data.get("grind_pct", 0) or 0), -10.0, 10.0)
         rd = _clamp(float(data.get("ratio_delta", 0) or 0), -1.0, 1.0)
@@ -1036,6 +1015,10 @@ class BrewAdvisorService(QObject):
 class BrewAdvisorDlg(QDialog):
     def __init__(self, inp: BrewInput, title: str = "", aw=None, beancave=None, bean=None):
         super().__init__(None)  # parent=None: avoid Qt embedding on macOS
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self.aw = aw
         # GreenBean this roast belongs to; carries the saved taste dial-ins.
         # None when the advisor is opened outside the BeanCave workflow.
@@ -1066,22 +1049,22 @@ class BrewAdvisorDlg(QDialog):
         # journal. 0 / False means "not measured", never "drained instantly".
         self._drawdown_s: int = 0
         self._drawdown_valid: bool = False
-        ## TILAU ## Provenance of the numbers in _samples, carried into the journal.
-        ## Reset with the curve: a manual entry must not leave its label on the next
-        ## brew the scale measures.
+        # Provenance of the numbers in _samples, carried into the journal.
+        # Reset with the curve: a manual entry must not leave its label on the next
+        # brew the scale measures.
         self._measured_source: str = "scale"
         self._stop_marker: Optional[tuple[float, float]] = None
         self._last_w: Optional[float] = None
-        ## TILAU ## One "scale connected but silent" report per brew — see
-        ## _tick_update_inner.
+        # One "scale connected but silent" report per brew — see
+        # _tick_update_inner.
         self._silent_scale_warned: bool = False
         self._elapsed = QElapsedTimer()
         self._tick = QTimer(self)
         self._tick.setInterval(200)
         self._tick.timeout.connect(self._tick_update)
-        ## TILAU ## Delays the scale's stopwatch command past the tare burst — see
-        ## _start_brew. Owned by the dialog so it dies with it and can never fire
-        ## into a deleted widget.
+        # Delays the scale's stopwatch command past the tare burst — see
+        # _start_brew. Owned by the dialog so it dies with it and can never fire
+        # into a deleted widget.
         self._scale_timer_delay = QTimer(self)
         self._scale_timer_delay.setSingleShot(True)
         self._scale_timer_delay.timeout.connect(self._start_scale_timer_deferred)
@@ -1107,8 +1090,8 @@ class BrewAdvisorDlg(QDialog):
         self._learn_setup_offsets()   # cross-bean, before per-bean
         self._load_dialins()          # before the first recompute
         self._reload_brewlog()        # file I/O once, at open — never in the render path
-        ## TILAU ## _load_dialins may have restored a dialled-in dose for the
-        ## method being opened; the spinbox was built on the method default.
+        # _load_dialins may have restored a dialled-in dose for the
+        # method being opened; the spinbox was built on the method default.
         restored_dose = self.service.dialin_dose_for(self.service.method)
         if restored_dose:
             self.service.set_dose(restored_dose)
@@ -1178,7 +1161,7 @@ class BrewAdvisorDlg(QDialog):
 
     def _qss(self) -> str:
         return f"""
-            QLabel {{ color: {THEME['TEXT']}; font-family: 'JetBrains Mono'; background: transparent; }}
+            QLabel {{ color: {THEME['TEXT']}; background: transparent; }}
             QComboBox, QSpinBox {{
                 background-color: {THEME['SURFACE']}; color: {THEME['TEXT']};
                 border: 1px solid {THEME['BORDER']}; border-radius: 6px;
@@ -1192,9 +1175,9 @@ class BrewAdvisorDlg(QDialog):
                 background-color: {THEME['ACCENT']}; color: {THEME['BG']};
                 border: none; border-radius: 6px; padding: 6px 16px; font-weight: bold;
             }}
-            QPushButton:hover {{ background-color: {THEME['HOVER']}; }}
+            QPushButton:hover {{ background-color: {THEME['LAVENDER']}; }}
             QPushButton:disabled {{ background-color: {THEME['SURFACE']}; color: {THEME['SUBTEXT']}; }}
-            /* ## TILAU ## Tooltips are top-level windows painted by the platform
+            /* Tooltips are top-level windows painted by the platform
                style, so without an explicit rule they came out as a native
                yellow box in the middle of a Catppuccin panel — most visibly on
                "Searching for the scale…", whose tooltip carries the only
@@ -1202,7 +1185,7 @@ class BrewAdvisorDlg(QDialog):
             QToolTip {{
                 background-color: {THEME['SURFACE']}; color: {THEME['TEXT']};
                 border: 1px solid {THEME['BORDER']}; border-radius: 6px;
-                padding: 6px 8px; font-family: 'JetBrains Mono'; font-size: 12px;
+                padding: 6px 8px; font-size: 12px;
             }}
         """
 
@@ -1228,6 +1211,7 @@ class BrewAdvisorDlg(QDialog):
         self.lbl_title.setStyleSheet(f"font-size:15px;font-weight:bold;color:{THEME['ACCENT']};")
         btn_x = QPushButton("✕")
         btn_x.setFixedSize(26, 26)
+        btn_x.setProperty('variant', 'icon')   # fixed size: no base padding
         btn_x.setStyleSheet(
             f"QPushButton {{ background:{THEME['BORDER']}; color:{THEME['TEXT']};"
             f" border-radius:13px; font-size:14px; font-weight:bold; }}"
@@ -1303,8 +1287,8 @@ class BrewAdvisorDlg(QDialog):
         ctrl.addWidget(self.lbl_style)
         ctrl.addWidget(self.cmb_style, 2)
         root.addLayout(ctrl)
-        ## TILAU ## Kept so the minimum width can be measured from the row
-        ## itself rather than hardcoded — see setMinimumSize below.
+        # Kept so the minimum width can be measured from the row
+        # itself rather than hardcoded — see setMinimumSize below.
         self._ctrl_row = ctrl
 
         # ── KPI strip: the numbers the barista actually acts on ──
@@ -1337,9 +1321,7 @@ class BrewAdvisorDlg(QDialog):
         left.setSpacing(8)
 
         lbl_proto = QLabel(QApplication.translate("tilauscope_brew", "PROTOCOL"))
-        lbl_proto.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-size:11px;letter-spacing:1.5px;"
-            f"font-weight:bold;font-family:'JetBrains Mono';")
+        lbl_proto.setProperty('variant', 'eyebrow')
         left.addWidget(lbl_proto)
 
         self.steps_host = QWidget()
@@ -1363,12 +1345,12 @@ class BrewAdvisorDlg(QDialog):
         _taste_hdr = QLabel(QApplication.translate("tilauscope_brew", "HOW DOES IT TASTE?"))
         _taste_hdr.setStyleSheet(
             f"color:{THEME['SUBTEXT']};font-size:11px;letter-spacing:1.5px;"
-            f"font-weight:bold;font-family:'JetBrains Mono';padding-top:6px;")
+            f"font-weight:bold;padding-top:6px;")
         left.addWidget(_taste_hdr)
         self.lbl_taste_prompt = QLabel(
             QApplication.translate("tilauscope_brew", "Tell the advisor and it will adjust the recipe."))
         self.lbl_taste_prompt.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-family:'JetBrains Mono';font-size:12px;"
+            f"color:{THEME['SUBTEXT']};font-size:12px;"
             f"font-weight:bold;padding-top:4px;")
         left.addWidget(self.lbl_taste_prompt)
 
@@ -1389,7 +1371,7 @@ class BrewAdvisorDlg(QDialog):
             b.setStyleSheet(
                 f"QPushButton {{ background:{THEME['SURFACE']}; color:{THEME['SUBTEXT']};"
                 f" border:1px solid {THEME['BORDER']}; border-radius:9px;"
-                f" padding:3px 9px; font-family:'JetBrains Mono'; font-size:12px; }}"
+                f" padding:3px 9px; font-size:12px; }}"
                 f" QPushButton:hover {{ color:{THEME['TEXT']}; }}"
                 f" QPushButton:checked {{ background:{on}; color:{THEME['BG']};"
                 f" border:1px solid {on}; font-weight:bold; }}")
@@ -1404,7 +1386,7 @@ class BrewAdvisorDlg(QDialog):
         self.lbl_verdict.setWordWrap(True)
         self.lbl_verdict.setTextFormat(Qt.TextFormat.RichText)
         self.lbl_verdict.setStyleSheet(
-            "font-family:'JetBrains Mono';font-size:12px;padding-top:4px;")
+            "font-size:12px;padding-top:4px;")
         self.lbl_verdict.setVisible(False)
         left.addWidget(self.lbl_verdict)
 
@@ -1412,32 +1394,23 @@ class BrewAdvisorDlg(QDialog):
         apply_row.setSpacing(6)
         self.btn_apply_fix = QPushButton(
             QApplication.translate("tilauscope_brew", "Apply to next brew"))
-        ## TILAU ## Styled explicitly. It used to fall through to the dialog-wide
-        ## QPushButton rule, whose hover shade is an olive that reads as "already
-        ## pressed": with no distinct hover and no pressed state at all, a click
-        ## produced no visible acknowledgement, and the correction was applied and
-        ## saved in silence. This is the panel's primary action — it has to look
-        ## pressable and look pressed.
+        # The panel's primary action; hover/pressed states come from the base
+        # sheet's primary variant.
         self.btn_apply_fix.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_apply_fix.setStyleSheet(
-            f"QPushButton {{ background:{THEME['ACCENT']}; color:{THEME['BG']};"
-            f" border:none; border-radius:6px; padding:6px 16px;"
-            f" font-family:'JetBrains Mono'; font-weight:bold; }}"
-            f" QPushButton:hover {{ background:{_APPLY_HOVER}; }}"
-            f" QPushButton:pressed {{ background:{_APPLY_PRESSED}; }}")
+        self.btn_apply_fix.setProperty('variant', 'primary')
         self.btn_apply_fix.clicked.connect(self._apply_taste_correction)
         self.btn_apply_fix.setVisible(False)
         apply_row.addWidget(self.btn_apply_fix)
         apply_row.addStretch(1)
         left.addLayout(apply_row)
-        ## TILAU ## Full width and on its own row, not beside the button: the
-        ## confirmation now names the bean and restates both numbers, which does
-        ## not fit next to a button and must not be read as a caption of it.
+        # Full width and on its own row, not beside the button: the
+        # confirmation now names the bean and restates both numbers, which does
+        # not fit next to a button and must not be read as a caption of it.
         self.lbl_fix_done = QLabel("")
         self.lbl_fix_done.setWordWrap(True)
         self.lbl_fix_done.setTextFormat(Qt.TextFormat.RichText)
         self.lbl_fix_done.setStyleSheet(
-            "font-family:'JetBrains Mono';font-size:12px;padding-top:2px;")
+            "font-size:12px;padding-top:2px;")
         self.lbl_fix_done.setVisible(False)
         left.addWidget(self.lbl_fix_done)
         self.diagnostics = _DiagnosticsBox()
@@ -1467,7 +1440,6 @@ class BrewAdvisorDlg(QDialog):
         self._right_scroll.setStyleSheet(
             "QScrollArea { background: transparent; border: none; }")
         _right_content = QWidget()
-        _right_content.setStyleSheet("background: transparent;")
         self._right_scroll.setWidget(_right_content)
         right_outer.addWidget(self._right_scroll, 1)
         rl = QVBoxLayout(_right_content)
@@ -1486,16 +1458,16 @@ class BrewAdvisorDlg(QDialog):
         rl.addLayout(head)
 
         self.lbl_brew_target = QLabel("—")
-        self.lbl_brew_target.setStyleSheet(f"color:{THEME['SUBTEXT']};border:none;")
+        self.lbl_brew_target.setProperty('variant', 'secondary')
         rl.addWidget(self.lbl_brew_target)
 
         stat = QHBoxLayout()
         self.lbl_brew_time = QLabel("0:00")
-        self.lbl_brew_time.setStyleSheet(f"color:{THEME['TEXT']};font-size:28px;font-weight:bold;"
-                                         f"font-family:'JetBrains Mono';border:none;")
+        self.lbl_brew_time.setProperty('variant', 'readout')
+        self.lbl_brew_time.setStyleSheet(f"color: {THEME['TEXT']};")
         self.lbl_brew_weight = QLabel("–– g")
-        self.lbl_brew_weight.setStyleSheet(f"color:{THEME['ACCENT']};font-size:28px;font-weight:bold;"
-                                           f"font-family:'JetBrains Mono';border:none;")
+        self.lbl_brew_weight.setProperty('variant', 'readout')
+        self.lbl_brew_weight.setStyleSheet(f"color: {THEME['ACCENT']};")
         stat.addWidget(self.lbl_brew_time)
         stat.addStretch(1)
         stat.addWidget(self.lbl_brew_weight)
@@ -1506,10 +1478,9 @@ class BrewAdvisorDlg(QDialog):
 
         sub_row = QHBoxLayout()
         self.lbl_brew_flow = QLabel(QApplication.translate("tilauscope_brew", "Flow: –– g/s"))
-        self.lbl_brew_flow.setStyleSheet(f"color:{THEME['SUBTEXT']};border:none;")
+        self.lbl_brew_flow.setProperty('variant', 'secondary')
         self.lbl_brew_pct = QLabel("")
-        self.lbl_brew_pct.setStyleSheet(f"color:{THEME['SUBTEXT']};border:none;"
-                                        f"font-family:'JetBrains Mono';")
+        self.lbl_brew_pct.setStyleSheet(f"color:{THEME['SUBTEXT']};border:none;")
         sub_row.addWidget(self.lbl_brew_flow)
         sub_row.addStretch(1)
         sub_row.addWidget(self.lbl_brew_pct)
@@ -1518,14 +1489,14 @@ class BrewAdvisorDlg(QDialog):
         self.spark = _ExtractionChart()
         rl.addWidget(self.spark, 1)
 
-        ## TILAU ## Manual result entry, for espresso machines whose scale is built
-        ## into the drip tray: no cup fits over an Acaia on a Linea Mini, so the
-        ## whole feedback loop (debrief, time-aware diagnosis, journal, previous
-        ## attempt) was unreachable there. This writes the same two numbers the
-        ## scale produces into _samples and lets every downstream path run
-        ## unchanged — a second measurement path would drift from the first.
-        ## Espresso only: elsewhere the total time is the operator's pour schedule,
-        ## not the coffee bed, and a typed number there would mean nothing.
+        # Manual result entry, for espresso machines whose scale is built
+        # into the drip tray: no cup fits over an Acaia on a Linea Mini, so the
+        # whole feedback loop (debrief, time-aware diagnosis, journal, previous
+        # attempt) was unreachable there. This writes the same two numbers the
+        # scale produces into _samples and lets every downstream path run
+        # unchanged — a second measurement path would drift from the first.
+        # Espresso only: elsewhere the total time is the operator's pour schedule,
+        # not the coffee bed, and a typed number there would mean nothing.
         self.manual_card = QFrame()
         self.manual_card.setVisible(False)
         self.manual_card.setStyleSheet(
@@ -1535,20 +1506,19 @@ class BrewAdvisorDlg(QDialog):
         ml.setContentsMargins(12, 9, 12, 9)
         ml.setSpacing(6)
         lbl_manual_title = QLabel(QApplication.translate("tilauscope_brew", "SHOT RESULT"))
-        lbl_manual_title.setStyleSheet(
-            f"color:{THEME['ACCENT']};font-size:11px;letter-spacing:1.5px;"
-            f"font-weight:bold;font-family:'JetBrains Mono';")
+        lbl_manual_title.setProperty('variant', 'eyebrow')
+        lbl_manual_title.setStyleSheet(f"color: {THEME['ACCENT']};")
         ml.addWidget(lbl_manual_title)
 
         mrow = QHBoxLayout()
         mrow.setSpacing(8)
         lbl_mt = QLabel(QApplication.translate("tilauscope_brew", "Shot time"))
-        lbl_mt.setStyleSheet(f"color:{THEME['SUBTEXT']};font-size:11px;")
+        lbl_mt.setProperty('variant', 'caption')
         self.spn_manual_time = QSpinBox()
         self.spn_manual_time.setRange(1, 120)
         self.spn_manual_time.setSuffix(" s")
         lbl_my = QLabel(QApplication.translate("tilauscope_brew", "In the cup"))
-        lbl_my.setStyleSheet(f"color:{THEME['SUBTEXT']};font-size:11px;")
+        lbl_my.setProperty('variant', 'caption')
         self.spn_manual_yield = QDoubleSpinBox()
         self.spn_manual_yield.setRange(1.0, 200.0)
         self.spn_manual_yield.setDecimals(1)
@@ -1558,7 +1528,7 @@ class BrewAdvisorDlg(QDialog):
             w.setStyleSheet(
                 f"QAbstractSpinBox {{ background:{THEME['SURFACE']}; color:{THEME['TEXT']};"
                 f" border:1px solid {THEME['BORDER']}; border-radius:6px; padding:4px 6px;"
-                f" font-family:'JetBrains Mono'; }}")
+                f" }}")
         mrow.addWidget(lbl_mt)
         mrow.addWidget(self.spn_manual_time, 1)
         mrow.addSpacing(6)
@@ -1567,8 +1537,7 @@ class BrewAdvisorDlg(QDialog):
         ml.addLayout(mrow)
 
         self.lbl_manual_target = QLabel("")
-        self.lbl_manual_target.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-family:'JetBrains Mono';font-size:11px;")
+        self.lbl_manual_target.setProperty('variant', 'caption')
         ml.addWidget(self.lbl_manual_target)
 
         mbtn = QHBoxLayout()
@@ -1580,9 +1549,7 @@ class BrewAdvisorDlg(QDialog):
             f" border:1px solid {THEME['BORDER']}; border-radius:6px; padding:5px 12px; }}")
         self.btn_manual_save = QPushButton(QApplication.translate("tilauscope_brew", "Record"))
         self.btn_manual_save.clicked.connect(self._record_manual_result)
-        self.btn_manual_save.setStyleSheet(
-            f"QPushButton {{ background:{THEME['ACCENT']}; color:{THEME['BG']};"
-            f" border:none; border-radius:6px; padding:5px 12px; font-weight:bold; }}")
+        self.btn_manual_save.setProperty('variant', 'primary')
         mbtn.addStretch(1)
         mbtn.addWidget(self.btn_manual_cancel)
         mbtn.addWidget(self.btn_manual_save)
@@ -1599,20 +1566,17 @@ class BrewAdvisorDlg(QDialog):
         dl.setContentsMargins(12, 7, 12, 7)
         dl.setSpacing(2)
         self.lbl_debrief_title = QLabel(QApplication.translate("tilauscope_brew", "BREW COMPLETE"))
-        self.lbl_debrief_title.setStyleSheet(
-            f"color:{THEME['SUCCESS']};font-size:9px;letter-spacing:1.5px;"
-            f"font-weight:bold;font-family:'JetBrains Mono';")
+        self.lbl_debrief_title.setProperty('variant', 'eyebrow')
+        self.lbl_debrief_title.setStyleSheet(f"color: {THEME['SUCCESS']};")
         self.lbl_debrief_spec = QLabel("")
         self.lbl_debrief_spec.setStyleSheet(
-            f"color:{THEME['TEXT']};font-size:13px;font-weight:bold;"
-            f"font-family:'JetBrains Mono';")
+            f"color:{THEME['TEXT']};font-size:13px;font-weight:bold;")
         self.lbl_debrief_delta = QLabel("")
         self.lbl_debrief_delta.setTextFormat(Qt.TextFormat.RichText)
-        self.lbl_debrief_delta.setStyleSheet("font-family:'JetBrains Mono';font-size:11px;")
+        self.lbl_debrief_delta.setStyleSheet("font-size:11px;")
         self.lbl_debrief_coach = QLabel("")
         self.lbl_debrief_coach.setWordWrap(True)
-        self.lbl_debrief_coach.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-family:'JetBrains Mono';font-size:11px;")
+        self.lbl_debrief_coach.setProperty('variant', 'caption')
         dl.addWidget(self.lbl_debrief_title)
         dl.addWidget(self.lbl_debrief_spec)
         dl.addWidget(self.lbl_debrief_delta)
@@ -1620,11 +1584,11 @@ class BrewAdvisorDlg(QDialog):
 
         rl.addWidget(self.debrief)
 
-        ## TILAU ## "Did my last change actually do anything?" — read from the brew
-        ## journal, never from the live brew. A sibling of the debrief rather than a
-        ## part of it: the debrief describes the cup you just poured, this describes
-        ## the SETTING you changed before it, and it is worth seeing when you open
-        ## the advisor to brew again, not only after serving.
+        # "Did my last change actually do anything?" — read from the brew
+        # journal, never from the live brew. A sibling of the debrief rather than a
+        # part of it: the debrief describes the cup you just poured, this describes
+        # the SETTING you changed before it, and it is worth seeing when you open
+        # the advisor to brew again, not only after serving.
         self.prev_try = QFrame()
         self.prev_try.setVisible(False)
         self.prev_try.setStyleSheet(
@@ -1634,25 +1598,20 @@ class BrewAdvisorDlg(QDialog):
         pl.setContentsMargins(12, 7, 12, 7)
         pl.setSpacing(2)
         self.lbl_prev_title = QLabel("")
-        self.lbl_prev_title.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-size:9px;letter-spacing:1.5px;"
-            f"font-weight:bold;font-family:'JetBrains Mono';")
+        self.lbl_prev_title.setProperty('variant', 'eyebrow')
         self.lbl_prev_change = QLabel("")
         self.lbl_prev_change.setStyleSheet(
-            f"color:{THEME['TEXT']};font-size:13px;font-weight:bold;"
-            f"font-family:'JetBrains Mono';")
+            f"color:{THEME['TEXT']};font-size:13px;font-weight:bold;")
         self.lbl_prev_signal = QLabel("")
         self.lbl_prev_signal.setTextFormat(Qt.TextFormat.RichText)
-        self.lbl_prev_signal.setStyleSheet("font-family:'JetBrains Mono';font-size:11px;")
+        self.lbl_prev_signal.setStyleSheet("font-size:11px;")
         self.lbl_prev_verdict = QLabel("")
         self.lbl_prev_verdict.setWordWrap(True)
-        self.lbl_prev_verdict.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-family:'JetBrains Mono';font-size:11px;")
+        self.lbl_prev_verdict.setProperty('variant', 'caption')
         self.lbl_prev_causes = QLabel("")
         self.lbl_prev_causes.setWordWrap(True)
         self.lbl_prev_causes.setVisible(False)
-        self.lbl_prev_causes.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-family:'JetBrains Mono';font-size:11px;")
+        self.lbl_prev_causes.setProperty('variant', 'caption')
         for w in (self.lbl_prev_title, self.lbl_prev_change, self.lbl_prev_signal,
                   self.lbl_prev_verdict, self.lbl_prev_causes):
             pl.addWidget(w)
@@ -1663,8 +1622,8 @@ class BrewAdvisorDlg(QDialog):
         self.btn_brew.clicked.connect(self._toggle_brew)
         self.btn_autostop = QPushButton(QApplication.translate("tilauscope_brew", "Auto-stop"))
         self.btn_autostop.setCheckable(True)
-        ## TILAU ## On by default: a shot ends at its yield, and no hand is as
-        ## quick as the scale. Espresso is the only method where it is offered.
+        # On by default: a shot ends at its yield, and no hand is as
+        # quick as the scale. Espresso is the only method where it is offered.
         self.btn_autostop.setChecked(True)
         self.btn_autostop.setToolTip(QApplication.translate("tilauscope_brew", "Stop the shot on its own when the cup reaches the target yield."))
         self.btn_autostop.setStyleSheet(
@@ -1676,12 +1635,12 @@ class BrewAdvisorDlg(QDialog):
         self.lbl_scale_status = QLabel("")
         self.lbl_scale_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_scale_status.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-family:'JetBrains Mono';font-size:11px;"
+            f"color:{THEME['SUBTEXT']};font-size:11px;"
             f"background:transparent;border:1px dashed {THEME['BORDER']};"
             f"border-radius:6px;padding:6px 10px;")
-        ## TILAU ## The way in when no scale can be put under the cup. Sits beside
-        ## the status rather than replacing it: the scale may still turn up, and
-        ## the operator should keep seeing that it is being looked for.
+        # The way in when no scale can be put under the cup. Sits beside
+        # the status rather than replacing it: the scale may still turn up, and
+        # the operator should keep seeing that it is being looked for.
         self.btn_manual = QPushButton(QApplication.translate("tilauscope_brew", "✎ Enter manually"))
         self.btn_manual.setVisible(False)
         self.btn_manual.clicked.connect(self._open_manual_entry)
@@ -1714,8 +1673,7 @@ class BrewAdvisorDlg(QDialog):
         # 50×30 Niimbot label (dial-in recipe) — direct print, in-window status.
         self.btn_print = QPushButton("🖨  " + QApplication.translate("tilauscope_brew", "50×30 label"))
         self.btn_print.clicked.connect(self._print_label)
-        self.lbl_print_status = QLabel("")
-        self.lbl_print_status.setVisible(False)
+        self._print_pill = None   # host A — pastille de progression d'impression
         if not self._can_print_label():
             self.btn_print.setEnabled(False)
             self.btn_print.setToolTip(QApplication.translate(
@@ -1726,7 +1684,6 @@ class BrewAdvisorDlg(QDialog):
         btn_close.clicked.connect(self.accept)
         btn_row.addWidget(self.btn_ai)
         btn_row.addWidget(self.btn_print)
-        btn_row.addWidget(self.lbl_print_status)
         btn_row.addStretch(1)
         btn_row.addWidget(btn_close)
         root.addLayout(btn_row)
@@ -1734,16 +1691,16 @@ class BrewAdvisorDlg(QDialog):
         # Height budgeted so the debrief AND an expanded taste verdict fit under
         # the chart without scrolling in the common case; the right column
         # scrolls as a safety net when a diagnosis runs long.
-        ## TILAU ## The minimum width is measured, not guessed. The control row
-        ## needs ~1090 px once the espresso machine and style selectors are in,
-        ## against a hardcoded 980 — and Qt OVERLAPS widgets rather than clipping
-        ## them when a row cannot meet its minimum, so the fields silently piled
-        ## up on top of each other. Asking the layout means macOS's wider system
-        ## fonts are accounted for on the real machine, and adding a control
-        ## later cannot quietly break it again.
-        ## Measured HERE, before _update_machine_visibility() hides the espresso
-        ## selectors: a hidden widget contributes nothing to a layout's size hint,
-        ## so measuring after would give a width too small for espresso.
+        # The minimum width is measured, not guessed. The control row
+        # needs ~1090 px once the espresso machine and style selectors are in,
+        # against a hardcoded 980 — and Qt OVERLAPS widgets rather than clipping
+        # them when a row cannot meet its minimum, so the fields silently piled
+        # up on top of each other. Asking the layout means macOS's wider system
+        # fonts are accounted for on the real machine, and adding a control
+        # later cannot quietly break it again.
+        # Measured HERE, before _update_machine_visibility() hides the espresso
+        # selectors: a hidden widget contributes nothing to a layout's size hint,
+        # so measuring after would give a width too small for espresso.
         need_w = self._ctrl_row.sizeHint().width() + 18 + 18 + 8   # + root margins
         self.setMinimumSize(max(980, need_w), 760)
         self._update_machine_visibility()
@@ -1855,9 +1812,9 @@ class BrewAdvisorDlg(QDialog):
         ctx = (
             f"method={rec.method_id} roast={rec.roast_key} agtron={agtron_str} "
             f"ratio={rec.ratio_str} temp_c={rec.temp_c} grind_um={rec.grind_um} dose_g={rec.dose_g} "
-            ## TILAU ## Style and total time are part of what the recipe now IS:
-            ## the same roast pulled classic or turbo is a different drink, and
-            ## without the time the model cannot see the flow it implies.
+            # Style and total time are part of what the recipe now IS:
+            # the same roast pulled classic or turbo is a different drink, and
+            # without the time the model cannot see the flow it implies.
             f"total_time_s={rec.total_time_s} "
             f"machine={inp.espresso_machine.value} style={inp.espresso_style.value} "
             f"bean: origin={inp.country} process={inp.process} variety={inp.variety} "
@@ -2056,10 +2013,17 @@ class BrewAdvisorDlg(QDialog):
                     self._title, rec.method_id, method_label, grain, spec_line=spec, steps=steps)
         except Exception as exc:  # noqa: BLE001
             _log.error("Brew label build failed: %s", exc)
-            self._set_print_status(QApplication.translate("tilauscope_brew", "Print error"), THEME["CRITICAL"])
+            show_styled_message(
+                self, QApplication.translate("tilauscope_brew", "Print"),
+                QApplication.translate("tilauscope_brew",
+                    "The label could not be built, so nothing was sent to the printer."),
+                QMessageBox.Icon.Warning)
             return
         self.btn_print.setEnabled(False)
-        self._set_print_status(QApplication.translate("tilauscope_brew", "Printing…"), THEME["TEXT"])
+        # Progression dans la pastille flottante (host A), relevée au-dessus de
+        # la rangée de boutons pour ne pas couvrir Close.
+        self._print_pill = print_progress_pill(self.container, 1)
+        self._print_pill.set_margin(20, 56)
         try:
             self._beancave.print_niimbot_image_async(img, self._on_print_ok, self._on_print_err)
         except Exception as exc:  # noqa: BLE001
@@ -2068,32 +2032,22 @@ class BrewAdvisorDlg(QDialog):
 
     @pyqtSlot()
     def _on_print_ok(self) -> None:
-        self._set_print_status(QApplication.translate("tilauscope_brew", "Printed ✓"), THEME["SUCCESS"])
+        pill = self._print_pill
+        self._print_pill = None
+        if pill is not None:
+            pill.succeed("🖨  " + QApplication.translate("tilauscope_brew", "Label printed"))
         if getattr(self, "btn_print", None) is not None:
             self.btn_print.setEnabled(self._can_print_label())
-        QTimer.singleShot(3000, lambda: self._set_print_status("", None))
 
     @pyqtSlot(str)
-    def _on_print_err(self, _msg: str) -> None:
-        self._set_print_status(QApplication.translate("tilauscope_brew", "Print error"), THEME["CRITICAL"])
+    def _on_print_err(self, msg: str) -> None:
+        pill = self._print_pill
+        self._print_pill = None
+        if pill is not None:
+            pill.fail("🖨  " + (msg or QApplication.translate(
+                "tilauscope_brew", "Printing failed — check the printer")))
         if getattr(self, "btn_print", None) is not None:
             self.btn_print.setEnabled(self._can_print_label())
-
-    def _set_print_status(self, text: str, color) -> None:
-        lbl = getattr(self, "lbl_print_status", None)
-        if lbl is None:
-            return
-        if not text:
-            lbl.setText("")
-            lbl.setVisible(False)
-            return
-        c = color or THEME["SUBTEXT"]
-        lbl.setStyleSheet(
-            f"color:{c}; background:rgba(137,180,250,18);"
-            f" border:1px solid rgba(137,180,250,60); border-radius:5px;"
-            f" padding:2px 8px; font-family:'JetBrains Mono'; font-size:11px;")
-        lbl.setText(text)
-        lbl.setVisible(True)
 
     # ── live brew (Acaia via aw.scale_manager) ──
     def _scale_mgr(self):
@@ -2118,11 +2072,7 @@ class BrewAdvisorDlg(QDialog):
     def _sync_scale_ui(self) -> None:
         """Brew controls appear only once a scale is really on the line.
 
-        There is nothing for the operator to click: Artisan's BLE layer keeps
-        scanning and reconnecting on its own once started (ble_port._connect
-        loops while running), so the advisor starts that search itself and just
-        reports where it is. A configured-but-offline scale shows a searching
-        status, never a Start button that would run a dead timer.
+        Artisan's BLE layer keeps scanning/reconnecting on its own, so a configured-but-offline scale shows a searching status, never a dead Start button.
         """
         auto = self._autostop_applies()
         if self._brew_running:
@@ -2135,10 +2085,10 @@ class BrewAdvisorDlg(QDialog):
             self.btn_manual.setVisible(False)
             return
         configured, connected = self._scale_configured(), self._scale_connected()
-        ## TILAU ## Offered only where it means something: espresso (the scale
-        ## weighs what comes out) and only while no scale is on the line — with a
-        ## working Acaia, typing a number the scale already measured better is a
-        ## way to corrupt the journal, not to fill it.
+        # Offered only where it means something: espresso (the scale
+        # weighs what comes out) and only while no scale is on the line — with a
+        # working Acaia, typing a number the scale already measured better is a
+        # way to corrupt the journal, not to fill it.
         self.btn_manual.setVisible(auto and not connected)
         self.btn_brew.setText(QApplication.translate("tilauscope_brew", "▶ Start brew"))
         self.btn_brew.setEnabled(connected)
@@ -2195,7 +2145,7 @@ class BrewAdvisorDlg(QDialog):
             # otherwise keep running against a curve that stopped growing.
             self.lbl_pace.setText(QApplication.translate("tilauscope_brew", "● scale lost"))
             self.lbl_pace.setStyleSheet(
-                f"color:{THEME['CRITICAL']};font-family:'JetBrains Mono';"
+                f"color:{THEME['CRITICAL']};"
                 f"font-size:11px;font-weight:bold;border:none;")
             self.lbl_pace.setVisible(True)
 
@@ -2229,10 +2179,7 @@ class BrewAdvisorDlg(QDialog):
     def _reset_live_view(self) -> None:
         """Wipe everything that describes a past brew.
 
-        Changing the recipe invalidates a recorded curve exactly as much as
-        starting a new brew does: the traces belong to a plan that is no longer
-        on screen, and leaving them would draw the old pour over the new
-        corridor.
+        Changing the recipe invalidates a recorded curve as much as starting a new brew does.
         """
         self._samples.clear()
         self._flow_samples.clear()
@@ -2240,8 +2187,8 @@ class BrewAdvisorDlg(QDialog):
         # previous brew's drain time to the next one.
         self._drawdown_s = 0
         self._drawdown_valid = False
-        ## TILAU ## Back to the default provenance with the curve: a manual entry
-        ## must not leave "manual" stamped on the next brew a scale measures.
+        # Back to the default provenance with the curve: a manual entry
+        # must not leave "manual" stamped on the next brew a scale measures.
         self._measured_source = "scale"
         ## A manual entry hides the chart (there is no shape to draw) and leaves
         ## its card open; both belong to the result being wiped.
@@ -2284,15 +2231,14 @@ class BrewAdvisorDlg(QDialog):
         # connect branch to take here.
         self._stop_brew() if self._brew_running else self._start_brew()
 
-    ## TILAU ## The scale's stopwatch follows the app's brew timer, both ways and
-    ## from one place: start, manual stop, auto-stop at target and closing the
-    ## dialog mid-brew all end up here, so the scale can never be left counting
-    ## after a brew that is over.
-    ##
-    ## Deliberately outside the wiring try/except of _start_brew: a scale with no
-    ## stopwatch (or an older scale.py with no timer signal) must degrade to "no
-    ## timer", never to "no brew". The gesture is fire-and-forget — the scale
-    ## sends no acknowledgement, so there is nothing to wait for or report.
+    # The scale's stopwatch follows the app's brew timer, both ways and
+    # from one place: start, manual stop, auto-stop at target and closing the
+    # dialog mid-brew all end up here, so the scale can never be left counting
+    # after a brew that is over.
+    # Deliberately outside the wiring try/except of _start_brew: a scale with no
+    # stopwatch (or an older scale.py with no timer signal) must degrade to "no
+    # timer", never to "no brew". The gesture is fire-and-forget — the scale
+    # sends no acknowledgement, so there is nothing to wait for or report.
     def _set_scale_timer(self, on: bool) -> None:
         sm = self._scale_mgr()
         sig = getattr(sm, "timer_scale1_signal", None) if sm is not None else None
@@ -2303,15 +2249,15 @@ class BrewAdvisorDlg(QDialog):
         except Exception as exc:  # noqa: BLE001
             _log.warning("Brew: scale timer %s failed: %s", "start" if on else "stop", exc)
 
-    ## TILAU ## Fired ~300 ms after Start rather than with it. Starting a brew
-    ## already sends the Acaia a tare AND an LED effect (ScaleManager pairs every
-    ## tare with signal_user(TARE) -> send_leds_breathe), and adding a timer reset
-    ## plus a timer start put four BLE writes back to back on a link that answers
-    ## none of them. A burst like that is a plausible cause of the reported
-    ## "scale stays connected but sends no weight", so the stopwatch waits for the
-    ## tare to settle. The cost is ~0.3 s of offset on a three-minute brew, which
-    ## is below the scale's own display resolution; the benefit is not risking the
-    ## measurement itself for a convenience.
+    # Fired ~300 ms after Start rather than with it. Starting a brew
+    # already sends the Acaia a tare AND an LED effect (ScaleManager pairs every
+    # tare with signal_user(TARE) -> send_leds_breathe), and adding a timer reset
+    # plus a timer start put four BLE writes back to back on a link that answers
+    # none of them. A burst like that is a plausible cause of the reported
+    # "scale stays connected but sends no weight", so the stopwatch waits for the
+    # tare to settle. The cost is ~0.3 s of offset on a three-minute brew, which
+    # is below the scale's own display resolution; the benefit is not risking the
+    # measurement itself for a convenience.
     @pyqtSlot()
     def _start_scale_timer_deferred(self) -> None:
         if self._brew_running:      # a brew that ended in the meantime wants nothing started
@@ -2334,8 +2280,8 @@ class BrewAdvisorDlg(QDialog):
             self._unwire_scale_data()
             return
         self._brew_rec = self.service.last   # freeze the plan for this brew
-        ## TILAU ## Per brew, not per dialog: each start gets its own chance to
-        ## report a silent scale.
+        # Per brew, not per dialog: each start gets its own chance to
+        # report a silent scale.
         self._silent_scale_warned = False
         self._reset_live_view()
         self._set_recipe_locked(True)
@@ -2346,10 +2292,10 @@ class BrewAdvisorDlg(QDialog):
         self._elapsed.restart()
         self._brew_running = True
         self._tick.start()
-        ## TILAU ## Deferred, not immediate — see _start_scale_timer_deferred: the
-        ## tare fired a few lines above is already two BLE writes, and the scale
-        ## must not be handed four in one burst at the exact moment it is supposed
-        ## to start streaming weights.
+        # Deferred, not immediate — see _start_scale_timer_deferred: the
+        # tare fired a few lines above is already two BLE writes, and the scale
+        # must not be handed four in one burst at the exact moment it is supposed
+        # to start streaming weights.
         self._scale_timer_delay.start(300)
         self._sync_scale_ui()
 
@@ -2358,10 +2304,10 @@ class BrewAdvisorDlg(QDialog):
             return
         self._brew_running = False
         self._tick.stop()
-        ## TILAU ## Stopped with the on-screen timer, whatever ended the brew —
-        ## the button, the auto-stop at target, or closing the dialog mid-pour.
-        ## The pending start is cancelled first: a brew stopped inside its first
-        ## 300 ms would otherwise leave the scale counting on its own.
+        # Stopped with the on-screen timer, whatever ended the brew —
+        # the button, the auto-stop at target, or closing the dialog mid-pour.
+        # The pending start is cancelled first: a brew stopped inside its first
+        # 300 ms would otherwise leave the scale counting on its own.
         self._scale_timer_delay.stop()
         self._set_scale_timer(False)
         if self._samples:
@@ -2402,11 +2348,7 @@ class BrewAdvisorDlg(QDialog):
     def _record_manual_result(self) -> None:
         """Turn the two typed numbers into the curve the rest of the dialog reads.
 
-        Two points only — start and end. The shape between them is unknown and is
-        not invented: the chart stays hidden, and the drawdown is left invalid.
-        Everything that matters downstream (the debrief, the time-aware
-        diagnosis, the journal row, the next comparison) reads `_samples[-1]`,
-        which is now exactly as populated as it would be after a scale brew.
+        Two points only — start and end. The shape between them is not invented: the chart stays hidden and the drawdown is left invalid.
         """
         rec = self.service.last
         if rec is None:
@@ -2472,11 +2414,7 @@ class BrewAdvisorDlg(QDialog):
     def _flow_scale(self) -> float:
         """Flow axis sized from the plan the operator is actually pouring.
 
-        A flat 10 g/s for everything filter-side left a normal V60 — which pours
-        at 3-4 g/s — drawn in the bottom third of the band, where the shape that
-        matters (pulse, pause, drawdown) is unreadable. The steepest segment the
-        plan asks for, plus headroom for the bursts a real pour makes, keeps the
-        trace legible at any method and any dose.
+        Scaled from the plan's steepest segment plus headroom for pour bursts, so the trace stays legible at any method and dose.
         """
         rec = self._plan_rec()
         if rec is None:
@@ -2510,7 +2448,7 @@ class BrewAdvisorDlg(QDialog):
             color = THEME["SUCCESS"]
         self.lbl_pace.setText(text)
         self.lbl_pace.setStyleSheet(
-            f"color:{color};font-family:'JetBrains Mono';font-size:11px;font-weight:bold;border:none;")
+            f"color:{color};font-size:11px;font-weight:bold;border:none;")
         self.lbl_pace.setVisible(True)
 
     @staticmethod
@@ -2555,26 +2493,23 @@ class BrewAdvisorDlg(QDialog):
                 self._tick.stop()
                 self._brew_running = False
 
-    ## TILAU ## How long a started brew may go without a single weight before the
-    ## panel says so. An Acaia that is streaming delivers within a second or two;
-    ## five seconds of nothing is a scale that is connected but silent, not a slow
-    ## one. Long enough that a pause between placing the cup and pouring never
-    ## triggers it — the reading arrives regardless of whether the weight moves.
+    # How long a started brew may go without a single weight before the
+    # panel says so. An Acaia that is streaming delivers within a second or two;
+    # five seconds of nothing is a scale that is connected but silent, not a slow
+    # one. Long enough that a pause between placing the cup and pouring never
+    # triggers it — the reading arrives regardless of whether the weight moves.
     _SILENT_SCALE_S: float = 5.0
 
     def _tick_update_inner(self) -> None:
         t = self._elapsed.elapsed() / 1000.0
         self.lbl_brew_time.setText(self._fmt_time(int(t)))
         if self._last_w is None:
-            ## TILAU ## A brew where the scale never says anything used to look
-            ## exactly like a brew going fine: the timer counted, and the weight,
-            ## the curve and the flow simply stayed empty with no explanation —
-            ## reported as "I pressed start and nothing was fetched, but the scale
-            ## was connected over Bluetooth". The state is real and intermittent,
-            ## so it is now named on screen AND written to the log at WARNING, so
-            ## the next occurrence leaves a trace even with debug logging off.
-            ## Not an error path: the brew keeps running and heals itself the
-            ## moment a weight arrives, because _update_pace repaints this label.
+            # A brew where the scale never reports a weight otherwise looks like a
+            # brew going fine (timer running, everything else empty). Named on
+            # screen AND logged at WARNING so an intermittent occurrence leaves a
+            # trace even with debug logging off.
+            # Not an error path: the brew keeps running and heals itself the
+            # moment a weight arrives, because _update_pace repaints this label.
             if t >= self._SILENT_SCALE_S and not self._silent_scale_warned:
                 self._silent_scale_warned = True
                 _log.warning(
@@ -2589,7 +2524,7 @@ class BrewAdvisorDlg(QDialog):
                     "the brew started. Take the cup off and put it back, or switch "
                     "the scale off and on again — the app reconnects by itself."))
                 self.lbl_pace.setStyleSheet(
-                    f"color:{THEME['CRITICAL']};font-family:'JetBrains Mono';"
+                    f"color:{THEME['CRITICAL']};"
                     f"font-size:12px;font-weight:bold;border:none;")
                 self.lbl_pace.setVisible(True)
             return
@@ -2626,16 +2561,16 @@ class BrewAdvisorDlg(QDialog):
         m = _re.search(r"1:([\d.]+)", getattr(rec, "ratio_str", "") or "")
         return float(m.group(1)) if m else 0.0
 
-    ## TILAU ## Stopping on weight only makes sense when the scale weighs what
-    ## COMES OUT — that is exactly water_is_yield, and only espresso has it.
-    ## Everywhere else the scale weighs the whole assembly, so it reaches the
-    ## target at the end of the last pour, before the bed has finished draining:
-    ## an auto-stop there cuts the brew short and, worse, records a drawdown of
-    ## zero. Soft methods end when the operator judges it has stopped dripping.
-    ## TILAU ## Below this smoothed flow the operator has stopped pouring and the
-    ## bed is draining on its own. Provisional and assumed as such: no data exists
-    ## yet to set it (wiki/Brew-DialIn-Feedback-Spec.md §6) — it is one of the first
-    ## things the journal itself will let us measure.
+    # Stopping on weight only makes sense when the scale weighs what
+    # COMES OUT — that is exactly water_is_yield, and only espresso has it.
+    # Everywhere else the scale weighs the whole assembly, so it reaches the
+    # target at the end of the last pour, before the bed has finished draining:
+    # an auto-stop there cuts the brew short and, worse, records a drawdown of
+    # zero. Soft methods end when the operator judges it has stopped dripping.
+    # Below this smoothed flow the operator has stopped pouring and the
+    # bed is draining on its own. Provisional and assumed as such: no data exists
+    # yet to set it (wiki/Brew-DialIn-Feedback-Spec.md §6) — it is one of the first
+    # things the journal itself will let us measure.
     _POUR_FLOW_THRESHOLD: float = 0.4      # g/s
 
     def _derive_drawdown(self) -> tuple[int, bool]:
@@ -2677,11 +2612,11 @@ class BrewAdvisorDlg(QDialog):
     def _can_store_dialin(self) -> bool:
         return self._bean is not None
 
-    ## TILAU ## A dial-in carries no expiry. It was accepted on ONE roast of this
-    ## green bean, at one point in its degassing; a later roast is a legitimate
-    ## place to reuse it (the correction is relative), a bean sitting a season in
-    ## storage much less so. Rather than invent an expiry rule, show the age and
-    ## let the operator judge — the data was already being recorded.
+    # A dial-in carries no expiry. It was accepted on ONE roast of this
+    # green bean, at one point in its degassing; a later roast is a legitimate
+    # place to reuse it (the correction is relative), a bean sitting a season in
+    # storage much less so. Rather than invent an expiry rule, show the age and
+    # let the operator judge — the data was already being recorded.
     _DIALIN_STALE_DAYS: int = 90
 
     def _dialin_age_days(self, method_id: str) -> Optional[int]:
@@ -2739,11 +2674,8 @@ class BrewAdvisorDlg(QDialog):
             try:
                 if d.method_id not in METHOD_ORDER:
                     continue
-                # Prefer the base recorded WITH the dial-in: a correction is a
-                # relative adjustment, so re-applying its ratio keeps it valid on
-                # a different roast of the same bean. Legacy entries (no stored
-                # base) fall back to the current base, which pins the old
-                # absolute grind — the best that can be done without the ratio.
+                # Prefer the base recorded with the dial-in: a correction is
+                # relative, so re-applying it stays valid on a different roast. No stored base falls back to the current one.
                 ref_grind = d.base_grind_um
                 ref_temp = d.base_temp_c
                 ref_ratio = getattr(d, "base_ratio", 0.0)
@@ -2751,30 +2683,21 @@ class BrewAdvisorDlg(QDialog):
                     legacy = self.service._engine.advise(self.service.input, d.method_id,
                                                          d.dose_g or None)
                     ref_grind, ref_temp = legacy.grind_um, legacy.temp_c
-                    ## TILAU ## Deliberately NOT falling back for the ratio. A
-                    ## legacy entry stored the ratio the engine produced at the
-                    ## time, which for espresso was 1:2.0 whatever the roast.
-                    ## Comparing it to today's roast-dependent base would read
-                    ## that difference as a correction the operator never made,
-                    ## and would pin every already-dialled bean back to 1:2.0.
-                    ## Absent a recorded base, the honest reading is "no ratio
-                    ## correction" — grind and temp still restore as before.
+                    # No ratio fallback: comparing a stored roast-independent
+                    # ratio against today's roast-dependent base would read as a correction the operator never made.
                     ref_ratio = 0.0
                     _log.info("Brew: dial-in for %s predates base tracking; "
                               "restoring against the current recipe", d.method_id)
                 corr = BrewCorrection(
                     grind_mult=(d.grind_um / ref_grind) if (d.grind_um and ref_grind) else 1.0,
-                    ## TILAU ## A "thin body" dial-in moves the RATIO and nothing
-                    ## else. Restoring only grind and temp silently dropped it,
-                    ## and — worse — left the bean looking un-dialled, so the
-                    ## cross-bean setup offset then applied a grind change the
-                    ## operator never asked for.
+                    # A "thin body" dial-in moves the RATIO and nothing else;
+                    # restoring only grind/temp would drop it and leave the bean
+                    # looking un-dialled to the cross-bean setup offset.
                     ratio_delta=(d.ratio - ref_ratio) if (d.ratio and ref_ratio) else 0.0,
                     temp_delta=(d.temp_c - ref_temp) if (d.temp_c and ref_temp) else 0.0)
-                ## TILAU ## The dose is restored on its own, not as part of the
-                ## correction: a dial-in that only moved the dose is still worth
-                ## reopening on, and a PRESSURE recipe read at the wrong dose is
-                ## a different puck whatever the grind says.
+                # Restored on its own, not as part of the correction: a dial-in that
+                # only moved the dose is still worth reopening on, and a PRESSURE
+                # recipe at the wrong dose is a different puck whatever the grind says.
                 self.service.set_dialin_dose(d.method_id, d.dose_g)
                 self.service.set_dialin_date(d.method_id, getattr(d, "iso_date", ""))
                 if not corr.is_empty:
@@ -2796,24 +2719,16 @@ class BrewAdvisorDlg(QDialog):
             return
         ratios: dict[str, list[float]] = {}
         for b in beans:
-            ## TILAU ## Per BEAN, then reduced to one sample. What this offset
-            ## models is a fixed bias in the setup (grinder calibration), so the
-            ## evidence has to come from different beans. Counting each dial-in
-            ## separately let ONE bean dialled on four methods fill the
-            ## >=4-sample gate on its own — four readings of the same coffee,
-            ## which also pass the direction test trivially because they are the
-            ## same measurement four times. One bean now weighs one sample.
+            # Per bean, reduced to one sample: this offset models a fixed setup
+            # bias, so evidence must come from different beans, not one bean dialled on several methods.
             per_bean: dict[str, list[float]] = {}
             for d in (getattr(b, "dial_ins", None) or []):
                 try:
                     if d.method_id not in METHOD_ORDER or not (d.grind_um and d.base_grind_um):
                         continue  # legacy entry: no base recorded, no usable ratio
                     r = d.grind_um / d.base_grind_um
-                    ## TILAU ## A dial-in that moved only the ratio or the temp
-                    ## says nothing about grind. Counting it as a 1.0 sample let
-                    ## it unlock the >=4-sample gate on evidence it does not
-                    ## carry, and it skewed the direction test asymmetrically
-                    ## (1.0 "agrees" with finer but "disagrees" with coarser).
+                    # A dial-in that moved only ratio or temp says nothing about
+                    # grind, so a 1.0 sample is excluded rather than skewing the direction test.
                     if abs(r - 1.0) < 1e-3:
                         continue
                     per_bean.setdefault(BrewAdvisorService.family_key(d.method_id), []).append(r)
@@ -2870,19 +2785,11 @@ class BrewAdvisorDlg(QDialog):
             _log.error("Brew: storing the dial-in failed: %s", exc)
             return False
 
-    ## TILAU ## The journal records the extraction that was JUST TASTED — the setting
-    ## it ran on, what came out, and the verdict. It is not the dial-in: the dial-in
-    ## says what to reopen on (the CORRECTED setting), this says what happened with the
-    ## setting actually brewed. Getting those two the wrong way round would record a
-    ## cause that never produced the consequence beside it.
-    ##
-    ## Written only when a brew was really measured. A taste reported without an
-    ## in-app extraction has no consequence to link the setting to — the mirror image
-    ## of the rule agreed in the spec (§4.1): a measurement without a verdict is not
-    ## data, and neither is a verdict without a measurement.
-    ## TILAU ## Reading thresholds, ALL provisional (spec §6). None of them is derived
-    ## from data — there is none yet. They are conventions, and measuring them is the
-    ## first thing the journal itself will make possible. Do not treat them as facts.
+    # The journal records the extraction that was just tasted (setting, result,
+    # verdict) — not the dial-in, which records the corrected setting to reopen on.
+    # Written only when a brew was really measured (spec §4.1): a measurement
+    # without a verdict is not data, and neither is a verdict without a measurement.
+    # Reading thresholds below are all provisional (spec §6), conventions rather than data-derived.
     _GRIND_CHANGED_PCT: float = 2.0     # below this the grinder does not render it
     _SIGNAL_MOVED_PCT: float = 10.0     # of the previous value
     _SIGNAL_MOVED_S: int = 5            # and at least this many seconds
@@ -2964,9 +2871,9 @@ class BrewAdvisorDlg(QDialog):
             label = QApplication.translate("tilauscope_brew", "Drawdown")
             measured = prev.drawdown_valid and last.drawdown_valid
         if not measured:
-            ## TILAU ## Say plainly that nothing was measured. Showing the total time
-            ## instead would put a number on screen that mostly reflects how the
-            ## operator poured — the very confusion this whole feature exists to avoid.
+            # Say plainly that nothing was measured. Showing the total time
+            # instead would put a number on screen that mostly reflects how the
+            # operator poured — the very confusion this whole feature exists to avoid.
             self.lbl_prev_signal.setText("")
             self.lbl_prev_verdict.setText(QApplication.translate(
                 "tilauscope_brew",
@@ -2994,8 +2901,7 @@ class BrewAdvisorDlg(QDialog):
                 "tilauscope_brew",
                 "Same grind, yet the flow moved: something other than the grind "
                 "changed between these two brews."))
-            self.lbl_prev_verdict.setStyleSheet(
-                f"color:{THEME['SUBTEXT']};font-family:'JetBrains Mono';font-size:11px;")
+            self.lbl_prev_verdict.setProperty('variant', 'caption')
         elif moved:
             finer = pct < 0
             slower = delta > 0
@@ -3007,14 +2913,14 @@ class BrewAdvisorDlg(QDialog):
                                        "The flow moved the other way to the grind — "
                                        "worth a second look before trusting it."))
             self.lbl_prev_verdict.setStyleSheet(
-                f"color:{THEME['SUCCESS']};font-family:'JetBrains Mono';font-size:11px;")
+                f"color:{THEME['SUCCESS']};font-size:11px;")
         else:
             self.lbl_prev_verdict.setText(QApplication.translate(
                 "tilauscope_brew", "That step changed nothing in the flow."))
             self.lbl_prev_verdict.setStyleSheet(
-                f"color:{THEME['WARNING']};font-family:'JetBrains Mono';font-size:11px;")
-            ## TILAU ## Causes, never a proposal. The doctrine is explicit: the
-            ## measured flow diagnoses, it does not decide the next setting.
+                f"color:{THEME['WARNING']};font-size:11px;")
+            # Causes, never a proposal. The doctrine is explicit: the
+            # measured flow diagnoses, it does not decide the next setting.
             self.lbl_prev_causes.setText(QApplication.translate(
                 "tilauscope_brew",
                 "Can come from: play on that step of your grinder · a different dose "
@@ -3189,13 +3095,13 @@ class BrewAdvisorDlg(QDialog):
                             f"({rec.water_g:.0f} → {rec.dose_g * base:.0f} g)")
         return f"<span style='color:{THEME['TEXT']};'>" + " · ".join(bits) + "</span>"
 
-    ## TILAU ## The acknowledgement of an accepted correction. It has one job the
-    ## previous "Saved ✓" could not do: prove the click landed. Accepting a fix
-    ## clears the chips and hides the verdict that justified it (both deliberate),
-    ## so unless the confirmation itself restates WHAT moved and WHERE it went,
-    ## the whole gesture reads as "nothing happened" — which is exactly how it was
-    ## reported. Same before → after rendering as the preview above, so the line
-    ## the operator agreed to and the line they get back are one implementation.
+    # The acknowledgement of an accepted correction. It has one job the
+    # previous "Saved ✓" could not do: prove the click landed. Accepting a fix
+    # clears the chips and hides the verdict that justified it (both deliberate),
+    # so unless the confirmation itself restates WHAT moved and WHERE it went,
+    # the whole gesture reads as "nothing happened" — which is exactly how it was
+    # reported. Same before → after rendering as the preview above, so the line
+    # the operator agreed to and the line they get back are one implementation.
     def _fix_done_text(self, rec, dg, stored: bool) -> str:
         bean = str(getattr(self._bean, "name", "") or "").strip() or self._title
         if stored:
@@ -3223,18 +3129,18 @@ class BrewAdvisorDlg(QDialog):
         # and the render path clears the taste chips.
         tastes = sorted(t.value for t in self._selected_tastes())
         measured = self._samples[-1] if self._samples else (0.0, 0.0)
-        ## TILAU ## The drawdown belongs to the same snapshot: applying re-renders,
-        ## and the render path wipes the curve AND the drawdown derived from it. Read
-        ## after the recompute, the journal would record every drain as zero.
+        # The drawdown belongs to the same snapshot: applying re-renders,
+        # and the render path wipes the curve AND the drawdown derived from it. Read
+        # after the recompute, the journal would record every drain as zero.
         drawdown = (self._drawdown_s, self._drawdown_valid)
         ## Same snapshot, same reason: the recompute resets the provenance.
         source = self._measured_source
         # Keep the debrief on screen through the re-render — it is the
         # justification for the change that just happened, and would otherwise
         # vanish with it.
-        ## TILAU ## Bound before the try, not inside it: the acknowledgement below
-        ## runs whatever happens, and the honest default for "did this reach the
-        ## library" is no.
+        # Bound before the try, not inside it: the acknowledgement below
+        # runs whatever happens, and the honest default for "did this reach the
+        # library" is no.
         stored = False
         self._applying_fix = True
         try:
@@ -3242,31 +3148,24 @@ class BrewAdvisorDlg(QDialog):
             self._brew_rec = None
             if not dg.correction.is_empty:
                 self.service.add_correction(dg.correction)
-            ## TILAU ## Journalled BEFORE the dial-in is stored, and independently:
-            ## the two writes target different files and neither may take the other
-            ## down. `rec` here is the plan the brew ran against, captured above
-            ## before the correction moved anything.
+            # Journalled BEFORE the dial-in is stored, and independently:
+            # the two writes target different files and neither may take the other
+            # down. `rec` here is the plan the brew ran against, captured above
+            # before the correction moved anything.
             if self._journal_brew(rec, dg, tastes, measured, drawdown, source):
                 self._reload_brewlog()   # a new line makes a new comparison possible
             stored = self._store_dialin(rec, dg, tastes, measured)
-            ## TILAU ## The badge was painted by the recompute above, before the
-            ## dial-in existed, so it came out undated. Repaint once now that it
-            ## does — still under _applying_fix, so the debrief survives.
+            # The badge was painted by the recompute above, before the dial-in
+            # existed, so it came out undated; repaint now, still under _applying_fix so the debrief survives.
             if self.service.last is not None:
                 self._render(self.service.last)
         finally:
             self._applying_fix = False
-        ## TILAU ## An accepted correction CONSUMES the report that produced it.
-        ## Leaving the chips ticked meant the next tasting started dirty: adding
-        ## a second fault re-diagnosed the old one alongside it, and the fix
-        ## button came back offering a correction that folded the already-applied
-        ## adjustment in a second time. Reporting on the next cup now starts from
-        ## a clean slate, exactly as it would for any other new extraction.
+        # An accepted correction consumes the report that produced it, so the
+        # next cup's tasting starts from a clean slate rather than folding in an already-applied adjustment.
         self._reset_taste_ui()
-        ## TILAU ## The correction always applies to the recipe on screen, but
-        ## it only survives closing the dialog if it reached the library. Saying
-        ## "Saved" when the write failed is the one message that can cost the
-        ## operator the dial-in they just earned over several cups.
+        # The correction always applies to the recipe on screen but only
+        # survives closing the dialog if it reached the library — never say "Saved" when the write failed.
         self.lbl_fix_done.setText(self._fix_done_text(rec, dg, stored))
         self.lbl_fix_done.setVisible(True)
 
@@ -3335,13 +3234,13 @@ class BrewAdvisorDlg(QDialog):
             self._apply_plan_to_chart()
             if not getattr(self, "_applying_fix", False):
                 self.debrief.setVisible(False)
-            ## TILAU ## The brew controls depend on the RECIPE (only espresso is
-            ## offered an auto-stop or a manual entry), not just on the scale, so
-            ## they have to be resynced whenever the recipe moves. Without this
-            ## the first sync ran before the first recipe existed and, with no
-            ## scale on the line to fire _on_scale_state, nothing ever corrected
-            ## it — the manual-entry button stayed hidden for exactly the
-            ## operators it was built for. Pure widget state, no I/O.
+            # The brew controls depend on the RECIPE (only espresso is
+            # offered an auto-stop or a manual entry), not just on the scale, so
+            # they have to be resynced whenever the recipe moves. Without this
+            # the first sync ran before the first recipe existed and, with no
+            # scale on the line to fire _on_scale_state, nothing ever corrected
+            # it — the manual-entry button stayed hidden for exactly the
+            # operators it was built for. Pure widget state, no I/O.
             self._sync_scale_ui()
         water_label = QApplication.translate("tilauscope_brew", "Yield") if rec.water_is_yield else QApplication.translate("tilauscope_brew", "Water")
 
@@ -3415,13 +3314,19 @@ class BrewAdvisorDlg(QDialog):
         QTimer.singleShot(150, self._recenter)  # async center (frameless on macOS)
 
     def _recenter(self) -> None:
-        ref = self.aw.window().geometry() if (self.aw and self.aw.window()) else self.screen().availableGeometry()
+        # Centre on the host window: BeanCave when visible, Artisan otherwise.
+        ref = None
+        try:
+            if self._beancave is not None and self._beancave.window().isVisible():
+                ref = self._beancave.window().geometry()
+        except (AttributeError, RuntimeError):
+            ref = None
+        if ref is None:
+            ref = self.aw.window().geometry() if (self.aw and self.aw.window()) else self.screen().availableGeometry()
         self.move(ref.center() - self.rect().center())
 
-    ## TILAU ## These three chain to QDialog when the gesture is not a title-bar
-    ## drag. They used to swallow every press, move and release that reached the
-    ## dialog, which is how a window-drag handler ends up interfering with the
-    ## widgets it contains.
+    # These three chain to QDialog when the gesture is not a title-bar drag,
+    # so the window-drag handler does not swallow events meant for child widgets.
     def mousePressEvent(self, e: QMouseEvent) -> None:
         if e.button() == Qt.MouseButton.LeftButton and e.position().y() < 50:
             self._drag_pos = e.globalPosition().toPoint() - self.frameGeometry().topLeft()

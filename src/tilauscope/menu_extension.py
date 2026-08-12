@@ -1,8 +1,6 @@
 #
 # ABOUT
-# MQTT bridge for TilauScope sensors
-# Transport delegated to artisanlib.mqttport (Artisan native paho stack).
-# Maintains a separate broker connection; feeds MQTTDatabase instead of readings[].
+# Centralizes all TilauScope menu additions and replacements into Artisan's menu bar.
 
 # LICENSE
 # This file is part of TilauScope, a fork of Artisan Roaster Scope.
@@ -19,25 +17,8 @@
 # AUTHOR
 # TiLau 2025-2026
 
-# tilauscope/menu_extension.py
-#
-# Centralizes all TilauScope menu additions and replacements.
-# Keeps main.py contact surface to 3 lines (see INTEGRATION below).
-#
-# INTEGRATION in main.py (3 lines, never change after):
-#
-#   __slots__  → add  'tilau_menu'
-#   __init__   → after all QAction definitions:
-#                  from tilauscope.menu_extension import TilauMenuExtension
-#                  self.tilau_menu = TilauMenuExtension(self)
-#   set_menu() → at end, before closing `if menuBar is not None:`:
-#                  self.tilau_menu.apply(menuBar, ui_mode)
-#
-# ADDING NEW ENTRIES:
-#   - New QAction      → declare in _build_actions(), add to _build_tilau_menu()
-#                        or _patch_config_menu(), register in shortcut_actions()
-#   - Replace action   → use _replace_action() helper
-#   - New submenu      → add _build_<name>_menu(), call from _build_tilau_menu()
+# Keeps main.py's contact surface to 3 lines: __slots__ entry, TilauMenuExtension(self)
+# in __init__, and self.tilau_menu.apply(menuBar, ui_mode) at the end of set_menu().
 
 from __future__ import annotations
 
@@ -46,6 +27,8 @@ from typing import TYPE_CHECKING
 
 from PyQt6.QtWidgets import QApplication, QMenu, QMenuBar
 from PyQt6.QtGui import QAction
+from PyQt6.QtCore import Qt
+from PyQt6 import sip
 
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow, UI_MODE
@@ -98,6 +81,10 @@ class TilauMenuExtension:
         self.act_beancave.setShortcut('Shift+B')
         self.act_beancave.triggered.connect(aw.handleBeancave)
 
+        self.act_profile_maintenance = QAction(
+            QApplication.translate('Menu', 'Roast Profile Maintenance...'), aw)
+        self.act_profile_maintenance.triggered.connect(self._open_profile_maintenance)
+
         # EXPERT only — injected in Config menu after deviceAction
         self.act_config = QAction(QApplication.translate('Menu', 'TilauScope Config...'), aw)
         self.act_config.triggered.connect(aw.tilauscope_config)
@@ -122,21 +109,32 @@ class TilauMenuExtension:
             QApplication.translate('Menu', 'Export Logs...'), aw)
         self.act_export_logs.triggered.connect(self._export_logs)
 
-        ## TILAU ## No About entry here on purpose: renaming the application made
-        ## Artisan's own About action read "About TilauScope" in the conventional
-        ## slot (application menu on macOS, Help menu elsewhere). It opens the
-        ## fork's About window — see ApplicationWindow.helpAbout().
+        # No About entry here: Artisan's own About action already reads
+        # "About TilauScope" and opens the fork's About window (see helpAbout()).
 
-        ## TILAU ## macOS menu merging: Qt's default TextHeuristicRole inspects the
-        ## action's *translated* text and hijacks anything looking like About /
-        ## Preferences / Quit into the application menu. 'About TilauScope' was
-        ## silently moved there, and a translated 'Config...' would follow. Artisan
-        ## itself pins NoRole on every action it wants to keep in place
-        ## (main.py:2219 and below) — same treatment here.
-        for _action in (self.act_main, self.act_beancave, self.act_config,
+        # macOS menu merging: Qt's TextHeuristicRole hijacks any action whose
+        # translated text looks like About/Preferences/Quit into the application
+        # menu. Pin NoRole on every action, matching Artisan's own treatment
+        # (main.py:2219 and below).
+        for _action in (self.act_main, self.act_beancave,
+                        self.act_profile_maintenance, self.act_config,
                         self.act_first_config, self.act_debug,
                         self.act_pid_autotune, self.act_export_logs):
             _action.setMenuRole(QAction.MenuRole.NoRole)
+
+    def _open_profile_maintenance(self, _checked: bool = False) -> None:
+        """Open profile maintenance directly; BeanCave remains a data provider."""
+        try:
+            bc = getattr(self._aw, 'beancaveWindow', None)
+            if bc is None or sip.isdeleted(bc):
+                from tilauscope.beancave import BeancaveDlg
+                bc = BeancaveDlg(
+                    self._aw, self._aw.qmc.beans if self._aw.qmc.beans else '')
+                bc.setWindowModality(Qt.WindowModality.NonModal)
+                self._aw.beancaveWindow = bc
+            bc.open_profile_maintenance()
+        except Exception:  # pylint: disable=broad-except
+            _log.exception('opening roast profile maintenance failed')
 
     def _export_logs(self, _checked: bool = False) -> None:
         from tilauscope.tilau_exceptions import report_a_bug
@@ -162,9 +160,9 @@ class TilauMenuExtension:
         self.refresh_main_label(getattr(aw, '_tilau_headless', False), bool(aw.tilauscope_main))
 
     def refresh_main_label(self, headless: bool, tilau_open: bool) -> None:
-        ## TILAU ## In headless mode the Shift+T action is a view-toggle between
-        ## the Artisan window and TilauScope; the label states where it goes.
-        ## In normal mode it keeps the plain 'TilauScope' label.
+        # In headless mode the Shift+T action is a view-toggle between
+        # the Artisan window and TilauScope; the label states where it goes.
+        # In normal mode it keeps the plain 'TilauScope' label.
         if not headless:
             self.act_main.setText('TilauScope')
         elif tilau_open:
@@ -186,6 +184,7 @@ class TilauMenuExtension:
         menu = QMenu('&TilauScope', self._aw)
         menu.addAction(self.act_main)
         menu.addAction(self.act_beancave)
+        menu.addAction(self.act_profile_maintenance)
         menu.addSeparator()
         menu.addAction(self.act_config)
         menu.addAction(self.act_first_config)
@@ -200,16 +199,8 @@ class TilauMenuExtension:
     # ------------------------------------------------------------------
 
     def _patch_config_menu(self, ui_mode: 'UI_MODE') -> None:
-        """Hide Artisan menu items TilauScope's guided workflow doesn't use.
-
-        - Config/Colors, Config/Themes, Config/Mode: TilauScope's own theme has
-          sole authority over the app's look, and the UI mode is forced to
-          Expert at startup (see main.py readSettings) — none of these three
-          are reachable from the menu.
-        - Tools/Wheel Graph, Roast/Cup Profile: not part of the guided
-          workflow.
-        - Help/Errors, Messages, Serial, Platform, Factory Reset: Artisan-core
-          debug tools, not exposed to TilauScope's guided workflow.
+        """Hide Artisan menu items not used by TilauScope's guided workflow
+        (theme/colors/UI mode, wheel graph, cup profile, core debug tools).
         Re-applied on every set_menu() call (mode switches rebuild the menus).
         """
         aw = self._aw
@@ -218,6 +209,9 @@ class TilauMenuExtension:
             ('themeMenu', lambda m: m.menuAction().setVisible(False)),
             ('UIModeMenu', lambda m: m.menuAction().setVisible(False)),
             ('wheeleditorAction', lambda a: a.setVisible(False)),
+            ('calculatorAction', lambda a: a.setVisible(False)),
+            ('scheduleAction', lambda a: a.setVisible(False)),
+            ('transformAction', lambda a: a.setVisible(False)),
             ('flavorAction', lambda a: a.setVisible(False)),
             ('errorAction', lambda a: a.setVisible(False)),
             ('messageAction', lambda a: a.setVisible(False)),

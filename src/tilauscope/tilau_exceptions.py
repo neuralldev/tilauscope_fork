@@ -25,6 +25,9 @@ from PyQt6.QtWidgets import (QApplication, QDialog, QVBoxLayout, QHBoxLayout,
 from PyQt6.QtCore import QStandardPaths, QUrl
 from PyQt6.QtGui import QFont, QDesktopServices
 
+from tilauscope.theme_qss import apply_tilau_theme
+
+
 class TilauCrashDialog(QDialog):
 
     mod_name_map = {
@@ -36,14 +39,14 @@ class TilauCrashDialog(QDialog):
         "difluid.py" : "crash of difluid integration",
         "displayscope.py" : "crash of TilauScope",
         "label_printer.py" : "crash during label generation",
-        "lebrewroastsee.py" : "crash of Lebrew device support", 
+        "lebrewroastsee.py" : "crash of Lebrew device support",
         "mqttbridge.py" : "crash of mqtt manager",
         "niimprint.py" : "crash of niimprint manager",
         "roast_assistant.py" : "crash of roast assistant",
         "roast_plan_model.py" : "crash of roast plan generator",
-        "roast_timeline.py" : "crash in roast timeline", 
+        "roast_timeline.py" : "crash in roast timeline",
         "tilau_wheel.py": "crash in flavor wheel manager",
-        "tilauambient.py": "crash in tilau probe manager", 
+        "tilauambient.py": "crash in tilau probe manager",
         "tilaulogger.py" : "crash in tilau logger manager",
         "tilaupid.py" : "crash of tilau PID",
         "visualalarm.py" : "crash of graphic alarm viewer",
@@ -52,6 +55,7 @@ class TilauCrashDialog(QDialog):
 
     def __init__(self, mod_name, line_no, error_val, tb_text, no_display:bool=False):
         super().__init__()
+        apply_tilau_theme(self)   # shared base stylesheet
         module_name = self.mod_name_map.get(mod_name,self.mod_name_map["other"])
         self.setWindowTitle(QApplication.translate("tilauscope_diagnostics","TilauScope: {0}").format(module_name))
         self.setMinimumWidth(500)
@@ -68,7 +72,7 @@ class TilauCrashDialog(QDialog):
         icon_label = QLabel()
         critical_icon = self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxCritical)
         icon_label.setPixmap(critical_icon.pixmap(48, 48))
-        
+
         title_text = QApplication.translate("tilauscope_diagnostics", "<b><font size='5' color='#d32f2f'>TilauScope Interrupted</font></b><br>Something went wrong in <i>{0}</i>.").format(mod_name)
         header_label = QLabel(title_text)
         header_layout.addWidget(icon_label)
@@ -86,7 +90,7 @@ class TilauCrashDialog(QDialog):
         self.details_box.setPlainText(tb_text)
         self.details_box.setFont(QFont("Courier New", 10))
         self.details_box.hide()
-        
+
         self.toggle_btn = QPushButton(QApplication.translate("tilauscope_diagnostics","Show Technical Details"))
         self.toggle_btn.clicked.connect(self.toggle_details)
         layout.addWidget(self.toggle_btn)
@@ -102,7 +106,7 @@ class TilauCrashDialog(QDialog):
         self.export_btn = QPushButton(QApplication.translate("tilauscope_diagnostics","Export Logs & Close"))
         self.export_btn.setDefault(True)
         self.close_btn = QPushButton(QApplication.translate("tilauscope_diagnostics","Just Close"))
-        
+
         btn_layout.addStretch()
         btn_layout.addWidget(self.close_btn)
         btn_layout.addWidget(self.export_btn)
@@ -130,7 +134,7 @@ def export_logs_to_zip():
     zip_filename = f"Tilau_Debug_{platform.system()}_{timestamp}.zip"
     other_logs_directory = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)) / "tilauscope"
     save_path, _ = QFileDialog.getSaveFileName(None, QApplication.translate("tilauscope_diagnostics","Save Debug Logs"), zip_filename, "Zip Files (*.zip)")
-    
+
     if save_path:
         try:
             with zipfile.ZipFile(save_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -139,7 +143,7 @@ def export_logs_to_zip():
                         # Grab artisan and tilau logs
                         for log in list(path.glob("*.log*")) + list(path.glob("tilau_*.log")):
                             zipf.write(log, arcname=f"logs/{log.name}")
-                
+
                 # Add a system info file
                 sys_info = f"OS: {platform.system()} {platform.release()}\nPython: {sys.version}\nQt: 6.11"
                 zipf.writestr("system_info.txt", sys_info)
@@ -148,7 +152,7 @@ def export_logs_to_zip():
             print(f"Failed to zip: {e}")
     return False
 
-## TILAU ## Public issue tracker of the AGPL fork — where bug reports land.
+# Public issue tracker of the AGPL fork — where bug reports land.
 TILAUSCOPE_ISSUES_URL = "https://github.com/neuralldev/tilauscope_fork/issues"
 
 def report_a_bug(parent=None) -> bool:
@@ -175,9 +179,13 @@ def report_a_bug(parent=None) -> bool:
 def my_exception_hook(exctype, value, tb):
     tb_text = "".join(traceback.format_exception(exctype, value, tb))
     last_frame = traceback.extract_tb(tb)[-1]
-    
-    app = QApplication.instance() or QApplication(sys.argv)
-    
+
+    # Not a discarded binding: a crash can land here before any QApplication
+    # exists, and the dialog below needs one. Written as a statement so the
+    # side effect is the point rather than a by-product of an unused name.
+    if QApplication.instance() is None:
+        QApplication(sys.argv)
+
     dialog = TilauCrashDialog(
         mod_name=Path(last_frame.filename).name,
         line_no=last_frame.lineno,

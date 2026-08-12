@@ -1,12 +1,7 @@
 #
 # ABOUT
-# artisan_message_ticker.py
-# TilauScope — Artisan Message Ticker
-#
-# Widget autonome à insérer dans _SidebarWrapper, sous alarm_sidebar.
-# Se nourrit via ArtisanMessageHook (installé par TilauScope.__init__,
-# retiré par TilauScope.closeEvent).
-#
+# artisan_message_ticker.py — TilauScope Artisan Message Ticker, standalone widget
+# inserted in _SidebarWrapper below alarm_sidebar; fed via ArtisanMessageHook.
 
 # LICENSE
 # This file is part of TilauScope, a fork of Artisan Roaster Scope.
@@ -23,15 +18,8 @@
 # AUTHOR
 # TiLau 2025
 
-# Architecture :
-#   ArtisanMessageTicker  — widget Qt (affiché dans la sidebar)
-#   ArtisanMessageHook    — contrôleur (monkey-patch de sendmessage_internal)
-#
-# Dépendances internes : displayscope constants (_COL_BASE, _COL_SURFACE0,
-#   _COL_TEXT, THEME), PyQt6.
-#
-# Thread-safety : sendmessage_internal est TOUJOURS appelé via QTimer.singleShot
-#   dans le main thread (cf. main.py:12043). Aucun verrou supplémentaire requis.
+# ArtisanMessageTicker (widget) + ArtisanMessageHook (monkey-patches sendmessage_internal).
+# sendmessage_internal always runs via QTimer.singleShot on the main thread (main.py:12043) — no lock needed.
 
 
 from __future__ import annotations
@@ -45,16 +33,18 @@ from PyQt6.QtWidgets import (
     QScrollArea, QFrame, QPushButton, QApplication, QSizePolicy,
 )
 
+from tilauscope.theme_qss import mono_family
+from tilauscope.tilauscope_types import THEME
+
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
-# ── Palette (Catppuccin Mocha — doit rester cohérent avec displayscope.py) ───
-_COL_BASE     = "#1e1e2e"
-_COL_SURFACE0 = "#313244"
-_COL_SURFACE1 = "#45475A"
-_COL_TEXT     = "#CDD6F4"
-_COL_MUTED       = "#6C7086"
-_COL_ARTISAN     = "#63B8DD"   # bleu Artisan (extrait de l'icône officielle)
-_COL_ARTISAN_DIM = "#2E6A8A"   # version atténuée pour les messages anciens
+# Artisan's own brand blue, sampled from the official icon, and a dimmed
+# version of it for older messages. Deliberately NOT theme tokens: this panel
+# is badged as upstream Artisan's voice inside TilauScope, so its accent has to
+# stay Artisan's whatever the TilauScope palette does. Everything else in this
+# file reads from THEME.
+_COL_ARTISAN     = "#63B8DD"
+_COL_ARTISAN_DIM = "#2E6A8A"
 
 # ── Filtre bruit ──────────────────────────────────────────────────────────────
 # Préfixes (lowercased) dont les messages ne présentent pas d'intérêt opérationnel
@@ -134,8 +124,8 @@ class _MessageRow(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         border_col = _COL_ARTISAN     if is_latest else _COL_ARTISAN_DIM
-        text_col   = _COL_ARTISAN     if is_latest else _COL_TEXT
-        ts_col     = _COL_ARTISAN_DIM if is_latest else _COL_MUTED
+        text_col   = _COL_ARTISAN     if is_latest else THEME['TEXT']
+        ts_col     = _COL_ARTISAN_DIM if is_latest else THEME['OVERLAY0']
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -168,7 +158,7 @@ class _MessageRow(QWidget):
     def _apply_frame_style(self, border_col: str) -> None:
         self._frame.setStyleSheet(f"""
             QFrame {{
-                background: {_COL_SURFACE0};
+                background: {THEME['BORDER']};
                 border-radius: 4px;
                 border-left: 3px solid {border_col};
             }}
@@ -176,21 +166,22 @@ class _MessageRow(QWidget):
 
     def _apply_ts_style(self, col: str) -> None:
         self._ts_lbl.setStyleSheet(
-            f"color: {col}; font-size: 9px; font-family: 'JetBrains Mono';"
+            f"color: {col}; font-size: 9px;"
+            f" font-family: '{mono_family()}', monospace;"
             "background: transparent; border: none;"
         )
 
     def _apply_msg_style(self, col: str) -> None:
         self._msg_lbl.setStyleSheet(
-            f"color: {col}; font-size: 11px; font-family: 'JetBrains Mono';"
+            f"color: {col}; font-size: 11px; "
             "background: transparent; border: none;"
         )
 
     def dim(self) -> None:
         """Passage vers l'état 'ancien' : bordure bleue sombre, texte blanc, ts gris."""
         self._apply_frame_style(_COL_ARTISAN_DIM)
-        self._apply_ts_style(_COL_MUTED)
-        self._apply_msg_style(_COL_TEXT)
+        self._apply_ts_style(THEME['OVERLAY0'])
+        self._apply_msg_style(THEME['TEXT'])
 
 
 # ── Widget principal ─────────────────────────────────────────────────────────
@@ -225,13 +216,13 @@ class ArtisanMessageTicker(QWidget):
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
         sep.setFixedHeight(1)
-        sep.setStyleSheet(f"background: {_COL_SURFACE1}; border: none;")
+        sep.setStyleSheet(f"background: {THEME['SURFACE1']}; border: none;")
         root.addWidget(sep)
 
         # ── Barre titre : icône + label + compteur + clear ─────────────────
         title_bar = QWidget()
         title_bar.setFixedHeight(24)
-        title_bar.setStyleSheet(f"background: {_COL_SURFACE0};")
+        title_bar.setStyleSheet(f"background: {THEME['BORDER']};")
         title_row = QHBoxLayout(title_bar)
         title_row.setContentsMargins(6, 0, 4, 0)
         title_row.setSpacing(4)
@@ -274,16 +265,16 @@ class ArtisanMessageTicker(QWidget):
         hdr = QLabel(QApplication.translate("tilauscope_ticker", "ARTISAN"))
         hdr.setStyleSheet(
             f"color: {_COL_ARTISAN}; font-weight: bold; font-size: 10px;"
-            "font-family: 'JetBrains Mono'; letter-spacing: 1px;"
+            "letter-spacing: 1px;"
             "background: transparent; border: none;"
         )
         title_row.addWidget(hdr, 1)
 
         self._count_lbl = QLabel("0")
         self._count_lbl.setStyleSheet(
-            f"color: {_COL_ARTISAN}; background: {_COL_BASE}; font-size: 9px;"
+            f"color: {_COL_ARTISAN}; background: {THEME['BG']}; font-size: 9px;"
             "font-weight: 700; border-radius: 8px; padding: 1px 5px;"
-            "font-family: 'JetBrains Mono';"
+            f" font-family: '{mono_family()}', monospace;"
         )
         self._count_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._count_lbl.setFixedHeight(15)
@@ -296,12 +287,12 @@ class ArtisanMessageTicker(QWidget):
         clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         clear_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {_COL_SURFACE0}; color: {_COL_MUTED};
+                background: {THEME['BORDER']}; color: {THEME['OVERLAY0']};
                 border-radius: 3px; border: none;
                 font-size: 9px; font-weight: bold;
             }}
-            QPushButton:hover {{ background: {_COL_SURFACE1}; color: {_COL_ARTISAN}; }}
-            QPushButton:pressed {{ background: {_COL_ARTISAN}; color: #1E1E2E; }}
+            QPushButton:hover {{ background: {THEME['SURFACE1']}; color: {_COL_ARTISAN}; }}
+            QPushButton:pressed {{ background: {_COL_ARTISAN}; color: {THEME['BG']}; }}
         """)
         clear_btn.clicked.connect(self.clear)
         title_row.addWidget(clear_btn)
@@ -314,16 +305,19 @@ class ArtisanMessageTicker(QWidget):
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self._scroll.setStyleSheet("""
-            QScrollArea { background: transparent; border: none; }
-            QScrollBar:vertical {
-                background: #1E1E2E; width: 4px; margin: 0; border-radius: 2px;
-            }
-            QScrollBar::handle:vertical {
-                background: #45475A; min-height: 16px; border-radius: 2px;
-            }
-            QScrollBar::handle:vertical:hover { background: #585B70; }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+        # Kept local rather than left to the base sheet: this scrollbar is 4px,
+        # not the base's 12px — a hairline beside a narrow message column. The
+        # colours are the base's, by token.
+        self._scroll.setStyleSheet(f"""
+            QScrollArea {{ background: transparent; border: none; }}
+            QScrollBar:vertical {{
+                background: {THEME['BG']}; width: 4px; margin: 0; border-radius: 2px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {THEME['SURFACE1']}; min-height: 16px; border-radius: 2px;
+            }}
+            QScrollBar::handle:vertical:hover {{ background: {THEME['SURFACE2']}; }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
         """)
 
         self._content = QWidget()

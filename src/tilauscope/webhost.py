@@ -16,16 +16,8 @@
 #
 # webhost.py
 #
-# ## TILAU ## App-level owner of the TilauScope web servers.
-#
-# Generalises the TilauWebRecords thread+loop pattern into a single host owned by
-# ApplicationWindow and started with Artisan/TilauScope (both boot paths), so the
-# read-only Records server no longer depends on the BeanCave window being open
-# (see wiki/RemoteControl-Protocol-v1.md §3 and wiki/RemoteControl-Implementation-Plan.md).
-#
-# Phase 0 (this file): owns the Records server with settable resolvers; BeanCave
-# only supplies the roast/bean resolvers when its catalogue is loaded.
-# Phase 1+: mounts the opt-in Control server (remote piloting) on the same host.
+# App-level owner of the TilauScope web servers: always-on read-only Records
+# server plus an opt-in Control server for remote piloting (see wiki/RemoteControl-Protocol-v1.md §3).
 
 import logging
 from typing import Callable, Optional

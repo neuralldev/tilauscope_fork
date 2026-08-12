@@ -223,6 +223,8 @@ target of the next plan for this coffee. See [The roast plan](the-roast-plan.md#
 **🚫 Exclude from learning** keeps a roast out of the plan's history. A batch that went wrong for
 reasons that have nothing to do with the coffee — an interruption, a mistake, a probe problem —
 should not become a reference. This is the switch that protects every future plan for that coffee.
+Later, from the file list, you can also mark a roast as reviewed and sound — see
+[After the roast](after-the-roast.md#repairing-incomplete-roast-files).
 
 <!-- CAPTURE 7.15 — the ROAST SUMMARY, on a roast with a visible drift in one phase.
 CAPTURE 7.16 — the colour entry and the Exclude from learning control. -->
@@ -246,7 +248,15 @@ than as rows in a table, and can show the resulting strategy as a narrative befo
 starts. The alarms themselves are Artisan's; what changes is that the rule can be read back and
 checked.
 
-![the cooling page](assets/the-guided-roast-7.17.png)
+Reopening the alarm editor mid-roast shows which alarms have already fired: the status dot next
+to a fired alarm turns into a checkmark, and the time it fired at appears at the end of the
+line — updated live while the window stays open, so nothing is lost by checking.
+
+A whole alarm programme can be saved under a name from the **Presets** menu and reloaded later —
+for a different bean, a different machine, or a different roast style — without rebuilding it
+line by line.
+
+![the Expert view](assets/the-guided-roast-7.17.png)
 
 ---
 

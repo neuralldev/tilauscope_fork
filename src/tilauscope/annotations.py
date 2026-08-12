@@ -22,7 +22,8 @@ from typing import Final
 from PyQt6.QtCore import Qt, QSettings, pyqtSlot # @UnusedImport @Reimport  @UnresolvedImport
 from PyQt6.QtWidgets import QLabel, QToolButton, QApplication
 
-from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS
+from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS, THEME
+from tilauscope.theme_qss import tint
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -37,26 +38,26 @@ class TilauAnnotation(QLabel):
 
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-        self.setStyleSheet("""
-            QLabel {
+        self.setStyleSheet(f"""
+            QLabel {{
                 background-color: rgba(24, 24, 37, 0.7);
-                color: #ffffff;
-                border: 1px solid #555555;
+                color: {THEME['TEXT']};
+                border: 1px solid {THEME['BORDER']};
                 padding: 6px;
                 border-radius: 4px;
                 font-size: 11px;
-            }
+            }}
         """)
         self.setWordWrap(False)
         self.setTextFormat(Qt.TextFormat.RichText)
         self.hide()
-    
+
     def update_visibility(self):
         if self.parentWidget() and not self.parentWidget().isVisible():
             self.hide()
             if _IS_WINDOWS:
                 self.update()
-            
+
     def show_at(self, x_data: float, y_data: float, html: str) -> None:
         """
         Positions the label based on graph coordinates with High-DPI support.
@@ -163,7 +164,7 @@ class TilauAnnotation(QLabel):
 class CoachViewToggle(QToolButton):
     """Small fixed corner button on the roast graph that flips the roast
     annotation between the simplified guided 'coach' view and the full expert
-    data table. Visible only in Guided operator level. ## TILAU ##
+    data table. Visible only in Guided operator level.
 
     Lives parented to the Matplotlib canvas; mirrors the roast annotation's
     visibility via TilauAnnotation.companion. The chosen view is persisted in
@@ -182,19 +183,21 @@ class CoachViewToggle(QToolButton):
         self.setFixedSize(self._SIZE, self._SIZE)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.setStyleSheet("""
-            QToolButton {
-                background-color: rgba(24, 24, 37, 0.7);
-                border: 1px solid #45475A;
+        # Sits on Artisan's canvas, outside any base-styled root, so it states
+        # its own rules — by token.
+        self.setStyleSheet(f"""
+            QToolButton {{
+                background-color: {tint('SURFACE', 0.7)};
+                border: 1px solid {THEME['SURFACE1']};
                 border-radius: 6px;
                 font-size: 14px;
-            }
-            QToolButton:hover { border: 1px solid #89B4FA; }
-            QToolTip {
-                background-color: #2D2F3F; color: white;
-                border: 1px solid #585B70; padding: 5px;
+            }}
+            QToolButton:hover {{ border: 1px solid {THEME['ACCENT']}; }}
+            QToolTip {{
+                background-color: {THEME['SURFACE']}; color: {THEME['TEXT']};
+                border: 1px solid {THEME['SURFACE2']}; padding: 5px;
                 border-radius: 3px; font-size: 11px;
-            }
+            }}
         """)
         self.clicked.connect(self._on_click)
         self._refresh_glyph()

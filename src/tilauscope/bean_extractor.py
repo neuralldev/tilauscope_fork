@@ -1,21 +1,7 @@
 #
 # ABOUT
-# AI-powered green bean data extractor for TilauScope.
-# Scrapes a product URL and extracts structured GreenBean data.
-#
-# Architecture
-# ────────────
-# CoffeeAIParser  — pure data provider: scraping + prompt construction.
-#                   Does NOT own a thread or an instructor client.
-#
-# submit_bean_extract()  — builds the work_fn closure and submits it
-#                          to TilauAIService. Returns False if already running.
-#
-# The caller (beancave.py) connects to:
-#   aw.tilau_ai_service.task_finished  → receives (AITask.BEAN_EXTRACT, GreenBean | None)
-#   aw.tilau_ai_service.task_error     → receives (AITask.BEAN_EXTRACT, str)
-#   aw.tilau_ai_service.task_busy      → disable the Extract button
-#
+# AI-powered green bean data extractor for TilauScope — scrapes a product URL and
+# extracts structured GreenBean data via submit_bean_extract() / aw.tilau_ai_service.
 # LICENSE
 # This file is part of TilauScope, a fork of Artisan Roaster Scope.
 # TilauScope is free software: you can redistribute it and/or modify it under
@@ -74,7 +60,7 @@ if TYPE_CHECKING:
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Pydantic schema  –  unchanged from original
+# Pydantic schema for the extracted bean data
 # ─────────────────────────────────────────────────────────────────────────────
 
 class GreenBeanSchema(BaseModel):

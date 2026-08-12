@@ -40,10 +40,10 @@ Intégration minimale dans tilaupid.py :
   • Appeler self._on_preheat_complete() quand stabilisation détectée
 """
 
-## TILAU ## Lazy annotations so this module can be imported by an offline corpus
-## analysis tool WITHOUT importing artisanlib.main (which would bind a QApplication
-## and clobber the user's real Artisan prefs). ApplicationWindow / ProfileData are
-## used only in type hints + a string cast, so they live under TYPE_CHECKING.
+# Lazy annotations so this module can be imported by an offline corpus
+# analysis tool WITHOUT importing artisanlib.main (which would bind a QApplication
+# and clobber the user's real Artisan prefs). ApplicationWindow / ProfileData are
+# used only in type hints + a string cast, so they live under TYPE_CHECKING.
 from __future__ import annotations
 
 import logging
@@ -57,10 +57,10 @@ from typing import List, Optional, Callable, TYPE_CHECKING
 import ast  # Import de la bibliothèque ast
 from typing import cast, Final
 
-## TILAU ## Pure event-value conversion (internal→external %). Lives in artisanlib.util,
-## which is safe to import at runtime (no QApplication, no prefs binding) — unlike
-## artisanlib.main. This lets the alog scanner extract hold power WITHOUT an aw handle,
-## so the offline corpus tool gets the same numbers as the live PID.
+# Pure event-value conversion (internal→external %). Lives in artisanlib.util,
+# which is safe to import at runtime (no QApplication, no prefs binding) — unlike
+# artisanlib.main. This lets the alog scanner extract hold power WITHOUT an aw handle,
+# so the offline corpus tool gets the same numbers as the live PID.
 from artisanlib.util import events_internal_to_external_value, fromFtoCstrict
 from tilauscope.tilaupid_thermal import (
     THERMAL_MODEL_FILENAME,
@@ -157,10 +157,8 @@ class RoastPreheatMetrics:
     stabilise_time_sec: float = 0.0     # secondes supplémentaires pour ±0.5°C
     hold_mean_power: float = 0.0        # puissance brûleur moyenne en hold (%)
     was_stable: bool = False            # True si stabilisation réelle détectée
-    # True when target_sv came from a real recorded SV event ("TilauPID Preheat started").
-    # Extraction now requires that marker (unmarked roasts = manual preheat, skipped), so
-    # every extracted metric sets this True; the field remains as an explicit invariant and
-    # guards any downstream reader against a future non-recorded source being reintroduced.
+    # True when target_sv came from a real recorded SV event ("TilauPID Preheat started");
+    # extraction requires that marker, so every extracted metric sets this True.
     target_is_recorded_sv: bool = False
     # True when this roast logged the continuous 'Burner' extra-device channel — the only
     # trustworthy hold-power source. Historical roasts without it carry no P_ss datapoint.
@@ -272,12 +270,8 @@ class AlogScanner:
     def _extract_metrics(self, path: Path, params:RoastPreheatMetrics|None = None) -> RoastPreheatMetrics|None:
         """Parse un alog et retourne les métriques de préchauffe, ou None si absent."""
         try:
-            ## TILAU ## An .alog is a repr()'d Python dict — feed it straight to
-            ## literal_eval. The former codecs.decode(..., 'unicode_escape') turned the
-            ## \n escapes inside multi-line 'beans' text into RAW newlines, producing an
-            ## unterminated-string SyntaxError: it silently dropped ~97% of real roasts
-            ## (only 3/92 here parsed), starving the cross-roast learning. literal_eval
-            ## already handles \uXXXX / \n escapes natively.
+            # An .alog is a repr()'d Python dict — feed it straight to literal_eval,
+            # which handles \uXXXX / \n escapes natively (unlike codecs.decode).
             try:
                 text = path.read_text(encoding='utf-8')
             except UnicodeDecodeError:
@@ -287,9 +281,9 @@ class AlogScanner:
             _logd.debug(f"Impossible de lire {path.name}: {exc}")
             return None
 
-        ## TILAU ## Simulator data is never physical PID evidence. Conversely,
-        ## `tilau_exclude_learning` belongs to roast-plan/cooking learning only:
-        ## it must not discard the independent machine preheat response.
+        # Simulator data is never physical PID evidence. Conversely,
+        # `tilau_exclude_learning` belongs to roast-plan/cooking learning only:
+        # it must not discard the independent machine preheat response.
         if isinstance(data, dict) and data.get('tilau_simulated'):
             _logd.debug(f"{path.name}: profil simulé — ignoré pour l'apprentissage PID")
             return None
@@ -334,23 +328,16 @@ class AlogScanner:
         timex: List[float] = data.get("timex", [])
         timeindex: List[int] = data.get("timeindex", [])
         # Channel the preheat PID actually followed in this roast — mirrors cycle():
-        # BT=temp2 when pidSource in {0,1}, else ET=temp1. pidSource is persisted in the
-        # alog (main.py writes profile['pidSource']); default to BT for legacy alogs.
-        # NOTE: Artisan convention is temp1=ET, temp2=BT (do not swap these).
+        # BT=temp2 when pidSource in {0,1}, else ET=temp1 (Artisan convention: temp1=ET, temp2=BT).
         ctrl_raw: List[float] = data.get("temp2", []) if recorded_channel == "BT" else data.get("temp1", [])
         charge:int = timeindex[0] if (timeindex and timeindex[0] >= 0 ) else len(timex)-1 # charge index into timex
 
-        ## TILAU ## An .alog is stored in the unit it was RECORDED in (data['mode'],
-        ## 'C' or 'F') — Artisan converts only on load. All PID/seed maths is in °C, so
-        ## an °F-recorded roast must be converted here or its temps land ~1.8× off. °C
-        ## roasts (the common case) take the identity path and are byte-for-byte unchanged.
-        ## NOTE: target_sv is resolved LATER (after the preheat window is known), NOT from
-        ## svValues — svValues is Artisan's length-8 preset-BUTTON array, not a time series;
-        ## max() returned a stored preset (e.g. 185) and mis-bucketed 87/92 corpus roasts.
+        # An .alog is stored in the unit it was recorded in (data['mode']); all PID/seed
+        # maths is in °C, so an °F-recorded roast must be converted here.
+        # target_sv is resolved later from the preheat window, not from svValues
+        # (Artisan's preset-BUTTON array, not a time series).
         if mode == "F":
-            # Convert real readings only; preserve Artisan's -1 dropped-sample sentinel
-            # (a raw -1 stays -1 in the °C path too, and nothing downstream reads it — but
-            # keeping the invariant identical across units avoids a spurious divergence).
+            # Convert real readings only; preserve Artisan's -1 dropped-sample sentinel.
             ctrl_temp: List[float] = [v if v == -1 else fromFtoCstrict(v) for v in ctrl_raw]
         else:
             ctrl_temp = ctrl_raw
@@ -361,15 +348,9 @@ class AlogScanner:
         preheat_start_idx = None
         preheat_end_idx = None
 
-        # ── Détection de la phase préchauffe : la clé °C d'abord, l'événement ensuite ──
-        # A guided TilauPID preheat is proven by EITHER of two authoritative marks the app
-        # writes when the PID runs — never by alarm strings (user-editable config):
-        #   1. `tilau_preheat_sv_c` — the SV in °C, stamped by getProfile. PRIMARY source:
-        #      no timex, no decode, no unit conversion. Present on all post-fix roasts.
-        #   2. the type-4 "TilauPID Preheat started" special event — the on-graph marker,
-        #      and the only source on legacy files repaired before the key existed. It also
-        #      gives the precise preheat start index.
-        # Neither present ⇒ the preheat was done by hand: not a valid learning base, skip.
+        # A guided TilauPID preheat is proven by `tilau_preheat_sv_c` (primary, SV in °C)
+        # or the type-4 "TilauPID Preheat started" event — never by alarm strings. Neither present
+        # ⇒ preheat was done by hand: not a valid learning base, skip.
         key_sv_c = data.get("tilau_preheat_sv_c")
         found_in_events = False
         recorded_sv_native: Optional[float] = None
@@ -413,9 +394,9 @@ class AlogScanner:
             return None
 
         # ── Cible (target_sv, °C) ─────────────────────────────────────────
-        ## TILAU ## Prefer the explicit °C key (exact, already internal-unit); fall back to
-        ## the event's native value converted via mode. Either way it is the real dialed
-        ## setpoint, so overshoot (max_bt − SV) and the exact-SV P_ss node are meaningful.
+        # Prefer the explicit °C key (exact, already internal-unit); fall back to
+        # the event's native value converted via mode. Either way it is the real dialed
+        # setpoint, so overshoot (max_bt − SV) and the exact-SV P_ss node are meaningful.
         try:
             if key_sv_c is not None:
                 target_sv = float(key_sv_c)
@@ -485,9 +466,9 @@ class AlogScanner:
         stabilise_extra = 0.0
         if len(hold_slice) >= 5:
             var = stdev(hold_slice) if len(hold_slice) > 1 else 99.0
-            ## TILAU ## A flat plateau BELOW SV is a failed approach, not a hold — require
-            ## both flatness (var < 0.8) AND tight proximity to the recorded SV (±0.8°C),
-            ## so a hot-parked drum cannot certify itself as "stable".
+            # A flat plateau BELOW SV is a failed approach, not a hold — require
+            # both flatness (var < 0.8) AND tight proximity to the recorded SV (±0.8°C),
+            # so a hot-parked drum cannot certify itself as "stable".
             plateau_mean = mean(hold_slice)
             was_stable = var < 0.8 and abs(plateau_mean - target_sv) <= 0.8
             for k in range(5, len(t_slice)):
@@ -497,13 +478,8 @@ class AlogScanner:
                     stabilise_extra = t_slice[k] - time_to_sv - t_slice[0]
                     break
 
-        ## TILAU ## Puissance hold = le CANAL BRÛLEUR CONTINU (extra-device 'Burner'),
-        ## PAS les événements spéciaux. Le flux d'events type-3 est trop épars : un maintien
-        ## à plat n'émet aucun event, et le dernier event avant CHARGE est une valeur de
-        ## RAMPE périmée (~90 %) — physiquement impossible comme puissance de maintien. Le
-        ## canal continu (échantillonné à ~1 Hz, base de temps propre extratimex[i]) est la
-        ## seule source fiable. Absent ⇒ pas de datapoint P_ss (hold_mean_pwr = 0 → non
-        ## "held"), on retombe honnêtement sur le défaut physique plutôt qu'un chiffre fabriqué.
+        # Puissance hold = le canal brûleur continu (extra-device 'Burner'), pas les
+        # événements spéciaux (trop épars, dernier event avant CHARGE souvent une valeur de rampe périmée).
         burner = self._burner_channel(data)
         had_burner_channel = burner is not None
         hold_power_vals: list[float] = []
@@ -526,10 +502,8 @@ class AlogScanner:
             float(median(hold_power_vals))
             if hold_span >= 20.0 and len(hold_power_vals) >= 10 else 0.0)
 
-        ## TILAU ## Prefer the roast's own epoch for the burner-calibration gate: file
-        ## mtime is bumped by any copy/backup/sync and would let a pre-Nov-2025 roast
-        ## (doubled fire values) sneak past the cutoff and seed a 2× P_ss. Fall back to
-        ## mtime only for legacy alogs with no roastepoch.
+        # Prefer the roast's own epoch for the burner-calibration gate: file mtime is
+        # bumped by any copy/backup/sync and would let a pre-calibration roast sneak past the cutoff.
         _epoch = data.get("roastepoch")
         roast_ts = float(_epoch) if isinstance(_epoch, (int, float)) and _epoch > 0 else path.stat().st_mtime
 
@@ -571,9 +545,9 @@ class AlogScanner:
         Shared by _extract_metrics and the offline preheat_corpus_report tool.
         """
         etx = data.get("extratimex", [])
-        ## TILAU ## Current Skywalker/SkyCommand actuator devices use Artisan's
-        ## generic event label (`{3}`), not the word Burner. Resolve their stable
-        ## save-time identity first; channel 1 / extratemp1 is the burner echo.
+        # Current Skywalker/SkyCommand actuator devices use Artisan's
+        # generic event label (`{3}`), not the word Burner. Resolve their stable
+        # save-time identity first; channel 1 / extratemp1 is the burner echo.
         name_map = data.get("tilau_name_map") or {}
         for raw_slot, key in name_map.items():
             try:
@@ -603,10 +577,8 @@ class AlogScanner:
         results = []
         candidates = self._list_recent()
         for p in candidates:
-            ## TILAU ## Fail-safe: a single malformed .alog (desynced special-events
-            ## arrays, truncated/old format, hand-edited) must never abort the whole
-            ## history load — which would propagate up through adaptive_start() and
-            ## fail the preheat PID start. Skip the bad file and keep learning.
+            # Fail-safe: a single malformed .alog must never abort the whole history
+            # load (which would fail the preheat PID start) — skip it and keep learning.
             try:
                 m = self._extract_metrics(p)
             except Exception as exc:  # noqa: BLE001
@@ -1027,7 +999,7 @@ class AdaptivePIDMixin:
     Usage dans stop() ou quand stable détecté :
         self._on_preheat_complete()
 
-    ## TILAU ## ── Simulator isolation (INVARIANT) ──────────────────────────────
+ ── Simulator isolation (INVARIANT) ──────────────────────────────
     A simulated preheat (``aw.simulator is not None``) MUST NOT persist or learn
     anything: it may run the control law and read learned params, but it never
     trains the real controller. This is enforced at every write path — keep all
@@ -1043,11 +1015,11 @@ class AdaptivePIDMixin:
     p_ss: float
     lead_sec: float
     _base_hold_power: float
-    ## TILAU ## ── Cross-roast control-law learning (P_ss + lead_sec) ───────────
-    ## Replaces the retired fuzzy-zone integrator. Only two knobs are learned, both
-    ## consumed directly by compute_fuzzy_power via load_law_params():
-    ##   P_ss     — steady hold power near SV (closes the proportional droop over roasts)
-    ##   lead_sec — projection lead (raise → brake earlier when a roast overshot)
+    # ── Cross-roast control-law learning (P_ss + lead_sec) ───────────
+    # Replaces the retired fuzzy-zone integrator. Only two knobs are learned, both
+    # consumed directly by compute_fuzzy_power via load_law_params():
+    #   P_ss     — steady hold power near SV (closes the proportional droop over roasts)
+    #   lead_sec — projection lead (raise → brake earlier when a roast overshot)
     _PSS_EMA_ALPHA: float = 0.3        # blend weight for a clean (±0.5°C) plateau's measured hold
     _PSS_DROOP_GAIN: float = 0.5       # %/°C nudge when it settles stably but off-SV
     _PSS_MIN: float = 5.0              # floor on learned steady hold
@@ -1069,20 +1041,20 @@ class AdaptivePIDMixin:
     _LAW_EDGE_MAX_DISTANCE_C: float = 15.0  # bounded nearest-node use outside learned range
     _LAW_MAX_INTERPOLATION_GAP_C: float = 40.0  # do not bridge unrelated thermal regimes
     _LAW_VERSION: int = 4              # v4 stores exact-SV nodes and interpolates continuously
-    ## TILAU ## ── Cold-start seeding from the historical alog corpus ────────────
-    ## When no exact/interpolated SV node is available, seed P_ss and lead_sec from past
-    ## roasts instead of a flat default. P_ss uses hold_mean_power but ONLY from
-    ## post-calibration alogs (pre-Nov-2025 burner values are ~2× the real reading);
-    ## lead uses the observed overshoot, which is a temperature and thus calibration-
-    ## independent, so it may use the whole corpus.
+    # ── Cold-start seeding from the historical alog corpus ────────────
+    # When no exact/interpolated SV node is available, seed P_ss and lead_sec from past
+    # roasts instead of a flat default. P_ss uses hold_mean_power but ONLY from
+    # post-calibration alogs (pre-Nov-2025 burner values are ~2× the real reading);
+    # lead uses the observed overshoot, which is a temperature and thus calibration-
+    # independent, so it may use the whole corpus.
     _SEED_SV_WINDOW_C: float = 15.0    # roasts within ±this of the target SV are relevant
     _SEED_MIN_ROASTS: int = 3          # need at least this many to trust a seed (else fall back)
     _SEED_LEAD_OVERSHOOT_GAIN: float = 0.4  # +s of lead per °C of mean historical overshoot beyond deadband
     # Burner-calibration cutoff: alogs older than 2025-11-01 have doubled fire values
     # (see corpus notes) and must NOT seed the absolute hold power P_ss.
     _SEED_CALIB_CUTOFF_EPOCH: float = 1761955200.0  # 2025-11-01 00:00 UTC
-    ## TILAU ## Offline thermal candidates never become a control prior directly.
-    ## They first need three consecutive qualified real-preheat shadow passes.
+    # Offline thermal candidates never become a control prior directly.
+    # They first need three consecutive qualified real-preheat shadow passes.
     _THERMAL_STATE_VERSION: int = 1
     _THERMAL_REQUIRED_PASSES: int = 3
 
@@ -1090,8 +1062,8 @@ class AdaptivePIDMixin:
         self,
         alog_dir: Optional[str] = None,
         window: int = 10,
-        ambient: Optional[AmbientConditions] = None, 
-        aw: ApplicationWindow | None = None , 
+        ambient: Optional[AmbientConditions] = None,
+        aw: ApplicationWindow | None = None ,
     ) -> None:
         """Initialise tous les sous-systèmes adaptatifs."""
         # Répertoire alog : fixé par l'application (clé QSettings 'alogDirectory',
@@ -1118,7 +1090,7 @@ class AdaptivePIDMixin:
         # Métriques en cours d'accumulation pour la torréfaction actuelle
         self._session_rors: List[float] = []
         self._session_burner_hold: List[float] = []
-        self._session_hold_samples: List[float] = []   ## TILAU ## burner samples within ±_HOLD_BAND_C of SV → P_ss learning
+        self._session_hold_samples: List[float] = []   # burner samples within ±_HOLD_BAND_C of SV → P_ss learning
         self._session_start_time: float = 0.0
         self._session_reached_sv: bool = False
         self._session_reach_time: float = 0.0
@@ -1127,15 +1099,15 @@ class AdaptivePIDMixin:
         self._session_temp_filter: deque[float] = deque(maxlen=5)
         self._session_hold_started_at: Optional[float] = None
         self._session_hold_last_at: Optional[float] = None
-        ## TILAU ## Candidate/shadow state is a sidecar + QSettings only. Artisan's
-        ## ProfileData remains untouched, and the observer has no actuator callback.
+        # Candidate/shadow state is a sidecar + QSettings only. Artisan's
+        # ProfileData remains untouched, and the observer has no actuator callback.
         self._thermal_candidate: ThermalModelCandidate | None = None
         self._thermal_shadow: ThermalShadowSession | None = None
         self._thermal_active: bool = False
 
         # Chargement initial de l'historique
         self._load_history()
-        ## TILAU ## One-time migration: drop the pre-redesign relay-law persisted state.
+        # One-time migration: drop the pre-redesign relay-law persisted state.
         self._migrate_persisted_law()
         _logd.debug(
             f"AdaptivePIDMixin initialisé | alog_dir={alog_dir} "
@@ -1163,7 +1135,7 @@ class AdaptivePIDMixin:
         self._adaptive_memory.push_all(metrics)
         self._refresh_learned()
 
-    ## TILAU ## ── Offline model → shadow → bounded prior promotion ────────────
+    # ── Offline model → shadow → bounded prior promotion ────────────
 
     def _thermal_state_prefix(self, candidate: ThermalModelCandidate) -> str:
         machine, channel = self._law_context()
@@ -1303,10 +1275,8 @@ class AdaptivePIDMixin:
 
         base_burner = self.cfg.max_burner
 
-        # NOTE: the control law is now proportional-on-projected-temperature; the only
-        # learned knobs it consumes are P_ss and lead_sec (see load_law_params /
-        # _learn_law_params). Here we only keep the burner-ceiling adjustment, which
-        # effective_max_burner() clamps DOWN against the hard cfg.max_burner cap.
+        # The control law consumes P_ss and lead_sec (see load_law_params); here we
+        # only keep the burner-ceiling adjustment, clamped DOWN by effective_max_burner().
         self._adj_max_burner = max(40.0, min(100.0,
             base_burner + lp.max_burner_adj))
 
@@ -1317,7 +1287,7 @@ class AdaptivePIDMixin:
         )
 
     # ── Méthodes à appeler depuis TilauPreheatPID ──────────────────────────
-    ## TILAU ## ── Cross-roast control-law persistence (P_ss + lead_sec) ─────────
+    # ── Cross-roast control-law persistence (P_ss + lead_sec) ─────────
 
     def _law_context(self) -> tuple[str, str]:
         """Return the stable machine/source identity used to isolate learned state."""
@@ -1530,10 +1500,8 @@ class AdaptivePIDMixin:
             p_ss_seed = float(summ["p_ss_median"])
 
         lead_seed: Optional[float] = None
-        # Lead seeds from measured overshoot, which is only defined for recorded-SV holds.
-        # Since extraction now admits only marked PID preheats, this gate simply requires
-        # enough such roasts to exist; older manual preheats never enter the corpus, so lead
-        # stays at the safe default until real PID preheats accumulate.
+        # Lead seeds from measured overshoot, only defined for recorded-SV holds; stays
+        # at the safe default until enough real PID preheats accumulate.
         if summ["n_held_recorded"] >= self._SEED_MIN_ROASTS and summ["mean_overshoot_c"] is not None:
             excess = max(0.0, summ["mean_overshoot_c"] - self._OVERSHOOT_DEADBAND_C)
             lead_seed = self.cfg.lead_sec_default + self._SEED_LEAD_OVERSHOOT_GAIN * excess
@@ -1555,11 +1523,9 @@ class AdaptivePIDMixin:
         seed_p_ss, seed_lead = self._seed_law_params_from_history()
         thermal_p_ss, thermal_lead = self._thermal_prior_params()
 
-        ## TILAU ## Defaults when no seed: physical hold estimate for P_ss
-        ## (_base_hold_power ≈ 18 + SV/9.5, ~39% at 200°C — a flat 20% would settle
-        ## the drum below SV−1 and strand the learner in a cold droop), config for lead.
-        ## A shadow-promoted offline model sits between direct corpus evidence and the
-        ## physical default. It remains only a prior; exact/interpolated law nodes win.
+        # Defaults when no seed: physical hold estimate for P_ss (_base_hold_power ≈
+        # 18 + SV/9.5), config for lead. A shadow-promoted offline model sits between
+        # direct corpus evidence and the physical default; exact/interpolated law nodes win.
         base_hold = getattr(self, "_base_hold_power", self.cfg.p_ss_default)
         default_p_ss = (
             seed_p_ss if seed_p_ss is not None
@@ -1709,19 +1675,19 @@ class AdaptivePIDMixin:
         self._session_temp_filter.clear()
         self._session_hold_started_at = None
         self._session_hold_last_at = None
-        ## TILAU ## Never let the previous preheat's plateau qualify the new
-        ## session or bias its terminal P_ss estimate.
+        # Never let the previous preheat's plateau qualify the new
+        # session or bias its terminal P_ss estimate.
         self._stabilisation_detector.reset()
         context_changed = self._refresh_learning_context()
-        ## TILAU ## START is a real-time command: never rescan the archive when
-        ## the manager already loaded this exact machine/input context.
+        # START is a real-time command: never rescan the archive when
+        # the manager already loaded this exact machine/input context.
         if context_changed:
             self._load_history()
         else:
             self._refresh_learned()
             _logd.debug("TilauPID: historique adaptatif réutilisé en mémoire au START")
-        ## TILAU ## Loading the offline sidecar is constant work (one small JSON),
-        ## then the observer is reset for this session. It never scans alogs here.
+        # Loading the offline sidecar is constant work (one small JSON),
+        # then the observer is reset for this session. It never scans alogs here.
         self._load_thermal_candidate()
         # NOTE: learned P_ss/lead are (re)loaded by TilauPreheatPID.start() via
         # load_law_params(), resolved continuously at the current SV — nothing to do here.
@@ -1758,8 +1724,8 @@ class AdaptivePIDMixin:
         """
         sv_c = self.cfg.target_sv
         now = time.perf_counter()
-        ## TILAU ## Shadow failures must be observational only: a candidate bug can
-        ## disable its own validation, but can neither alter nor trip the live PID.
+        # Shadow failures must be observational only: a candidate bug can
+        # disable its own validation, but can neither alter nor trip the live PID.
         shadow = getattr(self, "_thermal_shadow", None)
         if shadow is not None:
             try:
@@ -1792,9 +1758,9 @@ class AdaptivePIDMixin:
         if self._session_reached_sv and burner > 0:
             self._session_burner_hold.append(float(burner))
 
-        ## TILAU ## P_ss learning sample: burner commanded while genuinely AT SV
-        ## (|t−SV| ≤ hold band). This is the steady power the drum actually needs
-        ## to hold, so learning it here closes the proportional droop cross-roast.
+        # P_ss learning sample: burner commanded while genuinely AT SV
+        # (|t−SV| ≤ hold band). This is the steady power the drum actually needs
+        # to hold, so learning it here closes the proportional droop cross-roast.
         if (self._session_reached_sv
                 and abs(filtered_t - sv_c) <= self._HOLD_BAND_C
                 and burner > 0):
@@ -1857,12 +1823,8 @@ class AdaptivePIDMixin:
         approached = max_bt >= sv - self._APPROACH_MIN_C   # got within 10°C of SV at least
         t_settle = self._stabilisation_detector.mean_temp()
         slope = self._stabilisation_detector.slope_c_per_min()
-        # A quasi-flat tail (|slope| small) NEAR SV is a settle point — whether it
-        # settled ON SV or parked hot/cold. We must correct BOTH. The gate is slope +
-        # proximity, NOT `reached`: a drum with P_ss too low settles a few °C BELOW SV
-        # (never trips reached) yet still needs P_ss raised, and it is NOT is_stable
-        # either (a ±1.5°C park fails that ±1°C test). The proximity band also rejects a
-        # genuine mid-ramp plateau far from SV (which would nudge P_ss by 0.5·80→clamp).
+        # A quasi-flat tail near SV is a settle point whether it settled on SV or parked
+        # hot/cold. Gate is slope + proximity, not `reached`: a drum with P_ss too low settles below SV without tripping it.
         settled = (self._stabilisation_detector.has_full_window()
                    and t_settle is not None
                    and abs(slope) <= 2.0
@@ -1944,16 +1906,16 @@ class AdaptivePIDMixin:
             _logd.debug("Préchauffage simulé — apprentissage PID ignoré (aucun stockage).")
             return
 
-        ## TILAU ## Score the offline candidate before any live-law learning. The
-        ## observer only saw measured temperature + the burner chosen by the existing
-        ## controller; promotion affects the next START at the earliest.
+        # Score the offline candidate before any live-law learning. The
+        # observer only saw measured temperature + the burner chosen by the existing
+        # controller; promotion affects the next START at the earliest.
         try:
             self._finish_thermal_shadow()
         except Exception:  # noqa: BLE001 - shadow can never block normal PID learning
             _logd.exception("Thermal shadow result ignored after scoring error")
 
-        ## TILAU ## Learn the live control knobs first — this runs even when SV was
-        ## never reached, so an undershooting roast still shortens the brake lead.
+        # Learn the live control knobs first — this runs even when SV was
+        # never reached, so an undershooting roast still shortens the brake lead.
         self._learn_law_params()
 
         if not self._session_reached_sv:
@@ -2000,12 +1962,10 @@ class AdaptivePIDMixin:
             f"time_to_sv={m.time_to_sv_sec:.0f}s hold={m.hold_mean_power:.1f}% "
             f"stable={m.was_stable}"
         )
-    
+
     def effective_max_burner(self) -> float:
-        ## TILAU ## cfg.max_burner is a HARD safety ceiling: the learned adjustment
-        ## may only pull the burner DOWN, never above the configured cap (80%).
-        ## Previously the learned value (clamped to 100) could exceed the base and
-        ## drive a radiant FIR drum to 87%, tripping its thermal cutoff.
+        # cfg.max_burner is a HARD safety ceiling: the learned adjustment may only
+        # pull the burner DOWN, never above the configured cap.
         return min(self.cfg.max_burner,
                    getattr(self, "_adj_max_burner", self.cfg.max_burner))
 

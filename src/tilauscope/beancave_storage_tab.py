@@ -13,19 +13,14 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ##
 """Stockage tab — green-coffee conservation dashboard for BeanCave.
 
-Multi-bean water-activity (aw) risk overview + per-bean conservation fiche.
-Reads each bean's measured aw (AquaGauge) and the real storage-room ambient
-humidity (passive MQTT read, NOT a roast channel) and runs storage_advisor to
-classify a risk zone and a moisture-drift trend. All logic is display-only over
-the shared green_beans list; storage_advisor holds the (offline-tested) engine.
-
-Kept in a separate module so beancave.py does not grow (sacks-spec convention).
+Reads each bean's measured aw (AquaGauge) and the storage-room ambient humidity (passive MQTT) and runs storage_advisor to classify risk zone and moisture-drift trend; display-only, the engine lives in storage_advisor.
 """
 
 from __future__ import annotations
+
+from tilauscope.theme_qss import apply_tilau_theme
 
 import logging
 from typing import TYPE_CHECKING
@@ -40,7 +35,7 @@ from PyQt6.QtGui import QColor, QBrush
 from PyQt6.QtWidgets import QApplication
 
 from tilauscope.tilauscope_types import THEME
-from tilauscope.sack_manager import (   ## TILAU ## sack labels (design v4 §9)
+from tilauscope.sack_manager import (   # sack labels (design v4 §9)
     SackAssignDialog, SackChipsRow, SackPool, ReclaimSacksDialog,
     confirm_release, orphaned_sacks, release_sacks,
 )
@@ -63,7 +58,7 @@ _logd = logging.getLogger("tilau")
 # --- semantic colours (aligned with the validated mockup) ------------------- #
 Z_OPTIMAL = THEME["SUCCESS"]     # #A6E3A1 green
 Z_WATCH = THEME["TODAY"]         # #FAB387 peach
-Z_TOO_DRY = "#F9E2AF"            # Catppuccin yellow (not in THEME)
+Z_TOO_DRY = THEME["YELLOW"]      # it IS in THEME; the old comment was wrong
 Z_RISK = THEME["CRITICAL"]       # #F38BA8 red
 Z_UNKNOWN = THEME["SUBTEXT"]     # grey
 
@@ -198,7 +193,7 @@ class StorageTab(QWidget):
         bar.addWidget(self.sack_tool_btn)
         root.addLayout(bar)
 
-        # ## TILAU ## orphan-label banner (design v4 §9.3) — passive safety net.
+        # orphan-label banner (design v4 §9.3) — passive safety net.
         # Shown whenever out-of-stock beans still hold labels: this is a data
         # anomaly, not a notification, so it stays until the user resolves it.
         self.orphan_banner = QFrame()
@@ -258,7 +253,7 @@ class StorageTab(QWidget):
             f"color:{THEME['TEXT']}; font-size:15px; font-weight:600;"
         )
         self.banner_source = QLabel()
-        self.banner_source.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:12px;")
+        self.banner_source.setProperty('variant', 'secondary')
         self.banner_cfg_btn = QPushButton("⚙  " + QApplication.translate("tilauscope_storage", "configure"))
         self.banner_cfg_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.banner_cfg_btn.setStyleSheet(self._btn_css())
@@ -371,7 +366,7 @@ class StorageTab(QWidget):
             f"color:{THEME['TEXT']}; font-size:16px; font-weight:700;"
         )
         self.f_meta = QLabel()
-        self.f_meta.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:12px;")
+        self.f_meta.setProperty('variant', 'secondary')
         self.f_stock = QLabel()
         self.f_stock.setStyleSheet(
             f"color:{THEME['SUBTEXT']}; font-size:12px; font-weight:600;"
@@ -405,10 +400,7 @@ class StorageTab(QWidget):
 
         # conditioning selector
         cond_lbl = QLabel(QApplication.translate("tilauscope_storage", "CONDITIONING"))
-        cond_lbl.setStyleSheet(
-            f"color:{THEME['SUBTEXT']}; font-size:10px; font-weight:700;"
-            " letter-spacing:1px;"
-        )
+        cond_lbl.setProperty('variant', 'eyebrow')
         v.addWidget(cond_lbl)
         self.f_conditioning = QComboBox()
         for key, lbl in conditioning_options():
@@ -416,20 +408,15 @@ class StorageTab(QWidget):
         self.f_conditioning.currentIndexChanged.connect(self._on_conditioning_changed)
         v.addWidget(self.f_conditioning)
 
-        # ## TILAU ## sack labels (design v4 §9.1, slot A) — placed here because
-        # this is where the fiche turns from readings into actions. The whole
-        # block hides when the bean has no sack AND no label is available, so a
-        # user without a label printer never sees it.
+        # sack labels: hides entirely when the bean has no sack and no label
+        # is available, so a user without a label printer never sees it.
         self.f_sacks_box = QWidget()
         sv = QVBoxLayout(self.f_sacks_box)
         sv.setContentsMargins(0, 0, 0, 0)
         sv.setSpacing(7)
         srow = QHBoxLayout()
         sacks_lbl = QLabel(QApplication.translate("tilauscope_storage", "SACK LABELS"))
-        sacks_lbl.setStyleSheet(
-            f"color:{THEME['SUBTEXT']}; font-size:10px; font-weight:700;"
-            " letter-spacing:1px;"
-        )
+        sacks_lbl.setProperty('variant', 'eyebrow')
         srow.addWidget(sacks_lbl)
         srow.addStretch()
         self.f_assign_btn = QPushButton("+ " + QApplication.translate("tilauscope_storage", "Assign"))
@@ -447,7 +434,7 @@ class StorageTab(QWidget):
         self.f_verdict = QLabel()
         self.f_verdict.setWordWrap(True)
         self.f_verdict.setStyleSheet(
-            f"color:{THEME['TEXT']}; font-size:12.5px; "
+            f"color:{THEME['TEXT']}; font-size:12.5px;"
             f"background:{THEME['BG']}; border:1px solid {THEME['BORDER']}; "
             "border-radius:10px; padding:12px;"
         )
@@ -464,7 +451,7 @@ class StorageTab(QWidget):
             f"&nbsp;&nbsp;<span style='color:{Z_WATCH}'>■</span> {QApplication.translate("tilauscope_storage", '0.60–0.65 · to watch')}"
             f"&nbsp;&nbsp;<span style='color:{Z_RISK}'>■</span> {QApplication.translate("tilauscope_storage", '&gt; 0.65 · mould risk')}"
         )
-        w.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:11px;")
+        w.setProperty('variant', 'caption')
         return w
 
     # -- data / refresh ------------------------------------------------------ #
@@ -829,7 +816,7 @@ class StorageTab(QWidget):
             pass
         self.refresh()
 
-    # ## TILAU ## ── sack labels: assign / release / reclaim (design v4 §9) ──
+    # ── sack labels: assign / release / reclaim (design v4 §9) ──
 
     def _all_beans(self) -> list["GreenBean"]:
         """The FULL catalogue — never the table's list, which filters on stock."""
@@ -940,6 +927,9 @@ class StorageMqttConfigDialog(QDialog):
 
     def __init__(self, tab: "StorageTab") -> None:
         super().__init__(tab)
+        # frameless translucent window: ground=False, else the grounded base
+        # paints the rectangle opaque and squares off the rounded card.
+        apply_tilau_theme(self, ground=False)
         self._tab = tab
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -973,13 +963,13 @@ class StorageMqttConfigDialog(QDialog):
         title = QLabel("🌡️  " + QApplication.translate("tilauscope_storage", "Storage sensor (MQTT)"))
         title.setStyleSheet(f"color:{THEME['TEXT']}; font-size:15px; font-weight:700;")
         v.addWidget(title)
-        hint = QLabel(QApplication.translate("tilauscope_storage", 
+        hint = QLabel(QApplication.translate("tilauscope_storage",
             "Humidity and temperature can be on different topics. "
             "Leave the field empty if the topic already publishes a bare value; "
             "otherwise give the key (e.g. humidity) or a path (e.g. data.rh)."
         ))
         hint.setWordWrap(True)
-        hint.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:11px;")
+        hint.setProperty('variant', 'caption')
         v.addWidget(hint)
 
         grid = QGridLayout()
@@ -1032,7 +1022,7 @@ class StorageMqttConfigDialog(QDialog):
 
     def _lbl(self, text: str) -> QLabel:
         lbl = QLabel(text)
-        lbl.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:12px;")
+        lbl.setProperty('variant', 'secondary')
         return lbl
 
     def _preview_lbl(self) -> QLabel:

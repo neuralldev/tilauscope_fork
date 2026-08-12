@@ -219,19 +219,14 @@ both visible. -->
 
 ---
 
-## Alarms: sentences, badges and a timeline
+## Alarms: sentences and badges
 
-Alarms appear in three different places, each answering a different question:
+Alarms appear in two different places, each answering a different question:
 
 - Written as **rule sentences**, they say *when* an alarm fires — see
   [The guided roast](the-guided-roast.md#alarms-written-as-sentences).
 - As **colour-coded badges** in the live column, they say *what just fired* — see
   [The TilauScope window](the-window.md).
-- As a **visual timeline**, opened from the alarm editor, they lay out every configured alarm
-  against the roast clock at a glance, to check a whole set for gaps or overlaps before
-  roasting rather than while it matters.
-
-<!-- CAPTURE 9.9 — the alarm visual timeline, several alarms configured across the roast. -->
 
 ---
 

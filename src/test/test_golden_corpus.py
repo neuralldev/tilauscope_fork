@@ -16,9 +16,12 @@
 """L2 — characterisation tests against a frozen corpus of real roasts.
 
 These tests do not claim the plan is *good*: that is not specifiable. They
-claim it is *unchanged*. Twelve real roasts are committed under
-``fixtures/corpus``; the model's reading of them, what it learns across them,
-and the plans it produces are frozen in ``golden/corpus.json``.
+claim it is *unchanged*. Fifty-one complete real roasts are committed under
+``fixtures/corpus`` — the Skywalker family at the root, plus ``cormorant`` and
+``kaleido`` subdirectories so a second and third machine type are covered — and
+one deliberately incomplete recording alongside them, so exclusion stays
+visible. The model's reading of them, what it learns across them, and the plans
+it produces are frozen in ``golden/corpus.json``.
 
 Change the model and the suite shows you a field-by-field diff of what moved,
 on real coffee. You then either accept the change (``make golden``, review the
@@ -206,6 +209,111 @@ def test_back_to_back_lowers_the_charge_by_the_heat_soak_correction(
     assert soak['dcharge'] == pytest.approx(expected, abs=0.05)
 
 
+_GR2_UUID = 'a82364a8-e9ad-447c-a3d8-5f49111dc3ee'
+
+
+def _charge_of(water_activity: float, minutes_since_drop: float | None) -> float:
+    """Charge BT for one back-to-back request, at a given measured Aw.
+
+    Deliberately cold and light: ambient 10 °C, humidity 30 %, density 550 g/L
+    push the pre-soak charge near the bottom of the natural band, which is the
+    only place the water-activity floor can reach the heat-soak correction.
+    A plan built in mild conditions never exercises this at all — which is
+    exactly why the bug survived the existing back-to-back test above.
+    """
+    model = H.make_plan_model(H.CORPUS_DIR)
+    bean = H.make_bean(_GR2_UUID, '74110 GR2', process='Natural', altitude=1800,
+                       density=550.0, water_activity=water_activity)
+    result = model.generate_roast_plan(
+        bean, H.agtron('Medium'), 10.0, 30.0, 400.0, 1800.0,
+        None, False, minutes_since_drop,
+    )
+    plan = result[0] if isinstance(result, tuple) else result
+    return float(plan['Charge Temp'])
+
+
+@pytest.mark.parametrize('water_activity', [0.0, 0.52, 0.45])
+def test_measuring_water_activity_never_eats_the_heat_soak(
+    water_activity: float,
+) -> None:
+    """The soak keeps its full authority whatever the Aw reading says.
+
+    The heat soak is allowed below the process band — that is its purpose.
+    The water-activity floor used to be applied to the already-soaked charge,
+    so a measured Aw under 0.55 clawed the charge back up to the band bottom:
+    −3.8 °C applied at Aw 0.52 and −1.8 °C at 0.45 instead of the −7.5 the law
+    prescribes, while the published "Heat Soak" block still announced the full
+    figure. Aw 0.52 and 0.54 are real beans in the live database, so this was
+    not a corner case: measuring water activity made the plan worse than
+    leaving it unmeasured.
+    """
+    from tilauscope.roast_plan_model import heat_soak_correction
+
+    context = H.make_plan_model(H.CORPUS_DIR)._roaster_ctx
+    expected, _, _ = heat_soak_correction(
+        0.0, context.thermal_mass_index, context.heat_retention_index)
+
+    applied = _charge_of(water_activity, 0.0) - _charge_of(water_activity, None)
+    assert applied == pytest.approx(expected, abs=0.15)
+
+
+def _plan(**bean_fields: Any) -> dict[str, Any]:
+    model = H.make_plan_model(H.CORPUS_DIR)
+    fields: dict[str, Any] = {'process': 'Natural', 'altitude': 1800}
+    fields.update(bean_fields)
+    bean = H.make_bean(_GR2_UUID, '74110 GR2', **fields)
+    result = model.generate_roast_plan(
+        bean, H.agtron('Medium'), 20.0, 50.0, 400.0, 1800.0, None, False, None)
+    return result[0] if isinstance(result, tuple) else result
+
+
+def test_a_bean_with_both_readings_follows_its_water_activity() -> None:
+    """The exclusive-pair rule, end to end, on the bean that proves it matters.
+
+    KoJoYo Sindoro Java reads 12.5 % moisture — wet — but aw 0.54 — dry. Reading
+    both used to move the charge in two directions at once; reading moisture
+    alone sends every lever the wrong way. The plan must follow the aw.
+    """
+    wet_reading_only = float(_plan(last_humidity=12.5)['Charge Temp'])
+    both_readings = float(_plan(last_humidity=12.5, water_activity=0.54)['Charge Temp'])
+    neutral = float(_plan(last_humidity=10.5)['Charge Temp'])
+
+    assert wet_reading_only > neutral, 'moisture alone reads this bean as wet'
+    assert both_readings < neutral, 'with aw present the bean must read DRY'
+
+
+def test_culture_altitude_is_ignored_when_density_is_measured() -> None:
+    """Altitude is a proxy for density; the measurement always wins."""
+    with_density = float(_plan(density=700.0, altitude=1800)['Charge Temp'])
+    sea_level = float(_plan(density=700.0, altitude=1)['Charge Temp'])
+    assert with_density == pytest.approx(sea_level), (
+        'culture altitude still leaked into the charge behind a measured density')
+
+
+def test_ambient_humidity_no_longer_touches_the_plan() -> None:
+    """It does not act on the roast in progress — only between roasts, by
+    drifting the green's water activity in storage."""
+    model = H.make_plan_model(H.CORPUS_DIR)
+    bean = H.make_bean(_GR2_UUID, '74110 GR2', process='Natural', altitude=1800)
+
+    def _at(humidity_pct: float) -> dict[str, Any]:
+        result = H.make_plan_model(H.CORPUS_DIR).generate_roast_plan(
+            bean, H.agtron('Medium'), 20.0, humidity_pct, 400.0, 1800.0,
+            None, False, None)
+        plan = result[0] if isinstance(result, tuple) else result
+        return {k: v for k, v in plan.items() if k != 'Ambient Humidity'}
+
+    assert model is not None
+    assert _at(20.0) == _at(95.0), 'ambient humidity still moves a plan output'
+
+
+def test_water_activity_alone_still_cannot_leave_the_process_band() -> None:
+    """Widening the floor must not turn it off: with no soak it still bites."""
+    band_bottom = 170.0  # _CHARGE_BAND_BY_PROCESS['natural']
+    assert _charge_of(0.35, None) == pytest.approx(band_bottom, abs=0.05)
+    assert _charge_of(0.52, None) > band_bottom
+
+
 def test_every_scenario_documents_why_it_exists() -> None:
     """A fixture nobody can justify is a fixture nobody will maintain."""
     for scenario in S.SCENARIOS:
@@ -213,12 +321,25 @@ def test_every_scenario_documents_why_it_exists() -> None:
 
 
 def test_corpus_fixtures_are_present_and_parseable() -> None:
+    """The count is pinned on purpose: losing a fixture must be a decision, not
+    an accident. Growing the corpus is legitimate — update this number and
+    regenerate the golden in the same commit, so the snapshot always describes
+    the roasts that are actually on disk."""
     files = H.corpus_files()
-    assert len(files) == 12, f'expected 12 committed roasts, found {len(files)}'
+    assert len(files) == 51, f'expected 51 committed roasts, found {len(files)}'
     for path in files:
         profile = H.read_alog(path)
         assert profile.get('timeindex'), f'{path.name} has no milestones'
-        assert H.bean_uuid(profile), f'{path.name} carries no bean uuid'
+
+    # A bean uuid is what lets the plan learn from a roast BY IDENTITY, which is
+    # the only path a scenario ever takes. The corpus also carries imported
+    # reference roasts — other machines, coffees that were never in BeanCave —
+    # and those legitimately have none: they cover the reading layer and the
+    # fuzzy-name fallback instead. Both counts are pinned so the balance between
+    # the two cannot drift unnoticed.
+    identified = [p for p in files if H.bean_uuid(H.read_alog(p))]
+    assert len(identified) == 26, (
+        f'expected 26 uuid-identified roasts, found {len(identified)}')
 
 
 def test_golden_file_is_committed_and_current(golden: dict[str, Any]) -> None:

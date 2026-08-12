@@ -13,49 +13,8 @@
 # AUTHOR
 # TiLau 2025-2026
 
-"""
-RoastDataBridge — couche de signaux normalisés entre qmc et RoastAssistantPanel.
-
-Rôle
-====
-Centralise tous les accès à qmc depuis l'assistant, élimine le polling
-multi-appels par cycle, et expose des signaux Qt typés pour chaque
-donnée pertinente pendant la torréfaction.
-
-Architecture
-============
-TilauScope (displayscope.py)
-  └── RoastDataBridge           ← instancié une seule fois dans init_ui()
-        ├─ tick()                ← appelé UNIQUEMENT depuis la branche TIMER
-        │                          (data == 10) de update_ui_from_artisan().
-        │                          BT/ET/RoR sont gérés localement dans
-        │                          displayscope (LCD) et NON transmis au bridge ;
-        │                          le bridge les relit lui-même depuis qmc à
-        │                          chaque tick 1 Hz (agrégation).
-        ├─ notify_phase(key)     ← appelé depuis _handle_milestone_events()
-        └─ notify_preheat(bool)  ← appelé depuis handle_preheat()
-
-Signaux
-=======
-  bt_updated(float)              BT courante (unité native Artisan)
-  et_updated(float)              ET courante
-  ror_updated(float)             RoR Delta BT courant
-  ambient_updated(float, float)  temp ambiante, humidité — émis si Δ significatif
-  phase_changed(str)             "PREHEAT"|"DRY"|"MAI"|"DEV"|"COOL"|"DROP"
-  roast_state_changed(bool)      True = roast actif, False = arrêté
-
-Notes
-=====
-- tick() n'est appelé que sur data==10 (TIMER, 1 Hz) : displayscope ne lui
-  transmet pas les canaux BT/ET/RoR (gérés localement pour les LCD). Un seul
-  cycle 1 Hz agrège BT + ET + RoR + ambient — pas de dispatch par canal.
-- La lecture de l'ambiant lit directement la dernière valeur de l'extradevice
-  configuré (source = index dans ambientHumiditySource / ambientTempSource),
-  pas qmc.ambientTemp qui est figé jusqu'au DROP.
-- Régénération du plan : signalée via ambient_updated si les conditions
-  changent de > _AMBIENT_TEMP_DELTA °C ou > _AMBIENT_HUM_DELTA % pendant
-  le préchauffage ou la phase DRY (les seules phases où ça a encore un impact).
-"""
+"""RoastDataBridge — couche de signaux Qt normalisés entre qmc et
+RoastAssistantPanel ; centralise les accès qmc et élimine le polling multi-appels."""
 
 import logging
 from typing import Final, TYPE_CHECKING
@@ -104,19 +63,9 @@ class RoastDataBridge(QObject):
 
     @pyqtSlot(object)
     def tick(self, _data: int | str = 10) -> None:
-        """
-        Cycle complet 1 Hz — appelé UNIQUEMENT depuis la branche TIMER
-        (data == 10) de update_ui_from_artisan().
-
-        displayscope gère BT/ET/RoR localement (rafraîchissement des LCD) et ne
-        les transmet PAS au bridge ; ici on relit directement qmc et on agrège
-        BT + ET + RoR + ambient en une seule passe. Ne PAS réintroduire un
-        dispatch par canal : cela ferait repasser le refresh de l'assistant de
-        1 Hz à la cadence d'échantillonnage.  ## TILAU ##
-
-        Le paramètre `_data` (toujours 10) est ignoré ; il n'est conservé que
-        pour la compatibilité de signature avec l'appelant.
-        """
+        """Cycle complet 1 Hz, appelé UNIQUEMENT depuis la branche TIMER (data == 10)
+        de update_ui_from_artisan() ; relit qmc et agrège BT+ET+RoR+ambient en une
+        seule passe (pas de dispatch par canal). `_data` est ignoré."""
         self._emit_bt()
         self._emit_et()
         self._emit_ror()
@@ -124,26 +73,18 @@ class RoastDataBridge(QObject):
 
     @pyqtSlot(str)
     def notify_phase(self, phase_key: str) -> None:
-        """
-        Appelé depuis _handle_milestone_events() à chaque changement de phase.
-        Émet phase_changed et met à jour l'état interne.
-        """
+        """Appelé depuis _handle_milestone_events() à chaque changement de phase."""
         self._current_phase = phase_key
         self.phase_changed.emit(phase_key)
 
     @pyqtSlot(bool)
     def notify_preheat(self, active: bool) -> None:
-        """
-        Appelé depuis handle_preheat().
-        Mappe sur notify_phase pour uniformiser le flux de phase.
-        """
+        """Appelé depuis handle_preheat() ; mappe sur notify_phase."""
         self.notify_phase("PREHEAT" if active else "IDLE")
 
     @pyqtSlot(bool)
     def notify_roast_state(self, active: bool) -> None:
-        """
-        Appelé depuis toggle_start_stop().
-        """
+        """Appelé depuis toggle_start_stop()."""
         if not active:
             self._current_phase = "IDLE"
         self.roast_state_changed.emit(active)
@@ -181,11 +122,8 @@ class RoastDataBridge(QObject):
     # ── Lecture ambiant live ─────────────────────────────────────────────────
 
     def _check_ambient(self) -> None:
-        """
-        Lit la dernière valeur des extradevices configurés comme source ambiante.
-        N'émet ambient_updated que si le changement dépasse les seuils définis,
-        ET seulement pendant les phases où ça a un impact (PREHEAT ou DRY).
-        """
+        """Lit la dernière valeur des extradevices configurés comme source ambiante ;
+        n'émet ambient_updated que si le changement dépasse les seuils, en PREHEAT/DRY."""
         if self._current_phase not in ("PREHEAT", "DRY", "IDLE"):
             return
 

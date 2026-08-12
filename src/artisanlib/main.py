@@ -16076,6 +16076,10 @@ class ApplicationWindow(QMainWindow):
             ## tilau_exclude_learning, re-admitting the roast into plan learning
             self.qmc.tilau_simulated_loaded = bool(profile.get('tilau_simulated', False)) if profile else False
             self.qmc.tilau_exclude_learning = bool(profile.get('tilau_exclude_learning', False)) if profile else False
+            ## TILAU ## — positive counterpart: "reviewed and admitted" is a
+            ## decision the operator recorded in the ALog repair window, and it
+            ## must survive an open/re-save exactly like the veto above
+            self.qmc.tilau_learning_admitted = bool(profile.get('tilau_learning_admitted', False)) if profile else False
             self.qmc.tilau_roast_plan_snapshot = copyd.deepcopy(
                 profile.get('tilau_roast_plan_snapshot')) if profile else None  ## TILAU ## P2 round-trip
             ## TILAU ## — round-trip the preheat SV so re-saving a loaded PID roast keeps it
@@ -17551,6 +17555,10 @@ class ApplicationWindow(QMainWindow):
             ## plan learning (FC/timings/drop colour/master curve) skips this roast
             if getattr(self.qmc, 'tilau_exclude_learning', False):
                 profile['tilau_exclude_learning'] = True
+            ## TILAU ## — "reviewed and admitted" marker; mutually exclusive with
+            ## the veto above, so it is only written when no veto is in force
+            elif getattr(self.qmc, 'tilau_learning_admitted', False):
+                profile['tilau_learning_admitted'] = True
             ## TILAU ## — preheat set-point actually used (°C, canonical internal unit),
             ## stamped when the TilauPID preheat ran this roast. Robust learning key:
             ## the SV survives independently of the type-4 "Preheat started" marker.

@@ -245,7 +245,14 @@ def test_pure_logic_modules_do_not_pull_artisan_main() -> None:
     If one of them ever grows an ``artisanlib.main`` dependency, the unit suite
     silently turns into a full-application import and stops being fast or safe.
     """
-    pure = ['roast_plan_model', 'roasters', 'tilauscope_types',
+    pure = ['roast_plan_model', 'roasters', 'tilauscope_types', 'guidance_core',
+            'guidance_observer',
+            'guidance_replay',
+            'guidance_risk',
+            'guidance_phase',
+            'guidance_trajectory',
+            'guidance_advice',
+            'guidance_session',
             'storage_advisor', 'brew_advisor', 'roast_insights']
     offenders = sorted(set(pure) & ARTISAN_MAIN_IMPORTERS)
     assert not offenders, f'pure-logic modules now import artisanlib.main: {offenders}'

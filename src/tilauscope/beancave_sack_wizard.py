@@ -13,30 +13,13 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ##
-"""New-sack guided assistant for BeanCave (design v4 §5, visuals per mock v2).
-
-A step-by-step wizard to register an incoming bag of green coffee:
-
-    0  Start       — AI pre-fill or manual path (two selectable cards)
-    1  Essentials  — new bean, restock (same crop) or new crop of a known bean
-    2  Sack ID     — fully optional labelling step (available labels offered)
-    3  Provenance  — optional
-    4  Type & bean facts — optional, single origin / blend
-    5  Sensory     — optional
-    6  Review      — one card per section with ✎ Edit, then create
-
-Visual language mirrors ROAST SETUP (validated mock v2): sections are titled
-zones (surface cards), choices are selectable cards / pills where the active
-option carries the accent border and the inactive one is dimmed, and every
-action button lives in the bottom navigation row.
-
-Everything sack-related stays optional: skipping step 2 creates the bean with
-no sack id, which is a first-class outcome, not a degraded one. The wizard
-never writes anything until "Create" on the review page.
+"""New-sack guided assistant for BeanCave: a step-by-step wizard (start, essentials,
+sack id, provenance, type & facts, sensory, review) registering an incoming bag of green coffee. Everything sack-related is optional; nothing is written until "Create" on the review page.
 """
 
 from __future__ import annotations
+
+from tilauscope.theme_qss import apply_tilau_theme
 
 import dataclasses
 import logging
@@ -72,7 +55,7 @@ from tilauscope.tilauscope_types import THEME, GreenBean, show_styled_message
 _logd = logging.getLogger('tilaudebug')
 
 _MONO: Final[str] = "'JetBrains Mono', monospace"
-_DIM: Final[str] = "#6C7086"
+_DIM: Final[str] = THEME['OVERLAY0']
 
 
 
@@ -144,10 +127,9 @@ class _ChoiceCard(QFrame):
                 f"_ChoiceCard {{ background: rgba(137,180,250,18);"
                 f" border: 1px solid {THEME['ACCENT']}; border-radius: 10px; }}")
             self._title.setStyleSheet(
-                f"color:{THEME['TEXT']};font-family:{_MONO};font-size:12px;"
+                f"color:{THEME['TEXT']};font-size:12px;"
                 f"font-weight:700;background:transparent;border:none;")
-            self._sub.setStyleSheet(
-                f"color:{THEME['SUBTEXT']};font-size:11px;background:transparent;border:none;")
+            self._sub.setProperty('variant', 'caption')
             self._dot.setStyleSheet(
                 f"background:{THEME['ACCENT']};border:2px solid {THEME['ACCENT']};"
                 f"border-radius:6px;")
@@ -156,7 +138,7 @@ class _ChoiceCard(QFrame):
                 f"_ChoiceCard {{ background: {THEME['SURFACE']};"
                 f" border: 1px solid {THEME['BORDER']}; border-radius: 10px; }}")
             self._title.setStyleSheet(
-                f"color:{_DIM};font-family:{_MONO};font-size:12px;"
+                f"color:{_DIM};font-size:12px;"
                 f"font-weight:700;background:transparent;border:none;")
             self._sub.setStyleSheet(
                 f"color:{_DIM};font-size:11px;background:transparent;border:none;")
@@ -186,13 +168,13 @@ class _Pill(QPushButton):
             self.setStyleSheet(
                 f"QPushButton {{ background: rgba(137,180,250,18); color: {THEME['TEXT']};"
                 f" border: 1px solid {THEME['ACCENT']}; border-radius: 8px;"
-                f" padding: 6px 14px; font-family: {_MONO}; font-size: 12px;"
+                f" padding: 6px 14px; font-size: 12px;"
                 f" font-weight: 600; text-align: left; }}")
         else:
             self.setStyleSheet(
                 f"QPushButton {{ background: {THEME['BG']}; color: {_DIM};"
                 f" border: 1px solid {THEME['BORDER']}; border-radius: 8px;"
-                f" padding: 6px 14px; font-family: {_MONO}; font-size: 12px;"
+                f" padding: 6px 14px; font-size: 12px;"
                 f" font-weight: 600; text-align: left; }}")
 
 
@@ -223,6 +205,9 @@ class NewSackWizard(QDialog):
     def __init__(self, host) -> None:
         # host: BeancaveDlg — catalogue, save/refresh, AI config, Niimbot.
         super().__init__(host)
+        # frameless translucent window: ground=False, else the grounded base
+        # paints the rectangle opaque and squares off the rounded card.
+        apply_tilau_theme(self, ground=False)
         self._host = host
         self._drag_pos = None
         self._history: list[int] = []
@@ -264,7 +249,7 @@ class NewSackWizard(QDialog):
             QLabel {{ color: {THEME['TEXT']}; background: transparent; border: none; }}
             QLineEdit, QSpinBox, QDoubleSpinBox, QPlainTextEdit {{
                 background: {THEME['BG']}; color: {THEME['TEXT']};
-                font-family: {_MONO}; font-size: 12px;
+                font-size: 12px;
                 selection-background-color: {THEME['ACCENT']};
                 selection-color: {THEME['BG']};
                 border: 1px solid {THEME['BORDER']}; border-radius: 7px; padding: 5px 8px; }}
@@ -273,7 +258,7 @@ class NewSackWizard(QDialog):
                 border: 1px solid {THEME['ACCENT']};
                 background: {THEME['SURFACE']}; }}
             QComboBox {{ background: {THEME['BG']}; color: {THEME['TEXT']};
-                font-family: {_MONO}; font-size: 12px;
+                font-size: 12px;
                 selection-background-color: {THEME['ACCENT']};
                 selection-color: {THEME['BG']};
                 border: 1px solid {THEME['BORDER']}; border-radius: 7px; padding: 5px 8px; }}
@@ -292,18 +277,17 @@ class NewSackWizard(QDialog):
         title_row = QHBoxLayout()
         title_lbl = QLabel(QApplication.translate("tilauscope_sacks", "NEW SACK"))
         title_lbl.setStyleSheet(
-            f"color:{THEME['ACCENT']};font-family:{_MONO};font-size:14px;"
+            f"color:{THEME['ACCENT']};font-size:14px;"
             f"font-weight:800;letter-spacing:3px;")
         title_row.addWidget(title_lbl)
         self.step_lbl = QLabel("")
-        self.step_lbl.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-family:{_MONO};font-size:11px;"
-            f"letter-spacing:1px;")
+        self.step_lbl.setProperty('variant', 'eyebrow')
         title_row.addSpacing(16)
         title_row.addWidget(self.step_lbl)
         title_row.addStretch(1)
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(24, 24)
+        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         close_btn.setStyleSheet(
             f"QPushButton {{ background: transparent; color: {THEME['SUBTEXT']};"
@@ -339,7 +323,7 @@ class NewSackWizard(QDialog):
         self.back_btn.setStyleSheet(
             f"QPushButton {{ background: transparent; color: {THEME['TEXT']};"
             f" border: 1px solid {THEME['BORDER']}; border-radius: 7px;"
-            f" font-family: {_MONO}; font-weight: 700;"
+            f" font-weight: 700;"
             f" padding: 8px 18px; }}"
             f"QPushButton:hover {{ border-color: {THEME['ACCENT']}; }}")
         self.back_btn.clicked.connect(self._on_back)
@@ -349,7 +333,7 @@ class NewSackWizard(QDialog):
         self.next_btn = QPushButton(QApplication.translate("tilauscope_sacks", "Next") + " ▸")
         self.next_btn.setStyleSheet(
             f"QPushButton {{ background: {THEME['ACCENT']}; color: {THEME['BG']};"
-            f" border: none; border-radius: 7px; font-family: {_MONO};"
+            f" border: none; border-radius: 7px; "
             f" font-weight: 700; padding: 8px 20px; }}"
             f"QPushButton:disabled {{ background: {THEME['BORDER']};"
             f" color: {THEME['SUBTEXT']}; }}")
@@ -360,7 +344,7 @@ class NewSackWizard(QDialog):
         self.create_btn = QPushButton("✓ " + QApplication.translate("tilauscope_sacks", "Create the sack"))
         self.create_btn.setStyleSheet(
             f"QPushButton {{ background: {THEME['SUCCESS']}; color: {THEME['BG']};"
-            f" border: none; border-radius: 7px; font-family: {_MONO};"
+            f" border: none; border-radius: 7px; "
             f" font-weight: 700; padding: 8px 20px; }}")
         self.create_btn.clicked.connect(self._create)
         nav.addWidget(self.back_btn)
@@ -395,7 +379,7 @@ class NewSackWizard(QDialog):
         w = QLabel(text.upper() + suffix)
         w.setTextFormat(Qt.TextFormat.RichText)
         w.setStyleSheet(
-            f"color:{THEME['ACCENT']};font-family:{_MONO};font-size:11px;"
+            f"color:{THEME['ACCENT']};font-size:11px;"
             f"font-weight:800;letter-spacing:2px;")
         return w
 
@@ -413,7 +397,7 @@ class NewSackWizard(QDialog):
     def _hint(self, text: str) -> QLabel:
         w = QLabel(text)
         w.setWordWrap(True)
-        w.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
+        w.setProperty('variant', 'caption')
         return w
 
     def _ghost_btn(self, text: str) -> QPushButton:
@@ -422,7 +406,7 @@ class NewSackWizard(QDialog):
         b.setStyleSheet(
             f"QPushButton {{ background: transparent; color: {THEME['ACCENT']};"
             f" border: 1px solid {THEME['BORDER']}; border-radius: 6px;"
-            f" padding: 6px 13px; font-family: {_MONO}; font-size: 11px;"
+            f" padding: 6px 13px; font-size: 11px;"
             f" font-weight: 600; }}"
             f"QPushButton:hover {{ border-color: {THEME['ACCENT']}; }}")
         return b
@@ -464,7 +448,7 @@ class NewSackWizard(QDialog):
         url_row.addWidget(self.url_edit, 1)
         url_row.addWidget(paste_btn)
         uz.addLayout(url_row)
-        uz.addWidget(self._hint(QApplication.translate("tilauscope_sacks", 
+        uz.addWidget(self._hint(QApplication.translate("tilauscope_sacks",
             "The extraction runs in the background — you land on the "
             "identification step with everything pre-filled.")))
         self.ai_status_lbl = QLabel("")
@@ -479,7 +463,7 @@ class NewSackWizard(QDialog):
             self.card_manual.set_selected(False)
         else:
             self.card_ai.setEnabled(False)
-            self.card_ai.setToolTip(QApplication.translate("tilauscope_sacks", 
+            self.card_ai.setToolTip(QApplication.translate("tilauscope_sacks",
                 "Configure an AI engine and API key in TilauScope settings to "
                 "enable this."))
             self.card_manual.set_selected(True)
@@ -644,7 +628,7 @@ class NewSackWizard(QDialog):
         cf.addRow(QApplication.translate("tilauscope_sacks", "Harvest year:"), self.newcrop_crop_spin)
         cf.addRow(QApplication.translate("tilauscope_sacks", "Initial weight (stock):"), self.newcrop_weight_spin)
         cl.addLayout(cf)
-        cl.addWidget(self._hint(QApplication.translate("tilauscope_sacks", 
+        cl.addWidget(self._hint(QApplication.translate("tilauscope_sacks",
             "A new bean record is created with everything copied from the "
             "existing one — you will just confirm the copied values at the "
             "review step and adjust what changed (density, humidity, score…).")))
@@ -713,7 +697,7 @@ class NewSackWizard(QDialog):
 
         v.addWidget(self._section(QApplication.translate("tilauscope_sacks", "Sack identification"), optional=True))
         z, zl = self._zone()
-        zl.addWidget(self._hint(QApplication.translate("tilauscope_sacks", 
+        zl.addWidget(self._hint(QApplication.translate("tilauscope_sacks",
             "Do you label your bags? Type or pick the sack number here so the "
             "bean record keeps track of the physical bag. If you don't label "
             "your bags, simply skip this step — nothing depends on it.")))
@@ -728,7 +712,7 @@ class NewSackWizard(QDialog):
         row.addWidget(self.sack_combo)
         self.free_tag = QLabel("")
         self.free_tag.setStyleSheet(
-            f"color:{THEME['SUCCESS']};font-family:{_MONO};font-size:10.5px;"
+            f"color:{THEME['SUCCESS']};font-size:10.5px;"
             f"border:1px solid rgba(166,227,161,90);border-radius:5px;"
             f"padding:2px 8px;background:transparent;")
         self.free_tag.hide()
@@ -817,7 +801,7 @@ class NewSackWizard(QDialog):
         v.setSpacing(12)
         v.addWidget(self._section(QApplication.translate("tilauscope_sacks", "Provenance"), optional=True))
         z, zl = self._zone()
-        zl.addWidget(self._hint(QApplication.translate("tilauscope_sacks", 
+        zl.addWidget(self._hint(QApplication.translate("tilauscope_sacks",
             "Where this coffee comes from. Leave anything blank if you don't "
             "know it — you can complete the record later in the bean form.")))
         f = QFormLayout()
@@ -910,7 +894,7 @@ class NewSackWizard(QDialog):
         # -- characteristics zone
         v.addWidget(self._section(QApplication.translate("tilauscope_sacks", "Bean characteristics"), optional=True))
         z, zl = self._zone()
-        zl.addWidget(self._hint(QApplication.translate("tilauscope_sacks", 
+        zl.addWidget(self._hint(QApplication.translate("tilauscope_sacks",
             "Physical data, usually found on the supplier sheet. Density and "
             "humidity feed the roast plan — fill them in if you have them.")))
         f = QFormLayout()
@@ -984,7 +968,7 @@ class NewSackWizard(QDialog):
         v.setSpacing(12)
         v.addWidget(self._section(QApplication.translate("tilauscope_sacks", "Sensory & notes"), optional=True))
         z, zl = self._zone()
-        zl.addWidget(self._hint(QApplication.translate("tilauscope_sacks", 
+        zl.addWidget(self._hint(QApplication.translate("tilauscope_sacks",
             "What this coffee should taste like, plus any memo for future you.")))
         f = QFormLayout()
         f.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
@@ -1035,7 +1019,7 @@ class NewSackWizard(QDialog):
         head = QHBoxLayout()
         t = QLabel(title.upper())
         t.setStyleSheet(
-            f"color:{_DIM};font-family:{_MONO};font-size:10.5px;"
+            f"color:{_DIM};font-size:10.5px;"
             f"font-weight:800;letter-spacing:2px;")
         head.addWidget(t)
         head.addStretch(1)
@@ -1058,9 +1042,9 @@ class NewSackWizard(QDialog):
         self.review_head = QLabel("")
         self.review_head.setWordWrap(True)
         self.review_head.setStyleSheet(
-            f"color:{THEME['TEXT']};font-family:{_MONO};font-size:14px;font-weight:800;")
+            f"color:{THEME['TEXT']};font-size:14px;font-weight:800;")
         self.review_sack = QLabel("")
-        self.review_sack.setStyleSheet(f"color:{THEME['SUBTEXT']};font-size:12px;")
+        self.review_sack.setProperty('variant', 'secondary')
         essl.addWidget(self.review_head)
         essl.addWidget(self.review_sack)
         v.addWidget(ess)
@@ -1107,7 +1091,7 @@ class NewSackWizard(QDialog):
             added = self.restock_weight_spin.value()
             self.review_head.setText(self._join(
                 [src.name, src.country, str(src.crop) if src.crop else ""]))
-            self.review_sack.setText(self._sack_line(added) + "   —   " + QApplication.translate("tilauscope_sacks", 
+            self.review_sack.setText(self._sack_line(added) + "   —   " + QApplication.translate("tilauscope_sacks",
                 "Stock:") + f" {src.weight_left:.0f} g → {src.weight_left + added:.0f} g")
         else:
             if mode == "newcrop" and src is not None:
@@ -1178,7 +1162,7 @@ class NewSackWizard(QDialog):
         if mode != "restock":
             w = self.newcrop_weight_spin.value() if mode == "newcrop" else self.weight_spin.value()
             if w <= 0.0:
-                warn_parts.append(QApplication.translate("tilauscope_sacks", 
+                warn_parts.append(QApplication.translate("tilauscope_sacks",
                     "Initial weight is 0 g — use the Essentials ✎ Edit if you "
                     "know how much the sack weighs."))
         if warn_parts:

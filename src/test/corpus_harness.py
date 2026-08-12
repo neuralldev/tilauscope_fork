@@ -45,6 +45,8 @@ from __future__ import annotations
 import ast
 import re
 import types
+from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
@@ -167,7 +169,62 @@ def bean_uuid(profile: dict[str, Any]) -> str:
 
 
 def corpus_files() -> list[Path]:
-    return sorted(CORPUS_DIR.glob('*.alog'))
+    """Return complete roasts, including origin-specific subdirectories."""
+    return [path for path in sorted(CORPUS_DIR.rglob('*.alog'))
+            if is_complete_roast(read_alog(path))]
+
+
+def incomplete_corpus_files() -> list[Path]:
+    """Expose incomplete recordings so exclusion remains visible and tested."""
+    return [path for path in sorted(CORPUS_DIR.rglob('*.alog'))
+            if not is_complete_roast(read_alog(path))]
+
+
+def is_complete_roast(profile: dict[str, Any]) -> bool:
+    """A replay needs explicit CHARGE and DROP markers."""
+    timeindex = profile.get('timeindex', [])
+    return (len(timeindex) > 6
+            and int(timeindex[0]) >= 0
+            and int(timeindex[6]) > int(timeindex[0]))
+
+
+@dataclass(frozen=True)
+class FixtureControlScenario:
+    roaster_name: str
+    slider_visibilities: tuple[int, int, int, int]
+
+
+def control_scenario_for(path: Path) -> FixtureControlScenario:
+    """Read machine identity from Artisan data; add only missing slider metadata."""
+    identity = str(read_alog(path).get('roastertype') or '').strip()
+    # Legacy Roastetta files do not persist eventslidervisibilities. This mask
+    # describes the test configuration, not an inference from the directory.
+    visibilities = (0, 0, 0, 0) if identity == 'Cormorant' else (1, 1, 0, 1)
+    return FixtureControlScenario(identity, visibilities)
+
+
+@cache
+def _roaster_context(name: str) -> Any:
+    from tilauscope.roasters import RoasterManager
+
+    context = RoasterManager().get_roast_context(name)
+    if context is None:
+        raise RuntimeError(f'roaster {name!r} missing from roasters.json')
+    return context
+
+
+def controls_observable_for(path: Path) -> bool:
+    """Intersect fixture slider configuration with its roasters.json structure."""
+    from tilauscope.guidance_observer import observable_control_levers
+
+    scenario = control_scenario_for(path)
+    context = _roaster_context(scenario.roaster_name)
+    return bool(observable_control_levers(
+        scenario.slider_visibilities,
+        has_airflow_control=context.has_airflow_control,
+        drum_variable_speed=context.drum_variable_speed,
+        has_heater_control=context.has_heater_control,
+    ))
 
 
 def make_bean(uuid: str, name: str, **overrides: Any) -> GreenBean:

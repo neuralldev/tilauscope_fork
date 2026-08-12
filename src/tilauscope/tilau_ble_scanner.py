@@ -15,19 +15,8 @@
 # TiLau 2026
 # -*- coding: utf-8 -*-
 
-# tilauscope/tilau_ble_scanner.py
-#
-# Scanner BLE centralisé pour Beancave.
-#
-# Architecture :
-#   - Un seul cycle de scan toutes les 8s (3s discover + 5s pause)
-#   - Le scan tourne dans la loop du singleton ble = BLE() de ble_port
-#     (même loop que tous les BleakClient) — évite les conflits CBCentralManager
-#     sur macOS Core Bluetooth qui n'accepte qu'un seul gestionnaire BLE actif.
-#   - Les résultats sont émis via devices_found(list) — chaque worker filtre
-#     par adresse ou préfixe de nom, le scanner ne connaît pas les workers.
-#
-# Auteur : TiLau 2025
+# Scanner BLE centralisé pour Beancave. Cycle de scan toutes les 8s (3s discover
+# + 5s pause), dans la loop du singleton ble de ble_port pour éviter les conflits CBCentralManager sur macOS.
 
 import asyncio
 import logging
@@ -70,12 +59,8 @@ class TilauBLEScanner(QObject):
 
     devices_found = pyqtSignal(list)  # list[tuple[BLEDevice, AdvertisementData]]
 
-    # Instances vivantes — un scan CoreBluetooth encore actif pendant
-    # _Py_Finalize fait crasher l'app (SIGABRT dans handlePeripheralDiscovered).
-    # Chaque propriétaire stoppe son scanner, mais la fermeture de l'app doit
-    # pouvoir garantir l'arrêt même si un propriétaire n'a pas été fermé.
-    # WeakSet : le thread de scan garde lui-même une référence forte tant qu'il
-    # tourne, le registre n'a donc pas à prolonger la vie du scanner.
+    # Instances vivantes — un scan CoreBluetooth actif pendant _Py_Finalize fait
+    # crasher l'app (SIGABRT). Garantit l'arrêt même si un propriétaire ne ferme pas.
     _instances: "weakref.WeakSet[TilauBLEScanner]" = weakref.WeakSet()
     _instances_lock = threading.Lock()
 
@@ -185,12 +170,8 @@ class TilauBLEScanner(QObject):
         """
         from artisanlib.ble_port import ble
 
-        # Course d'arrêt : stop() peut tomber pendant que le thread quitte la
-        # pause du cycle précédent et s'apprête à relancer un discover. Sans ce
-        # garde, le nouveau scan démarre APRÈS l'annulation, personne ne
-        # l'annule plus, le join() rend la main sur un thread daemon toujours
-        # bloqué, et le callback CoreBluetooth rentre en Python pendant
-        # _Py_Finalize → SIGABRT à la fermeture.
+        # Course d'arrêt : sans ce garde, un discover peut démarrer APRÈS stop(),
+        # bloquant join() et risquant un SIGABRT à la fermeture (callback CoreBluetooth pendant _Py_Finalize).
         if self._stop_event.is_set():
             return []
 

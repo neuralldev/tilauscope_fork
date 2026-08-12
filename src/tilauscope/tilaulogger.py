@@ -10,20 +10,14 @@
 # Public License along with this program. If not, see
 # <https://www.gnu.org/licenses/>.
 
-# this is the internal Artisan with TilauScope addon debugger 
-# the top window displays any serial port in real time (do not use it on your roaster 
-#       serial while Artisan is roasting, this is designed to monitor peripherial probes)
-# the bottom window displays all the debug messages I have added to the software to develop
-#       but can also be used to diagnose any issue.
-# as this is text area, you can select them and copy/paste content in a text editor.
-# warning: do not let the window accumulate too much information and risk a memory crash of the app
-
+# Internal debugger: top pane monitors a serial port in real time (peripheral
+# probes only, not the roaster serial during roasting); bottom pane shows debug messages.
 
 # AUTHOR
 # TiLau 2025
 
 from pathlib import Path
-import re  # ## TILAU ## — regex filter compilation
+import re  # — regex filter compilation
 import serial
 import serial.tools.list_ports # Pour la détection des portsimport socketserver
 import socket
@@ -33,12 +27,12 @@ import struct
 import threading
 import logging
 import time
-import html  # ## TILAU ## — escape log text before HTML colourisation
-import gc  # ## TILAU ## — GC stats for the observability dashboard
-import psutil  # ## TILAU ## — process/system metrics (already an Artisan dependency)
-from psutil._common import bytes2human  # ## TILAU ## # pyright:ignore[reportPrivateImportUsage]
-from collections import deque  # ## TILAU ## — per-zone event buffer
-from dataclasses import dataclass, field  # ## TILAU ## — LogEvent
+import html  # — escape log text before HTML colourisation
+import gc  # — GC stats for the observability dashboard
+import psutil  # — process/system metrics (already an Artisan dependency)
+from psutil._common import bytes2human  # # pyright:ignore[reportPrivateImportUsage]
+from collections import deque  # — per-zone event buffer
+from dataclasses import dataclass, field  # — LogEvent
 from typing import Final
 from datetime import datetime # Added for filename timestamping
 
@@ -46,7 +40,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QApplication,
                              QPlainTextEdit, QLabel, QComboBox, QPushButton,
                              QFrame, QSizeGrip, QSizePolicy, QSplitter, QToolButton,
                              QLineEdit, QTextEdit)
-from PyQt6.QtCore import pyqtSignal, QObject, QDateTime, QStandardPaths, QTimer, Qt, QSettings, QPointF, QT_TRANSLATE_NOOP  ## TILAU ## declares strings the extractor must see when translate() is fed a variable
+from PyQt6.QtCore import pyqtSignal, QObject, QDateTime, QStandardPaths, QTimer, Qt, QSettings, QPointF, QT_TRANSLATE_NOOP  # declares strings the extractor must see when translate() is fed a variable
 from PyQt6.QtGui import (QCursor, QTextCursor, QTextCharFormat, QColor,
                          QKeySequence, QShortcut, QPainter, QPen, QPolygonF)
 from artisanlib.main import ApplicationWindow # noqa: F401 # pylint: disable=unused-import
@@ -66,8 +60,7 @@ def _base_style() -> str:
         QWidget {{
             background-color: {THEME['BG']};
             color: {THEME['TEXT']};
-            font-family: 'JetBrains Mono';
-        }}
+            }}
         QLabel {{ background: transparent; border: none; }}
         QComboBox {{
             background-color: {THEME['SURFACE']};
@@ -76,7 +69,6 @@ def _base_style() -> str:
             border-radius: 6px;
             padding: 4px 10px;
             combobox-popup: 0;
-            font-family: 'JetBrains Mono';
             font-size: 12px;
         }}
         QComboBox:focus {{ border: 1px solid {THEME['ACCENT']}; }}
@@ -121,7 +113,7 @@ def _separator() -> QFrame:
     return sep
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ## TILAU ## — Observability bus: normalised events routed source → zone
+# — Observability bus: normalised events routed source → zone
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Per-level display colour (THEME keys). Drives line colourisation in zones.
@@ -136,7 +128,7 @@ _LEVEL_COLOR: Final[dict[str, str]] = {
 # Roast keywords that force an immediate file flush (never lose a crack event).
 _ROAST_FLUSH_KEYWORDS: Final[tuple[str, ...]] = ("CRACK", "FC", "SC", "ALARM")
 
-# ## TILAU ## — global search highlight colours
+# — global search highlight colours
 _SEARCH_HL: Final[QColor] = QColor(THEME['ACCENT']); _SEARCH_HL.setAlpha(70)
 _SEARCH_CUR: Final[QColor] = QColor(THEME['TODAY']); _SEARCH_CUR.setAlpha(190)
 
@@ -212,9 +204,9 @@ class LogZone:
         self._file_logger = file_logger
         self._base_color = base_color
         self.count: int = 0
-        self.last_ts: float = 0.0  # ## TILAU ## — wall-clock ts of last event (freshness)
-        self.error_count: int = 0  # ## TILAU ## — ERROR+CRITICAL seen (alerting)
-        self.paused: bool = False  # ## TILAU ## — global render freeze
+        self.last_ts: float = 0.0  # — wall-clock ts of last event (freshness)
+        self.error_count: int = 0  # — ERROR+CRITICAL seen (alerting)
+        self.paused: bool = False  # — global render freeze
         # Bound the UI buffer to protect against memory growth at high throughput.
         self._display.setMaximumBlockCount(ring_cap)
         # Source-of-truth ring buffer: keeps full (unfiltered) events so the
@@ -359,17 +351,17 @@ class ZonePanel(QWidget):
         self._chevron.setText("▾")
         self._chevron.setCursor(Qt.CursorShape.PointingHandCursor)
         self._chevron.setStyleSheet(
-            f"QToolButton {{ color: {THEME['ACCENT']}; border: none; "
-            f"font-family: 'JetBrains Mono'; font-size: 12px; }}"
+            f"QToolButton {{ color: {THEME['ACCENT']}; border: none;"
+            f"font-size: 12px; }}"
         )
         self._chevron.clicked.connect(self.toggle_collapsed)
 
         title_lbl = QLabel(title.upper())
         title_lbl.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-size: 11px; font-weight: bold; "
-            f"letter-spacing: 2px; font-family: 'JetBrains Mono';"
+            f"color: {THEME['ACCENT']}; font-size: 11px; font-weight: bold;"
+            f"letter-spacing: 2px; "
         )
-        self._title_lbl = title_lbl  # ## TILAU ## exposed so callers can relabel the zone (see set_title)
+        self._title_lbl = title_lbl  # exposed so callers can relabel the zone (see set_title)
 
         self.status = QLabel(status_text)
         self.status.setStyleSheet(
@@ -379,9 +371,9 @@ class ZonePanel(QWidget):
         # Permanent cumulative error/exception counter shown on the header.
         self._badge = QLabel("")
         self._badge.setStyleSheet(
-            f"color: {THEME['BG']}; background: {THEME['CRITICAL']}; "
-            f"border-radius: 8px; padding: 1px 6px; font-size: 9px; "
-            f"font-weight: bold; font-family: 'JetBrains Mono';"
+            f"color: {THEME['BG']}; background: {THEME['CRITICAL']};"
+            f"border-radius: 8px; padding: 1px 6px; font-size: 9px;"
+            f"font-weight: bold; "
         )
         self._badge.setVisible(False)
 
@@ -471,8 +463,8 @@ class ZonePanel(QWidget):
             QApplication.translate("tilauscope_diagnostics", "Regular expression")
         )
         self._regex_btn.setStyleSheet(
-            f"QToolButton {{ color: {THEME['SUBTEXT']}; border: 1px solid {THEME['BORDER']}; "
-            f"border-radius: 6px; padding: 2px 7px; font-family: 'JetBrains Mono'; font-size: 11px; }}"
+            f"QToolButton {{ color: {THEME['SUBTEXT']}; border: 1px solid {THEME['BORDER']};"
+            f"border-radius: 6px; padding: 2px 7px; font-size: 11px; }}"
             f"QToolButton:checked {{ color: {THEME['ACCENT']}; border-color: {THEME['ACCENT']}; }}"
         )
         self._regex_btn.toggled.connect(self._emit_filter)
@@ -490,9 +482,9 @@ class ZonePanel(QWidget):
             chip.setToolTip(level.capitalize())
             c = THEME[color_key]
             chip.setStyleSheet(
-                f"QToolButton {{ color: {THEME['SUBTEXT']}; background: {THEME['SURFACE']}; "
-                f"border: none; border-radius: 5px; padding: 2px 6px; "
-                f"font-family: 'JetBrains Mono'; font-size: 10px; }}"
+                f"QToolButton {{ color: {THEME['SUBTEXT']}; background: {THEME['SURFACE']};"
+                f"border: none; border-radius: 5px; padding: 2px 6px;"
+                f"font-size: 10px; }}"
                 f"QToolButton:checked {{ color: {c}; background: {THEME['BORDER']}; }}"
             )
             chip.toggled.connect(self._emit_filter)
@@ -507,9 +499,9 @@ class ZonePanel(QWidget):
     def _apply_filter_edit_style(self, valid: bool) -> None:
         border = THEME['BORDER'] if valid else THEME['CRITICAL']
         self._filter_edit.setStyleSheet(
-            f"QLineEdit {{ background: {THEME['SURFACE']}; color: {THEME['TEXT']}; "
-            f"border: 1px solid {border}; border-radius: 6px; padding: 3px 8px; "
-            f"font-family: 'JetBrains Mono'; font-size: 11px; }}"
+            f"QLineEdit {{ background: {THEME['SURFACE']}; color: {THEME['TEXT']};"
+            f"border: 1px solid {border}; border-radius: 6px; padding: 3px 8px;"
+            f"font-size: 11px; }}"
             f"QLineEdit:focus {{ border-color: {THEME['ACCENT']}; }}"
         )
 
@@ -546,7 +538,7 @@ class ZonePanel(QWidget):
         self._apply_filter_edit_style(valid)
 
     def set_title(self, title: str) -> None:
-        """## TILAU ## Relabel the zone header (e.g. serial panel switching
+        """Relabel the zone header (e.g. serial panel switching
         between "ESP32 FLOW (Serial)" and "TRP FLOW (Serial)" depending on
         which device is actually configured)."""
         self._title_lbl.setText(title.upper())
@@ -586,7 +578,7 @@ _SOURCE_COLOR: Final[dict[str, str]] = {
     "tcp":    THEME['ACCENT'],
     "tail":   THEME['WARNING'],
 }
-_SETTINGS_KEY_DASH = "tilaulogger/dashboard_open"   # ## TILAU ##
+_SETTINGS_KEY_DASH = "tilaulogger/dashboard_open"
 _DASH_INTERVAL_MS: Final[int] = 1000
 
 
@@ -761,21 +753,20 @@ class SystemDashboard(QWidget):
         self._chevron.setText("▸")
         self._chevron.setCursor(Qt.CursorShape.PointingHandCursor)
         self._chevron.setStyleSheet(
-            f"QToolButton {{ color: {THEME['ACCENT']}; border: none; "
-            f"font-family: 'JetBrains Mono'; font-size: 12px; }}"
+            f"QToolButton {{ color: {THEME['ACCENT']}; border: none;"
+            f"font-size: 12px; }}"
         )
         self._chevron.clicked.connect(self.toggle)
         title = QLabel(
             QApplication.translate("tilauscope_diagnostics", "SYSTEM · OBSERVABILITY")
         )
         title.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-size: 11px; font-weight: bold; "
-            f"letter-spacing: 2px; font-family: 'JetBrains Mono';"
+            f"color: {THEME['ACCENT']}; font-size: 11px; font-weight: bold;"
+            f"letter-spacing: 2px; "
         )
         self._live = QLabel("")
         self._live.setStyleSheet(
-            f"color: {THEME['SUCCESS']}; font-size: 10px; margin-left: 6px; "
-            f"font-family: 'JetBrains Mono';"
+            f"color: {THEME['SUCCESS']}; font-size: 10px; margin-left: 6px;"
         )
         header.addWidget(self._chevron)
         header.addWidget(title)
@@ -830,7 +821,7 @@ class SystemDashboard(QWidget):
         lay.setSpacing(1)
         cap = QLabel(title)  # title pre-translated at call site (pylupdate6)
         cap.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 9px; font-family: 'JetBrains Mono';"
+            f"color: {THEME['SUBTEXT']}; font-size: 9px; "
         )
         val = QLabel("—")
         val.setStyleSheet(
@@ -844,13 +835,12 @@ class SystemDashboard(QWidget):
     def _add_section(self, parent: QVBoxLayout, title: str) -> QLabel:
         cap = QLabel(title)
         cap.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-size: 9px; letter-spacing: 1px; "
-            f"font-family: 'JetBrains Mono';"
+            f"color: {THEME['ACCENT']}; font-size: 9px; letter-spacing: 1px;"
         )
         body = QLabel("—")
         body.setTextFormat(Qt.TextFormat.RichText)
         body.setWordWrap(True)
-        body.setStyleSheet("font-family: 'JetBrains Mono'; font-size: 10px;")
+        body.setStyleSheet("font-size: 10px;")
         parent.addWidget(cap)
         parent.addWidget(body)
         return body
@@ -860,7 +850,7 @@ class SystemDashboard(QWidget):
         col.setSpacing(1)
         cap = QLabel(title)  # title pre-translated at call site (pylupdate6)
         cap.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 9px; font-family: 'JetBrains Mono';"
+            f"color: {THEME['SUBTEXT']}; font-size: 9px; "
         )
         spark = Sparkline(color)
         col.addWidget(cap)
@@ -955,20 +945,18 @@ class SystemDashboard(QWidget):
 
 
 # --- CLASSES DE TRAVAIL (THREADS) ---
-# ## TILAU ##
 # Standard baud rates offered in the UI — ordered low to high
 BAUD_RATES: Final[list[int]] = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
 _DEFAULT_BAUD: Final[int] = 921600
 
 _SETTINGS_KEY_PORT = "tilaulogger/serial_port"
 _SETTINGS_KEY_BAUD = "tilaulogger/serial_baud"
-_SETTINGS_KEY_SPLITTER = "tilaulogger/splitter_state"   # ## TILAU ##
-_SETTINGS_KEY_COLLAPSED = "tilaulogger/collapsed"        # ## TILAU ## — dict source→bool
+_SETTINGS_KEY_SPLITTER = "tilaulogger/splitter_state"
+_SETTINGS_KEY_COLLAPSED = "tilaulogger/collapsed"        # — dict source→bool
 
-# ## TILAU ##
 _ARTISAN_LOG_NAME: Final[str] = "artisan.log"
 _TAIL_MAX_LINES:   Final[int] = 200
-_LIVE_MAX_LINES:   Final[int] = 2000   # ## TILAU ## — ring cap for serial/tcp zones
+_LIVE_MAX_LINES:   Final[int] = 2000   # — ring cap for serial/tcp zones
 _TAIL_POLL_MS:     Final[int] = 5000   # 5 s — matches existing flush_timer cadence
 
 
@@ -1090,7 +1078,7 @@ class SerialWorker(QObject):
         )
 
     def send_line(self, text: str) -> bool:
-        """## TILAU ## Write one line to the currently open port (LF-terminated,
+        """Write one line to the currently open port (LF-terminated,
         spec /TRP/specifications.md Sec2) -- used for the TRP HELLO probe and any
         other ad hoc debug write. Returns False if no port is open."""
         with self._serial_lock:
@@ -1158,17 +1146,17 @@ class TCPLogHandler(socketserver.StreamRequestHandler):
     """Handler LogRecord via TCP with exit logic."""
     def handle(self):
         # Set a timeout so recv() doesn't block forever
-        self.request.settimeout(1.0) 
-        
+        self.request.settimeout(1.0)
+
         # Check the server's running flag
         while getattr(self.server, 'running', True):
             try:
                 chunk = self.request.recv(4)
                 if not chunk: # Connection closed by client
                     break
-                if len(chunk) < 4: 
+                if len(chunk) < 4:
                     continue
-                
+
                 slen = struct.unpack('>L', chunk)[0]
                 chunk = self.request.recv(slen)
                 while len(chunk) < slen:
@@ -1176,9 +1164,9 @@ class TCPLogHandler(socketserver.StreamRequestHandler):
                     if not more:  # EOF → connexion fermée proprement
                         return
                     chunk += more
-                
+
                 obj = pickle.loads(chunk)
-                # ## TILAU ## — emit structured fields so the bus keeps level/module
+                # — emit structured fields so the bus keeps level/module
                 self.server.ui_signal.emit(obj['name'], obj['levelname'], obj['msg'])
             except (socket.timeout, TimeoutError):
                 # This allows the loop to check 'self.server.running'
@@ -1187,7 +1175,7 @@ class TCPLogHandler(socketserver.StreamRequestHandler):
                 break
 
 class TCPWorker(socketserver.TCPServer):
-    allow_reuse_address = True 
+    allow_reuse_address = True
 
     def __init__(self, host='127.0.0.1', port=9021, signal=None):
         self.ui_signal = signal
@@ -1199,7 +1187,7 @@ class TCPWorker(socketserver.TCPServer):
 
 class TilauscopeLoggerWindow(QWidget):
     serial_signal = pyqtSignal(str)
-    tcp_signal = pyqtSignal(str, str, str)   # ## TILAU ## — (name, level, msg)
+    tcp_signal = pyqtSignal(str, str, str)   # — (name, level, msg)
 
     def __init__(self, parent:'QWidget', aw:'ApplicationWindow') -> None:
         super().__init__(parent)
@@ -1213,7 +1201,7 @@ class TilauscopeLoggerWindow(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setWindowModality(Qt.WindowModality.NonModal)
-        
+
         self._drag_pos = None
 
         self.tcp_server: 'TCPWorker | None' = None
@@ -1227,14 +1215,13 @@ class TilauscopeLoggerWindow(QWidget):
         # File logging
         self.setup_file_loggers()
 
-        # ## TILAU ## — persistent settings (must exist before _build_ui uses them)
-        ## TILAU ## Main store; keys are already namespaced "tilaulogger/*". Was a
-        ## separate file, carried over by settings_migration.
+        # — persistent settings (must exist before _build_ui uses them)
+        # Main store; keys are already namespaced "tilaulogger/*".
         self._settings = QSettings()
 
-        # ## TILAU ## — observability bus + source→zone registry.
+        # — observability bus + source→zone registry.
         # Bus must exist before _build_ui, which registers the zones.
-        # ## TILAU ## — translate recurring status strings once (no per-update translate).
+        # — translate recurring status strings once (no per-update translate).
         # Full translate() form (no alias) so pylupdate6 can extract the literals.
         self._tr_ser_connected = QApplication.translate("tilauscope_diagnostics", "🟢 connected")
         self._tr_ser_error = QApplication.translate("tilauscope_diagnostics", "🔴 error")
@@ -1245,7 +1232,7 @@ class TilauscopeLoggerWindow(QWidget):
         self.bus = LogBus(self)
         self.bus.event.connect(self._on_bus_event)
         self._zones: dict[str, LogZone] = {}
-        self._panels: dict[str, 'ZonePanel'] = {}   # ## TILAU ## — source → panel
+        self._panels: dict[str, 'ZonePanel'] = {}   # — source → panel
         self._focused_source: str | None = None
         self._pre_focus: dict[str, bool] = {}        # collapse state before focus
 
@@ -1273,7 +1260,7 @@ class TilauscopeLoggerWindow(QWidget):
         # TCP Server
         self.start_tcp_thread()
 
-        # ## TILAU ## — artisan.log tail worker (idle until Start is pressed)
+        # — artisan.log tail worker (idle until Start is pressed)
         artisan_log_path = self._log_dir / ".." / _ARTISAN_LOG_NAME
         self._tail_worker = ArtisanLogTailWorker(artisan_log_path, parent=self)
         self._tail_worker.lines_ready.connect(self._on_tail_lines)
@@ -1282,10 +1269,10 @@ class TilauscopeLoggerWindow(QWidget):
         self.aw.tilaudebug.setChecked(True)
         _log.info("debug start")
 
-        # ## TILAU ## — restore splitter sizes + collapsed zones from last session
+        # — restore splitter sizes + collapsed zones from last session
         self._restore_layout()
 
-        # ## TILAU ## — metrics collector feeding the observability dashboard
+        # — metrics collector feeding the observability dashboard
         self._collector = MetricsCollector(
             stats_provider=lambda: [(src, *z.stats()) for src, z in self._zones.items()],
             state_provider=self._collect_state,
@@ -1420,9 +1407,9 @@ class TilauscopeLoggerWindow(QWidget):
         )
         self._search_edit.setClearButtonEnabled(True)
         self._search_edit.setStyleSheet(
-            f"QLineEdit {{ background: {THEME['SURFACE']}; color: {THEME['TEXT']}; "
-            f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; padding: 3px 8px; "
-            f"font-family: 'JetBrains Mono'; font-size: 12px; }}"
+            f"QLineEdit {{ background: {THEME['SURFACE']}; color: {THEME['TEXT']};"
+            f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; padding: 3px 8px;"
+            f"font-size: 12px; }}"
             f"QLineEdit:focus {{ border-color: {THEME['ACCENT']}; }}"
         )
         self._search_edit.textChanged.connect(lambda: self._search_debounce.start())
@@ -1575,8 +1562,8 @@ class TilauscopeLoggerWindow(QWidget):
             QApplication.translate("tilauscope_diagnostics", "TILAU DEBUG MONITOR")
         )
         title_lbl.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-size: 15px; font-weight: 800; "
-            f"font-family: 'JetBrains Mono'; letter-spacing: 3px;"
+            f"color: {THEME['ACCENT']}; font-size: 15px; font-weight: 800;"
+            f"letter-spacing: 3px;"
         )
 
         close_btn = QPushButton("✕")
@@ -1638,7 +1625,7 @@ class TilauscopeLoggerWindow(QWidget):
         """)
         refresh_btn.clicked.connect(self.refresh_ports)
 
-        # ## TILAU ## — baud rate selector
+        # — baud rate selector
         baud_lbl = QLabel(
             QApplication.translate("tilauscope_diagnostics", "Baud:")
         )
@@ -1653,7 +1640,7 @@ class TilauscopeLoggerWindow(QWidget):
         idx = self.baud_selector.findData(saved_baud)
         self.baud_selector.setCurrentIndex(idx if idx >= 0 else self.baud_selector.findData(_DEFAULT_BAUD))
 
-        # ## TILAU ## — explicit connect/disconnect button
+        # — explicit connect/disconnect button
         self._connected = False
         self.connect_btn = QPushButton(
             QApplication.translate("tilauscope_diagnostics", "Connect")
@@ -1663,7 +1650,7 @@ class TilauscopeLoggerWindow(QWidget):
         self.connect_btn.clicked.connect(self._on_connect_toggle)
         self._apply_connect_btn_style(connected=False)
 
-        # ## TILAU ## — manual/repeatable TRP probe (spec /TRP/specifications.md Sec4/Sec19):
+        # — manual/repeatable TRP probe (spec /TRP/specifications.md Sec4/Sec19):
         # sends "HELLO TRP/1.0" and, once INFO.../OK come back, the status label
         # switches from the plain "connected" text to the identified TRP device/profile.
         self.trp_hello_btn = QPushButton(
@@ -1682,20 +1669,20 @@ class TilauscopeLoggerWindow(QWidget):
         # the Meter/Extra Device config can change while this window is open.
         self.trp_hello_btn.setEnabled(self._trp_device_configured())
 
-        # ## TILAU ## — serial controls move into the ESP32 zone header (extra_header).
+        # — serial controls move into the ESP32 zone header (extra_header).
         # The live serial status is the ESP32 panel's own label → no top-bar duplicate.
         self._serial_ctrls = [port_lbl, self.port_selector, refresh_btn,
                               baud_lbl, self.baud_selector, self.connect_btn, self.trp_hello_btn]
 
-        # ## TILAU ## — observability actions (left side of the top bar)
+        # — observability actions (left side of the top bar)
         def _action(glyph: str, tip: str, slot) -> QToolButton:
             b = QToolButton()
             b.setText(glyph)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setToolTip(QApplication.translate("tilauscope_diagnostics", tip))
             b.setStyleSheet(
-                f"QToolButton {{ color: {THEME['TEXT']}; background: {THEME['SURFACE']}; "
-                f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; "
+                f"QToolButton {{ color: {THEME['TEXT']}; background: {THEME['SURFACE']};"
+                f"border: 1px solid {THEME['BORDER']}; border-radius: 6px;"
                 f"padding: 4px 8px; font-size: 13px; }}"
                 f"QToolButton:hover {{ border-color: {THEME['ACCENT']}; }}"
                 f"QToolButton:checked {{ color: {THEME['TODAY']}; border-color: {THEME['TODAY']}; }}"
@@ -1760,7 +1747,7 @@ class TilauscopeLoggerWindow(QWidget):
 
         # Serial flow — serial controls hosted in this zone's header. Title
         # reflects whichever kind of serial device is actually configured
-        # (## TILAU ## re-evaluated on each connect, see handle_serial_msg).
+        # ( re-evaluated on each connect, see handle_serial_msg).
         self.serial_panel = _register(
             "serial",
             ZonePanel(self._serial_zone_title(),
@@ -1826,10 +1813,10 @@ class TilauscopeLoggerWindow(QWidget):
         else:
             log_dir = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)) / "tilauscope"
         log_dir.mkdir(parents=True, exist_ok=True)
-        self._log_dir = log_dir  # ## TILAU ## — shared with tail worker
+        self._log_dir = log_dir  # — shared with tail worker
         ser_path = log_dir / f"tilau_serial_{datetime.now().strftime('%Y%m%d')}.log"
         tcp_path = log_dir / f"tilau_tcp_{datetime.now().strftime('%Y%m%d')}.log"
-    
+
         # 2. Setup Serial File Logger
         self.serial_logger = logging.getLogger("tilau_serial_file")
         self.serial_logger.propagate = False # Prevent double-logging to console
@@ -1845,10 +1832,10 @@ class TilauscopeLoggerWindow(QWidget):
         tcp_fh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
         self.tcp_logger.addHandler(tcp_fh)
         self.tcp_logger.setLevel(logging.INFO)
-        
+
         _log.info(f"Tilau logs initialized as {ser_path} and {tcp_path}")
 
-    # ## TILAU ## — central dispatch: route a normalised event to its zone
+    # — central dispatch: route a normalised event to its zone
     def _on_bus_event(self, ev: 'LogEvent') -> None:
         zone = self._zones.get(ev.source)
         if zone is not None:
@@ -1907,7 +1894,7 @@ class TilauscopeLoggerWindow(QWidget):
             _log.error("snapshot failed: %s", exc)
 
     def _serial_zone_title(self) -> str:
-        """## TILAU ## "TRP FLOW (Serial)" when a TRP device is configured as
+        """"TRP FLOW (Serial)" when a TRP device is configured as
         the Meter or an Extra Device, "ESP32 FLOW (Serial)" otherwise (the
         historical default for the non-TRP serial boards this panel was
         built for)."""
@@ -1916,7 +1903,7 @@ class TilauscopeLoggerWindow(QWidget):
         return QApplication.translate("tilauscope_diagnostics", "ESP32 FLOW  (Serial)")
 
     def _trp_device_configured(self) -> bool:
-        """## TILAU ## True only if the currently configured Meter (main
+        """True only if the currently configured Meter (main
         device) or an Extra Device is actually a TRP device (spec Sec19) --
         the HELLO probe only makes sense when TRP is what's actually wired
         up in Artisan's Device config, not for arbitrary serial gear being
@@ -1945,7 +1932,7 @@ class TilauscopeLoggerWindow(QWidget):
                     "Set the Meter or an Extra Device to a TRP Roaster device to enable this probe")
             )
             if trp_configured:
-                # ## TILAU ## auto-probe: give the port a moment to settle (mirrors
+                # auto-probe: give the port a moment to settle (mirrors
                 # SerialWorker's own 0.1s post-open delay) then send HELLO once.
                 QTimer.singleShot(300, self._send_trp_hello)
         elif msg.startswith("❌"):
@@ -1970,7 +1957,7 @@ class TilauscopeLoggerWindow(QWidget):
         self.bus.emit_line("serial", msg, level=_infer_level(msg))
 
     def _send_trp_hello(self) -> None:
-        """## TILAU ## Manual/auto TRP probe (spec Sec4/Sec19): send HELLO and
+        """Manual/auto TRP probe (spec Sec4/Sec19): send HELLO and
         arm identity parsing for the INFO/OK lines that should follow."""
         if not self._connected or not self._trp_device_configured():
             return
@@ -1986,7 +1973,7 @@ class TilauscopeLoggerWindow(QWidget):
         self._trp_roaster_context = None
 
     def _handle_trp_probe_line(self, line: str) -> None:
-        """## TILAU ## Parse INFO/OK/ERR lines following a HELLO probe (spec
+        """Parse INFO/OK/ERR lines following a HELLO probe (spec
         Sec4/Sec19) and, once identified, surface the device/profile on the
         serial zone's status label to make TRP detection visible at a glance."""
         from tilauscope.trp_client import TRPIdentity, resolve_roaster
@@ -2055,10 +2042,10 @@ class TilauscopeLoggerWindow(QWidget):
     def closeEvent(self, event):
         _log.info("Tilaulogger closing: Shutting down workers...")
 
-        # ## TILAU ## — persist splitter geometry + collapsed zones
+        # — persist splitter geometry + collapsed zones
         self._save_layout()
 
-        # ## TILAU ## — stop metrics sampling
+        # — stop metrics sampling
         if hasattr(self, '_collector'):
             self._collector.stop()
 
@@ -2073,7 +2060,7 @@ class TilauscopeLoggerWindow(QWidget):
         if hasattr(self, 'ser_worker'):
             self.ser_worker.stop()
 
-        # ## TILAU ## — stop tail worker (QTimer-based, no thread join needed)
+        # — stop tail worker (QTimer-based, no thread join needed)
         if hasattr(self, '_tail_worker'):
             self._tail_worker.stop()
 
@@ -2105,7 +2092,7 @@ class TilauscopeLoggerWindow(QWidget):
 
         event.accept()
         self.deleteLater()
-        
+
     def stop_all_workers(self):
         """Refined stop method to ensure the port is freed."""
         if hasattr(self, 'ser_worker'):
@@ -2114,12 +2101,12 @@ class TilauscopeLoggerWindow(QWidget):
             self.tcp_server.shutdown()
             self.tcp_server.server_close()
             self.tcp_server = None
-        _log.info("Tilauscope workers stopped.")   
+        _log.info("Tilauscope workers stopped.")
 
     def oldcloseEvent(self, event):
         if hasattr(self, 'aw') and hasattr(self.aw, 'qmc'):
             if self.aw.qmc.flagstart or self.aw.qmc.flagon:
-                self.hide() 
+                self.hide()
                 event.ignore()
                 return
         try:
@@ -2131,7 +2118,7 @@ class TilauscopeLoggerWindow(QWidget):
         self.ser_thread.quit()
         if not self.ser_thread.wait(1000): # Attend 1 sec max
             self.ser_thread.terminate() # Force l'arrêt si bloqué
-        
+
         if hasattr(self, 'tcp_server') and self.tcp_server:
             self.tcp_server.shutdown() # Arrête le serve_forever()
             self.tcp_server.server_close()
@@ -2150,9 +2137,9 @@ class TilauscopeLoggerWindow(QWidget):
         if active:
             self.debug_btn.setText(QApplication.translate("tilauscope_diagnostics", "🔴 DEBUG ON"))
             self.debug_btn.setStyleSheet(
-                f"QPushButton {{ background-color: {THEME['CRITICAL']}; color: {THEME['BG']}; "
-                f"font-weight: bold; border-radius: 6px; padding: 4px 14px; "
-                f"font-family: 'JetBrains Mono'; font-size: 12px; }}"
+                f"QPushButton {{ background-color: {THEME['CRITICAL']}; color: {THEME['BG']};"
+                f"font-weight: bold; border-radius: 6px; padding: 4px 14px;"
+                f"font-size: 12px; }}"
             )
             self.debug_status.setText(
                 QApplication.translate("tilauscope_diagnostics", "all modules at DEBUG level")
@@ -2163,9 +2150,9 @@ class TilauscopeLoggerWindow(QWidget):
         else:
             self.debug_btn.setText(QApplication.translate("tilauscope_diagnostics", "⚪ DEBUG OFF"))
             self.debug_btn.setStyleSheet(
-                f"QPushButton {{ background-color: transparent; color: {THEME['SUBTEXT']}; "
-                f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; padding: 4px 14px; "
-                f"font-family: 'JetBrains Mono'; font-size: 12px; }}"
+                f"QPushButton {{ background-color: transparent; color: {THEME['SUBTEXT']};"
+                f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; padding: 4px 14px;"
+                f"font-size: 12px; }}"
                 f"QPushButton:hover {{ border-color: {THEME['ACCENT']}; color: {THEME['ACCENT']}; }}"
             )
             self.debug_status.setText(
@@ -2182,9 +2169,9 @@ class TilauscopeLoggerWindow(QWidget):
                 QApplication.translate("tilauscope_diagnostics", "Disconnect")
             )
             self.connect_btn.setStyleSheet(
-                f"QPushButton {{ background-color: {THEME['CRITICAL']}; color: {THEME['BG']}; "
-                f"font-weight: bold; border-radius: 6px; padding: 4px 14px; "
-                f"font-family: 'JetBrains Mono'; font-size: 12px; }}"
+                f"QPushButton {{ background-color: {THEME['CRITICAL']}; color: {THEME['BG']};"
+                f"font-weight: bold; border-radius: 6px; padding: 4px 14px;"
+                f"font-size: 12px; }}"
                 f"QPushButton:hover {{ background-color: #ff9999; }}"
             )
         else:
@@ -2192,9 +2179,9 @@ class TilauscopeLoggerWindow(QWidget):
                 QApplication.translate("tilauscope_diagnostics", "Connect")
             )
             self.connect_btn.setStyleSheet(
-                f"QPushButton {{ background-color: {THEME['SUCCESS']}; color: {THEME['BG']}; "
-                f"font-weight: bold; border-radius: 6px; padding: 4px 14px; "
-                f"font-family: 'JetBrains Mono'; font-size: 12px; }}"
+                f"QPushButton {{ background-color: {THEME['SUCCESS']}; color: {THEME['BG']};"
+                f"font-weight: bold; border-radius: 6px; padding: 4px 14px;"
+                f"font-size: 12px; }}"
                 f"QPushButton:hover {{ background-color: #aaffaa; }}"
             )
 
@@ -2216,7 +2203,7 @@ class TilauscopeLoggerWindow(QWidget):
             self._apply_connect_btn_style(connected=False)
             self.ser_worker.disconnect_port()
 
-    # ## TILAU ## — artisan.log tail controls
+    # — artisan.log tail controls
 
     def _apply_tail_btn_style(self, running: bool) -> None:
         """Update tail Start/Stop button appearance."""
@@ -2225,9 +2212,9 @@ class TilauscopeLoggerWindow(QWidget):
                 QApplication.translate("tilauscope_diagnostics", "Stop")
             )
             self.tail_btn.setStyleSheet(
-                f"QPushButton {{ background-color: {THEME['CRITICAL']}; color: {THEME['BG']}; "
-                f"font-weight: bold; border-radius: 6px; padding: 4px 14px; "
-                f"font-family: 'JetBrains Mono'; font-size: 12px; }}"
+                f"QPushButton {{ background-color: {THEME['CRITICAL']}; color: {THEME['BG']};"
+                f"font-weight: bold; border-radius: 6px; padding: 4px 14px;"
+                f"font-size: 12px; }}"
                 f"QPushButton:hover {{ background-color: #ff9999; }}"
             )
         else:
@@ -2235,9 +2222,9 @@ class TilauscopeLoggerWindow(QWidget):
                 QApplication.translate("tilauscope_diagnostics", "Start")
             )
             self.tail_btn.setStyleSheet(
-                f"QPushButton {{ background-color: transparent; color: {THEME['SUBTEXT']}; "
-                f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; padding: 4px 14px; "
-                f"font-family: 'JetBrains Mono'; font-size: 12px; }}"
+                f"QPushButton {{ background-color: transparent; color: {THEME['SUBTEXT']};"
+                f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; padding: 4px 14px;"
+                f"font-size: 12px; }}"
                 f"QPushButton:hover {{ border-color: {THEME['ACCENT']}; color: {THEME['ACCENT']}; }}"
             )
 

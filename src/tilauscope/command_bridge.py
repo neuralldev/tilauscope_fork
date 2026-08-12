@@ -13,20 +13,8 @@
 # AUTHOR
 # Tilau 2025-2026
 
-#
-# command_bridge.py
-#
-# ## TILAU ## Downward command path for remote control (Phase 2a).
-#
-# Lives on the Qt main thread. The WS control server (webcontrol.py, loop thread)
-# hands it *jobs* through a queued Qt signal — never touching qmc/widgets from the
-# async thread (protocol §2/§3, invariant §8). The bridge applies `set_slider` via
-# the exact canonical human gesture (reusing roast_asssistant._apply_slider_value)
-# and reports the value actually applied back for the `ack` recalage; it also hosts
-# the desktop takeover-confirmation modal (controller lock, protocol §7).
-#
-# Doctrine: reuse the existing slider helpers (single source of the canonical
-# sequence), broad try/except so a remote command can never disturb Artisan.
+# command_bridge.py — downward command path for remote control. Lives on the
+# Qt main thread; the WS control server hands it jobs via a queued Qt signal.
 
 import logging
 import os
@@ -55,9 +43,8 @@ _MARK_SIGNALS = {
 
 _TAKEOVER_TTL = 20  # seconds before a takeover request auto-denies (safe default)
 
-_BG = "#1E1E2E"; _SURFACE = "#313244"; _OVERLAY = "#45475A"
-_TEXT = "#CDD6F4"; _SUB = "#A6ADC8"; _ACCENT = "#89B4FA"
-_RED = "#F38BA8"; _GREEN = "#A6E3A1"; _YELLOW = "#F9E2AF"
+from tilauscope.theme_qss import apply_tilau_theme
+from tilauscope.tilauscope_types import THEME
 
 
 class CommandBridge(QObject):
@@ -378,6 +365,10 @@ class _ControlRequestDialog(QDialog):
 
     def __init__(self, requester_name: str, parent=None) -> None:
         super().__init__(parent)
+        # ground=False: the dialog itself is translucent and the rounded #CtrlReq
+        # card below is what gets painted. The grounded base fills the whole
+        # rectangle with BG, squaring off the corners it draws around.
+        apply_tilau_theme(self, ground=False)
         self._left = _TAKEOVER_TTL
         # StaysOnTop + raise/activate on show: a frameless translucent dialog can
         # otherwise render BEHIND the (also frameless) TilauScope window on macOS.
@@ -391,42 +382,39 @@ class _ControlRequestDialog(QDialog):
         card = QFrame()
         card.setObjectName("CtrlReq")
         card.setStyleSheet(
-            f"#CtrlReq {{ background-color:{_BG}; border:2px solid {_YELLOW};"
-            f" border-radius:15px; }}"
-            f"QLabel {{ color:{_TEXT}; background:transparent; border:none; }}")
+            f"#CtrlReq {{ background-color:{THEME['BG']}; border:2px solid {THEME['YELLOW']};"
+            f" border-radius:15px; }}")
         root.addWidget(card)
         inner = QVBoxLayout(card)
         inner.setContentsMargins(24, 20, 24, 20)
         inner.setSpacing(12)
 
         title = QLabel(QApplication.translate("tilauscope_webclient", "📱 CONTROL REQUEST"))
-        title.setStyleSheet(f"color:{_YELLOW};font-size:14px;font-weight:800;letter-spacing:1px;")
+        title.setStyleSheet(
+            f"QLabel {{ color:{THEME['YELLOW']}; font-size:14px;"
+            f" font-weight:800; letter-spacing:1px; }}")
         inner.addWidget(title)
 
         body = QLabel(QApplication.translate("tilauscope_webclient",
                       "“{name}” wants to take over piloting.\n"
                       "The current controller will be switched to observer.").format(name=requester_name))
         body.setWordWrap(True)
-        body.setStyleSheet(f"color:{_TEXT};font-size:13px;")
+        body.setStyleSheet("QLabel { font-size:13px; }")
         inner.addWidget(body)
 
         self._count = QLabel()
-        self._count.setStyleSheet(f"color:{_SUB};font-family:'JetBrains Mono';font-size:11px;")
+        self._count.setProperty('variant', 'caption')
         inner.addWidget(self._count)
 
         btns = QHBoxLayout()
         deny = QPushButton(QApplication.translate("tilauscope_webclient", "Deny"))
         deny.clicked.connect(self.reject)
-        deny.setStyleSheet(
-            f"QPushButton {{ background:transparent; color:{_SUB}; border:1px solid {_OVERLAY};"
-            f" border-radius:8px; padding:8px 16px; }}"
-            f"QPushButton:hover {{ color:{_TEXT}; border-color:{_SUB}; }}")
+        deny.setProperty('variant', 'outline')
+        deny.setStyleSheet("QPushButton { padding:8px 16px; }")
         allow = QPushButton(QApplication.translate("tilauscope_webclient", "Allow"))
         allow.clicked.connect(self.accept)
-        allow.setStyleSheet(
-            f"QPushButton {{ background:{_GREEN}; color:{_BG}; border:none;"
-            f" border-radius:8px; padding:8px 18px; font-weight:700; }}"
-            f"QPushButton:hover {{ background:#B9F0B0; }}")
+        allow.setProperty('variant', 'primary')
+        allow.setStyleSheet("QPushButton { padding:8px 18px; }")
         btns.addStretch(); btns.addWidget(deny); btns.addWidget(allow)
         inner.addLayout(btns)
 

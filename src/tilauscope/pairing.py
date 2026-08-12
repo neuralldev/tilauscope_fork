@@ -16,20 +16,8 @@
 #
 # pairing.py
 #
-# ## TILAU ## Remote-control pairing (protocol §7).
-#
-# One-time pairing token (PT, short TTL) shown by the desktop; on success a
-# persistent device token (DT) is issued and stored in QSettings. On reconnect
-# the client presents the DT directly (web-http model §7 — no HMAC, Web Crypto is
-# unavailable over plain http). Revocation = drop the DT (next contact fails
-# AUTH_FAILED). Hardening to wss://+HMAC is a v3 concern (native apps).
-#
-# Thread note: mint runs on the Qt main thread (pairing dialog); pair/verify run
-# on the control server thread. The in-memory PT is a small tuple (benign race).
-# The device store is mutated from BOTH threads (pair/verify on the control loop,
-# list/rename/revoke on the Qt thread), so every access to `_devices` — and the
-# json.dumps() in _save — is guarded by a lock. This is correct even on a
-# free-threaded (no-GIL) build, not just an accident of CPython atomicity.
+# Remote-control pairing (protocol §7): one-time pairing token exchanged for a
+# persistent per-device token stored in QSettings; revocation drops the token.
 
 import hmac  # only for compare_digest (constant-time), not for HMAC crypto
 import json
@@ -50,12 +38,8 @@ _DEVICES_KEY = 'tilauscope/remote_devices'
 class PairingManager:
     def __init__(self) -> None:
         self._pt: Optional[tuple] = None  # (token, expiry_epoch)
-        # In-memory source of truth for paired devices. Loaded once from
-        # QSettings, mutated on pair/revoke, persisted write-through. Shared
-        # between the control-server thread (pair/verify) and the Qt thread
-        # (list/rename/revoke) — reads see writes immediately (no cross-thread
-        # QSettings/cfprefsd cache lag), and `_lock` serialises every mutation
-        # and the json.dumps() in _save against a concurrent structural change.
+        # In-memory devices dict, persisted write-through to QSettings. Shared
+        # between the control-server thread and the Qt thread; _lock guards every access.
         self._lock = threading.Lock()
         self._devices: dict = self._load()
 
@@ -117,11 +101,7 @@ class PairingManager:
 
     def verify_token(self, device_id: str, device_token: str) -> bool:
         """Constant-time match of a presented DT against the stored one.
-
-        v1 web-http model (protocol §7): the client presents the DT directly on
-        reconnect — no HMAC, because Web Crypto is unavailable over http. The DT
-        therefore transits in clear on the trusted LAN; a revoked DT no longer
-        matches, so revocation is immediate."""
+        No HMAC (Web Crypto unavailable over plain http); a revoked DT no longer matches."""
         with self._lock:
             dev = self._devices.get(device_id)
             token = str(dev.get('token', '')) if dev else ''

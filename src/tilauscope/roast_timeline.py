@@ -36,6 +36,7 @@ from PyQt6.QtCore import (
 from tilauscope.tilauscope_types import THEME
 from tilauscope.alogmanager import AlogMetadata
 from tilauscope.brew_advisor import degassing_band, rest_window, RestStatus, BrewFamily, to_agtron
+from tilauscope.theme_qss import apply_tilau_theme, base_qss
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -92,11 +93,8 @@ class _ScanSignals(QObject):
 
 
 class _TimelineScanWorker(QRunnable):
-    """
-    Reads Agtron from each .alog file off the main thread.
-    Uses cache for metadata (title, beans) but falls back to direct directory
-    scan to ensure ALL files are included even if cache is stale/incomplete.
-    """
+    """Reads Agtron from each .alog file off the main thread. Uses cache for
+    metadata but falls back to a direct directory scan if the cache is stale."""
 
     def __init__(
         self,
@@ -158,17 +156,12 @@ class _TimelineScanWorker(QRunnable):
                     title      = fpath.stem
                     bean_field = ""
 
-                # Brewable = the Brew Advisor has what it needs to advise: a colour
-                # reading (valid Agtron mapping) AND a linked green bean (uuid in the
-                # beans field). Non-brewable roasts are drawn dimmed and cannot hand
-                # off to the advisor. Window geometry is computed later in the scene
-                # so the header method selector can re-shift it without a rescan.
+                # Brewable = colour reading (valid Agtron) AND a linked green bean
+                # (uuid in the beans field). Non-brewable roasts are drawn dimmed.
                 brewable = agtron > 0 and ("uuid" in bean_field.lower())
 
-                # Some beans were saved over-escaped (e.g. '\\\\\\\\n' instead of
-                # '\n'); collapse ANY run of backslashes-before-n — and real
-                # newlines — into a single <br>, so leftover backslashes don't
-                # render as slanted "bars" after values in the italic meta lines.
+                # Collapse any run of backslashes-before-n (over-escaped beans field)
+                # and real newlines into a single <br>.
                 beans = re.sub(r"\\+n", "<br>", bean_field).replace("\n", "<br>")
                 rows.append({
                     "name":      title,
@@ -196,19 +189,19 @@ class _TooltipWidget(QFrame):
     """
 
     # ── color constants (Catppuccin Mocha) ────────────────────────────────────
-    _C_TEXT   = "#CDD6F4"   # primary — title, values
-    _C_LABEL  = "#A6ADC8"   # secondary — data row labels
-    _C_META_K = "#9399B2"   # tertiary — meta keys
-    _C_BG     = "#1E1E2E"
-    _C_BORDER = "#45475A"
-    _C_DIV    = "#313244"
+    _C_TEXT   = THEME['TEXT']   # primary — title, values
+    _C_LABEL  = THEME['SUBTEXT']   # secondary — data row labels
+    _C_META_K = THEME['OVERLAY2']   # tertiary — meta keys
+    _C_BG     = THEME['BG']
+    _C_BORDER = THEME['SURFACE1']
+    _C_DIV    = THEME['BORDER']
 
     # status colors
-    _C_IN_WIN  = "#A6E3A1"   # in window
-    _C_NEAR    = "#F9E2AF"   # near peak · drink soon
-    _C_PAST    = "#FAB387"   # past window
-    _C_NOT_YET = "#89B4FA"   # not ready yet
-    _C_ACCENT  = "#89B4FA"
+    _C_IN_WIN  = THEME['SUCCESS']   # in window
+    _C_NEAR    = THEME['YELLOW']   # near peak · drink soon
+    _C_PAST    = THEME['WARNING']   # past window
+    _C_NOT_YET = THEME['ACCENT']   # not ready yet
+    _C_ACCENT  = THEME['ACCENT']
 
     # Emitted when the "brew this coffee" CTA is clicked; carries the .alog path.
     prepare_requested = pyqtSignal(str)
@@ -228,8 +221,7 @@ class _TooltipWidget(QFrame):
         self._build_layout()
 
     def resizeEvent(self, e) -> None:
-        # Clip to the rounded shape so only the corners outside the radius are cut
-        # away (transparent), while the card body stays fully opaque. Plain
+        # Clip to the rounded shape (corners transparent, body opaque); plain
         # translucency would make the whole card see-through.
         super().resizeEvent(e)
         path = QPainterPath()
@@ -271,7 +263,6 @@ class _TooltipWidget(QFrame):
 
         # ── data rows ─────────────────────────────────────────────────────────
         body = QWidget()
-        body.setStyleSheet("background:transparent;")
         self._body_layout = QVBoxLayout(body)
         self._body_layout.setContentsMargins(12, 7, 12, 0)
         self._body_layout.setSpacing(1)
@@ -289,7 +280,6 @@ class _TooltipWidget(QFrame):
         self._body_layout.addSpacing(3)
 
         status_row = QWidget()
-        status_row.setStyleSheet("background:transparent;")
         self._status_layout = QHBoxLayout(status_row)
         self._status_layout.setContentsMargins(0, 0, 0, 0)
         self._status_layout.setSpacing(6)
@@ -305,7 +295,6 @@ class _TooltipWidget(QFrame):
         # ── divider + meta ────────────────────────────────────────────────────
         self._div_meta   = self._divider()
         self._meta_widget = QWidget()
-        self._meta_widget.setStyleSheet("background:transparent;")
         self._meta_layout = QVBoxLayout(self._meta_widget)
         self._meta_layout.setContentsMargins(0, 3, 0, 0)
         self._meta_layout.setSpacing(0)
@@ -326,7 +315,6 @@ class _TooltipWidget(QFrame):
 
     def _make_data_row(self, label_text: str) -> QWidget:
         row = QWidget()
-        row.setStyleSheet("background:transparent;")
         hl = QHBoxLayout(row)
         hl.setContentsMargins(0, 0, 0, 0)
         hl.setSpacing(4)
@@ -356,7 +344,6 @@ class _TooltipWidget(QFrame):
 
     def _add_meta_pair(self, key: str, value: str):
         row = QWidget()
-        row.setStyleSheet("background:transparent;")
         hl = QHBoxLayout(row)
         hl.setContentsMargins(0, 0, 0, 0)
         hl.setSpacing(0)
@@ -419,7 +406,7 @@ class _TooltipWidget(QFrame):
             self._cta.setStyleSheet(
                 f"QPushButton {{ background:{self._C_ACCENT}; color:{self._C_BG};"
                 f" border:none; border-radius:7px; padding:7px 10px; font-weight:700; font-size:13px; }}"
-                f" QPushButton:hover {{ background:#B4BEFE; }}")
+                f" QPushButton:hover {{ background:{THEME['LAVENDER']}; }}")
         else:
             self._cta.setText(QApplication.translate("tilauscope_roast_review", "Colour / bean not linked"))
             self._cta.setEnabled(False)
@@ -474,10 +461,8 @@ class _InfiniteTimelineView(QGraphicsView):
         self._drag_start: QPoint | None = None
 
     def wheelEvent(self, event: QWheelEvent) -> None:
-        # Trackpad: horizontal two-finger swipe → horizontal; vertical swipe →
-        # vertical when the lanes overflow the viewport. A plain mouse wheel (only
-        # a vertical delta) falls back to horizontal on a short timeline, since it
-        # reads left-to-right.
+        # Trackpad swipes map to their axis; a plain vertical-only wheel falls
+        # back to horizontal scroll (the timeline reads left-to-right).
         dx = event.angleDelta().x()
         dy = event.angleDelta().y()
         hbar = self.horizontalScrollBar()
@@ -518,12 +503,19 @@ class RoastReadyDialog(QDialog):
         aw: QWidget | None = None,    # ApplicationWindow — centering anchor
     ) -> None:
         super().__init__(None)  # No parent — avoids embedding inside BeancaveDlg on macOS
+        # ground=False: the grounded base would paint the rectangle opaque and
+        # square off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        # Unparented → Qt treats this as a "primary" top-level window for
+        # lastWindowClosed accounting; disable it so closing this sub-view
+        # never fires fileQuit() while BeanCave stays open.
+        self.setAttribute(Qt.WidgetAttribute.WA_QuitOnClose, False)
         self.resize(1200, 560)
 
         self._alog_dir   = alog_directory
@@ -592,10 +584,10 @@ class RoastReadyDialog(QDialog):
         if on:
             return (f"QPushButton {{ background:{THEME['ACCENT']}; color:{THEME['BG']};"
                     f" border:none; border-radius:6px; padding:5px 13px; font-weight:700;"
-                    f" font-family:'JetBrains Mono'; font-size:12px; }}")
+                    f" font-size:12px; }}")
         return (f"QPushButton {{ background:transparent; color:{THEME['SUBTEXT']};"
                 f" border:none; border-radius:6px; padding:5px 13px;"
-                f" font-family:'JetBrains Mono'; font-size:12px; }}")
+                f" font-size:12px; }}")
 
     # ── brew hand-off ───────────────────────────────────────────────────────────
     def _on_prepare(self, filepath: str) -> None:
@@ -631,7 +623,7 @@ class RoastReadyDialog(QDialog):
         )
         title.setStyleSheet(
             "color:white; font-size:22px; font-weight:900;"
-            " font-family:'JetBrains Mono'; background:transparent; border:none;"
+            " "
         )
         today_btn = QPushButton(
             QApplication.translate("tilauscope_roast_review", "◎ Today")
@@ -642,26 +634,25 @@ class RoastReadyDialog(QDialog):
             QPushButton {{
                 background:{THEME['SURFACE']}; color:{THEME['ACCENT']};
                 border:1px solid {THEME['ACCENT']}; border-radius:8px;
-                padding:0 12px; font-family:'JetBrains Mono'; font-size:12px;
+                padding:0 12px; font-size:12px;
             }}
             QPushButton:hover {{ background:{THEME['ACCENT']}; color:{THEME['BG']}; }}
         """)
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(32, 32)
+        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         close_btn.clicked.connect(self.close)
         close_btn.setStyleSheet(f"""
             QPushButton {{
-                background:#313244; color:#F38BA8;
-                border-radius:16px; border:1px solid #F38BA8;
+                background:{THEME['BORDER']}; color:{THEME['CRITICAL']};
+                border-radius:16px; border:1px solid {THEME['CRITICAL']};
                 font-weight:bold; font-size:14px;
             }}
-            QPushButton:hover {{ background:#F38BA8; color:{THEME['BG']}; }}
+            QPushButton:hover {{ background:{THEME['CRITICAL']}; color:{THEME['BG']}; }}
         """)
         # targeted brew method (Filter / Espresso) — shifts every window & persists
         seg_lbl = QLabel(QApplication.translate("tilauscope_roast_review", "Target"))
-        seg_lbl.setStyleSheet(
-            f"color:{THEME['SUBTEXT']}; font-size:10px; letter-spacing:1.5px;"
-            " font-family:'JetBrains Mono'; border:none; background:transparent;")
+        seg_lbl.setProperty('variant', 'eyebrow')
         seg = QFrame()
         seg.setStyleSheet(
             f"QFrame {{ background:{THEME['SURFACE']}; border:1px solid {THEME['BORDER']};"
@@ -714,7 +705,7 @@ class RoastReadyDialog(QDialog):
             lbl = QLabel(label)
             lbl.setStyleSheet(
                 f"color:{THEME['SUBTEXT']}; font-size:11px;"
-                " font-family:'JetBrains Mono'; border:none; background:transparent;"
+                " border:none; background:transparent;"
             )
             leg_layout.addWidget(swatch)
             leg_layout.addWidget(lbl)
@@ -724,7 +715,7 @@ class RoastReadyDialog(QDialog):
         swatch_today = QFrame()
         swatch_today.setFixedSize(14, 14)
         swatch_today.setStyleSheet(
-            f"background:{THEME.get('TODAY','#FAB387')};"
+            f"background:{THEME['TODAY']};"
             " border-radius:3px; border:none;"
         )
         lbl_today = QLabel(
@@ -732,7 +723,7 @@ class RoastReadyDialog(QDialog):
         )
         lbl_today.setStyleSheet(
             f"color:{THEME['SUBTEXT']}; font-size:11px;"
-            " font-family:'JetBrains Mono'; border:none; background:transparent;"
+            " border:none; background:transparent;"
         )
         leg_layout.addWidget(swatch_today)
         leg_layout.addWidget(lbl_today)
@@ -752,7 +743,7 @@ class RoastReadyDialog(QDialog):
         self._loading_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._loading_lbl.setStyleSheet(
             f"color:{THEME['SUBTEXT']}; font-size:13px;"
-            " font-family:'JetBrains Mono'; border:none; background:transparent;"
+            " border:none; background:transparent;"
         )
         content.addWidget(self._loading_lbl)
 
@@ -773,9 +764,8 @@ class RoastReadyDialog(QDialog):
 
     # ── scene construction ────────────────────────────────────────────────────
     def _build_scene(self) -> None:
-        # Detach the tooltip BEFORE clearing so scene.clear() doesn't destroy it.
-        # Recreating it each rebuild caused the first card to paint with a tiny,
-        # un-polished font; keeping the same (already polished) widget avoids that.
+        # Detach the tooltip BEFORE clearing so scene.clear() doesn't destroy it;
+        # reusing the polished widget avoids a tiny unstyled font on the first card.
         if self._tooltip_proxy is not None:
             self._scene.removeItem(self._tooltip_proxy)
         self._scene.clear()
@@ -797,7 +787,6 @@ class RoastReadyDialog(QDialog):
         today_day_idx = (today - origin).days
 
         scene_w = total_days * DAY_W
-        scene_h = 0  # computed after lane packing
 
         # ── date axis + vertical grid ─────────────────────────────────────────
         for i in range(total_days + 1):
@@ -839,7 +828,7 @@ class RoastReadyDialog(QDialog):
             agtron      = rec["agtron"]
             brewable    = bool(rec.get("brewable", False))
             ready, peak, peak_end, tail_end, col_key = _window_geom(agtron, self._family)
-            col = THEME.get(col_key, "#888888")
+            col = THEME.get(col_key, THEME['OVERLAY0'])
 
             opt_x  = (day_offset + ready) * DAY_W
             opt_w  = max(1, (peak_end - ready) * DAY_W)
@@ -927,9 +916,8 @@ class RoastReadyDialog(QDialog):
         actual_scene_h = HEADER_H + len(lane_ends) * ROW_H + 60
         self._scene.setSceneRect(0, 0, scene_w, actual_scene_h)
 
-        # Tooltip proxy — create once, then re-attach the preserved widget on
-        # every rebuild. ensurePolished() applies the stylesheet up front so the
-        # very first card no longer paints with a default (tiny) font.
+        # Tooltip proxy: create once, re-attach the preserved widget on every rebuild.
+        # ensurePolished() applies the stylesheet up front, before the first paint.
         if self._tooltip_proxy is None:
             self._tooltip_widget.ensurePolished()
             self._tooltip_proxy = self._scene.addWidget(self._tooltip_widget)
@@ -972,7 +960,7 @@ class RoastReadyDialog(QDialog):
                         # so it stays put while the cursor travels to the CTA.
                         if key != self._hover_key:
                             self._hover_key = key
-                            col_hex = THEME.get(data.get("col_key", "MED_ROAST"), "#888888")
+                            col_hex = THEME.get(data.get("col_key", "MED_ROAST"), THEME['OVERLAY0'])
                             self._tooltip_widget.populate(data, col_hex)
                             cursor_scene = self._view.mapToScene(event.pos())
                             self._tooltip_proxy.setPos(cursor_scene.x() + 16, cursor_scene.y() + 16)
@@ -1078,9 +1066,8 @@ class _BrewToastWorker(QRunnable):
                 if days_since < 0:
                     continue
                 agtron = _get_agtron(Path(meta.filepath_str))
-                # Method-agnostic reading (family=None) from the shared source of
-                # truth, so the toast agrees with the Brew Advisor: OPTIMAL and the
-                # near-peak tail are both "recommendations"; FRESH / STALE are not.
+                # Method-agnostic (family=None) so the toast agrees with the Brew
+                # Advisor: OPTIMAL and near-peak are "recommendations", FRESH/STALE are not.
                 win = rest_window(agtron, days_since)
                 if win.status == RestStatus.OPTIMAL:
                     status = peak
@@ -1159,20 +1146,21 @@ class BrewReadyNotification(QDialog):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setWindowOpacity(1.0)
-        self.setStyleSheet("""
-            QDialog       { background-color: #ffffff; border: 1px solid #2c3e50; }
-            QTextEdit     { border: none; background: transparent; color: #2c3e50; font-size: 12px; }
-            QLabel#Header { font-weight: bold; font-size: 13px; color: #2c3e50; }
-            QPushButton#CloseBtn {
-                background: transparent; color: #bdc3c7;
+        # Overrides only what base_qss() does not already set.
+        self.setStyleSheet(base_qss() + f"""
+            QDialog       {{ border: 1px solid {THEME['BORDER']}; }}
+            QTextEdit     {{ border: none; background: transparent; font-size: 12px; }}
+            QLabel#Header {{ font-weight: bold; font-size: 13px; }}
+            QPushButton#CloseBtn {{
+                background: transparent; color: {THEME['SUBTEXT']};
                 border: none; font-size: 18px; font-weight: bold;
-            }
-            QPushButton#CloseBtn:hover { color: #e74c3c; }
-            QProgressBar {
-                border: none; background-color: #ecf0f1;
+            }}
+            QPushButton#CloseBtn:hover {{ color: {THEME['CRITICAL']}; }}
+            QProgressBar {{
+                border: none; background-color: {THEME['BORDER']};
                 height: 4px; text-align: center; border-radius: 2px;
-            }
-            QProgressBar::chunk { background-color: #3498db; border-radius: 2px; }
+            }}
+            QProgressBar::chunk {{ background-color: {THEME['ACCENT']}; border-radius: 2px; }}
         """)
         self.resize(380, 220)
         layout = QVBoxLayout(self)
@@ -1184,6 +1172,7 @@ class BrewReadyNotification(QDialog):
         close_btn = QPushButton("✕")
         close_btn.setObjectName("CloseBtn")
         close_btn.setFixedSize(24, 24)
+        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         close_btn.clicked.connect(self._fade_out_and_close)
         title_layout.addWidget(header_lbl)
         title_layout.addStretch()
@@ -1194,7 +1183,9 @@ class BrewReadyNotification(QDialog):
         self.content_area.setReadOnly(True)
         self.content_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.content_area.installEventFilter(self)
-        html = "<ul style='margin-left:-15px; color:#34495e;'>"
+        # #34495e here was a pre-fork light-theme slate, left behind on a card
+        # that is now dark — dark blue-grey text on a dark ground.
+        html = f"<ul style='margin-left:-15px; color:{THEME['TEXT']};'>"
         for item in self.ready_items:
             html += f"<li style='margin-bottom:6px;'>{item['html']}</li>"
         html += "</ul>"

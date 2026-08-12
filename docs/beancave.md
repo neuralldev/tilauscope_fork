@@ -90,6 +90,11 @@ capture the exact weight.*
 scale is set up, the dialog says so plainly — *No scale configured* — rather than offering a
 button that does nothing.
 
+An unmeasured density now reads *not measured*, and the roast plan leaves the coffee's structure
+alone rather than treating the empty field as a very light bean. Records saved before this
+change carried 500 g/l for "empty"; they are cleared the first time the cave is opened, so a
+coffee whose density you did measure at that figure needs entering again.
+
 **Water activity** can be measured directly from the record with an AquaGauge. What the value
 means for storage is in [Sacks, stock and conservation](sacks-and-storage.md).
 
@@ -181,7 +186,9 @@ This is where a roast saved without its finishing details — after a
 completed.
 
 Exports live here too: roast data as CSV, a format prepared for analysis by a language model, and
-diagnostic logs.
+diagnostic logs. An export, and the scan that counts each coffee's roasts, hold the window while
+they run and show how many files they have read as they go — see
+[While the app is working](the-window.md#while-the-app-is-working).
 
 ---
 

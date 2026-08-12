@@ -68,7 +68,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
 )
 
-from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS
+from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS, THEME
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -85,30 +85,28 @@ _RELEASE_NOTES_URLS: Final[tuple[str, ...]] = (
     _RELEASE_NOTES_URL_GITHUB,
 )
 
-# QSettings key that stores the highest whatsnew VERSION already shown to the
-# user (e.g. "4.0.4"). Version-based so that jumping several releases at once
-# shows the accumulated notes of every skipped version, once — the old
-# content-hash key only ever compared the single latest block.
+# QSettings key that stores the highest whatsnew VERSION already shown to the user
+# (e.g. "4.0.4"). Version-based so skipping several releases shows all accumulated notes once.
 _SETTINGS_KEY: Final[str] = "tilauscope/whats_new_last_version"
 # Legacy content-hash key (pre-4.1) — read once for migration only.
 _LEGACY_HASH_KEY: Final[str] = "tilauscope/whats_new_shown_hash"
 
+# Private copy of the palette: chrome comes from the shared THEME table,
+# only the three keys specific to rendering the release notes stay local.
 _THEME: Final[dict] = {
-    "BG":      "#1E1E2E",
-    "SURFACE": "#181825",
-    "TEXT":    "#CDD6F4",
-    "SUBTEXT": "#94A3B8",
-    "ACCENT":  "#89B4FA",
-    "BORDER":  "#313244",
-    "SUCCESS": "#A6E3A1",
-    "WARN":    "#FAB387",
-    "HEAD1":   "#CBA6F7",   # h1 / version title colour
-    "HEAD2":   "#89DCEB",   # h2 / section colour
-    "BULLET":  "#A6E3A1",   # bullet accent
+    **THEME,
+    "WARN":   THEME["WARNING"],
+    "HEAD1":  THEME["MAUVE"],    # h1 / version title colour
+    "HEAD2":  THEME["SKY"],      # h2 / section colour
+    "BULLET": THEME["SUCCESS"],  # bullet accent
 }
 
 
+
 # ── Build / version helpers ───────────────────────────────────────────────────
+
+from tilauscope.theme_qss import apply_tilau_theme
+
 
 def _get_local_build() -> int:
     """Return the current build integer (0 if not determinable)."""
@@ -173,10 +171,8 @@ def _vkey(v: "tuple[int, ...]") -> tuple:
     return v + (0,) * (4 - len(v)) if len(v) < 4 else v
 
 
-# A whatsnew VERSION block starts at a top-level "# TilauScope <version>"
-# heading (H1). The "## " headings inside are per-version RUBRICS
-# (☕ Roasting Assistant, 📊 BeanCave, …), NOT version separators — the old
-# code split on "## " and returned a single rubric instead of a version.
+# A whatsnew VERSION block starts at a top-level "# TilauScope <version>" heading
+# (H1). The "## " headings inside are per-version rubrics (☕ Roasting Assistant, …), not version separators.
 _VERSION_HEADING_RE: Final = re.compile(r"(?m)^#\s+\S.*?(\d+(?:\.\d+)+).*$")
 
 
@@ -254,21 +250,21 @@ def _md_to_widgets(markdown: str, parent: QWidget) -> list[QWidget]:
             widgets.append(_make_label(
                 text,
                 f"color:{_THEME['HEAD2']}; font-size:13px; font-weight:700;"
-                f"font-family:'JetBrains Mono',monospace; margin-top:6px;",
+                f"margin-top:6px;",
             ))
         elif line.startswith("## "):
             text = line[3:].strip()
             widgets.append(_make_label(
                 text,
                 f"color:{_THEME['HEAD1']}; font-size:16px; font-weight:800;"
-                f"font-family:'JetBrains Mono',monospace; margin-top:10px;",
+                f"margin-top:10px;",
             ))
         elif line.startswith("# "):
             text = line[2:].strip()
             widgets.append(_make_label(
                 text,
                 f"color:{_THEME['ACCENT']}; font-size:20px; font-weight:900;"
-                f"font-family:'JetBrains Mono',monospace; letter-spacing:1px;",
+                f"letter-spacing:1px;",
             ))
 
         # Bullet items  –  *, -, +
@@ -297,7 +293,7 @@ def _md_to_widgets(markdown: str, parent: QWidget) -> list[QWidget]:
             content = _make_label(
                 text,
                 f"color:{_THEME['TEXT']}; font-size:12px;"
-                f"font-family:'JetBrains Mono',monospace; line-height:1.5;",
+                f"line-height:1.5;",
             )
 
             row.addWidget(dot)
@@ -305,7 +301,6 @@ def _md_to_widgets(markdown: str, parent: QWidget) -> list[QWidget]:
 
             wrapper = QWidget()
             wrapper.setLayout(row)
-            wrapper.setStyleSheet("background:transparent;")
             widgets.append(wrapper)
 
         # Horizontal rule
@@ -327,7 +322,7 @@ def _md_to_widgets(markdown: str, parent: QWidget) -> list[QWidget]:
             widgets.append(_make_label(
                 text,
                 f"color:{_THEME['SUBTEXT']}; font-size:12px;"
-                f"font-family:'JetBrains Mono',monospace; line-height:1.5;",
+                f"line-height:1.5;",
             ))
 
     return widgets
@@ -352,6 +347,10 @@ class WhatsNewDlg(QDialog):
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint,
         )
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(False)   # non-blocking — user can dismiss at any time
         self._version  = version
@@ -411,24 +410,25 @@ class WhatsNewDlg(QDialog):
         h_row.setSpacing(10)
 
         icon_lbl = QLabel("🫘")
-        icon_lbl.setStyleSheet("font-size:22px; background:transparent;")
+        icon_lbl.setStyleSheet("font-size:22px; ")
 
         title_lbl = QLabel(
             QApplication.translate("WhatsNew", "What's New in TilauScope")
         )
         title_lbl.setStyleSheet(
-            f"color:{_THEME['ACCENT']}; font-family:'JetBrains Mono',monospace;"
+            f"color:{_THEME['ACCENT']};"
             f"font-size:15px; font-weight:800; letter-spacing:1px; background:transparent;"
         )
 
         build_lbl = QLabel(f"v{self._version}  ·  build {self._build}")
         build_lbl.setStyleSheet(
-            f"color:{_THEME['SUBTEXT']}; font-family:'JetBrains Mono',monospace;"
+            f"color:{_THEME['SUBTEXT']};"
             f"font-size:11px; background:transparent;"
         )
 
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(28, 28)
+        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         close_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
@@ -482,7 +482,6 @@ class WhatsNewDlg(QDialog):
 
         # Loading placeholder
         self._content_widget = QWidget()
-        self._content_widget.setStyleSheet("background:transparent;")
         self._content_layout = QVBoxLayout(self._content_widget)
         self._content_layout.setContentsMargins(24, 20, 24, 20)
         self._content_layout.setSpacing(4)
@@ -493,7 +492,6 @@ class WhatsNewDlg(QDialog):
         self._loading_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._loading_lbl.setStyleSheet(
             f"color:{_THEME['SUBTEXT']}; font-size:13px;"
-            f"font-family:'JetBrains Mono',monospace;"
         )
         self._content_layout.addStretch()
         self._content_layout.addWidget(self._loading_lbl)
@@ -525,7 +523,6 @@ class WhatsNewDlg(QDialog):
             QCheckBox {{
                 color: {_THEME['SUBTEXT']};
                 font-size: 12px;
-                font-family: 'JetBrains Mono', monospace;
                 spacing: 8px;
             }}
             QCheckBox::indicator {{
@@ -551,6 +548,7 @@ class WhatsNewDlg(QDialog):
 
         ok_btn = QPushButton(QApplication.translate("WhatsNew", "Close  ✕"))
         ok_btn.setFixedSize(110, 32)
+        ok_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         ok_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {_THEME['ACCENT']};
@@ -559,10 +557,9 @@ class WhatsNewDlg(QDialog):
                 border-radius: 6px;
                 font-weight: bold;
                 font-size: 12px;
-                font-family: 'JetBrains Mono', monospace;
-            }}
+                }}
             QPushButton:hover {{
-                background: #B9C4F8;
+                background: {_THEME['LAVENDER']};
             }}
             QPushButton:pressed {{
                 background: {_THEME['SURFACE']};

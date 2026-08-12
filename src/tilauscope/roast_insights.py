@@ -14,21 +14,8 @@
 # Public License along with this program. If not, see
 # <https://www.gnu.org/licenses/>.
 
-"""
-Heuristics that translate green-bean physical parameters and the session setup
-into a structured, educational summary of their implications on the roast
-phases. Consumed by the ``_RoastInsightsPanel`` widget, which renders the
-returned dataclass and adds no domain logic of its own.
-
-Severity is exposed as a plain string ('ok' | 'warn' | 'crit' | 'info') so the
-engine carries no colour/theme dependency; the panel maps it to THEME colours.
-
-User-facing strings are wrapped in ``QApplication.translate("tilauscope_beancave",
-…)`` so they are extractable by pylupdate; the calls must stay literal (no helper
-alias) for the tooling to find them. Units, numbers and separators are not
-translated. Thresholds are conventional roasting values (Rao / Cropster /
-Mill City / Anne Cooper).
-"""
+"""Heuristics translating green-bean parameters and session setup into a structured
+educational summary of roast-phase implications, consumed by ``_RoastInsightsPanel``."""
 
 from __future__ import annotations
 
@@ -420,11 +407,8 @@ def weight_loss_band(category: str | None) -> tuple[float, float] | None:
 
 
 def targets_from_plan(plan: dict | None, mode: str = "C") -> list[Target] | None:
-    """
-    Map the plan dict (first element of ``generate_roast_plan``'s tuple) into the
-    four panel targets. Plan temperatures are already in the native unit. Returns
-    None when unavailable so the caller keeps the heuristic targets.
-    """
+    """Map the plan dict into the four panel targets (temperatures already in
+    native unit). Returns None when unavailable so the caller keeps heuristic targets."""
     if not plan:
         return None
     unit = "°F" if mode == "F" else "°C"
@@ -474,13 +458,9 @@ def build_insights(
     ctx: "RoasterContext | None",
     mode: str = "C",
 ) -> RoastInsights:
-    """
-    Build the educational insights for a pre-roast setup.
-
-    ``density`` and ``moisture`` are the *effective* values from the setup
-    fields (they may override the bean's stored values); everything else
-    (process, water activity, …) is read from ``bean``.
-    """
+    """Build the educational insights for a pre-roast setup. ``density`` and
+    ``moisture`` are the effective setup values (may override the bean's stored
+    values); everything else is read from ``bean``."""
     signals: list[Signal] = []
     for s in (
         _density_signal(density, mode),

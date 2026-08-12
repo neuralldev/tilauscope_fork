@@ -13,20 +13,8 @@
 # AUTHOR
 # Tilau 2025-2026
 
-#
-# settings_migration.py
-#
-# ## TILAU ## One-shot move onto the fork's own identity.
-#
-# TilauScope used to store everything where stock Artisan stores it —
-# org.artisan-scope.Artisan.plist and ~/Application Support/artisan-scope/Artisan.
-# Installing both meant they silently overwrote each other's settings. The fork
-# now owns tilauscope / TilauScope, and this module carries the existing state
-# across on first launch.
-#
-# SAFETY: this only ever COPIES. The Artisan-named store is left byte-for-byte
-# intact, so a build that predates the rename still finds its settings and the
-# change stays reversible. Nothing here deletes.
+# One-shot move of settings onto the fork's own identity (tilauscope / TilauScope)
+# on first launch. Only ever copies — the Artisan-named store is left intact, so the change stays reversible.
 
 from __future__ import annotations
 

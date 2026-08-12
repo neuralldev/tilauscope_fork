@@ -54,6 +54,7 @@
     ]
    },
    "coherent_profile_basis": "whole",
+   "coherent_profile_key": "blend",
    "coherent_profile_samples": 2,
    "coherent_profile_source": "grid/profile blend (n=2)",
    "crashes": [
@@ -211,6 +212,7 @@
     "pre_de_descent": null
    },
    "coherent_profile_basis": "whole",
+   "coherent_profile_key": "reference",
    "coherent_profile_samples": 1,
    "coherent_profile_source": "reference only (n=1)",
    "crashes": [
@@ -396,6 +398,7 @@
     "pre_de_descent": null
    },
    "coherent_profile_basis": "whole",
+   "coherent_profile_key": "reference",
    "coherent_profile_samples": 1,
    "coherent_profile_source": "reference only (n=1)",
    "crashes": [
@@ -582,6 +585,7 @@
     ]
    },
    "coherent_profile_basis": "whole",
+   "coherent_profile_key": "reference",
    "coherent_profile_samples": 1,
    "coherent_profile_source": "reference only (n=1)",
    "crashes": [
@@ -702,7 +706,7 @@
     {
      "_af": 0.5,
      "airflow": 35,
-     "bt": 173.7
+     "bt": 173.6
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
@@ -711,7 +715,7 @@
    "Ambient Temp": "20.0",
    "Bean Humidity": "10.5",
    "Bean Name": "Cortes",
-   "Charge Temp": "187.2",
+   "Charge Temp": "185.0",
    "Density": "700.0",
    "Dev Profile Source": "grid/profile blend (n=2)",
    "Dev Ramp": [
@@ -733,16 +737,16 @@
     }
    ],
    "Development Phase": "02:22",
-   "Development Phase %": "19.0",
+   "Development Phase %": "20.0",
    "Drop ROR Source": "grid/profile blend (n=2)",
    "Drop Temp": "202.1",
    "Drop Temp Source": "grid/profile blend (n=2)",
    "Drum Speed (%) (Dry|Mai|Dev)": "85% | 85% | 85%",
    "Drum Variable Speed": true,
-   "Dry Phase": "05:22",
+   "Dry Phase": "05:27",
    "Dry Phase %": "44.0",
    "End of Dry Temp": "152.0",
-   "Estimated TP": "150.8",
+   "Estimated TP": "94.9",
    "Extraction (%) (Dry|Mai|Dev)": "",
    "FC Anticipation (s)": "52",
    "FC Temp Source": "grid/profile blend (n=2)",
@@ -753,11 +757,11 @@
    "Heater FC Source": "grid/profile blend (n=2)",
    "Heater Ramp": [
     {
-     "bt": 151.9,
+     "bt": 151.2,
      "heater": 67
     },
     {
-     "bt": 163.0,
+     "bt": 162.8,
      "heater": 62
     },
     {
@@ -765,11 +769,11 @@
      "heater": 57
     },
     {
-     "bt": 174.6,
+     "bt": 174.5,
      "heater": 52
     },
     {
-     "bt": 177.7,
+     "bt": 177.5,
      "heater": 49
     }
    ],
@@ -779,8 +783,8 @@
    "History Reference Roast": "Cortes - Washed  Wet Process - 2024_26-02-15_0908.alog",
    "History Support": "partial history",
    "Maillard Conflict": "",
-   "Maillard Phase": "04:31",
-   "Maillard Phase %": "37.0",
+   "Maillard Phase": "04:26",
+   "Maillard Phase %": "36.0",
    "Peak ROR Warning": "",
    "Phase Timing Source": "grid/profile blend (n=2)",
    "Plan Confidence": "partial history",
@@ -795,15 +799,26 @@
    "Preheat Profile Available": false,
    "Process Type": "Washed",
    "Profile Replay Available": false,
-   "ROR Dry End": "12",
+   "ROR Dry End": "13",
    "ROR Dry Peak": "12",
    "Roaster": "ITOP Cyberroaster",
+   "Source Keys": {
+    "confidence": "partial history",
+    "dev_profile": "blend",
+    "drop": "blend",
+    "drop_ror": "blend",
+    "fc": "blend",
+    "heater": "blend",
+    "heater_fc": "blend",
+    "history_profile": "blend",
+    "timing": "blend"
+   },
    "Target Agtron": "Medium",
    "Target DTR": "19.4",
    "Target ROR Dev (Avg)": "7.2",
-   "Target ROR Maillard": "7.3",
+   "Target ROR Maillard": "7.5",
    "Target ROR at Drop": "5.5",
-   "Target ROR at FC": "6.3",
+   "Target ROR at FC": "6.1",
    "Total Time": "12:16",
    "Water Activity Used": "Not measured",
    "Weight": 400.0,
@@ -811,13 +826,13 @@
    "_replan_ctx": {
     "anchors_c": [
      {
-      "bt": 187.2,
+      "bt": 185.0,
       "key": "charge",
       "label": "CHARGE",
       "time_min": 0.0
      },
      {
-      "bt": 103.5,
+      "bt": 94.9,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -826,7 +841,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 5.36
+      "time_min": 5.45
      },
      {
       "bt": 185.1,
@@ -854,7 +869,7 @@
      2.75
     ],
     "drop_ror_c": 5.5,
-    "dry_ror_c": 11.688,
+    "dry_ror_c": 13.33,
     "fc_anticipation_sec": 51.5,
     "has_heater": true,
     "heater_dev_pct": 45.0,
@@ -871,7 +886,7 @@
     "pre_de_lead_sec": 30.0,
     "pre_de_step_pct": 5.0,
     "replans": [],
-    "ror_maillard_c": 7.304,
+    "ror_maillard_c": 7.452,
     "unit_f": false
    },
    "actions": [
@@ -879,70 +894,70 @@
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Colour feedback (2 measured roast(s)): drop target adjusted -1.9\u00b0C vs grid (204.0\u00b0)",
     "Heater profile learned from 2 matched roast(s): 72/62/42% (dry/Maillard/dev)",
-    "The planned pre-first-crack heater enters the 45\u201350% low-margin zone; use the live rate of rise to decide whether to hold or adjust it."
+    "The planned pre-first-crack heater enters the 45\u201350% low-margin zone on the ITOP Cyberroaster; use the live rate of rise to decide whether to hold or adjust it."
    ],
    "bt_plan_curve": {
     "n_points": 737,
     "per_minute": [
      {
-      "bt": 187.2,
+      "bt": 185.0,
       "min": 0,
       "ror": -2.0
      },
      {
-      "bt": 106.39,
+      "bt": 98.02,
       "min": 1,
       "ror": -2.0
      },
      {
-      "bt": 107.27,
+      "bt": 99.26,
       "min": 2,
-      "ror": 8.41
+      "ror": 9.74
      },
      {
-      "bt": 119.12,
+      "bt": 112.99,
       "min": 3,
-      "ror": 14.3
+      "ror": 16.56
      },
      {
-      "bt": 134.41,
+      "bt": 130.7,
       "min": 4,
-      "ror": 15.35
+      "ror": 17.78
      },
      {
-      "bt": 148.28,
+      "bt": 146.78,
       "min": 5,
-      "ror": 11.56
+      "ror": 13.41
      },
      {
-      "bt": 157.48,
+      "bt": 157.01,
       "min": 6,
-      "ror": 8.16
+      "ror": 8.67
      },
      {
-      "bt": 165.12,
+      "bt": 165.0,
       "min": 7,
-      "ror": 7.24
+      "ror": 7.44
      },
      {
-      "bt": 172.09,
+      "bt": 172.07,
       "min": 8,
-      "ror": 6.8
+      "ror": 6.84
      },
      {
-      "bt": 178.88,
+      "bt": 178.86,
       "min": 9,
-      "ror": 6.87
+      "ror": 6.86
      },
      {
-      "bt": 185.98,
+      "bt": 185.99,
       "min": 10,
-      "ror": 7.39
+      "ror": 7.43
      },
      {
-      "bt": 193.48,
+      "bt": 193.49,
       "min": 11,
-      "ror": 7.41
+      "ror": 7.39
      },
      {
       "bt": 200.47,
@@ -952,13 +967,13 @@
     ],
     "waypoints": [
      {
-      "bt": 187.2,
+      "bt": 185.0,
       "key": "charge",
       "label": "CHARGE",
       "time_min": 0.0
      },
      {
-      "bt": 103.5,
+      "bt": 94.9,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -967,7 +982,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 5.36
+      "time_min": 5.45
      },
      {
       "bt": 185.1,
@@ -999,7 +1014,7 @@
     {
      "_af": 0.5,
      "airflow": 35,
-     "bt": 171.7
+     "bt": 171.6
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
@@ -1008,7 +1023,7 @@
    "Ambient Temp": "21.0",
    "Bean Humidity": "10.5",
    "Bean Name": "74110 GR2",
-   "Charge Temp": "178.6",
+   "Charge Temp": "174.8",
    "Density": "700.0",
    "Dev Profile Source": "default",
    "Dev Ramp": [
@@ -1025,10 +1040,10 @@
    "Drop Temp Source": "grid",
    "Drum Speed (%) (Dry|Mai|Dev)": "70% | 70% | 70%",
    "Drum Variable Speed": true,
-   "Dry Phase": "04:49",
-   "Dry Phase %": "41.0",
+   "Dry Phase": "04:59",
+   "Dry Phase %": "42.0",
    "End of Dry Temp": "152.0",
-   "Estimated TP": "145.1",
+   "Estimated TP": "115.6",
    "Extraction (%) (Dry|Mai|Dev)": "",
    "FC Anticipation (s)": "52",
    "FC Temp Source": "grid",
@@ -1039,15 +1054,15 @@
    "Heater FC Source": "grid",
    "Heater Ramp": [
     {
-     "bt": 148.7,
+     "bt": 150.7,
      "heater": 60
     },
     {
-     "bt": 156.0,
+     "bt": 157.2,
      "heater": 55
     },
     {
-     "bt": 163.4,
+     "bt": 163.8,
      "heater": 50
     },
     {
@@ -1055,11 +1070,11 @@
      "heater": 45
     },
     {
-     "bt": 171.8,
+     "bt": 171.7,
      "heater": 40
     },
     {
-     "bt": 174.9,
+     "bt": 174.8,
      "heater": 35
     }
    ],
@@ -1069,8 +1084,8 @@
    "History Reference Roast": null,
    "History Support": "grid only",
    "Maillard Conflict": "",
-   "Maillard Phase": "04:41",
-   "Maillard Phase %": "39.0",
+   "Maillard Phase": "04:31",
+   "Maillard Phase %": "38.0",
    "Peak ROR Warning": "",
    "Phase Timing Source": "grid",
    "Plan Confidence": "grid only",
@@ -1085,15 +1100,26 @@
    "Preheat Profile Available": false,
    "Process Type": "Natural",
    "Profile Replay Available": false,
-   "ROR Dry End": "14",
+   "ROR Dry End": "9",
    "ROR Dry Peak": "12",
    "Roaster": "ITOP Cyberroaster",
+   "Source Keys": {
+    "confidence": "grid only",
+    "dev_profile": "grid",
+    "drop": "grid",
+    "drop_ror": "grid",
+    "fc": "grid",
+    "heater": "grid",
+    "heater_fc": "grid",
+    "history_profile": "grid",
+    "timing": "grid"
+   },
    "Target Agtron": "Medium",
    "Target DTR": "20.0",
    "Target ROR Dev (Avg)": "9.3",
-   "Target ROR Maillard": "6.4",
+   "Target ROR Maillard": "6.6",
    "Target ROR at Drop": "3.8",
-   "Target ROR at FC": "4.8",
+   "Target ROR at FC": "5.9",
    "Total Time": "11:52",
    "Water Activity Used": "Not measured",
    "Weight": 250.0,
@@ -1101,13 +1127,13 @@
    "_replan_ctx": {
     "anchors_c": [
      {
-      "bt": 178.6,
+      "bt": 174.8,
       "key": "charge",
       "label": "CHARGE",
       "time_min": 0.0
      },
      {
-      "bt": 99.5,
+      "bt": 115.6,
       "key": "tp",
       "label": "TP",
       "time_min": 1.07
@@ -1116,7 +1142,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 4.82
+      "time_min": 4.99
      },
      {
       "bt": 182.0,
@@ -1144,7 +1170,7 @@
      2.75
     ],
     "drop_ror_c": 3.83,
-    "dry_ror_c": 14.0,
+    "dry_ror_c": 9.275,
     "fc_anticipation_sec": 51.5,
     "has_heater": true,
     "heater_dev_pct": 35.0,
@@ -1161,85 +1187,85 @@
     "pre_de_lead_sec": 30.0,
     "pre_de_step_pct": 5.0,
     "replans": [],
-    "ror_maillard_c": 6.41,
+    "ror_maillard_c": 6.649,
     "unit_f": false
    },
    "actions": [
-    "Below about 45% on the Skywalker V2, the remaining heater power generally no longer sustains the rate of rise. This is a low-authority zone, not an electrical cut-off."
+    "Below about 45% on the ITOP Cyberroaster, the remaining heater power generally no longer sustains the rate of rise. This is a low-authority zone, not an electrical cut-off."
    ],
    "bt_plan_curve": {
     "n_points": 714,
     "per_minute": [
      {
-      "bt": 178.6,
+      "bt": 174.8,
       "min": 0,
       "ror": -2.0
      },
      {
-      "bt": 100.07,
+      "bt": 116.03,
       "min": 1,
       "ror": -2.0
      },
      {
-      "bt": 106.04,
+      "bt": 119.46,
       "min": 2,
-      "ror": 12.72
+      "ror": 7.61
      },
      {
-      "bt": 122.61,
+      "bt": 129.63,
       "min": 3,
-      "ror": 18.79
+      "ror": 11.86
      },
      {
-      "bt": 141.1,
+      "bt": 141.9,
       "min": 4,
-      "ror": 16.71
+      "ror": 11.9
      },
      {
-      "bt": 153.56,
+      "bt": 152.08,
       "min": 5,
-      "ror": 8.52
+      "ror": 8.04
      },
      {
-      "bt": 160.85,
+      "bt": 159.13,
       "min": 6,
-      "ror": 6.38
+      "ror": 6.5
      },
      {
-      "bt": 166.65,
+      "bt": 165.3,
       "min": 7,
-      "ror": 5.43
+      "ror": 5.99
      },
      {
-      "bt": 172.07,
+      "bt": 171.37,
       "min": 8,
-      "ror": 5.62
+      "ror": 6.28
      },
      {
-      "bt": 178.26,
+      "bt": 178.12,
       "min": 9,
-      "ror": 6.95
+      "ror": 7.36
      },
      {
-      "bt": 186.69,
+      "bt": 186.73,
       "min": 10,
-      "ror": 10.3
+      "ror": 10.33
      },
      {
-      "bt": 197.36,
+      "bt": 197.37,
       "min": 11,
-      "ror": 9.72
+      "ror": 9.68
      }
     ],
     "waypoints": [
      {
-      "bt": 178.6,
+      "bt": 174.8,
       "key": "charge",
       "label": "CHARGE",
       "time_min": 0.0
      },
      {
-      "bt": 99.5,
+      "bt": 115.6,
       "key": "tp",
       "label": "TP",
       "time_min": 1.07
@@ -1248,7 +1274,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 4.82
+      "time_min": 4.99
      },
      {
       "bt": 182.0,
@@ -1286,7 +1312,7 @@
    "Ambient Temp": "21.0",
    "Bean Humidity": "10.5",
    "Bean Name": "74110 GR2",
-   "Charge Temp": "178.6",
+   "Charge Temp": "174.8",
    "Density": "700.0",
    "Dev Profile Source": "default",
    "Dev Ramp": [
@@ -1303,10 +1329,10 @@
    "Drop Temp Source": "grid",
    "Drum Speed (%) (Dry|Mai|Dev)": "85% | 85% | 85%",
    "Drum Variable Speed": true,
-   "Dry Phase": "04:49",
-   "Dry Phase %": "41.0",
+   "Dry Phase": "04:59",
+   "Dry Phase %": "42.0",
    "End of Dry Temp": "152.0",
-   "Estimated TP": "142.1",
+   "Estimated TP": "89.7",
    "Extraction (%) (Dry|Mai|Dev)": "",
    "FC Anticipation (s)": "52",
    "FC Temp Source": "grid",
@@ -1317,11 +1343,11 @@
    "Heater FC Source": "grid",
    "Heater Ramp": [
     {
-     "bt": 148.7,
+     "bt": 148.8,
      "heater": 60
     },
     {
-     "bt": 156.0,
+     "bt": 156.1,
      "heater": 55
     },
     {
@@ -1333,7 +1359,7 @@
      "heater": 45
     },
     {
-     "bt": 171.8,
+     "bt": 171.7,
      "heater": 40
     },
     {
@@ -1347,8 +1373,8 @@
    "History Reference Roast": "74110 GR2 - Natural  Dry Process - 2025_26-04-30_1240.alog",
    "History Support": "grid only",
    "Maillard Conflict": "",
-   "Maillard Phase": "04:41",
-   "Maillard Phase %": "39.0",
+   "Maillard Phase": "04:31",
+   "Maillard Phase %": "38.0",
    "Peak ROR Warning": "",
    "Phase Timing Source": "grid",
    "Plan Confidence": "grid only",
@@ -1366,12 +1392,23 @@
    "ROR Dry End": "14",
    "ROR Dry Peak": "12",
    "Roaster": "ITOP Cyberroaster",
+   "Source Keys": {
+    "confidence": "grid only",
+    "dev_profile": "grid",
+    "drop": "grid",
+    "drop_ror": "grid",
+    "fc": "grid",
+    "heater": "grid",
+    "heater_fc": "grid",
+    "history_profile": "reference",
+    "timing": "grid"
+   },
    "Target Agtron": "Medium",
    "Target DTR": "20.0",
    "Target ROR Dev (Avg)": "9.3",
-   "Target ROR Maillard": "6.4",
+   "Target ROR Maillard": "6.6",
    "Target ROR at Drop": "3.9",
-   "Target ROR at FC": "4.7",
+   "Target ROR at FC": "4.8",
    "Total Time": "11:52",
    "Water Activity Used": "Not measured",
    "Weight": 400.0,
@@ -1379,13 +1416,13 @@
    "_replan_ctx": {
     "anchors_c": [
      {
-      "bt": 178.6,
+      "bt": 174.8,
       "key": "charge",
       "label": "CHARGE",
       "time_min": 0.0
      },
      {
-      "bt": 98.7,
+      "bt": 89.7,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -1394,7 +1431,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 4.82
+      "time_min": 4.98
      },
      {
       "bt": 182.0,
@@ -1439,7 +1476,7 @@
     "pre_de_lead_sec": 30.0,
     "pre_de_step_pct": 5.0,
     "replans": [],
-    "ror_maillard_c": 6.41,
+    "ror_maillard_c": 6.639,
     "unit_f": false
    },
    "actions": [
@@ -1451,81 +1488,81 @@
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy.",
-    "Below about 45% on the Skywalker V2, the remaining heater power generally no longer sustains the rate of rise. This is a low-authority zone, not an electrical cut-off."
+    "Below about 45% on the ITOP Cyberroaster, the remaining heater power generally no longer sustains the rate of rise. This is a low-authority zone, not an electrical cut-off."
    ],
    "bt_plan_curve": {
     "n_points": 714,
     "per_minute": [
      {
-      "bt": 178.6,
+      "bt": 174.8,
       "min": 0,
       "ror": -2.0
      },
      {
-      "bt": 101.4,
+      "bt": 92.59,
       "min": 1,
       "ror": -2.0
      },
      {
-      "bt": 104.39,
+      "bt": 95.93,
       "min": 2,
-      "ror": 12.49
+      "ror": 13.71
      },
      {
-      "bt": 121.32,
+      "bt": 114.65,
       "min": 3,
-      "ror": 19.54
+      "ror": 21.8
      },
      {
-      "bt": 140.67,
+      "bt": 136.59,
       "min": 4,
-      "ror": 17.51
+      "ror": 20.32
      },
      {
-      "bt": 153.58,
+      "bt": 152.19,
       "min": 5,
-      "ror": 8.64
+      "ror": 10.19
      },
      {
-      "bt": 160.95,
+      "bt": 160.28,
       "min": 6,
-      "ror": 6.41
+      "ror": 6.93
      },
      {
-      "bt": 166.73,
+      "bt": 166.44,
       "min": 7,
-      "ror": 5.41
+      "ror": 5.65
      },
      {
-      "bt": 172.12,
+      "bt": 171.98,
       "min": 8,
-      "ror": 5.58
+      "ror": 5.68
      },
      {
-      "bt": 178.27,
+      "bt": 178.21,
       "min": 9,
-      "ror": 6.92
+      "ror": 7.02
      },
      {
-      "bt": 186.69,
+      "bt": 186.72,
       "min": 10,
-      "ror": 10.3
+      "ror": 10.33
      },
      {
-      "bt": 197.36,
+      "bt": 197.37,
       "min": 11,
-      "ror": 9.72
+      "ror": 9.68
      }
     ],
     "waypoints": [
      {
-      "bt": 178.6,
+      "bt": 174.8,
       "key": "charge",
       "label": "CHARGE",
       "time_min": 0.0
      },
      {
-      "bt": 98.7,
+      "bt": 89.7,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -1534,7 +1571,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 4.82
+      "time_min": 4.98
      },
      {
       "bt": 182.0,
@@ -1581,7 +1618,7 @@
    "Ambient Temp": "21.0",
    "Bean Humidity": "10.5",
    "Bean Name": "74110 GR2",
-   "Charge Temp": "172.9",
+   "Charge Temp": "169.1",
    "Density": "700.0",
    "Dev Profile Source": "default",
    "Dev Ramp": [
@@ -1598,10 +1635,10 @@
    "Drop Temp Source": "grid",
    "Drum Speed (%) (Dry|Mai|Dev)": "85% | 85% | 85%",
    "Drum Variable Speed": true,
-   "Dry Phase": "04:49",
-   "Dry Phase %": "41.0",
+   "Dry Phase": "04:59",
+   "Dry Phase %": "42.0",
    "End of Dry Temp": "152.0",
-   "Estimated TP": "136.4",
+   "Estimated TP": "86.8",
    "Extraction (%) (Dry|Mai|Dev)": "",
    "FC Anticipation (s)": "52",
    "FC Temp Source": "grid",
@@ -1632,11 +1669,11 @@
      "heater": 41
     },
     {
-     "bt": 174.4,
+     "bt": 174.2,
      "heater": 36
     },
     {
-     "bt": 176.2,
+     "bt": 176.0,
      "heater": 35
     }
    ],
@@ -1646,8 +1683,8 @@
    "History Reference Roast": "74110 GR2 - Natural  Dry Process - 2025_26-04-30_1240.alog",
    "History Support": "grid only",
    "Maillard Conflict": "",
-   "Maillard Phase": "04:41",
-   "Maillard Phase %": "39.0",
+   "Maillard Phase": "04:31",
+   "Maillard Phase %": "38.0",
    "Peak ROR Warning": "",
    "Phase Timing Source": "grid",
    "Plan Confidence": "grid only",
@@ -1665,12 +1702,23 @@
    "ROR Dry End": "14",
    "ROR Dry Peak": "12",
    "Roaster": "ITOP Cyberroaster",
+   "Source Keys": {
+    "confidence": "grid only",
+    "dev_profile": "grid",
+    "drop": "grid",
+    "drop_ror": "grid",
+    "fc": "grid",
+    "heater": "grid",
+    "heater_fc": "grid",
+    "history_profile": "reference",
+    "timing": "grid"
+   },
    "Target Agtron": "Medium",
    "Target DTR": "20.0",
    "Target ROR Dev (Avg)": "9.3",
-   "Target ROR Maillard": "6.4",
+   "Target ROR Maillard": "6.6",
    "Target ROR at Drop": "3.9",
-   "Target ROR at FC": "4.6",
+   "Target ROR at FC": "4.7",
    "Total Time": "11:52",
    "Water Activity Used": "Not measured",
    "Weight": 400.0,
@@ -1678,13 +1726,13 @@
    "_replan_ctx": {
     "anchors_c": [
      {
-      "bt": 172.9,
+      "bt": 169.1,
       "key": "charge",
       "label": "CHARGE",
       "time_min": 0.0
      },
      {
-      "bt": 95.6,
+      "bt": 86.8,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -1693,7 +1741,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 4.82
+      "time_min": 4.98
      },
      {
       "bt": 182.0,
@@ -1738,7 +1786,7 @@
     "pre_de_lead_sec": 30.0,
     "pre_de_step_pct": 5.0,
     "replans": [],
-    "ror_maillard_c": 6.41,
+    "ror_maillard_c": 6.639,
     "unit_f": false
    },
    "actions": [
@@ -1750,82 +1798,82 @@
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy.",
-    "Below about 45% on the Skywalker V2, the remaining heater power generally no longer sustains the rate of rise. This is a low-authority zone, not an electrical cut-off.",
+    "Below about 45% on the ITOP Cyberroaster, the remaining heater power generally no longer sustains the rate of rise. This is a low-authority zone, not an electrical cut-off.",
     "Back-to-back (8 min since last drop): charge -5.7\u00b0, dry heater -4%"
    ],
    "bt_plan_curve": {
     "n_points": 714,
     "per_minute": [
      {
-      "bt": 172.9,
+      "bt": 169.1,
       "min": 0,
       "ror": -2.0
      },
      {
-      "bt": 98.21,
+      "bt": 89.59,
       "min": 1,
       "ror": -2.0
      },
      {
-      "bt": 101.68,
+      "bt": 93.36,
       "min": 2,
-      "ror": 13.32
+      "ror": 14.44
      },
      {
-      "bt": 119.7,
+      "bt": 113.05,
       "min": 3,
-      "ror": 20.76
+      "ror": 22.9
      },
      {
-      "bt": 140.2,
+      "bt": 136.04,
       "min": 4,
-      "ror": 18.44
+      "ror": 21.21
      },
      {
-      "bt": 153.61,
+      "bt": 152.19,
       "min": 5,
-      "ror": 8.79
+      "ror": 10.37
      },
      {
-      "bt": 161.05,
+      "bt": 160.36,
       "min": 6,
-      "ror": 6.44
+      "ror": 6.97
      },
      {
-      "bt": 166.84,
+      "bt": 166.52,
       "min": 7,
-      "ror": 5.37
+      "ror": 5.63
      },
      {
-      "bt": 172.17,
+      "bt": 172.02,
       "min": 8,
-      "ror": 5.52
+      "ror": 5.63
      },
      {
-      "bt": 178.28,
+      "bt": 178.22,
       "min": 9,
-      "ror": 6.89
+      "ror": 6.99
      },
      {
-      "bt": 186.69,
+      "bt": 186.72,
       "min": 10,
-      "ror": 10.3
+      "ror": 10.33
      },
      {
-      "bt": 197.36,
+      "bt": 197.37,
       "min": 11,
-      "ror": 9.72
+      "ror": 9.68
      }
     ],
     "waypoints": [
      {
-      "bt": 172.9,
+      "bt": 169.1,
       "key": "charge",
       "label": "CHARGE",
       "time_min": 0.0
      },
      {
-      "bt": 95.6,
+      "bt": 86.8,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -1834,7 +1882,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 4.82
+      "time_min": 4.98
      },
      {
       "bt": 182.0,
@@ -1872,7 +1920,7 @@
     {
      "_af": 0.5,
      "airflow": 35,
-     "bt": 172.6
+     "bt": 172.5
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
@@ -1881,7 +1929,7 @@
    "Ambient Temp": "22.0",
    "Bean Humidity": "10.5",
    "Bean Name": "Mbinga",
-   "Charge Temp": "166.3",
+   "Charge Temp": "164.6",
    "Density": "700.0",
    "Dev Profile Source": "default",
    "Dev Ramp": [
@@ -1898,10 +1946,10 @@
    "Drop Temp Source": "grid",
    "Drum Speed (%) (Dry|Mai|Dev)": "85% | 85% | 85%",
    "Drum Variable Speed": true,
-   "Dry Phase": "04:49",
-   "Dry Phase %": "41.0",
+   "Dry Phase": "04:58",
+   "Dry Phase %": "42.0",
    "End of Dry Temp": "152.0",
-   "Estimated TP": "129.8",
+   "Estimated TP": "84.4",
    "Extraction (%) (Dry|Mai|Dev)": "",
    "FC Anticipation (s)": "52",
    "FC Temp Source": "grid",
@@ -1916,23 +1964,23 @@
      "heater": 65
     },
     {
-     "bt": 156.4,
+     "bt": 156.3,
      "heater": 60
     },
     {
-     "bt": 164.0,
+     "bt": 163.9,
      "heater": 55
     },
     {
-     "bt": 169.4,
+     "bt": 169.3,
      "heater": 50
     },
     {
-     "bt": 172.7,
+     "bt": 172.5,
      "heater": 45
     },
     {
-     "bt": 176.0,
+     "bt": 175.8,
      "heater": 40
     }
    ],
@@ -1942,8 +1990,8 @@
    "History Reference Roast": "Mbinga - Washed Decaf (Sugarcane) - 2025_26-01-24_1732.alog",
    "History Support": "grid only",
    "Maillard Conflict": "",
-   "Maillard Phase": "04:41",
-   "Maillard Phase %": "39.0",
+   "Maillard Phase": "04:32",
+   "Maillard Phase %": "38.0",
    "Peak ROR Warning": "",
    "Phase Timing Source": "grid",
    "Plan Confidence": "grid only",
@@ -1961,12 +2009,23 @@
    "ROR Dry End": "14",
    "ROR Dry Peak": "12",
    "Roaster": "ITOP Cyberroaster",
+   "Source Keys": {
+    "confidence": "grid only",
+    "dev_profile": "grid",
+    "drop": "grid",
+    "drop_ror": "grid",
+    "fc": "grid",
+    "heater": "grid",
+    "heater_fc": "grid",
+    "history_profile": "reference",
+    "timing": "grid"
+   },
    "Target Agtron": "Medium",
    "Target DTR": "20.0",
    "Target ROR Dev (Avg)": "8.7",
-   "Target ROR Maillard": "6.7",
+   "Target ROR Maillard": "6.9",
    "Target ROR at Drop": "4.0",
-   "Target ROR at FC": "4.8",
+   "Target ROR at FC": "4.9",
    "Total Time": "11:52",
    "Water Activity Used": "Not measured",
    "Weight": 400.0,
@@ -1974,13 +2033,13 @@
    "_replan_ctx": {
     "anchors_c": [
      {
-      "bt": 166.3,
+      "bt": 164.6,
       "key": "charge",
       "label": "CHARGE",
       "time_min": 0.0
      },
      {
-      "bt": 92.0,
+      "bt": 84.4,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -1989,7 +2048,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 4.82
+      "time_min": 4.96
      },
      {
       "bt": 183.3,
@@ -2034,7 +2093,7 @@
     "pre_de_lead_sec": 30.0,
     "pre_de_step_pct": 5.0,
     "replans": [],
-    "ror_maillard_c": 6.695,
+    "ror_maillard_c": 6.905,
     "unit_f": false
    },
    "actions": [
@@ -2044,81 +2103,81 @@
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy.",
     "Action: Increase extraction/airflow to shed thermal energy.",
-    "Below about 45% on the Skywalker V2, the remaining heater power generally no longer sustains the rate of rise. This is a low-authority zone, not an electrical cut-off."
+    "Below about 45% on the ITOP Cyberroaster, the remaining heater power generally no longer sustains the rate of rise. This is a low-authority zone, not an electrical cut-off."
    ],
    "bt_plan_curve": {
     "n_points": 714,
     "per_minute": [
      {
-      "bt": 166.3,
+      "bt": 164.6,
       "min": 0,
       "ror": -2.0
      },
      {
-      "bt": 94.5,
+      "bt": 87.11,
       "min": 1,
       "ror": -2.0
      },
      {
-      "bt": 98.49,
+      "bt": 91.28,
       "min": 2,
-      "ror": 14.21
+      "ror": 15.11
      },
      {
-      "bt": 117.7,
+      "bt": 111.86,
       "min": 3,
-      "ror": 22.12
+      "ror": 23.9
      },
      {
-      "bt": 139.51,
+      "bt": 135.79,
       "min": 4,
-      "ror": 19.58
+      "ror": 22.0
      },
      {
-      "bt": 153.69,
+      "bt": 152.4,
       "min": 5,
-      "ror": 9.25
+      "ror": 10.63
      },
      {
-      "bt": 161.58,
+      "bt": 160.92,
       "min": 6,
-      "ror": 6.86
+      "ror": 7.33
      },
      {
-      "bt": 167.74,
+      "bt": 167.43,
       "min": 7,
-      "ror": 5.71
+      "ror": 5.95
      },
      {
-      "bt": 173.36,
+      "bt": 173.21,
       "min": 8,
-      "ror": 5.73
+      "ror": 5.85
      },
      {
-      "bt": 179.59,
+      "bt": 179.54,
       "min": 9,
-      "ror": 6.93
+      "ror": 7.02
      },
      {
-      "bt": 187.79,
+      "bt": 187.82,
       "min": 10,
-      "ror": 9.67
+      "ror": 9.69
      },
      {
-      "bt": 197.66,
+      "bt": 197.67,
       "min": 11,
-      "ror": 9.03
+      "ror": 9.0
      }
     ],
     "waypoints": [
      {
-      "bt": 166.3,
+      "bt": 164.6,
       "key": "charge",
       "label": "CHARGE",
       "time_min": 0.0
      },
      {
-      "bt": 92.0,
+      "bt": 84.4,
       "key": "tp",
       "label": "TP",
       "time_min": 1.17
@@ -2127,7 +2186,7 @@
       "bt": 152.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 4.82
+      "time_min": 4.96
      },
      {
       "bt": 183.3,
@@ -2163,7 +2222,7 @@
     {
      "_af": 0.5,
      "airflow": 35,
-     "bt": 168.7
+     "bt": 168.5
     }
    ],
    "AirWave Mode (Dry|Mai|Dev)": "",
@@ -2172,7 +2231,7 @@
    "Ambient Temp": "19.0",
    "Bean Humidity": "10.5",
    "Bean Name": "Unknown Origin",
-   "Charge Temp": "185.9",
+   "Charge Temp": "185.2",
    "Density": "700.0",
    "Dev Profile Source": "default",
    "Dev Ramp": [
@@ -2189,10 +2248,10 @@
    "Drop Temp Source": "grid",
    "Drum Speed (%) (Dry|Mai|Dev)": "80% | 80% | 80%",
    "Drum Variable Speed": true,
-   "Dry Phase": "04:04",
-   "Dry Phase %": "44.0",
+   "Dry Phase": "04:16",
+   "Dry Phase %": "46.0",
    "End of Dry Temp": "147.0",
-   "Estimated TP": "150.4",
+   "Estimated TP": "104.2",
    "Extraction (%) (Dry|Mai|Dev)": "",
    "FC Anticipation (s)": "52",
    "FC Temp Source": "grid",
@@ -2203,7 +2262,7 @@
    "Heater FC Source": "grid",
    "Heater Ramp": [
     {
-     "bt": 152.1,
+     "bt": 152.2,
      "heater": 60
     },
     {
@@ -2211,11 +2270,11 @@
      "heater": 55
     },
     {
-     "bt": 168.8,
+     "bt": 168.6,
      "heater": 50
     },
     {
-     "bt": 171.9,
+     "bt": 171.6,
      "heater": 45
     }
    ],
@@ -2225,8 +2284,8 @@
    "History Reference Roast": null,
    "History Support": "grid only",
    "Maillard Conflict": "",
-   "Maillard Phase": "03:50",
-   "Maillard Phase %": "41.0",
+   "Maillard Phase": "03:38",
+   "Maillard Phase %": "39.0",
    "Peak ROR Warning": "",
    "Phase Timing Source": "grid",
    "Plan Confidence": "grid only",
@@ -2244,12 +2303,23 @@
    "ROR Dry End": "14",
    "ROR Dry Peak": "10",
    "Roaster": "ITOP Cyberroaster",
+   "Source Keys": {
+    "confidence": "grid only",
+    "dev_profile": "grid",
+    "drop": "grid",
+    "drop_ror": "grid",
+    "fc": "grid",
+    "heater": "grid",
+    "heater_fc": "grid",
+    "history_profile": "grid",
+    "timing": "grid"
+   },
    "Target Agtron": "Light",
    "Target DTR": "14.6",
    "Target ROR Dev (Avg)": "5.2",
-   "Target ROR Maillard": "8.9",
+   "Target ROR Maillard": "9.4",
    "Target ROR at Drop": "4.9",
-   "Target ROR at FC": "7.2",
+   "Target ROR at FC": "8.1",
    "Total Time": "09:15",
    "Water Activity Used": "Not measured",
    "Weight": 350.0,
@@ -2257,13 +2327,13 @@
    "_replan_ctx": {
     "anchors_c": [
      {
-      "bt": 185.9,
+      "bt": 185.2,
       "key": "charge",
       "label": "CHARGE",
       "time_min": 0.0
      },
      {
-      "bt": 103.0,
+      "bt": 104.2,
       "key": "tp",
       "label": "TP",
       "time_min": 1.13
@@ -2272,7 +2342,7 @@
       "bt": 147.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 4.07
+      "time_min": 4.27
      },
      {
       "bt": 181.0,
@@ -2300,7 +2370,7 @@
      1.7
     ],
     "drop_ror_c": 4.89,
-    "dry_ror_c": 14.0,
+    "dry_ror_c": 13.668,
     "fc_anticipation_sec": 51.5,
     "has_heater": true,
     "heater_dev_pct": 45.0,
@@ -2317,59 +2387,59 @@
     "pre_de_lead_sec": 30.0,
     "pre_de_step_pct": 5.0,
     "replans": [],
-    "ror_maillard_c": 8.877,
+    "ror_maillard_c": 9.358,
     "unit_f": false
    },
    "actions": [
-    "The planned pre-first-crack heater enters the 45\u201350% low-margin zone; use the live rate of rise to decide whether to hold or adjust it."
+    "The planned pre-first-crack heater enters the 45\u201350% low-margin zone on the ITOP Cyberroaster; use the live rate of rise to decide whether to hold or adjust it."
    ],
    "bt_plan_curve": {
     "n_points": 557,
     "per_minute": [
      {
-      "bt": 185.9,
+      "bt": 185.2,
       "min": 0,
       "ror": -2.0
      },
      {
-      "bt": 104.74,
+      "bt": 105.92,
       "min": 1,
       "ror": -2.0
      },
      {
-      "bt": 110.24,
+      "bt": 110.29,
       "min": 2,
-      "ror": 14.77
+      "ror": 12.58
      },
      {
-      "bt": 128.88,
+      "bt": 126.64,
       "min": 3,
-      "ror": 20.0
+      "ror": 18.17
      },
      {
-      "bt": 146.17,
+      "bt": 143.59,
       "min": 4,
-      "ror": 12.72
+      "ror": 13.97
      },
      {
-      "bt": 156.97,
+      "bt": 155.02,
       "min": 5,
-      "ror": 10.18
+      "ror": 10.77
      },
      {
-      "bt": 166.52,
+      "bt": 165.33,
       "min": 6,
-      "ror": 8.92
+      "ror": 9.78
      },
      {
-      "bt": 174.76,
+      "bt": 174.38,
       "min": 7,
-      "ror": 7.58
+      "ror": 8.25
      },
      {
-      "bt": 181.61,
+      "bt": 181.62,
       "min": 8,
-      "ror": 5.92
+      "ror": 6.0
      },
      {
       "bt": 186.76,
@@ -2379,13 +2449,13 @@
     ],
     "waypoints": [
      {
-      "bt": 185.9,
+      "bt": 185.2,
       "key": "charge",
       "label": "CHARGE",
       "time_min": 0.0
      },
      {
-      "bt": 103.0,
+      "bt": 104.2,
       "key": "tp",
       "label": "TP",
       "time_min": 1.13
@@ -2394,7 +2464,7 @@
       "bt": 147.0,
       "key": "dry_end",
       "label": "DRY END",
-      "time_min": 4.07
+      "time_min": 4.27
      },
      {
       "bt": 181.0,
@@ -2432,6 +2502,1101 @@
   }
  },
  "roasts": {
+  "#17_26-08-07_Costa Rica Tarrazu La Pastora.alog": {
+   "batch_position": 2,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 19.45,
+     "severity": 1.9,
+     "time": 120.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 19.48,
+     "severity": 6.15,
+     "time": 177.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 16.11,
+     "severity": 3.1,
+     "time": 201.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 13.29,
+     "severity": 2.36,
+     "time": 220.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 15.68,
+     "severity": 5.63,
+     "time": 264.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.76,
+     "severity": 2.82,
+     "time": 294.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.48,
+     "severity": 1.75,
+     "time": 345.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.04,
+     "severity": 1.89,
+     "time": 382.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.16,
+     "severity": 3.21,
+     "time": 403.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 14.65,
+     "severity": 6.17,
+     "time": 432.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.03,
+     "severity": 3.06,
+     "time": 457.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 11.64,
+     "severity": 1.0,
+     "time": 508.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 12.21,
+     "severity": 4.54,
+     "time": 531.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 11.48,
+     "severity": 5.25,
+     "time": 589.5
+    }
+   ],
+   "date": "2026-08-07",
+   "dt_s": 1.5,
+   "dtr_pct": 22.1,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 16.46,
+     "severity": 1.71,
+     "time": 129.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 13.33,
+     "severity": 6.15,
+     "time": 156.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 13.01,
+     "severity": 3.1,
+     "time": 186.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 10.05,
+     "severity": 5.63,
+     "time": 213.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 10.92,
+     "severity": 2.36,
+     "time": 253.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.94,
+     "severity": 2.82,
+     "time": 286.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.74,
+     "severity": 1.75,
+     "time": 330.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.48,
+     "severity": 6.17,
+     "time": 372.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.94,
+     "severity": 3.21,
+     "time": 412.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.97,
+     "severity": 3.06,
+     "time": 445.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.67,
+     "severity": 4.54,
+     "time": 466.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 7.68,
+     "severity": 3.55,
+     "time": 498.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 10.64,
+     "severity": 1.0,
+     "time": 522.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.02,
+     "severity": 6.46,
+     "time": 549.0
+    }
+   ],
+   "green_weight_g": 180.0,
+   "milestones_bt_c": {
+    "charge": 160.1,
+    "drop": 207.2
+   },
+   "milestones_s": {
+    "drop": 598.5,
+    "dry_end": 283.5,
+    "fc_start": 466.5
+   },
+   "n_samples": 399,
+   "ror": {
+    "at_drop": 8.767,
+    "max": 21.067,
+    "min": -8.922
+   },
+   "turning_point": {
+    "bt_c": 91.7,
+    "index": 29,
+    "time_s": 43.5
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "#1_26-02-24_1858.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 0,
+     "ror_value": 5.33,
+     "severity": 1.06,
+     "time": 256.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 6.63,
+     "severity": 2.46,
+     "time": 290.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 6.57,
+     "severity": 1.87,
+     "time": 348.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 6.44,
+     "severity": 1.37,
+     "time": 370.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 5.75,
+     "severity": 1.11,
+     "time": 406.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 6.15,
+     "severity": 1.74,
+     "time": 434.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 6.4,
+     "severity": 1.39,
+     "time": 492.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 8.42,
+     "severity": 10.15,
+     "time": 592.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 3.96,
+     "severity": 1.38,
+     "time": 702.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 3.71,
+     "severity": 4.37,
+     "time": 728.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 5.78,
+     "severity": 4.11,
+     "time": 754.0
+    }
+   ],
+   "date": "2026-02-24",
+   "dt_s": 2.0,
+   "dtr_pct": null,
+   "flicks": [
+    {
+     "phase": 0,
+     "ror_value": 4.27,
+     "severity": 1.06,
+     "time": 268.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 4.7,
+     "severity": 1.87,
+     "time": 306.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 5.06,
+     "severity": 1.37,
+     "time": 358.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 4.65,
+     "severity": 1.11,
+     "time": 394.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 3.93,
+     "severity": 3.59,
+     "time": 420.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 4.41,
+     "severity": 1.74,
+     "time": 448.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 5.01,
+     "severity": 1.39,
+     "time": 522.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 2.58,
+     "severity": 1.38,
+     "time": 680.0
+    },
+    {
+     "phase": 0,
+     "ror_value": -0.66,
+     "severity": 4.37,
+     "time": 716.0
+    },
+    {
+     "phase": 0,
+     "ror_value": -1.73,
+     "severity": 7.93,
+     "time": 740.0
+    },
+    {
+     "phase": 0,
+     "ror_value": 1.67,
+     "severity": 4.11,
+     "time": 764.0
+    }
+   ],
+   "green_weight_g": 0.6,
+   "milestones_bt_c": {
+    "charge": 182.323,
+    "drop": 193.795
+   },
+   "milestones_s": {
+    "drop": 778.0,
+    "dry_end": null,
+    "fc_start": null
+   },
+   "n_samples": 389,
+   "ror": {
+    "at_drop": 6.258,
+    "max": 8.458,
+    "min": -9.832
+   },
+   "turning_point": {
+    "bt_c": 135.919,
+    "index": 42,
+    "time_s": 84.0
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "#1_26-03-29_1738.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 2,
+     "ror_value": 8.52,
+     "severity": 1.14,
+     "time": 478.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 10.4,
+     "severity": 3.15,
+     "time": 606.0
+    }
+   ],
+   "date": "2026-03-29",
+   "dt_s": 2.0,
+   "dtr_pct": 25.2,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 7.25,
+     "severity": 3.15,
+     "time": 430.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.38,
+     "severity": 1.14,
+     "time": 508.0
+    }
+   ],
+   "green_weight_g": 0.5,
+   "milestones_bt_c": {
+    "charge": 191.118,
+    "drop": 205.717
+   },
+   "milestones_s": {
+    "drop": 800.0,
+    "dry_end": 304.0,
+    "fc_start": 598.0
+   },
+   "n_samples": 400,
+   "ror": {
+    "at_drop": 6.338,
+    "max": 18.05,
+    "min": -7.528
+   },
+   "turning_point": {
+    "bt_c": 87.196,
+    "index": 28,
+    "time_s": 56.0
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "#1_26-05-21_1736.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 2,
+     "ror_value": 12.69,
+     "severity": 2.26,
+     "time": 462.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 10.61,
+     "severity": 1.23,
+     "time": 544.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 12.96,
+     "severity": 4.92,
+     "time": 626.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 12.96,
+     "severity": 1.05,
+     "time": 654.0
+    }
+   ],
+   "date": "2026-05-21",
+   "dt_s": 2.0,
+   "dtr_pct": 26.0,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 10.44,
+     "severity": 2.26,
+     "time": 324.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 8.05,
+     "severity": 4.92,
+     "time": 524.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 9.38,
+     "severity": 1.23,
+     "time": 560.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 11.91,
+     "severity": 1.05,
+     "time": 640.0
+    }
+   ],
+   "green_weight_g": 0.5,
+   "milestones_bt_c": {
+    "charge": 190.065,
+    "drop": 219.039
+   },
+   "milestones_s": {
+    "drop": 668.0,
+    "dry_end": 366.0,
+    "fc_start": 494.0
+   },
+   "n_samples": 334,
+   "ror": {
+    "at_drop": 11.257,
+    "max": 22.604,
+    "min": -8.888
+   },
+   "turning_point": {
+    "bt_c": 86.688,
+    "index": 25,
+    "time_s": 50.0
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "#2_26-03-29_1838.alog": {
+   "batch_position": 2,
+   "crashes": [
+    {
+     "phase": 2,
+     "ror_value": 9.08,
+     "severity": 1.19,
+     "time": 340.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 10.06,
+     "severity": 2.64,
+     "time": 552.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.87,
+     "severity": 1.89,
+     "time": 714.0
+    }
+   ],
+   "date": "2026-03-29",
+   "dt_s": 2.0,
+   "dtr_pct": 26.5,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 7.89,
+     "severity": 1.19,
+     "time": 320.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.42,
+     "severity": 2.64,
+     "time": 460.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 3.3,
+     "severity": 2.57,
+     "time": 700.0
+    }
+   ],
+   "green_weight_g": 0.5,
+   "milestones_bt_c": {
+    "charge": 184.996,
+    "drop": 201.324
+   },
+   "milestones_s": {
+    "drop": 732.0,
+    "dry_end": 270.0,
+    "fc_start": 538.0
+   },
+   "n_samples": 366,
+   "ror": {
+    "at_drop": 6.103,
+    "max": 20.998,
+    "min": -9.233
+   },
+   "turning_point": {
+    "bt_c": 85.153,
+    "index": 25,
+    "time_s": 50.0
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "#2_26-05-21_1805.alog": {
+   "batch_position": 2,
+   "crashes": [
+    {
+     "phase": 3,
+     "ror_value": 11.74,
+     "severity": 4.75,
+     "time": 590.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 9.15,
+     "severity": 1.9,
+     "time": 724.0
+    }
+   ],
+   "date": "2026-05-21",
+   "dt_s": 2.0,
+   "dtr_pct": 20.2,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 6.99,
+     "severity": 4.75,
+     "time": 370.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 7.25,
+     "severity": 1.9,
+     "time": 664.0
+    }
+   ],
+   "green_weight_g": 0.5,
+   "milestones_bt_c": {
+    "charge": 185.837,
+    "drop": 207.093
+   },
+   "milestones_s": {
+    "drop": 734.0,
+    "dry_end": 318.0,
+    "fc_start": 586.0
+   },
+   "n_samples": 367,
+   "ror": {
+    "at_drop": 8.503,
+    "max": 21.197,
+    "min": -7.408
+   },
+   "turning_point": {
+    "bt_c": 87.874,
+    "index": 25,
+    "time_s": 50.0
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "#3_26-04-09_1750.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 12.27,
+     "severity": 1.01,
+     "time": 242.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 11.84,
+     "severity": 2.69,
+     "time": 458.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 11.09,
+     "severity": 3.92,
+     "time": 634.0
+    }
+   ],
+   "date": "2026-04-09",
+   "dt_s": 2.0,
+   "dtr_pct": 30.8,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 11.26,
+     "severity": 1.01,
+     "time": 232.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.15,
+     "severity": 2.69,
+     "time": 364.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.54,
+     "severity": 5.55,
+     "time": 524.0
+    }
+   ],
+   "green_weight_g": 0.5,
+   "milestones_bt_c": {
+    "charge": 210.732,
+    "drop": 212.281
+   },
+   "milestones_s": {
+    "drop": 642.0,
+    "dry_end": 316.0,
+    "fc_start": 444.0
+   },
+   "n_samples": 321,
+   "ror": {
+    "at_drop": 10.592,
+    "max": 22.477,
+    "min": -7.912
+   },
+   "turning_point": {
+    "bt_c": 97.608,
+    "index": 26,
+    "time_s": 52.0
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "#3_26-06-07_1747.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 2,
+     "ror_value": 7.63,
+     "severity": 1.24,
+     "time": 586.0
+    }
+   ],
+   "date": "2026-06-07",
+   "dt_s": 2.0,
+   "dtr_pct": 17.2,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 6.39,
+     "severity": 1.24,
+     "time": 456.0
+    }
+   ],
+   "green_weight_g": 0.5,
+   "milestones_bt_c": {
+    "charge": 194.027,
+    "drop": 190.651
+   },
+   "milestones_s": {
+    "drop": 792.0,
+    "dry_end": 316.0,
+    "fc_start": 656.0
+   },
+   "n_samples": 396,
+   "ror": {
+    "at_drop": 2.948,
+    "max": 21.817,
+    "min": -6.964
+   },
+   "turning_point": {
+    "bt_c": 86.486,
+    "index": 26,
+    "time_s": 52.0
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "#4_26-04-20_1802.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 2,
+     "ror_value": 11.3,
+     "severity": 5.55,
+     "time": 624.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 6.55,
+     "severity": 1.31,
+     "time": 732.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 6.1,
+     "severity": 1.05,
+     "time": 760.0
+    }
+   ],
+   "date": "2026-04-20",
+   "dt_s": 2.0,
+   "dtr_pct": 19.3,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 5.75,
+     "severity": 5.55,
+     "time": 454.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.25,
+     "severity": 1.31,
+     "time": 716.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 4.53,
+     "severity": 1.57,
+     "time": 746.0
+    }
+   ],
+   "green_weight_g": 0.5,
+   "milestones_bt_c": {
+    "charge": 196.228,
+    "drop": 199.616
+   },
+   "milestones_s": {
+    "drop": 778.0,
+    "dry_end": 374.0,
+    "fc_start": 628.0
+   },
+   "n_samples": 389,
+   "ror": {
+    "at_drop": 5.478,
+    "max": 20.0,
+    "min": -9.601
+   },
+   "turning_point": {
+    "bt_c": 88.459,
+    "index": 27,
+    "time_s": 54.0
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "#5_26-05-10_1602.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 3,
+     "ror_value": 5.25,
+     "severity": 1.7,
+     "time": 868.0
+    }
+   ],
+   "date": "2026-05-10",
+   "dt_s": 2.0,
+   "dtr_pct": 18.7,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 3.55,
+     "severity": 1.7,
+     "time": 756.0
+    }
+   ],
+   "green_weight_g": 0.5,
+   "milestones_bt_c": {
+    "charge": 196.73,
+    "drop": 199.153
+   },
+   "milestones_s": {
+    "drop": 950.0,
+    "dry_end": 374.0,
+    "fc_start": 772.0
+   },
+   "n_samples": 475,
+   "ror": {
+    "at_drop": 3.43,
+    "max": 19.567,
+    "min": -6.87
+   },
+   "turning_point": {
+    "bt_c": 86.671,
+    "index": 26,
+    "time_s": 52.0
+   },
+   "unit": "C",
+   "uuid": "19d51f5b-ddfc-4f61-b1c5-267e2db60b19"
+  },
+  "26-08-03_1354 Ethiopian Organic Guji Uraga - 2.alog": {
+   "batch_position": 4,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 20.41,
+     "severity": 2.13,
+     "time": 174.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 18.57,
+     "severity": 2.15,
+     "time": 204.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 15.26,
+     "severity": 5.46,
+     "time": 268.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.1,
+     "severity": 3.46,
+     "time": 304.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.44,
+     "severity": 4.18,
+     "time": 325.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.29,
+     "severity": 4.62,
+     "time": 373.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.46,
+     "severity": 1.75,
+     "time": 405.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.45,
+     "severity": 3.02,
+     "time": 438.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.32,
+     "severity": 3.23,
+     "time": 466.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.66,
+     "severity": 3.26,
+     "time": 496.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.97,
+     "severity": 2.09,
+     "time": 534.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.12,
+     "severity": 6.03,
+     "time": 555.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.92,
+     "severity": 2.88,
+     "time": 588.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 8.44,
+     "severity": 3.53,
+     "time": 625.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 11.03,
+     "severity": 5.3,
+     "time": 661.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 10.75,
+     "severity": 3.86,
+     "time": 684.0
+    }
+   ],
+   "date": "2026-08-03",
+   "dt_s": 1.5,
+   "dtr_pct": 17.9,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 16.42,
+     "severity": 2.15,
+     "time": 186.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 14.31,
+     "severity": 1.88,
+     "time": 213.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 12.63,
+     "severity": 2.51,
+     "time": 238.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 9.8,
+     "severity": 5.46,
+     "time": 258.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.64,
+     "severity": 3.46,
+     "time": 289.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.26,
+     "severity": 4.18,
+     "time": 313.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.59,
+     "severity": 1.16,
+     "time": 336.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 5.67,
+     "severity": 4.62,
+     "time": 360.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 5.71,
+     "severity": 1.75,
+     "time": 396.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 5.43,
+     "severity": 3.02,
+     "time": 426.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 3.1,
+     "severity": 6.03,
+     "time": 448.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 5.09,
+     "severity": 3.23,
+     "time": 474.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 5.4,
+     "severity": 3.26,
+     "time": 507.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 5.88,
+     "severity": 2.09,
+     "time": 543.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 3.04,
+     "severity": 2.88,
+     "time": 564.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 1.41,
+     "severity": 9.62,
+     "time": 597.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 4.91,
+     "severity": 3.53,
+     "time": 652.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.73,
+     "severity": 5.02,
+     "time": 675.0
+    }
+   ],
+   "green_weight_g": 300.0,
+   "milestones_bt_c": {
+    "charge": 186.9,
+    "drop": 210.525
+   },
+   "milestones_s": {
+    "drop": 688.5,
+    "dry_end": 280.5,
+    "fc_start": 565.5
+   },
+   "n_samples": 459,
+   "ror": {
+    "at_drop": 9.897,
+    "max": 23.543,
+    "min": -9.823
+   },
+   "turning_point": {
+    "bt_c": 98.49,
+    "index": 29,
+    "time_s": 43.5
+   },
+   "unit": "C",
+   "uuid": ""
+  },
   "74110 GR2 - Natural  Dry Process - 2025_26-03-07_0847.alog": {
    "batch_position": 1,
    "crashes": [
@@ -2696,6 +3861,193 @@
    "unit": "C",
    "uuid": "a82364a8-e9ad-447c-a3d8-5f49111dc3ee"
   },
+  "Barazilie - Anaerobic Fermentation - 2025_26-06-28_1037.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 16.52,
+     "severity": 1.73,
+     "time": 146.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 13.66,
+     "severity": 1.57,
+     "time": 207.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.8,
+     "severity": 1.24,
+     "time": 239.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.1,
+     "severity": 1.96,
+     "time": 260.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.53,
+     "severity": 2.74,
+     "time": 309.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 8.07,
+     "severity": 1.24,
+     "time": 459.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 6.37,
+     "severity": 1.69,
+     "time": 495.0
+    }
+   ],
+   "date": "2026-06-28",
+   "dt_s": 1.0,
+   "dtr_pct": 15.8,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 11.14,
+     "severity": 1.96,
+     "time": 221.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.55,
+     "severity": 1.24,
+     "time": 250.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.78,
+     "severity": 2.74,
+     "time": 302.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 6.83,
+     "severity": 1.24,
+     "time": 450.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 4.69,
+     "severity": 1.69,
+     "time": 490.0
+    }
+   ],
+   "green_weight_g": 244.0,
+   "milestones_bt_c": {
+    "charge": 171.7,
+    "drop": 197.3
+   },
+   "milestones_s": {
+    "drop": 506.0,
+    "dry_end": 218.0,
+    "fc_start": 426.0
+   },
+   "n_samples": 506,
+   "ror": {
+    "at_drop": 5.942,
+    "max": 17.225,
+    "min": -9.801
+   },
+   "turning_point": {
+    "bt_c": 114.5,
+    "index": 61,
+    "time_s": 61.0
+   },
+   "unit": "C",
+   "uuid": "2d1a0dd8-2f15-4cb5-a8c9-41cfb583bb49"
+  },
+  "Catuai - Washed  Wet - 2024 _25-08-28_1540.alog": {
+   "batch_position": 1,
+   "crashes": [],
+   "date": "2025-08-28",
+   "dt_s": 2.0,
+   "dtr_pct": 17.1,
+   "flicks": [],
+   "green_weight_g": 300.0,
+   "milestones_bt_c": {
+    "charge": 185.7,
+    "drop": 188.8
+   },
+   "milestones_s": {
+    "drop": 596.0,
+    "dry_end": 274.0,
+    "fc_start": 494.0
+   },
+   "n_samples": 298,
+   "ror": {
+    "at_drop": 1.567,
+    "max": 13.967,
+    "min": -8.629
+   },
+   "turning_point": {
+    "bt_c": 110.1,
+    "index": 33,
+    "time_s": 66.0
+   },
+   "unit": "C",
+   "uuid": "1d787a7c-fa3d-44c5-a801-242bf93f5c86"
+  },
+  "Catuai - Washed  Wet - 2024_25-09-28_1356.alog": {
+   "batch_position": 2,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 14.87,
+     "severity": 1.1,
+     "time": 184.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.33,
+     "severity": 1.08,
+     "time": 496.0
+    }
+   ],
+   "date": "2025-09-28",
+   "dt_s": 2.0,
+   "dtr_pct": 17.0,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 8.25,
+     "severity": 1.08,
+     "time": 482.0
+    }
+   ],
+   "green_weight_g": 302.4,
+   "milestones_bt_c": {
+    "charge": 186.0,
+    "drop": 190.567
+   },
+   "milestones_s": {
+    "drop": 622.0,
+    "dry_end": 314.0,
+    "fc_start": 516.0
+   },
+   "n_samples": 311,
+   "ror": {
+    "at_drop": 4.304,
+    "max": 15.075,
+    "min": -9.151
+   },
+   "turning_point": {
+    "bt_c": 101.3,
+    "index": 35,
+    "time_s": 70.0
+   },
+   "unit": "C",
+   "uuid": "1d787a7c-fa3d-44c5-a801-242bf93f5c86"
+  },
   "Caturra Catuai - Natural Dry Process - 2025_26-06-07_1051.alog": {
    "batch_position": 2,
    "crashes": [
@@ -2740,6 +4092,473 @@
    },
    "unit": "C",
    "uuid": "8eafb570-9a26-47a3-ab8e-071bc3b10f44"
+  },
+  "Cauca Finca El Platanillo Luis Eduardo Trochez Castillo_33_250g_light_072426.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 22.87,
+     "severity": 2.18,
+     "time": 153.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 20.12,
+     "severity": 2.54,
+     "time": 180.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 18.34,
+     "severity": 1.86,
+     "time": 213.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 17.67,
+     "severity": 3.14,
+     "time": 235.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 16.39,
+     "severity": 3.69,
+     "time": 288.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 14.1,
+     "severity": 3.29,
+     "time": 309.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.88,
+     "severity": 1.55,
+     "time": 330.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.76,
+     "severity": 1.56,
+     "time": 358.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.2,
+     "severity": 2.46,
+     "time": 393.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 14.48,
+     "severity": 4.87,
+     "time": 417.0
+    }
+   ],
+   "date": "2026-07-24",
+   "dt_s": 1.5,
+   "dtr_pct": 14.8,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 17.58,
+     "severity": 2.54,
+     "time": 172.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 16.48,
+     "severity": 1.86,
+     "time": 196.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 14.53,
+     "severity": 3.14,
+     "time": 228.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.7,
+     "severity": 3.69,
+     "time": 264.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.81,
+     "severity": 3.29,
+     "time": 298.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.33,
+     "severity": 1.55,
+     "time": 322.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.73,
+     "severity": 2.46,
+     "time": 345.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.2,
+     "severity": 1.56,
+     "time": 367.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.61,
+     "severity": 4.87,
+     "time": 402.0
+    }
+   ],
+   "green_weight_g": 253.1,
+   "milestones_bt_c": {
+    "charge": 177.8,
+    "drop": 200.5
+   },
+   "milestones_s": {
+    "drop": 487.5,
+    "dry_end": 259.5,
+    "fc_start": 415.5
+   },
+   "n_samples": 325,
+   "ror": {
+    "at_drop": 2.298,
+    "max": 25.156,
+    "min": -7.978
+   },
+   "turning_point": {
+    "bt_c": 95.5,
+    "index": 37,
+    "time_s": 55.5
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "Chocolate Recipe - Washed  Wet Process - 2024_25-12-20_1101.alog": {
+   "batch_position": 1,
+   "crashes": [],
+   "date": "2025-12-20",
+   "dt_s": 2.0,
+   "dtr_pct": 18.0,
+   "flicks": [
+    {
+     "phase": 3,
+     "ror_value": 5.31,
+     "severity": 1.48,
+     "time": 672.0
+    }
+   ],
+   "green_weight_g": 400.0,
+   "milestones_bt_c": {
+    "charge": 183.7,
+    "drop": 200.1
+   },
+   "milestones_s": {
+    "drop": 724.0,
+    "dry_end": 352.0,
+    "fc_start": 594.0
+   },
+   "n_samples": 362,
+   "ror": {
+    "at_drop": 6.85,
+    "max": 16.242,
+    "min": -9.094
+   },
+   "turning_point": {
+    "bt_c": 87.1,
+    "index": 34,
+    "time_s": 68.0
+   },
+   "unit": "C",
+   "uuid": "26dbc072-f798-4cae-86d8-287080c09628"
+  },
+  "Colombia Bella Vista Zarza Natural_26-07-10_1932.alog": {
+   "batch_position": 2,
+   "crashes": [
+    {
+     "phase": 2,
+     "ror_value": 8.54,
+     "severity": 1.28,
+     "time": 424.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 6.8,
+     "severity": 1.23,
+     "time": 513.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 6.6,
+     "severity": 2.38,
+     "time": 552.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.89,
+     "severity": 1.97,
+     "time": 600.0
+    }
+   ],
+   "date": "2026-07-10",
+   "dt_s": 1.5,
+   "dtr_pct": 10.2,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 7.27,
+     "severity": 1.28,
+     "time": 415.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 5.57,
+     "severity": 1.23,
+     "time": 501.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 4.22,
+     "severity": 2.38,
+     "time": 532.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 3.64,
+     "severity": 2.25,
+     "time": 573.0
+    }
+   ],
+   "green_weight_g": 350.0,
+   "milestones_bt_c": {
+    "charge": 184.056,
+    "drop": 194.019
+   },
+   "milestones_s": {
+    "drop": 603.0,
+    "dry_end": 276.0,
+    "fc_start": 541.5
+   },
+   "n_samples": 401,
+   "ror": {
+    "at_drop": 5.819,
+    "max": 15.631,
+    "min": -9.549
+   },
+   "turning_point": {
+    "bt_c": 108.389,
+    "index": 39,
+    "time_s": 58.5
+   },
+   "unit": "F",
+   "uuid": ""
+  },
+  "Colombia Campo Hermoso Watermelon Caturra_26-06-04_1956.alog": {
+   "batch_position": 2,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 15.74,
+     "severity": 1.29,
+     "time": 223.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.33,
+     "severity": 1.24,
+     "time": 388.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.56,
+     "severity": 1.28,
+     "time": 453.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 8.38,
+     "severity": 1.36,
+     "time": 483.0
+    }
+   ],
+   "date": "2026-06-04",
+   "dt_s": 1.5,
+   "dtr_pct": 8.6,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 9.09,
+     "severity": 1.24,
+     "time": 381.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.28,
+     "severity": 1.28,
+     "time": 438.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 7.02,
+     "severity": 1.36,
+     "time": 474.0
+    }
+   ],
+   "green_weight_g": 333.0,
+   "milestones_bt_c": {
+    "charge": 175.167,
+    "drop": 194.519
+   },
+   "milestones_s": {
+    "drop": 508.5,
+    "dry_end": 271.5,
+    "fc_start": 465.0
+   },
+   "n_samples": 337,
+   "ror": {
+    "at_drop": 6.446,
+    "max": 17.08,
+    "min": -9.663
+   },
+   "turning_point": {
+    "bt_c": 107.667,
+    "index": 40,
+    "time_s": 60.0
+   },
+   "unit": "F",
+   "uuid": ""
+  },
+  "Colombia Finca El Paraiso Y05 Thermal Shock Castillo_26-08-01_1922.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 15.95,
+     "severity": 1.91,
+     "time": 190.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.32,
+     "severity": 1.04,
+     "time": 411.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.32,
+     "severity": 1.06,
+     "time": 441.0
+    }
+   ],
+   "date": "2026-08-01",
+   "dt_s": 1.5,
+   "dtr_pct": 14.7,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 14.04,
+     "severity": 1.91,
+     "time": 180.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.26,
+     "severity": 1.06,
+     "time": 390.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.28,
+     "severity": 1.04,
+     "time": 420.0
+    }
+   ],
+   "green_weight_g": 340.0,
+   "milestones_bt_c": {
+    "charge": 185.056,
+    "drop": 198.778
+   },
+   "milestones_s": {
+    "drop": 561.0,
+    "dry_end": 297.0,
+    "fc_start": 478.5
+   },
+   "n_samples": 374,
+   "ror": {
+    "at_drop": 4.234,
+    "max": 17.478,
+    "min": -8.556
+   },
+   "turning_point": {
+    "bt_c": 100.278,
+    "index": 39,
+    "time_s": 58.5
+   },
+   "unit": "F",
+   "uuid": ""
+  },
+  "Colombia Nasa Wesx Yuppie Natural_26-05-28_1655.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 2,
+     "ror_value": 14.27,
+     "severity": 1.14,
+     "time": 300.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 6.58,
+     "severity": 1.57,
+     "time": 543.0
+    }
+   ],
+   "date": "2026-05-28",
+   "dt_s": 1.5,
+   "dtr_pct": 11.4,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 13.13,
+     "severity": 1.14,
+     "time": 277.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.02,
+     "severity": 1.57,
+     "time": 534.0
+    }
+   ],
+   "green_weight_g": 350.0,
+   "milestones_bt_c": {
+    "charge": 174.556,
+    "drop": 195.333
+   },
+   "milestones_s": {
+    "drop": 550.5,
+    "dry_end": 292.5,
+    "fc_start": 487.5
+   },
+   "n_samples": 367,
+   "ror": {
+    "at_drop": 5.591,
+    "max": 16.266,
+    "min": -9.748
+   },
+   "turning_point": {
+    "bt_c": 101.278,
+    "index": 43,
+    "time_s": 64.5
+   },
+   "unit": "F",
+   "uuid": ""
   },
   "Cortes - Washed  Wet Process - 2024_26-01-16_1149.alog": {
    "batch_position": 1,
@@ -2830,6 +4649,1171 @@
    },
    "unit": "C",
    "uuid": "330efff2-49f8-41c4-b1e7-e972a2d6a3a2"
+  },
+  "Ethiopia Banko Gotitti Washed Landrace_26-05-30_2027.alog": {
+   "batch_position": 2,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 16.47,
+     "severity": 1.75,
+     "time": 201.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 14.98,
+     "severity": 1.05,
+     "time": 273.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 14.34,
+     "severity": 1.01,
+     "time": 303.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.23,
+     "severity": 1.04,
+     "time": 454.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 9.84,
+     "severity": 2.0,
+     "time": 489.0
+    }
+   ],
+   "date": "2026-05-30",
+   "dt_s": 1.5,
+   "dtr_pct": 13.6,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 14.72,
+     "severity": 1.75,
+     "time": 177.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 13.93,
+     "severity": 1.05,
+     "time": 262.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 13.33,
+     "severity": 1.01,
+     "time": 288.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.85,
+     "severity": 2.0,
+     "time": 444.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.19,
+     "severity": 1.04,
+     "time": 465.0
+    }
+   ],
+   "green_weight_g": 360.0,
+   "milestones_bt_c": {
+    "charge": 161.778,
+    "drop": 195.889
+   },
+   "milestones_s": {
+    "drop": 553.5,
+    "dry_end": 297.0,
+    "fc_start": 478.5
+   },
+   "n_samples": 369,
+   "ror": {
+    "at_drop": 3.284,
+    "max": 19.876,
+    "min": -9.413
+   },
+   "turning_point": {
+    "bt_c": 95.167,
+    "index": 38,
+    "time_s": 57.0
+   },
+   "unit": "F",
+   "uuid": ""
+  },
+  "Ethiopia Hambela Benti Nenka_26-08-03_1902.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 12.53,
+     "severity": 1.14,
+     "time": 246.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.92,
+     "severity": 2.32,
+     "time": 331.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.6,
+     "severity": 1.07,
+     "time": 382.5
+    }
+   ],
+   "date": "2026-08-03",
+   "dt_s": 1.5,
+   "dtr_pct": 17.7,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 11.39,
+     "severity": 1.14,
+     "time": 226.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.6,
+     "severity": 2.32,
+     "time": 312.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.54,
+     "severity": 1.07,
+     "time": 369.0
+    }
+   ],
+   "green_weight_g": 340.0,
+   "milestones_bt_c": {
+    "charge": 184.056,
+    "drop": 190.889
+   },
+   "milestones_s": {
+    "drop": 532.5,
+    "dry_end": 267.0,
+    "fc_start": 438.0
+   },
+   "n_samples": 354,
+   "ror": {
+    "at_drop": 1.873,
+    "max": 15.174,
+    "min": -9.308
+   },
+   "turning_point": {
+    "bt_c": 114.556,
+    "index": 39,
+    "time_s": 58.5
+   },
+   "unit": "F",
+   "uuid": ""
+  },
+  "Ethiopia Sidamo Shantawene_26-07-10_1914.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 17.63,
+     "severity": 2.12,
+     "time": 201.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.71,
+     "severity": 1.09,
+     "time": 345.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.57,
+     "severity": 1.2,
+     "time": 375.0
+    }
+   ],
+   "date": "2026-07-10",
+   "dt_s": 1.5,
+   "dtr_pct": 8.8,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 15.51,
+     "severity": 2.12,
+     "time": 186.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 14.49,
+     "severity": 1.92,
+     "time": 229.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.62,
+     "severity": 1.09,
+     "time": 336.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.37,
+     "severity": 1.2,
+     "time": 358.5
+    }
+   ],
+   "green_weight_g": 280.0,
+   "milestones_bt_c": {
+    "charge": 163.889,
+    "drop": 193.222
+   },
+   "milestones_s": {
+    "drop": 477.0,
+    "dry_end": 270.0,
+    "fc_start": 435.0
+   },
+   "n_samples": 318,
+   "ror": {
+    "at_drop": 8.025,
+    "max": 18.771,
+    "min": -8.818
+   },
+   "turning_point": {
+    "bt_c": 97.556,
+    "index": 34,
+    "time_s": 51.0
+   },
+   "unit": "F",
+   "uuid": ""
+  },
+  "Ethiopia West Arsi Nensebo Natural_26-08-02_1853.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 16.26,
+     "severity": 1.41,
+     "time": 192.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.94,
+     "severity": 1.05,
+     "time": 520.5
+    }
+   ],
+   "date": "2026-08-02",
+   "dt_s": 1.5,
+   "dtr_pct": 8.2,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 14.85,
+     "severity": 1.41,
+     "time": 178.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.89,
+     "severity": 1.05,
+     "time": 490.5
+    }
+   ],
+   "green_weight_g": 300.0,
+   "milestones_bt_c": {
+    "charge": 176.889,
+    "drop": 195.667
+   },
+   "milestones_s": {
+    "drop": 568.5,
+    "dry_end": 289.5,
+    "fc_start": 522.0
+   },
+   "n_samples": 379,
+   "ror": {
+    "at_drop": 5.097,
+    "max": 18.311,
+    "min": -8.336
+   },
+   "turning_point": {
+    "bt_c": 99.778,
+    "index": 37,
+    "time_s": 55.5
+   },
+   "unit": "F",
+   "uuid": ""
+  },
+  "Ethiopia_Gesha_ Village_Gori_30_250g_MED_071226.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 20.38,
+     "severity": 2.12,
+     "time": 171.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 19.23,
+     "severity": 1.16,
+     "time": 196.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 17.4,
+     "severity": 3.82,
+     "time": 222.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 15.69,
+     "severity": 2.63,
+     "time": 252.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 15.88,
+     "severity": 4.19,
+     "time": 303.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.88,
+     "severity": 1.8,
+     "time": 324.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.61,
+     "severity": 1.67,
+     "time": 351.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.19,
+     "severity": 5.73,
+     "time": 390.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.07,
+     "severity": 3.57,
+     "time": 427.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.72,
+     "severity": 2.38,
+     "time": 448.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.25,
+     "severity": 4.56,
+     "time": 475.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.89,
+     "severity": 2.39,
+     "time": 517.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 4.47,
+     "severity": 2.04,
+     "time": 550.5
+    }
+   ],
+   "date": "2026-07-12",
+   "dt_s": 1.5,
+   "dtr_pct": 14.3,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 18.26,
+     "severity": 2.12,
+     "time": 162.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 18.07,
+     "severity": 1.16,
+     "time": 189.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 13.58,
+     "severity": 3.82,
+     "time": 211.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 13.06,
+     "severity": 2.63,
+     "time": 232.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 11.7,
+     "severity": 4.19,
+     "time": 279.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.07,
+     "severity": 1.8,
+     "time": 310.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.74,
+     "severity": 1.52,
+     "time": 358.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.46,
+     "severity": 5.73,
+     "time": 381.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.84,
+     "severity": 3.06,
+     "time": 417.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.34,
+     "severity": 2.38,
+     "time": 438.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.69,
+     "severity": 4.56,
+     "time": 463.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 6.15,
+     "severity": 1.98,
+     "time": 484.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 3.5,
+     "severity": 2.39,
+     "time": 510.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 2.44,
+     "severity": 2.04,
+     "time": 534.0
+    }
+   ],
+   "green_weight_g": 251.7,
+   "milestones_bt_c": {
+    "charge": 178.0,
+    "drop": 197.5
+   },
+   "milestones_s": {
+    "drop": 556.5,
+    "dry_end": 298.5,
+    "fc_start": 477.0
+   },
+   "n_samples": 371,
+   "ror": {
+    "at_drop": 3.139,
+    "max": 23.678,
+    "min": -9.489
+   },
+   "turning_point": {
+    "bt_c": 91.5,
+    "index": 38,
+    "time_s": 57.0
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "Ethiopia_Gesha_Village_Gaylee_36_250_080626.alog": {
+   "batch_position": 2,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 18.4,
+     "severity": 1.45,
+     "time": 214.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 18.91,
+     "severity": 4.52,
+     "time": 235.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 17.43,
+     "severity": 4.21,
+     "time": 288.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 15.7,
+     "severity": 2.38,
+     "time": 324.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 14.57,
+     "severity": 3.14,
+     "time": 352.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 14.47,
+     "severity": 3.34,
+     "time": 399.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 14.09,
+     "severity": 2.7,
+     "time": 430.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 9.24,
+     "severity": 3.51,
+     "time": 490.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 8.8,
+     "severity": 3.26,
+     "time": 517.5
+    }
+   ],
+   "date": "2026-08-06",
+   "dt_s": 1.5,
+   "dtr_pct": 15.9,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 16.95,
+     "severity": 1.45,
+     "time": 207.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 14.39,
+     "severity": 4.52,
+     "time": 228.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.22,
+     "severity": 3.77,
+     "time": 297.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.43,
+     "severity": 3.14,
+     "time": 345.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.13,
+     "severity": 3.34,
+     "time": 390.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.39,
+     "severity": 2.7,
+     "time": 415.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.73,
+     "severity": 3.51,
+     "time": 477.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.54,
+     "severity": 3.26,
+     "time": 498.0
+    }
+   ],
+   "green_weight_g": 257.3,
+   "milestones_bt_c": {
+    "charge": 177.3,
+    "drop": 209.15
+   },
+   "milestones_s": {
+    "drop": 529.5,
+    "dry_end": 279.0,
+    "fc_start": 445.5
+   },
+   "n_samples": 353,
+   "ror": {
+    "at_drop": 7.922,
+    "max": 24.205,
+    "min": -9.15
+   },
+   "turning_point": {
+    "bt_c": 91.2,
+    "index": 36,
+    "time_s": 54.0
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "Guatemala Dry Process Finca Rosma  on 2026-07-29_1708 (350g, 13.9%, 17.3%).alog": {
+   "batch_position": 5,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 25.12,
+     "severity": 4.93,
+     "time": 144.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 22.4,
+     "severity": 3.88,
+     "time": 183.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 17.11,
+     "severity": 4.46,
+     "time": 220.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 14.83,
+     "severity": 1.81,
+     "time": 246.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 16.34,
+     "severity": 5.26,
+     "time": 267.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 17.03,
+     "severity": 7.11,
+     "time": 291.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.1,
+     "severity": 3.91,
+     "time": 334.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.73,
+     "severity": 1.29,
+     "time": 355.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.09,
+     "severity": 2.87,
+     "time": 385.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.98,
+     "severity": 1.63,
+     "time": 433.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.96,
+     "severity": 5.84,
+     "time": 460.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 9.58,
+     "severity": 3.51,
+     "time": 499.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 7.52,
+     "severity": 3.16,
+     "time": 525.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 6.33,
+     "severity": 2.3,
+     "time": 555.0
+    }
+   ],
+   "date": "2026-07-29",
+   "dt_s": 1.5,
+   "dtr_pct": 17.3,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 18.52,
+     "severity": 3.88,
+     "time": 162.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 12.65,
+     "severity": 4.46,
+     "time": 201.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.08,
+     "severity": 5.26,
+     "time": 253.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.92,
+     "severity": 7.11,
+     "time": 280.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.19,
+     "severity": 3.91,
+     "time": 306.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.23,
+     "severity": 2.87,
+     "time": 346.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.44,
+     "severity": 1.48,
+     "time": 390.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.13,
+     "severity": 5.84,
+     "time": 421.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.34,
+     "severity": 1.63,
+     "time": 442.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 6.07,
+     "severity": 3.51,
+     "time": 472.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 4.36,
+     "severity": 3.16,
+     "time": 508.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 1.0,
+     "severity": 5.33,
+     "time": 538.5
+    }
+   ],
+   "green_weight_g": 350.0,
+   "milestones_bt_c": {
+    "charge": 189.5,
+    "drop": 201.333
+   },
+   "milestones_s": {
+    "drop": 562.5,
+    "dry_end": 252.0,
+    "fc_start": 465.0
+   },
+   "n_samples": 375,
+   "ror": {
+    "at_drop": 6.392,
+    "max": 25.989,
+    "min": -8.2
+   },
+   "turning_point": {
+    "bt_c": 92.0,
+    "index": 33,
+    "time_s": 49.5
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "KoJoYo Sindoro Java - Anaerobic Fermentation - 2025_26-03-15_1232.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 2,
+     "ror_value": 11.22,
+     "severity": 1.59,
+     "time": 378.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 11.64,
+     "severity": 3.82,
+     "time": 472.0
+    }
+   ],
+   "date": "2026-03-15",
+   "dt_s": 2.0,
+   "dtr_pct": 6.1,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 7.82,
+     "severity": 3.82,
+     "time": 314.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.63,
+     "severity": 1.59,
+     "time": 446.0
+    }
+   ],
+   "green_weight_g": 250.0,
+   "milestones_bt_c": {
+    "charge": 172.0,
+    "drop": 189.1
+   },
+   "milestones_s": {
+    "drop": 494.0,
+    "dry_end": 296.0,
+    "fc_start": 464.0
+   },
+   "n_samples": 247,
+   "ror": {
+    "at_drop": 10.267,
+    "max": 11.958,
+    "min": -9.4
+   },
+   "turning_point": {
+    "bt_c": 120.4,
+    "index": 41,
+    "time_s": 82.0
+   },
+   "unit": "C",
+   "uuid": "431dbf25-91a5-40dd-a9c1-3e06c2a9b082"
+  },
+  "KoJoYo Sindoro Java - Anaerobic Fermentation - 2025_26-04-09_1652.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 2,
+     "ror_value": 12.49,
+     "severity": 6.69,
+     "time": 332.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.2,
+     "severity": 2.71,
+     "time": 436.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 12.05,
+     "severity": 1.5,
+     "time": 526.0
+    }
+   ],
+   "date": "2026-04-09",
+   "dt_s": 2.0,
+   "dtr_pct": 9.2,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 2.75,
+     "severity": 9.74,
+     "time": 256.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.49,
+     "severity": 2.71,
+     "time": 400.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.55,
+     "severity": 1.5,
+     "time": 472.0
+    }
+   ],
+   "green_weight_g": 250.0,
+   "milestones_bt_c": {
+    "charge": 174.009,
+    "drop": 206.589
+   },
+   "milestones_s": {
+    "drop": 566.0,
+    "dry_end": 280.0,
+    "fc_start": 514.0
+   },
+   "n_samples": 283,
+   "ror": {
+    "at_drop": 8.606,
+    "max": 20.861,
+    "min": -9.123
+   },
+   "turning_point": {
+    "bt_c": 119.058,
+    "index": 36,
+    "time_s": 72.0
+   },
+   "unit": "C",
+   "uuid": "431dbf25-91a5-40dd-a9c1-3e06c2a9b082"
+  },
+  "La Fabrica - Washed  Wet Process - 2025_26-01-11_1323.alog": {
+   "batch_position": 1,
+   "crashes": [],
+   "date": "2026-01-11",
+   "dt_s": 2.0,
+   "dtr_pct": 15.1,
+   "flicks": [],
+   "green_weight_g": 410.0,
+   "milestones_bt_c": {
+    "charge": 191.6,
+    "drop": 194.3
+   },
+   "milestones_s": {
+    "drop": 636.0,
+    "dry_end": 314.0,
+    "fc_start": 540.0
+   },
+   "n_samples": 318,
+   "ror": {
+    "at_drop": 4.057,
+    "max": 16.95,
+    "min": -9.383
+   },
+   "turning_point": {
+    "bt_c": 94.4,
+    "index": 37,
+    "time_s": 74.0
+   },
+   "unit": "C",
+   "uuid": "1d2465c5-462f-4f40-a01e-7616afce45dc"
+  },
+  "M6 Roast 147 Aug 2 Colombia Supremo 452 g.alog": {
+   "batch_position": 3,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 26.59,
+     "severity": 3.01,
+     "time": 175.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 25.02,
+     "severity": 1.83,
+     "time": 196.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 23.1,
+     "severity": 3.14,
+     "time": 222.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 21.46,
+     "severity": 4.43,
+     "time": 258.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 19.7,
+     "severity": 3.22,
+     "time": 298.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 16.97,
+     "severity": 3.6,
+     "time": 327.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 16.35,
+     "severity": 6.52,
+     "time": 361.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.6,
+     "severity": 2.89,
+     "time": 394.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.26,
+     "severity": 1.65,
+     "time": 421.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 11.79,
+     "severity": 3.53,
+     "time": 454.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 7.05,
+     "severity": 2.34,
+     "time": 514.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.69,
+     "severity": 2.97,
+     "time": 540.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 7.93,
+     "severity": 7.7,
+     "time": 577.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 3.95,
+     "severity": 1.79,
+     "time": 609.0
+    }
+   ],
+   "date": "2026-08-02",
+   "dt_s": 1.5,
+   "dtr_pct": 27.2,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 23.19,
+     "severity": 1.83,
+     "time": 186.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 19.96,
+     "severity": 3.14,
+     "time": 214.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 17.03,
+     "severity": 4.43,
+     "time": 250.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 16.48,
+     "severity": 3.22,
+     "time": 288.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.37,
+     "severity": 3.6,
+     "time": 321.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.82,
+     "severity": 6.52,
+     "time": 352.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.71,
+     "severity": 2.89,
+     "time": 375.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.61,
+     "severity": 1.65,
+     "time": 405.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.26,
+     "severity": 3.53,
+     "time": 438.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 4.71,
+     "severity": 2.34,
+     "time": 498.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 2.72,
+     "severity": 2.97,
+     "time": 522.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 0.17,
+     "severity": 7.76,
+     "time": 565.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 2.16,
+     "severity": 1.79,
+     "time": 598.5
+    }
+   ],
+   "green_weight_g": 452.0,
+   "milestones_bt_c": {
+    "charge": 182.0,
+    "drop": 209.2
+   },
+   "milestones_s": {
+    "drop": 618.0,
+    "dry_end": 273.0,
+    "fc_start": 450.0
+   },
+   "n_samples": 412,
+   "ror": {
+    "at_drop": -0.193,
+    "max": 29.044,
+    "min": -8.706
+   },
+   "turning_point": {
+    "bt_c": 85.0,
+    "index": 39,
+    "time_s": 58.5
+   },
+   "unit": "C",
+   "uuid": ""
   },
   "Mbinga - Washed Decaf (Sugarcane) - 2025_26-01-24_1732.alog": {
    "batch_position": 1,
@@ -3065,6 +6049,747 @@
    "unit": "C",
    "uuid": "b22f3d63-5a30-4785-94be-f08a285f830d"
   },
+  "Peru Carjamarca Hjisela Sanchez Geisha_natural_27_250_062126.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 19.53,
+     "severity": 1.79,
+     "time": 174.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 16.9,
+     "severity": 1.28,
+     "time": 201.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 14.51,
+     "severity": 2.0,
+     "time": 265.5
+    },
+    {
+     "phase": 1,
+     "ror_value": 14.85,
+     "severity": 4.37,
+     "time": 294.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 14.47,
+     "severity": 4.69,
+     "time": 327.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.55,
+     "severity": 1.32,
+     "time": 351.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 13.29,
+     "severity": 6.28,
+     "time": 372.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.58,
+     "severity": 3.39,
+     "time": 408.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.83,
+     "severity": 1.45,
+     "time": 454.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.0,
+     "severity": 2.01,
+     "time": 478.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.8,
+     "severity": 5.38,
+     "time": 510.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 10.56,
+     "severity": 2.19,
+     "time": 541.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 9.98,
+     "severity": 2.53,
+     "time": 570.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 7.36,
+     "severity": 2.6,
+     "time": 591.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 8.15,
+     "severity": 2.67,
+     "time": 619.5
+    }
+   ],
+   "date": "2026-06-21",
+   "dt_s": 1.5,
+   "dtr_pct": 14.9,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 17.74,
+     "severity": 1.79,
+     "time": 168.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 13.8,
+     "severity": 1.91,
+     "time": 210.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 12.51,
+     "severity": 2.0,
+     "time": 258.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 10.49,
+     "severity": 4.37,
+     "time": 286.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.79,
+     "severity": 4.69,
+     "time": 312.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.01,
+     "severity": 6.28,
+     "time": 361.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.19,
+     "severity": 3.39,
+     "time": 399.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.38,
+     "severity": 1.45,
+     "time": 447.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 6.42,
+     "severity": 5.38,
+     "time": 472.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.38,
+     "severity": 2.19,
+     "time": 528.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 7.45,
+     "severity": 2.53,
+     "time": 562.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 4.76,
+     "severity": 2.6,
+     "time": 583.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 2.22,
+     "severity": 5.92,
+     "time": 609.0
+    }
+   ],
+   "green_weight_g": 250.5,
+   "milestones_bt_c": {
+    "charge": 172.8,
+    "drop": 209.3
+   },
+   "milestones_s": {
+    "drop": 622.5,
+    "dry_end": 297.0,
+    "fc_start": 529.5
+   },
+   "n_samples": 415,
+   "ror": {
+    "at_drop": 8.289,
+    "max": 24.811,
+    "min": -8.011
+   },
+   "turning_point": {
+    "bt_c": 93.5,
+    "index": 38,
+    "time_s": 57.0
+   },
+   "unit": "C",
+   "uuid": ""
+  },
+  "Rwanda Nyamasheke Muhororo Natural_26-06-04_1935.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 2,
+     "ror_value": 14.08,
+     "severity": 2.0,
+     "time": 342.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.78,
+     "severity": 1.47,
+     "time": 472.5
+    },
+    {
+     "phase": 3,
+     "ror_value": 8.18,
+     "severity": 1.11,
+     "time": 553.5
+    }
+   ],
+   "date": "2026-06-04",
+   "dt_s": 1.5,
+   "dtr_pct": 13.4,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 12.08,
+     "severity": 2.0,
+     "time": 316.5
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.31,
+     "severity": 1.47,
+     "time": 429.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 7.07,
+     "severity": 1.11,
+     "time": 547.5
+    }
+   ],
+   "green_weight_g": 333.0,
+   "milestones_bt_c": {
+    "charge": 169.167,
+    "drop": 200.667
+   },
+   "milestones_s": {
+    "drop": 580.5,
+    "dry_end": 333.0,
+    "fc_start": 502.5
+   },
+   "n_samples": 387,
+   "ror": {
+    "at_drop": 5.845,
+    "max": 16.49,
+    "min": -9.239
+   },
+   "turning_point": {
+    "bt_c": 100.556,
+    "index": 43,
+    "time_s": 64.5
+   },
+   "unit": "F",
+   "uuid": ""
+  },
+  "San Ramon - Washed  Wet - 2024_25-10-11_1125.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 3,
+     "ror_value": 9.57,
+     "severity": 1.77,
+     "time": 604.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.67,
+     "severity": 1.01,
+     "time": 694.0
+    }
+   ],
+   "date": "2025-10-11",
+   "dt_s": 2.0,
+   "dtr_pct": 16.9,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 7.8,
+     "severity": 1.77,
+     "time": 536.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 4.66,
+     "severity": 1.01,
+     "time": 680.0
+    }
+   ],
+   "green_weight_g": 400.0,
+   "milestones_bt_c": {
+    "charge": 185.1,
+    "drop": 197.85
+   },
+   "milestones_s": {
+    "drop": 710.0,
+    "dry_end": 364.0,
+    "fc_start": 590.0
+   },
+   "n_samples": 355,
+   "ror": {
+    "at_drop": 4.578,
+    "max": 13.775,
+    "min": -9.403
+   },
+   "turning_point": {
+    "bt_c": 92.6,
+    "index": 36,
+    "time_s": 72.0
+   },
+   "unit": "C",
+   "uuid": "b8065ca7-21a6-453f-a3d5-7002ef47cdd5"
+  },
+  "Santa Lucila Rojo - Washed  Wet Process - 2024_26-05-16_1453.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 2,
+     "ror_value": 13.84,
+     "severity": 4.07,
+     "time": 288.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.86,
+     "severity": 2.09,
+     "time": 360.0
+    }
+   ],
+   "date": "2026-05-16",
+   "dt_s": 2.0,
+   "dtr_pct": 11.6,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 9.77,
+     "severity": 4.07,
+     "time": 256.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.77,
+     "severity": 2.09,
+     "time": 320.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 4.48,
+     "severity": 1.42,
+     "time": 484.0
+    }
+   ],
+   "green_weight_g": 250.0,
+   "milestones_bt_c": {
+    "charge": 184.109,
+    "drop": 197.087
+   },
+   "milestones_s": {
+    "drop": 500.0,
+    "dry_end": 252.0,
+    "fc_start": 442.0
+   },
+   "n_samples": 250,
+   "ror": {
+    "at_drop": 6.036,
+    "max": 14.073,
+    "min": -9.575
+   },
+   "turning_point": {
+    "bt_c": 125.9,
+    "index": 35,
+    "time_s": 70.0
+   },
+   "unit": "C",
+   "uuid": "d8f078c7-5fa0-47cc-afe6-e2b4c6c2c344"
+  },
+  "Santa Lucila Rojo - Washed  Wet Process - 2024_26-08-01_1549.alog": {
+   "batch_position": 2,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 12.44,
+     "severity": 2.8,
+     "time": 275.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.04,
+     "severity": 1.82,
+     "time": 310.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.66,
+     "severity": 1.55,
+     "time": 337.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.7,
+     "severity": 1.31,
+     "time": 442.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.8,
+     "severity": 3.54,
+     "time": 478.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 10.04,
+     "severity": 1.16,
+     "time": 504.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 4.41,
+     "severity": 1.39,
+     "time": 601.0
+    }
+   ],
+   "date": "2026-08-01",
+   "dt_s": 1.0,
+   "dtr_pct": 19.6,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 10.21,
+     "severity": 1.82,
+     "time": 270.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 9.22,
+     "severity": 1.82,
+     "time": 298.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.22,
+     "severity": 1.43,
+     "time": 380.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.38,
+     "severity": 1.31,
+     "time": 428.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.25,
+     "severity": 3.54,
+     "time": 455.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 3.02,
+     "severity": 1.39,
+     "time": 579.0
+    }
+   ],
+   "green_weight_g": 267.0,
+   "milestones_bt_c": {
+    "charge": 170.9,
+    "drop": 189.4
+   },
+   "milestones_s": {
+    "drop": 608.0,
+    "dry_end": 304.0,
+    "fc_start": 489.0
+   },
+   "n_samples": 608,
+   "ror": {
+    "at_drop": 2.7,
+    "max": 13.0,
+    "min": -9.293
+   },
+   "turning_point": {
+    "bt_c": 110.9,
+    "index": 68,
+    "time_s": 68.0
+   },
+   "unit": "C",
+   "uuid": "d8f078c7-5fa0-47cc-afe6-e2b4c6c2c344"
+  },
+  "Yellow Bourbon - Washed  Wet Process - 2024_26-07-25_0757.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 14.97,
+     "severity": 1.65,
+     "time": 223.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 13.87,
+     "severity": 1.07,
+     "time": 253.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 14.38,
+     "severity": 1.91,
+     "time": 305.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.63,
+     "severity": 1.57,
+     "time": 381.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.87,
+     "severity": 1.3,
+     "time": 448.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.9,
+     "severity": 1.07,
+     "time": 468.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 9.37,
+     "severity": 2.47,
+     "time": 518.0
+    }
+   ],
+   "date": "2026-07-25",
+   "dt_s": 1.0,
+   "dtr_pct": 15.7,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 12.79,
+     "severity": 1.07,
+     "time": 235.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 12.47,
+     "severity": 1.91,
+     "time": 293.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.05,
+     "severity": 1.57,
+     "time": 374.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.83,
+     "severity": 1.07,
+     "time": 460.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 6.89,
+     "severity": 2.47,
+     "time": 497.0
+    }
+   ],
+   "green_weight_g": 350.0,
+   "milestones_bt_c": {
+    "charge": 178.5,
+    "drop": 199.8
+   },
+   "milestones_s": {
+    "drop": 566.0,
+    "dry_end": 280.0,
+    "fc_start": 477.0
+   },
+   "n_samples": 566,
+   "ror": {
+    "at_drop": 7.567,
+    "max": 16.608,
+    "min": -8.425
+   },
+   "turning_point": {
+    "bt_c": 106.2,
+    "index": 65,
+    "time_s": 65.0
+   },
+   "unit": "C",
+   "uuid": "b0237ce9-2591-4d30-bcc9-c1739475b36a"
+  },
+  "Yellow Bourbon - Washed  Wet Process - 2024_26-08-01_1450.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 1,
+     "ror_value": 11.98,
+     "severity": 1.17,
+     "time": 207.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 11.77,
+     "severity": 1.79,
+     "time": 277.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 11.32,
+     "severity": 1.32,
+     "time": 342.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.31,
+     "severity": 1.36,
+     "time": 416.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.82,
+     "severity": 1.19,
+     "time": 490.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.22,
+     "severity": 2.09,
+     "time": 512.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 7.68,
+     "severity": 2.52,
+     "time": 562.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.98,
+     "severity": 1.21,
+     "time": 615.0
+    }
+   ],
+   "date": "2026-08-01",
+   "dt_s": 1.0,
+   "dtr_pct": 15.3,
+   "flicks": [
+    {
+     "phase": 1,
+     "ror_value": 10.81,
+     "severity": 1.17,
+     "time": 195.0
+    },
+    {
+     "phase": 1,
+     "ror_value": 9.98,
+     "severity": 1.79,
+     "time": 234.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 10.0,
+     "severity": 1.32,
+     "time": 327.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.95,
+     "severity": 1.36,
+     "time": 389.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.13,
+     "severity": 2.09,
+     "time": 474.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.63,
+     "severity": 1.19,
+     "time": 496.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 7.93,
+     "severity": 1.32,
+     "time": 523.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 5.16,
+     "severity": 2.52,
+     "time": 544.0
+    },
+    {
+     "phase": 3,
+     "ror_value": 4.77,
+     "severity": 1.21,
+     "time": 607.0
+    }
+   ],
+   "green_weight_g": 350.0,
+   "milestones_bt_c": {
+    "charge": 184.4,
+    "drop": 193.9
+   },
+   "milestones_s": {
+    "drop": 622.0,
+    "dry_end": 312.0,
+    "fc_start": 527.0
+   },
+   "n_samples": 622,
+   "ror": {
+    "at_drop": 5.017,
+    "max": 15.222,
+    "min": -9.21
+   },
+   "turning_point": {
+    "bt_c": 105.6,
+    "index": 74,
+    "time_s": 74.0
+   },
+   "unit": "C",
+   "uuid": "b0237ce9-2591-4d30-bcc9-c1739475b36a"
+  },
   "Yellow Caturra - Natural  Dry Process - 2024_26-05-13_1847.alog": {
    "batch_position": 1,
    "crashes": [
@@ -3121,6 +6846,75 @@
    },
    "unit": "C",
    "uuid": "53e39440-bc93-4a19-a088-fd6c6316e4e5"
+  },
+  "Yrgacheffe Moka - Washed  Wet Process - 2024_26-02-04_1738.alog": {
+   "batch_position": 1,
+   "crashes": [
+    {
+     "phase": 2,
+     "ror_value": 9.64,
+     "severity": 1.39,
+     "time": 456.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.64,
+     "severity": 1.25,
+     "time": 536.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 9.89,
+     "severity": 1.88,
+     "time": 614.0
+    }
+   ],
+   "date": "2026-02-04",
+   "dt_s": 2.0,
+   "dtr_pct": 12.3,
+   "flicks": [
+    {
+     "phase": 2,
+     "ror_value": 8.25,
+     "severity": 1.39,
+     "time": 414.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.01,
+     "severity": 1.88,
+     "time": 510.0
+    },
+    {
+     "phase": 2,
+     "ror_value": 8.39,
+     "severity": 1.25,
+     "time": 570.0
+    }
+   ],
+   "green_weight_g": 425.0,
+   "milestones_bt_c": {
+    "charge": 190.0,
+    "drop": 199.15
+   },
+   "milestones_s": {
+    "drop": 700.0,
+    "dry_end": 348.0,
+    "fc_start": 614.0
+   },
+   "n_samples": 350,
+   "ror": {
+    "at_drop": 4.967,
+    "max": 16.042,
+    "min": -9.825
+   },
+   "turning_point": {
+    "bt_c": 93.0,
+    "index": 36,
+    "time_s": 72.0
+   },
+   "unit": "C",
+   "uuid": "92116c57-a2e6-4a35-ab11-c712c848fcc6"
   }
  }
 }

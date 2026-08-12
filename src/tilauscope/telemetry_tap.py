@@ -13,22 +13,9 @@
 # AUTHOR
 # Tilau 2025-2026
 
-#
-# telemetry_tap.py
-#
-# ## TILAU ## Upward telemetry bridge for remote control (Phase 1b).
-#
-# Lives on the Qt main thread. Subscribes to qmc.tilauUpdateSignal (~1 Hz TIMER
-# ticks), builds a light `telemetry` delta and a full `snapshot` from plain qmc
-# arrays, and hands them to TilauWebHost, which fans them out to WebSocket
-# observers off-thread (call_soon_threadsafe). See
-# wiki/RemoteControl-Protocol-v1.md §3 (the Bridge) and §5 (message shapes).
-#
-# Doctrine respected:
-#   - never block the ~1 Hz loop: does nothing when no phone is connected, and
-#     only builds a (downsampled) snapshot then;
-#   - broad try/except so a telemetry glitch can never disturb Artisan's LCDs;
-#   - reads only plain-python qmc data, emits only via the host (no Qt off-thread).
+# Upward telemetry bridge for remote control. Lives on the Qt main thread,
+# subscribes to qmc.tilauUpdateSignal, and hands a `telemetry` delta / full
+# `snapshot` to TilauWebHost for WebSocket fan-out (see wiki/RemoteControl-Protocol-v1.md §3/§5).
 
 import logging
 import math
@@ -158,14 +145,9 @@ class TelemetryTap(QObject):
     @pyqtSlot(int, object, object, bool)
     def _on_update(self, data, _value=None, _raw=None, _button=True) -> None:
         try:
-            # 10 = timer LCD, 12 = BT LCD. Both beat at 1 Hz, but the timer tick is
-            # emitted from updateLCDtime(), which is guarded by `flagstart and
-            # flagon` — it therefore goes SILENT the instant recording stops, and
-            # cannot carry the two events the phone most needs to hear: the STOP
-            # itself and the RESET that follows. The BT LCD comes from updateLCDs(),
-            # which keeps running for as long as monitoring is on. It is what drives
-            # the state watch below. During recording both fire and the 1 Hz
-            # watermark de-duplicates them.
+            # 10 = timer LCD (silent once recording stops, so it can't carry STOP/
+            # RESET), 12 = BT LCD (keeps running under monitoring, drives the state
+            # watch below). Both fire during recording; the 1 Hz watermark dedupes.
             if data not in (10, 12):
                 return
             qmc = self._aw.qmc
@@ -209,11 +191,8 @@ class TelemetryTap(QObject):
             phase = self._phase(qmc, ti, charged)
 
             ltime = _lcd_seconds(qmc, timex, ti)  # match the desktop LCD exactly
-            # `recording` rides along on every tick (additive field): the edge event
-            # below only fires if the tap already observed the PREVIOUS state, which
-            # it cannot when the change happened while no phone was connected or
-            # while monitoring was off. Carrying the level as well as the edge lets
-            # the client reconcile every second instead of trusting one message.
+            # `recording` rides along on every tick so the client can reconcile
+            # state each second instead of relying only on the edge event.
             tele = {'bt': bt, 'et': et, 'ror': ror, 'phase': phase,
                     'clock': round(now, 1), 'ltime': ltime, 'recording': rec}
             if charge_t is not None:
@@ -222,10 +201,8 @@ class TelemetryTap(QObject):
             if sliders != self._last_sliders:  # §5: omit when unchanged
                 tele['sliders'] = sliders
                 self._last_sliders = sliders
-            # Axis bounds used to travel in the snapshot only, i.e. once per
-            # connection: a phone that connected before the first real snapshot
-            # existed was stuck auto-scaling forever, and nobody saw Artisan's own
-            # axis adjustment at DROP. Sent here whenever they actually change.
+            # Axis bounds sent here whenever they change, not just in the snapshot,
+            # so a late-connecting phone still sees Artisan's own axis adjustment.
             axes = _axes(qmc)
             if axes != self._last_axes:
                 tele['axes'] = axes

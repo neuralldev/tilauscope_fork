@@ -30,6 +30,18 @@ from typing import Final
 import logging
 _logd: Final[logging.Logger] = logging.getLogger('tilau')
 
+LEGACY_ROASTER_NAMES: Final[dict[str, str]] = {
+    'Cormorant': 'Cormorant CR600g',
+    'Kaleido Serial': 'Kaleido M6 Pro',
+    'Skywalker Series - Delta': 'ITOP Skywalker V1',
+}
+
+
+def canonical_roaster_name(name: str) -> str:
+    """Normalize known legacy Artisan labels to a roasters.json display name."""
+    stripped = name.strip()
+    return LEGACY_ROASTER_NAMES.get(stripped, stripped)
+
 class HeatingType(StrEnum):
     GAS = auto()
     ELECTRIC = auto()
@@ -258,11 +270,8 @@ class DrumControl(DataClassDictMixin):
     min_rpm_setting: float | None = None
     step_rpm_setting: float | None = None
 
-    ## TILAU ## True when the drum ramps its speed PROGRESSIVELY on a setting
-    ## change. False (default) = the motor jumps abruptly to the new speed —
-    ## observed on the Skywalker: a 5 % drum change has a huge effect on the
-    ## bean-mass inertia and the machine does not honour 1 % steps, so drum
-    ## speed must not be touched mid-roast (AutoPilot locks it after CHARGE).
+    # True = drum ramps speed progressively on a setting change. False
+    # (default) = abrupt jump — drum must not be touched mid-roast.
     smooth_speed_transition: bool = False
 
     # Optional physical mapping for display (PDF, coaching)
@@ -329,30 +338,27 @@ class Roaster(DataClassDictMixin):
     airflow_dependency_index: float | None = None
     dev_thermal_inertia_factor: float | None = None   # 0.0–1.0; lower = faster response
 
-    ## TILAU ## Typical post-TP RoR reference (°C/min), not a physical ceiling.
+    # Typical post-TP RoR reference (°C/min), not a physical ceiling.
     peak_ror_reference_c: float | None = None
-    ## TILAU ## Temporary read compatibility for older roaster JSON.
+    # Temporary read compatibility for older roaster JSON.
     peak_ror_ceiling_c: float | None = None
 
-    ## Heater ceiling: hardware limit, not a style choice. Some
-    ## elements (e.g. the ITOP Cyberroaster's FIR/NIR emitter) degrade above a
-    ## machine-specific power fraction — the plan must never target above it.
-    ## None (default) → no declared ceiling, RoasterContext falls back to 100.0.
+    ## Heater ceiling: hardware limit, not a style choice; the plan must
+    ## never target above it. None (default) → RoasterContext falls back to 100.0.
     heater_max_pct: float | None = None
-    ## TILAU ## Machine-specific guidance thresholds; neither clamps a plan.
+    # Machine-specific guidance thresholds; neither clamps a plan.
     heater_support_threshold_pct: float | None = None
     heater_caution_pct: float | None = None
 
-    ## TILAU ## Empirical geometric fallback for a reference curve. It is not a
-    ## stable physical machine signature.
+    # Empirical geometric fallback for a reference curve. It is not a
+    # stable physical machine signature.
     maillard_ror_decay: float | None = None
 
     # --------------------------------------------------------
     # Preheat PID Learning Model Kernel
     # --------------------------------------------------------
-    ## TILAU ## Kernel for aggregating thermal model from historical roasts
-    ## "triangular" = linear decay (FIR/fast roasters: Skywalker, Kaleido)
-    ## "gaussian" = smooth decay (inertia roasters: Bullet, Roest, gas drums)
+    # "triangular" = linear decay (FIR/fast roasters); "gaussian" = smooth
+    # decay (inertia roasters).
     thermal_model_kernel: str = "triangular"
     ## Gaussian sigma parameter (only used if kernel="gaussian")
     thermal_model_sigma: float = 1.0
@@ -410,14 +416,8 @@ class Roaster(DataClassDictMixin):
     supports_auto_airflow_events: bool = False
     supports_profile_replay: bool = False
 
-    # --------------------------------------------------------
-    # Radiant electric flag
-    # Explicit JSON field so the plan generator never has to
-    # guess from manufacturer/model name strings.
-    # True  → FIR / NIR / infrared heater technology
-    #         (Cyberroaster, Skywalker, Kaleido …)
-    # False → conventional resistive / gas / induction
-    # --------------------------------------------------------
+    # Explicit JSON field so the plan generator never has to guess from
+    # manufacturer/model strings. True = FIR/NIR/infrared heater technology.
     is_radiant_electric: bool = False
 
     # --------------------------------------------------------
@@ -425,19 +425,16 @@ class Roaster(DataClassDictMixin):
     # --------------------------------------------------------
     bean_temperature_offset_c: list[float] = field(default_factory=lambda: [0.0]*4)
     environmental_temperature_offset_c: list[float] = field(default_factory=lambda: [0.0]*4)
-    # --------------------------------------------------------
-    # TRP auto-discovery (spec §19)
-    # --------------------------------------------------------
     # Stable slug matched against the device's handshake ROASTER_ID field,
-    # e.g. "itop-cyberroaster". Optional — when absent, TRP resolution falls
-    # back to manufacturer/model matching (see RoasterManager.get_by_roaster_id).
+    # e.g. "itop-cyberroaster". Optional — falls back to manufacturer/model
+    # matching (see RoasterManager.get_by_roaster_id).
     roaster_id: str | None = None
 
     # --------------------------------------------------------
     # Notes
     # --------------------------------------------------------
     notes: str | None = None
-    
+
     thermal_response_speed: float = 0.0
 
 
@@ -472,7 +469,7 @@ class RoasterContext:
     airflow_dependency_index: float  # 0.0 – 1.0
     thermal_response_speed: float    # 0.0 – 1.0
     dev_thermal_inertia_factor: float  # 0.0 – 1.0 (lower = faster response)
-    ## TILAU ## Typical post-TP peak RoR reference (°C/min).
+    # Typical post-TP peak RoR reference (°C/min).
     peak_ror_reference_c: float
 
     # ── Heater ───────────────────────────────────────────────
@@ -484,11 +481,7 @@ class RoasterContext:
     drum_min_rpm: float
     drum_max_rpm: float
     drum_step_rpm: float             # minimum settable step
-    drum_min_setting: float  # Added to track machine minimum % (e.g. 40%)
-    ## TILAU ## True (safe default) = drum speed changes are abrupt on this
-    ## machine → set the drum at CHARGE and never move it again during the
-    ## roast (AutoPilot + coach). Only smooth-transition drums may be adjusted
-    ## mid-roast. Field declared with the non-default group via from_roaster.
+    drum_min_setting: float  # machine minimum % (e.g. 40%)
 
     # ── Probe offsets (indexed: 0=charge, 1=dry, 2=fc, 3=drop) ─
     bt_offsets: list[float]          # bean temperature offsets per phase
@@ -517,8 +510,8 @@ class RoasterContext:
     ## 2.0 = default (low-inertia radiant electric machines).
     maillard_ror_decay: float = 2.0
 
-    ## TILAU ## see comment in the Drum block above — populated by from_roaster
-    ## from DrumControl.smooth_speed_transition (safe default: locked).
+    # see comment in the Drum block above — populated by from_roaster
+    # from DrumControl.smooth_speed_transition (safe default: locked).
     drum_midroast_locked: bool = True
 
     # ── Physical ranges (optional, display-only) ─────────────
@@ -541,7 +534,7 @@ class RoasterContext:
             drum_min   = float(dc.min_rpm)
             drum_max   = float(dc.max_rpm)
             drum_step  = float(dc.step_rpm_setting) if dc.step_rpm_setting is not None else 1.0
-            drum_min_set = float(dc.min_rpm_setting or 0.0) # if no prom value given assume 0 
+            drum_min_set = float(dc.min_rpm_setting or 0.0) # if no prom value given assume 0
         else:
             # Fixed-speed or unknown: use sentinel values that disable rpm conversion
             drum_min   = 0.0
@@ -599,7 +592,7 @@ class RoasterContext:
             heater_physical          = hc.physical_range if hc else None,
             airflow_physical         = ac.physical_range if ac else None,
             drum_physical            = dc.physical_range if dc else None,
-            ## TILAU ## locked unless the drum declares progressive speed ramps
+            # locked unless the drum declares progressive speed ramps
             drum_midroast_locked     = not (dc is not None and dc.variable_speed
                                             and getattr(dc, 'smooth_speed_transition', False)),
         )
@@ -657,10 +650,8 @@ class RoasterContext:
         span_rpm = self.drum_max_rpm - self.drum_min_rpm
         span_set = 100.0 - self.drum_min_setting
         pct = self.drum_min_setting + ((rpm - self.drum_min_rpm) / span_rpm) * span_set
-        # Snap to step in % space, rounded DOWN (fix 2026-08-04): rounding to
-        # nearest pushed borderline batches (e.g. 267 g → 72.86%) above the
-        # doctrine ceiling (250 g → 65-70%). Floor keeps the setting on or
-        # below the physically achievable step instead of overshooting it.
+        # Snap to step in % space, rounded DOWN: keeps the setting on or below
+        # the physically achievable step instead of overshooting the ceiling.
         pct = math.floor(pct / self.drum_step_rpm) * self.drum_step_rpm
         pct = max(self.drum_min_setting, min(100.0, pct))
 
@@ -681,7 +672,6 @@ class RoasterContext:
 # ROASTER MANAGER
 # ============================================================
 
-# AFTER
 class RoasterManager:
     _DEFAULT_JSON = Path(__file__).parent / "roasters.json"
 
@@ -812,7 +802,7 @@ class RoasterManager:
 
         self._roasters = [Roaster.from_dict(item) for item in data]
         self._loaded = True   # mark loaded whether called directly or via _ensure_loaded
-        
+
     def get_display_names(self) -> list[str]:
         """Retourne la liste des noms complets (Constructeur + Modèle) pour l'UI."""
         return [f"{r.manufacturer} {r.model}" for r in self._roasters]
@@ -820,6 +810,7 @@ class RoasterManager:
     def get_by_display_name(self, name: str) -> Roaster | None:
         """Find a roaster by display name; falls back to model-only match."""
         self._ensure_loaded()
+        name = canonical_roaster_name(name)
         exact = next((r for r in self._roasters
                       if f"{r.manufacturer} {r.model}" == name), None)
         if exact is not None:
@@ -832,7 +823,7 @@ class RoasterManager:
 # QMC SYNC — push the TilauScope-configured roaster into Artisan
 # ============================================================
 
-## TILAU ## HeatingType -> qmc.roasterheating code (0: ??, 1: LPG, 2: NG, 3: Elec)
+# HeatingType -> qmc.roasterheating code (0: ??, 1: LPG, 2: NG, 3: Elec)
 _QMC_HEATING_CODE: dict[HeatingType, int] = {
     HeatingType.GAS: 2,
     HeatingType.ELECTRIC: 3,
@@ -845,7 +836,7 @@ _QMC_HEATING_CODE: dict[HeatingType, int] = {
 
 
 def sync_roaster_to_qmc(aw: object, name: str | None) -> bool:
-    """## TILAU ## Single call site to mirror the TilauScope-configured
+    """Single call site to mirror the TilauScope-configured
     roaster (aw.tilau_roaster) into Artisan's Machine-setup qmc fields
     (roastertype_setup/roastersize_setup/roasterheating_setup/machinesetup),
     so the canvas x-axis label / stats annotation (built from those _setup

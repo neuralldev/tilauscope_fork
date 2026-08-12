@@ -16,19 +16,9 @@
 #
 # webcontrol.py
 #
-# ## TILAU ## Remote-control server (opt-in) — WebSocket transport for the phone
-# client. See wiki/RemoteControl-Protocol-v1.md (the frozen v:1 contract) and
-# wiki/RemoteControl-Implementation-Plan.md.
-#
-# Phase 1a (this file): transport skeleton — starts only when remote control is
-# enabled, advertises Bonjour _tilauscope._tcp, accepts a WebSocket, performs the
-# handshake (hello -> welcome -> snapshot), streams heartbeats, and serves a tiny
-# browser test page at '/'. It never touches Qt/qmc: welcome and snapshot come
-# from injectable providers (real qmc telemetry is wired in the next increment via
-# the Bridge). Every client is an observer for now (no commands yet).
-#
-# Mirrors the proven TilauWebRecords thread+loop+Bonjour pattern (its own asyncio
-# loop on a daemon thread); the two loops may be merged later as an optimisation.
+# Opt-in remote-control server: WebSocket transport for the phone client, advertised
+# via Bonjour _tilauscope._tcp (wiki/RemoteControl-Protocol-v1.md). Never touches
+# Qt/qmc directly — welcome/snapshot come from injectable providers.
 
 import asyncio
 import json
@@ -67,10 +57,8 @@ def _device_label_from_ua(ua: str, device_id: str = '') -> str:
     elif 'android' in u:
         device = 'Android phone' if 'mobile' in u else 'Android tablet'
     elif 'macintosh' in u or 'mac os x' in u:
-        # NB: iPadOS 13+ Safari sends a desktop "Macintosh" UA — indistinguishable
-        # from a real Mac server-side (no touch signal in the UA). Cooperating
-        # clients disambiguate by sending a display_name (see the test page, which
-        # uses navigator.maxTouchPoints); this stays the best-effort fallback.
+        # NB: iPadOS 13+ Safari sends a desktop "Macintosh" UA, indistinguishable
+        # server-side; cooperating clients disambiguate via display_name instead.
         device = 'Mac'
     elif 'windows' in u:
         device = 'Windows PC'
@@ -108,10 +96,8 @@ def _default_welcome() -> dict:
         "roaster": "TilauScope",
         "unit": "C",
         "role": "observer",
-        # ids MUST follow the `slider{i}` convention the telemetry uses as its
-        # slider keys, or the values streamed up would never match a channel and
-        # the grid would sit empty for good. Labels stay generic: the real ones
-        # come from Artisan's own slider config via the command bridge.
+        # ids MUST follow the `slider{i}` convention the telemetry uses as its keys.
+        # Labels stay generic; the real ones come from Artisan's slider config via the command bridge.
         "channels": [
             {"id": f"slider{i}", "label": f"Slider {i + 1}", "status": "controllable",
              "min": 0, "max": 100, "step": 1, "unit": "%"}
@@ -252,12 +238,8 @@ class TilauWebControl:
                            "payload": payload})
 
     async def _send(self, ws: web.WebSocketResponse, mtype: str, payload: dict) -> None:
-        # Serialise all writes to a given socket: broadcast() schedules sends
-        # fire-and-forget, so without a per-connection lock two send_str() could
-        # interleave on the same writer (aiohttp forbids it -> dropped/corrupt
-        # frame). Creating the lock is race-free: no await between get and set,
-        # and the loop is single-threaded. The envelope (seq bump) is built
-        # under the lock so wire order matches seq order.
+        # Serialise all writes to a given socket: without a per-connection lock,
+        # concurrent send_str() calls could interleave on the same writer (aiohttp forbids it).
         lock = getattr(ws, '_tilau_send_lock', None)
         if lock is None:
             lock = asyncio.Lock()
@@ -269,10 +251,8 @@ class TilauWebControl:
     # ---- WebSocket ----------------------------------------------------------
 
     async def _ws_handler(self, request: web.Request) -> web.WebSocketResponse:
-        # Cross-origin upgrades are refused: a page served by any other site the
-        # phone happens to visit (or a DNS-rebinding host) must not be able to open
-        # a control socket. Browsers always send Origin on a WS upgrade and a
-        # same-origin one matches Host; non-browser clients send none at all.
+        # Cross-origin upgrades are refused: a page served by any other site must not
+        # be able to open a control socket. Browsers send Origin on a WS upgrade; a same-origin one matches Host.
         origin = request.headers.get('Origin')
         if origin:
             from urllib.parse import urlsplit
@@ -346,10 +326,8 @@ class TilauWebControl:
                 await ws.close()
                 return ws
 
-        # controller lock (§7): a client reconnecting within the deadman grace
-        # window re-attaches as the controller; everyone else is an observer.
-        # Always adopt the newest socket for the controller device so a stale
-        # duplicate closing later can't trip the grace release.
+        # controller lock (§7): a client reconnecting within the deadman grace window
+        # re-attaches as the controller; everyone else is an observer.
         ws._tilau_device_id = device_id
         if self._controller == device_id:
             self._controller_ws = ws

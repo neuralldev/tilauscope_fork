@@ -1,19 +1,9 @@
 """
 Réglage automatique du menu Axes d'Artisan pour TilauScope.
 
-Applique un jeu de réglages d'axes opinionés (fenêtre temps CHARGE-1min/DROP+1min,
-axe température 0-270°C, grille pointillée, légende bas-droite, axe delta 0-18°C, …)
-sans modification de artisanlib/main.py ni canvas.py : on écrit directement les
-attributs d'instance de qmc (même mécanisme que la boîte de dialogue Config > Axes,
-voir artisanlib/axis.py) puis on déclenche qmc.redraw().
-
-Installation (aucune modification de main.py) :
-    self._axes_hook = AxesConfigHook(self.aw)
-    self._axes_hook.install()      # patch aw.loadFile, ré-applique à chaque profil
-    self._axes_hook.apply_now()    # applique une première fois au démarrage de TilauScope
-
-Retrait :
-    self._axes_hook.remove()
+Applique un jeu de réglages d'axes opinionés en écrivant directement les attributs
+d'instance de qmc (même mécanisme que Config > Axes, voir artisanlib/axis.py), sans
+modifier artisanlib/main.py ni canvas.py. Voir AxesConfigHook.install/apply_now/remove.
 """
 
 from __future__ import annotations

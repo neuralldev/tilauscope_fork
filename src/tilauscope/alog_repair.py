@@ -15,26 +15,23 @@
 # <https://www.gnu.org/licenses/>.
 
 """
-AlogRepairDialog - floating master/detail window opened from the File Management
-tab. Lists every .alog in the ALog directory, audits missing fields, and lets the
-user complete one file at a time. The bean reference (``uuid: ...`` inside the
-``beans`` field) is auto-matched and can be overridden manually; "Complete from
-bean" fills only empty metadata fields and rebuilds the ``beans`` field with the
-canonical layout used by roast_properties. Pressing "Record" rewrites the .alog
-in place and renames it to the Artisan filename derived from title + roast date.
+AlogRepairDialog - floating roast-profile maintenance window (TilauScope menu). Lists
+every .alog, audits missing fields, and lets the user complete one file at a time;
+"Complete from bean" fills empty metadata from the matched bean, and "Record"
+rewrites the .alog and renames it to the Artisan filename (title + roast date).
 
-IMPORTANT - file encoding
-    Artisan's native profile format is ``repr(dict)`` written as UTF-8 text and
-    read back with ``ast.literal_eval`` (artisanlib.util.serialize/deserialize,
-    and beancave.get_alog_data). Write with ``path.write_text(repr(data),
-    encoding='utf-8')`` — see write_alog(). Do NOT ``encode('unicode_escape')``:
-    the readers only literal_eval, so the extra layer is never undone and
-    compounds on every save (multi-line ``beans`` gained runs of backslashes).
+IMPORTANT - file encoding: write with ``path.write_text(repr(data), encoding='utf-8')``
+only (see write_alog()). Do NOT ``encode('unicode_escape')`` — readers only
+literal_eval, so the extra layer compounds on every save.
 """
 
 from __future__ import annotations
 
+from tilauscope.theme_qss import apply_tilau_theme, tint
+
 import re
+import ast
+import time
 import logging
 from pathlib import Path
 from datetime import datetime
@@ -46,12 +43,13 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QListWidget, QListWidgetItem, QSplitter,
     QWidget, QPlainTextEdit, QApplication, QCheckBox, QMessageBox,
-    QFrame, QSizeGrip, QProgressDialog,
+    QFrame, QSizeGrip, QProgressDialog, QButtonGroup, QScrollArea,
 )
 
 from tilauscope.tilauscope_types import (
-    THEME, AGTRON_SCALES, GreenBean, show_styled_message,
+    THEME, AGTRON_SCALES, GreenBean, show_styled_message, TilauProgress,
 )
+from tilauscope.roasters import RoasterManager, canonical_roaster_name
 
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow
@@ -63,7 +61,6 @@ _UUID_RE: Final = re.compile(r'uuid:\s*([a-fA-F0-9-]{36})')
 # Artisan removeDisallowedFilenameChars: strips [<>:"/\|?*]
 _INVALID_FN: Final = re.compile(r'[<>:"/\\|?*]')
 
-_GREEN: Final = '#A6E3A1'
 
 # Default ALog roast-data unit is grams; quantities are stored in weight[2].
 _DEFAULT_WEIGHT_UNIT: Final = 'g'
@@ -194,8 +191,118 @@ def write_alog(data: dict, path: Path) -> None:
     NEVER ``encode('unicode_escape')`` here: the readers only literal_eval, so
     that extra escape layer is never undone and **compounds on every save** —
     multi-line ``beans`` accumulated runs of backslashes (``\\\\\\\\n`` instead
-    of one separator) and accents were mangled to ``\\xNN``. ## TILAU ##"""
+    of one separator) and accents were mangled to ``\\xNN``. """
     path.write_text(repr(data), encoding='utf-8')
+
+
+## ── Learning state of a roast: admitted / not reviewed / excluded ──────────
+## The admit key is a positive marker, written only when the roast is vouched for.
+## Its absence means "not reviewed" (still learned from), distinct from the exclude key.
+LEARNING_EXCLUDE_KEY:  Final[str] = 'tilau_exclude_learning'
+LEARNING_ADMIT_KEY:    Final[str] = 'tilau_learning_admitted'
+
+LEARNING_ADMITTED:   Final[str] = 'admitted'
+LEARNING_UNREVIEWED: Final[str] = 'unreviewed'
+LEARNING_EXCLUDED:   Final[str] = 'excluded'
+
+
+def learning_state(data: dict) -> str:
+    """Read the learning state of a profile dict.
+
+    Exclusion wins over admission: a file carrying both keys (hand-edited, or a
+    save that crossed a toggle) is the conservative case — the operator's veto
+    is the one that must survive.
+    """
+    if data.get(LEARNING_EXCLUDE_KEY) is True:
+        return LEARNING_EXCLUDED
+    if data.get(LEARNING_ADMIT_KEY) is True:
+        return LEARNING_ADMITTED
+    return LEARNING_UNREVIEWED
+
+
+def apply_learning_state(data: dict, state: str) -> dict:
+    """Return a copy of `data` carrying exactly one (or no) learning marker.
+
+    Both keys are dropped first, so a state change never leaves the previous
+    marker behind — that is how a file would end up meaning two things at once.
+    """
+    out = dict(data)
+    out.pop(LEARNING_EXCLUDE_KEY, None)
+    out.pop(LEARNING_ADMIT_KEY, None)
+    if state == LEARNING_EXCLUDED:
+        out[LEARNING_EXCLUDE_KEY] = True
+    elif state == LEARNING_ADMITTED:
+        out[LEARNING_ADMIT_KEY] = True
+    return out
+
+
+# ── fast metadata read (list audit only) ─────────────────────────────────────
+# A .alog is a repr(dict) dominated by curve data; auditing needs only a dozen
+# scalar fields, so the targeted read below is ~100x cheaper than a full parse
+# (~35ms/file). Full parse still happens when a file is SELECTED.
+
+_META_KEYS: Final[tuple[str, ...]] = (
+    'title', 'beans', 'weight', 'density', 'moisture_greens', 'greens_temp',
+    'whole_color', 'ambientTemp', 'ambient_humidity',
+    LEARNING_EXCLUDE_KEY, LEARNING_ADMIT_KEY,
+)
+
+
+def _literal_end(text: str, start: int) -> int:
+    """Index just past the Python literal beginning at `start`.
+
+    Walks quotes (with escapes) and bracket depth, and stops on the comma that
+    closes the value at depth 0 — the same rule repr() wrote it with."""
+    i, depth, quote = start, 0, ''
+    while i < len(text):
+        c = text[i]
+        if quote:
+            if c == '\\':
+                i += 2
+                continue
+            if c == quote:
+                quote = ''
+        elif c in "'\"":
+            quote = c
+        elif c in '([{':
+            depth += 1
+        elif c in ')]}':
+            if depth == 0:
+                return i
+            depth -= 1
+        elif c == ',' and depth == 0:
+            return i
+        i += 1
+    return len(text)
+
+
+def read_alog_meta(path: Path) -> dict | None:
+    """Read just the fields the list audit needs, without parsing the curves.
+
+    Returns a dict usable by audit_alog/learning_state, or None if the file
+    cannot be read — the caller then falls back to a full parse."""
+    try:
+        text = path.read_text(encoding='utf-8')
+    except (OSError, UnicodeDecodeError):
+        return None
+    meta: dict = {}
+    for key in _META_KEYS:
+        needle = f"'{key}': "
+        pos = text.find(needle)
+        # Only accept the key where a dict entry can actually start, so the same
+        # text appearing inside a value (a bean note, a comment) is not read as
+        # a field. Artisan writes the profile as one flat dict.
+        while pos > 0 and not (text[pos - 1] == '{'
+                               or text[pos - 2:pos] == ', '):
+            pos = text.find(needle, pos + 1)
+        if pos < 0:
+            continue
+        start = pos + len(needle)
+        try:
+            meta[key] = ast.literal_eval(text[start:_literal_end(text, start)])
+        except (ValueError, SyntaxError, MemoryError, RecursionError):
+            return None
+    return meta
 
 
 def match_bean(data: dict, beans: list[GreenBean]) -> GreenBean | None:
@@ -213,6 +320,25 @@ def match_bean(data: dict, beans: list[GreenBean]) -> GreenBean | None:
             if b.name and b.name.lower() in title:
                 return b
     return None
+
+
+def selectable_roaster_name(
+    stored: object, available: list[str], fallback: object = '',
+) -> str:
+    """Resolve full name, legacy alias or unique model; otherwise stay empty."""
+    by_fold = {name.casefold(): name for name in available}
+    for raw in (stored, fallback):
+        candidate = canonical_roaster_name(str(raw or ''))
+        if not candidate:
+            continue
+        exact = by_fold.get(candidate.casefold())
+        if exact is not None:
+            return exact
+        suffix = f' {candidate}'.casefold()
+        model_matches = [name for name in available if name.casefold().endswith(suffix)]
+        if len(model_matches) == 1:
+            return model_matches[0]
+    return ''
 
 
 def _safe_float(v: object) -> float:
@@ -251,6 +377,10 @@ class _AgtronPicker(QDialog):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(None)  # parent=None: avoid Qt embedding on macOS
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self._drag_pos: QPoint | None = None
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -263,7 +393,7 @@ class _AgtronPicker(QDialog):
         container.setStyleSheet(
             f"#agtronRoot {{ background-color: {THEME['BG']}; border: 2px solid {THEME['ACCENT']};"
             f" border-radius: 14px; }}"
-            f"QLabel {{ color: {THEME['TEXT']}; font-family: 'JetBrains Mono';"
+            f"QLabel {{ color: {THEME['TEXT']};"
             f" background: transparent; }}"
             f"QPushButton {{ text-align:left; padding:6px 10px;"
             f" border:1px solid {THEME['BORDER']}; border-radius:6px;"
@@ -283,6 +413,7 @@ class _AgtronPicker(QDialog):
             f"font-size:13px; font-weight:bold; color:{THEME['ACCENT']}; background:transparent;")
         btn_x = QPushButton("\u2715")
         btn_x.setFixedSize(24, 24)
+        btn_x.setProperty('variant', 'icon')   # fixed size: no base padding
         btn_x.setStyleSheet(
             f"QPushButton {{ background:{THEME['BORDER']}; color:{THEME['TEXT']};"
             f" border-radius:12px; font-size:13px; font-weight:bold; text-align:center; }}"
@@ -326,7 +457,6 @@ class _AgtronPicker(QDialog):
         self._drag_pos = None
 
 
-## TILAU ##
 def stamp_device_map(data: dict, tilau_devices: dict) -> bool:
     """Reconstruct tilau_name_map from extraname1 labels for legacy alogs that
     pre-date the automatic stamping (saved before Approche-B was deployed).
@@ -360,6 +490,10 @@ class AlogRepairDialog(QDialog):
 
     def __init__(self, beancave: 'BeancaveDlg', aw: 'ApplicationWindow') -> None:
         super().__init__(None)  # parent=None: avoid Qt embedding on macOS
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self._bc = beancave
         self._aw = aw
         self._current_path: Path | None = None
@@ -368,20 +502,37 @@ class AlogRepairDialog(QDialog):
         self._dirty = False            # unsaved edits on the current file
         self._suppress_select = False  # guards programmatic selection changes
         self._drag_pos: QPoint | None = None
+        # List-row metadata cache: path -> (mtime, size, missing, learning state).
+        # BeanCave's own alog cache is capped at 5 entries, so without this every
+        # Record re-read and literal_eval'd the WHOLE directory just to redraw the
+        # list. Keyed on mtime+size, so an externally edited file still refreshes.
+        self._meta_cache: dict[str, tuple[float, int, list[str], str]] = {}
+        # Incremental directory scan state — see _reload_file_list / _scan_step.
+        self._scan_files: list[Path] = []
+        self._scan_idx = 0
+        self._scan_incomplete = 0
+        self._scan_shown = 0
+        self._scan_seen: set[str] = set()
+        self._scan_dir: Path | None = None
+        self._scan_active = False
+        self._pending_select: Path | None = None
+        self._pending_prev_row = -1
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setMinimumSize(880, 600)
 
         self._build_ui()
-        self._reload_file_list()
+        # The scan starts from showEvent, once the window is actually on
+        # screen — opening it by mistake must not cost a wait.
+        self._first_show = True
 
     # ── styling ────────────────────────────────────────────────────────────
     def _style(self) -> str:
-        crit = THEME.get('CRITICAL', '#F38BA8')
+        crit = THEME['CRITICAL']
         return f"""
             QDialog, QWidget {{ background-color:{THEME['BG']}; color:{THEME['TEXT']};
-                font-family:'JetBrains Mono'; }}
+                }}
             QLineEdit, QComboBox, QPlainTextEdit {{ background-color:{THEME['SURFACE']};
                 color:{THEME['TEXT']}; border:1px solid {THEME['BORDER']};
                 border-radius:6px; padding:5px 8px; font-size:12px; }}
@@ -390,6 +541,17 @@ class AlogRepairDialog(QDialog):
                 border-radius:6px; font-size:12px; }}
             QListWidget::item:selected {{ background-color:{THEME['ACCENT']}; color:{THEME['BG']}; }}
             QCheckBox {{ color:{THEME['SUBTEXT']}; font-size:11px; }}
+            QScrollArea {{ background:transparent; border:none; }}
+            QProgressBar {{ background-color:{THEME['SURFACE']}; color:{THEME['TEXT']};
+                border:1px solid {THEME['BORDER']}; border-radius:7px;
+                font-size:9px; text-align:center; }}
+            QProgressBar::chunk {{ background-color:{THEME['ACCENT']}; border-radius:6px; }}
+            QScrollBar:vertical {{ background:transparent; width:10px; margin:0px; }}
+            QScrollBar::handle:vertical {{ background:{THEME['BORDER']};
+                border-radius:5px; min-height:28px; }}
+            QScrollBar::handle:vertical:hover {{ background:{THEME['ACCENT']}; }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height:0px; }}
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background:transparent; }}
             QLabel {{ background:transparent; }}
             QPushButton {{
                 background:{THEME['SURFACE']}; color:{THEME['TEXT']};
@@ -424,7 +586,7 @@ class AlogRepairDialog(QDialog):
 
     def _field_label(self, text: str) -> QLabel:
         lbl = QLabel(text)
-        lbl.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:10px; letter-spacing:1px;")
+        lbl.setProperty('variant', 'eyebrow')
         return lbl
 
     @staticmethod
@@ -457,11 +619,13 @@ class AlogRepairDialog(QDialog):
         # custom title bar (drag handle + close)
         bar = QHBoxLayout()
         title_lbl = QLabel(
-            QApplication.translate("tilauscope_repair", "\U0001f527  Repair ALogs"))
+            QApplication.translate(
+                "tilauscope_repair", "\U0001f527  Roast Profile Maintenance"))
         title_lbl.setStyleSheet(
             f"font-size:15px; font-weight:bold; color:{THEME['ACCENT']}; background:transparent;")
         btn_x = QPushButton("\u2715")
         btn_x.setFixedSize(26, 26)
+        btn_x.setProperty('variant', 'icon')   # fixed size: no base padding
         btn_x.setObjectName("btnClose")
         btn_x.clicked.connect(self.close)
         bar.addWidget(title_lbl)
@@ -477,8 +641,29 @@ class AlogRepairDialog(QDialog):
         left_lay = QVBoxLayout(left)
         left_lay.setContentsMargins(0, 0, 0, 0)
         self._summary_lbl = QLabel("")
-        self._summary_lbl.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:11px;")
+        self._summary_lbl.setProperty('variant', 'caption')
         left_lay.addWidget(self._summary_lbl)
+
+        # Scan progress + cancel. Hidden when idle; the button turns into
+        # "scan again" after a cancelled pass so a partial list is never a
+        # dead end.
+        self._scan_row = QWidget()
+        scan_lay = QHBoxLayout(self._scan_row)
+        scan_lay.setContentsMargins(0, 0, 0, 0)
+        scan_lay.setSpacing(6)
+        # Bar only: the count lives in _summary_lbl just below, as
+        # "Reading roast files… 47 / 312".
+        self._scan_bar = TilauProgress(TilauProgress.BAR)
+        self._scan_bar.setRange(0, 100)
+        self._scan_btn = QPushButton(QApplication.translate("tilauscope_repair", "Cancel"))
+        self._scan_btn.setObjectName("btnGhost")
+        self._scan_btn.setToolTip(QApplication.translate(
+            "tilauscope_repair", "Stop reading the roast files. Those already read stay listed."))
+        self._scan_btn.clicked.connect(self._on_scan_button)
+        scan_lay.addWidget(self._scan_bar, 1)
+        scan_lay.addWidget(self._scan_btn)
+        self._scan_row.setVisible(False)
+        left_lay.addWidget(self._scan_row)
         self._incomplete_only = QCheckBox(
             QApplication.translate("tilauscope_repair", "Show incomplete only"))
         self._incomplete_only.toggled.connect(lambda _on: self._reload_file_list())
@@ -493,10 +678,60 @@ class AlogRepairDialog(QDialog):
         form = QVBoxLayout(right)
         form.setSpacing(7)
 
+        # ── Learning state of the selected roast ─────────────────────────────
+        # Segmented control so the state reads directly off the row; written to
+        # the file immediately (no Record). Sits at the top as a verdict on the
+        # whole roast, not one more field.
+        learn_row = QHBoxLayout()
+        learn_row.setSpacing(6)
+        learn_lbl = self._field_label(QApplication.translate(
+            "tilauscope_repair", "PLAN LEARNING"))
+        learn_row.addWidget(learn_lbl)
+        self._learn_group = QButtonGroup(self)
+        self._learn_group.setExclusive(True)
+        self._learn_btns: dict[str, QPushButton] = {}
+        for state, label, colour, tip in (
+            (LEARNING_ADMITTED,
+             QApplication.translate("tilauscope_repair", "✓ Admitted"),
+             THEME['SUCCESS'],
+             QApplication.translate(
+                 "tilauscope_repair",
+                 "You have checked this roast and it is sound: the plan learns from it, and you can see at a glance that it was reviewed.")),
+            (LEARNING_UNREVIEWED,
+             QApplication.translate("tilauscope_repair", "– Not reviewed"),
+             THEME['SUBTEXT'],
+             QApplication.translate(
+                 "tilauscope_repair",
+                 "No decision recorded. The plan still learns from this roast — an imperfect roast teaches something too. This is the state of every file you have never opened.")),
+            (LEARNING_EXCLUDED,
+             QApplication.translate("tilauscope_repair", "\U0001f6ab Excluded"),
+             THEME['CRITICAL'],
+             QApplication.translate(
+                 "tilauscope_repair",
+                 "Plan learning skips this roast entirely: first crack, phase timings, colour response, heater profile and the master curve all ignore it.")),
+        ):
+            btn = QPushButton(label)
+            btn.setCheckable(True)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setToolTip(tip)
+            btn.setStyleSheet(
+                # tighter than the default button padding: the three states plus
+                # their label share a single line
+                "QPushButton { padding:6px 10px; font-size:11px; }"
+                f"QPushButton:checked {{ border:1.5px solid {colour};"
+                f" color:{colour}; background-color: {tint('TEXT', 0.06)}; }}")
+            btn.clicked.connect(
+                lambda _checked=False, s=state: self._set_learning_state(s))
+            self._learn_group.addButton(btn)
+            self._learn_btns[state] = btn
+            learn_row.addWidget(btn)
+        learn_row.addStretch(1)
+        form.addLayout(learn_row)
+
         # status summary (missing / plausibility)
         self._missing_lbl = QLabel("")
         self._missing_lbl.setWordWrap(True)
-        self._missing_lbl.setStyleSheet(f"color:{THEME.get('WARNING', '#F9E2AF')}; font-size:11px;")
+        self._missing_lbl.setStyleSheet(f"color:{THEME['WARNING']}; font-size:11px;")
         form.addWidget(self._missing_lbl)
         self._check_lbl = QLabel("")
         self._check_lbl.setWordWrap(True)
@@ -521,6 +756,16 @@ class AlogRepairDialog(QDialog):
         self._title_edit = QLineEdit()
         form.addWidget(self._title_edit)
 
+        # roaster identity persisted by Artisan (optional when unlisted)
+        form.addWidget(self._field_label(QApplication.translate(
+            "tilauscope_repair", "ROASTER")))
+        self._roaster_combo = QComboBox()
+        self._roaster_combo.addItem(QApplication.translate(
+            "tilauscope_repair", "— not listed / leave empty —"), userData='')
+        for roaster_name in RoasterManager().get_roaster_list():
+            self._roaster_combo.addItem(roaster_name, userData=roaster_name)
+        form.addWidget(self._roaster_combo)
+
         # beans
         form.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "BEANS")))
         self._beans_edit = QPlainTextEdit()
@@ -544,7 +789,7 @@ class AlogRepairDialog(QDialog):
         self._w_in_lbl  = self._field_label("WEIGHT IN (g)")
         self._w_out_lbl = self._field_label("WEIGHT OUT (g)")
         self._loss_lbl  = QLabel("\u2014")
-        self._loss_lbl.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:12px;")
+        self._loss_lbl.setProperty('variant', 'secondary')
 
         self._density_edit.setPlaceholderText("550\u2013900")
         self._moisture_edit.setPlaceholderText("8\u201314")
@@ -606,40 +851,43 @@ class AlogRepairDialog(QDialog):
         self._record_btn.clicked.connect(self._record)
         self._next_btn = QPushButton(QApplication.translate("tilauscope_repair", "Next incomplete \u25b8"))
         self._next_btn.clicked.connect(lambda: self._select_next_incomplete(self._list.currentRow()))
-        ## TILAU ## — batch stamp tilau_name_map on legacy alogs
+        # — batch stamp tilau_name_map on legacy alogs
         self._stamp_btn = QPushButton(
             QApplication.translate("tilauscope_repair", "Stamp device map"))
         self._stamp_btn.setToolTip(QApplication.translate(
             "tilauscope_repair",
             "Rebuild tilau_name_map in all ALogs that pre-date automatic device-index stamping."))
         self._stamp_btn.clicked.connect(self._stamp_device_map_batch)
-        # Toggle « exclure de l'apprentissage » sur l'alog sélectionné : pose /
-        # retire tilau_exclude_learning directement dans le fichier (écriture
-        # immédiate, pas de Record) — l'analyse historique du plan saute les
-        # fichiers flaggés (FC, timings, drop couleur, courbe maître).
-        self._exclude_btn = QPushButton(
-            QApplication.translate("tilauscope_repair", "\U0001f6ab Exclude from learning"))
-        self._exclude_btn.setCheckable(True)
-        self._exclude_btn.setToolTip(QApplication.translate(
-            "tilauscope_repair",
-            "Flag the selected ALog so plan learning skips it (written to the file immediately; click again to re-admit it)."))
-        self._exclude_btn.setStyleSheet(
-            f"QPushButton:checked {{ border:1.5px solid {THEME.get('CRITICAL', '#F38BA8')};"
-            f" color:{THEME.get('CRITICAL', '#F38BA8')};"
-            f" background-color: rgba(243,139,168,0.10); }}")
-        self._exclude_btn.clicked.connect(self._toggle_exclude_learning)
         close_btn = QPushButton(QApplication.translate("tilauscope_repair", "Close"))
         close_btn.setObjectName("btnGhost")
         close_btn.clicked.connect(self.close)
         btn_row.addWidget(self._record_btn)
         btn_row.addWidget(self._next_btn)
         btn_row.addWidget(self._stamp_btn)
-        btn_row.addWidget(self._exclude_btn)
         btn_row.addWidget(close_btn)
         btn_row.addStretch(1)
-        form.addLayout(btn_row)
 
-        splitter.addWidget(right)
+        # The fields grow with the content (learning row, plausibility warnings,
+        # filename preview): give them a vertical scroller rather than letting
+        # them be squeezed out of the window. The action buttons stay OUTSIDE
+        # the scroller — Record must never be something you have to scroll to.
+        right_scroll = QScrollArea()
+        right_scroll.setWidget(right)
+        right_scroll.setWidgetResizable(True)
+        right_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        right_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        right_scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        right.setMinimumWidth(420)
+
+        right_pane = QWidget()
+        right_lay = QVBoxLayout(right_pane)
+        right_lay.setContentsMargins(0, 0, 0, 0)
+        right_lay.setSpacing(8)
+        right_lay.addWidget(right_scroll, 1)
+        right_lay.addLayout(btn_row)
+        splitter.addWidget(right_pane)
         splitter.setSizes([320, 560])
 
         # QSizeGrip anchored to bottom-right of the container
@@ -647,7 +895,6 @@ class AlogRepairDialog(QDialog):
         grip_row.setContentsMargins(0, 0, 0, 0)
         grip_row.addStretch(1)
         grip = QSizeGrip(self.container)
-        grip.setStyleSheet("background: transparent;")
         grip_row.addWidget(grip)
         root.addLayout(grip_row)
 
@@ -657,53 +904,164 @@ class AlogRepairDialog(QDialog):
                   self._humidity_edit, self._whole_edit, self._ground_edit):
             w.textChanged.connect(self._on_field_changed)
         self._beans_edit.textChanged.connect(self._on_field_changed)
+        self._roaster_combo.currentIndexChanged.connect(self._on_field_changed)
         self._color_sys_combo.currentIndexChanged.connect(self._on_field_changed)
 
         self._set_editor_enabled(False)
 
-    # ── list population ────────────────────────────────────────────────────
-    def _reload_file_list(self) -> None:
+    # ── list population (incremental, cancellable) ──────────────────────────
+    def _reload_file_list(self, select_after: Path | None = None,
+                          prev_row: int = -1) -> None:
+        """Start a fresh scan of the ALog directory.
+
+        Auditing a profile means parsing the whole file, so a large archive
+        cannot be read in one go without freezing the window for seconds. The
+        scan therefore runs in slices on the event loop: rows appear as they are
+        read, progress is reported, and the user can stop it at any point.
+        `select_after` is applied once the scan ends (or is cancelled)."""
+        self._scan_active = False          # halt any in-flight scan
+        self._pending_select = select_after
+        self._pending_prev_row = prev_row
         self._suppress_select = True
         self._list.clear()
         self._suppress_select = False
         directory = Path(self._bc.alog_directory) if self._bc.alog_directory else None
         if not directory or not directory.is_dir():
+            self._scan_row.setVisible(False)
             self._summary_lbl.setText(QApplication.translate(
                 "tilauscope_repair", "ALog directory not set."))
             return
-        files = sorted(directory.glob("*.alog"), key=lambda p: p.name.lower())
-        incomplete = 0
-        shown = 0
-        only_incomplete = self._incomplete_only.isChecked()
-        for fp in files:
-            data = self._bc.get_alog_data(fp)
+        self._scan_dir = directory
+        self._scan_files = sorted(directory.glob("*.alog"), key=lambda p: p.name.lower())
+        self._scan_idx = 0
+        self._scan_incomplete = 0
+        self._scan_shown = 0
+        self._scan_seen = set()
+        self._scan_active = True
+        self._scan_bar.setValue(0)
+        self._scan_btn.setText(QApplication.translate("tilauscope_repair", "Cancel"))
+        self._scan_btn.setToolTip(QApplication.translate(
+            "tilauscope_repair", "Stop reading the roast files. Those already read stay listed."))
+        # The progress row is a safety net, not the normal experience: a folder
+        # is read in a few tens of milliseconds, and a bar that flashes for that
+        # long is worse than no bar. It only appears if the reading is still
+        # going after a moment — a huge folder, or a slow network volume.
+        self._scan_row.setVisible(False)
+        QTimer.singleShot(400, self._show_progress_if_still_scanning)
+        self._scan_step()
+
+    def _show_progress_if_still_scanning(self) -> None:
+        if self._scan_active and self._scan_files:
+            self._scan_row.setVisible(True)
+
+    def _scan_step(self) -> None:
+        """Read one time-boxed slice of the directory, then yield back to Qt."""
+        if not self._scan_active:
+            return
+        total = len(self._scan_files)
+        deadline = time.monotonic() + 0.04   # ~40 ms of work, then repaint
+        while self._scan_idx < total:
+            self._scan_file(self._scan_files[self._scan_idx])
+            self._scan_idx += 1
+            if time.monotonic() >= deadline:
+                break
+        self._scan_bar.setValue(int(self._scan_idx * 100 / total) if total else 100)
+        if self._scan_row.isVisible():
+            self._summary_lbl.setText(QApplication.translate(
+                "tilauscope_repair", "Reading roast files… {0} / {1}").format(
+                    self._scan_idx, total))
+        if self._scan_idx >= total:
+            self._finish_scan(cancelled=False)
+        else:
+            # 1 ms rather than 0: a chain of zero timers can outrun the platform
+            # run loop and starve the very repaints this slicing exists for.
+            QTimer.singleShot(1, self._scan_step)
+
+    def _scan_file(self, fp: Path) -> None:
+        """Audit one file and append its row, unless the filter hides it."""
+        key = str(fp)
+        self._scan_seen.add(key)
+        try:
+            st = fp.stat()
+            stamp = (st.st_mtime, st.st_size)
+        except OSError:
+            return
+        cached = self._meta_cache.get(key)
+        if cached is not None and (cached[0], cached[1]) == stamp:
+            missing, _state = list(cached[2]), cached[3]
+        else:
+            # Targeted read: the audit needs a dozen fields, not the curves.
+            # Falls back to the full parse if the file will not give them up.
+            data = read_alog_meta(fp) or self._bc.get_alog_data(fp)
             if data is None:
-                continue
+                return
             missing = audit_alog(data)
-            is_incomplete = bool(missing)
-            if is_incomplete:
-                incomplete += 1
-            if only_incomplete and not is_incomplete:
-                continue
-            item = QListWidgetItem(fp.name)
-            item.setData(self._ROLE_PATH, str(fp))
-            item.setData(self._ROLE_INCOMPLETE, is_incomplete)
-            if 'beans_uuid' in missing:
-                item.setForeground(QColor(THEME.get('CRITICAL', '#F38BA8')))
-                item.setText(f"\u2716  {fp.name}")
-            elif missing:
-                item.setForeground(QColor(THEME.get('WARNING', '#F9E2AF')))
-                item.setText(f"\u26A0  {fp.name}  ({len(missing)})")
-            else:
-                item.setForeground(QColor(_GREEN))
-                item.setText(f"\u2713  {fp.name}")
-            if data.get('tilau_exclude_learning', False):
-                item.setText(item.text() + "  \U0001f6ab")
-            self._list.addItem(item)
-            shown += 1
-        self._summary_lbl.setText(QApplication.translate(
-            "tilauscope_repair", "{0} files \u00b7 {1} incomplete \u00b7 {2} shown").format(
-                len(files), incomplete, shown))
+            _state = learning_state(data)
+            self._meta_cache[key] = (stamp[0], stamp[1], list(missing), _state)
+        is_incomplete = bool(missing)
+        if is_incomplete:
+            self._scan_incomplete += 1
+        if self._incomplete_only.isChecked() and not is_incomplete:
+            return
+        item = QListWidgetItem(fp.name)
+        item.setData(self._ROLE_PATH, str(fp))
+        item.setData(self._ROLE_INCOMPLETE, is_incomplete)
+        if 'beans_uuid' in missing:
+            item.setForeground(QColor(THEME['CRITICAL']))
+            item.setText(f"\u2716  {fp.name}")
+        elif missing:
+            item.setForeground(QColor(THEME['WARNING']))
+            item.setText(f"\u26A0  {fp.name}  ({len(missing)})")
+        else:
+            item.setForeground(QColor(THEME['SUCCESS']))
+            item.setText(f"\u2713  {fp.name}")
+        # Learning state as a suffix badge: 🚫 excluded, ✅ reviewed and
+        # admitted, nothing for a file no one has ruled on yet. The prefix
+        # (✓ ⚠ ✖) already says whether the METADATA is complete — a
+        # different question entirely, and the two must stay readable apart.
+        if _state == LEARNING_EXCLUDED:
+            item.setText(item.text() + "  \U0001f6ab")
+        elif _state == LEARNING_ADMITTED:
+            item.setText(item.text() + "  ✅")
+        self._list.addItem(item)
+        self._scan_shown += 1
+
+    def _finish_scan(self, cancelled: bool) -> None:
+        self._scan_active = False
+        if cancelled:
+            self._scan_btn.setText(QApplication.translate("tilauscope_repair", "Scan again"))
+            self._scan_btn.setToolTip(QApplication.translate(
+                "tilauscope_repair", "Read the roast files that were left out."))
+            self._summary_lbl.setText(QApplication.translate(
+                "tilauscope_repair",
+                "Stopped \u00b7 {0} of {1} files read \u00b7 {2} incomplete").format(
+                    self._scan_idx, len(self._scan_files), self._scan_incomplete))
+        else:
+            self._scan_row.setVisible(False)
+            # Only a full pass knows which files are really gone, and only for the
+            # folder it just walked: pruning after a partial pass, or across
+            # folders, would drop metadata that is still valid.
+            scanned = self._scan_dir
+            for stale in [k for k in self._meta_cache
+                          if k not in self._scan_seen
+                          and scanned is not None and Path(k).parent == scanned]:
+                del self._meta_cache[stale]
+            self._summary_lbl.setText(QApplication.translate(
+                "tilauscope_repair", "{0} files \u00b7 {1} incomplete \u00b7 {2} shown").format(
+                    len(self._scan_files), self._scan_incomplete, self._scan_shown))
+        if self._pending_select is not None:
+            target, prev_row = self._pending_select, self._pending_prev_row
+            self._pending_select = None
+            self._pending_prev_row = -1
+            if not self._reselect(target) and prev_row >= 0:
+                self._select_next_incomplete(prev_row)
+
+    def _on_scan_button(self) -> None:
+        """Cancel an in-flight scan, or restart one after a cancelled pass."""
+        if self._scan_active:
+            self._finish_scan(cancelled=True)
+        else:
+            self._reload_file_list()
 
     # ── selection (with unsaved-changes guard) ──────────────────────────────
     @pyqtSlot()
@@ -733,8 +1091,12 @@ class AlogRepairDialog(QDialog):
         self._current_data = dict(data)  # copy; not committed until Record
         self._populate_editor(self._current_data)
         self._set_editor_enabled(True)
-        # état du toggle « exclure de l'apprentissage » du fichier sélectionné
-        self._exclude_btn.setChecked(bool(data.get('tilau_exclude_learning', False)))
+        # état d'apprentissage du fichier sélectionné — setChecked n'émet pas
+        # clicked(), donc parcourir la liste ne réécrit jamais un fichier.
+        # C'est exactement ce qui manquait à l'ancien bouton unique : son état
+        # se lisait comme une commande, et un clic sur un fichier non marqué le
+        # faisait basculer dans l'état inverse de celui qu'on croyait poser.
+        self._learn_btns[learning_state(data)].setChecked(True)
 
     def _populate_editor(self, data: dict) -> None:
         self._loading = True
@@ -746,6 +1108,12 @@ class AlogRepairDialog(QDialog):
 
         self._title_edit.setText(data.get('title', '') or '')
         self._beans_edit.setPlainText(data.get('beans', '') or '')
+        available_roasters = [str(self._roaster_combo.itemData(i) or '')
+                              for i in range(1, self._roaster_combo.count())]
+        selected_roaster = selectable_roaster_name(
+            data.get('roastertype'), available_roasters, data.get('machinesetup'))
+        roaster_idx = self._roaster_combo.findData(selected_roaster)
+        self._roaster_combo.setCurrentIndex(max(0, roaster_idx))
 
         w = data.get('weight') or []
         self._w_in_edit.setText(self._fmt(w[0]) if len(w) > 0 else '')
@@ -821,7 +1189,6 @@ class AlogRepairDialog(QDialog):
         elif _safe_float(self._ground_edit.text()) == 0.0:
             self._ground_edit.setText(f"{value:.1f}")
 
-    ## TILAU ##
     @pyqtSlot()
     def _stamp_device_map_batch(self) -> None:
         """Iterate every alog in the directory; write tilau_name_map for files
@@ -949,6 +1316,11 @@ class AlogRepairDialog(QDialog):
         data['whole_color']     = _safe_float(self._whole_edit.text())
         data['ground_color']    = _safe_float(self._ground_edit.text())
         data['color_system']    = self._color_sys_combo.currentText()
+        # TilauScope mirrors this identity into both Artisan machine fields.
+        # Empty is intentional when the machine is not explicitly registered.
+        roaster_name = str(self._roaster_combo.currentData() or '')
+        data['roastertype'] = roaster_name
+        data['machinesetup'] = roaster_name
 
         new_name = build_alog_filename(data)
         new_path = self._current_path.with_name(new_name)
@@ -980,31 +1352,32 @@ class AlogRepairDialog(QDialog):
         self.repaired.emit(str(new_path))
         prev_row = self._list.currentRow()
         self._current_path = new_path
-        self._reload_file_list()
-        self._select_next_incomplete(prev_row, fallback=str(new_path))
+        # Stay on the file that was just recorded (its row may have moved if the
+        # rename changed the sort order). Advancing is the job of "Next
+        # incomplete", not of Record. Only when the file left the list — the
+        # "incomplete only" filter and it is now complete — do we move on. The
+        # selection is applied when the rescan ends, since it runs in slices.
+        self._reload_file_list(select_after=new_path, prev_row=prev_row)
 
-    def _toggle_exclude_learning(self, checked: bool) -> None:
-        """Pose / retire tilau_exclude_learning sur le fichier sélectionné,
-        écrit IMMÉDIATEMENT (pas de Record) : le fichier est relu depuis le
-        disque pour ne pas embarquer d'éditions non enregistrées, et seule la
-        clé du flag est touchée. La copie d'édition courante est synchronisée
-        pour qu'un Record ultérieur n'écrase pas le choix."""
+    def _set_learning_state(self, state: str) -> None:
+        """Pose l'état d'apprentissage sur le fichier sélectionné et écrit
+        IMMÉDIATEMENT (pas de Record) : le fichier est relu depuis le disque
+        pour ne pas embarquer d'éditions non enregistrées, et seules les clés
+        d'état sont touchées. La copie d'édition courante est synchronisée pour
+        qu'un Record ultérieur n'écrase pas le choix."""
         if self._current_path is None:
             return
         data = self._bc.get_alog_data(self._current_path)
         if data is None:
-            self._exclude_btn.setChecked(not checked)
             return
-        data = dict(data)   # never mutate the beancave cache entry
-        if checked:
-            data['tilau_exclude_learning'] = True
-        else:
-            data.pop('tilau_exclude_learning', None)
+        previous = learning_state(data)
+        if state == previous:
+            return
         try:
-            write_alog(data, self._current_path)
+            write_alog(apply_learning_state(data, state), self._current_path)
         except Exception as exc:  # noqa: BLE001
-            _log.error("ALog exclude-learning write failed: %s", exc)
-            self._exclude_btn.setChecked(not checked)
+            _log.error("ALog learning-state write failed: %s", exc)
+            self._learn_btns[previous].setChecked(True)
             show_styled_message(
                 self,
                 QApplication.translate("tilauscope_repair", "Save Error"),
@@ -1013,15 +1386,14 @@ class AlogRepairDialog(QDialog):
                 QMessageBox.Icon.Warning, rich=True)
             return
         if self._current_data is not None:
-            if checked:
-                self._current_data['tilau_exclude_learning'] = True
-            else:
-                self._current_data.pop('tilau_exclude_learning', None)
+            self._current_data = apply_learning_state(self._current_data, state)
         item = self._list.currentItem()
         if item is not None:
-            base = item.text().replace("  \U0001f6ab", "")
-            item.setText(base + ("  \U0001f6ab" if checked else ""))
-        _log.info("ALog %s: tilau_exclude_learning=%s", self._current_path.name, checked)
+            base = item.text().replace("  \U0001f6ab", "").replace("  ✅", "")
+            item.setText(base + {LEARNING_EXCLUDED: "  \U0001f6ab",
+                                 LEARNING_ADMITTED: "  ✅"}.get(state, ""))
+        _log.info("ALog %s: plan learning %s -> %s",
+                  self._current_path.name, previous, state)
 
     # ── navigation ───────────────────────────────────────────────────────────
     def _select_next_incomplete(self, from_row: int, fallback: str | None = None) -> None:
@@ -1037,14 +1409,19 @@ class AlogRepairDialog(QDialog):
         if fallback is not None:
             self._reselect(Path(fallback))
 
-    def _reselect(self, path: Path) -> None:
+    def _reselect(self, path: Path) -> bool:
+        """Select the row holding `path` without re-entering _on_select.
+        Returns False when the file is not in the current (possibly filtered) list."""
+        found = False
         self._suppress_select = True
         for r in range(self._list.count()):
             it = self._list.item(r)
             if it.data(self._ROLE_PATH) == str(path):
                 self._list.setCurrentRow(r)
+                found = True
                 break
         self._suppress_select = False
+        return found
 
     # ── live status (highlight + missing + plausibility + weight loss) ───────
     def _on_field_changed(self, *_args) -> None:
@@ -1064,7 +1441,7 @@ class AlogRepairDialog(QDialog):
         }
 
     def _refresh_status(self) -> None:
-        warn = THEME.get('WARNING', '#F9E2AF')
+        warn = THEME['WARNING']
         ok   = THEME['BORDER']
 
         # field -> is-empty (borders + missing list)
@@ -1105,15 +1482,15 @@ class AlogRepairDialog(QDialog):
         wo = _safe_float(self._w_out_edit.text())
         if wi > 0.0 and wo > 0.0 and wo >= wi:
             self._loss_lbl.setText(QApplication.translate("tilauscope_repair", "out \u2265 in!"))
-            self._loss_lbl.setStyleSheet(f"color:{THEME.get('CRITICAL', '#F38BA8')}; font-size:12px;")
+            self._loss_lbl.setStyleSheet(f"color:{THEME['CRITICAL']}; font-size:12px;")
         elif loss is None:
             self._loss_lbl.setText("\u2014")
-            self._loss_lbl.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:12px;")
+            self._loss_lbl.setProperty('variant', 'secondary')
         else:
             in_range = _LOSS_RANGE[0] <= loss <= _LOSS_RANGE[1]
             self._loss_lbl.setText(f"{loss:.1f}%")
             self._loss_lbl.setStyleSheet(
-                f"color:{_GREEN if in_range else warn}; font-size:12px;")
+                f"color:{THEME['SUCCESS'] if in_range else warn}; font-size:12px;")
 
         # plausibility (present-but-unusual): separate "Check:" line, no border
         checks = plausibility_checks(self._current_values())
@@ -1154,20 +1531,39 @@ class AlogRepairDialog(QDialog):
             QMessageBox.Icon.Question) == QMessageBox.StandardButton.Ok
 
     def _set_editor_enabled(self, on: bool) -> None:
-        for w in (self._bean_combo, self._complete_btn, self._title_edit, self._beans_edit,
+        for w in (self._bean_combo, self._complete_btn, self._title_edit,
+                  self._roaster_combo, self._beans_edit,
                   self._w_in_edit, self._w_out_edit, self._density_edit, self._moisture_edit,
                   self._greens_edit, self._ambient_edit, self._humidity_edit, self._whole_edit,
                   self._ground_edit, self._color_sys_combo, self._record_btn,
-                  self._exclude_btn):
+                  *self._learn_btns.values()):
             w.setEnabled(on)
+        if not on:
+            # No file selected: show no state at all rather than the previous
+            # file's, which would read as a decision about nothing.
+            self._learn_group.setExclusive(False)
+            for btn in self._learn_btns.values():
+                btn.setChecked(False)
+            self._learn_group.setExclusive(True)
 
     def showEvent(self, e) -> None:
         super().showEvent(e)
         QTimer.singleShot(150, self._recenter)
+        if self._first_show:
+            self._first_show = False
+            QTimer.singleShot(0, self._reload_file_list)
 
     def _recenter(self) -> None:
-        ref = (self._aw.window().geometry()
-               if (self._aw and self._aw.window()) else self.screen().availableGeometry())
+        # Centre on the host window: BeanCave when visible, Artisan otherwise.
+        ref = None
+        try:
+            if self._bc is not None and self._bc.window().isVisible():
+                ref = self._bc.window().geometry()
+        except (AttributeError, RuntimeError):
+            ref = None
+        if ref is None:
+            ref = (self._aw.window().geometry()
+                   if (self._aw and self._aw.window()) else self.screen().availableGeometry())
         self.move(ref.center() - self.rect().center())
 
     def mousePressEvent(self, e: QMouseEvent) -> None:
@@ -1190,6 +1586,9 @@ class AlogRepairDialog(QDialog):
                     "Discard unsaved changes and close?")):
             event.ignore()
             return
+        # Closing the window must also stop the scan: the chained timer would
+        # otherwise keep parsing files for a window that is no longer there.
+        self._scan_active = False
         event.accept()
 
     @staticmethod

@@ -1,0 +1,26 @@
+{
+  "profiles": 51,
+  "actions": 2180,
+  "alarm_automation": 146,
+  "manual_actions": 2034,
+  "observed_manual_actions": 2032,
+  "curve_only_profiles": 9,
+  "inferred_phase_entries": 1,
+  "observe_entries": 144,
+  "adaptive_entries": 47,
+  "safety_entries": 48,
+  "plan_returns": 79,
+  "projection_count": 12352,
+  "projection_mae_s": 22.305,
+  "stall_entries": 3,
+  "stall_seconds": 18.0,
+  "stall_samples": 16,
+  "stall_entries_by_phase": [1, 0, 2],
+  "mode_seconds": {
+    "plan": 9936.5,
+    "observe_action": 20500.0,
+    "adaptive": 780.5,
+    "safety_only": 619.0,
+    "auto": 0.0
+  }
+}

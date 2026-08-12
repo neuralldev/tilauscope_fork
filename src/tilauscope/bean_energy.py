@@ -1,31 +1,9 @@
-"""Experimental, non-constraining bean-energy research model.  ## TILAU ##
+"""Experimental, non-constraining bean-energy floor model — not consumed by
+roast-plan generation; kept only for isolated experiments, not a physical law.
 
-This compatibility API is not consumed by roast-plan generation. Its historical
-tables are retained only for isolated experiments and old callers; none of
-their percentages should be interpreted as physical laws or machine settings.
-
-Historical rationale (not validated for active planning)
--------------------------
-En Maillard les réactions sont ENDOTHERMIQUES : elles consomment l'énergie qu'on
-leur donne. Baisser le brûleur n'y décélère pas doucement, ça AFFAME la réaction.
-La température continue de monter (masse thermique du tambour), le RoR reste beau,
-et la chimie a décroché — c'est le roast *baked*.
-
-Conséquence : un RoR lisse et décroissant ne prouve PAS que le roast est nourri.
-Le contrôle ne peut donc pas porter sur la courbe, il porte sur la trajectoire des
-réglages, et il lui faut une référence : la quantité d'énergie que CE grain-là
-réclame pour ne pas décrocher. C'est le plancher que ce module calcule.
-
-Le plancher n'est ni un nombre ni un palier : c'est une courbe, définie par deux
-grandeurs issues du grain — un NIVEAU (demande énergétique) et une FRACTION DE
-RELÂCHEMENT (le moment du Maillard où l'exothermie prend le relais et où le
-plancher a le droit de céder).
-
-Contrat
--------
-Fonctions pures. Aucun Qt, aucune I/O, aucun accès disque, aucune chaîne
-utilisateur — les messages destinés à l'opérateur sont construits par l'appelant,
-qui seul a accès au traducteur. Ce module ne produit que des données et des logs.
+Computes a bean-specific Maillard energy floor (level + release fraction): Maillard
+is endothermic, so a smooth/decreasing RoR does not prove the roast is fed. Pure
+functions only — no Qt, I/O, or user-facing strings (the caller builds those).
 """
 
 from __future__ import annotations

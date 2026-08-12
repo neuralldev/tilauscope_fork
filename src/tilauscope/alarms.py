@@ -16,23 +16,12 @@
 # -*- coding: utf-8 -*-
 
 # ABOUT
-# TilauScope Alarm Editor — single-module replacement for the legacy
-# alarms.py (table editor) and visualalarm.py (read-only timeline).
-# Both are decommissioned in favour of this rule-sentence editor with
-# optional phase bucketing.
-#
-# This file currently provides the DATA BACKBONE only:
-#   * AlarmSet         — single source of truth, signal-based, device-agnostic.
-#   * QmcAlarmAdapter  — bridges AlarmSet <-> Artisan qmc.alarm* parallel lists.
-# The UI layer (TilauAlarmDlg, rows, chip edit overlay) plugs on top of these
-# and talks to AlarmSet only through its signals — never to qmc directly.
-#
-# Guard/negguard cross-references are kept as STABLE IDS inside AlarmSet and
-# converted to/from positional indices only at the adapter boundary, so row
-# reordering never corrupts references (same principle as tilau_name_map).
+# TilauScope Alarm Editor — rule-sentence editor with optional phase bucketing.
+# AlarmSet (signal-based) bridges to qmc.alarm* via QmcAlarmAdapter, using stable IDs for guard/negguard refs.
 
+import json
 import logging
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import IntEnum
 from typing import Final, TYPE_CHECKING
 
@@ -40,13 +29,14 @@ from PyQt6.QtCore import (
     QObject, pyqtSignal, pyqtSlot, Qt, QPoint, QSettings, QMimeData, QTimer,
 )
 from PyQt6.QtGui import QColor, QCloseEvent, QDrag
+from tilauscope.theme_qss import apply_tilau_theme, base_qss
 from PyQt6.QtWidgets import (
     QApplication, QDialog, QWidget, QFrame, QLabel, QPushButton, QScrollArea,
-    QComboBox, QLineEdit, QTimeEdit, QAbstractSpinBox, QSpinBox,
+    QComboBox, QLineEdit, QTimeEdit, QAbstractSpinBox, QSpinBox, QMenu,
     QVBoxLayout, QHBoxLayout, QGraphicsOpacityEffect,
 )
 
-from tilauscope.tilauscope_types import THEME
+from tilauscope.tilauscope_types import THEME, show_styled_message
 from tilauscope.ai_service import AITask
 from tilauscope.ai_float_panel import AIFloatPanel
 
@@ -233,10 +223,16 @@ class Alarm:
     beep: bool = False
     guard_aid: int | None = None          # "If Alarm" reference (by aid)
     negguard_aid: int | None = None       # "But Not" reference (by aid)
+    fired_idx: int = -1                   # qmc.alarmstate convention: -1 = not
+                                           # fired, else index into qmc.timex
 
     @property
     def is_conditional(self) -> bool:
         return int(self.from_event) == FromEvent.IF_ALARM
+
+    @property
+    def is_fired(self) -> bool:
+        return self.fired_idx != -1
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -487,6 +483,7 @@ class QmcAlarmAdapter:
                 action=int(self._get(qmc.alarmaction, i, Action.NONE)),
                 arg=str(self._get(qmc.alarmstrings, i, '')),
                 beep=bool(self._get(qmc.alarmbeep, i, 0)),
+                fired_idx=int(self._get(qmc.alarmstate, i, -1)),
             ))
         # Second pass: convert guard/negguard indices -> aids.
         for i, rec in enumerate(records):
@@ -501,7 +498,6 @@ class QmcAlarmAdapter:
     def save(self, alarms: AlarmSet) -> None:
         qmc = self.qmc
         rows = alarms.rows
-        n = len(rows)
         aid_to_index = {a.aid: i for i, a in enumerate(rows)}
 
         qmc.alarmflag        = [1 if a.enabled else 0 for a in rows]
@@ -515,8 +511,11 @@ class QmcAlarmAdapter:
         qmc.alarmaction      = [int(a.action) for a in rows]
         qmc.alarmbeep        = [1 if a.beep else 0 for a in rows]
         qmc.alarmstrings     = [a.arg for a in rows]
-        # Runtime state list is reset to "not fired" for the whole set.
-        qmc.alarmstate       = [-1] * n
+        # Fired state travels with the row (by aid), same convention as qmc:
+        # -1 = not fired, else index into qmc.timex. A freshly added/duplicated
+        # row defaults to -1 (never inherited from a template), so only rows
+        # that were actually live when the dialog opened can carry a fired mark.
+        qmc.alarmstate       = [int(a.fired_idx) for a in rows]
 
     @staticmethod
     def _get(lst: list, i: int, default: object) -> object:
@@ -609,6 +608,72 @@ class QmcAlarmAdapter:
         return str(text or '').replace(chr(10), ' ').strip()
 
 
+# ───────────────────────────────────────────────────────────────────────────
+# AlarmPresetStore — named, unlimited alarm programmes
+# ───────────────────────────────────────────────────────────────────────────
+# Reinvents Artisan's "Alarm Sets" (fixed ALARMSET_COUNT slots, tucked in an
+# Expert-only Management tab) as unlimited named presets. A preset is a full,
+# qmc-independent snapshot of AlarmSet.rows (same records the QmcAlarmAdapter
+# would produce) so it round-trips through guard/negguard aids untouched.
+# Persisted as one JSON blob in QSettings, alongside this dialog's other
+# settings (geometry, group-by-phase) — no extra file to manage.
+
+class AlarmPresetStore:
+
+    _SETTINGS_KEY: Final[str] = 'TilauAlarmPresets'
+
+    def names(self) -> list[str]:
+        return sorted(self._read().keys(), key=str.lower)
+
+    def save(self, name: str, rows: list[Alarm]) -> None:
+        data = self._read()
+        data[name] = [self._to_dict(a) for a in rows]
+        self._write(data)
+
+    def load(self, name: str) -> list[Alarm] | None:
+        raw = self._read().get(name)
+        if raw is None:
+            return None
+        try:
+            return [Alarm(**d) for d in raw]
+        except TypeError:
+            _log.warning('AlarmPresetStore: preset %r has an incompatible shape', name)
+            return None
+
+    def delete(self, name: str) -> None:
+        data = self._read()
+        if data.pop(name, None) is not None:
+            self._write(data)
+
+    def rename(self, old: str, new: str) -> None:
+        data = self._read()
+        if old in data and old != new:
+            data[new] = data.pop(old)
+            self._write(data)
+
+    @staticmethod
+    def _to_dict(a: Alarm) -> dict:
+        d = asdict(a)
+        d['fired_idx'] = -1  # a preset is a programme, never a live roast state
+        return d
+
+    @staticmethod
+    def _read() -> dict[str, list[dict]]:
+        raw = QSettings().value(AlarmPresetStore._SETTINGS_KEY, '', type=str)
+        if not raw:
+            return {}
+        try:
+            data = json.loads(raw)
+            return data if isinstance(data, dict) else {}
+        except (ValueError, TypeError):
+            _log.warning('AlarmPresetStore: could not parse stored presets, ignoring')
+            return {}
+
+    @staticmethod
+    def _write(data: dict[str, list[dict]]) -> None:
+        QSettings().setValue(AlarmPresetStore._SETTINGS_KEY, json.dumps(data))
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # UI LAYER — rule-sentence editor (vue A) with optional phase bucketing (B)
 # ═══════════════════════════════════════════════════════════════════════════
@@ -624,9 +689,9 @@ _CHIP_COLOR: Final[dict[str, str]] = {
     'safe':   '#F38BA8',  # red    — pop-up / off
     'ghost':  '#6C7086',  # overlay— "add" affordance
 }
-_CRUST:   Final[str] = '#11111B'
-_SURF1:   Final[str] = '#45475A'
-_OVERLAY: Final[str] = '#6C7086'
+_CRUST:   Final[str] = THEME['CRUST']
+_SURF1:   Final[str] = THEME['SURFACE1']
+_OVERLAY: Final[str] = THEME['OVERLAY0']
 
 
 def _hex_to_rgba(hex_color: str, alpha: float) -> str:
@@ -645,7 +710,7 @@ def _chip_css(color: str, ghost: bool = False) -> str:
         f'  color: {color};'
         f'  border: {border};'
         '   border-radius: 6px;'
-        "   font-family: 'JetBrains Mono'; font-size: 12px;"
+        "   font-size: 12px;"
         '   padding: 2px 9px; text-align: left;'
         '}'
         f'QPushButton:hover {{ background: {_hex_to_rgba(color, 0.24)}; }}'
@@ -766,7 +831,7 @@ def _kw(text: str) -> QLabel:
     """A non-interactive keyword label (when / if / → ...)."""
     lbl = QLabel(text)
     lbl.setStyleSheet(
-        f"color: {_OVERLAY}; font-family: 'JetBrains Mono'; "
+        f"color: {_OVERLAY};"
         f'font-size: 12px; border: none; background: transparent;')
     return lbl
 
@@ -828,7 +893,7 @@ class _AlarmRow(QFrame):
         self._lay.addWidget(self._enable_dot(a))
         num = QLabel(f'#{self._alarms.display_number(self.aid)}')
         num.setStyleSheet(
-            f"color: {_OVERLAY}; font-family: 'JetBrains Mono'; "
+            f"color: {_OVERLAY};"
             f'font-size: 11px; border: none; background: transparent;')
         self._lay.addWidget(num)
 
@@ -886,6 +951,10 @@ class _AlarmRow(QFrame):
         chip.setStyleSheet(_chip_css(_action_chip_color(a.action)))
         chip.clicked.connect(lambda: self._emit_edit('action', chip))
         self._lay.addWidget(chip)
+        if a.enabled and a.is_fired:
+            badge = self._fired_badge(a)
+            if badge is not None:
+                self._lay.addWidget(badge)
 
     # ── chip/button factories ─────────────────────────────────────────────
 
@@ -896,15 +965,24 @@ class _AlarmRow(QFrame):
         return chip
 
     def _enable_dot(self, a: Alarm) -> QPushButton:
-        dot = QPushButton()
+        # Tri-state: dim = disabled, plain dot = armed, dot + check = fired.
+        fired = a.enabled and a.is_fired
+        dot = QPushButton('✓' if fired else '')
         dot.setFixedSize(13, 13)
         dot.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         dot.setCursor(Qt.CursorShape.PointingHandCursor)
         color = THEME['SUCCESS'] if a.enabled else _SURF1
-        dot.setToolTip(QApplication.translate('tilauscope_alarms', 'Enable / disable'))
+        tip = QApplication.translate('tilauscope_alarms', 'Enable / disable')
+        if fired:
+            fired_text = self._fired_text(a)
+            if fired_text:
+                tip += '\n' + QApplication.translate(
+                    'tilauscope_alarms', 'Fired at {0}').format(fired_text)
+        dot.setToolTip(tip)
         dot.setStyleSheet(
             f'QPushButton {{ background: {color}; border: none; '
-            f'border-radius: 6px; }}')
+            f'border-radius: 6px; color: {_CRUST}; font-size: 8px; '
+            f'font-weight: bold; padding: 0; }}')
         dot.clicked.connect(lambda: self.toggleEnable.emit(self.aid))
         return dot
 
@@ -914,6 +992,7 @@ class _AlarmRow(QFrame):
         glyph = '\U0001F514' if a.beep else '\U0001F515'
         btn = QPushButton(glyph)
         btn.setFixedSize(24, 24)
+        btn.setProperty('variant', 'icon')   # fixed size: no base padding
         btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setToolTip(QApplication.translate('tilauscope_alarms', 'Beep on alarm')
@@ -934,6 +1013,7 @@ class _AlarmRow(QFrame):
     def _delete_btn(self) -> QPushButton:
         btn = QPushButton('\u2715')
         btn.setFixedSize(22, 22)
+        btn.setProperty('variant', 'icon')   # fixed size: no base padding
         btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setStyleSheet(
@@ -949,6 +1029,26 @@ class _AlarmRow(QFrame):
     def _offset_text(seconds: int) -> str:
         m, s = divmod(max(0, int(seconds)), 60)
         return f'+{m}:{s:02d}'
+
+    def _fired_text(self, a: Alarm) -> str:
+        """Elapsed roast time (mm:ss) at which this alarm fired, or ''."""
+        timex = getattr(self._adapter.qmc, 'timex', [])
+        if not (0 <= a.fired_idx < len(timex)):
+            return ''
+        m, s = divmod(max(0, int(timex[a.fired_idx])), 60)
+        return f'{m}:{s:02d}'
+
+    def _fired_badge(self, a: Alarm) -> QLabel | None:
+        text = self._fired_text(a)
+        if not text:
+            return None
+        lbl = QLabel('✓ ' + text)
+        lbl.setToolTip(
+            QApplication.translate('tilauscope_alarms', 'Fired at {0}').format(text))
+        lbl.setStyleSheet(
+            f"color: {THEME['SUCCESS']};"
+            f'font-size: 11px; border: none; background: transparent;')
+        return lbl
 
     def _cond_text(self, a: Alarm) -> str:
         src = self._adapter.source_label(a.source)
@@ -1029,9 +1129,7 @@ class _ChipEditOverlay(QFrame):
             'ref':    QApplication.translate('tilauscope_alarms', 'edit guard'),
         }.get(self.cluster, '')
         cap = QLabel(title.upper())
-        cap.setStyleSheet(
-            f"color: {_OVERLAY}; font-family: 'JetBrains Mono'; "
-            f'font-size: 10px; letter-spacing: 1px; border: none;')
+        cap.setProperty('variant', 'eyebrow')
         self._lay.addWidget(cap)
 
         if self.cluster == 'time':
@@ -1045,10 +1143,7 @@ class _ChipEditOverlay(QFrame):
 
         done = QPushButton(QApplication.translate('tilauscope_alarms', 'Done'))
         done.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        done.setStyleSheet(
-            f'QPushButton {{ background: {THEME["ACCENT"]}; color: {THEME["BG"]}; '
-            f"border: none; border-radius: 6px; padding: 5px 12px; "
-            f"font-family: 'JetBrains Mono'; font-size: 11px; font-weight: bold; }}")
+        done.setProperty('variant', 'primary')
         done.clicked.connect(self._close)
         self._lay.addWidget(done)
         self.adjustSize()
@@ -1172,7 +1267,7 @@ class _ChipEditOverlay(QFrame):
         lbl = QLabel(label)
         lbl.setMinimumWidth(64)
         lbl.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-family: 'JetBrains Mono'; "
+            f"color: {THEME['SUBTEXT']};"
             f'font-size: 11px; border: none; background: transparent;')
         row.addWidget(lbl)
         row.addWidget(widget, 1)
@@ -1182,8 +1277,8 @@ class _ChipEditOverlay(QFrame):
         return (
             f'QComboBox, QLineEdit, QTimeEdit {{ background: {THEME["BG"]}; '
             f'color: {THEME["TEXT"]}; border: 1px solid {_SURF1}; '
-            f"border-radius: 6px; padding: 3px 8px; "
-            f"font-family: 'JetBrains Mono'; font-size: 12px; }}"
+            f"border-radius: 6px; padding: 3px 8px;"
+            f"font-size: 12px; }}"
             f'QComboBox QAbstractItemView {{ background: {THEME["BG"]}; '
             f'color: {THEME["TEXT"]}; selection-background-color: {THEME["ACCENT"]}; }}')
 
@@ -1202,6 +1297,204 @@ class _ChipEditOverlay(QFrame):
 
 
 # ───────────────────────────────────────────────────────────────────────────
+# _NamePromptOverlay — floating text prompt (save-as / rename), same visual
+# language as _ChipEditOverlay so preset management does not feel bolted on.
+# ───────────────────────────────────────────────────────────────────────────
+
+class _NamePromptOverlay(QFrame):
+
+    accepted = pyqtSignal(str)
+    closed = pyqtSignal()
+
+    def __init__(self, title: str, initial: str, parent: QWidget) -> None:
+        super().__init__(parent)
+        self.setObjectName('namePromptOverlay')
+        self.setStyleSheet(
+            f'#namePromptOverlay {{ background: {_CRUST}; '
+            f'border: 1px solid {THEME["ACCENT"]}; border-radius: 9px; }}')
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(12, 10, 12, 12)
+        lay.setSpacing(7)
+
+        cap = QLabel(title.upper())
+        cap.setProperty('variant', 'eyebrow')
+        lay.addWidget(cap)
+
+        self._edit = QLineEdit(initial)
+        self._edit.setStyleSheet(
+            f'QLineEdit {{ background: {THEME["BG"]}; color: {THEME["TEXT"]}; '
+            f'border: 1px solid {_SURF1}; border-radius: 6px; padding: 4px 8px; '
+            f"font-size: 12px; }}")
+        self._edit.selectAll()
+        self._edit.returnPressed.connect(self._commit)
+        lay.addWidget(self._edit)
+
+        save = QPushButton(QApplication.translate('Button', 'Save'))
+        save.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        save.setProperty('variant', 'primary')
+        save.clicked.connect(self._commit)
+        lay.addWidget(save)
+        self.adjustSize()
+
+    def show_at(self, global_anchor: QPoint) -> None:
+        parent = self.parentWidget()
+        self.adjustSize()
+        local = parent.mapFromGlobal(global_anchor)
+        x = min(max(8, local.x()), parent.width() - self.width() - 8)
+        y = min(local.y() + 4, parent.height() - self.height() - 8)
+        self.move(x, y)
+        self.show()
+        self.raise_()
+        self._edit.setFocus()
+
+    def _commit(self) -> None:
+        name = self._edit.text().strip()
+        if name:
+            self.accepted.emit(name)
+        self._close()
+
+    def keyPressEvent(self, event) -> None:  # type: ignore[override]
+        if event.key() == Qt.Key.Key_Escape:
+            self._close()
+            return
+        super().keyPressEvent(event)
+
+    def _close(self) -> None:
+        self.closed.emit()
+        self.close()
+        self.deleteLater()
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# _PresetManagerDlg — rename / delete saved presets
+# ───────────────────────────────────────────────────────────────────────────
+
+class _PresetManagerDlg(QDialog):
+
+    def __init__(self, store: AlarmPresetStore, parent: QWidget) -> None:
+        super().__init__(parent)
+        self._store = store
+        self._rename_overlay: _NamePromptOverlay | None = None
+        self.setWindowTitle(QApplication.translate('tilauscope_alarms', 'Manage presets'))
+        self.setModal(True)
+        self.setStyleSheet(base_qss() + f"QDialog {{ background: {THEME['BG']}; }}")
+        self.resize(360, 320)
+
+        self._lay = QVBoxLayout(self)
+        self._lay.setContentsMargins(14, 14, 14, 14)
+        self._lay.setSpacing(6)
+
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setStyleSheet('QScrollArea { background: transparent; border: none; }')
+        self.body = QWidget()
+        self.body_lay = QVBoxLayout(self.body)
+        self.body_lay.setContentsMargins(0, 0, 0, 0)
+        self.body_lay.setSpacing(6)
+        self.body_lay.addStretch(1)
+        self.scroll.setWidget(self.body)
+        self._lay.addWidget(self.scroll, 1)
+
+        close = QPushButton(QApplication.translate('Button', 'Close'))
+        close.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        close.clicked.connect(self.accept)
+        close.setStyleSheet(
+            f"QPushButton {{ background: {THEME['SURFACE']}; color: {THEME['TEXT']};"
+            f"border: 1px solid {THEME['BORDER']}; border-radius: 7px; padding: 6px 14px;"
+            f"font-size: 11px; }}")
+        self._lay.addWidget(close)
+
+        self._rebuild()
+
+    def _rebuild(self) -> None:
+        while self.body_lay.count():
+            item = self.body_lay.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.deleteLater()
+        names = self._store.names()
+        if not names:
+            empty = QLabel(QApplication.translate('tilauscope_alarms', 'No presets saved yet'))
+            empty.setStyleSheet(
+                f"color: {THEME['SUBTEXT']};"
+                f'font-size: 12px; border: none;')
+            self.body_lay.addWidget(empty)
+        for name in names:
+            self.body_lay.addWidget(self._preset_row(name))
+        self.body_lay.addStretch(1)
+
+    def _preset_row(self, name: str) -> QWidget:
+        row = QFrame()
+        row.setStyleSheet(
+            f'QFrame {{ background: {THEME["SURFACE"]}; '
+            f'border: 1px solid {THEME["BORDER"]}; border-radius: 8px; }}')
+        lay = QHBoxLayout(row)
+        lay.setContentsMargins(10, 6, 10, 6)
+        lay.setSpacing(8)
+
+        lbl = QLabel(name)
+        lbl.setStyleSheet(
+            f"color: {THEME['TEXT']};"
+            f'font-size: 12px; border: none; background: transparent;')
+        lay.addWidget(lbl, 1)
+
+        rename = QPushButton('✎')
+        rename.setFixedSize(22, 22)
+        rename.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        rename.setCursor(Qt.CursorShape.PointingHandCursor)
+        rename.setToolTip(QApplication.translate('Button', 'Rename'))
+        rename.setStyleSheet(
+            f'QPushButton {{ background: transparent; color: {THEME["SUBTEXT"]}; '
+            f'border: none; font-size: 13px; }}'
+            f'QPushButton:hover {{ color: {THEME["ACCENT"]}; }}')
+        rename.clicked.connect(lambda: self._start_rename(name, rename))
+        lay.addWidget(rename)
+
+        delete = QPushButton('✕')
+        delete.setFixedSize(22, 22)
+        delete.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        delete.setCursor(Qt.CursorShape.PointingHandCursor)
+        delete.setToolTip(QApplication.translate('Button', 'Delete'))
+        delete.setStyleSheet(
+            f'QPushButton {{ background: transparent; color: {THEME["SUBTEXT"]}; '
+            f'border: none; font-size: 13px; }}'
+            f'QPushButton:hover {{ color: {THEME["CRITICAL"]}; }}')
+        delete.clicked.connect(lambda: self._delete(name))
+        lay.addWidget(delete)
+        return row
+
+    def _start_rename(self, name: str, anchor: QPushButton) -> None:
+        if self._rename_overlay is not None:
+            self._rename_overlay.close()
+            self._rename_overlay.deleteLater()
+        ov = _NamePromptOverlay(
+            QApplication.translate('tilauscope_alarms', 'rename preset'), name, self)
+        ov.accepted.connect(lambda new_name: self._rename(name, new_name))
+        ov.closed.connect(self._clear_rename_overlay)
+        self._rename_overlay = ov
+        ov.show_at(anchor.mapToGlobal(QPoint(0, anchor.height())))
+
+    def _clear_rename_overlay(self) -> None:
+        self._rename_overlay = None
+
+    def _rename(self, old: str, new: str) -> None:
+        if new in self._store.names() and new != old:
+            show_styled_message(
+                self,
+                QApplication.translate('tilauscope_alarms', 'Rename preset'),
+                QApplication.translate(
+                    'tilauscope_alarms', 'A preset named "{0}" already exists.').format(new))
+            return
+        self._store.rename(old, new)
+        self._rebuild()
+
+    def _delete(self, name: str) -> None:
+        self._store.delete(name)
+        self._rebuild()
+
+
+# ───────────────────────────────────────────────────────────────────────────
 # TilauAlarmDlg — the editor dialog (drop-in for aw.alarmconfig)
 # ───────────────────────────────────────────────────────────────────────────
 
@@ -1212,6 +1505,10 @@ class TilauAlarmDlg(QDialog):
 
     def __init__(self, parent: QWidget, aw: 'ApplicationWindow') -> None:
         super().__init__(parent)
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self.aw = aw
         self.adapter = QmcAlarmAdapter(aw)
         self.alarms = AlarmSet(self)
@@ -1220,6 +1517,12 @@ class TilauAlarmDlg(QDialog):
         self._phase_headers: list[tuple[Phase, QWidget]] = []
         self._overlay: _ChipEditOverlay | None = None
         self._ai_panel: AIFloatPanel | None = None
+        self._preset_store = AlarmPresetStore()
+        self._save_preset_overlay: _NamePromptOverlay | None = None
+        # Original qmc row index of each alarm still tied to the live roast
+        # (aid -> index). Rows created/loaded in this session (Add, preset
+        # load) are absent, so the live poll below leaves them alone.
+        self._aid_to_qmc_index: dict[int, int] = {}
         self.oldPos: QPoint | None = None
 
         self.setModal(True)
@@ -1232,13 +1535,22 @@ class TilauAlarmDlg(QDialog):
 
         self._build_ui()
         self._connect_model()
-        self.alarms.load(self.adapter.load())
+        loaded = self.adapter.load()
+        self.alarms.load(loaded)
+        self._aid_to_qmc_index = {a.aid: i for i, a in enumerate(loaded)}
         self._init_ai_panel()
 
         if settings.contains('TilauAlarmsGeometry'):
             self.restoreGeometry(settings.value('TilauAlarmsGeometry'))
         else:
             self.resize(720, 620)
+
+        # Alarms can fire while this (modal) editor is open mid-roast; poll
+        # qmc.alarmstate directly here rather than hooking the 1 Hz hot path.
+        self._live_timer = QTimer(self)
+        self._live_timer.setInterval(2000)
+        self._live_timer.timeout.connect(self._poll_fired_state)
+        self._live_timer.start()
 
     # ── construction ──────────────────────────────────────────────────────
 
@@ -1248,7 +1560,7 @@ class TilauAlarmDlg(QDialog):
 
         self.container = QFrame()
         self.container.setStyleSheet(
-            f"QFrame {{ background: {THEME['BG']}; "
+            f"QFrame {{ background: {THEME['BG']};"
             f"border: 1px solid {THEME['BORDER']}; border-radius: 16px; }}")
         outer.addWidget(self.container)
 
@@ -1263,9 +1575,9 @@ class TilauAlarmDlg(QDialog):
         self.banner.setWordWrap(True)
         self.banner.setVisible(False)
         self.banner.setStyleSheet(
-            f"color: {THEME['WARNING']}; background: {_hex_to_rgba(THEME['WARNING'], 0.10)}; "
-            f"border: 1px solid {_hex_to_rgba(THEME['WARNING'], 0.35)}; border-radius: 8px; "
-            f"padding: 6px 10px; font-family: 'JetBrains Mono'; font-size: 11px;")
+            f"color: {THEME['WARNING']}; background: {_hex_to_rgba(THEME['WARNING'], 0.10)};"
+            f"border: 1px solid {_hex_to_rgba(THEME['WARNING'], 0.35)}; border-radius: 8px;"
+            f"padding: 6px 10px; font-size: 11px;")
         root.addWidget(self.banner)
 
         self.scroll = QScrollArea()
@@ -1273,7 +1585,6 @@ class TilauAlarmDlg(QDialog):
         self.scroll.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll.setStyleSheet('QScrollArea { background: transparent; border: none; }')
         self.body = _AlarmListBody(self._handle_drop)
-        self.body.setStyleSheet('background: transparent;')
         self.body_lay = QVBoxLayout(self.body)
         self.body_lay.setContentsMargins(0, 0, 4, 0)
         self.body_lay.setSpacing(6)
@@ -1287,14 +1598,14 @@ class TilauAlarmDlg(QDialog):
         h = QHBoxLayout()
         title = QLabel(QApplication.translate('tilauscope_alarms', 'Alarm editor').upper())
         title.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-family: 'JetBrains Mono'; "
+            f"color: {THEME['ACCENT']};"
             f'font-size: 16px; font-weight: 900; letter-spacing: 2px; border: none;')
         close = QPushButton('\u2715')
         close.setFixedSize(28, 28)
         close.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         close.clicked.connect(self._close_dialog)
         close.setStyleSheet(
-            f"QPushButton {{ background: {THEME['SURFACE']}; color: {THEME['TEXT']}; "
+            f"QPushButton {{ background: {THEME['SURFACE']}; color: {THEME['TEXT']};"
             f"border: 1px solid {THEME['BORDER']}; border-radius: 14px; }}"
             f"QPushButton:hover {{ background: {THEME['CRITICAL']}; color: {THEME['BG']}; }}")
         h.addWidget(title)
@@ -1318,6 +1629,11 @@ class TilauAlarmDlg(QDialog):
         bar.addWidget(self._btn_insert)
         bar.addWidget(self._btn_dup)
         bar.addWidget(self._btn_del)
+
+        self._btn_presets = self._tool_btn(
+            QApplication.translate('tilauscope_alarms', 'Presets') + '  ▾',
+            self._show_presets_menu)
+        bar.addWidget(self._btn_presets)
 
         self._btn_ai = self._tool_btn(
             '\u2726  ' + QApplication.translate('tilauscope_alarms', 'Check consistency (AI)'),
@@ -1344,9 +1660,9 @@ class TilauAlarmDlg(QDialog):
         self._popup_timeout.setRange(0, 120)
         self._popup_timeout.setValue(int(self.aw.qmc.alarm_popup_timout))
         self._popup_timeout.setStyleSheet(
-            f"QSpinBox {{ background: {THEME['BG']}; color: {THEME['TEXT']}; "
-            f"border: 1px solid {_SURF1}; border-radius: 6px; padding: 2px 6px; "
-            f"font-family: 'JetBrains Mono'; font-size: 11px; }}")
+            f"QSpinBox {{ background: {THEME['BG']}; color: {THEME['TEXT']};"
+            f"border: 1px solid {_SURF1}; border-radius: 6px; padding: 2px 6px;"
+            f"font-size: 11px; }}")
         bar.addWidget(self._popup_timeout)
         return bar
 
@@ -1358,9 +1674,9 @@ class TilauAlarmDlg(QDialog):
         ok.setMinimumWidth(110)
         ok.clicked.connect(self._close_dialog)
         ok.setStyleSheet(
-            f"QPushButton {{ background: {THEME['ACCENT']}; color: {THEME['BG']}; "
-            f"border: none; border-radius: 8px; padding: 7px 16px; "
-            f"font-family: 'JetBrains Mono'; font-size: 12px; font-weight: bold; }}")
+            f"QPushButton {{ background: {THEME['ACCENT']}; color: {THEME['BG']};"
+            f"border: none; border-radius: 8px; padding: 7px 16px;"
+            f"font-size: 12px; font-weight: bold; }}")
         f.addWidget(ok)
         return f
 
@@ -1370,16 +1686,16 @@ class TilauAlarmDlg(QDialog):
         btn.clicked.connect(slot)
         col = accent or THEME['TEXT']
         btn.setStyleSheet(
-            f"QPushButton {{ background: {THEME['SURFACE']}; color: {col}; "
-            f"border: 1px solid {THEME['BORDER']}; border-radius: 7px; "
-            f"padding: 5px 11px; font-family: 'JetBrains Mono'; font-size: 11px; }}"
+            f"QPushButton {{ background: {THEME['SURFACE']}; color: {col};"
+            f"border: 1px solid {THEME['BORDER']}; border-radius: 7px;"
+            f"padding: 5px 11px; font-size: 11px; }}"
             f"QPushButton:hover {{ border-color: {col}; }}")
         return btn
 
     def _caption(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-family: 'JetBrains Mono'; "
+            f"color: {THEME['SUBTEXT']};"
             f'font-size: 11px; border: none;')
         return lbl
 
@@ -1388,9 +1704,9 @@ class TilauAlarmDlg(QDialog):
         col = THEME['ACCENT'] if on else THEME['SUBTEXT']
         bg = _hex_to_rgba(THEME['ACCENT'], 0.16) if on else 'transparent'
         self._phase_toggle.setStyleSheet(
-            f"QPushButton {{ background: {bg}; color: {col}; "
-            f"border: 1px solid {col}; border-radius: 7px; padding: 5px 11px; "
-            f"font-family: 'JetBrains Mono'; font-size: 11px; }}")
+            f"QPushButton {{ background: {bg}; color: {col};"
+            f"border: 1px solid {col}; border-radius: 7px; padding: 5px 11px;"
+            f"font-size: 11px; }}")
 
     # ── model wiring ──────────────────────────────────────────────────────
 
@@ -1443,7 +1759,6 @@ class TilauAlarmDlg(QDialog):
 
     def _phase_header(self, phase: Phase, count: int) -> QWidget:
         w = QWidget()
-        w.setStyleSheet('background: transparent;')
         lay = QHBoxLayout(w)
         lay.setContentsMargins(2, 8, 2, 2)
         lay.setSpacing(8)
@@ -1452,12 +1767,10 @@ class TilauAlarmDlg(QDialog):
         tick.setStyleSheet(
             f'background: {PHASE_COLOR[phase]}; border-radius: 1px;')
         lbl = QLabel(phase_label(phase).lower())
-        lbl.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-family: 'JetBrains Mono'; "
-            f'font-size: 11px; letter-spacing: 1px; border: none;')
+        lbl.setProperty('variant', 'eyebrow')
         cnt = QLabel(str(count))
         cnt.setStyleSheet(
-            f"color: {_OVERLAY}; font-family: 'JetBrains Mono'; "
+            f"color: {_OVERLAY};"
             f'font-size: 11px; border: none;')
         lay.addWidget(tick)
         lay.addWidget(lbl)
@@ -1477,7 +1790,6 @@ class TilauAlarmDlg(QDialog):
         if not indent:
             return row
         wrap = QWidget()
-        wrap.setStyleSheet('background: transparent;')
         wl = QHBoxLayout(wrap)
         wl.setContentsMargins(20, 0, 0, 0)
         wl.addWidget(row)
@@ -1550,6 +1862,92 @@ class TilauAlarmDlg(QDialog):
         self._group_by_phase = on
         self._style_toggle()
         self._rebuild_body()
+
+    # ── fired-state live poll ───────────────────────────────────────────────
+
+    @pyqtSlot()
+    def _poll_fired_state(self) -> None:
+        states = getattr(self.aw.qmc, 'alarmstate', None)
+        if not states:
+            return
+        for aid, qidx in self._aid_to_qmc_index.items():
+            if 0 <= qidx < len(states):
+                self.alarms.set_field(aid, 'fired_idx', int(states[qidx]))
+
+    # ── presets ────────────────────────────────────────────────────────────
+
+    @pyqtSlot()
+    def _show_presets_menu(self) -> None:
+        menu = QMenu(self)
+        menu.setStyleSheet(
+            f"QMenu {{ background-color: {THEME['SURFACE']}; color: {THEME['TEXT']};"
+            f"border: 1px solid {THEME['BORDER']}; border-radius: 8px; padding: 4px; }}"
+            f"QMenu::item {{ padding: 5px 14px; border-radius: 4px; }}"
+            f"QMenu::item:selected {{ background: {THEME['ACCENT']}; color: {THEME['BG']}; }}"
+            f"QMenu::item:disabled {{ color: {THEME['SUBTEXT']}; }}"
+            f"QMenu::separator {{ height: 1px; background: {THEME['BORDER']}; margin: 4px 6px; }}")
+        names = self._preset_store.names()
+        if names:
+            for name in names:
+                act = menu.addAction(name)
+                act.triggered.connect(lambda _checked=False, n=name: self._load_preset(n))
+            menu.addSeparator()
+        else:
+            empty = menu.addAction(
+                QApplication.translate('tilauscope_alarms', '(no presets saved)'))
+            empty.setEnabled(False)
+            menu.addSeparator()
+
+        save_act = menu.addAction(
+            QApplication.translate('tilauscope_alarms', 'Save current as…'))
+        save_act.triggered.connect(self._open_save_preset_popup)
+        if names:
+            manage_act = menu.addAction(
+                QApplication.translate('tilauscope_alarms', 'Manage presets…'))
+            manage_act.triggered.connect(self._open_manage_presets)
+        menu.exec(self._btn_presets.mapToGlobal(QPoint(0, self._btn_presets.height())))
+
+    def _open_save_preset_popup(self) -> None:
+        if self._save_preset_overlay is not None:
+            self._save_preset_overlay.close()
+            self._save_preset_overlay.deleteLater()
+        ov = _NamePromptOverlay(
+            QApplication.translate('tilauscope_alarms', 'save preset as'), '', self)
+        ov.accepted.connect(self._do_save_preset)
+        ov.closed.connect(self._clear_save_preset_overlay)
+        self._save_preset_overlay = ov
+        ov.show_at(self._btn_presets.mapToGlobal(QPoint(0, self._btn_presets.height())))
+
+    def _clear_save_preset_overlay(self) -> None:
+        self._save_preset_overlay = None
+
+    def _do_save_preset(self, name: str) -> None:
+        if name in self._preset_store.names():
+            answer = show_styled_message(
+                self,
+                QApplication.translate('tilauscope_alarms', 'Save preset'),
+                QApplication.translate(
+                    'tilauscope_alarms', 'A preset named "{0}" already exists. Overwrite it?')
+                .format(name),
+                buttons=[QApplication.translate('Button', 'Cancel'),
+                         QApplication.translate('Button', 'Overwrite')])
+            if answer != 1:
+                return
+        self._preset_store.save(name, self.alarms.rows)
+
+    def _load_preset(self, name: str) -> None:
+        rows = self._preset_store.load(name)
+        if rows is None:
+            return
+        # A preset is a programme, not a live roast state: it no longer
+        # corresponds to any position in the currently loaded qmc arrays.
+        self._aid_to_qmc_index = {}
+        self.alarms.load(rows)
+        self._clear_selection()
+
+    def _open_manage_presets(self) -> None:
+        dlg = _PresetManagerDlg(self._preset_store, self)
+        dlg.exec()
 
     # ── edit overlay ──────────────────────────────────────────────────────
 
@@ -1855,6 +2253,7 @@ class TilauAlarmDlg(QDialog):
 
     @pyqtSlot()
     def _close_dialog(self) -> None:
+        self._live_timer.stop()
         self._close_overlay()
         self._teardown_ai_panel()
         self.adapter.save(self.alarms)

@@ -34,14 +34,21 @@ if TYPE_CHECKING:
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
+from tilauscope.theme_qss import apply_tilau_theme
+
+
 class AlarmTimelineDialog(QDialog):
     def __init__(self, parent:QWidget, alarm_source_list:list[str], aw:'ApplicationWindow') -> None:
         super().__init__(parent)
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self.setModal(False)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        
+
 
         self.aw = aw
         self.alarm_source_list = alarm_source_list
@@ -78,14 +85,14 @@ class AlarmTimelineDialog(QDialog):
 
        # Main layout with margins for the shadow effect/container
         self.main_layout = QVBoxLayout(self)
-        
+
         # Main Container (Matches TilauScope style)
         self.container = QFrame()
         self.container.setStyleSheet(f"""
-            QFrame {{ 
-                background-color: {THEME['BG']}; 
-                border: 1px solid {THEME['BORDER']}; 
-                border-radius: 20px; 
+            QFrame {{
+                background-color: {THEME['BG']};
+                border: 1px solid {THEME['BORDER']};
+                border-radius: 20px;
             }}
         """)
         self.content_layout = QVBoxLayout(self.container)
@@ -96,15 +103,16 @@ class AlarmTimelineDialog(QDialog):
         header = QHBoxLayout()
         title_lbl = QLabel(QApplication.translate('Label', 'Visual Alarm Timeline').upper())
         title_lbl.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-size: 18px; font-weight: 900; "
-            f"font-family: 'JetBrains Mono'; border: none; letter-spacing: 2px;"
+            f"color: {THEME['ACCENT']}; font-size: 18px; font-weight: 900;"
+            f"border: none; letter-spacing: 2px;"
         )
-    
+
         self.close_btn = QPushButton("✕")
         self.close_btn.setFixedSize(32, 32)
+        self.close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         self.close_btn.clicked.connect(self.fade_out_and_close)
         self.close_btn.setStyleSheet(f"""
-            QPushButton {{ 
+            QPushButton {{
                 background: {THEME['SURFACE']}; color: {THEME['TEXT']};
                 border-radius: 16px; border: 1px solid {THEME['BORDER']}; font-weight: bold;
             }}
@@ -124,7 +132,7 @@ class AlarmTimelineDialog(QDialog):
         self.visualalarm_scroll.setWidget(self.timeline_widget)
         self.content_layout.addWidget(self.visualalarm_scroll)
         self.content_layout.setStretchFactor(self.visualalarm_scroll, 1)
-        
+
          # Actions
         buttons = QHBoxLayout()
         buttons.setSpacing(10)
@@ -141,7 +149,6 @@ class AlarmTimelineDialog(QDialog):
                 border: 1px solid {THEME['ACCENT']};
                 border-radius: 8px;
                 padding: 0 16px;
-                font-family: 'JetBrains Mono';
                 font-weight: bold;
                 font-size: 11px;
             }}
@@ -170,7 +177,6 @@ class AlarmTimelineDialog(QDialog):
                 border: 1px solid {THEME['BORDER']};
                 border-radius: 8px;
                 padding: 0 16px;
-                font-family: 'JetBrains Mono';
                 font-weight: bold;
                 font-size: 11px;
             }}
@@ -199,6 +205,7 @@ class AlarmTimelineDialog(QDialog):
         """
         self._btn_zoom_out = QPushButton("⊖")
         self._btn_zoom_out.setFixedSize(36, 36)
+        self._btn_zoom_out.setProperty('variant', 'icon')   # fixed size: no base padding
         self._btn_zoom_out.setToolTip(QApplication.translate('Tooltip', 'Zoom out (Ctrl+scroll down / pinch)'))
         self._btn_zoom_out.setStyleSheet(_zoom_btn_ss)
         self._btn_zoom_out.clicked.connect(lambda: self.timeline_widget.apply_zoom_step(-0.1))
@@ -207,10 +214,11 @@ class AlarmTimelineDialog(QDialog):
         self._zoom_label.setFixedWidth(44)
         self._zoom_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._zoom_label.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-family: 'JetBrains Mono'; font-size: 11px; border: none;")
+            f"color: {THEME['SUBTEXT']}; font-size: 11px; border: none;")
 
         self._btn_zoom_in = QPushButton("⊕")
         self._btn_zoom_in.setFixedSize(36, 36)
+        self._btn_zoom_in.setProperty('variant', 'icon')   # fixed size: no base padding
         self._btn_zoom_in.setToolTip(QApplication.translate('Tooltip', 'Zoom in (Ctrl+scroll up / pinch)'))
         self._btn_zoom_in.setStyleSheet(_zoom_btn_ss)
         self._btn_zoom_in.clicked.connect(lambda: self.timeline_widget.apply_zoom_step(+0.1))
@@ -221,7 +229,7 @@ class AlarmTimelineDialog(QDialog):
         buttons.addWidget(self._btn_zoom_in)
 
         buttons.addStretch()
-        
+
         # 4 Trigger a layout recalculation without showing the window
         self.content_layout.addLayout(buttons)
 
@@ -257,7 +265,7 @@ class AlarmTimelineDialog(QDialog):
             if isinstance(widget, (QPushButton, QTextEdit, QScrollArea)):
                 event.ignore() # On laisse le bouton gérer son clic
                 return
-            
+
             self.oldPos = event.globalPosition().toPoint()
 
     def closeEvent(self, event) -> None:
@@ -280,7 +288,7 @@ class AlarmTimelineDialog(QDialog):
 
     def mouseReleaseEvent(self, event):
         self.oldPos = None
- 
+
     def _on_zoom_changed(self, factor: float) -> None:
         """Update zoom label and resize timeline widget after zoom change."""
         pct = int(round(factor * 100))
@@ -412,7 +420,7 @@ class AlarmItem:
     def __init__(self, data: AlarmData, color: QColor):
         self.data = data
         self.color = color
-        self.visual_pos = QPointF(0, 0) 
+        self.visual_pos = QPointF(0, 0)
         self.rect = QRectF()
         self.initialized = False
 
@@ -534,7 +542,6 @@ class AlarmTimelineWidget(QWidget):
         h_bar = scroll.horizontalScrollBar()
         v_bar = scroll.verticalScrollBar()
         # Fractional position of centre in the current content
-        old_z = self._zoom_factor
         vp = scroll.viewport()
         cx_frac = (h_bar.value() + vp.width()  / 2) / max(1, self.width())
         cy_frac = (v_bar.value() + vp.height() / 2) / max(1, self.height())
@@ -617,17 +624,17 @@ class AlarmTimelineWidget(QWidget):
     def mouseMoveEvent(self, event):
         pos = event.position()
         self.active_tick = None
-        
+
         # 1. Update Hover State
         for alarm in reversed(self.alarm_objects):
             if alarm.rect.contains(pos):
                 self.active_tick = alarm
                 break
-        
+
         # 2. Handle Dragging
         if self.dragging_alarm:
             self.dragging_alarm.visual_pos = pos + self.drag_offset
-        
+
         self.update()
 
     def mouseReleaseEvent(self, event):
@@ -766,12 +773,11 @@ class AlarmTimelineWidget(QWidget):
                     alarm.rect.adjusted(int(10 * z), int(5 * z), -int(10 * z), -int(5 * z)),
                     Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter | Qt.TextFlag.TextWordWrap,
                     full_text)
-                
+
     def _resolve_collisions(self):
         baseline_y = self.sizeHint().height() // 2
         ev_pos = self.event_positions  # scaled by zoom
         z = self._zoom_factor
-        slot_h = int(self._BASE_SLOT_H * z)
         box_w  = int(175 * z)
         occupied_slots: dict[int, list[tuple[int, int]]] = {}
 
@@ -832,22 +838,26 @@ class AlarmTimelineWidget(QWidget):
 class RoastNarrativeDialog(QDialog):
     def __init__(self, narrative_text: str, parent:AlarmTimelineWidget|None):
         super().__init__(parent)
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self.setModal(False)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        
+
         self.setWindowTitle(QApplication.translate("tilauscope_alarms","Roast Profile Narrative").upper())
-        
+
         # 1. Augmenter la taille par défaut pour les longs rapports
-        self.resize(700, 800) 
+        self.resize(700, 800)
         self.setMinimumSize(500, 500)
-          
+
         # Style pour le texte (Markdown)
         self.text_area = QTextEdit()
         self.text_area.setReadOnly(True)
         self.text_area.setMarkdown(narrative_text)
-        
+
         # 2. Appliquer le style Catppuccin au QTextEdit
         self.text_area.setStyleSheet(f"""
             QTextEdit {{
@@ -872,14 +882,14 @@ class RoastNarrativeDialog(QDialog):
                 border-radius: 5px;
             }}
         """)
-        
+
         self.main_layout = QVBoxLayout(self)
         self.container = QFrame()
         self.container.setStyleSheet(f"""
-            QFrame {{ 
-                background-color: {THEME['BG']}; 
-                border: 1px solid {THEME['BORDER']}; 
-                border-radius: 20px; 
+            QFrame {{
+                background-color: {THEME['BG']};
+                border: 1px solid {THEME['BORDER']};
+                border-radius: 20px;
             }}
         """)
         self.content_layout = QVBoxLayout(self.container)
@@ -890,12 +900,13 @@ class RoastNarrativeDialog(QDialog):
         header = QHBoxLayout()
         title_lbl = QLabel(QApplication.translate("tilauscope_alarms","Generated Roast Strategy:").upper())
         title_lbl.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-size: 15px; font-weight: 900; "
-            f"border: none; font-family: 'JetBrains Mono'; letter-spacing: 2px;"
+            f"color: {THEME['ACCENT']}; font-size: 15px; font-weight: 900;"
+            f"border: none; letter-spacing: 2px;"
         )
-        
+
         self.close_btn = QPushButton("✕")
         self.close_btn.setFixedSize(30, 30)
+        self.close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         self.close_btn.clicked.connect(self.fade_out_and_close)
         self.close_btn.setStyleSheet(f"""
             QPushButton {{
@@ -908,9 +919,9 @@ class RoastNarrativeDialog(QDialog):
         self.content_layout.addLayout(header)
         self.content_layout.addWidget(self.text_area)
 
-    def mousePressEvent(self, event): 
+    def mousePressEvent(self, event):
         self.oldPos = event.globalPosition().toPoint()
-        
+
     def mouseMoveEvent(self, event):
         delta = QPoint(event.globalPosition().toPoint() - self.oldPos)
         self.move(self.x() + delta.x(), self.y() + delta.y())

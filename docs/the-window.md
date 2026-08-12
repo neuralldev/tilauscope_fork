@@ -180,6 +180,42 @@ never resizes the window underneath your hands.
 
 ---
 
+## While the app is working
+
+Anything that takes more than a moment — reading a folder of roast files, exporting, searching
+for a Bluetooth device, downloading an update — reports itself the same way everywhere, so there
+is nothing new to recognise each time.
+
+A **turning ring** means the app is busy and cannot say how long it will take. A ring that
+**fills**, or a bar that fills, means the end is known, and the count beside it says how far
+along it is — *47 of 312*, never a bare percentage. The ring turns **green with a tick** when the
+work finishes, and stops on **red** when it does not, with the text saying what to do about it.
+A red one stays until it is read; it never disappears on its own.
+
+Where the indicator appears tells you whether you can carry on working. In the corner of a
+window, it is a small badge and the window stays usable; you can keep browsing, and cancel from
+the badge if the work allows it. In the middle of the screen, the work must finish before
+anything else is touched.
+
+Cancelling stops what has not started yet, never what is already out in the world. On a
+printer, **✕** stops the run after the label currently coming out of the head, and the badge
+then says how many were actually printed. Label printing is described in
+[Labels and QR](labels-and-qr.md#while-a-label-is-printing).
+
+Short actions do not announce themselves at all: below roughly half a second nothing is shown,
+because an indicator that flashes reads as a glitch rather than as work.
+
+!!! note "During a roast"
+    The app never opens a window of its own accord while the drum is turning. Anything it starts
+    on its own goes to the corner badge, where it can be ignored. A window opened deliberately
+    from the coffee database is a different matter — that one was asked for.
+
+If the computer is set to reduce motion in its accessibility settings, nothing turns: the same
+indicators breathe gently instead. TilauScope follows the system setting; there is nothing to
+configure.
+
+---
+
 ## Next
 
 - What the assistant reports inside this window: see [The guided roast](the-guided-roast.md).

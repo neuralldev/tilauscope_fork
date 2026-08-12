@@ -134,6 +134,9 @@ _LEGACY_ENGINE_MAP: dict[str, str] = {
 }
 
 
+from tilauscope.theme_qss import apply_tilau_theme
+
+
 def normalize_engine(engine: str) -> str:
     """Return canonical 'provider/model' string, migrating legacy bare names."""
     if "/" in engine:
@@ -313,6 +316,10 @@ class AIProviderPickerDialog(QDialog):
 
     def __init__(self, current: TilauAIConfig, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self.setModal(True)
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -352,15 +359,13 @@ class AIProviderPickerDialog(QDialog):
                 background: transparent;
                 border: none;
                 color: {T['TEXT']};
-                font-family: 'JetBrains Mono';
-            }}
+                }}
             QComboBox, QLineEdit {{
                 background: {T['SURFACE']};
                 color: {T['TEXT']};
                 border: 1px solid {T['BORDER']};
                 border-radius: 6px;
                 padding: 6px 10px;
-                font-family: 'JetBrains Mono';
                 font-size: 13px;
                 combobox-popup: 0;
             }}
@@ -389,6 +394,7 @@ class AIProviderPickerDialog(QDialog):
         )
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(28, 28)
+        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         close_btn.clicked.connect(self.reject)
         close_btn.setStyleSheet(f"""
             QPushButton {{
@@ -431,9 +437,9 @@ class AIProviderPickerDialog(QDialog):
             QPushButton {{
                 background: transparent; color: {T['ACCENT']};
                 border: none; font-size: 11px;
-                font-family: 'JetBrains Mono'; padding: 0;
+                padding: 0;
             }}
-            QPushButton:hover  {{ color: {T['HOVER']}; }}
+            QPushButton:hover  {{ color: {T['LAVENDER']}; }}
             QPushButton:disabled {{ color: {T['SUBTEXT']}; }}
         """)
         self._browse_btn.clicked.connect(self._on_browse_clicked)
@@ -459,10 +465,9 @@ class AIProviderPickerDialog(QDialog):
                 color: {T['ACCENT']};
                 border: none;
                 font-size: 11px;
-                font-family: 'JetBrains Mono';
                 padding: 0;
             }}
-            QPushButton:hover {{ color: {T['HOVER']}; }}
+            QPushButton:hover {{ color: {T['LAVENDER']}; }}
         """)
         self._key_link_btn.clicked.connect(self._open_key_url)
         key_lbl_row.addWidget(self._key_link_btn)
@@ -483,8 +488,7 @@ class AIProviderPickerDialog(QDialog):
         self._show_key_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent; color: {T['SUBTEXT']};
-                border: none; font-size: 11px; font-family: 'JetBrains Mono';
-            }}
+                border: none; font-size: 11px; }}
             QPushButton:checked {{ color: {T['ACCENT']}; }}
         """)
         self._show_key_btn.toggled.connect(self._toggle_key_visibility)
@@ -511,7 +515,7 @@ class AIProviderPickerDialog(QDialog):
             QPushButton {{
                 background: {T['SURFACE']}; color: {T['TEXT']};
                 border: 1px solid {T['BORDER']}; border-radius: 8px;
-                padding: 8px 20px; font-family: 'JetBrains Mono'; font-weight: bold;
+                padding: 8px 20px; font-weight: bold;
             }}
             QPushButton:hover {{ border-color: {T['ACCENT']}; color: {T['ACCENT']}; }}
         """)
@@ -524,9 +528,9 @@ class AIProviderPickerDialog(QDialog):
             QPushButton {{
                 background: {T['ACCENT']}; color: {T['BG']};
                 border: none; border-radius: 8px;
-                padding: 8px 24px; font-family: 'JetBrains Mono'; font-weight: bold;
+                padding: 8px 24px; font-weight: bold;
             }}
-            QPushButton:hover {{ background: {T['HOVER']}; }}
+            QPushButton:hover {{ background: {T['LAVENDER']}; }}
             QPushButton:disabled {{ background: {T['BORDER']}; color: {T['SUBTEXT']}; }}
         """)
         self._save_btn.clicked.connect(self._on_save)
@@ -540,12 +544,8 @@ class AIProviderPickerDialog(QDialog):
 
     @staticmethod
     def _row_label(text: str) -> QLabel:
-        T = _theme()
         lbl = QLabel(text)
-        lbl.setStyleSheet(
-            f"color: {T['SUBTEXT']}; font-size: 11px; "
-            f"font-family: 'JetBrains Mono'; letter-spacing: 1px;"
-        )
+        lbl.setProperty('variant', 'eyebrow')
         return lbl
 
     def _populate(self, cfg: TilauAIConfig) -> None:
@@ -659,7 +659,7 @@ class AIProviderPickerDialog(QDialog):
             QMenu {{
                 background: {T['SURFACE']}; color: {T['TEXT']};
                 border: 1px solid {T['BORDER']}; border-radius: 6px;
-                font-family: 'JetBrains Mono'; font-size: 12px;
+                font-size: 12px;
                 padding: 4px;
             }}
             QMenu::item {{ padding: 6px 16px; border-radius: 4px; }}

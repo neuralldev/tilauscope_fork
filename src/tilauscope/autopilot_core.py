@@ -13,7 +13,7 @@
 # AUTHOR
 # TiLau 2026
 
-"""## TILAU ## AutoPilot core — pure trim engine (AutoRoast-Spec §3/§3bis).
+"""AutoPilot core — pure trim engine (AutoRoast-Spec §3/§3bis).
 
 Deliberately Qt-free and aw-free: the same engine runs in the offline shadow
 simulator (tools/autopilot_sim.py) and, later, inside the assistant panel
@@ -21,7 +21,7 @@ simulator (tools/autopilot_sim.py) and, later, inside the assistant panel
 (TrimParams) — the defaults are Tilau's Skywalker calibration, meant for
 concept testing, never universal.
 
-Doctrine (validated 2026-07-09):
+Doctrine:
 - airflow SUPPORTS the thermal reaction (raises RoR); it is NEVER a brake;
 - braking = heater -step per cadence while uncorrected, then extraction;
 - release rule: once RoR is back in band the extraction brake MUST be walked
@@ -239,16 +239,10 @@ class AutoPilotCore:
                     return act
             return None
 
-        # ── RoR sagging with a residual extraction BRAKE still applied = the
-        #    engine is pumping heat away while the reaction needs energy → the
-        #    exact stall the doctrine warns about ("a forgotten extraction brake
-        #    = guaranteed stall"). Unwind extraction FIRST — priority over the
-        #    support ladder AND over any open attribution window — the moment RoR
-        #    drops out of band, even if it swung past the deadband too fast to
-        #    ever land in-band (where the release ladder above would have caught
-        #    it). Walks back toward the plan value only (never below), cadence
-        #    limited, so it is always safe and is itself a support (less heat
-        #    extracted → RoR rises). ──
+        # ── A residual extraction brake while RoR sags pumps heat away from a
+        #    reaction that needs it — unwind extraction FIRST, ahead of the support
+        #    ladder and any open attribution window. Walks back toward the plan
+        #    value only (never below), cadence limited. ──
         if d_rel < 0 and ph.ext_trim_pct > 0 and t >= self._next_release_t:
             step = min(p.brake_ext_step_pct, ph.ext_trim_pct)
             act = self._mk(t, Lever.EXT, -step, 'release',

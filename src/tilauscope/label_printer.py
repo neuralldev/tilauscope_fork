@@ -160,7 +160,7 @@ def truncate_notes(text: str, max_chars: int = 80) -> str:
     return cut.rstrip() + "..."
 
 def qr_base_url() -> str:
-    # ## TILAU ## phone-scannable deep-link base (spec wiki/QR-Scan-Spec.md §2.1):
+    # phone-scannable deep-link base (spec wiki/QR-Scan-Spec.md §2.1):
     # the record web server registers tilauscope.local via Bonjour, so printed
     # labels stay valid across machines; the port is read at PRINT time.
     try:
@@ -171,7 +171,7 @@ def qr_base_url() -> str:
     return f"http://tilauscope.local:{port}"
 
 def generate_qr_image(payload: str, fill_color: str = "black", back_color: str = "white"):
-    # ## TILAU ## shared QR builder for both label types (tilauscope:// deep links);
+    # shared QR builder for both label types (tilauscope:// deep links);
     # colors must keep strong dark/light contrast to stay scannable
     try:
         qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=5, border=2)
@@ -204,10 +204,8 @@ def blend_ratio_line(bean: GreenBean) -> str:
 # Shared Base Mixin
 # ---------------------------------------------------------------------------
 class _FontMixin:
-    # ## TILAU ## the whole layout below (margins, header height, font mm sizes)
-    # was authored against this reference canvas — LABEL_WIDTH_MM/HEIGHT_MM is the
-    # physical output size, read from the user's config (default = the reference,
-    # so nothing scales for the size the layout was actually drawn for)
+    # Layout below (margins, header height, font mm sizes) is authored against this
+    # reference canvas; LABEL_WIDTH_MM/HEIGHT_MM is the physical output size.
     REF_WIDTH_MM  = 100.0
     REF_HEIGHT_MM = 150.0
     LABEL_WIDTH_MM  = REF_WIDTH_MM
@@ -226,13 +224,8 @@ class _FontMixin:
             self.LABEL_HEIGHT_MM = self.REF_HEIGHT_MM
 
     def _init_fonts(self):
-        """Load the shared Unicode body face.
-
-        These two sheets used to be drawn in a display face carrying 223 glyphs
-        — latin only. A Cyrillic, Greek, Arabic, Hebrew or CJK bean name fell
-        through to whatever Qt found on the machine, so the label came out in a
-        second typeface, or blank on a system without a matching font. DejaVu
-        covers all of those but CJK, which Qt substitutes on its own.
+        """Load the shared Unicode body face. DejaVu covers Latin, Cyrillic, Greek,
+        Arabic and Hebrew bean names; CJK is substituted by Qt on its own.
         """
         self._load_label_size()
         try:
@@ -256,7 +249,7 @@ class _FontMixin:
         return QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont).family()
 
     def _dims(self, painter: QPainter):
-        # ## TILAU ## page IS the label (native LABEL_WIDTH_MM x LABEL_HEIGHT_MM,
+        # page IS the label (native LABEL_WIDTH_MM x LABEL_HEIGHT_MM,
         # set on the QPrinter by _make_printer) — print at 100%, no fit-to-page
         # scaling. The layout below is authored against REF_WIDTH/HEIGHT_MM; fit
         # that reference canvas into the chosen physical size, aspect-preserving.
@@ -275,7 +268,7 @@ class _FontMixin:
         return int(mm * scale)
 
     def pt(self, mm: float) -> int:
-        # ## TILAU ## fonts scale with the chosen physical label size × legibility boost
+        # fonts scale with the chosen physical label size × legibility boost
         scale_mm = getattr(self, "_scale_mm", 1.0)
         return max(1, round(mm * scale_mm * self._FONT_SCALE * 72.0 / 25.4))
 
@@ -299,38 +292,38 @@ class _FontMixin:
         """Draws a pill that dynamically grows to fit text perfectly without clipping."""
         fs = self.pt(2.2)
         font = QFont(self.reg_family, fs, QFont.Weight.DemiBold)
-        
+
         # CRUCIAL FIX: Force the painter to bind the font state BEFORE measuring,
         # and pass the painter directly to QFontMetrics so high-DPI scaling is respected.
         painter.save()
         painter.setFont(font)
-        
+
         fm = QFontMetrics(font, painter.device()) # Pass device context explicitly
-        
+
         # Clean text string measurements
         clean_text = text
         tw = fm.horizontalAdvance(clean_text)
         th = fm.height()
-        
+
         # Scale dynamic breathing room paddings
         ph = self.p(scale, 3.0)  # Expanded horizontal buffer padding
         pv = self.p(scale, 1.4)  # Vertical buffer padding
-        
+
         pill_w = tw + (2 * ph)
         pill_h = th + (2 * pv)
-        
+
         # Define layout bounding box
         rect = QRectF(x, y, pill_w, pill_h)
         self._rounded_rect(painter, rect, self.p(scale, 1.8), fill, border, 0.8)
-        
+
         painter.setPen(text_color)
         # Clear clip constraints to prevent edge cutting bugs
-        painter.setClipping(False) 
+        painter.setClipping(False)
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, clean_text)
         painter.restore()
-        
+
         return pill_w
- 
+
     def _hline(self, painter, x1, x2, y, color, width=0.8):
         painter.setPen(QPen(color, width))
         painter.drawLine(QPointF(x1, y), QPointF(x2, y))
@@ -426,7 +419,7 @@ class _FontMixin:
         return 2 * R
 
     def _make_printer(self, output_path: str) -> QPrinter:
-        # ## TILAU ## PDF page = native label size (100x150mm) so it prints at 100%
+        # PDF page = native label size (100x150mm) so it prints at 100%
         # straight into the pochette, no manual scale-down and no cut-to-size step
         page_size = QPageSize(QSizeF(self.LABEL_WIDTH_MM, self.LABEL_HEIGHT_MM),
                                QPageSize.Unit.Millimeter)
@@ -454,7 +447,7 @@ class RoastedBeanLabelPrinter(_FontMixin):
     def render(self, painter: QPainter, profile: ProfileData, bean: GreenBean):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # ## TILAU ## _dims returns native label geometry (page = label, no upscale)
+        # _dims returns native label geometry (page = label, no upscale)
         lbl_w, lbl_h, scale = self._dims(painter)
         dev = painter.device()
         offset_x = (dev.width()  - lbl_w) / 2.0
@@ -463,8 +456,8 @@ class RoastedBeanLabelPrinter(_FontMixin):
         painter.save()
         painter.translate(offset_x, offset_y)
 
-        mg = self.p(scale, 5.5)   
-        r  = self.p(scale, 4.0)   
+        mg = self.p(scale, 5.5)
+        r  = self.p(scale, 4.0)
 
         self._rounded_rect(painter, QRectF(0, 0, lbl_w, lbl_h), r, C_ROAST_BG)
         self._rounded_rect(painter, QRectF(0, 0, lbl_w, lbl_h), r, C_ROAST_BODY_BG)
@@ -476,14 +469,14 @@ class RoastedBeanLabelPrinter(_FontMixin):
         painter.restore()
 
     def _header_height(self, bean, scale) -> int:
-        h = self.p(scale, 48) 
+        h = self.p(scale, 48)
         if bean and bean.is_blend:
             h += self.p(scale, 7)
         return h
 
     def _draw_header(self, painter, bean, profile, W, header_h, mg, scale):
         r = self.p(scale, 4.0)
-        
+
         # Base header background card
         self._rounded_rect(painter, QRectF(0, 0, W, header_h + r), r, C_ROAST_BG)
 
@@ -518,10 +511,10 @@ class RoastedBeanLabelPrinter(_FontMixin):
         painter.setFont(QFont(self.bold_family, fs_pt, QFont.Weight.Bold))
         painter.setPen(C_ROAST_HEAD_TXT)
         name_w = W - 2 * mg - self.p(scale, 10)
-        
+
         name_rect = QRectF(mg, y, name_w, self.p(scale, 18))
         painter.drawText(name_rect, Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, name)
-        y += self.p(scale, 18.0) 
+        y += self.p(scale, 18.0)
 
         # Origin
         parts = []
@@ -530,14 +523,14 @@ class RoastedBeanLabelPrinter(_FontMixin):
         if bean and bean.farm:
             parts.append(bean.farm)
         origin = " - ".join(parts)
-        
+
         fm_orig = QFontMetrics(QFont(self.reg_family, self.pt(2.5)))
         max_orig_w = W - 2 * mg
         if fm_orig.horizontalAdvance(origin) > max_orig_w:
             while fm_orig.horizontalAdvance(origin + "...") > max_orig_w and len(origin) > 0:
                 origin = origin[:-1]
             origin = origin.rstrip() + "..."
-            
+
         painter.setFont(QFont(self.reg_family, self.pt(2.6)))
         painter.setPen(C_ROAST_HEAD_SUB)
         painter.drawText(QRectF(mg, y, W - 2 * mg, self.p(scale, 6)), Qt.AlignmentFlag.AlignLeft, origin)
@@ -559,20 +552,20 @@ class RoastedBeanLabelPrinter(_FontMixin):
             flavor_src = profile.get("cuppingnotes", "") or ""
 
         tokens = [t.strip().rstrip(".").title() for t in flavor_src.split(",") if t.strip()]
-        
+
         # Define an explicit, isolated tracking context
         px = float(mg)
-        
-        # Hard buffer line: give the right side a wider padding safety margin 
+
+        # Hard buffer line: give the right side a wider padding safety margin
         # to force the break earlier if high-DPI calculations mismatch
         right_boundary = float(W - mg - self.p(scale, 2.0))
-        
+
         current_y = float(y)
-        
+
         # Instantiate font context matching the internal _pill configuration precisely
         pill_font = QFont(self.reg_family, self.pt(2.2), QFont.Weight.DemiBold)
         fm_pill = QFontMetrics(pill_font)
-        
+
         # Row layout heights
         capsule_h = fm_pill.height() + 2 * self.p(scale, 1.4)
         row_gap = self.p(scale, 1.8)
@@ -582,19 +575,19 @@ class RoastedBeanLabelPrinter(_FontMixin):
             # Predictive wrap-check using string measurement rules
             estimated_tw = fm_pill.horizontalAdvance(tok)
             estimated_pw = estimated_tw + (2 * self.p(scale, 2.5))
-            
+
             # If the current tracking cursor + element width breaches the right wall, wrap downwards
             if (px + estimated_pw) > right_boundary:
                 px = float(mg)  # Carriage return back to the margin side
                 current_y += capsule_h + row_gap
-                
+
             # Truncation fallback: prevent bleeding into the white body block area
             if (current_y + capsule_h) > max_allowed_y:
                 break
 
             # Execute the rendering operation onto our distinct tracking layout cursor
             actual_w = self._pill(painter, tok, px, float(current_y), C_ROAST_PILL_BG, C_ROAST_PILL_BD, C_ROAST_ACCENT_LT, scale)
-            
+
             # Use the actual pixel footprint returned by the method to increment layout cursor
             px += actual_w + self.p(scale, 2.0)
 
@@ -617,7 +610,7 @@ class RoastedBeanLabelPrinter(_FontMixin):
         sca_str = f"{sca_val:.1f}" if sca_val > 0 else "-"
         sca_w   = self.p(scale, 14)
         sca_h   = self.p(scale, 11)
-        sca_x   = W - mg - sca_w          
+        sca_x   = W - mg - sca_w
         sca_rect = QRectF(sca_x, y, sca_w, sca_h)
         self._rounded_rect(painter, sca_rect, self.p(scale, 2), C_ROAST_BG)
         painter.setFont(QFont(self.bold_family, self.pt(3.8), QFont.Weight.DemiBold))
@@ -700,7 +693,7 @@ class RoastedBeanLabelPrinter(_FontMixin):
             painter.setPen(vc)
             painter.drawText(QRectF(bx, y + self.p(scale, 6.5), col_bar_w - self.p(scale, 2), self.p(scale, 9)), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, val)
 
-        # ## TILAU ## traceability footer — QR encodes the Artisan roastUUID of this profile
+        # traceability footer — QR encodes the Artisan roastUUID of this profile
         roast_uuid = str(profile.get("roastUUID") or "") if profile else ""
         if roast_uuid:
             qr_size = self.p(scale, 14)
@@ -742,15 +735,14 @@ class RoastedBeanLabelPrinter(_FontMixin):
 class GreenBeanLabelPrinter(_FontMixin):
 
     def __init__(self, logo_path: Path | None = None):
-        ## TILAU ## logo_path is accepted for call-site compatibility but no longer
-        ## loaded: the label's mark is drawn from vectors by _draw_tilau_logo(), and
-        ## the pixmap was decoded on every export without ever being painted.
+        # logo_path kept for call-site compatibility; the mark is drawn from
+        # vectors by _draw_tilau_logo(), not loaded here.
         self._init_fonts()
 
     def render(self, painter: QPainter, bean: GreenBean):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # ## TILAU ## _dims returns native label geometry (page = label, no upscale)
+        # _dims returns native label geometry (page = label, no upscale)
         lbl_w, lbl_h, scale = self._dims(painter)
         dev = painter.device()
         offset_x = (dev.width()  - lbl_w) / 2.0
@@ -799,7 +791,7 @@ class GreenBeanLabelPrinter(_FontMixin):
         painter.drawText(mg, int(y + self.p(scale, 4)), QApplication.translate("tilauscope_label", "Green bean").upper())
         y += self.p(scale, 8)
 
-        # ## TILAU ## title sized to match the roasted label's masthead (was 4.0/3.4/2.9mm,
+        # title sized to match the roasted label's masthead (was 4.0/3.4/2.9mm,
         # unreadable once printed) — shrink-to-fit still guards long names
         name = bean.name if bean else "-"
         name_w = W - 2 * mg - self.p(scale, 16)
@@ -850,7 +842,7 @@ class GreenBeanLabelPrinter(_FontMixin):
                 painter.setFont(QFont(self.reg_family, self.pt(1.8)))
                 painter.setPen(C_BLEND_RATIO_TXT)
                 # Compute starting coordinates natively relative to the real pixel output width
-                painter.drawText(QRectF(mg + actual_tag_w + self.p(scale, 2), y, ratio_avail, self.p(scale, 6)), 
+                painter.drawText(QRectF(mg + actual_tag_w + self.p(scale, 2), y, ratio_avail, self.p(scale, 6)),
                                  Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, blend_ratio_line(bean))
 
         # ---- SCA BADGE COMPONENT WITH SEPARATED METRIC BLOCKS ----
@@ -877,7 +869,7 @@ class GreenBeanLabelPrinter(_FontMixin):
             painter.setPen(QColor(C_GREEN_ACCENT.red(), C_GREEN_ACCENT.green(), C_GREEN_ACCENT.blue(), 140))
             painter.drawText(QRectF(badge_x, badge_y + badge_h * 0.62, badge_w, badge_h * 0.38), Qt.AlignmentFlag.AlignCenter, "SCA")
             painter.restore()
-            
+
     def _draw_body(self, painter, bean, W, H, header_h, mg, scale):
         r = self.p(scale, 4.0)
         painter.setPen(Qt.PenStyle.NoPen)
@@ -902,7 +894,7 @@ class GreenBeanLabelPrinter(_FontMixin):
         painter.setPen(C_GREEN_SPEC_VAL)
         painter.drawText(QRectF(mg, y + self.p(scale, 5), W * 0.6 - mg, self.p(scale, 7)), Qt.AlignmentFlag.AlignLeft, supplier)
 
-        crop_col_w = self.p(scale, 18)   
+        crop_col_w = self.p(scale, 18)
         crop_x     = W - mg - crop_col_w
         self._micro_label(painter, QApplication.translate("tilauscope_label", "Crop"), crop_x, y + self.p(scale, 3.5), C_GREEN_SPEC_LBL, scale)
         painter.setFont(QFont(self.reg_family, self.pt(2.8), QFont.Weight.DemiBold))
@@ -1010,13 +1002,9 @@ class GreenBeanLabelPrinter(_FontMixin):
 # Niimbot Label Builder  (PIL/1-bit bitmap — Niimbot B21S thermal printer)
 # ---------------------------------------------------------------------------
 # ── Dimensions canoniques par format ────────────────────────────────────────
-# Dimensions pixel natives de la Niimbot B21S à 203.2 DPI
-# 80mm → 640px  |  50mm largeur → 384px (fixe, tête thermique)
-# 30mm → 240px
-# CRITIQUE : HEIGHT_PX doit correspondre exactement au papier physique.
-# Toute différence entraîne une éjection d'étiquette vierge.
-# B21S native resolution: 203.2 DPI → 80mm=640px, 30mm=240px
-# IMPORTANT : 80mm est à 600px ici — le padding est géré dans niimprint._print_image_locked
+# B21S native resolution 203.2 DPI: width fixed at 384px (print head), 80mm=640px, 30mm=240px.
+# CRITIQUE : HEIGHT_PX doit correspondre exactement au papier physique, sinon éjection vierge.
+# 80mm est à 600px ici — le padding est géré dans niimprint._print_image_locked.
 _LAYOUT: dict[int, tuple[int, int, int, bool]] = {
     80: (384, 640, 10, False),   # WIDTH_PX, HEIGHT_PX, PADDING, ROTATE_90
     30: (384, 240, 10, False),
@@ -1087,7 +1075,7 @@ class NiimbotLabelBuilder:
         if img.height != H or img.width != W:
             _logd.warning(f"[LABEL] Crop de sécurité: ({img.width}×{img.height}) → ({W}×{H})")
             img = img.crop((0, 0, W, H))
-        
+
         # if ROTATE_90, rotate the image 90 degrees clockwise to match printer orientation
         if ROTATE_90:
             img = img.rotate(-90, expand=True)
@@ -1128,7 +1116,6 @@ class NiimbotLabelBuilder:
                 "impossible de calculer les phases."
             )
 
-        t_charge   = 0.0
         drying     = float(t_dry)
         maillard   = float(t_fcs)  - float(t_dry)
         development= float(t_drop) - float(t_fcs)
@@ -1188,10 +1175,8 @@ class NiimbotLabelBuilder:
                 notes_parts.append(f"{initial}: {val}")
         roast_data["Tasting Notes"] = "; ".join(notes_parts)
 
-        # ## TILAU ## QR encodes the same http record URL as the PDF label and the
-        # bean/sack labels, so any label can be scanned (webcam or phone) to open
-        # the roast record — previously encoded a raw text blob here, unscannable
-        # by parse_tilau_qr().
+        # QR encodes the same http record URL as the PDF label and the bean/sack
+        # labels, so any label can be scanned (webcam or phone) to open the record.
         roast_uuid = str(data.get("roastUUID") or "")
         qr_url = f"{qr_base_url()}/roast/{roast_uuid}" if roast_uuid else ""
 
@@ -1540,7 +1525,7 @@ class NiimbotLabelBuilder:
             _logd.warning(f"NiimbotLabelBuilder: échec génération QR code: {exc}")
 
 # ---------------------------------------------------------------------------
-## TILAU ## Sack ID label (design v4 §3-§4) — 50×30 mm Niimbot bitmap.
+# Sack ID label (design v4 §3-§4) — 50×30 mm Niimbot bitmap.
 # QR encodes tilauscope://sack/{id} (URL scheme, same family as the bean
 # label's tilauscope://beancave/{uuid}); the id is repeated human-readable.
 # ---------------------------------------------------------------------------
@@ -1605,7 +1590,7 @@ def build_sack_label_image(sack_id: str) -> Image.Image:
 
 
 # ---------------------------------------------------------------------------
-## TILAU ## Dial-in brew recipe label — 50×30 mm Niimbot bitmap.
+# Dial-in brew recipe label — 50×30 mm Niimbot bitmap.
 # Two templates driven by the brew method:
 #   • Espresso  → a 3×2 grid of large "grammage" numbers (dose/yield/ratio…).
 #   • Soft methods (V60, French press, AeroPress, Pulsar, Weber Bird, Moka)
@@ -1616,15 +1601,8 @@ def build_sack_label_image(sack_id: str) -> Image.Image:
 
 
 def _brew_clean(text: str) -> str:
-    """Normalise a label string without losing any of it.
-
-    This used to strip accents, because the display face the labels were drawn
-    in carried 223 glyphs and no `é`. That worked for French and destroyed
-    everything else: decomposing Korean splits a syllable into separate jamo,
-    and dropping the combining marks of Devanagari, Arabic or Vietnamese changes
-    the words outright. The bundled face covers those scripts, so the text is
-    now printed as written. NFC is applied so a decomposed `e`+`́` from an
-    external source occupies one glyph rather than two overlapping ones.
+    """Normalise a label string without losing any of it. NFC ensures a decomposed
+    `e`+`́` from an external source occupies one glyph rather than two overlapping ones.
     """
     import unicodedata
     if not text:

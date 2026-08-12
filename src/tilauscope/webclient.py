@@ -16,24 +16,11 @@
 #
 # webclient.py
 #
-# ## TILAU ## Real mobile client (Phase 4) — served at '/' by TilauWebControl.
+# Real mobile client, served at '/' by TilauWebControl: self-contained page
+# (Catppuccin theme, canvas BT/ET/RoR curve, touch steppers) over the frozen v1 WS contract.
 #
-# A single self-contained page (no CDN, no new dependency): Catppuccin Mocha
-# theme, a hand-drawn <canvas> curve (BT/ET/RoR, dual axis °C | RoR mirroring
-# Artisan) and touch steppers with a wheel picker. It speaks the frozen v1 WS
-# contract exactly like the /dev test page — the form factor is 100 % client
-# side (wiki/RemoteControl-Protocol-v1.md §9, "mock v1 validé").
-#
-# Phase 4a scope: PORTRAIT phone PILOT screen — connection/auth, live curve,
-# per-channel steppers + wheel picker, controller lock request, ack recalibrate,
-# drum mid-roast advisory. Milestones / STOP / observer polish = 4b; deadman /
-# landscape / tablet / PWA install = 4c. Kept as a Python module string so it is
-# packaged with the app (PyInstaller import graph) and behaves identically in a
-# frozen build and in dev.
-#
-# The string carries no server-side templating: the WS URL is derived at runtime
-# from location.host, the pairing token from the URL hash (#pt=…), exactly as the
-# /dev page. Do not add .format()/f-string substitution here (braces are JS).
+# The WS URL is derived at runtime from location.host, the pairing token from the
+# URL hash (#pt=…). Do not add .format()/f-string substitution here (braces are JS).
 
 CLIENT_HTML = r"""<!doctype html><html lang=fr><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">

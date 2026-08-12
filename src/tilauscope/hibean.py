@@ -26,9 +26,6 @@ from typing import Final
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
-#if TYPE_CHECKING:
-#    from artisanlib.main import ApplicationWindow # pylint: disable=unused-import
-
 try:
     from PyQt6.QtWidgets import QApplication # @UnusedImport @Reimport  @UnresolvedImport
 except ImportError:
@@ -136,43 +133,13 @@ class AlogStructure:
             "extratemp2":[],
             "extramathexpression1":["",""], 
             "extramathexpression2":["",""], 
-            "extradeicecolor1":[ "#ad0427", "#ad0427"], 
-            "extradevicecolor2":["#48abffff","#000000"], 
-     #       "extraLCDvisibility1":[False, False], 
-     #       "extraLCDvisibility2":[True, False], 
-     #       "extraCurveVisibility1":[False, False], 
-     #       "extraCurveVisibility2":[False, False], 
-     #       "extraDelta1":[False, False], 
-     #       "extraDelta2":[False, False], 
-     #       "extraFill1":[0,0], 
-     #       "extraFill2":[0,0], 
-     #       "extramarkersizes1":[6.0,6.0], 
-     #       "extramarkersizes2":[6.0,6.0], 
-     #       "extramarkers1":["None","None"], 
-     #       "extramarkers2":["None","None"], 
-     #       "extralinewidths1":[1.0,1.0], 
-     #       "extralinewidths2":[1.0,1.0], 
-     #       "extralinestyles1":["-","-"], 
-     #       "extralinestyles2":["-","-"], 
-     #       "extradrawstyles1":["default","default"], 
-     #       "extradrawstyles2":["default","default"], 
-            "externalprogram":"test.py", 
+            "extradeicecolor1":[ "#ad0427", "#ad0427"],
+            "extradevicecolor2":["#48abffff","#000000"],
+            "externalprogram":"test.py",
             "externaloutprogram":"out.py", 
             "extraNoneTempHint1":[False,False,True,False,True,True], 
-            "extraNoneTempHint2":[False,False,True,False,False,True], 
-#            "alarmsetlabel":"",
-#            "alarmflag":[], 
-#            "alarmguard":[], 
-#            "alarmnegguard":[], 
-#            "alarmtime":[], 
-#            "alarmoffset":[], 
-#            "alarmcond":[], 
-#            "alarmsource":[], 
-#            "alarmaction":[], 
-#            "alarmbeep":[], 
-#            "alarmtemperature":[], 
-#            "alarmstrings":[], 
-            "backgroundpath":"", 
+            "extraNoneTempHint2":[False,False,True,False,False,True],
+            "backgroundpath":"",
             "samplinginterval":1.0, 
             "svLabel":"regular", 
             "svValues":[0,0,0,0,0,0,0,0], 
@@ -448,7 +415,6 @@ def extractProfileHibeanJson(file:str, etypesdefault, altetypesdefault, artisanf
             roast_epoch = 0
 
         # Remplir la structure Artisan avec les données Hibean
-        # Modification : Mise à jour des valeurs directement dans le dictionnaire
         alog_data["mode"] =hibean_data.get("temperatureUnit", "C")
         alog_data["title"] =roast_context.get("name", "")
         alog_data["roastertype"] = device_info.get("name","") 
@@ -537,9 +503,9 @@ def extractProfileHibeanJson(file:str, etypesdefault, altetypesdefault, artisanf
         # populate heater and fan change, drum is not present at the moment
         alog_data["specialevents"]=[e[1] for e in events]
         alog_data["specialeventstype"]=[e[0] for e in events]
-        alog_data["specialeventsvalue"]=[(events_external_to_internal_value(int(e[2]))) for e in events] # fix 2024/11/20
+        alog_data["specialeventsvalue"]=[(events_external_to_internal_value(int(e[2]))) for e in events]
 
-        alog_data["specialeventsStrings"] = [f"set {alog_data['etypes'][e[0]]} to {(int(e[2]))}" for e in events] # fix 2024/11/20
+        alog_data["specialeventsStrings"] = [f"set {alog_data['etypes'][e[0]]} to {(int(e[2]))}" for e in events]
 
         alog_data["timex"] = time_series
         alog_data["temp2"] = bt_series
@@ -552,11 +518,7 @@ def extractProfileHibeanJson(file:str, etypesdefault, altetypesdefault, artisanf
         alog_data["extratemp2"].append(fan_series)
         alog_data["extratemp2"].append(ts_series)
 
-        #alog_data["ror_bt"] = ror_bt_series
-        #alog_data["ror_et"] = ror_et_series
-
         # calcul des valeurs min et max des axes
-#        min_bt = min(bt_series)
         max_bt = max(bt_series)
         zmax = round(math.ceil(max_bt / 5) * 5,0)
         alog_data["zmax"] = zmax
@@ -623,7 +585,6 @@ def extractProfileHibeanJson(file:str, etypesdefault, altetypesdefault, artisanf
 
         computed["totaltime"] = round(hibean_data.get("roastContext", {}).get("duration", 0.0), 1) if roast_context.get("duration") is not None else 0.0
         computed["ambient_temperature"] = round(roast_context.get("envTemp", {}).get("value", 0.0), 1) if roast_context.get("envTemp") is not None else 0.0
-        #            computed["ambient_humidity"] = round(roast_context.get("envHumidity", 0.0), 1) if roast_context.get("envHumidity") is not None else 0.0
 
         phases_map = {1: "dryphasetime", 2: "midphasetime", 3: "finishphasetime"}
         for phase_point in phase_list:

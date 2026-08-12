@@ -13,7 +13,7 @@
 # AUTHOR
 # TiLau 2025
 
-# routine check — v2 (architecture fixes + redesigned UI)
+# routine check
 import json
 import logging
 import ast
@@ -35,8 +35,9 @@ from PyQt6.QtWidgets import (
 )
 
 from tilauscope.tilauscope_types import THEME, show_styled_message
-## TILAU ## reuse Artisan's canonical weight helpers as single source of truth
+# reuse Artisan's canonical weight helpers as single source of truth
 from artisanlib.util import weight_units, convertWeight, decodeLocalStrict
+from tilauscope.theme_qss import apply_tilau_theme
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -84,14 +85,11 @@ class _StatCard(QFrame):
         layout.setSpacing(2)
 
         self._label = QLabel(label.upper())
-        self._label.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 9px; font-family: 'JetBrains Mono';"
-            " letter-spacing: 1px; border: none;"
-        )
+        self._label.setProperty('variant', 'eyebrow')
         self._value = QLabel(value)
         self._value.setStyleSheet(
             f"color: {THEME['TEXT']}; font-size: 15px; font-weight: bold;"
-            " font-family: 'JetBrains Mono'; border: none;"
+            " border: none;"
         )
         layout.addWidget(self._label)
         layout.addWidget(self._value)
@@ -136,7 +134,7 @@ class _RoastRow(QWidget):
         date_lbl.setFixedWidth(90)
         date_lbl.setStyleSheet(
             f"color: {THEME['SUBTEXT']}; font-size: 11px;"
-            " font-family: 'JetBrains Mono'; border: none;"
+            " border: none;"
         )
 
         ratio = (weight_kg / max_kg) if max_kg > 0 else 0.0
@@ -147,7 +145,7 @@ class _RoastRow(QWidget):
         weight_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         weight_lbl.setStyleSheet(
             f"color: {THEME['TEXT']}; font-size: 11px; font-weight: bold;"
-            " font-family: 'JetBrains Mono'; border: none;"
+            " border: none;"
         )
 
         layout.addWidget(date_lbl)
@@ -158,6 +156,10 @@ class TilauRoutineCheck(QDialog):
 
     def __init__(self, parent: QWidget, aw=None):
         super().__init__(parent)
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self.setModal(False)
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -231,11 +233,12 @@ class TilauRoutineCheck(QDialog):
         title = QLabel("🧹 " + QApplication.translate("tilauscope_diagnostics","ROUTINE CHECK"))
         title.setStyleSheet(
             f"color: {THEME['TEXT']}; font-size: 14px; font-weight: bold;"
-            " font-family: 'JetBrains Mono'; letter-spacing: 1px; border: none;"
+            " letter-spacing: 1px; border: none;"
         )
 
         self._close_btn = QPushButton("✕")
         self._close_btn.setFixedSize(28, 28)
+        self._close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         self._close_btn.clicked.connect(self.fade_out_and_close)
         self._close_btn.setStyleSheet(
             f"QPushButton {{ background: {THEME['SURFACE']}; color: {THEME['SUBTEXT']};"
@@ -259,16 +262,11 @@ class TilauRoutineCheck(QDialog):
         # Top row: label left / counter right
         top = QHBoxLayout()
         cycle_label = QLabel(QApplication.translate("tilauscope_diagnostics","Cleaning cycle").upper())
-        cycle_label.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 9px; font-family: 'JetBrains Mono';"
-            " letter-spacing: 1px; border: none;"
-        )
+        cycle_label.setProperty('variant', 'eyebrow')
 
         self._cycle_counter = QLabel(f"— / {self.cleaning_threshold}")
-        self._cycle_counter.setStyleSheet(
-            f"color: {THEME['TEXT']}; font-size: 20px; font-weight: bold;"
-            " font-family: 'JetBrains Mono'; border: none;"
-        )
+        self._cycle_counter.setProperty('variant', 'readout')
+        self._cycle_counter.setStyleSheet(f"color: {THEME['TEXT']};")
         self._cycle_counter.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         top.addWidget(cycle_label, alignment=Qt.AlignmentFlag.AlignBottom)
@@ -295,7 +293,7 @@ class TilauRoutineCheck(QDialog):
         for i, val in enumerate(tick_values):
             lbl = QLabel(str(val))
             lbl.setStyleSheet(
-                f"color: {THEME['SUBTEXT']}; font-size: 9px; font-family: 'JetBrains Mono';"
+                f"color: {THEME['SUBTEXT']}; font-size: 9px; "
                 " border: none;"
             )
             if i == 0:
@@ -311,7 +309,7 @@ class TilauRoutineCheck(QDialog):
         last_clean_str = self.last_clean.date().toString(Qt.DateFormat.ISODate)
         self._last_clean_lbl = QLabel(QApplication.translate("tilauscope_diagnostics","Last cleaning: ") + last_clean_str)
         self._last_clean_lbl.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 10px; font-family: 'JetBrains Mono';"
+            f"color: {THEME['SUBTEXT']}; font-size: 10px; "
             " border: none;"
         )
         layout.addWidget(self._last_clean_lbl)
@@ -345,10 +343,7 @@ class TilauRoutineCheck(QDialog):
         outer_layout.setSpacing(6)
 
         section_lbl = QLabel(QApplication.translate("tilauscope_diagnostics","Recent roasts").upper())
-        section_lbl.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 9px; font-family: 'JetBrains Mono';"
-            " letter-spacing: 1px; border: none;"
-        )
+        section_lbl.setProperty('variant', 'eyebrow')
         outer_layout.addWidget(section_lbl)
 
         # Scroll area containing the rows
@@ -369,11 +364,11 @@ class TilauRoutineCheck(QDialog):
         self._user_scrolled: bool = False
         self._scroll.viewport().installEventFilter(self)
         outer_layout.addWidget(self._scroll)
- 
+
         # Placeholder while scanning
         self._history_placeholder = QLabel(QApplication.translate("tilauscope_diagnostics","Scanning logs…"))
         self._history_placeholder.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 11px; font-family: 'JetBrains Mono';"
+            f"color: {THEME['SUBTEXT']}; font-size: 11px; "
             " border: none;"
         )
         self._rows_layout.insertWidget(0, self._history_placeholder)
@@ -393,7 +388,7 @@ class TilauRoutineCheck(QDialog):
         self._clean_btn.setStyleSheet(
             f"QPushButton {{ background: {THEME['ACCENT']}; color: {THEME['BG']};"
             f" border-radius: 8px; font-weight: bold; font-size: 11px;"
-            f" font-family: 'JetBrains Mono'; letter-spacing: 1px; border: none; }}"
+            f" letter-spacing: 1px; border: none; }}"
             f"QPushButton:hover {{ opacity: 0.9; }}"
         )
 
@@ -402,7 +397,7 @@ class TilauRoutineCheck(QDialog):
         self._later_btn.clicked.connect(self.fade_out_and_close)
         self._later_btn.setStyleSheet(
             f"QPushButton {{ background: transparent; color: {THEME['SUBTEXT']};"
-            f" border-radius: 8px; font-size: 11px; font-family: 'JetBrains Mono';"
+            f" border-radius: 8px; font-size: 11px;"
             f" border: 1px solid {THEME['BORDER']}; }}"
             f"QPushButton:hover {{ color: {THEME['TEXT']}; }}"
         )

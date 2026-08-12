@@ -1,8 +1,7 @@
 #
 # ABOUT
-# MQTT bridge for TilauScope sensors
-# Transport delegated to artisanlib.mqttport (Artisan native paho stack).
-# Maintains a separate broker connection; feeds MQTTDatabase instead of readings[].
+# MQTT bridge for TilauScope sensors. Transport delegated to artisanlib.mqttport
+# (Artisan native paho stack); feeds MQTTDatabase instead of readings[].
 
 # LICENSE
 # This file is part of TilauScope, a fork of Artisan Roaster Scope.
@@ -463,7 +462,7 @@ class TilauscopeMQTTClient(QObject):
             _logd.warning("TilauMQTT publish: not connected")
             return False
         try:
-            # Bool must serialize to lowercase json literals (str(True)=="True" breaks zwave). ## TILAU ##
+            # Bool must serialize to lowercase json literals (str(True)=="True" breaks zwave).
             if isinstance(value, bool):
                 payload = "true" if value else "false"
             elif isinstance(value, (dict, list)):

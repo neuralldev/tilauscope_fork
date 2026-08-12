@@ -14,23 +14,17 @@
 # Public License along with this program. If not, see
 # <https://www.gnu.org/licenses/>.
 
-"""
-Two public classes
-──────────────────
-RoastSetupDialog   – shown BEFORE a roast (bound to a GreenBean coming from BeanCave).
-                     Sets up Artisan qmc fields and optionally decreases bean stock.
-
-RoastResultDialog  – shown AFTER a roast to record roasted weight, colour, notes.
-                     (stub – to be fleshed out separately)
-"""
+"""RoastSetupDialog (shown before a roast, sets up Artisan qmc fields from a
+GreenBean) and RoastResultDialog (shown after a roast to record weight/colour/notes)."""
 
 from __future__ import annotations
 import logging
-import re         
+import re
 from typing import TYPE_CHECKING, Final
 from datetime import datetime
 
 from tilauscope.roast_insights import build_insights, targets_from_plan
+from tilauscope.theme_qss import base_qss, apply_tilau_theme
 from tilauscope.roasters import RoasterManager
 from PyQt6.QtCore    import Qt, QPropertyAnimation, pyqtSlot, QTimer, QSettings
 from PyQt6.QtCore import QThread, QObject, pyqtSignal
@@ -46,7 +40,7 @@ from PyQt6.QtWidgets import (
     QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem,
     QHeaderView, QSizeGrip, QSplitter, QAbstractItemView, QFileDialog,
 )
-from PyQt6.QtGui import QColor, QKeyEvent
+from PyQt6.QtGui import QColor, QKeyEvent, QFontMetrics
 
 from artisanlib.util import fromCtoFstrict
 from tilauscope.tilauscope_types import (
@@ -78,66 +72,33 @@ _logd: Final[logging.Logger] = logging.getLogger("tilau")
 # Tiny stylesheet helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _base_style() -> str:
-    """Returns the base stylesheet applied to every TiLau dialog."""
+# What these dialogs still have to say on top of
+# theme_qss.base_qss(). Everything the base already expresses — window ground,
+# labels, text fields, checkboxes, scrollbars — has been removed; what is left
+# is only what this file needs differently. See wiki/Theme-QSS-Spec.md.
+def _local_style() -> str:
     return f"""
-        QDialog, QWidget {{
-            background-color: {THEME['BG']};
-            color: {THEME['TEXT']};
-            font-family: 'JetBrains Mono';
-        }}
-        QLabel {{
-            background: transparent;
-            border: none;
-        }}
-        QLineEdit, QComboBox {{
-            background-color: {THEME['SURFACE']};
-            color: {THEME['TEXT']};
-            border: 1px solid {THEME['BORDER']};
-            border-radius: 6px;
-            padding: 6px 10px;
-            combobox-popup: 0;
-            font-family: 'JetBrains Mono';
+        /* combobox-popup 0 keeps the native popup here, unlike the
+           configuration dialog: these combos are short and the native list
+           positions itself better over a scrolled form. */
+        QComboBox {{ combobox-popup: 0; }}
+        QComboBox::drop-down {{ border: none; }}
+
+        /* macOS shows a combo popup as its own top-level window, which does
+           not inherit a descendant sheet; these rules only bite on Windows,
+           and _ScaleFloatWindow-style combos style their view directly. */
+        QComboBox QAbstractItemView {{ background: {THEME['BG']}; }}
+        QComboBox QAbstractScrollArea QWidget {{ background-color: {THEME['BG']}; }}
+
+        /* Save / Cancel close the window — larger than inline buttons. */
+        QPushButton#footerBtn {{
+            border-radius: 8px;
             font-size: 13px;
-            selection-background-color: {THEME['ACCENT']};
+            padding: 10px 28px;
         }}
-        QLineEdit:focus, QComboBox:focus {{
-            border: 1px solid {THEME['ACCENT']};
-        }}
-        QComboBox::drop-down {{
-            border: none;
-        }}
-        QComboBox QAbstractItemView {{
-            background: #1E1E2E;
-        }}
-        QComboBox QListView {{
-            background-color: #1E1E2E;
-            color: {THEME["TEXT"]};
-            border: 1px solid {THEME["ACCENT"]};
-            border-radius: 4px;
-            selection-background-color: {THEME["ACCENT"]};
-            selection-color: #11111B;
-            outline: none;
-            padding: 2px;
-        }}
-        QComboBox QAbstractScrollArea QWidget {{
-            background-color: #1E1E2E;
-        }}
-        QCheckBox {{
-            color: {THEME['SUBTEXT']};
-            font-size: 12px;
-            spacing: 8px;
-        }}
-        QCheckBox::indicator {{
-            width: 16px; height: 16px;
-            border-radius: 4px;
-            border: 1px solid {THEME['BORDER']};
-            background: {THEME['SURFACE']};
-        }}
-        QCheckBox::indicator:checked {{
-            background: {THEME['ACCENT']};
-            border: 1px solid {THEME['ACCENT']};
-        }}
+
+        /* A dense setup form: the 12px base scrollbar eats the width the
+           weight and colour rows need. */
         QScrollBar:vertical {{
             background: {THEME['SURFACE']};
             width: 6px;
@@ -150,39 +111,6 @@ def _base_style() -> str:
     """
 
 
-def _btn_primary() -> str:
-    return f"""
-        QPushButton {{
-            background-color: {THEME['ACCENT']};
-            color: {THEME['BG']};
-            border: none;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono';
-            font-weight: bold;
-            font-size: 13px;
-            padding: 10px 28px;
-        }}
-        QPushButton:hover  {{ background-color: {THEME['HOVER']}; }}
-        QPushButton:pressed {{ background-color: {THEME['ACCENT']}; opacity: 0.8; }}
-        QPushButton:disabled {{ background-color: {THEME['BORDER']}; color: {THEME['SUBTEXT']}; }}
-    """
-
-
-def _btn_secondary() -> str:
-    return f"""
-        QPushButton {{
-            background-color: transparent;
-            color: {THEME['SUBTEXT']};
-            border: 1px solid {THEME['BORDER']};
-            border-radius: 8px;
-            font-family: 'JetBrains Mono';
-            font-size: 13px;
-            padding: 10px 28px;
-        }}
-        QPushButton:hover {{ border-color: {THEME['ACCENT']}; color: {THEME['ACCENT']}; }}
-    """
-
-
 def _btn_warning() -> str:
     return f"""
         QPushButton {{
@@ -190,7 +118,6 @@ def _btn_warning() -> str:
             color: {THEME['WARNING']};
             border: 1px solid {THEME['WARNING']};
             border-radius: 8px;
-            font-family: 'JetBrains Mono';
             font-size: 12px;
             padding: 8px 16px;
         }}
@@ -201,10 +128,38 @@ def _btn_warning() -> str:
 def _section_label(text: str) -> QLabel:
     lbl = QLabel(text.upper())
     lbl.setStyleSheet(
-        f"color: {THEME['ACCENT']}; font-size: 12px; font-weight: bold; "
-        f"letter-spacing: 2px; font-family: 'JetBrains Mono'; margin-top: 6px;"
+        f"color: {THEME['ACCENT']}; font-size: 12px; font-weight: bold;"
+        f"letter-spacing: 2px; margin-top: 6px;"
     )
     return lbl
+
+
+class _ElidedLabel(QLabel):
+    """Single-line label that trims its text to the width it is given, full
+    text kept in the tooltip. A free-length string in a fixed-width card must
+    never widen its parent."""
+
+    def __init__(self, text: str = "", parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._full = text
+        self.setToolTip(text)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        super().setText(text)
+
+    def setText(self, text: str) -> None:  # noqa: N802
+        self._full = text
+        self.setToolTip(text)
+        self._apply_elide()
+
+    def _apply_elide(self) -> None:
+        fm = QFontMetrics(self.font())
+        super().setText(
+            fm.elidedText(self._full, Qt.TextElideMode.ElideRight, max(0, self.width()))
+        )
+
+    def resizeEvent(self, event) -> None:  # noqa: ANN001, N802
+        super().resizeEvent(event)
+        self._apply_elide()
 
 
 def _separator() -> QFrame:
@@ -216,7 +171,7 @@ def _separator() -> QFrame:
 
 def _field_label(text: str) -> QLabel:
     lbl = QLabel(text)
-    lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
+    lbl.setProperty('variant', 'secondary')
     lbl.setMinimumWidth(130)
     return lbl
 
@@ -270,7 +225,7 @@ class _BatchBlock(QFrame):
         self._aw   = aw
         self._mode = mode
         self.setStyleSheet(
-            f"QFrame {{ background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']}; "
+            f"QFrame {{ background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']};"
             f"border-radius: 10px; }} QLabel {{ border: none; background: transparent; }}"
         )
         qmc = aw.qmc
@@ -281,10 +236,8 @@ class _BatchBlock(QFrame):
 
         # ── Big identity badge (left) ─────────────────────────────────────
         self._badge = QLabel()
-        self._badge.setStyleSheet(
-            f"color: {THEME['TEXT']}; font-size: 26px; font-weight: bold; "
-            f"font-family: 'JetBrains Mono';"
-        )
+        self._badge.setProperty('variant', 'readout')
+        self._badge.setStyleSheet(f"color: {THEME['TEXT']};")
         root.addWidget(self._badge)
 
         # status pill + hint
@@ -311,8 +264,8 @@ class _BatchBlock(QFrame):
             self._track_cb = QCheckBox(QApplication.translate("tilauscope_roast_setup", "track batches"))
             self._track_cb.setChecked(qmc.batchcounter > -1)
             self._track_cb.setStyleSheet(
-                f"QCheckBox {{ color: {THEME['SUCCESS']}; font-size: 11px; "
-                f"font-family: 'JetBrains Mono'; spacing: 6px; }}"
+                f"QCheckBox {{ color: {THEME['SUCCESS']}; font-size: 11px;"
+                f"spacing: 6px; }}"
             )
             self._track_cb.toggled.connect(self._refresh)
             self._prefix_edit.textChanged.connect(lambda _=None: self._refresh())
@@ -335,6 +288,7 @@ class _BatchBlock(QFrame):
             self._lock_btn = QPushButton("\U0001F512")  # 🔒
             self._lock_btn.setCheckable(True)
             self._lock_btn.setFixedSize(34, 30)
+            self._lock_btn.setProperty('variant', 'icon')   # fixed size: no base padding
             self._lock_btn.setToolTip(QApplication.translate(
                 "tilauscope_roast_setup", "Unlock to correct the assigned batch number"))
             self._lock_btn.toggled.connect(self._set_unlocked)
@@ -354,28 +308,28 @@ class _BatchBlock(QFrame):
     @staticmethod
     def _pill_style(assigned: bool) -> str:
         color = THEME['SUCCESS'] if assigned else THEME['TODAY']
-        return (f"color: {color}; font-size: 10px; font-weight: bold; "
-                f"font-family: 'JetBrains Mono'; padding: 1px 0px;")
+        return (f"color: {color}; font-size: 10px; font-weight: bold;"
+                f"padding: 1px 0px;")
 
     @staticmethod
     def _edit_style() -> str:
-        return (f"QLineEdit {{ background: {THEME['BG']}; color: {THEME['TEXT']}; "
-                f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; padding: 5px; "
-                f"font-family: 'JetBrains Mono'; font-size: 13px; }} "
+        return (f"QLineEdit {{ background: {THEME['BG']}; color: {THEME['TEXT']};"
+                f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; padding: 5px;"
+                f"font-size: 13px; }} "
                 f"QLineEdit:focus {{ border-color: {THEME['ACCENT']}; }} "
                 f"QLineEdit:disabled {{ color: {THEME['SUBTEXT']}; }}")
 
     @staticmethod
     def _spin_style() -> str:
-        return (f"QSpinBox {{ background: {THEME['BG']}; color: {THEME['TEXT']}; "
-                f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; padding: 4px; "
+        return (f"QSpinBox {{ background: {THEME['BG']}; color: {THEME['TEXT']};"
+                f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; padding: 4px;"
                 f"font-family: 'JetBrains Mono'; font-size: 13px; }} "
                 f"QSpinBox:focus {{ border-color: {THEME['ACCENT']}; }} "
                 f"QSpinBox:disabled {{ color: {THEME['SUBTEXT']}; }}")
 
     @staticmethod
     def _lock_style() -> str:
-        return (f"QPushButton {{ background: {THEME['BG']}; border: 1px solid {THEME['BORDER']}; "
+        return (f"QPushButton {{ background: {THEME['BG']}; border: 1px solid {THEME['BORDER']};"
                 f"border-radius: 6px; font-size: 14px; }} "
                 f"QPushButton:hover {{ border-color: {THEME['ACCENT']}; }} "
                 f"QPushButton:checked {{ border-color: {THEME['SUCCESS']}; }}")
@@ -432,7 +386,7 @@ class _BatchBlock(QFrame):
 def _field_label_compact(text: str) -> QLabel:
     lbl = QLabel(text)
     lbl.setStyleSheet(
-        f"color: {THEME['SUBTEXT']}; font-size: 10px; font-family: 'JetBrains Mono';"
+        f"color: {THEME['SUBTEXT']}; font-size: 10px; "
     )
     return lbl
 
@@ -449,6 +403,7 @@ class _ScaleFloatWindow(QDialog):
 
     def __init__(self, parent: 'RoastSetupDialog') -> None:
         super().__init__(parent, Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.FramelessWindowHint)
+        apply_tilau_theme(self, ground=False)  # frameless translucent: no ground rule
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._parent_dialog = parent
         self._weight: float | None = None
@@ -474,18 +429,13 @@ class _ScaleFloatWindow(QDialog):
         card_layout.setSpacing(4)
 
         header = QLabel(QApplication.translate("tilauscope_roast_setup", "⚖  SCALE"))
-        header.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 10px; letter-spacing: 2px; "
-            f"font-family: 'JetBrains Mono'; font-weight: bold;"
-        )
+        header.setProperty('variant', 'eyebrow')
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self._weight_lbl = QLabel("–– g")
         self._weight_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._weight_lbl.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-size: 28px; font-weight: bold; "
-            f"font-family: 'JetBrains Mono';"
-        )
+        self._weight_lbl.setProperty('variant', 'readout')
+        self._weight_lbl.setStyleSheet(f"color: {THEME['ACCENT']};")
         self._weight_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
         self._weight_lbl.setToolTip(f"<span style='font-size: 10px;'>{QApplication.translate('tilauscope_roast_setup', 'Click to transfer weight<br>Double-click to TARE')}</span>")
         self._weight_lbl.mousePressEvent = self._on_weight_clicked  # type: ignore[method-assign]
@@ -493,9 +443,7 @@ class _ScaleFloatWindow(QDialog):
 
         self._hint_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "tap to use"))
         self._hint_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._hint_lbl.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 10px; font-family: 'JetBrains Mono';"
-        )
+        self._hint_lbl.setProperty('variant', 'caption')
 
         card_layout.addWidget(header)
         card_layout.addWidget(self._weight_lbl)
@@ -516,8 +464,8 @@ class _ScaleFloatWindow(QDialog):
         self._weight_lbl.setText("–– g")
         self._hint_lbl.setText(QApplication.translate("tilauscope_roast_setup", "disconnected"))
 
-    ## TILAU ## connection feedback: without it the card sat on "–– g" with no
-    ## clue that the scale had gone idle during the roast.
+    # connection feedback: without it the card sat on "–– g" with no
+    # clue that the scale had gone idle during the roast.
     def set_status(self, text: str) -> None:
         self._hint_lbl.setText(text)
 
@@ -533,7 +481,7 @@ class _ScaleFloatWindow(QDialog):
 
     def _on_weight_clicked(self, _event) -> None:  # noqa: ANN001
         if self._weight is None:
-            ## TILAU ## no reading yet → the click is a manual reconnect request
+            # no reading yet → the click is a manual reconnect request
             retry = getattr(self._parent_dialog, 'request_scale_connect', None)
             if callable(retry):
                 retry()
@@ -601,9 +549,9 @@ def _temp_color(temp: float, _is_fahrenheit: bool = False) -> str:
 
 
 def _hum_color(hum: float) -> str:
-    if hum < 30:    return "#f38ba8"   # too dry – red
+    if hum < 30:    return THEME['CRITICAL']   # too dry – red
     if hum < 60:    return "#a6e3a1"   # ideal – green
-    return "#89b4fa"                   # humid – blue
+    return THEME['ACCENT']                   # humid – blue
 
 
 class _AmbientFloatWindow(QDialog):
@@ -636,6 +584,7 @@ class _AmbientFloatWindow(QDialog):
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.FramelessWindowHint,
         )
+        apply_tilau_theme(self, ground=False)  # frameless translucent: no ground rule
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._parent_dialog = parent
         self._aw            = parent._aw
@@ -684,14 +633,11 @@ class _AmbientFloatWindow(QDialog):
     # ── Device wiring ─────────────────────────────────────────────────────────
 
     def _attach_device(self) -> None:
-        """Wire to the LIVE probe. During pre-roast setup (this dialog's
-        lifecycle) the probe is managed by BeanCave (self._parent_widget.
-        bleTilauAmbientDevice), not by Artisan's aw.bleTilauScopeDevice —
-        the latter stays None until roast monitoring is started via
-        ToggleMonitor, which is why the card used to stay stuck on
-        "waiting for probe" while BeanCave showed the probe as connected.
-        Fall back to aw.bleTilauScopeDevice in case the dialog is ever
-        reused outside BeanCave.                                    ## TILAU ##
+        """Wire to the LIVE probe. During pre-roast setup the probe is managed by
+        BeanCave (self._parent_widget.bleTilauAmbientDevice), not by Artisan's
+        aw.bleTilauScopeDevice — the latter stays None until roast monitoring
+        starts via ToggleMonitor. Falls back to aw.bleTilauScopeDevice in case
+        the dialog is ever reused outside BeanCave.
 
         Never instantiate a private TilauAmbient here: BeanCave already owns
         the one BLE client for this probe UUID; a second client here would
@@ -747,10 +693,7 @@ class _AmbientFloatWindow(QDialog):
 
         # Header
         header = QLabel(QApplication.translate("tilauscope_roast_setup", "🌡  AMBIENT"))
-        header.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 10px; letter-spacing: 2px; "
-            f"font-family: 'JetBrains Mono'; font-weight: bold;"
-        )
+        header.setProperty('variant', 'eyebrow')
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         cl.addWidget(header)
 
@@ -765,9 +708,7 @@ class _AmbientFloatWindow(QDialog):
         # Status hint
         self._status_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "waiting for probe"))
         self._status_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._status_lbl.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 9px; font-family: 'JetBrains Mono';"
-        )
+        self._status_lbl.setProperty('variant', 'caption')
         cl.addWidget(self._status_lbl)
 
         outer.addWidget(self._card)
@@ -786,8 +727,7 @@ class _AmbientFloatWindow(QDialog):
 
         val_lbl = QLabel("––")
         val_lbl.setStyleSheet(
-            f"color: {THEME['TEXT']}; font-size: 12px; font-weight: bold; "
-            f"font-family: 'JetBrains Mono';"
+            f"color: {THEME['TEXT']}; font-size: 12px; font-weight: bold;"
         )
         val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
@@ -809,14 +749,14 @@ class _AmbientFloatWindow(QDialog):
         """)
         self._status_lbl.setText(QApplication.translate("tilauscope_roast_setup", "live"))
         self._status_lbl.setStyleSheet(
-            f"color: {THEME['SUCCESS']}; font-size: 9px; font-family: 'JetBrains Mono';"
+            f"color: {THEME['SUCCESS']}; font-size: 9px; "
         )
         self._timer.start()
         _logd.debug("AmbientCard: probe connected – polling started")
 
     @pyqtSlot()
     def _on_probe_disconnected(self) -> None:
-        # The timer keeps running: it is also the re-attach watchdog. ## TILAU ##
+        # The timer keeps running: it is also the re-attach watchdog.
         self._probe_live = False
         self._card.setStyleSheet(f"""
             QFrame#ambientCard {{
@@ -826,9 +766,7 @@ class _AmbientFloatWindow(QDialog):
             }}
         """)
         self._status_lbl.setText(QApplication.translate("tilauscope_roast_setup", "offline"))
-        self._status_lbl.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 9px; font-family: 'JetBrains Mono';"
-        )
+        self._status_lbl.setProperty('variant', 'caption')
         self._temp_val.setText("––")
         self._hum_val.setText("––")
         self._press_val.setText("––")
@@ -852,7 +790,7 @@ class _AmbientFloatWindow(QDialog):
 
         try:
             # go through get_ambient(): it holds the command-idle guard shared
-            # with Artisan's sampling loop.                          ## TILAU ##
+            # with Artisan's sampling loop.
             data = self._device_ref.get_ambient("AMBIENT")
         except Exception as exc:  # noqa: BLE001
             _log.warning("AmbientCard: read error: %s", exc)
@@ -864,9 +802,9 @@ class _AmbientFloatWindow(QDialog):
         temp  = data.temperature * 1.0 if self._aw.qmc.mode =="C" else fromCtoFstrict(data.temperature)
         hum   = data.humidity
         press = data.pressure
-        ## TILAU ## keep the last good reading: the dialog injects these into
-        ## qmc (ambientTemp / ambient_humidity / ambient_pressure) on OK and
-        ## feeds the roast plan. Stored in °C — converted at the boundary only.
+        # keep the last good reading: the dialog injects these into
+        # qmc (ambientTemp / ambient_humidity / ambient_pressure) on OK and
+        # feeds the roast plan. Stored in °C — converted at the boundary only.
         self._temperature = data.temperature
         self._humidity    = hum
         self._pressure    = press
@@ -880,11 +818,11 @@ class _AmbientFloatWindow(QDialog):
         unit = "°F" if self._aw.qmc.mode == "F" else "°C"
         self._temp_val.setText(f"{temp:.1f} {unit}")
         self._temp_val.setStyleSheet(
-            f"color: {tc}; font-size: 12px; font-weight: bold; font-family: 'JetBrains Mono';"
+            f"color: {tc}; font-size: 12px; font-weight: bold; "
         )
         self._hum_val.setText(f"{hum:.0f} %")
         self._hum_val.setStyleSheet(
-            f"color: {hc}; font-size: 12px; font-weight: bold; font-family: 'JetBrains Mono';"
+            f"color: {hc}; font-size: 12px; font-weight: bold; "
         )
         self._press_val.setText(f"{press:.0f} hPa")
 
@@ -895,24 +833,14 @@ class _AmbientFloatWindow(QDialog):
         self._detach_device()
         super().closeEvent(event)
 
-# ── PASTE INTO roast_properties.py, just before `class RoastSetupDialog` (≈ line 837).
-# Replaces the previous _InsightsWorker + _RoastInsightsPanel block.
-# Imports (diff #1): QThread/QObject/pyqtSignal, QGridLayout/QStackedWidget/
-#   QScrollArea/QProgressBar; build_insights, targets_from_plan.
-# THEME, _section_label, _log already defined in roast_properties.py.
-
 # ════════════════════════════════════════════════════════════════════════════
 # Roast Insights — non-blocking educational panel
 # ════════════════════════════════════════════════════════════════════════════
 
-## TILAU ## — _InsightsWorker (a QThread worker) was REMOVED intentionally.
-## build_insights() and the roast-plan engine both call QApplication.translate()
-## and reach into the live shared qmc (smooth_list / recomputeDeltas); running
-## that off the GUI thread corrupted Qt/Artisan state and caused random native
-## crashes (QImage::toCGImage use-after-free). The computation now runs
-## synchronously on the GUI thread inside _RoastInsightsPanel._launch(), guarded
-## by the existing 250 ms debounce. Do NOT reintroduce a worker thread here
-## unless the engine is first made translate-free and qmc-free.
+# Runs synchronously on the GUI thread inside _RoastInsightsPanel._launch(),
+# guarded by a 250 ms debounce. Do NOT run this off-thread: build_insights() and
+# the roast-plan engine call QApplication.translate() and reach into the live
+# shared qmc, which corrupts Qt/Artisan state off the GUI thread.
 
 
 class _RoastInsightsPanel(QWidget):
@@ -960,8 +888,8 @@ class _RoastInsightsPanel(QWidget):
             QApplication.translate("tilauscope_roast_setup", "No plan selected — choose one in OPTIONS")
         )
         self._plan_lbl.setStyleSheet(
-            f"color: {THEME['TEXT']}; background: {THEME['SURFACE']}; "
-            f"border: 1px solid {THEME['BORDER']}; border-radius: 6px; "
+            f"color: {THEME['TEXT']}; background: {THEME['SURFACE']};"
+            f"border: 1px solid {THEME['BORDER']}; border-radius: 6px;"
             f"padding: 6px 10px; font-size: 13px;"
         )
         plan_row.addWidget(plan_cap)
@@ -977,7 +905,6 @@ class _RoastInsightsPanel(QWidget):
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self._scroll.setStyleSheet("background: transparent;")
         self._scroll.setWidget(QWidget())
         self._stack.addWidget(self._scroll)
 
@@ -1055,15 +982,10 @@ class _RoastInsightsPanel(QWidget):
                 airwave_present=False,
             )
 
-        ## TILAU ## — computed SYNCHRONOUSLY on the GUI thread (was a QThread).
-        ## build_insights() and the roast-plan engine both call
-        ## QApplication.translate() ~165× and reach into the shared, live qmc
-        ## (qmc.smooth_list / qmc.recomputeDeltas). Neither is safe off the main
-        ## thread: doing it on a worker races the GUI thread and corrupts Qt /
-        ## Artisan state, surfacing as a random native use-after-free much later
-        ## (observed: QImage::toCGImage crash via setCursor on dialog close).
-        ## The 250 ms debounce already absorbs keystroke thrash, so the brief
-        ## synchronous hitch here is acceptable.
+        # Computed synchronously on the GUI thread: build_insights() and the
+        # roast-plan engine call QApplication.translate() and reach into the
+        # shared, live qmc, neither of which is safe off the main thread. The
+        # 250 ms debounce already absorbs keystroke thrash.
         try:
             res = build_insights(**insight_params)
         except Exception:  # noqa: BLE001
@@ -1160,7 +1082,7 @@ class _RoastInsightsPanel(QWidget):
         color = self._sev_color(sig.severity)
         f = QFrame()
         f.setStyleSheet(
-            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 8px; "
+            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 8px;"
             f"border-left: 3px solid {color}; }}"
         )
         v = QVBoxLayout(f)
@@ -1168,7 +1090,6 @@ class _RoastInsightsPanel(QWidget):
         v.setSpacing(3)
         top = QHBoxLayout()
         name = QLabel(sig.label)
-        name.setStyleSheet(f"color: {THEME['TEXT']}; font-size: 12px; border: none;")
         val = QLabel(sig.value_text)
         val.setStyleSheet(f"color: {color}; font-size: 12px; font-weight: bold; border: none;")
         top.addWidget(name)
@@ -1177,7 +1098,7 @@ class _RoastInsightsPanel(QWidget):
         v.addLayout(top)
         impl = QLabel(sig.implication)
         impl.setWordWrap(True)
-        impl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px; border: none;")
+        impl.setProperty('variant', 'caption')
         v.addWidget(impl)
         return f
 
@@ -1218,7 +1139,6 @@ class _RoastInsightsPanel(QWidget):
 
     def _render(self, ins) -> None:  # noqa: ANN001
         host = QWidget()
-        host.setStyleSheet("background: transparent;")
         v = QVBoxLayout(host)
         v.setContentsMargins(2, 0, 8, 8)
         v.setSpacing(14)
@@ -1240,13 +1160,12 @@ class _RoastInsightsPanel(QWidget):
             cv.setSpacing(6)
             head = QHBoxLayout()
             ll = QLabel(ins.load.text)
-            ll.setStyleSheet(f"color: {THEME['TEXT']}; font-size: 12px; border: none;")
             head.addWidget(ll)
             head.addStretch()
             if ins.load.pct is not None:
                 pl = QLabel(f"{ins.load.pct:.0f} %")
                 pl.setStyleSheet(
-                    f"color: {self._sev_color(ins.load.severity)}; font-size: 12px; "
+                    f"color: {self._sev_color(ins.load.severity)}; font-size: 12px;"
                     f"font-weight: bold; border: none;"
                 )
                 head.addWidget(pl)
@@ -1265,7 +1184,7 @@ class _RoastInsightsPanel(QWidget):
                 cv.addWidget(bar)
             note = QLabel(ins.load.note)
             note.setWordWrap(True)
-            note.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px; border: none;")
+            note.setProperty('variant', 'caption')
             cv.addWidget(note)
             v.addWidget(card)
 
@@ -1280,7 +1199,6 @@ class _RoastInsightsPanel(QWidget):
         # Predicted targets — heuristic first; the plan patches them in place
         v.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Predicted targets")))
         self._targets_host = QWidget()
-        self._targets_host.setStyleSheet("background: transparent;")
         th = QHBoxLayout(self._targets_host)
         th.setContentsMargins(0, 0, 0, 0)
         th.setSpacing(16)
@@ -1303,18 +1221,18 @@ class _RoastInsightsPanel(QWidget):
         if ins.strategy:
             box = QFrame()
             box.setStyleSheet(
-                f"QFrame {{ background: {THEME['SURFACE']}; border: 1px solid {THEME['ACCENT']}; "
+                f"QFrame {{ background: {THEME['SURFACE']}; border: 1px solid {THEME['ACCENT']};"
                 f"border-radius: 8px; }}"
             )
             bv = QVBoxLayout(box)
             bv.setContentsMargins(13, 11, 13, 11)
             bv.setSpacing(4)
             t = QLabel(QApplication.translate("tilauscope_roast_setup", "STRATEGY"))
-            t.setStyleSheet(f"color: {THEME['ACCENT']}; font-size: 11px; letter-spacing: 1px; border: none;")
+            t.setProperty('variant', 'eyebrow')
+            t.setStyleSheet(f"color: {THEME['ACCENT']};")
             bv.addWidget(t)
             slbl = QLabel(ins.strategy)
             slbl.setWordWrap(True)
-            slbl.setStyleSheet(f"color: {THEME['TEXT']}; font-size: 12px; border: none;")
             bv.addWidget(slbl)
             v.addWidget(box)
 
@@ -1356,9 +1274,8 @@ class RoastSetupDialog(QDialog):
 
         # scale management
         self._scale_window: _ScaleFloatWindow | None = None
-        ## TILAU ## scale1_was_connected is set by _connect_scale() — it used to
-        ## be reset to False right after, which made the close path believe the
-        ## scale had to be dropped.
+        # scale1_was_connected is set by _connect_scale() and read by the close
+        # path to decide whether the scale connection must be dropped.
         self.scale1_was_connected: bool = False
         self._connect_scale()
 
@@ -1371,13 +1288,13 @@ class RoastSetupDialog(QDialog):
             self._roaster_ctx = None
 
         # ambient probe — show card if probe device name is configured
-        ## TILAU ## the unconfigured marker is 'none' (main.py default), not ""
+        # the unconfigured marker is 'none' (main.py default), not ""
         self._is_tilau_probe = self._aw.bleTilauScopeDeviceName not in (None, "", "none")
         self._ambient_window: _AmbientFloatWindow | None = None
         if self._is_tilau_probe:
             self._ambient_window = _AmbientFloatWindow(self)
 
-        self.setStyleSheet(_base_style())
+        self.setStyleSheet(base_qss(ground=False) + _local_style())
         self._build_ui()
         self._populate_fields()
         self.setMinimumWidth(580)
@@ -1385,7 +1302,7 @@ class RoastSetupDialog(QDialog):
         self.resize(630, 625)
         # drag support state
         self._drag_pos: object = None
-        
+
     # ── Drag-to-move (frameless window) ──────────────────────────────────────
 
     def mousePressEvent(self, event) -> None:  # noqa: ANN001
@@ -1460,9 +1377,9 @@ class RoastSetupDialog(QDialog):
                 self._aw.scale_manager.scale1_connected_signal.disconnect(self._on_scale_connected)
             except Exception as e: # pylint: disable=broad-except
                 _log.error(e)
-            ## TILAU ## the scale is deliberately left connected when the setup
-            ## dialog closes: the roast that follows ends on RoastResultDialog,
-            ## which needs the very same link to weigh the roasted batch.
+            # the scale is deliberately left connected when the setup
+            # dialog closes: the roast that follows ends on RoastResultDialog,
+            # which needs the very same link to weigh the roasted batch.
 
     def _show_scale_window(self) -> None:
         if self._scale_window is None:
@@ -1533,8 +1450,8 @@ class RoastSetupDialog(QDialog):
         header_row = QHBoxLayout()
         title_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "ROAST SETUP"))
         title_lbl.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-size: 16px; font-weight: 800; "
-            f"font-family: 'JetBrains Mono'; letter-spacing: 3px;"
+            f"color: {THEME['ACCENT']}; font-size: 16px; font-weight: 800;"
+            f"letter-spacing: 3px;"
         )
         header_row.addWidget(title_lbl)
 
@@ -1544,14 +1461,14 @@ class RoastSetupDialog(QDialog):
                self._roaster.upper()
             )
             roaster_lbl.setStyleSheet(
-                f"color: {THEME['SUBTEXT']}; font-size: 9px; font-weight: bold; "
-                f"font-family: 'JetBrains Mono'; letter-spacing: 1px; margin-left: 84px;"
+                f"color: {THEME['SUBTEXT']}; font-size: 9px; font-weight: bold;"
+                f"letter-spacing: 1px; margin-left: 84px;"
             )
             header_row.addWidget(roaster_lbl)
 
         header_row.addStretch()
         self._date_lbl = QLabel()
-        self._date_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
+        self._date_lbl.setProperty('variant', 'caption')
         from datetime import datetime
         self._date_lbl.setText(datetime.now().strftime("%a %d %b %Y  %H:%M"))
         header_row.addWidget(self._date_lbl)
@@ -1580,7 +1497,6 @@ class RoastSetupDialog(QDialog):
             QTabBar::tab {{
                 background: {THEME['BG']};
                 color: {THEME['SUBTEXT']};
-                font-family: 'JetBrains Mono';
                 font-size: 12px;
                 font-weight: bold;
                 letter-spacing: 1.5px;
@@ -1607,7 +1523,6 @@ class RoastSetupDialog(QDialog):
 
         # ── TAB 1: Roast fields ───────────────────────────────────────────
         tab1 = QWidget()
-        tab1.setStyleSheet("background: transparent;")
         t1 = QVBoxLayout(tab1)
         t1.setContentsMargins(0, 16, 0, 0)
         t1.setSpacing(14)
@@ -1620,7 +1535,7 @@ class RoastSetupDialog(QDialog):
         bean_info_layout = QVBoxLayout(self._bean_info_frame)
         bean_info_layout.setContentsMargins(5, 5, 5, 5)
         bean_info_layout.setSpacing(2)
-        ## TILAU ## fixed 3-line layout (title / reduced summary / notes), no wrap
+        # fixed 3-line layout (title / reduced summary / notes), no wrap
         self._bean_info_frame.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
         self._bean_name_lbl = QLabel("---------------------------")
@@ -1660,7 +1575,7 @@ class RoastSetupDialog(QDialog):
         # Batch (forecast — never advances the counter; toggle delegates activation)
         t1.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Batch")))
         self._batch_block = _BatchBlock(self._aw, _BatchBlock.MODE_PREVIEW)
-        ## TILAU ## guard against vertical compression on short screens
+        # guard against vertical compression on short screens
         self._batch_block.setMinimumHeight(56)
         self._batch_block.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         t1.addWidget(self._batch_block)
@@ -1674,8 +1589,8 @@ class RoastSetupDialog(QDialog):
         self._green_weight_edit.setMaximumWidth(140)
         self._green_weight_edit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self._green_weight_edit.setStyleSheet(
-            f"QLineEdit {{ font-size: 22px; font-weight: bold; color: {THEME['TEXT']}; "
-            f"background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']}; "
+            f"QLineEdit {{ font-size: 22px; font-weight: bold; color: {THEME['TEXT']};"
+            f"background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']};"
             f"border-radius: 8px; padding: 6px 12px; }}"
             f"QLineEdit:focus {{ border-color: {THEME['ACCENT']}; }}"
         )
@@ -1705,7 +1620,7 @@ class RoastSetupDialog(QDialog):
         refresh_row = QHBoxLayout()
         refresh_row.addStretch()
         refresh_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "↺  Rebuild from bean"))
-        refresh_btn.setStyleSheet(_btn_secondary())
+        refresh_btn.setProperty('variant', 'outline')
         refresh_btn.clicked.connect(self._rebuild_beans_field)
         refresh_row.addWidget(refresh_btn)
         #t1.addLayout(refresh_row)
@@ -1713,19 +1628,16 @@ class RoastSetupDialog(QDialog):
 
         # ── TAB 2: Optional settings ──────────────────────────────────────
         tab2 = QWidget()
-        tab2.setStyleSheet("background: transparent;")
         self._tabs.addTab(tab2, QApplication.translate("tilauscope_roast_setup", "⚙  OPTIONS"))
         self._build_optional_tab2(tab2)
 
         # ── TAB 3: Optional settings ──────────────────────────────────────
         tab3 = QWidget()
-        tab3.setStyleSheet("background: transparent;")
         self._tabs.addTab(tab3, QApplication.translate("tilauscope_roast_setup", "⚙  MORE OPTIONS"))
         self._build_optional_tab3(tab3)
 
         # ── TAB 4: Roast insights (educational) ───────────────────────────
         tab4 = QWidget()
-        tab4.setStyleSheet("background: transparent;")
         self._tabs.addTab(tab4, QApplication.translate("tilauscope_roast_setup", "ⓘ  INSIGHTS"))
         t4 = QVBoxLayout(tab4)
         t4.setContentsMargins(0, 0, 0, 0)
@@ -1738,11 +1650,13 @@ class RoastSetupDialog(QDialog):
         btn_row.setSpacing(12)
 
         cancel_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "Cancel"))
-        cancel_btn.setStyleSheet(_btn_secondary())
+        cancel_btn.setObjectName('footerBtn')
+        cancel_btn.setProperty('variant', 'outline')
         cancel_btn.clicked.connect(self._on_cancel)
 
         self._ok_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "⬥  Start Roast"))
-        self._ok_btn.setStyleSheet(_btn_primary())
+        self._ok_btn.setObjectName('footerBtn')
+        self._ok_btn.setProperty('variant', 'primary')
         self._ok_btn.setDefault(True)
         self._ok_btn.clicked.connect(self._on_ok)
 
@@ -1849,7 +1763,7 @@ class RoastSetupDialog(QDialog):
         try:
             if self._title_combo.count() == 0 or self._title_combo.currentText() == "":
                 crop = str(b.crop) if b.crop else 'N/A'
-                self._title_combo.setCurrentText(f"{b.name} - {b.process} - {crop}") 
+                self._title_combo.setCurrentText(f"{b.name} - {b.process} - {crop}")
         except Exception:  # noqa: BLE001
             pass
 
@@ -1889,8 +1803,8 @@ class RoastSetupDialog(QDialog):
         aw_win = getattr(self, "_ambient_window", None)
         if aw_win is not None:
             try:
-                ## TILAU ## properties, not methods — calling them raised and
-                ## the plan silently fell back to 20 °C / 50 %. Plan wants °C.
+                # properties, not methods — calling them raised and
+                # the plan silently fell back to 20 °C / 50 %. Plan wants °C.
                 t = aw_win.temperature_c
                 h = aw_win.humidity
                 if t is not None:
@@ -1936,7 +1850,7 @@ class RoastSetupDialog(QDialog):
 
         profile_card = QFrame()
         profile_card.setStyleSheet(
-            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px; "
+            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px;"
             f"border: 1px solid {THEME['BORDER']}; }}"
         )
         pc = QVBoxLayout(profile_card)
@@ -2028,7 +1942,7 @@ class RoastSetupDialog(QDialog):
 
         pid_card = QFrame()
         pid_card.setStyleSheet(
-            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px; "
+            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px;"
             f"border: 1px solid {THEME['BORDER']}; }}"
         )
         pid_c = QVBoxLayout(pid_card)
@@ -2046,9 +1960,9 @@ class RoastSetupDialog(QDialog):
         self._pid_enable_cb = QCheckBox(QApplication.translate("tilauscope_roast_setup", "Enable TilauPID at start of roast"))
         self._pid_enable_cb.setStyleSheet(
             f"QCheckBox {{ color: {THEME['TEXT']}; font-size: 13px; border: none; }}"
-            f"QCheckBox::indicator {{ width:17px; height:17px; border-radius:4px; "
+            f"QCheckBox::indicator {{ width:17px; height:17px; border-radius:4px;"
             f"border:1px solid {THEME['BORDER']}; background:{THEME['BG']}; }}"
-            f"QCheckBox::indicator:checked {{ background:{THEME['ACCENT']}; "
+            f"QCheckBox::indicator:checked {{ background:{THEME['ACCENT']};"
             f"border:1px solid {THEME['ACCENT']}; }}"
         )
         pid_c.addWidget(self._pid_enable_cb)
@@ -2064,10 +1978,10 @@ class RoastSetupDialog(QDialog):
         self._pid_value_edit.setMaximumWidth(110)
         self._pid_value_edit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self._pid_value_edit.setStyleSheet(
-            f"QLineEdit {{ font-size: 16px; font-weight: bold; color: {THEME['ACCENT']}; "
-            f"background: {THEME['BG']}; border: 1px solid {THEME['ACCENT']}; "
+            f"QLineEdit {{ font-size: 16px; font-weight: bold; color: {THEME['ACCENT']};"
+            f"background: {THEME['BG']}; border: 1px solid {THEME['ACCENT']};"
             f"border-radius: 6px; padding: 4px 10px; }}"
-            f"QLineEdit:focus {{ border-color: {THEME['HOVER']}; }}"
+            f"QLineEdit:focus {{ border-color: {THEME['LAVENDER']}; }}"
             f"QLineEdit:disabled {{ color: {THEME['BORDER']}; border-color: {THEME['BORDER']}; }}"
         )
         pid_unit = QLabel(QApplication.translate("tilauscope_roast_setup", "°{0}").format(self._temp_unit()))
@@ -2085,21 +1999,21 @@ class RoastSetupDialog(QDialog):
         pid_val_row.addWidget(pid_input_lbl)
 
         _seg_checked = (
-            f"QPushButton:checked {{ color: {THEME['BG']}; background: {THEME['ACCENT']}; "
+            f"QPushButton:checked {{ color: {THEME['BG']}; background: {THEME['ACCENT']};"
             f"border: 1px solid {THEME['ACCENT']}; }}"
-            f"QPushButton:disabled {{ color: {THEME['BORDER']}; border-color: {THEME['BORDER']}; "
+            f"QPushButton:disabled {{ color: {THEME['BORDER']}; border-color: {THEME['BORDER']};"
             f"background: {THEME['BG']}; }}"
         )
         self._pid_input_bt_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "BT"))
         self._pid_input_bt_btn.setStyleSheet(
-            f"QPushButton {{ color: {THEME['SUBTEXT']}; background: {THEME['BG']}; "
-            f"border: 1px solid {THEME['BORDER']}; padding: 6px 16px; font-size: 13px; font-weight: bold; "
+            f"QPushButton {{ color: {THEME['SUBTEXT']}; background: {THEME['BG']};"
+            f"border: 1px solid {THEME['BORDER']}; padding: 6px 16px; font-size: 13px; font-weight: bold;"
             f"border-top-left-radius: 6px; border-bottom-left-radius: 6px; }}" + _seg_checked
         )
         self._pid_input_et_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "ET"))
         self._pid_input_et_btn.setStyleSheet(
-            f"QPushButton {{ color: {THEME['SUBTEXT']}; background: {THEME['BG']}; "
-            f"border: 1px solid {THEME['BORDER']}; border-left: none; padding: 6px 16px; font-size: 13px; font-weight: bold; "
+            f"QPushButton {{ color: {THEME['SUBTEXT']}; background: {THEME['BG']};"
+            f"border: 1px solid {THEME['BORDER']}; border-left: none; padding: 6px 16px; font-size: 13px; font-weight: bold;"
             f"border-top-right-radius: 6px; border-bottom-right-radius: 6px; }}" + _seg_checked
         )
         self._pid_input_group = QButtonGroup(self)
@@ -2131,7 +2045,7 @@ class RoastSetupDialog(QDialog):
         auto_card = QFrame()
         auto_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         auto_card.setStyleSheet(
-            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px; "
+            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px;"
             f"border: 1px solid {THEME['BORDER']}; }}"
         )
         auto_c = QVBoxLayout(auto_card)
@@ -2150,10 +2064,6 @@ class RoastSetupDialog(QDialog):
             cb.setToolTip(sublabel)
             cb.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             cb.setMinimumHeight(28)
-            txt_color = THEME['TEXT'] if enabled else THEME['SUBTEXT']
-            ind_border = THEME['BORDER']
-            ind_bg = THEME['BG']
-            
             cb.setStyleSheet(self.styleSheet() + self._tooltip_style())
             return cb
 
@@ -2257,7 +2167,7 @@ class RoastSetupDialog(QDialog):
             self._auto_charge_cb.setChecked(bool(qmc.autoChargeFlag))
             self._auto_drop_cb.setChecked(bool(qmc.autoDropFlag))
             self._auto_dry_end_cb.setChecked(bool(getattr(self._aw, "TilauScopeDEMarkFlag", False)))
-            self._auto_fc_cb.setChecked(bool(getattr(self._aw, "TilauScopeFCMarkFlag", False)))        
+            self._auto_fc_cb.setChecked(bool(getattr(self._aw, "TilauScopeFCMarkFlag", False)))
         except Exception as exc:
             _log.debug("Could not read auto flags: %s", exc)
 
@@ -2344,13 +2254,13 @@ class RoastSetupDialog(QDialog):
             # Title
             qmc.title            = title
             qmc.title_show_always = True
-            ## TILAU ## Set a default save-filename template (batch + title + date/time)
-            ## if the user hasn't configured a custom autosaveprefix in Artisan preferences.
-            ## Migrate a malformed prefix that wraps tokens in a TRAILING '~' too
-            ## (e.g. '~title~_~yy~-~mm~-~dd~_~hour~~minute~'). Artisan tokens use a
-            ## single LEADING '~' only; the trailing ones leave stray '~' in the
-            ## filename. Signature: a double tilde '~~' (never present in a valid
-            ## template — adjacent tokens like '~hour~minute' have a single '~').
+            # Set a default save-filename template (batch + title + date/time)
+            # if the user hasn't configured a custom autosaveprefix in Artisan preferences.
+            # Migrate a malformed prefix that wraps tokens in a TRAILING '~' too
+            # (e.g. '~title~_~yy~-~mm~-~dd~_~hour~~minute~'). Artisan tokens use a
+            # single LEADING '~' only; the trailing ones leave stray '~' in the
+            # filename. Signature: a double tilde '~~' (never present in a valid
+            # template — adjacent tokens like '~hour~minute' have a single '~').
             _bad_exact = (
                 '~title~_~yy~-~mm~-~dd~_~hour~~minute~',
                 '~batch~_~title~_~yy~-~mm~-~dd~_~hour~~minute~',
@@ -2366,13 +2276,13 @@ class RoastSetupDialog(QDialog):
 
             # Beans text
             qmc.beans            = beans
-            ## TILAU ## stash on aw so reset() (ON/RESET) can't lose them;
-            ## restored at DROP in displayscope._open_roast_result_dialog.
+            # stash on aw so reset() (ON/RESET) can't lose them;
+            # restored at DROP in displayscope._open_roast_result_dialog.
             self._aw._tilau_live_title = title
             self._aw._tilau_live_beans = beans
-            ## TILAU ## stash la CIBLE live (profil OPTIONS) pour que le combo cible ## TILAU ##
-            ## de l'assistant se cale dessus, au lieu de rester collé sur une        ## TILAU ##
-            ## valeur périmée / du background (bug : Light devenait Medium Dark).     ## TILAU ##
+            # stash la CIBLE live (profil OPTIONS) pour que le combo cible
+            ## de l'assistant se cale dessus, au lieu de rester collé sur une
+            ## valeur périmée / du background (bug : Light devenait Medium Dark).
             try:
                 _pd = self._profile_combo.itemData(self._profile_combo.currentIndex())
                 self._aw._tilau_live_target = _pd.get('profile') if isinstance(_pd, dict) else None
@@ -2541,7 +2451,7 @@ class RoastSetupDialog(QDialog):
                     self._auto_dry_end_cb.setChecked(False)
             self._aw.TilauScopeDEMarkFlag = de_checked
             self._aw.TilauScopeFCMarkFlag = self._auto_fc_cb.isChecked()
-            
+
         # Roast profile – reserved for next version (phase injection)
         # selected_data = self._profile_combo.currentData()
         # if selected_data:  # TODO: inject phases in next version
@@ -2555,11 +2465,11 @@ class RoastSetupDialog(QDialog):
                 else:
                     actual_weight_left -= green_weight
                 # update field as it was set manually and update button pressed before closing
-                self._parent_widget.weight_left_input.setValue(actual_weight_left)      
-                self._parent_widget.update_selected_bean()      
+                self._parent_widget.weight_left_input.setValue(actual_weight_left)
+                self._parent_widget.update_selected_bean()
                 # After updating the stock in the model, refresh the parent dialog's table
                 # to reflect the change in the UI.
-                
+
                 _log.info(
                     "RoastSetupDialog: stock decreased by %.1f g for %s",
                     green_weight, self._bean.name,
@@ -2574,25 +2484,25 @@ class RoastSetupDialog(QDialog):
         ) % self._bean.name
         if self._aw.tilauscope_main is None:
             # open tilauscope to be ready to roast if it was not opened.
-            ## TILAU ## Do NOT pass the message here: TilauScope would show it via
-            ## showMessage() AND we already show it once via show_styled_message()
-            ## below — that produced two identical message boxes.
+            # Do NOT pass the message here: TilauScope would show it via
+            # showMessage() AND we already show it once via show_styled_message()
+            # below — that produced two identical message boxes.
             self._aw.tilauscopeCall(False)
         # Workflow guidé : ancre et démarre l'assistant automatiquement.
         # QTimer(0) diffère au prochain tick pour laisser Qt traiter show/raise.
         _aw = self._aw
         QTimer.singleShot(0, lambda: _aw.tilauscope_main and _aw.tilauscope_main.launch_guided_assistant())
-        ## TILAU ## headless: BeanCave is the persistent home shell — hide it (keep
-        ## the single instance and its threads alive) instead of closing/destroying.
+        # headless: BeanCave is the persistent home shell — hide it (keep
+        # the single instance and its threads alive) instead of closing/destroying.
         if getattr(self._aw, '_tilau_headless', False):
             self._parent_widget.hide()
         else:
             self._parent_widget.close()
         self.accept()
         QTimer.singleShot(500, lambda: show_styled_message(
-            parent=self._aw.tilauscope_main, 
-            title=QApplication.translate("tilauscope_roast_setup", "Start a new roast"), 
-            text=lets_start_a_new_roast_message, 
+            parent=self._aw.tilauscope_main,
+            title=QApplication.translate("tilauscope_roast_setup", "Start a new roast"),
+            text=lets_start_a_new_roast_message,
             icon=QMessageBox.Icon.Information, rich=False
         ))
 
@@ -2602,7 +2512,7 @@ class RoastSetupDialog(QDialog):
         self._start_fade_out()
 
     def _close_helpers(self) -> None:
-        ## TILAU ## unwire first — the scale manager outlives this dialog.
+        # unwire first — the scale manager outlives this dialog.
         self._disconnect_scale()
         if self._scale_window is not None:
             self._scale_window.close()
@@ -2744,6 +2654,7 @@ class _ColorFloatWindow(QDialog):
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.FramelessWindowHint,
         )
+        apply_tilau_theme(self, ground=False)  # frameless translucent: no ground rule
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._parent_dialog = parent
         self._aw            = parent._aw
@@ -2811,10 +2722,7 @@ class _ColorFloatWindow(QDialog):
         cl.setSpacing(6)
 
         header = QLabel(QApplication.translate("tilauscope_roast_setup", "◉  COLOR"))
-        header.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 10px; letter-spacing: 2px; "
-            f"font-family: 'JetBrains Mono'; font-weight: bold;"
-        )
+        header.setProperty('variant', 'eyebrow')
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         cl.addWidget(header)
 
@@ -2826,10 +2734,8 @@ class _ColorFloatWindow(QDialog):
 
         self._color_lbl = QLabel("–– ")
         self._color_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._color_lbl.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 28px; font-weight: bold; "
-            f"font-family: 'JetBrains Mono';"
-        )
+        self._color_lbl.setProperty('variant', 'readout')
+        self._color_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']};")
         self._color_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
         self._color_lbl.setToolTip(
             QApplication.translate("tilauscope_roast_setup", "Click to assign this reading")
@@ -2839,16 +2745,12 @@ class _ColorFloatWindow(QDialog):
 
         tap_hint = QLabel(QApplication.translate("tilauscope_roast_setup", "tap to capture"))
         tap_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        tap_hint.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 9px; font-family: 'JetBrains Mono';"
-        )
+        tap_hint.setProperty('variant', 'caption')
         cl.addWidget(tap_hint)
 
         self._status_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "connecting…"))
         self._status_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._status_lbl.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 9px; font-family: 'JetBrains Mono';"
-        )
+        self._status_lbl.setProperty('variant', 'caption')
         cl.addWidget(self._status_lbl)
 
         outer.addWidget(self._card)
@@ -2880,10 +2782,8 @@ class _ColorFloatWindow(QDialog):
             }}
         """)
         self._color_lbl.setText("––")
-        self._color_lbl.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 28px; font-weight: bold; "
-            f"font-family: 'JetBrains Mono';"
-        )
+        self._color_lbl.setProperty('variant', 'readout')
+        self._color_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']};")
         self._swatch.setStyleSheet(f"background: {THEME['BORDER']}; border-radius: 4px;")
         self._set_status(
             QApplication.translate("tilauscope_roast_setup", "offline"),
@@ -2896,10 +2796,8 @@ class _ColorFloatWindow(QDialog):
         # Colour the number to reflect Agtron range
         hue_color = self._agtron_hue(value)
         self._color_lbl.setText(f"{value:.1f}")
-        self._color_lbl.setStyleSheet(
-            f"color: {hue_color}; font-size: 28px; font-weight: bold; "
-            f"font-family: 'JetBrains Mono';"
-        )
+        self._color_lbl.setProperty('variant', 'readout')
+        self._color_lbl.setStyleSheet(f"color: {hue_color};")
         self._swatch.setStyleSheet(
             f"background: {hue_color}; border-radius: 4px;"
         )
@@ -2923,7 +2821,7 @@ class _ColorFloatWindow(QDialog):
     def _set_status(self, text: str, color: str) -> None:
         self._status_lbl.setText(text)
         self._status_lbl.setStyleSheet(
-            f"color: {color}; font-size: 9px; font-family: 'JetBrains Mono';"
+            f"color: {color}; font-size: 9px; "
         )
 
     def closeEvent(self, event) -> None:  # noqa: ANN001
@@ -2960,8 +2858,8 @@ class RoastResultDialog(QDialog):
         self._bean         = bean
         self._aw           = aw
         self._green_weight = green_weight
-        ## TILAU ## bean may arrive None (DROP path) or empty (no BeanCave row)
-        ## → resolve from qmc.beans: uuid lookup first, text parse as a net.
+        # bean may arrive None (DROP path) or empty (no BeanCave row)
+        # → resolve from qmc.beans: uuid lookup first, text parse as a net.
         if self._bean is None or not getattr(self._bean, 'name', ''):
             resolved = self._resolve_bean()
             if resolved is not None:
@@ -2974,14 +2872,26 @@ class RoastResultDialog(QDialog):
         self._color_window: _ColorFloatWindow | None = None
 
         self._drag_pos: object = None
-        ## TILAU ## drives the "print the label before closing?" reminder on save
+        # drives the "print the label before closing?" reminder on save
         self._label_printed = False
 
-        self.setStyleSheet(_base_style())
+        self.setStyleSheet(base_qss(ground=False) + _local_style())
         self._connect_scale()
         self._build_ui()
-        self.setMinimumWidth(560)
-        self.resize(600, 0)
+        # Frameless modal: clamp to the screen or the footer becomes unreachable.
+        self.setMinimumWidth(920)
+        # Push the body's own minimum width through the scroll area, which does
+        # not propagate it: without this the window can be narrower than what it
+        # holds, and the content is cut rather than the window widened.
+        self._body_scroll.setMinimumWidth(self._body.minimumSizeHint().width())
+        avail = self.screen().availableGeometry()
+        max_h = avail.height() - 40
+        self.setMaximumHeight(max_h)
+        # Height of the body plus the chrome around it, not the scroll area's
+        # own hint, which is a fixed default and would open the window short.
+        chrome = self.sizeHint().height() - self._body_scroll.sizeHint().height()
+        wanted = chrome + self._body.sizeHint().height()
+        self.resize(min(940, avail.width() - 40), min(wanted, max_h))
 
         # AI floating panel – optional, only when AI is fully configured.
         # All access is guarded: ai_service, tilau_aiConfig and is_configured may not
@@ -3057,10 +2967,10 @@ class RoastResultDialog(QDialog):
             _log.warning("RoastResultDialog: beans text parse failed: %s", exc)
         return None
 
-    ## TILAU ## An Acaia left alone for the length of a roast drops its BLE link
-    ## (or goes to sleep). A single connect request at dialog open then silently
-    ## failed and the card stayed on "–– g" forever. We now report the state and
-    ## keep retrying for a while, and the card is clickable to force a retry.
+    # An Acaia left alone for the length of a roast drops its BLE link
+    # (or goes to sleep). A single connect request at dialog open then silently
+    # failed and the card stayed on "–– g" forever. We now report the state and
+    # keep retrying for a while, and the card is clickable to force a retry.
     _SCALE_RETRY_MS:      Final[int] = 6_000
     _SCALE_RETRY_MAX:     Final[int] = 10
 
@@ -3157,8 +3067,8 @@ class RoastResultDialog(QDialog):
                     sm.scale1_connected_signal.disconnect(self._on_scale_connected)
                 except Exception:  # noqa: BLE001
                     pass
-                ## TILAU ## the physical scale is deliberately left connected:
-                ## disconnecting it here is what made the next dialog blind.
+                # the physical scale is deliberately left connected:
+                # disconnecting it here is what made the next dialog blind.
         except Exception as exc:
             _log.warning("RoastResultDialog: scale disconnect error: %s", exc)
 
@@ -3236,37 +3146,51 @@ class RoastResultDialog(QDialog):
         self._drag_pos = None
         super().mouseReleaseEvent(event)
 
+    def _helper_x(self, base_pos, helper_w: int) -> int:
+        """Dock x for the scale / colour cards: right of the dialog, left when
+        the screen has no room. They are frameless and always-on-top, so a card
+        pushed off-screen cannot be dragged back."""
+        scr = self.screen().availableGeometry()
+        right = base_pos.x() + self.width() + 12
+        if right + helper_w <= scr.right():
+            return right
+        return max(scr.left(), base_pos.x() - helper_w - 12)
+
     def _reposition_helpers(self, base_pos=None) -> None:
         # Accept an explicit base_pos so we never read self.geometry() back
         # immediately after a move() call — that re-entrancy freezes the UI.
         if base_pos is None:
             base_pos = self.pos()
-        x = base_pos.x() + self.width() + 12
         y = base_pos.y() + 40
         if self._scale_window and self._scale_window.isVisible():
-            self._scale_window.move(x, y)
+            self._scale_window.move(
+                self._helper_x(base_pos, self._scale_window.width()), y)
             y = self._scale_window.y() + self._scale_window.height() + 8
         if self._color_window and self._color_window.isVisible():
-            self._color_window.move(x, y)
+            self._color_window.move(
+                self._helper_x(base_pos, self._color_window.width()), y)
         # ai_panel is a top-level window — reposition() uses owner.mapToGlobal
         if self._ai_panel is not None and self._ai_panel.isVisible():
             self._ai_panel.reposition()
 
     def _show_helpers(self) -> None:
-        x = self.x() + self.width() + 12
+        base_pos = self.pos()
         y = self.y() + 40
         if self._scale_window is not None:
-            self._scale_window.move(x, y)
             self._scale_window.show()
             self._scale_window.adjustSize()
+            self._scale_window.move(
+                self._helper_x(base_pos, self._scale_window.width()), y)
             y += self._scale_window.height() + 8
         if self._color_window is not None:
-            self._color_window.move(x, y)
             self._color_window.show()
+            self._color_window.adjustSize()
+            self._color_window.move(
+                self._helper_x(base_pos, self._color_window.width()), y)
 
     def _close_helpers(self) -> None:
-        ## TILAU ## unwire before destroying the card, otherwise the scale
-        ## manager keeps emitting into a dead window for the whole session.
+        # unwire before destroying the card, otherwise the scale
+        # manager keeps emitting into a dead window for the whole session.
         self._disconnect_scale()
         if self._scale_window is not None:
             self._scale_window.close()
@@ -3348,8 +3272,8 @@ class RoastResultDialog(QDialog):
             dev_s        = stats[3] if stats and len(stats) > 3 and stats[3] > 0 else None
             total_s_stat = sum(stats[1:4]) if stats and len(stats) >= 4 and stats[3] > 0 else None
 
-            ## TILAU ## Fallback: statisticstimes not yet computed (pre-STOP).
-            ## Derive dev time and total directly from timeindex/timex.
+            # Fallback: statisticstimes not yet computed (pre-STOP).
+            # Derive dev time and total directly from timeindex/timex.
             if dev_s is None and dry_i >= 0 and drop_i >= 0:
                 dev_s = timex[drop_i] - timex[dry_i]
                 total_s_stat = total_s
@@ -3358,7 +3282,7 @@ class RoastResultDialog(QDialog):
 
         strip = QFrame()
         strip.setStyleSheet(
-            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px; "
+            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px;"
             f"border: 1px solid {THEME['BORDER']}; }}"
         )
         row = QHBoxLayout(strip)
@@ -3367,8 +3291,8 @@ class RoastResultDialog(QDialog):
 
         metrics = [
             (_SVG_CLOCK,       THEME['SUBTEXT'], QApplication.translate("tilauscope_roast_setup", "Total"),     _fmt_time(total_s),               THEME['TEXT']),
-            (_SVG_THERMOMETER, "#89b4fa",        QApplication.translate("tilauscope_roast_setup", "Charge BT"), _fmt_temp(charge_bt),              "#89b4fa"),
-            (_SVG_THERMOMETER, "#fab387",        QApplication.translate("tilauscope_roast_setup", "Drop BT"),   _fmt_temp(drop_bt),                "#fab387"),
+            (_SVG_THERMOMETER, THEME['ACCENT'],        QApplication.translate("tilauscope_roast_setup", "Charge"),    _fmt_temp(charge_bt),              THEME['ACCENT']),
+            (_SVG_THERMOMETER, "#fab387",        QApplication.translate("tilauscope_roast_setup", "Drop"),      _fmt_temp(drop_bt),                "#fab387"),
             (_SVG_CLOCK,       THEME['ACCENT'],  QApplication.translate("tilauscope_roast_setup", "Dev"),       _fmt_time(dev_s),                  THEME['ACCENT']),
             (_SVG_DEVELOPMENT, THEME['ACCENT'],  QApplication.translate("tilauscope_roast_setup", "DTR"),       _fmt_dtr(dev_s, total_s_stat),     THEME['ACCENT']),
         ]
@@ -3389,17 +3313,13 @@ class RoastResultDialog(QDialog):
             icon_row.setContentsMargins(0, 0, 0, 0)
             icon_row.addWidget(_svg_icon_label(svg, icon_color, 14))
             lbl = QLabel(label)
-            lbl.setStyleSheet(
-                f"color: {THEME['SUBTEXT']}; font-size: 10px; "
-                f"font-family: 'JetBrains Mono'; letter-spacing: 1px;"
-            )
+            lbl.setProperty('variant', 'eyebrow')
             icon_row.addWidget(lbl)
             icon_row.addStretch()
 
             val_lbl = QLabel(value)
             val_lbl.setStyleSheet(
-                f"color: {val_color}; font-size: 15px; font-weight: bold; "
-                f"font-family: 'JetBrains Mono';"
+                f"color: {val_color}; font-size: 15px; font-weight: bold;"
             )
             val_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
@@ -3438,21 +3358,46 @@ class RoastResultDialog(QDialog):
         header_row = QHBoxLayout()
         title_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "POST-ROAST"))
         title_lbl.setStyleSheet(
-            f"color: {THEME['SUCCESS']}; font-size: 16px; font-weight: 800; "
-            f"font-family: 'JetBrains Mono'; letter-spacing: 3px;"
+            f"color: {THEME['SUCCESS']}; font-size: 16px; font-weight: 800;"
+            f"letter-spacing: 3px;"
         )
         header_row.addWidget(title_lbl)
         header_row.addStretch()
         date_lbl = QLabel(datetime.now().strftime("%a %d %b  %H:%M"))
-        date_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
+        date_lbl.setProperty('variant', 'caption')
         header_row.addWidget(date_lbl)
         cl.addLayout(header_row)
         cl.addWidget(_separator())
 
-        # ── Bean summary header ────────────────────────────────────────────
+        # ── Scrollable body ───────────────────────────────────────────────
+        # Header and footer stay outside so they survive a short screen.
+        body_scroll = QScrollArea()
+        body_scroll.setWidgetResizable(True)
+        body_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        body_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        body_scroll.setStyleSheet(
+            "QScrollArea { background: transparent; border: none; }"
+            "QScrollArea > QWidget > QWidget { background: transparent; }"
+        )
+        body = QWidget()
+        bl = QVBoxLayout(body)
+        bl.setContentsMargins(0, 0, 0, 0)
+        bl.setSpacing(14)
+        body_scroll.setWidget(body)
+        cl.addWidget(body_scroll, 1)
+        # QScrollArea reports a size hint of its own, unrelated to what it holds.
+        # Keep the body's own hints so the window sizes to its content.
+        self._body = body
+        self._body_scroll = body_scroll
+
+        # ── Identity band — bean left, batch right ────────────────────────
+        # Both answer "which roast is this?", so they share one row.
+        identity_row = QHBoxLayout()
+        identity_row.setSpacing(12)
+
         bean_card = QFrame()
         bean_card.setStyleSheet(
-            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px; "
+            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px;"
             f"border: 1px solid {THEME['BORDER']}; }}"
         )
         bc = QHBoxLayout(bean_card)
@@ -3465,7 +3410,8 @@ class RoastResultDialog(QDialog):
         # Bean text stack
         bean_text = QVBoxLayout()
         bean_text.setSpacing(2)
-        bean_name = QLabel(self._bean.name or QApplication.translate("tilauscope_roast_setup", "(unknown bean)"))
+        bean_name = _ElidedLabel(
+            self._bean.name or QApplication.translate("tilauscope_roast_setup", "(unknown bean)"))
         bean_name.setStyleSheet(
             f"color: {THEME['TEXT']}; font-size: 13px; font-weight: bold; border: none;"
         )
@@ -3476,10 +3422,8 @@ class RoastResultDialog(QDialog):
         if self._bean.process:    meta_parts.append(self._bean.process)
         if self._bean.varieties:  meta_parts.append(self._bean.varieties)
         if meta_parts:
-            meta_lbl = QLabel("  ·  ".join(meta_parts))
-            meta_lbl.setStyleSheet(
-                f"color: {THEME['SUBTEXT']}; font-size: 11px; border: none;"
-            )
+            meta_lbl = _ElidedLabel("  ·  ".join(meta_parts))
+            meta_lbl.setProperty('variant', 'caption')
             bean_text.addWidget(meta_lbl)
         bc.addLayout(bean_text, 1)
 
@@ -3498,18 +3442,38 @@ class RoastResultDialog(QDialog):
             gw_col.addWidget(gw_val)
             gw_col.addWidget(gw_unit)
             bc.addLayout(gw_col)
-        cl.addWidget(bean_card)
+        bean_card.setMinimumWidth(360)
+        identity_row.addWidget(bean_card, 1)
 
         # ── Batch (assigned at DROP; locked, unlock via padlock to correct) ───
-        batch_sec = QHBoxLayout()
-        batch_sec.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Batch")))
-        batch_sec.addStretch()
-        cl.addLayout(batch_sec)
+        batch_card = QFrame()
+        batch_card.setStyleSheet(
+            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px;"
+            f"border: 1px solid {THEME['BORDER']}; }}"
+        )
+        batch_lay = QVBoxLayout(batch_card)
+        batch_lay.setContentsMargins(14, 6, 14, 8)
+        batch_lay.setSpacing(2)
+        batch_lay.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Batch")))
         self._batch_block = _BatchBlock(self._aw, _BatchBlock.MODE_EDIT)
-        cl.addWidget(self._batch_block)
+        batch_lay.addWidget(self._batch_block)
+        batch_card.setFixedWidth(270)
+        identity_row.addWidget(batch_card)
+        bl.addLayout(identity_row)
 
         # ── Roast metrics strip (read-only) ───────────────────────────────
-        cl.addWidget(self._build_metrics_strip())
+        bl.addWidget(self._build_metrics_strip())
+        bl.addWidget(_separator())
+
+        # ── Two columns — entry fields left, notes right ───────────────────
+        columns_row = QHBoxLayout()
+        columns_row.setSpacing(28)
+        left_col = QVBoxLayout()
+        left_col.setContentsMargins(0, 0, 0, 0)
+        left_col.setSpacing(12)
+        right_col = QVBoxLayout()
+        right_col.setContentsMargins(0, 0, 0, 0)
+        right_col.setSpacing(12)
 
         # ── SECTION 1 — Weight ────────────────────────────────────────────
         weight_sec_row = QHBoxLayout()
@@ -3517,7 +3481,7 @@ class RoastResultDialog(QDialog):
         weight_sec_row.addSpacing(6)
         weight_sec_row.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Roasted weight")))
         weight_sec_row.addStretch()
-        cl.addLayout(weight_sec_row)
+        left_col.addLayout(weight_sec_row)
 
         weight_row = QHBoxLayout()
         weight_row.setSpacing(10)
@@ -3529,8 +3493,8 @@ class RoastResultDialog(QDialog):
         self._roasted_weight_edit.setMaximumWidth(150)
         self._roasted_weight_edit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self._roasted_weight_edit.setStyleSheet(
-            f"QLineEdit {{ font-size: 26px; font-weight: bold; color: {THEME['TEXT']}; "
-            f"background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']}; "
+            f"QLineEdit {{ font-size: 26px; font-weight: bold; color: {THEME['TEXT']};"
+            f"background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']};"
             f"border-radius: 8px; padding: 6px 12px; }}"
             f"QLineEdit:focus {{ border-color: {THEME['ACCENT']}; }}"
         )
@@ -3540,21 +3504,22 @@ class RoastResultDialog(QDialog):
         weight_row.addWidget(self._roasted_weight_edit)
         weight_row.addWidget(rw_unit)
 
-        # Weight-loss badge
+        # Weight-loss badge — wraps to two lines in the 470 px entry column
         self._loss_lbl = QLabel("")
+        self._loss_lbl.setWordWrap(True)
         self._loss_lbl.setStyleSheet(
             f"color: {THEME['SUBTEXT']}; font-size: 11px; margin-left: 10px;"
         )
         weight_row.addWidget(self._loss_lbl)
         weight_row.addStretch()
-        cl.addLayout(weight_row)
+        left_col.addLayout(weight_row)
 
         # Defects field
         defect_row = QHBoxLayout()
         defect_row.setSpacing(10)
         defect_row.addWidget(_svg_icon_label(_SVG_DEFECT, THEME['WARNING'], 16))
         defect_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Defects"))
-        defect_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
+        defect_lbl.setProperty('variant', 'secondary')
         defect_row.addWidget(defect_lbl)
         self._defects_edit = QLineEdit(str(qmc.roasted_defects_weight))
         self._defects_edit.setPlaceholderText("0")
@@ -3562,25 +3527,23 @@ class RoastResultDialog(QDialog):
         self._defects_edit.setMaximumWidth(90)
         self._defects_edit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self._defects_edit.setStyleSheet(
-            f"QLineEdit {{ font-size: 14px; color: {THEME['WARNING']}; "
-            f"background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']}; "
+            f"QLineEdit {{ font-size: 14px; color: {THEME['WARNING']};"
+            f"background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']};"
             f"border-radius: 6px; padding: 4px 10px; }}"
             f"QLineEdit:focus {{ border-color: {THEME['WARNING']}; }}"
         )
         defect_row.addWidget(self._defects_edit)
-        defect_row.addWidget(QLabel("g").also(
-            lambda l: l.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
-        ) if False else _value_label("g"))  # inline unit
+        defect_row.addWidget(_value_label("g"))  # inline unit
         self.defects_percentage = QLabel()
-        self.defects_percentage.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
+        self.defects_percentage.setProperty('variant', 'secondary')
         defect_row.addWidget(self.defects_percentage)
         defect_row.addStretch()
-        cl.addLayout(defect_row)
+        left_col.addLayout(defect_row)
         self._defects_edit.textChanged.connect(self._update_loss_label)
         self._defects_edit.textChanged.connect(self._update_defect_percentage)
 
         # ── SECTION 2 — Colour ────────────────────────────────────────────
-        cl.addWidget(_separator())
+        left_col.addWidget(_separator())
         color_sec_row = QHBoxLayout()
         color_sec_row.addWidget(_svg_icon_label(_SVG_COLOR_LENS, THEME['ACCENT'], 18))
         color_sec_row.addSpacing(6)
@@ -3590,11 +3553,11 @@ class RoastResultDialog(QDialog):
         # C1 device button: shown only when device is configured
         has_c1 = bool(getattr(self._aw, 'bleRoastSeeDeviceName', None))
         if has_c1:
-            c1_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "◉  RoastSee C1"))
+            c1_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "◉  C1"))
             c1_btn.setStyleSheet(
-                f"QPushButton {{ background: transparent; color: {THEME['ACCENT']}; "
-                f"border: 1px solid {THEME['ACCENT']}; border-radius: 6px; "
-                f"font-family: 'JetBrains Mono'; font-size: 11px; padding: 4px 10px; }}"
+                f"QPushButton {{ background: transparent; color: {THEME['ACCENT']};"
+                f"border: 1px solid {THEME['ACCENT']}; border-radius: 6px;"
+                f"font-size: 11px; padding: 4px 10px; }}"
                 f"QPushButton:hover {{ background: {THEME['ACCENT']}; color: {THEME['BG']}; }}"
             )
             c1_btn.setToolTip(QApplication.translate("tilauscope_roast_setup",
@@ -3603,7 +3566,7 @@ class RoastResultDialog(QDialog):
             color_sec_row.addWidget(c1_btn)
             # Create the floating colour window
             self._color_window = _ColorFloatWindow(self)
-        cl.addLayout(color_sec_row)
+        left_col.addLayout(color_sec_row)
 
         colour_fields_row = QHBoxLayout()
         colour_fields_row.setSpacing(20)
@@ -3615,7 +3578,7 @@ class RoastResultDialog(QDialog):
         whole_header.addWidget(_svg_icon_label(_SVG_BEAN, THEME['SUBTEXT'], 14))
         whole_header.addSpacing(4)
         wh_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Whole bean"))
-        wh_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
+        wh_lbl.setProperty('variant', 'caption')
         whole_header.addWidget(wh_lbl)
         whole_header.addStretch()
         whole_col.addLayout(whole_header)
@@ -3624,8 +3587,8 @@ class RoastResultDialog(QDialog):
         self._colour_whole_edit.setMinimumHeight(38)
         self._colour_whole_edit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self._colour_whole_edit.setStyleSheet(
-            f"QLineEdit {{ font-size: 18px; font-weight: bold; color: {THEME['TEXT']}; "
-            f"background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']}; "
+            f"QLineEdit {{ font-size: 18px; font-weight: bold; color: {THEME['TEXT']};"
+            f"background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']};"
             f"border-radius: 6px; padding: 4px 10px; }}"
             f"QLineEdit:focus {{ border-color: {THEME['ACCENT']}; }}"
         )
@@ -3644,7 +3607,7 @@ class RoastResultDialog(QDialog):
         ground_header.addWidget(_svg_icon_label(_SVG_DEFECT, THEME['SUBTEXT'], 14))
         ground_header.addSpacing(4)
         gr_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Ground"))
-        gr_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
+        gr_lbl.setProperty('variant', 'caption')
         ground_header.addWidget(gr_lbl)
         ground_header.addStretch()
         ground_col.addLayout(ground_header)
@@ -3653,8 +3616,8 @@ class RoastResultDialog(QDialog):
         self._colour_ground_edit.setMinimumHeight(38)
         self._colour_ground_edit.setAlignment(Qt.AlignmentFlag.AlignRight)
         self._colour_ground_edit.setStyleSheet(
-            f"QLineEdit {{ font-size: 18px; font-weight: bold; color: {THEME['TEXT']}; "
-            f"background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']}; "
+            f"QLineEdit {{ font-size: 18px; font-weight: bold; color: {THEME['TEXT']};"
+            f"background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']};"
             f"border-radius: 6px; padding: 4px 10px; }}"
             f"QLineEdit:focus {{ border-color: {THEME['ACCENT']}; }}"
         )
@@ -3674,8 +3637,8 @@ class RoastResultDialog(QDialog):
         self._color_delta_lbl = QLabel("Δ ––")
         self._color_delta_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._color_delta_lbl.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 13px; font-weight: bold; "
-            f"font-family: 'JetBrains Mono'; min-width: 60px;"
+            f"color: {THEME['SUBTEXT']}; font-size: 13px; font-weight: bold;"
+            f"min-width: 60px;"
         )
         self._color_delta_lbl.setToolTip(
             QApplication.translate("tilauscope_roast_setup", "Difference: whole − ground")
@@ -3683,24 +3646,21 @@ class RoastResultDialog(QDialog):
         delta_col.addWidget(self._color_delta_lbl)
         colour_fields_row.addLayout(delta_col)
 
-        cl.addLayout(colour_fields_row)
+        left_col.addLayout(colour_fields_row)
 
         # Agtron range hint
         self._agtron_hint_lbl = QLabel("")
         self._agtron_hint_lbl.setStyleSheet(
             f"color: {THEME['SUBTEXT']}; font-size: 10px; font-style: italic;"
         )
-        cl.addWidget(self._agtron_hint_lbl)
+        left_col.addWidget(self._agtron_hint_lbl)
+        left_col.addStretch()
 
         # ── SECTION 3 — How did the roast go? ────────────────────────────
-        cl.addWidget(_separator())
         notes_sec_row = QHBoxLayout()
         notes_sec_row.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "How did it go?")))
         notes_sec_row.addStretch()
-        mood_hint = QLabel(QApplication.translate("tilauscope_roast_setup", "free notes → injected into roast log"))
-        mood_hint.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 10px; font-style: italic;")
-        notes_sec_row.addWidget(mood_hint)
-        cl.addLayout(notes_sec_row)
+        right_col.addLayout(notes_sec_row)
 
         self._notes_edit = QTextEdit()
         self._notes_edit.setPlaceholderText(
@@ -3708,25 +3668,43 @@ class RoastResultDialog(QDialog):
                 "How was the development? Any surprises with this bean? "
                 "Cracking point, smell, colour progression…")
         )
-        self._notes_edit.setMinimumHeight(90)
-        self._notes_edit.setMaximumHeight(140)
+        # Unbounded: this box absorbs the height of the entry column beside it.
+        self._notes_edit.setMinimumHeight(140)
         self._notes_edit.setStyleSheet(
-            f"QTextEdit {{ background: {THEME['SURFACE']}; color: {THEME['TEXT']}; "
-            f"border: 1px solid {THEME['BORDER']}; border-radius: 8px; "
-            f"font-family: 'JetBrains Mono'; font-size: 12px; padding: 8px; }}"
+            f"QTextEdit {{ background: {THEME['SURFACE']}; color: {THEME['TEXT']};"
+            f"border: 1px solid {THEME['BORDER']}; border-radius: 8px;"
+            f"font-size: 12px; padding: 8px; }}"
             f"QTextEdit:focus {{ border-color: {THEME['ACCENT']}; }}"
         )
-        cl.addWidget(self._notes_edit)
+        right_col.addWidget(self._notes_edit, 1)
+
+        mood_hint = QLabel(QApplication.translate("tilauscope_roast_setup", "free notes → roast log"))
+        mood_hint.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 10px; font-style: italic;")
+        right_col.addWidget(mood_hint)
+
+        # Declared widths, none inferred: the entry column holds the widest row
+        # (weight field + loss badge), the notes box takes what is left.
+        left_host = QWidget()
+        left_host.setLayout(left_col)
+        left_host.setFixedWidth(470)
+        right_host = QWidget()
+        right_host.setLayout(right_col)
+        right_host.setMinimumWidth(340)
+        columns_row.addWidget(left_host)
+        columns_row.addWidget(right_host, 1)
+        bl.addLayout(columns_row)
 
         # ── Buttons ───────────────────────────────────────────────────────
         cl.addWidget(_separator())
         btn_row = QHBoxLayout()
         btn_row.setSpacing(12)
         cancel_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "Cancel"))
-        cancel_btn.setStyleSheet(_btn_secondary())
+        cancel_btn.setObjectName('footerBtn')
+        cancel_btn.setProperty('variant', 'outline')
         cancel_btn.clicked.connect(self._on_cancel)
         ok_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "⬥  Save roast"))
-        ok_btn.setStyleSheet(_btn_primary())
+        ok_btn.setObjectName('footerBtn')
+        ok_btn.setProperty('variant', 'primary')
         ok_btn.clicked.connect(self._on_ok)
         # AI Summary button – only shown when AI is configured
         try:
@@ -3742,7 +3720,6 @@ class RoastResultDialog(QDialog):
                         border: 1px solid {THEME['ACCENT']};
                         border-radius: 8px;
                         padding: 8px 16px;
-                        font-family: 'JetBrains Mono';
                         font-weight: bold;
                     }}
                     QPushButton:hover {{
@@ -3759,7 +3736,7 @@ class RoastResultDialog(QDialog):
         label_btn = QPushButton(
             QApplication.translate("tilauscope_roast_setup", "🏷  Label PDF")
         )
-        label_btn.setStyleSheet(_btn_secondary())
+        label_btn.setProperty('variant', 'outline')
         label_btn.setToolTip(QApplication.translate(
             "tilauscope_roast_setup",
             "Generate the roast label as a PDF from the values entered above"))
@@ -3795,7 +3772,7 @@ class RoastResultDialog(QDialog):
             percent = (defects/roasted)*100.0
             if percent > 0.0:
                 hint = f"{percent:.1f}%"
-    
+
         color = THEME['SUCCESS'] if 0 <= percent <= 5 else THEME['WARNING']
 
         self.defects_percentage.setText(hint)
@@ -3816,9 +3793,8 @@ class RoastResultDialog(QDialog):
         except ValueError:
             defects = 0.0
 
-        # Net roasted = whole roasted minus defects (small weight → treated as defect)
-        if roasted > 0 and self._green_weight > 0:
-            loss_pct = (1.0 - (roasted / self._green_weight)) * 100.0
+        if (roasted-defects) > 0 and self._green_weight > 0:
+            loss_pct = (1.0 - ((roasted - defects) / self._green_weight)) * 100.0
             color = THEME['SUCCESS'] if 10 <= loss_pct <= 22 else THEME['WARNING']
             hint = QApplication.translate("tilauscope_roast_setup",
                 "{0:.1f} % loss  (green: {1:.0f} g)").format(loss_pct, self._green_weight)
@@ -3848,14 +3824,14 @@ class RoastResultDialog(QDialog):
             self._color_delta_lbl.setText(f"Δ {sign}{delta:.1f}")
             color = THEME['ACCENT'] if abs(delta) < 10 else THEME['WARNING']
             self._color_delta_lbl.setStyleSheet(
-                f"color: {color}; font-size: 13px; font-weight: bold; "
-                f"font-family: 'JetBrains Mono'; min-width: 60px;"
+                f"color: {color}; font-size: 13px; font-weight: bold;"
+                f"min-width: 60px;"
             )
         else:
             self._color_delta_lbl.setText("")
             self._color_delta_lbl.setStyleSheet(
-                f"color: {THEME['SUBTEXT']}; font-size: 13px; font-weight: bold; "
-                f"font-family: 'JetBrains Mono'; min-width: 60px;"
+                f"color: {THEME['SUBTEXT']}; font-size: 13px; font-weight: bold;"
+                f"min-width: 60px;"
             )
 
         # Update Agtron range hint using the whole-bean value if present
@@ -3948,7 +3924,6 @@ class RoastResultDialog(QDialog):
             try:
                 if drop_i >= 0 and len(timex) > drop_i and len(temp2) > drop_i:
                     window = 30  # seconds
-                    t_drop = timex[drop_i]
                     # Find index ~30s before drop
                     idx_before = drop_i
                     for i in range(drop_i, 0, -1):
@@ -4000,7 +3975,7 @@ class RoastResultDialog(QDialog):
                 lines += ["## Roaster Notes", notes, ""]
         except Exception:
             pass
-        
+
         if self._aw.qmc.roastertype:
             roaster_name = self._aw.qmc.roastertype+"  with all its capacity for control and precision"
         else:
@@ -4146,8 +4121,8 @@ class RoastResultDialog(QDialog):
 
     @pyqtSlot()
     def _on_ok(self) -> None:
-        ## TILAU ## Last chance to print the label: once this dialog closes the
-        ## batch is done and the label has to be re-generated from BeanCave.
+        # Last chance to print the label: once this dialog closes the
+        # batch is done and the label has to be re-generated from BeanCave.
         if not self._label_printed:
             choice = show_styled_message(
                 self,
@@ -4188,7 +4163,7 @@ class RoastResultDialog(QDialog):
         # Inject into Artisan
         try:
             qmc = self._aw.qmc
-            ## TILAU ## qmc.weight is a typed tuple (in, out, unit) at runtime — rebuild as tuple
+            # qmc.weight is a typed tuple (in, out, unit) at runtime — rebuild as tuple
             w0, _, w2 = qmc.weight
             qmc.weight        = (w0, roasted_w, w2)
             qmc.whole_color   = whole_color
@@ -4246,7 +4221,7 @@ class RoastResultDialog(QDialog):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Roast Data Reader — readable, navigable view of a recorded roast.   ## TILAU ##
+# Roast Data Reader — readable, navigable view of a recorded roast.
 #
 # A frameless Mocha window opened from the BeanCave "Roast Viewer" tab. It reads
 # a ProfileData dict (decoded .alog) and renders side by side:
@@ -4269,7 +4244,7 @@ _MILESTONE_SLOTS: Final = (
     ("COOL END", "◆", THEME['SUBTEXT']),   # 7  ◆
 )
 
-_ROW_MILESTONE_BG: Final = QColor('#313244')   # overlay
+_ROW_MILESTONE_BG: Final = QColor(THEME['BORDER'])   # overlay
 _ROW_EVENT_BG: Final     = QColor('#262637')
 
 
@@ -4321,7 +4296,7 @@ class RoastDataReaderDialog(QDialog):
             r: k for k, r in enumerate(self._sev) if 0 <= r < self._ndata
         }
 
-        self.setStyleSheet(_base_style())
+        self.setStyleSheet(base_qss() + _local_style())
         self._build_ui()
         self.resize(940, 620)
 
@@ -4408,7 +4383,7 @@ class RoastDataReaderDialog(QDialog):
         card = QFrame()
         card.setObjectName("readerCard")
         card.setStyleSheet(
-            f"QFrame#readerCard {{ background-color: {THEME['BG']}; "
+            f"QFrame#readerCard {{ background-color: {THEME['BG']};"
             f"border: 2px solid {THEME['ACCENT']}; border-radius: 16px; }}"
         )
         cl = QVBoxLayout(card)
@@ -4437,7 +4412,6 @@ class RoastDataReaderDialog(QDialog):
         bottom.addWidget(hint)
         bottom.addStretch()
         grip = QSizeGrip(self)
-        grip.setStyleSheet("background: transparent;")
         bottom.addWidget(grip, 0, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
         cl.addLayout(bottom)
 
@@ -4448,8 +4422,8 @@ class RoastDataReaderDialog(QDialog):
         row = QHBoxLayout()
         title = QLabel(QApplication.translate("tilauscope_roast_setup", "DATA READER"))
         title.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-size: 15px; font-weight: 800; "
-            f"font-family: 'JetBrains Mono'; letter-spacing: 3px;")
+            f"color: {THEME['ACCENT']}; font-size: 15px; font-weight: 800;"
+            f"letter-spacing: 3px;")
         row.addWidget(title)
 
         bits = []
@@ -4463,7 +4437,7 @@ class RoastDataReaderDialog(QDialog):
             bits.append(rdate)
         if bits:
             sub = QLabel("   " + "  ·  ".join(bits))
-            sub.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
+            sub.setProperty('variant', 'caption')
             row.addWidget(sub)
         row.addStretch()
 
@@ -4472,7 +4446,7 @@ class RoastDataReaderDialog(QDialog):
         close.setFixedSize(22, 22)
         close.setToolTip(QApplication.translate("tilauscope_roast_setup", "Close"))
         close.setStyleSheet(
-            f"QPushButton {{ background: {THEME['CRITICAL']}; color: {THEME['BG']}; "
+            f"QPushButton {{ background: {THEME['CRITICAL']}; color: {THEME['BG']};"
             f"border: none; border-radius: 11px; font-size: 12px; font-weight: bold; }} "
             f"QPushButton:hover {{ background: #FF6E8A; }}")
         close.clicked.connect(self.close)
@@ -4484,12 +4458,12 @@ class RoastDataReaderDialog(QDialog):
         row.setSpacing(8)
         summary = QLabel(self._summary_line())
         summary.setStyleSheet(
-            f"color: {THEME['TEXT']}; font-size: 11px; font-family: 'JetBrains Mono';")
+            f"color: {THEME['TEXT']}; font-size: 11px; ")
         row.addWidget(summary)
         row.addStretch()
 
         lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Show"))
-        lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
+        lbl.setProperty('variant', 'caption')
         row.addWidget(lbl)
 
         self._filter_group = QButtonGroup(self)
@@ -4504,10 +4478,10 @@ class RoastDataReaderDialog(QDialog):
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setProperty('filter_key', key)
             btn.setStyleSheet(
-                f"QPushButton {{ background: {THEME['SURFACE']}; color: {THEME['SUBTEXT']}; "
-                f"border: 1px solid {THEME['BORDER']}; border-radius: 8px; padding: 3px 12px; "
+                f"QPushButton {{ background: {THEME['SURFACE']}; color: {THEME['SUBTEXT']};"
+                f"border: 1px solid {THEME['BORDER']}; border-radius: 8px; padding: 3px 12px;"
                 f"font-size: 11px; }} "
-                f"QPushButton:checked {{ background: {THEME['ACCENT']}; color: {THEME['BG']}; "
+                f"QPushButton:checked {{ background: {THEME['ACCENT']}; color: {THEME['BG']};"
                 f"border-color: {THEME['ACCENT']}; font-weight: bold; }}")
             if key == 'all':
                 btn.setChecked(True)
@@ -4539,7 +4513,7 @@ class RoastDataReaderDialog(QDialog):
         lay.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Journey")))
         self._nav = QListWidget()
         self._nav.setStyleSheet(
-            f"QListWidget {{ background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']}; "
+            f"QListWidget {{ background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']};"
             f"border-radius: 8px; padding: 4px; }} "
             f"QListWidget::item {{ padding: 4px 6px; border-radius: 6px; }} "
             f"QListWidget::item:selected {{ background: {THEME['BORDER']}; }}")
@@ -4572,10 +4546,10 @@ class RoastDataReaderDialog(QDialog):
         self._table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self._table.setShowGrid(False)
         self._table.setStyleSheet(
-            f"QTableWidget {{ background: {THEME['SURFACE']}; color: {THEME['TEXT']}; "
-            f"border: 1px solid {THEME['BORDER']}; border-radius: 8px; gridline-color: {THEME['BORDER']}; "
-            f"alternate-background-color: #1b1b29; font-family: 'JetBrains Mono'; font-size: 11px; }} "
-            f"QHeaderView::section {{ background: {THEME['BG']}; color: {THEME['SUBTEXT']}; "
+            f"QTableWidget {{ background: {THEME['SURFACE']}; color: {THEME['TEXT']};"
+            f"border: 1px solid {THEME['BORDER']}; border-radius: 8px; gridline-color: {THEME['BORDER']};"
+            f"alternate-background-color: #1b1b29; font-size: 11px; }} "
+            f"QHeaderView::section {{ background: {THEME['BG']}; color: {THEME['SUBTEXT']};"
             f"border: none; border-bottom: 1px solid {THEME['BORDER']}; padding: 4px; }} "
             f"QTableWidget::item:selected {{ background: {THEME['ACCENT']}; color: {THEME['BG']}; }}")
         vh = self._table.verticalHeader()
@@ -4725,8 +4699,7 @@ class RoastDataReaderDialog(QDialog):
         col.setSpacing(3)
         title = QLabel(label)
         title.setStyleSheet(
-            f"color: {THEME['TEXT']}; font-size: 12px; font-weight: bold; "
-            f"font-family: 'JetBrains Mono';")
+            f"color: {THEME['TEXT']}; font-size: 12px; font-weight: bold;")
         col.addWidget(title)
         if sub:
             s = QLabel(sub)

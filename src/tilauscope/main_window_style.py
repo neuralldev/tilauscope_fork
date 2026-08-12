@@ -1,11 +1,7 @@
-## TILAU ##
 # Frameless / Catppuccin styling for the main Artisan window.
-#
-# First-iteration scope (deliberately cautious): only the native title bar is
-# replaced by a custom draggable one with min/max/close buttons. Native
-# resize borders are left untouched (Qt.WindowType.FramelessWindowHint is NOT
-# used) so OS-level resize/snap/tiling behaviour is preserved while this is
-# being validated on both macOS and Windows.
+# Replaces only the native title bar with a custom draggable one; native
+# resize borders are left untouched (no FramelessWindowHint) so OS-level
+# resize/snap/tiling behaviour is preserved.
 
 from PyQt6.QtCore import QPoint, Qt
 from PyQt6.QtGui import QMouseEvent
@@ -81,14 +77,11 @@ class _TilauTitleBar(QWidget):
         self._toggle_maximized()
 
 
-# Global "chrome" QSS: deliberately scoped to widget classes that do not already
-# carry their own inline stylesheet in main.py (event buttons, LCDs, sliders, ...
-# are left untouched to avoid clobbering styles tuned over years).
-#
-# Split in two and applied to two different widgets, NOT to `aw` itself:
-# main.py (~line 6598) already calls aw.setStyleSheet(...) dynamically for the
-# canvas background color on every roast/theme change, which would otherwise
-# wipe out anything we set at the aw level (setStyleSheet replaces, it doesn't merge).
+# Global "chrome" QSS, scoped to widget classes without their own inline
+# stylesheet in main.py (event buttons, LCDs, sliders are left untouched).
+# Applied to two sub-widgets, not `aw` itself: main.py calls aw.setStyleSheet()
+# dynamically for the canvas background, which would otherwise wipe this out
+# (setStyleSheet replaces, it doesn't merge).
 _MENU_QSS = f"""
     QMenuBar {{ background-color: {THEME['SURFACE']}; color: {THEME['TEXT']}; }}
     QMenuBar::item {{ background: transparent; padding: 4px 10px; }}
@@ -136,13 +129,15 @@ def give_body(aw: QMainWindow, body: QWidget) -> None:
 
 
 def apply_frameless_style(aw: QMainWindow) -> None:
-    """Replace the native title bar of the main Artisan window with a Catppuccin-themed custom one,
-    and extend the Catppuccin theme to the window chrome (menu bar, menus, tooltips, scrollbars).
-
-    Native resize borders are intentionally kept (no FramelessWindowHint) for this first,
-    cautious test iteration on both macOS and Windows. Widgets that already carry their own
-    inline stylesheet (event buttons, LCDs, sliders, ...) are deliberately left untouched.
+    """Replace the native title bar with a Catppuccin-themed custom one and extend
+    the theme to the window chrome (menu bar, menus, tooltips, scrollbars).
+    Widgets with their own inline stylesheet (event buttons, LCDs, sliders) are left untouched.
     """
+    # Register the bundled mono font here, at application start, before any
+    # stylesheet naming the family can run first and fall back to the system font.
+    from tilauscope.theme_qss import mono_family  # noqa: PLC0415
+    mono_family()
+
     was_visible = aw.isVisible()
 
     aw.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.CustomizeWindowHint)

@@ -16,11 +16,8 @@
 #
 # pairing_dialog.py
 #
-# ## TILAU ## Desktop pairing screen for remote control (protocol §7 / §9).
-#
-# Frameless Catppuccin modal: shows the pairing QR (one-time PT in the link),
-# a TTL countdown + regenerate, and the list of paired devices with per-device
-# revoke. Reuses generate_qr_image() (label_printer) — no new dependency.
+# Desktop pairing screen for remote control (protocol §7 / §9): frameless
+# Catppuccin modal with the pairing QR, TTL countdown, and paired-device list.
 
 import logging
 import time
@@ -34,14 +31,17 @@ from PyQt6.QtWidgets import (
 
 _log = logging.getLogger(__name__)
 
-_BG = "#1E1E2E"; _SURFACE = "#313244"; _OVERLAY = "#45475A"
-_TEXT = "#CDD6F4"; _SUB = "#A6ADC8"; _ACCENT = "#89B4FA"
-_RED = "#F38BA8"; _GREEN = "#A6E3A1"; _YELLOW = "#F9E2AF"
+from tilauscope.theme_qss import apply_tilau_theme, tint
+from tilauscope.tilauscope_types import THEME
 
 
 class PairingDialog(QDialog):
     def __init__(self, host, control_port: int, parent=None) -> None:
         super().__init__(parent)
+        # ground=False: this dialog is translucent and #PairContainer below is
+        # what gets painted. The grounded base fills the whole rectangle with
+        # BG, squaring off the rounded corners it draws around.
+        apply_tilau_theme(self, ground=False)
         self._host = host
         self._port = control_port
         self._ttl_left = 0
@@ -58,9 +58,8 @@ class PairingDialog(QDialog):
         container = QFrame()
         container.setObjectName("PairContainer")
         container.setStyleSheet(
-            f"#PairContainer {{ background-color:{_BG}; border:2px solid {_SURFACE};"
-            f" border-radius:15px; }}"
-            f"QLabel {{ color:{_TEXT}; background:transparent; border:none; }}")
+            f"#PairContainer {{ background-color:{THEME['BG']};"
+            f" border:2px solid {THEME['BORDER']}; border-radius:15px; }}")
         root.addWidget(container)
         inner = QVBoxLayout(container)
         inner.setContentsMargins(22, 16, 22, 18)
@@ -69,19 +68,26 @@ class PairingDialog(QDialog):
         # header
         header = QHBoxLayout()
         title = QLabel(QApplication.translate("tilauscope_devices", "PAIR A PHONE"))
-        title.setStyleSheet(f"color:{_ACCENT};font-size:14px;font-weight:800;letter-spacing:1px;")
+        title.setStyleSheet(
+            f"QLabel {{ color:{THEME['ACCENT']}; font-size:14px;"
+            f" font-weight:800; letter-spacing:1px; }}")
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(30, 30)
+        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         close_btn.clicked.connect(self.reject)
         close_btn.setStyleSheet(
-            f"QPushButton {{ background:{_SURFACE}; color:{_RED}; border-radius:15px;"
-            f" border:1px solid {_RED}; font-weight:bold; }}"
-            f"QPushButton:hover {{ background:{_RED}; color:{_BG}; }}")
+            f"QPushButton {{ background:{THEME['BORDER']}; color:{THEME['CRITICAL']};"
+            f" border:1px solid {THEME['CRITICAL']}; border-radius:15px;"
+            f" font-weight:bold; padding:0; }}"
+            f"QPushButton:hover {{ background:{THEME['CRITICAL']}; color:{THEME['BG']}; }}")
         header.addWidget(title); header.addStretch(); header.addWidget(close_btn)
         inner.addLayout(header)
 
         # QR card
         qr_card = QFrame()
+        # Deliberately literal white, not a token: a QR code needs a light
+        # quiet zone to be readable by a phone camera. Theming this surface
+        # would break scanning, so it does not follow the palette.
         qr_card.setStyleSheet("background:#ffffff;border-radius:14px;")
         qr_l = QVBoxLayout(qr_card)
         qr_l.setContentsMargins(12, 12, 12, 12)
@@ -93,12 +99,13 @@ class PairingDialog(QDialog):
 
         hint = QLabel(QApplication.translate("tilauscope_devices",
                       "Scan or open the link on your phone (same wifi)"))
-        hint.setStyleSheet(f"color:{_SUB};font-size:12px;")
+        hint.setProperty('variant', 'secondary')
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         inner.addWidget(hint)
 
         self._url_label = QLabel()
-        self._url_label.setStyleSheet(f"color:{_SUB};font-family:'JetBrains Mono';font-size:10px;")
+        self._url_label.setStyleSheet(
+            f"QLabel {{ color:{THEME['SUBTEXT']}; font-size:10px; }}")
         self._url_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._url_label.setWordWrap(True)
         inner.addWidget(self._url_label)
@@ -106,17 +113,21 @@ class PairingDialog(QDialog):
         # secondary .local address (survives IP changes; iOS mDNS can be slow so
         # the numeric IP above is primary)
         self._url_alt = QLabel()
-        self._url_alt.setStyleSheet(f"color:{_OVERLAY};font-family:'JetBrains Mono';font-size:9px;")
+        self._url_alt.setStyleSheet(
+            f"QLabel {{ color:{THEME['OVERLAY0']}; font-size:9px; }}")
         self._url_alt.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._url_alt.setWordWrap(True)
         inner.addWidget(self._url_alt)
 
         ttl_row = QHBoxLayout()
         self._ttl_label = QLabel()
-        self._ttl_label.setStyleSheet(f"color:{_YELLOW};font-family:'JetBrains Mono';font-size:11px;")
-        _pill = (f"QPushButton {{ background:transparent; color:{_SUB}; border:1px solid {_OVERLAY};"
+        self._ttl_label.setStyleSheet(
+            f"QLabel {{ color:{THEME['YELLOW']}; font-size:11px; }}")
+        _pill = (f"QPushButton {{ background:transparent; color:{THEME['SUBTEXT']};"
+                 f" border:1px solid {THEME['SURFACE1']};"
                  f" border-radius:8px; padding:6px 12px; }}"
-                 f"QPushButton:hover {{ color:{_TEXT}; border-color:{_SUB}; }}")
+                 f"QPushButton:hover {{ color:{THEME['TEXT']};"
+                 f" border-color:{THEME['SUBTEXT']}; }}")
         self._copy_btn = QPushButton(QApplication.translate("tilauscope_devices", "⧉ Copy link"))
         self._copy_btn.clicked.connect(self._copy_url)
         self._copy_btn.setStyleSheet(_pill)
@@ -129,8 +140,7 @@ class PairingDialog(QDialog):
 
         # devices
         self._dev_title = QLabel()
-        self._dev_title.setStyleSheet(
-            f"color:{_SUB};font-size:10px;font-weight:700;letter-spacing:1px;")
+        self._dev_title.setProperty('variant', 'eyebrow')
         inner.addWidget(self._dev_title)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -246,7 +256,7 @@ class PairingDialog(QDialog):
             QApplication.translate("tilauscope_devices", "PAIRED DEVICES ({n})").format(n=len(devices)))
         if not devices:
             empty = QLabel(QApplication.translate("tilauscope_devices", "No paired device yet."))
-            empty.setStyleSheet(f"color:{_SUB};font-size:12px;")
+            empty.setProperty('variant', 'secondary')
             self._dev_layout.insertWidget(0, empty)
             return
         for did, info in devices.items():
@@ -259,7 +269,7 @@ class PairingDialog(QDialog):
 
     def _device_row(self, device_id: str, info: dict) -> QWidget:
         row = QFrame()
-        row.setStyleSheet(f"background:{_SURFACE};border-radius:10px;")
+        row.setStyleSheet(f"QFrame {{ background:{THEME['BORDER']}; border-radius:10px; }}")
         rl = QHBoxLayout(row)
         rl.setContentsMargins(11, 9, 11, 9)
         name = str(info.get('name') or device_id)
@@ -268,12 +278,13 @@ class PairingDialog(QDialog):
             edit = QLineEdit(name)
             edit.setMaxLength(40)
             edit.setStyleSheet(
-                f"QLineEdit {{ background:{_BG}; color:{_TEXT}; border:1px solid {_ACCENT};"
+                f"QLineEdit {{ background:{THEME['BG']}; color:{THEME['TEXT']};"
+                f" border:1px solid {THEME['ACCENT']};"
                 f" border-radius:8px; padding:6px 9px; }}")
             edit.returnPressed.connect(lambda d=device_id, e=edit: self._commit_rename(d, e.text()))
-            ok = self._icon_btn("✓", _GREEN)
+            ok = self._icon_btn("✓", 'SUCCESS')
             ok.clicked.connect(lambda _=False, d=device_id, e=edit: self._commit_rename(d, e.text()))
-            cancel = self._icon_btn("✕", _SUB)
+            cancel = self._icon_btn("✕", 'SUBTEXT')
             cancel.clicked.connect(lambda _=False: self._cancel_rename())
             rl.addWidget(edit, 1); rl.addWidget(ok); rl.addWidget(cancel)
             QTimer.singleShot(0, edit.setFocus)
@@ -284,29 +295,39 @@ class PairingDialog(QDialog):
             when = time.strftime('%Y-%m-%d %H:%M', time.localtime(int(info.get('paired_at', 0))))
         except Exception:  # noqa: BLE001
             when = ''
-        txt = QLabel(f"<b style='color:{_TEXT}'>{name}</b>"
-                     f"<br><span style='color:{_SUB};font-size:10px'>{when}</span>")
-        txt.setStyleSheet("background:transparent;border:none;")
-        rename = self._icon_btn("✏", _ACCENT)
+        txt = QLabel(f"<b style='color:{THEME['TEXT']}'>{name}</b>"
+                     f"<br><span style='color:{THEME['SUBTEXT']};font-size:10px'>{when}</span>")
+        txt.setStyleSheet("")
+        rename = self._icon_btn("✏", 'ACCENT')
         rename.setToolTip(QApplication.translate("tilauscope_devices", "Rename"))
         rename.clicked.connect(lambda _=False, d=device_id: self._begin_rename(d))
         revoke = QPushButton(QApplication.translate("tilauscope_devices", "Revoke"))
         revoke.clicked.connect(lambda _=False, d=device_id: self._revoke(d))
+        # tint() builds the faint rgba() border; an 8-digit hex suffix would be
+        # read by Qt as #AARRGGBB, not #RRGGBBAA.
         revoke.setStyleSheet(
-            f"QPushButton {{ background:transparent; color:{_RED}; border:1px solid {_RED}44;"
+            f"QPushButton {{ background:transparent; color:{THEME['CRITICAL']};"
+            f" border:1px solid {tint('CRITICAL', 0.27)};"
             f" border-radius:8px; padding:6px 11px; }}"
-            f"QPushButton:hover {{ background:{_RED}; color:{_BG}; }}")
+            f"QPushButton:hover {{ background:{THEME['CRITICAL']}; color:{THEME['BG']}; }}")
         rl.addWidget(txt); rl.addStretch(); rl.addWidget(rename); rl.addWidget(revoke)
         return row
 
     @staticmethod
-    def _icon_btn(glyph: str, color: str) -> QPushButton:
+    def _icon_btn(glyph: str, token: str) -> QPushButton:
+        """A 30px square glyph button tinted by a THEME token name.
+
+        Takes the token, not its hex: tint() derives the low-alpha border colour;
+        an 8-digit hex suffix would be read by Qt as #AARRGGBB, not #RRGGBBAA.
+        """
+        colour = THEME[token]
         b = QPushButton(glyph)
         b.setFixedSize(30, 30)
         b.setStyleSheet(
-            f"QPushButton {{ background:transparent; color:{color}; border:1px solid {color}44;"
-            f" border-radius:8px; font-size:13px; }}"
-            f"QPushButton:hover {{ background:{color}; color:{_BG}; }}")
+            f"QPushButton {{ background:transparent; color:{colour};"
+            f" border:1px solid {tint(token, 0.27)}; border-radius:8px;"
+            f" font-size:13px; padding:0; }}"
+            f"QPushButton:hover {{ background:{colour}; color:{THEME['BG']}; }}")
         return b
 
     # ---- rename -------------------------------------------------------------

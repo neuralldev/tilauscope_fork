@@ -1,25 +1,6 @@
 """
-Ajustements typographiques du canvas Artisan pour TilauScope.
-
-Deux textes sont concernés :
-- le titre du roast, dessiné par Artisan en 'xx-large' (voir
-  artisanlib/canvas.py:setProfileTitle) — trop grand pour le layout TilauScope ;
-- la ligne de stats en bas du graphe (date, titre, DROP, poids, perte %),
-  dessinée par Artisan comme le xlabel de l'axe (voir
-  artisanlib/canvas.py:writecharacteristics / set_xlabel), tronquée
-  brutalement ("...") par artisanlib/canvas.py:fit_titles quand elle dépasse
-  la largeur de l'axe.
-
-Les deux sont ramenés à une taille raisonnable en JetBrains Mono, sans
-modification de canvas.py : `qmc.title_artist` et `qmc.xlabel_artist` sont des
-artistes matplotlib recréés (retextés) à chaque appel de `redraw()` — le
-réglage est donc ré-appliqué après chaque redraw plutôt qu'une seule fois —
-même mécanisme d'instance-attribute override que ArtisanMessageHook /
-AxesConfigHook. `title_width` / `xlabel_width` sont recalculés après le
-changement de police car `fit_titles()` (appelé par Artisan sur l'événement
-matplotlib `draw_event`, donc après notre `draw_idle()`) tronque le texte en
-comparant sa largeur mesurée à la largeur de l'axe — une largeur restée
-calculée avec l'ancienne police tronquerait au mauvais endroit.
+Ajustements typographiques du canvas Artisan pour TilauScope : ramène le titre
+du roast et la ligne de stats à une taille raisonnable en JetBrains Mono, sans modifier canvas.py, en ré-appliquant le réglage après chaque redraw.
 
 Installation :
     self._canvas_style_hook = CanvasStyleHook(self.aw)
@@ -127,14 +108,7 @@ def _apply_canvas_fonts(aw: object) -> None:
 
 class CanvasStyleHook:
     """Ré-applique la typo du titre et de la ligne de stats après chaque
-    `qmc.redraw()` **et** chaque `qmc.setProfileTitle()`.
-
-    `setProfileTitle()` recrée `title_artist` en 'xx-large' à chaque appel, et
-    `OnMonitor` / `OffMonitor` (main.py) l'appellent directement, sans passer
-    par `redraw()` : n'accrocher que `redraw` laissait le titre repartir en
-    pleine taille dès l'appui sur ON. `setTitleSignal` est connecté à la
-    méthode d'origine au démarrage mais n'est jamais émis, donc l'override
-    d'attribut d'instance couvre bien tous les chemins vivants.
+    `qmc.redraw()` **et** chaque `qmc.setProfileTitle()`, car ce dernier est aussi appelé directement par `OnMonitor`/`OffMonitor` sans passer par `redraw()`.
     """
 
     def __init__(self, aw: object) -> None:

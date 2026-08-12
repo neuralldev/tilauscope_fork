@@ -19,34 +19,12 @@
 
 """
 tilau_tc4ble.py — standalone BLE transport + control for a TC4-over-BLE roaster
-(Skywalker V2 / "Cyberroaster", BLE bridge module TD5325A).
+(Skywalker V2 / "Cyberroaster", BLE bridge TD5325A), self-contained with its
+own asyncio I/O thread; the sampling thread reads via read_latest().
 
-The roaster controller speaks standard TC4 ASCII, bridged transparently over a
-BLE UART module:
-    FF01 (notify) : TC4 telemetry, CSV "ambient,ET,BT,...\\r\\n", emitted on READ  ## TILAU ## firmware field order is ET then BT (opposite of TC4 convention)
-    FF02 (write)  : TC4 commands (CHAN;1200, READ, OT1..OT4,<level>)
-
-Design
-    * Fully self-contained: no dependency on Artisan's serial / TC4 stack.
-    * One private asyncio loop on a dedicated thread owns all BLE I/O (bleak),
-      so the Qt and real-time sampling threads are never blocked on BLE.
-    * The controller does NOT stream: a telemetry line only arrives in response
-      to a READ poll, so a self-driven poll task keeps a fresh cached sample.
-    * The sampling thread reads that cache via read_latest() (non-blocking);
-      event-driven consumers (intelligence, annotations) use the sampleReady
-      signal — module-to-module communication stays signal-based.
-
-Safety (electric FIR burner)
-    Connecting alone makes the controller assert a default actuator state that
-    INCLUDES the burner. The connect sequence forces OT1,0 as its very first
-    write, and OT1,0 is re-asserted before every disconnect. Output levels are
-    clamped to the per-actuator ranges.
-
-macOS note
-    Discovery stays on the app's centralized scanner; this module connects by
-    known peripheral UUID only (no scan) to limit Core Bluetooth contention.
-    If coexistence with other BLE devices regresses, _BleLoop is the single
-    place to migrate the transport onto artisanlib.ble_port.
+Safety: connecting alone makes the controller assert a default actuator state
+that INCLUDES the burner, so OT1,0 is forced first at connect and re-asserted
+before every disconnect.
 """
 
 from __future__ import annotations
@@ -55,7 +33,7 @@ import argparse
 import asyncio
 import logging
 import threading
-import time                                  ## TILAU ## monotonic clock for the RX watchdog
+import time                                  # monotonic clock for the RX watchdog
 from typing import Optional, Final, Callable
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
@@ -80,26 +58,23 @@ _CHAN_INIT = "CHAN;1200"   # logical->physical channel map (Artisan default)
 _READ_CMD  = "READ"        # one CSV line per poll
 _POLL_S    = 1.0           # poll cadence; keep <= qmc sample interval / 2
 
-# CSV field order after CHAN;1200: ambient, ET, BT, <actuator/config echoes...>  ## TILAU ## firmware labels inverted vs physical probes: field[1]=drum(ET), field[2]=bean(BT)
+# CSV field order after CHAN;1200: ambient, ET, BT, <actuator/config echoes...> firmware labels inverted vs physical probes: field[1]=drum(ET), field[2]=bean(BT)
 _IDX_AMBIENT     = 0
-_IDX_BT          = 2  ## TILAU ## physical probe swap: firmware field[2] = bean (BT), field[1] = drum (ET)
-_IDX_ET          = 1  ## TILAU ##
+_IDX_BT          = 2  # physical probe swap: firmware field[2] = bean (BT), field[1] = drum (ET)
+_IDX_ET          = 1
 _IDX_BURNER_ECHO  = 3      # CSV field that echoes the OT1 (burner) duty  [confirmed]
 _IDX_AIRFLOW_ECHO = 4      # CSV field that echoes the OT2 (airflow) duty [confirmed]
 
 _VERIFY_TRIES  = 6         # OT1,0 re-assert attempts at connect before fail-safe
 _VERIFY_WAIT_S = 0.4       # settle time between assert and echo verification
 
-_CONNECT_AIRFLOW = 20      ## TILAU ## airflow asserted at connect (BLE default is undefined)
-_DRUM_DEFAULT    = 80      ## TILAU ## drum duty the controller assumes at connect (never echoed)
+_CONNECT_AIRFLOW = 20      # airflow asserted at connect (BLE default is undefined)
+_DRUM_DEFAULT    = 80      # drum duty the controller assumes at connect (never echoed)
 
-# ── Link-recovery guard (## TILAU ##) ───────────────────────────────────────
-# On a link drop above ~50°C the controller emergency-stops: burner forced to
-# 0, cooling-tray fans on, drum kept turning to ease ejection. We cannot beat
-# the firmware (it reacts in ~1-2 s); the goal is a CLEAN recovery, not
-# prevention. On reconnect we re-assert the mechanical state (airflow, drum)
-# and sync the burner command DOWN to the echoed value (0) — heat is never
-# re-applied automatically; the operator decides (resume gas or STOP).
+# ── Link-recovery guard ───────────────────────────────────────
+# On a link drop above ~50°C the controller emergency-stops (burner to 0, fans
+# on). On reconnect we re-assert airflow/drum and sync burner DOWN to the
+# echoed value (0) — heat is never re-applied automatically.
 _RX_STALL_S       = 3.0    # no telemetry for this long -> force a clean reconnect
 _RX_STALL_CHECK_S = 1.0    # watchdog wake cadence
 _RECONNECT_CAP_S  = 2.0    # reconnect backoff ceiling (roast is time-critical)
@@ -134,8 +109,8 @@ class _BleLoop(threading.Thread):
         try:
             self._loop.run_forever()
         finally:
-            ## TILAU ## Drain cancellation before Python finalization; otherwise
-            ## CoreBluetooth may deliver into callback objects already destroyed.
+            # Drain cancellation before Python finalization; otherwise
+            # CoreBluetooth may deliver into callback objects already destroyed.
             pending = list(asyncio.all_tasks(self._loop))
             for task in pending:
                 task.cancel()
@@ -163,16 +138,16 @@ class TilauTC4BLE(QObject):
     sampleReady  = pyqtSignal(float, float, float, float, float)  # ambient, BT, ET
     stateChanged = pyqtSignal(str)                  # 'connected'|'disconnected'|'error'
     safetyAlert  = pyqtSignal(str)                  # safety condition identifier
-    roastInterrupted = pyqtSignal(str, float, int)  ## TILAU ## reason, last_bt, burner_echo
-    guardChanged     = pyqtSignal(bool)             ## TILAU ## recovery guard armed/disarmed
+    roastInterrupted = pyqtSignal(str, float, int)  # reason, last_bt, burner_echo
+    guardChanged     = pyqtSignal(bool)             # recovery guard armed/disarmed
 
     def __init__(self, address: str, poll_s: float = _POLL_S,
                  parent: Optional[QObject] = None,
-                 is_live: Optional[Callable[[], bool]] = None) -> None:  ## TILAU ##
+                 is_live: Optional[Callable[[], bool]] = None) -> None:
         super().__init__(parent)
         self._address = address
         self._poll_s = poll_s
-        # ## TILAU ## Predicate telling whether a roast is live (Artisan
+        # Predicate telling whether a roast is live (Artisan
         # flagon/flagstart). The recovery protocol only runs if it was live AT
         # THE DROP. Injected to keep tc4ble decoupled from Artisan internals.
         self._is_live: Callable[[], bool] = is_live or (lambda: False)
@@ -187,20 +162,20 @@ class TilauTC4BLE(QObject):
         self._connected = False
         self._burner_echo: Optional[int] = None   # last OT1 duty read from field 3
         self._airflow_echo: Optional[int] = None  # last OT2 duty read from field 4
-        self._cmd_drum = _DRUM_DEFAULT             ## TILAU ## drum has no echo; track commanded
-        self._cmd_airflow = _CONNECT_AIRFLOW       ## TILAU ## airflow commanded; restored after a drop
+        self._cmd_drum = _DRUM_DEFAULT             # drum has no echo; track commanded
+        self._cmd_airflow = _CONNECT_AIRFLOW       # airflow commanded; restored after a drop
         self._cmd_burner = 0                       # last commanded OT1 duty
         self._mismatch = 0                         # consecutive burner overshoot count
         self._closing = False                      # True during an intentional disconnect
-        self._connect_task: Optional[asyncio.Future] = None   ## TILAU ## in-flight connect, for clean cancel
-        # ── link-recovery guard state (## TILAU ##) ──────────────────────────
+        self._connect_task: Optional[asyncio.Future] = None   # in-flight connect, for clean cancel
+        # ── link-recovery guard state ( ) ──────────────────────────
         self._guard_armed = True                   # GUARD,OF disarms; armed by default
         self._last_rx = 0.0                        # monotonic ts of last parsed telemetry
         self._restore_pending = False              # was-live captured at the drop
         self._recovering = False                   # a reconnect driver is active (idempotency)
         self._reconnect_task: Optional[asyncio.Future] = None
         self._watchdog_task: Optional[asyncio.Future] = None
-        self._epoch = 0                            ## TILAU ## connection generation (poll/watchdog lifetime)
+        self._epoch = 0                            # connection generation (poll/watchdog lifetime)
 
     # ── public Qt-thread API ────────────────────────────────────────────────
     @pyqtSlot()
@@ -237,33 +212,33 @@ class TilauTC4BLE(QObject):
         # OT2 duty echo (%) for an extra device channel.
         return self._airflow_echo if self._airflow_echo is not None else -1
 
-    def getDrum(self) -> float:     ## TILAU ##
+    def getDrum(self) -> float:
         # Drum duty is never echoed by READ; report the last commanded value.
         return float(self._cmd_drum)
 
-    def getCmdAirflow(self) -> float:     ## TILAU ##
+    def getCmdAirflow(self) -> float:
         # Commanded airflow duty (field-4 echo is UNCONFIRMED); authoritative
         # for the UI slider sync at connect and after a recovery re-assert.
         return float(self._cmd_airflow)
 
-    # ## TILAU ## no scan interface here: config-dialog discovery goes through
+    # no scan interface here: config-dialog discovery goes through
     # the common ClientBLE stack (artisanlib.ble_port) like every other device;
     # this class is the live roast transport only (see close() for teardown).
 
     def send(self, cmd: str) -> None:
         """Queue a raw TC4 command (used by the 'TilauScope Command' slider)."""
-        # ## TILAU ## Intercept the GUARD,ON / GUARD,OF pseudo-command: it arms
+        # Intercept the GUARD,ON / GUARD,OF pseudo-command: it arms
         # or disarms the link-recovery guard and is NEVER forwarded to FF02.
         head, _, val = cmd.strip().partition(",")
         if head.upper() == _GUARD_CMD:
             self.set_guard(val.strip().upper().startswith("ON"))
             return
-        cmd = self._normalize_cmd(cmd)   ## TILAU ## firmware wants integer duty (OT2,25 not OT2,25.0)
+        cmd = self._normalize_cmd(cmd)   # firmware wants integer duty (OT2,25 not OT2,25.0)
         self._track_cmd(cmd)
         _logd.debug("TilauTC4BLE: send %r", cmd)
         self._ble.submit(self._write(cmd + _CMD_TERM))   ## restore: actually queue the write
 
-    def set_guard(self, armed: bool) -> None:   ## TILAU ##
+    def set_guard(self, armed: bool) -> None:
         """Arm/disarm the link-loss recovery protocol (GUARD,ON / GUARD,OF)."""
         if armed == self._guard_armed:
             return
@@ -272,11 +247,11 @@ class TilauTC4BLE(QObject):
         self.guardChanged.emit(armed)
 
     @property
-    def guard_armed(self) -> bool:   ## TILAU ##
+    def guard_armed(self) -> bool:
         return self._guard_armed
 
     @staticmethod
-    def _normalize_cmd(cmd: str) -> str:   ## TILAU ##
+    def _normalize_cmd(cmd: str) -> str:
         # Coerce 'OTn,<float>' to 'OTn,<int>': the TC4 firmware expects integer
         # duty; a trailing '.0' from a slider value can be rejected outright.
         head, sep, val = cmd.strip().partition(",")
@@ -287,7 +262,7 @@ class TilauTC4BLE(QObject):
                 pass
         return cmd.strip()
 
-    def _track_cmd(self, cmd: str) -> None:   ## TILAU ##
+    def _track_cmd(self, cmd: str) -> None:
         # Mirror commanded duties for actuators not (reliably) echoed by READ so
         # getDrum()/getAirflow() and the post-drop recovery snapshot stay
         # truthful regardless of the call path (raw send() or set_output()).
@@ -303,7 +278,7 @@ class TilauTC4BLE(QObject):
             self._cmd_airflow = duty
         elif h == f"OT{OT_BURNER}":
             self._cmd_burner = duty
-    
+
     def set_output(self, channel: int, level: float) -> None:
         """Set an OT output, clamped to its actuator range."""
         lo, hi = _CLAMP.get(channel, (0, 100))
@@ -340,9 +315,9 @@ class TilauTC4BLE(QObject):
 
     # ── coroutines (run on the private BLE loop) ────────────────────────────
     async def _connect(self) -> None:
-        self._connect_task = asyncio.current_task()   ## TILAU ## track so close() can cancel a pending connect
+        self._connect_task = asyncio.current_task()   # track so close() can cancel a pending connect
         try:
-            self._closing = False       
+            self._closing = False
             self._client = BleakClient(
                 self._address, disconnected_callback=self._on_disconnect
             )
@@ -363,27 +338,27 @@ class TilauTC4BLE(QObject):
                 self.stateChanged.emit("error")
                 return
             # STATE: burner is now 0. Assert a sane airflow; drum keeps the
-            # controller default (not echoed), tracked as commanded.  ## TILAU ##
+            # controller default (not echoed), tracked as commanded.
             #await self._write(f"OT{OT_AIRFLOW},{_CONNECT_AIRFLOW}" + _CMD_TERM)
             self._cmd_drum = _DRUM_DEFAULT
             self._connected = True
-            self._last_rx = time.monotonic()       ## TILAU ## seed before the watchdog starts
-            self._epoch += 1                        ## TILAU ## new generation; invalidates any stale task
+            self._last_rx = time.monotonic()       # seed before the watchdog starts
+            self._epoch += 1                        # new generation; invalidates any stale task
             epoch = self._epoch
             self._poll_task = asyncio.ensure_future(self._poll(epoch))
-            self._watchdog_task = asyncio.ensure_future(self._rx_watchdog(epoch))  ## TILAU ##           
+            self._watchdog_task = asyncio.ensure_future(self._rx_watchdog(epoch))
             _logd.info("TilauTC4BLE connected: %s", self._address)
             self.stateChanged.emit("connected")
-            self._recovering = False               ## TILAU ## link is back
-            if self._restore_pending:              ## TILAU ## reconnected into a live roast
+            self._recovering = False               # link is back
+            if self._restore_pending:              # reconnected into a live roast
                 if self._guard_armed:
                     await self._restore_after_drop()
                 self._restore_pending = False
         except Exception as e:  # noqa: BLE001
             _logd.exception(e)
             self.stateChanged.emit("error")
-        finally:                                   ## TILAU ##
-            self._connect_task = None              ## TILAU ## connect settled (ok/err/cancel)
+        finally:
+            self._connect_task = None              # connect settled (ok/err/cancel)
 
     async def _verified_burner_off(self) -> bool:
         """Assert OT1,0 and confirm the field-3 echo reads 0; retry, else fail."""
@@ -397,7 +372,7 @@ class TilauTC4BLE(QObject):
                 return True
         return False
 
-    # ── link-recovery protocol (## TILAU ##) ────────────────────────────────
+    # ── link-recovery protocol ( ) ────────────────────────────────
     async def _restore_after_drop(self) -> None:
         """Re-assert mechanical state after a reconnect into a live roast.
 
@@ -452,7 +427,7 @@ class TilauTC4BLE(QObject):
         finally:
             self._recovering = False
 
-    async def _rx_watchdog(self, epoch: int) -> None:   ## TILAU ## bound to its connection generation
+    async def _rx_watchdog(self, epoch: int) -> None:   # bound to its connection generation
         # A zombie link (CoreBluetooth "connected" but silent) does NOT fire the
         # disconnected_callback, yet the firmware still emergency-stops. If no
         # telemetry arrives for _RX_STALL_S, force a clean reconnect so recovery
@@ -460,7 +435,7 @@ class TilauTC4BLE(QObject):
         try:
             while self._connected and epoch == self._epoch:
                 await asyncio.sleep(_RX_STALL_CHECK_S)
-                if self._connected and epoch == self._epoch and (time.monotonic() - self._last_rx) > _RX_STALL_S:                    
+                if self._connected and epoch == self._epoch and (time.monotonic() - self._last_rx) > _RX_STALL_S:
                     _logd.warning("TilauTC4BLE: RX stall (>%.1fs) — forcing reconnect", _RX_STALL_S)
                     self._connected = False
                     try:
@@ -476,7 +451,7 @@ class TilauTC4BLE(QObject):
     async def _disconnect(self) -> None:
         try:
             self._closing = True
-            # ## TILAU ## Abort an in-flight connect before tearing down: a pending
+            # Abort an in-flight connect before tearing down: a pending
             # connect destroyed by loop stop leaves a half-open CoreBluetooth link
             # on macOS that blocks every subsequent reconnection.
             if self._connect_task is not None and not self._connect_task.done():
@@ -489,10 +464,10 @@ class TilauTC4BLE(QObject):
                 # SAFETY: re-assert burner off before handing control back.
                 await self._write(f"OT{OT_BURNER},0" + _CMD_TERM)
             self._connected = False
-            if self._reconnect_task is not None:   ## TILAU ## stop any reconnect driver
+            if self._reconnect_task is not None:   # stop any reconnect driver
                 self._reconnect_task.cancel()
                 self._reconnect_task = None
-            if self._watchdog_task is not None:    ## TILAU ## stop the RX watchdog
+            if self._watchdog_task is not None:    # stop the RX watchdog
                 self._watchdog_task.cancel()
                 self._watchdog_task = None
             if self._poll_task is not None:
@@ -509,7 +484,7 @@ class TilauTC4BLE(QObject):
         finally:
             self.stateChanged.emit("disconnected")
 
-    async def _poll(self, epoch: int) -> None:     ## TILAU ## bound to its connection generation
+    async def _poll(self, epoch: int) -> None:     # bound to its connection generation
        # Nothing streams unsolicited: the controller answers one CSV line per READ.
         try:
             while self._connected and epoch == self._epoch:
@@ -552,16 +527,16 @@ class TilauTC4BLE(QObject):
             self._burner_echo = int(float(parts[_IDX_BURNER_ECHO]))
         except (ValueError, IndexError):
             self._burner_echo = None
-        try:   ## TILAU ## airflow duty echo (field 4) for the actuator extra-device
+        try:   # airflow duty echo (field 4) for the actuator extra-device
             self._airflow_echo = int(float(parts[_IDX_AIRFLOW_ECHO]))
         except (ValueError, IndexError):
             self._airflow_echo = None
         with self._lock:
             self._latest = (ambient, bt, et)
-            self._last_rx = time.monotonic()   ## TILAU ## telemetry freshness for the watchdog
+            self._last_rx = time.monotonic()   # telemetry freshness for the watchdog
             self.sampleReady.emit(ambient, bt, et,
                               float(self._burner_echo if self._burner_echo is not None else -1),
-                              float(self._airflow_echo if self._airflow_echo is not None else -1))        
+                              float(self._airflow_echo if self._airflow_echo is not None else -1))
             self._monitor_burner()
         _logd.debug("RX ambient=%.1f BT=%.1f ET=%.1f OT1=%s OT2=%s",
                    ambient, bt, et, self._burner_echo, self._airflow_echo)
@@ -591,7 +566,7 @@ class TilauTC4BLE(QObject):
             return
         # Unexpected link loss mid-session: hand off to the recovery protocol
         # (capture live state, reconnect, restore mechanical state, hold heat).
-        self._handle_unexpected_drop("link_lost")   ## TILAU ##
+        self._handle_unexpected_drop("link_lost")
 
 
 # ── standalone validation harness (no Artisan involved) ─────────────────────

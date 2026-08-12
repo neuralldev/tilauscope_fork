@@ -13,29 +13,9 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ##
-"""Shareable roast card for BeanCave's roast tab (validated mock v3).
+"""Shareable roast card for BeanCave's roast tab: renders a finished roast as a 1200x630 JPEG.
 
-Renders a finished roast as a 1200x630 landscape JPEG, sized for social
-networks and built as a sibling of the green bean card
-(``beancave_social_card``): identity column on the surface at the left, data
-at the right.
-
-    LEFT  — origin + date eyebrow, bean name, process/species badges,
-            a GREEN BEAN block resolved from the live BeanCave record, then a
-            ROAST block opened by the roast level and closed by four figures
-            (duration, DTR, charge, weight loss)
-    RIGHT — the BT curve with ET behind it and RoR BT on its own right axis,
-            milestones marked by a dashed line, a dot on the bean curve and
-            their time under the axis
-
-The curve is drawn from CHARGE to DROP only: the .alog also holds the whole
-cooling tail, which would flatten the roast into a corner of the plot.
-
-RoR is *not* stored in the .alog (``delta2`` is None) — only phase averages
-are. The caller passes the app's own ``evaldeltas(data, "temp2")`` result so
-the card shows exactly the RoR the roast viewer draws; without it the RoR
-curve is simply left out.
+Identity/roast stats on the left, the BT/ET/RoR curve with milestones on the right, drawn CHARGE-to-DROP only.
 """
 
 from __future__ import annotations
@@ -59,9 +39,8 @@ _PAD_TOP = 40
 _PLOT_L, _PLOT_R = 506, 1140
 _PLOT_T, _PLOT_B = 100, 540
 
-# curve colours follow roast_card.py (the existing roast card dialog), where
-# blue is the bean temperature; RoR takes peach and the dashed stroke that
-# _PLOT_PALETTE gives to delta curves.
+# curve colours follow roast_card.py: blue is bean temperature,
+# RoR takes peach with the dashed stroke _PLOT_PALETTE gives delta curves.
 _C_BT = "#89B4FA"
 _C_ET = "#F9E2AF"
 _C_ROR = "#FAB387"
@@ -231,7 +210,7 @@ class RoastSocialCard(CardPainter):
         level = self.roast_level(agtron)
         if level is not None:
             self._rrect(p, QRectF(x + 12, y + 11, 30, 30), 6, fill=level.color_map,
-                        stroke="#4A4A5A")
+                        stroke=THEME['SURFACE1'])
             self._text(p, x + 52, y + 11, level.name, self._font(11, bold=True),
                        THEME['TEXT'])
             self._text(p, x + 52, y + 29, level.description, self._font(8),
@@ -311,11 +290,8 @@ class RoastSocialCard(CardPainter):
         y_min = (min(temps) - 15) // 20 * 20
         y_max = -(-(max(temps) + 15) // 20) * 20
 
-        ## TILAU ## RoR window: between CHARGE and TP the bean temperature falls
-        ## hard, so RoR dives to -60..-100 there. Scaling the axis to that dip
-        ## would squash the whole roasting range into a thin band at the top, so
-        ## the axis is fixed to the useful positive range and the dive is clipped
-        ## to the plot frame — the curve simply enters from the bottom left.
+        # RoR dives to -60..-100 between CHARGE and TP; scaling the axis to that
+        # dip would squash the roasting range, so the axis stays positive-only and the dive is clipped, entering from the bottom left.
         rors = [deltabt[i] for i in span
                 if deltabt is not None and i < len(deltabt)
                 and isinstance(deltabt[i], (int, float)) and deltabt[i] > 0] \
@@ -335,16 +311,16 @@ class RoastSocialCard(CardPainter):
         has_ror = bool(rors)
         self._paint_grid(p, y_min, y_max, r_min, r_max, Y, YR, has_ror)
 
-        ## TILAU ## curves are clipped to the frame; only the axes and the
-        ## milestone labels are allowed to live outside it
+        # curves are clipped to the frame; only the axes and the
+        # milestone labels are allowed to live outside it
         p.save()
         p.setClipRect(QRect(_PLOT_L, _PLOT_T, _PLOT_R - _PLOT_L, _PLOT_B - _PLOT_T))
         self._polyline(p, [(X(timex[i]), Y(et[i])) for i in span
                            if i < len(et) and isinstance(et[i], (int, float))],
                        _C_ET, 1.4, alpha=128)
         if deltabt is not None:
-            ## TILAU ## RoR only exists from ~10 readings after CHARGE; the gaps
-            ## are broken segments, never zeros dragged along the axis
+            # RoR only exists from ~10 readings after CHARGE; the gaps
+            # are broken segments, never zeros dragged along the axis
             segment: list[tuple[float, float]] = []
             for i in span:
                 v = deltabt[i] if i < len(deltabt) else None
@@ -373,8 +349,8 @@ class RoastSocialCard(CardPainter):
             self._text(p, _PLOT_L - 8 - fm.horizontalAdvance(str(int(t))),
                        int(Y(t)) - fm.height() // 2, str(int(t)), font, THEME['SUBTEXT'])
             t += step
-        ## TILAU ## no RoR curve, no RoR axis: an empty scale would promise a
-        ## curve the card never draws
+        # no RoR curve, no RoR axis: an empty scale would promise a
+        # curve the card never draws
         if not has_ror:
             return
         r = r_min
@@ -395,7 +371,7 @@ class RoastSocialCard(CardPainter):
             p.setPen(pen)
             p.drawLine(int(x), _PLOT_T, int(x), _PLOT_B)
             if isinstance(bt[idx], (int, float)):
-                ## TILAU ## dark halo first so the dot reads on top of the curve
+                # dark halo first so the dot reads on top of the curve
                 y = Y(bt[idx])
                 p.setPen(Qt.PenStyle.NoPen)
                 p.setBrush(QBrush(QColor(THEME['BG'])))

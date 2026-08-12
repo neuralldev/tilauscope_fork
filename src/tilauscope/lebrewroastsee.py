@@ -14,7 +14,7 @@
 # Public License along with this program. If not, see
 # <https://www.gnu.org/licenses/>.
 
-# dialog and code gathered from my own device and reverse eng. 
+# dialog and code gathered from my own device and reverse eng.
 
 # AUTHOR
 # TiLau 2025
@@ -49,12 +49,12 @@ HEADER1:Final[int]      = 0x55 # this is the header byte for C1 data exchange
 # RoastSee AquaGauge
 AG_PREFIX = "RoastSee AquaGauge"
 
-class C1UUID(StrEnum): 
+class C1UUID(StrEnum):
     C1_SERVICE_UUID = "bc41e50b-91cd-4916-9152-02d52446ac3a" # service UUID to discover devices 3aac4624d50252911649cd910be541bc
     C1_DIALOG_UUID  = "0000ff03-0000-1000-8000-00805f9b34fb" # clear text channel characteristic
 
-class AGUUID(StrEnum): 
-    AG_SERVICE_UUID = "000000ff-0000-1000-8000-00805f9b34fb" # service UUID to discover devices 
+class AGUUID(StrEnum):
+    AG_SERVICE_UUID = "000000ff-0000-1000-8000-00805f9b34fb" # service UUID to discover devices
     AG_DIALOG_UUID  = "0000ff01-0000-1000-8000-00805f9b34fb" # clear text channel characteristic
 
 # LebrewBLE class for BLE communication with the Lebrew RoastSee C1 device
@@ -64,26 +64,19 @@ class C1MessageType(IntEnum):
 
 class C1Protocol:
     def parse_full_message(self, payload: bytearray) -> dict:
-#        for b in payload:
-#            _log.info(f"Lebrew: payload component: {b}")
-#        _log.info(f"Lebrew: Parsing message payload: {payload}")
         if len(payload) < 3 or payload[0] != C1MessageType.READ_COLOR:
-            return {'valid': False, 'error': 'Invalid length'}        
+            return {'valid': False, 'error': 'Invalid length'}
         (f, d) = struct.unpack('>BH', payload[:3])
         return {"valid": True, "function":int(f), "data":float(d)}
-    
+
     def build_full_message(self, function: int, command: int, data: bytes = b'') -> bytes:
         return struct.pack('BB', function, command) + data
-
-    #def build_full_message(self, function: int, command: int, data: bytes = b'') -> bytes:
-    #    #_logd.debug("c1 build message")
-    #    return struct.pack('BBB', function, command, data) 
 
 class LebrewC1BLE(ClientBLE, C1Protocol): # pyright: ignore [reportGeneralTypeIssues] # Argument to class must be a base class
     connected_signal = pyqtSignal()     # issued on connect
     disconnected_signal = pyqtSignal()  # issued on disconnect
     color_changed_signal = pyqtSignal(float)  # issued on color change
-    
+
     def __init__(self,  device_uuid:str, decimals:int=1):
         super().__init__()
         # handlers
@@ -98,19 +91,16 @@ class LebrewC1BLE(ClientBLE, C1Protocol): # pyright: ignore [reportGeneralTypeIs
         self.add_read(C1UUID.C1_DIALOG_UUID, C1UUID.C1_DIALOG_UUID)
         self.add_write(C1UUID.C1_DIALOG_UUID, C1UUID.C1_DIALOG_UUID)
         self.start(case_sensitive=False, address=device_uuid)
-        
+
     def setLogging(self, b:bool) -> None:
         self._logging = b
 
     def notify_callback(self, _sender:'BleakGATTCharacteristic', data:bytearray) -> None:
-#        _log.info("Lebrew: Notification received")
         parsed_msg = self.parse_full_message(data)
-#        _log.info(f"Lebrew: Parsed message: {parsed_msg}")
         if parsed_msg.get('valid'):
             value = round(parsed_msg['data'] / 100.0, self.rounding)
             self.color_read = value
-#            _log.info(f"Lebrew: Color changed: {value}")
-            self.color_changed_signal.emit(value)  
+            self.color_changed_signal.emit(value)
         else:
             _logd.debug("invalid message")
 
@@ -142,14 +132,11 @@ class LebrewC1BLE(ClientBLE, C1Protocol): # pyright: ignore [reportGeneralTypeIs
         super().stop()
 
     def send_command(self, function: int, command: int, data: bytes = b'')->bool:
-        #_logd.debug("building command")
-        if not self.isconnected(): 
+        if not self.isconnected():
             return False
-        # try to send to airwave
         msg = self.build_full_message(function, command, data)
         try:
             self.send(msg, True, C1UUID.C1_DIALOG_UUID)
-            #_logd.debug("command sent")
             return True
         except Exception as e:
             _log.error(f"error occurred {e}")
@@ -159,9 +146,9 @@ class LebrewColorChecker(QObject): # pyright: ignore [reportGeneralTypeIssues] #
     connected_signal = pyqtSignal()
     disconnected_signal = pyqtSignal()
     color_changed_signal = pyqtSignal(float) # Transmet la valeur de la couleur
-    
+
     def __init__(self,  name:str):
-        super().__init__() 
+        super().__init__()
         self.c1 = LebrewC1BLE(name)
         self.c1.connected_signal.connect(self._relay_connected)
         self.c1.disconnected_signal.connect(self._relay_disconnected)
@@ -182,7 +169,7 @@ class LebrewColorChecker(QObject): # pyright: ignore [reportGeneralTypeIssues] #
         self.connected_signal.disconnect()
         self.disconnected_signal.disconnect()
         self.c1.stop()
-        
+
 # LebrewBLE class for BLE communication with the Lebrew AquaGauge device
 
 class AGMessageType(IntEnum):
@@ -206,38 +193,37 @@ class AGProtocol:
         # Conversion du bytearray en string et retrait des caractères nuls
         try:
             line = raw_data.decode('ascii').strip('\x00')
-            
+
             match = re.search(r"aw=([-+]?\d*\.\d+|\d+),dew=([-+]?\d*\.\d+|\d+)", line)
-            
+
             if match:
                 aw_val = float(match.group(1))
                 dew_val = float(match.group(2))
-                
+
                 # Validation de cohérence simple
                 if 0 <= aw_val <= 1.0:
                     return {"valid": True, "type": AGMessageType.READ_WA, "aw": aw_val, "dew": dew_val}
                 else:
                     _logd.warning(f"Alerte : Valeur aw hors norme : {aw_val}")
-                    
+
         except Exception as e:
             _logd.debug(f"Erreur de lecture : {e}")
-    
+
         return {"valid": False, "type": AGMessageType.ERROR, "error": "Invalid data format"}
 
     def parse_full_message(self, payload: bytearray) -> dict:
         if self.validate_signature(payload):
             return {'valid': True, 'type': AGMessageType.SIGNATURE, 'data': payload}
-        #_logd.debug(f"AGProtocol: Parsing message payload: {payload}")
         return self.parse_lebrew_data(payload)
-    
+
     def build_full_message(self, function: int, command: int, data: bytes = b'') -> bytes:
-        return struct.pack('BB', function, command, data) 
+        return struct.pack('BB', function, command, data)
 
 class LebrewAGBLE(ClientBLE, AGProtocol): # pyright: ignore [reportGeneralTypeIssues] # Argument to class must be a base class
     connected_signal = pyqtSignal()     # issued on connect
     disconnected_signal = pyqtSignal()  # issued on disconnect
     wa_changed_signal = pyqtSignal(float)  # issued on water activity change
-    
+
     def __init__(self,  device_uuid:str, decimals:int=2):
         super().__init__()
         # handlers
@@ -257,20 +243,19 @@ class LebrewAGBLE(ClientBLE, AGProtocol): # pyright: ignore [reportGeneralTypeIs
         self.add_write(AGUUID.AG_DIALOG_UUID, AGUUID.AG_DIALOG_UUID)
         # NE PAS appeler start() ici — TilauBLEScanner fournira le device
         # via on_devices_found(). Cela évite un scan BLE concurrent au démarrage.
-        
+
     def setLogging(self, b:bool) -> None:
         self._logging = b
 
     def notify_callback(self, _sender:'BleakGATTCharacteristic', data:bytearray) -> None:
-        #_logd.debug(f"received notify from aqua gauge data={data}")
         parsed_msg = self.parse_full_message(data)
         if parsed_msg['type'] == AGMessageType.SIGNATURE and parsed_msg.get('valid'):
-            _log.info("LebrewAGBLE: Device signature received, device is authentic.")   
+            _log.info("LebrewAGBLE: Device signature received, device is authentic.")
             return
         if parsed_msg.get('valid') and parsed_msg['type'] == AGMessageType.READ_WA:
             self.water_activity_read = parsed_msg['aw']
             _logd.debug(f"got {self.water_activity_read}")
-            self.wa_changed_signal.emit(parsed_msg['aw'])  
+            self.wa_changed_signal.emit(parsed_msg['aw'])
         else:
             _logd.debug("invalid message from lebrew aqua gauge")
 
@@ -296,7 +281,7 @@ class LebrewAGBLE(ClientBLE, AGProtocol): # pyright: ignore [reportGeneralTypeIs
 
     def scan_and_connect_override(
             self,
-            device_descriptions: tuple[dict,dict], ## TILAU ## upstream tuple (was dict)
+            device_descriptions: tuple[dict,dict], # upstream tuple (was dict)
             blacklist: set,
             case_sensitive: bool,
             disconnected_callback,
@@ -337,14 +322,11 @@ class LebrewAGBLE(ClientBLE, AGProtocol): # pyright: ignore [reportGeneralTypeIs
         super().stop()
 
     def send_command(self, function: int, command: int, data: bytes = b'')->bool:
-        #_logd.debug("building command")
-        if not self.isconnected(): 
+        if not self.isconnected():
             return False
-        # try to send to airwave
         msg = self.build_full_message(function, command, data)
         try:
             self.send(msg, True, AGUUID.AG_DIALOG_UUID)
-            #_logd.debug("command sent")
             return True
         except Exception as e:
             _log.error(f"error occurred {e}")
@@ -354,9 +336,9 @@ class LebrewWaterActivityChecker(QObject): # pyright: ignore [reportGeneralTypeI
     connected_signal = pyqtSignal()
     disconnected_signal = pyqtSignal()
     wa_changed_signal = pyqtSignal(float) # Transmet la valeur de la couleur
-    
+
     def __init__(self,  name:str):
-        super().__init__() 
+        super().__init__()
         self.ag = LebrewAGBLE(name)
         self.ag.connected_signal.connect(self._relay_connected)
         self.ag.disconnected_signal.connect(self._relay_disconnected)
@@ -374,10 +356,7 @@ class LebrewWaterActivityChecker(QObject): # pyright: ignore [reportGeneralTypeI
 
     @pyqtSlot(list)
     def on_devices_found(self, devices: list) -> None:
-        """
-        Slot branché sur TilauBLEScanner.devices_found.
-        Filtre sur l'adresse UUID connue du Lebrew AquaGauge.
-        """
+        """Slot branché sur TilauBLEScanner.devices_found; filtre sur l'UUID connue du AquaGauge."""
         if self.ag._connecting or self.ag._running:
             return
         for bd, _ad in devices:

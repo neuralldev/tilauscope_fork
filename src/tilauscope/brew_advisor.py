@@ -16,57 +16,29 @@
 # -*- coding: utf-8 -*-
 
 # ── SCIENTIFIC SOURCES ────────────────────────────────────────────────────
-# The recipe heuristics below are anchored on peer-reviewed work, not on
-# common web/barista lore. Key references used while coding this module:
+# The recipe heuristics below are anchored on peer-reviewed work. Key references:
 #
-# [S1] Batali, Frost, Lebrilla, Guinard, Ristenpart (2020). "Brew temperature,
-#      at fixed brew strength and extraction, has little impact on the sensory
-#      profile of drip brew coffee." Scientific Reports 10, 16450.
-#      https://www.nature.com/articles/s41598-020-73341-4
-#      → Once TDS and extraction yield (EY) are fixed, brew temperature has
-#        little sensory effect. Grind / time / ratio (which set TDS & EY) are
-#        the real levers. Temperature is kept only as a COARSE anchor by roast
-#        level; fine per-modifier °C tweaks are deliberately NOT applied.
+# [S1] Batali et al. (2020), Sci Rep 10, 16450. Once TDS/EY are fixed, brew
+#      temperature has little sensory effect; grind/time/ratio are the real
+#      levers, so fine per-modifier °C tweaks are deliberately not applied.
 #
-# [S2] Cameron, Morisco, Hempel, ... Hendon (2020). "Systematically Improving
-#      Espresso: Insights from Mathematical Modeling and Experiment."
-#      Matter 2(3), 631-648. https://doi.org/10.1016/j.matt.2019.12.019
-#      → EY-vs-grind is NON-monotonic in espresso: too fine causes channeling /
-#        clogging, lowering EY and reproducibility. Even saturation (pre-
-#        infusion) matters. Grind heuristics stay conservative.
+# [S2] Cameron et al. (2020), Matter 2(3). EY-vs-grind is non-monotonic in
+#      espresso (too fine causes channeling), so grind heuristics stay conservative.
 #
-# [S3] Hendon, Colonna-Dashwood & Colonna-Dashwood (2014). "The Role of
-#      Dissolved Cations in Coffee Extraction." J. Agric. Food Chem. 62(21).
-#      https://doi.org/10.1021/jf501687c
-#      → It is the TYPE of hardness that matters: bicarbonate (KH / alkalinity)
-#        buffers acids and mutes flavour; Ca/Mg hardness (GH) raises extraction.
-#        GH and KH are therefore treated on SEPARATE axes (see _mod_water).
+# [S3] Hendon et al. (2014), J. Agric. Food Chem. 62(21). Bicarbonate (KH)
+#      buffers acids and mutes flavour while Ca/Mg (GH) raises extraction, so
+#      GH and KH are treated on separate axes (see _mod_water).
 #
-# [S4] Degassing & rest windows. Wang & Lim (2014), "Effect of roasting
-#      conditions on CO2 degassing behavior in coffee", Food Res. Int.
-#      https://doi.org/10.1016/j.foodres.2014.01.061 ; time-resolved gravimetric
-#      method, J. Agric. Food Chem. (2017) https://doi.org/10.1021/acs.jafc.7b03310 ;
-#      post-roast maturation (2025) https://doi.org/10.1007/s00217-025-04873-0 ;
-#      post-roast rest sensory study (≥8 d peak for 73% of coffees).
-#      → Residual CO2 is positively correlated with roast lightness; release
-#        rate rises with roast degree — a light roast degasses ~3x SLOWER than a
-#        dark one. So darker roasts are brew-ready sooner AND stale sooner
-#        (shorter window); lighter roasts are ready later and hold longer. The
-#        rest window is therefore roast-coupled on BOTH ends (see degassing_band)
-#        and shifted later for pressure brewing, which is more CO2-sensitive.
+# [S4] Wang & Lim (2014) plus later gravimetric/post-roast studies. Residual
+#      CO2 correlates with roast lightness and degasses faster in dark roasts,
+#      so the rest window is roast-coupled on both ends (see degassing_band).
 #
-# [S5] Luther / Artisan project — "Understanding Roast Color" (2023).
-#      https://artisan-roasterscope.blogspot.com/2023/03/understanding-roast-color.html
-#      → Roast-colour scales are device-dependent with no validated linear
-#        conversion between them (e.g. a 10 pt Agtron step ≈ 16 pt Tonino).
-#        Agtron is nonetheless the only *normalised* roast-level reference, so
-#        other meters are APPROXIMATED (not rejected) by the single shared
-#        converter tilauscope_types.to_agtron — flagged there as empirical.
+# [S5] Luther / Artisan project, "Understanding Roast Color" (2023). Roast-colour
+#      scales are device-dependent with no validated linear conversion, so other
+#      meters are approximated via the single shared to_agtron converter.
 #
-# [S6] Guinard et al. (2023). "A new Coffee Brewing Control Chart..." J. Food
-#      Sci. 88(4). https://doi.org/10.1111/1750-3841.16531
-#      → The classic 18-22% "golden cup" window is a convention, not a law;
-#        EY targets are presented as guidance only.
+# [S6] Guinard et al. (2023), J. Food Sci. 88(4). The 18-22% "golden cup"
+#      window is a convention, not a law; EY targets are guidance only.
 
 from __future__ import annotations
 
@@ -75,15 +47,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
-# Single shared roast-colour → Agtron converter (re-exported for callers that
-# already import it from here, e.g. roast_timeline).
+# Single shared roast-colour → Agtron converter, re-exported for callers that
+# import it from here (e.g. roast_timeline).
 from tilauscope.tilauscope_types import to_agtron  # noqa: F401
-## TILAU ## Water activity is judged in ONE place. The Storage tab owns the aw
-## doctrine (and lets the operator move its thresholds), so the brew advisor
-## reads the same zones rather than keeping a second, hardcoded opinion — a bean
-## must not be "optimal" in one tab and "high moisture" in another. Both modules
-## are pure and Qt-free; the operator's thresholds are resolved at the extraction
-## boundary and travel in on BrewInput.
+# Water activity is judged in one place: the Storage tab owns the aw doctrine,
+# so the brew advisor reads the same zones instead of a second hardcoded opinion.
 from tilauscope.storage_advisor import (
     DEFAULT_THRESHOLDS, AwZone, StorageThresholds, classify_aw)
 
@@ -121,12 +89,12 @@ class PIType(Enum):
 
 
 class EspressoStyle(Enum):
-    ## TILAU ## Two legitimate schools for pulling a roast-appropriate ratio.
-    ## CLASSIC keeps the grind the roast asks for and lets the shot run as long
-    ## as the ratio needs (a light roast reaches 1:3 in ~42 s). TURBO fixes the
-    ## shot at ~25 s and opens the grind to get the flow, which by construction
-    ## lands on nearly the same grind for every roast — in turbo the roast is
-    ## expressed by the ratio alone. Neither is wrong; they are different drinks.
+    # Two legitimate schools for pulling a roast-appropriate ratio.
+    # CLASSIC keeps the grind the roast asks for and lets the shot run as long
+    # as the ratio needs (a light roast reaches 1:3 in ~42 s). TURBO fixes the
+    # shot at ~25 s and opens the grind to get the flow, which by construction
+    # lands on nearly the same grind for every roast — in turbo the roast is
+    # expressed by the ratio alone. Neither is wrong; they are different drinks.
     CLASSIC = "classic"
     TURBO = "turbo"
 
@@ -257,9 +225,9 @@ class BrewInput:
     water_kh_ppm: float = 0.0
     espresso_machine: EspressoMachine = EspressoMachine.OTHER
     espresso_style: EspressoStyle = EspressoStyle.CLASSIC
-    ## TILAU ## The operator's own storage thresholds, resolved at the boundary.
-    ## Defaults match the Storage tab's defaults, so an engine used without a UI
-    ## still judges aw the same way.
+    # The operator's own storage thresholds, resolved at the boundary.
+    # Defaults match the Storage tab's defaults, so an engine used without a UI
+    # still judges aw the same way.
     aw_thresholds: StorageThresholds = DEFAULT_THRESHOLDS
 
 
@@ -276,12 +244,12 @@ class EspressoProfile:
     machine: EspressoMachine
     pi_type: PIType
     pi_seconds: int
-    ## TILAU ## Pre-infusion is two physically distinct moments on any machine
-    ## where the operator holds it: water flows in until the puck is saturated
-    ## (WET), then flow stops and the puck sits while pressure equalises and CO2
-    ## escapes (DWELL). They were reported as one number, which asked a La
-    ## Marzocco or E61 owner to guess where the paddle or the lever should move.
-    ## The two ALWAYS sum to pi_seconds, so the shot clock is unchanged.
+    # Pre-infusion is two physically distinct moments on any machine
+    # where the operator holds it: water flows in until the puck is saturated
+    # (WET), then flow stops and the puck sits while pressure equalises and CO2
+    # escapes (DWELL). They were reported as one number, which asked a La
+    # Marzocco or E61 owner to guess where the paddle or the lever should move.
+    # The two ALWAYS sum to pi_seconds, so the shot clock is unchanged.
     pi_wet_s: int
     pi_dwell_s: int
     pre_brew_seconds: int     # 0 => no independent low-flow pre-brew
@@ -335,12 +303,10 @@ class RoastLevel:
     grind_mult: float
     ratio: float              # filter ratio DELTA off the method anchor
     pi_base_s: int            # espresso pre-infusion baseline seconds
-    ## TILAU ## Espresso carries an ABSOLUTE ratio, not a delta off 1:2. A light
-    ## roast is dense and poorly soluble and needs a long shot to reach a decent
-    ## yield; a dark roast is highly soluble and releases its bitterness early,
-    ## so it must be cut short. That is the whole distance between a Nordic long
-    ## shot and an Italian ristretto — and the ratio was previously pinned at
-    ## 1:2.0 for every roast, the only ratio lever in the module that never moved.
+    # Espresso carries an ABSOLUTE ratio, not a delta off 1:2. A light roast is
+    # dense/poorly soluble and needs a long shot to reach a decent yield; a dark
+    # roast is highly soluble and must be cut short — the distance between a
+    # Nordic long shot and an Italian ristretto.
     esp_ratio: float = 2.0
 
 
@@ -387,12 +353,9 @@ METHOD_ORDER: tuple[str, ...] = (
     "ESPRESSO", "V60", "FRENCH_PRESS", "AEROPRESS", "PULSAR", "WEBER_BIRD", "MOKA",
 )
 
-# Pressurised extraction phase of a shot, AFTER any pre-brew / pre-infusion
+# Pressurised extraction phase of a shot, after any pre-brew / pre-infusion
 # lead-in. Calibrated so the reference case reproduces the METHOD_ANCHORS
 # espresso total exactly: MEDIUM_LIGHT has pi_base_s = 5, and 5 + 23 = 28 s.
-# (The old hardcoded "full pressure at 8 s" matched no reference at all — 8 s is
-# the EXTREMELY_LIGHT pre-infusion.) Machines with a real low-flow lead-in now
-# get a shot long enough to contain it.
 _ESPRESSO_PULL_S: int = 23
 
 
@@ -429,11 +392,9 @@ def grind_cat(um: int) -> GrindCat:
 
 
 # ── Degassing / rest window (single source of truth) ──────────────────────
-# Shared by the Brew Advisor (_mod_rest, _espresso_profile) AND the Brew
-# Planning timeline, so the two never disagree. [S4]: bands are roast-coupled
-# on both ends (dark = ready sooner, stales sooner; light = ready later, holds
-# longer). Day values are deliberately COARSE — the science gives ranges, and
-# actual peak depends on bean and packaging.
+# Shared by the Brew Advisor and the Brew Planning timeline so the two never
+# disagree. [S4]: bands are roast-coupled on both ends (dark ready/stales
+# sooner, light ready/holds later). Day values stay coarse — the science gives ranges.
 @dataclass(frozen=True)
 class DegassingBand:
     key: str            # identity + THEME colour key for the timeline
@@ -443,10 +404,8 @@ class DegassingBand:
     peak_end_day: int   # last day of the peak window before oxidative staling
 
 
-# peak_day is anchored on the sensory literature: most specialty coffees peak
-# 7-10 days off roast and 73% of coffees peak at >=8 days (post-roast rest study
-# [S4]); darker roasts degas faster and peak earlier, lighter/nordic later. The
-# progression stays COARSE (5/8/11/14) — the science gives ranges, not a day.
+# peak_day is anchored on the sensory literature [S4]: most specialty coffees
+# peak 7-10 days off roast; darker roasts peak earlier, lighter later.
 DEGASSING_BANDS: tuple[DegassingBand, ...] = (
     DegassingBand("VERY_LIGHT_ROAST", 90, 7, 14, 30),   # Agtron >= 90
     DegassingBand("LIGHT_ROAST",      70, 5, 11, 25),   # 70-90
@@ -455,9 +414,8 @@ DEGASSING_BANDS: tuple[DegassingBand, ...] = (
 )
 # Pressure brewing (espresso/moka) tolerates residual CO2 poorly → rest longer.
 PRESSURE_REST_SHIFT_DAYS: int = 3
-# Oxidative tail after the peak window: still drinkable ("near peak"), but no
-# longer at its best. Staling here is gradual, not a cliff — the science gives a
-# soft decline, so we keep a generous, COARSE grace band before "clearly stale".
+# Oxidative tail after the peak window: still drinkable but past its best;
+# staling is gradual, not a cliff, so the grace band before "stale" stays generous.
 NEAR_PEAK_TAIL_DAYS: int = 14
 
 
@@ -473,10 +431,8 @@ def degassing_band(agtron: float) -> DegassingBand:
 
 
 # ── Rest status (single interpretation of the degassing bands) ─────────────
-# The bands above give the NUMBERS; this gives their READING. Every surface that
-# talks about freshness — the Brew Advisor recipe notes, the espresso pre-
-# infusion, the startup "brew-ready" toast — must go through here so they can
-# never disagree on whether a given day is fresh / optimal / near-peak / stale.
+# The bands above give the numbers; this gives their reading. Every surface
+# that talks about freshness must go through here so none can disagree.
 class RestStatus(Enum):
     FRESH = "fresh"          # still degassing, extraction unstable
     OPTIMAL = "optimal"      # inside the peak window
@@ -518,12 +474,8 @@ def rest_window(agtron: float, days_off: int,
 
 
 # ── Taste feedback → diagnosis (pure) ─────────────────────────────────────
-# Sour and bitter are NOT two ends of one axis: they are distinct failure modes
-# that can co-occur, and the most common mistake is to treat them as a single
-# slider. "Sour → grind finer" is exactly backwards when the brew also ran slow,
-# because slow+sour means water channelled through the bed instead of extracting
-# it. The measured time is therefore part of the diagnosis, not decoration — it
-# is what separates a genuine under-extraction from uneven extraction.
+# Sour and bitter are distinct failure modes that can co-occur, not two ends of
+# one axis. Measured time is part of the diagnosis: slow+sour means channeling, not under-extraction.
 class TasteCode(Enum):
     SOUR = "sour"
     BITTER = "bitter"
@@ -574,12 +526,8 @@ class BrewDiagnosis:
 _GRIND_STEP: float = 0.06
 _TIME_FAST: float = 0.85      # measured / planned below this = ran fast
 _TIME_SLOW: float = 1.15      # above this = ran slow
-## TILAU ## A ratio step has to match the scale of the ratio it acts on, not the
-## family: filter lives around 1:16 where one useful step is a whole point,
-## espresso around 1:2 where that would be a different drink, and moka is
-## pressure-family yet brews at 1:10. Sizing the step proportionally makes "one
-## notch less water" mean the same THING in the cup at every ratio — and at 6 %
-## it lands on the traditional 1.0 filter step on its own.
+# A ratio step matches the scale of the ratio it acts on, not the family
+# (filter ~1:16, espresso ~1:2, moka 1:10), so "one notch" means the same thing at every ratio.
 _RATIO_STEP_PCT: float = 0.06
 
 
@@ -668,12 +616,8 @@ def diagnose(tastes: set[TasteCode], planned_time_s: int, measured_time_s: int,
 
 
 # ── Cross-bean setup offset (pure) ────────────────────────────────────────
-# If every bean needs the same correction in the same direction, that is not a
-# property of the beans — it is a property of the setup. Deliberately NOT called
-# a "grinder offset": what is actually measured is the systematic gap between
-# the engine's recommendation and what this particular kitchen produces, which
-# also carries the palate, the water and the technique. Attributing it to the
-# grinder alone would be an overclaim.
+# If every bean needs the same correction in the same direction, that is a
+# property of the setup, not the beans — not called "grinder offset" since it also carries palate, water and technique.
 _OFFSET_MIN_SAMPLES: int = 4      # below this, a median is just noise
 _OFFSET_MIN_AGREEMENT: float = 0.75   # share that must point the same way
 _OFFSET_MIN_EFFECT: float = 0.03  # under 3 %, not worth acting on
@@ -730,12 +674,8 @@ def _mod_weight_loss(inp: BrewInput) -> RecipeDelta:
     return RecipeDelta()
 
 
-# Plausibility band for a development ratio. A real drum roast lands well
-# inside it; a value outside means the phase breakdown was partial rather than
-# that the roast was extreme — BeanCave computes dev/(dry+mid+dev), so an alog
-# with dry and Maillard missing yields a nonsensical DTR of 100 %. Outside the
-# band we fall back to absolute development time instead of reading a data
-# artifact as a roasting fact.
+# Plausibility band for a development ratio. Outside it, the phase breakdown
+# is likely partial (e.g. missing dry/Maillard data), not an extreme roast, so we fall back to absolute development time.
 _DTR_MIN: float = 0.01
 _DTR_MAX: float = 0.50
 
@@ -872,9 +812,9 @@ def _mod_rest(inp: BrewInput, family: BrewFamily, agtron: float) -> RecipeDelta:
 
 
 def _mod_moisture(inp: BrewInput) -> RecipeDelta:
-    ## TILAU ## Zones come from the Storage advisor, thresholds included, so the
-    ## same bean cannot read "optimal" in the Storage tab and "high moisture"
-    ## here. OPTIMAL and UNKNOWN say nothing worth a line in the recipe.
+    # Zones come from the Storage advisor, thresholds included, so the
+    # same bean cannot read "optimal" in the Storage tab and "high moisture"
+    # here. OPTIMAL and UNKNOWN say nothing worth a line in the recipe.
     notes: list[Note] = []
     aw = round(inp.water_activity, 2)
     zone = classify_aw(inp.water_activity, inp.aw_thresholds)
@@ -890,11 +830,8 @@ def _mod_moisture(inp: BrewInput) -> RecipeDelta:
 
 
 # ── Espresso machine profile ──────────────────────────────────────────────
-## TILAU ## Seconds of low-pressure flow needed per gram of dry coffee to
-## saturate the puck. Wetting is a FILL: a deeper basket holds more, so it takes
-## proportionally longer. Calibrated on the common case (18 g → 3 s) because that
-## is the only point anyone has a feel for; the slope itself is a convention
-## awaiting data, like _POUR_FLOW_THRESHOLD (wiki/Brew-DialIn-Feedback-Spec.md §6).
+# Seconds of low-pressure flow needed per gram of dry coffee to saturate the
+# puck. Calibrated on the common case (18 g → 3 s); the slope is a convention awaiting data (see wiki/Brew-DialIn-Feedback-Spec.md §6).
 _PI_WET_S_PER_G: float = 0.17
 
 
@@ -917,13 +854,8 @@ def _espresso_profile(level: RoastLevel, days_off: int, agtron: float,
         # Extended low-flow window (Slayer/profiler/lever/DB-flow).
         pre_brew = max(12, min(45, pi_s * 3))
 
-    ## TILAU ## Wetting scales with the dose it has to soak; the dwell absorbs
-    ## everything left over — including, deliberately, the whole freshness bonus
-    ## added above. A puck that is still degassing needs to SIT longer, not to be
-    ## filled longer: letting the +3 s inflate the wetting would push more water
-    ## through a puck that has not yet stopped moving, which is what the bonus
-    ## exists to avoid. Wetting is capped by the total so the dwell never goes
-    ## negative; when nothing is left the dwell step is simply not shown.
+    # Wetting scales with the dose; the dwell absorbs everything left over,
+    # including the freshness bonus — a still-degassing puck needs to sit longer, not be filled longer.
     pi_wet = max(1, min(pi_s, int(round(_PI_WET_S_PER_G * max(0.0, dose_g)))))
     pi_dwell = max(0, pi_s - pi_wet)
 
@@ -937,11 +869,8 @@ def _espresso_profile(level: RoastLevel, days_off: int, agtron: float,
 
 
 # ── Pour-plan builders (per family) ───────────────────────────────────────
-## TILAU ## Roughly what the largest common model of each brewer holds, in g of
-## water — and for espresso, of dose, since the basket is what limits a shot.
-## The dose selector goes to 60 g, which asks an AeroPress for 930 g of water.
-## These only WARN: someone may own a bigger brewer than the common one, so the
-## recipe is still produced rather than clamped to a size nobody asked for.
+# Roughly what the largest common model of each brewer holds, in g of water.
+# These only warn — the recipe is still produced, never clamped to this size.
 _BREWER_CAPACITY_G: dict[str, float] = {
     "V60": 700.0,           # 02 holds ~500, 03 ~900
     "AEROPRESS": 250.0,     # chamber
@@ -952,9 +881,9 @@ _BREWER_CAPACITY_G: dict[str, float] = {
 }
 _MAX_BASKET_G: float = 25.0
 
-## TILAU ## What a pour can actually deliver, in g/s. A gooseneck onto a cone
-## bed pours ~3-4 g/s before it starts digging; a flat no-bypass bed (Pulsar)
-## tolerates a much faster single add because there is no cone wall to erode.
+# What a pour can actually deliver, in g/s. A gooseneck onto a cone
+# bed pours ~3-4 g/s before it starts digging; a flat no-bypass bed (Pulsar)
+# tolerates a much faster single add because there is no cone wall to erode.
 _POUR_RATE_CONE: float = 3.5
 _POUR_RATE_FLAT: float = 6.0
 _POUR_RATE_VESSEL: float = 8.0   # kettle into a vessel: no bed to protect
@@ -991,10 +920,7 @@ def _build_steps(rec: BrewRecipe) -> list[PourStep]:
     tt = rec.total_time_s
 
     if rec.method_id == "ESPRESSO":
-        # The shot clock accumulates across the phases the machine profile
-        # actually declares. Previously every lead-in step sat at 0:00 with full
-        # pressure hardcoded at 0:08, which made a 24 s low-flow pre-brew claim
-        # to finish inside an 8 s window.
+        # The shot clock accumulates across the phases the machine profile declares.
         ep = rec.espresso
         steps: list[PourStep] = []
         # Prep, before the shot clock starts.
@@ -1003,10 +929,8 @@ def _build_steps(rec: BrewRecipe) -> list[PourStep]:
         if ep and ep.needs_manual_preheat:
             steps.append(PourStep("step_es_preheat", 0, 0))
         t = 0
-        ## TILAU ## The generic "pre-wet" line is exactly the wetting phase the
-        ## split below now describes properly — with a duration and a gesture.
-        ## Kept only where that split does not happen, otherwise the plan showed
-        ## two steps for one action, both stamped 0:00.
+        # Generic pre-wet line, used only when the wetting phase is not already
+        # decomposed into its own steps below.
         _held = ep is not None and ep.pi_type in (PIType.LINE, PIType.PASSIVE,
                                                   PIType.MANUAL) and ep.pi_dwell_s > 0
         if ep and ep.pre_wet and not _held:
@@ -1015,10 +939,10 @@ def _build_steps(rec: BrewRecipe) -> list[PourStep]:
             steps.append(PourStep("step_es_prebrew", t, 0, {"s": ep.pre_brew_seconds}))
             t += ep.pre_brew_seconds
         if ep:
-            ## TILAU ## Where the operator holds the pre-infusion himself, the two
-            ## phases are two different gestures and are named as such. Where the
-            ## machine runs it (programmable, low-flow needle, or none at all)
-            ## there is no gesture to decompose: one line, one number to set.
+            # Where the operator holds the pre-infusion himself, the two
+            # phases are two different gestures and are named as such. Where the
+            # machine runs it (programmable, low-flow needle, or none at all)
+            # there is no gesture to decompose: one line, one number to set.
             if _held:
                 suffix = "_lever" if ep.pi_type in (PIType.PASSIVE, PIType.MANUAL) else "_line"
                 steps.append(PourStep("step_es_pi_wet" + suffix, t, 0, {"s": ep.pi_wet_s}))
@@ -1045,10 +969,10 @@ def _build_steps(rec: BrewRecipe) -> list[PourStep]:
             PourStep("step_moka_heat", 60, 0),
             PourStep("step_moka_gurgle", tt, total, {"g": total}),
         ]
-    ## TILAU ## Filling a vessel is still a pour. The step after the fill is what
-    ## the live corridor treats as "all the water should be in by now", so
-    ## hardcoding it (10 s on the AeroPress) demanded >20 g/s and flagged every
-    ## normal fill as "behind" from the first second.
+    # Filling a vessel is still a pour. The step after the fill is what
+    # the live corridor treats as "all the water should be in by now", so
+    # hardcoding it (10 s on the AeroPress) demanded >20 g/s and flagged every
+    # normal fill as "behind" from the first second.
     fill_s = _pour_seconds(total, _POUR_RATE_VESSEL)
     if fam == BrewFamily.IMMERSION:
         steep = max(30, fill_s)
@@ -1079,13 +1003,8 @@ def _build_steps(rec: BrewRecipe) -> list[PourStep]:
     # Percolation / hybrid with bloom (V60, Pulsar)
     bloom = rec.bloom_g
     steps = [PourStep("step_bloom", 0, bloom, {"g": bloom})]
-    ## TILAU ## Pour deadlines are derived from how long the water actually
-    ## takes to pour, for two reasons the old fixed offsets got wrong. First,
-    ## they were measured from the start of the BLOOM, so the pour window was
-    ## whatever was left after it — 15 s, in which the first pour had to deliver
-    ## ~100 g (6.5 g/s). Second, they were fixed while the water scales with
-    ## dose, so the required rate grew with the batch. Both produced schedules a
-    ## gooseneck cannot execute without dumping and channelling the bed.
+    # Pour deadlines are derived from how long the water actually takes to
+    # pour, so the required rate scales with dose instead of a fixed offset a gooseneck cannot execute at every batch size.
     if rec.method_id == "PULSAR":
         spin_at = rec.bloom_s
         steps.append(PourStep("step_pulsar_spin", spin_at, bloom))
@@ -1125,8 +1044,8 @@ class BrewAdvisor:
 
         temp = anchor.temp_c + level.delta_t
         grind = float(anchor.grind_um) * level.grind_mult
-        ## TILAU ## Espresso reads its ratio straight from the roast level;
-        ## moka stays on its anchor (the pot sets the ratio, not the bean).
+        # Espresso reads its ratio straight from the roast level;
+        # moka stays on its anchor (the pot sets the ratio, not the bean).
         if method_id == "ESPRESSO":
             ratio = level.esp_ratio
         else:
@@ -1153,11 +1072,11 @@ class BrewAdvisor:
                 agit_override = dlt.agitation
             notes.extend(dlt.notes)
 
-        ## TILAU ## Two modifiers can legitimately pull the ratio opposite ways
-        ## (a short development wants more water, a less dense bean wants less).
-        ## The recipe already reconciles them, but the notes were printed as two
-        ## independent instructions, so the panel told the operator to widen AND
-        ## tighten the ratio with nothing saying which won. Say so explicitly.
+        # Two modifiers can legitimately pull the ratio opposite ways
+        # (a short development wants more water, a less dense bean wants less).
+        # The recipe already reconciles them, but the notes were printed as two
+        # independent instructions, so the panel told the operator to widen AND
+        # tighten the ratio with nothing saying which won. Say so explicitly.
         if ratio_up > 0 and ratio_down < 0 and abs(ratio_up + ratio_down) < 0.6:
             notes.append((Severity.INFO, NoteCode.RATIO_OFFSET, {}))
 
@@ -1189,9 +1108,9 @@ class BrewAdvisor:
             ratio_str = f"1:{ratio:.0f}" if abs(ratio - round(ratio)) < 0.05 else f"1:{ratio:.1f}"
             water_g = round(dose * ratio, 0)
 
-        ## TILAU ## The dose selector goes to 60 g, which asks an AeroPress for
-        ## 930 g of water and an espresso basket for a 60 g dose. Warn rather
-        ## than clamp: someone may own a larger brewer than the common one.
+        # The dose selector goes to 60 g, which asks an AeroPress for
+        # 930 g of water and an espresso basket for a 60 g dose. Warn rather
+        # than clamp: someone may own a larger brewer than the common one.
         cap = _BREWER_CAPACITY_G.get(method_id)
         if cap and water_g > cap:
             notes.append((Severity.WARN, NoteCode.CAPACITY,
@@ -1209,18 +1128,18 @@ class BrewAdvisor:
             espresso = _espresso_profile(level, inp.days_off_roast, agtron, spec, dose)
             # Shot length follows the machine profile instead of a fixed 28 s: a
             # Slayer-style low-flow lead-in genuinely makes the shot longer.
-            ## TILAU ## The pull scales with the ratio, because at a fixed dose
-            ## and grind the bed sets the flow: a longer ratio is not decreed,
-            ## it is paid for in time. At the anchor (MEDIUM_LIGHT, 1:2.0) the
-            ## factor is exactly 1.0, so the reference 28 s shot is preserved.
+            # The pull scales with the ratio, because at a fixed dose
+            # and grind the bed sets the flow: a longer ratio is not decreed,
+            # it is paid for in time. At the anchor (MEDIUM_LIGHT, 1:2.0) the
+            # factor is exactly 1.0, so the reference 28 s shot is preserved.
             lead_in = espresso.pre_brew_seconds + espresso.pi_seconds
             total_time_s = lead_in + round(_ESPRESSO_PULL_S * (ratio / 2.0))
             if inp.espresso_style == EspressoStyle.TURBO:
-                ## TILAU ## Turbo fixes the shot short and opens the grind to
-                ## get the flow. Flow rises with the SQUARE of particle size
-                ## (Darcy / Kozeny-Carman), so the grind multiplier is the root
-                ## of the flow ratio — and since the yield is identical in both
-                ## styles, the flow ratio is simply classic time over turbo time.
+                # Turbo fixes the shot short and opens the grind to
+                # get the flow. Flow rises with the SQUARE of particle size
+                # (Darcy / Kozeny-Carman), so the grind multiplier is the root
+                # of the flow ratio — and since the yield is identical in both
+                # styles, the flow ratio is simply classic time over turbo time.
                 turbo_s = max(lead_in + 5, _TURBO_TARGET_S)
                 grind_um = int(round(max(150, min(1300,
                     grind_um * math.sqrt(total_time_s / turbo_s)))))
@@ -1237,18 +1156,18 @@ class BrewAdvisor:
             espresso=espresso, notes=notes,
         )
         rec.steps = _build_steps(rec)
-        ## TILAU ## Safety net, not a substitute for getting each schedule right:
-        ## several branches mix derived times with fixed anchors, and at extreme
-        ## doses a derived time can overtake an anchor that follows it — which
-        ## renders a checklist that counts backwards. Keep the order monotonic
-        ## whatever the arithmetic produces.
+        # Safety net, not a substitute for getting each schedule right:
+        # several branches mix derived times with fixed anchors, and at extreme
+        # doses a derived time can overtake an anchor that follows it — which
+        # renders a checklist that counts backwards. Keep the order monotonic
+        # whatever the arithmetic produces.
         for i in range(1, len(rec.steps)):
             rec.steps[i].at_s = max(rec.steps[i].at_s, rec.steps[i - 1].at_s)
-        ## TILAU ## A 13 g and a 30 g V60 cannot both take exactly 3:00: the
-        ## bigger batch needs longer to pour and longer to drain. The anchor is
-        ## a floor, not a fixed value — if the schedule that was just built runs
-        ## past it, the headline time follows the schedule rather than
-        ## contradicting it.
+        # A 13 g and a 30 g V60 cannot both take exactly 3:00: the
+        # bigger batch needs longer to pour and longer to drain. The anchor is
+        # a floor, not a fixed value — if the schedule that was just built runs
+        # past it, the headline time follows the schedule rather than
+        # contradicting it.
         if rec.steps:
             rec.total_time_s = max(rec.total_time_s, int(rec.steps[-1].at_s))
         return rec

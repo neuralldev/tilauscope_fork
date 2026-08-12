@@ -13,28 +13,9 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ##
 """Brew journal — measured extractions, kept for later analysis.
 
-Pure, Qt-free, offline-testable. Reads and writes `brewlog.json`, a sidecar of
-`beancave.json` in the same directory, keyed by `GreenBean.uuid`.
-
-Why a separate file (wiki/Brew-DialIn-Feedback-Spec.md §4.1): `save_green_beans()`
-rewrites the whole bean library on every save, and this journal has a different life
-cycle — it is analysis data, purged and exported on its own, and the library has no
-reason to grow with it.
-
-Why raw rows and not running averages: the point of the journal is to relate a change
-of GRIND to a change of FLOW. An average of flow per bean averages over the very
-variable under study — 650 µm → 65 s and 611 µm → 78 s average to 71.5 s and the slope
-is gone. Sufficient statistics (n, Σx, Σy, Σx², Σxy) would be exact and constant-sized,
-but they presuppose the model (Kozeny-Carman suggests d², not linear), forbid outlier
-rejection and prevent any later re-segmentation. Raw → aggregate can be computed at any
-time; the reverse never can.
-
-Nothing here feeds back into a recipe. The journal diagnoses; it does not actuate.
-
-Run `python -m tilauscope.brew_log` for a self-check.
+Qt-free; reads/writes `brewlog.json` (sidecar of `beancave.json`, keyed by `GreenBean.uuid`) as raw per-brew rows, not running averages, so grind→flow relationships stay analyzable. Diagnostic only, never feeds back into a recipe.
 """
 
 from __future__ import annotations
@@ -53,10 +34,10 @@ _IS_WINDOWS = platform.system() == "Windows"
 
 BREWLOG_FILE_NAME: str = "brewlog.json"
 
-## TILAU ## Ring size per bean. Bounds the absolute worst case (33 beans x 50 x ~429 B
-## is well under a megabyte) without ever biting in practice: a bean is finished long
-## before fifty tasted brews. Measured 2026-07-21: beancave.json = 25.1 kB / 33 beans,
-## one serialised sample = 429 B.
+# Ring size per bean. Bounds the absolute worst case (33 beans x 50 x ~429 B
+# is well under a megabyte) without ever biting in practice: a bean is finished long
+# before fifty tasted brews. Measured 2026-07-21: beancave.json = 25.1 kB / 33 beans,
+# one serialised sample = 429 B.
 MAX_SAMPLES_PER_BEAN: int = 50
 
 _ENCODING = "utf-8-sig" if _IS_WINDOWS else "utf-8"
@@ -65,10 +46,8 @@ _ENCODING = "utf-8-sig" if _IS_WINDOWS else "utf-8"
 def log_path(directory) -> Optional[Path]:
     """Where the journal lives, or None if no bean library directory is set.
 
-    ## TILAU ## An unconfigured BeanCave holds `Path("")`, which pathlib turns into
-    ## PosixPath('.') — truthy, and joining it yields a bare relative filename. Left
-    ## unguarded, the journal would be scattered into whatever the app's working
-    ## directory happens to be. '' and '.' both mean "not configured here".
+    An unconfigured BeanCave holds `Path("")`, which pathlib turns into a truthy
+    `PosixPath('.')`; '' and '.' both mean "not configured here".
     """
     if not directory:
         return None

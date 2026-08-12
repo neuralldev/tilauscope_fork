@@ -13,11 +13,11 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ## Roast card — read-only roast summary dialog opened from a QR scan
-## (spec: wiki/QR-Scan-Spec.md §3.5, mockup validated 2026-07-16).
-## Renders from an already-parsed .alog dict; NEVER loads the profile into
-## Artisan (that would overwrite the current device configuration). All work
-## happens on user action — nothing here touches the 1 Hz sampling path.
+# Roast card — read-only roast summary dialog opened from a QR scan
+# (spec: wiki/QR-Scan-Spec.md §3.5, mockup validated 2026-07-16).
+# Renders from an already-parsed .alog dict; NEVER loads the profile into
+# Artisan (that would overwrite the current device configuration). All work
+# happens on user action — nothing here touches the 1 Hz sampling path.
 
 import logging
 from typing import Final, Optional, Callable
@@ -29,6 +29,7 @@ from PyQt6.QtWidgets import (
 )
 
 from tilauscope.tilauscope_types import THEME, format_batch_label
+from tilauscope.theme_qss import base_qss
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ except Exception as _e:  # pragma: no cover
 _C_BT = "#89B4FA"      # blue — bean temperature
 _C_ET = "#F9E2AF"      # yellow — environment temperature
 _C_MARK = "#6C7086"    # event marker lines
-_C_PLOT_BG = "#181825"
+_C_PLOT_BG = THEME['SURFACE']   # the plot ground is chrome, unlike the channels above
 
 
 def _fmt_mmss(seconds: float) -> str:
@@ -68,7 +69,7 @@ class RoastCardDialog(QDialog):
         self.setModal(True)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setMinimumWidth(560)
-        self.setStyleSheet(f"""
+        self.setStyleSheet(base_qss() + f"""
             QDialog {{
                 background: {THEME['BG']};
                 border: 1px solid {THEME['BORDER']};
@@ -99,11 +100,11 @@ class RoastCardDialog(QDialog):
 
         head_row = QHBoxLayout()
         head = QLabel("☕  " + display_title.upper() + (f" — {batch}" if batch else ""))
-        head.setStyleSheet(f"color: {THEME['ACCENT']}; font-size: 16px; font-weight: 800; "
-                           f"font-family: 'JetBrains Mono';")
+        head.setStyleSheet(f"color: {THEME['ACCENT']}; font-size: 16px; font-weight: 800; ")
         head.setWordWrap(True)
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(26, 26)
+        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         close_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {THEME['BORDER']}; color: {THEME['CRITICAL']};
@@ -123,7 +124,7 @@ class RoastCardDialog(QDialog):
             date_bits.append(rt[:5])
         sub = QLabel(QApplication.translate("tilauscope_roast_review", "roasted on")
                      + " " + " · ".join(b for b in date_bits if b))
-        sub.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
+        sub.setProperty('variant', 'secondary')
         layout.addWidget(sub)
 
         layout.addWidget(self._separator())
@@ -150,7 +151,7 @@ class RoastCardDialog(QDialog):
                 w_line = ""
         if w_line:
             wl = QLabel(w_line)
-            wl.setStyleSheet(f"font-size: 13px; font-weight: 700; font-family: 'JetBrains Mono';")
+            wl.setStyleSheet(f"font-size: 13px; font-weight: 700; ")
             layout.addWidget(wl)
 
         # ---- agtron / DTR / duration ----------------------------------------
@@ -170,8 +171,7 @@ class RoastCardDialog(QDialog):
                          + f" {_fmt_mmss(drop_t)}")
         if stats:
             sl = QLabel("   ·   ".join(stats))
-            sl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px; "
-                             f"font-family: 'JetBrains Mono';")
+            sl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px; ")
             layout.addWidget(sl)
 
         # ---- key times --------------------------------------------------------
@@ -186,8 +186,7 @@ class RoastCardDialog(QDialog):
                 times.append(f"{lbl} {_fmt_mmss(t)}")
         if times:
             tl = QLabel(" · ".join(times))
-            tl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px; "
-                             f"font-family: 'JetBrains Mono';")
+            tl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px; ")
             layout.addWidget(tl)
 
         # ---- cupping notes ------------------------------------------------------
@@ -221,7 +220,7 @@ class RoastCardDialog(QDialog):
     def _separator(self) -> QFrame:
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
-        line.setStyleSheet(f"background: {THEME['BORDER']}; border: none; "
+        line.setStyleSheet(f"background: {THEME['BORDER']}; border: none;"
                            f"min-height: 1px; max-height: 1px;")
         return line
 

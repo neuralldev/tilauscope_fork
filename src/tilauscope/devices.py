@@ -16,8 +16,10 @@
 # -*- coding: utf-8 -*-
 
 
+import os
 import re
 import logging
+from pathlib import Path
 from typing import Final, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -28,122 +30,35 @@ if TYPE_CHECKING:
 _log:  Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
-from PyQt6.QtCore    import Qt, pyqtSlot, QPropertyAnimation, QEasingCurve, QSettings
+from PyQt6.QtCore    import (Qt, pyqtSlot, QPropertyAnimation, QEasingCurve,
+                            QSettings, QStandardPaths)
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QCheckBox, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QFormLayout, QPushButton, QSpinBox, QTabWidget,
     QComboBox, QGridLayout, QDialog, QGroupBox,
     QTableWidget, QTableWidgetItem, QMessageBox, QHeaderView, QDoubleSpinBox,
     QFrame, QSizeGrip, QScrollArea, QListView, QSizePolicy, QStyledItemDelegate,
+    QFileDialog,
 )
 from PyQt6.QtGui import QCursor, QPalette, QColor
 
-from tilauscope.tilauscope_types import THEME, show_styled_message
+from tilauscope.theme_qss import base_qss
+from tilauscope.tilauscope_types import THEME, show_styled_message, TilauProgress
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stylesheet helpers  (local — mirrors roast_properties pattern)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _base_style() -> str:
+# What this dialog needs on top of theme_qss.base_qss(): only rules that
+# differ from the base, each with its own reason. See wiki/Theme-QSS-Spec.md.
+def _local_style() -> str:
     return f"""
-        QDialog, QWidget {{
-            background-color: {THEME['BG']};
-            color: {THEME['TEXT']};
-            font-family: 'JetBrains Mono';
-        }}
-        QLabel {{
-            background: transparent;
-            border: none;
-        }}
-        QLineEdit, QComboBox {{
-            background-color: {THEME['SURFACE']};
-            color: {THEME['TEXT']};
-            border: 1px solid {THEME['BORDER']};
-            border-radius: 6px;
-            padding: 6px 10px;
-            combobox-popup: 1;
-            font-family: 'JetBrains Mono';
-            font-size: 13px;
-            selection-background-color: {THEME['ACCENT']};
-        }}
-        QLineEdit:focus, QComboBox:focus {{
-            border: 1px solid {THEME['ACCENT']};
-        }}
+        /* combobox-popup is behaviour, not decoration: without it Qt shows a
+           native popup menu on macOS that no stylesheet can reach. */
+        QComboBox {{ combobox-popup: 1; }}
         QComboBox::drop-down {{ border: none; }}
-        QComboBox QAbstractItemView {{
-            background: #1E1E2E;
-        }}
-        QComboBox QListView {{
-            background-color: #1E1E2E;
-            color: {THEME['TEXT']};
-            border: 1px solid {THEME['ACCENT']};
-            border-radius: 4px;
-            selection-background-color: {THEME['ACCENT']};
-            selection-color: #11111B;
-            outline: none;
-            padding: 2px;
-        }}
-        QCheckBox {{
-            color: {THEME['SUBTEXT']};
-            font-size: 12px;
-            spacing: 8px;
-        }}
-        QCheckBox::indicator {{
-            width: 16px; height: 16px;
-            border-radius: 4px;
-            border: 1px solid {THEME['BORDER']};
-            background: {THEME['SURFACE']};
-        }}
-        QCheckBox::indicator:checked {{
-            background: {THEME['ACCENT']};
-            border: 1px solid {THEME['ACCENT']};
-        }}
-        QSpinBox, QDoubleSpinBox {{
-            background: {THEME['SURFACE']};
-            color: {THEME['TEXT']};
-            border: 1px solid {THEME['BORDER']};
-            border-radius: 6px;
-            padding: 4px 8px;
-            font-family: 'JetBrains Mono';
-            font-size: 12px;
-        }}
-        QSpinBox:focus, QDoubleSpinBox:focus {{
-            border: 1px solid {THEME['ACCENT']};
-        }}
-        QGroupBox {{
-            color: {THEME['SUBTEXT']};
-            border: 1px solid {THEME['BORDER']};
-            border-radius: 8px;
-            margin-top: 10px;
-            padding-top: 6px;
-            font-family: 'JetBrains Mono';
-            font-size: 11px;
-            font-weight: bold;
-            letter-spacing: 1.5px;
-        }}
-        QGroupBox::title {{
-            subcontrol-origin: margin;
-            subcontrol-position: top left;
-            padding: 0 6px;
-            color: {THEME['SUBTEXT']};
-        }}
-        QTableWidget {{
-            background: {THEME['SURFACE']};
-            color: {THEME['TEXT']};
-            border: 1px solid {THEME['BORDER']};
-            border-radius: 6px;
-            gridline-color: {THEME['BORDER']};
-            font-family: 'JetBrains Mono';
-            font-size: 12px;
-        }}
-        QTableWidget::item {{
-            padding: 2px 4px;
-        }}
-        QTableWidget::item:selected {{
-            background: {THEME['ACCENT']};
-            color: {THEME['BG']};
-        }}
+
         /* Inline cell editor: Qt paints it over the cell without clearing it,
            so an unstyled (transparent) editor shows the old text underneath. */
         QTableWidget QLineEdit, QTableWidget QAbstractItemView QLineEdit {{
@@ -153,20 +68,32 @@ def _base_style() -> str:
             border-radius: 3px;
             padding: 1px 3px;
             margin: 0px;
-            font-family: 'JetBrains Mono';
             font-size: 12px;
             selection-background-color: {THEME['ACCENT']};
             selection-color: {THEME['BG']};
         }}
-        QHeaderView::section {{
-            background: {THEME['BG']};
+
+        /* Section headings are set as spaced small caps throughout this
+           dialog — the tab bar and the group boxes have to agree. */
+        QGroupBox {{
             color: {THEME['SUBTEXT']};
-            border: none;
-            border-bottom: 1px solid {THEME['BORDER']};
-            padding: 4px;
-            font-family: 'JetBrains Mono';
             font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            padding-top: 6px;
         }}
+        QGroupBox::title {{ subcontrol-position: top left; padding: 0 6px; }}
+
+        /* Save / Cancel close the window — deliberately larger than the
+           inline action buttons inside the tabs. */
+        QPushButton#footerBtn {{
+            border-radius: 8px;
+            font-size: 13px;
+            padding: 9px 24px;
+        }}
+
+        /* A dense settings window: the 12px base scrollbar eats the width the
+           sensor rows need. */
         QScrollBar:vertical {{
             background: {THEME['SURFACE']};
             width: 6px;
@@ -192,7 +119,6 @@ def _tabs_style() -> str:
         QTabBar::tab {{
             background: {THEME['BG']};
             color: {THEME['SUBTEXT']};
-            font-family: 'JetBrains Mono';
             font-size: 11px;
             font-weight: bold;
             letter-spacing: 1px;
@@ -214,39 +140,6 @@ def _tabs_style() -> str:
     """
 
 
-def _btn_primary() -> str:
-    return f"""
-        QPushButton {{
-            background-color: {THEME['ACCENT']};
-            color: {THEME['BG']};
-            border: none;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono';
-            font-weight: bold;
-            font-size: 13px;
-            padding: 9px 24px;
-        }}
-        QPushButton:hover  {{ background-color: {THEME['HOVER']}; }}
-        QPushButton:pressed {{ background-color: {THEME['ACCENT']}; opacity: 0.8; }}
-        QPushButton:disabled {{ background-color: {THEME['BORDER']}; color: {THEME['SUBTEXT']}; }}
-    """
-
-
-def _btn_secondary() -> str:
-    return f"""
-        QPushButton {{
-            background-color: transparent;
-            color: {THEME['SUBTEXT']};
-            border: 1px solid {THEME['BORDER']};
-            border-radius: 8px;
-            font-family: 'JetBrains Mono';
-            font-size: 13px;
-            padding: 9px 24px;
-        }}
-        QPushButton:hover {{ border-color: {THEME['ACCENT']}; color: {THEME['ACCENT']}; }}
-    """
-
-
 _SCAN_BTN_W: Final[int] = 90   # fixed width — status pill column
 _SCAN_BTN_H: Final[int] = 34   # fixed height — aligns with QComboBox / trash button
 
@@ -254,15 +147,15 @@ _SCAN_BTN_H: Final[int] = 34   # fixed height — aligns with QComboBox / trash 
 def _styled_combo_view() -> QListView:
     """Fresh Mocha-styled popup view for a sensor QComboBox. macOS shows the
     popup as a separate top-level window that does not inherit the dialog's
-    descendant QSS, so each combo needs its own styled view. ## TILAU ##"""
+    descendant QSS, so each combo needs its own styled view. """
     view = QListView()
-    ## TILAU ## the combo can shrink (Ignored policy), but the popup must stay
-    ## wide enough to show the full BLE UUID/MAC of each detected device.
+    # the combo can shrink (Ignored policy), but the popup must stay
+    # wide enough to show the full BLE UUID/MAC of each detected device.
     view.setMinimumWidth(360)
     view.setStyleSheet(
         f"""
         QListView {{
-            background-color: #1E1E2E;
+            background-color: {THEME['BG']};
             color: {THEME['TEXT']};
             border: 1px solid {THEME['ACCENT']};
             border-radius: 4px;
@@ -270,13 +163,13 @@ def _styled_combo_view() -> QListView:
             padding: 2px;
         }}
         QListView::item {{
-            background-color: #1E1E2E;
+            background-color: {THEME['BG']};
             color: {THEME['TEXT']};
             padding: 4px 6px;
         }}
         QListView::item:selected {{
             background-color: {THEME['ACCENT']};
-            color: #11111B;
+            color: {THEME['CRUST']};
         }}
         """
     )
@@ -284,7 +177,7 @@ def _styled_combo_view() -> QListView:
 
 
 def _btn_trash() -> str:
-    """Fixed square icon button — forgets (unassigns) the sensor. ## TILAU ##"""
+    """Fixed square icon button — forgets (unassigns) the sensor. """
     return f"""
         QPushButton {{
             background-color: transparent;
@@ -366,7 +259,6 @@ def _cell_editor_style() -> str:
             border: 1px solid {THEME['ACCENT']};
             border-radius: 3px;
             padding: 1px 3px;
-            font-family: 'JetBrains Mono';
             font-size: 12px;
             selection-background-color: {THEME['ACCENT']};
             selection-color: {THEME['BG']};
@@ -409,7 +301,6 @@ def _table_combobox_style() -> str:
             border: 1px solid {THEME['BORDER']};
             border-radius: 4px;
             padding: 3px 6px;
-            font-family: 'JetBrains Mono';
             font-size: 12px;
             combobox-popup: 0;
             selection-background-color: {THEME['ACCENT']};
@@ -422,7 +313,7 @@ def _table_combobox_style() -> str:
         }}
         QComboBox::drop-down {{ border: none; }}
         QComboBox QListView {{
-            background-color: #1E1E2E;
+            background-color: {THEME['BG']};
             color: {THEME['TEXT']};
             selection-background-color: {THEME['ACCENT']};
             selection-color: {THEME['BG']};
@@ -442,15 +333,15 @@ def _separator() -> QFrame:
 def _section_label(text: str) -> QLabel:
     lbl = QLabel(text.upper())
     lbl.setStyleSheet(
-        f"color: {THEME['ACCENT']}; font-size: 11px; font-weight: bold; "
-        f"letter-spacing: 2px; font-family: 'JetBrains Mono'; margin-top: 4px;"
+        f"color: {THEME['ACCENT']}; font-size: 11px; font-weight: bold;"
+        f"letter-spacing: 2px; margin-top: 4px;"
     )
     return lbl
 
 
 def _field_label(text: str, width: int = 150) -> QLabel:
     lbl = QLabel(text)
-    lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
+    lbl.setProperty('variant', 'secondary')
     lbl.setMinimumWidth(width)
     return lbl
 
@@ -489,7 +380,6 @@ class QCollapsibleWidget(QWidget):
                 color: {THEME['SUBTEXT']};
                 border: 1px solid {THEME['BORDER']};
                 border-radius: 6px;
-                font-family: 'JetBrains Mono';
                 font-size: 11px;
                 font-weight: bold;
                 letter-spacing: 1px;
@@ -512,7 +402,6 @@ class QCollapsibleWidget(QWidget):
 
         # ── Content area ─────────────────────────────────────────────────
         self.content_widget = QWidget()
-        self.content_widget.setStyleSheet("background: transparent;")
         self.content_layout = QVBoxLayout(self.content_widget)
         self.content_layout.setContentsMargins(0, 8, 0, 4)
         self.content_layout.setSpacing(8)
@@ -563,7 +452,7 @@ class QCollapsibleWidget(QWidget):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Sensor group descriptor  (background-detection model) ## TILAU ##
+# Sensor group descriptor  (background-detection model)
 # ─────────────────────────────────────────────────────────────────────────────
 
 class _SensorGroup:
@@ -574,7 +463,7 @@ class _SensorGroup:
     click unassigns it."""
 
     __slots__ = (
-        "label", "prefix", "combo", "status", "name_attr", "list_attr",
+        "label", "prefix", "combo", "status", "spinner", "name_attr", "list_attr",
         "seen", "cleared", "user_touched", "auto_done", "was_assigned",
     )
 
@@ -584,6 +473,7 @@ class _SensorGroup:
         self.prefix       = prefix      # BLE advertised-name prefix to match
         self.combo        = combo
         self.status: QLabel | None = None
+        self.spinner      = None        # TilauProgress ring, alive only while scanning
         self.name_attr    = name_attr   # aw attribute holding the assigned id
         self.list_attr    = list_attr   # aw attribute holding the candidate id list
         self.seen: set[str] = set()     # addresses seen live this dialog session
@@ -622,9 +512,8 @@ class TilauscopeConfigDlg(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
 
-        ## TILAU ## Background sensor detection (replaces the per-device Scan
-        ## buttons). Populated in _setup_sensors_tab; driven by the central
-        ## TilauBLEScanner while the SENSORS tab is active. See _hook_scanner().
+        # Background sensor detection, populated in _setup_sensors_tab and
+        # driven by the central TilauBLEScanner while the SENSORS tab is active. See _hook_scanner().
         self._sensor_groups: list[_SensorGroup] = []
         self._scanner = None            # scanner we are currently listening to
         self._own_scanner = None        # private scanner (only when no BeanCave shell)
@@ -632,10 +521,10 @@ class TilauscopeConfigDlg(QDialog):
         self._bt_available = False      # cached at hook time (bluetooth_enabled)
         self._hook_attempted = False    # True once we entered the SENSORS tab
 
-        ## TILAU ## "Other hardware detected nearby" section (bottom of SENSORS
-        ## tab) — mirrors the onboarding wizard: surfaces every recognisable BLE
-        ## device that is NOT currently wired up, both known third-party brands
-        ## (Santoker / IKAWA / …) and our own sensors seen but left unassigned.
+        # "Other hardware detected nearby" section (bottom of SENSORS
+        # tab) — mirrors the onboarding wizard: surfaces every recognisable BLE
+        # device that is NOT currently wired up, both known third-party brands
+        # (Santoker / IKAWA / …) and our own sensors seen but left unassigned.
         self._other_seen: dict[str, tuple[str, str, bool]] = {}  # addr -> (label, sig, is_own)
         self._other_rows: dict[str, QWidget] = {}                # addr -> row widget
         self._other_host: QWidget | None = None
@@ -648,10 +537,14 @@ class TilauscopeConfigDlg(QDialog):
         # Snapshot for cancel
         self._snapshot()
 
-        self.setStyleSheet(_base_style())
+        # Pilot window for the shared base stylesheet (theme_qss).
+        # The base is laid down first and what this window still needs on top
+        # of it second: at equal specificity the later rule wins.
+        # See wiki/Theme-QSS-Spec.md.
+        self.setStyleSheet(base_qss(ground=False) + _local_style())
         self._build_ui()
 
-        ## TILAU ## release the BLE scanner on any close path (Esc/reject too)
+        # release the BLE scanner on any close path (Esc/reject too)
         self.finished.connect(lambda _=0: self._unhook_scanner())
 
         self.setMinimumSize(720, 560)
@@ -695,7 +588,7 @@ class TilauscopeConfigDlg(QDialog):
             "bleRoastSeeAGDeviceName":    aw.bleRoastSeeAGDeviceName,
             "bleNiimbotDeviceName":       aw.bleNiimbotDeviceName,
             "bleAirwaveDeviceName":       aw.bleAirwaveDeviceName,
-            "bleSkywalkerDeviceName":     aw.bleSkywalkerDeviceName,   ## TILAU ##
+            "bleSkywalkerDeviceName":     aw.bleSkywalkerDeviceName,
             "bleAirwavepidOnET":          aw.bleAirwavepidOnET,
             "bleAirwavepidRamp":          aw.bleAirwavepidRamp,
             "bleAirwaveEmulateOmniflux":  aw.bleAirwaveEmulateOmniflux,
@@ -731,24 +624,25 @@ class TilauscopeConfigDlg(QDialog):
             QApplication.translate("tilauscope_devices", "TILAU CONFIGURATION")
         )
         title_lbl.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-size: 15px; font-weight: 800; "
-            f"font-family: 'JetBrains Mono'; letter-spacing: 3px;"
+            f"color: {THEME['ACCENT']}; font-size: 15px; font-weight: 800;"
+            f"letter-spacing: 3px;"
         )
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(30, 30)
-        close_btn.setStyleSheet("""
-            QPushButton {
-                background: #313244;
-                color: #f38ba8;
+        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
+        close_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {THEME['BORDER']};
+                color: {THEME['CRITICAL']};
                 border-radius: 15px;
-                border: 1px solid #f38ba8;
+                border: 1px solid {THEME['CRITICAL']};
                 font-weight: bold;
                 font-size: 13px;
-            }
-            QPushButton:hover {
-                background: #f38ba8;
-                color: #1e1e2e;
-            }
+            }}
+            QPushButton:hover {{
+                background: {THEME['CRITICAL']};
+                color: {THEME['BG']};
+            }}
         """)
         close_btn.clicked.connect(self._on_cancel)
         title_row.addWidget(title_lbl)
@@ -766,21 +660,24 @@ class TilauscopeConfigDlg(QDialog):
         self._detection_tab  = QWidget(); self._detection_tab.setStyleSheet("background: transparent;")
         self._integrations_tab = QWidget(); self._integrations_tab.setStyleSheet("background: transparent;")
         self._printing_tab   = QWidget(); self._printing_tab.setStyleSheet("background: transparent;")
+        self._beancave_tab   = QWidget(); self._beancave_tab.setStyleSheet("background: transparent;")
 
         self._tabs.addTab(self._general_tab,     QApplication.translate("tilauscope_devices", "⚙  GENERAL"))
         self._tabs.addTab(self._sensors_tab,     QApplication.translate("tilauscope_devices", "📡  SENSORS"))
         self._tabs.addTab(self._detection_tab,   QApplication.translate("tilauscope_devices", "🔬  DETECTION"))
         self._tabs.addTab(self._integrations_tab, QApplication.translate("tilauscope_devices", "🌐  INTEGRATIONS"))
         self._tabs.addTab(self._printing_tab,    QApplication.translate("tilauscope_devices", "🖨  PRINTING"))
+        self._tabs.addTab(self._beancave_tab,    QApplication.translate("tilauscope_devices", "☕  BEANCAVE"))
 
         self._setup_general_tab()
         self._setup_sensors_tab()
         self._setup_detection_tab()
         self._setup_integrations_tab()
         self._setup_printing_tab()
+        self._setup_beancave_tab()
 
-        ## TILAU ## background sensor scan is scoped to the SENSORS tab: hook the
-        ## central BLE scanner on enter, release it on leave (and on close).
+        # background sensor scan is scoped to the SENSORS tab: hook the
+        # central BLE scanner on enter, release it on leave (and on close).
         self._tabs.currentChanged.connect(self._on_tab_changed)
 
         card_layout.addWidget(self._tabs, 1)
@@ -791,11 +688,13 @@ class TilauscopeConfigDlg(QDialog):
         btn_row.setSpacing(12)
 
         cancel_btn = QPushButton(QApplication.translate("tilauscope_devices", "Cancel"))
-        cancel_btn.setStyleSheet(_btn_secondary())
+        cancel_btn.setObjectName("footerBtn")
+        cancel_btn.setProperty('variant', 'outline')
         cancel_btn.clicked.connect(self._on_cancel)
 
         ok_btn = QPushButton(QApplication.translate("tilauscope_devices", "⬥  Save"))
-        ok_btn.setStyleSheet(_btn_primary())
+        ok_btn.setObjectName("footerBtn")
+        ok_btn.setProperty('variant', 'primary')
         ok_btn.setDefault(True)
         ok_btn.clicked.connect(self._on_ok)
 
@@ -808,7 +707,6 @@ class TilauscopeConfigDlg(QDialog):
         grip_row = QHBoxLayout()
         grip_row.addStretch()
         grip = QSizeGrip(self)
-        grip.setStyleSheet("background: transparent;")
         grip_row.addWidget(grip, 0, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
         card_layout.addLayout(grip_row)
 
@@ -832,7 +730,7 @@ class TilauscopeConfigDlg(QDialog):
         _roaster_view.setStyleSheet(
             f"""
             QListView {{
-                background-color: #1E1E2E;
+                background-color: {THEME['BG']};
                 color: {THEME['TEXT']};
                 border: 1px solid {THEME['ACCENT']};
                 border-radius: 4px;
@@ -840,13 +738,13 @@ class TilauscopeConfigDlg(QDialog):
                 padding: 2px;
             }}
             QListView::item {{
-                background-color: #1E1E2E;
+                background-color: {THEME['BG']};
                 color: {THEME['TEXT']};
                 padding: 4px 6px;
             }}
             QListView::item:selected {{
                 background-color: {THEME['ACCENT']};
-                color: #11111B;
+                color: {THEME['CRUST']};
             }}
             """
         )
@@ -864,7 +762,7 @@ class TilauscopeConfigDlg(QDialog):
             if idx >= 0:
                 self.tilauRoaster.setCurrentIndex(idx)
         rg.addRow(QApplication.translate("tilauscope_devices", "Model:"), self.tilauRoaster)
-        ## TILAU ## read-only roaster: monitoring only, Artisan sends no commands
+        # read-only roaster: monitoring only, Artisan sends no commands
         self.tilauRoasterReadonly = QCheckBox(
             QApplication.translate("tilauscope_devices",
                 "Read-only (monitoring only — Artisan does not control the machine)")
@@ -905,8 +803,8 @@ class TilauscopeConfigDlg(QDialog):
         if self.aw.TilauScopeNotification is not None:
             self.tilauScopeNotificationCheckBox.setChecked(self.aw.TilauScopeNotification)
 
-        ## TILAU ## Headless "BeanCave home" mode — persisted in QSettings and read
-        ## at boot (main.py). Boot-time only, so it takes effect after a restart.
+        # Headless "BeanCave home" mode — persisted in QSettings and read
+        # at boot (main.py). Boot-time only, so it takes effect after a restart.
         self.headlessModeCheckBox = QCheckBox(
             QApplication.translate("tilauscope_devices", "BeanCave home mode (hide the Artisan window)")
         )
@@ -923,8 +821,8 @@ class TilauscopeConfigDlg(QDialog):
         fg.addWidget(self.headlessModeCheckBox)
         layout.addWidget(feat_group)
 
-        ## TILAU ## QR scan / mobile record server (spec wiki/QR-Scan-Spec.md §2.1) —
-        ## the port is baked into printed label QR codes, so change it knowingly.
+        # QR scan / mobile record server (spec wiki/QR-Scan-Spec.md §2.1) —
+        # the port is baked into printed label QR codes, so change it knowingly.
         layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "Remote access")))
         web_group = QGroupBox(QApplication.translate("tilauscope_devices", "Record web server (phone QR scan)"))
         wg = QFormLayout(web_group)
@@ -941,8 +839,8 @@ class TilauscopeConfigDlg(QDialog):
         wg.addRow(QApplication.translate("tilauscope_devices", "Port:"), self.webPortSpin)
         layout.addWidget(web_group)
 
-        ## TILAU ## remote control (phone piloting) — opt-in, boot-time (main.py
-        ## start_tilau_web_host). Off by default; takes effect after a restart.
+        # remote control (phone piloting) — opt-in, boot-time (main.py
+        # start_tilau_web_host). Off by default; takes effect after a restart.
         remote_group = QGroupBox(QApplication.translate("tilauscope_devices", "Remote control (phone piloting)"))
         rgl = QFormLayout(remote_group)
         self.remoteControlCheckBox = QCheckBox(
@@ -970,7 +868,26 @@ class TilauscopeConfigDlg(QDialog):
         rgl.addRow(self.pairPhoneBtn)
         layout.addWidget(remote_group)
 
+        # visual bench for the shared progress indicators
+        layout.addWidget(_section_label(
+            QApplication.translate("tilauscope_devices", "Diagnostics")))
+        diag_group = QGroupBox(QApplication.translate("tilauscope_devices", "Display check"))
+        dgl = QFormLayout(diag_group)
+        self.progressGalleryBtn = QPushButton(
+            QApplication.translate("tilauscope_devices", "Check progress indicators…"))
+        self.progressGalleryBtn.setToolTip(
+            QApplication.translate("tilauscope_devices",
+                "Open a window showing every progress indicator the application uses, "
+                "so their appearance and animation can be checked on this machine."))
+        self.progressGalleryBtn.clicked.connect(self._open_progress_gallery)
+        dgl.addRow(self.progressGalleryBtn)
+        layout.addWidget(diag_group)
+
         layout.addStretch()
+
+    def _open_progress_gallery(self) -> None:
+        from tilauscope.progress_gallery import open_progress_gallery  # noqa: PLC0415
+        open_progress_gallery(self)
 
     # ─────────────────────────────────────────────────────────────────────────
     # TAB 2 — SENSORS
@@ -980,9 +897,9 @@ class TilauscopeConfigDlg(QDialog):
         scroll = _scrollable(self._sensors_tab)
         layout = scroll.widget().layout()
 
-        ## TILAU ## BLE name prefixes for passive detection (fall back to
-        ## literals if a device module can't be imported). Same set the
-        ## onboarding wizard matches against the central scanner stream.
+        # BLE name prefixes for passive detection (fall back to
+        # literals if a device module can't be imported). Same set the
+        # onboarding wizard matches against the central scanner stream.
         self._prefixes = self._resolve_prefixes()
 
         # ── Ambient — TilauAmbient BLE ────────────────────────────────────
@@ -1090,7 +1007,6 @@ class TilauscopeConfigDlg(QDialog):
         layout.addWidget(self._airwave_pid_section)
 
         # ── SKyWALKER BLE ───────────────────────────────────────
-        ## TILAU ##
         layout.addWidget(_section_label(
              QApplication.translate("tilauscope_devices", "Roaster Link")
         ))
@@ -1175,7 +1091,7 @@ class TilauscopeConfigDlg(QDialog):
         ng.addWidget(niimbot_cell, 0, 2)
         layout.addWidget(niimbot_group)
 
-        ## TILAU ## other hardware detected nearby (identification only)
+        # other hardware detected nearby (identification only)
         self._build_other_section(layout)
 
         layout.addStretch()
@@ -1433,7 +1349,7 @@ class TilauscopeConfigDlg(QDialog):
         self.mqttTestButton  = QPushButton(
             QApplication.translate("tilauscope_devices", "Test Connection")
         )
-        self.mqttTestButton.setStyleSheet(_btn_secondary())
+        self.mqttTestButton.setProperty('variant', 'outline')
         self.mqttTestButton.clicked.connect(self._test_mqtt_connection)
 
         mqtt_layout.addRow(QApplication.translate("tilauscope_devices", "Broker URL:"), self.mqttBrokerEdit)
@@ -1468,7 +1384,7 @@ class TilauscopeConfigDlg(QDialog):
         self._ai_configure_btn = QPushButton(
             QApplication.translate("tilauscope_devices", "Configure AI Provider…")
         )
-        self._ai_configure_btn.setStyleSheet(_btn_secondary())
+        self._ai_configure_btn.setProperty('variant', 'outline')
         self._ai_configure_btn.clicked.connect(self._open_ai_provider_picker)
         ai_layout.addWidget(self._ai_configure_btn)
         layout.addWidget(ai_group)
@@ -1492,7 +1408,7 @@ class TilauscopeConfigDlg(QDialog):
         _label_size_view.setStyleSheet(
             f"""
             QListView {{
-                background-color: #1E1E2E;
+                background-color: {THEME['BG']};
                 color: {THEME['TEXT']};
                 border: 1px solid {THEME['ACCENT']};
                 border-radius: 4px;
@@ -1500,13 +1416,13 @@ class TilauscopeConfigDlg(QDialog):
                 padding: 2px;
             }}
             QListView::item {{
-                background-color: #1E1E2E;
+                background-color: {THEME['BG']};
                 color: {THEME['TEXT']};
                 padding: 4px 6px;
             }}
             QListView::item:selected {{
                 background-color: {THEME['ACCENT']};
-                color: #11111B;
+                color: {THEME['CRUST']};
             }}
             """
         )
@@ -1516,7 +1432,7 @@ class TilauscopeConfigDlg(QDialog):
                 "Physical size the label PDF is generated at. Print at 100% (no "
                 "\"fit to page\") so it comes out the printer at this exact size.")
         )
-        # ## TILAU ## value is the "WxH" string persisted to QSettings and read
+        # value is the "WxH" string persisted to QSettings and read
         # back by label_printer's _FontMixin._load_label_size(); 100x150 is the
         # reference size the whole label layout is authored against, so it's the
         # only choice that needs no geometric scaling.
@@ -1616,13 +1532,12 @@ class TilauscopeConfigDlg(QDialog):
         return new_params
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Background sensor detection  ## TILAU ##
+    # Background sensor detection
     #
-    # Replaces the per-device blocking Scan buttons: while the SENSORS tab is
-    # active, the central TilauBLEScanner streams advertisements; each group
-    # matches them by BLE name prefix and drives its own combo + status pill.
-    # An assigned-but-absent device is never cleared — only the 🗑 button
-    # unassigns it (written as None on Save, reversible via Cancel).
+    # While the SENSORS tab is active, the central TilauBLEScanner streams
+    # advertisements; each group matches them by BLE name prefix and drives its
+    # own combo + status pill. An assigned-but-absent device is never cleared —
+    # only the 🗑 button unassigns it (written as None on Save, reversible via Cancel).
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
@@ -1674,17 +1589,23 @@ class TilauscopeConfigDlg(QDialog):
         from the persisted assignment."""
         g = _SensorGroup(label, prefix, combo, name_attr, list_attr)
 
-        ## TILAU ## Mocha-style the popup (macOS top-level popup ignores dialog QSS)
+        # Mocha-style the popup (macOS top-level popup ignores dialog QSS)
         combo.setView(_styled_combo_view())
-        ## TILAU ## let the combo shrink to the available width (the long UUID no
-        ## longer forces the row wider than the dialog → no horizontal scrollbar);
-        ## the current text elides and the full id stays visible in the popup.
+        # let the combo shrink to the available width (the long UUID no
+        # longer forces the row wider than the dialog → no horizontal scrollbar);
+        # the current text elides and the full id stays visible in the popup.
         combo.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         combo.setMinimumWidth(140)
 
         status = QLabel()
         status.setMinimumWidth(_SCAN_BTN_W)
         g.status = status
+
+        # A static "scanning…" says nothing about being alive. The ring does,
+        # and it is the same one every long operation in the app uses.
+        spinner = TilauProgress(TilauProgress.RING, 12)
+        spinner.setVisible(False)
+        g.spinner = spinner
 
         trash = QPushButton("🗑")
         trash.setStyleSheet(_btn_trash())
@@ -1700,10 +1621,10 @@ class TilauscopeConfigDlg(QDialog):
         self._update_status(g)
 
         cell = QWidget()
-        cell.setStyleSheet("background: transparent;")
         h = QHBoxLayout(cell)
         h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(6)
+        h.addWidget(spinner)
         h.addWidget(status)
         h.addWidget(trash)
         return cell
@@ -1733,14 +1654,20 @@ class TilauscopeConfigDlg(QDialog):
                 ids.add(m.group(1).strip())
         return ids
 
-    def _set_pill(self, status: "QLabel | None", text: str, color: str) -> None:
-        if status is None:
-            return
-        status.setText(text)
-        status.setStyleSheet(
-            f"color:{color}; font-size:11px; font-weight:bold;"
-            f" font-family:'JetBrains Mono'; background:transparent;"
-        )
+    def _set_pill(self, status: "QLabel | None", text: str, color: str,
+                  spinner=None, busy: bool = False) -> None:
+        """Single place that writes a sensor status. Text and ring move
+        together, so 'searching' never reads as 'stalled'."""
+        if status is not None:
+            status.setText(text)
+            status.setStyleSheet(
+                f"color:{color}; font-size:11px; font-weight:bold;"
+                f" background:transparent;"
+            )
+        if spinner is not None:
+            if busy:
+                spinner.set_indeterminate()
+            spinner.setVisible(busy)
 
     def _update_status(self, g: "_SensorGroup") -> None:
         """Refresh the status pill from the current selection + live sightings."""
@@ -1748,7 +1675,7 @@ class TilauscopeConfigDlg(QDialog):
             self._set_pill(
                 g.status,
                 QApplication.translate("tilauscope_devices", "⚠ bluetooth off"),
-                THEME['WARNING'])
+                THEME['WARNING'], g.spinner, False)
             return
         txt = g.combo.currentText()
         sel_id = None
@@ -1761,22 +1688,24 @@ class TilauscopeConfigDlg(QDialog):
                 self._set_pill(
                     g.status,
                     QApplication.translate("tilauscope_devices", "detected ✓"),
-                    THEME['SUCCESS'])
+                    THEME['SUCCESS'], g.spinner, False)
             else:
+                # Configured but not seen: the device may simply be off, so no
+                # ring — a spinner that never stops reads as a stuck app.
                 self._set_pill(
                     g.status,
                     QApplication.translate("tilauscope_devices", "assigned"),
-                    THEME['ACCENT'])
+                    THEME['ACCENT'], g.spinner, False)
         elif g.seen:
             self._set_pill(
                 g.status,
                 f"{len(g.seen)} " + QApplication.translate("tilauscope_devices", "found ✓"),
-                THEME['SUCCESS'])
+                THEME['SUCCESS'], g.spinner, False)
         else:
             self._set_pill(
                 g.status,
                 QApplication.translate("tilauscope_devices", "scanning…"),
-                THEME['SUBTEXT'])
+                THEME['SUBTEXT'], g.spinner, True)
 
     # ── scanner wiring (SENSORS tab lifetime) ──────────────────────────────
 
@@ -1859,14 +1788,14 @@ class TilauscopeConfigDlg(QDialog):
                         g.seen.add(addr)
                         self._add_detected(g, addr)
                 if g.seen:
-                    # mirror the candidate id list like the old scan did
+                    # mirror the candidate id list for the picker widget
                     try:
                         setattr(self.aw, g.list_attr, sorted(g.seen))
                     except Exception:  # pylint: disable=broad-except
                         pass
                 self._maybe_autoselect(g)
                 self._update_status(g)
-            ## TILAU ## surface everything else recognisable but not wired up
+            # surface everything else recognisable but not wired up
             self._scan_other_hardware(devices)
         except Exception as e:  # pylint: disable=broad-except
             _log.exception("TilauScope config: _on_devices_found failed: %s", e)
@@ -1929,7 +1858,6 @@ class TilauscopeConfigDlg(QDialog):
             QApplication.translate("tilauscope_devices", "Other hardware detected nearby")
         ))
         host = QWidget()
-        host.setStyleSheet("background: transparent;")
         vl = QVBoxLayout(host)
         vl.setContentsMargins(0, 0, 0, 0)
         vl.setSpacing(6)
@@ -2014,7 +1942,7 @@ class TilauscopeConfigDlg(QDialog):
 
     def _add_other_row(self, label: str, signature: str, is_own: bool) -> QWidget:
         """Build a single identify-only row (dot · name · signature · tag)."""
-        accent = THEME['WARNING'] if is_own else "#CBA6F7"  # mauve for third-party
+        accent = THEME['WARNING'] if is_own else THEME['MAUVE']  # mauve for third-party
         tag_txt = (QApplication.translate("tilauscope_devices", "detected · not linked")
                    if is_own else
                    QApplication.translate("tilauscope_devices", "recognised · not configured"))
@@ -2032,11 +1960,11 @@ class TilauscopeConfigDlg(QDialog):
             f"color:{THEME['TEXT']}; font-size:13px; font-weight:600; background:transparent;")
         sig = QLabel(signature)
         sig.setStyleSheet(
-            f"color:{THEME['SUBTEXT']}; font-size:11px; font-family:'JetBrains Mono';"
+            f"color:{THEME['SUBTEXT']}; font-size:11px;"
             f" background:transparent;")
         tag = QLabel(tag_txt)
         tag.setStyleSheet(
-            f"color:{accent}; font-size:11px; font-family:'JetBrains Mono';"
+            f"color:{accent}; font-size:11px;"
             f" background:transparent;")
         hl.addWidget(dot)
         hl.addWidget(nl)
@@ -2090,17 +2018,17 @@ class TilauscopeConfigDlg(QDialog):
         self.mqttAddSensorButton = QPushButton(
             QApplication.translate("tilauscope_devices", "Add sensor")
         )
-        self.mqttAddSensorButton.setStyleSheet(_btn_secondary())
+        self.mqttAddSensorButton.setProperty('variant', 'outline')
         self.mqttAddSensorButton.clicked.connect(self._mqtt_add_sensor_row)
         self.mqttDeleteSensorButton = QPushButton(
             QApplication.translate("tilauscope_devices", "Delete")
         )
-        self.mqttDeleteSensorButton.setStyleSheet(_btn_secondary())
+        self.mqttDeleteSensorButton.setProperty('variant', 'outline')
         self.mqttDeleteSensorButton.clicked.connect(self._mqtt_delete_sensor_row)
         self.mqttCheckSensorButton = QPushButton(
             QApplication.translate("tilauscope_devices", "Check sensor")
         )
-        self.mqttCheckSensorButton.setStyleSheet(_btn_secondary())
+        self.mqttCheckSensorButton.setProperty('variant', 'outline')
         self.mqttCheckSensorButton.setToolTip(QApplication.translate(
             "tilauscope_devices",
             "Connect to the broker with the settings above and read the selected sensor once."
@@ -2235,8 +2163,7 @@ class TilauscopeConfigDlg(QDialog):
                 QApplication.translate("tilauscope_devices", "MQTT Sensor OK"),
                 QApplication.translate("tilauscope_devices", "Value read for {0}: {1} {2}").format(
                     sensor.id, result.value,
-                    f"°{self.aw.qmc.mode}" if sensor.unit else ""
-                ).strip(),
+                    f"°{self.aw.qmc.mode}" if sensor.unit else "").strip(),
             )
         else:
             detail = "" if result is None else f"{result.error.name} — {result.message or ''}"
@@ -2314,7 +2241,7 @@ class TilauscopeConfigDlg(QDialog):
             )
         else:
             text = (
-                "<span style='color:#E0903B;'>"
+                f"<span style='color:{THEME['WARNING']};'>"
                 + QApplication.translate("tilauscope_devices", "Not configured — AI features disabled")
                 + "</span>"
             )
@@ -2338,7 +2265,7 @@ class TilauscopeConfigDlg(QDialog):
     _SLIDER_VIS_BACKUP_KEY = "tilauscope/slider_vis_backup"
 
     def _apply_roaster_slider_visibilities(self) -> None:
-        """## TILAU ## Apply the explicit read-only flag (devices.py checkbox →
+        """Apply the explicit read-only flag (devices.py checkbox →
         aw.tilau_roaster_readonly) to Artisan's slider visibilities:
           - read-only ticked  → snapshot the current config once, then disable
             all control sliders ([0,0,0,0]) (monitoring only);
@@ -2373,7 +2300,7 @@ class TilauscopeConfigDlg(QDialog):
 
             # Apply per-slider visibility WITHOUT forcing the Artisan slider
             # dock open or closed: that overall shown/hidden state is the user's
-            # own choice (Artisan View menu) and must be preserved. ## TILAU ##
+            # own choice (Artisan View menu) and must be preserved.
             aw.updateSlidersProperties()
 
             # Mirror onto the TilauScope panel if it is currently open
@@ -2384,7 +2311,7 @@ class TilauscopeConfigDlg(QDialog):
             _logd.exception("TilauScope: _apply_roaster_slider_visibilities failed")
 
     def _apply_airwave_damper_mapping(self) -> None:
-        """## TILAU ## When an AirWave is configured, map the Damper slider
+        """When an AirWave is configured, map the Damper slider
         (idx 2) to the DiFluid AirWave: action 'Difluid Airwave Command'
         (stored id 20), command 'FAN {}', range 30-100, step 1, renamed
         'Airwave', and kept visible even on a read-only roaster (the AirWave is
@@ -2414,7 +2341,7 @@ class TilauscopeConfigDlg(QDialog):
             aw.eventslidervisibilities[DAMPER] = 1
 
             # Apply per-slider visibility only; never force the Artisan dock
-            # open/closed (user's own choice). ## TILAU ##
+            # open/closed (user's own choice).
             aw.updateSlidersProperties()
             tsm = getattr(aw, "tilauscope_main", None)
             if tsm is not None and hasattr(tsm, "_apply_slider_visibility_mirror"):
@@ -2424,7 +2351,7 @@ class TilauscopeConfigDlg(QDialog):
 
     @pyqtSlot()
     def _pair_phone(self) -> None:
-        ## TILAU ## open the desktop pairing modal (QR + device list + revoke)
+        # open the desktop pairing modal (QR + device list + revoke)
         host = getattr(self.aw, 'tilau_web_host', None)
         if host is None or not host.control_active():
             show_styled_message(
@@ -2438,21 +2365,105 @@ class TilauscopeConfigDlg(QDialog):
         port = QSettings().value('tilauscope/remote_port', 8765, type=int)
         PairingDialog(host, port, self).exec()
 
+    def _setup_beancave_tab(self) -> None:
+        """Directories used by BeanCave and by the roast-history tools."""
+        scroll = _scrollable(self._beancave_tab)
+        layout = scroll.widget().layout()
+        layout.addWidget(_section_label(
+            QApplication.translate("tilauscope_devices", "BeanCave files")
+        ))
+
+        explanation = QLabel(QApplication.translate(
+            "tilauscope_devices",
+            "Choose where the green-bean database and the Artisan roast logs (.alog) are stored."
+        ))
+        explanation.setWordWrap(True)
+        explanation.setProperty('variant', 'secondary')
+        layout.addWidget(explanation)
+
+        group = QGroupBox(QApplication.translate("tilauscope_devices", "Directories"))
+        form = QFormLayout(group)
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        settings = QSettings()
+        alog_dir = settings.value("alogDirectory", "", str) or ""
+        beancave_dir = settings.value("beancaveDirectory", alog_dir, str) or ""
+
+        self.beancaveDirectoryEdit = self._directory_row(
+            form,
+            QApplication.translate("tilauscope_devices", "BeanCave database:"),
+            beancave_dir,
+            "beancave",
+        )
+        self.alogDirectoryEdit = self._directory_row(
+            form,
+            QApplication.translate("tilauscope_devices", "Roast logs (.alog):"),
+            alog_dir,
+            "alog",
+        )
+        layout.addWidget(group)
+        layout.addStretch()
+
+    def _directory_row(self, form: QFormLayout, label: str, value: str,
+                       kind: str) -> QLineEdit:
+        row = QWidget()
+        row.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        edit = QLineEdit(value)
+        edit.setReadOnly(True)
+        edit.setPlaceholderText(QApplication.translate("tilauscope_devices", "Not configured"))
+        button = QPushButton(QApplication.translate("tilauscope_devices", "Choose…"))
+        button.setProperty('variant', 'outline')
+        button.clicked.connect(lambda _checked=False: self._choose_beancave_directory(kind, edit))
+        row_layout.addWidget(edit, 1)
+        row_layout.addWidget(button)
+        form.addRow(_field_label(label), row)
+        return edit
+
+    def _choose_beancave_directory(self, kind: str, edit: QLineEdit) -> None:
+        start = edit.text().strip()
+        if not start or not Path(start).is_dir():
+            start = QStandardPaths.writableLocation(
+                QStandardPaths.StandardLocation.DocumentsLocation)
+        title = (QApplication.translate("tilauscope_devices", "Select BeanCave directory")
+                 if kind == "beancave" else
+                 QApplication.translate("tilauscope_devices", "Select ALog directory"))
+        directory = QFileDialog.getExistingDirectory(self, title, start)
+        if not directory:
+            return
+        path = Path(directory)
+        if not path.is_dir() or not os.access(directory, os.W_OK):
+            show_styled_message(
+                self,
+                QApplication.translate("tilauscope_devices", "Invalid directory"),
+                QApplication.translate(
+                    "tilauscope_devices",
+                    "Choose an existing directory where TilauScope has write permission."
+                ),
+                QMessageBox.Icon.Warning,
+            )
+            return
+        edit.setText(directory)
+
     def _on_ok(self) -> None:
         aw = self.aw
-        self._unhook_scanner()  ## TILAU ## stop background sensor detection
-        _no_dev = self._no_device_text()  ## TILAU ## explicit-unassign placeholder
+        self._unhook_scanner()  # stop background sensor detection
+        _no_dev = self._no_device_text()  # explicit-unassign placeholder
+
+        # ── BeanCave ──────────────────────────────────────────────────────
+        settings = QSettings()
+        settings.setValue("beancaveDirectory", self.beancaveDirectoryEdit.text().strip())
+        settings.setValue("alogDirectory", self.alogDirectoryEdit.text().strip())
 
         # ── General ───────────────────────────────────────────────────────
         aw.tilau_roaster = (
             self.tilauRoaster.currentText()
             if self.tilauRoaster.currentIndex() > 0
-            else ""
-        )
-        aw.tilau_roaster_readonly = self.tilauRoasterReadonly.isChecked()  ## TILAU ##
+            else "")
+        aw.tilau_roaster_readonly = self.tilauRoasterReadonly.isChecked()
         from tilauscope.roasters import sync_roaster_to_qmc
         sync_roaster_to_qmc(aw, aw.tilau_roaster) # mirror onto the canvas machine label
-        self._apply_roaster_slider_visibilities()  ## TILAU ##
+        self._apply_roaster_slider_visibilities()
         aw.TilauScopeAnnotation  = self.tilauScopeAnnotationCheckBox.isChecked()
         aw.TilauScopeNotification = self.tilauScopeNotificationCheckBox.isChecked()
 
@@ -2462,7 +2473,7 @@ class TilauscopeConfigDlg(QDialog):
             m = re.search(r'\((.*?)\)', t)
             aw.bleTilauScopeDeviceName = m.group(1) if m else t
         else:
-            aw.bleTilauScopeDeviceName = None  ## TILAU ## unassigned via 🗑
+            aw.bleTilauScopeDeviceName = None  # unassigned via 🗑
         # Acoustic crack sensitivity (device-level)
         aw.bleTilauScopeFCTreshold = self.tilauAmbientCrackThresholdSpin.value()
 
@@ -2472,19 +2483,17 @@ class TilauscopeConfigDlg(QDialog):
             m = re.search(r'\((.*?)\)', t)
             aw.bleAirwaveDeviceName = m.group(1) if m else t
         else:
-            aw.bleAirwaveDeviceName = None  ## TILAU ## unassigned via 🗑
+            aw.bleAirwaveDeviceName = None  # unassigned via 🗑
         aw.bleAirwavepidOnET         = self.AirwavePidOnETCheckVBox.isChecked()
         aw.bleAirwavepidRamp         = self.AirwavePidRampSpinBox.value()
         aw.bleAirwaveEmulateOmniflux = self.AirwaveEmulateOmnifluxCheckVBox.isChecked()
         aw.bleAirwavepidparms        = self._get_airwave_pid_data()
-        # ## TILAU ## AirWave configured → map the Damper slider onto it (runs
+        # AirWave configured → map the Damper slider onto it (runs
         # after the roaster visibilities so it re-claims idx 2 even read-only)
         self._apply_airwave_damper_mapping()
 
-        # ## TILAU ## Only accept a real BLE identifier from the combos: an empty
-        # scan leaves "No X found" as the combo text, and saving used to clobber
-        # the stored device UUID with that error message — the device was then
-        # never detected again until reconfigured.
+        # Only accept a real BLE identifier from the combos: an empty scan leaves
+        # "No X found" as the combo text, which must not overwrite the stored UUID.
         # macOS: Core Bluetooth UUID — Windows: MAC address
         _ble_uuid_pat = re.compile(
             r'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
@@ -2496,7 +2505,7 @@ class TilauscopeConfigDlg(QDialog):
                 return m.group(1).strip()
             return None
 
-        # ── Roaster — Skywalker (TC4-BLE) ## TILAU ## ──
+        # ── Roaster — Skywalker (TC4-BLE) ──
         # An explicit 🗑 (placeholder) unassigns; otherwise only a valid id writes,
         # so an assigned-but-absent device keeps its assignment.
         _sw_txt = self.SkywalkerComboBox.currentText()
@@ -2564,7 +2573,7 @@ class TilauscopeConfigDlg(QDialog):
         self._mqtt_sensors = self._get_mqtt_sensor_data()
         self._mqtt_ports.save_mqtt_sensors(self._mqtt_sensors)
 
-        ## TILAU ## headless "BeanCave home" mode -> QSettings (boot-time; restart)
+        # headless "BeanCave home" mode -> QSettings (boot-time; restart)
         _h_prev = QSettings().value('tilauscope/headless_mode', False, type=bool)
         _h_new  = self.headlessModeCheckBox.isChecked()
         if _h_new != _h_prev:
@@ -2576,7 +2585,7 @@ class TilauscopeConfigDlg(QDialog):
                     "BeanCave home mode will take effect the next time you start TilauScope."),
             )
 
-        ## TILAU ## record web server port -> QSettings (spec wiki/QR-Scan-Spec.md §2.1)
+        # record web server port -> QSettings (spec wiki/QR-Scan-Spec.md §2.1)
         _p_prev = QSettings().value('tilauscope/web_port', 8123, type=int)
         _p_new  = self.webPortSpin.value()
         if _p_new != _p_prev:
@@ -2589,7 +2598,7 @@ class TilauscopeConfigDlg(QDialog):
                     "start TilauScope. Labels printed from now on will encode the new port."),
             )
 
-        ## TILAU ## remote control (phone piloting) -> QSettings (boot-time; restart)
+        # remote control (phone piloting) -> QSettings (boot-time; restart)
         _r_prev  = QSettings().value('tilauscope/remote_enabled', False, type=bool)
         _r_new   = self.remoteControlCheckBox.isChecked()
         _rp_prev = QSettings().value('tilauscope/remote_port', 8765, type=int)
@@ -2604,7 +2613,7 @@ class TilauscopeConfigDlg(QDialog):
                     "Remote control will take effect the next time you start TilauScope."),
             )
 
-        ## TILAU ## label size — takes effect on the next print, no restart needed
+        # label size — takes effect on the next print, no restart needed
         QSettings().setValue("tilauscope/label_size_mm", self.labelSizeCombo.currentData())
 
         # AI config saved immediately in _open_ai_provider_picker
@@ -2612,7 +2621,7 @@ class TilauscopeConfigDlg(QDialog):
 
     @pyqtSlot()
     def _on_cancel(self) -> None:
-        self._unhook_scanner()  ## TILAU ## stop background sensor detection
+        self._unhook_scanner()  # stop background sensor detection
         aw = self.aw
         for key, val in self._org.items():
             if isinstance(val, dict):
@@ -2631,12 +2640,10 @@ def _scrollable(parent: QWidget) -> QScrollArea:
     scroll = QScrollArea(parent)
     scroll.setWidgetResizable(True)
     scroll.setFrameShape(QFrame.Shape.NoFrame)
-    ## TILAU ## content only scrolls vertically — never show a horizontal bar
+    # content only scrolls vertically — never show a horizontal bar
     scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-    scroll.setStyleSheet("background: transparent;")
 
     content = QWidget()
-    content.setStyleSheet("background: transparent;")
     lay = QVBoxLayout(content)
     lay.setContentsMargins(0, 12, 0, 12)
     lay.setSpacing(12)

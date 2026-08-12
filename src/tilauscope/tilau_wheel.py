@@ -110,6 +110,9 @@ FLAVOR_WHEEL_DATA = {
     }
 }
 
+from tilauscope.theme_qss import apply_tilau_theme
+
+
 class FlavorArc:
     def __init__(self, name, level, color, start_angle, span_angle, inner_r, outer_r, leaf_notes):
         self.name = name
@@ -137,11 +140,11 @@ class FlavorWheelWidget(QWidget):
     def _initialize_arcs(self):
         # Precise radii for the 4 concentric rings
         R0, R1, R2, R3, R_EXT = 0.12, 0.28, 0.48, 0.68, 0.96
-        
-        total_leaves = sum(len(sub["notes"]) for cat in FLAVOR_WHEEL_DATA.values() 
-                          for grp in cat["groups"].values() 
+
+        total_leaves = sum(len(sub["notes"]) for cat in FLAVOR_WHEEL_DATA.values()
+                          for grp in cat["groups"].values()
                           for sub in grp["subgroups"].values())
-        
+
         angle_unit = 360.0 / total_leaves
         curr_angle = 90.0
 
@@ -152,18 +155,18 @@ class FlavorWheelWidget(QWidget):
                 for sub_name, sub_data in grp_data["subgroups"].items():
                     sub_leaves = [n.lower() for n in sub_data["notes"]]
                     sub_span = len(sub_leaves) * angle_unit
-                    
+
                     # Level 3: Individual Notes (Outer ring)
                     note_angle = curr_angle
                     for note in sub_data["notes"]:
                         self.arcs.append(FlavorArc(note, 3, sub_data["color"], note_angle, angle_unit, R3, R_EXT, [note.lower()]))
                         note_angle -= angle_unit
-                    
+
                     # Level 2: Subgroups
                     self.arcs.append(FlavorArc(sub_name, 2, sub_data["color"], curr_angle, sub_span, R2, R3, sub_leaves))
                     grp_leaves.extend(sub_leaves)
                     curr_angle -= sub_span
-                
+
                 # Level 1: Groups
                 self.arcs.append(FlavorArc(grp_name, 1, grp_data["color"], grp_start, len(grp_leaves)*angle_unit, R1, R2, grp_leaves))
                 cat_leaves.extend(grp_leaves)
@@ -187,20 +190,20 @@ class FlavorWheelWidget(QWidget):
         for arc in self.arcs:
             is_active = any(n in self.selected_notes for n in arc.leaf_notes)
             is_hovered = (arc == self.hovered_arc)
-            
+
             color = QColor(arc.color)
             if is_hovered:
                 color = color.lighter(140) # Brighten on hover
             elif not is_active:
                 color.setAlpha(45) # Dim inactive paths
-            
+
             # Annulus sector path
             path = QPainterPath()
-            outer_rect = QRectF(center.x() - r_max * arc.outer_r, center.y() - r_max * arc.outer_r, 
+            outer_rect = QRectF(center.x() - r_max * arc.outer_r, center.y() - r_max * arc.outer_r,
                                 r_max * arc.outer_r * 2, r_max * arc.outer_r * 2)
-            inner_rect = QRectF(center.x() - r_max * arc.inner_r, center.y() - r_max * arc.inner_r, 
+            inner_rect = QRectF(center.x() - r_max * arc.inner_r, center.y() - r_max * arc.inner_r,
                                 r_max * arc.inner_r * 2, r_max * arc.inner_r * 2)
-            
+
             path.arcMoveTo(outer_rect, arc.start_angle)
             path.arcTo(outer_rect, arc.start_angle, -arc.span_angle)
             path.arcTo(inner_rect, arc.start_angle - arc.span_angle, arc.span_angle)
@@ -213,7 +216,7 @@ class FlavorWheelWidget(QWidget):
             if arc.span_angle > 0.4:
                 # Pass 'color' so the label knows how bright the background is
                 self._draw_label(painter, center, r_max, arc, is_active or is_hovered, color)
-                
+
     def get_contrast_color(self, bg_color):
         """Returns black for light backgrounds and white for dark backgrounds."""
         # Calculate luminance: 0.299*R + 0.587*G + 0.114*B
@@ -226,22 +229,22 @@ class FlavorWheelWidget(QWidget):
         rad = math.radians(mid_angle)
         dist = r_max * (arc.inner_r + arc.outer_r) / 2
         painter.translate(center.x() + dist * math.cos(rad), center.y() - dist * math.sin(rad))
-        
+
         rot = -mid_angle
-        if 90 < (mid_angle % 360) < 270: 
+        if 90 < (mid_angle % 360) < 270:
             rot += 180
         painter.rotate(rot)
-        
+
         # Determine text color based on the brightness of the arc behind it
         if is_highlighted:
             text_color = self.get_contrast_color(current_bg_color)
         else:
             text_color = QColor(THEME['SUBTEXT'])
-            
+
         painter.setPen(QPen(text_color))
         font_weight = QFont.Weight.Bold if is_highlighted else QFont.Weight.Normal
         painter.setFont(QFont("JetBrains Mono", 10 if arc.level == 3 else 9, font_weight))
-        
+
         metrics = QFontMetrics(painter.font())
         name = arc.name[:18] + ".." if len(arc.name) > 20 else arc.name
         painter.drawText(int(-metrics.horizontalAdvance(name)/2), int(metrics.height()/3), name)
@@ -250,10 +253,10 @@ class FlavorWheelWidget(QWidget):
     def _get_arc_at_pos(self, pos):
         dx, dy = pos.x() - self.width()/2, (self.height()/2) - pos.y()
         radius = math.sqrt(dx*dx + dy*dy) / (min(self.width(), self.height())/2 * 0.98)
-        
+
         # Standard angle: 0 is Right, 90 is Top
         mouse_angle = (math.degrees(math.atan2(dy, dx)) + 360) % 360
-        
+
         for arc in self.arcs:
             if arc.inner_r <= radius <= arc.outer_r:
                 # Calculate the difference between start_angle and mouse_angle correctly with wrap-around
@@ -279,16 +282,15 @@ class FlavorWheelWidget(QWidget):
             self.selectionChanged.emit(", ".join(sorted(self.selected_notes)))
 
 class FlavorSelectorDialog(QDialog):
-    """
-    Dialog Flavor Wheel — V2.
-    Conserve FlavorWheelWidget intact.
-    Corrige le doublon header/close_btn présent en V1.
-    Contrat d'interface inchangé : FlavorSelectorDialog(current_notes, parent) → exec() → get_notes().
-    """
+    """Dialog Flavor Wheel. Interface : FlavorSelectorDialog(current_notes, parent) → exec() → get_notes()."""
 
     def __init__(self, current_notes: str = "", parent=None) -> None:
         super().__init__(parent)
 
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
@@ -321,11 +323,12 @@ class FlavorSelectorDialog(QDialog):
         )
         title.setStyleSheet(
             f"color:{THEME['ACCENT']};font-size:16px;font-weight:800;"
-            f"font-family:'JetBrains Mono';border:none;background:transparent;"
+            f"border:none;background:transparent;"
         )
 
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(30, 30)
+        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         close_btn.clicked.connect(self.reject)
         close_btn.setStyleSheet(f"""
             QPushButton {{
@@ -356,7 +359,7 @@ class FlavorSelectorDialog(QDialog):
 
         self._sel_label = QLabel()
         self._sel_label.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-size:11px;font-family:'JetBrains Mono';"
+            f"color:{THEME['SUBTEXT']};font-size:11px;"
         )
         self._update_sel_label()
         self.wheel.selectionChanged.connect(self._on_selection_changed)

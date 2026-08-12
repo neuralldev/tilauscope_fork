@@ -13,41 +13,8 @@
 # AUTHOR
 # TiLau 2025-2026
 
-"""
-RoastAssistantPanel — fenêtre flottante d'assistance contextuelle par phase.
-
-Architecture
-============
-RoastAssistantPanel (QWidget, floating)
-├── SetupBar          — sélection grain / cible Agtron / bouton START·STOP
-├── BeanHeaderCard    — rappel grain actif (nom, process, densité, altitude)
-└── QStackedWidget
-    ├── page 0 : _IdlePage          — avant lancement de l'assistant
-    ├── page 1 : _DryingPage        — phase SÉCHAGE
-    ├── page 2 : _MaillardPage      — phase MAILLARD
-    ├── page 3 : _DevelopmentPage   — phase DÉVELOPPEMENT
-    └── page 4 : _PreheatPage       — préchauffage (avant CHARGE)
-
-Intégration dans TilauScope
-===========================
-1. Instancier dans TilauScope.init_ui() :
-       self.roast_assistant = RoastAssistantPanel(self.aw, self)
-       self.roast_assistant.hide()
-
-2. Appeler à chaque cycle depuis update_ui_from_artisan() :
-       if self.roast_assistant.isVisible() and self.roast_assistant.is_active:
-           self.roast_assistant.on_artisan_update(data, value)
-
-3. Synchroniser la phase depuis _handle_milestone_events() :
-       self.roast_assistant.set_phase("DRY" | "MAI" | "DEV" | "COOL")
-
-4. Notifier le début/fin du préchauffage depuis handle_preheat() :
-       self.roast_assistant.set_preheating(True | False)
-
-5. Ajouter un raccourci clavier (ex. Key_A) dans keyPressEvent() :
-       elif key == Qt.Key.Key_A and no_modifier:
-           self.roast_assistant.toggle_visibility()
-"""
+"""RoastAssistantPanel — fenêtre flottante d'assistance contextuelle par phase
+(SetupBar, BeanHeaderCard, et une page par phase : Idle/Drying/Maillard/Development/Preheat)."""
 
 import re
 import bisect
@@ -74,12 +41,28 @@ from artisanlib.util import fromCtoFstrict, fromFtoCstrict, weight_units, conver
 from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, THEME,
     get_agtron_color, get_roc_color, get_ror_color_by_phase, get_ror_ideal_band,
     format_batch_label, to_agtron)
+from tilauscope.theme_qss import tint
 from tilauscope.roasters import RoasterManager, RoasterContext
 from tilauscope.roast_plan_model import TilauScopeRoastPlan, heat_soak_correction
 from tilauscope.roast_plan_snapshot import build_prediction_snapshot
-## TILAU ## moteur de trim pur (v1b) — calé hors-app sur le corpus de roasts
+# moteur de trim pur (v1b) — calé hors-app sur le corpus de roasts
 from tilauscope.autopilot_core import (AutoPilotCore, TrimParams,
                                        Phase as _APPhase, Lever as _APLever)
+from tilauscope.guidance_core import GuidanceMode, GuidanceParams
+from tilauscope.guidance_observer import (
+    ActionSource, Lever as GuidanceLever, observable_control_levers,
+    response_window_s,
+)
+from tilauscope.guidance_replay import match_alarm_automation
+from tilauscope.guidance_risk import RiskKind
+from tilauscope.guidance_phase import (
+    GuidancePhase, GuidancePhaseTracker, PendingMilestone, PhaseSource,
+    resolve_phase_from_plan_temperature,
+)
+from tilauscope.guidance_advice import (
+    AdviceCandidate, AdviceCategory, AdviceSeverity,
+)
+from tilauscope.guidance_session import GuidanceSample, GuidanceSession
 
 
 if TYPE_CHECKING:
@@ -111,7 +94,7 @@ _AGTRON_CHOICES: list[AgtronScale] = [a for a in AGTRON_SCALES
                                        if a.name not in ("Extremely Dark",)]
 
 # get_agtron_color / get_roc_color imported from tilauscope.tilauscope_types
-        
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Helpers de calcul — fonctions pures, sans dépendance Qt
 # ══════════════════════════════════════════════════════════════════════════════
@@ -420,6 +403,8 @@ def _apply_slider_value(aw, idx: int, value: float) -> bool:
     C'est la brique des actions one-tap : appliquer un step de rampe heater
     au brûleur sans que l'opérateur ait à cliquer N fois sur ± du quick-adjust."""
     try:
+        if not bool(aw.eventslidervisibilities[idx]):
+            return False
         sld = aw.tilauscope_main.sld_list[idx]
         if sld is None:
             return False
@@ -450,27 +435,20 @@ def _plan_heater_pct(plan: "dict | None", phase: str) -> "float | None":
         return None
 
 
-## TILAU ## AutoPilot v1a — hard burner ceiling. SOURCE UNIQUE = TrimParams.max_burner_pct
-## (le trim et le feedforward/rampe partagent le même plafond ; changer de torréfacteur
-## ne se règle qu'à un seul endroit). Partagé en esprit avec le PID de préchauffe.
+# AutoPilot v1a — hard burner ceiling. SOURCE UNIQUE = TrimParams.max_burner_pct
+# (le trim et le feedforward/rampe partagent le même plafond ; changer de torréfacteur
+# ne se règle qu'à un seul endroit). Partagé en esprit avec le PID de préchauffe.
 _AP_MAX_BURNER: Final = TrimParams().max_burner_pct
 
-## TILAU ## Fenêtre de grâce (s) après le CHARGE : le handoff PID préchauffe→roast
-## bouge transitoirement les sliders (à l'instant du dump, la BT plonge et le PID de
-## préchauffe pousse le feu avant d'être coupé). Pendant cette fenêtre, AUTO SUIT les
-## sliders sans se mettre en pause — sinon il se désarmait tout seul à la charge auto.
+# Fenêtre de grâce (s) après le CHARGE : le handoff PID préchauffe→roast bouge
+# transitoirement les sliders ; AUTO les suit sans se mettre en pause pendant cette fenêtre.
 _AP_CHARGE_SETTLE_S: Final = 8.0
-## TILAU ## KILL-SWITCH AutoPilot (décision Tilau 2026-07-11) : le mode AUTO est
-## retiré de l'accès utilisateur — la puce n'apparaît pas et l'armement est
-## refusé. Le sujet repart de zéro sur le banc (doctrine settings-first : les
-## réglages sont la cause, le RoR la conséquence — cf. mémoire
-## feedback_settings_first_doctrine). Repasser à True UNIQUEMENT après
-## validation banc + GO explicite de Tilau.
-_AP_USER_ENABLED: Final = False
-## TILAU ## Dev en AUTO — « tenir le feu » (spec AutoPilot §3quater/§3quinquies) :
-## la coupe rapide du feu en dev = LA cause des crashes post-FC (rate-limiter
-## ÷2,5 le risque) ; le filet réactif est minimal, AIR d'abord, offset borné
-## auto-résorbé. Flag A/B : feedforward-seul+filet vs feedforward+trim (v1b).
+# AUTO user access. Re-enabled explicitly with the MANUAL/AUTO coach
+# switch; all runtime gates (active session, plan confidence, read-only roaster)
+# remain mandatory before arming.
+_AP_USER_ENABLED: Final = True
+# Dev en AUTO — « tenir le feu » : la coupe rapide du feu en dev est la cause
+# principale des crashes post-FC ; filet réactif minimal, AIR d'abord, offset borné auto-résorbé.
 _AP_DEV_RATE_PCT_PER_MIN: Final = 5.0   # descente feu max en fenêtre exotherme
 _AP_DEV_RATE_WINDOW_S: Final = 75.0     # fenêtre exotherme FC → FC+75 s
 _AP_NET_STEP_PCT: Final = 2.0           # touche du filet (2 %/4-5 s, jamais bloc 5 %)
@@ -479,7 +457,7 @@ _AP_NET_CAP_PCT: Final = 6.0            # borne d'offset AIR du filet (3 touches
 _AP_NET_RESORB_QUIET_S: Final = 25.0    # calme requis avant résorption de l'offset
 _AP_FF_ONLY_KEY: Final = "tilauscope/ap_feedforward_only"  # flag A/B (QSettings caché)
 
-## TILAU ## plan keys of the per-phase lever values, by Artisan slider index
+# plan keys of the per-phase lever values, by Artisan slider index
 _AP_LEVER_KEYS: Final = {
     0: "Airflow (%) (Dry|Mai|Dev)",
     1: "Drum Speed (%) (Dry|Mai|Dev)",
@@ -488,15 +466,13 @@ _AP_LEVER_KEYS: Final = {
 _AP_PHASE_COL: Final = {"DRY": 0, "MAI": 1, "DEV": 2}
 _AP_PHASE_WORD: Final = {"DRY": "drying", "MAI": "maillard", "DEV": "development"}
 
-## TILAU ## Réglages de refroidissement posés par l'AutoPilot au DROP : couper le
-## brûleur, ventiler et extraire fort, tambour rapide (les grains sont sortis —
-## le verrou drum_midroast_locked ne s'applique plus). Valeurs Tilau/Skywalker,
-## à migrer en RoasterContext si une autre machine en veut d'autres.
+# Réglages de refroidissement posés par l'AutoPilot au DROP : couper le brûleur,
+# ventiler et extraire fort, tambour rapide (drum_midroast_locked ne s'applique plus).
 _AP_COOLING_LEVERS: Final = {3: 0.0, 0: 75.0, 2: 75.0, 1: 80.0}  # burner, air, ext, drum
 
 
 def _ap_curve_ror_c(plan: dict | None, t_min: float, mode: str) -> "float | None":
-    """## TILAU ## RoR PLANIFIÉE RÉELLE (°C/min) au temps t_min, interpolée depuis
+    """RoR PLANIFIÉE RÉELLE (°C/min) au temps t_min, interpolée depuis
     `bt_plan_curve.ror_plan` — la courbe physiquement modélisée (décélérante),
     pas une moyenne scalaire. C'est LA cible correcte pour l'écart affiché et le
     trim : comparer le RoR réel à la RoR prévue AU MÊME POINT. °F → ÷1.8."""
@@ -522,7 +498,7 @@ def _ap_curve_ror_c(plan: dict | None, t_min: float, mode: str) -> "float | None
 
 def _ap_phase_endpoints(plan: dict | None, phase_key: str,
                         mode: str) -> "tuple[float, float]":
-    """## TILAU ## Cibles RoR (début, fin) de phase pour l'AutoPilotCore, en °C/min,
+    """Cibles RoR (début, fin) de phase pour l'AutoPilotCore, en °C/min,
     ÉCHANTILLONNÉES SUR LA VRAIE COURBE du plan aux temps des jalons (fix
     2026-07-10 : l'ancienne reconstruction géométrique produisait une cible
     Maillard plate qui ne suivait pas la courbe → écarts % incohérents). Repli
@@ -549,7 +525,7 @@ def _ap_phase_endpoints(plan: dict | None, phase_key: str,
 
 
 def _ap_phase_span_sec(plan: dict | None, phase_key: str) -> "float | None":
-    """## TILAU ## Durée planifiée (s) de la phase MAI/DEV depuis les waypoints
+    """Durée planifiée (s) de la phase MAI/DEV depuis les waypoints
     de la courbe du plan vivant (clés stables). None si indisponible."""
     try:
         wps = (plan or {})["bt_plan_curve"]["waypoints"]
@@ -563,7 +539,7 @@ def _ap_phase_span_sec(plan: dict | None, phase_key: str) -> "float | None":
 
 def _ap_ramp_crossed(plan: dict | None, bt_prev: float,
                      bt_now: float) -> "tuple[float, int] | None":
-    """## TILAU ## Palier de rampe heater FRANCHI ce tick : entrée de
+    """Palier de rampe heater FRANCHI ce tick : entrée de
     plan['Heater Ramp'] dont le seuil BT vient d'être traversé EN MONTANT
     (bt_prev < seuil <= bt_now). Un franchissement montant uniquement — au
     CHARGE la sonde lit la température du tambour puis PLONGE vers le TP en
@@ -585,7 +561,7 @@ def _ap_ramp_crossed(plan: dict | None, bt_prev: float,
 
 def _ap_entry_ramp_crossed(plan: dict | None, key: str, bt_prev: float,
                            bt: float) -> "dict | None":
-    """## TILAU ## Étage de la rampe `key` (plan[key], liste d'entrées {bt, ...})
+    """Étage de la rampe `key` (plan[key], liste d'entrées {bt, ...})
     FRANCHI ce tick, en MONTANT (bt_prev < seuil <= bt). Renvoie le dernier
     (plus haut) étage franchi — valeurs absolues auto-réparatrices : un saut de
     BT qui sauterait un étage atterrit sur la bonne consigne suivante. None si
@@ -675,6 +651,16 @@ def _ror_deviation_advice(
         level, direction, _color = get_ror_color_by_phase(ror, phase, mode)
     status = {"ok": _S_OK, "warn": _S_WARN, "crit": _S_CRIT}.get(level, _S_OK)
 
+    # Outside PLAN/AUTO authority the typed selector is the sole source of
+    # non-safety guidance. The phase pages still arbitrate their existing
+    # absolute safety guards before displaying this returned text.
+    try:
+        _guidance = getattr(aw, "_tilau_guidance_decision", None)
+        if _guidance is not None and not _guidance.directional_plan_advice:
+            return _S_OK, str(getattr(aw, "_tilau_guidance_output_text", ""))
+    except AttributeError:
+        pass
+
     if direction == "normal":
         if target > 0:
             return _S_OK, QApplication.translate(
@@ -711,12 +697,17 @@ def _ror_deviation_advice(
         lo, hi = get_ror_ideal_band(phase, mode)
         ref = f"{lo:.0f}–{hi:.0f} {unit}"
 
-    # ── Quantification plan « UN CRAN » (item E, étude 3) ─────────────────
-    # La correction validée par la pratique = UN cran de ~5 %, jamais un bloc
-    # (« burner 75% vs plan 60% » se lisait « fais −15 % d'un coup » = pompage).
-    # On suggère le prochain pas vers le plan, borné à la valeur planifiée, en
-    # citant le plan pour la transparence. Un cran = 5 % (granularité mesurée),
-    # jamais plus fin que la résolution du slider.
+    if aw is not None and _guidance_curve_only(aw):
+        prefix = "⚠ " if status == _S_CRIT else ""
+        return status, QApplication.translate(
+            "tilauscope_roast_assistant",
+            "{0}{1} reference trajectory ({2}) — curve observation only",
+        ).format(prefix, arrow, ref)
+
+    # ── Quantification plan « UN CRAN » ────────────────────────────────────
+    # Correction validée par la pratique = UN cran de ~5 %, jamais un bloc (un
+    # écart lu comme "-15% d'un coup" = pompage). Suggère le prochain pas vers le
+    # plan, borné à la valeur planifiée.
     action: "str | None" = None
     plan_heater = _plan_heater_pct(plan, phase)
     burner = _read_slider_pct(aw, _burner_slider_idx(aw)) if aw is not None else None
@@ -754,6 +745,8 @@ def _read_slider_pct(aw, idx: int):
     Index map (this rig): 0=Airflow (integrated rear ventilation), 1=Drum,
     2=Damper (= AirWave extraction), 3=Burner."""
     try:
+        if not bool(aw.eventslidervisibilities[idx]):
+            return None
         sld = aw.tilauscope_main.sld_list[idx]
         return int(sld.value()) if sld is not None else None
     except (AttributeError, IndexError, TypeError):
@@ -770,10 +763,8 @@ _AIRWAVE_MODE_BY_PHASE = {"drying": "FAN", "maillard": "STD", "development": "EX
 
 
 # Fenêtre d'approche d'un jalon (minutes) : plancher de repli quand le graphe ne
-# publie pas de proximité (coach off, ETA non calculable). Le signal PRINCIPAL
-# est _coach_approaching() ci-dessous, lu DIRECTEMENT depuis l'état publié par le
-# graphe — même prédiction que le message « approaching », donc bouton et alerte
-# s'allument ensemble. Unité de temps → pas de scaling °F.
+# publie pas de proximité. Le signal principal est _coach_approaching() ci-dessous,
+# lu directement depuis l'état publié par le graphe.
 _APPROACH_MIN: Final = 1.5
 
 
@@ -791,6 +782,14 @@ def _milestone_suggestion(aw, which: str, max_age_s: float = 30.0) -> "dict | No
         return s
     except (AttributeError, TypeError, ValueError):
         return None
+
+
+def _mark_missing_milestone(aw, which: str) -> None:
+    """Mark an explicitly requested missing event through Artisan's signals."""
+    if which == "DE":
+        aw.qmc.markDRYSignal.emit(False)
+    elif which == "FC":
+        aw.qmc.markFCsSignal.emit(False)
 
 
 def _coach_approaching(aw, toward: str) -> bool:
@@ -911,10 +910,8 @@ class _RoRCrashDetector:
     _TEMP_PROXIMITY_C  = 12.0   # deg C - vigilance window before the target temperature
     MIN_DURATION_SEC   = 6.0    # seconds the condition must hold (sample-rate invariant)
     ROR_FLOOR          = 5.0    # deg/min - RoR genuinely low (not mere deceleration)
-    ## TILAU ## Calibration DEV (banc corpus 2026-07-11, spec §3quinquies) : la
-    ## pente −0,8/s attrapait 0/21 crashes de dev (chute réelle ~−0,24/s). Le
-    ## crash franc = perte de RoR sur une fenêtre GLISSANTE de 15 s ; seuil 3,0
-    ## °C/min = conservateur (66 % catch / ~10 % fausses alertes, filet minimal).
+    # Calibration DEV : crash franc = perte de RoR sur une fenêtre glissante de
+    # 15 s ; seuil 3,0 °C/min (conservateur, filet minimal).
     DEV_FALL_WINDOW_S    = 15.0  # fenêtre de mesure de la chute (dev)
     DEV_FALL_C_PER_WIN   = 3.0   # °C/min perdus sur la fenêtre → crash franc
     DEV_MIN_SPAN_S       = 10.0  # historique mini couvert avant de juger
@@ -931,7 +928,7 @@ class _RoRCrashDetector:
         self._drum_quiet_until: float = 0.0   # monotonic — survit au reset()
 
     def notify_drum_event(self) -> None:
-        """## TILAU ## Un mouvement du tambour pollue la MESURE du RoR (excursion
+        """Un mouvement du tambour pollue la MESURE du RoR (excursion
         +50 % médiane, 64/81 roasts du corpus) : toute détection RoR est muette
         pendant DRUM_QUIET_S. Volontairement NON remis à zéro par reset()."""
         self._drum_quiet_until = time.monotonic() + self.DRUM_QUIET_S
@@ -973,7 +970,7 @@ class _RoRCrashDetector:
         if len(ror_hist) < 4:
             return None
         if time.monotonic() < self._drum_quiet_until:
-            self._consecutive = 0   ## TILAU ## fenêtre tambour : mesure RoR polluée
+            self._consecutive = 0   # fenêtre tambour : mesure RoR polluée
             return None
 
         dt = dt if (dt and dt > 0) else 1.0
@@ -1038,7 +1035,7 @@ class _SectionTitle(QLabel):
     def __init__(self, text: str):
         super().__init__(text.upper())
         self.setStyleSheet(
-            f"color: #585B70; font-size: 9px; font-weight: 800; {_FONT} border: none;"
+            f"color: {THEME['SURFACE2']}; font-size: 9px; font-weight: 800; {_FONT} border: none;"
         )
 
 class _MetricCard(QFrame):
@@ -1076,7 +1073,7 @@ class _MetricCard(QFrame):
         top.setSpacing(4)
         self._lbl_title = QLabel(label.upper())
         self._lbl_title.setStyleSheet(
-            f"color: #585B70; font-size: 10px; font-weight: 800; "
+            f"color: {THEME['SURFACE2']}; font-size: 10px; font-weight: 800;"
             f"{_FONT} letter-spacing: 0.8px;"
         )
         self._lbl_status = QLabel("●")
@@ -1096,7 +1093,7 @@ class _MetricCard(QFrame):
         # Ligne 3 : contexte / sous-titre — contraste augmenté
         self._lbl_sub = QLabel("")
         self._lbl_sub.setStyleSheet(
-            f"color: #94A3B8; font-size: 10px; {_FONT}"
+            f"color: {THEME['SUBTEXT']}; font-size: 10px; {_FONT}"
         )
         self._lbl_sub.setWordWrap(True)
 
@@ -1143,8 +1140,8 @@ class _AlertBanner(QLabel):
         # Fond semi-transparent basé sur la couleur du niveau
         bg_map = {
             _S_OK:   "rgba(166,227,161,0.08)",
-            _S_WARN: "rgba(249,226,175,0.08)",
-            _S_CRIT: "rgba(243,139,168,0.08)",
+            _S_WARN: tint('YELLOW', 0.08),
+            _S_CRIT: tint('CRITICAL', 0.08),
         }
         bg = bg_map.get(level, f"{_SURFACE}")
         self.setStyleSheet(f"""
@@ -1170,11 +1167,9 @@ class _AlertBanner(QLabel):
         self.hide()
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Widgets groupe B2 — Présentation « héro » (layout B, low-density)            ## TILAU ##
-#   _HeroMetric : une seule métrique dominante par page (grand chiffre).
-#   _MiniChip / _ChipRow : contexte compact secondaire.
-#   _CoachLine : ligne de conseil unique, teintée par niveau (remplace la
-#                multiplication des sous-titres + bannières disséminés).
+# Widgets groupe B2 — Présentation « héro » (layout B, low-density) :
+# _HeroMetric (métrique dominante), _MiniChip/_ChipRow (contexte compact),
+# _CoachLine (ligne de conseil unique, teintée par niveau).
 # ══════════════════════════════════════════════════════════════════════════════
 
 class _HeroMetric(QWidget):
@@ -1202,7 +1197,7 @@ class _HeroMetric(QWidget):
         self._lbl = QLabel(label.upper())
         self._lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._lbl.setStyleSheet(
-            f"color: #6C7086; font-size: 10px; font-weight: 800; "
+            f"color: {THEME['OVERLAY0']}; font-size: 10px; font-weight: 800;"
             f"{_FONT} letter-spacing: 1.5px; border: none;"
         )
         self._val = QLabel("--")
@@ -1211,32 +1206,30 @@ class _HeroMetric(QWidget):
         self._val.setStyleSheet(f"{_FONT} border: none;")
         # A rich-text QLabel reports a tiny minimum height (its content may
         # wrap), so a squeezed page shrank it below the 46 px glyphs and the
-        # number was sliced top and bottom. Reserve the line height.  ## TILAU ##
+        # number was sliced top and bottom. Reserve the line height.
         self._val.setMinimumHeight(self._VAL_MIN_H)
         self._val.setSizePolicy(QSizePolicy.Policy.Preferred,
                                 QSizePolicy.Policy.MinimumExpanding)
         self._sub = QLabel("")
         self._sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # Wrap allowed: an unwrapped QLabel imposes its FULL text width as the
-        # page's minimum width — through the QStackedWidget (max of all pages)
-        # it made the anchored body wider than the scroll viewport (hscroll is
-        # off), clipping every page's right edge. The sub-line is the longest
-        # variable text of a page; two lines beat silent truncation.  ## TILAU ##
+        # Wrap allowed: an unwrapped QLabel imposes its full text width as the
+        # page's minimum width, widening the anchored body past the scroll
+        # viewport and clipping every page's right edge (hscroll is off).
         self._sub.setWordWrap(True)
-        self._sub.setTextFormat(Qt.TextFormat.RichText)   # tinted colour segment ## TILAU ##
-        self._sub.setStyleSheet(f"color: #94A3B8; font-size: 11px; {_FONT} border: none;")
+        self._sub.setTextFormat(Qt.TextFormat.RichText)   # tinted colour segment
+        self._sub.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px; {_FONT} border: none;")
         self._sub.hide()
 
         lay.addWidget(self._lbl)
         lay.addWidget(self._val)
         lay.addWidget(self._sub)
 
-    def set_label(self, text: str, color: str = "#6C7086") -> None:
+    def set_label(self, text: str, color: str = THEME['OVERLAY0']) -> None:
         t = text.upper()
         if t != self._last_lbl:
             self._lbl.setText(t)
             self._lbl.setStyleSheet(
-                f"color: {color}; font-size: 10px; font-weight: 800; "
+                f"color: {color}; font-size: 10px; font-weight: 800;"
                 f"{_FONT} letter-spacing: 1.5px; border: none;"
             )
             self._last_lbl = t
@@ -1244,7 +1237,7 @@ class _HeroMetric(QWidget):
     def update(self, value: str, sub: str = "",
                color: str | None = None, trend: str = "") -> None:
         c = color or self._color
-        unit_html = (f" <span style='font-size:18px;color:#6C7086;font-weight:700'>"
+        unit_html = (f" <span style='font-size:18px;color:{THEME['OVERLAY0']};font-weight:700'>"
                      f"{self._unit}</span>") if self._unit else ""
         trend_html = (f" <span style='font-size:26px;color:{c}'>{trend}</span>"
                       if trend else "")
@@ -1260,7 +1253,7 @@ class _HeroMetric(QWidget):
             self._sync_sub_height()
 
     def _sync_sub_height(self) -> None:
-        """Reserve the height the wrapped sub-line actually needs.  ## TILAU ##
+        """Reserve the height the wrapped sub-line actually needs.
 
         A word-wrapped QLabel reports the height of ONE line as its minimum, so
         a 3-line sub-line (heat-soak note on a narrow anchored panel) had its
@@ -1284,7 +1277,7 @@ class _MiniChip(QFrame):
     def __init__(self):
         super().__init__()
         self.setStyleSheet(
-            f"QFrame {{ background: {_SURFACE}; border: 1px solid {_BORDER}; "
+            f"QFrame {{ background: {_SURFACE}; border: 1px solid {_BORDER};"
             f"border-radius: 8px; }} QLabel {{ border: none; background: transparent; }}"
         )
         lay = QVBoxLayout(self)
@@ -1294,13 +1287,13 @@ class _MiniChip(QFrame):
         self._l = QLabel("")
         self._l.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._l.setStyleSheet(
-            f"color: #6C7086; font-size: 9px; font-weight: 800; "
+            f"color: {THEME['OVERLAY0']}; font-size: 9px; font-weight: 800;"
             f"{_FONT} letter-spacing: 0.5px;"
         )
         self._v = QLabel("--")
         self._v.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._color = None
-        self._set_value_style("#CDD6F4")
+        self._set_value_style(THEME['TEXT'])
         lay.addWidget(self._l)
         lay.addWidget(self._v)
 
@@ -1352,13 +1345,13 @@ class _CoachLine(QLabel):
 
     def _apply(self, level: str) -> None:
         if level == _S_OK:
-            border, col = _BORDER, "#BAC2DE"
+            border, col = _BORDER, THEME['SUBTEXT1']
         else:
             c = _STATUS_COLOR.get(level, _BORDER)
             border, col = f"{c}88", c
         self.setStyleSheet(
-            f"QLabel {{ background: {_SURFACE}; border: 1px solid {border}; "
-            f"border-radius: 9px; color: {col}; font-size: 11.5px; "
+            f"QLabel {{ background: {_SURFACE}; border: 1px solid {border};"
+            f"border-radius: 9px; color: {col}; font-size: 11.5px;"
             f"font-weight: 600; {_FONT} padding: 9px 11px; }}"
         )
 
@@ -1368,6 +1361,31 @@ class _CoachLine(QLabel):
             self._level = level
         if self.text() != text:
             self.setText(text)
+
+
+def _render_coach_candidates(aw, coach: _CoachLine,
+                             candidates: list[AdviceCandidate]) -> None:
+    """Render the one selected candidate; an empty output is intentional silence."""
+    candidates = list(getattr(aw, "_tilau_guidance_safety_candidates", ())) + candidates
+    decision = getattr(aw, "_tilau_guidance_decision", None)
+    selector = getattr(aw, "_tilau_guidance_selector", None)
+    # Rendering has no authority fallback: before a live session publishes its
+    # decision, silence is safer than silently recreating PLAN authority in UI.
+    if decision is None or selector is None:
+        coach.set("", _S_OK)
+        return
+    output = selector.select(
+        candidates, decision, time.monotonic(),
+        actions_observable=not _guidance_curve_only(aw))
+    if output.candidate is None:
+        coach.set("", _S_OK)
+        return
+    level = {
+        AdviceSeverity.CRITICAL: _S_CRIT,
+        AdviceSeverity.WARNING: _S_WARN,
+        AdviceSeverity.INFO: _S_OK,
+    }[output.candidate.severity]
+    coach.set(output.text, level)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Widgets groupe C — Quick Adjust et boutons contextuels
@@ -1386,7 +1404,7 @@ def _slider_cfg(aw: "ApplicationWindow", idx: int) -> tuple[str, int, str]:
     try:
         color = aw.qmc.EvalueColor[idx]
     except (AttributeError, IndexError):
-        color = "#CDD6F4"
+        color = THEME['TEXT']
     return (label, idx, color)
 
 
@@ -1402,6 +1420,11 @@ def _filter_slider_configs(aw: "ApplicationWindow",
     airwave_present = getattr(aw, "bleAirwaveDevice", None) is not None
 
     def _keep(idx: int) -> bool:
+        try:
+            if not bool(aw.eventslidervisibilities[idx]):
+                return False
+        except (AttributeError, IndexError, TypeError):
+            return False
         if idx == 3:   # Burner / heater
             return ctx is None or ctx.has_heater_control
         if idx == 0:   # Air / airflow
@@ -1425,6 +1448,28 @@ def _roaster_is_readonly(aw: "ApplicationWindow") -> bool:
     ne vouloir qu'un écran de monitoring). L'AirWave (extracteur BLE séparé)
     n'entre pas dans ce calcul — il garde son bouton même en lecture seule."""
     return bool(getattr(aw, "tilau_roaster_readonly", False))
+
+
+def _guidance_curve_only(aw: "ApplicationWindow") -> bool:
+    """True when this session exposes no observable actuator slider."""
+    if _roaster_is_readonly(aw):
+        return True
+    return not _observable_guidance_levers(aw)
+
+
+def _observable_guidance_levers(aw: "ApplicationWindow") -> frozenset[GuidanceLever]:
+    """Intersect live slider configuration with the selected roaster structure."""
+    try:
+        ctx = getattr(aw, "_tilau_roast_context", None)
+        return observable_control_levers(
+            aw.eventslidervisibilities,
+            has_airflow_control=bool(ctx is None or ctx.has_airflow_control),
+            drum_variable_speed=bool(ctx is None or ctx.drum_variable_speed),
+            has_heater_control=bool(ctx is None or ctx.has_heater_control),
+            has_external_control=getattr(aw, "bleAirwaveDevice", None) is not None,
+        )
+    except AttributeError:
+        return frozenset()
 
 
 _RECO_KEYS: Final = (
@@ -1457,8 +1502,8 @@ class _RecoRow(QLabel):
         super().__init__("")
         self.setWordWrap(True)
         self.setStyleSheet(
-            f"QLabel {{ background: {_SURFACE}; border: 1px dashed {_BORDER}; "
-            f"border-radius: 8px; color: #A6ADC8; font-size: 11px; {_FONT} "
+            f"QLabel {{ background: {_SURFACE}; border: 1px dashed {_BORDER};"
+            f"border-radius: 8px; color: {THEME['SUBTEXT']}; font-size: 11px; {_FONT} "
             f"padding: 8px 10px; }}")
         self._tr_prefix = QApplication.translate(
             "tilauscope_roast_assistant", "Recommended settings")
@@ -1468,6 +1513,7 @@ class _RecoRow(QLabel):
         txt = f"{self._tr_prefix} — {reco_text}" if reco_text else self._tr_prefix
         if self.text() != txt:
             self.setText(txt)
+        self.setVisible(bool(reco_text))
 
 
 class _QuickAdjustButton(QFrame):
@@ -1484,7 +1530,7 @@ class _QuickAdjustButton(QFrame):
         aw: "ApplicationWindow",
         label: str,
         slider_idx: int,
-        color: str = "#CDD6F4",
+        color: str = THEME['TEXT'],
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -1492,7 +1538,11 @@ class _QuickAdjustButton(QFrame):
         self._idx       = slider_idx
         self._color     = color
 
-        self.setFixedSize(90, 56)
+        self.setMinimumWidth(56)
+        self.setMaximumWidth(90)
+        self.setFixedHeight(56)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setStyleSheet(f"""
             QFrame {{
                 background: {_SURFACE};
@@ -1506,14 +1556,14 @@ class _QuickAdjustButton(QFrame):
         self._lbl_name = QLabel(label.upper(), self)
         self._lbl_name.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self._lbl_name.setStyleSheet(
-            f"color: #a6adc8; font-size: 9px; font-weight: 700; "
+            f"color: {THEME['SUBTEXT']}; font-size: 9px; font-weight: 700;"
             f"{_FONT} letter-spacing: 0.6px; border: none; background: transparent;"
         )
 
         self._lbl_val = QLabel("--", self)
         self._lbl_val.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self._lbl_val.setStyleSheet(
-            f"color: {color}; font-size: 18px; font-weight: 700; "
+            f"color: {color}; font-size: 18px; font-weight: 700;"
             f"{_FONT} border: none; background: transparent;"
         )
 
@@ -1533,24 +1583,30 @@ class _QuickAdjustButton(QFrame):
         # ── Overlay ↑ / ↓ (invisible par défaut) ────────────────────────────
         self._btn_up = QPushButton("", self)
         self._btn_up.setGeometry(0, 0, 90, 27)
-        self._btn_up.setStyleSheet("""
-            QPushButton {
+        self._btn_up.setStyleSheet(f"""
+            QPushButton {{
                 background: transparent; border: none; border-radius: 0;
-                font-size: 14px; color: #CDD6F4;
-            }
-            QPushButton:hover { background: #45475A99; }
+                font-size: 14px; color: {THEME['TEXT']};
+            }}
+            /* Qt reads an 8-digit hex as #AARRGGBB, so the #45475A99 that used
+               to be here was not SURFACE1 at 60% but a blue at 27%. rgba()
+               has no such ambiguity. */
+            QPushButton:hover {{ background: {tint('SURFACE1', 0.6)}; }}
         """)
         self._btn_up.setText("▲")
         self._btn_up.hide()
 
         self._btn_dn = QPushButton("", self)
         self._btn_dn.setGeometry(0, 29, 90, 27)
-        self._btn_dn.setStyleSheet("""
-            QPushButton {
+        self._btn_dn.setStyleSheet(f"""
+            QPushButton {{
                 background: transparent; border: none; border-radius: 0;
-                font-size: 14px; color: #CDD6F4;
-            }
-            QPushButton:hover { background: #45475A99; }
+                font-size: 14px; color: {THEME['TEXT']};
+            }}
+            /* Qt reads an 8-digit hex as #AARRGGBB, so the #45475A99 that used
+               to be here was not SURFACE1 at 60% but a blue at 27%. rgba()
+               has no such ambiguity. */
+            QPushButton:hover {{ background: {tint('SURFACE1', 0.6)}; }}
         """)
         self._btn_dn.setText("▼")
         self._btn_dn.hide()
@@ -1563,6 +1619,16 @@ class _QuickAdjustButton(QFrame):
 
         self._btn_up.clicked.connect(self._on_up)
         self._btn_dn.clicked.connect(self._on_dn)
+
+    def resizeEvent(self, event) -> None:
+        """Keep the hover overlays aligned when the guided column contracts."""
+        width = self.width()
+        half = self.height() // 2
+        self._lbl_widget.setGeometry(0, 0, width, self.height())
+        self._btn_up.setGeometry(0, 0, width, half)
+        self._btn_dn.setGeometry(0, half, width, self.height() - half)
+        self._sep.setGeometry(8, half, max(0, width - 16), 1)
+        super().resizeEvent(event)
 
     def _get_sld(self):
         """Retourne le slider Artisan correspondant, via tilauscope_main."""
@@ -1648,7 +1714,7 @@ class _QuickAdjustRow(QWidget):
         for label, idx, color in slider_configs:
             btn = _QuickAdjustButton(aw, label, idx, color)
             self._buttons.append(btn)
-            layout.addWidget(btn)
+            layout.addWidget(btn, 1)
         layout.addStretch()
 
     def refresh(self) -> None:
@@ -1664,16 +1730,16 @@ class _ContextButton(QPushButton):
     style : 'ok' | 'warn' | 'cancel' | 'purple' | 'dim'
     """
     _STYLES = {
-        'ok':     ("border:1.5px solid #A6E3A1; color:#A6E3A1; background:rgba(166,227,161,0.08);",
-                   "border:1.5px solid #A6E3A1; color:#A6E3A1; background:rgba(166,227,161,0.18);"),
-        'warn':   ("border:1.5px solid #F9E2AF; color:#F9E2AF; background:rgba(249,226,175,0.08);",
-                   "border:1.5px solid #F9E2AF; color:#F9E2AF; background:rgba(249,226,175,0.18);"),
-        'cancel': ("border:1.5px solid #F38BA8; color:#F38BA8; background:rgba(243,139,168,0.08);",
-                   "border:1.5px solid #F38BA8; color:#F38BA8; background:rgba(243,139,168,0.18);"),
-        'purple': ("border:1.5px solid #CBA6F7; color:#CBA6F7; background:rgba(203,166,247,0.08);",
-                   "border:1.5px solid #CBA6F7; color:#CBA6F7; background:rgba(203,166,247,0.18);"),
-        'dim':    (f"border:1.5px solid {_BORDER}; color:#585B70; background:transparent;",
-                   f"border:1.5px solid {_BORDER}; color:#585B70; background:transparent;"),
+        'ok':     (f"border:1.5px solid {THEME['SUCCESS']}; color:{THEME['SUCCESS']}; background:rgba(166,227,161,0.08);",
+                   f"border:1.5px solid {THEME['SUCCESS']}; color:{THEME['SUCCESS']}; background:rgba(166,227,161,0.18);"),
+        'warn':   (f"border:1.5px solid {THEME['YELLOW']}; color:{THEME['YELLOW']}; background:{tint('YELLOW', 0.08)};",
+                   f"border:1.5px solid {THEME['YELLOW']}; color:{THEME['YELLOW']}; background:{tint('YELLOW', 0.18)};"),
+        'cancel': (f"border:1.5px solid {THEME['CRITICAL']}; color:{THEME['CRITICAL']}; background:{tint('CRITICAL', 0.08)};",
+                   f"border:1.5px solid {THEME['CRITICAL']}; color:{THEME['CRITICAL']}; background:{tint('CRITICAL', 0.18)};"),
+        'purple': (f"border:1.5px solid {THEME['MAUVE']}; color:{THEME['MAUVE']}; background:{tint('MAUVE', 0.08)};",
+                   f"border:1.5px solid {THEME['MAUVE']}; color:{THEME['MAUVE']}; background:{tint('MAUVE', 0.18)};"),
+        'dim':    (f"border:1.5px solid {_BORDER}; color:{THEME['SURFACE2']}; background:transparent;",
+                   f"border:1.5px solid {_BORDER}; color:{THEME['SURFACE2']}; background:transparent;"),
     }
 
     def __init__(self, label: str, hint: str = "", style: str = 'ok',
@@ -1683,6 +1749,9 @@ class _ContextButton(QPushButton):
         self.maintext = label
         text = label if not hint else f"{label}\n{hint}"
         self.setText(text)
+        self.setMinimumWidth(0)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self._apply_style(style)
         self.setStyleSheet(self.styleSheet() + f"""
             QPushButton {{
@@ -1699,7 +1768,7 @@ class _ContextButton(QPushButton):
                 {_FONT} border-radius: 7px; padding: 7px 8px; }}
             QPushButton:hover {{ {hover} }}
             QPushButton:disabled {{ border:1.5px solid {_BORDER};
-                color:#45475A; background:transparent; }}
+                color:{THEME['SURFACE1']}; background:transparent; }}
         """)
 
     def set_style(self, style: str) -> None:
@@ -1724,13 +1793,16 @@ class _IdlePage(QWidget):
         self._lbl = QLabel()
         self._lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._lbl.setWordWrap(True)
+        self._lbl.setMinimumWidth(0)
+        self._lbl.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self._lbl.setStyleSheet(
-            f"color: #585B70; font-size: 16px; {_FONT} border: none;"
+            f"color: {THEME['SURFACE2']}; font-size: 16px; {_FONT} border: none;"
         )
         layout.addWidget(self._lbl)
         self.set_operator_level("guided")
 
-    def set_operator_level(self, level: str) -> None:  ## TILAU ##
+    def set_operator_level(self, level: str) -> None:
         if level == "guided":
             self._lbl.setText(QApplication.translate("tilauscope_roast_assistant",
                 "Select a green bean and a roasting target,\nthen press  ▶  in Artisan to start."))
@@ -1768,7 +1840,7 @@ class _PreheatPage(QWidget):
 
         # Hero metric — relabelled per mode in refresh()
         self.hero = _HeroMetric(
-            QApplication.translate("tilauscope_roast_assistant", "Until SV"), "°", "#A6E3A1")
+            QApplication.translate("tilauscope_roast_assistant", "Until SV"), "°", THEME['SUCCESS'])
 
         # Progress bar BT → SV (manual fill)
         prog_row = QHBoxLayout()
@@ -1797,10 +1869,10 @@ class _PreheatPage(QWidget):
         # Quick adjust — burner only during preheat
         self.quick_adjust = _QuickAdjustRow(aw, _filter_slider_configs(
             aw, getattr(aw, "_tilau_roast_context", None), [
-                (QApplication.translate("tilauscope_roast_assistant", "Burner"), 3, "#F38BA8"),
+                (QApplication.translate("tilauscope_roast_assistant", "Burner"), 3, THEME['CRITICAL']),
             ]))
         # Torréfacteur sans commandes : pas de slider burner à régler.
-        if _roaster_is_readonly(aw):
+        if _guidance_curve_only(aw):
             self.quick_adjust.setVisible(False)
 
         # Charge button (terminal action)
@@ -1911,12 +1983,14 @@ class _PreheatPage(QWidget):
             self._set_progress(((bt - ref_low) / span * 100.0) if span > 0 else 0.0)
 
             eta = _eta_minutes(bt, sv, ror) if ror is not None and ror > 0.5 else None
+            ## Chip colours are a channel palette (one hue per measured quantity),
+            ## not semantics — kept literal so they don't follow THEME severity tones.
             self.chips.set_chips([
                 (self._cl_bt,  f"{bt:.0f}°",          "#FAB387"),
                 (self._cl_ror, f"{ror_chip} {trend}".strip(), "#CBA6F7"),
                 (self._cl_htr, f"{heater_pct}%",      "#F9E2AF"),
                 (self._cl_sv,  f"{sv:.0f}°",          "#89B4FA"),
-                (self._cl_eta, self._eta_text(eta),   "#89B4FA"),
+                (self._cl_eta, self._eta_text(eta),   THEME['ACCENT']),
             ])
 
             # Banner state + coach (single advice line)
@@ -1978,13 +2052,9 @@ class _PreheatPage(QWidget):
 
 
 class _DryingPage(QWidget):
-    """Drying phase, layout B (low-density).
-
-    Hero = current RoR (the steering variable). Sub-line folds band/target,
-    BT and DRY END ETA (plus live Agtron when Omniflux is bound). A single
-    coach line carries the advice, tinted by severity. Airflow/extraction are
-    no longer separate cards — they read directly off the quick-adjust row.
-    """
+    """Drying phase, layout B (low-density). Hero = current RoR (the steering
+    variable); sub-line folds band/target, BT and DRY END ETA. A single coach
+    line carries the advice, tinted by severity."""
 
     _ROR_LOW  = 5.0
     _ROR_OK_L = 8.0
@@ -2003,7 +2073,7 @@ class _DryingPage(QWidget):
 
         # Hero — current RoR
         self.hero = _HeroMetric(
-            QApplication.translate("tilauscope_roast_assistant", "Actual RoR"), "°/min", "#A6E3A1")
+            QApplication.translate("tilauscope_roast_assistant", "Actual RoR"), "°/min", THEME['SUCCESS'])
 
         # Progress bar → DRY END (manual fill)
         prog_row = QHBoxLayout()
@@ -2013,13 +2083,13 @@ class _DryingPage(QWidget):
         self._prog_outer.setStyleSheet(f"background: {_BORDER}; border-radius: 4px;")
         self._prog_inner = QFrame(self._prog_outer)
         self._prog_inner.setFixedHeight(8)
-        self._prog_inner.setStyleSheet("background: #CBA6F7; border-radius: 4px;")
+        self._prog_inner.setStyleSheet(f"background: {THEME['MAUVE']}; border-radius: 4px;")
         self._lbl_prog_val = QLabel("0 %")
         self._lbl_prog_val.setFixedWidth(40)
         self._lbl_prog_val.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._lbl_prog_val.setStyleSheet(
-            f"color: #CBA6F7; font-size: 12px; font-weight: bold; {_FONT} border: none;")
+            f"color: {THEME['MAUVE']}; font-size: 12px; font-weight: bold; {_FONT} border: none;")
         prog_row.addWidget(self._prog_outer)
         prog_row.addWidget(self._lbl_prog_val)
 
@@ -2059,13 +2129,13 @@ class _DryingPage(QWidget):
         _ctx_row.addWidget(self.btn_airwave)
 
         # Advisor tips (roaster-physics cautions) are folded into the coach line
-        # when drying is steady — no floating banner.                    ## TILAU ##
+        # when drying is steady — no floating banner.
         self._advisor_tips: str = ""
 
         # Torréfacteur sans commandes → masque la rangée de sliders, affiche
         # les recommandations à la place (peuplées en refresh).
         self._reco = _RecoRow()
-        self._readonly = _roaster_is_readonly(aw)
+        self._readonly = _guidance_curve_only(aw)
         if self._readonly:
             self.quick_adjust.setVisible(False)
             self._reco.show()
@@ -2219,7 +2289,7 @@ class _DryingPage(QWidget):
             grain_notes.append(self._tr_natural_honey_extended_drying)
         coach_text = ror_sub + ("  ·  " + "  ·  ".join(grain_notes) if grain_notes else "")
 
-        # ── Gap ET/BT (alert only; no longer a card) ───────────────────────────
+        # ── Gap ET/BT (alert only) ──────────────────────────────────────────────
         gap_grace = (t_tp_sec < 0) or ((t_now_sec - t_tp_sec) < self._TP_GRACE_SEC)
         gap_status = _S_OK
         if not gap_grace:
@@ -2232,9 +2302,7 @@ class _DryingPage(QWidget):
 
         # ── Projection d'overrun du séchage vs plan ─────────────────────────────
         # Symétrique au baked-risk de la page Maillard. Les durées du plan étant
-        # désormais calibrées par grain (historique), dépasser la durée dry
-        # planifiée de 20/40 % signale un vrai déficit d'énergie, pas un défaut
-        # de grille générique.
+        # calibrées par grain, dépasser de 20/40 % signale un vrai déficit d'énergie.
         _dry_risk: str | None = None
         _dry_level: str = _S_WARN
         if eta is not None and not stabilizing and t_now_sec > 0:
@@ -2263,7 +2331,7 @@ class _DryingPage(QWidget):
 
         # ── Hero (RoR) + status word ────────────────────────────────────────────
         if stabilizing:
-            word, wcol, vcol = self._w_stabilizing, "#94A3B8", "#A6E3A1"
+            word, wcol, vcol = self._w_stabilizing, THEME['SUBTEXT'], THEME['SUCCESS']
         elif ror_status == _S_OK:
             word, wcol, vcol = self._w_in_band, _OK, _OK
         elif ror_status == _S_WARN:
@@ -2295,26 +2363,47 @@ class _DryingPage(QWidget):
                 ror, ror_hist, bt, target_temp=dry_end_temp,
                 dt=max(0.25, self.aw.qmc.delay / 1000.0))
 
+        _candidates: list[AdviceCandidate] = []
         if crash_msg:
-            self.coach.set(crash_msg, _S_CRIT)
-        elif premature_browning:
-            self.coach.set(self._tr_premature_browning_detected, _S_CRIT)
-        elif not stabilizing and ror_status == _S_CRIT:
-            self.coach.set(self._tr_ror_out_of_range_check_heater, _S_CRIT)
-        elif not stabilizing and gap_status == _S_CRIT:
-            self.coach.set(self._tr_critical_gap_et_bt, _S_CRIT)
-        elif _dry_risk:
-            self.coach.set(_dry_risk, _dry_level)
-        elif stabilizing:
-            self.coach.set(coach_text, _S_OK)
-        elif ror_status == _S_OK and self._advisor_tips:
-            self.coach.set(self._advisor_tips, _S_OK)
-        else:
-            self.coach.set(coach_text, ror_status)
+            _candidates.append(AdviceCandidate(
+                "dry-crash", crash_msg, AdviceCategory.SAFETY, AdviceSeverity.CRITICAL))
+        if premature_browning:
+            _candidates.append(AdviceCandidate(
+                "dry-browning", self._tr_premature_browning_detected,
+                AdviceCategory.SAFETY, AdviceSeverity.CRITICAL))
+        if not stabilizing and ror_status == _S_CRIT:
+            _candidates.append(AdviceCandidate(
+                "dry-ror", self._tr_ror_out_of_range_check_heater,
+                AdviceCategory.SAFETY, AdviceSeverity.CRITICAL,
+                requires_plan_authority=True))
+        if not stabilizing and gap_status == _S_CRIT:
+            _candidates.append(AdviceCandidate(
+                "dry-gap", self._tr_critical_gap_et_bt,
+                AdviceCategory.SAFETY, AdviceSeverity.CRITICAL))
+        if _dry_risk:
+            _candidates.append(AdviceCandidate(
+                "dry-duration", _dry_risk, AdviceCategory.SAFETY,
+                AdviceSeverity.CRITICAL if _dry_level == _S_CRIT else AdviceSeverity.WARNING))
+        if stabilizing and coach_text:
+            _candidates.append(AdviceCandidate(
+                "dry-stabilizing", coach_text, AdviceCategory.WAIT))
+        elif (ror_status == _S_OK and self._advisor_tips and not ror_sub
+              and getattr(self.aw, "_tilau_guidance_decision").directional_plan_advice):
+            _candidates.append(AdviceCandidate(
+                "dry-physics", self._advisor_tips, AdviceCategory.INFORMATION))
+        elif coach_text:
+            _candidates.append(AdviceCandidate(
+                "dry-guidance", coach_text,
+                AdviceCategory.CONSEQUENCE if not getattr(
+                    self.aw, "_tilau_guidance_decision").directional_plan_advice
+                else AdviceCategory.ACTION,
+                AdviceSeverity.WARNING if ror_status == _S_WARN else AdviceSeverity.INFO,
+                requires_plan_authority=ror_status != _S_OK))
+        _render_coach_candidates(self.aw, self.coach, _candidates)
 
         # ── Quick adjust + context buttons ──────────────────────────────────────
         if self._readonly:
-            self._reco.set_reco(_phase_reco_text(plan, 0))   # 0 = drying
+            self._reco.set_reco("")
         else:
             self.quick_adjust.refresh()
 
@@ -2323,10 +2412,8 @@ class _DryingPage(QWidget):
         else:
             self.btn_cancel.hide()
 
-        # Actif dès l'approche et AU-DELÀ de la cible (marquage manuel
-        # obligatoire), warn quand le marquage est dû. S'allume avec l'alerte
-        # « approaching DRY END » du graphe (signal publié, même prédiction) ;
-        # l'écart de température reste un plancher de repli.
+        # Actif dès l'approche et au-delà de la cible (marquage manuel obligatoire) ;
+        # s'allume avec l'alerte « approaching DRY END » du graphe.
         near_dry = (not stabilizing) and (
             _coach_approaching(self.aw, "DE")
             or (dry_end_temp - bt) <= 8.0 * s
@@ -2357,7 +2444,7 @@ class _MaillardPage(QWidget):
         layout.setSpacing(9)
 
         self.hero = _HeroMetric(
-            QApplication.translate("tilauscope_roast_assistant", "RoR Maillard"), "°/min", "#F9E2AF")
+            QApplication.translate("tilauscope_roast_assistant", "RoR Maillard"), "°/min", THEME['YELLOW'])
 
         prog_row = QHBoxLayout()
         prog_row.setSpacing(8)
@@ -2366,13 +2453,13 @@ class _MaillardPage(QWidget):
         self._prog_outer.setStyleSheet(f"background: {_BORDER}; border-radius: 4px;")
         self._prog_inner = QFrame(self._prog_outer)
         self._prog_inner.setFixedHeight(8)
-        self._prog_inner.setStyleSheet("background: #F9E2AF; border-radius: 4px;")
+        self._prog_inner.setStyleSheet(f"background: {THEME['YELLOW']}; border-radius: 4px;")
         self._lbl_prog_val = QLabel("0 %")
         self._lbl_prog_val.setFixedWidth(40)
         self._lbl_prog_val.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._lbl_prog_val.setStyleSheet(
-            f"color: #F9E2AF; font-size: 12px; font-weight: bold; {_FONT} border: none;")
+            f"color: {THEME['YELLOW']}; font-size: 12px; font-weight: bold; {_FONT} border: none;")
         prog_row.addWidget(self._prog_outer)
         prog_row.addWidget(self._lbl_prog_val)
 
@@ -2391,6 +2478,13 @@ class _MaillardPage(QWidget):
             QApplication.translate("tilauscope_roast_assistant", "near FC target"), style='dim')
         self.btn_fcs.clicked.connect(lambda: aw.qmc.markFCsSignal.emit(False))
         self.btn_fcs.setEnabled(False)
+        self.btn_missing_de = _ContextButton(
+            QApplication.translate("tilauscope_roast_assistant", "Mark DRY END"),
+            QApplication.translate("tilauscope_roast_assistant", "missing milestone"),
+            style='warn')
+        self.btn_missing_de.clicked.connect(
+            lambda: _mark_missing_milestone(aw, "DE"))
+        self.btn_missing_de.setVisible(False)
         # SC start (second crack) vit sur la page DÉVELOPPEMENT — le SC survient
         # après FC end, jamais en Maillard où le bouton restait mort ; le
         # retirer d'ici libère un slot (le panneau ne tient que ~3 boutons).
@@ -2399,11 +2493,8 @@ class _MaillardPage(QWidget):
             QApplication.translate("tilauscope_roast_assistant", "MODE EXT"), style='dim')
         self.btn_airwave.clicked.connect(lambda: _send_airwave_mode(aw, "MODE EXT"))
         self.btn_airwave.setEnabled(False)
-        # One-tap : applique le prochain step de rampe heater au brûleur. Ne
-        # s'affiche que lorsqu'un step est dû (BT proche/au-delà du seuil) et
-        # que le brûleur n'y est pas déjà. Amber avant le seuil (pré-application
-        # possible), vert une fois dû. L'assistant ne touche la machine QUE sur
-        # ce clic (design one-tap manuel validé).
+        # One-tap : applique le prochain step de rampe heater au brûleur, visible
+        # seulement quand un step est dû. L'assistant ne touche la machine que sur ce clic.
         self._aw = aw
         self._pending_ramp: "tuple[float, int] | None" = None
         self._tpl_set_burner = QApplication.translate("tilauscope_roast_assistant", "Set burner {0}%")
@@ -2412,12 +2503,13 @@ class _MaillardPage(QWidget):
             QApplication.translate("tilauscope_roast_assistant", "Set burner"), "", style='dim')
         self.btn_ramp.clicked.connect(self._on_apply_ramp)
         self.btn_ramp.setVisible(False)
+        _ctx_row.addWidget(self.btn_missing_de)
         _ctx_row.addWidget(self.btn_fcs)
         _ctx_row.addWidget(self.btn_ramp)
         _ctx_row.addWidget(self.btn_airwave)
 
         self._reco = _RecoRow()
-        self._readonly = _roaster_is_readonly(aw)
+        self._readonly = _guidance_curve_only(aw)
         if self._readonly:
             self.quick_adjust.setVisible(False)
             self._reco.show()
@@ -2502,11 +2594,8 @@ class _MaillardPage(QWidget):
             ror_target = _ror_ref
 
         # RoR status + advice — PLAN-FIRST : quand une cible plan existe, elle
-        # gouverne (classification relative, quantification, fenêtre ⏳). Le
-        # plafond statique _ROR_HIGH ne s'applique plus qu'en repli SANS plan :
-        # il interceptait la branche plan (RoR 12.5 sur cible locale ~12.6
-        # lisait « aromas escaping ») et le conseil quantifié n'était jamais
-        # atteint. Le filet baked (plancher absolu) reste prioritaire sur tout.
+        # gouverne ; _ROR_HIGH ne s'applique qu'en repli sans plan. Le filet baked
+        # (plancher absolu) reste prioritaire sur tout.
         if ror is not None:
             if ror < self._ROR_BAKED * s:
                 ror_s, ror_sub = _S_CRIT, self._tr_ror_too_low_baked
@@ -2561,13 +2650,13 @@ class _MaillardPage(QWidget):
 
         # Hero (RoR) + status word
         if ror is None:
-            word, wcol, vcol = self._w_na, "#94A3B8", "#94A3B8"
+            word, wcol, vcol = self._w_na, THEME['SUBTEXT'], THEME['SUBTEXT']
         elif ror_s == _S_CRIT:
             word, wcol, vcol = self._w_baked, _CRIT, _CRIT
         elif ror_s == _S_WARN:
             word, wcol, vcol = self._w_drifting, _WARN, _WARN
         else:
-            word, wcol, vcol = self._w_on_track, _OK, "#F9E2AF"
+            word, wcol, vcol = self._w_on_track, _OK, THEME['YELLOW']
         sub_parts = [self._fcs_label(eta),
                      self._tpl_gap_fc.format(f"{gap_fc:.0f}"),
                      self._tpl_ratio.format(f"{mai_ratio:.0f}")]
@@ -2591,9 +2680,10 @@ class _MaillardPage(QWidget):
 
         # Coach (single line)
         floral = ""
-        if bean and bean.flavour_notes and any(
+        if (getattr(self.aw, "_tilau_guidance_decision").directional_plan_advice
+                and bean and bean.flavour_notes and any(
                 k in bean.flavour_notes.lower()
-                for k in ("floral", "jasmin", "fruit", "acidity", "acidité")):
+                for k in ("floral", "jasmin", "fruit", "acidity", "acidité"))):
             floral = self._tr_floral_early_fcs
         coach_text = ror_sub + floral
 
@@ -2601,28 +2691,40 @@ class _MaillardPage(QWidget):
         if crash_detector:
             crash_msg = crash_detector.check(ror, ror_hist, bt, target_temp=fc_temp,
                                              dt=max(0.25, self.aw.qmc.delay / 1000.0))
+        _candidates = []
         if crash_msg:
-            self.coach.set(crash_msg, _S_CRIT)
-        elif ror_s == _S_CRIT:
-            self.coach.set(self._tr_ror_too_low_baked_banner, _S_CRIT)
-        elif _baked_risk:
-            self.coach.set(_baked_risk, _baked_level)
-        elif gap_s == _S_CRIT:
-            self.coach.set(self._tr_fcs_imminent, _S_WARN)
-        else:
-            self.coach.set(coach_text, ror_s)
+            _candidates.append(AdviceCandidate(
+                "mai-crash", crash_msg, AdviceCategory.SAFETY, AdviceSeverity.CRITICAL))
+        if ror_s == _S_CRIT:
+            _candidates.append(AdviceCandidate(
+                "mai-baked", self._tr_ror_too_low_baked_banner,
+                AdviceCategory.SAFETY, AdviceSeverity.CRITICAL))
+        if _baked_risk:
+            _candidates.append(AdviceCandidate(
+                "mai-duration", _baked_risk, AdviceCategory.SAFETY,
+                AdviceSeverity.CRITICAL if _baked_level == _S_CRIT else AdviceSeverity.WARNING))
+        if gap_s == _S_CRIT:
+            _candidates.append(AdviceCandidate(
+                "mai-fc", self._tr_fcs_imminent,
+                AdviceCategory.SAFETY, AdviceSeverity.WARNING))
+        if coach_text:
+            _candidates.append(AdviceCandidate(
+                "mai-guidance", coach_text,
+                AdviceCategory.CONSEQUENCE if not getattr(
+                    self.aw, "_tilau_guidance_decision").directional_plan_advice
+                else AdviceCategory.ACTION,
+                AdviceSeverity.WARNING if ror_s == _S_WARN else AdviceSeverity.INFO,
+                requires_plan_authority=ror_s != _S_OK))
+        _render_coach_candidates(self.aw, self.coach, _candidates)
 
         # Quick adjust + context buttons
         if self._readonly:
-            self._reco.set_reco(_phase_reco_text(plan, 1))   # 1 = Maillard
+            self._reco.set_reco("")
         else:
             self.quick_adjust.refresh()
-        # Actif dès l'approche ET AU-DELÀ : marquer FC est une opération
-        # manuelle obligatoire — le bouton ne doit jamais se réinvalider une
-        # fois le FC théorique dépassé (style warn = le marquage est dû).
-        # S'allume avec l'alerte « 1C approaching/imminent » du graphe (signal
-        # publié, même moteur prédictif Artisan + burst acoustique) — l'ETA
-        # décéléré du panneau divergeait (cible plan vs phases[2]). L'écart 10°
+        # Actif dès l'approche et au-delà : marquer FC est une opération manuelle
+        # obligatoire, le bouton ne se réinvalide jamais après le FC théorique.
+        # S'allume avec l'alerte « 1C approaching/imminent » du graphe ; l'écart 10°
         # reste un plancher de repli quand le graphe ne publie rien.
         near_fc = (_coach_approaching(self.aw, "FC")
                    or (fc_temp - bt) <= 10.0 * s
@@ -2633,14 +2735,14 @@ class _MaillardPage(QWidget):
         self.btn_airwave.set_active(
             near_fc and _aw_on, style='ok' if (near_fc and _aw_on) else 'dim')
 
-        # One-tap rampe heater : step « dû » = seuil le plus haut déjà atteint
-        # ou proche (bt + fenêtre d'approche) que le brûleur ne tient pas encore.
-        # Amber en approche, vert une fois le seuil franchi ; disparaît dès que
-        # le brûleur y est posé. L'assistant n'agit QUE sur le clic.
+        # One-tap rampe heater : step « dû » = seuil le plus haut atteint/proche que
+        # le brûleur ne tient pas encore. L'assistant n'agit que sur le clic.
         self._pending_ramp = None
         # Torréfacteur sans commande heater : pas de slider burner à poser, le
         # one-tap n'a pas de sens (la reco affiche déjà la valeur cible).
-        if not self._readonly:
+        _gd = getattr(self.aw, "_tilau_guidance_decision", None)
+        _plan_authority = _gd is None or _gd.directional_plan_advice
+        if not self._readonly and _plan_authority:
             try:
                 burner_now = _read_slider_pct(self.aw, _burner_slider_idx(self.aw))
                 approach = 12.0 * s
@@ -2682,7 +2784,7 @@ class _DevelopmentPage(QWidget):
         layout.setSpacing(9)
 
         self.hero = _HeroMetric(
-            QApplication.translate("tilauscope_roast_assistant", "DTR realtime"), "%", "#F38BA8")
+            QApplication.translate("tilauscope_roast_assistant", "DTR realtime"), "%", THEME['CRITICAL'])
 
         prog_row = QHBoxLayout()
         prog_row.setSpacing(8)
@@ -2691,13 +2793,13 @@ class _DevelopmentPage(QWidget):
         self._prog_outer.setStyleSheet(f"background: {_BORDER}; border-radius: 4px;")
         self._prog_inner = QFrame(self._prog_outer)
         self._prog_inner.setFixedHeight(8)
-        self._prog_inner.setStyleSheet("background: #F38BA8; border-radius: 4px;")
+        self._prog_inner.setStyleSheet(f"background: {THEME['CRITICAL']}; border-radius: 4px;")
         self._lbl_prog_val = QLabel("0 %")
         self._lbl_prog_val.setFixedWidth(40)
         self._lbl_prog_val.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._lbl_prog_val.setStyleSheet(
-            f"color: #F38BA8; font-size: 12px; font-weight: bold; {_FONT} border: none;")
+            f"color: {THEME['CRITICAL']}; font-size: 12px; font-weight: bold; {_FONT} border: none;")
         prog_row.addWidget(self._prog_outer)
         prog_row.addWidget(self._lbl_prog_val)
 
@@ -2714,6 +2816,14 @@ class _DevelopmentPage(QWidget):
             QApplication.translate("tilauscope_roast_assistant", "Drop"),
             QApplication.translate("tilauscope_roast_assistant", "near drop target"), style='dim')
         self.btn_drop.clicked.connect(lambda: aw.qmc.markDropSignal.emit(False))
+        self.btn_missing = _ContextButton(
+            QApplication.translate("tilauscope_roast_assistant", "Mark FC START"),
+            QApplication.translate("tilauscope_roast_assistant", "missing milestone"),
+            style='warn')
+        self.btn_missing._tilau_missing_which = "FC"
+        self.btn_missing.clicked.connect(lambda: _mark_missing_milestone(
+            aw, self.btn_missing._tilau_missing_which))
+        self.btn_missing.setVisible(False)
         # SC start (second crack) — déplacé ici depuis Maillard : le SC survient
         # en développement, après FC end. Ne s'affiche que lorsqu'il devient
         # pertinent (FC end marqué) pour ne pas encombrer les roasts clairs.
@@ -2730,12 +2840,13 @@ class _DevelopmentPage(QWidget):
 
         _ctx_row = QHBoxLayout()
         _ctx_row.setSpacing(8)
+        _ctx_row.addWidget(self.btn_missing)
         _ctx_row.addWidget(self.btn_drop)
         _ctx_row.addWidget(self.btn_scs)
         _ctx_row.addWidget(self.btn_airwave)
 
         self._reco = _RecoRow()
-        self._readonly = _roaster_is_readonly(aw)
+        self._readonly = _guidance_curve_only(aw)
         if self._readonly:
             self.quick_adjust.setVisible(False)
             self._reco.show()
@@ -2758,6 +2869,8 @@ class _DevelopmentPage(QWidget):
         self._tr_dtr_target_reached              = QApplication.translate("tilauscope_roast_assistant", "DTR target reached")
         self._tr_dtr_near_target                 = QApplication.translate("tilauscope_roast_assistant", "DTR near target")
         self._tr_near_drop_target                = QApplication.translate("tilauscope_roast_assistant", "near drop target")
+        self._tr_drop_operator_choice            = QApplication.translate(
+            "tilauscope_roast_assistant", "available at any time")
         self._tr_color_in_target_range           = QApplication.translate("tilauscope_roast_assistant", "color in target range")
         # B-layout labels
         self._w_phase     = QApplication.translate("tilauscope_roast_assistant", "DEVELOPMENT")
@@ -2822,7 +2935,7 @@ class _DevelopmentPage(QWidget):
             except (TypeError, ValueError):
                 pass
         if dtr is None:
-            dtr_s, word, wcol, vcol = _S_OK, self._w_na, "#94A3B8", "#94A3B8"
+            dtr_s, word, wcol, vcol = _S_OK, self._w_na, THEME['SUBTEXT'], THEME['SUBTEXT']
         else:
             # Le verdict porte sur le DTR PROJETÉ au drop (là où le roast va
             # atterrir), pas sur le DTR courant qui monte mécaniquement.
@@ -2830,7 +2943,7 @@ class _DevelopmentPage(QWidget):
             dtr_s = (_S_OK   if abs(dtr_delta) < 2 else
                      _S_WARN if abs(dtr_delta) < 4 else _S_CRIT)
             if dtr_s == _S_OK:
-                word, wcol, vcol = self._w_on_target, _OK, "#F38BA8"
+                word, wcol, vcol = self._w_on_target, _OK, THEME['CRITICAL']
             elif dtr_s == _S_WARN:
                 word, wcol, vcol = self._w_drifting, _WARN, _WARN
             else:
@@ -2865,11 +2978,9 @@ class _DevelopmentPage(QWidget):
             agtron_pred = c0 + c_bt * _bt_c + c_dtr * dtr + c_wl * weight_loss_pct
             agtron_pred = max(20.0, min(130.0, agtron_pred))
 
-        # Colour read-out uses the model prediction (0–130). The former live
-        # Omniflux bias EMA was removed: the sensor's raw colour (~465) is NOT
-        # on the Agtron scale (see hardware notes), so blending it against the
-        # model prediction mixed incompatible scales. Reintroduce a blend only
-        # once a raw → Agtron conversion exists.                     ## TILAU ##
+        # Colour read-out uses the model prediction (0–130) only: the Omniflux
+        # sensor's raw colour (~465) is not on the Agtron scale, so it cannot be
+        # blended against the model prediction without a raw → Agtron conversion.
         color_in_target = False
         col_seg: str | None = None
         if agtron_pred is not None:
@@ -2878,20 +2989,19 @@ class _DevelopmentPage(QWidget):
                 tmax = agtron_target.agtron_range.max_value
                 color_in_target = tmin <= agtron_pred <= tmax
                 if color_in_target:
-                    _ctint, _mark = "#A6E3A1", " ✓"
+                    _ctint, _mark = THEME['SUCCESS'], " ✓"
                 elif agtron_pred < tmin:
-                    _ctint, _mark = "#F38BA8", ""     # darker than target
+                    _ctint, _mark = THEME['CRITICAL'], ""     # darker than target
                 else:
-                    _ctint, _mark = "#E0903B", ""     # still lighter — approaching
+                    _ctint, _mark = THEME['WARNING'], ""     # still lighter — approaching
             else:
-                _ctint, _mark = "#94A3B8", ""
+                _ctint, _mark = THEME['SUBTEXT'], ""
             col_seg = (f"<span style='color:{_ctint};font-weight:800'>"
                        f"{self._tpl_ag_pred.format(f'{agtron_pred:.0f}')}{_mark}</span>")
 
         # ── Hero (DTR) + sub-line ────────────────────────────────────────────────
-        # Deux lignes EXPLICITES (<br>) : cette sous-ligne est la plus longue de
-        # l'app — laissée au word-wrap elle se repliait n'importe où (jusque dans
-        # les chiffres au passage FC) et sa 3ᵉ ligne se faisait rogner. ## TILAU ##
+        # Deux lignes explicites (<br>) : cette sous-ligne est la plus longue de
+        # l'app, le word-wrap la repliait n'importe où et rognait la 3ᵉ ligne.
         sub_parts = [self._tpl_target_pct.format(f"{dtr_target:.0f}"),
                      self._drop_label(eta)]
         if dtr_proj is not None:
@@ -2920,25 +3030,42 @@ class _DevelopmentPage(QWidget):
             crash_msg = crash_detector.check(ror, ror_hist, bt, target_temp=drop_temp,
                                              dt=max(0.25, self.aw.qmc.delay / 1000.0),
                                              dev_mode=True)
+        _candidates = []
         if ror is not None and ror_s == _S_CRIT and ror < ror_crash_thr:
-            self.coach.set(self._tr_ror_crash_drop_now, _S_CRIT)
-        elif crash_msg:
-            self.coach.set(crash_msg, _S_CRIT)
-        elif eta is not None and 0 < eta <= 0.3:
+            _candidates.append(AdviceCandidate(
+                "dev-crash-floor", self._tr_ror_crash_drop_now,
+                AdviceCategory.SAFETY, AdviceSeverity.CRITICAL))
+        if crash_msg:
+            _candidates.append(AdviceCandidate(
+                "dev-crash", crash_msg, AdviceCategory.SAFETY, AdviceSeverity.CRITICAL))
+        if eta is not None and 0 < eta <= 0.3:
             QApplication.beep()
-            self.coach.set(self._tr_drop_20sec, _S_WARN)
-        elif color_in_target:
-            self.coach.set(self._tr_in_target_range_envisage_drop, _S_OK)
-        elif ror_s == _S_CRIT:
-            self.coach.set(ror_sub, _S_WARN)
-        elif ror_sub:
-            self.coach.set(ror_sub, ror_s)
-        else:
-            self.coach.set(self._tr_ror_dev_normal, _S_OK)
+            _candidates.append(AdviceCandidate(
+                "dev-drop", self._tr_drop_20sec,
+                AdviceCategory.SAFETY, AdviceSeverity.WARNING))
+        if color_in_target:
+            _candidates.append(AdviceCandidate(
+                "dev-color", self._tr_in_target_range_envisage_drop,
+                AdviceCategory.CONSEQUENCE,
+                allowed_modes=frozenset({GuidanceMode.PLAN, GuidanceMode.AUTO,
+                                         GuidanceMode.ADAPTIVE})))
+        if ror_sub:
+            _candidates.append(AdviceCandidate(
+                "dev-guidance", ror_sub,
+                AdviceCategory.CONSEQUENCE if not getattr(
+                    self.aw, "_tilau_guidance_decision").directional_plan_advice
+                else AdviceCategory.ACTION,
+                AdviceSeverity.WARNING if ror_s in (_S_WARN, _S_CRIT) else AdviceSeverity.INFO,
+                requires_plan_authority=ror_s != _S_OK))
+        if (not _candidates
+                and getattr(self.aw, "_tilau_guidance_decision").directional_plan_advice):
+            _candidates.append(AdviceCandidate(
+                "dev-normal", self._tr_ror_dev_normal, AdviceCategory.INFORMATION))
+        _render_coach_candidates(self.aw, self.coach, _candidates)
 
         # ── Quick adjust ─────────────────────────────────────────────────────────
         if self._readonly:
-            self._reco.set_reco(_phase_reco_text(plan, 2))   # 2 = development
+            self._reco.set_reco("")
         else:
             self.quick_adjust.refresh()
 
@@ -2965,8 +3092,12 @@ class _DevelopmentPage(QWidget):
             self.btn_drop.set_active(True, style='warn')
             self.btn_drop.setText(self.btn_drop.maintext + "\n" + self._tr_dtr_near_target)
         else:
-            self.btn_drop.set_active(True, style='dim')
-            self.btn_drop.setText(self.btn_drop.maintext + "\n" + self._tr_near_drop_target)
+            # DROP is an irreversible but always legitimate operator decision
+            # during development. Target proximity changes emphasis, never
+            # availability.
+            self.btn_drop.set_active(True, style='purple')
+            self.btn_drop.setText(
+                self.btn_drop.maintext + "\n" + self._tr_drop_operator_choice)
 
         _aw_on = getattr(self.aw, "bleAirwaveDevice", None) is not None
         _since = _seconds_since_event(self.aw, 2)
@@ -3008,7 +3139,7 @@ class _CoolingPage(QWidget):
 
         # ── Hero — BT (watched while it falls) ────────────────────────────
         self.hero = _HeroMetric(
-            QApplication.translate("tilauscope_roast_assistant", "Bean Temp"), "°", "#89B4FA")
+            QApplication.translate("tilauscope_roast_assistant", "Bean Temp"), "°", THEME['ACCENT'])
 
         # ── Progress — drop BT → safe target ──────────────────────────────
         self._prog_row = QHBoxLayout()
@@ -3034,7 +3165,7 @@ class _CoolingPage(QWidget):
         # ── Bouton Cool End ───────────────────────────────────────────────────
         self.btn_cool_end = _ContextButton(
             QApplication.translate("tilauscope_roast_assistant", "Cool end"),
-            QApplication.translate("tilauscope_roast_assistant", "BT ≤ 40°"),
+            QApplication.translate("tilauscope_roast_assistant", "BT ≤ 50°"),
             style='dim',
         )
         self.btn_cool_end.clicked.connect(lambda: aw.qmc.markCoolSignal.emit(False))
@@ -3042,10 +3173,8 @@ class _CoolingPage(QWidget):
 
         # ── Bouton Relance back-to-back (armable) ─────────────────────────────
         # Visible seulement quand un batch suivant est prévu. Sous le seuil BBP
-        # (vert) : relance immédiate. Au-dessus (ambre) : le clic ARME la
-        # relance — le cooling continue et la séquence part seule au
-        # franchissement du seuil ; second clic = désarmement. Mode batch :
-        # pas de formulaire de résultat, alog sauvé incomplet (Repair ALogs).
+        # (vert) : relance immédiate. Au-dessus (ambre) : le clic arme la relance,
+        # qui part seule au franchissement du seuil ; second clic = désarmement.
         self.btn_relaunch = _ContextButton(
             QApplication.translate("tilauscope_roast_assistant", "Restart batch"),
             QApplication.translate("tilauscope_roast_assistant", "save incomplete → preheat, same bean"),
@@ -3063,7 +3192,7 @@ class _CoolingPage(QWidget):
         # ── End of Roast summary ──────────────────────────────────────────────
         self._eor_frame = QFrame()
         self._eor_frame.setStyleSheet(
-            f"QFrame {{ background: {_SURFACE}; border: 1px solid {_BORDER}; "
+            f"QFrame {{ background: {_SURFACE}; border: 1px solid {_BORDER};"
             f"border-radius: 8px; }} QLabel {{ border: none; background: transparent; }}"
         )
         eor_layout = QVBoxLayout(self._eor_frame)
@@ -3072,16 +3201,16 @@ class _CoolingPage(QWidget):
 
         eor_title = QLabel(QApplication.translate("tilauscope_roast_assistant", "ROAST SUMMARY"))
         eor_title.setStyleSheet(
-            f"color: #585B70; font-size: 9px; font-weight: 800; {_FONT} letter-spacing: 0.8px;"
+            f"color: {THEME['SURFACE2']}; font-size: 9px; font-weight: 800; {_FONT} letter-spacing: 0.8px;"
         )
         eor_layout.addWidget(eor_title)
 
         # 3 metrics top row
         _eor_top = QHBoxLayout()
         _eor_top.setSpacing(6)
-        self._eor_dtr   = _MetricCard("DTR",   "%",   "#A6E3A1")
-        self._eor_time  = _MetricCard("Total",  "min", "#89B4FA")
-        self._eor_color = _MetricCard("Agtron", "",    "#F9E2AF")
+        self._eor_dtr   = _MetricCard("DTR",   "%",   THEME['SUCCESS'])
+        self._eor_time  = _MetricCard("Total",  "min", THEME['ACCENT'])
+        self._eor_color = _MetricCard("Agtron", "",    THEME['YELLOW'])
         self._eor_dtr.setFixedHeight(70)
         self._eor_time.setFixedHeight(70)
         self._eor_color.setFixedHeight(70)
@@ -3095,10 +3224,10 @@ class _CoolingPage(QWidget):
             row = QHBoxLayout()
             row.setSpacing(4)
             l = QLabel(lbl)
-            l.setStyleSheet(f"color: #7F849C; font-size: 10px; {_FONT}")
+            l.setStyleSheet(f"color: {THEME['OVERLAY1']}; font-size: 10px; {_FONT}")
             v = QLabel("--")
             v.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            v.setStyleSheet(f"color: #CDD6F4; font-size: 10px; font-weight: 700; {_FONT}")
+            v.setStyleSheet(f"color: {THEME['TEXT']}; font-size: 10px; font-weight: 700; {_FONT}")
             v.setTextFormat(Qt.TextFormat.RichText)
             row.addWidget(l)
             row.addStretch()
@@ -3116,11 +3245,10 @@ class _CoolingPage(QWidget):
         _, self._eor_col2_val  = _eor_row(QApplication.translate("tilauscope_roast_assistant", "Color vs target"))
         _, self._eor_fcdrop_val= _eor_row(QApplication.translate("tilauscope_roast_assistant", "FC · Drop BT"))
 
-        # ── Colour → next plan (F1 bench integration) ── ## TILAU ## ───────────
-        # Announces (display only) the correction the colour→drop_bt learning
-        # will apply to the NEXT plan, translated into DTR language for
-        # readability. Measured colour (whole/ground) is used when present,
-        # else the model prediction; hidden entirely when neither exists.
+        # ── Colour → next plan ─────────────────────────────────────────────────
+        # Display-only announcement of the correction colour→drop_bt learning will
+        # apply to the next plan, in DTR language. Measured colour when present, else
+        # the model prediction; hidden when neither exists.
         self._eor_color_next_box = QWidget()
         _cn_v = QVBoxLayout(self._eor_color_next_box)
         _cn_v.setContentsMargins(0, 4, 0, 0)
@@ -3128,12 +3256,12 @@ class _CoolingPage(QWidget):
         _cn_title = QLabel(
             QApplication.translate("tilauscope_roast_assistant", "COLOUR → NEXT PLAN"))
         _cn_title.setStyleSheet(
-            f"color: #585B70; font-size: 9px; font-weight: 800; {_FONT} letter-spacing: 0.8px;")
+            f"color: {THEME['SURFACE2']}; font-size: 9px; font-weight: 800; {_FONT} letter-spacing: 0.8px;")
         _cn_v.addWidget(_cn_title)
         self._eor_color_next_line = QLabel("--")
         self._eor_color_next_line.setWordWrap(True)
         self._eor_color_next_line.setTextFormat(Qt.TextFormat.RichText)
-        self._eor_color_next_line.setStyleSheet(f"color: #BAC2DE; font-size: 10px; {_FONT}")
+        self._eor_color_next_line.setStyleSheet(f"color: {THEME['SUBTEXT1']}; font-size: 10px; {_FONT}")
         _cn_v.addWidget(self._eor_color_next_line)
         eor_layout.addWidget(self._eor_color_next_box)
         self._eor_color_next_box.hide()
@@ -3150,12 +3278,12 @@ class _CoolingPage(QWidget):
         _traj_title = QLabel(
             QApplication.translate("tilauscope_roast_assistant", "TRAJECTORY vs PLAN"))
         _traj_title.setStyleSheet(
-            f"color: #585B70; font-size: 9px; font-weight: 800; {_FONT} letter-spacing: 0.8px;")
+            f"color: {THEME['SURFACE2']}; font-size: 9px; font-weight: 800; {_FONT} letter-spacing: 0.8px;")
         _traj_v.addWidget(_traj_title)
 
         self._eor_traj_verdict = QLabel("--")
         self._eor_traj_verdict.setWordWrap(True)
-        self._eor_traj_verdict.setStyleSheet(f"color: #BAC2DE; font-size: 10px; {_FONT}")
+        self._eor_traj_verdict.setStyleSheet(f"color: {THEME['SUBTEXT1']}; font-size: 10px; {_FONT}")
         _traj_v.addWidget(self._eor_traj_verdict)
 
         def _traj_row(lbl: str) -> tuple[QLabel, QLabel]:
@@ -3164,10 +3292,10 @@ class _CoolingPage(QWidget):
             dot = QLabel("●")
             dot.setStyleSheet(f"color: {_BORDER}; font-size: 10px; {_FONT}")
             l = QLabel(lbl)
-            l.setStyleSheet(f"color: #7F849C; font-size: 10px; {_FONT}")
+            l.setStyleSheet(f"color: {THEME['OVERLAY1']}; font-size: 10px; {_FONT}")
             v = QLabel("--")
             v.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            v.setStyleSheet(f"color: #CDD6F4; font-size: 10px; font-weight: 700; {_FONT}")
+            v.setStyleSheet(f"color: {THEME['TEXT']}; font-size: 10px; font-weight: 700; {_FONT}")
             row.addWidget(dot)
             row.addWidget(l)
             row.addStretch()
@@ -3191,18 +3319,18 @@ class _CoolingPage(QWidget):
         self._eor_btn_notes = QPushButton(
             QApplication.translate("tilauscope_roast_assistant", "Notes"))
         self._eor_btn_notes.setStyleSheet(
-            f"QPushButton {{ border: 1px solid {_BORDER}; border-radius: 6px; "
-            f"color: #CDD6F4; font-size: 10px; font-weight: 700; {_FONT} "
+            f"QPushButton {{ border: 1px solid {_BORDER}; border-radius: 6px;"
+            f"color: {THEME['TEXT']}; font-size: 10px; font-weight: 700; {_FONT} "
             f"padding: 7px 8px; background: transparent; }}"
             f"QPushButton:hover {{ background: {_SURFACE}; }}"
         )
         self._eor_btn_result = QPushButton(
             QApplication.translate("tilauscope_roast_assistant", "Result form"))
         self._eor_btn_result.setStyleSheet(
-            f"QPushButton {{ border: 1.5px solid #CBA6F7; border-radius: 6px; "
-            f"color: #CBA6F7; font-size: 10px; font-weight: 700; {_FONT} "
-            f"padding: 7px 8px; background-color: rgba(203,166,247,0.08); }}"
-            f"QPushButton:hover {{ background-color: rgba(203,166,247,0.18); }}"
+            f"QPushButton {{ border: 1.5px solid {THEME['MAUVE']}; border-radius: 6px;"
+            f"color: {THEME['MAUVE']}; font-size: 10px; font-weight: 700; {_FONT} "
+            f"padding: 7px 8px; background-color: {tint('MAUVE', 0.08)}; }}"
+            f"QPushButton:hover {{ background-color: {tint('MAUVE', 0.18)}; }}"
         )
         # Veto d'apprentissage : roast raté « propre » (stall récupéré, jalon
         # mal marqué) qui passerait les filtres qualité — le toggle pose
@@ -3212,12 +3340,12 @@ class _CoolingPage(QWidget):
             QApplication.translate("tilauscope_roast_assistant", "🚫 Exclude from learning"))
         self._eor_btn_exclude.setCheckable(True)
         self._eor_btn_exclude.setStyleSheet(
-            f"QPushButton {{ border: 1px solid {_BORDER}; border-radius: 6px; "
-            f"color: #6C7086; font-size: 10px; font-weight: 700; {_FONT} "
+            f"QPushButton {{ border: 1px solid {_BORDER}; border-radius: 6px;"
+            f"color: {THEME['OVERLAY0']}; font-size: 10px; font-weight: 700; {_FONT} "
             f"padding: 7px 8px; background: transparent; }}"
             f"QPushButton:hover {{ background: {_SURFACE}; }}"
-            f"QPushButton:checked {{ border: 1.5px solid {_CRIT}; color: {_CRIT}; "
-            f"background-color: rgba(243,139,168,0.10); }}"
+            f"QPushButton:checked {{ border: 1.5px solid {_CRIT}; color: {_CRIT};"
+            f"background-color: {tint('CRITICAL', 0.10)}; }}"
         )
         _eor_acts.addWidget(self._eor_btn_notes)
         _eor_acts.addWidget(self._eor_btn_result)
@@ -3270,7 +3398,7 @@ class _CoolingPage(QWidget):
         self._tr_traj_good        = QApplication.translate("tilauscope_roast_assistant", "Trajectory well held across all phases.")
         self._tpl_traj_slight     = QApplication.translate("tilauscope_roast_assistant", "Well held — slight drift in {0}.")
         self._tpl_traj_off        = QApplication.translate("tilauscope_roast_assistant", "Marked drift in {0} ({1}).")
-        # Colour → next plan (F1) ── ## TILAU ##
+        # Colour → next plan (F1) ──
         self._tpl_color_ontarget  = QApplication.translate(
             "tilauscope_roast_assistant", "🎨 Colour {0} · target {1} (±{2}) — on target, next plan unchanged")
         self._tpl_color_next      = QApplication.translate(
@@ -3368,7 +3496,8 @@ class _CoolingPage(QWidget):
             self.coach.set(self._tr_coach_shutdown, _S_OK)
 
         # ── C : Bouton Cool end ───────────────────────────────────────────────
-        safe_temp = 40.0 if self.aw.qmc.mode == 'C' else fromCtoFstrict(40.0)
+        safe_temp = (self._SAFE_STOP_TEMP if self.aw.qmc.mode == 'C'
+                     else fromCtoFstrict(self._SAFE_STOP_TEMP))
         cool_ready = bt <= safe_temp
         self.btn_cool_end.set_active(cool_ready, style='purple' if cool_ready else 'dim')
 
@@ -3463,7 +3592,6 @@ class _CoolingPage(QWidget):
         qmc  = self.aw.qmc
         ti   = qmc.timeindex
         tx   = qmc.timex
-        mode = qmc.mode
 
         # Lecture absolue des timestamps — pas de référence CHARGE
         # pour éviter les problèmes d'indices -1 ou 0 selon le simulateur
@@ -3532,7 +3660,6 @@ class _CoolingPage(QWidget):
         else:
             self._eor_dtr.update("--", "")
 
-        total_min = t_total / 60.0 if t_total > 0 else 0.0
         self._eor_time.update(f"{_fmt(t_total)}", "")
 
         if agtron_pred is not None:
@@ -3557,7 +3684,7 @@ class _CoolingPage(QWidget):
 
         if dtr_val is not None:
             delta = dtr_val - dtr_target
-            col = "#F38BA8" if abs(delta) >= 4 else ("#F9E2AF" if abs(delta) >= 2 else "#A6E3A1")
+            col = THEME['CRITICAL'] if abs(delta) >= 4 else (THEME['YELLOW'] if abs(delta) >= 2 else THEME['SUCCESS'])
             self._eor_dtr2_val.setText(
                 f"<span style='color:{col}'>{dtr_val:.1f}%  Δ{delta:+.1f}%</span>")
         else:
@@ -3567,7 +3694,7 @@ class _CoolingPage(QWidget):
             tmin, tmax = agtron_target.agtron_range.min_value, agtron_target.agtron_range.max_value
             mid = (tmin + tmax) / 2
             delta = agtron_pred - mid
-            col = "#F9E2AF" if abs(delta) > 5 else "#A6E3A1"
+            col = THEME['YELLOW'] if abs(delta) > 5 else THEME['SUCCESS']
             self._eor_col2_val.setText(
                 f"<span style='color:{col}'>{agtron_target.name}  Δ{delta:+.0f}</span>")
 
@@ -3579,7 +3706,7 @@ class _CoolingPage(QWidget):
         except (IndexError, TypeError):
             self._eor_fcdrop_val.setText("--")
 
-        # Colour → next plan announcement (F1 bench integration) ── ## TILAU ##
+        # Colour → next plan announcement (F1 bench integration) ──
         self._update_color_next_plan(agtron_target, agtron_pred, qmc)
 
         # Trajectory vs plan (per-phase, time-normalised)
@@ -3637,7 +3764,7 @@ class _CoolingPage(QWidget):
 
         if tmin <= colour_val <= tmax:
             self._eor_color_next_line.setText(
-                "<span style='color:#A6E3A1'>"
+                f"<span style='color:{THEME['SUCCESS']}'>"
                 + self._tpl_color_ontarget.format(val_txt, f"{mid:.0f}", f"{band:.0f}")
                 + "</span>")
             box.show()
@@ -3645,7 +3772,7 @@ class _CoolingPage(QWidget):
 
         # 3) correction directionnelle annoncée
         dir_txt = self._tr_color_too_light if miss > 0 else self._tr_color_too_dark
-        col = "#F9E2AF"
+        col = THEME['YELLOW']
         self._eor_color_next_line.setText(
             f"<span style='color:{col}'>"
             + QApplication.translate(
@@ -3796,9 +3923,9 @@ class _SetupBar(QFrame):
             border: 1px solid {_ACCENT};
         }}
         QComboBox:disabled {{
-            color: #45475A;
+            color: {THEME['SURFACE1']};
             background: {_SURFACE};
-            border-color: #2A2A3A;
+            border-color: {THEME['BORDER']};
         }}
         QComboBox::drop-down {{
             border: none;
@@ -3813,12 +3940,12 @@ class _SetupBar(QFrame):
         }}
         /* ── Popup / liste déroulante ── */
         QComboBox QAbstractItemView {{
-            background: #1E1E2E;
+            background: {THEME['BG']};
             color: {_TEXT};
             border: 1px solid {_ACCENT};
             border-radius: 4px;
             selection-background-color: {_ACCENT};
-            selection-color: #11111B;
+            selection-color: {THEME['CRUST']};
             outline: none;
             padding: 2px;
         }}
@@ -3829,17 +3956,17 @@ class _SetupBar(QFrame):
             background: transparent;
         }}
         QComboBox QAbstractItemView::item:hover {{
-            background: #313244;
+            background: {THEME['BORDER']};
             color: white;
         }}
         QComboBox QAbstractItemView::item:selected {{
             background: {_ACCENT};
-            color: #11111B;
+            color: {THEME['CRUST']};
             font-weight: bold;
         }}
         /* Scrollbar dans la popup */
         QComboBox QAbstractScrollArea QScrollBar:vertical {{
-            background: #181825;
+            background: {THEME['SURFACE']};
             width: 8px;
             border-radius: 4px;
         }}
@@ -3850,9 +3977,9 @@ class _SetupBar(QFrame):
         }}
         /* Keep the dark tooltip style even when embedded in anchored mode */
         QToolTip {{
-            background-color: #2D2F3F;
+            background-color: {THEME['BORDER']};
             color: white;
-            border: 1px solid #585B70;
+            border: 1px solid {THEME['SURFACE2']};
             padding: 5px;
             border-radius: 3px;
             font-size: 11px;
@@ -3870,7 +3997,7 @@ class _SetupBar(QFrame):
             QLabel {{
                 border: none;
                 background: transparent;
-                color: #94A3B8;
+                color: {THEME['SUBTEXT']};
                 font-size: 10px;
                 font-weight: 800;
                 letter-spacing: 0.5px;
@@ -3899,13 +4026,13 @@ class _SetupBar(QFrame):
         # Explicit QToolTip rule so the tooltip keeps its dark style even when
         # the body is embedded in the anchored host (no inherited app style).
         self.btn_anchor.setStyleSheet(f"""
-            QPushButton {{ background: #181825; color: #94A3B8;
+            QPushButton {{ background: {THEME['SURFACE']}; color: {THEME['SUBTEXT']};
                 border: 1px solid {_BORDER}; border-radius: 5px;
                 font-size: 16px; font-weight: bold; }}
-            QPushButton:hover {{ background: #1E1E2E; color: {_ACCENT};
+            QPushButton:hover {{ background: {THEME['BG']}; color: {_ACCENT};
                 border-color: {_ACCENT}; }}
-            QToolTip {{ background-color: #2D2F3F; color: white;
-                border: 1px solid #585B70; padding: 5px;
+            QToolTip {{ background-color: {THEME['BORDER']}; color: white;
+                border: 1px solid {THEME['SURFACE2']}; padding: 5px;
                 border-radius: 3px; font-size: 11px; }}
         """)
         self.btn_anchor.hide()
@@ -3918,8 +4045,12 @@ class _SetupBar(QFrame):
         self.combo_bean.setStyleSheet(self._COMBO_STYLE)
         self.combo_bean.setToolTip(QApplication.translate("tilauscope_roast_assistant","Green bean selected for this assistant"))
         self.combo_bean.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed
         )
+        self.combo_bean.setMinimumWidth(0)
+        self.combo_bean.setMinimumContentsLength(12)
+        self.combo_bean.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.combo_bean.setMinimumHeight(32)
         row1.addLayout(bean_hdr)
         row1.addWidget(self.combo_bean)
@@ -3934,6 +4065,12 @@ class _SetupBar(QFrame):
         self.combo_agtron.setItemDelegate(QStyledItemDelegate())
         self.combo_agtron.setStyleSheet(self._COMBO_STYLE)
         self.combo_agtron.setToolTip(QApplication.translate("tilauscope_roast_assistant","Target roasting level (Agtron scale)"))
+        self.combo_agtron.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        self.combo_agtron.setMinimumWidth(0)
+        self.combo_agtron.setMinimumContentsLength(12)
+        self.combo_agtron.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.combo_agtron.setMinimumHeight(32)
         for a in _AGTRON_CHOICES:
             self.combo_agtron.addItem(f"{a.name}  –  {a.description}", userData=a)
@@ -3969,8 +4106,8 @@ class _SetupBar(QFrame):
                 label += f" · {b.process}"
             if b.crop:
                 label += f" {b.crop}"
-            ## TILAU ## a bean only listed because it is the one being roasted
-            ## (bottom of the bag) is flagged so the operator is not surprised.
+            # a bean only listed because it is the one being roasted
+            # (bottom of the bag) is flagged so the operator is not surprised.
             if (getattr(b, "weight_left", 0.0) or 0.0) <= 0:
                 label += QApplication.translate("tilauscope_roast_assistant", " (empty stock)")
             self.combo_bean.addItem(label, userData=b)
@@ -4017,16 +4154,21 @@ class _BeanHeader(QFrame):
         name_row = QHBoxLayout()
         name_row.setSpacing(8)
         self._lbl_name = QLabel("--")
+        self._lbl_name.setMinimumWidth(0)
+        self._lbl_name.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self._lbl_name.setStyleSheet(
             f"color: {_ACCENT}; font-size: 14px; font-weight: 900;"
         )
         # Batch identity badge (filled from qmc at DROP; empty/hidden until assigned)
         self._lbl_batch = QLabel("")
         self._lbl_batch.setStyleSheet(
-            f"color: {_OK}; font-size: 12px; font-weight: bold; "
-            f"font-family: 'JetBrains Mono';"
+            f"color: {_OK}; font-size: 12px; font-weight: bold;"
         )
         self._lbl_batch.hide()
+        self._lbl_guidance = QLabel("")
+        self._lbl_guidance.setFixedHeight(24)
+        self._lbl_guidance.setAlignment(Qt.AlignmentFlag.AlignCenter)
         # ── Start/Stop button (moved here from SetupBar) ─────────────────────
         self.btn_toggle = QPushButton("▶")
         self.btn_toggle.setFixedSize(44, 32)
@@ -4034,43 +4176,65 @@ class _BeanHeader(QFrame):
         self.btn_toggle.setToolTip(QApplication.translate("tilauscope_roast_assistant","Start / Stop assistant"))
         self._set_btn_style(False)
 
-        ## TILAU ## AutoPilot chip-button (AutoRoast-Spec §5) — left of ▶/⏸, the
-        ## only band visible in BOTH anchored and floating modes. The chip IS the
-        ## button: state (off/armed/paused/blocked) + arming action in one control.
+        # AutoPilot chip-button (AutoRoast-Spec §5) — left of ▶/⏸, the
+        # only band visible in BOTH anchored and floating modes. The chip IS the
+        # button: state (off/armed/paused/blocked) + arming action in one control.
         self.btn_auto = QPushButton("AUTO")
-        self.btn_auto.setFixedHeight(32)
-        self.btn_auto.setMinimumWidth(66)
+        self.btn_auto.setFixedHeight(24)
+        self.btn_auto.setMinimumWidth(44)
         self.btn_auto.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_auto.setToolTip(QApplication.translate(
             "tilauscope_roast_assistant", "Auto mode: the roast plan drives the levers. Tap to arm / disarm."))
+        self.btn_manual = QPushButton(QApplication.translate(
+            "tilauscope_roast_assistant", "MANUAL"))
+        self.btn_manual.setFixedHeight(24)
+        self.btn_manual.setMinimumWidth(52)
+        self.btn_manual.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_manual.setToolTip(QApplication.translate(
+            "tilauscope_roast_assistant", "Manual coach: advice only, you drive the levers."))
+        self.coach_switch = QFrame()
+        _switch_lay = QHBoxLayout(self.coach_switch)
+        _switch_lay.setContentsMargins(2, 2, 2, 2)
+        _switch_lay.setSpacing(0)
+        _switch_lay.addWidget(self.btn_manual)
+        _switch_lay.addWidget(self.btn_auto)
+        self.coach_switch.setStyleSheet(
+            f"QFrame {{ background:{THEME['CRUST']}; border:1px solid {_BORDER}; border-radius:14px; }}")
         self.set_auto_state("off")
 
         name_row.addWidget(self._lbl_batch)
         name_row.addWidget(self._lbl_name, 1)
-        name_row.addWidget(self.btn_auto)
+        name_row.addWidget(self._lbl_guidance)
+        name_row.addWidget(self.coach_switch)
         name_row.addWidget(self.btn_toggle)
 
         self._lbl_details = QLabel("")
+        self._lbl_details.setMinimumWidth(0)
+        self._lbl_details.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self._lbl_details.setStyleSheet(
-            f"color: #94A3B8; font-size: 11px;"
+            f"color: {THEME['SUBTEXT']}; font-size: 11px;"
         )
         self._lbl_details.setWordWrap(True)
 
         layout.addLayout(name_row)
         layout.addWidget(self._lbl_details)
+        self._guidance_mode = GuidanceMode.PLAN
+        self._guidance_phase_source = PhaseSource.OBSERVED
+        self.set_guidance_mode(GuidanceMode.PLAN, PhaseSource.OBSERVED)
 
     def _set_btn_style(self, active: bool) -> None:
         color = _OK if active else "#494C91"
         self.btn_toggle.setStyleSheet(f"""
             QPushButton {{
-                background: #181825; color: {color};
+                background: {THEME['SURFACE']}; color: {color};
                 border: 2px solid {color}; border-radius: 6px;
                 font-size: 14px; font-weight: bold;
             }}
-            QPushButton:hover {{ background: #1E1E2E; }}
-            QPushButton:pressed {{ background: {color}; color: #11111B; }}
-            QToolTip {{ background-color: #2D2F3F; color: white;
-                border: 1px solid #585B70; padding: 5px;
+            QPushButton:hover {{ background: {THEME['BG']}; }}
+            QPushButton:pressed {{ background: {color}; color: {THEME['CRUST']}; }}
+            QToolTip {{ background-color: {THEME['BORDER']}; color: white;
+                border: 1px solid {THEME['SURFACE2']}; padding: 5px;
                 border-radius: 3px; font-size: 11px; }}
         """)
         self.btn_toggle.setText("■" if active else "▶")
@@ -4078,33 +4242,74 @@ class _BeanHeader(QFrame):
     def set_active(self, active: bool) -> None:
         self._set_btn_style(active)
 
-    ## TILAU ## AutoPilot chip states — colors mirror the validated mockup:
-    ## off = dim, armed = green, paused = amber, blocked = extinguished.
-    _AUTO_STYLES = {
-        "off":     ("AUTO",    "#585B70", "#6C7086", "transparent"),
-        "armed":   ("● AUTO",  "#A6E3A1", "#A6E3A1", "rgba(166,227,161,0.10)"),
-        "paused":  ("⏸ AUTO",  "#F9E2AF", "#F9E2AF", "rgba(249,226,175,0.10)"),
-        "blocked": ("AUTO",    "#313244", "#45475A", "transparent"),
+    def set_auto_state(self, state: str) -> None:
+        auto_active = state == "armed"
+        auto_color = THEME['SUCCESS'] if auto_active else (THEME['YELLOW'] if state == "paused" else THEME['OVERLAY0'])
+        manual_color = THEME['ACCENT'] if not auto_active else THEME['OVERLAY0']
+        self.btn_manual.setStyleSheet(self._switch_button_style(
+            manual_color, active=not auto_active, left=True))
+        self.btn_auto.setText("AUTO" if state != "paused" else "AUTO ⏸")
+        self.btn_auto.setStyleSheet(self._switch_button_style(
+            auto_color, active=auto_active, left=False))
+
+    @staticmethod
+    def _switch_button_style(color: str, *, active: bool, left: bool) -> str:
+        bg = (tint('ACCENT', 0.14) if left
+              else "rgba(166,227,161,0.14)") if active else "transparent"
+        radii = ("border-top-left-radius:11px; border-bottom-left-radius:11px;"
+                 if left else
+                 "border-top-right-radius:11px; border-bottom-right-radius:11px;")
+        return (f"QPushButton {{ background:{bg}; color:{color}; border:none;"
+                f"{radii} font-size:9px; font-weight:800;"
+                f"letter-spacing:.5px; padding:0 6px; {_FONT} }} "
+                f"QPushButton:hover {{ background:{THEME['BORDER']}; }}")
+
+    def set_coach_switch_available(self, auto_available: bool) -> None:
+        self.coach_switch.setVisible(True)
+        self.btn_auto.setEnabled(auto_available)
+        self.btn_auto.setToolTip(QApplication.translate(
+            "tilauscope_roast_assistant",
+            "Auto mode unavailable on a read-only roaster") if not auto_available else
+            QApplication.translate(
+                "tilauscope_roast_assistant",
+                "Auto coach: the live plan drives the levers under safety limits."))
+
+    _GUIDANCE_STYLES = {
+        GuidanceMode.PLAN:           ("PLAN", THEME['ACCENT']),
+        GuidanceMode.OBSERVE_ACTION: ("OBSERVE", THEME['YELLOW']),
+        GuidanceMode.ADAPTIVE:       ("MANUAL", THEME['MAUVE']),
+        GuidanceMode.SAFETY_ONLY:    ("SAFETY", THEME['CRITICAL']),
+        GuidanceMode.AUTO:           ("AUTO PLAN", THEME['SUCCESS']),
     }
 
-    def set_auto_state(self, state: str) -> None:  ## TILAU ##
-        text, border, color, bg = self._AUTO_STYLES.get(state, self._AUTO_STYLES["off"])
-        self.btn_auto.setText(text)
-        self.btn_auto.setStyleSheet(f"""
-            QPushButton {{
-                background: {bg}; color: {color};
-                border: 1.5px solid {border}; border-radius: 14px;
-                font-size: 10.5px; font-weight: 800; letter-spacing: 1px;
-                padding: 0 10px; font-family: 'JetBrains Mono';
-            }}
-            QPushButton:hover {{ background: #1E1E2E; }}
-            QToolTip {{ background-color: #2D2F3F; color: white;
-                border: 1px solid #585B70; padding: 5px;
-                border-radius: 3px; font-size: 11px; }}
-        """)
+    def set_guidance_mode(
+        self, mode: GuidanceMode, phase_source: PhaseSource | None = None,
+    ) -> None:
+        self._guidance_mode = mode
+        if phase_source is not None:
+            self._guidance_phase_source = phase_source
+        text, color = self._GUIDANCE_STYLES.get(mode, self._GUIDANCE_STYLES[GuidanceMode.PLAN])
+        inferred = self._guidance_phase_source is PhaseSource.INFERRED
+        if inferred:
+            text += " · PHASE ~"
+        if self._lbl_guidance.text() != text:
+            self._lbl_guidance.setText(text)
+        self._lbl_guidance.setToolTip(QApplication.translate(
+            "tilauscope_roast_assistant",
+            "Phase inferred from plan temperature; milestone not marked") if inferred else "")
+        self._lbl_guidance.setStyleSheet(
+            f"color:{color}; border:1px solid {color}; border-radius:10px;"
+            f"font-size:9px; font-weight:800; padding:0 7px; {_FONT}")
+        # Dédoublonnage : AUTO PLAN et MANUAL répètent mot pour mot le
+        # segment allumé du sélecteur juste à côté — deux fois la même chose sur
+        # la ligne qui porte déjà le nom du grain. Le badge ne s'affiche que
+        # lorsqu'il APPORTE quelque chose : OBSERVE, SAFETY, ou le suffixe
+        # « PHASE ~ » (phase déduite, jalon non marqué).
+        self._lbl_guidance.setVisible(
+            inferred or mode not in (GuidanceMode.AUTO, GuidanceMode.ADAPTIVE))
 
-    def set_start_stop_visible(self, visible: bool) -> None:  ## TILAU ##
-        """Show or hide the start/stop button (hidden in Guided mode). ## TILAU ##"""
+    def set_start_stop_visible(self, visible: bool) -> None:
+        """Show or hide the start/stop button (hidden in Guided mode). """
         self.btn_toggle.setVisible(visible)
 
     def update_batch(self, prefix: str, nr: int, pos: int | None = None) -> None:
@@ -4142,7 +4347,7 @@ class _BeanHeader(QFrame):
         self._lbl_details.setText("\n".join(lines))
 
 class _TapFrame(QFrame):
-    """## TILAU ## QFrame cliquable — les tuiles leviers du cockpit : un tap =
+    """QFrame cliquable — les tuiles leviers du cockpit : un tap =
     reprise en main (pause AUTO). Nécessaire car en mode ancré Guided les
     sliders Artisan ne sont pas visibles et le cockpit masque les quick-adjust :
     sans ce geste, aucun moyen de reprendre la main depuis le panneau."""
@@ -4154,7 +4359,7 @@ class _TapFrame(QFrame):
 
 
 class _AutoCockpitPage(QWidget):
-    """## TILAU ## Vue COCKPIT du mode AUTO (maquette v6 validée le 2026-07-09).
+    """Vue COCKPIT du mode AUTO (maquette v6 validée le 2026-07-09).
 
     Quatre éléments, gros, ZÉRO texte d'appoint — la machine pilote, elle ne se
     justifie pas à l'écran (le détail vit dans les événements Artisan et le log) :
@@ -4164,14 +4369,14 @@ class _AutoCockpitPage(QWidget):
       4. quatre tuiles leviers (nom + valeur, flash quand AUTO agit) + barre jalon
     Remplace la page de phase quand AUTO est armé ou en pause."""
 
-    lever_tapped = pyqtSignal()   ## TILAU ## un tap sur une tuile = reprise en main
+    lever_tapped = pyqtSignal()   # un tap sur une tuile = reprise en main
 
     _TILE_ORDER: Final = (3, 0, 1, 2)   # BURNER, AIR, DRUM, EXT
-    _TILE_COLORS: Final = {3: "#F38BA8", 0: "#89B4FA", 1: "#CBA6F7", 2: "#94E2D5"}
-    ## TILAU ## fonds de flash en rgba() : un hex 8 chiffres est lu #AARRGGBB par
-    ## Qt (alpha en PREMIER) — "#F38BA8"+"22" devenait un vert olive opaque.
-    _TILE_RGBA: Final = {3: "rgba(243,139,168,0.14)", 0: "rgba(137,180,250,0.14)",
-                         1: "rgba(203,166,247,0.14)", 2: "rgba(148,226,213,0.14)"}
+    _TILE_COLORS: Final = {3: THEME['CRITICAL'], 0: THEME['ACCENT'], 1: THEME['MAUVE'], 2: THEME['TEAL']}
+    # fonds de flash en rgba() : un hex 8 chiffres est lu #AARRGGBB par
+    # Qt (alpha en PREMIER) — "#F38BA8"+"22" devenait un vert olive opaque.
+    _TILE_RGBA: Final = {3: tint('CRITICAL', 0.14), 0: tint('ACCENT', 0.14),
+                         1: tint('MAUVE', 0.14), 2: tint('TEAL', 0.14)}
 
     def __init__(self, aw: "ApplicationWindow"):
         super().__init__()
@@ -4200,7 +4405,7 @@ class _AutoCockpitPage(QWidget):
         # 3. carte action
         self._card = QFrame()
         self._card.setStyleSheet(
-            f"QFrame {{ background: {_SURFACE}; border: 1.5px solid #89B4FA; "
+            f"QFrame {{ background: {_SURFACE}; border: 1.5px solid {THEME['ACCENT']};"
             f"border-radius: 10px; }} QLabel {{ border: none; background: transparent; }}")
         _cl = QVBoxLayout(self._card)
         _cl.setContentsMargins(14, 12, 14, 12)
@@ -4209,10 +4414,10 @@ class _AutoCockpitPage(QWidget):
         self._lbl_action.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._lbl_action.setWordWrap(True)
         self._lbl_action.setStyleSheet(
-            f"color: #CDD6F4; font-size: 19px; font-weight: 800; {_FONT}")
+            f"color: {THEME['TEXT']}; font-size: 19px; font-weight: 800; {_FONT}")
         self._lbl_when = QLabel("")
         self._lbl_when.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._lbl_when.setStyleSheet(f"color: #9399B2; font-size: 12px; {_FONT}")
+        self._lbl_when.setStyleSheet(f"color: {THEME['OVERLAY2']}; font-size: 12px; {_FONT}")
         _cl.addWidget(self._lbl_action)
         _cl.addWidget(self._lbl_when)
 
@@ -4236,11 +4441,11 @@ class _AutoCockpitPage(QWidget):
                 name = f"SLD{idx}"
             n = QLabel(name)
             n.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            n.setStyleSheet(f"color: #9399B2; font-size: 10px; font-weight: 800; "
+            n.setStyleSheet(f"color: {THEME['OVERLAY2']}; font-size: 10px; font-weight: 800;"
                             f"{_FONT} letter-spacing: 1px; border:none; background:transparent;")
             v = QLabel("--")
             v.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            v.setStyleSheet(f"color: {self._TILE_COLORS[idx]}; font-size: 24px; "
+            v.setStyleSheet(f"color: {self._TILE_COLORS[idx]}; font-size: 24px;"
                             f"font-weight: 900; {_FONT} border:none; background:transparent;")
             tl.addWidget(n)
             tl.addWidget(v)
@@ -4253,24 +4458,24 @@ class _AutoCockpitPage(QWidget):
         ms_row = QHBoxLayout()
         ms_row.setSpacing(10)
         self._lbl_ms = QLabel("")
-        self._lbl_ms.setStyleSheet(f"color: #9399B2; font-size: 12px; font-weight: 800; {_FONT} border:none;")
+        self._lbl_ms.setStyleSheet(f"color: {THEME['OVERLAY2']}; font-size: 12px; font-weight: 800; {_FONT} border:none;")
         self._ms_outer = QFrame()
         self._ms_outer.setFixedHeight(6)
         self._ms_outer.setStyleSheet(f"background: {_BORDER}; border-radius: 3px;")
         self._ms_inner = QFrame(self._ms_outer)
         self._ms_inner.setFixedHeight(6)
-        self._ms_inner.setStyleSheet("background: #F9E2AF; border-radius: 3px;")
+        self._ms_inner.setStyleSheet(f"background: {THEME['YELLOW']}; border-radius: 3px;")
         self._lbl_ms_r = QLabel("")
-        self._lbl_ms_r.setStyleSheet(f"color: #9399B2; font-size: 12px; {_FONT} border:none;")
+        self._lbl_ms_r.setStyleSheet(f"color: {THEME['OVERLAY2']}; font-size: 12px; {_FONT} border:none;")
         ms_row.addWidget(self._lbl_ms)
         ms_row.addWidget(self._ms_outer, 1)
         ms_row.addWidget(self._lbl_ms_r)
 
-        ## TILAU ## bouton de jalon : en cockpit les pages détaillées (et leurs
-        ## boutons DE/FC/DROP) sont masquées — sans lui, aucun marquage possible
-        ## depuis le panneau (retour Tilau : FC/DROP impossibles en cockpit).
-        ## Un seul bouton, contextualisé par phase ; devient « Annuler » pendant
-        ## le compte à rebours d'auto-DROP.
+        # bouton de jalon : en cockpit les pages détaillées (et leurs
+        # boutons DE/FC/DROP) sont masquées — sans lui, aucun marquage possible
+        # depuis le panneau (retour Tilau : FC/DROP impossibles en cockpit).
+        # Un seul bouton, contextualisé par phase ; devient « Annuler » pendant
+        # le compte à rebours d'auto-DROP.
         self.btn_ms = _ContextButton("--", "", style='dim')
 
         lay.addWidget(self._bar)
@@ -4289,14 +4494,14 @@ class _AutoCockpitPage(QWidget):
         if armed == self._bar_armed:
             return
         self._bar_armed = armed
-        c, bg, bd = (("#A6E3A1", "rgba(166,227,161,0.07)", "rgba(166,227,161,0.35)") if armed
-                     else ("#F9E2AF", "rgba(249,226,175,0.07)", "rgba(249,226,175,0.35)"))
+        c, bg, bd = ((THEME['SUCCESS'], "rgba(166,227,161,0.07)", "rgba(166,227,161,0.35)") if armed
+                     else (THEME['YELLOW'], tint('YELLOW', 0.07), tint('YELLOW', 0.35)))
         self._bar.setStyleSheet(
             f"QFrame {{ background: {bg}; border: none; border-bottom: 1px solid {bd}; }}"
             f"QLabel {{ border: none; background: transparent; }}")
         self._lbl_pilot.setStyleSheet(
             f"color: {c}; font-size: 14px; font-weight: 900; letter-spacing: 1.5px; {_FONT}")
-        self._lbl_phase.setStyleSheet(f"color: #9399B2; font-size: 12px; {_FONT}")
+        self._lbl_phase.setStyleSheet(f"color: {THEME['OVERLAY2']}; font-size: 12px; {_FONT}")
 
     def _set_tile_flash(self, idx: int, on: bool) -> None:
         if on == self._tile_flash.get(idx):
@@ -4305,7 +4510,7 @@ class _AutoCockpitPage(QWidget):
         c = self._TILE_COLORS[idx]
         if on:
             self._tiles[idx][0].setStyleSheet(
-                f"QFrame {{ background: {self._TILE_RGBA[idx]}; "
+                f"QFrame {{ background: {self._TILE_RGBA[idx]};"
                 f"border: 1.5px solid {c}; border-radius: 9px; }}")
         else:
             self._tiles[idx][0].setStyleSheet(
@@ -4324,7 +4529,7 @@ class _AutoCockpitPage(QWidget):
         if status_color != self._status_color:
             self._status_color = status_color
             self._lbl_status.setStyleSheet(
-                f"color: {status_color}; font-size: 26px; font-weight: 900; "
+                f"color: {status_color}; font-size: 26px; font-weight: 900;"
                 f"letter-spacing: 1px; {_FONT} border: none;")
         if self._lbl_status.text() != status:
             self._lbl_status.setText(status)
@@ -4366,7 +4571,7 @@ class AccessOmniflux():
         self.omniflux = self.detect_omniflux_devices(aw)
         self._color_hist: list[float] = []
         self._roc_hist:   list[float] = []
-       
+
 
     def _get_omniflux_live(self) -> tuple[float, float]:
         ci = self.omniflux.color_device_idx
@@ -4393,7 +4598,7 @@ class AccessOmniflux():
         agtron = sum(self._color_hist) / len(self._color_hist) if self._color_hist else -1.0
         roc    = sum(self._roc_hist)   / len(self._roc_hist)   if self._roc_hist  else -1.0
         return agtron, roc
-    
+
     def detect_omniflux_devices(self,aw: ApplicationWindow)-> OmnifluxBinding:
         """
         Scan Artisan extra-devices to locate the Omniflux Agtron/RoC channels.
@@ -4464,13 +4669,13 @@ class RoastAssistantPanel(QWidget):
     _PHASE_DROP    = 5
 
     _PHASE_MAP  = {"DRY": _PHASE_DRY, "MAI": _PHASE_MAI, "DEV": _PHASE_DEV, "COOL": _PHASE_DROP, "PREHEAT": _PHASE_PREHEAT, "DROP": _PHASE_DROP}
-    _PAGE_COCKPIT = 6   ## TILAU ## vue AUTO (maquette v6) — remplace la page de phase quand AUTO pilote
+    _PAGE_COCKPIT = 6   # vue AUTO (maquette v6) — remplace la page de phase quand AUTO pilote
 
     # Emitted when the user closes the panel via the floating ✕, so the host
-    # can re-sync its open/close button state. ## TILAU ##
+    # can re-sync its open/close button state.
     closed = pyqtSignal()
     # Emitted when the user toggles anchor/float from the panel-side control
-    # (Guided level), so the host can run its anchor logic. ## TILAU ##
+    # (Guided level), so the host can run its anchor logic.
     anchor_requested = pyqtSignal()
 
     def __init__(self, aw: "ApplicationWindow", parent: QWidget):
@@ -4478,7 +4683,7 @@ class RoastAssistantPanel(QWidget):
         self.aw       = aw
         self._parent  = parent
         self.is_active: bool = False
-        self._operator_level: str = "guided"  ## TILAU ##
+        self._operator_level: str = "guided"
 
         # Drapeaux internes
         self._current_phase: int = self._PHASE_IDLE
@@ -4491,7 +4696,7 @@ class RoastAssistantPanel(QWidget):
         self._rp: "TilauScopeRoastPlan | None" = None
         self._bt_at_fcs: float = 0.0
 
-        # ── Plan vivant (recalage aux jalons) ──────────────────────────────  ## TILAU ##
+        # ── Plan vivant (recalage aux jalons) ──────────────────────────────
         # _plan est le plan VIVANT (re-ancré à chaque jalon réel TP/DRYe/FCs) ;
         # _plan_initial reste figé au démarrage — c'est la référence honnête du
         # bilan EOR (sinon l'adhérence serait trivialement bonne par construction).
@@ -4506,23 +4711,27 @@ class RoastAssistantPanel(QWidget):
             "tilauscope_roast_assistant", "👂 DRY END detected — tap to confirm")
         self._tr_confirm_fc = QApplication.translate(
             "tilauscope_roast_assistant", "👂 FC detected — tap to confirm")
+        self._tr_btn_confirm_de = QApplication.translate(
+            "tilauscope_roast_assistant", "Confirm\nDRY END")
+        self._tr_btn_confirm_fc = QApplication.translate(
+            "tilauscope_roast_assistant", "Confirm\nFC START")
         self._relaunch_requested: bool = False  # relance back-to-back : forcer le redémarrage assistant
 
-        # ── Fenêtre d'inertie burner (coach quantifié) ─────────────────────  ## TILAU ##
+        # ── Fenêtre d'inertie burner (coach quantifié) ─────────────────────
         # Tout mouvement du slider burner (opérateur ou alarme de rampe) ouvre
         # une fenêtre pendant laquelle le conseil RoR directionnel est suspendu
         # (aw._tilau_burner_watch, lu par _ror_deviation_advice). Le lag est
         # dérivé de la réactivité thermique de la machine.
         self._burner_last_pct: "int | None" = None
 
-        ## TILAU ## AutoPilot v1a (feedforward — AutoRoast-Spec §3 étage 1, §5) ──
-        ## 'off' | 'armed' | 'paused' ; armement = consentement, opt-in par session.
+        # AutoPilot v1a (feedforward — AutoRoast-Spec §3 étage 1, §5) ──
+        # 'off' | 'armed' | 'paused' ; armement = consentement, opt-in par session.
         self._ap_state: str = "off"
         self._ap_expected: dict[int, float] = {}      # idx slider → valeur posée par l'AutoPilot
         self._ap_slider_last: dict[int, float] = {}   # dernière valeur observée (détection reprise en main)
         self._ap_notice: "tuple[str, str, float] | None" = None  # (texte, niveau, expiration monotonic)
         self._ap_bt_prev: "float | None" = None   # BT du tick précédent (franchissement montant de rampe)
-        self._ap_charge_settle_until: float = 0.0  # seam CHARGE : fenêtre de grâce anti-pause (handoff PID préchauffe→roast)
+        self._ap_settle_until: float = 0.0  # coutures de jalon (CHARGE/DE/FC) : fenêtre de grâce anti-pause
         self._tr_ap_blocked_lowconf = QApplication.translate(
             "tilauscope_roast_assistant", "AUTO unavailable — plan confidence is too low for this roast")
         self._tr_ap_blocked_noplan = QApplication.translate(
@@ -4537,7 +4746,7 @@ class RoastAssistantPanel(QWidget):
         self._tpl_ap_ramp = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · Burner → {0}% (ramp at {1}°)")
         self._tpl_ap_cool = QApplication.translate(
             "tilauscope_roast_assistant", "⚙ AUTO · DROP → cooling ({0}) — AUTO done, you have full control")
-        ## TILAU ## vue cockpit (v6) — dernière action + flashes tuiles + textes
+        # vue cockpit (v6) — dernière action + flashes tuiles + textes
         self._ap_last_action: "tuple[str, float] | None" = None   # (texte, t_mono)
         self._ap_lever_flash: dict[int, float] = {}               # idx → t_mono de la pose
         self._ap_automark_done: set[str] = set()                  # "DE"/"FC" one-shot
@@ -4560,7 +4769,7 @@ class RoastAssistantPanel(QWidget):
         self._cp_ms_words = {
             self._PHASE_DRY: "DE", self._PHASE_MAI: "FC", self._PHASE_DEV: "DROP",
         }
-        ## TILAU ## jalons en cockpit : bouton contextuel + auto-DROP plan (10 s annulables)
+        # jalons en cockpit : bouton contextuel + auto-DROP plan (10 s annulables)
         self._ap_drop_deadline: "float | None" = None   # t_mono du tir auto-DROP
         self._ap_drop_cancelled: bool = False           # annulé = plus jamais re-armé (session)
         self._tr_cp_btn_de   = QApplication.translate("tilauscope_roast_assistant", "Mark DRY END")
@@ -4569,14 +4778,14 @@ class RoastAssistantPanel(QWidget):
         self._tr_cp_btn_cancel = QApplication.translate("tilauscope_roast_assistant", "✕ Cancel auto-DROP")
         self._tpl_ap_dropin  = QApplication.translate("tilauscope_roast_assistant", "⬇ DROP in {0}s — plan target reached")
         self._tr_ap_dropmark = QApplication.translate("tilauscope_roast_assistant", "⚙ DROP marked (auto)")
-        ## TILAU ## v1b — moteur de trim continu (autopilot_core, calé Sim-1/Sim-2)
+        # v1b — moteur de trim continu (autopilot_core, calé Sim-1/Sim-2)
         self._ap_core = AutoPilotCore(self._ap_trim_params())
         self._tpl_ap_trim = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · {0} → {1}% ({2})")
         self._tpl_ap_dev_ramp = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · DEV {0}")
         self._tr_ap_ceiling = QApplication.translate(
             "tilauscope_roast_assistant", "⚠ AUTO · trim at its ceiling — check the plan")
-        ## TILAU ## v2 — « tenir le feu » en dev (rate-limiter exotherme), filet
-        ## réactif minimal AIR-d'abord, et flag A/B feedforward-seul vs +trim.
+        # v2 — « tenir le feu » en dev (rate-limiter exotherme), filet
+        # réactif minimal AIR-d'abord, et flag A/B feedforward-seul vs +trim.
         self._ap_ff_only: bool = False           # lu depuis QSettings à l'armement
         self._ap_dev_heater_pending: "float | None" = None  # cible feu en file (monotone)
         self._ap_dev_rate_anchor: "tuple[float, float] | None" = None  # (t_fc_sec, burner_pct)
@@ -4620,7 +4829,7 @@ class RoastAssistantPanel(QWidget):
         # Cache the inlet air path (push/pull) for the pages' pull-aware advice.
         self.aw._tilau_inlet_air_mode = (
             getattr(self.roast_context, "inlet_air_mode", "push") if self.roast_context is not None else "push")
-        # Lag actionneur→BT de la machine : fenêtre du débounce burner.        ## TILAU ##
+        # Lag actionneur→BT de la machine : fenêtre du débounce burner.
         # RECALÉ sur le banc (étude 1, item E) : l'effet du feu est un
         # intégrateur LENT — mi-effet ~25-30 s, plein effet 60 s+, BT lisible
         # 60-90 s. L'ancien 15+45×(1−resp) (SW ≈ 28 s) rejugeait deux fois trop
@@ -4630,6 +4839,29 @@ class RoastAssistantPanel(QWidget):
         _resp = float(getattr(self.roast_context, "thermal_response_speed", 0.5) or 0.5)
         self._heater_lag_s: float = 30.0 + 90.0 * (1.0 - max(0.0, min(1.0, _resp)))
         self.aw._tilau_burner_watch = None
+        # Guidance authority is deliberately separate from the plan and from
+        # AutoPilot state. The pure arbiter decides whether a plan-relative
+        # instruction is still legitimate in manual guidance.
+        self._guidance_session = GuidanceSession(
+            guidance_params=GuidanceParams(operator_lag_s=self._heater_lag_s))
+        self._guidance_phases = GuidancePhaseTracker()
+        self._guidance_event_cursor = len(self.aw.qmc.specialevents)
+        # UI rendering consumes the selector owned by this aggregate session;
+        # it must never instantiate a parallel PLAN-default decision path.
+        self.aw._tilau_guidance_selector = self._guidance_session.selector
+        self._guidance_projection = None
+        self.aw._tilau_guidance_projection_text = ""
+        self.aw._tilau_guidance_output_text = ""
+        self.aw._tilau_guidance_output = None
+        self.aw._tilau_guidance_safety_candidates = []
+        self._tr_guidance_wait = QApplication.translate(
+            "tilauscope_roast_assistant", "Manual action · observing machine response")
+        self._tpl_guidance_projection = QApplication.translate(
+            "tilauscope_roast_assistant",
+            "Manual trajectory · {0} in ~{1} · phase ~{2} · terminal RoR {3} · confidence {4}%")
+        self._tpl_guidance_dtr = QApplication.translate(
+            "tilauscope_roast_assistant", " · projected DTR {0}%")
+        self.aw._tilau_guidance_decision = self._guidance_session.arbiter.decision()
 
         # Coefficients couleur (lus depuis QSettings — mêmes defaults que beancave)
         from PyQt6.QtCore import QSettings
@@ -4674,7 +4906,7 @@ class RoastAssistantPanel(QWidget):
                 border-radius: 14px;
             }}
             QToolTip {{
-                background: #2D2F3F; color: white;
+                background: {THEME['BORDER']}; color: white;
                 border: 1px solid {_BORDER};
                 padding: 4px; border-radius: 3px; font-size: 11px;
             }}
@@ -4688,7 +4920,7 @@ class RoastAssistantPanel(QWidget):
         # ── Barre titre ───────────────────────────────────────────────────────
         title_bar = QFrame()
         title_bar.setStyleSheet(
-            f"background: {_SURFACE}; border-top-left-radius: 12px; "
+            f"background: {_SURFACE}; border-top-left-radius: 12px;"
             f"border-top-right-radius: 12px; border-bottom: 1px solid {_BORDER};"
         )
         tb_layout = QHBoxLayout(title_bar)
@@ -4700,10 +4932,10 @@ class RoastAssistantPanel(QWidget):
         btn_close = QPushButton("✕")
         btn_close.setFixedSize(22, 22)
         btn_close.setStyleSheet(f"""
-            QPushButton {{ background: #313244; color: #F38BA8;
-                border-radius: 11px; border: 1px solid #F38BA8;
+            QPushButton {{ background: {THEME['BORDER']}; color: {THEME['CRITICAL']};
+                border-radius: 11px; border: 1px solid {THEME['CRITICAL']};
                 font-weight: bold; font-size: 10px; }}
-            QPushButton:hover {{ background: #F38BA8; color: {_BG}; }}
+            QPushButton:hover {{ background: {THEME['CRITICAL']}; color: {_BG}; }}
         """)
         btn_close.clicked.connect(self.hide_from_button)
         tb_layout.addWidget(lbl_title)
@@ -4711,7 +4943,7 @@ class RoastAssistantPanel(QWidget):
         tb_layout.addWidget(btn_close)
         inner.addWidget(title_bar)
 
-        # ── Movable body (setup + header + phase stack) ## TILAU ## ───────────
+        # ── Movable body (setup + header + phase stack) ───────────
         # Held in a dedicated widget so it can be detached from this floating
         # shell and embedded into the TilauScope main panel (anchored mode)
         # without touching any signal/bridge wiring.
@@ -4720,7 +4952,7 @@ class RoastAssistantPanel(QWidget):
         self._body.setObjectName("AssistantBody")
         # True while the body is reparented into the anchored host (guided
         # default): sizing is then owned by the host QScrollArea and this shell
-        # is hidden, so the per-refresh height fit must skip.  ## TILAU ##
+        # is hidden, so the per-refresh height fit must skip.
         self._body_detached = False
         # Explicit background so the body stays themed in BOTH the floating shell
         # and the anchored host, and survives reparenting through QScrollArea
@@ -4730,7 +4962,7 @@ class RoastAssistantPanel(QWidget):
             # Dark tooltip applied at body level so every descendant keeps it,
             # including when the body is reparented into the anchored host.
             f"QToolTip {{ background-color: #2D2F3F; color: white;"
-            f" border: 1px solid #585B70; padding: 5px;"
+            f" border: 1px solid {THEME['SURFACE2']}; padding: 5px;"
             f" border-radius: 3px; font-size: 11px; }}")
         self._body.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         body_lay = QVBoxLayout(self._body)
@@ -4744,21 +4976,15 @@ class RoastAssistantPanel(QWidget):
         # ── En-tête grain actif ───────────────────────────────────────────────
         self._bean_header = _BeanHeader()
         body_lay.addWidget(self._bean_header)
-        ## TILAU ## AutoPilot : RETIRÉ de l'accès utilisateur (décision Tilau
-        ## 2026-07-11, post-roast La Fabrica — le sujet repart de zéro sur le
-        ## banc, doctrine settings-first). La puce n'est jamais visible tant que
-        ## _AP_USER_ENABLED est False ; sans elle, l'état « armed » est
-        ## inatteignable et tous les chemins AUTO (feedforward, trim, cockpit,
-        ## automark, auto-DROP, cooling) sont morts. Le code reste en place pour
-        ## la reprise. Garde-fou read-only conservé pour la ré-activation.
-        ## TILAU ## the header must mirror the current selection as soon as it
-        ## changes: it used to say "no green bean selected" while the dropdown
-        ## already showed the bean identified from the roast record.
+        # Explicit MANUAL/AUTO coach switch; AUTO is gated by active session,
+        # plan confidence and machine write capability. The header must mirror
+        # the current dropdown selection as soon as it changes.
         self._setup_bar.combo_bean.currentIndexChanged.connect(self._on_setup_selection_changed)
         self._setup_bar.combo_agtron.currentIndexChanged.connect(self._on_setup_selection_changed)
         self._bean_header.btn_auto.clicked.connect(self._ap_toggle)
-        self._bean_header.btn_auto.setVisible(
-            _AP_USER_ENABLED and not _roaster_is_readonly(self.aw))
+        self._bean_header.btn_manual.clicked.connect(self._coach_manual_selected)
+        self._auto_user_available = _AP_USER_ENABLED and not _guidance_curve_only(self.aw)
+        self._bean_header.set_coach_switch_available(False)  # enabled with an active session
 
         # ── Pages de phases (QStackedWidget) ─────────────────────────────────
         self._stack = QStackedWidget()
@@ -4771,7 +4997,7 @@ class RoastAssistantPanel(QWidget):
         self._page_preheat = _PreheatPage(self.aw)
         self._page_drop    = _CoolingPage(self.aw)
 
-        self._page_cockpit = _AutoCockpitPage(self.aw)   ## TILAU ## vue AUTO (v6)
+        self._page_cockpit = _AutoCockpitPage(self.aw)   # vue AUTO (v6)
 
         self._stack.addWidget(self._page_idle)     # index 0
         self._stack.addWidget(self._page_dry)      # index 1
@@ -4779,22 +5005,22 @@ class RoastAssistantPanel(QWidget):
         self._stack.addWidget(self._page_dev)      # index 3
         self._stack.addWidget(self._page_preheat)  # index 4
         self._stack.addWidget(self._page_drop)     # index 5
-        self._stack.addWidget(self._page_cockpit)  # index 6 = _PAGE_COCKPIT ## TILAU ##
-        self._page_cockpit.btn_ms.clicked.connect(self._ap_ms_clicked)      ## TILAU ##
-        self._page_cockpit.lever_tapped.connect(self._ap_tile_tapped)       ## TILAU ##
+        self._stack.addWidget(self._page_cockpit)  # index 6 = _PAGE_COCKPIT
+        self._page_cockpit.btn_ms.clicked.connect(self._ap_ms_clicked)
+        self._page_cockpit.lever_tapped.connect(self._ap_tile_tapped)
 
         self._stack.setCurrentIndex(0)
         self._stack.currentChanged.connect(self._on_page_changed)
 
-        body_lay.addWidget(self._stack, 1)   ## TILAU ##
-        inner.addWidget(self._body, 1)       ## TILAU ##
-        self._fit_stack_to_current(0)        ## TILAU ## collapse inactive pages
+        body_lay.addWidget(self._stack, 1)
+        inner.addWidget(self._body, 1)
+        self._fit_stack_to_current(0)        # collapse inactive pages
 
     # ── Connexions signaux ─────────────────────────────────────────────────────
 
     def _connect_signals(self) -> None:
         self._bean_header.btn_toggle.clicked.connect(self._on_toggle)
-        self._setup_bar.btn_anchor.clicked.connect(self.anchor_requested)   ## TILAU ##
+        self._setup_bar.btn_anchor.clicked.connect(self.anchor_requested)
         # End of Roast actions
         self._page_drop._eor_btn_result.clicked.connect(self._on_open_result_form)
         self._page_drop._eor_btn_notes.clicked.connect(self._on_open_notes)
@@ -4811,11 +5037,11 @@ class RoastAssistantPanel(QWidget):
             pass
 
     def set_panel_anchor_visible(self, visible: bool) -> None:
-        """Show/hide the panel-side anchor toggle (Guided level only). ## TILAU ##"""
+        """Show/hide the panel-side anchor toggle (Guided level only). """
         self._setup_bar.btn_anchor.setVisible(visible)
 
-    def set_operator_level(self, level: str) -> None:  ## TILAU ##
-        """Propagate operator level into the assistant panel. ## TILAU ##
+    def set_operator_level(self, level: str) -> None:
+        """Propagate operator level into the assistant panel.
         Guided: hide start/stop button (Artisan controls the assistant).
         Expert: show start/stop button (manual control).
         """
@@ -4897,11 +5123,11 @@ class RoastAssistantPanel(QWidget):
     @pyqtSlot(int)
     def _on_page_changed(self, index: int) -> None:
         """Resize panel to active page without triggering Windows MINMAXINFO conflict."""
-        self._fit_stack_to_current(index)   ## TILAU ##
+        self._fit_stack_to_current(index)
         QTimer.singleShot(50, self._apply_panel_height)
 
     def _fit_stack_to_current(self, index: int) -> None:
-        """Make the stack request only the current page's height ## TILAU ##.
+        """Make the stack request only the current page's height .
 
         QStackedWidget otherwise sizes to the tallest page, forcing a scrollbar
         once the body is embedded in the anchored host. Collapsing inactive
@@ -4911,7 +5137,7 @@ class RoastAssistantPanel(QWidget):
         for i in range(self._stack.count()):
             v = (QSizePolicy.Policy.Preferred if i == index
                  else QSizePolicy.Policy.Ignored)
-            self._stack.widget(i).setSizePolicy(QSizePolicy.Policy.Preferred, v)
+            self._stack.widget(i).setSizePolicy(QSizePolicy.Policy.Ignored, v)
 
     def _adjust_size_if_needed(self) -> None:
         """Recalculate height only when content changes — 1 Hz safe."""
@@ -4922,7 +5148,7 @@ class RoastAssistantPanel(QWidget):
         # Anchored (guided default): the body lives in the host QScrollArea
         # (widgetResizable) which owns sizing, and this shell is hidden —
         # recomputing its sizeHint / resizing it every refresh is pure waste.
-        # Only the floating window needs to be fitted to its content.  ## TILAU ##
+        # Only the floating window needs to be fitted to its content.
         if self._body_detached:
             return
         self.setMinimumHeight(0)
@@ -4959,7 +5185,7 @@ class RoastAssistantPanel(QWidget):
         else:
             self._stop_assistant()
 
-    def _refresh_bean_header(self) -> None:   ## TILAU ##
+    def _refresh_bean_header(self) -> None:
         """Mirror the current setup selection in the bean header.
 
         Single point of truth for the idle header: while no roast is running the
@@ -4972,7 +5198,7 @@ class RoastAssistantPanel(QWidget):
         self._bean_header.update_bean(self._setup_bar.selected_bean(),
                                       self._setup_bar.selected_agtron())
 
-    def _on_setup_selection_changed(self, _idx: int) -> None:   ## TILAU ##
+    def _on_setup_selection_changed(self, _idx: int) -> None:
         self._refresh_bean_header()
 
     def _start_assistant(self) -> None:
@@ -4988,13 +5214,23 @@ class RoastAssistantPanel(QWidget):
         self._bean   = bean
         self._agtron = agtron
         self._plan   = None
-        self._plan_initial = None         ## TILAU ## plan vivant : reset session
-        self._replans_applied = []        ## TILAU ##
-        self._replan_attempted = set()    ## TILAU ##
-        self._replan_notice = None        ## TILAU ##
-        self._burner_last_pct = None      ## TILAU ##
-        self.aw._tilau_burner_watch = None  ## TILAU ##
-        ## TILAU ## AutoPilot : l'armement est un opt-in PAR SESSION — jamais hérité
+        self._plan_initial = None         # plan vivant : reset session
+        self._replans_applied = []
+        self._replan_attempted = set()
+        self._replan_notice = None
+        self._burner_last_pct = None
+        self.aw._tilau_burner_watch = None
+        self.aw._tilau_guidance_decision = self._guidance_session.reset()
+        self._guidance_phases.reset()
+        self._guidance_event_cursor = len(self.aw.qmc.specialevents)
+        self._guidance_projection = None
+        self.aw._tilau_guidance_projection_text = ""
+        self.aw._tilau_guidance_output_text = ""
+        self.aw._tilau_guidance_output = None
+        self.aw._tilau_guidance_safety_candidates = []
+        self._bean_header.set_guidance_mode(
+            GuidanceMode.PLAN, PhaseSource.OBSERVED)
+        # AutoPilot : l'armement est un opt-in PAR SESSION — jamais hérité
         self._ap_set_state("off")
         self._ap_notice = None
         self._ap_last_action = None
@@ -5007,7 +5243,7 @@ class RoastAssistantPanel(QWidget):
         # l'arrêt de l'enregistrement, et doit survivre jusqu'au save).
         self.aw.qmc.tilau_exclude_learning = False
         # A plan snapshot belongs to one roast. Do not erase a completed roast
-        # merely because the panel was reopened before RESET. ## TILAU ##
+        # merely because the panel was reopened before RESET.
         if self.aw.qmc.timeindex[0] < 0:
             self.aw.qmc.tilau_roast_plan_snapshot = None
         try:
@@ -5048,8 +5284,8 @@ class RoastAssistantPanel(QWidget):
                 minutes_since_last_drop=self._minutes_since_last_drop(),
             )
             self._plan = plan_dict
-            self._plan_initial = plan_dict   ## TILAU ## référence figée pour le bilan EOR
-            self._capture_prediction_snapshot(plan_dict)  ## TILAU ## P2 pre-roast truth
+            self._plan_initial = plan_dict   # référence figée pour le bilan EOR
+            self._capture_prediction_snapshot(plan_dict)  # P2 pre-roast truth
             self._build_soak_note()
             _logd.debug(
                 f"RoastAssistant: plan généré pour {bean.name} → {agtron.name}"
@@ -5057,42 +5293,58 @@ class RoastAssistantPanel(QWidget):
         except Exception as e:
             _logd.warning(f"RoastAssistant: plan indisponible ({e})")
             self._plan = None
-            self._plan_initial = None        ## TILAU ##
+            self._plan_initial = None
 
+        # Snapshot the actual control acquisition of this launch. A machine
+        # profile alone must not imply gestures when the current slider
+        # configuration exposes none.
+        _curve_only = _guidance_curve_only(self.aw)
+        self._guidance_session.set_actions_observable(not _curve_only)
+        self._auto_user_available = _AP_USER_ENABLED and not _curve_only
+        for _page in (self._page_dry, self._page_mai, self._page_dev):
+            _page._readonly = _curve_only
+            _page.quick_adjust.setVisible(not _curve_only)
+        self._page_preheat.quick_adjust.setVisible(not _curve_only)
         self.is_active = True
+        self._bean_header.set_coach_switch_available(self._auto_user_available)
         self._setup_bar.set_active(True)
         self._setup_bar.show_combos(False)
         self._bean_header.set_active(True)
         self._bean_header.update_bean(bean, agtron)
         if self.aw.qmc.flagon and self.aw.qmc.flagstart:
-            # Sentinel convention: ti[0]==-1 means CHARGE unmarked;        ## TILAU ##
-            # milestones 1..7 use 0 as "unmarked", >0 as "marked".         ## TILAU ##
-            # Resolve from latest milestone backward (bug fix: previous     ## TILAU ##
-            # code tested ==-1 on 1..6 and fell through to summary).        ## TILAU ##
-            ti = self.aw.qmc.timeindex                                      ## TILAU ##
+            # Sentinel convention: ti[0]==-1 means CHARGE unmarked;
+            # milestones 1..7 use 0 as "unmarked", >0 as "marked".
+            # Resolve from latest milestone backward (bug fix: previous
+            # code tested ==-1 on 1..6 and fell through to summary).
+            ti = self.aw.qmc.timeindex
             if ti[0] == -1:
                 self._current_phase = self._PHASE_PREHEAT
-            elif ti[6] > 0:        # DROP marked -> cooling / summary       ## TILAU ##
+            elif ti[6] > 0:        # DROP marked -> cooling / summary
                 self._current_phase = self._PHASE_DROP
-            elif ti[2] > 0:        # FC START marked -> development         ## TILAU ##
+            elif ti[2] > 0:        # FC START marked -> development
                 self._current_phase = self._PHASE_DEV
-            elif ti[1] > 0:        # DRY END marked -> maillard             ## TILAU ##
+            elif ti[1] > 0:        # DRY END marked -> maillard
                 self._current_phase = self._PHASE_MAI
-            else:                  # CHARGE marked only -> drying           ## TILAU ##
+            else:                  # CHARGE marked only -> drying
                 self._current_phase = self._PHASE_DRY
             self._stack.setCurrentIndex(self._current_phase)
-            # Démarrage tardif : recale immédiatement le plan vivant sur les  ## TILAU ##
-            # jalons déjà marqués (le TP est repris au prochain tick refresh). ## TILAU ##
-            if ti[1] > 0:                                                    ## TILAU ##
-                self._replan_at_milestone("dry_end", 1)                      ## TILAU ##
-            if ti[2] > 0:                                                    ## TILAU ##
-                self._replan_at_milestone("fc_start", 2)                     ## TILAU ##
+            if ti[1] > 0:
+                self._guidance_phases.observe(GuidancePhase.MAILLARD)
+            if ti[2] > 0:
+                self._guidance_phases.observe(GuidancePhase.DEVELOPMENT)
+            # Démarrage tardif : recale immédiatement le plan vivant sur les
+            # jalons déjà marqués (le TP est repris au prochain tick refresh).
+            if ti[1] > 0:
+                self._replan_at_milestone("dry_end", 1)
+            if ti[2] > 0:
+                self._replan_at_milestone("fc_start", 2)
         else:
             self._current_phase = self._PHASE_IDLE
             self._stack.setCurrentIndex(self._PHASE_IDLE)
 
     def _stop_assistant(self) -> None:
         self.is_active = False
+        self._bean_header.set_coach_switch_available(False)
         self._rp = None   # libère le générateur et son cache historique
         # Désarme la relance back-to-back : un armement ne doit jamais
         # survivre à la session (tir surprise au cooling du roast suivant).
@@ -5103,18 +5355,27 @@ class RoastAssistantPanel(QWidget):
         self._setup_bar.set_active(False)
         self._setup_bar.show_combos(True)
         self._bean_header.set_active(False)
-        self._refresh_bean_header()   ## TILAU ## keep showing what is selected
+        self._refresh_bean_header()   # keep showing what is selected
         self._current_phase = self._PHASE_IDLE
         self._stack.setCurrentIndex(self._PHASE_IDLE)
         self._ror_hist.clear()
         self._bt_at_fcs = 0.0
-        self._plan_initial = None         ## TILAU ##
-        self._replans_applied = []        ## TILAU ##
-        self._replan_attempted = set()    ## TILAU ##
-        self._replan_notice = None        ## TILAU ##
-        self._burner_last_pct = None      ## TILAU ##
-        self.aw._tilau_burner_watch = None  ## TILAU ##
-        ## TILAU ## AutoPilot : désarmé au stop, toujours (garde-fou §6)
+        self._plan_initial = None
+        self._replans_applied = []
+        self._replan_attempted = set()
+        self._replan_notice = None
+        self._burner_last_pct = None
+        self.aw._tilau_burner_watch = None
+        self.aw._tilau_guidance_decision = self._guidance_session.reset()
+        self._guidance_phases.reset()
+        self._guidance_projection = None
+        self.aw._tilau_guidance_projection_text = ""
+        self.aw._tilau_guidance_output_text = ""
+        self.aw._tilau_guidance_output = None
+        self.aw._tilau_guidance_safety_candidates = []
+        self._bean_header.set_guidance_mode(
+            GuidanceMode.PLAN, PhaseSource.OBSERVED)
+        # AutoPilot : désarmé au stop, toujours (garde-fou §6)
         self._ap_set_state("off")
         self._ap_notice = None
         self._ap_last_action = None
@@ -5130,36 +5391,71 @@ class RoastAssistantPanel(QWidget):
         Appelé par TilauScope._handle_milestone_events() pour synchroniser la phase.
         phase_key : "DRY" | "MAI" | "DEV" | "COOL" | "PREHEAT" | "DROP"
         """
+        self._set_phase(phase_key, observed=True, refresh=True)
+
+    def _set_phase(self, phase_key: str, *, observed: bool, refresh: bool) -> None:
+        """Activate an observed or plan-temperature-inferred phase."""
         if not self.is_active:
             return
-        new_phase = self._PHASE_MAP.get(phase_key, self._PHASE_IDLE)
+        tracked_phase = {
+            "DRY": GuidancePhase.DRYING,
+            "MAI": GuidancePhase.MAILLARD,
+            "DEV": GuidancePhase.DEVELOPMENT,
+        }.get(phase_key)
+        transition = None
+        if tracked_phase is not None:
+            transition = (self._guidance_phases.observe(tracked_phase) if observed
+                          else self._guidance_phases.infer(tracked_phase))
+            new_phase = {
+                GuidancePhase.DRYING: self._PHASE_DRY,
+                GuidancePhase.MAILLARD: self._PHASE_MAI,
+                GuidancePhase.DEVELOPMENT: self._PHASE_DEV,
+            }[transition.phase]
+        else:
+            new_phase = self._PHASE_MAP.get(phase_key, self._PHASE_IDLE)
         if new_phase == self._current_phase:
+            # A late real marker confirms an already inferred phase. It may
+            # re-anchor the plan once, without replaying phase actuations.
+            if observed and transition is not None and transition.confirmed:
+                if phase_key == "MAI":
+                    self._replan_at_milestone("dry_end", 1)
+                elif phase_key == "DEV":
+                    self._replan_at_milestone("fc_start", 2)
             return
         self._current_phase = new_phase
         self._stack.setCurrentIndex(new_phase)
-        # Repaint COMPLET one-shot de la page qui s'active : les labels ont des  ## TILAU ##
-        # gardes anti-repaint (no-op si texte inchangé) sur fond transparent —   ## TILAU ##
-        # sans ce coup de pinceau, des pixels de la page précédente pouvaient    ## TILAU ##
-        # rester visibles dessous (chevauchement observé au passage FC).         ## TILAU ##
-        _w = self._stack.currentWidget()                                         ## TILAU ##
-        if _w is not None:                                                       ## TILAU ##
-            _w.update()                                                          ## TILAU ##
-        self._sync_stack_page()   ## TILAU ## cockpit si AUTO pilote
+        # Repaint COMPLET one-shot de la page qui s'active : les labels ont des
+        # gardes anti-repaint (no-op si texte inchangé) sur fond transparent —
+        # sans ce coup de pinceau, des pixels de la page précédente pouvaient
+        # rester visibles dessous (chevauchement observé au passage FC).
+        _w = self._stack.currentWidget()
+        if _w is not None:
+            _w.update()
+        self._sync_stack_page()   # cockpit si AUTO pilote
         self._crash_detector.reset(mode=self.aw.qmc.mode)  # nouvelle phase → reset + mode
+        self._guidance_session.reset_phase()               # dynamique locale à la phase
+        self._guidance_projection = None
+        self.aw._tilau_guidance_projection_text = ""
+        self.aw._tilau_guidance_output_text = ""
+        self.aw._tilau_guidance_output = None
+        self.aw._tilau_guidance_safety_candidates = []
 
-        # Plan vivant : re-ancre la courbe restante sur le jalon réel qui       ## TILAU ##
-        # vient d'être marqué (événementiel — jamais dans le hot path 1 Hz).    ## TILAU ##
-        if phase_key == "MAI":                                                  ## TILAU ##
-            self._replan_at_milestone("dry_end", 1)                             ## TILAU ##
-        elif phase_key == "DEV":                                                ## TILAU ##
-            self._replan_at_milestone("fc_start", 2)                            ## TILAU ##
+        # Plan vivant : re-ancre la courbe restante sur le jalon réel qui
+        # vient d'être marqué (événementiel — jamais dans le hot path 1 Hz).
+        if observed and phase_key == "MAI":
+            self._replan_at_milestone("dry_end", 1)
+        elif observed and phase_key == "DEV":
+            self._replan_at_milestone("fc_start", 2)
 
-        ## TILAU ## AutoPilot : feedforward au jalon, APRÈS le replan (les valeurs
-        ## posées doivent être celles du plan vivant re-ancré). Événementiel.
+        # AutoPilot : feedforward au jalon, APRÈS le replan (les valeurs
+        # posées doivent être celles du plan vivant re-ancré). Événementiel.
         if self._ap_state == "armed":
             if phase_key in _AP_PHASE_COL:
-                if phase_key == "DRY":   ## TILAU ## seam CHARGE : ouvre la fenêtre de grâce
-                    self._ap_charge_settle_until = time.monotonic() + _AP_CHARGE_SETTLE_S
+                # couture de jalon (CHARGE, DE, FC) : le marquage tire
+                # l'action de bouton Artisan, qui peut bouger un curseur. Sans
+                # cette fenêtre de grâce, l'AutoPilot lisait ce mouvement comme
+                # une reprise en main et se mettait en pause au jalon.
+                self._ap_settle_until = time.monotonic() + _AP_CHARGE_SETTLE_S
                 self._ap_apply_phase(phase_key)
                 self._ap_core_start_phase(phase_key)   # trim v1b : cibles fraîches, trims à zéro
             elif phase_key in ("DROP", "COOL"):
@@ -5187,8 +5483,9 @@ class RoastAssistantPanel(QWidget):
                 self._bt_at_fcs = 0.0
 
         # Paint the freshly-activated page immediately, without waiting for the
-        # next bridge tick (which may have stopped after DROP or on pause). ## TILAU ##
-        self._refresh_current_page()
+        # next bridge tick (which may have stopped after DROP or on pause).
+        if refresh:
+            self._refresh_current_page()
 
     def set_preheating(self, active: bool) -> None:
         """
@@ -5290,7 +5587,7 @@ class RoastAssistantPanel(QWidget):
     # ── Régénération partielle du plan ─────────────────────────────────────────
 
     def _capture_prediction_snapshot(self, plan: dict) -> None:
-        """Freeze the latest plan only while CHARGE is still unmarked. ## TILAU ##"""
+        """Freeze the latest plan only while CHARGE is still unmarked. """
         qmc = self.aw.qmc
         if qmc.timeindex[0] >= 0:
             return
@@ -5366,23 +5663,23 @@ class RoastAssistantPanel(QWidget):
                 minutes_since_last_drop=self._minutes_since_last_drop(),
             )
             self._plan = plan_dict
-            self._plan_initial = plan_dict                                   ## TILAU ##
-            self._capture_prediction_snapshot(plan_dict)                     ## TILAU ## P2
+            self._plan_initial = plan_dict
+            self._capture_prediction_snapshot(plan_dict)                     # P2
             self._build_soak_note()
-            # Ré-applique les recalages jalons déjà actés (ex. TP pendant     ## TILAU ##
-            # DRY) — sinon la régénération ambiante les effacerait.           ## TILAU ##
-            for _m, _t, _bt in self._replans_applied:                         ## TILAU ##
-                try:                                                          ## TILAU ##
-                    self._plan = rp.replan_from_milestone(self._plan, _m, _t, _bt)  ## TILAU ##
-                except Exception as _e:                                       ## TILAU ##
-                    _logd.warning(f"RoastAssistant: replay replan {_m} failed ({_e})")  ## TILAU ##
+            # Ré-applique les recalages jalons déjà actés (ex. TP pendant
+            # DRY) — sinon la régénération ambiante les effacerait.
+            for _m, _t, _bt in self._replans_applied:
+                try:
+                    self._plan = rp.replan_from_milestone(self._plan, _m, _t, _bt)
+                except Exception as _e:
+                    _logd.warning(f"RoastAssistant: replay replan {_m} failed ({_e})")
             _logd.debug("RoastAssistant: plan regenerated successfully")
         except Exception as e:
             _logd.warning(f"RoastAssistant: plan regeneration failed ({e})")
 
-    # ── Plan vivant : recalage aux jalons ──────────────────────────────────────  ## TILAU ##
+    # ── Plan vivant : recalage aux jalons ──────────────────────────────────────
 
-    def _apply_replan(self, milestone: str, t_actual_min: float, bt_native: float) -> None:  ## TILAU ##
+    def _apply_replan(self, milestone: str, t_actual_min: float, bt_native: float) -> None:
         """
         Applique un recalage jalon au plan VIVANT (jamais au plan initial).
         Le générateur re-fitte les ancres restantes (températures préservées,
@@ -5413,7 +5710,7 @@ class RoastAssistantPanel(QWidget):
             self._replan_notice = (str(note), _S_OK, time.monotonic() + 15.0)
         _logd.info(f"RoastAssistant: plan re-anchored → {new_plan.get('Replan Source')}")
 
-    def _replan_at_milestone(self, milestone: str, ti_idx: int) -> None:  ## TILAU ##
+    def _replan_at_milestone(self, milestone: str, ti_idx: int) -> None:
         """
         Recalage depuis un événement Artisan marqué (ti_idx : 1=DRY END,
         2=FC START). One-shot : une tentative par jalon et par session,
@@ -5516,10 +5813,10 @@ class RoastAssistantPanel(QWidget):
         return cached
 
     # ── AutoPilot v1a — feedforward (AutoRoast-Spec §3 étage 1, §5, §6) ──────
-    ## TILAU ## L'AutoPilot n'a aucun savoir propre : il applique les valeurs de
-    ## phase du plan vivant (replan inclus) et les paliers de rampe heater, via
-    ## le même chemin que l'humain (_apply_slider_value). Le trim continu
-    ## (étage 2, autopilot_core) arrive en v1b.
+    # L'AutoPilot n'a aucun savoir propre : il applique les valeurs de
+    # phase du plan vivant (replan inclus) et les paliers de rampe heater, via
+    # le même chemin que l'humain (_apply_slider_value). Le trim continu
+    # (étage 2, autopilot_core) arrive en v1b.
 
     def _ap_watch_idxs(self) -> tuple[int, ...]:
         b = _burner_slider_idx(self.aw)
@@ -5555,9 +5852,9 @@ class RoastAssistantPanel(QWidget):
             _logd.info(f"AutoPilot: trim engine phase {phase_key} "
                        f"target {rs:.1f}→{re_:.1f} °C/min over {span:.0f}s")
             if phase_key == "DEV":
-                # ── « tenir le feu » : ancre du rate-limiter exotherme (t0 =    ## TILAU ##
-                # entrée en dev / reprise, b0 = feu courant) + file feu vidée +  ## TILAU ##
-                # filet réactif remis à zéro (nouvelle référence).               ## TILAU ##
+                # ── « tenir le feu » : ancre du rate-limiter exotherme (t0 =
+                # entrée en dev / reprise, b0 = feu courant) + file feu vidée +
+                # filet réactif remis à zéro (nouvelle référence).
                 _b0 = _read_slider_pct(self.aw, _burner_slider_idx(self.aw))
                 self._ap_dev_rate_anchor = (t0, float(_b0)) if _b0 is not None else None
                 self._ap_dev_heater_pending = None
@@ -5586,8 +5883,16 @@ class RoastAssistantPanel(QWidget):
             if _w is not None:
                 _w.update()   # repaint one-shot (fantômes, cf. fix FC)
 
-    def _ap_set_state(self, state: str) -> None:
+    def _ap_set_state(self, state: str, lag_s: float | None = None) -> None:
         self._ap_state = state
+        if state == "armed":
+            self.aw._tilau_guidance_decision = self._guidance_session.set_auto(True)
+        elif state == "paused":
+            self.aw._tilau_guidance_decision = self._guidance_session.operator_action(
+                time.monotonic(), self._heater_lag_s if lag_s is None else lag_s)
+        elif self._guidance_session.arbiter.mode is GuidanceMode.AUTO:
+            self.aw._tilau_guidance_decision = self._guidance_session.set_auto(False)
+        self._bean_header.set_guidance_mode(self._guidance_session.arbiter.mode)
         try:
             self._bean_header.set_auto_state(state)
         except (AttributeError, RuntimeError):
@@ -5595,11 +5900,25 @@ class RoastAssistantPanel(QWidget):
         if state == "off":
             self._ap_expected.clear()
             self._ap_core.disarm()   # v1b : plus d'action moteur possible jusqu'au prochain armement
-            self._ap_dev_heater_pending = None   ## TILAU ## file feu + rate-limiter dev
-            self._ap_dev_rate_anchor = None      ## TILAU ##
-            self._ap_net_offset = 0.0            ## TILAU ## filet réactif
-            self._ap_net_quiet_since = None      ## TILAU ##
+            self._ap_dev_heater_pending = None   # file feu + rate-limiter dev
+            self._ap_dev_rate_anchor = None
+            self._ap_net_offset = 0.0            # filet réactif
+            self._ap_net_quiet_since = None
         self._sync_stack_page()
+
+    def _operator_takeover(
+        self, now_s: float, levers: list[GuidanceLever],
+    ) -> None:
+        """Atomically remove actuator authority and open response observation."""
+        lag_s = response_window_s(levers, self._heater_lag_s)
+        if self._ap_state == "armed":
+            # _ap_set_state owns both the actuator state and guidance transfer.
+            self._ap_set_state("paused", lag_s)
+            self._ap_notice = (self._tr_ap_paused_note, _S_WARN, now_s + 10)
+        else:
+            self.aw._tilau_guidance_decision = self._guidance_session.operator_action(
+                now_s, lag_s)
+            self._bean_header.set_guidance_mode(self._guidance_session.arbiter.mode)
 
     def _ap_resync(self) -> None:
         """Resynchronise l'observation des sliders sur leurs valeurs courantes —
@@ -5612,23 +5931,30 @@ class RoastAssistantPanel(QWidget):
                 self._ap_slider_last[idx] = v
 
     @pyqtSlot()
+    def _coach_manual_selected(self) -> None:
+        """Explicit MANUAL side of the coach switch: advice only, no actuator."""
+        if self._ap_state != "off":
+            self._ap_set_state("off")
+            self._ap_notice = (self._tr_ap_off_note, _S_OK, time.monotonic() + 5)
+        else:
+            self._bean_header.set_auto_state("off")
+
+    @pyqtSlot()
     def _ap_toggle(self) -> None:
-        """Tap sur la puce : off→armé (gates §6), armé→off, pause→armé."""
-        if not _AP_USER_ENABLED:   ## TILAU ## kill-switch : AUTO retiré (2026-07-11)
+        """Select AUTO: off→armed or paused→armed, subject to safety gates."""
+        if not _AP_USER_ENABLED:   # kill-switch : AUTO retiré (2026-07-11)
             return
         now = time.monotonic()
         if self._ap_state == "armed":
-            self._ap_set_state("off")
-            self._ap_notice = (self._tr_ap_off_note, _S_OK, now + 5)
-            return
+            return  # already selected; MANUAL is the explicit way out
         if self._ap_state == "paused":
             self._ap_resync()
             self._ap_set_state("armed")
-            # Re-baseline le moteur de trim à la reprise : trims cumulés remis à ## TILAU ##
-            # zéro et cibles/timing re-lus depuis la position courante — un       ## TILAU ##
-            # réglage manuel fait pendant la pause devient la nouvelle référence  ## TILAU ##
-            # (sinon le core garde des trims périmés vs les leviers d'avant-pause).## TILAU ##
-            # Pas de feedforward : on respecte les sliders tels que laissés.       ## TILAU ##
+            # Re-baseline le moteur de trim à la reprise : trims cumulés remis à
+            # zéro et cibles/timing re-lus depuis la position courante — un
+            # réglage manuel fait pendant la pause devient la nouvelle référence
+            # (sinon le core garde des trims périmés vs les leviers d'avant-pause).
+            # Pas de feedforward : on respecte les sliders tels que laissés.
             _pk = {self._PHASE_MAI: "MAI", self._PHASE_DEV: "DEV"}.get(self._current_phase)
             if _pk is not None:
                 self._ap_core_start_phase(_pk)
@@ -5638,15 +5964,23 @@ class RoastAssistantPanel(QWidget):
         if not self.is_active:
             return
         if self._plan is None:
+            self._bean_header.set_auto_state("blocked")
             self._ap_notice = (self._tr_ap_blocked_noplan, _S_WARN, now + 8)
             return
-        support = str(self._plan.get("History Support", "grid only")).lower()
-        if support.startswith("grid only"):
+        # Read the machine key, never "History Support": that one is
+        # the TRANSLATED display string, so this gate matched only in English —
+        # in French it reads « grille du plan seulement » and the test below was
+        # silently false, arming the AutoPilot on a plan that knows nothing of
+        # the coffee. Same disease as the plan's own source labels.
+        support = str((self._plan.get("Source Keys") or {}).get(
+            "confidence", self._plan.get("Plan Confidence", "grid only")))
+        if support == "grid only":
+            self._bean_header.set_auto_state("blocked")
             self._ap_notice = (self._tr_ap_blocked_lowconf, _S_WARN, now + 8)
             return
-        # ── Flag A/B (QSettings caché, lu à CHAQUE armement off→armé — jamais ── ## TILAU ##
-        # au tick) : feedforward-seul + filet minimal vs feedforward + trim v1b.  ## TILAU ##
-        # Le mode armé est journalisé pour l'analyse A/B des roasts réels.        ## TILAU ##
+        # ── Flag A/B (QSettings caché, lu à CHAQUE armement off→armé — jamais ──
+        # au tick) : feedforward-seul + filet minimal vs feedforward + trim v1b.
+        # Le mode armé est journalisé pour l'analyse A/B des roasts réels.
         from PyQt6.QtCore import QSettings
         self._ap_ff_only = bool(QSettings().value(_AP_FF_ONLY_KEY, False, type=bool))
         self._ap_resync()
@@ -5674,9 +6008,9 @@ class RoastAssistantPanel(QWidget):
             return out
         airwave = getattr(self.aw, "bleAirwaveDevice", None) is not None
         drum_locked = getattr(self.roast_context, "drum_midroast_locked", True)
-        # En DEV, si une Dev Ramp existe, air/heater/ext sont portés GRADUELLEMENT ## TILAU ##
-        # par la rampe (escalier fin depuis la valeur Maillard) — NE PAS les       ## TILAU ##
-        # feedforward ici, sinon saut brutal au FC (bug vu par Tilau 2026-07-10).  ## TILAU ##
+        # En DEV, si une Dev Ramp existe, air/heater/ext sont portés GRADUELLEMENT
+        # par la rampe (escalier fin depuis la valeur Maillard) — NE PAS les
+        # feedforward ici, sinon saut brutal au FC (bug vu par Tilau 2026-07-10).
         dev_ramp_governs = (phase_key == "DEV" and bool(self._plan.get("Dev Ramp")))
         for idx, key in _AP_LEVER_KEYS.items():
             if idx == 2 and not airwave:
@@ -5690,10 +6024,10 @@ class RoastAssistantPanel(QWidget):
                 out.append((idx, float(parts[col].strip().rstrip("%"))))
             except (ValueError, IndexError, TypeError):
                 continue
-        # Heater : porté par la rampe DÈS LE TP (Heater Ramp en Maillard, Dev Ramp ## TILAU ##
-        # en dev) → le feedforward ne le pose QU'au CHARGE (DRY = valeur initiale, ## TILAU ##
-        # tenue jusqu'au TP puis descendue progressivement par la rampe). Jamais   ## TILAU ##
-        # de saut heater au DE ni au FC.                                           ## TILAU ##
+        # Heater : porté par la rampe DÈS LE TP (Heater Ramp en Maillard, Dev Ramp
+        # en dev) → le feedforward ne le pose QU'au CHARGE (DRY = valeur initiale,
+        # tenue jusqu'au TP puis descendue progressivement par la rampe). Jamais
+        # de saut heater au DE ni au FC.
         heater_governed = (dev_ramp_governs
                            or (phase_key == "MAI" and bool(self._plan.get("Heater Ramp"))))
         if not heater_governed:
@@ -5709,7 +6043,7 @@ class RoastAssistantPanel(QWidget):
         if self._ap_state != "armed":
             return
         applied: list[str] = []
-        _posed_idx: list[int] = []  ## TILAU ## indices réellement posés dans CET appel (pas tout _ap_expected)
+        _posed_idx: list[int] = []  # indices réellement posés dans CET appel (pas tout _ap_expected)
         for idx, pct in self._ap_plan_levers(phase_key):
             cur = _read_slider_pct(self.aw, idx)
             if cur is not None and abs(cur - pct) < 1.0:
@@ -5727,7 +6061,7 @@ class RoastAssistantPanel(QWidget):
             _now = time.monotonic()
             self._ap_notice = (self._tpl_ap_phase.format(phase_key, " · ".join(applied)),
                                _S_OK, _now + 8)
-            ## TILAU ## cockpit : carte action + flash des tuiles posées dans CET appel uniquement
+            # cockpit : carte action + flash des tuiles posées dans CET appel uniquement
             self._ap_last_action = (self._tpl_ap_phase.format(phase_key, " · ".join(applied)), _now)
             for _i in _posed_idx:
                 self._ap_lever_flash[_i] = _now
@@ -5743,9 +6077,24 @@ class RoastAssistantPanel(QWidget):
             self._ap_notice = (self._tr_ap_paused_note, _S_WARN, time.monotonic() + 10)
             _logd.info("AutoPilot: lever tile tapped — paused (operator takeover)")
 
+    def _missing_milestone(self) -> "PendingMilestone | None":
+        """Jalon RÉELLEMENT manquant : celui qu'une phase déjà atteinte aurait dû
+        confirmer. `pending_milestone` vaut DRY_END pendant TOUT le séchage et
+        FC_START pendant TOUT le Maillard — ce n'est pas une demande de
+        confirmation, juste le prochain jalon attendu. Le confondre avec un jalon
+        manquant allumait le bouton du cockpit en rouge en permanence et, une fois
+        DRY END marqué, proposait de marquer FC dès l'entrée en Maillard."""
+        pending = self._guidance_phases.pending_milestone
+        if pending is PendingMilestone.DRY_END and self._current_phase in (
+                self._PHASE_MAI, self._PHASE_DEV):
+            return pending
+        if pending is PendingMilestone.FC_START and self._current_phase == self._PHASE_DEV:
+            return pending
+        return None
+
     @pyqtSlot()
     def _ap_ms_clicked(self) -> None:
-        """Bouton de jalon du cockpit : marque le jalon de la phase courante ;
+        """Bouton de jalon du cockpit: mark the first unconfirmed milestone;
         pendant le compte à rebours d'auto-DROP il devient « Annuler » (annule
         le DROP auto, pas le mode AUTO)."""
         if self._current_phase == self._PHASE_DEV and self._ap_drop_deadline is not None:
@@ -5753,6 +6102,10 @@ class RoastAssistantPanel(QWidget):
             self._ap_drop_cancelled = True
             self._ap_last_action = (self._tr_cp_btn_cancel, time.monotonic())
             _logd.info("AutoPilot: auto-DROP cancelled by operator")
+            return
+        pending = self._missing_milestone()
+        if pending is not None:
+            _mark_missing_milestone(self.aw, pending.value)
             return
         if self._current_phase == self._PHASE_DRY:
             self.aw.qmc.markDRYSignal.emit(False)
@@ -5772,8 +6125,13 @@ class RoastAssistantPanel(QWidget):
         t_now = ctx["t_now_sec"]
         phase_txt = f'· {self._cp_phase_words.get(p, "")} · {int(t_now // 60):d}:{int(t_now % 60):02d}'
         # état — UNE expression, rien dessous
-        if not armed:
-            status, scol = self._tr_cp_pausest, "#F9E2AF"
+        _global_output = getattr(self.aw, "_tilau_guidance_output", None)
+        _global_candidate = getattr(_global_output, "candidate", None)
+        if (_global_candidate is not None
+                and _global_candidate.category is AdviceCategory.SAFETY):
+            status, scol = _global_candidate.text, _CRIT
+        elif not armed:
+            status, scol = self._tr_cp_pausest, THEME['YELLOW']
         else:
             # v1b : la cible affichée = celle du MOTEUR (droite interpolée par
             # phase, °C) — statut et décisions de trim partagent la même vérité.
@@ -5784,13 +6142,13 @@ class RoastAssistantPanel(QWidget):
                 _d = (_ror_c - _tgt_c) / _tgt_c
                 _tol = self._ap_core.p.ok_rel
                 if _d > _tol:
-                    status, scol = self._tr_cp_drift_h, "#F9E2AF"
+                    status, scol = self._tr_cp_drift_h, THEME['YELLOW']
                 elif _d < -_tol:
-                    status, scol = self._tr_cp_drift_l, "#F9E2AF"
+                    status, scol = self._tr_cp_drift_l, THEME['YELLOW']
                 else:
-                    status, scol = self._tr_cp_onplan, "#A6E3A1"
+                    status, scol = self._tr_cp_onplan, THEME['SUCCESS']
             else:
-                status, scol = self._tr_cp_follow, "#A6E3A1"
+                status, scol = self._tr_cp_follow, THEME['SUCCESS']
         # action — quoi + quand
         if self._ap_last_action is not None:
             action, _t_act = self._ap_last_action
@@ -5836,8 +6194,13 @@ class RoastAssistantPanel(QWidget):
         # le compte à rebours d'auto-DROP.
         _btn = self._page_cockpit.btn_ms
         _scale = 1.8 if mode == 'F' else 1.0
+        pending = self._missing_milestone()
         if p == self._PHASE_DEV and self._ap_drop_deadline is not None:
             _label, _style = self._tr_cp_btn_cancel, 'cancel'
+        elif pending is not None:
+            _label = (self._tr_cp_btn_de if pending is PendingMilestone.DRY_END
+                      else self._tr_cp_btn_fc)
+            _style = 'warn'
         elif p == self._PHASE_DRY:
             _label = self._tr_cp_btn_de
             # garde TP : avant le turning point la BT DESCEND à travers le seuil
@@ -5893,7 +6256,7 @@ class RoastAssistantPanel(QWidget):
         return _acted
 
     def _ap_dev_heater_dispense(self, ctx: dict) -> bool:
-        """## TILAU ## « Tenir le feu » (spec §3quater, banc 2026-07-11) : délivre
+        """« Tenir le feu » (spec §3quater, banc 2026-07-11) : délivre
         la cible feu en file vers le slider burner, MONOTONE (jamais de remontée
         par ce chemin) et rate-limitée dans la fenêtre exotherme FC→FC+75 s
         (≤ _AP_DEV_RATE_PCT_PER_MIN — la coupe rapide crash 41 % vs douce 16 %).
@@ -5940,7 +6303,7 @@ class RoastAssistantPanel(QWidget):
         return True
 
     def _ap_net_tick(self, crash_msg: "str | None") -> bool:
-        """## TILAU ## Filet réactif minimal du dev (spec §3quinquies, décision
+        """Filet réactif minimal du dev (spec §3quinquies, décision
         Tilau 2026-07-11 : « agir puis pause si épuisé »). AIR d'abord (l'air
         soutient la réaction — jamais de remontée feu réactive), touches de
         2 %/4-5 s, offset borné _AP_NET_CAP_PCT et AUTO-RÉSORBÉ : quand le RoR
@@ -6051,10 +6414,10 @@ class RoastAssistantPanel(QWidget):
                 # dithering ±1 % du PID AirWave sur l'extraction : bruit
                 # d'automatisme, pas un geste opérateur (même seuil que Sim-1)
                 continue
-            elif time.monotonic() < self._ap_charge_settle_until:
-                # seam CHARGE : handoff PID préchauffe→roast — mouvement            ## TILAU ##
-                # d'automatisme transitoire, pas un geste opérateur. On SUIT        ## TILAU ##
-                # (last déjà mis à jour en tête de boucle) sans pauser.             ## TILAU ##
+            elif time.monotonic() < self._ap_settle_until:
+                # couture de jalon (CHARGE/DE/FC) : handoff ou action de bouton
+                # d'automatisme transitoire, pas un geste opérateur. On SUIT
+                # (last déjà mis à jour en tête de boucle) sans pauser.
                 continue
             else:
                 self._ap_set_state("paused")
@@ -6075,7 +6438,8 @@ class RoastAssistantPanel(QWidget):
                      self._PHASE_DEV: drop_temp}.get(self._current_phase, drop_temp)
         _net_hold = False   # filet à la main : gèle descente+trim, PAS les jalons
         if ror is not None:
-            _in_dev = self._current_phase == self._PHASE_DEV
+            _in_dev = (self._guidance_phases.confirmed_phase
+                       is GuidancePhase.DEVELOPMENT)
             _crash = self._crash_detector.check(
                 ror, self._ror_hist, bt, target_temp=_tgt_temp,
                 dt=max(0.25, self.aw.qmc.delay / 1000.0), dev_mode=_in_dev)
@@ -6098,7 +6462,8 @@ class RoastAssistantPanel(QWidget):
         # ── jalons : AUTO armé ⇒ une suggestion fraîche du détecteur est       ──
         # marquée automatiquement (spec §4 — le cockpit n'a pas de bouton de
         # confirmation ; les boutons Artisan restent le repli manuel).
-        _which = {self._PHASE_DRY: "DE", self._PHASE_MAI: "FC"}.get(self._current_phase)
+        _pending = self._guidance_phases.pending_milestone
+        _which = _pending.value if _pending is not None else None
         if _which is not None and _which not in self._ap_automark_done:
             _sug = _milestone_suggestion(self.aw, _which)
             if _sug is not None:
@@ -6117,7 +6482,9 @@ class RoastAssistantPanel(QWidget):
         # BT atteint la cible de drop du plan vivant, compte à rebours 10 s
         # affiché dans la carte action + bouton « Annuler » ; au terme, DROP
         # marqué. One-shot : annulé = plus jamais re-armé cette session.
-        if self._current_phase == self._PHASE_DEV and not self._ap_drop_cancelled:
+        if (self._current_phase == self._PHASE_DEV
+                and self._guidance_phases.confirmed_phase is GuidancePhase.DEVELOPMENT
+                and not self._ap_drop_cancelled):
             _now = time.monotonic()
             if self._ap_drop_deadline is None:
                 try:
@@ -6144,8 +6511,8 @@ class RoastAssistantPanel(QWidget):
         # CHARGE ne déclenche donc jamais rien ; le heater de séchage vient du
         # feedforward de phase, la rampe ne fait que le baisser plus tard.
         ramp_acted = False
-        # _ap_bt_prev est maintenu sur DRY/MAI/DEV (continuité du franchissement) ; ## TILAU ##
-        # remis à None hors phase de roast.                                        ## TILAU ##
+        # _ap_bt_prev est maintenu sur DRY/MAI/DEV (continuité du franchissement) ;
+        # remis à None hors phase de roast.
         prev = self._ap_bt_prev
         self._ap_bt_prev = bt
         if self._current_phase in (self._PHASE_DRY, self._PHASE_MAI):
@@ -6162,8 +6529,8 @@ class RoastAssistantPanel(QWidget):
                     _now = time.monotonic()
                     _txt = self._tpl_ap_ramp.format(f"{heater:.0f}", f"{thr:.0f}")
                     self._ap_notice = (_txt, _S_OK, _now + 8)
-                    self._ap_last_action = (_txt, _now)      ## TILAU ## cockpit
-                    self._ap_lever_flash[b_idx] = _now       ## TILAU ## cockpit
+                    self._ap_last_action = (_txt, _now)      # cockpit
+                    self._ap_lever_flash[b_idx] = _now       # cockpit
                     ramp_acted = True   # feedforward prioritaire : pas de trim ce tick
                     _logd.info(f"AutoPilot: ramp step crossed at BT {thr:.0f} "
                                f"→ burner {heater:.0f}%")
@@ -6172,13 +6539,9 @@ class RoastAssistantPanel(QWidget):
                 _ahit = _ap_entry_ramp_crossed(self._plan, "Air Ramp", prev, bt)
                 if _ahit is not None and self._ap_apply_dev_step(_ahit):
                     ramp_acted = True
-        # ── rampe de DÉVELOPPEMENT (trajectoire apprise) : feu qui baisse +      ──
-        # airflow qui monte + extraction douce, appliqués au franchissement       ──
-        # montant des seuils BT. Stoppée dès que le compte à rebours DROP s'arme.  ──
-        # « TENIR LE FEU » (spec §3quater) : le burner n'est JAMAIS posé direct — ──
-        # mis en FILE (monotone : cible la plus basse gagne, jamais de remontée)  ──
-        # et délivré par le dispenser rate-limité (≤ 5 %/min en fenêtre           ──
-        # exotherme FC→FC+75 s — la coupe rapide = ÷2,5 de risque de crash).      ──
+        # ── rampe de DÉVELOPPEMENT (trajectoire apprise) : feu baisse + airflow monte
+        # + extraction douce au franchissement des seuils BT ; burner jamais posé
+        # direct, mis en file monotone, délivré rate-limité (≤5%/min en fenêtre exotherme).
         elif (self._current_phase == self._PHASE_DEV
               and self._ap_drop_deadline is None and not _net_hold):
             if prev is not None:
@@ -6212,10 +6575,10 @@ class RoastAssistantPanel(QWidget):
                 ext=_read_slider_pct(self.aw, 2) if _aw_on else None)
             _ror_c = (ror / 1.8) if mode == 'F' else ror
             _act = self._ap_core.tick(float(ctx["t_now_sec"]), _ror_c)
-            # AirWave déconnecté en cours de roast : le core peut encore émettre  ## TILAU ##
-            # une action EXT sur une valeur observée périmée — ne jamais la poser ## TILAU ##
-            # sur le slider 2 sans AirWave présent (les chemins feedforward sont  ## TILAU ##
-            # déjà gardés de la même façon).                                       ## TILAU ##
+            # AirWave déconnecté en cours de roast : le core peut encore émettre
+            # une action EXT sur une valeur observée périmée — ne jamais la poser
+            # sur le slider 2 sans AirWave présent (les chemins feedforward sont
+            # déjà gardés de la même façon).
             if _act is not None and _act.lever is _APLever.EXT and not _aw_on:
                 _act = None
             if _act is not None:
@@ -6242,7 +6605,7 @@ class RoastAssistantPanel(QWidget):
                 self._ap_notice = (self._tr_ap_ceiling, _S_WARN, time.monotonic() + 8)
 
     def _refresh_current_page(self) -> None:
-        """## TILAU ## Garde du slot bridge : AUCUNE exception d'un refresh de page
+        """Garde du slot bridge : AUCUNE exception d'un refresh de page
         (par tick) ne doit s'échapper dans le slot PyQt6 — elle remonterait en
         unraisable-hook et pourrait faire planter l'app EN PLEIN ROAST. Même
         contrat défensif que `_ap_tick`. On journalise la trace et on continue."""
@@ -6267,11 +6630,80 @@ class RoastAssistantPanel(QWidget):
         phases  = ctx["phases"]
         ti      = ctx["ti"]
 
-        # Surveillance burner (opérateur OU alarme de rampe) : tout changement  ## TILAU ##
-        # du slider ouvre la fenêtre d'inertie lue par le conseil RoR.          ## TILAU ##
-        try:                                                                    ## TILAU ##
-            _b = _read_slider_pct(self.aw, _burner_slider_idx(self.aw))         ## TILAU ##
-            if _b is not None:                                                  ## TILAU ##
+        # Normalize lever provenance before any advice is evaluated. AUTO
+        # declares its expected echoes; a plan ramp close to its BT threshold
+        # is classified as plan automation. Every remaining change is an
+        # operator action and transfers manual guidance to observation.
+        _now = time.monotonic()
+        # A read-only acquisition exposes a curve, not operator controls. Its
+        # event sliders cannot be used as evidence about gestures.
+        _available_levers = _observable_guidance_levers(self.aw)
+        _gmap = {
+            _idx: _lever for _idx, _lever in {
+                0: GuidanceLever.AIR, 1: GuidanceLever.DRUM,
+                2: GuidanceLever.EXT,
+                _burner_slider_idx(self.aw): GuidanceLever.HEATER,
+            }.items() if _lever in _available_levers}
+        for _idx, _expected in self._ap_expected.items():
+            _lever = _gmap.get(_idx)
+            if _lever is not None:
+                self._guidance_session.actions.expect(
+                    _lever, _expected, ActionSource.AUTO, _now)
+        _lever_values = {_lever: _read_slider_pct(self.aw, _idx)
+                         for _idx, _lever in _gmap.items()}
+        # Alarm-driven slider moves are persisted as ``A<n> (S<m>)`` and the
+        # alarm table carries the executable command. Declare those echoes
+        # before observing sliders so they cannot masquerade as a takeover.
+        _event_end = len(self.aw.qmc.specialevents)
+        for _event_pos in range(self._guidance_event_cursor, _event_end):
+            try:
+                _label = str(self.aw.qmc.specialeventsStrings[_event_pos])
+                _slider_idx = int(self.aw.qmc.specialeventstype[_event_pos])
+                _alarm_match = match_alarm_automation(
+                    label=_label, lever=_slider_idx,
+                    stored_value=float(self.aw.qmc.specialeventsvalue[_event_pos]),
+                    flags=self.aw.qmc.alarmflag,
+                    actions=self.aw.qmc.alarmaction,
+                    commands=self.aw.qmc.alarmstrings)
+                if _alarm_match is None:
+                    continue
+                _lever = _gmap.get(_slider_idx)
+                if _lever is not None:
+                    self._guidance_session.actions.expect(
+                        _lever, _alarm_match.command_pct,
+                        ActionSource.ALARM_AUTOMATION, _now)
+                    # AutoPilot has its own echo watcher for actuator safety;
+                    # feed the same proven alarm into it before _ap_tick.
+                    self._ap_expected[_slider_idx] = _alarm_match.command_pct
+            except (IndexError, TypeError, ValueError):
+                continue
+        self._guidance_event_cursor = _event_end
+        _heater_now = _lever_values.get(GuidanceLever.HEATER)
+        if _heater_now is not None:
+            for _step in (self._plan or {}).get("Heater Ramp") or []:
+                try:
+                    if abs(bt - float(_step["bt"])) <= 3.0 and abs(
+                            _heater_now - float(_step["heater"])) <= 0.5:
+                        self._guidance_session.actions.expect(
+                            GuidanceLever.HEATER, _heater_now,
+                            ActionSource.PLAN_AUTOMATION, _now)
+                except (KeyError, TypeError, ValueError):
+                    continue
+        _lever_actions = self._guidance_session.actions.observe(_lever_values, _now)
+        _operator_levers = [action.lever for action in _lever_actions
+                            if action.source is ActionSource.OPERATOR]
+        if _operator_levers:
+            self._operator_takeover(_now, _operator_levers)
+        for _action in _lever_actions:
+            if _action.source is ActionSource.OPERATOR:
+                _logd.info(f"Guidance: operator {_action.lever.value} "
+                           f"{_action.previous:.0f}→{_action.value:.0f} — observing")
+
+        # Surveillance burner (opérateur OU alarme de rampe) : tout changement
+        # du slider ouvre la fenêtre d'inertie lue par le conseil RoR.
+        try:
+            _b = _read_slider_pct(self.aw, _burner_slider_idx(self.aw))
+            if _b is not None:
                 if self._burner_last_pct is not None and _b != self._burner_last_pct:
                     self.aw._tilau_burner_watch = {
                         "t": time.monotonic(), "from": self._burner_last_pct,
@@ -6279,39 +6711,42 @@ class RoastAssistantPanel(QWidget):
                     }
                     _logd.info(f"RoastAssistant: burner {self._burner_last_pct}→{_b}% "
                                f"— coach hold {self._heater_lag_s:.0f}s")
+                    # While AUTO is armed its own watcher attributes expected
+                    # versus human moves later in this tick. In manual/paused
+                    # guidance, a burner change is an operator intention.
                 self._burner_last_pct = _b
-        except Exception:  # pylint: disable=broad-except                       ## TILAU ##
-            pass                                                                ## TILAU ##
+        except Exception:  # pylint: disable=broad-except
+            pass
 
-        # Watch tambour : un geste drum pollue la MESURE du RoR (excursion      ## TILAU ##
-        # +50 % médiane, 64/81 roasts) — le détecteur de crash est muet         ## TILAU ##
-        # DRUM_QUIET_S après tout mouvement (opérateur, alarme ou AUTO).        ## TILAU ##
-        try:                                                                    ## TILAU ##
-            _d = _read_slider_pct(self.aw, 1)                                   ## TILAU ##
-            if _d is not None:                                                  ## TILAU ##
+        # Watch tambour : un geste drum pollue la MESURE du RoR (excursion
+        # +50 % médiane, 64/81 roasts) — le détecteur de crash est muet
+        # DRUM_QUIET_S après tout mouvement (opérateur, alarme ou AUTO).
+        try:
+            _d = _read_slider_pct(self.aw, 1)
+            if _d is not None:
                 if self._drum_last_pct is not None and _d != self._drum_last_pct:
-                    self._crash_detector.notify_drum_event()                    ## TILAU ##
+                    self._crash_detector.notify_drum_event()
                     _logd.info(f"RoastAssistant: drum {self._drum_last_pct}→{_d}% "
                                f"— RoR crash detection muted "
                                f"{_RoRCrashDetector.DRUM_QUIET_S:.0f}s")
-                self._drum_last_pct = _d                                        ## TILAU ##
-        except Exception:  # pylint: disable=broad-except                       ## TILAU ##
-            pass                                                                ## TILAU ##
+                self._drum_last_pct = _d
+        except Exception:  # pylint: disable=broad-except
+            pass
 
-        # Recalage TP one-shot : dès que le TP réel est détecté, l'ancre TP     ## TILAU ##
-        # modélisée est remplacée par la mesure (le delta plan devient fiable   ## TILAU ##
-        # dès la 1ʳᵉ minute). Garde O(1) — une seule tentative par session.     ## TILAU ##
-        if (self._plan is not None and "tp" not in self._replan_attempted       ## TILAU ##
-                and ctx["t_tp_sec"] > 0):                                       ## TILAU ##
-            self._replan_attempted.add("tp")                                    ## TILAU ##
-            try:                                                                ## TILAU ##
-                _tp_idx = int(getattr(self.aw.qmc, "TPalarmtimeindex", -1) or -1)  ## TILAU ##
-                if 0 < _tp_idx < len(self.aw.qmc.temp2):                        ## TILAU ##
-                    _bt_tp = float(self.aw.qmc.temp2[_tp_idx])                  ## TILAU ##
-                    if _bt_tp > 0:                                              ## TILAU ##
-                        self._apply_replan("tp", ctx["t_tp_sec"] / 60.0, _bt_tp)  ## TILAU ##
-            except Exception:  # pylint: disable=broad-except                   ## TILAU ##
-                pass                                                            ## TILAU ##
+        # Recalage TP one-shot : dès que le TP réel est détecté, l'ancre TP
+        # modélisée est remplacée par la mesure (le delta plan devient fiable
+        # dès la 1ʳᵉ minute). Garde O(1) — une seule tentative par session.
+        if (self._plan is not None and "tp" not in self._replan_attempted
+                and ctx["t_tp_sec"] > 0):
+            self._replan_attempted.add("tp")
+            try:
+                _tp_idx = int(getattr(self.aw.qmc, "TPalarmtimeindex", -1) or -1)
+                if 0 < _tp_idx < len(self.aw.qmc.temp2):
+                    _bt_tp = float(self.aw.qmc.temp2[_tp_idx])
+                    if _bt_tp > 0:
+                        self._apply_replan("tp", ctx["t_tp_sec"] / 60.0, _bt_tp)
+            except Exception:  # pylint: disable=broad-except
+                pass
 
         # Températures cibles (plan en priorité, sinon phases Artisan, sinon défaut)
         _def_dry  = 160.0 if mode == 'C' else fromCtoFstrict(160.0)
@@ -6330,22 +6765,151 @@ class RoastAssistantPanel(QWidget):
             except (TypeError, ValueError):
                 pass
 
-        # AutoPilot : reprise en main, crash-guard, rampe, trim continu (v1b).  ## TILAU ##
-        # APRÈS le calcul des températures cibles (le crash-guard en a besoin), ## TILAU ##
-        # gardé (armé seulement) — jamais de charge quand AUTO est off.         ## TILAU ##
-        if self._ap_state == "armed":                                           ## TILAU ##
-            try:                                                                ## TILAU ##
-                self._ap_tick(ctx, bt, ror, mode,                               ## TILAU ##
-                              dry_end_temp, fc_temp, drop_temp)                 ## TILAU ##
-            except Exception:  # pylint: disable=broad-except                   ## TILAU ##
-                pass                                                            ## TILAU ##
+        # Missing manual markers do not freeze guidance in Drying. The plan's
+        # milestone temperatures provide a monotone fallback, without claiming
+        # that a real marker was observed or re-anchoring the live plan.
+        _phase_for_guidance = {
+            self._PHASE_DRY: GuidancePhase.DRYING,
+            self._PHASE_MAI: GuidancePhase.MAILLARD,
+            self._PHASE_DEV: GuidancePhase.DEVELOPMENT,
+        }.get(self._current_phase)
+        # The hot charge reading may initially exceed every target before BT
+        # reaches its turning point; temperature crossings only become phase
+        # evidence on the rising branch.
+        if _phase_for_guidance is not None:
+            _resolved = resolve_phase_from_plan_temperature(
+                _phase_for_guidance, float(bt), dry_end_temp, fc_temp,
+                turning_point_seen=ctx["t_tp_sec"] > 0.0)
+            if _resolved.inferred:
+                _phase_key = {
+                    GuidancePhase.MAILLARD: "MAI",
+                    GuidancePhase.DEVELOPMENT: "DEV",
+                }.get(_resolved.phase)
+                if _phase_key is not None:
+                    self._set_phase(_phase_key, observed=False, refresh=False)
 
-        if self._ap_cockpit_active():                                           ## TILAU ##
-            # AUTO pilote : la vue cockpit remplace la page de phase (v6) —     ## TILAU ##
-            # quatre éléments, gros, pas de détail. Les pages restent la vue    ## TILAU ##
-            # manuel/guidé.                                                     ## TILAU ##
-            self._refresh_cockpit(ctx, bt, ror, mode,                           ## TILAU ##
-                                  dry_end_temp, fc_temp, drop_temp)             ## TILAU ##
+        # An inferred phase advances analysis only. Physical-risk thresholds
+        # remain attached to the latest phase confirmed by an actual event.
+        _confirmed_phase = self._guidance_phases.confirmed_phase
+        _confirmed_index = {
+            GuidancePhase.DRYING: self._PHASE_DRY,
+            GuidancePhase.MAILLARD: self._PHASE_MAI,
+            GuidancePhase.DEVELOPMENT: self._PHASE_DEV,
+        }[_confirmed_phase]
+        _phase_safety_detector = (
+            self._crash_detector if _confirmed_index == self._current_phase else None)
+
+        # Normalize phase references, then advance the single pure guidance
+        # session. The returned projection remains independent from both plans.
+        _roast_now = float(ctx["t_now_sec"])
+        _milestone = ""
+        _phase_start = 0.0
+        _projection_target = 0.0
+        _fc_start: "float | None" = None
+        if self._current_phase == self._PHASE_DRY:
+            _milestone, _projection_target = "DRY END", dry_end_temp
+        elif self._current_phase == self._PHASE_MAI:
+            _milestone, _projection_target = "FC", fc_temp
+            _phase_start = float(ctx["t_dryend_sec"])
+        elif self._current_phase == self._PHASE_DEV:
+            _milestone, _projection_target = "DROP", drop_temp
+            _phase_start = float(ctx["t_fcs_sec"])
+            _fc_start = _phase_start
+        _target_ror = 0.0
+        if self._current_phase == self._PHASE_DRY:
+            _target_ror = _plan_ror(self._plan, "ROR Dry End")
+        elif self._current_phase == self._PHASE_MAI:
+            _target_ror = _plan_ror(self._plan, "Target ROR Maillard")
+        elif self._current_phase == self._PHASE_DEV:
+            _target_ror = _plan_ror(self._plan, "Target ROR Dev (Avg)")
+        _curve_delta, _curve_ror = _plan_curve_ref(self._plan, bt, _roast_now)
+        del _curve_delta
+        if _curve_ror is not None and _curve_ror > 0:
+            _target_ror = _curve_ror
+        _scale = 1.8 if mode == "F" else 1.0
+        _floor = ({self._PHASE_MAI: 3.0, self._PHASE_DEV: 0.8}
+                  .get(_confirmed_index, 0.5) * _scale)
+        _session_state = self._guidance_session.tick(GuidanceSample(
+            wall_s=_now, roast_s=_roast_now, bt=float(bt),
+            ror=float(ror) if ror is not None else None,
+            target_ror=_target_ror if _target_ror > 0 else None,
+            target_bt=_projection_target if _projection_target > 0 else None,
+            phase_started_s=_phase_start, viability_floor=_floor,
+            viability_active=(_confirmed_index != self._PHASE_DRY
+                              or ctx["t_tp_sec"] > 0.0),
+            viability_requires_established=(_confirmed_index == self._PHASE_DRY),
+            fc_started_s=_fc_start,
+            # The curve is physically unreadable through the charge dip and
+            # early post-TP recovery. Keep the current authority pending during
+            # the same grace already used by Drying advice; real risks still
+            # preempt inside GuidanceSession.
+            authority_hold=(self._current_phase == self._PHASE_DRY and (
+                ctx["t_tp_sec"] <= 0.0
+                or _roast_now - ctx["t_tp_sec"] < _DryingPage._TP_GRACE_SEC))))
+        self.aw._tilau_guidance_decision = _session_state.decision
+        self.aw._tilau_guidance_safety_candidates = []
+        if any(risk.kind is RiskKind.STALL for risk in _session_state.risks):
+            if _confirmed_index == self._PHASE_MAI:
+                _stall_text = self._page_mai._tr_ror_too_low_baked_banner
+            elif _confirmed_index == self._PHASE_DEV:
+                _stall_text = self._page_dev._tr_ror_crash_drop_now
+            else:
+                _stall_text = self._page_dry._tr_ror_out_of_range_check_heater
+            self.aw._tilau_guidance_safety_candidates.append(AdviceCandidate(
+                "global-stall", _stall_text, AdviceCategory.SAFETY,
+                AdviceSeverity.CRITICAL))
+        self._guidance_projection = None
+        self.aw._tilau_guidance_projection_text = ""
+        self._guidance_projection = _session_state.projection
+        if (self._guidance_projection is not None
+                and self._guidance_projection.confidence >= 0.35):
+            _gp = self._guidance_projection
+            _txt = self._tpl_guidance_projection.format(
+                _milestone, _fmt_sec(_gp.eta_s),
+                _fmt_sec(_gp.projected_phase_duration_s),
+                f"{_gp.terminal_ror:.1f}", f"{_gp.confidence * 100:.0f}")
+            if _gp.projected_dtr is not None:
+                _txt += self._tpl_guidance_dtr.format(f"{_gp.projected_dtr:.1f}")
+            self.aw._tilau_guidance_projection_text = _txt
+
+        # One typed selector owns non-safety guidance outside PLAN/AUTO. Existing
+        # phase safety guards remain above this seam and will migrate as typed
+        # SAFETY candidates without changing their precedence.
+        _decision = self.aw._tilau_guidance_decision
+        _candidates: list[AdviceCandidate] = list(
+            self.aw._tilau_guidance_safety_candidates)
+        if _decision.mode is GuidanceMode.OBSERVE_ACTION:
+            _candidates.append(AdviceCandidate(
+                "operator-wait", self._tr_guidance_wait, AdviceCategory.WAIT,
+                allowed_modes=frozenset({GuidanceMode.OBSERVE_ACTION})))
+        if self._guidance_projection is not None:
+            _candidates.append(AdviceCandidate(
+                "operator-projection", self.aw._tilau_guidance_projection_text,
+                AdviceCategory.CONSEQUENCE,
+                confidence=self._guidance_projection.confidence,
+                allowed_modes=frozenset({GuidanceMode.ADAPTIVE})))
+        _selected = self._guidance_session.select(_candidates, _now)
+        self.aw._tilau_guidance_output = _selected
+        self.aw._tilau_guidance_output_text = _selected.text
+        self._bean_header.set_guidance_mode(
+            _decision.mode, self._guidance_phases.source)
+
+        # AutoPilot : reprise en main, crash-guard, rampe, trim continu (v1b).
+        # APRÈS le calcul des températures cibles (le crash-guard en a besoin),
+        # gardé (armé seulement) — jamais de charge quand AUTO est off.
+        if self._ap_state == "armed":
+            try:
+                self._ap_tick(ctx, bt, ror, mode,
+                              dry_end_temp, fc_temp, drop_temp)
+            except Exception:  # pylint: disable=broad-except
+                pass
+
+        if self._ap_cockpit_active():
+            # AUTO pilote : la vue cockpit remplace la page de phase (v6) —
+            # quatre éléments, gros, pas de détail. Les pages restent la vue
+            # manuel/guidé.
+            self._refresh_cockpit(ctx, bt, ror, mode,
+                                  dry_end_temp, fc_temp, drop_temp)
 
         elif self._current_phase == self._PHASE_PREHEAT:
             self._refresh_preheat(ctx)
@@ -6358,7 +6922,7 @@ class RoastAssistantPanel(QWidget):
                 bean=self._bean, plan=self._plan,
                 t_now_sec=ctx["t_now_sec"],
                 t_tp_sec=ctx["t_tp_sec"],
-                crash_detector=self._crash_detector,
+                crash_detector=_phase_safety_detector,
             )
 
         elif self._current_phase == self._PHASE_MAI:
@@ -6369,7 +6933,7 @@ class RoastAssistantPanel(QWidget):
                 t_now_sec=ctx["t_now_sec"],
                 fc_temp=fc_temp, plan=self._plan, bean=self._bean,
                 mode=mode,
-                crash_detector=self._crash_detector,
+                crash_detector=_phase_safety_detector,
             )
 
         elif self._current_phase == self._PHASE_DEV:
@@ -6383,7 +6947,7 @@ class RoastAssistantPanel(QWidget):
                 mode=mode,
                 c0=self._c0, c_bt=self._c_bt,
                 c_dtr=self._c_dtr, c_wl=self._c_wl,
-                crash_detector=self._crash_detector,
+                crash_detector=_phase_safety_detector,
             )
 
         elif self._current_phase == self._PHASE_DROP:
@@ -6414,52 +6978,78 @@ class RoastAssistantPanel(QWidget):
                 bt=bt, et=et, ror=ror,
                 ror_hist=self._ror_hist,
                 next_batch_planned=self.aw.qmc.batchcounter > -1,
-                # Bilan EOR sur le plan INITIAL figé : l'adhérence doit se       ## TILAU ##
-                # mesurer contre la prédiction de départ, pas contre le plan    ## TILAU ##
-                # vivant re-ancré (trivialement bon par construction).          ## TILAU ##
-                plan=self._plan_initial or self._plan,                          ## TILAU ##
+                # Bilan EOR sur le plan INITIAL figé : l'adhérence doit se
+                # mesurer contre la prédiction de départ, pas contre le plan
+                # vivant re-ancré (trivialement bon par construction).
+                plan=self._plan_initial or self._plan,
                 agtron_target=self._agtron,
                 agtron_pred=_agtron_pred_cooling,
             )
 
-        # AutoPilot : quand AUTO est armé, le bouton one-tap « Set burner » est  ## TILAU ##
-        # masqué — l'AutoPilot exécute la rampe, le bouton ferait doublon (§5). ## TILAU ##
-        if self._ap_state == "armed" and self._current_phase == self._PHASE_MAI:  ## TILAU ##
-            try:                                                                ## TILAU ##
-                self._page_mai.btn_ramp.setVisible(False)                       ## TILAU ##
-            except (AttributeError, RuntimeError):                              ## TILAU ##
-                pass                                                            ## TILAU ##
+        # AutoPilot : quand AUTO est armé, le bouton one-tap « Set burner » est
+        # masqué — l'AutoPilot exécute la rampe, le bouton ferait doublon (§5).
+        if self._ap_state == "armed" and self._current_phase == self._PHASE_MAI:
+            try:
+                self._page_mai.btn_ramp.setVisible(False)
+            except (AttributeError, RuntimeError):
+                pass
 
         # Suggestion de jalon (#10) : quand le détecteur repère DRY END / FC,
         # bandeau de confirmation one-tap + bouton proéminent + bip unique. Le
         # marquage reste manuel (tap sur le bouton) sauf auto-mark opt-in.
+        self._sync_missing_milestone_buttons()
         self._handle_milestone_suggestion()
 
-        # Voix de l'AutoPilot (§5 : pas de bannière — la ligne coach rend       ## TILAU ##
-        # compte) puis notice de recalage : informatives, elles ne masquent     ## TILAU ##
-        # jamais un message warn/crit posé par la page pendant ce tick.         ## TILAU ##
-        _painted_ap = False                                                     ## TILAU ##
-        if self._ap_notice is not None:                                         ## TILAU ##
-            _text, _level, _expiry = self._ap_notice                            ## TILAU ##
-            if time.monotonic() > _expiry:                                      ## TILAU ##
-                self._ap_notice = None                                          ## TILAU ##
-            else:                                                               ## TILAU ##
-                _coach = getattr(self._stack.currentWidget(), "coach", None)    ## TILAU ##
-                if _coach is not None and (_level == _S_WARN                    ## TILAU ##
-                        or getattr(_coach, "_level", _S_OK) == _S_OK):          ## TILAU ##
-                    _coach.set(_text, _level)                                   ## TILAU ##
-                    _painted_ap = True                                          ## TILAU ##
-        if not _painted_ap and self._replan_notice is not None:                 ## TILAU ##
-            _text, _level, _expiry = self._replan_notice                        ## TILAU ##
-            if time.monotonic() > _expiry:                                      ## TILAU ##
-                self._replan_notice = None                                      ## TILAU ##
-            else:                                                               ## TILAU ##
-                _coach = getattr(self._stack.currentWidget(), "coach", None)    ## TILAU ##
-                if _coach is not None and getattr(_coach, "_level", _S_OK) == _S_OK:  ## TILAU ##
-                    _coach.set(_text, _level)                                   ## TILAU ##
+        # Voix de l'AutoPilot (§5 : pas de bannière — la ligne coach rend
+        # compte) puis notice de recalage : informatives, elles ne masquent
+        # jamais un message warn/crit posé par la page pendant ce tick.
+        _painted_ap = False
+        if self._ap_notice is not None:
+            _text, _level, _expiry = self._ap_notice
+            if time.monotonic() > _expiry:
+                self._ap_notice = None
+            else:
+                _coach = getattr(self._stack.currentWidget(), "coach", None)
+                if _coach is not None and (_level == _S_WARN
+                        or getattr(_coach, "_level", _S_OK) == _S_OK):
+                    _coach.set(_text, _level)
+                    _painted_ap = True
+        if not _painted_ap and self._replan_notice is not None:
+            _text, _level, _expiry = self._replan_notice
+            if time.monotonic() > _expiry:
+                self._replan_notice = None
+            else:
+                _coach = getattr(self._stack.currentWidget(), "coach", None)
+                if _coach is not None and getattr(_coach, "_level", _S_OK) == _S_OK:
+                    _coach.set(_text, _level)
 
         # Recalcule la taille si nécessaire (contenu dynamique : banner, boutons)
         self._adjust_size_if_needed()
+
+    def _sync_missing_milestone_buttons(self) -> None:
+        """Keep inferred-phase pages capable of recording the missing event."""
+        pending = self._guidance_phases.pending_milestone
+        missing_de = pending is PendingMilestone.DRY_END
+        try:
+            self._page_mai.btn_missing_de.setVisible(
+                self._current_phase == self._PHASE_MAI and missing_de)
+            self._page_mai.btn_fcs.setVisible(not missing_de)
+            if missing_de:
+                self._page_mai.btn_missing_de.set_active(True, style='warn')
+        except (AttributeError, RuntimeError):
+            pass
+        try:
+            show = self._current_phase == self._PHASE_DEV and pending is not None
+            self._page_dev.btn_missing.setVisible(show)
+            if show:
+                which = pending.value
+                self._page_dev.btn_missing._tilau_missing_which = which
+                label = self._tr_cp_btn_de if which == "DE" else self._tr_cp_btn_fc
+                self._page_dev.btn_missing.maintext = label
+                self._page_dev.btn_missing.setText(label)
+                self._page_dev.btn_missing.set_active(True, style='warn')
+        except (AttributeError, RuntimeError):
+            pass
 
     def _handle_milestone_suggestion(self) -> None:
         """Bandeau « jalon détecté — confirmer ? » (#10). Centralisé : rend le
@@ -6467,14 +7057,21 @@ class RoastAssistantPanel(QWidget):
         prioritaire (sans écraser un crit déjà posé) et bipe UNE fois par
         suggestion. Le marquage lui-même reste le clic sur le bouton (câblé)."""
         if self._ap_cockpit_active():
-            return   ## TILAU ## en cockpit AUTO, le marquage est automatique (_ap_tick)
+            return   # en cockpit AUTO, le marquage est automatique (_ap_tick)
         try:
-            if self._current_phase == self._PHASE_DRY:
+            pending = self._guidance_phases.pending_milestone
+            if pending is PendingMilestone.DRY_END and self._current_phase == self._PHASE_DRY:
                 which, page, btn = "DE", self._page_dry, self._page_dry.btn_dry_end
                 prompt = self._tr_confirm_de
-            elif self._current_phase == self._PHASE_MAI:
+            elif pending is PendingMilestone.DRY_END and self._current_phase == self._PHASE_MAI:
+                which, page, btn = "DE", self._page_mai, self._page_mai.btn_missing_de
+                prompt = self._tr_confirm_de
+            elif pending is PendingMilestone.FC_START and self._current_phase == self._PHASE_MAI:
                 which, page, btn = "FC", self._page_mai, self._page_mai.btn_fcs
                 prompt = self._tr_confirm_fc
+            elif pending is not None and self._current_phase == self._PHASE_DEV:
+                which, page, btn = pending.value, self._page_dev, self._page_dev.btn_missing
+                prompt = self._tr_confirm_de if which == "DE" else self._tr_confirm_fc
             else:
                 return
             # Mémorise le texte par défaut du bouton pour le restaurer après
@@ -6488,7 +7085,9 @@ class RoastAssistantPanel(QWidget):
                 return
             # Bouton proéminent + toujours cliquable (le tap marque le jalon).
             btn.set_active(True, style='cancel')
-            btn.setText(prompt)
+            btn.setText(self._tr_btn_confirm_de if which == "DE"
+                        else self._tr_btn_confirm_fc)
+            btn.setToolTip(prompt)
             # Bip unique par suggestion (clé = timestamp monotone publié).
             _t = float(sug.get("t_mono", 0.0))
             if self._last_milestone_beep_t != _t:
@@ -6604,7 +7203,7 @@ class RoastAssistantPanel(QWidget):
 
         # Only offer beans that are actually in stock (weight_left > 0), EXCEPT
         # in simulator mode where every bean must stay selectable for testing
-        # (replaying any past roast, regardless of remaining stock). ## TILAU ##
+        # (replaying any past roast, regardless of remaining stock).
         #
         # The bean pushed by RoastSetup (uuid carried by qmc.beans) is ALWAYS
         # kept, even at zero stock: roasting the bottom of the bag drops the
@@ -6628,12 +7227,9 @@ class RoastAssistantPanel(QWidget):
             self._refresh_bean_header()
             return
 
-        # ── 2. UUID courant — priorité (Tilau 2026-07-11 : la sélection LIVE     ## TILAU ##
-        # prime sur un background resté chargé ; sinon un vieux profil de fond    ## TILAU ##
-        # 74110 écrasait la sélection live Kojoyo, plan/grain affichés faux) :    ## TILAU ##
-        #   1. simulateur (replay) → profil simulé fait foi                       ## TILAU ##
-        #   2. sélection LIVE (qmc.beans) si elle porte un UUID valide            ## TILAU ##
-        #   3. background profile (roast chargé pour comparaison) — repli SEUL.   ## TILAU ##
+        # ── 2. UUID courant — priorité : la sélection live prime sur un background
+        # resté chargé (sinon un vieux profil de fond écrase la sélection live) :
+        # 1. simulateur (replay), 2. sélection live (qmc.beans), 3. background (repli seul).
         current_uuid: str | None = None
         profile_path: dict | None = None
         try:
@@ -6665,9 +7261,8 @@ class RoastAssistantPanel(QWidget):
                     _logd.debug(f"RoastAssistant: erreur lecture background ({e})")
 
         # ── 3. Couleur cible ─────────────────────────────────────────────────────
-        # Live (profile_path None) : la CIBLE du RoastSetup prime (Tilau 2026-07-11 :
-        # sinon le combo restait collé sur Medium Dark au lieu de suivre Light).
-        # Sim/background : couleur extraite du profil.
+        # Live (profile_path None) : la cible du RoastSetup prime. Sim/background :
+        # couleur extraite du profil.
         ag_color: float | None = None
 
         if profile_path is not None:
@@ -6685,7 +7280,7 @@ class RoastAssistantPanel(QWidget):
             except Exception as e:
                 _logd.debug(f"RoastAssistant: erreur lecture couleur profil ({e})")
         else:
-            _lt = getattr(self.aw, "_tilau_live_target", None)   ## TILAU ## cible RoastSetup
+            _lt = getattr(self.aw, "_tilau_live_target", None)   # cible RoastSetup
             if _lt is not None:
                 try:
                     ag_color = (_lt.agtron_range.min_value + _lt.agtron_range.max_value) / 2.0
@@ -6694,8 +7289,8 @@ class RoastAssistantPanel(QWidget):
 
         # ── 4. Remplir la dropdown — toujours, même sans profil ──────────────────
         self._setup_bar.populate_beans(beans, current_uuid, ag_color)
-        ## TILAU ## populate_beans() fills the combo with signals blocked, so the
-        ## header has to be refreshed explicitly here.
+        # populate_beans() fills the combo with signals blocked, so the
+        # header has to be refreshed explicitly here.
         self._refresh_bean_header()
         _logd.debug(
             f"RoastAssistant: {len(beans)} grain(s) chargé(s), "
@@ -6706,7 +7301,7 @@ class RoastAssistantPanel(QWidget):
     def hide_from_button(self):
         self._stop_assistant()
         self.hide()
-        self.closed.emit()   ## TILAU ## host re-syncs open/close state
+        self.closed.emit()   # host re-syncs open/close state
 
     def toggle_visibility(self) -> None:
         if self.isVisible():
@@ -6729,7 +7324,7 @@ class RoastAssistantPanel(QWidget):
         self._bean_header.btn_toggle.setChecked(True)
         self._start_assistant()
 
-    # ── Anchoring support ## TILAU ## ──────────────────────────────────────────
+    # ── Anchoring support ──────────────────────────────────────────
 
     def take_body(self) -> QWidget:
         """Return the assistant body so an external host can embed it.
@@ -6738,13 +7333,13 @@ class RoastAssistantPanel(QWidget):
         All bridge/signal connections live on child widgets and are preserved
         across the move, so roast state survives an anchor/float transition.
         """
-        self._body_detached = True   ## TILAU ## host now owns sizing — skip shell resize
+        self._body_detached = True   # host now owns sizing — skip shell resize
         return self._body
 
     def give_body(self) -> None:
         """Re-attach the body into this floating shell's layout."""
         self._inner.addWidget(self._body, 1)
-        self._body_detached = False  ## TILAU ## shell owns sizing again
+        self._body_detached = False  # shell owns sizing again
 
 class RoasterPhysicsAdvisor:
     def __init__(self, roaster_ctx:RoasterContext):

@@ -14,39 +14,9 @@
 # TiLau 2025 — header_icons.py
 #
 # SVG icon constants + dynamic QIcon builder for TilauScope header buttons.
-#
-# Design contract
-# ───────────────
-# • Every SVG uses a single `{color}` placeholder for the stroke value.
-#   No fill, no hardcoded color anywhere in the path data.
-# • Icons are outline-only (stroke, no fill) so a single color swap covers
-#   every visual state.  The btn_start_stop is the only exception: it carries
-#   *two* SVG constants (PLAY / STOP) whose shape changes with the state.
-# • The public API is a single function:  make_icon(svg_tpl, color, size)
-#   It returns a QIcon ready for QPushButton.setIcon().
-# • A companion helper  apply_icon(btn, svg_tpl, color_key, size)  uses the
-#   Catppuccin color registry defined below so call-sites never embed hex.
-#
-# Integration notes
-# ─────────────────
-# 1. Add to displayscope.py imports:
-#       from tilauscope.header_icons import (
-#           SVG_MENU, SVG_POWER, SVG_PLAY, SVG_STOP,
-#           SVG_RESET, SVG_PID, SVG_BEANCAVE, SVG_ASSISTANT, SVG_SWAP,
-#           make_icon, BTN_ICON_SIZE,
-#           COL_IDLE, COL_ACTIVE, COL_PRESSED, COL_DISABLED,
-#           COL_POWER_ACTIVE, COL_START_IDLE, COL_START_ACTIVE,
-#           COL_RESET_IDLE, COL_PID_ACTIVE, COL_ASSISTANT_IDLE,
-#           COL_SWAP_IDLE, COL_MENU,
-#       )
-# 2. In __init__, replace every QPushButton("▶") / ("⏻") … with
-#    QPushButton() then call _apply_btn_icon() once the button is created.
-# 3. In update_button_style() replace the setText("■"/"▶") branch with
-#    the new _apply_btn_icon() call shown in the diff snippet at the bottom
-#    of this file.
-# 4. Button stylesheet: remove font-size / font-weight from QPushButton {}
-#    (the icon is drawn by Qt, not by the font engine).  Keep all color /
-#    border / radius / state rules — they still drive border appearance.
+# Icons are outline-only (single `{color}` stroke placeholder, no fill) so one
+# color swap covers every visual state; apply_icon() uses the Catppuccin
+# registry below so call-sites never embed hex.
 
 from __future__ import annotations
 
@@ -96,7 +66,7 @@ COL_ASSISTANT_ACTIVE: Final[str] = "#F9E2AF" # Amber bright
 COL_SWAP_IDLE:      Final[str] = "#78798A"   # Overlay0
 COL_SWAP_ACTIVE:    Final[str] = "#4A614A"   # Sage green dim
 
-# btn_dock — assistant float (idle) ↔ anchor (active) ## TILAU ##
+# btn_dock — assistant float (idle) ↔ anchor (active)
 COL_DOCK_IDLE:      Final[str] = "#78798A"   # Overlay0 — floating
 COL_DOCK_ACTIVE:    Final[str] = "#94E2D5"   # Teal — anchored
 
@@ -104,15 +74,12 @@ COL_DOCK_ACTIVE:    Final[str] = "#94E2D5"   # Teal — anchored
 COL_POWER_HOVER:    Final[str] = "rgba(166,227,161,0.5)"
 COL_PID_HOVER:      Final[str] = "rgba(250,179,135,0.5)"
 COL_SWAP_HOVER:     Final[str] = "rgba(166,227,161,0.5)"
-COL_DOCK_HOVER:     Final[str] = "rgba(148,226,213,0.5)"   ## TILAU ## teal translucent
+COL_DOCK_HOVER:     Final[str] = "rgba(148,226,213,0.5)"   # teal translucent
 
 
 # ── SVG templates — ONE {color} placeholder, viewBox 0 0 24 24 ───────────────
-# Rules:
-#   • stroke="{color}"   ← injected at render time
-#   • fill="none"        ← always explicit on every path/shape
-#   • stroke-width="1.8"  stroke-linecap="round"  stroke-linejoin="round"
-#   • No style="" attributes — only presentation attributes for reliability
+# stroke="{color}" injected at render time; fill="none" always explicit; no
+# style="" attributes, only presentation attributes for reliability.
 
 _SVG_ATTRS: Final[str] = (
     'xmlns="http://www.w3.org/2000/svg" '
@@ -142,8 +109,7 @@ SVG_POWER: Final[str] = (
 )
 
 # ── btn_start_stop — PLAY (idle) ──────────────────────────────────────────────
-# Triangle pointant à droite.  Pas de fill sur <polygon> car le SVG global
-# déclare fill="none" ; on n'a pas besoin de le répéter.
+# Triangle pointant à droite.
 SVG_PLAY: Final[str] = (
     f'<svg {_SVG_ATTRS}>'
     '<polygon points="7,4 20,12 7,20"/>'
@@ -167,8 +133,7 @@ SVG_RESET: Final[str] = (
 )
 
 # ── btn_pid — courbe step-response PID + ligne de base ───────────────────────
-# Courbe oscillante amortie sur axe horizontal : évoque visuellement la
-# réponse indicielle d'un régulateur.
+# Courbe oscillante amortie : évoque la réponse indicielle d'un régulateur.
 SVG_PID: Final[str] = (
     f'<svg {_SVG_ATTRS}>'
     '<path d="M3 17 Q6 7 9 12 Q12 17 15 9 Q18 3 21 9"/>'
@@ -177,8 +142,7 @@ SVG_PID: Final[str] = (
 )
 
 # ── btn_beancave — grain de café (ellipse inclinée + ligne de crête) ─────────
-# Ellipse tournée -30° + ligne centrale pleine (pas de pointillés — plus
-# lisible à 18 px, meilleure robustesse Windows ClearType).
+# Ligne pleine (pas de pointillés) — plus lisible à 18 px sous Windows ClearType.
 SVG_BEANCAVE: Final[str] = (
     f'<svg {_SVG_ATTRS}>'
     '<ellipse cx="12" cy="12" rx="4.5" ry="7.5" transform="rotate(-30 12 12)"/>'
@@ -214,6 +178,53 @@ SVG_DOCK: Final[str] = (
     '</svg>'
 )
 
+# ── Process glyphs — shown inside a TilauProgress ring ────────────────────────
+# One per family of long operation. Monochrome strokes, never emoji — colour
+# emoji differ across macOS/Windows and cannot take a theme colour.
+
+SVG_PROG_SEARCH: Final[str] = (
+    f'<svg {_SVG_ATTRS}>'
+    '<circle cx="11" cy="11" r="7"/>'
+    '<line x1="16" y1="16" x2="21" y2="21"/>'
+    '</svg>'
+)
+
+SVG_PROG_DOWNLOAD: Final[str] = (
+    f'<svg {_SVG_ATTRS}>'
+    '<path d="M12 3v12"/>'
+    '<path d="M7 10l5 5 5-5"/>'
+    '<path d="M4 21h16"/>'
+    '</svg>'
+)
+
+SVG_PROG_UPLOAD: Final[str] = (
+    f'<svg {_SVG_ATTRS}>'
+    '<path d="M12 21V9"/>'
+    '<path d="M7 14l5-5 5 5"/>'
+    '<path d="M4 3h16"/>'
+    '</svg>'
+)
+
+SVG_PROG_AI: Final[str] = (
+    f'<svg {_SVG_ATTRS}>'
+    '<path d="M12 3l2 6.5L20.5 12 14 14.5 12 21l-2-6.5L3.5 12 10 9.5z"/>'
+    '</svg>'
+)
+
+SVG_PROG_PRINT: Final[str] = (
+    f'<svg {_SVG_ATTRS}>'
+    '<path d="M7 9V4h10v5"/>'
+    '<path d="M7 18H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/>'
+    '<rect x="7" y="14" width="10" height="7" rx="1"/>'
+    '</svg>'
+)
+
+SVG_PROG_HEAT: Final[str] = (
+    f'<svg {_SVG_ATTRS}>'
+    '<path d="M14 14.76V4a2 2 0 0 0-4 0v10.76a4 4 0 1 0 4 0z"/>'
+    '</svg>'
+)
+
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
@@ -222,35 +233,7 @@ def make_icon(
     color: str,
     size: QSize = BTN_ICON_SIZE,
 ) -> QIcon:
-    """
-    Render an SVG template to a HiDPI-aware QIcon.
-
-    Parameters
-    ----------
-    svg_template : str
-        One of the SVG_* constants above.  Must contain exactly one
-        ``{color}`` placeholder in the ``stroke`` attribute.
-    color : str
-        Any CSS color string accepted by QColor: ``"#RRGGBB"``,
-        ``"rgba(r,g,b,a)"``, named colors, etc.
-    size : QSize
-        Logical pixel size.  The pixmap is created at size * devicePixelRatio
-        of the primary screen so Retina / 4K displays stay crisp.
-
-    Returns
-    -------
-    QIcon
-        Ready to pass to ``QPushButton.setIcon()``.
-
-    Notes
-    -----
-    • QSvgRenderer is lightweight and does NOT keep a reference to the
-      QByteArray after construction — safe to let it go out of scope.
-    • The pixmap is created at 1× here; Qt's icon system handles HiDPI
-      scaling automatically when devicePixelRatioF() > 1.  If you need
-      explicit 2× support (e.g. for @2x assets), call make_icon twice and
-      use QIcon.addPixmap().
-    """
+    """Render an SVG template (one of the SVG_* constants) to a HiDPI-aware QIcon."""
     svg_bytes = QByteArray(svg_template.format(color=color).encode("utf-8"))
     renderer = QSvgRenderer(svg_bytes)
 
@@ -271,31 +254,14 @@ def apply_icon(
     color: str,
     size: QSize = BTN_ICON_SIZE,
 ) -> None:
-    """
-    Convenience wrapper: build the icon and assign it to *button* in one call.
-    Also sets the icon size so Qt doesn't auto-shrink it.
-
-    Usage in displayscope.py
-    ------------------------
-    ::
-
-        apply_icon(self.btn_power, SVG_POWER, COL_POWER_IDLE)
-    """
+    """Build the icon and assign it to *button*, and set its icon size."""
     button.setIcon(make_icon(svg_template, color, size))
     button.setIconSize(size)
 
 
 # ── Button stylesheet factory ─────────────────────────────────────────────────
 # Returns the QSS string for a header button, parameterised by its semantic
-# color family.  Border + radius rules only — no font/text rules (the icon
-# replaces the label entirely).
-#
-# ``color_idle``    : stroke + border color in default state
-# ``color_active``  : stroke + border when active="true"
-# ``color_hover``   : border rgba for hover (often a translucent variant)
-# ``color_pressed`` : fill color of the button bg on press
-# ``border_idle``   : border width when idle  (e.g. "1px" or "2px")
-# ``border_active`` : border width when active
+# color family. Border + radius rules only — the icon replaces the label.
 
 def make_btn_style(
     *,
@@ -308,17 +274,9 @@ def make_btn_style(
     bg:            str = "#181825",
     bg_hover:      str = "#1E1E2E",
 ) -> str:
-    """
-    Generate a QSS stylesheet for a TilauScope header button.
-
-    The generated sheet covers five pseudo-states / dynamic properties:
-    idle, active, hover, pressed, disabled.  It intentionally does NOT
-    include font-size or font-weight — those are irrelevant once the button
-    uses setIcon().
-
-    The caller is responsible for calling ``button.style().unpolish(button)``
-    + ``button.style().polish(button)`` after changing dynamic properties so
-    Qt re-evaluates the sheet.
+    """Generate a QSS stylesheet for a TilauScope header button (idle/active/hover/
+    pressed/disabled). Caller must unpolish()+polish() after changing dynamic
+    properties so Qt re-evaluates the sheet.
     """
     return f"""
         QPushButton {{
@@ -343,9 +301,6 @@ def make_btn_style(
 
 
 # ── Pre-built stylesheets for each header button ──────────────────────────────
-# Import these directly in displayscope.py to replace the inline stylesheet
-# strings.  The ``font-size`` / ``font-weight`` lines from the original sheets
-# must be removed since the buttons now use icons.
 
 QSS_MENU: Final[str] = """
     QPushButton {
@@ -412,7 +367,7 @@ QSS_SWAP: Final[str] = make_btn_style(
     border_active= "2px",
 )
 
-# btn_dock — assistant anchor toggle ## TILAU ##
+# btn_dock — assistant anchor toggle
 QSS_DOCK: Final[str] = make_btn_style(
     color_idle=    COL_DOCK_IDLE,
     color_active=  COL_DOCK_ACTIVE,

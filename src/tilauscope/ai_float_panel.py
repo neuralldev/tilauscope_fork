@@ -18,17 +18,8 @@
 # TiLau 2026
 #
 # ARCHITECTURE
-# ─────────────
-# Top-level QWidget (no parent in Qt hierarchy) with no special window flags.
-# On macOS/Windows this gives a normal interactive window that:
-#   - receives mouse events correctly
-#   - can be focused and closed
-#   - stays visible above the calling dialog via raise_() on show
-#
-# The calling dialog passes itself as `owner` (not Qt parent) so the panel
-# can position itself relative to the owner and be closed when owner closes.
-# The panel does NOT set WA_DeleteOnClose so it can be reused (show/hide).
-#
+# Top-level QWidget (no Qt parent, no special window flags); the calling dialog is
+# passed as `owner` for positioning/closing. No WA_DeleteOnClose so it can be reused.
 
 
 from __future__ import annotations
@@ -94,20 +85,9 @@ class AIFloatPanel(QWidget):
         owner:      QWidget | None = None,
         aw:         object | None = None,   # ApplicationWindow — for live tilau_aiConfig access
     ) -> None:
-        # Pass owner.window() as Qt parent so the OS keeps this panel above
-        # the owner and all its children (BeancaveDlg, RoastResultDialog, etc.)
-        # on both macOS and Windows.
-        #
-        # Qt.WindowType.Tool | FramelessWindowHint with a real parent:
-        #   - macOS : NSPanel child → always above owner, no native chrome
-        #   - Windows : WS_EX_TOOLWINDOW child → above owner, excluded from
-        #               taskbar, no native chrome
-        #
-        # FramelessWindowHint is safe here because:
-        #   - The parent is a real QWidget → mouse events propagate correctly
-        #   - Drag is implemented manually in mousePressEvent/mouseMoveEvent
-        #
-        # No WindowStaysOnTopHint → above our owner only, not globally.
+        # owner.window() as Qt parent keeps this panel above the owner (and its
+        # children) on both macOS/Windows without native chrome or global stay-on-top;
+        # drag is implemented manually since the frameless hint disables the OS one.
         qt_parent = owner.window() if owner is not None else None
         super().__init__(
             qt_parent,
@@ -195,8 +175,7 @@ class AIFloatPanel(QWidget):
                 background: transparent;
                 border: none;
                 color: {T['TEXT']};
-                font-family: 'JetBrains Mono';
-            }}
+                }}
         """)
         card_l = QVBoxLayout(self._card)
         card_l.setContentsMargins(20, 14, 20, 14)
@@ -277,7 +256,6 @@ class AIFloatPanel(QWidget):
                 border: 1px solid {T['BORDER']};
                 border-radius: 10px;
                 padding: 10px;
-                font-family: 'JetBrains Mono';
                 font-size: 12px;
             }}
             QScrollBar:vertical {{
@@ -301,9 +279,9 @@ class AIFloatPanel(QWidget):
             QPushButton {{
                 background: {T['ACCENT']}; color: {T['BG']};
                 border: none; border-radius: 8px; padding: 7px 18px;
-                font-family: 'JetBrains Mono'; font-weight: bold; font-size: 11px;
+                font-weight: bold; font-size: 11px;
             }}
-            QPushButton:hover {{ background: {T['HOVER']}; }}
+            QPushButton:hover {{ background: {T['LAVENDER']}; }}
             QPushButton:disabled {{ background: {T['BORDER']}; color: {T['SUBTEXT']}; }}
         """)
         self._generate_btn.clicked.connect(self._on_generate)
@@ -318,7 +296,7 @@ class AIFloatPanel(QWidget):
                 background: transparent; color: {T['CRITICAL']};
                 border: 1px solid {T['CRITICAL']}; border-radius: 8px;
                 padding: 7px 14px;
-                font-family: 'JetBrains Mono'; font-weight: bold; font-size: 11px;
+                font-weight: bold; font-size: 11px;
             }}
             QPushButton:hover {{ background: {T['CRITICAL']}; color: {T['BG']}; }}
         """)
@@ -333,7 +311,7 @@ class AIFloatPanel(QWidget):
                 background: transparent; color: {T['SUBTEXT']};
                 border: 1px solid {T['BORDER']}; border-radius: 8px;
                 padding: 7px 14px;
-                font-family: 'JetBrains Mono'; font-size: 11px;
+                font-size: 11px;
             }}
             QPushButton:hover {{ color: {T['TEXT']}; border-color: {T['TEXT']}; }}
         """)

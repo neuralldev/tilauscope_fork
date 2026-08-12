@@ -89,6 +89,17 @@ lint-app:
 lint-fatal:
 	cd $(SRC) && $(RUFF) check --select F821,F811,F822,F823 tilauscope
 
+# Dead locals (F841). Deliberately out of `check`: a variable that is never
+# read cannot crash anything, and 28 of these are pre-existing. It earns its
+# place because of
+# what it finds: during the stylesheet migration a 23-line QSS constant
+# (_SS_PRIMARY, beancave.py) turned out to have no caller at all, having drifted
+# out of use unnoticed while still reading as authoritative. F841 had been able
+# to see it the whole time; nothing was asking. Run it after any pass that
+# deletes or rewires styling.
+lint-dead:
+	cd $(SRC) && $(RUFF) check --select F841 tilauscope
+
 # Currently blocked, and NOT by the test suite: [tool.mypy] files lists both
 # "*.py" and "artisanlib/*.py", so mypy reports artisanlib/__init__.py "found
 # twice under different module names" and stops before checking anything. This

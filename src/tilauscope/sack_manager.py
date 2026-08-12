@@ -13,17 +13,8 @@
 # AUTHOR
 # TiLau 2026
 
-## TILAU ## Sack identification & label recycling (BeanCave — Lot 1).
-## Spec: wiki/design-nouveau-sac-etiquette-v4.md
-##
-## Sack labelling is a fully OPTIONAL convenience for users with a label
-## printer: a bean with no sacks is a normal, permanent state and every
-## feature here degrades to invisible when unused.
-##
-## Persistence is machine-local (QSettings, per user decision):
-##   tilauscope/next_sack_id          int   — next sequential label number
-##   tilauscope/free_sack_ids         json  — [[id, iso-date], ...] released labels
-##   tilauscope/sack_release_confirm  bool  — show the release confirmation
+# Sack identification & label recycling (BeanCave). Optional convenience for
+# users with a label printer; degrades to invisible when unused. Persistence is machine-local (QSettings, per user).
 
 import json
 import logging
@@ -35,7 +26,7 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QDialog, QFrame,
                              QHBoxLayout, QLabel, QPushButton, QVBoxLayout,
                              QWidget)
 
-from tilauscope.tilauscope_types import THEME, show_styled_message
+from tilauscope.tilauscope_types import THEME, show_styled_message, print_progress_pill
 
 _logd = logging.getLogger(__name__)
 
@@ -43,6 +34,9 @@ _KEY_NEXT    = "tilauscope/next_sack_id"
 _KEY_FREE    = "tilauscope/free_sack_ids"
 _KEY_PRINTED = "tilauscope/printed_sack_ids"
 _KEY_CONFIRM = "tilauscope/sack_release_confirm"
+
+
+from tilauscope.theme_qss import apply_tilau_theme
 
 
 class SackPool:
@@ -156,12 +150,11 @@ class SackPool:
 
 
 # ---------------------------------------------------------------------------
-## TILAU ## Stock-exhausted reclaim (design v4 §9.3) — a bean whose stock hits
-## zero still holds its labels, and the Storage tab filters those beans out of
-## its own list: without this, the ids leave the pool and never come back.
-##
-## "Empty" is strictly 0 g — same criterion as the Storage tab filter and the
-## catalogue out-of-stock pill, so the three never disagree.
+# Stock-exhausted reclaim (design v4 §9.3) — a bean whose stock hits
+# zero still holds its labels, and the Storage tab filters those beans out of
+# its own list: without this, the ids leave the pool and never come back.
+# "Empty" is strictly 0 g — same criterion as the Storage tab filter and the
+# catalogue out-of-stock pill, so the three never disagree.
 # ---------------------------------------------------------------------------
 
 def is_out_of_stock(bean) -> bool:
@@ -206,15 +199,10 @@ def prompt_release_if_emptied(parent: QWidget | None, bean, previous_weight: flo
                               save_cb=None) -> bool:
     """Offer to reclaim a bean's labels when its stock just reached zero.
 
-    ## TILAU ## Single entry point for every path that writes ``weight_left``
-    ## (bean form, zone editors, wizard restock). Duplicating this check would
-    ## leave one path silently uncovered — no error, the prompt simply absent.
-    ## The passive banner in the Storage tab is the safety net for anything
-    ## that still slips through.
-
-    Fires only on the 0 g *transition*: ``previous_weight`` above zero and the
-    bean now empty while still holding labels. Returns True when labels were
-    released (the caller's ``save_cb`` has then already run).
+    Single entry point for every path that writes ``weight_left``. Fires only
+    on the 0 g *transition*: ``previous_weight`` above zero and the bean now
+    empty while still holding labels. Returns True when labels were released
+    (the caller's ``save_cb`` has then already run).
     """
     try:
         if bean is None or not is_out_of_stock(bean):
@@ -280,7 +268,7 @@ def confirm_release(parent: QWidget | None, sack_id: str) -> bool:
 
     title = QLabel(QApplication.translate("tilauscope_sacks", "RELEASE SACK") + f" {sack_id}")
     title.setStyleSheet(
-        f"color: {THEME['ACCENT']}; font-family: 'JetBrains Mono', monospace;"
+        f"color: {THEME['ACCENT']};"
         f" font-size: 13px; font-weight: 800; letter-spacing: 1px;")
     lay.addWidget(title)
 
@@ -356,6 +344,7 @@ class SackChipsRow(QWidget):
         x_btn = QPushButton("✕")
         x_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         x_btn.setFixedSize(16, 16)
+        x_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         x_btn.setToolTip(QApplication.translate(
             "tilauscope_sacks", "Sack empty — release this label for reuse"))
         x_btn.setStyleSheet(
@@ -367,7 +356,7 @@ class SackChipsRow(QWidget):
         return chip
 
 
-# ## TILAU ## Button charter for every sack dialog — mirrors the Storage tab's
+# Button charter for every sack dialog — mirrors the Storage tab's
 # ``_btn_css`` / ``_accent_css``, since that tab is where these dialogs open
 # from. Kept as module constants so the ``SackLabelsDialog`` card stylesheet
 # and ``_sack_button`` cannot drift apart.
@@ -390,12 +379,8 @@ _SACK_BTN_PRIMARY_QSS = (
 
 
 def _sack_button(text: str, *, primary: bool = False) -> QPushButton:
-    """Button following the Storage-tab charter (``_btn_css`` / ``_accent_css``).
-
-    ## TILAU ## These dialogs are opened from the Storage tab, so they follow
-    ## its button style — surface + 1px border for secondary, accent tint for
-    ## primary — and not the flat filled variant used by the older sack dialogs.
-    """
+    """Button following the Storage-tab charter (``_btn_css`` / ``_accent_css``):
+    surface + 1px border for secondary, accent tint for primary."""
     btn = QPushButton(text)
     btn.setCursor(Qt.CursorShape.PointingHandCursor)
     btn.setStyleSheet(_SACK_BTN_PRIMARY_QSS if primary else _SACK_BTN_QSS)
@@ -414,6 +399,10 @@ class SackAssignDialog(QDialog):
 
     def __init__(self, parent: QWidget | None, bean, green_beans: list, host=None) -> None:
         super().__init__(parent)
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self._green_beans = green_beans or []
         self._host = host if host is not None else parent
         self._chosen: str | None = None
@@ -450,7 +439,7 @@ class SackAssignDialog(QDialog):
                            + f" — {bean_name.upper()}")
         title_lbl.setWordWrap(True)
         title_lbl.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-family: 'JetBrains Mono', monospace;"
+            f"color: {THEME['ACCENT']};"
             f" font-size: 12.5px; font-weight: 800; letter-spacing: 1px;")
         lay.addWidget(title_lbl)
 
@@ -459,7 +448,7 @@ class SackAssignDialog(QDialog):
         self.list.itemSelectionChanged.connect(self._on_row_picked)
         lay.addWidget(self.list)
 
-        # ## TILAU ## No hand-typed field here: it could only ever produce a
+        # No hand-typed field here: it could only ever produce a
         # number the app does not know about. A label printed elsewhere is
         # registered through the labels tool ("Free sacks" tab, "Add an
         # existing label"), which puts it in this list like any other.
@@ -468,7 +457,7 @@ class SackAssignDialog(QDialog):
             "No label available. Print a batch, or register a label you "
             "already have, from the sack labels tool."))
         self.empty_lbl.setWordWrap(True)
-        self.empty_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
+        self.empty_lbl.setProperty('variant', 'caption')
         lay.addWidget(self.empty_lbl)
 
         actions = QHBoxLayout()
@@ -569,6 +558,10 @@ class ReclaimSacksDialog(QDialog):
 
     def __init__(self, parent: QWidget | None, orphans: list[tuple[object, list[str]]]) -> None:
         super().__init__(parent)
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self._orphans = orphans
         self._checks: list[tuple[QCheckBox, object, list[str]]] = []
 
@@ -593,7 +586,7 @@ class ReclaimSacksDialog(QDialog):
 
         title = QLabel(QApplication.translate("tilauscope_sacks", "RECLAIM LABELS"))
         title.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-family: 'JetBrains Mono', monospace;"
+            f"color: {THEME['ACCENT']};"
             f" font-size: 12.5px; font-weight: 800; letter-spacing: 1px;")
         lay.addWidget(title)
 
@@ -602,7 +595,7 @@ class ReclaimSacksDialog(QDialog):
             "These beans have no stock left but still hold labels. "
             "Releasing makes them reusable for a future sack."))
         intro.setWordWrap(True)
-        intro.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px;")
+        intro.setProperty('variant', 'secondary')
         lay.addWidget(intro)
 
         for bean, ids in orphans:
@@ -615,7 +608,7 @@ class ReclaimSacksDialog(QDialog):
             row.addWidget(box, 1)
             ids_lbl = QLabel("   ".join(ids))
             ids_lbl.setStyleSheet(
-                f"color: {THEME['ACCENT']}; font-family: 'JetBrains Mono', monospace; font-size: 11.5px;")
+                f"color: {THEME['ACCENT']}; font-size: 11.5px;")
             row.addWidget(ids_lbl)
             lay.addLayout(row)
             self._checks.append((box, bean, ids))
@@ -648,16 +641,16 @@ class ReclaimSacksDialog(QDialog):
 
 
 # ---------------------------------------------------------------------------
-## TILAU ## "Sack ID labels" tool (design v4 §4) — three modes:
-## New batch (sequential), Reprint (manual number), Free sacks (recycling).
-## Hosted in the BeanCave File Management tab; also opened from the
-## New-sack assistant shortcuts (Lot 3).
+# "Sack ID labels" tool (design v4 §4) — three modes:
+# New batch (sequential), Reprint (manual number), Free sacks (recycling).
+# Hosted in the BeanCave File Management tab; also opened from the
+# New-sack assistant shortcuts (Lot 3).
 # ---------------------------------------------------------------------------
 
 class _SackBatchPrintWorker(QObject):
     """Prints a list of label images sequentially on the Niimbot."""
 
-    progress = pyqtSignal(int)        # 1-based index of the label being printed
+    progress = pyqtSignal(int)        # number of labels actually out so far
     finished = pyqtSignal(int)        # number of labels actually printed
     error    = pyqtSignal(str, int)   # message, number printed before failure
 
@@ -666,18 +659,26 @@ class _SackBatchPrintWorker(QObject):
         self._printer = printer
         self._images  = images
         self._type    = label_type
+        self._stop    = False
+
+    def cancel(self) -> None:
+        """Stop after the label currently being printed — one already on its way
+        through the head cannot be recalled."""
+        self._stop = True
 
     def run(self) -> None:
         printed = 0
         try:
-            for i, img in enumerate(self._images, 1):
-                self.progress.emit(i)
+            for img in self._images:
+                if self._stop:
+                    break
                 if not self._printer.print_image(img, 3, self._type):
                     self.error.emit(
                         QApplication.translate("tilauscope_sacks", "Printer error"),
                         printed)
                     return
                 printed += 1
+                self.progress.emit(printed)
             self.finished.emit(printed)
         except Exception as e:  # noqa: BLE001 — surface any BLE failure to the UI
             self.error.emit(str(e), printed)
@@ -690,10 +691,15 @@ class SackLabelsDialog(QDialog):
         # host: BeancaveDlg — provides .np (NiimbotBLE) and _niimbot_connected
         # initial_tab: 0 = New batch, 1 = Reprint, 2 = Free sacks
         super().__init__(host)
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self._host = host
         self._thread = None
         self._worker = None
-        self._printing = False      # impression en cours (progression dans le pill)
+        self._printing = False      # impression en cours (progression dans la pastille)
+        self._print_pill = None     # host A — pastille de progression d'impression
         self._run_total = 0         # nb d'étiquettes du lot en cours
         self._batch_start = 0
         self._batch_mode = False
@@ -729,6 +735,7 @@ class SackLabelsDialog(QDialog):
             {_SACK_BTN_QSS}
         """)
         outer.addWidget(card)
+        self._card = card          # host for the printing pill (host A)
 
         lay = QVBoxLayout(card)
         lay.setContentsMargins(20, 16, 20, 16)
@@ -739,7 +746,6 @@ class SackLabelsDialog(QDialog):
         title_lbl = QLabel(QApplication.translate("tilauscope_sacks", "SACK ID LABELS"))
         title_lbl.setStyleSheet(f"""
             color         : {THEME['ACCENT']};
-            font-family   : 'JetBrains Mono', monospace;
             font-size     : 13px;
             font-weight   : 800;
             letter-spacing: 1px;
@@ -748,6 +754,7 @@ class SackLabelsDialog(QDialog):
         title_row.addStretch(1)
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(24, 24)
+        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
         close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         close_btn.setStyleSheet(
             f"QPushButton {{ background: transparent; color: {THEME['SUBTEXT']};"
@@ -762,7 +769,7 @@ class SackLabelsDialog(QDialog):
             "Give each green coffee bag a printed number so you always know "
             "which physical sack a bean comes from."))
         subtitle.setWordWrap(True)
-        subtitle.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
+        subtitle.setProperty('variant', 'caption')
         lay.addWidget(subtitle)
 
         sep = QFrame()
@@ -851,10 +858,10 @@ class SackLabelsDialog(QDialog):
         fl.addWidget(self.free_list)
         self.free_empty_lbl = QLabel(QApplication.translate(
             "tilauscope_sacks", "No label available yet — everything is in use."))
-        self.free_empty_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
+        self.free_empty_lbl.setProperty('variant', 'caption')
         fl.addWidget(self.free_empty_lbl)
-        ## TILAU ## recover labels printed before tracking existed (or elsewhere):
-        ## typing them here puts them back in the available pool without reprinting
+        # recover labels printed before tracking existed (or elsewhere):
+        # typing them here puts them back in the available pool without reprinting
         add_row = QHBoxLayout()
         add_row.setSpacing(8)
         self.add_label_edit = QLineEdit()
@@ -1033,14 +1040,16 @@ class SackLabelsDialog(QDialog):
         self._run_total = len(images)
         self.batch_print_btn.setEnabled(False)
         self.reprint_btn.setEnabled(False)
-        # Progression affichée dans le pill non-modal (plus de fenêtre modale
-        # grisant le fond et bloquant les clics / le premier-plan sur macOS).
         self._printing = True
-        self._set_progress_pill(0, self._run_total)
 
         from PyQt6.QtCore import QThread
         self._thread = QThread()
         self._worker = _SackBatchPrintWorker(np_, images, np_.paperstyle)
+        # Progression dans la pastille flottante (host A) : le bandeau du haut
+        # garde l'état imprimante au lieu d'être détourné.
+        self._print_pill = print_progress_pill(
+            self._card, self._run_total, self._worker.cancel)
+        self._print_pill.set_margin(24, 24)
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
         self._worker.progress.connect(self._on_print_progress)
@@ -1053,22 +1062,13 @@ class SackLabelsDialog(QDialog):
         self._thread.finished.connect(self._thread.deleteLater)
         self._thread.start()
 
-    def _set_progress_pill(self, done: int, total: int) -> None:
-        """Affiche la progression d'impression dans le pill non-modal."""
-        self.printer_hint.setText(
-            "🖨  " + QApplication.translate("tilauscope_sacks", "Printing...")
-            + f" {done}/{total}")
-        self.printer_hint.setStyleSheet(
-            f"color: {THEME['TEXT']}; background: rgba(137,180,250,18);"
-            f" border: 1px solid rgba(137,180,250,60); border-radius: 5px;"
-            f" padding: 4px 10px; font-size: 11px;")
-
-    def _on_print_progress(self, i: int) -> None:
-        # i = index 1-based de l'étiquette en cours d'impression.
-        self._set_progress_pill(i, self._run_total)
+    def _on_print_progress(self, done: int) -> None:
+        # done = nombre d'étiquettes réellement sorties.
+        if self._print_pill is not None:
+            self._print_pill.set_count(done, self._run_total)
 
     def _finish_run(self, printed: int) -> None:
-        # Fin d'impression : le timer 1,5 s reprend la main sur le pill/boutons.
+        # Fin d'impression : le timer 1,5 s reprend la main sur les boutons.
         self._printing = False
         self.raise_()
         self.activateWindow()
@@ -1082,14 +1082,27 @@ class SackLabelsDialog(QDialog):
         self._refresh_printer_state()
 
     def _on_print_finished(self, printed: int) -> None:
+        # Le résultat est porté par la pastille : pas de popup pour un succès.
         self._finish_run(printed)
-        show_styled_message(self,
-            QApplication.translate("tilauscope_sacks", "Sack ID labels"),
-            QApplication.translate("tilauscope_sacks", "{0} label(s) printed.").format(printed))
+        pill = self._print_pill
+        self._print_pill = None
+        if pill is not None:
+            if printed < self._run_total:
+                done = QApplication.translate("tilauscope_sacks",
+                    "Stopped after {0} of {1} labels").format(printed, self._run_total)
+            else:
+                done = QApplication.translate("tilauscope_sacks",
+                    "{0} label(s) printed.").format(printed)
+            pill.succeed("🖨  " + done)
 
     def _on_print_error(self, message: str, printed: int) -> None:
         from PyQt6.QtWidgets import QMessageBox
         self._finish_run(printed)
+        pill = self._print_pill
+        self._print_pill = None
+        if pill is not None:
+            pill.fail("🖨  " + QApplication.translate(
+                "tilauscope_sacks", "Printing stopped — see the message"))
         show_styled_message(self,
             QApplication.translate("tilauscope_sacks", "Sack ID labels"),
             QApplication.translate("tilauscope_sacks",

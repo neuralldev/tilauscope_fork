@@ -17,15 +17,10 @@
 
 """Fonts and text preparation shared by everything TilauScope prints.
 
-Three renderers draw operator-facing text outside the application window: the
-roast plan report (fpdf), the two A4 label sheets (QPainter) and the Niimbot
-bitmaps (Pillow). They used to each pick their own font and their own text
-clean-up, which is how a bean name could come out correctly in one and blank in
-another. Font choice and the bidirectional pass live here so all three agree.
-
-Neither fpdf nor Pillow shapes text: they draw the code points in the order they
-are handed, with no font fallback. Qt does both by itself, so it only needs the
-font resolution part of this module.
+Single source of font choice and bidirectional shaping for the three
+operator-facing renderers (fpdf roast plan, QPainter label sheets, Pillow
+Niimbot bitmaps) — none of which shape text or fall back fonts on their own.
+Qt does both itself, so it only needs the font resolution part.
 """
 
 import logging

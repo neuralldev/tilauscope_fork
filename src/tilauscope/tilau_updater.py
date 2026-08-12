@@ -13,22 +13,11 @@
 # AUTHOR
 # TiLau 2025
 
-"""
-TilauScope Auto-Updater
-=======================
-Non-blocking background update checker. Looks for a newer installer among the
-assets attached to the public tilauscope_fork GitHub Releases.
+"""TilauScope Auto-Updater — non-blocking background update checker.
 
-Usage (from Artisan startup, e.g. in ApplicationWindow.__init__ or post-init hook):
-
-    from tilauscope.tilau_updater import TilauUpdater
-    self._tilau_updater = TilauUpdater(self)
-    self._tilau_updater.start()
-
-The check runs in a QThread so it never blocks the UI.
-If a newer build is found, a styled dialog appears offering to download & install.
-On confirmation the installer/dmg is saved to the OS Downloads folder,
-launched, and the main application is asked to close.
+Looks for a newer installer among the assets attached to the public
+tilauscope_fork GitHub Releases; runs in a QThread and offers a styled
+download/install dialog when found.
 """
 
 from __future__ import annotations
@@ -41,7 +30,7 @@ from pathlib import Path
 from typing import Final
 
 import requests
-from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS
+from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS, TilauProgress
 
 from PyQt6.QtCore import (
     QObject,
@@ -58,11 +47,11 @@ from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
-    QProgressBar,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
+from tilauscope.theme_qss import base_qss
 
 try:
     from packaging import version as pkg_version
@@ -83,18 +72,9 @@ _GITHUB_RELEASES_URL: Final[str] = (
     "https://github.com/neuralldev/tilauscope_fork/releases"
 )
 
-_THEME: Final[dict] = {
-    "BG":       "#1E1E2E",
-    "SURFACE":  "#181825",
-    "TEXT":     "#CDD6F4",
-    "SUBTEXT":  "#94A3B8",
-    "ACCENT":   "#89B4FA",
-    "BORDER":   "#313244",
-    "SUCCESS":  "#A6E3A1",
-    "CRITICAL": "#F38BA8",
-    "WARNING":  "#E0903B",
-    "HOVER":    "#B9C098",
-}
+# Aliased to the shared palette table; the _THEME name is kept so the ~40
+# references below need no churn. See wiki/Theme-QSS-Spec.md.
+from tilauscope.tilauscope_types import THEME as _THEME  # noqa: E402
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Version helpers
@@ -385,45 +365,34 @@ class _DownloadWorker(QObject):
 # ──────────────────────────────────────────────────────────────────────────────
 
 _BASE_STYLE = f"""
-    QDialog, QWidget {{
-        background-color: {_THEME['BG']};
+    /* Colour only, never a background: all three dialogs that use this sheet
+       are WA_TranslucentBackground and paint a rounded card of their own. A
+       window background here would fill the frame and square its corners —
+       which is why they take base_qss(ground=False) too. */
+    QWidget {{
         color: {_THEME['TEXT']};
-        font-family: 'JetBrains Mono', monospace;
-    }}
+        }}
     QLabel {{
         color: {_THEME['TEXT']};
         background: transparent;
-        font-family: 'JetBrains Mono', monospace;
-    }}
+        }}
     QPushButton {{
-        background-color: #3b4252;
+        background-color: {_THEME['SURFACE1']};
         border: 1px solid {_THEME['BORDER']};
         border-radius: 6px;
         padding: 8px 20px;
         color: {_THEME['TEXT']};
-        font-family: 'JetBrains Mono', monospace;
         font-size: 13px;
     }}
     QPushButton:hover {{
-        background-color: {_THEME['HOVER']};
+        background-color: {_THEME['SURFACE2']};
         border: 1px solid {_THEME['ACCENT']};
         color: {_THEME['BG']};
     }}
     QPushButton:disabled {{
         background-color: {_THEME['BG']};
-        color: #6272a4;
+        color: {_THEME['OVERLAY1']};
         border: 1px solid {_THEME['SURFACE']};
-    }}
-    QProgressBar {{
-        background: {_THEME['SURFACE']};
-        border-radius: 4px;
-        border: none;
-        height: 8px;
-        text-align: center;
-    }}
-    QProgressBar::chunk {{
-        background: {_THEME['ACCENT']};
-        border-radius: 4px;
     }}
 """
 
@@ -447,7 +416,7 @@ class _UpdateAvailableDialog(QDialog):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
-        self.setStyleSheet(_BASE_STYLE)
+        self.setStyleSheet(base_qss(ground=False) + _BASE_STYLE)
         self._build_ui(remote_version, remote_build, local_version, local_build)
 
     def _build_ui(
@@ -519,7 +488,7 @@ class _UpdateAvailableDialog(QDialog):
 
         self.btn_download = QPushButton(QApplication.translate("tilauscope_updates","⬇  Download & Install"))
         self.btn_download.setStyleSheet(
-            f"background-color: {_THEME['ACCENT']}; color: {_THEME['BG']}; "
+            f"background-color: {_THEME['ACCENT']}; color: {_THEME['BG']};"
             f"font-weight: bold; border: none; border-radius: 6px; padding: 10px 22px;"
         )
         self.btn_download.clicked.connect(self.accept)
@@ -562,7 +531,7 @@ class _DownloadProgressDialog(QDialog):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
-        self.setStyleSheet(_BASE_STYLE)
+        self.setStyleSheet(base_qss(ground=False) + _BASE_STYLE)
         self._build_ui(filename)
 
     def _build_ui(self, filename: str) -> None:
@@ -596,11 +565,11 @@ class _DownloadProgressDialog(QDialog):
         self._file_label.setWordWrap(True)
         inner.addWidget(self._file_label)
 
-        self.pbar = QProgressBar()
+        # Bar rather than ring: the download is the one place a real
+        # percentage matters, and it already lives in a full-width row.
+        self.pbar = TilauProgress(TilauProgress.BAR)
         self.pbar.setRange(0, 100)
         self.pbar.setValue(0)
-        self.pbar.setFixedHeight(10)
-        self.pbar.setTextVisible(False)
         inner.addWidget(self.pbar)
 
         self._pct_label = QLabel("0 %")
@@ -647,7 +616,7 @@ class _InstallReadyDialog(QDialog):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
-        self.setStyleSheet(_BASE_STYLE)
+        self.setStyleSheet(base_qss(ground=False) + _BASE_STYLE)
         self._build_ui(Path(file_path).name)
 
     def _build_ui(self, filename: str) -> None:
@@ -691,7 +660,7 @@ class _InstallReadyDialog(QDialog):
 
         self.btn_install = QPushButton(QApplication.translate("tilauscope_updates","🛠  Install Now & Quit"))
         self.btn_install.setStyleSheet(
-            f"background-color: {_THEME['SUCCESS']}; color: {_THEME['BG']}; "
+            f"background-color: {_THEME['SUCCESS']}; color: {_THEME['BG']};"
             f"font-weight: bold; border: none; border-radius: 6px; padding: 10px 22px;"
         )
         self.btn_install.clicked.connect(self.accept)

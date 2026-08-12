@@ -27,6 +27,14 @@ ambient probe. Two actions close it out:
   set up before it starts. TilauScope confirms with *The base of the roasting plan, phases and
   alarms have been injected into Artisan. Get ready to roast!*
 
+!!! note
+    All three control ramps are armed, not just the burner: the heat ladder through Maillard,
+    the airflow opening that follows the browning, and the development ramp where the fire eases
+    while the air supports the reaction. Each step fires on its own bean-temperature threshold.
+    The rows posted at dry end and at first crack are the value the ramp **holds** as the
+    milestone is crossed — the same figures as the phase-entry table — so a milestone never
+    jumps a lever to where the ramp is only due to arrive later.
+
 The same engine also feeds the *Predicted targets* and *STRATEGY* blocks on the ROAST SETUP
 sheet, which is why those predictions and this PDF agree with each other.
 
@@ -47,9 +55,23 @@ plan carries a full heater ramp and a development ramp.
 ## What the plan contains
 
 **The coffee and the batch.** *Bean Name*, *Weight to roast*, *Roaster*, *Target Agtron
-Profile*, plus the coffee's own properties — *Density*, *Bean Humidity*, *Process Type* — and,
-where an ambient probe is fitted, *Ambient Temp* and *Ambient Humidity*. A plan is specific to
+Profile*, plus the coffee's own properties — *Density*, *Bean Humidity*, *Water Activity*,
+*Process Type* — and, where an ambient probe is fitted, *Ambient Temp*. A plan is specific to
 a batch on a day, not to a coffee in the abstract.
+
+Two of those properties are measured twice, and the plan uses only one of each. **Water
+activity beats bean humidity**: humidity counts all the water in the coffee, including the part
+that is chemically bound and never leaves during drying, while water activity counts only the
+free water — the water that actually evaporates, protects the surface from scorching, and
+becomes the steam that swells the bean. **Density beats altitude**: altitude only tells you a
+coffee is *probably* hard, density tells you it is. When the better measurement is on the
+record, the other is ignored rather than added on top; when neither is, nothing is applied and
+the plan simply uses its grid.
+
+*Ambient Humidity* is still recorded on every roast, but it no longer changes a plan. Its
+influence is on the coffee **between** roasts — a humid room pulls the water activity of stored
+green upward over weeks — which is where you will find it, in
+[Sacks, stock and conservation](sacks-and-storage.md).
 
 **Milestone targets.** *Charge Temp*, *End of Dry Temp*, *First Crack Temp*, *First Crack
 Time*, *Drop Temp*.
@@ -63,6 +85,12 @@ The Skywalker V2's post-turning-point [rate of rise](glossary.md#ror--rate-of-ri
 near 16°C/min in the available history. The plan treats this as a typical reference, not a
 physical maximum. Values above 16 are common, and the initial placeholder turning point is not
 used to declare a plan impossible.
+
+*Estimated TP* is the turning point the plan draws on its own curve — one figure, not two. It is
+placed from the batch size rather than from the charge temperature alone, because that is what
+the machine actually does: load half a drum and the temperature dives far less far. Expect a
+small batch to turn some 25°C higher than a full one charged identically, and expect the drying
+rate of rise to be correspondingly gentler — there is less climb left to make.
 
 **RoR targets.** *Target ROR Maillard*, *Target ROR at FC*, *Target ROR Dev* and *Target ROR at
 Drop*: the slope to hold at each stage. The Maillard figure is an average, and an average says
@@ -90,8 +118,11 @@ it: when it starts, how large your steps are, and the value you land on at dry e
 you have never had to correct gets no reduction scheduled at all.
 
 After dry end the ladder follows its grid or learned settings. Coffee properties do not impose
-a heater floor. On the Skywalker V2, a pre-first-crack setting below about 45% is reported as a
-low-authority zone and 45–50% as a low-margin zone; the plan does not raise either setting.
+a heater floor. Where a roaster has been measured for it, a pre-first-crack setting below its
+support threshold is reported as a low-authority zone, and the band just above it as a
+low-margin zone; the note names the machine and its own figures — on the Skywalker V2 (the
+*ITOP Cyberroaster* profile), below about 45% and 45–50%. The plan does not raise either
+setting.
 These are machine observations, not electrical cut-offs or bean-chemistry laws. They do not
 apply as warnings during development, where losing momentum can be intentional.
 
@@ -147,7 +178,16 @@ Alongside the values, the plan carries *First Crack source*, *Heater source*, *P
 source*, *Drop RoR source* and *Drop Temp Source*. They identify the shared historical profile:
 `medoid (n=N)` for the representative real roast, `grid/profile blend (n=2)`, or `grid`.
 With one complete roast, *History profile* says `reference only (n=1)` while the individual
-targets remain on the grid. Above them sits *History support*, in plain words. It describes the amount and consistency of
+targets remain on the grid.
+
+A fourth label, `skeleton (n=N)`, appears when the only matching roasts recorded no slider
+movements — driven on the PID, or with event logging switched off. Those roasts still show
+where the coffee cracks and where it was finished, so first crack, the phase timings and the
+drop are taken from them; the heater and airflow stay on the grid, because a roast that logged
+no hand cannot describe one. It is a last resort: with two fully recorded roasts available, it
+never applies.
+
+Above these sits *History support*, in plain words. It describes the amount and consistency of
 available history; it is not a probability that the plan will be accurate:
 
 | History support | Meaning |

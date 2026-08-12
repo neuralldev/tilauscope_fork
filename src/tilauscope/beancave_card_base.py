@@ -13,17 +13,9 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ##
 """Shared painting base for BeanCave's shareable cards.
 
-Both the green bean card (``beancave_social_card``) and the roast card
-(``beancave_roast_card``) are 1200x630 landscape JPEGs — the safe open-graph
-ratio for X, Facebook and LinkedIn — drawn with QPainter on a QImage and built
-from the same parts: the bundled JetBrains Mono faces, a surface identity
-column on the left, and the TilauScope signature at its foot.
-
-This module owns what they have in common so the two cards cannot drift apart
-visually. Card-specific content lives in the subclasses.
+Draws the common parts (fonts, identity column, signature) for the green bean and roast cards; card-specific content lives in the subclasses.
 """
 
 from __future__ import annotations
@@ -130,7 +122,7 @@ class CardPainter:
         if cur:
             lines.append(cur)
         if i < len(words) and lines:
-            ## TILAU ## words left over: force the ellipsis onto the last line
+            # words left over: force the ellipsis onto the last line
             lines[-1] = fm.elidedText(lines[-1] + " " + " ".join(words[i:]),
                                       Qt.TextElideMode.ElideRight, max_w)
         return lines

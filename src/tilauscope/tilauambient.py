@@ -97,7 +97,7 @@ class TilauAmbientProtocol(TilauBaseProtocol):
     #   [14]    checksum  uint8
     #   [15:17] footer    uint16  0xAAAA
     # Checksum couvre payload[2:14] = 12 bytes de données
-    _STRUCT = struct.Struct('<hhiiB')  # h=int16 signed, i=int32 signed — fix bug latent températures négatives
+    _STRUCT = struct.Struct('<hhiiB')  # h=int16 signed, i=int32 signed — supports negative temperatures
 
     def parse_full_message(self, payload: bytearray) -> TilauAmbientData:
         if len(payload) < 17:
@@ -146,12 +146,12 @@ class TilauAmbientProtocol(TilauBaseProtocol):
 class TilauAudioProtocol(TilauBaseProtocol):
     # AudioData ESP32 (packed) :
     #   header      uint16  2 B   0x5555
-    #   crack_count int32   4 B   (int16 -> int32 depuis monaudio.cpp fix #3)
+    #   crack_count int32   4 B
     #   checksum    uint8   1 B
     #   footer      uint16  2 B   0xAAAA
     #   Total                9 B
     AUDIO_STRUCT      = struct.Struct('<HiBH')  # H=header i=int32_counter B=checksum H=footer
-    AUDIO_STRUCT_SIZE = 9                       # etait 7 avec int16
+    AUDIO_STRUCT_SIZE = 9
 
     def parse_full_message_audio(self, payload: bytearray) -> TilauAudioData:
         # garde sur la taille avant tout acces

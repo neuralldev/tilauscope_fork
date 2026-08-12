@@ -13,26 +13,9 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ##
-"""Shareable green bean card for BeanCave (validated mock v1).
+"""Shareable green bean card for BeanCave: renders a bean record as a 1200x630 JPEG.
 
-Renders a green bean record as a 1200x630 landscape image — the safe
-open-graph ratio for X, Facebook and LinkedIn, croppable to 1080x566 for
-Instagram landscape — and saves it as JPEG.
-
-The layout mirrors the on-screen bean sheet (``beancave_bean_sheet``) so the
-card reads like the sheet the user already has in front of them:
-
-    LEFT  (surface column) — origin eyebrow, bean name, process/species/crop
-                             badges, flavour chips, TilauScope signature
-    RIGHT (base column)    — stat strip (SCA / altitude / density / humidity),
-                             PROVENANCE zone, CHARACTERISTICS zone
-
-Empty fields are dropped, never rendered as a dash or a zero tile: a bean
-with no flavour notes simply has no chip block, and the zones recompact.
-
-Everything is QPainter on a QImage — same technique as
-``label_printer.GreenBeanLabelPrinter``, no external renderer.
+Layout mirrors the on-screen bean sheet; empty fields are omitted rather than shown as a dash or zero tile.
 """
 
 from __future__ import annotations
@@ -112,9 +95,9 @@ class GreenBeanSocialCard(CardPainter):
         rows: list[tuple[str, str]] = []
         if (bean.species or '').strip():
             rows.append((QApplication.translate("tilauscope_roast_review", "Species"), bean.species.strip()))
-        ## TILAU ## a blend shows its composition where a single origin shows varieties.
-        ## Same semantics as the on-screen sheet: component 1 is the record itself
-        ## (labelled by its varieties), and a 0 ratio means "unknown", not "absent".
+        # a blend shows its composition where a single origin shows varieties.
+        # Same semantics as the on-screen sheet: component 1 is the record itself
+        # (labelled by its varieties), and a 0 ratio means "unknown", not "absent".
         if getattr(bean, 'is_blend', False):
             comps = [((bean.varieties or bean.name or "?").strip(),
                       float(getattr(bean, 'bean1_ratio', 0) or 0))]
@@ -212,7 +195,7 @@ class GreenBeanSocialCard(CardPainter):
             fm = QFontMetrics(vfont)
             for key, value in rows:
                 self._text(p, x, y, key, self._font(13), THEME['SUBTEXT'])
-                ## TILAU ## long values (a blend composition) wrap rather than elide
+                # long values (a blend composition) wrap rather than elide
                 vy = y
                 for line in self._wrap(value, vfont, w - self._KEY_W, 2):
                     p.setFont(vfont)
@@ -226,8 +209,8 @@ class GreenBeanSocialCard(CardPainter):
     def _paint_stats(self, p: QPainter, x: int, y: int, w: int,
                      stats: list[tuple[str, str, str, bool]]) -> int:
         h, n = 84, len(stats)
-        ## TILAU ## cells keep a sane width when the bean has few metrics —
-        ## a lone SCA tile stretched over 650 px reads as a rendering bug
+        # cells keep a sane width when the bean has few metrics —
+        # a lone SCA tile stretched over 650 px reads as a rendering bug
         cell_w = min(w / n, 176.0)
         w = cell_w * n
         self._rrect(p, QRectF(x, y, w, h), 8, fill=THEME['BG'], stroke=THEME['BORDER'])
@@ -263,10 +246,7 @@ class GreenBeanSocialCard(CardPainter):
     def _right_y0(self, bean) -> int:
         """Top edge that vertically centres the data column.
 
-        Measured by painting the column onto a throwaway image through the very
-        same code path, so the measurement can never drift from the render. A
-        thinly filled bean gets its data centred instead of stranded under a
-        band of empty pixels; a full one still starts at the normal padding.
+        Measured by painting onto a throwaway image through the same code path, so it never drifts from the render.
         """
         scratch = QImage(1, 1, QImage.Format.Format_RGB32)
         mp = QPainter(scratch)

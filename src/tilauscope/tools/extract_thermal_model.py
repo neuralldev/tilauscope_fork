@@ -24,7 +24,7 @@ from pathlib import Path
 from statistics import median
 from typing import Any
 
-## TILAU ## Allow direct execution from the repository without installing it.
+# Allow direct execution from the repository without installing it.
 SRC_ROOT = Path(__file__).resolve().parents[2]
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
@@ -38,8 +38,8 @@ from tilauscope.tilaupid_thermal import (
 )
 
 
-## TILAU ## Absolute burner calibration changed in November 2025. Mixing older,
-## doubled values into a physical input/output fit would halve the identified gain.
+# Absolute burner calibration changed in November 2025. Mixing older,
+# doubled values into a physical input/output fit would halve the identified gain.
 CALIBRATED_BURNER_EPOCH = 1_761_955_200.0
 
 
@@ -71,8 +71,8 @@ def _load_alog(path: Path) -> dict[str, Any]:
 
 def _burner_channel(data: dict[str, Any]) -> tuple[list[Any], list[Any]] | None:
     timebases = data.get("extratimex", [])
-    ## TILAU ## The stable sidecar map identifies actuator devices even though
-    ## Artisan displays their event channel as `{3}` rather than `Burner`.
+    # The stable sidecar map identifies actuator devices even though
+    # Artisan displays their event channel as `{3}` rather than `Burner`.
     name_map = data.get("tilau_name_map") or {}
     for raw_slot, key in name_map.items():
         try:
@@ -137,8 +137,8 @@ def extract_trace(path: Path) -> tuple[str, str, ThermalTrace] | None:
         data = _load_alog(path)
     except (OSError, SyntaxError, ValueError):
         return None
-    ## TILAU ## The cooking-learning exclusion does not apply to the machine's
-    ## preheat physics. Only simulated traces are rejected here.
+    # The cooking-learning exclusion does not apply to the machine's
+    # preheat physics. Only simulated traces are rejected here.
     if data.get("tilau_simulated"):
         return None
     epoch = data.get("roastepoch")
@@ -187,8 +187,8 @@ def extract_trace(path: Path) -> tuple[str, str, ThermalTrace] | None:
     if len(observations) < 180:
         return None
 
-    ## TILAU ## A centred offline median rejects isolated probe spikes without
-    ## introducing the two-second phase delay of a trailing real-time filter.
+    # A centred offline median rejects isolated probe spikes without
+    # introducing the two-second phase delay of a trailing real-time filter.
     filtered_temperatures = [
         float(median(row[1] for row in observations[max(0, i - 2):i + 3]))
         for i in range(len(observations))

@@ -13,20 +13,12 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ##
 """Green-coffee storage advisor — water-activity (aw) conservation engine.
 
-Pure, Qt-free, offline-testable. Given a bean's measured water activity (from the
-AquaGauge), the real storage-room ambient humidity (from an MQTT sensor) and the
-bean's conditioning, it classifies a storage-risk zone and a moisture-drift trend,
-and estimates the equilibrium moisture content the bean would reach in that room.
-
-This is an *estimate*, never a precision instrument. Sorption isotherms vary by
-variety, process, particle size and temperature; the zones below are the classic
-food-safety mould threshold (aw > 0.65) plus a specialty green-storage window.
-UI thresholds are user-overridable via QSettings (load_thresholds()).
-
-Run `python -m tilauscope.storage_advisor` for a self-check.
+Pure, Qt-free. Classifies a storage-risk zone and moisture-drift trend, and
+estimates equilibrium moisture content, from a bean's aw, room humidity and
+conditioning. An estimate, not a precision instrument; thresholds are
+user-overridable via QSettings (load_thresholds()).
 """
 
 from __future__ import annotations

@@ -14,14 +14,18 @@
 # TiLau 2025
 
 import uuid
+import math
 import logging
 import platform
 from dataclasses import dataclass, field
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.dict import DataClassDictMixin
 from mashumaro.config import BaseConfig
-from PyQt6.QtWidgets import QMessageBox, QDialog, QVBoxLayout, QFrame, QLabel, QProgressBar
-from PyQt6.QtCore import Qt, QPropertyAnimation, QTimer
+from PyQt6.QtWidgets import (QApplication, QMessageBox, QDialog, QVBoxLayout, QHBoxLayout,
+                             QFrame, QLabel, QWidget, QPushButton, QSizePolicy)
+from PyQt6.QtCore import (Qt, QPropertyAnimation, QTimer, QElapsedTimer, QRectF, QSize,
+                          QEvent, pyqtSignal)
+from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QIcon
 
 _IS_MACOS   = platform.system() == "Darwin"
 _IS_WINDOWS = platform.system() == "Windows"
@@ -59,11 +63,8 @@ class BrewDialIn(DataClassJSONMixin):
     grind_um: int = 0
     ratio: float = 0.0            # the N in 1:N
     temp_c: float = 0.0
-    ## TILAU ## What the engine recommended BEFORE the correction. A dial-in is
-    ## a relative adjustment, not an absolute setting: storing the base lets the
-    ## same ratio be re-applied to a different roast of the same bean (a darker
-    ## roast legitimately needs a coarser grind), and makes the corrections
-    ## comparable across beans. 0 = legacy entry recorded before this was kept.
+    # What the engine recommended before the correction. A dial-in is a relative
+    # adjustment: storing the base lets the same ratio be re-applied to a different roast of the same bean.
     base_grind_um: int = 0
     base_temp_c: float = 0.0
     base_ratio: float = 0.0       # the N in 1:N before the correction
@@ -77,16 +78,8 @@ class BrewDialIn(DataClassJSONMixin):
         ignore_missing_keys = True
 
 
-## TILAU ## One measured extraction, kept for later analysis — NOT for reopening.
-## `dial_ins` above answers "what setting should I reopen on"; this answers "did the
-## last change actually do anything". They are deliberately separate: dial_ins is
-## latest-wins (one per method), this is an append-only journal, and it lives in its
-## own file (brewlog.json) because it is analysis data with its own life cycle.
-##
-## Doctrine (wiki/Brew-DialIn-Feedback-Spec.md, from feedback_settings_first_doctrine):
-## the SETTING is the cause, the flow time is the CONSEQUENCE. Recording both plus the
-## context is what makes the cause/consequence link auditable later. Nothing here is
-## ever fed back into a recipe automatically.
+# One measured extraction, kept for analysis — not for reopening. `dial_ins` above
+# answers "what setting should I reopen on"; this append-only journal answers "did the last change do anything" (own file: brewlog.json).
 @dataclass
 class BrewSample(DataClassJSONMixin):
     method_id: str = ''
@@ -106,17 +99,13 @@ class BrewSample(DataClassJSONMixin):
     # ── the consequence ──
     measured_time_s: int = 0
     measured_yield_g: float = 0.0
-    ## TILAU ## The clean filter signal. Total time is mostly the operator's pour
-    ## schedule; only the final drain reflects the bed, hence the grind. False when
-    ## no scale was on the line — never estimated, the gap is left visible.
+    # The clean filter signal. Total time is mostly the operator's pour
+    # schedule; only the final drain reflects the bed, hence the grind. False when
+    # no scale was on the line — never estimated, the gap is left visible.
     drawdown_s: int = 0
     drawdown_valid: bool = False
-    ## TILAU ## Where the two measurements above came from: "scale" when Artisan
-    ## read them off the Acaia, "manual" when the operator typed them because the
-    ## machine has an integrated scale no cup fits over (La Marzocco Mini and
-    ## friends). Kept because a typed shot time is rounded to the second and read
-    ## off another device: the row is worth the same to the operator, but a later
-    ## fit must be able to tell the two populations apart before trusting a slope.
+    # Where the two measurements above came from: "scale" (Acaia) or "manual" (machines
+    # with an integrated scale no cup fits over) — a later fit must tell the two populations apart.
     measured_source: str = 'scale'
     # ── the context, without which the two above cannot be compared ──
     agtron: float = 0.0
@@ -172,18 +161,16 @@ class GreenBean(DataClassJSONMixin):
     bean3_ratio: float = 0.0
     blend_notes: str = ''
     tips: str = ''
-    ## TILAU ## Sack identifiers attached to this bean (labelled bags). Fully
-    ## optional: an empty list is a normal, permanent state — nothing depends
-    ## on a sack being registered. weight_left stays the single global stock.
+    # Sack identifiers attached to this bean (labelled bags). Fully
+    # optional: an empty list is a normal, permanent state — nothing depends
+    # on a sack being registered. weight_left stays the single global stock.
     sacks: list[str] = field(default_factory=list)
-    ## TILAU ## Storage conditioning for the water-activity advisor (Stockage tab).
-    ## Language-neutral key: '' (unknown) | 'vacuum' | 'grainpro' | 'ecotact' | 'bocal' | 'toile'.
-    ## Sealed conditionings suspend the moisture-drift trend (no air exchange).
+    # Storage conditioning for the water-activity advisor (Stockage tab).
+    # Language-neutral key: '' (unknown) | 'vacuum' | 'grainpro' | 'ecotact' | 'bocal' | 'toile'.
+    # Sealed conditionings suspend the moisture-drift trend (no air exchange).
     conditioning: str = ''
-    ## TILAU ## Accepted brew dial-ins, one per brew method (latest wins). Fully
-    ## optional and additive: an empty list is the normal state for a bean never
-    ## brewed with taste feedback, and old libraries load unchanged
-    ## (ignore_missing_keys).
+    # Accepted brew dial-ins, one per brew method (latest wins). Optional and
+    # additive: an empty list is the normal state for a bean never brewed with taste feedback.
     dial_ins: list[BrewDialIn] = field(default_factory=list)
     uuid:str = ''
     class Config(BaseConfig):
@@ -450,7 +437,7 @@ standardization_map = {
     # Cible les termes sans les séparateurs pour les rendre plus flexibles
     "Washed Wet": "Washed",
     "Natural - Dry": "Natural",
-    "Natural - Wet": "Natural", 
+    "Natural - Wet": "Natural",
     "Washed Process": "Washed",
     "Natural Process": "Natural",
 }
@@ -504,10 +491,8 @@ class ProbeDeviation(DataClassDictMixin):
 
 @dataclass
 class RoasterBasicPlanPerPhase:
-   # No charge temperature here: since 2026-08-04 the charge is owned by
-   # _CHARGE_BAND_BY_PROCESS in roast_plan_model (band by process, in measured
-   # BT). The per-Agtron charge_temp field this grid used to carry was the
-   # first-version design and had been dead for a while — removed 2026-08-08.
+   # No charge temperature here: charge is owned by _CHARGE_BAND_BY_PROCESS
+   # in roast_plan_model (band by process, in measured BT).
    name: str
    heater_cmfc: tuple[float, float, float]
    total_time: tuple[float, float]
@@ -522,29 +507,55 @@ class RoasterBasicPlanPerPhase:
 @dataclass
 class RoasterBasicPlan(DataClassDictMixin):
     plans: list[RoasterBasicPlanPerPhase]
-# 
+#
 # category = Traditional Wet
 # process = Washed / Wet Process
 # species = Arabica
 # varieties = Bourbon
 
+# Catppuccin Mocha. Single source of colour for every TilauScope
+# screen — read a token, never paste a hex literal into a new stylesheet.
+# The base stylesheet built on top of these tokens lives in theme_qss.py;
+# spec and migration plan in wiki/Theme-QSS-Spec.md.
 THEME = {
-    "BG": "#1E1E2E",      # Base background
-    "SURFACE": "#181825", # Secondary background
-    "TEXT": "#CDD6F4",    # Main text
-    "SUBTEXT": "#94A3B8", # Secondary text
-    "ACCENT": "#89B4FA",  # Blue
-    "BORDER": "#313244",
-    "WARNING": "#E0903B",
-    "CRITICAL": "#F38BA8", # Red for cleaning alerts
-    "SUCCESS": "#A6E3A1",   # Green
-    "HOVER": "#B9C098",
-    "TODAY": "#FAB387",   
+    # --- surfaces, darkest to lightest ---
+    "CRUST": "#11111B",   # deepest inset, behind a surface
+    "SURFACE": "#181825", # Mantle — cards, headers, inset panels
+    "BG": "#1E1E2E",      # Base — window / dialog background
+    "BORDER": "#313244",  # Surface0 — separators, idle borders, button fill
+    "SURFACE1": "#45475A",# raised surface, hover fill
+    "SURFACE2": "#585B70",# disabled fill, strong border
+
+    # --- text, faintest to brightest ---
+    "OVERLAY0": "#6C7086", # disabled text, faint separator
+    "OVERLAY1": "#7F849C", # muted glyphs
+    "OVERLAY2": "#9399B2", # secondary caption
+    "SUBTEXT": "#A6ADC8",  # Subtext0 — captions, units, secondary lines
+    "SUBTEXT1": "#BAC2DE", # near-primary text
+    "TEXT": "#CDD6F4",     # primary text
+
+    # --- semantic accents ---
+    "ACCENT": "#89B4FA",   # Blue — primary action, focus, selection
+    "SUCCESS": "#A6E3A1",  # Green — on-target, connected, done
+    "WARNING": "#FAB387",  # Peach — drifting, needs attention
+    "CRITICAL": "#F38BA8", # Red — out of band, failed, destructive
+    "TODAY": "#FAB387",    # Peach — "now" marker on a timeline
+
+    # --- accent variants ---
+    "LAVENDER": "#B4BEFE", # selection, focus ring
+    "SAPPHIRE": "#74C7EC", # link
+    "SKY": "#89DCEB",      # informational
+    "TEAL": "#94E2D5",     # measured / sensor values
+    "YELLOW": "#F9E2AF",   # attention, pending
+    "MAUVE": "#CBA6F7",    # category / accent variant
+    "PINK": "#F5C2E7",     # rare accent
+
+    # --- roast-level swatches: the only place these belong ---
     "VERY_LIGHT_ROAST": "#BBE3A1",
     "LIGHT_ROAST": "#A6E3A1",
     "MED_ROAST": "#825E50",
-    "DARK_ROAST": "#583121", 
-    "VERY_DARK_ROAST": "#35190E", 
+    "DARK_ROAST": "#583121",
+    "VERY_DARK_ROAST": "#35190E",
 }
 
 def format_batch_label(prefix: str, nr: int, pos: int | None = None) -> str:
@@ -565,20 +576,17 @@ import unicodedata
 def replace_accents(texte):
     if not texte:
         return ""
-    
+
     # Normalisation NFKD pour séparer les caractères de leurs accents
     charg_normalise = unicodedata.normalize('NFKD', texte)
-    
+
     # On ne garde que les caractères qui ne sont pas des "combinaisons" (accents)
     # et on réencode en ASCII en ignorant les erreurs pour plus de sécurité
     return "".join([c for c in charg_normalise if not unicodedata.combining(c)])
 
-## TILAU ## Single place where an exported file (label PDF, roast card, plan) is
-## handed over to the operating system's own viewer. Every caller wants the same
-## thing: the file must come up IN FRONT. Two of our own habits used to prevent
-## that — a WindowStaysOnTopHint window keeps the viewer underneath whatever the
-## OS does, and raising ourselves back after the launch pushes the viewer behind
-## a second time. Both are handled here so no call site has to remember.
+# Single place where an exported file (label PDF, roast card, plan) is handed
+# over to the OS's own viewer, ensuring it comes up in front: a WindowStaysOnTopHint
+# window would otherwise keep the viewer underneath, and re-raising ourselves would push it behind again.
 
 def drop_stay_on_top(window) -> None:
     """Let another application come in front of `window`.
@@ -627,31 +635,24 @@ def show_styled_message(parent, title, text, icon=QMessageBox.Icon.Information, 
 
 class TilauMessageBox(QMessageBox):
     def __init__(self, parent, title, text, icon, rich, width,buttons:list[str]=None):
-        ## TILAU ## Parent to the caller's window when it is a real visible window
-        ## (e.g. TilauScope). Parent=None made the dialog unrecognised by
-        ## TilauScope._safe_raise (it walks the parent chain), which then re-raised
-        ## itself over the dialog and stole focus -> OK needed two clicks. Parenting
-        ## ties activation/modality to that window and fixes the first-click.
+        # Parent to the caller's window when it is a real visible window: ties
+        # activation/modality to that window so TilauScope._safe_raise recognises it (avoids stealing focus).
         _p = parent if (parent is not None and parent.isVisible()) else None
         super().__init__(parent = _p)
         self.setModal(True)
-        # 1. This allows the rounded corners to be transparent to the parent
-#        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        # 2. Frameless keeps it clean.
-        ## TILAU ## No Qt.Tool flag: a Tool window never becomes the key/active
-        ## window on macOS, so OK needed two clicks (first to activate, second to
-        ## press). A plain frameless dialog can take activation on the first click.
+        # No Qt.Tool flag: a Tool window never becomes key/active on macOS, requiring
+        # two clicks. A plain frameless dialog takes activation on the first click.
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Dialog)
-        
+
         self.setWindowTitle(title)
         self.setText(text)
-        
+
         if rich:
-            self.setTextFormat(Qt.TextFormat.RichText) 
-        
+            self.setTextFormat(Qt.TextFormat.RichText)
+
         self.setIcon(QMessageBox.Icon.Information if icon is None else icon)
 
-        
+
         if buttons is None:
             btn = self.addButton(QMessageBox.StandardButton.Ok)
             self._tilau_ok_button = btn
@@ -661,7 +662,7 @@ class TilauMessageBox(QMessageBox):
             self._clicked_button_index = -1 # Valeur par défaut si fermé autrement
             for index, btn_text in enumerate(buttons):
                 pb = self.addButton(btn_text, QMessageBox.ButtonRole.ActionRole)
-                
+
                 # On passe l'index actuel à la fonction qui gère le clic
                 pb.clicked.connect(lambda checked, idx=index: self.on_button_clicked(idx))
         QTimer.singleShot(0, self._tilau_grab_focus)
@@ -672,11 +673,10 @@ class TilauMessageBox(QMessageBox):
             QMessageBox {{
                 background-color: {THEME['BG']};
                 border: 2px solid {THEME['ACCENT']};
-                
+
             }}
             QLabel {{
                 color: {THEME['TEXT']};
-                font-family: 'JetBrains Mono';
                 font-size: 14px;
                 padding: 20px;
                 background: transparent;
@@ -690,10 +690,10 @@ class TilauMessageBox(QMessageBox):
                 margin: 10px;
             }}
             QPushButton:hover {{
-                background-color: {THEME['HOVER']};
+                background-color: {THEME['LAVENDER']};
             }}
         """)
-        
+
         # Ensure it has a physical size
         self.setMinimumWidth(800 if width == 0 else width)
         self.setMinimumHeight(400)
@@ -705,8 +705,8 @@ class TilauMessageBox(QMessageBox):
         self.start_fade_out()
 
     def _tilau_grab_focus(self):
-        ## TILAU ## Bring the message box to the front and give it activation +
-        ## button focus so the very first click on OK registers (see __init__).
+        # Bring the message box to the front and give it activation +
+        # button focus so the very first click on OK registers (see __init__).
         self.raise_()
         self.activateWindow()
         try:
@@ -731,54 +731,727 @@ class TilauMessageBox(QMessageBox):
         else:
             self.done(0) # Pour le bouton OK standard par exemple
 
-class TilauProgressDialog(QDialog):
-    def __init__(self, message: str, parent=None, maxvalue=int|None):
+# ══ TilauProgress — the one progress indicator ══════════════════════════════
+# ONE component for every long operation, "the app is working" — painted with
+# QPainter (not a styled QProgressBar) so it is identical on macOS and Windows.
+# Never means "the roast is progressing" — that keeps its own domain widgets.
+
+_reduce_motion_cache: "bool | None" = None
+
+
+def _probe_reduce_motion() -> bool:
+    """Ask the OS whether the operator has asked for less animation."""
+    try:
+        if _IS_MACOS:
+            from AppKit import NSWorkspace  # noqa: PLC0415  # pylint: disable=import-error
+            return bool(NSWorkspace.sharedWorkspace()
+                        .accessibilityDisplayShouldReduceMotion())
+        if _IS_WINDOWS:
+            import ctypes  # noqa: PLC0415
+            SPI_GETCLIENTAREAANIMATION = 0x1042
+            enabled = ctypes.c_int(1)
+            ctypes.windll.user32.SystemParametersInfoW(
+                SPI_GETCLIENTAREAANIMATION, 0, ctypes.byref(enabled), 0)
+            return not bool(enabled.value)
+    except Exception:                                    # noqa: BLE001
+        _log.debug("reduce-motion probe unavailable", exc_info=True)
+    return False
+
+
+def reduce_motion() -> bool:
+    """True when the OS accessibility settings ask for reduced animation.
+
+    Probed once and cached: it is a preference that needs a logout to change,
+    and it must never be read from inside a paint or a sampling tick.
+    """
+    global _reduce_motion_cache                          # noqa: PLW0603
+    if _reduce_motion_cache is None:
+        _reduce_motion_cache = _probe_reduce_motion()
+    return _reduce_motion_cache
+
+
+class TilauProgress(QWidget):
+    """Ring or bar progress indicator, in one of five states.
+
+    Deliberately mirrors the part of the ``QProgressBar`` API the app already
+    uses (``setRange`` / ``setValue`` / ``setMaximum`` / ``value``), so an
+    existing bar is replaced by swapping the constructor.  As with
+    ``QProgressBar``, ``setRange(0, 0)`` means indeterminate.
+    """
+
+    # shapes
+    RING = "ring"
+    BAR  = "bar"
+
+    # states
+    WAITING = "waiting"   # accepted, not started
+    WORKING = "working"   # alive, duration unknown
+    FILLING = "filling"   # alive, and it will end
+    DONE    = "done"      # finished
+    FAILED  = "failed"    # stopped — never auto-dismisses
+
+    dismissed = pyqtSignal()   # DONE has been readable long enough to hide
+
+    _TICK_MS    = 33     # 30 fps
+    _SWEEP_MS   = 1400   # one ring revolution
+    _SHUTTLE_MS = 1100   # one bar sweep
+    _EASE_MS    = 180    # value changes never teleport
+    _HOLD_MS    = 1200   # how long DONE stays before `dismissed` fires
+    _PULSE_MS   = 1600   # reduced-motion breathing
+    _ARC_SPAN   = 90.0   # degrees of the indeterminate arc — flat, no tail
+
+    _GLYPH_MIN_PX = 40   # below this a glyph is a smudge: ring alone
+    _MARK_MIN_PX  = 20   # below this the check/bang is a smudge: solid ring
+
+    def __init__(self, shape: str = "ring", size: int = 24,
+                 glyph: "str | None" = None, parent=None) -> None:
         super().__init__(parent)
+        self._shape = shape
+        self._size  = int(size)
+        self._glyph = glyph
+        self._glyph_pm = None
+        self._state = self.WORKING
+
+        self._min = 0
+        self._max = 0
+        self._raw = 0            # last setValue(), for value()
+
+        self._shown = 0.0        # eased 0..1 actually painted
+        self._from  = 0.0
+        self._to    = 0.0
+        self._ease_at = -1       # ms on _clock when the ease started
+        self._hold_token = 0
+
+        self._clock = QElapsedTimer()
+        self._clock.start()
+        self._timer = QTimer(self)
+        self._timer.setInterval(self._TICK_MS)
+        self._timer.timeout.connect(self.update)
+
+        if shape == self.BAR:
+            self.setFixedHeight(6)
+            self.setSizePolicy(QSizePolicy.Policy.Expanding,
+                               QSizePolicy.Policy.Fixed)
+            self.setMinimumWidth(80)
+        else:
+            self.setFixedSize(self._size, self._size)
+
+    # ── Qt-compatible surface (drop-in for the bars being replaced) ─────────
+    def setRange(self, lo: int, hi: int) -> None:
+        self._min, self._max = int(lo), int(hi)
+        if self._max <= self._min:
+            self.set_state(self.WORKING)          # QProgressBar convention
+        elif self._state in (self.WAITING, self.WORKING):
+            self.set_state(self.FILLING)
+
+    def setMaximum(self, hi: int) -> None:
+        self.setRange(self._min, hi)
+
+    def setMinimum(self, lo: int) -> None:
+        self.setRange(lo, self._max)
+
+    def setValue(self, v: int) -> None:
+        """QProgressBar-compatible surface — jumps straight to the value, no
+        ease.  This is what a blocking scan loop drives through manual
+        ``QApplication.processEvents()`` calls: a step can arrive faster than
+        the ease's own duration, so easing here only ever restarts the
+        animation before it catches up, and the ring visibly stalls a
+        quarter of the way round no matter how far the scan has actually
+        gone. A caller fed by a real, separately-paced signal (a worker
+        thread reporting one printed line at a time) wants the smoothing and
+        should call ``set_value`` directly instead."""
+        self._raw = int(v)
+        span = self._max - self._min
+        if span <= 0:
+            return                                 # indeterminate: nothing to fill
+        if self._state in (self.WAITING, self.WORKING):
+            self._state = self.FILLING
+        self.set_value((self._raw - self._min) / float(span), animate=False)
+
+    def value(self) -> int:
+        return self._raw
+
+    def maximum(self) -> int:
+        return self._max
+
+    # ── native surface ──────────────────────────────────────────────────────
+    def set_value(self, frac: float, animate: bool = True) -> None:
+        """Set the filled fraction 0..1, eased by default so it never
+        teleports when fed at a natural real-time pace. ``animate=False``
+        jumps straight there — used by ``setValue()`` for blocking loops."""
+        frac = max(0.0, min(1.0, float(frac)))
+        if not animate:
+            self._from = self._to = self._shown = frac
+            self._ease_at = -1
+            self._sync_timer()
+            self.update()
+            return
+        if abs(frac - self._to) < 1e-4:
+            return
+        self._from = self._shown
+        self._to   = frac
+        self._ease_at = self._clock.elapsed()
+        self._sync_timer()
+        self.update()
+
+    def set_count(self, done: int, total: int) -> None:
+        self.setRange(0, int(total))
+        self.setValue(int(done))
+
+    def set_indeterminate(self) -> None:
+        self.setRange(0, 0)
+
+    def set_state(self, state: str) -> None:
+        if state == self._state:
+            return
+        self._state = state
+        self._hold_token += 1
+        if state == self.DONE:
+            self.set_value(1.0)
+            token = self._hold_token
+            QTimer.singleShot(
+                self._HOLD_MS,
+                lambda: self.dismissed.emit() if token == self._hold_token else None)
+        elif state == self.WAITING:
+            self._from = self._to = self._shown = 0.0
+        self._sync_timer()
+        self.update()
+
+    def state(self) -> str:
+        return self._state
+
+    def succeed(self) -> None:
+        self.set_state(self.DONE)
+
+    def fail(self) -> None:
+        """Freeze at the last value. Never auto-dismisses — by design."""
+        self.set_state(self.FAILED)
+
+    # ── animation bookkeeping ───────────────────────────────────────────────
+    def _easing(self) -> bool:
+        return (self._ease_at >= 0
+                and (self._clock.elapsed() - self._ease_at) < self._EASE_MS)
+
+    def _needs_timer(self) -> bool:
+        return self._state == self.WORKING or self._easing()
+
+    def _sync_timer(self) -> None:
+        want = self.isVisible() and self._needs_timer()
+        if want and not self._timer.isActive():
+            self._timer.start()
+        elif not want and self._timer.isActive():
+            self._timer.stop()
+
+    def showEvent(self, event) -> None:                  # noqa: N802
+        super().showEvent(event)
+        self._sync_timer()
+
+    def hideEvent(self, event) -> None:                  # noqa: N802
+        # A spinner nobody can see must not repaint at 30 fps.
+        self._timer.stop()
+        super().hideEvent(event)
+
+    # ── painting ────────────────────────────────────────────────────────────
+    def _colour(self) -> QColor:
+        if self._state == self.DONE:
+            return QColor(THEME['SUCCESS'])
+        if self._state == self.FAILED:
+            return QColor(THEME['CRITICAL'])
+        return QColor(THEME['ACCENT'])
+
+    def _current_fraction(self) -> float:
+        if self._ease_at < 0:
+            self._shown = self._to
+            return self._shown
+        t = (self._clock.elapsed() - self._ease_at) / float(self._EASE_MS)
+        if t >= 1.0:
+            self._ease_at = -1
+            self._shown = self._to
+        else:
+            e = 1.0 - pow(1.0 - t, 3)               # ease-out cubic
+            self._shown = self._from + (self._to - self._from) * e
+        return self._shown
+
+    def paintEvent(self, event) -> None:                 # noqa: N802
+        try:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            if self._shape == self.BAR:
+                self._paint_bar(painter)
+            else:
+                self._paint_ring(painter)
+            painter.end()
+        except Exception:                                # noqa: BLE001
+            _log.debug("TilauProgress paint failed", exc_info=True)
+
+    def _paint_ring(self, painter: QPainter) -> None:
+        side = min(self.width(), self.height())
+        pen_w = max(2.0, side / 8.0)
+        inset = pen_w / 2.0 + 1.0
+        rect = QRectF(inset, inset, side - 2 * inset, side - 2 * inset)
+        frac = self._current_fraction()
+
+        # track
+        track = QPen(QColor(THEME['BORDER']), pen_w)
+        track.setCapStyle(Qt.PenCapStyle.RoundCap)
+        if self._state == self.WAITING:
+            track.setStyle(Qt.PenStyle.DotLine)
+        painter.setPen(track)
+        painter.drawArc(rect, 0, 360 * 16)
+
+        if self._state == self.WAITING:
+            return
+
+        pen = QPen(self._colour(), pen_w)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+
+        if self._state == self.WORKING:
+            if reduce_motion():
+                # No rotation: the ring breathes instead.
+                phase = (self._clock.elapsed() % self._PULSE_MS) / float(self._PULSE_MS)
+                wave = 0.28 + 0.72 * (0.5 - 0.5 * math.cos(2.0 * math.pi * phase))
+                col = self._colour()
+                col.setAlphaF(wave)
+                pen.setColor(col)
+                painter.setPen(pen)
+                painter.drawArc(rect, 0, 360 * 16)
+            else:
+                phase = (self._clock.elapsed() % self._SWEEP_MS) / float(self._SWEEP_MS)
+                start = 90.0 - 360.0 * phase
+                painter.setPen(pen)
+                painter.drawArc(rect, int(start * 16), int(-self._ARC_SPAN * 16))
+        else:
+            painter.setPen(pen)
+            span = 360.0 if self._state == self.DONE else 360.0 * frac
+            if span > 0.0:
+                painter.drawArc(rect, int(90 * 16), int(-span * 16))
+
+        if self._state == self.DONE and side >= self._MARK_MIN_PX:
+            self._paint_mark(painter, side, check=True)
+        elif self._state == self.FAILED and side >= self._MARK_MIN_PX:
+            self._paint_mark(painter, side, check=False)
+        elif self._glyph and side >= self._GLYPH_MIN_PX:
+            self._paint_glyph(painter, side)
+
+    def _paint_mark(self, painter: QPainter, side: float, check: bool) -> None:
+        pen = QPen(self._colour(), max(2.0, side / 9.0))
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        path = QPainterPath()
+        if check:
+            path.moveTo(side * 0.30, side * 0.51)
+            path.lineTo(side * 0.44, side * 0.65)
+            path.lineTo(side * 0.71, side * 0.36)
+            painter.drawPath(path)
+        else:
+            path.moveTo(side * 0.50, side * 0.30)
+            path.lineTo(side * 0.50, side * 0.56)
+            painter.drawPath(path)
+            painter.drawPoint(int(side * 0.50), int(side * 0.69))
+
+    def _paint_glyph(self, painter: QPainter, side: float) -> None:
+        px = int(side * 0.42)
+        if px < 8:
+            return
+        if self._glyph_pm is None or self._glyph_pm.width() != px * self._dpr():
+            self._glyph_pm = self._render_glyph(px)
+        if self._glyph_pm is None:
+            return
+        x = (side - px) / 2.0
+        painter.drawPixmap(QRectF(x, x, px, px), self._glyph_pm,
+                           QRectF(self._glyph_pm.rect()))
+
+    def _dpr(self) -> int:
+        return max(1, int(round(self.devicePixelRatioF())))
+
+    def _render_glyph(self, px: int):
+        try:
+            from tilauscope.header_icons import make_icon  # noqa: PLC0415
+            hi = px * self._dpr()
+            icon = make_icon(self._glyph, THEME['SUBTEXT'], QSize(hi, hi))
+            return icon.pixmap(QSize(hi, hi))
+        except Exception:                                # noqa: BLE001
+            _log.debug("progress glyph unavailable", exc_info=True)
+            return None
+
+    def _paint_bar(self, painter: QPainter) -> None:
+        w, h = float(self.width()), float(self.height())
+        r = h / 2.0
+        frac = self._current_fraction()
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(THEME['BORDER']))
+        painter.drawRoundedRect(QRectF(0, 0, w, h), r, r)
+
+        if self._state == self.WAITING:
+            return
+
+        painter.setBrush(self._colour())
+        if self._state == self.WORKING and not reduce_motion():
+            shuttle = w * 0.30
+            phase = (self._clock.elapsed() % self._SHUTTLE_MS) / float(self._SHUTTLE_MS)
+            x = -shuttle + (w + shuttle) * phase
+            painter.setClipPath(self._rounded(w, h, r))
+            painter.drawRoundedRect(QRectF(x, 0, shuttle, h), r, r)
+        elif self._state == self.WORKING:
+            col = self._colour()
+            pulse_phase = (self._clock.elapsed() % self._PULSE_MS) / float(self._PULSE_MS)
+            col.setAlphaF(0.28 + 0.72 * (0.5 - 0.5 * math.cos(2.0 * math.pi * pulse_phase)))
+            painter.setBrush(col)
+            painter.drawRoundedRect(QRectF(0, 0, w, h), r, r)
+        else:
+            fill = w if self._state == self.DONE else w * frac
+            if fill > 0.0:
+                painter.drawRoundedRect(QRectF(0, 0, max(fill, h), h), r, r)
+
+    @staticmethod
+    def _rounded(w: float, h: float, r: float) -> QPainterPath:
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(0, 0, w, h), r, r)
+        return path
+
+
+class TilauProgressRow(QWidget):
+    """Host C — a bar with its count, for a queue the operator can watch.
+
+    Exposes the same ``setRange`` / ``setMaximum`` / ``setValue`` / ``hide`` /
+    ``show`` surface as the QProgressBar it replaces, so existing call sites
+    keep working, and writes the count as '3 of 5' rather than a bare
+    percentage.
+    """
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 2, 0, 2)
+        lay.setSpacing(8)
+
+        self.progress = TilauProgress(TilauProgress.BAR, parent=self)
+        lay.addWidget(self.progress, 1)
+
+        self.count = QLabel("", self)
+        self.count.setStyleSheet(
+            f"color:{THEME['SUBTEXT']}; font-size:10px; font-family:'JetBrains Mono';"
+            f" background:transparent; border:none;")
+        lay.addWidget(self.count)
+
+    def _refresh(self) -> None:
+        total = self.progress.maximum()
+        if total > 0:
+            self.count.setText(
+                QApplication.translate("tilauscope", "{0} of {1}").format(
+                    self.progress.value(), total))
+        else:
+            self.count.setText("")
+
+    def setRange(self, lo: int, hi: int) -> None:         # noqa: N802
+        self.progress.setRange(lo, hi)
+        self._refresh()
+
+    def setMaximum(self, hi: int) -> None:                # noqa: N802
+        self.progress.setMaximum(hi)
+        self._refresh()
+
+    def setValue(self, v: int) -> None:                   # noqa: N802
+        self.progress.setValue(v)
+        self._refresh()
+
+    def value(self) -> int:
+        return self.progress.value()
+
+    def maximum(self) -> int:
+        return self.progress.maximum()
+
+    def set_state(self, state: str) -> None:
+        self.progress.set_state(state)
+
+
+class TilauProgressPill(QWidget):
+    """Host A — non-modal status pill, anchored bottom-right of its parent.
+
+    For work the operator starts and then ignores.  The window stays usable,
+    which makes this the ONLY progress form allowed while a roast is running:
+    nothing may steal focus with 250 g and ten minutes on the line.
+    """
+
+    cancelled = pyqtSignal()
+
+    def __init__(self, parent: QWidget, text: str = "",
+                 glyph: "str | None" = None, cancellable: bool = True) -> None:
+        super().__init__(parent)
+        self._margin_r = 16
+        self._margin_b = 16
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet(
+            f"background:{THEME['SURFACE']}; border:1px solid {THEME['BORDER']};"
+            f" border-radius:14px;")
+
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(10, 6, 8, 6)
+        lay.setSpacing(8)
+
+        # 20 px, not 16: below _MARK_MIN_PX the ✓ and ✕ are not painted. `glyph` is under
+        # TilauProgress._GLYPH_MIN_PX (40) here, so it is never painted — only TilauProgressDialog (ring 64) is above threshold.
+        self.progress = TilauProgress(TilauProgress.RING, 20, glyph, self)
+        self.progress.dismissed.connect(self._fade_out)
+        lay.addWidget(self.progress)
+
+        self.label = QLabel(text, self)
+        self.label.setStyleSheet(
+            f"color:{THEME['TEXT']}; font-size:11px; "
+            f" background:transparent; border:none;")
+        lay.addWidget(self.label)
+
+        self.count = QLabel("", self)
+        self.count.setStyleSheet(
+            f"color:{THEME['SUBTEXT']}; font-size:11px; font-family:'JetBrains Mono';"
+            f" background:transparent; border:none;")
+        lay.addWidget(self.count)
+
+        self.btn_cancel = QPushButton("✕", self)
+        self.btn_cancel.setFixedSize(18, 18)
+        self.btn_cancel.setProperty('variant', 'icon')   # fixed size: no base padding
+        self.btn_cancel.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_cancel.setToolTip(QApplication.translate("tilauscope", "Cancel"))
+        self.btn_cancel.setStyleSheet(
+            f"QPushButton {{ color:{THEME['SUBTEXT']}; background:transparent;"
+            f" border:none; font-size:11px; }}"
+            f"QPushButton:hover {{ color:{THEME['CRITICAL']}; }}")
+        self.btn_cancel.clicked.connect(self.cancelled.emit)
+        self.btn_cancel.setVisible(cancellable)
+        lay.addWidget(self.btn_cancel)
+
+        parent.installEventFilter(self)
+        self.place()
+
+    # ── placement ───────────────────────────────────────────────────────────
+    def set_margin(self, right: int, bottom: int) -> None:
+        """Lift the pill clear of the local furniture (a size grip, a button row)."""
+        self._margin_r, self._margin_b = int(right), int(bottom)
+        self.place()
+
+    def place(self) -> None:
+        self.adjustSize()
+        p = self.parentWidget()
+        if p is None:
+            return
+        self.move(max(0, p.width() - self.width() - self._margin_r),
+                  max(0, p.height() - self.height() - self._margin_b))
+        self.raise_()
+
+    def eventFilter(self, obj, event) -> bool:           # noqa: N802
+        if obj is self.parentWidget() and event.type() in (
+                QEvent.Type.Resize, QEvent.Type.Show):
+            self.place()
+        return super().eventFilter(obj, event)
+
+    # ── state, forwarded to the shared painter ──────────────────────────────
+    def set_text(self, text: str) -> None:
+        self.label.setText(text)
+        self.place()
+
+    def set_step(self, done: int, total: int) -> None:
+        """Update the counter text only — for runs whose ring is driven finer
+        than one step at a time (a printer reports line by line)."""
+        self.count.setText(
+            QApplication.translate("tilauscope", "{0} of {1}").format(done, total))
+        self.place()
+
+    def set_count(self, done: int, total: int) -> None:
+        self.set_step(done, total)
+        self.progress.set_count(done, total)
+
+    def succeed(self, text: "str | None" = None) -> None:
+        if text:
+            self.label.setText(text)
+        self.count.setText("")
+        self.btn_cancel.setVisible(False)
+        self.progress.succeed()
+        self.place()
+
+    def fail(self, text: str) -> None:
+        """Never auto-dismisses: the operator has to read the gesture."""
+        self.label.setText(text)
+        self.label.setStyleSheet(
+            f"color:{THEME['CRITICAL']}; font-size:11px; "
+            f" background:transparent; border:none;")
+        self.count.setText("")
+        # The work is over: ✕ now means "I have read this", never "cancel".
+        # Leaving it wired to `cancelled` would call back into a dead worker.
+        try:
+            self.btn_cancel.clicked.disconnect()
+        except TypeError:
+            pass
+        self.btn_cancel.clicked.connect(self._fade_out)
+        self.btn_cancel.setToolTip(QApplication.translate("tilauscope", "Dismiss"))
+        self.btn_cancel.setVisible(True)
+        self.btn_cancel.setText("✕")
+        self.progress.fail()
+        self.place()
+
+    def _fade_out(self) -> None:
+        self.hide()
+        self.deleteLater()
+
+
+def print_progress_pill(parent: QWidget, total: int,
+                        on_cancel=None) -> TilauProgressPill:
+    """Host A wired for one Niimbot run — the single entry point for printing.
+
+    ``total`` is the number of labels the run will put out.  A single label has
+    nothing to count and nothing to interrupt: the ring just sweeps.  A batch
+    counts, and offers ✕ when the caller can honour it — which on a printer
+    means "stop after the label currently coming out", never "undo".
+    """
+    pill = TilauProgressPill(
+        parent,
+        "🖨  " + QApplication.translate("tilauscope", "Printing…"),
+        cancellable=(total > 1 and on_cancel is not None))
+    if total > 1:
+        pill.progress.set_count(0, total)
+        pill.set_step(0, total)
+        if on_cancel is not None:
+            pill.cancelled.connect(on_cancel)
+            pill.btn_cancel.setToolTip(QApplication.translate(
+                "tilauscope", "Stop after the label being printed"))
+    else:
+        # Nothing to count: sweep rather than show a ring frozen at zero.
+        # A caller that does have finer progress may switch it to determinate.
+        pill.progress.set_indeterminate()
+    pill.show()
+    return pill
+
+
+def set_button_busy(button: QPushButton, busy: bool,
+                    text: "str | None" = None,
+                    glyph: "str | None" = None) -> None:
+    """Host D — turn a button's own icon slot into a ring while it works.
+
+    For actions between roughly 0.4 s and 2 s: Generate, Print, Connect.
+    The button keeps its exact width, so nothing on the screen moves.
+
+    `glyph` is accepted for signature symmetry with the other hosts and is
+    never painted: the ring is 16 px, well under
+    TilauProgress._GLYPH_MIN_PX (40). Do not pass one expecting it to show.
+    """
+    spinner = getattr(button, "_tilau_busy", None)
+    if busy:
+        if spinner is None:
+            spinner = TilauProgress(TilauProgress.RING, 16, glyph, button)
+            button._tilau_busy = spinner                 # noqa: SLF001
+            button._tilau_text = button.text()           # noqa: SLF001
+            button._tilau_icon = button.icon()           # noqa: SLF001
+        button.setIcon(QIcon())
+        if text:
+            button.setText(text)
+        spinner.set_indeterminate()
+        spinner.move(max(6, (button.height() - 16) // 2),
+                     max(0, (button.height() - 16) // 2))
+        spinner.show()
+        button.setEnabled(False)
+    elif spinner is not None:
+        spinner.hide()
+        spinner.deleteLater()
+        button._tilau_busy = None                        # noqa: SLF001
+        button.setText(getattr(button, "_tilau_text", button.text()))
+        button.setIcon(getattr(button, "_tilau_icon", QIcon()))
+        button.setEnabled(True)
+
+
+class TilauProgressDialog(QDialog):
+    """Host B — modal progress, for work that must not be interrupted.
+
+    ApplicationModal on purpose, NOT WindowModal: on macOS a WindowModal
+    QDialog is rendered as a sheet, and closing one programmatically just
+    before opening another dialog can leave the parent window unclickable —
+    the failure already seen after Niimbot printing.
+    """
+
+    def __init__(self, message: str, parent=None, maxvalue: "int | None" = None,
+                 glyph: "str | None" = None, hint: str = "") -> None:
+        super().__init__(parent)
+        # imported here, not at module level: theme_qss reads THEME
+        # from this module, so a top-level import is a cycle that only happens
+        # to work when tilauscope_types is imported first.
+        from tilauscope.theme_qss import apply_tilau_theme  # noqa: PLC0415
+        # frameless translucent window: ground=False. The grounded base emits
+        # QDialog { background-color }, which paints the whole rectangle opaque
+        # and squares off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self.setModal(True)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        
-        self.setup_ui(message, maxvalue)
-        self.resize(400, 180)
 
-    def setup_ui(self, message, maxvalue):
+        self.setup_ui(message, maxvalue, glyph, hint)
+        self.resize(400, 210)
+
+    def setup_ui(self, message, maxvalue, glyph=None, hint="") -> None:
         self.main_layout = QVBoxLayout(self)
         self.container = QFrame()
         self.container.setStyleSheet(f"""
-            QFrame {{ 
-                background-color: {THEME['BG']}; 
-                border: 2px solid {THEME['ACCENT']}; 
-                border-radius: 20px; 
+            QFrame {{
+                background-color: {THEME['BG']};
+                border: 2px solid {THEME['ACCENT']};
+                border-radius: 20px;
             }}
         """)
         self.content_layout = QVBoxLayout(self.container)
-        self.content_layout.setContentsMargins(30, 30, 30, 30)
+        self.content_layout.setContentsMargins(30, 26, 30, 26)
+        self.content_layout.setSpacing(14)
         self.main_layout.addWidget(self.container)
+
+        # the ring carries the motion, so the message doesn't have to shout
+        self.pbar = TilauProgress(TilauProgress.RING, 64, glyph, self)
+        # maxvalue None -> indeterminate.
+        self.pbar.setRange(0, 0 if maxvalue is None else int(maxvalue))
 
         self.msg_label = QLabel(message.upper())
         self.msg_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.msg_label.setStyleSheet(f"color: white; font-weight: bold; font-family: 'JetBrains Mono'; border: none;")
-        
-        # Modern Indeterminate Progress Bar
-        self.pbar = QProgressBar()
-        self.pbar.setRange(0, 0 if maxvalue is None else maxvalue) # Indeterminate mode
-        self.pbar.setFixedHeight(8)
-        self.pbar.setTextVisible(False)
-        self.pbar.setStyleSheet(f"""
-            QProgressBar {{ 
-                background: {THEME['SURFACE']}; 
-                border-radius: 4px; 
-                border: none; 
-            }}
-            QProgressBar::chunk {{ 
-                background: {THEME['ACCENT']}; 
-                border-radius: 4px; 
-            }}
-        """)
+        self.msg_label.setStyleSheet(
+            f"color:{THEME['TEXT']}; font-weight:bold; font-size:12px;"
+            f" border:none; background:transparent;")
 
+        self.hint_label = QLabel(hint)
+        self.hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.hint_label.setVisible(bool(hint))
+        self.hint_label.setStyleSheet(
+            f"color:{THEME['SUBTEXT']}; font-size:11px;"
+            f" border:none; background:transparent;")
+
+        ring_row = QHBoxLayout()
+        ring_row.addStretch(1)
+        ring_row.addWidget(self.pbar)
+        ring_row.addStretch(1)
+
+        self.content_layout.addLayout(ring_row)
         self.content_layout.addWidget(self.msg_label)
-        self.content_layout.addSpacing(20)
-        self.content_layout.addWidget(self.pbar)
+        self.content_layout.addWidget(self.hint_label)
+
+    def set_count(self, done: int, total: int) -> None:
+        """Show '47 of 312' under the message — never a bare percentage."""
+        self.hint_label.setText(
+            QApplication.translate("tilauscope", "{0} of {1}").format(done, total))
+        self.hint_label.setVisible(True)
+        self.pbar.set_count(done, total)
+
+    # ── QProgressDialog-compatible surface ──────────────────────────────────
+    # Lets the raw QProgressDialog call sites migrate by swapping the
+    # constructor alone, without rewriting the loops around them.
+    def setValue(self, v: int) -> None:                  # noqa: N802
+        self.pbar.setValue(v)
+        total = self.pbar.maximum()
+        if total > 0:
+            self.hint_label.setText(
+                QApplication.translate("tilauscope", "{0} of {1}").format(v, total))
+            self.hint_label.setVisible(True)
+
+    def wasCanceled(self) -> bool:                       # noqa: N802
+        """Always False — as with the dialogs this replaces, which were built
+        with no cancel button. Work that must not be interrupted has no
+        cancel affordance; cancellable work belongs in a pill instead."""
+        return False
 
 # ── Milestone temperature windows (DE / FC) ─────────────────────────────────
 # Profession-standard milestone bands in the *true* bean frame (before per-roaster

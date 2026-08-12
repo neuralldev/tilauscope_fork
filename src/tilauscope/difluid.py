@@ -25,7 +25,7 @@ from collections import deque
 from typing import Final
 from artisanlib.ble_port import ClientBLE
 from artisanlib.main import ApplicationWindow # pylint: disable=unused-import
-import threading # Ajoutez cet import au début du fichier
+import threading
 from dataclasses import dataclass, field
 
 from bleak.backends.characteristic import BleakGATTCharacteristic  # pylint: disable=unused-import
@@ -47,14 +47,14 @@ class AirwaveFanMode(IntEnum):
     EXTREME=1
     FAN=2
     UNKNOWN = -1
-    
+
 class AirwaveLanguages(IntEnum):
     CHINESE1=0
     CHINESE2=1
     ENGLISH=2
     JAPANESE=3
     KOREAN=4
-    
+
 class AirwaveFanLimits(IntEnum):
     MINIMUM=30
     MAXIMUM=100
@@ -83,7 +83,7 @@ class AirwaveCommands(IntEnum):
 class AirwaveSpeed(IntEnum):
     MINIMUM=30
     MAXIMUM=100
-    
+
 class AirwaveState(IntEnum):
     ON = 1
     OFF = 0
@@ -144,22 +144,22 @@ class DiFluidProtocol:
     def parse_full_message(self, payload: bytes) -> dict:
         if len(payload) < 6 or not payload.startswith(self.PREAMBLE) :
             return {'valid': False, 'error': 'Invalid preamble or length'}
-        
+
         function = payload[2]
         command = payload[3]
         length = payload[4]
-        
+
         if len(payload) < 5 + length + 1: # header (3) + preamble (2) + data + checksum (1)
             return {'valid': False, 'error': 'Payload too short for declared length'}
-        
+
         data = payload[5:5+length]
         checksum = payload[5+length]
         expected_checksum = (sum(payload[:5+length]) & 0xFF)
-        
+
         valid = checksum == expected_checksum
         if not valid:
             return {'valid': False, 'error': 'Checksum mismatch'}
-    
+
         return {
             'function': function,
             'command': command,
@@ -174,7 +174,7 @@ class AirwaveBLE(ClientBLE, DiFluidProtocol): # pyright: ignore [reportGeneralTy
     connected_signal = pyqtSignal()     # issued on connect
     disconnected_signal = pyqtSignal()  # issued on disconnect
     unsolicited_event_signal = pyqtSignal(dict) # issued when an information/request is received from the Airwave whthout prior request
-    
+
     def __init__(self, device_uuid:str):
         super().__init__()
         self.responses: queue.Queue = queue.Queue() # buffer for notifications
@@ -189,7 +189,7 @@ class AirwaveBLE(ClientBLE, DiFluidProtocol): # pyright: ignore [reportGeneralTy
         self.add_write(AirwaveUUID.AIRWAVE_SERVICE_UUID, AirwaveUUID.AIRWAVE_DIALOG_UUID)
         self.start(case_sensitive=False, address=device_uuid)
         self._send_lock = threading.Lock()
-    
+
     def on_connect(self) -> None:
         self.is_connected = True
         self._drain_queue()
@@ -235,7 +235,7 @@ class AirwaveBLE(ClientBLE, DiFluidProtocol): # pyright: ignore [reportGeneralTy
                 time.sleep(0.05)
             except Exception as e:  # noqa: BLE001
                 _log.error(f"drain send error: {e}")
-    # used to call sublayer BLE stop for the device to release the handles and loops on different characteristics and notifications as well
+    # calls sublayer BLE stop so the device releases handles and loops across characteristics and notifications
     def bleStop(self) -> None:
         with self._queue_lock:
             self._cmd_queue.clear()
@@ -364,7 +364,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
     roastingstage_request_signal = pyqtSignal() # sends the roasting stage requested by the Airwave
     connected_signal = pyqtSignal()
     disconnected_signal = pyqtSignal()
-  
+
     # map event command to roasting stages
     AirwaveEventsMap = {
         "PREHEAT":  (AirwaveCommands.ROASTINGSTAGE, AirwaveEvents.ROASTING_STAGE_PREHEAT),
@@ -376,7 +376,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         }
 
     def __init__(self, name:str):
-        super().__init__() 
+        super().__init__()
         self.state = AirwaveStateData()
         _logd.debug("difluid class start")
         self.shutdown_lock = QMutex()
@@ -391,21 +391,18 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         self.pilotDamperSlider:bool = False
 
         self.omniflux: OmnifluxBinding
-       
+
         self._setup_connections()
-    
+
     def _setup_connections(self):
         self.airwave.connected_signal.connect(self._relay_connected)
         self.airwave.disconnected_signal.connect(self._relay_disconnected)
         self.airwave.unsolicited_event_signal.connect(self._handle_unsolicited_event)
 
-    ## TILAU ## complete the hostname handshake so the AirWave accepts control commands.
-    # The device only lifts its control lock (state.holdon) once it knows the host name.
-    # Normally it *asks* for the name on connection, but on a BLE reconnect within the
-    # same power session (macOS keeps the link cached) the firmware does not re-issue that
-    # request — which used to leave holdon=True after a second ON and make the extractor
-    # uncontrollable until an app restart. We announce ourselves instead of waiting to be
-    # asked. Idempotent and safe to call more than once.
+    # Completes the hostname handshake: the AirWave only lifts its control lock
+    # (state.holdon) once it knows the host name, normally by asking on connect — but a
+    # BLE reconnect within the same power session (macOS keeps the link cached) skips
+    # that request, so we announce proactively instead. Idempotent, safe to call twice.
     def _ensure_control_session(self) -> None:
         try:
             if self.aw is not None and self.aw.bleAirwaveEmulateOmniflux:
@@ -444,7 +441,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
             self.airwave.disconnected_signal.disconnect()
         except:
             pass
-        
+
         start_time = QDateTime.currentMSecsSinceEpoch() / 1000.0
         while ((QDateTime.currentMSecsSinceEpoch() / 1000.0) - start_time < 1) and self.command_running:
             time.sleep(0.05)
@@ -460,7 +457,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
                     break
             self.aw = aw
             self.pilotDamperSlider = aw.eventslidervisibilities[2]==1 and aw.eventslideractions[2]==20 # Damper is checked, verify that it is mapped to Diflui
-            _logd.debug(f"airwave mapped to damper slider = {self.pilotDamperSlider}") 
+            _logd.debug(f"airwave mapped to damper slider = {self.pilotDamperSlider}")
         self.omniflux = detect_omniflux_devices(aw)
 
     # the message received from the Airwave are processed here if they were not issued by a request from our side
@@ -474,7 +471,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         function = parsed_msg.get('function')
         data = parsed_msg.get('data')
 #        _logd.debug(f"Unsolicited event processed: {command}")
-        if function == AirwaveFunctions.DEVICEACTIONS:            
+        if function == AirwaveFunctions.DEVICEACTIONS:
             if command == AirwaveCommands.POSITION: # AirwaveFanMode
                 self.state.mode = int.from_bytes(data, 'big') #type:ignore
                 self.mode_changed_signal.emit(self.state.mode)
@@ -486,7 +483,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
                 self.state_changed_signal.emit(bool(self.state.state))
             elif command == AirwaveCommands.ROASTINGSTAGE:
                 self.answerToOmniflux()
-        elif function == AirwaveFunctions.DEVICESETTING and command == AirwaveCommands.HOSTNAME: 
+        elif function == AirwaveFunctions.DEVICESETTING and command == AirwaveCommands.HOSTNAME:
                 # Device Ask Host Name, this is the first request sent by the roaster and it MUST be answered
                 if self.aw is not None and self.aw.bleAirwaveEmulateOmniflux:
                     self.armOmniflux()
@@ -508,7 +505,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         _logd.debug("disarm omniflux")
         self.send_command("CONTROL MANUAL")
         self.omnifluxmode = False
-    
+
     def currentroastingphase(self)->int:
         if self.aw is None  or len(self.aw.qmc.timeindex)==0:
             return -2 # not started
@@ -518,7 +515,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
                 break
         if self.aw.qmc.timeindex[RoastingPhase.CHARGE] == -1:
             return -1 # preheating
-        
+
         return i # return 0 to 6 index
 
     # answer to omniflux sending the actual roasting phase from Artisan
@@ -548,7 +545,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
             return self.set_state(AirwaveCommands.ROASTINGSTAGE, AirwaveEvents.ROASTING_STAGE_DROP, False)
         _logd.debug(f"answering omniflux phase unknown ({i})")
         return False
- 
+
     # hostname must be sent as a 30 bytes array padded with 0x00
     def SendHostName(self, default:str="TilauScope"):
         self.command_running = True
@@ -562,16 +559,16 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
 
     # sends a command to the Airwave
     def send_command(self, commands:str, nohold:bool=False):
-        #parse commands for 
+        #parse commands for
         # FAN 30-100
         # MODE STD/EXT/FAN
         # POWER ON/OFF
         # EVENT PREHEAT,CHARGE,TP,FCS,DE,SCS,DROP (only for Omniflux mode)
-        # ONMINFLUX ARM/DISARM  
+        # ONMINFLUX ARM/DISARM
 
 #        _logd.debug(f"difluid interpreter received command {commands}")
         if self.state.holdon and not nohold:
-            ## TILAU ## Self-heal the control session. If we are actually connected but
+            # Self-heal the control session. If we are actually connected but
             # still holding (e.g. a BLE reconnect where the AirWave never re-requested the
             # hostname, so on_connect/_relay_connected did not clear holdon), complete the
             # handshake now so this command — and every subsequent one — goes through.
@@ -582,7 +579,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
                 return ""
         #split commands
  #       _logd.debug(f"difluid interpreter processing command {commands}")
-        messages = commands.split(',') 
+        messages = commands.split(',')
   #      _logd.debug(f"difluid interpreter found {len(messages)} commands to process")
         # process all found commands in a row
         for c in messages:
@@ -594,15 +591,15 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
                 _logd.debug(f"difluid interpreter no argument found in command {c}")
                 continue
             command = s[0]
-            s[0].strip() 
-            s[1].strip() 
+            s[0].strip()
+            s[1].strip()
 #            _logd.debug(f"difluid interpreter set process {command}")
             if command.startswith("FAN"):
                 fanspeed = int(s[1])
                 if fanspeed >= AirwaveSpeed.MINIMUM and fanspeed <= AirwaveSpeed.MAXIMUM:
                     return self.set_succionspeed(fanspeed)
                 return f"fanspeed out of authorized values {s[1]}"
-            if command.startswith("MODE"):   
+            if command.startswith("MODE"):
                 if s[1]   == "STD":
                     return self.set_mode(AirwaveFanMode.STANDARD)
                 elif s[1]   == "EXT":
@@ -635,7 +632,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
                     return "omniflux disarmed"
             return f'command {s[1]} must be arm or disarm'
         return("send command, no command found")
-        
+
     # ask from BLE for value
     # answer to qtsignal emission, a command is requested from the main thread
     # syntax from Artisan should be such as airwave("GET FAN"), if "GET" found, only command is sent
@@ -668,14 +665,14 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         if command.startswith("EVENT"):
             return self.ask_event()
         if command.startswith("CONTROL"):
-            return self.ask_control_mode() 
+            return self.ask_control_mode()
         return ""
-    
+
     # wait for an answer from device for a certain time to push in the queue
     def get_response(self, func: int, cmd: int, timeout: float = 1.0) -> dict|None:
         deadline = time.perf_counter() + timeout
         temp_queue = deque()
-        
+
         try:
             while time.perf_counter() < deadline:
                 try:
@@ -690,9 +687,9 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         finally:
             # Sécurité : on remet toujours les messages non traités
             while temp_queue: self.airwave.responses.put(temp_queue.popleft())
-        return None    
-    #   getters 
-        
+        return None
+    #   getters
+
     def ask_device_sn(self):
         self.command_running = True
         self.airwave.send_command(AirwaveFunctions.DEVICEINFO, AirwaveCommands.SERIALNUMBER, b'', True)
@@ -700,7 +697,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         self.state.sn = str(response['data'], 'utf-8') if response and response["valid"] else ""
         self.command_running = False
         return self.state.sn
-    
+
     def ask_device_model(self):
         self.command_running = True
         self.airwave.send_command(AirwaveFunctions.DEVICEINFO, AirwaveCommands.DEVICEMODEL, b'', True)
@@ -708,8 +705,8 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         self.state.model = str(response['data'], 'utf-8') if response and response["valid"] else ""
         self.command_running = False
         return self.state.model
-    
-    def ask_firmware_version(self): 
+
+    def ask_firmware_version(self):
         self.command_running = True
         self.airwave.send_command(AirwaveFunctions.DEVICEINFO, AirwaveCommands.FIRMWARE, b'', True)
         response = self.get_response(AirwaveFunctions.DEVICEINFO, AirwaveCommands.FIRMWARE)
@@ -749,7 +746,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
             return self.state.speed
         self.command_running = False
         return -1
-    
+
     def ask_temperatures(self) -> dict:
         self.command_running = True
         self.airwave.send_command(AirwaveFunctions.DEVICEACTIONS, AirwaveCommands.TEMPERATURE)
@@ -776,7 +773,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         }
 
     def ask_event(self):
-        self.command_running = True 
+        self.command_running = True
         response = self.get_response(AirwaveFunctions.DEVICEACTIONS, AirwaveCommands.ROASTINGSTAGE)
         if response and response["valid"] and response['data']:
             return int.from_bytes(response['data'], 'big')
@@ -792,7 +789,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
             return int.from_bytes(response['data'], 'big')
         self.command_running = False
         return -1
-    
+
     # setters
     def set_state(self, subcommand:AirwaveCommands = AirwaveCommands.STATUS, value: int = 0, answer:bool = True):
         if value is None or value not in AirwaveState:
@@ -826,7 +823,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         r = self.airwave.send_command(AirwaveFunctions.DEVICEACTIONS, AirwaveCommands.FAN, payload)
         self.command_running = False
         return r
-    
+
     def update_artisan_slider(self, slider_idx: int, value: int):
         if not self.aw: return
 
@@ -859,8 +856,8 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
             roc = roc_series if roc_series else -1.0
         except (IndexError, TypeError):
             roc = -1.0
-        return agtron, roc            
-        
+        return agtron, roc
+
     def _get_current_phase_name(self) -> str:
         """Helper rapide pour identifier la phase Artisan."""
         if not self.aw or not self.aw.qmc.timeindex: return ""

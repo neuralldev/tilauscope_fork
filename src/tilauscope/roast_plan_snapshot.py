@@ -76,7 +76,7 @@ def build_prediction_snapshot(
         plan: dict, *, plan_id: str, target_color_agtron: float,
         expected_color_basis: str = "ground", mode: str = "C",
         created_at_utc: "str | None" = None) -> dict:
-    """Freeze the plan values that exist before the roast starts. ## TILAU ##"""
+    """Freeze the plan values that exist before the roast starts. """
     heater = _phase_controls(plan.get("Heater (%) (Dry|Mai|Dev)"))
     airflow = _phase_controls(plan.get("Airflow (%) (Dry|Mai|Dev)"))
     sources = {

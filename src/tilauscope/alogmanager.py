@@ -40,7 +40,7 @@ class AlogMetadata(DataClassJSONMixin):
     bean_field: str = ""
     uuid: str = ""
     roastepoch: int = 0  # seconds since epoch from roastepoch field in .alog; 0 = unknown
-    roast_uuid: str = ""  # ## TILAU ## Artisan roastUUID (hex-32) — QR scan lookup key
+    roast_uuid: str = ""  # Artisan roastUUID (hex-32) — QR scan lookup key
 
 @dataclass
 class AlogCacheCollection(DataClassJSONMixin):

@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QS
                              QLabel, QFrame, QSlider, QProgressBar, QGridLayout, QMenu, QStyle, QStyleOptionSlider,
                              QPushButton, QScrollArea, QLayout, QDialog, QStackedWidget)
 from PyQt6.QtCore import Qt, QPoint, QTimer, QTime, QRect, QSize, pyqtSlot, QEvent, QSettings
-from PyQt6.QtGui import QColor, QCloseEvent, QKeyEvent, QPalette, QCursor, QPixmap, QIcon, QImage, QKeySequence, QPainter, QFont, QFontMetrics, QFontDatabase, QShortcut
+from PyQt6.QtGui import QColor, QCloseEvent, QKeyEvent, QPalette, QCursor, QPixmap, QIcon, QImage, QKeySequence, QPainter, QFont, QFontMetrics, QShortcut
 from PyQt6.QtCore import QPropertyAnimation, pyqtProperty, pyqtSignal, QEasingCurve
 
 # get settings
@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from typing import Final, override
 from mashumaro import DataClassDictMixin
 
-from artisanlib.main import ApplicationWindow 
+from artisanlib.main import ApplicationWindow
 from artisanlib.util import events_internal_to_external_value, fromFtoCstrict, fromCtoFstrict, rgba_colorname2argb_colorname, toDim
 from artisanlib.util import deltaLabelUTF8
 
@@ -59,6 +59,7 @@ from tilauscope.artisan_message_ticker import ArtisanMessageTicker, ArtisanMessa
 from tilauscope.axes_config import AxesConfigHook
 from tilauscope.canvas_style import CanvasStyleHook
 from tilauscope.main_window_style import take_body, give_body
+from tilauscope.theme_qss import apply_tilau_theme, base_qss, tint
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -66,87 +67,66 @@ _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
 _MONO_FAMILY: str = ""  # resolved once by _mono_font_family()
 
-## TILAU ## Coalescing window for slider commits: a burst of +/- clicks within
-## this delay sends a single hardware command with the final value instead of
-## one command (and one recorded event) per click.
+# Coalescing window for slider commits: a burst of +/- clicks within
+# this delay sends a single hardware command with the final value instead of
+# one command (and one recorded event) per click.
 _SLIDER_COMMIT_DEBOUNCE_MS: Final[int] = 300
 
-## TILAU ## Horizontal room the ToggleBar (10 px) + its layout spacing (6 px) take
-## on the right of the slider rows. The SV row sits outside that zone and must
-## reserve the same width to stay aligned with the rows above.
+# Horizontal room the ToggleBar (10 px) + its layout spacing (6 px) take
+# on the right of the slider rows. The SV row sits outside that zone and must
+# reserve the same width to stay aligned with the rows above.
 _CTRL_TOGGLE_RESERVE_PX: Final[int] = 16
 
-## TILAU ## Explicit insets for every slider row (the 4 event sliders + SV), so the
-## rows line up regardless of platform: a layout installed on a widget inherits the
-## style's default margin (~12 px on macOS, 9 on Windows) while a nested layout gets
-## 0 — which is exactly what left the SV row out of line. Vertical is kept small: the
-## inherited default put ~11 px above AND below each row, spreading them far apart.
+# Explicit insets for every slider row (the 4 event sliders + SV), so the rows
+# line up regardless of platform: the style's default margin differs between a
+# widget-installed layout (~12 px macOS, 9 Windows) and a nested one (0).
 _SLIDER_ROW_MARGINS: Final[tuple[int, int, int, int]] = (11, 2, 11, 2)
 
-## TILAU ## Header control sizes. The row is width-bound (pane 390 − pane margins
-## = 370 px), and the timer box is pinned to its widest reading, so button size and
-## timer size trade against each other directly: 2 px off each button is what pays
-## for a legibly larger timer.
+# Header control sizes. The row is width-bound (pane 390 − pane margins = 370
+# px); button size and timer size trade against each other directly.
 _HDR_BTN: Final[int] = 26        # power / start-stop / reset / beancave / level
 _HDR_BTN_SMALL: Final[int] = 22  # menu / swap
 
-## TILAU ## Header timer: the label is pinned to the width of "-88:88" — the format
-## really can be negative (countdown before CHARGE, see util.stringfromseconds), so
-## the box must hold 6 characters and that width is a hard constraint on the row.
-## Single authority for the size: every timer state (idle / roasting / paused /
-## emergency) rewrites the whole stylesheet, and those rewrites used to carry
-## their own 36 px and 80 px — which is what clipped the reading against the
-## pinned box, whatever the size set at build time.
+# Header timer: pinned to the width of "-88:88" since the countdown before
+# CHARGE can go negative. Single authority for the size across every timer state.
 _TIMER_FONT_PX: Final[int] = 30
 
 
 def _mono_font_family() -> str:
-    """Register the bundled JetBrains Mono once and return its real family name.
+    """Return the bundled JetBrains Mono family name.
 
-    Falls back to a system monospace ('Menlo' on macOS) if the embedded file
-    cannot be loaded. Bundling the font makes the timer rendering independent
-    of what is installed on the machine.
+    Delegates to theme_qss, the single place that registers both faces.
     """
-    global _MONO_FAMILY
-    if _MONO_FAMILY:
-        return _MONO_FAMILY
-    try:
-        import os
-        _path = os.path.join(os.path.dirname(__file__), "JetBrainsMono-Bold.ttf")
-        fid = QFontDatabase.addApplicationFont(_path)
-        families = QFontDatabase.applicationFontFamilies(fid) if fid != -1 else []
-        _MONO_FAMILY = families[0] if families else "Menlo"
-    except Exception:  # noqa: BLE001
-        _MONO_FAMILY = "Menlo"
-    return _MONO_FAMILY
+    from tilauscope.theme_qss import mono_family  # noqa: PLC0415
+    return mono_family()
 
 
 SIDEBAR_W   = 220   # px — must match AlarmSidebar content needs
 GRIP_W      = 16    # px — always-visible strip
 
 # Catppuccin Mocha palette references
-_COL_SURFACE0  = "#313244"
-_COL_SURFACE1  = "#45475A"
-_COL_LAVENDER  = "#b4befe"
-_COL_TEXT      = "#CDD6F4"
-_COL_BASE      = "#1e1e2e"
+_COL_SURFACE0  = THEME['BORDER']
+_COL_SURFACE1  = THEME['SURFACE1']
+_COL_LAVENDER  = THEME['LAVENDER']
+_COL_TEXT      = THEME['TEXT']
+_COL_BASE      = THEME['BG']
 
 # Style à appliquer au parent pour la cohérence visuelle
-PARENT_TILAUSTYLE = """
+PARENT_TILAUSTYLE = f"""
     /* On cible uniquement le widget avec cet ID précis */
-    QWidget#CentralWidget {
+    QWidget#CentralWidget {{
         background-color: #0F0F12;
-        border: 1px solid #313244;
+        border: 1px solid {THEME['BORDER']};
         border-radius: 10px; /* Vos coins arrondis ici */
-    }
+    }}
 
     /* On réinitialise explicitement les bordures pour les enfants directs ou indirects */
-    #CentralWidget QWidget {
+    #CentralWidget QWidget {{
         border-radius: 0px;
         border: none;
-    }
+    }}
 """
- 
+
 @dataclass
 class ExtraEventButton(DataClassDictMixin):
     label: str
@@ -159,14 +139,14 @@ class ExtraEventButton(DataClassDictMixin):
     value: float      # extraeventsvalues
     visible: bool     # extraeventsvisibility
     index: int = 0
-    ## TILAU ## decorated offset labels for the button tooltip (type name with +/- and % markers, signed offset value)
+    # decorated offset labels for the button tooltip (type name with +/- and % markers, signed offset value)
     type_label: str = ''   # e.g. "±Air%", "Air"
     value_label: str = ''  # e.g. "+5%", "-3", "120"
 
     def get_action_name(self) -> str:
         """Returns the human-readable action type name."""
         actions = [
-            '', 'Serial Command', 'Call Program', 'Multiple Event', 
+            '', 'Serial Command', 'Call Program', 'Multiple Event',
             'Modbus Command', 'DTA Command', 'IO Command', 'Hottop Heater',
             'Hottop Fan', 'Hottop Command', 'p-i-d', 'Fuji Command',
             'PWM Command', 'VOUT Command', 'S7 Command', 'Aillio R1 Heater',
@@ -175,7 +155,7 @@ class ExtraEventButton(DataClassDictMixin):
             'Difluid Airwave Command', 'TilauScope Ambient Command'
         ]
         try:
-            ## TILAU ## Artisan stores action codes with a +1 offset above the historical gap at 8; mirror events.py (act>7 -> -1)
+            # Artisan stores action codes with a +1 offset above the historical gap at 8; mirror events.py (act>7 -> -1)
             act = self.action_type
             if act > 7:
                 act -= 1
@@ -224,7 +204,6 @@ class ButtonManager(DataClassDictMixin):
             if et > 4:
                 et = et - 5
             if et < 4 and et != 9:
-                i = etypes[evType]-1
                 map_source = conf.slider_names[et]
                 res = res.replace('\\t',map_source)
             for var,subst in [
@@ -264,7 +243,7 @@ class ButtonManager(DataClassDictMixin):
             return res
 
         # Helper to parse Artisan's CSV format in .aset / QSettings
-        
+
         labels = conf.aw.extraeventslabels
         actions = conf.aw.extraeventsactions
         cmds = conf.aw.extraeventsactionstrings
@@ -279,8 +258,8 @@ class ButtonManager(DataClassDictMixin):
         # Zip based on the length of labels or the max defined in Artisan
         for i in range(len(labels)):
             try:
-                
-                ## TILAU ## build decorated offset labels (same +/- and % rules as substButtonLabel \V / etype name)
+
+                # build decorated offset labels (same +/- and % rules as substButtonLabel \V / etype name)
                 _t = int(types[i])
                 _ext = events_internal_to_external_value(values[i])
                 _prefix = '\u00B1' if _t != 9 and 4 < _t < 14 else ''  # relative type -> show +/- marker
@@ -303,12 +282,12 @@ class ButtonManager(DataClassDictMixin):
                     type_label=_type_label,
                     value_label=_value_label
                 ))
-                
+
             except (IndexError, ValueError):
                 continue
-        
+
         return cls(buttons=btn_list, artisan_conf=conf)
-              
+
 class ArtisanSettings:
     def __init__(self, aw: ApplicationWindow):
         self.aw = aw
@@ -320,46 +299,46 @@ class ArtisanSettings:
 
         # Load Buttons as Objects
         self.button_manager = ButtonManager.from_artisan_settings(self, self.mode)
-        
+
     def get_visible_buttons(self) -> list[ExtraEventButton]:
         return [b for b in self.button_manager.buttons if b.visible]
-    
+
     def get_setting_color(self, key, default="#FFFFFF"):
         """ Récupère et convertit une couleur Artisan en format compatible Qt/CSS """
         try:
             val = self.palette.get(key, default)
             # Convertit le format RGBA/Nom d'Artisan en ARGB compatible Qt
             color_hex = rgba_colorname2argb_colorname(val)
-            
+
             # Pour le CSS (setStyleSheet), on a besoin de #RRGGBB ou #AARRGGBB
             # rgba_colorname2argb_colorname renvoie souvent du #AARRGGBB
             return color_hex
         except Exception:
             return default
-        
+
     def get_lightened_color(self, hex_color, factor=120):
         """
         Récupère une couleur et l'éclaircit.
         factor > 100 : éclaircit (ex: 120 = +20%)
         factor < 100 : assombrit
         """
-        color = QColor(hex_color)        
+        color = QColor(hex_color)
         # .lighter(factor) renvoie une nouvelle instance QColor plus claire
         return color.lighter(factor).name()
-        
+
     def get_theme_colors(self):
-        """ 
-        Récupère les couleurs des sondes définies dans Artisan 
+        """
+        Récupère les couleurs des sondes définies dans Artisan
         BT = Beans Temperature, ET = Environment Temperature
         """
         return {
             "BT": self.get_setting_color("bt", "#FAB387"), # Orange par défaut
-            "ET": self.get_setting_color("et", "#F38BA8"), # Rouge par défaut
+            "ET": self.get_setting_color("et", THEME['CRITICAL']), # Rouge par défaut
             "ROR": self.get_setting_color("deltabt", "#A6E3A1"), # Vert par défaut
             "BG": self.get_setting_color("background", "#0F0F12"), # Fond
-            "AIR": "#F38BA8",
-            "DRUM": "#89B4FA",
-            "DAMPER": "#94E2D5",
+            "AIR": THEME['CRITICAL'],
+            "DRUM": THEME['ACCENT'],
+            "DAMPER": THEME['TEAL'],
             "BURNER": "#FAB387",
             "SV": "#4C4C4C",
         }
@@ -372,10 +351,10 @@ class SmartRoller(QWidget):
         self.min_val = min_val
         # 1. Set flags for a popup
         self.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
-        
+
         # 2. Re-enable Translucent Background (allows the 'corners' to be invisible)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        
+
         # 3. Ensure we DON'T auto-fill the background (which creates the square box)
         self.setAutoFillBackground(False)
 
@@ -385,17 +364,17 @@ class SmartRoller(QWidget):
         layout.setSpacing(0)
         self.container = QFrame()
         self.container.setObjectName("MainContainer") # Ensure ID matches CSS
-        self.container.setStyleSheet("""
-            #MainContainer {
-                background-color: #1E1E2E; 
-                border: 2px solid #313244; 
+        self.container.setStyleSheet(f"""
+            #MainContainer {{
+                background-color: {THEME['BG']};
+                border: 2px solid {THEME['BORDER']};
                 border-radius: 6px;
-            }
-            QScrollBar:horizontal {
+            }}
+            QScrollBar:horizontal {{
                 height: 0px;
                 background: transparent;
-            }
-            QWidget { border: none; }
+            }}
+            QWidget {{ border: none; }}
         """)
         layout.addWidget(self.container)
         scroll_layout = QVBoxLayout(self.container)
@@ -406,14 +385,14 @@ class SmartRoller(QWidget):
         self.scroll.setStyleSheet("background: transparent; border: none;")
         self.content = QWidget()
         self.content_layout = QVBoxLayout(self.content)
-        for i in range(min_val, max_val+1, step): # fix 2026/05/02 added step support 
+        for i in range(min_val, max_val+1, step): # fix 2026/05/02 added step support
             btn = QPushButton(str(i))
             btn.setFixedHeight(38)
             is_curr = (i == current_val)
-            style = f"color: {'white' if is_curr else '#6c7086'}; border: none; font-family: 'JetBrains Mono'; font-size: {'16px' if is_curr else '14px'};"
+            style = f"color: {'white' if is_curr else THEME['OVERLAY0']}; border: none; font-size: {'16px' if is_curr else '14px'};"
             if is_curr: style += f"background-color: {color}; border-radius: 8px; font-weight: bold;"
             else: style += "background: transparent;"
-            btn.setStyleSheet(f"QPushButton {{ {style} }} QPushButton:hover {{ color: white; background: #313244; border-radius: 8px; }}")
+            btn.setStyleSheet(f"QPushButton {{ {style} }} QPushButton:hover {{ color: white; background: {THEME['BORDER']}; border-radius: 8px; }}")
             btn.clicked.connect(lambda checked, v=i: self.select_value(v))
             self.content_layout.addWidget(btn)
         self.scroll.setWidget(self.content)
@@ -455,8 +434,8 @@ class TickerLabel(QWidget):
         self._lbl = QLabel("", self)
         self._lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self._lbl.setStyleSheet(
-            f"color: {color}; font-size: {font_size}px; font-weight: {font_weight}; "
-            f"font-family: '{_mono}', 'JetBrains Mono', monospace; "
+            f"color: {color}; font-size: {font_size}px; font-weight: {font_weight};"
+            f"font-family: '{_mono}', 'JetBrains Mono', monospace;"
             f"border: none; background: transparent;"
         )
         self._lbl.move(0, 0)
@@ -542,8 +521,8 @@ class ClickableValue(QLabel):
         self.update_style()
 
     def update_style(self, highlight=False):
-        style = "font-weight: bold; font-family: 'JetBrains Mono'; font-size: 15px; border: none;"
-        if highlight: self.setStyleSheet(f"color: #11111B; background-color: {self.color}; border-radius: 4px; {style}")
+        style = "font-weight: bold; font-size: 15px; border: none;"
+        if highlight: self.setStyleSheet(f"color: {THEME['CRUST']}; background-color: {self.color}; border-radius: 4px; {style}")
         else: self.setStyleSheet(f"color: {self.color}; background: transparent; {style}")
 
     def mousePressEvent(self, event):
@@ -555,11 +534,11 @@ class ClickableValue(QLabel):
 
     def set_new_value(self, val):
         self.slider_ref.setValue(val)
-        
+
         # --- Inform Artisan of the change ---
         if self.release_callback:
             self.release_callback(self.index)
-            
+
         self.update_style(True)
         QTimer.singleShot(150, lambda: self.update_style(False))
 
@@ -582,20 +561,20 @@ class PhaseWidget(QFrame):
         self.lbl.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         self.lbl.setAlignment(Qt.AlignmentFlag.AlignCenter) # Align to bottom
         self.lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.lbl.setStyleSheet("color: #94A3B8; font-size: 12px; font-weight: 800; border: none;")
+        self.lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px; font-weight: 800; border: none;")
         self.lbl.setAutoFillBackground(True)
 
         self.stats = QLabel("00:00 (0%)")
         self.stats.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.stats.setStyleSheet("color: #64748B; font-size: 13px; font-family: 'JetBrains Mono'; border: none;")
+        self.stats.setStyleSheet(f"color: {THEME['OVERLAY0']}; font-size: 13px; font-family: 'JetBrains Mono'; border: none;")
 
         self.bar = QProgressBar()
         self.bar.setFixedHeight(4)
         self.bar.setTextVisible(False)
-        self.bar.setStyleSheet(f"QProgressBar {{ background: #1E1E2E; border: none; border-radius: 3px; }} QProgressBar::chunk {{ background: {color}; border-radius: 3px; }}")
+        self.bar.setStyleSheet(f"QProgressBar {{ background: {THEME['BG']}; border: none; border-radius: 3px; }} QProgressBar::chunk {{ background: {color}; border-radius: 3px; }}")
 
         self.layout.addWidget(self.lbl)
-        self.layout.addWidget(self.stats) 
+        self.layout.addWidget(self.stats)
         self.layout.addSpacing(10)
         self.layout.addWidget(self.bar)
         self.setStyleSheet("border: none; background: transparent;")
@@ -611,15 +590,15 @@ class PhaseWidget(QFrame):
             self.lbl.setStyleSheet("color: white; font-size: 12px; font-weight: 900; border: none;")
             self.stats.setStyleSheet("color: white; font-size: 13px; font-family: 'JetBrains Mono'; font-weight: bold; border: none;")
             self.setStyleSheet(f"""
-                PhaseWidget {{ 
-                    background: {self.theme['BG']}; 
-                    border-radius: 10px; 
-                    border: 2px solid {self.phase_color}; 
+                PhaseWidget {{
+                    background: {self.theme['BG']};
+                    border-radius: 10px;
+                    border: 2px solid {self.phase_color};
                 }}
             """)
         else:
             # INACTIVE: Normal gray/white style, no border
-            self.lbl.setStyleSheet("color: #64748B; font-size: 12px; border: none;")
+            self.lbl.setStyleSheet(f"color: {THEME['OVERLAY0']}; font-size: 12px; border: none;")
             self.stats.setStyleSheet("color: #475569; font-size: 13px; border: none;font-size: 13px; font-family: 'JetBrains Mono'; ")
             self.setStyleSheet("PhaseWidget { background: transparent; border: none; }")
 
@@ -631,7 +610,7 @@ class PhaseWidget(QFrame):
             new_text = f"{m:02d}:{s:02d} ({percent}%)"
             if self.stats.text() != new_text: # Only update if string changed
                 self.stats.setText(new_text)
-    
+
     def set_progress(self, percent):
         """Sets the progress bar value (0-100)."""
         self.bar.setValue(min(100, max(0, int(percent))))
@@ -640,10 +619,10 @@ class FlowLayout(QLayout):
     def __init__(self, parent=None, margin=0, spacing=-1):
         super().__init__(parent)
         # Initialize attributes BEFORE setting margins or adding items
-        self._height_cache = {} 
+        self._height_cache = {}
         self._cached_min_size = None
         self.items = []
-        
+
         if parent is not None:
             self.setContentsMargins(margin, margin, margin, margin)
         self.setSpacing(spacing)
@@ -676,18 +655,18 @@ class FlowLayout(QLayout):
             self.invalidate()
             return self.items.pop(index)
         return None
-    
+
     def expandingDirections(self):
         return Qt.Orientation(0)
 
     def hasHeightForWidth(self):
         return True
-    
+
     def heightForWidth(self, width):
         # Optimization: Return cached height if we already calculated it for this width
         if width in self._height_cache:
             return self._height_cache[width]
-        
+
         h = self._do_layout(QRect(0, 0, width, 0), True)
         self._height_cache[width] = h
         return h
@@ -698,20 +677,20 @@ class FlowLayout(QLayout):
 
     def sizeHint(self):
         return self.minimumSize()
-    
+
     def minimumSize(self):
         if self._cached_min_size:
             return self._cached_min_size
-            
+
         size = QSize()
         for item in self.items:
             size = size.expandedTo(item.minimumSize())
-        
+
         margin = self.contentsMargins().left()
         size += QSize(2 * margin, 2 * margin)
         self._cached_min_size = size
         return size
-    
+
     def _do_layout(self, rect, test_only):
         """Perform the actual layout logic."""
         m_left, m_top, m_right, m_bottom = self.getContentsMargins()
@@ -728,7 +707,7 @@ class FlowLayout(QLayout):
             item_h = s_hint.height()
 
             next_x = x + item_w + spacing
-            
+
             # If we exceed the width, wrap to the next line
             if next_x - spacing > right_limit and line_height > 0:
                 x = rect.x() + m_left
@@ -743,7 +722,7 @@ class FlowLayout(QLayout):
             line_height = max(line_height, item_h)
 
         return y + line_height + m_bottom - rect.y()
-    
+
 class EventPanel(QWidget):
 
     # signal émis après chaque action : (label, commande, timestamp, couleur_hex)
@@ -763,43 +742,47 @@ class EventPanel(QWidget):
         self.settings = QSettings()
         self.oldPos = QPoint()
 
-        self.setStyleSheet("QToolTip { color: #ffffff; background-color: #2D2D35; border: 1px solid #585B70; }")
-        
+        self.setStyleSheet(f"QToolTip {{ color: #ffffff; background-color: #2D2D35; border: 1px solid {THEME['SURFACE2']}; }}")
+
         # Allow resizing for this panel
         self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.bm = button_manager
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.layout = QVBoxLayout(self)
-        self.setLayout(self.layout)        
+        self.setLayout(self.layout)
         self.layout.setContentsMargins(5, 5, 5, 5)
         self.layout.setSpacing(8)
         self.container = QFrame()
         self.container.setObjectName("MainOuterContainer") # Give it a unique ID
 
-        self.container.setStyleSheet("""
-            #MainOuterContainer {
-                background-color: #1E1E2E; 
-                border: 2px solid #313244; 
+        self.container.setStyleSheet(f"""
+            #MainOuterContainer {{
+                background-color: {THEME['BG']};
+                border: 2px solid {THEME['BORDER']};
                 border-radius: 8px;
-            }
-            QLabel, QFrame { 
-                border: none; 
-                background: transparent; 
-            }
+            }}
+            QLabel, QFrame {{
+                border: none;
+                background: transparent;
+            }}
         """)
 
-        
+
         # Use the custom FlowLayout instead of QGridLayout
         self.flow_layout = FlowLayout(self.container, margin=10, spacing=8)
-        
+
         visible_buttons = [b for b in button_manager.buttons if b.visible]
 
         for i, btn_obj in enumerate(visible_buttons):
             btn = QPushButton(btn_obj.label)
-            # IMPORTANT: Fixed size prevents the layout from stretching them
+            # IMPORTANT: Fixed size prevents the layout from stretching them.
+            # Keep BOTH dimensions fixed here. This panel is a free
+            # floating bar on a FlowLayout, not the 330px milestone grid — the
+            # width was dropped once by mistake, carrying over that grid's fix,
+            # and the row became a ragged run of content-sized buttons.
             btn.setFixedSize(90, 45)
-            ## TILAU ## tooltip now exposes the event type and the signed/percent offset value, not just the command
+            # tooltip now exposes the event type and the signed/percent offset value, not just the command
             tip = f"<b>{btn_obj.get_action_name()}</b><br>"
             tip += QApplication.translate('Tooltip', '<b>Type </b>= ') + btn_obj.type_label + '<br>'
             if btn_obj.ui_type != 4:  # type 4 = no event assigned -> no offset value to show
@@ -808,12 +791,11 @@ class EventPanel(QWidget):
                 tip += QApplication.translate('Tooltip', '<b>Documentation </b>= ') + btn_obj.command
             btn.setToolTip(tip)
             btn.setStyleSheet(f"""
-                QPushButton {{ 
-                    background: #1E1E2E; color: #CDD6F4; border-radius: 6px;
-                    border-left: 4px solid {btn_obj.color}; border-top: 1px solid #313244;
-                    border-bottom: 1px solid #313244; border-right: 1px solid #313244;
-                    font-family: 'JetBrains Mono';
-                    font-size: 11px; 
+                QPushButton {{
+                    background: {THEME['BG']}; color: {THEME['TEXT']}; border-radius: 6px;
+                    border-left: 4px solid {btn_obj.color}; border-top: 1px solid {THEME['BORDER']};
+                    border-bottom: 1px solid {THEME['BORDER']}; border-right: 1px solid {THEME['BORDER']};
+                    font-size: 11px;
                     font-weight: bold;
                 }}
                 QPushButton:hover {{ background: #28283D; }}
@@ -821,13 +803,13 @@ class EventPanel(QWidget):
             """)
             btn.clicked.connect(lambda checked, i=i, b_w=btn, b_o=btn_obj: self.execute_action(i, b_w, b_o))
             self.flow_layout.addWidget(btn)
-            
+
         self.layout.addWidget(self.container)
-        
+
         self.oldPos = QPoint()
 
         # --- SMART DYNAMIC INITIAL SIZE ---
-        
+
         # 1. Configuration matching your button/layout settings
         btn_h = 45      # From btn.setFixedHeight(45)
         spacing = 8     # From FlowLayout(..., spacing=8)
@@ -849,20 +831,20 @@ class EventPanel(QWidget):
         # Get the height required for the current width
         # 45 (button) + 10 (margins) = 55 approx for 1 row
         width = self.width() if self.width() > 0 else 800
-        needed_height = self.layout.heightForWidth(width) + 10 
+        needed_height = self.layout.heightForWidth(width) + 10
         self.setFixedHeight(needed_height)
 
     def execute_action(self, i, btn_widget:QPushButton, btn_obj:ExtraEventButton):
-       
+
         # 1. Capture original style once if not already stored
         if not hasattr(btn_widget, '_original_style'):
             btn_widget._original_style = btn_widget.styleSheet()
 
         # 2. Apply flash style
         btn_widget.setStyleSheet(f"""
-            QPushButton {{ 
-                background: {btn_obj.color}; 
-                color: {btn_obj.text_color}; 
+            QPushButton {{
+                background: {btn_obj.color};
+                color: {btn_obj.text_color};
                 border: 2px solid white;
                 font-weight: bold;
             }}
@@ -876,7 +858,7 @@ class EventPanel(QWidget):
             btn_widget._flash_timer.timeout.connect(
                 lambda: btn_widget.setStyleSheet(btn_widget._original_style)
             )
-        
+
         # 4. Restarting an existing timer is much cheaper than creating a new singleShot
         btn_widget._flash_timer.start(150)
 
@@ -899,14 +881,6 @@ class EventPanel(QWidget):
         except Exception:
             pass
 
-        # 5. enable buttons based on current press, disable previous buttons
-        #visible_buttons:list[ExtraEventButton] = [b for b in self.bm.buttons if b.visible]
-        #for n, btn_obj in enumerate(visible_buttons): # fixed 2026/03/29: was iterating over wrong object before
-        #    enabled = i >= n
-        #    btn_obj.setEnabled(enabled)
-
-        # Revert the style after 150ms to simulate a physical click
-        #QTimer.singleShot(150, lambda: btn_widget.setStyleSheet(original_style))    
 
     # --- Capture Clavier (Redirection vers TilauScope) ---
     def keyPressEvent(self, event):
@@ -919,7 +893,7 @@ class EventPanel(QWidget):
     def mouseMoveEvent(self, event):
         # Ensure we are subtracting two QPoints
         current_pos = event.globalPosition().toPoint()
-        delta = current_pos - self.oldPos 
+        delta = current_pos - self.oldPos
         self.move(self.x() + delta.x(), self.y() + delta.y())
         self.oldPos = current_pos
 
@@ -1025,11 +999,11 @@ class BigControlCard(QFrame):
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
         # Card itself is transparent; all painting is on card_body. The QToolTip
         # rule themes the card tooltips (else they render in the default white
-        # OS style). ## TILAU ##
+        # OS style).
         self.setStyleSheet(
             "BigControlCard { background: transparent; border: none; }"
-            "QToolTip { background-color: #2D2F3F; color: #CDD6F4;"
-            " border: 1px solid #585B70; padding: 4px; border-radius: 4px; }"
+            f"QToolTip {{ background-color: #2D2F3F; color: {THEME['TEXT']};"
+            f" border: 1px solid {THEME['SURFACE2']}; padding: 4px; border-radius: 4px; }}"
         )
 
         outer = QVBoxLayout(self)
@@ -1100,9 +1074,8 @@ class BigControlCard(QFrame):
         # ── Name label (below the card body) ─────────────────────────────────
         name_lbl = QLabel(self.name)
         name_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        name_lbl.setStyleSheet("""
-            color: #585B70;
-            font-family: 'JetBrains Mono';
+        name_lbl.setStyleSheet(f"""
+            color: {THEME['SURFACE2']};
             font-size: 10px;
             font-weight: 800;
             letter-spacing: 0.5px;
@@ -1154,7 +1127,7 @@ class BigControlCard(QFrame):
             self.release_callback(self.index)
         # Brief colour flash so the user sees the change registered
         self.val_lbl.setStyleSheet(f"""
-            color: #11111B;
+            color: {THEME['CRUST']};
             font-family: 'JetBrains Mono';
             font-size: 19px;
             font-weight: bold;
@@ -1249,8 +1222,7 @@ class ToggleBar(QFrame):
 
 class BigControlsRow(QWidget):
     """
-    Horizontal row of 4 BigControlCard widgets (sliders 0-3).
-    Replaces the 4 QHBoxLayout slider rows when the ToggleBar is clicked.
+    Horizontal row of 4 BigControlCard widgets (sliders 0-3), shown when the ToggleBar is clicked.
 
     card_configs is a list of tuples:
         (name, color, slider_ref, index, release_callback, unit, min_val, max_val, step)
@@ -1281,21 +1253,21 @@ class TilauscopeSlider(QSlider):
         super().__init__(Qt.Orientation.Horizontal, parent)
         self.accent_color = accent_color
         self.setMinimumHeight(30)
-        
+
         self.setStyleSheet(f"""
-        QSlider {{ 
-            border: none; 
-            background: transparent; 
-            height: 30px; 
+        QSlider {{
+            border: none;
+            background: transparent;
+            height: 30px;
         }}
-        QSlider::groove:horizontal {{ 
+        QSlider::groove:horizontal {{
             background: #333; /* Un fond sombre pour voir la glissière */
-            height: 6px; 
+            height: 6px;
             border-radius: 3px;
         }}
-        QSlider::handle:horizontal {{ 
-            background: {self.accent_color}; 
-            width: 18px; 
+        QSlider::handle:horizontal {{
+            background: {self.accent_color};
+            width: 18px;
             height: 18px;
             margin: -6px 0; /* Centre le handle verticalement sur le groove */
             border-radius: 9px;
@@ -1331,7 +1303,7 @@ class TilauscopeSlider(QSlider):
             opt = QStyleOptionSlider()
             self.initStyleOption(opt)
             sr = self.style().subControlRect(QStyle.ComplexControl.CC_Slider, opt, QStyle.SubControl.SC_SliderHandle, self)
-            
+
             if not sr.contains(event.pos()):
                 new_val = self.minimum() + ((self.maximum() - self.minimum()) * event.position().x()) / self.width()
                 self.setValue(int(new_val))
@@ -1348,7 +1320,7 @@ class ClickableLabel(QLabel):
 # --- EXTRA DEVICES ---
 
 class ExtraCounterWidget(QFrame):
-    def __init__(self, name, color="#89B4FA"):
+    def __init__(self, name, color=THEME['ACCENT']):
         super().__init__()
 
         self.layout = QVBoxLayout(self)
@@ -1357,7 +1329,7 @@ class ExtraCounterWidget(QFrame):
 
         self.name_lbl = QLabel(name.upper())
         self.name_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.name_lbl.setStyleSheet("color: #64748B; font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 800; border: none;")
+        self.name_lbl.setStyleSheet(f"color: {THEME['OVERLAY0']}; font-size: 10px; font-weight: 800; border: none;")
 
         self.val_lbl = QLabel("0.0")
         self.val_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -1440,12 +1412,12 @@ class ExtraCountersPanel(QWidget):
         # ── container frame ──────────────────────────────────────────────────
         self.container = QFrame()
         self.container.setObjectName("ExtraContainer")
-        self.container.setStyleSheet("""
-            #ExtraContainer {
-                background-color: rgba(24, 24, 37, 230);
-                border: 2px solid #45475A;
+        self.container.setStyleSheet(f"""
+            #ExtraContainer {{
+                background-color: {tint('SURFACE', 230)};
+                border: 2px solid {THEME['SURFACE1']};
                 border-radius: 12px;
-            }
+            }}
         """)
         outer.addWidget(self.container)
 
@@ -1456,14 +1428,13 @@ class ExtraCountersPanel(QWidget):
         # ── title / drag bar ─────────────────────────────────────────────────
         title_bar = QWidget()
         title_bar.setFixedHeight(18)
-        title_bar.setStyleSheet("background: transparent;")
         title_layout = QHBoxLayout(title_bar)
         title_layout.setContentsMargins(4, 0, 4, 0)
         title_layout.setSpacing(0)
 
         dots_lbl = QLabel("⋯")
         dots_lbl.setStyleSheet(
-            "color: #45475A; font-size: 12px; font-weight: bold; border: none;"
+            f"color: {THEME['SURFACE1']}; font-size: 12px; font-weight: bold; border: none;"
         )
         dots_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -1480,9 +1451,6 @@ class ExtraCountersPanel(QWidget):
         self.inner_layout = FlowLayout(self.flow_container, margin=2, spacing=4)
         inner.addWidget(self.flow_container)
 
-        # stretch so the flow area takes all available vertical space
-        #inner.addStretch(1)
-
         # ── populate ─────────────────────────────────────────────────────────
         self.init_counters()
 
@@ -1491,7 +1459,7 @@ class ExtraCountersPanel(QWidget):
         self.container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         self.restore_geometry() # read first values
 
-        
+
     # ── counter management ────────────────────────────────────────────────────
 
     def init_counters(self):
@@ -1508,7 +1476,7 @@ class ExtraCountersPanel(QWidget):
                 self._add_item(qmc.device_name_subst(n2[i]), source_id=2, idx=i)
 
     def _add_item(self, name: str, source_id: int, idx: int):
-        color = "#89B4FA" if source_id == 1 else "#E5E54F"
+        color = THEME['ACCENT'] if source_id == 1 else "#E5E54F"
         w = ExtraCounterWidget(name, color)
         self.inner_layout.addWidget(w)
         self.active_counters.append((w, source_id, idx))
@@ -1569,11 +1537,10 @@ class ExtraCountersPanel(QWidget):
         super().paintEvent(event)
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-        grip_color = QColor("#6c7086")
+        grip_color = QColor(THEME['OVERLAY0'])
         p.setPen(grip_color)
         r = self.rect()
         # Draw three diagonal dotted lines (standard resize-grip look)
-        gs = self._GRIP_SIZE
         for offset in (4, 8, 12):
             x = r.right()  - offset
             y = r.bottom() - 2
@@ -1598,7 +1565,6 @@ class ExtraCountersPanel(QWidget):
             saved_h = self.settings.value(self._SETTINGS_H, 100, type=int)
             pos_x   = self.settings.value(self._SETTINGS_X, 100, type=int)
             pos_y   = self.settings.value(self._SETTINGS_Y, 100, type=int)
-            #_log.info(f"restore position of extracounter panel w={saved_w} h={saved_h} x={pos_x} y={pos_y}")
             self.resize(saved_w, saved_h)
             self.move(pos_x, pos_y)
 
@@ -1655,7 +1621,7 @@ class ExtraCountersPanel(QWidget):
         else:
             self.setCursor(Qt.CursorShape.ArrowCursor)
 
-        
+
     # Qt calls this automatically for hover — we override it here:
     def event(self, e):
         if e.type() == QEvent.Type.HoverMove:
@@ -1734,21 +1700,17 @@ class LCDReadout(QFrame):
         self._last_ror_color = None  # Couleur RoR précédente : évite un reparse de style à chaque échantillon
 
         # Define hierarchy: Main (RoR) is larger, others are smaller
-        fixed_width = 100 if is_main else 80
-        ## TILAU ## The readouts stretch to fill the row, and at the previous
-        ## sizes the digits floated in a mostly empty box. Widest reading is
-        ## "-100.5" (6 chars ≈ 101 px at 28 px in JetBrains Mono) against a
-        ## ~118 px column, so the block still fits with room to spare.
+        # The readouts stretch to fill the row, and at the previous
+        # sizes the digits floated in a mostly empty box. Widest reading is
+        # "-100.5" (6 chars ≈ 101 px at 28 px in JetBrains Mono) against a
+        # ~118 px column, so the block still fits with room to spare.
         font_size_val = 28 if not is_main else 30
         font_size_lab = 12
-        min_height    = 80 if is_main else 70
-    
+
         self.setMinimumWidth(80) # Sécurité minimale
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)        
-        #self.setFixedWidth(fixed_width)  # <--- FORCE la largeur du bloc complet
-        #self.setMinimumHeight(min_height)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self._apply_bg(self._BG_NEUTRAL)
-        
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 8, 4, 8) # Marges internes
         layout.setSpacing(2)                  # Espace réduit entre titre et valeur
@@ -1758,9 +1720,9 @@ class LCDReadout(QFrame):
         self.lbl_title = QLabel(label.upper()) # Upper pour le look pro
         self.lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_title.setStyleSheet(
-            f"color: {color}; "
-            f"font-family: 'JetBrains Mono'; "
-            f"font-weight: bold; "
+            f"color: {color};"
+            f""
+            f"font-weight: bold;"
             f"font-size: {font_size_lab}px; "
             "background: transparent;"
         )
@@ -1770,9 +1732,9 @@ class LCDReadout(QFrame):
         self.lbl_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
         # On utilise une largeur de ligne fixe (ex: 3 chiffres + point + 1 décimale)
         self.lbl_value.setStyleSheet(
-            f"color: {color}; "
-            f"font-family: 'JetBrains Mono'; "
-            f"font-size: {font_size_val}px; "
+            f"color: {color};"
+            f"font-family: 'JetBrains Mono';"
+            f"font-size: {font_size_val}px;"
             f"font-weight: 800; " # Plus épais pour la lisibilité
             "background: transparent;"
         )
@@ -1819,7 +1781,7 @@ class LCDReadout(QFrame):
                 border: 1px solid {border_color};
                 border-radius: 6px;
             }}
-            QLabel {{ font-family: 'JetBrains Mono'; border: none; background: transparent; }}
+            QLabel {{ border: none; background: transparent; }}
         """)
 
     @staticmethod
@@ -1894,12 +1856,12 @@ class LCDReadout(QFrame):
     # Paliers de couleur RoR (seuils en °C, adaptés si mode F)
     _ROR_PALETTE = [
         (0,   "#4FC3F7"),  # bleu  — négatif / nul
-        (5,   "#6C7086"),  # gris  — 0–5
+        (5,   THEME['OVERLAY0']),  # gris  — 0–5
         (10,  "#A6E3A1"),  # vert  — 5–10  (idéal)
-        (15,  "#F9E2AF"),  # jaune — 10–15
+        (15,  THEME['YELLOW']),  # jaune — 10–15
         (20,  "#FAB387"),  # orange — 15–20
     ]
-    _ROR_RED = "#F38BA8"   # rouge — ≥ 20°C/min
+    _ROR_RED = THEME['CRITICAL']   # rouge — ≥ 20°C/min
 
     def set_ror_color(self, ror_value: float, mode: str = 'C') -> None:
         """Colorise lbl_value selon la valeur du RoR.
@@ -1917,7 +1879,7 @@ class LCDReadout(QFrame):
             return
         self._last_ror_color = color
         self.lbl_value.setStyleSheet(
-            f"color: {color}; font-family: 'JetBrains Mono'; "
+            f"color: {color}; font-family: 'JetBrains Mono';"
             f"font-size: {24 if not hasattr(self,'_is_main') else 28}px; "
             "font-weight: 800; background: transparent;"
         )
@@ -1952,7 +1914,7 @@ class LCDReadout(QFrame):
             self.lbl_title.setProperty("_base_text", base_text)
         self.lbl_title.setText(
             f'{base_text}<br>'
-            f'<span style="font-size:9px;color:#585B70;font-weight:400;">'
+            f'<span style="font-size:9px;color:{THEME["SURFACE2"]};font-weight:400;">'
             f'↓{self._mm_min:.1f}  ↑{self._mm_max:.1f}</span>'
         )
         self.lbl_title.setTextFormat(Qt.TextFormat.RichText)
@@ -2004,16 +1966,16 @@ class TilauscopePanel(QWidget):
         )
 
         # Adding to layout with Stretch Factors:
-        ## TILAU ## BT/ET widened: at 320px/stretch(2,2,3) the "NNN.N" reading
-        ## (3 integer digits) didn't fit the BT/ET box and got clipped on the
-        ## right. Restoring the panel to 360px and giving BT/ET a bigger share
-        ## fixes it without shrinking RoR below its previous width.
+        # BT/ET widened: at 320px/stretch(2,2,3) the "NNN.N" reading
+        # (3 integer digits) didn't fit the BT/ET box and got clipped on the
+        # right. Restoring the panel to 360px and giving BT/ET a bigger share
+        # fixes it without shrinking RoR below its previous width.
         self.metrics_layout.addWidget(self.tg_lcd, stretch=3)
         self.metrics_layout.addWidget(self.te_lcd, stretch=3)
         self.metrics_layout.addWidget(self.ror_lcd, stretch=4)
 
         self.setStyleSheet("background-color: #0b0b0b;")
-        self.setFixedWidth(360)   ## TILAU ## widened back from 320 to stop BT/ET readouts truncating
+        self.setFixedWidth(360)   # widened back from 320 to stop BT/ET readouts truncating
 
 # --- ALARM SIDEBAR ---
 
@@ -2060,7 +2022,7 @@ class TriggeredAlarmBadge(QFrame):
 
         self.setFixedWidth(200)
         self.setMinimumHeight(60)
-        
+
         # Style basé sur le style VisualAlarm de tilauscope
         self.setStyleSheet(f"""
             QFrame {{
@@ -2069,20 +2031,20 @@ class TriggeredAlarmBadge(QFrame):
                 border-radius: 10px;
             }}
         """)
-        
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 5, 10, 5)
         layout.setSpacing(2)
-        
+
         # Header: ID et Source
         header = QLabel(QApplication.translate("Label","Alarm")+f" #{self.data.index + 1}")
         header.setStyleSheet(f"color: {self.color}; font-weight: 900; font-size: 9px; border: none;")
-        
+
         # Message / Action
         msg = QLabel(self.define_text(alarm_data))
         msg.setStyleSheet("color: white; font-weight: normal; font-size: 9px; border: none;")
         msg.setWordWrap(True)
-        
+
         layout.addWidget(header)
         layout.addWidget(msg)
 
@@ -2105,7 +2067,7 @@ class TriggeredAlarmBadge(QFrame):
         # Annotation Box
         if alarm.action == 25 or alarm.action >= 8 and alarm.action <= 25:
             body =  f"{self.ACTION_LIST.get(alarm.action, 'Action')}"
-            body += f" ({alarm.msg})\n" if alarm.msg else ""    
+            body += f" ({alarm.msg})\n" if alarm.msg else ""
         else:
             body = f"{self.ACTION_LIST.get(alarm.action, 'Action')}={alarm.msg}"
         if alarm.alarm_source != -3:
@@ -2117,9 +2079,9 @@ class TriggeredAlarmBadge(QFrame):
         return f"{header}\n{body}"
 
 class EventFiredBadge(QFrame):
-    """Carte affichée dans AlarmSidebar lors d'un appui sur un bouton EventPanel.
+    f"""Carte affichée dans AlarmSidebar lors d'un appui sur un bouton EventPanel.
 
-    Style : fond #1E1E2E, bordure gauche 4 px couleur Artisan, tag EVT,
+    Style : fond {THEME['BG']}, bordure gauche 4 px couleur Artisan, tag EVT,
     fade-in 400 ms identique à TriggeredAlarmBadge.
     """
 
@@ -2129,7 +2091,7 @@ class EventFiredBadge(QFrame):
         self.setMinimumHeight(60)
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: #1E1E2E;
+                background-color: {THEME['BG']};
                 border: 1px solid {color}33;
                 border-left: 4px solid {color};
                 border-radius: 8px;
@@ -2144,7 +2106,7 @@ class EventFiredBadge(QFrame):
         tag = QLabel("EVT")
         tag.setStyleSheet(f"color: {color}; font-weight: 900; font-size: 9px; border: none; letter-spacing: 1px;")
         ts_lbl = QLabel(timestamp)
-        ts_lbl.setStyleSheet("color: #585B70; font-size: 9px; border: none;")
+        ts_lbl.setStyleSheet(f"color: {THEME['SURFACE2']}; font-size: 9px; border: none;")
         ts_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         header_row.addWidget(tag)
         header_row.addStretch(1)
@@ -2160,7 +2122,7 @@ class EventFiredBadge(QFrame):
         # Commande (si disponible)
         if command:
             cmd_lbl = QLabel(command)
-            cmd_lbl.setStyleSheet("color: #6C7086; font-size: 9px; border: none;")
+            cmd_lbl.setStyleSheet(f"color: {THEME['OVERLAY0']}; font-size: 9px; border: none;")
             cmd_lbl.setWordWrap(True)
             layout.addWidget(cmd_lbl)
 
@@ -2181,20 +2143,20 @@ class AlarmSidebar(QWidget):
         self.layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.layout.setContentsMargins(4, 4, 4, 4)
         self.layout.setSpacing(5)
-        
+
         # ── Barre de titre : LIVE EVENTS | compteur | bouton clear ────────
         title_row = QHBoxLayout()
         title_row.setContentsMargins(2, 0, 2, 0)
         title_row.setSpacing(4)
 
         lbl = QLabel(QApplication.translate("tilauscope_window", "LIVE EVENTS"))
-        lbl.setStyleSheet(f"color: {THEME['ACCENT']}; font-weight: bold; font-family: 'JetBrains Mono';")
+        lbl.setStyleSheet(f"color: {THEME['ACCENT']}; font-weight: bold; ")
         title_row.addWidget(lbl, 1)
 
         # Compteur de cartes
         self._count_lbl = QLabel("0")
         self._count_lbl.setStyleSheet(
-            f"color: {THEME['ACCENT']}; background: #313244; font-size: 9px; font-weight: 700;"
+            f"color: {THEME['ACCENT']}; background: {THEME['BORDER']}; font-size: 9px; font-weight: 700;"
             "border-radius: 8px; padding: 1px 6px; font-family: 'JetBrains Mono';"
         )
         self._count_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -2204,16 +2166,17 @@ class AlarmSidebar(QWidget):
         # Bouton clear
         clear_btn = QPushButton("✕")
         clear_btn.setFixedSize(18, 18)
+        clear_btn.setProperty('variant', 'icon')   # fixed square: no base padding
         clear_btn.setToolTip(QApplication.translate("tilauscope_window", "Clear all events"))
         clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        clear_btn.setStyleSheet("""
-            QPushButton {
-                background: #313244; color: #6C7086;
+        clear_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {THEME['BORDER']}; color: {THEME['OVERLAY0']};
                 border-radius: 4px; border: none;
                 font-size: 9px; font-weight: bold;
-            }
-            QPushButton:hover { background: #45475A; color: #F38BA8; }
-            QPushButton:pressed { background: #F38BA8; color: #1E1E2E; }
+            }}
+            QPushButton:hover {{ background: {THEME['SURFACE1']}; color: {THEME['CRITICAL']}; }}
+            QPushButton:pressed {{ background: {THEME['CRITICAL']}; color: {THEME['BG']}; }}
         """)
         clear_btn.clicked.connect(self._clear_all_badges)
         title_row.addWidget(clear_btn)
@@ -2226,20 +2189,19 @@ class AlarmSidebar(QWidget):
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self._scroll.setStyleSheet("""
-            QScrollArea { background: transparent; border: none; }
-            QScrollBar:vertical {
-                background: #1E1E2E; width: 6px; margin: 0;
+        self._scroll.setStyleSheet(f"""
+            QScrollArea {{ background: transparent; border: none; }}
+            QScrollBar:vertical {{
+                background: {THEME['BG']}; width: 6px; margin: 0;
                 border-radius: 3px;
-            }
-            QScrollBar::handle:vertical {
-                background: #45475A; min-height: 20px; border-radius: 3px;
-            }
-            QScrollBar::handle:vertical:hover { background: #585B70; }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+            }}
+            QScrollBar::handle:vertical {{
+                background: {THEME['SURFACE1']}; min-height: 20px; border-radius: 3px;
+            }}
+            QScrollBar::handle:vertical:hover {{ background: {THEME['SURFACE2']}; }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
         """)
         self._badges_widget = QWidget()
-        self._badges_widget.setStyleSheet("background: transparent;")
         self._badges_layout = QVBoxLayout(self._badges_widget)
         self._badges_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self._badges_layout.setSpacing(5)
@@ -2289,7 +2251,7 @@ class AlarmSidebar(QWidget):
         # convert alarms structure to class data object
         self._load_alarms(raw_alarms)
 
-    def get_current_alarms_data(self):    
+    def get_current_alarms_data(self):
         alarms:dict[str, list[int]|list[float]|list[str]] = {}
         alarms['alarmflags'] = self.aw.qmc.alarmflag
         alarms['alarmguards'] = self.aw.qmc.alarmguard
@@ -2459,32 +2421,15 @@ class _SidebarWrapper(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Header bar (matches grip tab height visually)
-#        header = QWidget()
-#        header.setFixedHeight(28)
-#        header.setStyleSheet(f"background: {_COL_SURFACE0};")
-#        h_lyt = QHBoxLayout(header)
-#        h_lyt.setContentsMargins(8, 0, 8, 0)
-#        lbl = QLabel("LIVE EVENTS")
-#        lbl.setStyleSheet(
-#            f"color: {_COL_LAVENDER}; font-size: 10px; font-weight: 800; "
-#            "font-family: 'JetBrains Mono'; letter-spacing: 1px; border: none;"
-#        )
-#        h_lyt.addWidget(lbl)
-#        h_lyt.addStretch()
-
-        # Alarm sidebar (imported from same module — AlarmSidebar is defined
-        # in displayscope.py above this class)
+        # Alarm sidebar (AlarmSidebar is defined in displayscope.py above this class)
         self.alarm_sidebar = AlarmSidebar(aw, self)   # noqa: F821
-        # AlarmSidebar sets setFixedWidth(200) internally — we need to remove
-        # that or it fights our own fixed width. Override with setSizePolicy.
+        # AlarmSidebar sets setFixedWidth(200) internally; override with setSizePolicy so it doesn't fight our fixed width.
         self.alarm_sidebar.setMinimumWidth(0)
         self.alarm_sidebar.setMaximumWidth(SIDEBAR_W)
         self.alarm_sidebar.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
 
-        #layout.addWidget(header)
         layout.addWidget(self.alarm_sidebar, stretch=1)
 
         # ── Ticker messages Artisan (sous les badges alarmes/events) ──────────
@@ -2601,65 +2546,65 @@ class CollapsibleLiveEvents:
 
 # --- SURCHARGE DES MENUS ---
 
-ARROW = "url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNDREQ2RjQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI5IDE4IDE1IDEyIDkgNiI+PC9wb2x5bGluZT48L3N2Zz4=)"     
+ARROW = "url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNDREQ2RjQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI5IDE4IDE1IDEyIDkgNiI+PC9wb2x5bGluZT48L3N2Zz4=)"
 
 # Use Python 3.14 f-strings for cleaner theme integration
-MENU_STYLE = """
-    QMenu {
-        background-color: #1E1E2E; /* Background of the menu */
-        border: 1px solid #313244;
-        color: #CDD6F4;
+MENU_STYLE = f"""
+    QMenu {{
+        background-color: {THEME['BG']}; /* Background of the menu */
+        border: 1px solid {THEME['BORDER']};
+        color: {THEME['TEXT']};
         padding: 4px;
-    }
+    }}
 
-    QMenu::item {
+    QMenu::item {{
         padding: 6px 24px 6px 24px;
         border-radius: 4px;
         min-width: 150px;
-    }
+    }}
 
     /* Distinctive color for hovered/selected items */
-    QMenu::item:selected {
-        background-color: #313244;
+    QMenu::item:selected {{
+        background-color: {THEME['BORDER']};
         color: #F5E0DC;
-    }
+    }}
 
     /* 1. Handling Disabled Lines: Lower opacity or specific muted color */
-    QMenu::item:disabled {
-        color: #585B70; /* Muted gray for disabled inputs */
+    QMenu::item:disabled {{
+        color: {THEME['SURFACE2']}; /* Muted gray for disabled inputs */
         background-color: transparent;
-    }
+    }}
 
     /* 2. Handling Checked Inputs: Highlight checked state */
-    QMenu::item:checked {
+    QMenu::item:checked {{
         font-weight: bold;
         color: #A6E3A1; /* Distinctive green for checked items */
-    }
+    }}
 
     /* Styling the check indicator itself */
-    QMenu::indicator:checked {
+    QMenu::indicator:checked {{
         image: url(check_icon.png); /* Optional: path to an icon */
         width: 12px;
         height: 12px;
         margin-left: 5px;
-    }
+    }}
 
     /* Distinctive styling for separators */
-    QMenu::separator {
+    QMenu::separator {{
         height: 1px;
-        background: #313244;
+        background: {THEME['BORDER']};
         margin: 4px 10px;
-    }
+    }}
 
-    QMenu::icon {
+    QMenu::icon {{
         left: 5px;
         /* Ce filtre inverse les couleurs de l'icône (Noir -> Blanc) */
-        /* Note: 'invert' est supporté par certains moteurs de rendu Qt6 
+        /* Note: 'invert' est supporté par certains moteurs de rendu Qt6
            Sinon, on joue sur l'opacité ou le remplacement via QProxyStyle */
-    }
+    }}
 """
 
-# --- PLAYBACK CHECK BEFORE ROASTING --- 
+# --- PLAYBACK CHECK BEFORE ROASTING ---
 
 class PlaybackWarningDlg(QDialog):
     """
@@ -2676,10 +2621,14 @@ class PlaybackWarningDlg(QDialog):
                          Qt.WindowType.FramelessWindowHint |
                          Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setStyleSheet("""
-            QDialog       { background-color: #ffffff; border: 1px solid #2c3e50; }
-            QTextEdit     { border: none; background: transparent; color: #2c3e50; font-size: 12px; }
-            QLabel#Header { font-weight: bold; font-size: 13px; color: #2c3e50; }
+        # One sheet per widget: setStyleSheet replaces, it does not
+        # merge, so the base has to be concatenated here rather than applied
+        # by apply_tilau_theme() and then overwritten on the next line.
+        # ground=False — the dialog is translucent and the visible surface is
+        # the #PlaybackWarning card below.
+        self.setStyleSheet(base_qss(ground=False) + f"""
+            QTextEdit     {{ border: none; background: transparent; font-size: 12px; }}
+            QLabel#Header {{ font-weight: bold; font-size: 13px; color: {THEME['TEXT']}; }}
         """)
         # ── Outer shell (gives the translucent rounded frame) ──────────────
         outer = QVBoxLayout(self)
@@ -2709,7 +2658,6 @@ class PlaybackWarningDlg(QDialog):
         title_lbl = QLabel(QApplication.translate("tilauscope_window", "TilauScope Security"))
         title_lbl.setStyleSheet(f"""
             color       : {THEME['ACCENT']};
-            font-family : 'JetBrains Mono', monospace;
             font-size   : 14px;
             font-weight : 800;
             letter-spacing: 1px;
@@ -2729,21 +2677,19 @@ class PlaybackWarningDlg(QDialog):
         q_lbl.setPixmap(self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxWarning).pixmap(48, 48))
         q_lbl.setStyleSheet(f"""
             color       : {THEME['ACCENT']};
-            font-family : 'JetBrains Mono', monospace;
             font-size   : 11px;
         """)
         root.addWidget(q_lbl)
-    
+
         modes_str = ", ".join(active_modes)
         text = (f"<b>{QApplication.translate('Message', 'WARNING REPLAY AUTOMATISM ARE ACTIVE')}</b><br><br>"
                 f"the following Features are activated on your background profile to replay events:<br><br>"
                 f"<span style='color: #e74c3c;'><b>{modes_str}</b></span><br><br>"
                 f"Do you really want to start the roast or review your configuration?")
-        
+
         label = QLabel(text)
         label.setStyleSheet(f"""
             color       : {THEME['ACCENT']};
-            font-family : 'JetBrains Mono', monospace;
             font-size   : 11px;
         """)
         label.setWordWrap(True)
@@ -2758,32 +2704,28 @@ class PlaybackWarningDlg(QDialog):
                 border           : none;
                 border-radius    : 6px;
                 padding          : 8px 18px;
-                font-family      : 'JetBrains Mono', monospace;
                 font-size        : 11px;
                 font-weight      : 700;
             }}
             QPushButton:hover {{
-                background-color : {THEME.get('HOVER', THEME['ACCENT'])};
+                background-color : {THEME['LAVENDER']};
             }}
             QPushButton:pressed {{
-                background-color : {THEME.get('SURFACE', '#1e1e2e')};
+                background-color : {THEME['SURFACE']};
                 color            : {THEME['ACCENT']};
                 border           : 1px solid {THEME['ACCENT']};
             }}
         """
-        
+
         # Boutons
         btn_layout = QHBoxLayout()
-        
+
         self.btn_cancel = QPushButton(QApplication.translate('Button', 'Cancel Roasting'))
-        self.btn_cancel.setStyleSheet(btn_style_primary)       
+        self.btn_cancel.setStyleSheet(btn_style_primary)
         self.btn_disable = QPushButton(QApplication.translate('Button', 'Deactivate all and Roast'))
-        self.btn_disable.setStyleSheet(btn_style_primary)       
+        self.btn_disable.setStyleSheet(btn_style_primary)
         self.btn_continue = QPushButton(QApplication.translate('Button', 'Continue as is'))
-        self.btn_continue.setStyleSheet(btn_style_primary)       
- 
-        # Style pour le bouton principal de désactivation
-#        self.btn_disable.setStyleSheet("font-weight: bold; padding: 5px;")
+        self.btn_continue.setStyleSheet(btn_style_primary)
 
         # Gestion de l'ordre des boutons (Native Look)
         if _IS_MACOS: # macOS
@@ -2820,54 +2762,54 @@ class PlaybackWarningDlg(QDialog):
 
 # Catppuccin Mocha mapping for Artisan qmc.palette keys
 _CATPPUCCIN_QMC: dict[str, str] = {
-    'canvas':           '#1E1E2E',  # Base
-    'background':       '#181825',  # Mantle
-    'grid':             '#313244',  # Surface0
+    'canvas':           THEME['BG'],  # Base
+    'background':       THEME['SURFACE'],  # Mantle
+    'grid':             THEME['BORDER'],  # Surface0
     'et':               '#FAB387',  # Peach  — ET curve
-    'bt':               '#89B4FA',  # Blue   — BT curve
-    'deltaet':          '#F9E2AF',  # Yellow — RoR ET
+    'bt':               THEME['ACCENT'],  # Blue   — BT curve
+    'deltaet':          THEME['YELLOW'],  # Yellow — RoR ET
     'deltabt':          '#A6E3A1',  # Green  — RoR BT
-    'title':            '#CDD6F4',  # Text
-    'xlabel':           '#94A3B8',  # Subtext1
-    'ylabel':           '#94A3B8',
-    'text':             '#CDD6F4',
-    'messages':         '#CDD6F4',
-    'markers':          '#CDD6F4',
-    'timeguide':        '#585B70',  # Surface2
-    'aucguide':         '#89DCEB',  # Sky
-    'aucarea':          '#313244',  # Surface0
-    'watermarks':       '#45475A',  # Surface1
-    'legendbg':         '#181825',  # Mantle
-    'legendborder':     '#313244',  # Surface0
-    'rect1':            '#45475A',  # CHARGE→DRY    Surface1
-    'rect2':            '#585B70',  # DRY→FCs       Surface2
-    'rect3':            '#6C7086',  # FCs→FCe       Overlay0
-    'rect4':            '#7F849C',  # FCe→SCs       Overlay1
-    'rect5':            '#9399B2',  # SCs→DROP      Overlay2
+    'title':            THEME['TEXT'],  # Text
+    'xlabel':           THEME['SUBTEXT'],
+    'ylabel':           THEME['SUBTEXT'],
+    'text':             THEME['TEXT'],
+    'messages':         THEME['TEXT'],
+    'markers':          THEME['TEXT'],
+    'timeguide':        THEME['SURFACE2'],  # Surface2
+    'aucguide':         THEME['SKY'],  # Sky
+    'aucarea':          THEME['BORDER'],  # Surface0
+    'watermarks':       THEME['SURFACE1'],  # Surface1
+    'legendbg':         THEME['SURFACE'],  # Mantle
+    'legendborder':     THEME['BORDER'],  # Surface0
+    'rect1':            THEME['SURFACE1'],  # CHARGE→DRY    Surface1
+    'rect2':            THEME['SURFACE2'],  # DRY→FCs       Surface2
+    'rect3':            THEME['OVERLAY0'],  # FCs→FCe       Overlay0
+    'rect4':            THEME['OVERLAY1'],  # FCe→SCs       Overlay1
+    'rect5':            THEME['OVERLAY2'],  # SCs→DROP      Overlay2
     'mettext':          '#FAB387',  # Peach — MET annotation
-    'metbox':           '#181825',
-    'specialeventtext': '#CDD6F4',
-    'specialeventbox':  '#313244',
-    'bgeventtext':      '#94A3B8',
-    'bgeventmarker':    '#45475A',
-    'xt':               '#CBA6F7',  # Mauve — extra curves bg tint
-    'yt':               '#F5C2E7',  # Pink
+    'metbox':           THEME['SURFACE'],
+    'specialeventtext': THEME['TEXT'],
+    'specialeventbox':  THEME['BORDER'],
+    'bgeventtext':      THEME['SUBTEXT'],
+    'bgeventmarker':    THEME['SURFACE1'],
+    'xt':               THEME['MAUVE'],  # Mauve — extra curves bg tint
+    'yt':               THEME['PINK'],  # Pink
 }
 
 # Catppuccin Mocha LCD foreground per channel
 _CATPPUCCIN_LCD_FG: dict[str, str] = {
-    'timer':           '#CDD6F4',  # Text
+    'timer':           THEME['TEXT'],  # Text
     'et':              '#FAB387',  # Peach
-    'bt':              '#89B4FA',  # Blue
-    'deltaet':         '#F9E2AF',  # Yellow
+    'bt':              THEME['ACCENT'],  # Blue
+    'deltaet':         THEME['YELLOW'],  # Yellow
     'deltabt':         '#A6E3A1',  # Green
-    'sv':              '#CBA6F7',  # Mauve
-    'rstimer':         '#94A3B8',  # Subtext1
-    'slowcoolingtimer':'#94A3B8',
+    'sv':              THEME['MAUVE'],  # Mauve
+    'rstimer':         THEME['SUBTEXT'],
+    'slowcoolingtimer':THEME['SUBTEXT'],
 }
 
 # All LCD backgrounds → Mantle
-_CATPPUCCIN_LCD_BG: dict[str, str] = {k: '#181825' for k in _CATPPUCCIN_LCD_FG}
+_CATPPUCCIN_LCD_BG: dict[str, str] = {k: THEME['SURFACE'] for k in _CATPPUCCIN_LCD_FG}
 
 class TilauScope(QWidget):
 
@@ -2881,7 +2823,6 @@ class TilauScope(QWidget):
     def __init__(self, aw: ApplicationWindow, message:str = ""):
         super().__init__(None)
 
-        #_logd.info("tilauscope started")
         self.aw = aw
 
         # Initialisation du pont Artisan
@@ -2892,21 +2833,21 @@ class TilauScope(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_DontCreateNativeAncestors)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
-        if _IS_MACOS: 
+        if _IS_MACOS:
             self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
         if _IS_WINDOWS:
             # Empêche TilauScope de voler le focus au retour des dialogues
             self.setWindowFlag(Qt.WindowType.WindowDoesNotAcceptFocus, False)
             # Déclare TilauScope comme fenêtre "tool" pour Windows
-            self.setWindowFlag(Qt.WindowType.Tool, False)   
-                
+            self.setWindowFlag(Qt.WindowType.Tool, False)
+
         self.setObjectName("TilauScopeWindow")
-        self.setStyleSheet("#TilauScopeWindow { background-color: #1E1E2E; border-radius: 12px; }")
+        self.setStyleSheet(f"#TilauScopeWindow {{ background-color: {THEME['BG']}; border-radius: 12px; }}")
 
         palette = self.palette()
-        palette.setColor(QPalette.ColorRole.Window, QColor("#1E1E2E"))
+        palette.setColor(QPalette.ColorRole.Window, QColor(THEME['BG']))
         self.setPalette(palette)
-        
+
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # list of objects in artisan that are hidden/shown to enter tilauscope mode
@@ -2920,32 +2861,31 @@ class TilauScope(QWidget):
         # Initialisation cruciale pour éviter le Traceback
         self.is_roasting = self.artisan_conf.aw.qmc.flagstart
         self.start_time = None  # <--- On commence à None
-        
+
         self.last_update_second = -1
-        self._last_extra_update = 0.0   ## TILAU ## throttle horodaté du panneau extra (≤ 1 Hz)
+        self._last_extra_update = 0.0   # throttle horodaté du panneau extra (≤ 1 Hz)
 
         self.root_menu:QMenu|None = None
         self.init = True
-        ## TILAU ## re-entrancy guard: True while mirroring Artisan slider values
-        ## into our sliders, so their valueChanged does not push back to Artisan.
+        # re-entrancy guard: True while mirroring Artisan slider values
+        # into our sliders, so their valueChanged does not push back to Artisan.
         self._syncing_from_artisan = False
-        ## TILAU ## one debounce timer per slider index (see handle_ui_input_released)
+        # one debounce timer per slider index (see handle_ui_input_released)
         self._slider_commit_timers: dict[int, QTimer] = {}
-        ## TILAU ## SV row widgets + lock state (read-only while TilauPID preheats)
+        # SV row widgets + lock state (read-only while TilauPID preheats)
         self._sv_widgets: tuple = ()
         self._sv_locked: bool = False
 
-        ## TILAU ## Main store: this used to be QSettings("Artisan","TilauScope"), a
-        ## separate file written under Artisan's name. Key is namespaced, so it
-        ## folds in without collision; the old value is carried by settings_migration.
+        # Main store, namespaced key; migration from the legacy Artisan-named file
+        # is handled by settings_migration.
         self.is_swapped = QSettings().value("interface/swap_events_control", False, type=bool) # shall we swap content?
 
         self.init_ui()
-        
+
         if self.aw:
-            parent_geo = self.aw.geometry()        
+            parent_geo = self.aw.geometry()
             self.setGeometry(parent_geo)
-            
+
             # 1. Match the width
             self.event_panel.setFixedWidth(parent_geo.width())
             # 2. Tell the panel to recalculate height for this new width
@@ -2992,16 +2932,16 @@ class TilauScope(QWidget):
 
         self.aw.tilauscopeMain.setChecked(True)
 
-        ## TILAU ## Shift+T view-toggle from within TilauScope. The act_main
-        ## QAction/shortcut lives on the Artisan window, which is hidden (and thus
-        ## receives no key events) in headless mode — so we register a window-local
-        ## shortcut here so Shift+T reaches tilauscopeCall() while TilauScope has
-        ## focus. Harmless in normal mode (Artisan stays visible on toggle).
+        # Shift+T view-toggle from within TilauScope. The act_main
+        # QAction/shortcut lives on the Artisan window, which is hidden (and thus
+        # receives no key events) in headless mode — so we register a window-local
+        # shortcut here so Shift+T reaches tilauscopeCall() while TilauScope has
+        # focus. Harmless in normal mode (Artisan stays visible on toggle).
         self._view_toggle_sc = QShortcut(QKeySequence("Shift+T"), self)
         self._view_toggle_sc.activated.connect(self.aw.tilauscopeCall)
 
-        # static strings 
-        self.str_preheating  =  QApplication.translate("tilauscope_window","PREHEATING ")  
+        # static strings
+        self.str_preheating  =  QApplication.translate("tilauscope_window","PREHEATING ")
         self.str_autocharge =  QApplication.translate("tilauscope_window","AUTO-CHARGE ENGAGED")
         self.str_autodry    =  QApplication.translate("tilauscope_window","AUTO-DRY ENGAGED")
         self.str_autofc     =  QApplication.translate("tilauscope_window","AUTO-FC ENGAGED")
@@ -3033,9 +2973,9 @@ class TilauScope(QWidget):
             self.trc = TilauRoutineCheck(self, self)
             self.trc.setWindowModality(Qt.WindowModality.NonModal)
             # Ensure the object is deleted from memory when closed manually
-            self.trc.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)    
-            QTimer.singleShot(100, self.trc.show)    
-        
+            self.trc.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+            QTimer.singleShot(100, self.trc.show)
+
         # now build the collection of existing buttons in an array to be able to trigger them from the routine check
         self.artisan_buttons_collection: dict[str, QPushButton] = {
             "fcs": self.aw.buttonFCs,
@@ -3093,7 +3033,7 @@ class TilauScope(QWidget):
         beancave_directory = settings.value('beancaveDirectory', alog_directory, str)
         if beancave_directory != "" and alog_directory != "":
             from tilauscope.roast_timeline import BrewReadyNotification
-            # ## TILAU ## BrewReadyNotification wants the alog metadata cache
+            # BrewReadyNotification wants the alog metadata cache
             # (dict[str, AlogMetadata]), not the TilauScope widget. Reuse BeanCave's
             # already-indexed cache when available; empty dict → no toast, no crash.
             alog_files = {}
@@ -3105,18 +3045,16 @@ class TilauScope(QWidget):
                     alog_files = {}
             self._brew_notif = BrewReadyNotification(alog_directory, alog_files, self)
 
-        _logd.info("tilauscope init finished")  
+        _logd.info("tilauscope init finished")
 
     @pyqtSlot()
     def focusOn(self):
         self.setFocus()
 
-    ## TILAU ##
     # ─────────────────────────────────────────────────────────────────────────────
     # Catppuccin Mocha palette helpers — apply on TilauScope open, restore on close
     # ─────────────────────────────────────────────────────────────────────────────
 
-    ## TILAU ##
 
     def _refresh_artisan_colors(self) -> None:
         """Push palette changes to Artisan LCD widgets and trigger canvas redraw."""
@@ -3148,7 +3086,7 @@ class TilauScope(QWidget):
         aw.setLabelColor(aw.label5, qmc.palette['deltabt'], qmc.DeltaBTflag)
 
         # Messages label
-        aw.setLabelColor(aw.messagelabel, qmc.palette.get('messages', '#CDD6F4'))
+        aw.setLabelColor(aw.messagelabel, qmc.palette.get('messages', THEME['TEXT']))
 
         # Canvas background + nav bar colors
         aw.updateCanvasColors(checkColors=False)
@@ -3233,16 +3171,16 @@ class TilauScope(QWidget):
         aw.setLabelColor(aw.label3, qmc.palette['bt'],      qmc.BTcurve)
         aw.setLabelColor(aw.label4, qmc.palette['deltaet'], qmc.DeltaETflag)
         aw.setLabelColor(aw.label5, qmc.palette['deltabt'], qmc.DeltaBTflag)
-        aw.setLabelColor(aw.messagelabel, qmc.palette.get('messages', '#CDD6F4'))
+        aw.setLabelColor(aw.messagelabel, qmc.palette.get('messages', THEME['TEXT']))
         aw.updateCanvasColors(checkColors=False)
 
     def transformArtisan_ui(self, store =True):
         aw = self.aw
         aw.setWindowOpacity(0.01)
- 
+
         # 1. Sauvegarde des flags de fenêtre
         self.aw_flags = self.aw.windowFlags
- 
+
         # 3. Mapping des ressources : (Attribut cible, Liste de flags, Méthode de masquage)
         ui_elements = [
             ('show_controls',      'controlsflags',            aw.hideControls),
@@ -3251,7 +3189,7 @@ class TilauScope(QWidget):
             ('show_extrabuttons',  'extraeventsbuttonsflags',  aw.hideExtraButtons),
             ('show_sliders',       'eventslidersflags',        aw.hideSliders),
         ]
- 
+
         # 4. Application de la logique en boucle
         for attr, flag_name, hide_method in ui_elements:
             if store :
@@ -3259,21 +3197,20 @@ class TilauScope(QWidget):
                 setattr(self, attr, flags)
             hide_method()
 
-        ## TILAU ##
         # Apply Catppuccin Mocha palette to Artisan canvas on TilauScope open
         self._apply_catppuccin_palette()
- 
+
     @override
     def closeEvent(self, a0: 'QCloseEvent|None') -> None:
         aw = self.aw
         qmc = aw.qmc
 
-        ## TILAU ## block exit while sampling is active
+        # block exit while sampling is active
         if qmc.flagon and a0 is not None:
             a0.ignore()
             return
-        
-        ## TILAU ## don't lose a slider change still inside its coalescing window
+
+        # don't lose a slider change still inside its coalescing window
         self.flush_pending_slider_commits()
 
         # 1. Stopper les timers avant toute manipulation de widgets
@@ -3318,7 +3255,7 @@ class TilauScope(QWidget):
                 sz = canvas.size()
                 from PyQt6.QtGui import QResizeEvent
                 canvas.resizeEvent(QResizeEvent(sz, sz))
-                ## TILAU ## push restored palette to LCDs, then redraw with correct colors
+                # push restored palette to LCDs, then redraw with correct colors
                 self._finish_palette_restore()
                 qmc.redraw(recomputeAllDeltas=True)
                 canvas.draw_idle()
@@ -3346,7 +3283,6 @@ class TilauScope(QWidget):
         if hasattr(self, 'extra_panel'):
             self.extra_panel.close()
 
-        ## TILAU ##
         # Close roast assistant panel if open (floating or anchored)
         if hasattr(self, 'roast_assistant') and (
                 self.roast_assistant.isVisible() or getattr(self, '_assistant_anchored', False)):
@@ -3394,7 +3330,6 @@ class TilauScope(QWidget):
             self._canvas_style_hook.remove()
         self.aw.messagelabel.setVisible(True)
 
-        ## TILAU ##
         # Restore palette dicts before deferred redraw picks them up
         self._restore_artisan_palette_dicts()
         super().closeEvent(a0)
@@ -3402,39 +3337,39 @@ class TilauScope(QWidget):
     def _update_phase_subtitle(self,phase:str)->str:
         # check if there are phases defined on artisan
         if self.aw.qmc.phasesbuttonflag:
-            if phase == "DRY": 
+            if phase == "DRY":
                 return QApplication.translate("tilauscope_window", "Auto")
-            if phase == "MAI" : 
+            if phase == "MAI" :
                 return QApplication.translate("tilauscope_window", "Auto")
             if phase == "DEV" :
                 return QApplication.translate("tilauscope_window", "Aims ") + str(self.aw.qmc.phases[3]) + "°" + self.aw.qmc.mode
             return ""
         else:
-            if phase == "DRY": 
+            if phase == "DRY":
                 return QApplication.translate("tilauscope_window", "Aims ") + str(self.aw.qmc.phases[1]) + "°" + self.aw.qmc.mode
-            if phase == "MAI": 
+            if phase == "MAI":
                 return QApplication.translate("tilauscope_window", "Aims ") + str(self.aw.qmc.phases[2]) + "°" + self.aw.qmc.mode
-            if phase == "DEV": 
-                return QApplication.translate("tilauscope_window", "Aims ") + str(self.aw.qmc.phases[3]) + "°" + self.aw.qmc.mode            
+            if phase == "DEV":
+                return QApplication.translate("tilauscope_window", "Aims ") + str(self.aw.qmc.phases[3]) + "°" + self.aw.qmc.mode
             return ""
 
     def init_ui(self):
-         
+
         self.init = True
         main_layout = QVBoxLayout(self)
         bg_color = self.theme["BG"]
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        self.setStyleSheet("""
-                            QToolTip {
+        self.setStyleSheet(f"""
+                            QToolTip {{
                                 background-color: #2D2F3F; /* Gris foncé pour le fond */
                                 color: white;              /* Texte blanc */
-                                border: 1px solid #585B70; /* Bordure discrète */
+                                border: 1px solid {THEME['SURFACE2']}; /* Bordure discrète */
                                 padding: 5px;
                                 border-radius: 3px;
                                 font-size: 11px;
-                            }
+                            }}
                         """)
         # Main Styled Frame
         self.container = QFrame()
@@ -3443,15 +3378,23 @@ class TilauScope(QWidget):
         # Horizontal Layout: Controls on Left, Graph on Right
         content_layout = QHBoxLayout(self.container)
         # Increase margins slightly so internal widgets don't "touch" the border
-        content_layout.setContentsMargins(10,10,10,10) 
-        content_layout.setSpacing(10) 
+        content_layout.setContentsMargins(10,10,10,10)
+        content_layout.setSpacing(10)
 
         # --- LEFT PANE: ROASTER CONTROLS ---
         left_widget = QWidget()
         left_pane = QVBoxLayout(left_widget)
-        left_pane.setContentsMargins(10, 10, 10, 10)   ## TILAU ## compaction scenario A
+        left_pane.setContentsMargins(10, 10, 10, 10)   # compaction scenario A
         left_pane.setSpacing(10) # Tightened spacing to ensure full display
-        left_widget.setFixedWidth(390)   ## TILAU ## compaction scenario B (was 440)
+        left_widget.setFixedWidth(390)   # compaction scenario B (was 440)
+        # The base sheet goes on the left pane, not on the window:
+        # this window reparents Artisan's own main_widget into itself
+        # (take_body, below), so a sheet on the root would cascade into
+        # Artisan's graph, event buttons and LCDs. left_widget is the whole
+        # TilauScope side — header, controls, panel stack — and stops exactly
+        # where Artisan's widget begins. ground=False because the panel
+        # composes with transparency. See wiki/Theme-QSS-Spec.md.
+        apply_tilau_theme(left_widget, ground=False)
 
         # values for counters
         self.bt_label =f"0.0"
@@ -3467,24 +3410,26 @@ class TilauScope(QWidget):
         # 1. HEADER (Timer + Préchauffage)
         header = QHBoxLayout()
         header.setSpacing(8)
-        ## TILAU ## The row is width-bound: buttons + separator + level + handle
-        ## + timer must fit the pane. Breathing room on both edges is bought back
-        ## by tightening the gaps between the buttons (set below), not by letting
-        ## the first and last control sit against the border.
+        # The row is width-bound: buttons + separator + level + handle
+        # + timer must fit the pane. Breathing room on both edges is bought back
+        # by tightening the gaps between the buttons (set below), not by letting
+        # the first and last control sit against the border.
         header.setContentsMargins(4, 0, 6, 0)
         # Group controls and status on the left
         left_header_group = QHBoxLayout()
 
         # Create and add the Artisan Menu Button
         self.btn_main_menu = QPushButton()
-        self.btn_main_menu.setFixedSize(_HDR_BTN_SMALL, _HDR_BTN)   ## TILAU ## header budget (was 26,30 then 24,26)
+        self.btn_main_menu.setFixedSize(_HDR_BTN_SMALL, _HDR_BTN)   # header budget (was 26,30 then 24,26)
+        self.btn_main_menu.setProperty('variant', 'icon')   # fixed square: no base padding
         self.btn_main_menu.setIconSize(BTN_ICON_SIZE)
         self.btn_main_menu.setStyleSheet(QSS_MENU)
         apply_icon(self.btn_main_menu, SVG_MENU, COL_MENU)
         self.btn_main_menu.clicked.connect(self.open_main_menu)
 
         self.btn_power = QPushButton()
-        self.btn_power.setFixedSize(_HDR_BTN, _HDR_BTN)   ## TILAU ## header budget (was 32,30 then 28,28)
+        self.btn_power.setFixedSize(_HDR_BTN, _HDR_BTN)   # header budget (was 32,30 then 28,28)
+        self.btn_power.setProperty('variant', 'icon')   # fixed square: no base padding
         self.btn_power.setCheckable(True)
         self.btn_power.setIconSize(BTN_ICON_SIZE)
         self.btn_power.setToolTip(QApplication.translate('Tooltip', 'Start monitoring'))
@@ -3492,9 +3437,10 @@ class TilauScope(QWidget):
         apply_icon(self.btn_power, SVG_POWER, COL_POWER_IDLE)
         self.update_button_style(self.btn_power, True)
         self.btn_power.clicked.connect(self.toggle_power)
-        
+
         self.btn_start_stop = QPushButton()
-        self.btn_start_stop.setFixedSize(_HDR_BTN, _HDR_BTN)   ## TILAU ## header budget (was 32,30 then 28,28)
+        self.btn_start_stop.setFixedSize(_HDR_BTN, _HDR_BTN)   # header budget (was 32,30 then 28,28)
+        self.btn_start_stop.setProperty('variant', 'icon')   # fixed square: no base padding
         self.btn_start_stop.setCheckable(False)
         self.btn_start_stop.setIconSize(BTN_ICON_SIZE)
         self.btn_start_stop.setToolTip(QApplication.translate('Tooltip', 'Start recording'))
@@ -3504,7 +3450,8 @@ class TilauScope(QWidget):
         self.update_button_style(self.btn_start_stop, False)
 
         self.btn_reset = QPushButton()
-        self.btn_reset.setFixedSize(_HDR_BTN, _HDR_BTN)   ## TILAU ## header budget (was 32,30 then 28,28)
+        self.btn_reset.setFixedSize(_HDR_BTN, _HDR_BTN)   # header budget (was 32,30 then 28,28)
+        self.btn_reset.setProperty('variant', 'icon')   # fixed square: no base padding
         self.btn_reset.setCheckable(False)
         self.btn_reset.setIconSize(BTN_ICON_SIZE)
         self.btn_reset.setToolTip(QApplication.translate('Tooltip', 'Reset'))
@@ -3514,7 +3461,8 @@ class TilauScope(QWidget):
         self.update_button_style(self.btn_reset, True)
 
         self.btn_beancave = QPushButton()
-        self.btn_beancave.setFixedSize(_HDR_BTN, _HDR_BTN)   ## TILAU ## header budget (was 32,30 then 28,28)
+        self.btn_beancave.setFixedSize(_HDR_BTN, _HDR_BTN)   # header budget (was 32,30 then 28,28)
+        self.btn_beancave.setProperty('variant', 'icon')   # fixed square: no base padding
         self.btn_beancave.setCheckable(True)
         self.btn_beancave.setIconSize(BTN_ICON_SIZE)
         self.btn_beancave.setToolTip(QApplication.translate('tilauscope_window', 'Access to Bean Cave'))
@@ -3526,6 +3474,7 @@ class TilauScope(QWidget):
 
         self.btn_assistant = QPushButton()
         self.btn_assistant.setFixedSize(32, 30)
+        self.btn_assistant.setProperty('variant', 'icon')   # fixed square: no base padding
         self.btn_assistant.setCheckable(False)
         self.btn_assistant.setIconSize(BTN_ICON_SIZE)
         self.btn_assistant.setToolTip(QApplication.translate('tilauscope_window', 'Engage Roast Assistant'))
@@ -3534,9 +3483,10 @@ class TilauScope(QWidget):
         apply_icon(self.btn_assistant, SVG_ASSISTANT, COL_ASSISTANT_IDLE)
         self.update_button_style(self.btn_assistant, False)
 
-        # ── Float ↔ anchor toggle for the roast assistant ## TILAU ## ─────────
+        # ── Float ↔ anchor toggle for the roast assistant ─────────
         self.btn_dock = QPushButton()
         self.btn_dock.setFixedSize(26, 30)
+        self.btn_dock.setProperty('variant', 'icon')   # fixed square: no base padding
         self.btn_dock.setCheckable(False)
         self.btn_dock.setToolTip(QApplication.translate(
             'tilauscope_window',
@@ -3547,7 +3497,8 @@ class TilauScope(QWidget):
         self.update_button_style(self.btn_dock, False)
 
         self.swap_button = QPushButton()
-        self.swap_button.setFixedSize(_HDR_BTN_SMALL, _HDR_BTN)   ## TILAU ## header budget (was 26,30 then 24,26)
+        self.swap_button.setFixedSize(_HDR_BTN_SMALL, _HDR_BTN)   # header budget (was 26,30 then 24,26)
+        self.swap_button.setProperty('variant', 'icon')   # fixed square: no base padding
         self.swap_button.setCheckable(False)
         self.swap_button.setIconSize(BTN_ICON_SIZE)
         self.swap_button.clicked.connect(lambda: self.toggle_panels(left_widget, content_layout, True))
@@ -3561,29 +3512,29 @@ class TilauScope(QWidget):
         left_header_group.addWidget(self.btn_start_stop)
         left_header_group.addWidget(self.btn_reset)
         left_header_group.addWidget(self.btn_beancave)
-        # Assistant engage + anchor buttons no longer live in the main button
-        # bar. In Guided the assistant is anchored by default and floated via
-        # the GREEN BEAN header control; in Expert there is no assistant.
-        # Objects kept (hidden) so existing style/state references stay valid.
+        # Assistant engage/anchor buttons: in Guided the assistant is anchored
+        # by default and floated via the GREEN BEAN header control; in Expert
+        # there is no assistant. Kept hidden so existing style/state references stay valid.
         self.btn_assistant.hide()
         self.btn_dock.hide()
         left_header_group.addWidget(self.swap_button)
-        left_header_group.setSpacing(4)   ## TILAU ## compaction scenario B (was 8, then 6)
+        left_header_group.setSpacing(4)
         header.addLayout(left_header_group)
 
-        # ── Operator level selector (single cycling button) ## TILAU ## ──────
+        # ── Operator level selector (single cycling button) ──────
         # One ~32px button in the icon row. Letter = level, colour = level.
         # One click cycles G→S→E→G. No popup (real-time friendly).
         _lvl_sep = QFrame()
         _lvl_sep.setFrameShape(QFrame.Shape.VLine)
         _lvl_sep.setFixedHeight(22)
-        _lvl_sep.setStyleSheet("color: #313244; background: #313244; border: none; max-width: 1px;")
-        header.addSpacing(2)   ## TILAU ## these spacers pay the layout spacing twice (was 4)
+        _lvl_sep.setStyleSheet(f"color: {THEME['BORDER']}; background: {THEME['BORDER']}; border: none; max-width: 1px;")
+        header.addSpacing(2)   # these spacers pay the layout spacing twice (was 4)
         header.addWidget(_lvl_sep)
         header.addSpacing(2)
 
         self.btn_level = QPushButton()
-        self.btn_level.setFixedSize(_HDR_BTN, _HDR_BTN)   ## TILAU ## header budget (was 32,30 then 28,28)
+        self.btn_level.setFixedSize(_HDR_BTN, _HDR_BTN)   # header budget (was 32,30 then 28,28)
+        self.btn_level.setProperty('variant', 'icon')   # fixed square: no base padding
         self.btn_level.clicked.connect(self._cycle_operator_level)
         header.addWidget(self.btn_level)
 
@@ -3592,12 +3543,12 @@ class TilauScope(QWidget):
         self.drag_handle = QLabel("⠿")  # braille pattern = grab icon léger
         self.drag_handle.setFixedHeight(32)
         self.drag_handle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.drag_handle.setStyleSheet("""
-            QLabel { color: #45475A; font-size: 18px; border: none;
-                     background: transparent; padding: 0 2px; }   /* TILAU: header budget (was 0 8px, then 0 4px) */
-            QToolTip { background-color: #2D2F3F; color: white;
-                       border: 1px solid #585B70; padding: 5px;
-                       border-radius: 3px; font-size: 11px; }
+        self.drag_handle.setStyleSheet(f"""
+            QLabel {{ color: {THEME['SURFACE1']}; font-size: 18px; border: none;
+                     background: transparent; padding: 0 2px; }}   /* TILAU: header budget (was 0 8px, then 0 4px) */
+            QToolTip {{ background-color: #2D2F3F; color: white;
+                       border: 1px solid {THEME['SURFACE2']}; padding: 5px;
+                       border-radius: 3px; font-size: 11px; }}
         """)
         self.drag_handle.setCursor(Qt.CursorShape.SizeAllCursor)
         self.drag_handle.setToolTip(QApplication.translate("tilauscope_window", "Drag to move"))
@@ -3608,23 +3559,20 @@ class TilauScope(QWidget):
         header.addWidget(self.drag_handle)
 
         header.addStretch(1) # Pushes the timer to the far right
-        header.setSpacing(3)   ## TILAU ## applies to every item, spacers included (was 6)
+        header.setSpacing(3)   # applies to every item, spacers included (was 6)
 
         # Adjust Timer Font Size
         self.timer_lbl = ClickableLabel("00:00")
-        # Reduced from 80px to 68px to ensure it fits the 400px pane width
-        # Use the bundled JetBrains Mono (monospaced — every digit same width)
-        # so the timer never reflows the header as the value changes.
+        # Bundled JetBrains Mono (monospaced — every digit same width) so the
+        # timer never reflows the header as the value changes.
         _mono = _mono_font_family()
-        # 20px: at 24px the pinned box ("-88:88") no longer fitted the compacted
-        # pane and the reading was clipped on its left edge.
-        self.timer_lbl.setStyleSheet(f"font-size: {_TIMER_FONT_PX}px; font-weight: 700; color: #313244; font-family: '{_mono}', 'Menlo', monospace; border: none; background: transparent;")   ## TILAU ## compaction scenario B (was 28px, then 24px)
+        self.timer_lbl.setStyleSheet(f"font-size: {_TIMER_FONT_PX}px; font-weight: 700; color: {THEME['BORDER']}; font-family: '{_mono}', 'Menlo', monospace; border: none; background: transparent;")
         self.timer_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.timer_lbl.clicked.connect(self.timer_clicked)
         # Belt-and-suspenders: pin the box to the widest reading so the timer
         # zone never resizes regardless of the resolved font.
         _timer_font = QFont(_mono)
-        _timer_font.setPixelSize(_TIMER_FONT_PX)   ## TILAU ## compaction scenario B (was 28, then 24)
+        _timer_font.setPixelSize(_TIMER_FONT_PX)   # compaction scenario B (was 28, then 24)
         # Measured at the heaviest weight any timer state uses (900), so a
         # fallback family that is not truly monospaced still fits the box.
         _timer_font.setWeight(QFont.Weight.Black)
@@ -3640,16 +3588,16 @@ class TilauScope(QWidget):
         left_pane.addWidget(self.status_lbl, 0)
         left_pane.setStretchFactor(self.status_lbl, 1)
 
-        ## TILAU ## Automation banner — red text on amber, shown only while the
-        ## roast is driven by Artisan automations (PID from CHARGE, or any
-        ## background playback mode). Hidden the rest of the time.
+        # Automation banner — red text on amber, shown only while the
+        # roast is driven by Artisan automations (PID from CHARGE, or any
+        # background playback mode). Hidden the rest of the time.
         self.automation_lbl = QLabel("")
         self.automation_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.automation_lbl.setWordWrap(True)
         self.automation_lbl.setStyleSheet(
             "color: #B00710; background: #FAB387; border-radius: 6px;"
             " padding: 2px 8px; font-size: 11px; font-weight: 900;"
-            " font-family: 'JetBrains Mono'; border: 1px solid #F38BA8;"
+            f" border: 1px solid {THEME['CRITICAL']};"
         )
         self.automation_lbl.hide()
         self._automation_prev = None   # cache to avoid redundant setText/show
@@ -3659,11 +3607,11 @@ class TilauScope(QWidget):
         self.et_val_label = QLabel("0.0")
         self.bt_val_label = QLabel("0.0")
         self.ror_val_label = QLabel("0.0")
-        
-        self.lcds = TilauscopePanel(self.artisan_conf)
-        left_pane.addWidget(self.lcds) 
 
-        # ── Anchorable main-panel container ## TILAU ## ──────────────────────
+        self.lcds = TilauscopePanel(self.artisan_conf)
+        left_pane.addWidget(self.lcds)
+
+        # ── Anchorable main-panel container ──────────────────────
         # Everything below the counters lives here, so the whole block can be
         # swapped for the anchored roast-assistant body via a QStackedWidget.
         self._main_controls = QWidget()
@@ -3674,27 +3622,26 @@ class TilauScope(QWidget):
 
         # 3. PHASES & OVERLAY MESSAGE
         self.phase_container = QFrame()
-        self.phase_container.setMinimumHeight(110) # Force une zone de respiration  ## TILAU ## compaction scenario A
-        self.phase_container.setStyleSheet(f"background: {self.theme["BG"]}; border-radius: 10px; border: 1px solid #313244; margin-top: 10px;")
+        self.phase_container.setMinimumHeight(110) # Force une zone de respiration compaction scenario A
+        self.phase_container.setStyleSheet(f"background: {self.theme["BG"]}; border-radius: 10px; border: 1px solid {THEME['BORDER']}; margin-top: 10px;")
         self.phase_stack = QGridLayout(self.phase_container)
-        
+
         self.msg_lbl = QLabel("") # Message Drop/Cool
         self.msg_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        ## TILAU ## long status lines used to run past both edges of the window:
-        ## the grid item was centred at its full single-line size hint. Let it take
-        ## the cell width (see below) and wrap inside the box instead.
+        # Wraps inside the cell width (see below) instead of centring at its
+        # full single-line size hint, which would run past both edges of the window.
         self.msg_lbl.setWordWrap(True)
-        self.msg_lbl.setStyleSheet("color: #94E2D5; font-size: 16px; font-weight: 800; font-family: 'JetBrains Mono'; border: none")
+        self.msg_lbl.setStyleSheet(f"color: {THEME['TEAL']}; font-size: 16px; font-weight: 800; border: none")
         self.msg_lbl.hide()
-        
+
         self.phase_box = QHBoxLayout()
         self.phase_box.setContentsMargins(0, 0, 0, 0)
         self.phase_box.setSpacing(2) # Small gap between phase blocks
 
         self.phases = {
-            "DRY": PhaseWidget("DRY", QApplication.translate("tilauscope_window","Drying Phase").upper(), "#89B4FA", self.theme, self._update_phase_subtitle("DRY")), 
-            "MAI": PhaseWidget("MAI", QApplication.translate("tilauscope_window","Maillard Phase").upper(), "#F9E2AF", self.theme, self._update_phase_subtitle("MAI")), 
-            "DEV": PhaseWidget("DEV", QApplication.translate("tilauscope_window","Finishing Phase").upper(), "#F38BA8", self.theme, self._update_phase_subtitle("DEV"))}
+            "DRY": PhaseWidget("DRY", QApplication.translate("tilauscope_window","Drying Phase").upper(), THEME['ACCENT'], self.theme, self._update_phase_subtitle("DRY")),
+            "MAI": PhaseWidget("MAI", QApplication.translate("tilauscope_window","Maillard Phase").upper(), THEME['YELLOW'], self.theme, self._update_phase_subtitle("MAI")),
+            "DEV": PhaseWidget("DEV", QApplication.translate("tilauscope_window","Finishing Phase").upper(), THEME['CRITICAL'], self.theme, self._update_phase_subtitle("DEV"))}
         _PHASE_IDX = {"DRY": 1, "MAI": 2, "DEV": 3}
         for key, p in self.phases.items():
             self.phase_box.addWidget(p)
@@ -3705,11 +3652,11 @@ class TilauScope(QWidget):
 
         self.phase_stack.addLayout(self.phase_box, 0, 0)
         self.phase_stack.addWidget(self.msg_lbl, 0, 0)
-        ## TILAU ## no item alignment here: an aligned grid item keeps its size hint,
-        ## which for a one-line label is the full text width — that is what made long
-        ## messages overflow the panel. Filling the cell lets setWordWrap do its job;
-        ## the text stays centred through the label's own alignment.
-        mc_lay.addWidget(self.phase_container,1)   ## TILAU ##
+        # no item alignment here: an aligned grid item keeps its size hint,
+        # which for a one-line label is the full text width — that is what made long
+        # messages overflow the panel. Filling the cell lets setWordWrap do its job;
+        # the text stays centred through the label's own alignment.
+        mc_lay.addWidget(self.phase_container,1)
 
         # 4. PILOTAGE MACHINE
         self.sld_list: list[TilauscopeSlider] = []
@@ -3743,7 +3690,7 @@ class TilauScope(QWidget):
         ]
 
         # ── Slider rows container (classic view, sliders 0-3 only) ───────────
-        
+
         self.slider_rows_widget = QWidget()
         self.slider_rows_widget.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.slider_rows_widget.setObjectName("SliderRows") # ID Unique
@@ -3753,26 +3700,26 @@ class TilauScope(QWidget):
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
         )
         self.slider_rows_widget.setStyleSheet("""
-                #SliderRows { 
-                    border: none; 
-                    background: transparent; 
+                #SliderRows {
+                    border: none;
+                    background: transparent;
                 }
-                QWidget { border: none; } 
+                QWidget { border: none; }
             """)
         slider_rows_layout = QVBoxLayout(self.slider_rows_widget)
         slider_rows_layout.setContentsMargins(0, 0, 0, 0)
         slider_rows_layout.setSpacing(4)
 
         _card_configs = []   # accumulate tuples for BigControlsRow
-        self._slider_row_widgets: list[QWidget] = []  ## TILAU ## per-slider row widgets (idx 0-3), for visibility mirror
+        self._slider_row_widgets: list[QWidget] = []  # per-slider row widgets (idx 0-3), for visibility mirror
 
         for i, (name, color, min_val, max_val, unit, step) in enumerate(slider_defs):
             row = QHBoxLayout()
-            row.setContentsMargins(*_SLIDER_ROW_MARGINS)   ## TILAU ## same inset for all 5 rows
+            row.setContentsMargins(*_SLIDER_ROW_MARGINS)   # same inset for all 5 rows
             lbl = QLabel(name)
             lbl.setFixedWidth(55)
             lbl.setStyleSheet(
-                "font-size: 11px; font-weight: 800; color: #585B70; border: none;"
+                f"font-size: 11px; font-weight: 800; color: {THEME['SURFACE2']}; border: none;"
             )
             sld = TilauscopeSlider(accent_color=color)
             self.sld_list.append(sld)
@@ -3786,7 +3733,7 @@ class TilauScope(QWidget):
             )
             sld.valueChanged.connect(lambda v, l=val_pct, u=unit: l.setText(f"{v}{u}"))
             sld.valueChanged.connect(lambda v, n=i: self.handle_ui_input_move(n, v))
-            ## TILAU ## drag release: no burst to coalesce → commit without delay
+            # drag release: no burst to coalesce → commit without delay
             sld.sliderReleased.connect(lambda n=i: self.handle_ui_input_released(n, immediate=True))
 
             def _sync_artisan(v, n=i):
@@ -3799,6 +3746,7 @@ class TilauScope(QWidget):
 
             btn_minus = QPushButton("-")
             btn_minus.setFixedSize(24, 24)
+            btn_minus.setProperty('variant', 'icon')   # fixed square: no base padding
             btn_minus.setStyleSheet(self._get_stepper_style(color))
             btn_minus.clicked.connect(lambda _, s=sld, n=i: [
                 s.setValue(max(s.minimum(), s.value() - s.singleStep())),
@@ -3808,6 +3756,7 @@ class TilauScope(QWidget):
 
             btn_plus = QPushButton("+")
             btn_plus.setFixedSize(24, 24)
+            btn_plus.setProperty('variant', 'icon')   # fixed square: no base padding
             btn_plus.setStyleSheet(self._get_stepper_style(color))
             btn_plus.clicked.connect(lambda _, s=sld, n=i: [
                 s.setValue(min(s.maximum(), s.value() + s.singleStep())),
@@ -3824,12 +3773,12 @@ class TilauScope(QWidget):
             if i < 4:
                 # Classic slider row → goes into the toggleable container.
                 # Wrapped in a QWidget so each row can be shown/hidden on its own
-                # to mirror Artisan's eventslidervisibilities. ## TILAU ##
+                # to mirror Artisan's eventslidervisibilities.
                 row_w = QWidget()
                 row_w.setStyleSheet("border: none; background: transparent;")
                 row_w.setLayout(row)
                 # Fixed height so a hidden→shown cycle can't let the rows stretch
-                # to fill the (taller) locked control zone. ## TILAU ##
+                # to fill the (taller) locked control zone.
                 row_w.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
                 self._slider_row_widgets.append(row_w)
                 slider_rows_layout.addWidget(row_w)
@@ -3842,26 +3791,26 @@ class TilauScope(QWidget):
                 # SV slider — always visible, not part of the toggle
                 self._sv_row_widget = QWidget()
                 sv_inner = QVBoxLayout(self._sv_row_widget)
-                ## TILAU ## Right inset = ToggleBar width + ctrl_zone spacing: the 4 rows
-                ## above sit left of the toggle bar, the SV row spans the full panel, so
-                ## without it the SV steppers hang past the column they should line up with.
+                # Right inset = ToggleBar width + ctrl_zone spacing: the 4 rows
+                # above sit left of the toggle bar, the SV row spans the full panel, so
+                # without it the SV steppers hang past the column they should line up with.
                 sv_inner.setContentsMargins(0, 0, _CTRL_TOGGLE_RESERVE_PX, 0)
                 sv_inner.setSpacing(0)
                 self._sv_row_widget.setObjectName("SVRow")
                 self._sv_row_widget.setStyleSheet("#SVRow { border: none; background: transparent; }")
-                ## TILAU ## Same wrapper as the rows above: the row carries the explicit
-                ## _SLIDER_ROW_MARGINS either way, but keeping the construction identical
-                ## means the SV row can never drift out of line with them again.
+                # Same wrapper as the rows above: the row carries the explicit
+                # _SLIDER_ROW_MARGINS either way, but keeping the construction identical
+                # means the SV row can never drift out of line with them again.
                 sv_row_w = QWidget()
                 sv_row_w.setStyleSheet("border: none; background: transparent;")
                 sv_row_w.setLayout(row)
                 sv_inner.addWidget(sv_row_w)
-                ## TILAU ## kept for _apply_sv_lock (read-only while TilauPID preheats)
+                # kept for _apply_sv_lock (read-only while TilauPID preheats)
                 self._sv_widgets = (sld, btn_minus, btn_plus, val_pct)
 
         # Trailing stretch: any spare height in the (card-sized) locked control
         # zone collects at the bottom, keeping the classic rows packed at top
-        # instead of spreading out. ## TILAU ##
+        # instead of spreading out.
         slider_rows_layout.addStretch(1)
 
         if _IS_MACOS: # macOS
@@ -3878,7 +3827,7 @@ class TilauScope(QWidget):
         self.big_controls_row = BigControlsRow(_card_configs, self)
         self.big_controls_row.hide()   # hidden by default
 
-        # Mirror Artisan's per-slider visibilities onto both views ## TILAU ##
+        # Mirror Artisan's per-slider visibilities onto both views
         self._apply_slider_visibility_mirror()
 
         # ── Toggle bar (always visible on the right of the control zone) ──────
@@ -3905,38 +3854,38 @@ class TilauScope(QWidget):
         ctrl_zone.addWidget(self._ctrl_stack, 1)
         ctrl_zone.addWidget(self._toggle_bar)
 
-        mc_lay.addLayout(ctrl_zone)   ## TILAU ##
+        mc_lay.addLayout(ctrl_zone)
         # Freeze the control-zone height to the taller of the two views so the
         # sliders ↔ cards toggle never changes the window size. The phase
         # container has stretch=1 and would otherwise absorb the slack, growing
-        # the window when switching back to sliders. ## TILAU ##
+        # the window when switching back to sliders.
         QTimer.singleShot(0, self._lock_control_zone_height)
 
         # SV slider row — beneath the toggle zone, always shown
-        mc_lay.addWidget(self._sv_row_widget)   ## TILAU ##
+        mc_lay.addWidget(self._sv_row_widget)
 
         # 5. ÉVÉNEMENTS
         grid = QGridLayout()
-        ## TILAU ## Nested layouts inherit no margin, so the milestone buttons ran
-        ## into both edges of the panel. Same horizontal inset as the slider rows
-        ## so the two blocks line up, and tighter gaps to buy that inset back —
-        ## with 4 columns each button gains rather than loses width.
+        # Nested layouts inherit no margin, so the milestone buttons ran
+        # into both edges of the panel. Same horizontal inset as the slider rows
+        # so the two blocks line up, and tighter gaps to buy that inset back —
+        # with 4 columns each button gains rather than loses width.
         grid.setContentsMargins(_SLIDER_ROW_MARGINS[0], 4, _SLIDER_ROW_MARGINS[2], 0)
         grid.setHorizontalSpacing(6)
         grid.setVerticalSpacing(6)
         self.event_buttons:dict[str,QPushButton] = {}  # Dictionary to store button references
         self.events = [
-            (QApplication.translate("Button","CHARGE"), "#A6E3A1"), 
-            (QApplication.translate("Button","DRY END"), "#89B4FA"), 
-            (QApplication.translate("Button","FC START"), "#FAB387"), 
-            (QApplication.translate("Button","FC END"), "#F38BA8"), 
-            (QApplication.translate("Button","SC START"), "#F38BA8"), 
-            (QApplication.translate("Button","SC END"), "#F38BA8"), 
-            (QApplication.translate("Button","DROP"), "#F38BA8"),
-            (QApplication.translate("Button","COOL END"), "#94E2D5")]
+            (QApplication.translate("Button","CHARGE"), "#A6E3A1"),
+            (QApplication.translate("Button","DRY END"), THEME['ACCENT']),
+            (QApplication.translate("Button","FC START"), "#FAB387"),
+            (QApplication.translate("Button","FC END"), THEME['CRITICAL']),
+            (QApplication.translate("Button","SC START"), THEME['CRITICAL']),
+            (QApplication.translate("Button","SC END"), THEME['CRITICAL']),
+            (QApplication.translate("Button","DROP"), THEME['CRITICAL']),
+            (QApplication.translate("Button","COOL END"), THEME['TEAL'])]
         for i, (n, c) in enumerate(self.events):
             btn = QPushButton(n)
-            btn.setFixedHeight(38)   ## TILAU ## compaction scenario A
+            btn.setFixedHeight(38)   # compaction scenario A
             btn.setEnabled(False)
             if i == 0: btn.clicked.connect(lambda: self.aw.qmc.markChargeSignal.emit(False))
             elif i == 1: btn.clicked.connect(lambda: self.aw.qmc.markDRYSignal.emit(False))
@@ -3949,16 +3898,16 @@ class TilauScope(QWidget):
             self.event_buttons[n] = btn
             self.set_button_style(i, True)
             grid.addWidget(btn, i // 4, i % 4)
-        mc_lay.addLayout(grid)   ## TILAU ##
+        mc_lay.addLayout(grid)
 
-        # ── Panel stack: page 0 = manual controls, page 1 = anchored assistant ## TILAU ##
+        # ── Panel stack: page 0 = manual controls, page 1 = anchored assistant
         # The hidden page is not painted, so anchoring adds no per-cycle CPU cost.
         self._panel_stack = QStackedWidget()
         self._panel_stack.addWidget(self._main_controls)            # index 0
         self._anchor_host = QScrollArea()
         self._anchor_host.setWidgetResizable(True)
         self._anchor_host.setFrameShape(QFrame.Shape.NoFrame)
-        self._anchor_host.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)  ## TILAU ##
+        self._anchor_host.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._anchor_host.setStyleSheet("background: transparent; border: none;")
         self._panel_stack.addWidget(self._anchor_host)              # index 1
         self._panel_stack.setCurrentIndex(0)
@@ -3973,18 +3922,22 @@ class TilauScope(QWidget):
         self.artisan_graph.setParent(self.container)
         self.artisan_graph.setStyleSheet("background: transparent; border-radius: 15px;")
         # Graph takes all remaining space (stretch=1)
-    
+
         main_layout.addWidget(self.container)
-        
+
         # --- add the sidebar ---
         self.collapsible_events = CollapsibleLiveEvents(self.aw, self)
+        # CollapsibleLiveEvents is a controller, not a widget — the
+        # base sheet goes on the panel it owns. The grip is a 16 px painted
+        # tab with nothing for the sheet to style.
+        apply_tilau_theme(self.collapsible_events.sidebar, ground=False)
 
         self.toggle_panels(left_widget, content_layout, False) # no swap just display current parameter value
 
-        #6 buttons      
+        #6 buttons
         # Initialize the managed buttons
         self.btn_manager = ButtonManager.from_artisan_settings(self.artisan_conf, self.artisan_conf.mode)
-        
+
         # Initialize floating panel and slider values
         self.event_panel = EventPanel(self.btn_manager, self.theme, self)
         self.event_panel.update_panel_height() # Ensure correct height based on content
@@ -3993,7 +3946,7 @@ class TilauScope(QWidget):
 
         # extracoutner panel
         self.extra_panel = ExtraCountersPanel(self.artisan_conf, self.theme, self)
-        self;self.extra_panel.reset_counters() # Initialize counters 
+        self;self.extra_panel.reset_counters() # Initialize counters
         self.extra_panel.hide() # Caché par défaut
 
         # Position it horizontally centered relative to main window
@@ -4016,17 +3969,17 @@ class TilauScope(QWidget):
         self.roast_assistant = RoastAssistantPanel(self.aw, self)
         self.roast_bridge    = RoastDataBridge(self.aw, parent=self)
         self.roast_assistant.connect_bridge(self.roast_bridge)
-        self.roast_assistant.closed.connect(self._on_assistant_closed)   ## TILAU ##
-        self.roast_assistant.anchor_requested.connect(self.toggle_assistant_anchor)   ## TILAU ##
+        self.roast_assistant.closed.connect(self._on_assistant_closed)
+        self.roast_assistant.anchor_requested.connect(self.toggle_assistant_anchor)
         self.roast_assistant.hide()
 
-        # ── Assistant placement state ## TILAU ## ────────────────────────────
+        # ── Assistant placement state ────────────────────────────
         self._assistant_open: bool   = False
         self._body_in_host: bool     = False
         self._assistant_anchored: bool = QSettings().value(
             "tilauscope/assistant_anchored", False, type=bool)
         self.btn_dock.setEnabled(False)
-        self.roast_assistant.populate_bean_list()   ## TILAU ## always identify bean on open
+        self.roast_assistant.populate_bean_list()   # always identify bean on open
         if self._assistant_anchored:
             # Restoring the anchored mode implies re-opening the assistant.
             self._assistant_open = True
@@ -4034,9 +3987,9 @@ class TilauScope(QWidget):
         self._place_assistant()
         if self._assistant_anchored:
             # Re-evaluate once geometry has settled to avoid a transient scrollbar.
-            QTimer.singleShot(150, self._place_assistant)   ## TILAU ##
+            QTimer.singleShot(150, self._place_assistant)
 
-        # ── Operator level init ## TILAU ## ──────────────────────────────────
+        # ── Operator level init ──────────────────────────────────
         # Two levels only: Guided (default) and Expert. Legacy "standard" and
         # new installs both fall back to Guided.
         _saved_level = QSettings().value("tilauscope/operator_level")
@@ -4105,7 +4058,7 @@ class TilauScope(QWidget):
     def _lock_control_zone_height(self) -> None:
         """Freeze the control zone to the taller of the slider/card views so the
         sliders ↔ cards toggle is size-neutral and never grows the window.
-        Run once, deferred, after the first layout pass. ## TILAU ##"""
+        Run once, deferred, after the first layout pass. """
         try:
             h = max(self.slider_rows_widget.sizeHint().height(),
                     self.big_controls_row.sizeHint().height())
@@ -4125,7 +4078,7 @@ class TilauScope(QWidget):
         self.big_controls_row.setVisible(self._show_cards)
 
         # Animate the toggle bar colour to give a mode hint
-        col = "#89B4FA" if self._show_cards else "#111118"   # blue accent when cards active
+        col = THEME['ACCENT'] if self._show_cards else "#111118"   # blue accent when cards active
         self._toggle_bar.setStyleSheet(f"""
             QFrame {{
                 background: {col};
@@ -4139,7 +4092,7 @@ class TilauScope(QWidget):
         idx 0-3) onto both the classic slider rows and the card view: a slider
         disabled on the Artisan side is hidden here too. Called at build time
         and re-callable from the config dialog when the roaster changes. The SV
-        slider (idx 4) is never touched. ## TILAU ##"""
+        slider (idx 4) is never touched. """
         try:
             vis = self.aw.eventslidervisibilities
             cards = getattr(self.big_controls_row, "cards", [])
@@ -4159,9 +4112,9 @@ class TilauScope(QWidget):
         modifiers = a0.modifiers()
         shift_modifier = modifiers == Qt.KeyboardModifier.ShiftModifier # SHIFT
         no_modifier = modifiers == Qt.KeyboardModifier.NoModifier
-        
-        ## TILAU ## PID L/R shortcuts removed — PID piloting is delegated to
-        ## Artisan's own key cascade (handled by self.aw.keyPressEvent below).
+
+        # PID L/R shortcuts removed — PID piloting is delegated to
+        # Artisan's own key cascade (handled by self.aw.keyPressEvent below).
         if key == Qt.Key.Key_B and shift_modifier:
             # call Beancave
             self.btn_beancave.setChecked(not self.btn_beancave.isChecked()) # fix 2026/04/25
@@ -4176,12 +4129,12 @@ class TilauScope(QWidget):
             self.event_panel.toggle_visibility()
             return
         elif key == Qt.Key.Key_A and shift_modifier:
-            self.toggle_roast_assistant()   ## TILAU ## placement handled inside
+            self.toggle_roast_assistant()   # placement handled inside
             return
-        ## TILAU ## F1-F8 milestone shortcuts gated on current_event (last marked
-        ## event code: None=nothing, 0=CHARGE, 1=DRY END, 2=FC START, 3=FC END,
-        ## 4=SC START, 5=SC END, 6=DROP, 7=COOL END). The inner timeindex checks
-        ## enforce the actual ordering; the outer guard just blocks gross misfires.
+        # F1-F8 milestone shortcuts gated on current_event (last marked
+        # event code: None=nothing, 0=CHARGE, 1=DRY END, 2=FC START, 3=FC END,
+        # 4=SC START, 5=SC END, 6=DROP, 7=COOL END). The inner timeindex checks
+        # enforce the actual ordering; the outer guard just blocks gross misfires.
         elif key==Qt.Key.Key_F1 and no_modifier and (self.current_event is None or self.current_event == 0): # charge can be marked at any time before dry end is marked, but not after
             if self.is_roasting:
                 self.aw.qmc.markChargeSignal.emit(False)
@@ -4221,7 +4174,7 @@ class TilauScope(QWidget):
     def _get_stepper_style(self, color):
         return f"""
             QPushButton {{
-                background-color: #313244;
+                background-color: {THEME['BORDER']};
                 color: {color};
                 border-radius: 4px;
                 font-weight: bold;
@@ -4229,12 +4182,12 @@ class TilauScope(QWidget):
                 border: 1px solid transparent;
             }}
             QPushButton:hover {{
-                background-color: #45475a;
+                background-color: {THEME['SURFACE1']};
                 border: 1px solid {color}44;
             }}
             QPushButton:pressed {{
                 background-color: {color};
-                color: #11111b;
+                color: {THEME['CRUST']};
             }}
         """
 
@@ -4261,8 +4214,6 @@ class TilauScope(QWidget):
         # Récupérer l'objet AlarmData correspondant à l'index
         # self.current_alarms est la liste chargée via _load_alarms[cite: 4]
         target_alarm = self.collapsible_events.alarm_sidebar.get_alarm_info(alarm_index)
-        #_logd.info(f"alarm fired {alarm_index}")
-        #_log.error(f"alarm fired {alarm_index}")
         if target_alarm:
             # On envoie les données et la couleur au widget de droite
             self.collapsible_events.alarm_sidebar.add_triggered_alarm(target_alarm)
@@ -4277,11 +4228,11 @@ class TilauScope(QWidget):
     # ──────────────────────────────────────────────────────────────────────────
 
     def _update_timer_style(self, state: str) -> None:
-        """ 
-        Updates the timer look based on state: "roasting", "idle", or "paused" 
+        """
+        Updates the timer look based on state: "roasting", "idle", or "paused"
         """
         self._timer_state = state
-        
+
         # Ensure the opacity effect attribute exists
         if not hasattr(self, "timer_opacity"):
             self.timer_opacity = None
@@ -4292,10 +4243,10 @@ class TilauScope(QWidget):
                 self.timer_lbl.setGraphicsEffect(None)
             self.timer_opacity = None
             self.timer_lbl.setStyleSheet(
-                f"font-size: {_TIMER_FONT_PX}px; font-weight: 900; color: #CDD6F4; " # Lighter gray/white
+                f"font-size: {_TIMER_FONT_PX}px; font-weight: 900; color: {THEME['TEXT']}; " # Lighter gray/white
                 "border: none; background: transparent; font-family: 'JetBrains Mono';"
             )
-            
+
         elif state == "paused":
             # PAUSED (Simulation): Orange color, Blinking enabled
             if self.timer_opacity is None:
@@ -4305,24 +4256,24 @@ class TilauScope(QWidget):
                 f"font-size: {_TIMER_FONT_PX}px; font-weight: 900; color: #FAB387; " # Orange
                 "border: none; background: transparent; font-family: 'JetBrains Mono';"
             )
-            
+
         else: # "idle"
             # IDLE: Dark gray, slow pulse
             if self.timer_opacity is None:
                 self.timer_opacity = QGraphicsOpacityEffect(self.timer_lbl)
             self.timer_lbl.setGraphicsEffect(self.timer_opacity)
             self.timer_lbl.setStyleSheet(
-                f"font-size: {_TIMER_FONT_PX}px; font-weight: 900; color: #313244; " # Dark gray
+                f"font-size: {_TIMER_FONT_PX}px; font-weight: 900; color: {THEME['BORDER']}; " # Dark gray
                 "border: none; background: transparent; font-family: 'JetBrains Mono';"
             )
 
     def pulse(self):
-        """ 
-        Handles the blinking/pulsing animation. 
+        """
+        Handles the blinking/pulsing animation.
         Called by p_timer (e.g., every 600ms).
         """
         state = getattr(self, "_timer_state", "idle")
-        
+
         # 1. If roasting, ensure no effect is active and stop
         if state == "roasting":
             if self.timer_lbl.graphicsEffect() is not None:
@@ -4340,7 +4291,7 @@ class TilauScope(QWidget):
                 current = self.timer_opacity.opacity()
                 # Toggle between 0.3 and 1.0 for idle visibility
                 self.timer_opacity.setOpacity(1.0 if current < 1.0 else 0.4)
-        
+
     # button CHARGE was pressed in the displayscope, update display and inform Artisan
     def start_roast(self, auto=False):
         if not self.aw.qmc.flagstart: # do not allow to press CHARGE before roast is really recorded
@@ -4362,19 +4313,19 @@ class TilauScope(QWidget):
         # Store Artisan timer seconds at phase transition — same source as data==10
         self.phase_starts[key] = artisan_secs
     # get target pid value depending on pid usage (tilau or artisan) to display it in the preheating message
-   
+
     def _get_pid_target(self)->str:
         # pidcontrol.sv est mis à jour par processcommand("sv") ET processcommand("start")
         # via setSV() — c'est le signal que l'alarme a été traitée pour cette session.
         # Tant qu'il ne correspond pas au slider, l'alarme n'est pas encore passée
         # → on retourne "" pour ne rien afficher plutôt qu'une valeur obsolète.
         try:
-            ## TILAU ## When TilauPID drives the preheat, ITS target is the truth and
-            ## needs no confirmation from Artisan: aw.pidcontrol.sv is only ever set
-            ## by branches that require Artisan's own PID path (external PID / Control
-            ## flag), so on a slider-driven roaster it stays None forever and the
-            ## status message was stuck on "TilauPID is initializing" for the whole
-            ## preheat.
+            # When TilauPID drives the preheat, ITS target is the truth and
+            # needs no confirmation from Artisan: aw.pidcontrol.sv is only ever set
+            # by branches that require Artisan's own PID path (external PID / Control
+            # flag), so on a slider-driven roaster it stays None forever and the
+            # status message was stuck on "TilauPID is initializing" for the whole
+            # preheat.
             pid = self.aw.tilauPreheatingPid
             if pid is not None and pid.active:
                 sv_native = int(round(pid.sv_native()))
@@ -4389,14 +4340,13 @@ class TilauScope(QWidget):
         except Exception:
             return ""
 
-# build a string defining if we are close to target 
+# build a string defining if we are close to target
     def _is_pid_target_close(self, bt:float)->str:
         pid = self.aw.tilauPreheatingPid
         if pid and pid.active:
             sv = pid.sv_native()   # cfg.target_sv est °C interne ; bt est natif
             delta = sv - float(bt)
-            #_logd.info(f"tilaupid target={sv} delta={delta} bt={bt}")
-            return self.str_tilaupid_close if (delta <= 0) or abs(delta) <= (0.05 * sv) else "" # reduced from 10% to 5%
+            return self.str_tilaupid_close if (delta <= 0) or abs(delta) <= (0.05 * sv) else ""
         return ""
 
     # build a string with the current pid status depending on artisan or tilaupid usage
@@ -4411,9 +4361,9 @@ class TilauScope(QWidget):
                 target = self._get_pid_target()
                 if not target:
                     return self.str_tilaupidinit
-                ## TILAU ## NBSP (not a plain space) between value and unit: the label
-                ## word-wraps and used to drop "°C" alone on the next line. A literal
-                ##   survives .upper() where an &nbsp; entity would not.
+                # NBSP (not a plain space) between value and unit: the label word-wraps
+                # and would otherwise drop "°C" alone on the next line. A literal
+                #   survives .upper() where an &nbsp; entity would not.
                 return (self.str_tilaupid + f" {target} °{self.aw.qmc.mode}").upper()
             pid_text = self.str_artisanpid if self.is_pid_active else ""
             target = self._get_pid_target()
@@ -4493,7 +4443,7 @@ class TilauScope(QWidget):
         except Exception:
             pass
 
-    # Enter preheating stage, 
+    # Enter preheating stage,
     # engaged when start/stop button is pressed or Artisan STARTS
     def handle_preheat(self, show:bool = True):
         self.preheating = show
@@ -4504,40 +4454,40 @@ class TilauScope(QWidget):
                 if show :
                     widget.hide()
                 else:
-                    widget.show()   
-        if show:     
+                    widget.show()
+        if show:
             # Update and show the message
             status = self.get_pid_status()
             self.msg_lbl.setText(self.str_preheating + status)
             self.msg_lbl.show()
             self.msg_lbl.raise_()  # Force the label to the top of the stack
             # Style the container to highlight preheating mode
-            self.phase_container.setStyleSheet("background: #0F0F12; border-radius: 15px; border: 1px solid #F38BA866;")
+            self.phase_container.setStyleSheet(f"background: {THEME['CRUST']}; border-radius: 15px; border: 1px solid #F38BA866;")
         else:
-            self.phase_container.setStyleSheet("background: #0F0F12; border-radius: 15px; border: none;")
+            self.phase_container.setStyleSheet(f"background: {THEME['CRUST']}; border-radius: 15px; border: none;")
             # hide messag and show roasting phases zones
             self.msg_lbl.hide()
         if hasattr(self, 'roast_bridge'):
             self.roast_bridge.notify_preheat(show)
         self._update_timer_style("engaged")
 
-    # update display on DROP, then inform artisan     
+    # update display on DROP, then inform artisan
     def handle_drop(self):
-        for i in range(self.phase_box.count()): 
+        for i in range(self.phase_box.count()):
             widget = self.phase_box.itemAt(i).widget()
             if widget:
                 widget.hide()
         self.msg_lbl.setText(QApplication.translate("tilauscope_window","▼ DROPPING ROASTED COFFEE..."))
         self.msg_lbl.show()
         self.msg_lbl.raise_()  # Force the label to the top of the stack
-        self.phase_container.setStyleSheet("background: #0F0F12; border-radius: 15px; border: 1px solid #F38BA866;")
+        self.phase_container.setStyleSheet(f"background: {THEME['CRUST']}; border-radius: 15px; border: 1px solid #F38BA866;")
         self.aw.qmc.markDropSignal.emit(False)
         # Armer la détection de refroidissement
         self._arm_cooling_detection()
 
-    ## TILAU ## arm/disarm shared by the UI/keyboard path (handle_drop) and the
-    ## Artisan milestone path (_handle_milestone_events, data==6) so the auto
-    ## cooling detection works regardless of how DROP was marked.
+    # arm/disarm shared by the UI/keyboard path (handle_drop) and the
+    # Artisan milestone path (_handle_milestone_events, data==6) so the auto
+    # cooling detection works regardless of how DROP was marked.
     def _arm_cooling_detection(self) -> None:
         self._drop_done = True
         self._cooling_detected = False
@@ -4575,7 +4525,7 @@ class TilauScope(QWidget):
         self.handle_cool_end()
 
     def handle_cool_end(self):
-        for i in range(self.phase_box.count()): 
+        for i in range(self.phase_box.count()):
             widget = self.phase_box.itemAt(i).widget()
             if widget:
                 widget.hide()
@@ -4589,14 +4539,14 @@ class TilauScope(QWidget):
         self.aw.qmc.markCoolSignal.emit(False)
         # Réinitialiser les flags de refroidissement
         self._disarm_cooling_detection()
-            
+
     def check_pid_status(self):
-        ## TILAU ## tracks Artisan PID active state for the preheating status
-        ## message only — the PID button/piloting was removed (handled by Artisan).
+        # tracks Artisan PID active state for the preheating status
+        # message only — the PID button/piloting was removed (handled by Artisan).
         if self.aw.pidcontrol.pidActive != self.is_pid_active:
             self.is_pid_active = self.aw.pidcontrol.pidActive
 
-    ## TILAU ## ──────────────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────
     def _update_automation_banner(self) -> None:
         """Surface, in the status zone, any Artisan automation that drives the
         roast: PID active (from CHARGE) and the background playback modes.
@@ -4637,7 +4587,7 @@ class TilauScope(QWidget):
         self.automation_lbl.hide()
 
     def _cycle_operator_level(self) -> None:
-        """Toggle the operator level Guided ↔ Expert on button click. ## TILAU ##"""
+        """Toggle the operator level Guided ↔ Expert on button click. """
         nxt = "expert" if getattr(self, "_operator_level", "guided") == "guided" else "guided"
         self._apply_operator_level(nxt)
 
@@ -4662,12 +4612,12 @@ class TilauScope(QWidget):
         _next_name = _meta["expert" if level == "guided" else "guided"][2]
         self.btn_level.setText(_letter)
         self.btn_level.setStyleSheet(
-            f"QPushButton {{ background: #181825; color: {_col};"
+            f"QPushButton {{ background: {THEME['SURFACE']}; color: {_col};"
             f" border: 1px solid {_col}; border-radius: 6px;"
             f" font-size: 13px; font-weight: 800; }}"
-            f"QPushButton:hover {{ background: #1E1E2E; }}"
+            f"QPushButton:hover {{ background: {THEME['BG']}; }}"
             f"QToolTip {{ background-color: #2D2F3F; color: white;"
-            f" border: 1px solid #585B70; padding: 5px;"
+            f" border: 1px solid {THEME['SURFACE2']}; padding: 5px;"
             f" border-radius: 3px; font-size: 11px; }}"
         )
         self.btn_level.setToolTip(
@@ -4679,15 +4629,15 @@ class TilauScope(QWidget):
         # Guided only. In Guided the assistant is anchored by default and the
         # ⤢ button floats it for a two-panel layout; Expert is main panel only.
         self.roast_assistant.set_panel_anchor_visible(is_guided)
-        self.roast_assistant.set_operator_level(level)  ## TILAU ## propagate level (controls btn_toggle visibility)
+        self.roast_assistant.set_operator_level(level)  # propagate level (controls btn_toggle visibility)
 
-        # Guided-only coach view toggle on the roast graph. ## TILAU ##
+        # Guided-only coach view toggle on the roast graph.
         try:
             self.aw.qmc.set_coach_toggle_allowed(is_guided)
         except Exception:  # pylint: disable=broad-except
             pass
 
-        # ## TILAU ## Alarm control follows the operator level: Guided suppresses
+        # Alarm control follows the operator level: Guided suppresses
         # all alarm actions (re-asserted each status refresh); Expert hands control
         # back to the user immediately. Applied at INIT too (below the from_init
         # guard would leave a fresh Expert start with alarms wrongly suppressed —
@@ -4698,7 +4648,7 @@ class TilauScope(QWidget):
         except Exception:  # pylint: disable=broad-except
             pass
 
-        # ## TILAU ## Refresh the status line now — for the initial render as well
+        # Refresh the status line now — for the initial render as well
         # as later toggles — so the alarm-set suffix (🔕 …SUSPENDED in Guided,
         # plain ALARM-SET in Expert) matches the level from the very first paint;
         # while OFFLINE nothing else repaints it.
@@ -4744,14 +4694,14 @@ class TilauScope(QWidget):
 
     def toggle_roast_assistant(self):
         """Toggle the roast assistant open/closed (placement is centralised)."""
-        self._assistant_open = not getattr(self, '_assistant_open', False)   ## TILAU ##
+        self._assistant_open = not getattr(self, '_assistant_open', False)
         self.update_button_style(self.btn_assistant, self._assistant_open, False, False, True)
         if self._assistant_open:
-            self.roast_assistant.populate_bean_list()   ## TILAU ## refresh bean identification on open
-        self._place_assistant()                                              ## TILAU ##
+            self.roast_assistant.populate_bean_list()   # refresh bean identification on open
+        self._place_assistant()
 
     def refresh_assistant_beans(self) -> None:
-        """## TILAU ## Rebuild the assistant's green-bean dropdown to match the
+        """Rebuild the assistant's green-bean dropdown to match the
         current simulator state — all beans in simulator mode (any past roast is
         replayable regardless of stock), in-stock only otherwise. Appelé quand le
         simulateur est activé/arrêté pendant que TilauScope est ouvert. No-op si
@@ -4763,7 +4713,7 @@ class TilauScope(QWidget):
         except Exception as e:  # pylint: disable=broad-except
             _log.debug("refresh_assistant_beans failed: %s", e)
 
-    # ── Assistant anchoring ## TILAU ## ────────────────────────────────────────
+    # ── Assistant anchoring ────────────────────────────────────────
 
     def toggle_assistant_anchor(self):
         """Toggle the assistant between floating and anchored display."""
@@ -4774,7 +4724,7 @@ class TilauScope(QWidget):
             self._assistant_open = True
             self.update_button_style(self.btn_assistant, True, False, False, True)
             if not was_open:
-                self.roast_assistant.populate_bean_list()   ## TILAU ## refresh bean identification
+                self.roast_assistant.populate_bean_list()   # refresh bean identification
         QSettings().setValue("tilauscope/assistant_anchored", self._assistant_anchored)
         self._place_assistant()
 
@@ -4807,10 +4757,10 @@ class TilauScope(QWidget):
             self.roast_assistant.hide()
 
         self.btn_dock.setEnabled(open_)
-        self.update_button_style(self.btn_dock, anchored, False, False, True)  ## TILAU ## icon/state via pipeline
+        self.update_button_style(self.btn_dock, anchored, False, False, True)  # icon/state via pipeline
 
     def _on_assistant_closed(self) -> None:
-        """Re-sync open/close state when the floating ✕ closes the assistant. ## TILAU ##"""
+        """Re-sync open/close state when the floating ✕ closes the assistant. """
         if not getattr(self, '_assistant_open', False):
             return
         self._assistant_open = False
@@ -4819,11 +4769,11 @@ class TilauScope(QWidget):
 
     def toggle_beancave(self):
         """Toggles the visibility of the Bean Cave panel."""
-        ## TILAU ## headless: BeanCave is the home view — leaving TilauScope means
-        ## switching to BeanCave (close TilauScope, keep Artisan hidden). Delegated
-        ## to aw.handleBeancave() so the button and the Shift+B/menu path converge.
-        ## Deferred: handleBeancave closes this very TilauScope, so let the button
-        ## click handler unwind first before we tear the window down.
+        # headless: BeanCave is the home view — leaving TilauScope means
+        # switching to BeanCave (close TilauScope, keep Artisan hidden). Delegated
+        # to aw.handleBeancave() so the button and the Shift+B/menu path converge.
+        # Deferred: handleBeancave closes this very TilauScope, so let the button
+        # click handler unwind first before we tear the window down.
         if getattr(self.aw, '_tilau_headless', False):
             QTimer.singleShot(0, lambda: self.aw.handleBeancave())
             return
@@ -4836,7 +4786,7 @@ class TilauScope(QWidget):
             self.aw.beancaveWindow.setWindowModality(Qt.WindowModality.NonModal)
             self.aw.beancaveWindow.finished.connect(self._on_beancave_closed)
             self.aw.beancaveWindow.show()
-    
+
     def _on_beancave_closed(self): # fix 2026/04/25: this is needed to uncheck the button if Beancave is closed by other means than the button (e.g. by Artisan or by the user with the window close button)
         """Called when BeancaveDlg is closed to unmark the button."""
         self.update_button_style(self.btn_beancave, True)
@@ -4857,7 +4807,7 @@ class TilauScope(QWidget):
             ('btn_beancave',  SVG_BEANCAVE, COL_BEANCAVE_ACTIVE, SVG_BEANCAVE, COL_BEANCAVE_IDLE),
             ('btn_assistant', SVG_ASSISTANT,COL_ASSISTANT_ACTIVE,SVG_ASSISTANT,COL_ASSISTANT_IDLE),
             ('swap_button',   SVG_SWAP,     COL_SWAP_ACTIVE,     SVG_SWAP,     COL_SWAP_IDLE),
-            ('btn_dock',      SVG_DOCK,     COL_DOCK_ACTIVE,     SVG_DOCK,     COL_DOCK_IDLE),   ## TILAU ##
+            ('btn_dock',      SVG_DOCK,     COL_DOCK_ACTIVE,     SVG_DOCK,     COL_DOCK_IDLE),
         ]
         for attr, svg_a, col_a, svg_i, col_i in _ICON_SPECS:
             btn = getattr(self, attr, None)
@@ -4874,7 +4824,7 @@ class TilauScope(QWidget):
         if button is self.btn_power:
             button.setProperty("emergency", "true" if emergency else "false")
             if emergency:
-                apply_icon(button, SVG_POWER, "#F38BA8")
+                apply_icon(button, SVG_POWER, THEME['CRITICAL'])
 
         button.style().unpolish(button)
         button.style().polish(button)
@@ -4883,19 +4833,19 @@ class TilauScope(QWidget):
         def get_inverted_icon(icon: QIcon) -> QIcon:
             if icon.isNull():
                 return icon
-            
+
             # Optimization: Use native Qt pixel inversion instead of Python loops.
             # This is significantly faster, especially on Windows.
             pixmap = icon.pixmap(QSize(16, 16))
             image = pixmap.toImage().convertToFormat(QImage.Format.Format_ARGB32)
             if image.isNull():
                 return icon
-            
+
             # Invert RGB but preserve Alpha channel
             image.invertPixels(QImage.InvertMode.InvertRgb)
             return QIcon(QPixmap.fromImage(image))
 
-        # ── Non-destructive mirror of Artisan's menu tree ## TILAU ## ──────────
+        # ── Non-destructive mirror of Artisan's menu tree ──────────
         # Re-hosting live submenu objects via addMenu(menu) detaches them from
         # the native macOS menubar, so any later rebuild of root_menu loses
         # entries. Instead we create NEW QMenu containers and re-add the ORIGINAL
@@ -4929,7 +4879,7 @@ class TilauScope(QWidget):
             self.root_menu.exec(QCursor.pos())
             return
 
-        artisan_menubar = self.aw.menuBar()   
+        artisan_menubar = self.aw.menuBar()
         self.root_menu = QMenu(self)
         self.root_menu.setStyleSheet(MENU_STYLE)
         for action in artisan_menubar.actions():
@@ -4954,7 +4904,7 @@ class TilauScope(QWidget):
             self.update_button_style(self.btn_assistant, True)
             # event buttons
             for btn in self.event_buttons.values():
-                btn.setEnabled(True) 
+                btn.setEnabled(True)
             self.event_panel.show()
             self.aw.qmc.ToggleMonitor()
             self.update_status_text() # immediately update status to avoid waiting for first data from Artisan
@@ -4974,7 +4924,7 @@ class TilauScope(QWidget):
             self.update_button_style(self.btn_assistant, False)
             # event buttons
             for btn in self.event_buttons.values():
-                btn.setEnabled(False) 
+                btn.setEnabled(False)
             self.event_panel.hide()
             self.update_button_style(self.swap_button, True)
             self.aw.qmc.ToggleMonitor()
@@ -4993,22 +4943,22 @@ class TilauScope(QWidget):
         self.update_button_style(self.btn_power, False, True)
 
         # Kill the heater and max out the fan via WebSocket
-        self.bridge.send_to_artisan({"set": {"heater": 0, "fan": 100}}) 
-        
+        self.bridge.send_to_artisan({"set": {"heater": 0, "fan": 100}})
+
         # Interface visuelle d'urgence
-        self.timer_lbl.setStyleSheet(f"font-size: {_TIMER_FONT_PX}px; font-weight: 900; color: #F38BA8; border: none;")
+        self.timer_lbl.setStyleSheet(f"font-size: {_TIMER_FONT_PX}px; font-weight: 900; color: {THEME['CRITICAL']}; border: none;")
         self.status_lbl.setText("EMERGENCY EXIT")
-        self.status_lbl.setStyleSheet("color: #F38BA8; font-size: 11px; font-weight: 900;border: none; background: transparent;")
-        
+        self.status_lbl.setStyleSheet(f"color: {THEME['CRITICAL']}; font-size: 11px; font-weight: 900;border: none; background: transparent;")
+
         # Overlay Message
-        for i in range(self.phase_box.count()): 
+        for i in range(self.phase_box.count()):
             widget = self.phase_box.itemAt(i).widget()
             if widget:
                 widget.hide()
         self.msg_lbl.setText("⚠️ EMERGENCY STOP\nSYSTEM SECURED")
-        self.msg_lbl.setStyleSheet("color: #F38BA8; font-size: 22px; font-weight: 900; font-family: 'JetBrains Mono'; border: none; min-height:100px")
+        self.msg_lbl.setStyleSheet(f"color: {THEME['CRITICAL']}; font-size: 22px; font-weight: 900; border: none; min-height:100px")
         self.msg_lbl.show()
-        self.phase_container.setStyleSheet("background: #181825; border-radius: 15px; border: 2px solid #F38BA8;")
+        self.phase_container.setStyleSheet(f"background: {THEME['SURFACE']}; border-radius: 15px; border: 2px solid {THEME['CRITICAL']};")
 
     def handle_reset(self):
         self.aw.qmc.resetButtonAction()
@@ -5163,7 +5113,7 @@ class TilauScope(QWidget):
         super().mouseReleaseEvent(event)
 
     def moveEvent(self, event):
-        # This keeps the Button Panel (event_panel) attached 
+        # This keeps the Button Panel (event_panel) attached
         # whenever the TilauScope moves (triggered by the parent moving)
         if hasattr(self, 'event_panel'):
             self.align_panels()
@@ -5171,7 +5121,7 @@ class TilauScope(QWidget):
 
     def resizeEvent(self, event):
         """Allow the window to keep its new size."""
-        # Only perform layout updates here, do NOT call self.resize() 
+        # Only perform layout updates here, do NOT call self.resize()
         # or it will create an infinite loop/snap-back effect.
         super().resizeEvent(event)
         if hasattr(self, 'aw') and self.aw:
@@ -5186,58 +5136,58 @@ class TilauScope(QWidget):
     def set_button_state(self, event:int, state:bool):
         button_key,button_color = self.events[event]
         btn = self.event_buttons[button_key]
-        btn.setEnabled(state)  
+        btn.setEnabled(state)
 
     def set_button_style(self, event:int,state:bool):
         button_key,button_color = self.events[event]
         btn = self.event_buttons[button_key]
         if state:
             btn.setStyleSheet(f"""
-            QPushButton {{ 
-                background: #1E1E2E; 
-                color: #CDD6F4; 
-                border-radius: 8px; 
-                border: 1px solid transparent; 
-                border-left: 5px solid {button_color}; 
-                font-size: 11px; 
-                font-weight: bold; 
-                text-align: left; 
-                padding-left: 15px; 
+            QPushButton {{
+                background: {THEME['BG']};
+                color: {THEME['TEXT']};
+                border-radius: 8px;
+                border: 1px solid transparent;
+                border-left: 5px solid {button_color};
+                font-size: 11px;
+                font-weight: bold;
+                text-align: left;
+                padding: 0 4px 0 9px;
             }}
-            
+
             /* Bordure grise transparente au survol */
             QPushButton:hover {{
                 background: #28283D;
-                border: 1px solid rgba(148, 163, 184, 0.2); 
+                border: 1px solid rgba(148, 163, 184, 0.2);
                 border-left: 5px solid {button_color};
             }}
 
             /* Flash de couleur et effet d'enfoncement au clic */
             QPushButton:pressed {{
-                background: {button_color}; 
-                color: #11111B;
+                background: {button_color};
+                color: {THEME['CRUST']};
                 padding-left: 18px;
                 padding-top: 2px;
             }}
             """)
         else:
-            btn.setStyleSheet("""
-                QPushButton { 
-                    background: #313244; 
-                    color: #585B70; 
-                    border-radius: 8px; 
-                    border: 1px solid #45475a; 
-                    border-left: 5px solid #585B70; 
-                    font-size: 11px; 
-                    font-weight: bold; 
-                    text-align: left; 
-                    padding-left: 15px; 
-                }
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: {THEME['BORDER']};
+                    color: {THEME['SURFACE2']};
+                    border-radius: 8px;
+                    border: 1px solid {THEME['SURFACE1']};
+                    border-left: 5px solid {THEME['SURFACE2']};
+                    font-size: 11px;
+                    font-weight: bold;
+                    text-align: left;
+                    padding: 0 4px 0 9px;
+                }}
             """)
 
     def _apply_sv_lock(self, locked: bool) -> None:
         """Enable/disable the whole SV row. No-op unless the state actually flips,
-        so this stays O(1) on the pulse path. ## TILAU ##"""
+        so this stays O(1) on the pulse path. """
         if locked == self._sv_locked or not self._sv_widgets:
             return
         self._sv_locked = locked
@@ -5251,16 +5201,16 @@ class TilauScope(QWidget):
 
     def check_sliders_update(self):
         aw = self.aw
-        ## TILAU ## mirror-only: copying Artisan values into our sliders must not
-        ## re-fire the move/release handlers back toward Artisan. The visible
-        ## value labels still refresh (their valueChanged lambda is not guarded).
+        # mirror-only: copying Artisan values into our sliders must not
+        # re-fire the move/release handlers back toward Artisan. The visible
+        # value labels still refresh (their valueChanged lambda is not guarded).
         self._syncing_from_artisan = True
         try:
             # 1. Handle the first 4 sliders — use pre-computed tuple (no per-call allocation)
             for i, art_slider in enumerate(self._artisan_sliders):
-                ## TILAU ## a click not yet committed (debounce window) has not
-                ## reached Artisan yet: mirroring here would snap the slider back
-                ## to the pre-click value mid-burst.
+                # a click not yet committed (debounce window) has not
+                # reached Artisan yet: mirroring here would snap the slider back
+                # to the pre-click value mid-burst.
                 if self._has_pending_commit(i):
                     continue
                 new_val = art_slider.value()
@@ -5268,9 +5218,9 @@ class TilauScope(QWidget):
                     self.sld_list[i].setValue(new_val)
             # 2. Handle the SV slider logic (index 4)
             pid = aw.tilauPreheatingPid
-            ## TILAU ## while the guided preheat runs, the SV displayed IS TilauPID's
-            ## target — it is overwritten on every pulse, so editing it can only look
-            ## broken. Lock the row instead of letting the operator fight the PID.
+            # while the guided preheat runs, the SV displayed IS TilauPID's
+            # target — it is overwritten on every pulse, so editing it can only look
+            # broken. Lock the row instead of letting the operator fight the PID.
             self._apply_sv_lock(pid is not None and pid.active)
             if not self._has_pending_commit(4):
                 if pid is not None and pid.active:
@@ -5291,48 +5241,47 @@ class TilauScope(QWidget):
         button_color_todim = toDim(self.artisan_conf.get_lightened_color(button_color))
         btn = self.event_buttons[button_key]
         btn.setEnabled(not disable_button)
-        #_logd.info(f"mark_button_active event={event} state={state} button={button_key} btn_exists={btn is not None}")
         if btn:
             if disable_button:
                 btn.setToolTip(QApplication.translate("tilauscope_window", "This event is already recorded"))
                 btn.setStyleSheet(f"""
-                    QPushButton:disabled {{ 
-                        background: #2D2D35; 
-                        color: {button_color}; 
-                        border-radius: 8px; 
-                        border: 1px solid #45475a; 
-                        border-left: 5px solid #585B70; 
-                        font-size: 11px; 
-                        font-weight: bold; 
-                        text-align: left; 
-                        padding-left: 15px; 
+                    QPushButton:disabled {{
+                        background: {THEME['BORDER']};
+                        color: {button_color};
+                        border-radius: 8px;
+                        border: 1px solid {THEME['SURFACE1']};
+                        border-left: 5px solid {THEME['SURFACE2']};
+                        font-size: 11px;
+                        font-weight: bold;
+                        text-align: left;
+                        padding: 0 4px 0 9px;
                     }}
                 """)
                 return
             if not state: # button flat
                 btn.setToolTip(QApplication.translate("tilauscope_window", "Click to cancel marking of this event"))
                 btn.setStyleSheet(f"""
-                    QPushButton {{ 
-                        background: #313244; 
-                        color: #585B70; 
-                        border-radius: 8px; 
-                        border: 1px solid #45475a; 
-                        border-left: 5px solid #585B70; 
-                        font-size: 11px; 
-                        font-weight: bold; 
-                        text-align: left; 
-                        padding-left: 15px; 
+                    QPushButton {{
+                        background: {THEME['BORDER']};
+                        color: {THEME['SURFACE2']};
+                        border-radius: 8px;
+                        border: 1px solid {THEME['SURFACE1']};
+                        border-left: 5px solid {THEME['SURFACE2']};
+                        font-size: 11px;
+                        font-weight: bold;
+                        text-align: left;
+                        padding: 0 4px 0 9px;
                     }}
                     /* Bordure grise transparente au survol */
                     QPushButton:hover {{
                         background: {button_color_todim};
-                        border: 1px solid rgba(148, 163, 184, 0.2); 
+                        border: 1px solid rgba(148, 163, 184, 0.2);
                         border-left: 5px solid {button_color};
                     }}
                     /* Flash de couleur et effet d'enfoncement au clic */
                     QPushButton:pressed {{
-                        background: {button_color}; 
-                        color: #11111B;
+                        background: {button_color};
+                        color: {THEME['CRUST']};
                         padding-left: 18px;
                         padding-top: 2px;
                     }}
@@ -5340,29 +5289,29 @@ class TilauScope(QWidget):
             else: # not flat button
                 btn.setToolTip(QApplication.translate("tilauscope_window", "Click to mark this event"))
                 btn.setStyleSheet(f"""
-                QPushButton {{ 
-                    background: #1E1E2E; 
-                    color: #CDD6F4; 
-                    border-radius: 8px; 
-                    border: 1px solid transparent; 
-                    border-left: 5px solid {button_color}; 
-                    font-size: 11px; 
-                    font-weight: bold; 
-                    text-align: left; 
-                    padding-left: 15px; 
+                QPushButton {{
+                    background: {THEME['BG']};
+                    color: {THEME['TEXT']};
+                    border-radius: 8px;
+                    border: 1px solid transparent;
+                    border-left: 5px solid {button_color};
+                    font-size: 11px;
+                    font-weight: bold;
+                    text-align: left;
+                    padding: 0 4px 0 9px;
                 }}
-                
+
                 /* Bordure grise transparente au survol */
                 QPushButton:hover {{
                     background: #28283D;
-                    border: 1px solid rgba(148, 163, 184, 0.2); 
+                    border: 1px solid rgba(148, 163, 184, 0.2);
                     border-left: 5px solid {button_color};
                 }}
 
                 /* Flash de couleur et effet d'enfoncement au clic */
                 QPushButton:pressed {{
-                    background: {button_color}; 
-                    color: #11111B;
+                    background: {button_color};
+                    color: {THEME['CRUST']};
                     padding-left: 18px;
                     padding-top: 2px;
                 }}
@@ -5380,12 +5329,12 @@ class TilauScope(QWidget):
             self.extra_panel.deleteLater() # Clear the old panel to avoid duplicates
             self.extra_panel = None
         self.extra_panel = ExtraCountersPanel(self.artisan_conf, self.theme, self)
-        self.extra_panel.reset_counters() # Initialize counters 
+        self.extra_panel.reset_counters() # Initialize counters
         self.align_extra_panel() # Align the panel based on current window geometry
         if visible:
             self.extra_panel.show()
         else:
-            self.extra_panel.hide() # Caché 
+            self.extra_panel.hide() # Caché
 
     def update_events_from_artisan(self):
         # if buttons have changed, we must rebuild event buttons to update the button bar
@@ -5426,11 +5375,10 @@ class TilauScope(QWidget):
             self.event_panel.show()
         else:
             self.event_panel.hide()
-          
+
     def update_pid_from_artisan(self,sv:int, move:bool = True, init:bool = False):
-        #_log.info(f"update pid received from artisan sv={sv} move={move} init={init}")
         if self._has_pending_commit(4):
-            return  ## TILAU ## uncommitted SV click wins over the echo from Artisan
+            return  # uncommitted SV click wins over the echo from Artisan
         slider_sv = self.sld_list[4].value()
         if slider_sv != int(sv) :
             self.sld_list[4].setValue(int(sv))
@@ -5569,8 +5517,8 @@ class TilauScope(QWidget):
             # SV sync — checked once per second max (SV changes rarely)
             sv = int(self.aw.pidcontrol.sv if self.aw.pidcontrol.sv is not None else 0)
             if sv != int(self.aw.sliderSV.value()):
-                ## TILAU ## reflect the PID setpoint on Artisan's SV slider without
-                ## re-triggering Artisan's own slider action (programmatic mirror).
+                # reflect the PID setpoint on Artisan's SV slider without
+                # re-triggering Artisan's own slider action (programmatic mirror).
                 self.aw.sliderSV.blockSignals(True)
                 self.aw.sliderSV.setValue(sv)
                 self.aw.sliderSV.blockSignals(False)
@@ -5606,7 +5554,7 @@ class TilauScope(QWidget):
             status_parts = []
             if qmc.flagstart:
                 status_parts.append(self.str_roastsession.upper())
-                
+
             if self._is_simulator:
                 sim_text = self.str_simulator
                 if not self.aw.sample_loop_running:
@@ -5618,7 +5566,7 @@ class TilauScope(QWidget):
 
             # Auto-flags
             self.check_pid_status()
-            self._update_automation_banner()   ## TILAU ## red-on-amber automation notice
+            self._update_automation_banner()   # red-on-amber automation notice
             ti = qmc.timeindex
             if ti:
                 if ti[0] == -1:  # Pre-charge
@@ -5629,10 +5577,10 @@ class TilauScope(QWidget):
                         p_text += self._is_pid_target_close(self.curr_bt)
                     if getattr(self, "prev_pidtext", None) != p_text:
                         self.prev_pidtext = p_text
-                        ## TILAU ## separator must be <br>, not \n: msg_lbl is in AutoText
-                        ## mode and Qt's rich-text sniffing stops at the first newline, so
-                        ## a leading "\n" made it render the whole message as plain text —
-                        ## the <br>/<b> of the "ready to charge" line showed up literally.
+                        # separator must be <br>, not \n: msg_lbl is in AutoText
+                        # mode and Qt's rich-text sniffing stops at the first newline, so
+                        # a leading "\n" made it render the whole message as plain text —
+                        # the <br>/<b> of the "ready to charge" line showed up literally.
                         self.msg_lbl.setText(f"{self.str_preheating}<br>{p_text}")
                     if qmc.autoChargeFlag: status_parts.append(self.str_autocharge)
                 elif ti[1] == -1 and (qmc.autoDRYenabled or self.aw.TilauScopeDEMarkFlag):
@@ -5649,7 +5597,7 @@ class TilauScope(QWidget):
 
             self.check_sliders_update()
 
-            if (self.roast_assistant.isVisible() or getattr(self, '_assistant_anchored', False)) and self.roast_assistant.is_active:   ## TILAU ##
+            if (self.roast_assistant.isVisible() or getattr(self, '_assistant_anchored', False)) and self.roast_assistant.is_active:
                 self.roast_bridge.tick(data)
 
         elif 0 <= data <= 7:  # Shared logic for Charge through Cool
@@ -5727,17 +5675,17 @@ class TilauScope(QWidget):
                     self.mark_button_active(n, disable_button=True)
                 self.roast_bridge.notify_phase("COOL")
                 self.roast_assistant.update_batch()   # rafraîchit le badge batch (DROP + UNDO DROP)
-                self._arm_cooling_detection()   ## TILAU ## arm even when DROP is marked from Artisan
+                self._arm_cooling_detection()   # arm even when DROP is marked from Artisan
             else:
                 self.set_phase("DEV")
                 self.mark_button_active(6, state=True)
                 self.roast_bridge.notify_phase("DEV")
-                self._disarm_cooling_detection()   ## TILAU ## DROP undone
+                self._disarm_cooling_detection()   # DROP undone
         elif data == 7:  # COOL END
             if buttonState:
                 self.roast_bridge.notify_phase("COOL")
                 self.mark_button_active(7)
-                self._disarm_cooling_detection()   ## TILAU ##
+                self._disarm_cooling_detection()
             else:
                 self.set_phase("DEV", self.phase_starts.get("DEV") or 0)
                 self.mark_button_active(7, state=True)
@@ -5758,12 +5706,12 @@ class TilauScope(QWidget):
                 return
             if hasattr(self, 'menu_btn'):
                 self.menu_btn.raise_()  # Pulls the button to the very front
-                self.menu_btn.activateWindow() # Ensures it captures mouse events                
+                self.menu_btn.activateWindow() # Ensures it captures mouse events
                 _log.info("raise button")
             status_text = f"ARTISAN "+QApplication.translate("tilauscope_window","CONNECTED") if self.aw.qmc.flagon else QApplication.translate("tilauscope_window","OFFLINE")
             # if there is an alarm set selected
-    
-            # ## TILAU ## Guided mode is the sole control authority: suppress all
+
+            # Guided mode is the sole control authority: suppress all
             # alarm ACTIONS via the native lever (conditions still evaluated,
             # nothing fired). Re-asserted here so it survives the reset that clears
             # silent_alarms (canvas ~15151); this method is the single point where
@@ -5775,25 +5723,21 @@ class TilauScope(QWidget):
                 alarm_set = QApplication.translate("tilauscope_window", " ALARM-SET='<b>{0}</b>'").format(self.aw.qmc.alarmsetlabel.upper()) if self.aw.qmc.alarmsetlabel != "" else ""
             status_text += alarm_set
             # if roast started
-            # ## TILAU ## ground truth is Artisan's flagstart, NOT is_roasting: our
-            # own flag drifts whenever recording is toggled outside our button (the
-            # Artisan STOP, a remote command, the simulator), which left the banner
-            # announcing a roast session well after it had ended. This method is the
-            # sync point, so resync here rather than patch each caller.
+            # ground truth is Artisan's flagstart, NOT is_roasting: our own flag
+            # drifts whenever recording is toggled outside our button (Artisan STOP,
+            # a remote command, the simulator). This method is the single sync point.
             self.is_roasting = bool(self.aw.qmc.flagstart)
-            # ## TILAU ## the guided assistant is started/stopped by the recording
-            # state, but only our own START/STOP button used to announce it. A roast
-            # started from Artisan (or the simulator, a remote command, an alarm)
-            # therefore left the assistant on its idle page — bean identified in the
-            # dropdown, never adopted, no plan. Same reasoning as the resync above:
-            # this method is the single sync point, so the edge is emitted here.
+            # The guided assistant is started/stopped by the recording state edge,
+            # emitted here for the same reason: a roast started outside our START/STOP
+            # button (Artisan, simulator, remote command, alarm) must still be picked
+            # up, or the assistant stays on its idle page with no plan adopted.
             _prev_roasting = getattr(self, '_last_flagstart', None)
             if _prev_roasting is not None and _prev_roasting != self.is_roasting:
                 try:
                     self.roast_bridge.notify_roast_state(self.is_roasting)
                 except Exception as e:  # pylint: disable=broad-except
                     _log.debug("roast state notify: %s", e)
-                # ## TILAU ## Artisan re-shows its own milestone bar at every
+                # Artisan re-shows its own milestone bar at every
                 # OnRecorder (applyStandardButtonVisibility) — TilauScope has its
                 # own milestone row, so that bar must go back down whatever
                 # started the recording, not only our own button.
@@ -5820,14 +5764,12 @@ class TilauScope(QWidget):
                             simulator_text += f" x{round(b_val * 0.001, 0)}"
                     except (TypeError, ValueError):
                         pass
-#                    if isinstance(b, float): # Fix 2026-09-29: Ensure b is a float before formatting
-#                        simulator_text += " x"+str(round(b*0.001, 0)) if b > 1000 else ""
             # store concatened text
             self.status_lbl.setText(f"{status_text}{simulator_text}")
-            self.status_lbl.setStyleSheet(f"color: {'#A6E3A1' if self.aw.qmc.flagon else '#F38BA8'}; border: none; background:transparent;")
+            self.status_lbl.setStyleSheet(f"color: {THEME['SUCCESS'] if self.aw.qmc.flagon else THEME['CRITICAL']}; border: none; background:transparent;")
             self.update_button_style(self.btn_power, self.aw.qmc.flagon, False, False, True)
             self.update_button_style(self.btn_start_stop, self.aw.qmc.flagstart, False, False, True)
-            # ## TILAU ## remote clients live off Artisan's sampling ticks, which
+            # remote clients live off Artisan's sampling ticks, which
             # stop with the sampling itself — a STOP that also takes monitoring down
             # (simulator) would never reach the phone. This method already runs at
             # every point where the desktop state changed, so it is the natural
@@ -5841,11 +5783,11 @@ class TilauScope(QWidget):
         except Exception as e:
             _log.error(e)
 
-    ## TILAU ## Single choke point for every slider commit path (big control
-    ## cards, +/- steppers, SmartRoller, assistant quick-adjust, slider drag).
-    ## Repeated clicks restart the timer, so only the last value is pushed to
-    ## Artisan: one hardware command and one recorded event per burst.
-    ## `immediate=True` bypasses the delay (drag release — no repeat to coalesce).
+    # Single choke point for every slider commit path (big control
+    # cards, +/- steppers, SmartRoller, assistant quick-adjust, slider drag).
+    # Repeated clicks restart the timer, so only the last value is pushed to
+    # Artisan: one hardware command and one recorded event per burst.
+    # `immediate=True` bypasses the delay (drag release — no repeat to coalesce).
     def handle_ui_input_released(self, n, immediate: bool = False):
         if self.init or self._syncing_from_artisan:
             return
@@ -5891,12 +5833,12 @@ class TilauScope(QWidget):
         else:
             slidervalue = self.sld_list[n].value()
             self.aw.pidcontrol.setSV(slidervalue,True)
-            ## TILAU ## setSV only reaches Artisan's own SV slider when Artisan's PID
-            ## path is configured (external PID, ArduinoTC4, Kaleido or the Control
-            ## flag). On a slider-driven roaster none of those branches run, so
-            ## aw.sliderSV kept its old value and check_sliders_update snapped our
-            ## slider right back. Mirror it ourselves; signals stay blocked so this
-            ## cannot re-enter Artisan's SV chain.
+            # setSV only reaches Artisan's own SV slider when Artisan's PID
+            # path is configured (external PID, ArduinoTC4, Kaleido or the Control
+            # flag). On a slider-driven roaster none of those branches run, so
+            # aw.sliderSV kept its old value and check_sliders_update snapped our
+            # slider right back. Mirror it ourselves; signals stay blocked so this
+            # cannot re-enter Artisan's SV chain.
             if self.aw.sliderSV.value() != slidervalue:
                 self.aw.sliderSV.blockSignals(True)
                 self.aw.sliderSV.setValue(slidervalue)
@@ -5908,19 +5850,18 @@ class TilauScope(QWidget):
         # add action to slider
         if n in [0,1,2,3]:
             slider_lcd:dict[int, callable[int]] = {
-                0:self.aw.updateSlider1LCD, 
-                1:self.aw.updateSlider2LCD, 
-                2:self.aw.updateSlider3LCD, 
+                0:self.aw.updateSlider1LCD,
+                1:self.aw.updateSlider2LCD,
+                2:self.aw.updateSlider3LCD,
                 3:self.aw.updateSlider4LCD
                 }
             slider_lcd[n](value)
         else:
-            ## TILAU ## SV now behaves like sliders 0-3: moving it only refreshes
-            ## the LCD. The set-point reaches the PID at commit (release) only —
-            ## it used to be pushed on every intermediate value, so a drag or a
-            ## burst of +/- clicks retargeted the PID at each step.
+            # SV behaves like sliders 0-3: moving it only refreshes the LCD.
+            # The set-point reaches the PID at commit (release) only, so a drag or
+            # a burst of +/- clicks does not retarget the PID at each step.
             self.aw.updateSVSliderLCD(int(round(value)))
-        
+
     #build end of roast message
     def build_end_of_roast(self)->str:
         try:
@@ -5941,7 +5882,7 @@ class TilauScope(QWidget):
             str_dtr = "--"
             str_delta_t="--.-"
         return f"Total time: {str_total_time} - DTR {str_dtr} - Dev ΔT {str_delta_t}"
-    
+
     def check_playback_before_start(self):
         """
         Méthode à appeler juste après le clic sur 'START'
@@ -5958,26 +5899,22 @@ class TilauScope(QWidget):
         if active_modes:
             dlg = PlaybackWarningDlg(self.aw, active_modes)
             dlg.exec()
-            
+
             if dlg.result_code == PlaybackWarningDlg.CANCEL:
                 return False # On stoppe le processus de démarrage
-                
+
             elif dlg.result_code == PlaybackWarningDlg.DISABLE_AND_START:
                 # Désactivation propre via les méthodes d'Artisan pour mettre à jour l'UI
                 self.aw.qmc.backgroundReproduce = False
                 self.aw.qmc.turn_playback_event_OFF()
                 self.aw.qmc.backgroundPlaybackDROP = False
-                
-#                # Mise à jour des indicateurs visuels (couleurs de boutons, etc.)
-#                self.aw.updatePlaybackIndicator() 
-#                self.aw.sendmessage("Automations désactivées pour ce roast.")
-                
+
         return True # On autorise le démarrage
-    
-    ## TILAU ## single place hiding Artisan's own milestone/event button bar:
-    ## TilauScope displays its own CHARGE/DRY/FC…/DROP row, so the Artisan one
-    ## is redundant inside the canvas. Artisan re-shows it on every OnRecorder,
-    ## hence more than one caller — never duplicate the loop.
+
+    # single place hiding Artisan's own milestone/event button bar:
+    # TilauScope displays its own CHARGE/DRY/FC…/DROP row, so the Artisan one
+    # is redundant inside the canvas. Artisan re-shows it on every OnRecorder,
+    # hence more than one caller — never duplicate the loop.
     def _hide_artisan_standard_buttons(self) -> None:
         try:
             for b in self.artisan_buttons_collection.values():
@@ -5998,15 +5935,15 @@ class TilauScope(QWidget):
             self.msg_lbl.raise_()
             return
 
-        ## TILAU ## only warn about active automations when STARTING a roast;
-        ## the dialog must never pop up on STOP (is_roasting already True).
+        # only warn about active automations when STARTING a roast;
+        # the dialog must never pop up on STOP (is_roasting already True).
         if not self.is_roasting and not self.check_playback_before_start():
             return
-        ## TILAU ## snapshot BEFORE ToggleRecorder: Artisan calls back into
-        ## update_status_text() synchronously, which resyncs self.is_roasting on
-        ## flagstart. Reading the flag after the call therefore reports the NEW
-        ## state, and a START was taken for a STOP — post-roast result dialog
-        ## popping up 800 ms after pressing START.
+        # snapshot BEFORE ToggleRecorder: Artisan calls back into
+        # update_status_text() synchronously, which resyncs self.is_roasting on
+        # flagstart. Reading the flag after the call therefore reports the NEW
+        # state, and a START was taken for a STOP — post-roast result dialog
+        # popping up 800 ms after pressing START.
         was_roasting = self.is_roasting
         self.aw.qmc.ToggleRecorder(pressed)
         if not was_roasting :
@@ -6026,21 +5963,20 @@ class TilauScope(QWidget):
             self.btn_start_stop.setToolTip(QApplication.translate('Tooltip', 'Stop recording'))
             # Masquer messagelabel Artisan : le flux est redirigé vers le ticker
             self.aw.messagelabel.setVisible(False)
-            self.roast_bridge.notify_roast_state(True)   ## TILAU ##
+            self.roast_bridge.notify_roast_state(True)
         else:
             # update roasting flag
             self.is_roasting = False
             self._update_timer_style("idle")   # back to grey pulse
-            self.roast_bridge.notify_roast_state(False)   ## TILAU ## stops the assistant
-            self._hide_automation_banner()   ## TILAU ## clear automation notice at roast end
+            self.roast_bridge.notify_roast_state(False)   # stops the assistant
+            self._hide_automation_banner()   # clear automation notice at roast end
             if self.preheating:
-                self.handle_preheat(False) 
+                self.handle_preheat(False)
                 self.preheating = False
             self.update_status_text()
             # at end of roast enable reset button to clear the screen
             self.update_button_style(self.btn_reset, True)
-            ## TILAU ## only the TilauScope preheating PID is piloted here;
-            ## Artisan's own PID is left untouched (no longer driven by TilauScope).
+            # only the TilauScope preheating PID is piloted here; Artisan's own PID is left untouched.
             if self.aw.tilauPreheatingPid is not None and self.aw.tilauPreheatingPid.active:
                 self.aw.tilauPreheatingPid.stop(reason="recording_stop")
             self.btn_start_stop.setToolTip(QApplication.translate('Tooltip', 'Start recording'))
@@ -6051,8 +5987,8 @@ class TilauScope(QWidget):
             if not self.aw.simulator and not getattr(self, '_relaunch_pending', False):
                 QTimer.singleShot(800, self._open_roast_result_dialog)
             # reset phases display to normal
-            for p in self.phases.values(): 
-                p.set_active(False) 
+            for p in self.phases.values():
+                p.set_active(False)
             for n in range (0,8): # reset buttons styles
                 self.set_button_style(n, True)
                 self.set_button_state(n, False)
@@ -6064,8 +6000,6 @@ class TilauScope(QWidget):
             for lcd in (self.lcds.tg_lcd, self.lcds.te_lcd, self.lcds.ror_lcd):
                 lcd.reset_alert()
                 lcd.init_minmax()
-            # finally call powxer off
-            #QTimer.singleShot(250, self.toggle_power)
 
     def _open_roast_result_dialog(self) -> None:
         """Ouvre RoastResultDialog en fin de roast — même pattern que
@@ -6074,11 +6008,11 @@ class TilauScope(QWidget):
             from tilauscope.roast_properties import RoastResultDialog
             from tilauscope.tilauscope_types import GreenBean
 
-            ## TILAU ## reset() (ON/RESET) may have wiped qmc.title/qmc.beans.
-            ## Restore the live values stashed at setup so the save filename
-            ## and the .alog bean linkage are correct. Live DROP path only.
+            # reset() (ON/RESET) may have wiped qmc.title/qmc.beans.
+            # Restore the live values stashed at setup so the save filename
+            # and the .alog bean linkage are correct. Live DROP path only.
             qmc = self.aw.qmc
-            default_title = QApplication.translate('Scope Title', 'TilauScope') ## TILAU ##
+            default_title = QApplication.translate('Scope Title', 'TilauScope')
             stash_title = getattr(self.aw, '_tilau_live_title', '')
             stash_beans = getattr(self.aw, '_tilau_live_beans', '')
             if stash_title and (not qmc.title or qmc.title == default_title):
@@ -6131,7 +6065,7 @@ class TilauScope(QWidget):
             child = layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
-    
+
     @pyqtSlot(QWidget, QLayout, bool)
     def toggle_panels(self, left_widget:QWidget, content_layout:QLayout, swap:bool):
         # 1. Prevent the UI from repainting until we are done (saves CPU)

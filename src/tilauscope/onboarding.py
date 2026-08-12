@@ -13,25 +13,10 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ##
-"""First-run configuration assistant for TilauScope.
-
-A 4-step wizard shown the very first time the user opens the app (gated by a
-QSettings flag) and replayable on demand from the menu. It guides through:
-
-    1. temperature unit (°C / °F)
-    2. roaster model  (+ loads its machine .aset device config, if bundled)
-    3. hardware       (Skywalker paired manually, peripherals auto-detected)
-    4. hand-off       → create the first green bean in BeanCave
-
-Nothing is applied until the user validates the last step. Skipping or closing
-marks the assistant as done (it will not auto-reappear) without touching any
-setting. All settings are applied atomically on *Terminer* in this order:
-    unit → machine .aset (machine=True) → theme (.athm, theme=True) → redraw.
-
-The theme file is a curated .athm (visual sections only) so applying it via
-``settingsLoad(theme=True)`` can never clobber the device configuration.
-"""
+"""First-run configuration assistant for TilauScope: a 4-step wizard (unit,
+roaster model, hardware, hand-off to BeanCave) shown once and replayable from the menu.
+Settings apply atomically only when the user validates the last step; skipping never
+touches settings."""
 
 import logging
 import os
@@ -55,7 +40,7 @@ from PyQt6.QtWidgets import (
 )
 
 from artisanlib.util import getResourcePath
-from tilauscope.tilauscope_types import _IS_MACOS
+from tilauscope.tilauscope_types import _IS_MACOS, THEME
 
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow
@@ -66,29 +51,29 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 _DONE_KEY: Final[str] = "tilauscope/onboarding_done"
 
 # ── Catppuccin Mocha palette (matches whats_new / displayscope) ────────────
+# Derived from the shared THEME table; local names kept so the ~60 references need no churn.
 _T: Final[dict] = {
-    "BG":      "#1E1E2E",
-    "SURFACE": "#181825",
-    "OVERLAY": "#313244",
-    "OVER1":   "#45475A",
-    "OVER2":   "#585B70",
-    "TEXT":    "#CDD6F4",
-    "SUBTEXT": "#A6ADC8",
-    "MUTED":   "#6C7086",
-    "ACCENT":  "#89B4FA",
-    "SKY":     "#74C7EC",
-    "GREEN":   "#A6E3A1",
-    "PEACH":   "#FAB387",
-    "YELLOW":  "#F9E2AF",
-    "MAUVE":   "#CBA6F7",
-    "RED":     "#F38BA8",
+    "BG":      THEME["BG"],
+    "SURFACE": THEME["SURFACE"],
+    "OVERLAY": THEME["BORDER"],
+    "OVER1":   THEME["SURFACE1"],
+    "OVER2":   THEME["SURFACE2"],
+    "TEXT":    THEME["TEXT"],
+    "SUBTEXT": THEME["SUBTEXT"],
+    "MUTED":   THEME["OVERLAY0"],
+    "ACCENT":  THEME["ACCENT"],
+    "SKY":     THEME["SAPPHIRE"],   # historic name: this is Sapphire
+    "GREEN":   THEME["SUCCESS"],
+    "PEACH":   THEME["WARNING"],
+    "YELLOW":  THEME["YELLOW"],
+    "MAUVE":   THEME["MAUVE"],
+    "RED":     THEME["CRITICAL"],
 }
 
+
 # ── Roaster display-name → bundled machine .aset ───────────────────────────
-# (subdir, default_file, paired_file). default_file is loaded when the roaster
-# was NOT manually paired; paired_file (if set) when it was — e.g. the Skywalker
-# defaults to its USB profile, and switches to the BLE profile once paired.
-# Matching is done by substring so display-name variations still resolve.
+# (subdir, default_file, paired_file): default_file loads when not paired, paired_file
+# once paired (e.g. Skywalker switches USB→BLE profile). Matched by substring.
 _ROASTER_MACHINE_ASET: Final[list[tuple[str, tuple[str, str, str]]]] = [
     ("Cyberroaster",  ("Skywalker", "skywalkerv2-usb.aset", "skywalkerv2-ble.aset")),
     ("Skywalker V2",  ("Skywalker", "skywalkerv2-usb.aset", "skywalkerv2-ble.aset")),
@@ -96,6 +81,9 @@ _ROASTER_MACHINE_ASET: Final[list[tuple[str, tuple[str, str, str]]]] = [
 
 # Curated theme shipped in the repo (generated from the reference profile).
 _THEME_REL: Final[tuple[str, ...]] = ("Themes", "TilauScope", "Catppuccin.athm")
+
+
+from tilauscope.theme_qss import apply_tilau_theme
 
 
 def _theme_path() -> str:
@@ -118,14 +106,10 @@ def _machine_aset_for(roaster: str, paired: bool = False) -> str | None:
 
 
 # ── Known Artisan BLE device signatures (identification only) ──────────────
-# Harvested from each device port's add_device_description(service_uuid, name)
-# call in artisanlib — the authoritative source, not a guessed list. Tuple is
-# (label, name_prefix, service_uuid|None). Matching mirrors ble_port.name_match:
-# a name/local_name prefix hit OR the service UUID advertised. USB/serial
-# roasters (Aillio, Kaleido, Hottop) are not BLE and never appear in a scan, so
-# they are deliberately absent. Our own peripherals (Skywalker TD5325A, AirWave,
-# TilauAmbient, Acaia, Lebrew AquaGauge/RoastSee C1) have dedicated rows above
-# and are filtered out of this section.
+# Sourced from each device port's add_device_description() call in artisanlib.
+# Tuple is (label, name_prefix, service_uuid|None); matched via ble_port.name_match
+# (prefix hit or service UUID). USB/serial roasters never appear here; our own
+# peripherals have dedicated rows above and are filtered out of this section.
 _KNOWN_BLE_SIGNATURES: Final[tuple[tuple[str, str, str | None], ...]] = (
     ("Santoker (Cube)",        "SANTOKER",              "6e400001-b5a3-f393-e0a9-e50e24dcca9e"),
     ("Santoker R",             "Santoker",              "0000fff0-0000-1000-8000-00805f9b34fb"),
@@ -167,6 +151,9 @@ class OnboardingWizard(QDialog):
             beancave,
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint,
         )
+        # ground=False: the grounded base would paint the rectangle opaque and
+        # square off the rounded card this window draws inside it.
+        apply_tilau_theme(self, ground=False)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
         if _IS_MACOS:
@@ -227,10 +214,10 @@ class OnboardingWizard(QDialog):
         row.setContentsMargins(20, 0, 14, 0)
 
         icon = QLabel("🌱")
-        icon.setStyleSheet("font-size:20px; background:transparent;")
+        icon.setStyleSheet("font-size:20px; ")
         title = QLabel(QApplication.translate("tilauscope_onboarding","Welcome — first-time setup"))
         title.setStyleSheet(
-            f"color:{_T['TEXT']}; font-family:'JetBrains Mono',monospace;"
+            f"color:{_T['TEXT']};"
             f" font-size:14px; font-weight:700; background:transparent;"
         )
         close = QPushButton("✕")
@@ -251,7 +238,6 @@ class OnboardingWizard(QDialog):
 
     def _build_stepper(self) -> QWidget:
         wrap = QFrame()
-        wrap.setStyleSheet("background:transparent;")
         row = QHBoxLayout(wrap)
         row.setContentsMargins(26, 18, 26, 4)
         row.setSpacing(0)
@@ -280,7 +266,6 @@ class OnboardingWizard(QDialog):
 
     def _build_body(self) -> QWidget:
         self._stack = QStackedWidget()
-        self._stack.setStyleSheet("background:transparent;")
         self._stack.addWidget(self._page_unit())
         self._stack.addWidget(self._page_roaster())
         self._stack.addWidget(self._page_hardware())
@@ -309,7 +294,7 @@ class OnboardingWizard(QDialog):
 
         self._count_lbl = QLabel()
         self._count_lbl.setStyleSheet(
-            f"color:{_T['MUTED']}; font-family:'JetBrains Mono',monospace; font-size:11px;"
+            f"color:{_T['MUTED']}; font-size:11px;"
         )
         self._back_btn = QPushButton(QApplication.translate("tilauscope_onboarding","Back"))
         self._back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -370,7 +355,6 @@ class OnboardingWizard(QDialog):
             f"QScrollBar::handle:vertical {{ background:{_T['OVER1']}; border-radius:4px; }}"
         )
         holder = QWidget()
-        holder.setStyleSheet("background:transparent;")
         col = QVBoxLayout(holder)
         col.setContentsMargins(0, 0, 6, 0)
         col.setSpacing(8)
@@ -467,14 +451,13 @@ class OnboardingWizard(QDialog):
 
         self._known_ble_seen: dict[str, str] = {}
         self._known_ble_host = QFrame()
-        self._known_ble_host.setStyleSheet("background:transparent;")
         self._known_ble_layout = QVBoxLayout(self._known_ble_host)
         self._known_ble_layout.setContentsMargins(0, 0, 0, 0)
         self._known_ble_layout.setSpacing(6)
         self._known_ble_empty: QLabel | None = QLabel(
             QApplication.translate("tilauscope_onboarding","nothing recognised nearby — these are identified, not configured"))
         self._known_ble_empty.setStyleSheet(
-            f"color:{_T['MUTED']}; font-size:11px; font-family:'JetBrains Mono',monospace;"
+            f"color:{_T['MUTED']}; font-size:11px;"
             f" background:transparent; padding:2px 0;"
         )
         self._known_ble_layout.addWidget(self._known_ble_empty)
@@ -508,14 +491,14 @@ class OnboardingWizard(QDialog):
         hl = QHBoxLayout(row)
         hl.setContentsMargins(14, 11, 14, 11)
         ic = QLabel(icon)
-        ic.setStyleSheet("font-size:18px; background:transparent;")
+        ic.setStyleSheet("font-size:18px; ")
         box = QVBoxLayout()
         box.setSpacing(2)
         nl = QLabel(title)
         nl.setStyleSheet(f"color:{_T['TEXT']}; font-size:14px; font-weight:600; background:transparent;")
         pl = QLabel("—")
         pl.setStyleSheet(
-            f"color:{_T['MUTED']}; font-size:11px; font-family:'JetBrains Mono',monospace;"
+            f"color:{_T['MUTED']}; font-size:11px;"
             f" background:transparent;"
         )
         self._dir_path_lbls[kind] = pl
@@ -561,20 +544,19 @@ class OnboardingWizard(QDialog):
                 lbl.setText(val if val else QApplication.translate("tilauscope_onboarding","not set — click Choose…"))
                 lbl.setStyleSheet(
                     f"color:{_T['GREEN'] if val else _T['MUTED']}; font-size:11px;"
-                    f" font-family:'JetBrains Mono',monospace; background:transparent;"
+                    f" background:transparent;"
                 )
 
     # ── page 5: finish ────────────────────────────────────────────────────
     def _page_finish(self) -> QWidget:
         page = QWidget()
-        page.setStyleSheet("background:transparent;")
         lay = QVBoxLayout(page)
         lay.setContentsMargins(34, 20, 34, 10)
         lay.setSpacing(4)
 
         seal = QLabel("🌱")
         seal.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        seal.setStyleSheet("font-size:44px; background:transparent;")
+        seal.setStyleSheet("font-size:44px; ")
         h = QLabel(QApplication.translate("tilauscope_onboarding","Ready to apply."))
         h.setAlignment(Qt.AlignmentFlag.AlignCenter)
         h.setStyleSheet(f"color:{_T['TEXT']}; font-size:22px; font-weight:700; background:transparent;")
@@ -629,13 +611,13 @@ class OnboardingWizard(QDialog):
             hl = QHBoxLayout(row)
             hl.setContentsMargins(14, 10, 14, 10)
             arrow = QLabel("→")
-            arrow.setStyleSheet(f"color:{_T['GREEN']}; font-family:'JetBrains Mono',monospace;")
+            arrow.setStyleSheet(f"color:{_T['GREEN']}; ")
             kl = QLabel(k)
             kl.setStyleSheet(f"color:{_T['SUBTEXT']}; font-size:13px; background:transparent;")
             vl = QLabel(v)
             vl.setStyleSheet(
                 f"color:{_T['TEXT']}; font-size:13px; font-weight:600;"
-                f" font-family:'JetBrains Mono',monospace; background:transparent;"
+                f" background:transparent;"
             )
             hl.addWidget(arrow)
             hl.addWidget(kl)
@@ -646,7 +628,6 @@ class OnboardingWizard(QDialog):
     # ── small builders ────────────────────────────────────────────────────
     def _page_base(self, title: str, subtitle: str) -> QWidget:
         page = QWidget()
-        page.setStyleSheet("background:transparent;")
         lay = QVBoxLayout(page)
         lay.setContentsMargins(34, 14, 34, 8)
         lay.setSpacing(6)
@@ -669,14 +650,14 @@ class OnboardingWizard(QDialog):
         hl = QHBoxLayout(row)
         hl.setContentsMargins(14, 10, 14, 10)
         ic = QLabel(icon)
-        ic.setStyleSheet("font-size:18px; background:transparent;")
+        ic.setStyleSheet("font-size:18px; ")
         box = QVBoxLayout()
         box.setSpacing(1)
         nl = QLabel(name)
         nl.setStyleSheet(f"color:{_T['TEXT']}; font-size:14px; font-weight:600; background:transparent;")
         dl = QLabel(desc)
         dl.setStyleSheet(
-            f"color:{_T['MUTED']}; font-size:11px; font-family:'JetBrains Mono',monospace;"
+            f"color:{_T['MUTED']}; font-size:11px;"
             f" background:transparent;"
         )
         box.addWidget(nl)
@@ -692,7 +673,7 @@ class OnboardingWizard(QDialog):
             return row, btn
         status = QLabel(QApplication.translate("tilauscope_onboarding","searching…"))
         status.setStyleSheet(
-            f"color:{_T['MUTED']}; font-size:12px; font-family:'JetBrains Mono',monospace;"
+            f"color:{_T['MUTED']}; font-size:12px;"
             f" background:transparent;"
         )
         hl.addWidget(status)
@@ -708,19 +689,19 @@ class OnboardingWizard(QDialog):
             if i == index:
                 b.setStyleSheet(
                     f"background:{_T['ACCENT']}; color:{_T['SURFACE']}; border-radius:16px;"
-                    f" font-family:'JetBrains Mono',monospace; font-weight:700;"
+                    f" font-weight:700;"
                 )
                 lab.setStyleSheet(f"color:{_T['TEXT']}; font-size:11px; background:transparent;")
             elif i < index:
                 b.setStyleSheet(
                     f"background:{_T['OVERLAY']}; color:{_T['GREEN']}; border-radius:16px;"
-                    f" font-family:'JetBrains Mono',monospace; font-weight:700;"
+                    f" font-weight:700;"
                 )
                 lab.setStyleSheet(f"color:{_T['SUBTEXT']}; font-size:11px; background:transparent;")
             else:
                 b.setStyleSheet(
                     f"background:{_T['OVERLAY']}; color:{_T['MUTED']}; border-radius:16px;"
-                    f" font-family:'JetBrains Mono',monospace; font-weight:700;"
+                    f" font-weight:700;"
                 )
                 lab.setStyleSheet(f"color:{_T['MUTED']}; font-size:11px; background:transparent;")
 
@@ -752,7 +733,7 @@ class OnboardingWizard(QDialog):
         status.setText(QApplication.translate("tilauscope_onboarding","detected ✓"))
         status.setStyleSheet(
             f"color:{_T['GREEN']}; font-size:12px;"
-            f" font-family:'JetBrains Mono',monospace; background:transparent;"
+            f" background:transparent;"
         )
         if is_roaster:
             self._skywalker_ready = True
@@ -853,12 +834,12 @@ class OnboardingWizard(QDialog):
         nl.setStyleSheet(f"color:{_T['TEXT']}; font-size:13px; font-weight:600; background:transparent;")
         sig = QLabel(signature)
         sig.setStyleSheet(
-            f"color:{_T['MUTED']}; font-size:11px; font-family:'JetBrains Mono',monospace;"
+            f"color:{_T['MUTED']}; font-size:11px;"
             f" background:transparent;"
         )
         tag = QLabel(QApplication.translate("tilauscope_onboarding","recognised · not configured"))
         tag.setStyleSheet(
-            f"color:{_T['MAUVE']}; font-size:11px; font-family:'JetBrains Mono',monospace;"
+            f"color:{_T['MAUVE']}; font-size:11px;"
             f" background:transparent;"
         )
         hl.addWidget(dot)
@@ -1025,18 +1006,18 @@ class OnboardingWizard(QDialog):
             return (
                 f"QPushButton {{ background:rgba(166,227,161,0.15); color:{_T['GREEN']};"
                 f" border:none; border-radius:8px; padding:8px 15px; font-size:12px;"
-                f" font-weight:600; font-family:'JetBrains Mono',monospace; }}"
+                f" font-weight:600; }}"
             )
         return (
             f"QPushButton {{ background:{_T['OVERLAY']}; color:{_T['ACCENT']};"
             f" border:1px solid {_T['OVER1']}; border-radius:8px; padding:8px 15px;"
-            f" font-size:12px; font-weight:600; font-family:'JetBrains Mono',monospace; }}"
+            f" font-size:12px; font-weight:600; }}"
             f"QPushButton:hover {{ background:{_T['OVER1']}; }}"
         )
 
     def _group_style(self) -> str:
         return (
-            f"color:{_T['MUTED']}; font-size:11px; font-family:'JetBrains Mono',monospace;"
+            f"color:{_T['MUTED']}; font-size:11px; "
             f" letter-spacing:1px; background:transparent;"
         )
 

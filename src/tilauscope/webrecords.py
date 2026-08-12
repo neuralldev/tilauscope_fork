@@ -13,17 +13,9 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ## Record web server — phone-facing read-only record pages
-## (spec: wiki/QR-Scan-Spec.md §4, mockup §4.3 validated 2026-07-16).
-##
-## A label QR scanned with a phone's native camera opens
-## http://tilauscope.local:{port}/roast/{roastUUID} in the phone browser; this
-## module serves those pages. Follows the proven artisanlib.weblcds pattern
-## (aiohttp in a dedicated thread + AppRunner) — NOT a literal WebView subclass
-## because the base hard-wires a catch-all static route and a websocket that
-## would shadow our routes. Strictly read-only (GET), LAN only, no auth (home
-## use per spec). Runs entirely off the Qt thread: the providers passed in must
-## only touch plain-python data (GIL-safe reads, possibly slightly stale).
+# Record web server — phone-facing read-only record pages (wiki/QR-Scan-Spec.md §4).
+# A label QR opens http://tilauscope.local:{port}/roast/{roastUUID}; GET-only, LAN-only,
+# no auth. Runs off the Qt thread — providers must only touch plain-python data.
 
 import io
 import re
@@ -44,11 +36,13 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 _BONJOUR_HOST: Final[str] = 'tilauscope.local.'
 _UUID_IN_BEANS = re.compile(r'uuid:\s*([a-fA-F0-9-]{36})')
 
-# Catppuccin Mocha — same identity as the app and the desktop roast card
+# Catppuccin Mocha — same identity as the app and the desktop roast card.
+# Deliberately a copy, not an import: this module depends on neither Qt nor any
+# tilauscope module. Must be re-synced by hand if THEME's tokens change.
 _BG = '#1E1E2E'
 _SURFACE = '#181825'
 _TEXT = '#CDD6F4'
-_SUBTEXT = '#94A3B8'
+_SUBTEXT = '#A6ADC8'
 _ACCENT = '#89B4FA'
 _GREEN = '#A6E3A1'
 _RED = '#F38BA8'
@@ -259,10 +253,8 @@ class TilauWebRecords:
                  bean_resolver: Optional[Callable[[str], Optional[dict]]] = None,
                  sack_resolver: Optional[Callable[[str], Optional[str]]] = None) -> None:
         self._port = port
-        # ## TILAU ## resolvers are settable so TilauWebHost can start the server
-        # before BeanCave exists; the no-op default returns None -> clean 404 on
-        # /roast and /bean (the index page still serves). BeanCave registers real
-        # resolvers via set_resolvers() once its catalogue is loaded.
+        # resolvers are settable so TilauWebHost can start the server before BeanCave
+        # exists; the no-op default returns None -> clean 404 on /roast and /bean.
         self._roast_resolver = roast_resolver or (lambda _u: None)
         self._bean_resolver = bean_resolver or (lambda _u: None)
         self._sack_resolver = sack_resolver or (lambda _s: None)

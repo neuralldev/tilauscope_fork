@@ -66,6 +66,17 @@ toggle itself.
 
 ![the UI Features and Remote access groups](assets/configuration-4.4.png)
 
+### Diagnostics
+
+**Check progress indicators…** opens a window showing every progress indicator the application
+uses — turning, filling, finished and failed — with a button for each place one can appear. It
+changes no setting and starts no work: it is there to confirm they draw and animate correctly on
+this particular computer and screen. See
+[While the app is working](the-window.md#while-the-app-is-working) for what each one means.
+
+<!-- CAPTURE 4.13 — Configuration → GENERAL, the Diagnostics group, with the progress
+indicator window open in front of it mid-run (rings turning, a count showing). -->
+
 ---
 
 ## 📡 SENSORS — every device, by role
@@ -74,6 +85,11 @@ Each device gets its own group, always in the same shape: a **Device** dropdown 
 been found nearby, a status cell, and whatever parameters belong to that device alone. Bluetooth
 scanning runs in the background for the whole time this tab is open — there is no separate Scan
 button to press.
+
+The status cell shows a turning ring for as long as a group is still searching and has found
+nothing, so a quiet group is visibly still looking rather than stalled. The ring stops as soon as
+something is found, and a device that is assigned but switched off shows no ring — there is
+nothing in progress to watch.
 
 | Group | Device | What it configures |
 |---|---|---|

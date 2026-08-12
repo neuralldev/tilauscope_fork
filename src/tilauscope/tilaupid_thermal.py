@@ -30,7 +30,7 @@ from pathlib import Path
 from statistics import median
 
 
-## TILAU ## Sidecar only: thermal state never extends or mutates Artisan ProfileData.
+# Sidecar only: thermal state never extends or mutates Artisan ProfileData.
 THERMAL_MODEL_FILENAME = "tilaupid_thermal_candidate.json"
 THERMAL_MODEL_SCHEMA = 1
 

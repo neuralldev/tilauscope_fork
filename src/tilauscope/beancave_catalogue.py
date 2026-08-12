@@ -13,20 +13,9 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ##
-"""Rich-rows catalogue list for BeanCave (Lot 5, step A — validated mock).
+"""Rich-rows catalogue list for BeanCave.
 
-A readable replacement for the 28-column QTableWidget of the Green Beans tab:
-each bean is a compact 3-line row — name + badges (BLEND, harvest age),
-origin · process · crop, then the stock pill and the attached sack ids —
-with a live search field and an "In stock" filter on top.
-
-Architecture note: this widget is a pure VIEW. The legacy datatable stays
-alive but hidden and remains the selection model every existing code path
-relies on (visual row == green_beans index). Clicking a row here calls
-``datatable.selectRow(i)`` through the host hook; programmatic selections
-mirror back via ``select_index``. Filtering only hides rows visually — it
-never reorders anything, so the row/index invariant holds.
+Pure view: the hidden datatable remains the selection model (visual row == green_beans index); filtering only hides rows, never reorders.
 """
 
 from __future__ import annotations
@@ -53,7 +42,7 @@ from tilauscope.tilauscope_types import THEME
 _logd = logging.getLogger('tilaudebug')
 
 _MONO = "'JetBrains Mono', monospace"
-_DIM = "#6C7086"
+_DIM = THEME['OVERLAY0']
 
 
 
@@ -122,7 +111,7 @@ class _BeanRow(QFrame):
             pill = QLabel(f"{bean.weight_left:.0f} g")
             pill_col = THEME['SUCCESS']
         pill.setStyleSheet(
-            f"color:{pill_col};font-family:{_MONO};font-size:10px;"
+            f"color:{pill_col};font-size:10px;"
             f"border:1px solid {pill_col};border-radius:8px;"
             f"padding:0px 7px;background:transparent;")
         l3.addWidget(pill)
@@ -130,7 +119,7 @@ class _BeanRow(QFrame):
         if sacks:
             sl = QLabel("⬤ " + "  ".join(sacks))
             sl.setToolTip(QApplication.translate("tilauscope_beancave", "Attached sack labels"))
-            sl.setStyleSheet(f"color:{_DIM};font-family:{_MONO};font-size:9.5px;background:transparent;")
+            sl.setStyleSheet(f"color:{_DIM};font-size:9.5px;background:transparent;")
             sl.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
             l3.addWidget(sl, 1)
         else:
@@ -140,7 +129,7 @@ class _BeanRow(QFrame):
     def _badge(self, text: str, color: str) -> QLabel:
         b = QLabel(text)
         b.setStyleSheet(
-            f"color:{color};font-family:{_MONO};font-size:9px;font-weight:600;"
+            f"color:{color};font-size:9px;font-weight:600;"
             f"border:1px solid {color};border-radius:8px;padding:0px 5px;"
             f"background:transparent;")
         return b

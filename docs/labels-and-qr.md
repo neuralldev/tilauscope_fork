@@ -47,10 +47,28 @@ full spec sheet on an 80 mm roll, or a condensed card on a 30 mm roll (small eno
 QR is dropped — there is no room to make it useful at that size). Sack labels always use the
 30 mm roll.
 
-**🖨 Print label** opens a preview with a copies count, then prints in the background —
-a status strip tracks progress without blocking the rest of the window. Printing is refused,
-with a plain explanation rather than a silent failure, when the roll is out of labels, when
-the loaded paper isn't recognised, or when it doesn't match the size the label needs.
+**🖨 Print label** opens a preview with a copies count, then prints in the background.
+Printing is refused, with a plain explanation rather than a silent failure, when the roll is
+out of labels, when the loaded paper isn't recognised, or when it doesn't match the size the
+label needs.
+
+### While a label is printing
+
+Every print in TilauScope — a roast label, a recipe card, a batch of sack ids — reports the
+same way: a small pill in the corner of the window, described in
+[While the app is working](the-window.md#while-the-app-is-working). The window stays usable
+throughout, and the printer's own state stays where it always is, so a print never hides
+whether the printer is ready or how many labels are left on the roll.
+
+A run of several labels counts them — *3 of 12* — and offers **✕**, which stops the run
+**after the label currently coming out**: one already moving through the print head cannot be
+recalled. The pill then reports how many were actually printed, and only those count against
+the roll.
+
+A finished print says so in the pill and disappears on its own; nothing has to be clicked
+away. A failed one turns red, names what to do, and stays until it is dismissed. The one
+message that still interrupts is the roll running low, because that is a change of paper to
+make before the next batch, not a result to read.
 
 !!! info "Hardware — Niimbot B21S"
     Printing needs a paired Niimbot B21S. The printer identifies its own paper roll

@@ -10,9 +10,8 @@
 # Public License along with this program. If not, see
 # <https://www.gnu.org/licenses/>.
 
-# courtesy to niimbot wiki https://printers.niim.blue which has provided with reversed eng. code structure of packets
-# all algorith to pack/unpack was first based on https://github.com/AndBondStyle/niimprint
-# it has been completly rewritten as it was not performing well and not working at all with B21S
+# Niimbot BLE label printer protocol (B21S / D110M V4). Packet framing derived
+# from https://github.com/AndBondStyle/niimprint and https://printers.niim.blue.
 
 # AUTHOR
 # TiLau 2025
@@ -46,7 +45,7 @@ _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
 NIIMBOT_INITIAL_PACKET = "C10101C1"
 NIIMBOT_PREFIX= "B21" # all devices start with this name
-MAX_BLE_CHUNK_SIZE = 220 
+MAX_BLE_CHUNK_SIZE = 220
 MAX_ROWS_PER_BLOCK = 200     # La limite de lignes par transaction de données (dépassement -> 0xD3)
 FLOW_CONTROL_DELAY = 0.06    # Délai d'envoi de paquet 0x85 (60ms)
 _PACKET_INTERVAL_S = 0.02    # Délai entre 2 écritures BLE (1 paquet/écriture, flux D110M V4)
@@ -55,7 +54,7 @@ PRINTER_RESUME_CODE = 179    # Supposons 0xB3 = 179 (code non listé pour 'Ready
 
 PACKET_END_MARKER = b'\xaa\xaa' # Le marqueur de fin de paquet Niimbot
 # Seuil pour basculer de 0x84 (Séquences <= 7) à 0x85 (Bitmap)
-MAX_RLE_RUN_LENGTH = 7 
+MAX_RLE_RUN_LENGTH = 7
 
 class NiimbotUUID(StrEnum):   #e7810a71-73ae-499d-8c15-faa9aef0c3f2
     NIIMBOT_SERVICE0_UUID   = "e7810a71-73ae-499d-8c15-faa9aef0c3f2" # service UUID to discover devices
@@ -65,19 +64,9 @@ class NiimbotUUID(StrEnum):   #e7810a71-73ae-499d-8c15-faa9aef0c3f2
     NIIMBOT_CHAR2_UUID      = "0000ff12-0000-1000-8000-00805f9b34fb" # clear text channel characteristic
 
 ## Niimbot Packet Structure
-# in BLE both SERVICE WRITE and NOTIFY must be subscribed on the same UUID (fist listed)
-# connection can be long and require to check that bleak has successfully connected before starting to work 
-# before starting dialog a special sequence has be sent to unlock notifications
-# all packed acknowledged come back with a value of the (type +1) if ok
-# communication is asynchronous, write is sent, then a notification comes back, therefore a small delay has to be included to wait for the answer
-# packet sxtructure
-#  [0x55, 0x55, type, len, data...,      checksum, 0xAA, 0xAA]
-#    0     1    2     3    4...4+len-1   4+len     5+len 6+len      
-#  an example to set page length
-#   0x55 0x55 0x13 0x06  0x02 0x80 0x01 0x80 0x00 0x01 0x17 0xaa 0xaa (type=13, length=6, data-> w=640, h->384, 1)
-# image is being printed as an horizontal image of 640x384 with the big label size (image is rotated before printing)
+# [0x55, 0x55, type, len, data..., checksum, 0xAA, 0xAA] — ack packets return type+1.
 
-class NiimbotPacket:    
+class NiimbotPacket:
     PREAMBLE = 0x55
     ENDING   = 0xAA
 
@@ -96,7 +85,7 @@ class NiimbotPacket:
         if pkt[:2] != bytes((cls.PREAMBLE, cls.PREAMBLE)):
             raise ValueError("Invalid Niimbot packet preamble")
         if pkt[-2:] != bytes((cls.ENDING, cls.ENDING)):
-            raise ValueError("Invalid Niimbot packet ending")   
+            raise ValueError("Invalid Niimbot packet ending")
         type_ = pkt[2]
         len_ = pkt[3]
         data = pkt[4 : 4 + len_]
@@ -134,8 +123,8 @@ class Niimprint_InfoEnum(IntEnum):
     BATTERY = 10
     DEVICESERIAL = 11
     HARDVERSION = 12
-    PAPERTYPE = 30 
- 
+    PAPERTYPE = 30
+
 class Niimprint_RequestCodeEnum(IntEnum):
     GET_INFO = 64  # 0x40
     GET_RFID = 26  # 0x1A
@@ -201,14 +190,14 @@ class NiimbotHeartbeat:
 
 class NiimbotRFIDinfo:
     def __init__(self)->None:
-        self.type: int|None = None # paper type 
-        self.used_len: int|None = None # remaining labels on the roll 
+        self.type: int|None = None # paper type
+        self.used_len: int|None = None # remaining labels on the roll
         self.total_len: int|None = None # total labels of the roll
         self.barcode: str|None = None # barcode read from rfid (used to find paper size on web site)
         self.uuid: str|None = None # uuid of rfid (not used)
         self.serial:str|None = None # serial of paper roll (not used)
         self.valid:bool = False
-   
+
 class NiimbotBLE(ClientBLE):
     at_connected    = pyqtSignal()
     at_disconnected = pyqtSignal()
@@ -220,7 +209,7 @@ class NiimbotBLE(ClientBLE):
     # Émis depuis le thread worker pendant _print_image_locked → slot GUI
     # en QueuedConnection (comme status_updated).
     print_progress  = pyqtSignal(int, int)
-        
+
     def __init__(self, known_uuid: str | None = None):
         super().__init__()
         self._packetbuf = bytearray()
@@ -255,12 +244,8 @@ class NiimbotBLE(ClientBLE):
             self._trace.append((time.perf_counter(), direction, label, size))
 
     def _dump_trace(self, header: str) -> None:
-        """Vide le traceur dans ~/Downloads/tilau_print_trace.txt.
-
-        Affiche l'horodatage relatif (ms depuis le 1er événement), le delta
-        avec l'événement précédent, le sens (TX/RX) et le type de paquet — pour
-        voir si l'imprimante acquitte pendant le flot de lignes et à quel rythme.
-        """
+        """Vide le traceur (horodatage relatif, delta, sens, type de paquet) dans
+        ~/Downloads/tilau_print_trace.txt."""
         self._trace_on = False
         events = self._trace
         self._trace = []
@@ -288,7 +273,7 @@ class NiimbotBLE(ClientBLE):
             _logd.warning(f"[PRINTTRACE] {n_tx} TX / {n_rx} RX / span={span:.1f}ms")
         except Exception as _e:
             _logd.warning(f"[PRINTTRACE] dump failed: {_e}")
-        
+
     def disconnect(self) -> None:
         """
         Ferme la connexion BLE et effectue le nettoyage.
@@ -297,15 +282,11 @@ class NiimbotBLE(ClientBLE):
             _logd.debug("Closing BLE connection.")
             self._ble_client.close()
             self._ble_client = None
-        
+
     @pyqtSlot(list)
     def on_devices_found(self, devices: list) -> None:
-        """
-        Slot branché sur TilauBLEScanner.devices_found.
-        Filtre la liste sur le préfixe NIIMBOT_PREFIX.
-        Si une imprimante est trouvée et qu'on n'est pas déjà en train
-        de se connecter, lance connect_direct().
-        """
+        """Slot branché sur TilauBLEScanner.devices_found : filtre sur NIIMBOT_PREFIX
+        et lance connect_direct() si trouvé."""
         if self._connecting or self._running:
             return  # déjà connecté ou connexion en cours
         for bd, _ad in devices:
@@ -321,15 +302,8 @@ class NiimbotBLE(ClientBLE):
                 return
 
     def connect_direct(self, bd: 'BLEDevice') -> None:
-        """
-        Connexion directe au BLEDevice fourni par TilauBLEScanner.
-        Stocke bd dans _known_device puis appelle start() normalement.
-        ClientBLE._connect() tourne dans son AsyncLoopThread et appelle
-        ble.scan_and_connect() qui est synchrone-bloquant et s'exécute
-        dans la loop du singleton ble — la seule loop valide pour Bleak
-        sur macOS Core Bluetooth. On override scan_and_connect() pour
-        rediriger vers ble.connect_known() quand _known_device est défini.
-        """
+        """Connexion directe au BLEDevice fourni par TilauBLEScanner : stocke bd dans
+        _known_device puis appelle start(), qui redirige vers ble.connect_known()."""
         if self._connecting or self._running:
             _logd.debug("NiimbotBLE: connect_direct ignored — already connecting/connected")
             return
@@ -355,7 +329,7 @@ class NiimbotBLE(ClientBLE):
 
     def scan_and_connect_override(
             self,
-            device_descriptions: tuple[dict,dict], ## TILAU ## upstream tuple (was dict)
+            device_descriptions: tuple[dict,dict], # upstream tuple (was dict)
             blacklist: set,
             case_sensitive: bool,
             disconnected_callback: 'Callable',
@@ -386,7 +360,7 @@ class NiimbotBLE(ClientBLE):
     def stop_scan(self) -> None:
         """Compatibilité — TilauBLEScanner gère l'arrêt du scan central."""
         self.stop()
-            
+
     def initialize(self) -> None:
         self.send(bytes.fromhex(NIIMBOT_INITIAL_PACKET))
 
@@ -417,7 +391,7 @@ class NiimbotBLE(ClientBLE):
         if connected_device_name is not None:
             _logd.debug(f"connected_service_UUID={connected_service_UUID}, connected_device_name={connected_device_name}")
         else:
-            _logd.debug("not connected")  
+            _logd.debug("not connected")
         return connected_service_UUID is not None
 
     def on_connect(self) -> None:
@@ -443,8 +417,8 @@ class NiimbotBLE(ClientBLE):
     def on_disconnect(self) -> None:
         super().on_disconnect()
         _logd.debug("Niimbot Printer disconnected")
-        self.at_disconnected.emit() # On émet le signal personnalisé    
-    
+        self.at_disconnected.emit() # On émet le signal personnalisé
+
     def _packet_to_int(self, x):
         return int.from_bytes(x, "big")
 
@@ -452,7 +426,7 @@ class NiimbotBLE(ClientBLE):
         if len(data) == 0:
             return "<empty>"
         return " ".join(f"{b:02x}" for b in data)
-    
+
     # pack and send a request, then wait for the answer and returns it as NiimbotPacket class (function returned, value)
     def _transceive(self, reqcode, data, respoffset=1, nowait:bool=False, extrawait:float=0.0) -> NiimbotPacket:
         respcode = respoffset + reqcode
@@ -494,14 +468,14 @@ class NiimbotBLE(ClientBLE):
         return rpacket # type: ignore
 
     # retrieve information from the printer by sending a query and translate answer according to returned information
-    # call transceive to send the data and awaits answer, then interpret return. information is gathered via notify 
+    # call transceive to send the data and awaits answer, then interpret return. information is gathered via notify
     def get_info(self, key: Niimprint_InfoEnum)->str:
         _logd.debug(f"get_info key={key}")
         packet: NiimbotPacket = self._transceive(Niimprint_RequestCodeEnum.GET_INFO, bytes((key,)), key)
         if packet is not None and packet.data != b"":
             #_logd.debug(f"get_info key={key} data={self.format_hex(packet.data)}")
             match key:
-                case Niimprint_InfoEnum.DEVICESERIAL:  
+                case Niimprint_InfoEnum.DEVICESERIAL:
                     return packet.get_data().hex()
                 case Niimprint_InfoEnum.SOFTVERSION:
                     return str(self._packet_to_int(packet.get_data()) / 100.0)
@@ -518,7 +492,7 @@ class NiimbotBLE(ClientBLE):
 
     def get_hardware_version(self):
         return self.get_info(Niimprint_InfoEnum.HARDVERSION)
-    
+
     def get_software_version(self):
         return self.get_info(Niimprint_InfoEnum.SOFTVERSION)
 
@@ -540,10 +514,7 @@ class NiimbotBLE(ClientBLE):
         return Niimprint_PaperType.UNKNOWN
 
     # get rfid information, to identify paper
-    # NB : parsing défensif — certaines mises à jour firmware B21S changent la
-    # taille du bloc de queue (total/used/type). On slice exactement ce dont
-    # chaque champ a besoin et on ne lève JAMAIS : un format inattendu ne doit
-    # pas casser la connexion (get_rfid est appelé dans niimbot_connected/poll).
+    # Parsing défensif : ne lève jamais, un format inattendu ne doit pas casser la connexion.
     def get_rfid(self):
         packet: NiimbotPacket = self._transceive(Niimprint_RequestCodeEnum.GET_RFID, b"\x01")
         data = packet.data
@@ -578,7 +549,7 @@ class NiimbotBLE(ClientBLE):
             )
             rfidinfo.valid = rfidinfo.barcode is not None
         return rfidinfo
-    
+
     # used to wait for printer to be ready when idle, should not be used if sending data in a row
     def get_heartbeat(self) -> NiimbotHeartbeat:
         packet: NiimbotPacket = self._transceive(Niimprint_RequestCodeEnum.HEARTBEAT, b"\x01")
@@ -623,15 +594,15 @@ class NiimbotBLE(ClientBLE):
     # (start print) [(start page) (set dimension) (send data) (end page) waint (start page)...(end page) wait] (end print)
     def start_print(self):
         packet = self._transceive(Niimprint_RequestCodeEnum.START_PRINT, b"\x01")
-        status= False 
+        status= False
         if packet.data != b"":
-            status = bool(packet.data[0])       
+            status = bool(packet.data[0])
         return status
 
     # must be sent to end the print, it ejects the last page as well
     def end_print(self):
         packet = self._transceive(Niimprint_RequestCodeEnum.END_PRINT, b"\x01")
-        status= False 
+        status= False
         if packet.data != b"":
             status = bool(packet.data[0])
         return status
@@ -676,11 +647,11 @@ class NiimbotBLE(ClientBLE):
     ## no idea what this is but I implemented it
     def set_antifake(self):
         packet = self._transceive(Niimprint_RequestCodeEnum.ANTIFAKE, b"\x01")
-        status= False 
+        status= False
         if packet.data != b"":
-            status = bool(packet.data[0])       
+            status = bool(packet.data[0])
         return status
-    
+
     def poll(self) -> list[NiimbotHeartbeat | None, NiimbotRFIDinfo | None]:
         if not self._ble_lock.acquire(blocking=False):
             #_logd.debug("poll_status: impression en cours, skip.")
@@ -710,9 +681,7 @@ class NiimbotBLE(ClientBLE):
             self.status_updated.emit(hb, rfid)
 
     def _get_niimbot_packets(self, image: Image.Image) -> list[tuple[bytes, int]]:
-        # Encodage vectorisé numpy : une seule conversion tableau remplace les
-        # ~250 000 appels img.getpixel() de l'ancienne boucle (temps mort pur
-        # avant que la tête ne bouge). Mode "1" : 0 = noir, 255 = blanc, donc
+        # Encodage vectorisé numpy. Mode "1" : 0 = noir, 255 = blanc, donc
         # np.array → bool où True = blanc ; l'encre (noir) est ~arr.
         arr   = np.array(image.convert("1"), dtype=bool)
         black = ~arr                              # True là où il y a de l'encre
@@ -720,12 +689,8 @@ class NiimbotBLE(ClientBLE):
         # packbits MSB-first : bit 7 = colonne de gauche → format protocole 0x85.
         row_bytes = np.packbits(black, axis=1)
 
-        # En-tête 0x85 « split mode » (D110M V4 / countsMode="auto", réf.
-        # niimbluelib) = [ y(2, big-endian) , c0 , c1 , c2 , repeat(1) ] où
-        # c0/c1/c2 = nombre de pixels noirs dans chaque tiers de la ligne
-        # (128 colonnes = 16 octets), borné à 255. Le firmware B21S récent parle
-        # le protocole D110M V4 (confirmé via niimblue) et attend ces compteurs
-        # par tiers, pas le « total mode ».
+        # En-tête 0x85 « split mode » (D110M V4) = [y(2, BE), c0, c1, c2, repeat(1)]
+        # où c0/c1/c2 = pixels noirs par tiers de ligne (128 colonnes), bornés à 255.
         seg = np.empty((image.height, 3), dtype=np.int64)
         seg[:, 0] = black[:, 0:128].sum(axis=1)
         seg[:, 1] = black[:, 128:256].sum(axis=1)
@@ -779,18 +744,9 @@ class NiimbotBLE(ClientBLE):
     def _wait_print_finished_by_status(self, total_pages: int = 1,
                                        poll_interval: float = 0.3,
                                        timeout: float = 12.0) -> bool:
-        """Sonde le print-status (0xA3 → réponse 0xB3) jusqu'à ce que
-        l'imprimante rapporte `page >= total_pages`, comme
-        waitUntilPrintFinishedByStatusPoll de niimbluelib.
-
-        À appeler ENTRE pageEnd (0xE3) et printEnd (0xF3) : le firmware D110M V4
-        brûle physiquement l'étiquette pendant cette phase. Couper avec printEnd
-        avant que l'imprimante ait fini éjecte une étiquette BLANCHE — c'est la
-        cause de l'ancien bug. La réponse 0xB3 est interceptée par
-        notify_callback (PRINTER_RESUME_CODE) dans last_b3_packet_data.
-
-        Retourne False sur timeout (l'impression a quand même eu le temps de se
-        faire pendant l'attente — on enchaîne printEnd sans casser)."""
+        """Sonde le print-status (0xA3 → réponse 0xB3) jusqu'à `page >= total_pages`.
+        À appeler ENTRE pageEnd et printEnd : le firmware D110M V4 brûle l'étiquette
+        durant cette phase ; couper trop tôt éjecte une étiquette blanche."""
         start = time.perf_counter()
         last_page = -1
         while (time.perf_counter() - start) < timeout:
@@ -840,9 +796,7 @@ class NiimbotBLE(ClientBLE):
             img_padded.paste(image.crop((0, 0, image.width, min(image.height, phys_h))), (0, 0))
             image = img_padded
 
-        # Traceur TX/RX horodaté — désactivé par défaut, activé pour un debug
-        # ponctuel via la variable d'environnement TILAU_NIIMBOT_TRACE=1.
-        # Dump dans ~/Downloads/tilau_print_trace.txt à la fin de l'impression.
+        # Traceur TX/RX horodaté, activé via TILAU_NIIMBOT_TRACE=1, dumpé en fin d'impression.
         self._trace = []
         self._trace_on = bool(os.environ.get("TILAU_NIIMBOT_TRACE"))
 
@@ -870,10 +824,8 @@ class NiimbotBLE(ClientBLE):
             self.error.emit(str(m))
             self._dump_trace("ABORT cover open")
             return False
-        # ── Flux D110M V4 (firmware B21S récent, confirmé via niimblue) ───────
-        # setDensity, setLabelType, printStart(9o), printStatus(oneway),
-        # setPageSize(13o), lignes image (0x84/0x85 header « split »), pageEnd,
-        # printEnd. Plus de pageStart(0x03) ni de handshake B3 inter-bloc.
+        # ── Flux D110M V4 : setDensity, setLabelType, printStart, printStatus,
+        # setPageSize, lignes image (0x84/0x85), pageEnd, printEnd.
         self.set_label_density(density)
         self.set_label_type(labelsize)
         self.print_start_9b(1)
@@ -881,11 +833,8 @@ class NiimbotBLE(ClientBLE):
         self.set_page_size_13b(image.height, image.width, 1)
 
         time.sleep(0.02)
-        # Chaque paquet Niimbot est écrit INDIVIDUELLEMENT (un
-        # writeValueWithoutResponse par paquet), comme niimbluelib — plus de
-        # concaténation en trames de 220 o. Le firmware récent traite chaque
-        # écriture BLE comme un paquet distinct ; regrouper plusieurs paquets
-        # (ou en couper un) dans une même écriture le désynchronise → blanc.
+        # Chaque paquet Niimbot est écrit individuellement : regrouper plusieurs
+        # paquets dans une même écriture BLE désynchronise le firmware → blanc.
         n = max(1, total_packets)
         for i, (pkt_bytes, _lines) in enumerate(niimbot_packets_with_lines):
             self._tr("TX", f"0x{pkt_bytes[2]:02x}", len(pkt_bytes) - 7)

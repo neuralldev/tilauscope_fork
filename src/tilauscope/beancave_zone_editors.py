@@ -13,22 +13,9 @@
 # AUTHOR
 # Tilau 2025-2026
 
-## TILAU ##
-"""Targeted zone editors for the BeanCave bean sheet (Lot 5, step C).
+"""Targeted zone editors for the BeanCave bean sheet.
 
-Each ✎ on the read-first sheet opens one of these modal dialogs — a small
-card in the wizard's visual language editing ONLY that zone of the selected
-GreenBean:
-
-    essentials       — name, country, crop year, stock (with ⚖ Acaia capture)
-    provenance       — farm, supplier, altitude
-    characteristics  — type (single/blend + components), category → process,
-                       species → varieties, density, humidity, water activity
-    sensory          — SCA score, flavour notes (+ 🎡 Flavor Wheel), memo
-
-Save writes the fields onto the bean, persists through the host
-(``save_green_beans`` + ``populate_table``) and reselects the bean by uuid.
-Cancel leaves the record untouched.
+Each ✎ opens a modal dialog editing only one zone (essentials, provenance, characteristics, sensory) of the selected GreenBean; Save persists and reselects by uuid, Cancel leaves the record untouched.
 """
 
 from __future__ import annotations
@@ -57,12 +44,16 @@ from PyQt6.QtWidgets import (
 )
 
 from tilauscope.tilauscope_types import THEME, TilauProgressDialog, show_styled_message
-from tilauscope.sack_manager import prompt_release_if_emptied  ## TILAU ## sack reclaim (§9.3)
+from tilauscope.header_icons import SVG_PROG_AI
+from tilauscope.sack_manager import prompt_release_if_emptied  # sack reclaim (§9.3)
 
 _logd = logging.getLogger('tilaudebug')
 
 _MONO = "'JetBrains Mono', monospace"
-_DIM = "#6C7086"
+_DIM = THEME['OVERLAY0']
+
+from tilauscope.theme_qss import apply_tilau_theme
+
 
 def _zone_title(zone: str) -> str:
     return {
@@ -78,15 +69,16 @@ def _zone_title(zone: str) -> str:
 class _AwFloatWindow(QDialog):
     """Always-on-top card showing the live water-activity probe reading.
 
-    Mirrors the ⚖ scale float window: click the value to transfer it into
-    the editor's Water activity field. Fed by the host's AquaGauge callback
-    (``host._aw_capture_cb``) while a Characteristics editor is open.
+    Click the value to transfer it into the editor's Water activity field.
     """
 
     def __init__(self, parent: ZoneEditorDialog) -> None:
         super().__init__(parent, Qt.WindowType.Tool
                          | Qt.WindowType.WindowStaysOnTopHint
                          | Qt.WindowType.FramelessWindowHint)
+        # frameless translucent window: ground=False, else the grounded base
+        # paints the rectangle opaque and squares off the rounded card.
+        apply_tilau_theme(self, ground=False)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._parent_dialog = parent
         self._value: float | None = None
@@ -106,22 +98,19 @@ class _AwFloatWindow(QDialog):
         cl.setContentsMargins(20, 14, 20, 14)
         cl.setSpacing(4)
         header = QLabel("💧  " + QApplication.translate("tilauscope_beancave", "WATER ACTIVITY"))
-        header.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-size:10px;letter-spacing:2px;"
-            f"font-family:{_MONO};font-weight:bold;")
+        header.setProperty('variant', 'eyebrow')
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._value_lbl = QLabel("––")
         self._value_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._value_lbl.setStyleSheet(
-            f"color:{THEME['ACCENT']};font-size:28px;font-weight:bold;"
-            f"font-family:{_MONO};")
+        self._value_lbl.setProperty('variant', 'readout')
+        self._value_lbl.setStyleSheet(f"color: {THEME['ACCENT']};")
         self._value_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
         self._value_lbl.setToolTip(QApplication.translate("tilauscope_beancave", "Click to transfer the reading"))
         self._value_lbl.mousePressEvent = self._on_clicked  # type: ignore[method-assign]
         self._hint_lbl = QLabel(QApplication.translate("tilauscope_beancave", "waiting for probe…"))
         self._hint_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._hint_lbl.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-size:10px;font-family:{_MONO};")
+            f"color:{THEME['SUBTEXT']};font-size:10px;")
         cl.addWidget(header)
         cl.addWidget(self._value_lbl)
         cl.addWidget(self._hint_lbl)
@@ -149,6 +138,9 @@ class ZoneEditorDialog(QDialog):
         # zone 'all' stacks every section (expert Add); create=True appends
         # the bean to the catalogue on Save instead of updating in place.
         super().__init__(host)
+        # frameless translucent window: ground=False, else the grounded base
+        # paints the rectangle opaque and squares off the rounded card.
+        apply_tilau_theme(self, ground=False)
         self._host = host
         self._bean = bean
         self._zone = zone
@@ -178,7 +170,7 @@ class ZoneEditorDialog(QDialog):
             QLabel {{ color: {THEME['TEXT']}; background: transparent; border: none; }}
             QLineEdit, QSpinBox, QDoubleSpinBox, QPlainTextEdit {{
                 background: {THEME['BG']}; color: {THEME['TEXT']};
-                font-family: {_MONO}; font-size: 12px;
+                font-size: 12px;
                 selection-background-color: {THEME['ACCENT']};
                 selection-color: {THEME['BG']};
                 border: 1px solid {THEME['BORDER']}; border-radius: 7px; padding: 5px 8px; }}
@@ -187,7 +179,7 @@ class ZoneEditorDialog(QDialog):
                 border: 1px solid {THEME['ACCENT']};
                 background: {THEME['SURFACE']}; }}
             QComboBox {{ background: {THEME['BG']}; color: {THEME['TEXT']};
-                font-family: {_MONO}; font-size: 12px;
+                font-size: 12px;
                 selection-background-color: {THEME['ACCENT']};
                 selection-color: {THEME['BG']};
                 border: 1px solid {THEME['BORDER']}; border-radius: 7px; padding: 5px 8px; }}
@@ -207,7 +199,7 @@ class ZoneEditorDialog(QDialog):
             head += f" — {bean.name.upper()}"
         title = QLabel(head)
         title.setStyleSheet(
-            f"color:{THEME['ACCENT']};font-family:{_MONO};font-size:12px;"
+            f"color:{THEME['ACCENT']};font-size:12px;"
             f"font-weight:800;letter-spacing:2px;")
         title.setWordWrap(True)
         if zone == 'all':
@@ -244,7 +236,6 @@ class ZoneEditorDialog(QDialog):
             scroll.setWidgetResizable(True)
             scroll.setFrameShape(QFrame.Shape.NoFrame)
             scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
-            self._form_host.setStyleSheet("background: transparent;")
             scroll.setWidget(self._form_host)
             scroll.setMinimumHeight(420)
             scroll.setMaximumHeight(560)
@@ -306,7 +297,7 @@ class ZoneEditorDialog(QDialog):
     def _add_section_header(self, title: str) -> None:
         lbl = QLabel(title.upper())
         lbl.setStyleSheet(
-            f"color:{_DIM};font-family:{_MONO};font-size:10px;"
+            f"color:{_DIM};font-size:10px;"
             f"letter-spacing:2px;padding-top:8px;")
         self._form.addRow(lbl)
 
@@ -526,8 +517,9 @@ class ZoneEditorDialog(QDialog):
             return
 
         self._ai_progress = TilauProgressDialog(
-            QApplication.translate("tilauscope_beancave", "Fetching and analyzing website content..."),
-            self)
+            QApplication.translate("tilauscope_beancave", "Reading the supplier page…"),
+            self, None, SVG_PROG_AI,
+            QApplication.translate("tilauscope_beancave", "about 20 seconds"))
         self._ai_progress.show()
 
         self._ai_thread = QThread()
@@ -870,7 +862,7 @@ class ZoneEditorDialog(QDialog):
 
     def _save(self) -> None:
         b = self._bean
-        prev_weight = float(getattr(b, 'weight_left', 0.0) or 0.0)  ## TILAU ## sack reclaim (§9.3)
+        prev_weight = float(getattr(b, 'weight_left', 0.0) or 0.0)  # sack reclaim (§9.3)
         appliers = {
             'essentials': (self._apply_essentials,),
             'provenance': (self._apply_provenance,),
@@ -893,8 +885,8 @@ class ZoneEditorDialog(QDialog):
                 cave.green_beans.append(b)
 
             self._host.save_green_beans()
-            ## TILAU ## stock just hit 0 g: offer to reclaim this bean's labels
-            ## (design v4 §9.3, shared helper — never duplicate this check).
+            # stock just hit 0 g: offer to reclaim this bean's labels
+            # (design v4 §9.3, shared helper — never duplicate this check).
             prompt_release_if_emptied(self, b, prev_weight, self._host.save_green_beans)
             self._host.populate_table()
             select = getattr(self._host, 'select_bean_by_uuid', None)
