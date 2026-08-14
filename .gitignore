@@ -84,3 +84,11 @@ AutoRoast-Spec.md
 /src/misc/*
 # MkDocs output for docs.tilauscope.org (built by .github/workflows/docs.yml).
 site_build/
+
+# Machine-translation scratch batches (mt_export.py -> translator -> mt_pack.py).
+# Regenerated from the .ts files on every run; the translations themselves live
+# in src/translations/ and the ingest record in tools/l10n/reports/.
+tools/l10n/mt/*/in-*.json
+tools/l10n/mt/*/map-*.json
+tools/l10n/mt/*/out-*.json
+tools/l10n/inbox/

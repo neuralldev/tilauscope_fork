@@ -143,7 +143,6 @@ class GreenBean(DataClassJSONMixin):
     density: float = 0.0
     last_humidity: float = 0.0
     water_activity: float = 0.0
-    volume: float = 0.0
     altitude: int = 0
     species: str = ""
     varieties: str = ""
@@ -204,7 +203,6 @@ GREEN_BEAN_COLUMNS = [
     lambda b: f"{b.density:.1f}",
     lambda b: f"{b.last_humidity:.1f}",
     lambda b: f"{b.water_activity:.2f}",
-    lambda b: f"{b.volume:.3f}",
     lambda b: str(b.altitude),
     lambda b: b.species,
     lambda b: b.varieties,
@@ -432,6 +430,160 @@ def get_ror_ideal_band(phase: str, mode: str = "C") -> tuple[float, float]:
     return (lo * 1.8, hi * 1.8) if mode == "F" else (lo, hi)
 
 
+# ── Shared crash/flick detection (prominence-based, sample-rate invariant) ────
+# Single source for both the plan generator (historical-log analysis) and the
+# BeanCave coach (single-roast and multi-roast comparison) — same algorithm,
+# same thresholds, everywhere a crash or a flick is flagged.
+
+def clean_delta_bt(delta_bt: list) -> list:
+    """Forward-fills None values in a delta_bt (RoR) array; 0.0 at the start."""
+    cleaned_list = []
+    last_valid_value = 0.0
+    for value in delta_bt:
+        if value is None:
+            cleaned_list.append(last_valid_value)
+        else:
+            current_val = float(value)
+            cleaned_list.append(current_val)
+            last_valid_value = current_val
+    return cleaned_list
+
+
+def estimate_ror_dt(timex) -> float:
+    """Median sampling interval (s) of a log, derived from its own recorded
+    timestamps. Robust to the user's Artisan sampling setting, which varies
+    per recording. Falls back to 1.0 s."""
+    import numpy as np
+    tx = np.asarray(timex, dtype=float)
+    if tx.size < 2:
+        return 1.0
+    d = np.diff(tx)
+    d = d[d > 0]
+    if d.size == 0:
+        return 1.0
+    return float(np.clip(np.median(d), 0.25, 10.0))
+
+
+def find_turning_point_index(bt_input: list, dt: float = 1.0) -> int:
+    """Index of the Turning Point = the BT minimum, searched in the early
+    window (~15 s .. 2 min 30 after charge). Uses BT, not the RoR minimum:
+    the RoR minimum (steepest cooling) occurs BEFORE the turning point."""
+    import numpy as np
+    bt = np.array([np.nan if b is None else float(b) for b in bt_input], dtype=float) if bt_input else np.array([])
+    if bt.size == 0:
+        return 0
+    lo = min(int(round(15.0 / dt)), bt.size - 1)
+    hi = min(int(round(150.0 / dt)), bt.size)
+    if hi <= lo:
+        hi = bt.size
+    if hi <= lo:
+        return 0
+    seg = bt[lo:hi]
+    if np.all(np.isnan(seg)):
+        return lo
+    return lo + int(np.nanargmin(seg))
+
+
+def which_roast_phase(current_time: float, phase_times: dict) -> int:
+    """Roasting phase for a timestamp (seconds since charge): 1=DRY, 2=MAILLARD,
+    3=DEVELOPMENT, 0=out of scope (including post-FC when FC itself is unmarked,
+    since Maillard and development cannot then be told apart)."""
+    dry_end  = phase_times.get("dry_end")
+    fc_start = phase_times.get("fc_start")
+    drop     = phase_times.get("drop")
+    if drop is None:
+        return 0
+    if dry_end is not None and current_time <= dry_end:
+        return 1
+    if fc_start is not None and current_time <= fc_start:
+        return 2
+    if fc_start is None:
+        return 0
+    if current_time <= drop:
+        return 3
+    return 0
+
+
+def find_flicks_crashes(
+        delta_bt: list,
+        timex: list,
+        phase_times: dict,
+        tp_index: int,
+        prominence: float = 1.0,        # degrees C/min: significance of the dip/bump
+        debounce_sec: float = 20.0,
+        recovery_margin_sec: float = 30.0,
+):
+    """
+    Detect significant RoR dips (crashes) and bumps (flicks) as LOCAL EXTREMA
+    ranked by PROMINENCE (degrees C/min).
+
+    Why prominence: a healthy roast has a continuously declining RoR, which has
+    no local extremum, so it is never flagged. A crash is a genuine local valley
+    and a flick a genuine local peak; their prominence is the physical measure of
+    how significant the event is, comparable across roasts.
+
+    Sample-rate invariant: every time window/limit is converted to samples using
+    the per-log sampling interval derived from timex, so detection does not
+    assume 1 Hz.
+    """
+    import numpy as np
+    from scipy.signal import find_peaks
+
+    flicks: list = []
+    crashes: list = []
+
+    ror = np.asarray(clean_delta_bt(delta_bt), dtype=float)
+    tx  = np.asarray(timex, dtype=float)
+    n = ror.size
+    if n < 10 or tx.size != n:
+        return flicks, crashes
+
+    dt = estimate_ror_dt(tx)
+    distance = max(1, int(round(debounce_sec / dt)))
+
+    # Light denoise (~5 s). Prominence already rejects small wiggles, so keep
+    # this light to avoid attenuating short real flicks near first crack.
+    win = max(1, int(round(5.0 / dt)))
+    if win > 1:
+        kernel = np.ones(win) / win
+        ror_s = np.convolve(ror, kernel, mode='same')
+    else:
+        ror_s = ror
+
+    # Exclude the post-TP recovery: locate the recovery RoR peak within ~180 s
+    # after the (BT-based) turning point, then start detecting a margin later so
+    # the recovery peak itself is never mistaken for a flick.
+    peak_limit = min(n, tp_index + int(round(180.0 / dt)))
+    if 0 <= tp_index < peak_limit:
+        rec_idx = tp_index + int(np.argmax(ror_s[tp_index:peak_limit]))
+        detect_from_t = tx[rec_idx] + recovery_margin_sec
+    else:
+        detect_from_t = float(tx[0]) + 120.0
+
+    flick_idx, fprops = find_peaks(ror_s, prominence=prominence, distance=distance)
+    crash_idx, cprops = find_peaks(-ror_s, prominence=prominence, distance=distance)
+
+    for k, i in enumerate(flick_idx):
+        if tx[i] <= detect_from_t:
+            continue
+        flicks.append({
+            "time":      float(tx[i]),
+            "ror_value": round(float(ror_s[i]), 2),
+            "severity":  round(float(fprops["prominences"][k]), 2),
+            "phase":     which_roast_phase(float(tx[i]), phase_times),
+        })
+    for k, i in enumerate(crash_idx):
+        if tx[i] <= detect_from_t:
+            continue
+        crashes.append({
+            "time":      float(tx[i]),
+            "ror_value": round(float(ror_s[i]), 2),
+            "severity":  round(float(cprops["prominences"][k]), 2),
+            "phase":     which_roast_phase(float(tx[i]), phase_times),
+        })
+    return flicks, crashes
+
+
 # dictionnaire de standardisation pour nettoyer les noms de processus courants
 standardization_map = {
     # Cible les termes sans les séparateurs pour les rendre plus flexibles
@@ -507,6 +659,129 @@ class RoasterBasicPlanPerPhase:
 @dataclass
 class RoasterBasicPlan(DataClassDictMixin):
     plans: list[RoasterBasicPlanPerPhase]
+
+# Base roast-plan table by Agtron category (names match AGTRON_SCALES), before
+# any per-roast correction (FIR/NIR light-roast tweak, BT-probe deviation).
+# Single source shared by the plan generator (roast_plan_model.py, which
+# deep-copies this before applying its corrections) and the BeanCave coach
+# (beancave.py, which reads it as-is for post-roast reference ranges) so the
+# two never judge a roast against different fundamentals.
+ROASTING_BASIC_BASE: RoasterBasicPlan = RoasterBasicPlan(
+    plans=[
+        RoasterBasicPlanPerPhase(
+            name="Very Light",
+            heater_cmfc=(0.85, 0.70, 0.50),
+            total_time=(7.5, 8.75),
+            drying_time=(3.5, 4.0),
+            maillard_time=(3.0, 3.5),
+            development_time=(1.0, 1.25),
+            dtr_pct=(0.13, 0.15),
+            drop_temp=(197, 203),
+            fc_temp=194,
+            dry_temp=153,
+        ),
+        RoasterBasicPlanPerPhase(
+            name="Light",
+            heater_cmfc=(0.85, 0.70, 0.50),
+            total_time=(8.25, 10.25),
+            drying_time=(3.5, 4.5),
+            maillard_time=(3.5, 4.0),
+            development_time=(1.25, 1.75),
+            dtr_pct=(0.15, 0.17),
+            drop_temp=(203, 208),
+            fc_temp=195,
+            dry_temp=155,
+        ),
+        RoasterBasicPlanPerPhase(
+            name="Medium Light",
+            heater_cmfc=(0.75, 0.65, 0.45),
+            total_time=(9.75, 11.25),
+            drying_time=(4.5, 5.0),
+            maillard_time=(3.75, 4.25),
+            development_time=(1.5, 2.0),
+            dtr_pct=(0.16, 0.19),
+            drop_temp=(208, 213),
+            fc_temp=196,
+            dry_temp=158,
+        ),
+        RoasterBasicPlanPerPhase(
+            name="Medium",
+            heater_cmfc=(0.75, 0.60, 0.45),
+            total_time=(11.0, 12.75),
+            drying_time=(4.75, 5.25),
+            maillard_time=(4.25, 4.75),
+            development_time=(2.0, 2.75),
+            dtr_pct=(0.18, 0.22),
+            drop_temp=(212, 217),
+            fc_temp=198,
+            dry_temp=160,
+        ),
+        RoasterBasicPlanPerPhase(
+            name="Medium Dark",
+            heater_cmfc=(0.70, 0.60, 0.40),
+            total_time=(12.0, 13.5),
+            drying_time=(5.0, 5.5),
+            maillard_time=(4.5, 5.0),
+            development_time=(2.5, 3.0),
+            dtr_pct=(0.20, 0.23),
+            drop_temp=(217, 222),
+            fc_temp=200,
+            dry_temp=162,
+        ),
+        RoasterBasicPlanPerPhase(
+            name="Dark",
+            heater_cmfc=(0.70, 0.60, 0.42),
+            total_time=(12.25, 13.75),
+            drying_time=(5.0, 5.5),
+            maillard_time=(4.5, 5.0),
+            development_time=(2.75, 3.25),
+            dtr_pct=(0.22, 0.24),
+            drop_temp=(221, 226),
+            fc_temp=202,
+            dry_temp=163,
+        ),
+        RoasterBasicPlanPerPhase(
+            name="Very Dark",
+            heater_cmfc=(0.72, 0.62, 0.44),
+            total_time=(12.5, 14.0),
+            drying_time=(5.0, 5.5),
+            maillard_time=(4.5, 5.0),
+            development_time=(3.0, 3.5),
+            dtr_pct=(0.23, 0.26),
+            drop_temp=(224, 229),
+            fc_temp=203,
+            dry_temp=164,
+        ),
+        RoasterBasicPlanPerPhase(
+            name="Extremely Dark",
+            heater_cmfc=(0.72, 0.62, 0.44),
+            total_time=(13.0, 14.5),
+            drying_time=(5.0, 5.5),
+            maillard_time=(4.75, 5.25),
+            development_time=(3.25, 3.75),
+            dtr_pct=(0.24, 0.27),
+            drop_temp=(228, 236),
+            fc_temp=204,
+            dry_temp=165,
+        ),
+    ]
+)
+
+# Weight-loss % target window by Agtron category (names match AGTRON_SCALES).
+# Coach-only fundamental: the plan generator has no weight-loss table to share,
+# so this progression is interpolated on ROASTING_BASIC_BASE's dtr_pct curve
+# and validated against the specialty-coffee convention (~12-15% light,
+# 18-20%+ dark).
+WEIGHT_LOSS_PCT_BY_CATEGORY: dict[str, tuple[float, float]] = {
+    "Very Light":     (10.5, 13.0),
+    "Light":          (11.5, 14.5),
+    "Medium Light":   (13.0, 16.0),
+    "Medium":         (14.0, 17.5),
+    "Medium Dark":    (15.5, 19.0),
+    "Dark":           (16.5, 20.0),
+    "Very Dark":      (18.0, 21.5),
+    "Extremely Dark": (19.0, 22.5),
+}
 #
 # category = Traditional Wet
 # process = Washed / Wet Process

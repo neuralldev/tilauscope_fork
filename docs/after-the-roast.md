@@ -167,15 +167,19 @@ scanning; this is what scanning a roast actually shows.
 
 ## Repairing incomplete roast files
 
-**Repair ALogs**, in **BeanCave → File Management**, lists every roast file with a
-completeness mark — missing its coffee link, or missing a field the plan or the record relies
-on (weights, density, moisture, colour, ambient conditions). Selecting one opens it for
-editing directly.
+**Repair ALogs**, opened from **TilauScope → Roast Profile Maintenance…**, lists every roast
+file with a completeness mark — missing its coffee link, or missing a field the plan or the
+record relies on (weights, density, moisture, colour, ambient conditions). Selecting one opens
+it for editing directly.
 
 The window opens on its full list straight away. Should the reading take longer — a very
 large folder, or one on a slow network drive — the list fills in as it goes and a progress
 bar appears with a **Cancel** button: the files already listed stay usable, and **Scan
 again** picks the reading back up.
+
+**Update Roast Counts**, above the list, rescans the roast folder and recomputes how many
+roasts and how much weight each green coffee has behind it — the figures shown in
+[BeanCave's catalogue](beancave.md#the-catalogue).
 
 **Complete from bean** fills only the fields still empty, from the linked coffee's own
 record — nothing already filled is touched. **Record** validates and writes the file, and

@@ -664,10 +664,24 @@ class AlogRepairDialog(QDialog):
         scan_lay.addWidget(self._scan_btn)
         self._scan_row.setVisible(False)
         left_lay.addWidget(self._scan_row)
+        filter_row = QHBoxLayout()
+        filter_row.setContentsMargins(0, 0, 0, 0)
         self._incomplete_only = QCheckBox(
             QApplication.translate("tilauscope_repair", "Show incomplete only"))
         self._incomplete_only.toggled.connect(lambda _on: self._reload_file_list())
-        left_lay.addWidget(self._incomplete_only)
+        filter_row.addWidget(self._incomplete_only)
+        filter_row.addStretch(1)
+        self._update_counts_btn = QPushButton(
+            QApplication.translate("tilauscope_repair", "Update Roast Counts"))
+        self._update_counts_btn.setObjectName("btnGhost")
+        self._update_counts_btn.setToolTip(QApplication.translate(
+            "tilauscope_repair",
+            "Scan the ALog directory to recompute how many roast sessions and how much "
+            "weight is associated with each green bean. Shown as the Roasts/Weight "
+            "columns in the BeanCave catalogue."))
+        self._update_counts_btn.clicked.connect(self._update_roast_counts)
+        filter_row.addWidget(self._update_counts_btn)
+        left_lay.addLayout(filter_row)
         self._list = QListWidget()
         self._list.currentItemChanged.connect(self._on_select)
         left_lay.addWidget(self._list, 1)
@@ -1062,6 +1076,91 @@ class AlogRepairDialog(QDialog):
             self._finish_scan(cancelled=True)
         else:
             self._reload_file_list()
+
+    @pyqtSlot()
+    def _update_roast_counts(self) -> None:
+        """Recompute each green bean's roast count and total weight from the ALog directory."""
+        directory = Path(self._bc.alog_directory) if self._bc.alog_directory else None
+        if directory is None or not directory.is_dir():
+            show_styled_message(self,
+                QApplication.translate("tilauscope_repair", "Error"),
+                QApplication.translate("tilauscope_repair",
+                    "Please select a valid ALog directory first."))
+            return
+        cave = getattr(self._bc, 'cave', None)
+        if cave is None or not hasattr(cave, 'green_beans'):
+            return
+
+        from artisanlib.util import convertWeight, weight_units
+        from tilauscope.header_icons import SVG_PROG_SEARCH
+        from tilauscope.tilauscope_types import TilauProgressDialog
+
+        progress = TilauProgressDialog(
+            QApplication.translate("tilauscope_repair", "Scanning roast profiles..."),
+            self, len(cave.green_beans), SVG_PROG_SEARCH)
+        progress.show()
+
+        for bean in cave.green_beans:
+            bean.count  = 0
+            bean.weight = 0.0
+
+        flag_update    = False
+        orphaned_count = 0
+        claimed: set[str] = set()
+
+        for bi, bean in enumerate(cave.green_beans):
+            progress.pbar.setValue(bi)
+            QApplication.processEvents()
+
+            bean_uuid = getattr(bean, 'uuid', None)
+            matched_fnames: list[str] = []
+            if bean_uuid and bean_uuid in self._bc._alog_uuid_index:
+                matched_fnames = self._bc._alog_uuid_index[bean_uuid]
+
+            for fname in matched_fnames:
+                claimed.add(fname)
+                filepath = directory / fname
+                try:
+                    data = self._bc.get_alog_data(filepath)
+                    if data is None:
+                        continue
+                    flag_update = True
+                    bean.count += 1
+                    w_data = data.get('weight')
+                    if w_data:
+                        w = w_data[0]
+                        if isinstance(w, (int, float)) and w > 0:
+                            unit = w_data[2] if len(w_data) > 2 else 'g'
+                            try:
+                                src_idx = weight_units.index(unit)
+                            except ValueError:
+                                src_idx = 0
+                            bean.weight += convertWeight(float(w), src_idx, 0)
+                except OSError as e:
+                    _log.warning(f"update_roast_counts: cannot read {fname}: {e}")
+
+        for fname, uuid_val in self._bc._alog_file_uuid.items():
+            if fname not in claimed and uuid_val not in self._bc.uuidmap:
+                orphaned_count += 1
+                _log.warning(f"Orphaned roast: {fname} references missing UUID {uuid_val}")
+
+        if flag_update:
+            self._bc.save_green_beans()
+            self._bc.populate_table()
+
+        progress.pbar.setValue(len(cave.green_beans))
+
+        def _finish() -> None:
+            progress.hide()
+            progress.deleteLater()
+            if orphaned_count:
+                show_styled_message(self,
+                    QApplication.translate("tilauscope_repair", "Update finished"),
+                    QApplication.translate("tilauscope_repair",
+                        "Orphaned roasts were detected and logged."))
+
+        progress.pbar.dismissed.connect(_finish)
+        progress.pbar.succeed()
 
     # ── selection (with unsaved-changes guard) ──────────────────────────────
     @pyqtSlot()

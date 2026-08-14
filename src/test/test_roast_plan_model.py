@@ -37,11 +37,14 @@ from hypothesis import strategies as st
 
 from tilauscope.bean_energy import FloorProfile
 from tilauscope.roast_plan_model import (
-    _resolve_green_water,
+    _resolve_green_aw,
+    _resolve_green_moisture,
     _resolve_green_structure,
     TilauScopeRoastPlan,
     TilauscopeAlarmFactory,
     _PlanSource,
+    _TECH_GENERIC,
+    _TECH_RADIANT,
     heat_soak_correction,
 )
 
@@ -626,15 +629,38 @@ def test_planned_drying_never_falls_under_the_machine_floor(
     corpus_plans: list[dict],
 ) -> None:
     assert corpus_plans
+    # Le plancher suit la MASSE (3:00 vers 175 g, 4:00 à charge nominale) : une
+    # borne unique interdisait à un petit lot de sécher comme il le fait vraiment.
+    import corpus_harness as H
+    model = H.make_plan_model(H.CORPUS_DIR)
+    optimal = float(model._roaster_ctx.batch_optimal_g or 0.0)
     for plan in corpus_plans:
-        assert _mmss(plan['Dry Phase']) >= 3.5 - 1e-9, plan['Bean Name']
+        floor = model._dry_floor_min(float(plan['Weight']), optimal)
+        assert _mmss(plan['Dry Phase']) >= floor - 1e-9, plan['Bean Name']
 
 
 def test_planned_maillard_never_falls_under_the_machine_floor(
     corpus_plans: list[dict],
 ) -> None:
+    # Le Maillard n'a pas de plancher de STYLE — seulement le garde-fou de
+    # plausibilité à 2:00. Une borne à 3:00 entrait en conflit direct avec la loi
+    # machine (Maillard toujours plus court que le séchage) : à 150 g le séchage
+    # dure 3:09, le Maillard ne PEUT pas durer 3:00.
     for plan in corpus_plans:
-        assert _mmss(plan['Maillard Phase']) >= 3.0 - 1e-9, plan['Bean Name']
+        assert _mmss(plan['Maillard Phase']) >= 2.0 - 1e-9, plan['Bean Name']
+
+
+def test_maillard_is_always_shorter_than_drying_not_merely_equal(
+    corpus_plans: list[dict],
+) -> None:
+    """Loi machine (Tilau) : 4/3/1 et 5/4/1 sont des formes réelles, 3/3/1 non —
+    le RoR n'a pas le temps de descendre. Le corpus mesure 0,69 en médiane,
+    quartile haut 0,77 ; le plafond du plan est 0,80."""
+    for plan in corpus_plans:
+        dry = _mmss(plan['Dry Phase'])
+        mai = _mmss(plan['Maillard Phase'])
+        assert mai <= dry * 0.8 + 1.0 / 60.0, (
+            f"{plan['Bean Name']}: {plan['Dry Phase']} / {plan['Maillard Phase']}")
 
 
 def test_a_duration_floor_extends_the_total_it_never_shortens_a_phase(
@@ -652,14 +678,91 @@ def test_a_duration_floor_extends_the_total_it_never_shortens_a_phase(
         assert total == pytest.approx(parts, abs=2.0 / 60.0), plan['Bean Name']
 
 
+def test_maillard_is_never_longer_than_drying(corpus_plans: list[dict]) -> None:
+    """Loi machine (Tilau) : le Maillard n'est jamais plus long que le séchage.
+    3/3/1 passe, 3/4/1 non. Vérifiée sur 92 roasts SW : ratio médian 0,69, deux
+    roasts sur cent au-dessus de 1.
+
+    Le golden ne pouvait pas attraper ça — il enregistre ce qui change, il ne
+    juge pas. C'est exactement le trou que ce test ferme."""
+    for plan in corpus_plans:
+        _dry = _mmss(plan['Dry Phase'])
+        _mai = _mmss(plan['Maillard Phase'])
+        assert _mai <= _dry + 1.0 / 60.0, (
+            f"{plan['Bean Name']}: Maillard {plan['Maillard Phase']} longer than "
+            f"drying {plan['Dry Phase']}")
+
+
+def test_plan_temperatures_are_printed_whole(corpus_plans: list[dict]) -> None:
+    """Un plan n'a pas de décimale de température : c'est une consigne à tenir
+    à la main sur un curseur, pas une mesure."""
+    for plan in corpus_plans:
+        for _field in ('Charge Temp', 'End of Dry Temp', 'First Crack Temp',
+                       'Drop Temp', 'Estimated TP'):
+            assert '.' not in str(plan[_field]), (
+                f"{plan['Bean Name']}: {_field} = {plan[_field]}")
+
+
+def test_a_learned_burner_note_states_what_the_plan_actually_holds(
+    corpus_plans: list[dict],
+) -> None:
+    """Une note qui annonce un réglage doit annoncer CELUI DU PLAN.
+
+    Les deux notes de brûleur (profil de famille, brûleur de charge de cohorte)
+    sont émises après les plafonds, les planchers et la correction inter-lot,
+    précisément pour ne pas promettre un chiffre que le plan ne tient pas."""
+    import re
+    for plan in corpus_plans:
+        _cols = [int(c.strip().rstrip('%'))
+                 for c in plan['Heater (%) (Dry|Mai|Dev)'].split('|')]
+        for action in plan.get('actions') or []:
+            if 'Charge burner from' in action:
+                _said = int(re.search(r'(\d+)% through drying', action).group(1))
+                assert _said == _cols[0], (
+                    f"{plan['Bean Name']}: note says {_said}%, plan holds {_cols[0]}%")
+            if 'Heater profile learned' in action:
+                _said = [int(v) for v in
+                         re.search(r'(\d+)/(\d+)/(\d+)%', action).groups()]
+                assert _said == _cols, (
+                    f"{plan['Bean Name']}: note says {_said}, plan holds {_cols}")
+
+
+def test_the_planned_ror_chain_never_climbs_back_up(
+    corpus_plans: list[dict],
+) -> None:
+    """Une courbe de RoR descend. Le pic domine la moyenne du séchage, qui domine
+    le Maillard, qui domine l'arrivée au FC — et le développement ne repart pas.
+
+    Avant le lot 4 les quatre chiffres venaient de sources différentes (les
+    bornes de l'enveloppe, la moyenne d'une géométrie ΔT/Δt) et la moyenne du
+    développement sortait AU-DESSUS de ses deux extrémités, ce qu'aucune courbe
+    ne peut faire. Le seul dépassement encore toléré est celui que le plan
+    ANNONCE."""
+    for plan in corpus_plans:
+        _peak = float(plan['ROR Dry Peak'])
+        _dry  = float(plan['ROR Dry End'])
+        _mai  = float(plan['Target ROR Maillard'])
+        _fc   = float(plan['Target ROR at FC'])
+        _dev  = float(plan['Target ROR Dev (Avg)'])
+        name = plan['Bean Name']
+        assert _peak >= _dry >= _mai >= _fc, (
+            f"{name}: {_peak} / {_dry} / {_mai} / {_fc}")
+        if _dev > _fc + 0.1:
+            assert any('speed up after first crack' in a
+                       for a in (plan.get('actions') or [])), (
+                f"{name}: development {_dev} above first-crack entry {_fc} "
+                f"without saying so")
+
+
 def test_development_is_the_professional_band_untouched_by_the_floors(
     corpus_plans: list[dict],
 ) -> None:
     """Le développement est une durée absolue dictée par le niveau visé : il ne
-    doit jamais payer pour un garde-fou appliqué en amont."""
+    doit jamais payer pour un garde-fou appliqué en amont. Borne basse à 0:45,
+    le plancher des bandes radiantes en light."""
     for plan in corpus_plans:
         dev = _mmss(plan['Development Phase'])
-        assert 1.0 <= dev <= 4.0, f"{plan['Bean Name']}: dev={plan['Development Phase']}"
+        assert 0.75 <= dev <= 4.0, f"{plan['Bean Name']}: dev={plan['Development Phase']}"
 
 
 @pytest.mark.parametrize(('column', 'lever'), [
@@ -795,87 +898,76 @@ def test_verify_maillard_ror_produces_a_non_empty_note_on_conflict(
     assert isinstance(note, str) and len(note) > 20   # formatted text, not a bare code
 
 
-# ── _resolve_green_water / _green_water_effect — the bean's water ───────────
-# One CONTINUOUS law around aw 0.60, replacing two disjoint branches separated
-# by a dead zone. That zone (0.55-0.65) was a MICROBIOLOGICAL storage threshold
-# with no thermal meaning, and the module contradicted itself by already using a
-# continuous law around the same 0.60 for the drop RoR.
+# ── moisture / aw — two variables, two jobs, no conversion ──────────────────
+# Moisture is the water MASS: the energy budget (drying, burner, crack momentum,
+# Maillard body). aw is the STATE of that water — its free fraction — and owns
+# evaporation, i.e. the airflow. Neither stands in for the other.
 
-def test_green_water_is_absent_when_neither_reading_exists() -> None:
+def test_moisture_is_absent_when_not_measured() -> None:
     """Nothing measured means NO modifier — not a neutral default."""
-    water = _resolve_green_water(0.0, 0.0)
-    assert not water.known
-    effect = TilauScopeRoastPlan._green_water_effect(water)
+    moisture = _resolve_green_moisture(0.0)
+    assert not moisture.known
+    effect = TilauScopeRoastPlan._green_moisture_effect(moisture)
     assert effect.d_dry_time_min == 0.0
     assert effect.d_heater_dry_pct == 0.0
-    assert effect.d_airflow_pct == 0.0
     assert effect.d_heater_fc_pct == 0.0
     assert effect.d_maillard_time_min == 0.0
 
 
-def test_aw_beats_moisture_when_both_are_present() -> None:
-    """The exclusive-pair rule, on the bean that proves it matters.
+def test_aw_never_stands_in_for_an_unmeasured_moisture() -> None:
+    """The bean that proves the two are not one measurement twice.
 
-    KoJoYo Sindoro Java (Indonesia, anaerobic) reads 12.5 % moisture — wet — but
-    aw 0.54 — dry. High TOTAL water, low FREE water: it is chemically bound, so
-    it neither evaporates in drying nor buffers the surface. Reading moisture
-    here sends every lever the wrong way.
+    KoJoYo Sindoro Java (Indonesia, anaerobic) reads 12.5 % moisture — a real
+    mass of water to evaporate — but aw 0.54, meaning that water leaves
+    reluctantly. Both facts are true at once and neither cancels the other: the
+    energy budget follows the mass, the airflow follows the free fraction.
     """
-    water = _resolve_green_water(0.54, 12.5)
-    assert water.source == "measured"
-    assert water.value == pytest.approx((0.54 - 0.60) / 0.05)
-    assert water.value < 0.0, "aw says dry; the moisture reading would have said wet"
+    moisture = _resolve_green_moisture(12.5)
+    aw = _resolve_green_aw(0.54)
+    assert moisture.value == pytest.approx(12.5 - 10.5) and moisture.value > 0.0
+    assert aw.value == pytest.approx((0.54 - 0.60) / 0.05) and aw.value < 0.0
+    # And with the aw missing, the moisture keeps its full authority.
+    assert _resolve_green_moisture(12.5).value == moisture.value
 
 
-def test_moisture_is_the_fallback_and_says_so() -> None:
-    water = _resolve_green_water(0.0, 12.5)
-    assert water.source == "proxy"
-    assert water.value == pytest.approx(12.5 - 10.5)
-
-
-def test_the_water_law_has_no_step_at_the_old_branch_edges() -> None:
-    """0.55 and 0.65 were branch edges; they must now be ordinary points."""
-    law = lambda aw: TilauScopeRoastPlan._green_water_effect(
-        _resolve_green_water(aw, 0.0)).d_dry_time_min
-    for edge in (0.55, 0.65):
-        below, at, above = law(edge - 0.005), law(edge), law(edge + 0.005)
-        assert at - below == pytest.approx(above - at, abs=1e-9), (
-            f"the law still steps at aw {edge}")
+def test_neither_variable_is_reconstructed_from_the_other() -> None:
+    """No sorption-isotherm bridge: an unmeasured reading stays unmeasured."""
+    assert not _resolve_green_moisture(0.0).known   # aw 0.70 cannot fill this in
+    assert not _resolve_green_aw(0.0).known         # 12.5 % cannot fill this in
 
 
 def test_a_wet_bean_gets_time_first_and_burner_second() -> None:
     """75/25 of the 11 kJ a water point costs — Tilau's machine doctrine is
-    'allonger, ne pas forcer au feu'. The old law put +0.20 min AND +2.0 pts,
-    which fought itself: +2 pts is +0.82 C/min of drying RoR on this roaster,
-    shortening the very phase the time term lengthened."""
-    effect = TilauScopeRoastPlan._green_water_effect(_resolve_green_water(0.70, 0.0))
+    'allonger, ne pas forcer au feu'."""
+    effect = TilauScopeRoastPlan._green_moisture_effect(_resolve_green_moisture(12.5))
     assert effect.d_dry_time_min == pytest.approx(2.0 * 0.40)
     assert effect.d_heater_dry_pct == pytest.approx(2.0 * 0.9)
     assert effect.d_heater_dry_pct * 0.41 < effect.d_dry_time_min * 2.0, (
         "the burner term must stay small enough not to undo the time term")
 
 
-def test_only_a_wet_bean_gets_airflow_and_crack_momentum() -> None:
-    """Both are one-sided: a dry bean needs no less air than the smoke-driven
-    baseline, and has no momentum problem at the crack."""
-    wet = TilauScopeRoastPlan._green_water_effect(_resolve_green_water(0.70, 0.0))
-    dry = TilauScopeRoastPlan._green_water_effect(_resolve_green_water(0.50, 0.0))
-    assert wet.d_airflow_pct > 0.0 and wet.d_heater_fc_pct > 0.0
-    assert dry.d_airflow_pct == 0.0 and dry.d_heater_fc_pct == 0.0
+def test_only_a_wet_bean_gets_crack_momentum() -> None:
+    """One-sided: a dry bean has no momentum problem at the crack."""
+    wet = TilauScopeRoastPlan._green_moisture_effect(_resolve_green_moisture(12.5))
+    dry = TilauScopeRoastPlan._green_moisture_effect(_resolve_green_moisture(8.5))
+    assert wet.d_heater_fc_pct > 0.0
+    assert dry.d_heater_fc_pct == 0.0
 
 
 def test_only_a_dry_bean_buys_body_back_with_maillard_time() -> None:
     """Less water means less steam, so the pressure wall never builds and the
     cup goes flat whatever the development (Hoos). His body lever is MAI time."""
-    dry = TilauScopeRoastPlan._green_water_effect(_resolve_green_water(0.50, 0.0))
-    wet = TilauScopeRoastPlan._green_water_effect(_resolve_green_water(0.70, 0.0))
+    dry = TilauScopeRoastPlan._green_moisture_effect(_resolve_green_moisture(8.5))
+    wet = TilauScopeRoastPlan._green_moisture_effect(_resolve_green_moisture(12.5))
     assert dry.d_maillard_time_min == pytest.approx(2.0 * 0.2)
     assert wet.d_maillard_time_min == 0.0
 
 
-def test_the_water_deviation_is_bounded_at_both_ends() -> None:
-    assert _resolve_green_water(0.90, 0.0).value == pytest.approx(3.0)
-    assert _resolve_green_water(0.20, 0.0).value == pytest.approx(-3.0)
+def test_both_deviations_are_bounded_at_both_ends() -> None:
+    assert _resolve_green_moisture(19.0).value == pytest.approx(3.0)
+    assert _resolve_green_moisture(5.5).value == pytest.approx(-3.0)
+    assert _resolve_green_aw(0.90).value == pytest.approx(3.0)
+    assert _resolve_green_aw(0.20).value == pytest.approx(-3.0)
 
 
 # ── _resolve_green_structure — density beats its proxy ──────────────────────
@@ -1239,8 +1331,8 @@ def test_resolve_drop_and_dev_ror_without_history_uses_the_grid(
         drop_learned_c=None, drop_samples=0,
         drop_ror_learned_c=None, drop_ror_samples=0, fc_bt=185.0, dev_time_min=3.0, dev_ror_expected=5.0,
         agtron_ratio=0.5, charge_weight=400.0, density=700.0,
-        water_activity=0.0, nominal_weight_g=400.0, heat_retention=0.65,
-        is_fir_nir=True)
+        moisture_pct=0.0, nominal_weight_g=400.0, heat_retention=0.65,
+        tech=_TECH_RADIANT)
     assert result.drop_source.key == 'grid'
     assert result.drop_bt_temperature == pytest.approx(200.0)
 
@@ -1258,8 +1350,8 @@ def test_a_learned_drop_beyond_the_style_band_is_clamped_to_it(
         drop_ror_learned_c=None, drop_ror_samples=0,
         fc_bt=190.0, dev_time_min=1.0, dev_ror_expected=5.0,
         agtron_ratio=0.5, charge_weight=400.0, density=700.0,
-        water_activity=0.0, nominal_weight_g=400.0, heat_retention=0.65,
-        is_fir_nir=True)
+        moisture_pct=0.0, nominal_weight_g=400.0, heat_retention=0.65,
+        tech=_TECH_RADIANT)
     assert result.drop_source.key == 'learned'
     assert result.drop_bt_temperature == pytest.approx(208.0)  # drop_max + 3.0
 
@@ -1280,8 +1372,8 @@ def test_an_incoherent_learned_drop_is_rebuilt_from_first_crack(
         drop_learned_c=None, drop_samples=0,
         drop_ror_learned_c=None, drop_ror_samples=0, fc_bt=190.0, dev_time_min=3.0, dev_ror_expected=5.0,
         agtron_ratio=0.5, charge_weight=400.0, density=700.0,
-        water_activity=0.0, nominal_weight_g=400.0, heat_retention=0.65,
-        is_fir_nir=True)
+        moisture_pct=0.0, nominal_weight_g=400.0, heat_retention=0.65,
+        tech=_TECH_RADIANT)
     assert result.drop_source.key == 'coherence'
     assert result.drop_bt_temperature == pytest.approx(202.0)
 
@@ -1299,8 +1391,8 @@ def test_the_coherence_rebuild_is_capped_at_the_style_ceiling(
         drop_learned_c=None, drop_samples=0,
         drop_ror_learned_c=None, drop_ror_samples=0, fc_bt=190.0, dev_time_min=3.0, dev_ror_expected=5.0,
         agtron_ratio=0.5, charge_weight=400.0, density=700.0,
-        water_activity=0.0, nominal_weight_g=400.0, heat_retention=0.65,
-        is_fir_nir=True)
+        moisture_pct=0.0, nominal_weight_g=400.0, heat_retention=0.65,
+        tech=_TECH_RADIANT)
     assert result.drop_source.key == 'coherence'
     assert result.drop_bt_temperature == pytest.approx(200.0)
 
@@ -1318,8 +1410,8 @@ def test_the_development_ror_never_falls_below_its_floor(
         drop_learned_c=None, drop_samples=0,
         drop_ror_learned_c=None, drop_ror_samples=0, fc_bt=190.0, dev_time_min=3.33, dev_ror_expected=5.0,
         agtron_ratio=0.5, charge_weight=400.0, density=700.0,
-        water_activity=0.0, nominal_weight_g=400.0, heat_retention=0.65,
-        is_fir_nir=True)
+        moisture_pct=0.0, nominal_weight_g=400.0, heat_retention=0.65,
+        tech=_TECH_RADIANT)
     assert result.drop_source.key == 'coherence'
     assert result.dev_ror == pytest.approx(4.0)
 
@@ -1452,15 +1544,16 @@ def test_pre_de_descent_survives_a_profile_without_events(
 # that is its purpose (design validé 2026-07-04).
 
 def _charge(process_type_lower="washed", density=700.0, culture_altitude=0.0,
-            water_activity=0.60, moisture=0.0, ambient_temp_c=20.0,
+            moisture=10.5, ambient_temp_c=20.0,
             minutes_since_last_drop=None,
             thermal_mass_idx=0.65, heat_retention_idx=0.65):
-    """Neutral-modulation defaults: density=700, aw=0.60 and ambient=20 each
-    zero out their own term, so the caller only has to move the one input under
-    test. The two exclusive pairs are resolved here, exactly as the plan does."""
+    """Neutral-modulation defaults: density=700, moisture=10.5 and ambient=20
+    each zero out their own term, so the caller only has to move the one input
+    under test. The aw is deliberately not a parameter: it no longer touches the
+    charge."""
     return TilauScopeRoastPlan._charge_setup(
         process_type_lower=process_type_lower,
-        water=_resolve_green_water(water_activity, moisture),
+        moisture=_resolve_green_moisture(moisture),
         structure=_resolve_green_structure(density, culture_altitude),
         ambient_temp_c=ambient_temp_c, minutes_since_last_drop=minutes_since_last_drop,
         thermal_mass_idx=thermal_mass_idx, heat_retention_idx=heat_retention_idx)
@@ -1503,22 +1596,34 @@ def test_charge_setup_unrecognised_process_falls_back_to_washed() -> None:
     assert result.band == (180.0, 190.0)
 
 
-def test_charge_setup_modulation_is_capped_and_stays_inside_the_band() -> None:
-    """All three contributions pushed positive and extreme — density 1000,
-    aw 0.90, ambient -10 — sum far past the ±5°C cap, but the result never
-    leaves the process band."""
-    result = _charge(process_type_lower="washed", density=1000.0,
-                      water_activity=0.90, ambient_temp_c=-10.0)
+def test_the_in_band_modulation_is_capped_and_never_leaves_the_band() -> None:
+    """Moisture and ambient pushed extreme — 19 % and -10 °C — sum far past the
+    ±5 °C cap, but they never take the charge out of its process band."""
+    result = _charge(process_type_lower="washed", density=700.0,
+                      moisture=19.0, ambient_temp_c=-10.0)
     assert result.temperature_c - result.nominal_temperature_c == pytest.approx(5.0)
     assert result.band[0] <= result.temperature_c <= result.band[1]
+
+
+def test_the_structure_term_is_allowed_out_of_the_band_and_bounded() -> None:
+    """The band encodes a SURFACE risk; density is a STRUCTURE one and may
+    contradict it, like the heat soak. Trade rule: a very dense bean charges
+    +5 to +10 °C above reference."""
+    dense = _charge(process_type_lower="washed", density=1000.0)
+    soft = _charge(process_type_lower="washed", density=400.0)
+    assert dense.temperature_c - dense.nominal_temperature_c == pytest.approx(7.0)
+    assert dense.temperature_c > dense.band[1], 'the dense bean stayed trapped in the band'
+    assert soft.temperature_c - soft.nominal_temperature_c == pytest.approx(-7.0)
+    # And it is bounded: an even denser bean buys nothing more.
+    assert _charge(process_type_lower="washed", density=990.0).temperature_c == pytest.approx(
+        dense.temperature_c)
 
 
 def test_charge_setup_zero_readings_are_treated_as_unmeasured_and_stay_silent(caplog) -> None:
     """0.0 is the codebase-wide 'not measured' sentinel for the bean fields —
     absent, not implausible; must not warn, and must apply nothing."""
     with caplog.at_level('WARNING'):
-        result = _charge(density=0.0, culture_altitude=0.0,
-                         water_activity=0.0, moisture=0.0)
+        result = _charge(density=0.0, culture_altitude=0.0, moisture=0.0)
     assert not [r for r in caplog.records if 'out of plausible' in r.getMessage()]
     assert result.temperature_c == pytest.approx(result.nominal_temperature_c)
 
@@ -1537,11 +1642,10 @@ def test_charge_setup_out_of_window_density_is_ignored_and_logged(caplog) -> Non
     assert result.temperature_c == pytest.approx(result.nominal_temperature_c)
 
 
-def test_an_implausible_aw_still_lets_the_moisture_fallback_speak() -> None:
-    """A bad reading on the winner must not poison the whole pair."""
-    water = _resolve_green_water(9.9, 12.5)
-    assert water.source == "proxy"
-    assert water.value == pytest.approx(2.0)
+def test_an_implausible_aw_does_not_touch_the_moisture() -> None:
+    """The two are independent: a bad aw drops on its own, the moisture stands."""
+    assert not _resolve_green_aw(9.9).known
+    assert _resolve_green_moisture(12.5).value == pytest.approx(2.0)
 
 
 def test_charge_setup_applies_heat_soak_after_the_band_clamp() -> None:
@@ -1566,9 +1670,9 @@ def test_charge_setup_applies_heat_soak_after_the_band_clamp() -> None:
 # to the washed process base (level=62.0, release_fraction=0.75) with no
 # modulation, and stays below the default grid dry/Maillard setpoints (80/70).
 
-def _burner(plan_model: TilauScopeRoastPlan, *, water_activity=0.0, moisture=0.0,
-            water_fc_heater_pct=0.0,
-            is_light_roast=False, is_fir_nir=False, agtron_mean=60.0,
+def _burner(plan_model: TilauScopeRoastPlan, *, moisture=0.0, density=0.0,
+            moisture_fc_heater_pct=0.0,
+            is_light_roast=False, tech=_TECH_GENERIC, agtron_mean=60.0,
             process_type_lower="washed", process_type="Washed",
             bean_varieties="", bean_country="",
             ambient_temp_c=None, heater_cmfc=(0.85, 0.75, 0.60),
@@ -1578,9 +1682,10 @@ def _burner(plan_model: TilauScopeRoastPlan, *, water_activity=0.0, moisture=0.0
             heater_fc_learned=None, heater_fc_samples=0) -> Any:
     from types import SimpleNamespace
     return plan_model._resolve_burner_setpoints(
-        water=_resolve_green_water(water_activity, moisture),
-        water_fc_heater_pct=water_fc_heater_pct,
-        is_light_roast=is_light_roast, is_fir_nir=is_fir_nir,
+        moisture=_resolve_green_moisture(moisture),
+        structure=_resolve_green_structure(density, 0.0),
+        moisture_fc_heater_pct=moisture_fc_heater_pct,
+        is_light_roast=is_light_roast, tech=tech,
         agtron_mean=agtron_mean, process_type_lower=process_type_lower,
         process_type=process_type,
         bean_varieties=bean_varieties, bean_country=bean_country,
@@ -1677,7 +1782,7 @@ def _heater_ramp(plan_model: TilauScopeRoastPlan, *, dry_bt_temperature=150.0,
                   tp_bt_c=95.0, dry_ror_average=8.0,
                   heater_dry=75.0, heater_maillard=65.0, heater_dev=50.0,
                   heater_pre_fc=50.0, dev_free_pct=50.0,
-                  floor=None, heater_max_pct=100.0,
+                  floor=None, heater_max_pct=100.0, burner_floor_pct=0.0,
                   heater_resolution_pct=1.0, has_heater_control=True,
                   heater_de_learned=None, heater_de_samples=0,
                   pre_de_descent_samples=0, pre_de_lead_learned=None,
@@ -1692,6 +1797,7 @@ def _heater_ramp(plan_model: TilauScopeRoastPlan, *, dry_bt_temperature=150.0,
         heater_dry=heater_dry, heater_maillard=heater_maillard, heater_dev=heater_dev,
         heater_pre_fc=heater_pre_fc, dev_free_pct=dev_free_pct,
         floor=floor, heater_max_pct=heater_max_pct,
+        burner_floor_pct=burner_floor_pct,
         heater_resolution_pct=heater_resolution_pct, has_heater_control=has_heater_control,
         heater_de_learned=heater_de_learned, heater_de_samples=heater_de_samples,
         pre_de_descent_samples=pre_de_descent_samples,
@@ -1856,17 +1962,18 @@ def test_drum_percentage_rounds_down_to_the_machine_step(
 # scenarios exercise.
 
 def _airflow(plan_model: TilauScopeRoastPlan, *, airflow_dependency_index=0.65,
-             water_activity=0.0, moisture=0.0, inlet_air_mode="push",
+             water_activity=0.0, inlet_air_mode="push",
              airflow_resolution_pct=5.0, dry_bt_temperature=150.0, fc_bt=189.0,
              pre_fc_c=185.0, drop_bt_temperature=200.0,
              heater_pre_fc=55.0, heater_dev=50.0, has_heater_control=True,
              heater_resolution_pct=1.0, dev_trajectory_learned=None,
-             dev_traj_samples=0, airwave_present=False) -> Any:
+             dev_traj_samples=0, airwave_present=False,
+             tech=_TECH_GENERIC) -> Any:
     plan_model._airwave_present = airwave_present
     return plan_model._resolve_airflow_extraction(
         airwave_present=False,
         airflow_dependency_index=airflow_dependency_index,
-        water=_resolve_green_water(water_activity, moisture),
+        aw=_resolve_green_aw(water_activity), tech=tech,
         inlet_air_mode=inlet_air_mode,
         airflow_resolution_pct=airflow_resolution_pct,
         dry_bt_temperature=dry_bt_temperature, fc_bt=fc_bt, pre_fc_c=pre_fc_c,
@@ -2480,8 +2587,8 @@ def _drop_resolution(plan_model: TilauScopeRoastPlan, *, fc_bt: float,
         drop_learned_c=drop_learned_c, drop_samples=3,
         drop_ror_learned_c=None, drop_ror_samples=0,
         fc_bt=fc_bt, dev_time_min=dev_time_min, dev_ror_expected=5.0,
-        agtron_ratio=0.5, charge_weight=400.0, density=700.0, water_activity=0.0,
-        nominal_weight_g=400.0, heat_retention=0.65, is_fir_nir=True)
+        agtron_ratio=0.5, charge_weight=400.0, density=700.0, moisture_pct=0.0,
+        nominal_weight_g=400.0, heat_retention=0.65, tech=_TECH_RADIANT)
 
 
 def test_the_colour_note_is_published_when_the_learned_drop_survives() -> None:

@@ -37,6 +37,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from tilauscope.bean_qualifiers import physical_qualifier
 from tilauscope.sack_manager import SackChipsRow
 from tilauscope.tilauscope_types import THEME
 
@@ -44,6 +45,18 @@ _logd = logging.getLogger('tilaudebug')
 
 _MONO = "'JetBrains Mono', monospace"
 _DIM = THEME['OVERLAY0']
+
+
+def _with_qualifier(text: str, kind: str, value: float) -> str:
+    """Append the plain-language reading of a measure, e.g. '790 g/l (dense)'.
+
+    Returns rich text: the qualifier carries its own colour so an out-of-range
+    value is visible without reading the figure.
+    """
+    word, color = physical_qualifier(kind, value)
+    if not word:
+        return text
+    return f"{text} <span style='color:{color or _DIM};'>({word})</span>"
 
 
 
@@ -258,9 +271,12 @@ class BeanSheetWidget(QWidget):
                 f"{r:.0f} % {n}" if r > 0 else n for n, r in comps)
             pairs.append((QApplication.translate("tilauscope_beancave", "Composition"), comp))
         pairs += [
-            (QApplication.translate("tilauscope_beancave", "Density"), f"{dens:.0f} g/l" if dens > 0 else "—"),
-            (QApplication.translate("tilauscope_beancave", "Humidity"), f"{hum:.1f} %" if hum > 0 else "—"),
-            (QApplication.translate("tilauscope_beancave", "Water activity"), f"{wa:.2f}" if wa > 0 else "—"),
+            (QApplication.translate("tilauscope_beancave", "Density"),
+             _with_qualifier(f"{dens:.0f} g/l", 'density', dens) if dens > 0 else "—"),
+            (QApplication.translate("tilauscope_beancave", "Humidity"),
+             _with_qualifier(f"{hum:.1f} %", 'humidity', hum) if hum > 0 else "—"),
+            (QApplication.translate("tilauscope_beancave", "Water activity"),
+             _with_qualifier(f"{wa:.2f}", 'aw', wa) if wa > 0 else "—"),
         ]
         self._kv_grid(z, pairs)
         self._add(z)

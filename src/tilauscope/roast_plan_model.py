@@ -14,7 +14,7 @@
 # TiLau 2025, 2026
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Final, Any
 from fpdf import FPDF, XPos, YPos
 import json
@@ -25,7 +25,9 @@ from pathlib import Path, PosixPath
 import re
 import numpy as np
 
-from tilauscope.tilauscope_types import AGTRON_SCALES, AgtronScale, ProbeDeviation, RoasterBasicPlan, RoasterBasicPlanPerPhase, GreenBean, RoastingPhase, get_ror_ideal_band, to_agtron
+from tilauscope.tilauscope_types import (AGTRON_SCALES, AgtronScale, ProbeDeviation, RoasterBasicPlan, RoasterBasicPlanPerPhase, GreenBean, RoastingPhase,
+                                          get_ror_ideal_band, to_agtron, ROASTING_BASIC_BASE, clean_delta_bt, estimate_ror_dt, find_turning_point_index,
+                                          which_roast_phase, find_flicks_crashes)
 from tilauscope.roasters import RoasterContext
 from tilauscope import text_shaping
 from tilauscope.bean_energy import FloorProfile
@@ -63,38 +65,24 @@ _CHARGE_BAND_BY_PROCESS: dict[str, tuple[float, float]] = {
 }
 _CHARGE_MODULATION_MAX_C: float = 5.0
 
-## ── Les deux PAIRES EXCLUSIVES du grain vert ─────────────────────────────────
-## Arbitrage Tilau 2026-08-11, spec wiki/WaterActivity-Altitude-Spec.md §2.
+## ── Les variables du grain vert ──────────────────────────────────────────────
+## Arbitrage Tilau 2026-08-13 (spec §2.2). aw et humidité ne sont PAS une paire :
+## ce sont deux grandeurs distinctes, aux consommateurs disjoints.
 ##
-## Chaque paire mesure UNE grandeur physique deux fois. Elles ne se cumulent
-## jamais : la mesure directe l'emporte, le substitut ne sert qu'en repli, et si
-## aucune des deux n'est disponible AUCUN modificateur n'est appliqué (on ne
-## fabrique pas de valeur par défaut).
+##   HUMIDITÉ = masse d'eau = budget d'énergie. Pilote temps de séchage, feu,
+##     élan au crack, Maillard, et avec la densité la charge et l'inertie finale.
+##   aw = état de cette eau (fraction libre). Pilote l'air. Référence stockage.
 ##
-##   EAU       : aw  >  humidité du grain
-##     L'aw mesure l'eau LIBRE — la seule qui fasse le travail : s'évaporer,
-##     tamponner la surface contre le scorching, devenir la vapeur qui bâtit la
-##     pression interne. L'humidité compte en plus l'eau LIÉE, qui ne fait ni
-##     l'un ni l'autre. S'y ajoute un problème de mesure : les humidimètres
-##     capacitifs divergent fortement d'un appareil et d'une calibration ISO à
-##     l'autre (Arnephy) — l'aw est une mesure thermodynamique directe.
-##
-##   STRUCTURE : densité  >  altitude de culture
-##     L'altitude ne mesure rien en propre : c'est un substitut de la densité
-##     (maturation lente en altitude → grain plus dense). Même altitude, autre
-##     variété ou autre sol → autre densité.
-##
-## L'humidité de l'AIR ne figure dans aucune paire : son influence pendant le
-## roast est nulle. Elle agit ENTRE les roasts, en faisant dériver l'aw du grain
-## au stockage — c'est là qu'elle est utilisée, pas ici.
-_WATER_AW_NEUTRAL: Final[float] = 0.60
-## Isotherme de sorption du café vert entre aw 0,50 et 0,75 : 0,05 d'aw vaut
-## ~1 point d'humidité. C'est ce qui FIXE les deux neutres l'un par rapport à
-## l'autre — sans quoi la paire se contredirait elle-même. (Le neutre d'humidité
-## valait 11,0, choisi indépendamment ; l'isotherme dit 10,5 en face de 0,60.)
-_WATER_AW_PER_POINT: Final[float] = 0.05
-_WATER_MOISTURE_NEUTRAL: Final[float] = 10.5
-_WATER_POINTS_MAX: Final[float] = 3.0        # aw 0,45–0,75
+## ⚠️ Aucune conversion entre les deux (banc 2026-08-13 : pente 0,019 vs 0,05
+## supposée, sur deux saisies). L'absence de l'une n'est jamais comblée par l'autre.
+## STRUCTURE : densité > altitude reste une paire — la mesure bat son proxy.
+## L'humidité de l'AIR agit entre les roasts (dérive de l'aw), pas ici.
+_AW_NEUTRAL: Final[float] = 0.60
+## Graduation de l'aw sur elle-même, pas une conversion vers l'humidité.
+_AW_PER_INDEX: Final[float] = 0.05
+_AW_INDEX_MAX: Final[float] = 3.0            # aw 0,45–0,75
+_MOISTURE_NEUTRAL: Final[float] = 10.5
+_MOISTURE_POINTS_MAX: Final[float] = 3.0     # 7,5–13,5 %
 _STRUCTURE_DENSITY_NEUTRAL: Final[float] = 700.0
 _STRUCTURE_DENSITY_PER_INDEX: Final[float] = 50.0
 _STRUCTURE_ALT_NEUTRAL: Final[float] = 1400.0
@@ -105,25 +93,126 @@ _SRC_MEASURED: Final[str] = "measured"
 _SRC_PROXY: Final[str] = "proxy"
 _SRC_ABSENT: Final[str] = "absent"
 
-## Autorité de chaque paire sur la TEMPÉRATURE DE CHARGE (°C par unité).
-## Les deux restent sous le plafond ±_CHARGE_MODULATION_MAX_C et sous le clamp de
-## bande : le process reste propriétaire de la charge (arbitrage 2026-08-04).
-## ⚠️ OUVERT (spec §9) : l'eau a la plus forte chaleur massique du système
-## (4,184 J/g·K) et la plus faible autorité des trois termes. Rééquilibrer la
-## modulation entière est un sujet à part, pas un réglage de l'aw.
-_CHARGE_C_PER_WATER_POINT: Final[float] = 1.5
-_CHARGE_C_PER_STRUCTURE_INDEX: Final[float] = 2.0
+## Charge : ce qu'il y a à CHAUFFER — masse d'eau et structure, l'aw n'y touche pas.
+## L'eau reste DANS la bande (elle module l'énergie autour du risque de surface
+## que la bande encode) ; la structure s'applique APRÈS le clamp, comme le heat
+## soak, parce qu'elle contredit légitimement la bande : un natural dense encaisse
+## ce qu'un natural tendre ne supporte pas. Index +2 (800 g/L) = +7 °C, la
+## fourchette métier (+5 à +10 sur grain très dense).
+_CHARGE_C_PER_MOISTURE_POINT: Final[float] = 1.5
+_CHARGE_C_PER_STRUCTURE_INDEX: Final[float] = 3.5
+_CHARGE_STRUCTURE_MAX_C: Final[float] = 7.0
+## Garde absolue de la charge, une fois structure et soak hors bande.
+_CHARGE_ABSOLUTE_MIN_C: Final[float] = 120.0
+_CHARGE_ABSOLUTE_MAX_C: Final[float] = 210.0
+
+## Structure sur la puissance initiale : dense = puissance forte dès le TP.
+## Magnitude doctrinale (±3 %) — banc bench_green_structure : non mesurable ici.
+_HEATER_DRY_PCT_PER_STRUCTURE_INDEX: Final[float] = 1.5
 
 ## Température ambiante = température de DÉPART du grain (spec §7). Sur 400 g,
 ## 1,7 J/g·K × 10 K = 6,8 kJ ≈ 19 s de séchage aux ~350 W délivrés à la charge.
 ## C'est la même classe d'effet qu'un point d'eau du grain — pas un modificateur
 ## d'appoint. Mis à l'échelle de la masse chargée au point d'usage.
 _AMBIENT_DRY_MIN_PER_10K: Final[float] = 0.19
-## Ouverture d'air par point d'eau, côté humide seulement (chasse la vapeur).
-_AIRFLOW_PCT_PER_WATER_POINT: Final[float] = 1.5
+## Ouverture d'air par index d'aw, côté eau libre seulement (chasse la vapeur).
+_AIRFLOW_PCT_PER_AW_INDEX: Final[float] = 1.5
 ## Structure sur la durée de séchage : un grain dense retient sa vapeur plus
 ## longtemps. Effet volontairement petit (±0,15 min sur toute la plage).
 _DRY_MIN_PER_STRUCTURE_INDEX: Final[float] = 0.075
+## Écart BT entre deux crans d'air dans l'approche du DRY END.
+_AIR_DE_STEP_LEAD_C: Final[float] = 6.0
+
+
+@dataclass(frozen=True)
+class _TechnologyProfile:
+    """Everything the plan does differently because of HOW the machine heats.
+
+    One object per heat-transfer technology, replacing the `is_fir_nir` flag
+    that was tested at six separate decision sites. A new technology is a new
+    instance, not a new branch.
+    """
+    name: str
+    ## RoR au drop : bornes de la table bonnes-pratiques et bande saine.
+    ror_at_drop_dark: float
+    ror_at_drop_light: float
+    ror_drop_floor: float
+    ror_drop_ceiling: "float | None" = None
+    ## Sous ce niveau la machine chauffe mais ne SOUTIENT plus la réaction : le
+    ## RoR s'écroule. Plancher de prescription, pas une limite matérielle.
+    burner_floor_pct: float = 0.0
+    ## Pic de RoR au séchage : constante, ou suivant le brûleur prescrit.
+    dry_ror_peak_c: float = 12.0
+    dry_ror_peak_follows_heater: bool = False
+    ## Air par phase, quand la technologie le dicte. None = interpolation sur
+    ## airflow_dependency_index. Explicite = la pénalité « pull » ne s'applique
+    ## pas : sur une machine où l'air SOUTIENT la réaction, ces valeurs sont
+    ## déjà la cible.
+    airflow_pct: "tuple[float, float, float] | None" = None
+    ## Base brûleur par process en light : None = grille agtron habituelle.
+    light_heater_base_by_process: "tuple[float, float, float] | None" = None
+    ## Enveloppe de RoR (°C/min) : post-TP, entrée Maillard (DRY END),
+    ## FC − 1:00, entrée FC. C'est la CONTRAINTE : les durées de séchage et de
+    ## Maillard s'en déduisent, au lieu de sortir d'une grille de style.
+    ## None = comportement historique (durées de grille, RoR géométriques).
+    ror_envelope: "tuple[float, float, float, float] | None" = None
+    ## Temps du TP, constante machine. None = loi de masse historique.
+    tp_time_min: "float | None" = None
+    ## Brûleur de séchage sous lequel le temps de TP ci-dessus n'est plus tenu.
+    tp_time_heater_pct: float = 70.0
+    ## Réécritures de la table de plan, par nom de catégorie.
+    plan_overrides: "dict[str, dict]" = field(default_factory=dict)
+
+
+## Radiant (FIR/NIR électrique — Skywalker, Kaleido, Cyberroaster).
+_TECH_RADIANT: Final[_TechnologyProfile] = _TechnologyProfile(
+    name="radiation",
+    ror_at_drop_dark=4.0, ror_at_drop_light=5.5,
+    ror_drop_floor=3.5, ror_drop_ceiling=7.0,
+    burner_floor_pct=45.0,
+    airflow_pct=(35.0, 45.0, 50.0),
+    dry_ror_peak_c=12.0, dry_ror_peak_follows_heater=True,
+    ror_envelope=(16.0, 12.0, 8.0, 5.5),
+    tp_time_min=1.25, tp_time_heater_pct=70.0,
+    light_heater_base_by_process=(0.0, -5.0, -10.0),
+    plan_overrides={
+        ## Corrections propres au rayonnement, 2026/02/18. Le développement est
+        ## à 0,45 pour que l'échelle light reste monotone face au Medium Light.
+        ## Bandes de développement relevées sur la machine (2026/08/13) : le
+        ## radiant finit vite, 0:45-1:00 en light, 1:30 en medium light. Le
+        ## dtr suit, il n'est qu'un contrôle de cohérence en aval.
+        "Light": {
+            "heater_cmfc": (0.65, 0.60, 0.45), "total_time": (8.0, 10.5),
+            "drying_time": (3.5, 5.0), "maillard_time": (3.0, 4.0),
+            "drop_temp": (201, 203),
+            "development_time": (0.75, 1.0), "dtr_pct": (0.08, 0.12),
+        },
+        "Very Light": {
+            "heater_cmfc": (0.65, 0.60, 0.45), "total_time": (8.0, 10.5),
+            "drying_time": (3.5, 5.0), "maillard_time": (3.0, 4.0),
+            "drop_temp": (201, 203),
+            "development_time": (0.75, 1.0), "dtr_pct": (0.08, 0.12),
+        },
+        ## Medium light : le développement s'allonge, le total ne bouge pas —
+        ## le Maillard récupère la différence (« laisser caraméliser un peu
+        ## plus longtemps »).
+        "Medium Light": {
+            "development_time": (1.4, 1.6), "dtr_pct": (0.13, 0.16),
+        },
+    },
+)
+
+## Tambour classique — conduction dominante, et repli sans contexte machine.
+_TECH_GENERIC: Final[_TechnologyProfile] = _TechnologyProfile(
+    name="conduction",
+    ror_at_drop_dark=2.0, ror_at_drop_light=3.5,
+    ror_drop_floor=0.5, ror_drop_ceiling=None,
+)
+
+
+def _technology_profile(is_radiant_electric: bool) -> _TechnologyProfile:
+    """The profile driving every heat-transfer-specific plan decision."""
+    return _TECH_RADIANT if is_radiant_electric else _TECH_GENERIC
 
 
 @dataclass(frozen=True)
@@ -162,27 +251,31 @@ def _plausible_reading(value: "float | None", lo: float, hi: float,
     return float(value)
 
 
-def _resolve_green_water(water_activity: "float | None",
-                         moisture_pct: "float | None") -> _GreenPairValue:
-    """Water in the bean, in POINTS OF MOISTURE, positive = wetter.
+def _resolve_green_moisture(moisture_pct: "float | None") -> _GreenPairValue:
+    """The bean's WATER MASS, in points of moisture, positive = wetter.
 
-    aw wins when measured; moisture is the fallback; neither means no effect.
-    See the pair doctrine above for why. An implausible aw does NOT poison the
-    pair — the moisture fallback is still tried behind it.
+    No fallback: aw is not a second reading of it. Not measured, no effect.
+    """
+    _moisture = _plausible_reading(moisture_pct, 5.0, 20.0, "bean moisture")
+    if _moisture is None:
+        return _GreenPairValue()
+    return _GreenPairValue(
+        _clamp(_moisture - _MOISTURE_NEUTRAL, -_MOISTURE_POINTS_MAX, _MOISTURE_POINTS_MAX),
+        _SRC_MEASURED, f"moisture {_moisture:.1f}%")
+
+
+def _resolve_green_aw(water_activity: "float | None") -> _GreenPairValue:
+    """The STATE of that water — its free fraction — in index of 0.05 aw.
+
+    Owns airflow and early convection: how readily water leaves, not how much
+    there is. Never touches the energy budget, never converts to moisture points.
     """
     _aw = _plausible_reading(water_activity, 0.10, 1.0, "bean water activity")
-    if _aw is not None:
-        _points = (_aw - _WATER_AW_NEUTRAL) / _WATER_AW_PER_POINT
-        return _GreenPairValue(
-            _clamp(_points, -_WATER_POINTS_MAX, _WATER_POINTS_MAX),
-            _SRC_MEASURED, f"aw {_aw:.2f}")
-    _moisture = _plausible_reading(moisture_pct, 5.0, 20.0, "bean moisture")
-    if _moisture is not None:
-        _points = _moisture - _WATER_MOISTURE_NEUTRAL
-        return _GreenPairValue(
-            _clamp(_points, -_WATER_POINTS_MAX, _WATER_POINTS_MAX),
-            _SRC_PROXY, f"moisture {_moisture:.1f}%")
-    return _GreenPairValue()
+    if _aw is None:
+        return _GreenPairValue()
+    return _GreenPairValue(
+        _clamp((_aw - _AW_NEUTRAL) / _AW_PER_INDEX, -_AW_INDEX_MAX, _AW_INDEX_MAX),
+        _SRC_MEASURED, f"aw {_aw:.2f}")
 
 
 def _resolve_green_structure(density_g_l: "float | None",
@@ -525,22 +618,16 @@ def heat_soak_correction(minutes_since_drop: float, thermal_mass: float,
     return dcharge, dheater, tau
 
 @dataclass(frozen=True)
-class _GreenWaterEffect:
-    """Deltas from the bean's water, to be added to the in-progress plan
-    variables; all zero when neither aw nor moisture was measured.
+class _GreenMoistureEffect:
+    """Deltas from the bean's WATER MASS — the energy budget — all zero when
+    the moisture was not measured.
 
-    Two fields the previous `_WaterActivityEffect` had are gone:
-
-    - `d_charge_c` — the charge is now driven from inside the modulation, where
-      bean properties belong, so the water term can no longer collide with the
-      heat soak on the far side of the band clamp.
-    - `d_extraction_pct` — it never reached an output on any machine. The plan
-      overwrites the extraction list with a fixed AirWave programme when the
-      device is present, and empties it when it is absent.
+    The charge is not here: it is driven from inside the charge modulation, so
+    the term cannot collide with the heat soak past the band clamp. Airflow is
+    not here either: it belongs to the aw (evaporation, not energy).
     """
     d_dry_time_min:      float = 0.0
     d_heater_dry_pct:    float = 0.0
-    d_airflow_pct:       float = 0.0
     ## Élan à travers le crack : le grain tient encore ~4-5 % d'eau au FC, et
     ## c'est cette vapeur sous pression qui le fait éclater. Un lot humide perd
     ## son élan là (Arnephy) — la vapeur a une chaleur massique assez élevée
@@ -563,6 +650,27 @@ class _PhaseDurationCalibration:
     cal_heater_dry_pct: float
     cal_heater_mai_pct: float
     notes: "list[str]"
+
+
+@dataclass(frozen=True)
+class _EnvelopeTiming:
+    """Durations and slopes deduced from the technology's RoR envelope (lot 4).
+
+    The envelope constrains, the durations follow — see _envelope_timing.
+    `dev_delta_c` is the rise development is allowed to make, from which the
+    drop temperature is worked out instead of being read off a colour band."""
+    dry_time_min:      float
+    maillard_time_min: float
+    dry_ror_c:         float
+    maillard_ror_c:    float
+    fc_entry_ror_c:    float
+    dev_delta_c:       float
+    ## Le séchage a été rallongé pour ne pas passer sous le Maillard (recours).
+    drying_stretched:  bool = False
+    ## Le Maillard a été resserré sur la durée du séchage (cas normal).
+    maillard_compressed: bool = False
+    ## Décalage à appliquer au DRY END pour que la courbe reste descendante.
+    dry_bt_shift_c:    float = 0.0
 
 @dataclass(frozen=True)
 class _ChargeSetup:
@@ -731,62 +839,24 @@ class TilauScopeRoastPlan:
             return []
         return [f for f in Path(self.alog_directory).iterdir() if f.is_file() and f.suffix == '.alog']
 
+    # Thin delegators onto the shared tilauscope_types implementations (single
+    # source with the BeanCave coach) — kept as methods for the existing test
+    # suite and internal call sites.
     def _clean_delta_bt(self, delta_bt: list) -> list:
-        """
-        Fills None values in the delta_bt array.
-        Uses forward-fill logic: replaces None with the last valid float.
-        Initializes with 0 if None is found at the start of the list.
-        """
-        cleaned_list = []
-        last_valid_value = 0.0  # Default value for the start of the roast
-
-        for value in delta_bt:
-            if value is None:
-                cleaned_list.append(last_valid_value)
-            else:
-                # Ensure the value is a float for mathematical processing
-                current_val = float(value)
-                cleaned_list.append(current_val)
-                last_valid_value = current_val
-
-        return cleaned_list
+        return clean_delta_bt(delta_bt)
 
     def _estimate_dt(self, timex) -> float:
-        """Median sampling interval (s) of a log, derived from its own recorded
-        timestamps. Robust to the user's Artisan sampling setting (qmc.delay),
-        which varies per recording (see sampling.py). Falls back to 1.0 s."""
-        tx = np.asarray(timex, dtype=float)
-        if tx.size < 2:
-            return 1.0
-        d = np.diff(tx)
-        d = d[d > 0]
-        if d.size == 0:
-            return 1.0
-        return float(np.clip(np.median(d), 0.25, 10.0))
+        return estimate_ror_dt(timex)
 
     def _find_turning_point_index(self, bt_input: list, dt: float = 1.0) -> int:
-        """
-        Index of the Turning Point = the BT minimum (where RoR crosses zero),
-        searched in the early window (~15 s .. 2 min 30 after charge).
+        return find_turning_point_index(bt_input, dt)
 
-        NOTE: this uses BT, not the RoR minimum. The RoR minimum is the moment of
-        steepest cooling, which occurs BEFORE the turning point; using it (as the
-        previous implementation did) mislocated the TP systematically. Window
-        bounds are converted from seconds to samples via the per-log dt.
-        """
-        bt = np.array([np.nan if b is None else float(b) for b in bt_input], dtype=float) if bt_input else np.array([])
-        if bt.size == 0:
-            return 0
-        lo = min(int(round(15.0 / dt)), bt.size - 1)    # skip the charge instant
-        hi = min(int(round(150.0 / dt)), bt.size)
-        if hi <= lo:
-            hi = bt.size
-        if hi <= lo:
-            return 0
-        seg = bt[lo:hi]
-        if np.all(np.isnan(seg)):
-            return lo
-        return lo + int(np.nanargmin(seg))
+    def _which_phase(self, current_time: float, phase_times: dict) -> int:
+        return which_roast_phase(current_time, phase_times)
+
+    def _find_flicks_crashes(self, delta_bt: list, timex: list, phase_times: dict, tp_index: int,
+                              prominence: float = 1.0, debounce_sec: float = 20.0, recovery_margin_sec: float = 30.0):
+        return find_flicks_crashes(delta_bt, timex, phase_times, tp_index, prominence, debounce_sec, recovery_margin_sec)
 
     def evaldeltas(self, data: dict, deltaname:str):
         tx = np.array(data.get("timex", []))
@@ -834,7 +904,7 @@ class TilauScopeRoastPlan:
             "drop":     timex_shifted[ti[RoastingPhase.DROP]],
         }
 
-        delta_bt_input = self._clean_delta_bt(self.evaldeltas(self.lastprofiledata, "temp2"))
+        delta_bt_input = clean_delta_bt(self.evaldeltas(self.lastprofiledata, "temp2"))
         bt_input       = self.lastprofiledata.get("temp2", [])
         # Align the BT series on the CURRENT display unit, like evaldeltas does
         # for the RoR series — otherwise the master curve mixes log units.
@@ -847,10 +917,10 @@ class TilauScopeRoastPlan:
 
         # Per-log sampling interval (s) derived from recorded timestamps -- robust to
         # the user's Artisan sampling setting (qmc.delay), which varies per log.
-        dt = self._estimate_dt(timex_shifted[start:end])
+        dt = estimate_ror_dt(timex_shifted[start:end])
         # TP = BT minimum (NOT the RoR minimum). Reverts the earlier mis-"fix" that
         # passed delta_bt; the RoR minimum is the steepest-cooling point, before TP.
-        tp_index = self._find_turning_point_index(bt_input[start:end], dt)
+        tp_index = find_turning_point_index(bt_input[start:end], dt)
 
         return (
             delta_bt_input[start:end],
@@ -859,85 +929,6 @@ class TilauScopeRoastPlan:
             tp_index,
             phase_times,         # remplace ti_shifted
         )
-
-    def _find_flicks_crashes(
-                self,
-                delta_bt: list,
-                timex: list,
-                phase_times: dict,
-                tp_index: int,
-                prominence: float = 1.0,        # degrees C/min: significance of the dip/bump
-                debounce_sec: float = 20.0,
-                recovery_margin_sec: float = 30.0,
-        ):
-        """
-        Detect significant RoR dips (crashes) and bumps (flicks) as LOCAL EXTREMA
-        ranked by PROMINENCE (degrees C/min).
-
-        Why prominence: a healthy roast has a continuously declining RoR, which has
-        no local extremum, so it is never flagged. A crash is a genuine local valley
-        and a flick a genuine local peak; their prominence is the physical measure of
-        how significant the event is, comparable across roasts.
-
-        Sample-rate invariant: every time window/limit is converted to samples using
-        the per-log sampling interval derived from timex, so detection no longer
-        assumes 1 Hz.
-        """
-        from scipy.signal import find_peaks
-
-        flicks: list = []
-        crashes: list = []
-
-        ror = np.asarray(self._clean_delta_bt(delta_bt), dtype=float)
-        tx  = np.asarray(timex, dtype=float)
-        n = ror.size
-        if n < 10 or tx.size != n:
-            return flicks, crashes
-
-        dt = self._estimate_dt(tx)
-        distance = max(1, int(round(debounce_sec / dt)))
-
-        # Light denoise (~5 s). Prominence already rejects small wiggles, so keep
-        # this light to avoid attenuating short real flicks near first crack.
-        win = max(1, int(round(5.0 / dt)))
-        if win > 1:
-            kernel = np.ones(win) / win
-            ror_s = np.convolve(ror, kernel, mode='same')
-        else:
-            ror_s = ror
-
-        # Exclude the post-TP recovery: locate the recovery RoR peak within ~180 s
-        # after the (BT-based) turning point, then start detecting a margin later so
-        # the recovery peak itself is never mistaken for a flick.
-        peak_limit = min(n, tp_index + int(round(180.0 / dt)))
-        if 0 <= tp_index < peak_limit:
-            rec_idx = tp_index + int(np.argmax(ror_s[tp_index:peak_limit]))
-            detect_from_t = tx[rec_idx] + recovery_margin_sec
-        else:
-            detect_from_t = float(tx[0]) + 120.0
-
-        flick_idx, fprops = find_peaks(ror_s, prominence=prominence, distance=distance)
-        crash_idx, cprops = find_peaks(-ror_s, prominence=prominence, distance=distance)
-
-        for k, i in enumerate(flick_idx):
-            if tx[i] <= detect_from_t:
-                continue
-            flicks.append({
-                "time":      float(tx[i]),
-                "ror_value": round(float(ror_s[i]), 2),
-                "severity":  round(float(fprops["prominences"][k]), 2),  # prominence, C/min
-                "phase":     self._which_phase(float(tx[i]), phase_times),
-            })
-        for k, i in enumerate(crash_idx):
-            if tx[i] <= detect_from_t:
-                continue
-            crashes.append({
-                "time":      float(tx[i]),
-                "ror_value": round(float(ror_s[i]), 2),
-                "severity":  round(float(cprops["prominences"][k]), 2),  # prominence, C/min
-                "phase":     self._which_phase(float(tx[i]), phase_times),
-            })
-        return flicks, crashes
 
     def _find_relevant_logs(self, target_bean_name: str, historical_logs: list[PosixPath]) -> list:
         """
@@ -1069,6 +1060,8 @@ class TilauScopeRoastPlan:
     _DESCENT_IGNORE_SEC: Final[float] = 15.0
     ## Une baisse plus petite n'est pas un geste : c'est la résolution du curseur.
     _DESCENT_MIN_PCT: Final[float] = 1.0
+    ## Largeur de la cohorte autour de la masse cible (lot 5).
+    _COHORT_WEIGHT_TOL_G: Final[float] = 50.0
 
     def _extract_pre_de_descent(self, phase_times: dict
                                 ) -> "tuple[float, float] | None":
@@ -1292,35 +1285,6 @@ class TilauScopeRoastPlan:
             _logd.debug(f"_extract_dev_trajectory failed: {e}")
             return None
 
-    def _which_phase(self, current_time: float, phase_times: dict) -> int:
-        """
-        Détermine la phase de torréfaction pour un timestamp donné (secondes depuis charge).
-
-        :param current_time: temps en secondes depuis charge
-        :param phase_times: dict avec les clés 'dry_end', 'fc_start', 'drop' (secondes depuis charge)
-        :return: index de phase (1=DRY, 2=MAILLARD, 3=DEVELOPMENT, 0=hors scope)
-        """
-        dry_end  = phase_times.get("dry_end")
-        fc_start = phase_times.get("fc_start")
-        drop     = phase_times.get("drop")
-
-        if drop is None:
-            return 0  # données insuffisantes
-
-        if dry_end is not None and current_time <= dry_end:
-            return 1  # DRY
-        if fc_start is not None and current_time <= fc_start:
-            return 2  # MAILLARD
-        # FC non marqué : on ne peut PAS distinguer Maillard de Development sur ce log.
-        # Étiqueter tout l'après-séchage en DEVELOPMENT polluait les statistiques de phase
-        # (crashes/flicks Maillard comptés comme dev). On renvoie 0 (hors scope) pour la
-        # zone ambiguë afin que _average_event_group ignore ces événements non fiables.
-        if fc_start is None:
-            return 0
-        if current_time <= drop:
-            return 3  # DEVELOPMENT
-        return 0  # hors scope (post-drop)
-
     def _prepare_historical_graph_data(self, relevant_logs_data: list):
         """
         Prépare une 'Master Curve' (moyenne) et une enveloppe (min/max)
@@ -1397,6 +1361,73 @@ class TilauScopeRoastPlan:
         out["notes"]   = list(cached.get("notes")   or [])
         out["actions"] = list(cached.get("actions") or [])
         return out
+
+    def _cohort_charge_burner(self, *, process_type: str, charge_weight_g: float
+                              ) -> "tuple[float | None, int]":
+        """Brûleur de charge de la COHORTE : même process, masse cible ± 50 g,
+        toutes origines confondues (lot 5).
+
+        La famille — les torréfactions du même grain — dit les durées, la
+        couleur et les accidents de courbe. Elle ne dit PAS comment la machine
+        chauffe : le grain n'a pas d'avis là-dessus, la masse et le process si.
+        Le brûleur de charge quitte donc la famille pour la cohorte. Le
+        Maillard et le développement restent au grain, eux : leur valeur suit
+        la couleur visée.
+
+        Renvoie (médiane du brûleur de séchage, nombre de torréfactions).
+        """
+        if charge_weight_g <= 0.0 or not process_type:
+            return None, 0
+        _key = ("cohort", process_type.strip().lower(), round(charge_weight_g))
+        if _key in self._history_cache:
+            _hit = self._history_cache[_key]
+            return (_hit or {}).get("value"), int((_hit or {}).get("n", 0))
+
+        _is_radiant = (self._roaster_ctx.is_radiant_electric
+                       if self._roaster_ctx is not None else None)
+        _needle = process_type.strip().lower()
+        _samples: "list[float]" = []
+        for log in self._list_alogs():
+            _, _timex, _, _, phase_times = self._get_delta_bt(log)
+            if not _timex or not _learning_log_is_eligible(self.lastprofiledata):
+                continue
+            _computed = self.lastprofiledata.get("computed", {})
+            _log_is_f = str(self.lastprofiledata.get("mode", "C")) == "F"
+            _charge_bt = _computed.get("CHARGE_BT", 0.0) or 0.0
+            _charge_bt_c = fromFtoCstrict(_charge_bt) if (_log_is_f and _charge_bt > 0.0) else _charge_bt
+            if 0.0 < _charge_bt_c < 150.0:
+                continue
+            ## Le process est écrit en clair dans le champ `beans` du .alog
+            ## (« Process: Washed / Wet Process ») — pas besoin de la fiche.
+            if _needle not in str(self.lastprofiledata.get("beans", "")).lower():
+                continue
+            _w = self.lastprofiledata.get("weight")
+            _w_green = 0.0
+            if _w:
+                try:
+                    _w_green = convertWeight(float(_w[0]), ["g", "Kg", "lb", "oz"].index(str(_w[2])), 0)
+                except (ValueError, TypeError, IndexError):
+                    _w_green = 0.0
+            if _w_green <= 0.0 or abs(_w_green - charge_weight_g) > self._COHORT_WEIGHT_TOL_G:
+                continue
+            if _is_radiant is not None:
+                _tp_bt = _computed.get("TP_BT", 0.0) or 0.0
+                _tp_et = _computed.get("TP_ET", 0.0) or 0.0
+                if _tp_bt > 0.0 and _tp_et > 0.0:
+                    _tp_delta = (_tp_et - _tp_bt) / (1.8 if _log_is_f else 1.0)
+                    if _is_radiant and _tp_delta < -5.0:
+                        continue
+                    if not _is_radiant and _tp_delta > 5.0:
+                        continue
+            _h_dry, _, _, _, _ = self._extract_phase_heater(phase_times)
+            if _h_dry is not None:
+                _samples.append(_h_dry)
+
+        _value = round(float(np.median(_samples)), 1) if _samples else None
+        self._history_cache[_key] = {"value": _value, "n": len(_samples)}
+        _logd.info(f"RoastPlan: cohort '{_needle}' at {charge_weight_g:.0f}g — "
+                   f"n={len(_samples)}, charge burner {_value}")
+        return _value, len(_samples)
 
     def _analyze_historical_roasts(self, bean: GreenBean, target_agtron:AgtronScale,
                                    charge_weight_g: float = 0.0):
@@ -1930,7 +1961,7 @@ class TilauScopeRoastPlan:
             tp_idx      = data["tp_index"]    # plus de fuite de scope
             phase_times = data["phase_times"] # plus de fuite de scope
             drop_time   = phase_times["drop"]
-            f, c = self._find_flicks_crashes(
+            f, c = find_flicks_crashes(
                 data["delta_bt"], tx, phase_times, tp_idx,
                 # delta series is in the display unit — the °C-doctrine
                 # prominence (1 °C/min) scales ×1.8 on °F installs.
@@ -2149,10 +2180,10 @@ class TilauScopeRoastPlan:
         drop_bt_temperature: float,           # drop temperature (°C)
         charge_weight: float,       # batch weight in grams
         density: float,             # bean density in g/L
-        water_activity: float = 0.0, # bean water activity (0.0 = not measured)
+        moisture_pct: float = 0.0,  # bean moisture % (0.0 = not measured)
         nominal_weight_g: float = 500.0,  # roaster's reference batch weight
         heat_retention: float = 0.65,     # roaster heat_retention_index [0-1]
-        is_fir_nir: bool = False,         # item A : table par type de machine
+        tech: "_TechnologyProfile" = _TECH_GENERIC,   # profil technologie
     ) -> float:
         """
         Computes a physiologically coherent RoR at drop point.
@@ -2192,13 +2223,9 @@ class TilauScopeRoastPlan:
         # ── 1. ROAST DEPTH BASELINE — bonnes pratiques par TYPE de machine ──────
         # Sans historique, le plan suit les bonnes pratiques par type de machine.
         # FIR/NIR droppent avec un RoR plus vif que les tambours classiques :
-        # light 5,5 / medium 5,0 / dark 4,0 °C/min vs light 3,5 / medium 3,0 / dark 2,0.
-        if is_fir_nir:
-            ROR_AT_DROP_DARK  = 4.0   # °C/min — FIR/NIR, dark
-            ROR_AT_DROP_LIGHT = 5.5   # °C/min — FIR/NIR, light
-        else:
-            ROR_AT_DROP_DARK  = 2.0   # °C/min — tambour classique, dark
-            ROR_AT_DROP_LIGHT = 3.5   # °C/min — tambour classique, light
+        # light 5,5 / dark 4,0 °C/min vs light 3,5 / dark 2,0.
+        ROR_AT_DROP_DARK  = tech.ror_at_drop_dark
+        ROR_AT_DROP_LIGHT = tech.ror_at_drop_light
         base_ror_at_drop = ROR_AT_DROP_DARK + (ROR_AT_DROP_LIGHT - ROR_AT_DROP_DARK) * agtron_ratio
 
         # ── 2. DEVELOPMENT DURATION DECELERATION ────────────────────────────────
@@ -2255,25 +2282,17 @@ class TilauScopeRoastPlan:
 
         drop_ror += weight_adj + density_adj
 
-        # ── 5. WATER ACTIVITY CORRECTION ────────────────────────────────────────
-        # High WA: residual moisture absorbs heat in development → steeper RoR drop
-        # Low WA:  dry beans transfer heat efficiently → more gradual RoR decay
-        if water_activity > 0.0:
-            WA_NEUTRAL = 0.60  # reference point: no correction
-            wa_delta = water_activity - WA_NEUTRAL
-
-            # Each 0.05 above neutral: -0.12°C/min at drop (moisture absorbs energy)
-            # Each 0.05 below neutral: +0.08°C/min at drop (drier = less energy sink)
-            if wa_delta > 0:
-                wa_adj = -(wa_delta / 0.05) * 0.12
-            else:
-                wa_adj = -(wa_delta / 0.05) * 0.08  # wa_delta is negative → result positive
-
-            drop_ror += wa_adj
+        # ── 5. RESIDUAL WATER MASS ──────────────────────────────────────────────
+        # Dense AND wet keeps its thermal inertia and holds its RoR to the end;
+        # light AND dry loses its energy fast. Stacks with the density term above.
+        if moisture_pct > 0.0:
+            _moist_delta = moisture_pct - _MOISTURE_NEUTRAL
+            moisture_adj = _clamp(_moist_delta, -_MOISTURE_POINTS_MAX,
+                                  _MOISTURE_POINTS_MAX) * 0.12
+            drop_ror += moisture_adj
             _logd.debug(
-                f"WA correction: wa={water_activity:.3f}, delta={wa_delta:+.3f}, "
-                f"adj={wa_adj:+.3f}°C/min"
-            )
+                f"Moisture correction: {moisture_pct:.1f}%, delta={_moist_delta:+.2f} pt, "
+                f"adj={moisture_adj:+.3f}°C/min")
 
         # ── 6. FINAL BOUNDS ──────────────────────────────────────────────────────
         # Hard floor: RoR at drop must be positive (bean is still gaining heat
@@ -2281,12 +2300,11 @@ class TilauScopeRoastPlan:
         # Hard ceiling: cannot exceed ror_dev_avg - 0.3 (must be decelerating
         # at least slightly — a flat or accelerating RoR at drop indicates
         # under-development, which we flag but still clamp).
-        # Bande saine mesurée (FIR/NIR, corpus 52 roasts) : [3,5 ; 7,0] —
-        # les seuils de défaut de l'étude 3. Tambour classique : plancher 0,5.
-        ROR_DROP_FLOOR   = 3.5 if is_fir_nir else 0.5   # °C/min minimum (preferred)
+        # Bande saine par technologie : rayonnement [3,5 ; 7,0], tambour 0,5.
+        ROR_DROP_FLOOR   = tech.ror_drop_floor    # °C/min minimum (preferred)
         ROR_DROP_CEILING = ror_dev_avg - 0.3      # must be below dev average
-        if is_fir_nir:
-            ROR_DROP_CEILING = min(ROR_DROP_CEILING, 7.0)   # bande saine
+        if tech.ror_drop_ceiling is not None:
+            ROR_DROP_CEILING = min(ROR_DROP_CEILING, tech.ror_drop_ceiling)
 
         # When ror_dev_avg is very low (< 0.8), the ceiling falls below the floor and
         # the old max(floor, min(ceiling, x)) returned the floor — i.e. a drop RoR
@@ -2432,7 +2450,9 @@ class TilauScopeRoastPlan:
                               maillard_time_min: float, ma_bt_temperature: float,
                               ror_maillard: float, heater_dry: float,
                               heater_pre_fc: float, ror_scale: float,
-                              mode: str, decay_k: float) -> "tuple[float, str, str]":
+                              mode: str, decay_k: float,
+                              env_fc_entry_ror_c: "float | None" = None,
+                              ) -> "tuple[float, str, str]":
         """Vérification RoR du Maillard (banc 2026-08-05).
 
         DERNIÈRE étape, strictement informative. `decay_k` is an empirical
@@ -2463,13 +2483,26 @@ class TilauScopeRoastPlan:
         if _r_de_c > 0.0 and _k > 0.0:
             ror_fc_c = (ror_maillard * (_k + 1.0) - _r_de_c) / _k
         _drop_required_pct = max(0.0, heater_dry - heater_pre_fc)
+        ## Le diagnostic garde la valeur GÉOMÉTRIQUE : c'est elle qui révèle une
+        ## courbe intenable. Seule la valeur PUBLIÉE passe à la prescription.
         _mai_conflict: str = self._maillard_conflict(
             _r_de_c, ror_fc_c, _drop_required_pct, maillard_time_min)
+        _ror_fc_geom_c: float = ror_fc_c
+        ## Sous enveloppe, la pente d'arrivée au FC est PRESCRITE, pas déduite
+        ## d'une décroissance géométrique : c'est elle qui décide de la couleur
+        ## (entrer à 8 au lieu de 5 donne un medium, même avec 1:00 de dev).
+        if env_fc_entry_ror_c is not None:
+            if abs(_ror_fc_geom_c - env_fc_entry_ror_c) > 1.0:
+                _logd.info(
+                    f"RoastPlan: drawn curve arrives at first crack at "
+                    f"{_ror_fc_geom_c:.1f}°C/min, envelope prescribes "
+                    f"{env_fc_entry_ror_c:.1f}")
+            ror_fc_c = env_fc_entry_ror_c
         note = ""
         if _mai_conflict:
             _logd.warning(
                 f"RoastPlan: Maillard conflict [{_mai_conflict}] — R_DE {_r_de_c:.1f} → "
-                f"R_FC {ror_fc_c:.1f}°C/min to cover {ma_bt_temperature:.1f}°C in "
+                f"R_FC {_ror_fc_geom_c:.1f}°C/min to cover {ma_bt_temperature:.1f}°C in "
                 f"{maillard_time_min:.2f}min, burner down {_drop_required_pct:.0f}%. "
                 f"The setup was wrong; the plan reports it and does not correct it.")
             note = {
@@ -2485,7 +2518,7 @@ class TilauScopeRoastPlan:
             }[_mai_conflict].format(
                 f"{ma_bt_temperature * ror_scale:.0f}", mode,
                 self.format_time(maillard_time_min),
-                f"{ror_fc_c * ror_scale:.1f}", f"{_drop_required_pct:.0f}")
+                f"{_ror_fc_geom_c * ror_scale:.1f}", f"{_drop_required_pct:.0f}")
         return ror_fc_c, _mai_conflict, note
 
     @staticmethod
@@ -2559,56 +2592,44 @@ class TilauScopeRoastPlan:
         return _PlanConfidence(level=_conf_level, tol_factor=_tol_factor,
                                 display=_conf_display, soak_note=_soak_note)
 
-    ## Loi de l'eau du grain : répartition 75/25 des 11 kJ que coûte 1 point d'eau
-    ## sur 400 g — l'essentiel passe par le TEMPS, le reste par le feu.
+    ## Loi de l'humidité du grain : répartition 75/25 des 11 kJ que coûte 1 point
+    ## d'eau sur 400 g — l'essentiel passe par le TEMPS, le reste par le feu.
     ## Doctrine machine : « > 11 % = séchage plus long, ne pas forcer au feu ».
-    _WATER_DRY_TIME_MIN_PER_POINT: Final[float] = 0.40
-    _WATER_DRY_HEATER_PCT_PER_POINT: Final[float] = 0.9
-    _WATER_AIRFLOW_PCT_PER_POINT: Final[float] = 1.5
-    _WATER_FC_HEATER_PCT_PER_POINT: Final[float] = 1.0
-    _WATER_MAILLARD_TIME_MIN_PER_POINT: Final[float] = 0.2
+    _MOISTURE_DRY_TIME_MIN_PER_POINT: Final[float] = 0.40
+    _MOISTURE_DRY_HEATER_PCT_PER_POINT: Final[float] = 0.9
+    _MOISTURE_FC_HEATER_PCT_PER_POINT: Final[float] = 1.0
+    _MOISTURE_MAILLARD_TIME_MIN_PER_POINT: Final[float] = 0.2
 
     @classmethod
-    def _green_water_effect(cls, water: "_GreenPairValue") -> "_GreenWaterEffect":
-        """Deltas from the bean's water, as a CONTINUOUS law (spec §5).
+    def _green_moisture_effect(cls, moisture: "_GreenPairValue") -> "_GreenMoistureEffect":
+        """Deltas from the bean's water MASS, as a continuous law (spec §5).
 
-        `water` comes from `_resolve_green_water`: aw when measured, moisture as
-        the fallback, and `_SRC_ABSENT` when neither is — in which case nothing
-        at all is applied.
-
-        The previous version had two disjoint branches with a dead zone between
-        aw 0.55 and 0.65. That zone was a MICROBIOLOGICAL storage threshold
-        (0.65 = mould risk), which has no thermal meaning: a bean at 0.64 and one
-        at 0.66 do not dry in a step. The module even contradicted itself, since
-        the drop-RoR path already used a continuous law around the same 0.60.
-
-        Signs are constant across the whole range — no lever changes direction at
-        the neutral. Airflow and the first-crack burner are one-sided upward: a
-        dry bean needs no LESS airflow than the baseline (which is set by smoke,
-        not steam) and has no momentum problem at the crack.
+        Signs are constant across the range — no lever turns at the neutral. The
+        first-crack burner is one-sided upward (a dry bean has no momentum
+        problem at the crack) and the Maillard body compensation one-sided
+        downward (a wet bean already builds its own pressure).
         """
-        if not water.known:
-            return _GreenWaterEffect()
-        _n: float = water.value
-        _effect = _GreenWaterEffect(
-            d_dry_time_min=cls._WATER_DRY_TIME_MIN_PER_POINT * _n,
-            d_heater_dry_pct=cls._WATER_DRY_HEATER_PCT_PER_POINT * _n,
-            d_airflow_pct=cls._WATER_AIRFLOW_PCT_PER_POINT * max(0.0, _n),
-            d_heater_fc_pct=cls._WATER_FC_HEATER_PCT_PER_POINT * max(0.0, _n),
-            d_maillard_time_min=(cls._WATER_MAILLARD_TIME_MIN_PER_POINT
+        if not moisture.known:
+            return _GreenMoistureEffect()
+        _n: float = moisture.value
+        _effect = _GreenMoistureEffect(
+            d_dry_time_min=cls._MOISTURE_DRY_TIME_MIN_PER_POINT * _n,
+            d_heater_dry_pct=cls._MOISTURE_DRY_HEATER_PCT_PER_POINT * _n,
+            d_heater_fc_pct=cls._MOISTURE_FC_HEATER_PCT_PER_POINT * max(0.0, _n),
+            d_maillard_time_min=(cls._MOISTURE_MAILLARD_TIME_MIN_PER_POINT
                                  * max(0.0, -_n)),
         )
         _logd.debug(
-            f"Green water [{water.label} / {water.source}]: {_n:+.2f} pt → "
+            f"Green moisture [{moisture.label}]: {_n:+.2f} pt → "
             f"dry {_effect.d_dry_time_min:+.2f} min, dry heater "
-            f"{_effect.d_heater_dry_pct:+.1f}%, airflow {_effect.d_airflow_pct:+.1f}%, "
-            f"FC heater {_effect.d_heater_fc_pct:+.1f}%, Maillard "
+            f"{_effect.d_heater_dry_pct:+.1f}%, FC heater "
+            f"{_effect.d_heater_fc_pct:+.1f}%, Maillard "
             f"{_effect.d_maillard_time_min:+.2f} min")
         return _effect
 
     @staticmethod
     def _charge_setup(*, process_type_lower: str,
-                       water: "_GreenPairValue", structure: "_GreenPairValue",
+                       moisture: "_GreenPairValue", structure: "_GreenPairValue",
                        ambient_temp_c: "float | None",
                        minutes_since_last_drop: "float | None",
                        thermal_mass_idx: float, heat_retention_idx: float) -> "_ChargeSetup":
@@ -2646,11 +2667,10 @@ class TilauScopeRoastPlan:
         # constants brush around it. Batch weight is deliberately absent — a small
         # batch charges at the same temperature. Each input is gated on a
         # plausibility window first (out-of-window readings contribute 0).
-        # One term per physical quantity: density/culture altitude measure the same
-        # structure, aw/moisture the same water; each pair resolves upstream into a
-        # single value with `known == False` when neither was available.
-        #
-        # Ambient humidity is deliberately absent: it does not act on the roast in
+        # One term per physical quantity: the water MASS to heat and the STRUCTURE
+        # to heat it through. The aw is deliberately absent — it says how easily
+        # water leaves, not how much energy it costs, so it drives the airflow.
+        # Ambient humidity is absent too: it does not act on the roast in
         # progress, it acts BETWEEN roasts by drifting the bean's aw in storage.
         def _plausible(value: "float | None", lo: float, hi: float, label: str) -> "float | None":
             # `None` is the "not measured" sentinel here, not 0.0 (which would make
@@ -2665,25 +2685,32 @@ class TilauScopeRoastPlan:
 
         _ambient_ok = _plausible(ambient_temp_c, -10.0, 60.0, "ambient temperature")
 
-        # Water: the thermal buffer. Its 4.184 J/g·K protects the surface from
-        # scorching while heat is pushed to the core, so a wetter bean takes a
-        # hotter charge and a drier one a gentler charge, symmetrically.
-        _mod_water = _CHARGE_C_PER_WATER_POINT * water.value if water.known else 0.0
-        # Structure: a dense bean absorbs and demands more; a light one scorches.
-        # torrefacteur: « peu dense = charge plus douce, tout arrive plus tôt ».
-        _mod_structure = _CHARGE_C_PER_STRUCTURE_INDEX * structure.value if structure.known else 0.0
+        # Water mass: the thermal buffer. Its 4.184 J/g·K protects the surface
+        # from scorching while heat is pushed to the core, so a wetter bean takes
+        # a hotter charge and a drier one a gentler charge, symmetrically.
+        _mod_moisture = _CHARGE_C_PER_MOISTURE_POINT * moisture.value if moisture.known else 0.0
         _mod_ambient = (20.0 - _ambient_ok) * 0.2 if _ambient_ok is not None else 0.0
         _charge_modulation = _clamp(
-            _mod_water + _mod_structure + _mod_ambient,
+            _mod_moisture + _mod_ambient,
             -_CHARGE_MODULATION_MAX_C, _CHARGE_MODULATION_MAX_C)
         charge_bt_temperature: float = _clamp(
             _charge_temperature + _charge_modulation, _charge_band[0], _charge_band[1])
+
+        # Structure: a dense bean absorbs and demands more; a light one scorches.
+        # Applied AFTER the band clamp, like the heat soak: the band encodes a
+        # SURFACE risk (process sugars), the density a STRUCTURE one, and a dense
+        # bean legitimately charges past what its process band alone allows.
+        _mod_structure = _clamp(
+            _CHARGE_C_PER_STRUCTURE_INDEX * structure.value if structure.known else 0.0,
+            -_CHARGE_STRUCTURE_MAX_C, _CHARGE_STRUCTURE_MAX_C)
+        charge_bt_temperature = _clamp(charge_bt_temperature + _mod_structure,
+                                       _CHARGE_ABSOLUTE_MIN_C, _CHARGE_ABSOLUTE_MAX_C)
         _logd.info(
             f"RoastPlan: charge {charge_bt_temperature:.1f}°C — band {_charge_band} "
-            f"({process_type_lower or 'washed default'}), modulation "
-            f"{_charge_modulation:+.1f}°C (water {_mod_water:+.1f} [{water.label or 'absent'}], "
-            f"structure {_mod_structure:+.1f} [{structure.label or 'absent'}], "
-            f"ambient {_mod_ambient:+.1f})")
+            f"({process_type_lower or 'washed default'}), in-band modulation "
+            f"{_charge_modulation:+.1f}°C (moisture {_mod_moisture:+.1f} [{moisture.label or 'absent'}], "
+            f"ambient {_mod_ambient:+.1f}), structure {_mod_structure:+.1f} "
+            f"[{structure.label or 'absent'}] out of band")
 
         # The charge is doctrine-driven: a small batch charges at the same
         # temperature, which is precisely what lets it reach a higher turning
@@ -2724,7 +2751,7 @@ class TilauScopeRoastPlan:
         # grid rather than being imposed: ~46% of the roast in Very Light down to
         # ~33% in Extremely Dark.
         total_time_min: float = _mean(roast_constraints.total_time[0], roast_constraints.total_time[1])
-        # Water reaches the drying duration once, through _green_water_effect.
+        # Water reaches the drying duration once, through _green_moisture_effect.
         dry_time_min: float = _mean(roast_constraints.drying_time[0],
                                     roast_constraints.drying_time[1])
         if structure.known:
@@ -2757,9 +2784,12 @@ class TilauScopeRoastPlan:
     ## contre 18 °C pour la part fixe seule.
     _TP_DIP_SHARE: Final[float] = 0.487
     _TP_DIP_MASS_SENSITIVITY: Final[float] = 0.396
-    ## Bornes de la part de creux, élargies vers le haut pour laisser passer les
-    ## très petits lots réellement observés (part 0,304 à 150 g).
-    _TP_DIP_SHARE_MIN: Final[float] = 0.25
+    ## Bornes de la part de creux. Le plancher n'est pas un garde-fou : c'est le
+    ## PLATEAU mesuré. La part cesse de descendre sous ~280 g — 0,313 à 150 g,
+    ## 0,316 entre 200 et 280 g, contre 0,497 au-dessus de 340 g. La droite de
+    ## masse, prolongée, prédisait 0,24 à 150 g : 12 °C de TP en trop, et autant
+    ## de montée en moins avant le DRY END.
+    _TP_DIP_SHARE_MIN: Final[float] = 0.31
     _TP_DIP_SHARE_MAX: Final[float] = 0.65
 
     def _nominal_weight_g(self) -> float:
@@ -2887,6 +2917,130 @@ class TilauScopeRoastPlan:
             return 0.0
         return tp_time_min + _rise / _mean_ok
 
+    ## Part maximale du séchage que le Maillard peut occuper. Ancres Tilau :
+    ## 4/3/1 → 0,75 et 5/4/1 → 0,80 sont réalistes, 3/3/1 ne l'est pas. Le corpus
+    ## (92 roasts SW) mesure 0,69 en médiane, quartile haut 0,77 : 0,80 est donc
+    ## le bord haut du réel, un PLAFOND et non une cible — l'enveloppe passe
+    ## sous lui d'elle-même dès que le lot est gros.
+    _MAILLARD_TO_DRYING_MAX: Final[float] = 0.80
+
+    ## Décalage maximal du DRY END quand la courbe ne peut pas rester descendante
+    ## autrement. Borné par le relevé : DRY END médian 149,2 °C en clair, quartile
+    ## haut 151, contre 147 de grille — au-delà de 4 °C on quitterait le mesuré.
+    _DRY_END_SHIFT_MAX_C: Final[float] = 4.0
+
+    ## La descente doit être franche, pas juste non-croissante : viser l'égalité
+    ## laisse les deux pentes au même chiffre une fois arrondies sur le plan.
+    _DESCENT_MARGIN: Final[float] = 0.95
+
+    @classmethod
+    def _envelope_timing(cls, *, envelope: "tuple[float, float, float, float]",
+                         tp_time_min: float, tp_bt_c: float, dry_bt_c: float,
+                         fc_bt_c: float, dev_time_min: float,
+                         drop_ror_c: float,
+                         dry_correction_min: float = 0.0,
+                         dry_floor_min: float = 0.0) -> "_EnvelopeTiming":
+        """Phase durations DEDUCED from the RoR envelope (lot 4).
+
+        The envelope is the constraint and the durations are its consequence,
+        the reverse of the style grid: a curve that must leave the turning
+        point at 16 °C/min and reach the dry end at 12 takes exactly as long
+        as the climb it has to make. Nothing here is fitted — it is the
+        arithmetic of a slope and a temperature rise.
+
+        Maillard is integrated in two segments because the envelope bends
+        inside it: the last minute before first crack is the 8 → entry stretch,
+        the rest is 12 → 8.
+        """
+        _post_tp, _de, _pre_fc, _at_fc = envelope
+        _dry_ror: float = (_post_tp + _de) / 2.0
+        _dry_rise: float = dry_bt_c - tp_bt_c
+        _dry_time: float = (tp_time_min + _dry_rise / _dry_ror
+                            if _dry_rise > 0.0 and _dry_ror > 0.0 else tp_time_min)
+        ## Corrections eau/ambiante ET plancher machine entrent ICI, pas après :
+        ## appliqués en aval, ils déplaçaient le séchage sur lequel on venait
+        ## justement de caler le Maillard.
+        _dry_time = max(tp_time_min, _dry_time + dry_correction_min, dry_floor_min)
+        if _dry_rise > 0.0 and _dry_time > tp_time_min:
+            _dry_ror = _dry_rise / (_dry_time - tp_time_min)
+
+        _mai_rise: float = fc_bt_c - dry_bt_c
+        _last_min_c: float = (_pre_fc + _at_fc) / 2.0    # °C covered in the last minute
+        if _mai_rise <= 0.0:
+            _mai_time: float = 0.0
+        elif _mai_rise <= _last_min_c:
+            _mai_time = _mai_rise / _last_min_c
+        else:
+            _mai_time = 1.0 + (_mai_rise - _last_min_c) / ((_de + _pre_fc) / 2.0)
+        ## LOI MACHINE (Tilau) : le Maillard est TOUJOURS PLUS COURT que le
+        ## séchage, pas seulement « pas plus long » — 4/3/1, 5/4/1 ; 3/3/1 est
+        ## impossible, le RoR n'a pas le temps de descendre. C'est un RAPPORT,
+        ## d'où _MAILLARD_TO_DRYING_MAX, et non une simple comparaison.
+        ## C'est le MAILLARD qui cède. Le séchage a une ancre de DURÉE tenue par
+        ## la masse (3:00 à 150 g, 4:00 à 400 g, cf. _dry_floor_min) ; le Maillard
+        ## n'en a pas — il n'a qu'une enveloppe, et une enveloppe se resserre.
+        ## Rallonger le séchage pour couvrir un Maillard trop long donnait 4:50 de
+        ## séchage sur 150 g, deux fois le roast réel.
+        ## Dernier recours seulement : si le Maillard resserré exigeait une pente
+        ## MOYENNE au-dessus du pic post-TP, la machine ne sait pas le faire et
+        ## c'est le séchage qui s'allonge, juste assez pour rétablir le rapport.
+        ## Une courbe de RoR DESCEND : la pente moyenne du Maillard ne peut pas
+        ## dépasser celle du séchage. Quand le plancher machine allonge le
+        ## séchage sans lui donner de °C en plus, sa moyenne s'effondre et le
+        ## Maillard resserré passe au-dessus — physiquement impossible.
+        ## La seule variable libre est alors le DRY END : sécher plus longtemps
+        ## à la même pente, c'est arriver plus haut. On le décale du strict
+        ## nécessaire pour que les deux lois tiennent ensemble.
+        ## Vérification indépendante : à 250 g le calcul demande 148,4 °C, et les
+        ## 91 roasts SW marquent le DRY END à 149,2 en médiane sur les torréfactions
+        ## claires (IQR 147-151). Physique et corpus tombent sur le même chiffre.
+        _dry_shift: float = 0.0
+        _cap_raw: float = _dry_time * cls._MAILLARD_TO_DRYING_MAX
+        _k: float = cls._DESCENT_MARGIN
+        _mai_floor: float = (_mai_rise / (_dry_ror * _k) if _dry_ror > 0.0 else 0.0)
+        if _mai_floor > _cap_raw > 0.0 and _dry_time > tp_time_min:
+            ## (fc − de − d) / cap = k · (de + d − tp) / t_actif  →  linéaire en d
+            _active: float = _dry_time - tp_time_min
+            _denom: float = _k * _cap_raw + _active
+            if _denom > 0.0:
+                _dry_shift = _clamp(
+                    (_mai_rise * _active - _k * _dry_rise * _cap_raw) / _denom,
+                    0.0, cls._DRY_END_SHIFT_MAX_C)
+                _dry_rise += _dry_shift
+                _mai_rise -= _dry_shift
+                _dry_ror = _dry_rise / _active
+                _mai_time = (1.0 + (_mai_rise - _last_min_c) / ((_de + _pre_fc) / 2.0)
+                             if _mai_rise > _last_min_c
+                             else max(0.0, _mai_rise) / _last_min_c)
+
+        _dry_stretched: bool = False
+        _mai_compressed: bool = False
+        _mai_cap: float = _dry_time * cls._MAILLARD_TO_DRYING_MAX
+        if _mai_time > _mai_cap > 0.0:
+            ## Resserrer le Maillard remonte TOUTE l'enveloppe, dernière minute
+            ## comprise : la pente à comparer au pic est donc la moyenne obtenue.
+            if _mai_rise / _mai_cap <= _post_tp:
+                _mai_compressed = True
+                _mai_time = _mai_cap
+            else:
+                _dry_stretched = True
+                _dry_time = _mai_time / cls._MAILLARD_TO_DRYING_MAX
+                if _dry_rise > 0.0 and _dry_time > tp_time_min:
+                    _dry_ror = _dry_rise / (_dry_time - tp_time_min)
+        _mai_ror: float = _mai_rise / _mai_time if _mai_time > 0.0 else _de
+
+        ## Le développement garde sa DURÉE (bande de niveau, lot 3) ; c'est son
+        ## ΔT qui se déduit, en descendant de l'entrée FC vers le RoR de drop.
+        _dev_delta: float = max(0.0, (_at_fc + max(0.0, drop_ror_c)) / 2.0
+                                * max(0.0, dev_time_min))
+        return _EnvelopeTiming(
+            dry_time_min=_dry_time, maillard_time_min=_mai_time,
+            dry_ror_c=_dry_ror, maillard_ror_c=_mai_ror,
+            fc_entry_ror_c=_at_fc, dev_delta_c=_dev_delta,
+            drying_stretched=_dry_stretched,
+            maillard_compressed=_mai_compressed,
+            dry_bt_shift_c=_dry_shift)
+
     def _calibrate_and_floor_phase_durations(
             self, *, dry_time_min: float, total_time_min: float, dev_time_min: float,
             drying_time_band: "tuple[float, float]", maillard_time_band: "tuple[float, float]",
@@ -2999,9 +3153,11 @@ class TilauScopeRoastPlan:
             drop_ror_learned_c: "float | None", drop_ror_samples: int,
             fc_bt: float, dev_time_min: float,
             dev_ror_expected: float, agtron_ratio: float, charge_weight: float,
-            density: float, water_activity: float, nominal_weight_g: float,
-            heat_retention: float, is_fir_nir: bool,
+            density: float, moisture_pct: float, nominal_weight_g: float,
+            heat_retention: float, tech: "_TechnologyProfile",
             coherent_source: "_PlanSource | None" = None,
+            env_dev_delta_c: "float | None" = None,
+            env_fc_entry_ror_c: "float | None" = None,
     ) -> "_DropAndDevRor":
         """Learned-drop adoption from measured colours, the FC→DROP coherence
         rebuild, and the development/drop RoR derivation (banc 2026-08-05).
@@ -3020,6 +3176,19 @@ class TilauScopeRoastPlan:
         # atypical lot) can never pull the plan out of the target style.
         drop_source: "_PlanSource" = _SOURCE_GRID
         _notes: "list[str]" = []
+        ## Lot 4 — sous enveloppe, la température de drop se DÉDUIT : on entre
+        ## le FC à la pente prescrite, elle continue de descendre vers le RoR de
+        ## drop, et le ΔT qui en résulte donne la cible. La bande de style ne la
+        ## fixe plus (aucune pente drop/Agtron universelle n'est validée) ; les
+        ## couleurs MESURÉES de l'historique, elles, la corrigent toujours.
+        if env_dev_delta_c is not None:
+            _env_drop = round(fc_bt + env_dev_delta_c, 1)
+            if abs(_env_drop - drop_bt_temperature) > 0.05:
+                _logd.info(
+                    f"RoastPlan: drop from envelope {_env_drop:.1f}°C "
+                    f"(grid {drop_bt_temperature:.1f}°C) — FC {fc_bt:.1f}°C plus "
+                    f"{env_dev_delta_c:.1f}°C over {dev_time_min:.2f} min")
+            drop_bt_temperature = _env_drop
         _colour_note: "str | None" = None
         _colour_drop_c: "float | None" = None
         _drop_raw = drop_learned_c
@@ -3094,6 +3263,19 @@ class TilauScopeRoastPlan:
         dev_ror:float = (drop_bt_temperature - fc_bt) / dev_time_min if dev_time_min > 0 else dev_ror_expected
         # Floor at the theoretical minimum development slope.
         dev_ror = max(_dev_ror_floor, dev_ror)
+        ## Le développement DESCEND. Une moyenne au-dessus de la pente d'entrée
+        ## FC décrit une courbe qui remonte après le crack — c'est l'incohérence
+        ## que le lot 4 refuse de laisser passer silencieusement.
+        if env_fc_entry_ror_c is not None and dev_ror > env_fc_entry_ror_c + 0.1:
+            _logd.warning(
+                f"RoastPlan: development average {dev_ror:.1f}°C/min exceeds the "
+                f"first-crack entry slope {env_fc_entry_ror_c:.1f} — the curve would "
+                f"accelerate after the crack (drop {drop_bt_temperature:.1f}°C, "
+                f"FC {fc_bt:.1f}°C over {dev_time_min:.2f} min)")
+            _notes.append(QApplication.translate(
+                "tilauscope_roast_plan",
+                "The planned drop temperature asks development to speed up after first crack ({0} against {1}°/min entering the crack). Either drop earlier or enter the crack with more momentum.").format(
+                f"{dev_ror:.1f}", f"{env_fc_entry_ror_c:.1f}"))
 
         drop_ror = self._compute_ror_at_drop(
             agtron_ratio    = agtron_ratio,
@@ -3103,10 +3285,10 @@ class TilauScopeRoastPlan:
             drop_bt_temperature       = drop_bt_temperature,
             charge_weight   = charge_weight,
             density         = density,
-            water_activity  = water_activity,
+            moisture_pct    = moisture_pct,
             nominal_weight_g= nominal_weight_g,        # Point 2+4: roaster-aware nominal
             heat_retention   = heat_retention,          # Point 4: thermal index
-            is_fir_nir      = is_fir_nir,               # item A : table par type
+            tech            = tech,
         )
         # ── RoR au drop APPRIS de l'historique du grain (item A, Bench-Integration)
         # Cohorte couleur-assortie, profil cohérent, politique _adopt_learned habituelle
@@ -3134,8 +3316,9 @@ class TilauScopeRoastPlan:
             notes=_notes)
 
     def _resolve_burner_setpoints(
-            self, *, water: "_GreenPairValue", water_fc_heater_pct: float,
-            is_light_roast: bool, is_fir_nir: bool, agtron_mean: float,
+            self, *, moisture: "_GreenPairValue", structure: "_GreenPairValue",
+            moisture_fc_heater_pct: float,
+            is_light_roast: bool, tech: "_TechnologyProfile", agtron_mean: float,
             process_type_lower: str, process_type: str,
             bean_varieties: str, bean_country: str,
             ambient_temp_c: "float | None",
@@ -3146,6 +3329,7 @@ class TilauScopeRoastPlan:
             heater_mai_learned: "float | None", heater_dev_learned: "float | None",
             heater_fc_learned: "float | None", heater_fc_samples: int,
             coherent_source: "_PlanSource | None" = None,
+            cohort_dry_learned: "float | None" = None, cohort_samples: int = 0,
     ) -> "_BurnerSetpoints":
         """Grid base by process/humidity, learned heater profile adoption, the
         Maillard energy floor, and the learned pre-FC setpoint (banc
@@ -3159,23 +3343,23 @@ class TilauScopeRoastPlan:
         append to history["actions"] — exactly like _resolve_drop_and_dev_ror.
         """
         # Dynamic Machine Controls (Heater) => % compensation.
-        # Driven by the resolved water pair (aw when measured, moisture otherwise)
-        # as a continuous term — there is no physical discontinuity in how much
-        # energy water costs. Ambient humidity is deliberately absent: it does not
-        # act on the roast in progress.
-        # Same coefficient as the drying-energy term in _green_water_effect, on
+        # Same coefficient as the drying-energy term in _green_moisture_effect, on
         # purpose: heater_dry_base drives the published RoR peak while this drives
         # the published setpoint; different water laws would print a peak the
         # plan's own burner value cannot produce.
         heater_compensation: float = (
-            self._WATER_DRY_HEATER_PCT_PER_POINT * water.value if water.known else 0.0)
+            self._MOISTURE_DRY_HEATER_PCT_PER_POINT * moisture.value if moisture.known else 0.0)
 
-        if is_light_roast and is_fir_nir:
-            # The FIR/NIR radiant correction is already carried by heater_cmfc
-            # further up, so this stays small to avoid double-counting it.
-            HDB_WASHED = 0.0
-            HDB_NATURAL = -5.0
-            HDB_DECAF = -10.0
+        # Structure on the initial power: a dense bean takes the energy to the
+        # core without marking, a soft one scorches at the same setting. Drying
+        # and Maillard only — development is held by its own floor.
+        structure_compensation: float = (
+            _HEATER_DRY_PCT_PER_STRUCTURE_INDEX * structure.value if structure.known else 0.0)
+
+        if is_light_roast and tech.light_heater_base_by_process is not None:
+            # La correction technologie est déjà portée par heater_cmfc plus
+            # haut : ce bloc reste petit pour ne pas la compter deux fois.
+            HDB_WASHED, HDB_NATURAL, HDB_DECAF = tech.light_heater_base_by_process
         elif agtron_mean > 70.0:
             HDB_WASHED = 0.0
             HDB_NATURAL = -5.0
@@ -3196,8 +3380,8 @@ class TilauScopeRoastPlan:
         HEATER_C, HEATER_M, HEATER_FC = roast_constraints.heater_cmfc[0], roast_constraints.heater_cmfc[1], roast_constraints.heater_cmfc[2]
 
         # Grid base (fallback) — process/humidity/timing-calibration corrections.
-        _grid_dry:float = (HEATER_C * 100.0) + heater_dry_process + heater_compensation + cal_heater_dry_pct
-        _grid_mai:float = (HEATER_M * 100.0) + heater_dry_process + heater_compensation + cal_heater_mai_pct
+        _grid_dry:float = (HEATER_C * 100.0) + heater_dry_process + heater_compensation + structure_compensation + cal_heater_dry_pct
+        _grid_mai:float = (HEATER_M * 100.0) + heater_dry_process + heater_compensation + structure_compensation + cal_heater_mai_pct
         _grid_dev:float = (HEATER_FC * 100.0) + heater_dry_process + heater_compensation
 
         # ── Learned heater profile (design validé 2026-07-04, #5) ────────────
@@ -3214,6 +3398,7 @@ class TilauScopeRoastPlan:
         _hl_mai = heater_mai_learned
         _hl_dev = heater_dev_learned
         _notes: "list[str]" = []
+        _heater_learned_n: int = 0
         if None not in (_hl_dry, _hl_mai, _hl_dev) and _h_n >= 2:
             heater_dry, heater_source = self._adopt_learned(_grid_dry, float(_hl_dry), _h_n)
             heater_maillard, _        = self._adopt_learned(_grid_mai, float(_hl_mai), _h_n)
@@ -3221,14 +3406,31 @@ class TilauScopeRoastPlan:
             if not heater_source.is_grid:
                 if coherent_source:
                     heater_source = coherent_source
-                _notes.append(QApplication.translate(
-                    "tilauscope_roast_plan",
-                    "Heater profile learned from {0} matched roast(s): {1}/{2}/{3}% (dry/Maillard/dev)").format(
-                    _h_n, f"{heater_dry:.0f}", f"{heater_maillard:.0f}", f"{heater_dev:.0f}"))
-                _logd.info(f"RoastPlan: heater from history {heater_dry:.0f}/{heater_maillard:.0f}/"
-                           f"{heater_dev:.0f}% [{heater_source}] (n={_h_n})")
+                ## Note émise APRÈS les clamps : elle annonce ce que le plan
+                ## tient, pas ce que l'historique proposait.
+                _heater_learned_n = _h_n
         else:
             heater_dry, heater_maillard, heater_dev = _grid_dry, _grid_mai, _grid_dev
+
+        ## Lot 5 — le brûleur de CHARGE vient de la cohorte (même process, masse
+        ## ± 50 g, toutes origines), pas de la famille : le grain ne dit pas
+        ## comment la machine chauffe. Il passe APRÈS le profil de famille et le
+        ## remplace sur cette seule phase ; le Maillard et le développement
+        ## restent au grain, leur valeur suit la couleur visée.
+        _cohort_n: int = int(cohort_samples or 0)
+        _cohort_applied_n: int = 0
+        if cohort_dry_learned is not None and _cohort_n >= 2:
+            _dry_before = heater_dry
+            heater_dry, _cohort_src = self._adopt_learned(
+                _grid_dry, float(cohort_dry_learned), _cohort_n)
+            if not _cohort_src.is_grid:
+                ## Note émise APRÈS les clamps, comme celle du profil de famille :
+                ## elle annonce ce que le plan TIENT, pas ce que la cohorte
+                ## proposait — la correction inter-lot passe encore après.
+                _cohort_applied_n = _cohort_n
+                _logd.info(
+                    f"RoastPlan: charge burner from cohort {heater_dry:.0f}% "
+                    f"(was {_dry_before:.0f}%, n={_cohort_n})")
 
         # Heater ceiling: hardware limit, not a style choice — some elements
         # (e.g. the ITOP Cyberroaster's FIR/NIR emitter) degrade above a
@@ -3236,17 +3438,36 @@ class TilauScopeRoastPlan:
         # from the roaster context instead of a fixed 100.0.
         _heater_max_pct: float = heater_max_pct
 
-        # Heat-soak (batch-specific) applied on top of either base; clamp 0–ceiling.
-        heater_dry      = _clamp(heater_dry + soak_dheater_pct, 0.0, _heater_max_pct)
-        heater_maillard = _clamp(heater_maillard, 0.0, _heater_max_pct)
-        heater_dev      = _clamp(heater_dev, 0.0, _heater_max_pct)
+        # Heat-soak (batch-specific) applied on top of either base, then clamped
+        # between the technology's support floor and the machine ceiling. Sous le
+        # plancher la machine tient la température sans nourrir la réaction : un
+        # réglage prescrit là est un RoR qui s'écroule, appris ou non.
+        _floor_pct: float = min(tech.burner_floor_pct, _heater_max_pct)
+        heater_dry      = _clamp(heater_dry + soak_dheater_pct, _floor_pct, _heater_max_pct)
+        heater_maillard = _clamp(heater_maillard, _floor_pct, _heater_max_pct)
+        heater_dev      = _clamp(heater_dev, _floor_pct, _heater_max_pct)
+
+        if _cohort_applied_n:
+            _notes.append(QApplication.translate(
+                "tilauscope_roast_plan",
+                "Charge burner from {0} roast(s) of the same process at this batch size, whatever the coffee: {1}% through drying.").format(
+                _cohort_applied_n, f"{heater_dry:.0f}"))
+        if _heater_learned_n:
+            _notes.append(QApplication.translate(
+                "tilauscope_roast_plan",
+                "Heater profile learned from {0} matched roast(s): {1}/{2}/{3}% (dry/Maillard/dev)").format(
+                _heater_learned_n, f"{heater_dry:.0f}", f"{heater_maillard:.0f}",
+                f"{heater_dev:.0f}"))
+            _logd.info(f"RoastPlan: heater from history {heater_dry:.0f}/{heater_maillard:.0f}/"
+                       f"{heater_dev:.0f}% [{heater_source}] (n={_heater_learned_n})")
 
         # bean_energy remains import-compatible but is experimental
         # and non-constraining. No bean label or ambient value raises heater.
         _floor = FloorProfile(level_pct=0.0, release_fraction=0.0)
         _h_mai_free, _h_dev_free = heater_maillard, heater_dev
 
-        heater_tp:float          = heater_dry - (5.0 if not is_light_roast else 8.0)
+        heater_tp:float          = max(_floor_pct,
+                                       heater_dry - (5.0 if not is_light_roast else 8.0))
 
         # ── Feu au FC appris — palier pre-FC de la rampe (item C, décision ──────
         # Tilau : FC appris de l'historique, backup = calcul actuel du plan,
@@ -3266,9 +3487,9 @@ class TilauScopeRoastPlan:
         # Applied BEFORE the machine ceiling on purpose: on this roaster the
         # pre-FC setpoint is often already near heater_max_pct, and the hardware
         # limit must win over the correction, never the other way round.
-        if water_fc_heater_pct:
-            heater_pre_fc += water_fc_heater_pct
-        heater_pre_fc = _clamp(heater_pre_fc, 0.0, _heater_max_pct)
+        if moisture_fc_heater_pct:
+            heater_pre_fc += moisture_fc_heater_pct
+        heater_pre_fc = _clamp(heater_pre_fc, _floor_pct, _heater_max_pct)
         if not heater_fc_source.is_grid:
             if coherent_source:
                 heater_fc_source = coherent_source
@@ -3289,6 +3510,7 @@ class TilauScopeRoastPlan:
             heater_dry: float, heater_maillard: float, heater_dev: float,
             heater_pre_fc: float, dev_free_pct: float,
             floor: "FloorProfile | None", heater_max_pct: float,
+            burner_floor_pct: float,
             heater_resolution_pct: float, has_heater_control: bool,
             heater_de_learned: "float | None", heater_de_samples: int,
             pre_de_descent_samples: int,
@@ -3313,6 +3535,7 @@ class TilauScopeRoastPlan:
         _has_heater: bool  = has_heater_control
         _floor = floor
         _heater_max_pct: float = heater_max_pct
+        _burner_floor: float = min(burner_floor_pct, _heater_max_pct)
         _h_dev_free: float = dev_free_pct
 
         # ── Anticipated heater ramp (Maillard → Development) ─────────────────
@@ -3340,7 +3563,7 @@ class TilauScopeRoastPlan:
         # with experimental callers; plan generation always supplies neutral.
         if _floor is not None:
             heater_pre_fc = _clamp(max(heater_pre_fc, _floor.at(1.0)),
-                                   0.0, _heater_max_pct)
+                                   _burner_floor, _heater_max_pct)
         # Le palier pre-FC ne peut jamais dépasser le palier mi-Maillard : le feu
         # ne remonte pas en Maillard (doctrine Tilau — un geste cumulé descend ou
         # tient, jamais l'inverse avant le FC). Sans ce plafond, un feu pre-FC
@@ -3360,7 +3583,7 @@ class TilauScopeRoastPlan:
         # recalage, le résumé annonçait un feu dev que la rampe ne suit pas —
         # d'autant plus visible depuis que le plancher relève le palier pre-FC.
         heater_dev = _clamp(max(heater_dev, heater_pre_fc - _DEV_BURNER_DROP_CAP),
-                            0.0, _heater_max_pct)
+                            _burner_floor, _heater_max_pct)
         if heater_dev > _h_dev_free + 0.5:
             _logd.info(f"RoastPlan: development heater raised {_h_dev_free:.0f}→"
                        f"{heater_dev:.0f}% to match the held Dev Ramp")
@@ -3384,7 +3607,7 @@ class TilauScopeRoastPlan:
             _hl_de = None
         heater_pre_de, heater_de_source = self._adopt_learned(
             float(heater_dry), float(_hl_de) if _hl_de is not None else None, _h_de_n)
-        heater_pre_de = _clamp(heater_pre_de, 0.0, _heater_max_pct)
+        heater_pre_de = _clamp(heater_pre_de, _burner_floor, _heater_max_pct)
         # Une baisse plus fine que la résolution machine n'est pas un geste.
         _pre_de_active: bool = heater_pre_de < heater_dry - _heater_res / 2.0
         # Avance et granularité APPRISES du premier geste descendant. La doctrine
@@ -3484,8 +3707,8 @@ class TilauScopeRoastPlan:
 
     def _resolve_airflow_extraction(
             self, *, airwave_present: bool,
-            airflow_dependency_index: float, water: "_GreenPairValue",
-            inlet_air_mode: str,
+            airflow_dependency_index: float, aw: "_GreenPairValue",
+            tech: "_TechnologyProfile", inlet_air_mode: str,
             airflow_resolution_pct: float,
             dry_bt_temperature: float, fc_bt: float, pre_fc_c: float,
             drop_bt_temperature: float, to_native,
@@ -3514,7 +3737,7 @@ class TilauScopeRoastPlan:
         extraction/AirWave-mode summaries and the built Air Ramp / Dev Ramp.
         """
         # derive airflow base from roaster's airflow_dependency_index
-        # instead of a binary is_fir_nir toggle.
+        # instead of a binary technology toggle.
         # Index = 1.0 (fluid bed, pure convection) → minimum air movement,
         # everything is heat-transfer-via-air → low absolute numbers but high priority.
         # Index = 0.45 (cast iron drum, conduction-dominant) → can tolerate more air.
@@ -3528,20 +3751,19 @@ class TilauScopeRoastPlan:
             t = _clamp((_adi - 0.45) / (1.00 - 0.45), 0.0, 1.0)
             return low_val + (high_val - low_val) * t
 
-        airflow_base = [
-            round(_interp_base(28, 15)),
-            round(_interp_base(42, 22)),
-            round(_interp_base(60, 32)),
-        ]
+        airflow_base = ([round(v) for v in tech.airflow_pct]
+                        if tech.airflow_pct is not None else
+                        [round(_interp_base(28, 15)),
+                         round(_interp_base(42, 22)),
+                         round(_interp_base(60, 32))])
         extraction_base = [
             round(_interp_base(35, 22)),
             round(_interp_base(52, 32)),
             round(_interp_base(70, 42)),
         ]
 
-        # Airflow clears the steam a wet bean releases — one-sided upward: a dry
-        # bean needs no LESS air than the baseline, which is set by smoke, not by
-        # steam. Driven by the resolved water pair, so aw speaks when measured.
+        # Airflow clears the steam, so it follows the aw — the free fraction is
+        # what evaporates. One-sided upward, the baseline being set by smoke.
         #
         # What was here: `3.0 if humidity > 11.0 or humidity < 9.0`. Two defects.
         # It opened the air by the same 3 % for a WET bean and for a DRY one —
@@ -3554,10 +3776,13 @@ class TilauScopeRoastPlan:
         # machine — the AirWave programme overwrites the extraction list when the
         # device is present, and empties it when it is absent.
         airflow_compensation_percentage: float = (
-            _AIRFLOW_PCT_PER_WATER_POINT * max(0.0, water.value) if water.known else 0.0)
+            _AIRFLOW_PCT_PER_AW_INDEX * max(0.0, aw.value) if aw.known else 0.0)
         extraction_compensation_percentage: float = 0.0
 
         AIRFLOW_MIN = 20.0
+        ## Pas de plancher d'air au séchage : 20 % n'est pas une limite machine,
+        ## et il plaquait toute la colonne à 20 sur une machine pull.
+        AIRFLOW_MIN_DRY = 0.0
         EXTRACTION_MIN = 30.0
         _airflow_step: float = airflow_resolution_pct # use roaster adjustement steps else set to 5% per default
         airflow_targets = [
@@ -3567,7 +3792,9 @@ class TilauScopeRoastPlan:
         ]
         # Pull machines (rear suction near the exhaust) strip heat as airflow rises;
         # bias the heat-critical DRY phase lower, scaled by airflow dependency.
-        if inlet_air_mode == "pull":
+        # Sauté quand la technologie pose ses propres valeurs : ce qui refroidit
+        # le tambour est l'EXTRACTION, pas le ventilateur d'admission.
+        if inlet_air_mode == "pull" and tech.airflow_pct is None:
             airflow_targets[0] -= round(_adi * 6.0)
         _airflow_n = int(airflow_samples or 0)
         for index, learned in enumerate((airflow_dry_learned, airflow_mai_learned,
@@ -3603,7 +3830,7 @@ class TilauScopeRoastPlan:
         extraction = []
         for i in range(3):
             # Apply final hardware constraints
-            air = finalize_value(airflow_targets[i], AIRFLOW_MIN)
+            air = finalize_value(airflow_targets[i], AIRFLOW_MIN_DRY if i == 0 else AIRFLOW_MIN)
             ext = finalize_value(extraction_targets[i], EXTRACTION_MIN)
             # Final safety check: extraction must always be >= airflow
             if ext < air:
@@ -3641,6 +3868,25 @@ class TilauScopeRoastPlan:
         _air_dev = _air_lrn if _air_lrn is not None else _mai_pct(airflow, 2)
         _air_fc = _air_mai
         air_ramp: list[dict] = []
+
+        # ── Franchissement du DRY END — escalier, pas un à-coup ────────────────
+        # L'air de séchage était TENU puis posé d'un bloc sur la valeur Maillard
+        # au jalon : un saut de plus d'un cran, que personne n'exécute d'un geste.
+        # Il monte maintenant par cran machine dans l'approche du DRY END, pour y
+        # arriver déjà à la bonne valeur — même géométrie que le feu, qui atteint
+        # son palier avant le jalon plutôt qu'au jalon.
+        _air_dry = _mai_pct(airflow, 0)
+        if (_air_dry is not None and _air_mai is not None
+                and _air_mai > _air_dry + _airflow_step * 1.5):
+            _d0 = round(_air_dry / _airflow_step) * _airflow_step
+            _de_levels = int(round((_air_mai - _d0) / _airflow_step))
+            for _k in range(1, _de_levels + 1):
+                _ade = (_de_levels - _k + 1) * _AIR_DE_STEP_LEAD_C
+                air_ramp.append({
+                    "bt": round(to_native(dry_bt_temperature - _ade), 1),
+                    "_ade": round(_ade, 2),
+                    "airflow": int(_clamp(_d0 + _airflow_step * _k, AIRFLOW_MIN, 100.0))})
+
         if (_air_mai is not None and _air_dev is not None
                 and _air_dev > _air_mai + _airflow_step / 2.0):
             _air_fc = round((_air_mai + (_air_dev - _air_mai) * 0.4) / _airflow_step) * _airflow_step
@@ -3880,26 +4126,27 @@ class TilauScopeRoastPlan:
         culture_altitude = bean.altitude
         process_type_lower = process_type.lower()
 
-        # ── The two exclusive green-coffee pairs, resolved ONCE ─────────────────
-        # Every downstream consumer reads these, never the raw fields, so a bean
-        # can never have its water counted twice (aw AND moisture) nor its
-        # structure counted twice (density AND culture altitude). See the pair
-        # doctrine at the top of the module and spec §2.2.
-        _water: _GreenPairValue = _resolve_green_water(bean.water_activity, humidity)
+        # ── Green-coffee variables, resolved ONCE ──────────────────────────────
+        # Every downstream consumer reads these, never the raw fields. Moisture
+        # and aw are independent (energy vs evaporation); structure is still a
+        # pair, so a bean cannot be counted twice through density AND altitude.
+        # See the doctrine at the top of the module and spec §2.2.
+        _moisture: _GreenPairValue = _resolve_green_moisture(humidity)
+        _aw: _GreenPairValue = _resolve_green_aw(bean.water_activity)
         _structure: _GreenPairValue = _resolve_green_structure(density, culture_altitude)
         _logd.info(
-            f"RoastPlan: green water {_water.value:+.2f} pt [{_water.label or 'absent'}], "
+            f"RoastPlan: moisture {_moisture.value:+.2f} pt [{_moisture.label or 'absent'}], "
+            f"aw {_aw.value:+.2f} idx [{_aw.label or 'absent'}], "
             f"structure {_structure.value:+.2f} [{_structure.label or 'absent'}]")
 
         # ── Roaster context shortcuts ──────────────────────────────────────────
         # All machine-specific constants come from RoasterContext when available.
         ctx = self._roaster_ctx  # may be None → use generic defaults below
 
-        # Local flag — do NOT store on RoasterContext to avoid structural change.
-        # True for FIR/NIR radiant electric machines (Skywalker, Kaleido, Cyberroaster).
-        is_electric_radiant: bool = ctx.is_radiant_electric if ctx is not None else False
-        # Keep legacy alias used by downstream blocks (light-roast FIR correction)
-        is_fir_nir: bool = is_electric_radiant
+        # Tout ce que le plan fait différemment SELON LA FAÇON DE CHAUFFER passe
+        # par ce profil — plus de drapeau testé en six endroits.
+        _tech: _TechnologyProfile = _technology_profile(
+            ctx.is_radiant_electric if ctx is not None else False)
 
         # Point 2: clamp charge weight to roaster's valid batch range
         charge_weight = self._clamp_batch_weight(charge_weight)
@@ -3967,130 +4214,21 @@ class TilauScopeRoastPlan:
         # DETERMINE TARGET ROAST CATEGORY
         target_roast_category = agtron_target.name
 
-        roasting_basic_base: RoasterBasicPlan = RoasterBasicPlan(
-            plans=[
-                RoasterBasicPlanPerPhase(
-                    name="Very Light",
-                    heater_cmfc=(0.85, 0.70, 0.50),
-                    total_time=(7.5, 8.75),
-                    drying_time=(3.5, 4.0),
-                    maillard_time=(3.0, 3.5),
-                    development_time=(1.0, 1.25),
-                    dtr_pct=(0.13, 0.15),
-                    drop_temp=(197, 203),
-                    fc_temp=194,
-                    dry_temp=153,
-                ),
-                RoasterBasicPlanPerPhase(
-                    name="Light",
-                    heater_cmfc=(0.85, 0.70, 0.50),
-                    total_time=(8.25, 10.25),
-                    drying_time=(3.5, 4.5),
-                    maillard_time=(3.5, 4.0),
-                    development_time=(1.25, 1.75),
-                    dtr_pct=(0.15, 0.17),
-                    drop_temp=(203, 208),
-                    fc_temp=195,
-                    dry_temp=155,
-                ),
-                RoasterBasicPlanPerPhase(
-                    name="Medium Light",
-                    heater_cmfc=(0.75, 0.65, 0.45),
-                    total_time=(9.75, 11.25),
-                    drying_time=(4.5, 5.0),
-                    maillard_time=(3.75, 4.25),
-                    development_time=(1.5, 2.0),
-                    dtr_pct=(0.16, 0.19),
-                    drop_temp=(208, 213),
-                    fc_temp=196,
-                    dry_temp=158,
-                ),
-                RoasterBasicPlanPerPhase(
-                    name="Medium",
-                    heater_cmfc=(0.75, 0.60, 0.45),
-                    total_time=(11.0, 12.75),
-                    drying_time=(4.75, 5.25),
-                    maillard_time=(4.25, 4.75),
-                    development_time=(2.0, 2.75),
-                    dtr_pct=(0.18, 0.22),
-                    drop_temp=(212, 217),
-                    fc_temp=198,
-                    dry_temp=160,
-                ),
-                RoasterBasicPlanPerPhase(
-                    name="Medium Dark",
-                    heater_cmfc=(0.70, 0.60, 0.40),
-                    total_time=(12.0, 13.5),
-                    drying_time=(5.0, 5.5),
-                    maillard_time=(4.5, 5.0),
-                    development_time=(2.5, 3.0),
-                    dtr_pct=(0.20, 0.23),
-                    drop_temp=(217, 222),
-                    fc_temp=200,
-                    dry_temp=162,
-                ),
-                RoasterBasicPlanPerPhase(
-                    name="Dark",
-                    heater_cmfc=(0.70, 0.60, 0.42),
-                    total_time=(12.25, 13.75),
-                    drying_time=(5.0, 5.5),
-                    maillard_time=(4.5, 5.0),
-                    development_time=(2.75, 3.25),
-                    dtr_pct=(0.22, 0.24),
-                    drop_temp=(221, 226),
-                    fc_temp=202,
-                    dry_temp=163,
-                ),
-                RoasterBasicPlanPerPhase(
-                    name="Very Dark",
-                    heater_cmfc=(0.72, 0.62, 0.44),
-                    total_time=(12.5, 14.0),
-                    drying_time=(5.0, 5.5),
-                    maillard_time=(4.5, 5.0),
-                    development_time=(3.0, 3.5),
-                    dtr_pct=(0.23, 0.26),
-                    drop_temp=(224, 229),
-                    fc_temp=203,
-                    dry_temp=164,
-                ),
-                RoasterBasicPlanPerPhase(
-                    name="Extremely Dark",
-                    heater_cmfc=(0.72, 0.62, 0.44),
-                    total_time=(13.0, 14.5),
-                    drying_time=(5.0, 5.5),
-                    maillard_time=(4.75, 5.25),
-                    development_time=(3.25, 3.75),
-                    dtr_pct=(0.24, 0.27),
-                    drop_temp=(228, 236),
-                    fc_temp=204,
-                    dry_temp=165,
-                ),
-            ]
-        )
-        target_roast_category = agtron_target.name # 2026/02/18 fix specific light roast settings for FIR and NIR heaters
+        # Deep-copy the shared base table (tilauscope_types.ROASTING_BASIC_BASE):
+        # the FIR/NIR correction below mutates entries in place, and the same
+        # constant is read as-is by the BeanCave coach.
+        roasting_basic_base: RoasterBasicPlan = copy.deepcopy(ROASTING_BASIC_BASE)
+        target_roast_category = agtron_target.name
         is_light_roast = target_roast_category in ["Light", "Very Light"]
-        if is_light_roast and is_fir_nir:
-            i = 1 if target_roast_category == "Light" else 0
-            # FIR/NIR-specific corrections (radiant heat behaviour only).
-            # Development leg lowered to 0.45 so the light ladder stays monotone
-            # against the Medium Light grid (which holds 0.45 in development).
-            # Charge is no longer set here — the process/BT charge band owns it.
-            roasting_basic_base.plans[i].heater_cmfc   = (0.65, 0.60, 0.45)
-            roasting_basic_base.plans[i].total_time    = (8.0, 10.5)
-            roasting_basic_base.plans[i].drying_time   = (3.5, 5.0)
-            roasting_basic_base.plans[i].maillard_time = (3.0, 4.0)
-            roasting_basic_base.plans[i].drop_temp     = (201, 203)
-            # Development window widened so the DTR-driven dev_time (computed
-            # below) is actually reachable instead of being clamped short. The
-            # previous caps (dev 0.45-1.0 / dtr 0.10-0.15) forced calculated DTR
-            # well under target. Split per-category so Very Light stays brighter
-            # and shorter in development than Light.
-            if target_roast_category == "Light":
-                roasting_basic_base.plans[i].development_time = (1.0, 1.7)
-                roasting_basic_base.plans[i].dtr_pct          = (0.14, 0.17)
-            else:  # Very Light
-                roasting_basic_base.plans[i].development_time = (0.7, 1.4)
-                roasting_basic_base.plans[i].dtr_pct          = (0.12, 0.15)
+        # La technologie de chauffe réécrit la ligne de sa catégorie : charge
+        # exclue, la bande de charge process/BT en reste propriétaire.
+        _override = _tech.plan_overrides.get(target_roast_category)
+        if _override:
+            _row = next((p for p in roasting_basic_base.plans
+                         if p.name == target_roast_category), None)
+            if _row is not None:
+                for _key, _value in _override.items():
+                    setattr(_row, _key, _value)
         # first adjust the roasting basic plan based on probe deviations
         roasting_basic:RoasterBasicPlan = self._adjust_deviation(bt_deviation, roasting_basic_base)
         roast_constraints:RoasterBasicPlanPerPhase = next((p for p in roasting_basic.plans if p.name == target_roast_category), None)
@@ -4162,7 +4300,7 @@ class TilauScopeRoastPlan:
         # does not change the result.
         _charge = self._charge_setup(
             process_type_lower=process_type_lower,
-            water=_water, structure=_structure,
+            moisture=_moisture, structure=_structure,
             ambient_temp_c=_ambient_measured_c, minutes_since_last_drop=minutes_since_last_drop,
             thermal_mass_idx=_thermal_mass_idx, heat_retention_idx=_heat_retention_idx)
         _charge_band = _charge.band
@@ -4224,13 +4362,14 @@ class TilauScopeRoastPlan:
         # for the doctrine comments on the split.
         total_time_min, dry_time_min, dev_time_min = self._base_phase_durations(
             roast_constraints=roast_constraints, structure=_structure)
+        _grid_dry_time_min: float = dry_time_min
 
         heater_dry_base:float = roast_constraints.heater_cmfc[0]*100
 
         # ── Bean water: drying energy, first-crack momentum, Maillard body ──
         # The charge is not modulated here: it is driven from inside the charge
         # modulation, where bean properties belong.
-        effect = self._green_water_effect(_water)
+        effect = self._green_moisture_effect(_moisture)
         dry_time_min += effect.d_dry_time_min
         heater_dry_base += effect.d_heater_dry_pct
         # d_airflow_pct is consumed by _resolve_airflow_extraction, which reads the
@@ -4249,12 +4388,100 @@ class TilauScopeRoastPlan:
                 f"Ambient {_ambient_measured_c:.1f}°C on {charge_weight:.0f} g → "
                 f"drying {_ambient_dry_min:+.2f} min")
 
-        if dry_time_min < float(roast_constraints.drying_time[0]):
+        ## Notes qui appartiennent au PLAN, pas à l'historique : elles doivent
+        ## sortir même sur un plan de grille pure, où `history` est None.
+        _plan_notes: "list[str]" = []
+
+        # ── Lot 4 : l'enveloppe de RoR contraint, les durées suivent ────────
+        # Le TP est calculé ici (et non plus plus bas) parce que la durée de
+        # séchage part de lui. Temps du TP : constante machine quand la
+        # technologie en pose une, sinon la loi de masse historique.
+        _tp_time_min: float = (_tech.tp_time_min if _tech.tp_time_min is not None
+                               else max(0.75, min(1.5, 0.9 + charge_weight / 1500.0)))
+        # ⚠️ Placeholder de tracé, pas une prévision (voir _tp_placeholder_c).
+        # Même appel que la courbe, masse comprise : sans le terme de masse, le
+        # séchage d'un petit lot partait 25 °C trop bas et gonflait le RoR
+        # calculé — erreur qu'un écrêtage dans la bande idéale masquait ensuite
+        # au lieu de la corriger.
+        _tp_bt_c: float = self._tp_placeholder_c(
+            charge_bt_temperature, charge_weight, _nominal_weight_g)
+
+        _env_timing: "_EnvelopeTiming | None" = None
+        _env_dev_delta_c: float = 0.0
+        if _tech.ror_envelope is not None:
+            ## Cible de RoR au drop de la technologie, interpolée sur le niveau —
+            ## c'est vers elle que la pente descend pendant le développement.
+            _env_drop_ror: float = (_tech.ror_at_drop_dark
+                                    + (_tech.ror_at_drop_light - _tech.ror_at_drop_dark)
+                                    * agtron_ratio)
+            _env_timing = self._envelope_timing(
+                envelope=_tech.ror_envelope, tp_time_min=_tp_time_min,
+                tp_bt_c=_tp_bt_c, dry_bt_c=dry_bt_temperature, fc_bt_c=fc_bt,
+                dev_time_min=dev_time_min, drop_ror_c=_env_drop_ror,
+                # Les corrections eau/ambiante restent : elles sont physiques et
+                # s'ajoutent à la durée déduite, elles ne la remplacent pas.
+                dry_correction_min=dry_time_min - _grid_dry_time_min,
+                dry_floor_min=self._dry_floor_min(
+                    charge_weight, _nominal_weight_g, _dev_inertia))
+            _env_dev_delta_c = _env_timing.dev_delta_c
+            if _env_timing.dry_bt_shift_c > 0.0:
+                ## Sécher plus longtemps à la même pente, c'est arriver plus haut :
+                ## le DRY END suit la durée, et le span Maillard s'en déduit.
+                dry_bt_temperature += _env_timing.dry_bt_shift_c
+                ma_bt_temperature = fc_bt - dry_bt_temperature
+                _logd.info(
+                    f"RoastPlan: dry end raised {_env_timing.dry_bt_shift_c:.1f}°C to "
+                    f"{dry_bt_temperature:.1f}°C — a floored drying arrives higher, "
+                    f"and the rate of rise has to keep falling into Maillard")
+            dry_time_min = _env_timing.dry_time_min
+            total_time_min = dry_time_min + _env_timing.maillard_time_min + dev_time_min
+            _logd.info(
+                f"RoastPlan: envelope timing dry={dry_time_min:.2f}min "
+                f"maillard={_env_timing.maillard_time_min:.2f}min "
+                f"(RoR {_env_timing.dry_ror_c:.1f} → {_env_timing.maillard_ror_c:.1f} °C/min)")
+            if _env_timing.maillard_compressed:
+                ## Le mouvement de RoR exigé est LUI-MÊME la preuve : à cette
+                ## masse le séchage est court, le Maillard doit donc être mené
+                ## plus vif que l'enveloppe nominale pour ne pas le dépasser.
+                _logd.info(
+                    f"RoastPlan: maillard compressed to {_env_timing.maillard_time_min:.2f}min "
+                    f"({_env_timing.maillard_ror_c:.1f}°C/min) — drying runs "
+                    f"{_env_timing.dry_ror_c:.1f}°C/min at this batch size")
+                _plan_notes.append(QApplication.translate(
+                    "tilauscope_roast_plan",
+                    "Small batch: drying is short here, so Maillard is led at {0}°/min rather than the usual easing. Any slower and it would outlast drying, which this machine does not do.").format(
+                    f"{_env_timing.maillard_ror_c * (1.8 if _is_fahrenheit else 1.0):.0f}"))
+            if _env_timing.drying_stretched:
+                ## Le mouvement de RoR exigé est LUI-MÊME la preuve : sécher
+                ## plus vite que le Maillard demanderait de tenir la pente haute
+                ## puis de la casser. On rallonge le séchage et on le dit.
+                _logd.warning(
+                    f"RoastPlan: drying stretched to {dry_time_min:.2f}min — a "
+                    f"shorter one would put Maillard above it; drying now runs at "
+                    f"{_env_timing.dry_ror_c:.1f}°C/min against "
+                    f"{_env_timing.maillard_ror_c:.1f} in Maillard")
+                _plan_notes.append(QApplication.translate(
+                    "tilauscope_roast_plan",
+                    "Drying is planned at {0}°/min rather than faster: any shorter and Maillard would outlast it, which this machine does not do. From the dry end the curve keeps easing, to {1}°/min across Maillard.").format(
+                    f"{_env_timing.dry_ror_c * (1.8 if _is_fahrenheit else 1.0):.0f}",
+                    f"{_env_timing.maillard_ror_c * (1.8 if _is_fahrenheit else 1.0):.0f}"))
+        elif dry_time_min < float(roast_constraints.drying_time[0]):
             # Floored on the BOTTOM of the style window, not on its middle:
             # flooring on the nominal duration would cancel the very shortening
             # a dry bean or a warm room earns. They may dry as fast as the style
             # allows, never faster.
             dry_time_min = float(roast_constraints.drying_time[0])
+
+        # Fenêtres d'adoption de l'historique : autour de la valeur déduite de
+        # l'enveloppe quand elle gouverne, autour de la grille de style sinon.
+        # L'historique personnalise, il ne ramène pas la grille par la fenêtre.
+        _ENV_WINDOW: float = 0.75
+        _drying_band: "tuple[float, float]" = roast_constraints.drying_time
+        _maillard_band: "tuple[float, float]" = roast_constraints.maillard_time
+        if _env_timing is not None:
+            _drying_band = (dry_time_min - _ENV_WINDOW, dry_time_min + _ENV_WINDOW)
+            _maillard_band = (_env_timing.maillard_time_min - _ENV_WINDOW,
+                              _env_timing.maillard_time_min + _ENV_WINDOW)
 
         # ── Cross-roast timing calibration + physical duration floors ───────
         # Extracted to _calibrate_and_floor_phase_durations (banc 2026-08-05) —
@@ -4262,8 +4489,8 @@ class TilauScopeRoastPlan:
         # for why the floors must run after the calibration.
         _timing = self._calibrate_and_floor_phase_durations(
             dry_time_min=dry_time_min, total_time_min=total_time_min, dev_time_min=dev_time_min,
-            drying_time_band=roast_constraints.drying_time,
-            maillard_time_band=roast_constraints.maillard_time,
+            drying_time_band=_drying_band,
+            maillard_time_band=_maillard_band,
             t_dry_raw=history.get("timing_dry_min_learned") if history else None,
             t_fc_raw=history.get("timing_fc_min_learned") if history else None,
             t_n=int(history.get("timing_samples", 0) or 0) if history else 0,
@@ -4292,22 +4519,21 @@ class TilauScopeRoastPlan:
             maillard_time_min += effect.d_maillard_time_min
             _logd.info(
                 f"RoastPlan: Maillard {effect.d_maillard_time_min:+.2f} min — dry green "
-                f"[{_water.label}] builds less internal pressure, body compensated by time")
+                f"[{_moisture.label}] builds less internal pressure, body compensated by time")
 
         # determine DRY RoR peak (°C/min — scaled at the output boundary)
-        dry_ror_peak:float = 12.0 if not is_fir_nir else heater_dry_base / 75.0 * 12.0
+        ## Sous enveloppe, le pic post-TP est la première ancre — plus la loi
+        ## « % brûleur ÷ 75 × 12 », qui sortait un pic SOUS la moyenne du
+        ## séchage, ce qu'aucune courbe ne peut faire.
+        dry_ror_peak:float = (_tech.ror_envelope[0] if _tech.ror_envelope is not None
+                              else (heater_dry_base / 75.0 * _tech.dry_ror_peak_c
+                                    if _tech.dry_ror_peak_follows_heater
+                                    else _tech.dry_ror_peak_c))
         # Real post-TP dry-phase RoR: rise from the turning point to dry-end over
         # the active drying time. The old (charge - dry_end)/dry_time ignored the
         # post-charge dip and was not the drying RoR at all. Uses the machine TP
         # (placeholder de tracé) and the planned TP time (same model as the curve).
-        _tp_time_min: float  = max(0.75, min(1.5, 0.9 + charge_weight / 1500.0))
-        # ⚠️ Placeholder de tracé, pas une prévision (voir _tp_placeholder_c).
-        # Même appel que la courbe, masse comprise : sans le terme de masse, le
-        # séchage d'un petit lot partait 25 °C trop bas et gonflait le RoR
-        # calculé — erreur qu'un écrêtage dans la bande idéale masquait ensuite
-        # au lieu de la corriger.
-        _tp_bt_c: float = self._tp_placeholder_c(
-            charge_bt_temperature, charge_weight, _nominal_weight_g)
+        # _tp_time_min et _tp_bt_c sont posés plus haut, avec l'enveloppe.
 
         # Typical post-TP reference only. The placeholder TP cannot
         # support an attainability calculation; live replanning uses the real TP.
@@ -4316,11 +4542,21 @@ class TilauScopeRoastPlan:
 
         _dry_active_min: float = max(0.5, dry_time_min - _tp_time_min)
         dry_ror_average: float = (dry_bt_temperature - _tp_bt_c) / _dry_active_min
-        # Align the dry RoR target to the CHARGE->DRY band so the plan target stays
-        # consistent with the live phase classifier (no "on plan" reading as warn).
-        # Band requested in °C — the internal frame; scaled at the output boundary.
-        _dry_band_lo, _dry_band_hi = get_ror_ideal_band("drying", "C")
-        dry_ror_average = max(_dry_band_lo, min(_dry_band_hi, dry_ror_average))
+        if _env_timing is None:
+            # Align the dry RoR target to the CHARGE->DRY band so the plan target stays
+            # consistent with the live phase classifier (no "on plan" reading as warn).
+            # Band requested in °C — the internal frame; scaled at the output boundary.
+            _dry_band_lo, _dry_band_hi = get_ror_ideal_band("drying", "C")
+            dry_ror_average = max(_dry_band_lo, min(_dry_band_hi, dry_ror_average))
+        # Sous enveloppe, le RoR imprimé reste celui qu'IMPLIQUE la durée
+        # retenue : si un plancher ou l'historique a déplacé la durée, c'est la
+        # durée qui gagne et le plan le dit — il n'écrête pas le chiffre pour
+        # sauver les apparences.
+        elif abs(dry_ror_average - _env_timing.dry_ror_c) > 2.0:
+            _logd.warning(
+                f"RoastPlan: retained drying {dry_time_min:.2f}min implies "
+                f"{dry_ror_average:.1f}°C/min, envelope asks "
+                f"{_env_timing.dry_ror_c:.1f} — the duration was moved after the envelope")
 
         # maillard_time_min set in the timing-calibration block above
         # (total - dry - dev by deduction, or learned from history when the
@@ -4407,16 +4643,18 @@ class TilauScopeRoastPlan:
             drop_ror_samples=(int(history.get("drop_ror_samples", 0) or 0) if history else 0),
             fc_bt=fc_bt, dev_time_min=dev_time_min,
             dev_ror_expected=dev_ror_expected, agtron_ratio=agtron_ratio,
-            charge_weight=charge_weight, density=density, water_activity=bean.water_activity,
+            charge_weight=charge_weight, density=density, moisture_pct=humidity or 0.0,
             nominal_weight_g=_nominal_weight_g, heat_retention=_heat_retention_idx,
-            is_fir_nir=is_fir_nir)
+            tech=_tech,
+            env_dev_delta_c=(_env_dev_delta_c if _env_timing is not None else None),
+            env_fc_entry_ror_c=(_env_timing.fc_entry_ror_c if _env_timing is not None else None))
         drop_bt_temperature = _drop.drop_bt_temperature
         drop_source = _drop.drop_source
         dev_ror = _drop.dev_ror
         drop_ror = _drop.drop_ror
         drop_ror_source = _drop.drop_ror_source
-        if _drop.notes and history is not None:
-            history["actions"] = (history.get("actions") or []) + _drop.notes
+        if _drop.notes:
+            _plan_notes += _drop.notes
 
         # Le TP annoncé est celui que la courbe DESSINE — un seul modèle.
         # Il y avait ici un second calcul indépendant, `charge − 30 × (1,5 −
@@ -4451,9 +4689,13 @@ class TilauScopeRoastPlan:
         # 2026-08-05), see that method for the doctrine comments (process/
         # humidity grid base, learned heater profile adoption policy, the
         # Maillard energy floor, and the learned pre-FC setpoint).
+        ## Cohorte : même process, même gabarit de lot, toutes origines (lot 5).
+        _cohort_dry, _cohort_n = self._cohort_charge_burner(
+            process_type=process_type, charge_weight_g=charge_weight)
         _burner = self._resolve_burner_setpoints(
-            water=_water, water_fc_heater_pct=effect.d_heater_fc_pct,
-            is_light_roast=is_light_roast, is_fir_nir=is_fir_nir,
+            moisture=_moisture, structure=_structure,
+            moisture_fc_heater_pct=effect.d_heater_fc_pct,
+            is_light_roast=is_light_roast, tech=_tech,
             agtron_mean=agtron_mean, process_type_lower=process_type_lower,
             process_type=process_type,
             bean_varieties=bean.varieties or "", bean_country=bean.country or "",
@@ -4467,7 +4709,8 @@ class TilauScopeRoastPlan:
             heater_dev_learned=(history.get("heater_dev_learned") if history else None),
             heater_fc_learned=(history.get("heater_fc_learned") if history else None),
             heater_fc_samples=(int(history.get("heater_fc_samples", 0) or 0) if history else 0),
-            coherent_source=(_coherent_source if _coherent_n >= 2 else None))
+            coherent_source=(_coherent_source if _coherent_n >= 2 else None),
+            cohort_dry_learned=_cohort_dry, cohort_samples=_cohort_n)
         heater_dry = _burner.heater_dry
         heater_maillard = _burner.heater_maillard
         heater_dev = _burner.heater_dev
@@ -4478,8 +4721,23 @@ class TilauScopeRoastPlan:
         _floor = _burner.floor
         _heater_max_pct = _burner.heater_max_pct
         _h_dev_free = _burner.dev_free_pct
-        if _burner.notes and history is not None:
-            history["actions"] = (history.get("actions") or []) + _burner.notes
+        if _burner.notes:
+            _plan_notes += _burner.notes
+
+        ## Garde-fou du temps de TP : la constante machine vaut à 70-80 % de
+        ## brûleur de charge (vérifiée sur 91 roasts, tous dans cette fenêtre).
+        ## Sous ce feu la machine repart moins vite, le TP recule, et toutes les
+        ## durées qui en découlent avec lui. On le dit — on ne l'extrapole pas.
+        if (_tech.tp_time_min is not None
+                and heater_dry < _tech.tp_time_heater_pct - 0.5):
+            _logd.warning(
+                f"RoastPlan: drying burner {heater_dry:.0f}% is below the "
+                f"{_tech.tp_time_heater_pct:.0f}% the {_tp_time_min:.2f}min turning "
+                f"point was verified at — the real TP will come later")
+            _plan_notes.append(QApplication.translate(
+                "tilauscope_roast_plan",
+                "The plan holds {0}% through drying, under the {1}% its turning-point timing was measured at: expect the turning point, and everything after it, a little later than printed.").format(
+                f"{heater_dry:.0f}", f"{_tech.tp_time_heater_pct:.0f}"))
 
         # ── Anticipated heater ramp (BT-anchored pre-FC anchor, Dev Ramp
         # coherence), learned pre-dry-end anti-flick gesture, and the built
@@ -4498,6 +4756,7 @@ class TilauScopeRoastPlan:
             heater_dry=heater_dry, heater_maillard=heater_maillard, heater_dev=heater_dev,
             heater_pre_fc=heater_pre_fc, dev_free_pct=_h_dev_free,
             floor=None, heater_max_pct=_heater_max_pct,
+            burner_floor_pct=_tech.burner_floor_pct,
             heater_resolution_pct=_heater_res, has_heater_control=_has_heater,
             heater_de_learned=(history.get("heater_de_learned") if history else None),
             heater_de_samples=(int(history.get("heater_de_samples", 0) or 0) if history else 0),
@@ -4531,7 +4790,7 @@ class TilauScopeRoastPlan:
         # Development Ramp's burner-hold/air-support coupling).
         _airflow_ext = self._resolve_airflow_extraction(
             airwave_present=self._airwave_present,
-            airflow_dependency_index=_airflow_dep_idx, water=_water,
+            airflow_dependency_index=_airflow_dep_idx, aw=_aw, tech=_tech,
             inlet_air_mode=(getattr(ctx, "inlet_air_mode", "push") if ctx is not None else "push"),
             airflow_resolution_pct=(ctx.airflow_resolution_pct if ctx else 5.0),
             dry_bt_temperature=dry_bt_temperature, fc_bt=fc_bt, pre_fc_c=_pre_fc_c,
@@ -4583,7 +4842,8 @@ class TilauScopeRoastPlan:
             maillard_time_min=maillard_time_min, ma_bt_temperature=ma_bt_temperature,
             ror_maillard=ror_maillard, heater_dry=heater_dry, heater_pre_fc=heater_pre_fc,
             ror_scale=_ror_scale, mode=self.mode,
-            decay_k=(float(ctx.maillard_ror_decay) if ctx is not None else 2.0))
+            decay_k=(float(ctx.maillard_ror_decay) if ctx is not None else 2.0),
+            env_fc_entry_ror_c=(_env_timing.fc_entry_ror_c if _env_timing is not None else None))
         if _mai_note and history is not None:
             history["actions"] = (history.get("actions") or []) + [_mai_note]
 
@@ -4655,9 +4915,9 @@ class TilauScopeRoastPlan:
             "Water Activity Used": f"{bean.water_activity:.3f}" if bean.water_activity > 0.0 else "Not measured",
             f"Ambient Temp": f"{_to_native(ambient_temp_c):.1f}",
             "Ambient Humidity": f"{ambient_humidity:.1f}",
-            f"Charge Temp":    f"{_to_native(charge_bt_temperature):.1f}",
-            f"End of Dry Temp": f"{_to_native(  dry_bt_temperature):.1f}",
-            f"First Crack Temp": f"{_to_native(fc_bt):.1f}",
+            f"Charge Temp":    f"{_to_native(charge_bt_temperature):.0f}",
+            f"End of Dry Temp": f"{_to_native(  dry_bt_temperature):.0f}",
+            f"First Crack Temp": f"{_to_native(fc_bt):.0f}",
             # ── Provenance ───────────────────────────────────────────────────
             # Two forms of the same fact, and the distinction is load-bearing.
             # The "... Source" entries are LABELS: operator-facing text, carrying
@@ -4699,7 +4959,7 @@ class TilauScopeRoastPlan:
                 "adher_ok":     round(3.0 * _tol_factor * _ror_scale, 1),
                 "adher_warn":   round(7.0 * _tol_factor * _ror_scale, 1),
             },
-            f"Drop Temp":      f"{_to_native(drop_bt_temperature):.1f}",
+            f"Drop Temp":      f"{_to_native(drop_bt_temperature):.0f}",
             "Dry Phase":self.format_time(dry_time_min),
             "Dry Phase %": f"{dry_phase_percent:.1f}",
             "Maillard Phase":self.format_time(maillard_time_min),
@@ -4728,7 +4988,7 @@ class TilauScopeRoastPlan:
             "Peak ROR Warning": _peak_ror_note,
             f"Target ROR Dev (Avg)": f"{dev_ror * _ror_scale:.1f}",
             f"Target ROR at Drop":  f"{drop_ror * _ror_scale:.1f}",
-            "Estimated TP":         f"{_to_native(tp_temperature):.1f}",
+            "Estimated TP":         f"{_to_native(tp_temperature):.0f}",
             "Heater at TP": f"{heater_tp:.0f}",
             # Anticipated Maillard→Dev heater steps, BT-triggered (native unit).
             # Consumed by TilauscopeAlarmFactory; empty when no heater control.
@@ -4746,6 +5006,7 @@ class TilauScopeRoastPlan:
             "Drum Variable Speed":        _drum_variable,
             "notes": history["notes"] if history else None,
             "actions": ((((history["actions"] or []) if history else [])
+                         + _plan_notes
                          + _heater_authority
                          + ([_soak_note] if _soak_note else [])) or None),
             # Correction back-to-back appliquée (deltas en unité native) — None
@@ -5182,9 +5443,9 @@ class TilauScopeRoastPlan:
             new_plan = dict(plan)   # shallow copy; every changed key is rebound to a fresh object
             new_plan["_replan_ctx"]          = ctx
             new_plan["bt_plan_curve"]        = curve
-            new_plan["End of Dry Temp"]      = f"{_nat(float(a_dry['bt'])):.1f}"
-            new_plan["First Crack Temp"]     = f"{_nat(float(a_fc['bt'])):.1f}"
-            new_plan["Estimated TP"]         = f"{_nat(float(a_tp['bt'])):.1f}"
+            new_plan["End of Dry Temp"]      = f"{_nat(float(a_dry['bt'])):.0f}"
+            new_plan["First Crack Temp"]     = f"{_nat(float(a_fc['bt'])):.0f}"
+            new_plan["Estimated TP"]         = f"{_nat(float(a_tp['bt'])):.0f}"
             new_plan["Dry Phase"]            = self.format_time(t_dry)
             new_plan["Dry Phase %"]          = f"{dry_pct:.1f}"
             new_plan["Maillard Phase"]       = self.format_time(t_mai)
@@ -5217,8 +5478,12 @@ class TilauScopeRoastPlan:
                 _mid_c = (float(a_dry["bt"]) + float(a_fc["bt"])) / 2.0
                 _lead_c = max(0.0, float(ctx["ror_maillard_c"])) * float(ctx["fc_anticipation_sec"]) / 60.0
                 _pfc_c = max(_mid_c + 1.0, float(a_fc["bt"]) - _lead_c)
+                # Les crans d'approche du DRY END ("_ade", en °C sous le jalon)
+                # suivent l'ancre DRY END, pas le cadre mi-Maillard→pre-FC.
                 new_plan["Air Ramp"] = [
-                    {**_e, "bt": round(_nat(_mid_c + (_pfc_c - _mid_c) * float(_e.get("_af", 0.5))), 1)}
+                    ({**_e, "bt": round(_nat(float(a_dry["bt"]) - float(_e["_ade"])), 1)}
+                     if "_ade" in _e else
+                     {**_e, "bt": round(_nat(_mid_c + (_pfc_c - _mid_c) * float(_e.get("_af", 0.5))), 1)})
                     for _e in plan["Air Ramp"]]
             new_plan["Replan Source"]  = f"{milestone}@{self.format_time(t_min)}"
             new_plan["Replan Note"]    = note

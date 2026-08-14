@@ -37,21 +37,22 @@ a head start, not a shortcut that skips checking.
 |---|---|---|
 | **A new bean** | Name, origin, harvest year, starting weight | A new coffee record is created. |
 | **Restock — same crop** | Which existing coffee, added weight | The weight is added to that coffee's stock. Nothing else changes. |
-| **New crop of the same bean** | Which existing coffee, new harvest year, starting weight | A new coffee record is created, copied from the previous crop's details, so only what actually changed for the new harvest needs re-entering. |
+| **New crop of the same bean** | Which existing coffee, then the New crop step below | A new coffee record is created, inheriting the identity of the previous crop. |
 
 Weight can be typed in or captured live from a paired scale, the same way it is throughout
 TilauScope.
 
-Restock and new-crop skip straight past provenance, characteristics and sensory notes to the
-review screen — a restock has nothing new to describe, and a new crop mostly carries the last
-one's details forward.
+Restock skips straight past provenance, characteristics and sensory notes to the review
+screen — a restock has nothing new to describe.
+
+**New crop** has a step of its own, described in the next section.
 
 **Sack identification** is the one step that can always be skipped. Give the bag a label id
 now — recycled ids are offered first, then ever-printed-but-unused ones — or leave it and
 attach a label later. A duplicate id is flagged before it can be reused by two bags at once.
 
 **Provenance, characteristics, sensory notes** — the same fields as the bean record itself,
-including [water activity](glossary.md#aw--water-activity), skipped for restock and new-crop
+including [water activity](glossary.md#aw--water-activity), skipped for restock and new crop
 as above.
 
 **Review** closes the loop: one card per section, each with its own **✎ Edit** to jump back
@@ -61,6 +62,49 @@ without restarting, and a warning if a starting weight of 0 g is about to be con
 ![the + New sack button and the Start page](assets/sacks-and-storage-3.1.png)
 ![the "what kind of bag" step](assets/sacks-and-storage-3.2.png)
 ![the Review page](assets/sacks-and-storage-3.3.png)
+
+---
+
+## The next harvest of a coffee you already roast: "🌱 New crop"
+
+Select the coffee in the catalogue and press **🌱 New crop**, next to **+ New sack**. It opens
+the same assistant, already locked on that record and reduced to three steps. The button is
+greyed out until a coffee is selected.
+
+A new crop is the same coffee from a different year. Its **identity** — origin, farm, altitude,
+process, species, variety, category, blend composition — is inherited as it stands and is shown
+at the top of the step so it can be checked at a glance. Its **name stays the same**; the
+harvest year is what tells the two records apart in the catalogue.
+
+**The new sack** asks only what belongs to the new bag: harvest year (proposed as the year after
+the previous crop), weight received, and the supplier, in case the same coffee came through a
+different one this time.
+
+**Measured on this lot** asks for [density](glossary.md#density), humidity
+([moisture content](glossary.md#moisture-content)) and
+[water activity](glossary.md#aw--water-activity). These three start **empty**, on purpose: they
+are measurements of one bag, not properties of the coffee, and they change with every harvest.
+The previous crop's value is shown beside each field for reference only. If they have not been
+measured yet, leave them empty — the review step says plainly that the roast plan will fall back
+on averages, and they can be filled in later from the bean record. **Copy … values** carries the
+previous crop's three figures over in one click, for a supplier who does not publish new ones.
+
+Density and humidity can be measured with a paired scale and a fixed-volume container; water
+activity can be read from an [AquaGauge](hardware.md) probe, whose live reading appears beside
+the step and transfers into the field on a click.
+
+**Sensory and score** stays folded away. The previous crop's flavour notes and score are carried
+over — open it to correct them, and to tick *This crop replaces the previous one* if the old bag
+is finished, which sets its stock to zero.
+
+Brew dial-ins are **not** carried over: a recipe is tuned on one lot and does not transfer to
+the next.
+
+The two remaining steps are the usual ones — sack identification, still skippable, and review.
+
+<!-- CAPTURE 3.4 — the 🌱 New crop step, entered from the catalogue with a bean selected that
+has a density and humidity on its previous crop, so the reference lines are visible and the
+three measurement fields are empty. -->
 
 ---
 

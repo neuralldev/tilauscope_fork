@@ -101,6 +101,23 @@ SCENARIOS: Final[tuple[Scenario, ...]] = (
         19.0, 60.0, 1200.0,
     ),
     Scenario(
+        'unknown-250-light',
+        'small batch on a light target: the turning point sits high, so little '
+        'climb is left before the dry end while Maillard still has its full '
+        'span — the case where the envelope would put Maillard above drying, '
+        'which this machine never does',
+        'no-such-bean-uuid', 'Unknown Origin', 'Washed', 'Light', 250.0,
+        19.0, 60.0, 1200.0,
+    ),
+    Scenario(
+        'unknown-150-light',
+        'the smallest batch the machine takes: the turning point sits at its '
+        'measured plateau, drying is short, and Maillard has to be led faster '
+        'than the nominal envelope to stay under it',
+        'no-such-bean-uuid', 'Unknown Origin', 'Anaerobic Fermentation', 'Light',
+        150.0, 30.8, 62.0, 1200.0,
+    ),
+    Scenario(
         'gr2-400-medium-back-to-back',
         'same request as the first, 8 minutes after a DROP -> heat-soak '
         'correction must lower the charge and the starting burner',

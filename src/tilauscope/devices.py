@@ -42,7 +42,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QCursor, QPalette, QColor
 
-from tilauscope.theme_qss import base_qss
+from tilauscope.theme_qss import base_qss, tooltip_qss
 from tilauscope.tilauscope_types import THEME, show_styled_message, TilauProgress
 
 
@@ -195,7 +195,7 @@ def _btn_trash() -> str:
             border-color: {THEME['CRITICAL']};
             color: {THEME['CRITICAL']};
         }}
-    """
+    """ + tooltip_qss()
 
 
 def _table_spinbox_style() -> str:
@@ -224,7 +224,7 @@ def _table_spinbox_style() -> str:
             border: none;
             background: transparent;
         }}
-    """
+    """ + tooltip_qss()
 
 
 # Standard broker ports; the TLS switch moves between the two as long as the
@@ -318,7 +318,7 @@ def _table_combobox_style() -> str:
             selection-background-color: {THEME['ACCENT']};
             selection-color: {THEME['BG']};
         }}
-    """
+    """ + tooltip_qss()
 
 
 def _separator() -> QFrame:
@@ -655,12 +655,18 @@ class TilauscopeConfigDlg(QDialog):
         self._tabs = QTabWidget()
         self._tabs.setStyleSheet(_tabs_style())
 
-        self._general_tab    = QWidget(); self._general_tab.setStyleSheet("background: transparent;")
-        self._sensors_tab    = QWidget(); self._sensors_tab.setStyleSheet("background: transparent;")
-        self._detection_tab  = QWidget(); self._detection_tab.setStyleSheet("background: transparent;")
-        self._integrations_tab = QWidget(); self._integrations_tab.setStyleSheet("background: transparent;")
-        self._printing_tab   = QWidget(); self._printing_tab.setStyleSheet("background: transparent;")
-        self._beancave_tab   = QWidget(); self._beancave_tab.setStyleSheet("background: transparent;")
+        # A tab page is the first styled ancestor of every control it holds, so
+        # its sheet is the one Qt uses for their tooltips: it carries the rule.
+        # The selector is mandatory here — a bare declaration list next to a
+        # rule does not parse, and Qt then wraps the whole sheet in `* { }`,
+        # which paints the tooltip transparent instead of styling it.
+        _tab_qss = "QWidget { background: transparent; }" + tooltip_qss()
+        self._general_tab    = QWidget(); self._general_tab.setStyleSheet(_tab_qss)
+        self._sensors_tab    = QWidget(); self._sensors_tab.setStyleSheet(_tab_qss)
+        self._detection_tab  = QWidget(); self._detection_tab.setStyleSheet(_tab_qss)
+        self._integrations_tab = QWidget(); self._integrations_tab.setStyleSheet(_tab_qss)
+        self._printing_tab   = QWidget(); self._printing_tab.setStyleSheet(_tab_qss)
+        self._beancave_tab   = QWidget(); self._beancave_tab.setStyleSheet(_tab_qss)
 
         self._tabs.addTab(self._general_tab,     QApplication.translate("tilauscope_devices", "⚙  GENERAL"))
         self._tabs.addTab(self._sensors_tab,     QApplication.translate("tilauscope_devices", "📡  SENSORS"))
@@ -868,26 +874,7 @@ class TilauscopeConfigDlg(QDialog):
         rgl.addRow(self.pairPhoneBtn)
         layout.addWidget(remote_group)
 
-        # visual bench for the shared progress indicators
-        layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_devices", "Diagnostics")))
-        diag_group = QGroupBox(QApplication.translate("tilauscope_devices", "Display check"))
-        dgl = QFormLayout(diag_group)
-        self.progressGalleryBtn = QPushButton(
-            QApplication.translate("tilauscope_devices", "Check progress indicators…"))
-        self.progressGalleryBtn.setToolTip(
-            QApplication.translate("tilauscope_devices",
-                "Open a window showing every progress indicator the application uses, "
-                "so their appearance and animation can be checked on this machine."))
-        self.progressGalleryBtn.clicked.connect(self._open_progress_gallery)
-        dgl.addRow(self.progressGalleryBtn)
-        layout.addWidget(diag_group)
-
         layout.addStretch()
-
-    def _open_progress_gallery(self) -> None:
-        from tilauscope.progress_gallery import open_progress_gallery  # noqa: PLC0415
-        open_progress_gallery(self)
 
     # ─────────────────────────────────────────────────────────────────────────
     # TAB 2 — SENSORS

@@ -23,7 +23,7 @@ from PyQt6.QtCore import Qt, QSettings, pyqtSlot # @UnusedImport @Reimport  @Unr
 from PyQt6.QtWidgets import QLabel, QToolButton, QApplication
 
 from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS, THEME
-from tilauscope.theme_qss import tint
+from tilauscope.theme_qss import tint, tooltip_qss
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -193,11 +193,7 @@ class CoachViewToggle(QToolButton):
                 font-size: 14px;
             }}
             QToolButton:hover {{ border: 1px solid {THEME['ACCENT']}; }}
-            QToolTip {{
-                background-color: {THEME['SURFACE']}; color: {THEME['TEXT']};
-                border: 1px solid {THEME['SURFACE2']}; padding: 5px;
-                border-radius: 3px; font-size: 11px;
-            }}
+            {tooltip_qss()}
         """)
         self.clicked.connect(self._on_click)
         self._refresh_glyph()

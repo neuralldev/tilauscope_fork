@@ -15,6 +15,10 @@
 
 """New-sack guided assistant for BeanCave: a step-by-step wizard (start, essentials,
 sack id, provenance, type & facts, sensory, review) registering an incoming bag of green coffee. Everything sack-related is optional; nothing is written until "Create" on the review page.
+
+Passing ``source_bean`` opens the short new-crop flow instead: the identity of
+the coffee is inherited from that record and only what belongs to the new
+harvest is asked (year, weight, supplier, and the three lot measurements).
 """
 
 from __future__ import annotations
@@ -31,6 +35,7 @@ from PyQt6.QtCore import Qt, QObject, QThread, pyqtSignal
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QDialog,
     QDoubleSpinBox,
@@ -201,9 +206,12 @@ class NewSackWizard(QDialog):
     _PAGE_FACTS: Final[int] = 4
     _PAGE_SENSORY: Final[int] = 5
     _PAGE_REVIEW: Final[int] = 6
+    # appended last so the indices above keep their historical values
+    _PAGE_NEWCROP: Final[int] = 7
 
-    def __init__(self, host) -> None:
+    def __init__(self, host, source_bean: GreenBean | None = None) -> None:
         # host: BeancaveDlg — catalogue, save/refresh, AI config, Niimbot.
+        # source_bean: skip straight to the new-crop flow for that record.
         super().__init__(host)
         # frameless translucent window: ground=False, else the grounded base
         # paints the rectangle opaque and squares off the rounded card.
@@ -216,6 +224,9 @@ class NewSackWizard(QDialog):
         self._ai_thread: QThread | None = None
         self._ai_worker: _WizardAIWorker | None = None
         self._prefilled_from: GreenBean | None = None
+        # locked source record: set only by the "New crop" shortcut
+        self._source_bean: GreenBean | None = source_bean
+        self._aw_win: QDialog | None = None
         # ⚖ Acaia capture — _ScaleFloatWindow reads `_aw` (tare) and calls
         # `receive_scale_weight` on its parent dialog.
         self._aw = getattr(host, 'aw', None)
@@ -229,6 +240,7 @@ class NewSackWizard(QDialog):
             self._PAGE_FACTS: QApplication.translate("tilauscope_sacks", "Characteristics"),
             self._PAGE_SENSORY: QApplication.translate("tilauscope_sacks", "Sensory & notes"),
             self._PAGE_REVIEW: QApplication.translate("tilauscope_sacks", "Review"),
+            self._PAGE_NEWCROP: QApplication.translate("tilauscope_sacks", "New crop"),
         }
 
         self.setWindowTitle(QApplication.translate("tilauscope_sacks", "New sack"))
@@ -275,7 +287,9 @@ class NewSackWizard(QDialog):
 
         # ── Title bar ────────────────────────────────────────────────────────
         title_row = QHBoxLayout()
-        title_lbl = QLabel(QApplication.translate("tilauscope_sacks", "NEW SACK"))
+        title_lbl = QLabel(
+            QApplication.translate("tilauscope_sacks", "NEW CROP") if source_bean is not None
+            else QApplication.translate("tilauscope_sacks", "NEW SACK"))
         title_lbl.setStyleSheet(
             f"color:{THEME['ACCENT']};font-size:14px;"
             f"font-weight:800;letter-spacing:3px;")
@@ -311,6 +325,7 @@ class NewSackWizard(QDialog):
         self.stack.addWidget(self._build_facts_page())        # 4
         self.stack.addWidget(self._build_sensory_page())      # 5
         self.stack.addWidget(self._build_review_page())       # 6
+        self.stack.addWidget(self._build_newcrop_page())      # 7
         lay.addWidget(self.stack, 1)
 
         # ── Navigation footer — every action lives here (mock v2) ───────────
@@ -355,7 +370,10 @@ class NewSackWizard(QDialog):
         nav.addWidget(self.create_btn)
         lay.addLayout(nav)
 
-        self._goto(self._PAGE_INTRO)
+        if source_bean is not None:
+            self._goto(self._PAGE_NEWCROP)
+        else:
+            self._goto(self._PAGE_INTRO)
 
     # ── Frameless drag ────────────────────────────────────────────────────────
     def mousePressEvent(self, event):  # noqa: N802
@@ -611,27 +629,15 @@ class NewSackWizard(QDialog):
         rl.addWidget(self.restock_hint)
         cz.addWidget(self._restock_w)
 
-        # new crop sub-form
+        # new crop sub-form — the fields themselves live on the New crop page
         self._newcrop_w = QWidget()
         cl = QVBoxLayout(self._newcrop_w)
         cl.setContentsMargins(0, 0, 0, 0)
         cl.setSpacing(8)
-        cf = QFormLayout()
-        cf.setHorizontalSpacing(14)
-        self.newcrop_crop_spin = QSpinBox()
-        self.newcrop_crop_spin.setRange(2000, 2100)
-        self.newcrop_weight_spin = QDoubleSpinBox()
-        self.newcrop_weight_spin.setRange(0.0, 100000.0)
-        self.newcrop_weight_spin.setDecimals(0)
-        self.newcrop_weight_spin.setSuffix(" g")
-        self.newcrop_weight_spin.setValue(1000.0)
-        cf.addRow(QApplication.translate("tilauscope_sacks", "Harvest year:"), self.newcrop_crop_spin)
-        cf.addRow(QApplication.translate("tilauscope_sacks", "Initial weight (stock):"), self.newcrop_weight_spin)
-        cl.addLayout(cf)
         cl.addWidget(self._hint(QApplication.translate("tilauscope_sacks",
-            "A new bean record is created with everything copied from the "
-            "existing one — you will just confirm the copied values at the "
-            "review step and adjust what changed (density, humidity, score…).")))
+            "The next step asks for the new harvest: year, weight, supplier "
+            "and the three measurements of the lot. Origin, process and "
+            "variety are inherited from the record above.")))
         cz.addWidget(self._newcrop_w)
         v.addWidget(self._cat_zone)
 
@@ -657,6 +663,8 @@ class NewSackWizard(QDialog):
             self.card_catalogue.setToolTip(QApplication.translate("tilauscope_sacks", "Your catalogue is still empty."))
 
     def _selected_source_bean(self) -> GreenBean | None:
+        if self._source_bean is not None:
+            return self._source_bean
         uid = self.existing_combo.currentData()
         beans = getattr(getattr(self._host, 'cave', None), 'green_beans', None) or []
         for b in beans:
@@ -665,6 +673,8 @@ class NewSackWizard(QDialog):
         return None
 
     def _mode(self) -> str:
+        if self._source_bean is not None:
+            return "newcrop"
         if self.card_new._selected:
             return "new"
         return "restock" if self.pill_restock.isChecked() else "newcrop"
@@ -685,9 +695,208 @@ class NewSackWizard(QDialog):
                 QApplication.translate("tilauscope_sacks", "Added to the current stock") +
                 f" ({src.weight_left:.0f} g → {src.weight_left + added:.0f} g). " +
                 QApplication.translate("tilauscope_sacks", "Nothing else on the record changes."))
-            if self._prefilled_from is not src:
-                self.newcrop_crop_spin.setValue(
-                    (src.crop + 1) if src.crop else datetime.now().astimezone().year)
+
+    # ── Page 7 : new crop of a catalogue bean ─────────────────────────────────
+    def _build_newcrop_page(self) -> QWidget:
+        page = QWidget()
+        v = QVBoxLayout(page)
+        v.setSpacing(12)
+
+        # -- inherited identity (read only)
+        v.addWidget(self._section(QApplication.translate("tilauscope_sacks", "Same coffee, next harvest")))
+        sz, szl = self._zone()
+        self.nc_source_lbl = QLabel("")
+        self.nc_source_lbl.setWordWrap(True)
+        self.nc_source_lbl.setStyleSheet(
+            f"color:{THEME['TEXT']};font-size:14px;font-weight:800;")
+        self.nc_source_sub = QLabel("")
+        self.nc_source_sub.setWordWrap(True)
+        self.nc_source_sub.setProperty('variant', 'secondary')
+        szl.addWidget(self.nc_source_lbl)
+        szl.addWidget(self.nc_source_sub)
+        szl.addWidget(self._hint(QApplication.translate("tilauscope_sacks",
+            "Origin, process, variety and altitude are copied as they are.")))
+        v.addWidget(sz)
+
+        # -- what belongs to the new sack
+        v.addWidget(self._section(QApplication.translate("tilauscope_sacks", "The new sack")))
+        nz, nzl = self._zone()
+        nf = QFormLayout()
+        nf.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        nf.setHorizontalSpacing(14)
+        nf.setVerticalSpacing(10)
+        self.newcrop_crop_spin = QSpinBox()
+        self.newcrop_crop_spin.setRange(2000, 2100)
+        self.newcrop_weight_spin = QDoubleSpinBox()
+        self.newcrop_weight_spin.setRange(0.0, 100000.0)
+        self.newcrop_weight_spin.setDecimals(0)
+        self.newcrop_weight_spin.setSuffix(" g")
+        self.newcrop_weight_spin.setValue(1000.0)
+        self.nc_supplier_edit = QLineEdit()
+        # the provenance page stays the single source of truth for the record
+        self.nc_supplier_edit.textChanged.connect(self._mirror_supplier)
+        nf.addRow(QApplication.translate("tilauscope_sacks", "Harvest year:"), self.newcrop_crop_spin)
+        nf.addRow(QApplication.translate("tilauscope_sacks", "Weight received:"), self.newcrop_weight_spin)
+        nf.addRow(QApplication.translate("tilauscope_sacks", "Supplier:"), self.nc_supplier_edit)
+        nzl.addLayout(nf)
+        v.addWidget(nz)
+
+        # -- the three lot measurements: never inherited silently
+        head = QHBoxLayout()
+        head.addWidget(self._section(QApplication.translate("tilauscope_sacks", "Measured on this lot")))
+        head.addStretch(1)
+        self.nc_copy_btn = self._ghost_btn("")
+        self.nc_copy_btn.setToolTip(QApplication.translate("tilauscope_sacks",
+            "Reuse the previous harvest's values as a starting point. They are "
+            "a guess until you measure this lot."))
+        self.nc_copy_btn.clicked.connect(self._copy_previous_measurements)
+        head.addWidget(self.nc_copy_btn)
+        v.addLayout(head)
+
+        mz, mzl = self._zone()
+        mzl.addWidget(self._hint(QApplication.translate("tilauscope_sacks",
+            "These three drive the roast plan and change with every harvest. "
+            "Leave a field empty if you have not measured it yet.")))
+        mf = QFormLayout()
+        mf.setHorizontalSpacing(14)
+        mf.setVerticalSpacing(10)
+        self.nc_density_spin = QDoubleSpinBox()
+        self.nc_density_spin.setRange(0.0, 1000.0)
+        self.nc_density_spin.setDecimals(1)
+        self.nc_density_spin.setSuffix(" g/L")
+        self.nc_humidity_spin = QDoubleSpinBox()
+        self.nc_humidity_spin.setRange(0.0, 30.0)
+        self.nc_humidity_spin.setDecimals(1)
+        self.nc_humidity_spin.setSuffix(" %")
+        self.nc_wa_spin = QDoubleSpinBox()
+        self.nc_wa_spin.setRange(0.0, 1.0)
+        self.nc_wa_spin.setDecimals(2)
+        self.nc_wa_spin.setSingleStep(0.01)
+        self.nc_wa_spin.setSuffix(" aw")
+        self.nc_density_ref = self._hint("")
+        self.nc_humidity_ref = self._hint("")
+        self.nc_wa_ref = self._hint("")
+        for spin, ref, mirror in (
+                (self.nc_density_spin, self.nc_density_ref, 'density_spin'),
+                (self.nc_humidity_spin, self.nc_humidity_ref, 'humidity_spin'),
+                (self.nc_wa_spin, self.nc_wa_ref, 'wa_spin')):
+            # 0 reads as "not measured" — show nothing rather than a false 0.0
+            spin.setSpecialValueText(" ")
+            spin.valueChanged.connect(
+                lambda val, name=mirror: getattr(self, name).setValue(float(val)))
+            row = QHBoxLayout()
+            row.setSpacing(12)
+            row.addWidget(spin)
+            row.addWidget(ref, 1)
+            holder = QWidget()
+            holder.setLayout(row)
+            label = {self.nc_density_spin: QApplication.translate("tilauscope_sacks", "Density:"),
+                     self.nc_humidity_spin: QApplication.translate("tilauscope_sacks", "Humidity:"),
+                     self.nc_wa_spin: QApplication.translate("tilauscope_sacks", "Water activity:")}[spin]
+            mf.addRow(label, holder)
+        mzl.addLayout(mf)
+        v.addWidget(mz)
+
+        # -- secondary: sensory carried over, collapsed by default
+        self.nc_more_btn = QPushButton("")
+        self.nc_more_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.nc_more_btn.setStyleSheet(
+            f"QPushButton {{ background: transparent; color: {THEME['ACCENT']};"
+            f" border: none; padding: 2px 0; font-size: 11px;"
+            f" font-weight: 600; text-align: left; }}")
+        self.nc_more_btn.clicked.connect(self._toggle_newcrop_more)
+        v.addWidget(self.nc_more_btn)
+
+        self.nc_more_w, mwl = self._zone()
+        mwf = QFormLayout()
+        mwf.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        mwf.setHorizontalSpacing(14)
+        mwf.setVerticalSpacing(10)
+        self.nc_flavour_edit = QLineEdit()
+        self.nc_flavour_edit.textChanged.connect(self._mirror_flavour)
+        self.nc_sca_spin = QDoubleSpinBox()
+        self.nc_sca_spin.setRange(0.0, 100.0)
+        self.nc_sca_spin.setDecimals(1)
+        self.nc_sca_spin.valueChanged.connect(
+            lambda val: self.sca_spin.setValue(float(val)))
+        mwf.addRow(QApplication.translate("tilauscope_sacks", "Flavour notes:"), self.nc_flavour_edit)
+        mwf.addRow(QApplication.translate("tilauscope_sacks", "Score:"), self.nc_sca_spin)
+        mwl.addLayout(mwf)
+        self.nc_retire_chk = QCheckBox("")
+        self.nc_retire_chk.setStyleSheet(
+            f"QCheckBox {{ color: {THEME['TEXT']}; font-size: 11.5px; }}")
+        mwl.addWidget(self.nc_retire_chk)
+        self.nc_more_w.hide()
+        v.addWidget(self.nc_more_w)
+
+        v.addStretch(1)
+        return page
+
+    def _mirror_supplier(self, text: str) -> None:
+        self.supplier_edit.setText(text)
+
+    def _mirror_flavour(self, text: str) -> None:
+        self.flavour_edit.setText(text)
+
+    def _toggle_newcrop_more(self) -> None:
+        self.nc_more_w.setVisible(not self.nc_more_w.isVisible())
+        self._refresh_newcrop_more_label()
+
+    def _refresh_newcrop_more_label(self) -> None:
+        src = self._selected_source_bean()
+        year = str(src.crop) if src is not None and src.crop else "—"
+        arrow = "▾" if self.nc_more_w.isVisible() else "▸"
+        self.nc_more_btn.setText(
+            f"{arrow} " + QApplication.translate("tilauscope_sacks",
+                "Sensory and score — copied from {0}, open this to adjust").format(year))
+
+    def _copy_previous_measurements(self) -> None:
+        src = self._selected_source_bean()
+        if src is None:
+            return
+        self.nc_density_spin.setValue(src.density or 0.0)
+        self.nc_humidity_spin.setValue(src.last_humidity or 0.0)
+        self.nc_wa_spin.setValue(src.water_activity or 0.0)
+
+    def _refresh_newcrop(self) -> None:
+        src = self._selected_source_bean()
+        if src is None:
+            return
+        year = str(src.crop) if src.crop else "—"
+        self.nc_source_lbl.setText("🫘  " + self._join(
+            [src.name, src.country, str(src.crop) if src.crop else ""]))
+        self.nc_source_sub.setText(self._join(
+            [src.process, src.varieties, f"{src.altitude} m" if src.altitude else "",
+             src.supplier, src.species]))
+        self.nc_copy_btn.setText(
+            QApplication.translate("tilauscope_sacks", "Copy {0} values").format(year))
+        self.nc_density_ref.setText(
+            QApplication.translate("tilauscope_sacks", "{0} was {1} g/L").format(year, f"{src.density:.1f}")
+            if src.density else "")
+        self.nc_humidity_ref.setText(
+            QApplication.translate("tilauscope_sacks", "{0} was {1} %").format(year, f"{src.last_humidity:.1f}")
+            if src.last_humidity else "")
+        self.nc_wa_ref.setText(
+            QApplication.translate("tilauscope_sacks", "{0} was {1} aw").format(year, f"{src.water_activity:.2f}")
+            if src.water_activity else "")
+        self.nc_retire_chk.setText(
+            QApplication.translate("tilauscope_sacks",
+                "This crop replaces the previous one — set {0} stock to 0").format(year))
+        self._refresh_newcrop_more_label()
+        if self._prefilled_from is not src:
+            # proposed once per source record, never against an operator edit
+            self._prefill_from_source()
+            self.newcrop_crop_spin.setValue(
+                (src.crop + 1) if src.crop else datetime.now().astimezone().year)
+        # the Characteristics page can be reached from Review — take back what
+        # was edited there so both views show the same measurements
+        for nc_spin, main_spin in ((self.nc_density_spin, self.density_spin),
+                                   (self.nc_humidity_spin, self.humidity_spin),
+                                   (self.nc_wa_spin, self.wa_spin)):
+            if nc_spin.value() != main_spin.value():
+                nc_spin.blockSignals(True)
+                nc_spin.setValue(main_spin.value())
+                nc_spin.blockSignals(False)
 
     # ── Page 2 : sack identification ──────────────────────────────────────────
     def _build_sack_page(self) -> QWidget:
@@ -1026,7 +1235,8 @@ class NewSackWizard(QDialog):
         if edit_page is not None:
             edit = self._ghost_btn("✎ " + QApplication.translate("tilauscope_sacks", "Edit"))
             edit.setToolTip(edit_tooltip)
-            edit.clicked.connect(lambda _=False, p=edit_page: self._edit_from_review(p))
+            edit.clicked.connect(
+                lambda _=False, p=edit_page: self._edit_from_review(self._resolve_edit_page(p)))
             head.addWidget(edit)
         zl.insertLayout(0, head)
         return z, zl
@@ -1074,6 +1284,13 @@ class NewSackWizard(QDialog):
 
         v.addStretch(1)
         return page
+
+    def _resolve_edit_page(self, page_idx: int) -> int:
+        # in the new-crop flow the year and weight live on the New crop page,
+        # not on the mode-choice Essentials page
+        if page_idx == self._PAGE_ESSENTIALS and self._mode() == "newcrop":
+            return self._PAGE_NEWCROP
+        return page_idx
 
     def _edit_from_review(self, page_idx: int) -> None:
         self._return_to_review = True
@@ -1159,6 +1376,11 @@ class NewSackWizard(QDialog):
             if missing:
                 warn_parts.append(
                     QApplication.translate("tilauscope_sacks", "Not extracted by the AI:") + " " + ", ".join(missing) + ".")
+        if mode == "newcrop" and not (self.density_spin.value() and self.humidity_spin.value()):
+            warn_parts.append(QApplication.translate("tilauscope_sacks",
+                "No density or humidity for this crop. The roast plan will use "
+                "the average for this kind of coffee. You can add the values "
+                "later from the bean sheet."))
         if mode != "restock":
             w = self.newcrop_weight_spin.value() if mode == "newcrop" else self.weight_spin.value()
             if w <= 0.0:
@@ -1183,27 +1405,69 @@ class NewSackWizard(QDialog):
             self._refresh_sack_pool()
         if page_idx == self._PAGE_ESSENTIALS:
             self._refresh_essentials_mode()
+        if page_idx == self._PAGE_NEWCROP:
+            self._refresh_newcrop()
         if page_idx == self._PAGE_REVIEW:
             self._refresh_review()
         self.stack.setCurrentIndex(page_idx)
 
+        title = self._page_titles.get(page_idx, "").upper()
+        flow = self._flow()
         if page_idx == self._PAGE_INTRO:
             self.step_lbl.setText("")
+        elif page_idx in flow:
+            self.step_lbl.setText(f"{flow.index(page_idx) + 1}/{len(flow)} — {title}")
         else:
-            self.step_lbl.setText(f"{page_idx}/6 — {self._page_titles[page_idx].upper()}")
+            self.step_lbl.setText(title)
 
+        # the New crop shortcut has no start page to go back to
         on_intro = page_idx == self._PAGE_INTRO
-        self.back_btn.setVisible(not on_intro)
+        first_step = self._source_bean is not None and page_idx == self._PAGE_NEWCROP
+        self.back_btn.setVisible(not on_intro and not first_step)
         self.start_btn.setVisible(on_intro)
         self.skip_btn.setVisible(page_idx == self._PAGE_SACK)
         self.next_btn.setVisible(page_idx not in (self._PAGE_INTRO, self._PAGE_REVIEW))
         self.create_btn.setVisible(page_idx == self._PAGE_REVIEW)
 
-        # ⚖ live scale reading only next to the weight fields (page 1)
-        if page_idx == self._PAGE_ESSENTIALS:
+        self._place_annex_windows(page_idx)
+
+    def _place_annex_windows(self, page_idx: int, force: bool = False) -> None:
+        """Show or hide the ⚖ and 💧 float windows for *page_idx*."""
+        if not force and not self.isVisible():
+            return  # no geometry to anchor to yet — showEvent does it
+        # ⚖ live scale reading only next to the weight fields
+        if page_idx in (self._PAGE_ESSENTIALS, self._PAGE_NEWCROP):
             self._show_scale_window()
         else:
             self._hide_scale_window()
+        # 💧 probe reading only next to the water-activity field
+        if page_idx == self._PAGE_NEWCROP:
+            self._show_aw_window()
+        else:
+            self._hide_aw_window()
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        # the New crop shortcut reaches its page from __init__, before the
+        # dialog is sized and moved — the annex windows were placed against a
+        # geometry that did not exist yet, so place them again here
+        self._place_annex_windows(self.stack.currentIndex(), force=True)
+
+    # ── Annex float windows (⚖ scale, 💧 probe) ──────────────────────────────
+    def _annex_pos(self, win: QDialog, offset_y: int) -> tuple[int, int]:
+        """Right edge of the wizard, flipped left and clamped to stay on screen."""
+        geo = self.geometry()
+        w = max(win.width(), win.sizeHint().width())
+        h = max(win.height(), win.sizeHint().height())
+        x, y = geo.right() + 12, geo.top() + offset_y
+        scr = self.screen()
+        if scr is not None:
+            avail = scr.availableGeometry()
+            if x + w > avail.right():
+                x = geo.left() - w - 12
+            x = max(avail.left(), min(x, avail.right() - w))
+            y = max(avail.top(), min(y, avail.bottom() - h))
+        return x, y
 
     # ── Acaia scale capture (same float window as ROAST SETUP) ───────────────
     def _show_scale_window(self) -> None:
@@ -1224,8 +1488,7 @@ class NewSackWizard(QDialog):
                     last = sm.get_scale1_last_weight()
                     if last is not None:
                         self._scale_window.update_weight(last)
-            geo = self.geometry()
-            self._scale_window.move(geo.right() + 12, geo.top() + 60)
+            self._scale_window.move(*self._annex_pos(self._scale_window, 60))
             self._scale_window.show()
             self._scale_window.raise_()
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
@@ -1266,26 +1529,76 @@ class NewSackWizard(QDialog):
         self._scale_window.close()
         self._scale_window = None
 
+    # ── 💧 AquaGauge capture (same annex window as the zone editor) ──────────
+    def _show_aw_window(self) -> None:
+        try:
+            dev = getattr(self._host, 'bleRoastSeeAGDevice', None)
+            if dev is None and getattr(self._aw, 'bleRoastSeeAGDeviceName', None) is None:
+                return  # no AquaGauge configured
+            if self._aw_win is None:
+                from tilauscope.beancave_zone_editors import _AwFloatWindow
+                self._aw_win = _AwFloatWindow(self)  # type: ignore[arg-type]
+                # the host forwards every probe reading here while we are open
+                self._host._aw_capture_cb = self._aw_win.update_value
+                if dev is not None:
+                    last = getattr(getattr(dev, 'ag', None), 'water_activity_read', 0.0) or 0.0
+                    if last > 0:
+                        self._aw_win.update_value(last)
+                    if not getattr(dev, 'is_connected', False):
+                        self._aw_win.set_status(QApplication.translate("tilauscope_sacks", "probe not connected…"))
+            # below the ⚖ scale window, which sits at the top of the same edge
+            self._aw_win.move(*self._annex_pos(self._aw_win, 220))
+            self._aw_win.show()
+            self._aw_win.raise_()
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _logd.exception('wizard aw window unavailable')
+
+    def _hide_aw_window(self) -> None:
+        if self._aw_win is not None and self._aw_win.isVisible():
+            self._aw_win.hide()
+
+    def receive_aw(self, wa: float) -> None:
+        # _AwFloatWindow contract: click on the live reading lands here.
+        self.nc_wa_spin.setValue(float(wa))
+
+    def _teardown_aw(self) -> None:
+        if self._aw_win is None:
+            return
+        try:
+            if getattr(self._host, '_aw_capture_cb', None) is self._aw_win.update_value:
+                self._host._aw_capture_cb = None
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _logd.exception('aw capture unregister failed')
+        self._aw_win.close()
+        self._aw_win = None
+
     def done(self, result: int) -> None:  # noqa: N802
         self._teardown_scale()
+        self._teardown_aw()
         super().done(result)
+
+    def _flow(self) -> list[int]:
+        """Ordered steps for the current entry point and mode."""
+        if self._source_bean is not None:
+            return [self._PAGE_NEWCROP, self._PAGE_SACK, self._PAGE_REVIEW]
+        mode = self._mode()
+        if mode == "newcrop":
+            return [self._PAGE_ESSENTIALS, self._PAGE_NEWCROP,
+                    self._PAGE_SACK, self._PAGE_REVIEW]
+        if mode == "restock" or self._ai_used:
+            # the record already exists (or the AI filled it) — steps 3–5 are
+            # for brand-new beans only
+            return [self._PAGE_ESSENTIALS, self._PAGE_SACK, self._PAGE_REVIEW]
+        return [self._PAGE_ESSENTIALS, self._PAGE_SACK, self._PAGE_PROVENANCE,
+                self._PAGE_FACTS, self._PAGE_SENSORY, self._PAGE_REVIEW]
 
     def _next_of(self, cur: int) -> int:
         if self._return_to_review:
             self._return_to_review = False
             return self._PAGE_REVIEW
-        if cur == self._PAGE_ESSENTIALS:
-            return self._PAGE_SACK
-        if cur == self._PAGE_SACK:
-            # Restock / new crop: the record already exists (or is copied) —
-            # jump straight to review, steps 3–5 are for brand-new beans.
-            if self._mode() in ("restock", "newcrop"):
-                return self._PAGE_REVIEW
-            if self._ai_used:
-                return self._PAGE_REVIEW
-            return self._PAGE_PROVENANCE
-        if cur in (self._PAGE_PROVENANCE, self._PAGE_FACTS):
-            return cur + 1
+        flow = self._flow()
+        if cur in flow and flow.index(cur) + 1 < len(flow):
+            return flow[flow.index(cur) + 1]
         return self._PAGE_REVIEW
 
     def _on_next(self) -> None:
@@ -1363,11 +1676,22 @@ class NewSackWizard(QDialog):
             self.bean3_ratio_spin.setValue(bean.bean3_ratio or 0.0)
 
     def _prefill_from_source(self) -> None:
-        """New-crop path: copy the whole source record into pages 3–5 once."""
+        """New-crop path: copy the whole source record into pages 3–5 once.
+
+        Density, humidity and water activity are deliberately left empty: they
+        are measurements of a lot, not properties of the coffee, and a stale
+        value would be indistinguishable from a fresh one in the roast plan.
+        """
         src = self._selected_source_bean()
         if src is None or self._prefilled_from is src:
             return
         self._apply_bean_to_widgets(src)
+        for spin in (self.density_spin, self.humidity_spin, self.wa_spin,
+                     self.nc_density_spin, self.nc_humidity_spin, self.nc_wa_spin):
+            spin.setValue(0.0)
+        self.nc_supplier_edit.setText(src.supplier)
+        self.nc_flavour_edit.setText(src.flavour_notes)
+        self.nc_sca_spin.setValue(src.sca or 0.0)
         self._prefilled_from = src
 
     # ── Create ────────────────────────────────────────────────────────────────
@@ -1396,6 +1720,11 @@ class NewSackWizard(QDialog):
                     bean.sacks = [sack_id]
                 host.cave.green_beans.append(bean)
                 target_uuid = bean.uuid
+                # explicit operator choice: the previous harvest is done
+                if mode == "newcrop" and self.nc_retire_chk.isChecked():
+                    src = self._selected_source_bean()
+                    if src is not None:
+                        src.weight_left = 0.0
 
             if sack_id:
                 # drop the label from both available stores (free + printed)
@@ -1415,6 +1744,7 @@ class NewSackWizard(QDialog):
     def _collect_bean(self, mode: str) -> GreenBean:
         src = self._selected_source_bean()
         if mode == "newcrop" and src is not None:
+            # dial-ins are tuned on one lot — they do not travel to the next
             base = dataclasses.replace(
                 src,
                 crop=self.newcrop_crop_spin.value(),
@@ -1422,6 +1752,7 @@ class NewSackWizard(QDialog):
                 count=0,
                 weight=0.0,
                 sacks=[],
+                dial_ins=[],
                 uuid=str(_uuid.uuid4()),
             )
         else:

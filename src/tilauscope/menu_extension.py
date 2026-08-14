@@ -104,7 +104,7 @@ class TilauMenuExtension:
         self.act_pid_autotune.triggered.connect(aw.handlePIDAutotune)
 
         # Inserted into Artisan's general Help menu — shares report_a_bug() with
-        # the About dialog and BeanCave's Export Logs button (never drift apart).
+        # the About dialog (never drift apart).
         self.act_export_logs = QAction(
             QApplication.translate('Menu', 'Export Logs...'), aw)
         self.act_export_logs.triggered.connect(self._export_logs)

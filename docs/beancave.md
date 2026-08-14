@@ -17,7 +17,7 @@ first time it opens it runs the
 
 ---
 
-## The five tabs
+## The four tabs
 
 | Tab | What it is for |
 |---|---|
@@ -25,7 +25,6 @@ first time it opens it runs the
 | **Roast Viewer** | Reading back a finished roast — curve, statistics, tasting. See [After the roast](after-the-roast.md). |
 | **Roasting plan** | Generating a [roast plan](the-roast-plan.md) and its PDF. |
 | **Stockage** | How your coffee is keeping: [water activity](glossary.md#aw--water-activity), conditioning, sack labels — see [Sacks, stock and conservation](sacks-and-storage.md). |
-| **File Management** | Roast files: auditing incomplete ones, linking them to a coffee, exports. |
 
 ---
 
@@ -98,6 +97,14 @@ coffee whose density you did measure at that figure needs entering again.
 **Water activity** can be measured directly from the record with an AquaGauge. What the value
 means for storage is in [Sacks, stock and conservation](sacks-and-storage.md).
 
+**Density**, **Humidity** and **Water activity** each read back what the figure means, in plain
+words, right after the value: *790 g/l (dense)*, *12.4 % (moist)*, *0.54 (typical)*. It appears
+both in the *Characteristics* zone of the record and in the fields you edit. The comment turns
+amber when the value sits outside the usual range, and red when a water activity is high enough
+to be a storage risk. The bands are the same ones the roast plan and the coach's advice use, so a
+value never reads *normal* in one place and is flagged in the other. An unmeasured value says
+nothing.
+
 **Flavour notes** are entered on the flavour wheel rather than typed as free text, which keeps the
 vocabulary consistent from one coffee to the next.
 
@@ -128,6 +135,10 @@ know — everything can be refined later from the sheet.*
     reviews everything before saving. The expert form exists for when you know exactly what you
     are entering. See [Sacks, stock and conservation](sacks-and-storage.md) for the assistant in
     full.
+
+    When the coffee is already in the catalogue and this is simply its next harvest, select it and
+    use **🌱 New crop** instead: it inherits everything that does not change and asks only for the
+    new year, the weight and the measurements of the lot.
 
 ### Filling a record from the supplier's page
 
@@ -177,18 +188,9 @@ works too — see [Labels and QR](labels-and-qr.md) for printing and scanning in
 
 ## Roast files
 
-The **File Management** tab works on the roast files themselves: browsing the roast directory,
-auditing profiles with missing information, linking one to a green coffee and completing its
-fields one file at a time. A file is only rewritten when you press **Record**.
-
-This is where a roast saved without its finishing details — after a
-[back-to-back relaunch](the-guided-roast.md#cooling-and-the-next-batch), for instance — is
-completed.
-
-Exports live here too: roast data as CSV, a format prepared for analysis by a language model, and
-diagnostic logs. An export, and the scan that counts each coffee's roasts, hold the window while
-they run and show how many files they have read as they go — see
-[While the app is working](the-window.md#while-the-app-is-working).
+Auditing incomplete roast files, linking one to a green coffee, and recomputing how many roasts
+each coffee has is not a BeanCave tab — it opens from **TilauScope → Roast Profile
+Maintenance…**. See [Repairing incomplete roast files](after-the-roast.md#repairing-incomplete-roast-files).
 
 ---
 

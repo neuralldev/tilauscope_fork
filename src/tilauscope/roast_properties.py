@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Final
 from datetime import datetime
 
 from tilauscope.roast_insights import build_insights, targets_from_plan
-from tilauscope.theme_qss import base_qss, apply_tilau_theme
+from tilauscope.theme_qss import base_qss, apply_tilau_theme, tooltip_qss
 from tilauscope.roasters import RoasterManager
 from PyQt6.QtCore    import Qt, QPropertyAnimation, pyqtSlot, QTimer, QSettings
 from PyQt6.QtCore import QThread, QObject, pyqtSignal
@@ -1416,16 +1416,7 @@ class RoastSetupDialog(QDialog):
     # ── UI construction ──────────────────────────────────────────────────────
 
     def _tooltip_style(self):
-        return f"""
-            QToolTip {{
-                background-color: {THEME['BG']}; /* Gris foncé pour le fond */
-                color: white;              /* Texte blanc */
-                border: 1px solid {THEME['BORDER']}; /* Bordure discrète */
-                padding: 5px;
-                border-radius: 3px;
-                font-size: 11px;
-            }}
-        """
+        return tooltip_qss()
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)

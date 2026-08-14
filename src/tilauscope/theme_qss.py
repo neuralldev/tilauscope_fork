@@ -15,7 +15,7 @@ from tilauscope.tilauscope_types import THEME
 if TYPE_CHECKING:
     from PyQt6.QtWidgets import QWidget
 
-__all__ = ['apply_tilau_theme', 'base_qss', 'mono_family', 'restyle', 'tint']
+__all__ = ['apply_tilau_theme', 'base_qss', 'mono_family', 'restyle', 'tint', 'tooltip_qss']
 
 _log = logging.getLogger(__name__)
 
@@ -59,6 +59,28 @@ def mono_family() -> str:
         _log.exception('theme: font registration failed, falling back to %s', fallback)
         _MONO_FAMILY = fallback
     return _MONO_FAMILY
+
+
+def tooltip_qss() -> str:
+    """Return the QToolTip rule alone.
+
+    Qt does not cascade tooltip styling: it styles the tip with the sheet of
+    the *first* ancestor of the hovered widget that has a non-empty stylesheet.
+    A container styled with something as small as ``background: transparent``
+    therefore hides the window's QToolTip rule and the tip falls back to the
+    system white. Append this to any such intermediate sheet.
+    """
+    t = THEME
+    return f"""
+QToolTip {{
+    background-color: {t['SURFACE']};
+    color: {t['TEXT']};
+    border: 1px solid {t['BORDER']};
+    border-radius: 4px;
+    padding: 5px 7px;
+    font-size: 12px;
+}}
+"""
 
 
 def base_qss(ground: bool = True) -> str:
@@ -341,12 +363,7 @@ QProgressBar {{
 }}
 QProgressBar::chunk {{ background-color: {t['ACCENT']}; border-radius: 5px; }}
 
-QToolTip {{
-    background-color: {t['SURFACE']};
-    color: {t['TEXT']};
-    border: 1px solid {t['BORDER']};
-    padding: 4px 6px;
-}}
+{tooltip_qss()}
 """
 
 

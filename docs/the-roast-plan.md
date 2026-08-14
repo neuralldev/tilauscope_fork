@@ -31,6 +31,8 @@ ambient probe. Two actions close it out:
     All three control ramps are armed, not just the burner: the heat ladder through Maillard,
     the airflow opening that follows the browning, and the development ramp where the fire eases
     while the air supports the reaction. Each step fires on its own bean-temperature threshold.
+    The airflow also climbs to its Maillard value in steps of one machine notch as dry end
+    approaches, instead of being posted there in one move at the milestone itself.
     The rows posted at dry end and at first crack are the value the ramp **holds** as the
     milestone is crossed — the same figures as the phase-entry table — so a milestone never
     jumps a lever to where the ramp is only due to arrive later.
@@ -59,14 +61,23 @@ Profile*, plus the coffee's own properties — *Density*, *Bean Humidity*, *Wate
 *Process Type* — and, where an ambient probe is fitted, *Ambient Temp*. A plan is specific to
 a batch on a day, not to a coffee in the abstract.
 
-Two of those properties are measured twice, and the plan uses only one of each. **Water
-activity beats bean humidity**: humidity counts all the water in the coffee, including the part
-that is chemically bound and never leaves during drying, while water activity counts only the
-free water — the water that actually evaporates, protects the surface from scorching, and
-becomes the steam that swells the bean. **Density beats altitude**: altitude only tells you a
-coffee is *probably* hard, density tells you it is. When the better measurement is on the
-record, the other is ignored rather than added on top; when neither is, nothing is applied and
-the plan simply uses its grid.
+**Bean humidity and water activity are not the same measurement, and the plan uses both.**
+Humidity is *how much* water the coffee holds — the mass to heat and evaporate, so it sets the
+drying time, the burner, the charge temperature, the push through first crack and how long the
+coffee coasts at the end. Water activity is *how freely* that water leaves, so it sets the
+airflow. A coffee can hold plenty of water that leaves reluctantly, and both facts are true at
+once: neither reading cancels or replaces the other, and one being absent never makes the plan
+guess it from the other.
+
+**Density beats altitude**, on the other hand: altitude only tells you a coffee is *probably*
+hard, density tells you it is. A denser coffee is charged hotter — up to 7 °C above the
+reference for its process, and it is the one property allowed to take the charge past the usual
+range for that process, because a hard coffee genuinely takes what a soft one of the same
+process could not — and it is given more power early:
+its structure carries heat to the centre without marking the surface, where a softer coffee
+would scorch at the same setting. When density is on the record, altitude is ignored rather
+than added on top; when a property is missing, nothing is applied for it and the plan uses its
+grid.
 
 *Ambient Humidity* is still recorded on every roast, but it no longer changes a plan. Its
 influence is on the coffee **between** roasts — a humid room pulls the water activity of stored
@@ -81,6 +92,30 @@ Time*, *Drop Temp*.
 Maillard duration is not lengthened merely because it is under 3:00; only a 2:00 technical
 plausibility guard rejects likely bad milestone data. Style ranges remain guidance.
 
+On a radiant electric roaster these durations are not read off a style table. They are what
+the rate-of-rise plan costs: the curve leaves the turning point near 16°C/min, enters Maillard
+near 12, passes 8 a minute before first crack and arrives at the crack at 5 to 6, and drying
+and Maillard last exactly as long as that climb takes. A larger batch turns lower, so it has
+further to climb and takes longer — 250 g dries in under four minutes where 400 g needs closer
+to six. Nothing states that rule; it falls out of the slope and the temperature to cover.
+Bean moisture, room temperature and your own roast history still shift the result on top.
+
+Maillard is always planned shorter than drying, and shorter by a real margin — four minutes of
+drying against three of Maillard, or five against four. Equal halves are not a shape this
+machine roasts: the rate of rise has no time to come down. On a small batch the turning point
+sits high, so there is little climb left before the dry end while Maillard still has its full
+span to cover, and the arithmetic alone would invert the two. When that happens it is Maillard
+that gives way, not drying: drying has a duration the batch size fixes — around three minutes
+at 150 g, closer to five at a full drum — while Maillard has only a rate to hold, and a rate
+can be held higher. The plan then leads Maillard more briskly than the usual easing and tells
+you the rate it settled on.
+
+One case needs a word. When the batch is small the machine cannot dry any faster than its own
+floor, so drying may be held longer than the climb strictly costs — and a longer dry at the
+same rate of rise arrives hotter. The plan then raises the dry end by a couple of degrees
+rather than pretend the bean is where it was, because the rate of rise has to keep falling
+into Maillard and it cannot do that if drying gains time without gaining temperature.
+
 The Skywalker V2's post-turning-point [rate of rise](glossary.md#ror--rate-of-rise) is centred
 near 16°C/min in the available history. The plan treats this as a typical reference, not a
 physical maximum. Values above 16 are common, and the initial placeholder turning point is not
@@ -90,18 +125,36 @@ used to declare a plan impossible.
 placed from the batch size rather than from the charge temperature alone, because that is what
 the machine actually does: load half a drum and the temperature dives far less far. Expect a
 small batch to turn some 25°C higher than a full one charged identically, and expect the drying
-rate of rise to be correspondingly gentler — there is less climb left to make.
+rate of rise to be correspondingly gentler — there is less climb left to make. The dip stops
+deepening below roughly 280 g: a 150 g and a 250 g batch turn at much the same temperature, so
+the plan does not keep raising the turning point as the batch gets smaller.
 
 **RoR targets.** *Target ROR Maillard*, *Target ROR at FC*, *Target ROR Dev* and *Target ROR at
 Drop*: the slope to hold at each stage. The Maillard figure is an average, and an average says
-nothing about where the roast lands — *Target ROR at FC* is the arrival value, worked out from
-how quickly this machine's rate of rise decays, and it is the one that decides first crack.
+nothing about where the roast lands — *Target ROR at FC* is the arrival value, and it is the one
+that decides first crack. On a radiant roaster it is prescribed by the plan rather than deduced
+from the curve, because entering the crack at 8°C/min instead of 5 gives a medium roast even on
+a one-minute development. The four figures fall from one to the next: a plan whose development
+average sits above its first-crack figure would describe a curve that speeds up after the crack,
+and the plan now says so instead of printing it silently.
+
+**Drop temperature.** On a radiant roaster this is worked out, not looked up: development starts
+at the prescribed first-crack slope, keeps easing towards the drop slope, and the temperature
+that climb reaches is the target. Measured colours from your own roasts still correct it — a
+table of drop temperatures by roast level does not survive a change of machine or probe, your
+own record of what a colour reading cost does.
 
 **Development.** *Resulting DTR (%)* — development itself is planned as a duration at the
 right temperature and rate of rise for the batch, and the ratio is the figure that comes out
 of it, known before charging rather than discovered at the end. When it falls outside the
 usual range for the roast level, the plan notes it as a sign to look at the front of the
 roast, not at development.
+
+On a radiant electric roaster the development window is shorter than the general table
+suggests: roughly 0:45 to 1:00 for a light roast and about 1:30 for a medium light one. The
+radiant element finishes the roast quickly, and a light roast held a full two minutes past
+first crack usually lands medium. The total time does not change with it — the extra time
+goes back into Maillard, where the sugars have longer to develop.
 
 **The curve.** *Planned BT* and *Planned RoR*, a smooth curve the real roast can be laid over.
 
@@ -118,13 +171,16 @@ it: when it starts, how large your steps are, and the value you land on at dry e
 you have never had to correct gets no reduction scheduled at all.
 
 After dry end the ladder follows its grid or learned settings. Coffee properties do not impose
-a heater floor. Where a roaster has been measured for it, a pre-first-crack setting below its
-support threshold is reported as a low-authority zone, and the band just above it as a
-low-margin zone; the note names the machine and its own figures — on the Skywalker V2 (the
-*ITOP Cyberroaster* profile), below about 45% and 45–50%. The plan does not raise either
-setting.
-These are machine observations, not electrical cut-offs or bean-chemistry laws. They do not
-apply as warnings during development, where losing momentum can be intentional.
+a heater floor, but **the machine does**. Where a roaster has been measured for it, the plan
+never asks for a setting below the power that still sustains the reaction — on the Skywalker V2
+(the *ITOP Cyberroaster* profile), 45%. Below it the element keeps heating but no longer feeds
+the roast, and the rate of rise gives way. The floor applies to every phase, and it applies to
+a setting learned from your own history as much as to one off the grid: a habit of dropping
+lower is exactly what it is there to stop from spreading.
+
+The band just above the floor, 45–50%, is reported as a low-margin zone. That one is a note,
+not a limit — the plan will still ask for it, and you decide from the live rate of rise whether
+to hold. These are machine observations, not electrical cut-offs or bean-chemistry laws.
 
 **Machine settings at phase entry.** A table of what each lever must read as a phase begins:
 at charge, when bean temperature reaches dry end, and at first crack. Not an average for the
@@ -204,6 +260,15 @@ References are drawn only from roasts of the **same coffee** — matched on its 
 not on a similar-looking name — and at a **comparable batch size**. A 250 g roast is not used
 as a reference for a 450 g one, because it never was one. This is what stops a plan from being
 steered by a curve that had nothing to do with the batch in the drum.
+
+One figure is learned from a wider set: the **burner you start on**. It comes from your roasts
+of the same process at the same batch size, whatever the coffee was — a washed coffee at 400 g
+is answered by every washed 400 g roast you have done. The coffee has no opinion on how the
+machine heats; the batch size and the process do, and the wider set gives a firmer answer than
+the one or two roasts of a single bean. Maillard and development burner stay learned from that
+coffee alone, because those follow the colour you are aiming for. When the wider set decides,
+the plan says so and prints the figure it holds — after any between-batch correction, not
+before.
 
 <!-- CAPTURE 6.5 — the source and History support lines of a PDF, cropped, on a coffee with
 "learned (n=…)" values. CAPTURE 6.6 — the historical profile vs calculated plan comparison. -->

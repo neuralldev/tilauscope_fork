@@ -17,7 +17,7 @@
 
 from __future__ import annotations
 
-from tilauscope.theme_qss import apply_tilau_theme
+from tilauscope.theme_qss import apply_tilau_theme, tooltip_qss
 
 import copy
 import json
@@ -103,6 +103,7 @@ def _style_label(st: EspressoStyle) -> str:
     return {
         EspressoStyle.CLASSIC: QApplication.translate("tilauscope_brew", "Classic long"),
         EspressoStyle.TURBO: QApplication.translate("tilauscope_brew", "Turbo (short, coarse)"),
+        EspressoStyle.MODERN: QApplication.translate("tilauscope_brew", "Modern (high-flow basket)"),
     }[st]
 
 
@@ -153,6 +154,9 @@ def _note_text(code: NoteCode, params: dict) -> str:
         NoteCode.ORIGIN_HIGH: QApplication.translate("tilauscope_brew", "Dense high-altitude structure: tolerates high-yield, wider ratio."),
         NoteCode.ORIGIN_LOW: QApplication.translate("tilauscope_brew", "Lower-grown / less dense: tighter ratio to keep body."),
         NoteCode.TURBO: QApplication.translate("tilauscope_brew", "Turbo shot: coarse grind and a short pull. It needs a machine that holds its pressure — if yours dips, the shot will read sour and under-extracted rather than fast."),
+        NoteCode.MODERN: QApplication.translate("tilauscope_brew", "Modern shot: 3 s bloom, 7 s soak, then pull for {s} s at 9 bar. Needs a high-flow (high-extraction) basket."),
+        NoteCode.MODERN_NO_PI: QApplication.translate("tilauscope_brew", "Your machine has no pre-infusion — Modern needs one to bloom the puck before the pull. Timing below falls back to Classic."),
+        NoteCode.MODERN_TOO_DARK: QApplication.translate("tilauscope_brew", "Modern is a light-roast style — this roast is past its range, so a fast pull would over-extract. Falling back to Classic timing."),
         NoteCode.RATIO_OFFSET: QApplication.translate("tilauscope_brew", "Those two ratio signals pull opposite ways and cancel — the ratio above is the balance of both, not a compromise you need to resolve."),
         NoteCode.CAPACITY: QApplication.translate("tilauscope_brew", "This recipe needs {w} g of water — more than a typical brewer of this kind holds (~{cap} g). Brew a smaller dose, or check yours is a large model."),
         NoteCode.BASKET: QApplication.translate("tilauscope_brew", "A {d} g dose will not fit a normal espresso basket (~{cap} g maximum)."),
@@ -1182,11 +1186,7 @@ class BrewAdvisorDlg(QDialog):
                yellow box in the middle of a Catppuccin panel — most visibly on
                "Searching for the scale…", whose tooltip carries the only
                instruction the operator gets. */
-            QToolTip {{
-                background-color: {THEME['SURFACE']}; color: {THEME['TEXT']};
-                border: 1px solid {THEME['BORDER']}; border-radius: 6px;
-                padding: 6px 8px; font-size: 12px;
-            }}
+            {tooltip_qss()}
         """
 
     # ── layout ──
@@ -1273,7 +1273,10 @@ class BrewAdvisorDlg(QDialog):
             "tilauscope_brew",
             "Classic long: keeps the grind the roast asks for and lets the shot run as "
             "long as the ratio needs.\nTurbo: fixes the shot around 25 s and opens the "
-            "grind to get the flow — the roast is then expressed by the ratio alone."))
+            "grind to get the flow — the roast is then expressed by the ratio alone."
+            "\nModern: a fixed short pre-infusion (2-3 s bloom, 7-8 s soak) then a fast "
+            "9-bar pull, 10-20 s depending on the roast — for a high-flow basket and "
+            "light roasts only."))
         self.cmb_style.currentIndexChanged.connect(self._on_style)
 
         ctrl.addWidget(QLabel(QApplication.translate("tilauscope_brew", "Method")))

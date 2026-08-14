@@ -8,6 +8,7 @@ from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget
 
 from tilauscope.tilauscope_types import THEME
+from tilauscope.theme_qss import tooltip_qss
 
 _TITLE_BAR_HEIGHT = 34
 
@@ -93,7 +94,7 @@ _MENU_QSS = f"""
 """
 
 _CENTRAL_QSS = f"""
-    QToolTip {{ background-color: {THEME['SURFACE']}; color: {THEME['TEXT']}; border: 1px solid {THEME['BORDER']}; }}
+    {tooltip_qss()}
     QScrollBar:vertical {{ background-color: {THEME['BG']}; width: 12px; margin: 0; }}
     QScrollBar::handle:vertical {{ background-color: {THEME['BORDER']}; border-radius: 4px; min-height: 20px; }}
     QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}

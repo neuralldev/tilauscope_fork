@@ -106,8 +106,10 @@ the roast develops, so it tracks how far the roast went.
 
 #### Moisture content
 
-The water still held in green coffee, as a percentage of its weight. Higher moisture means a
-longer drying phase and a coffee that resists heat for longer at the start.
+The water still held in green coffee, as a percentage of its weight — *how much* water there
+is. It is the mass the roast has to heat and evaporate, so higher moisture means a longer
+drying phase, more power, and a coffee that resists heat for longer at the start. Distinct from
+[water activity](#aw--water-activity), which says how freely that water leaves.
 
 #### Density
 
@@ -127,8 +129,10 @@ standard reference for a coffee's quality independent of any particular roast.
 
 #### aw — water activity
 
-How much of the water in green coffee is chemically available, on a 0 to 1 scale. It
-predicts how well a bag will keep far better than moisture content alone.
+How much of the water in green coffee is free rather than bound, on a 0 to 1 scale — *how
+readily* it leaves, not how much of it there is. It predicts how well a bag will keep far
+better than [moisture content](#moisture-content) alone, and in a roast plan it sets the
+airflow that clears the steam.
 
 #### Retained reading
 

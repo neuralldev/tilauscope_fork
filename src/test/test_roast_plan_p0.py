@@ -189,8 +189,12 @@ def test_an_unknown_batch_or_machine_falls_back_to_the_fixed_share() -> None:
 
 
 def test_an_absurd_batch_cannot_push_the_turning_point_out_of_the_drum() -> None:
-    """A 50 g sample or a triple overload must still yield a drawable curve."""
-    assert _TP(180.0, 50.0, 400.0) == pytest.approx(180.0 * 0.75)
+    """A 50 g sample or a triple overload must still yield a drawable curve.
+
+    The low bound is the MEASURED plateau, not a safety margin: the dip stops
+    deepening below roughly 280 g (share 0.313 at 150 g, 0.316 at 250 g).
+    """
+    assert _TP(180.0, 50.0, 400.0) == pytest.approx(180.0 * 0.69)
     assert _TP(180.0, 1200.0, 400.0) == pytest.approx(180.0 * 0.35)
 
 

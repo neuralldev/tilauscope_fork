@@ -41,7 +41,7 @@ from artisanlib.util import fromCtoFstrict, fromFtoCstrict, weight_units, conver
 from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, THEME,
     get_agtron_color, get_roc_color, get_ror_color_by_phase, get_ror_ideal_band,
     format_batch_label, to_agtron)
-from tilauscope.theme_qss import tint
+from tilauscope.theme_qss import tint, tooltip_qss
 from tilauscope.roasters import RoasterManager, RoasterContext
 from tilauscope.roast_plan_model import TilauScopeRoastPlan, heat_soak_correction
 from tilauscope.roast_plan_snapshot import build_prediction_snapshot
@@ -3976,14 +3976,7 @@ class _SetupBar(QFrame):
             min-height: 20px;
         }}
         /* Keep the dark tooltip style even when embedded in anchored mode */
-        QToolTip {{
-            background-color: {THEME['BORDER']};
-            color: white;
-            border: 1px solid {THEME['SURFACE2']};
-            padding: 5px;
-            border-radius: 3px;
-            font-size: 11px;
-        }}
+        {tooltip_qss()}
     """
 
     def __init__(self):
@@ -4031,9 +4024,7 @@ class _SetupBar(QFrame):
                 font-size: 16px; font-weight: bold; }}
             QPushButton:hover {{ background: {THEME['BG']}; color: {_ACCENT};
                 border-color: {_ACCENT}; }}
-            QToolTip {{ background-color: {THEME['BORDER']}; color: white;
-                border: 1px solid {THEME['SURFACE2']}; padding: 5px;
-                border-radius: 3px; font-size: 11px; }}
+            {tooltip_qss()}
         """)
         self.btn_anchor.hide()
         bean_hdr.addWidget(self._lbl_bean)
@@ -4233,9 +4224,7 @@ class _BeanHeader(QFrame):
             }}
             QPushButton:hover {{ background: {THEME['BG']}; }}
             QPushButton:pressed {{ background: {color}; color: {THEME['CRUST']}; }}
-            QToolTip {{ background-color: {THEME['BORDER']}; color: white;
-                border: 1px solid {THEME['SURFACE2']}; padding: 5px;
-                border-radius: 3px; font-size: 11px; }}
+            {tooltip_qss()}
         """)
         self.btn_toggle.setText("■" if active else "▶")
 
@@ -4905,11 +4894,7 @@ class RoastAssistantPanel(QWidget):
                 border: 2px solid {_BORDER};
                 border-radius: 14px;
             }}
-            QToolTip {{
-                background: {THEME['BORDER']}; color: white;
-                border: 1px solid {_BORDER};
-                padding: 4px; border-radius: 3px; font-size: 11px;
-            }}
+            {tooltip_qss()}
         """)
         outer.addWidget(self._container)
 
@@ -4961,9 +4946,7 @@ class RoastAssistantPanel(QWidget):
             f"#AssistantBody {{ background: {_BG}; border: none; }}"
             # Dark tooltip applied at body level so every descendant keeps it,
             # including when the body is reparented into the anchored host.
-            f"QToolTip {{ background-color: #2D2F3F; color: white;"
-            f" border: 1px solid {THEME['SURFACE2']}; padding: 5px;"
-            f" border-radius: 3px; font-size: 11px; }}")
+            + tooltip_qss())
         self._body.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         body_lay = QVBoxLayout(self._body)
         body_lay.setContentsMargins(0, 0, 0, 0)

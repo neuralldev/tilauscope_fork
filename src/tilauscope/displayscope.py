@@ -59,7 +59,7 @@ from tilauscope.artisan_message_ticker import ArtisanMessageTicker, ArtisanMessa
 from tilauscope.axes_config import AxesConfigHook
 from tilauscope.canvas_style import CanvasStyleHook
 from tilauscope.main_window_style import take_body, give_body
-from tilauscope.theme_qss import apply_tilau_theme, base_qss, tint
+from tilauscope.theme_qss import apply_tilau_theme, base_qss, tint, tooltip_qss
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -742,7 +742,7 @@ class EventPanel(QWidget):
         self.settings = QSettings()
         self.oldPos = QPoint()
 
-        self.setStyleSheet(f"QToolTip {{ color: #ffffff; background-color: #2D2D35; border: 1px solid {THEME['SURFACE2']}; }}")
+        self.setStyleSheet(tooltip_qss())
 
         # Allow resizing for this panel
         self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
@@ -1002,8 +1002,7 @@ class BigControlCard(QFrame):
         # OS style).
         self.setStyleSheet(
             "BigControlCard { background: transparent; border: none; }"
-            f"QToolTip {{ background-color: #2D2F3F; color: {THEME['TEXT']};"
-            f" border: 1px solid {THEME['SURFACE2']}; padding: 4px; border-radius: 4px; }}"
+            + tooltip_qss()
         )
 
         outer = QVBoxLayout(self)
@@ -3362,14 +3361,7 @@ class TilauScope(QWidget):
         main_layout.setSpacing(0)
 
         self.setStyleSheet(f"""
-                            QToolTip {{
-                                background-color: #2D2F3F; /* Gris foncé pour le fond */
-                                color: white;              /* Texte blanc */
-                                border: 1px solid {THEME['SURFACE2']}; /* Bordure discrète */
-                                padding: 5px;
-                                border-radius: 3px;
-                                font-size: 11px;
-                            }}
+                            {tooltip_qss()}
                         """)
         # Main Styled Frame
         self.container = QFrame()
@@ -3546,9 +3538,7 @@ class TilauScope(QWidget):
         self.drag_handle.setStyleSheet(f"""
             QLabel {{ color: {THEME['SURFACE1']}; font-size: 18px; border: none;
                      background: transparent; padding: 0 2px; }}   /* TILAU: header budget (was 0 8px, then 0 4px) */
-            QToolTip {{ background-color: #2D2F3F; color: white;
-                       border: 1px solid {THEME['SURFACE2']}; padding: 5px;
-                       border-radius: 3px; font-size: 11px; }}
+            {tooltip_qss()}
         """)
         self.drag_handle.setCursor(Qt.CursorShape.SizeAllCursor)
         self.drag_handle.setToolTip(QApplication.translate("tilauscope_window", "Drag to move"))
@@ -4616,9 +4606,7 @@ class TilauScope(QWidget):
             f" border: 1px solid {_col}; border-radius: 6px;"
             f" font-size: 13px; font-weight: 800; }}"
             f"QPushButton:hover {{ background: {THEME['BG']}; }}"
-            f"QToolTip {{ background-color: #2D2F3F; color: white;"
-            f" border: 1px solid {THEME['SURFACE2']}; padding: 5px;"
-            f" border-radius: 3px; font-size: 11px; }}"
+            + tooltip_qss()
         )
         self.btn_level.setToolTip(
             QApplication.translate("tilauscope_window", "Operator level: {0} — click for {1}")

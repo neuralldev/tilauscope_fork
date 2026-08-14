@@ -53,8 +53,13 @@ timing for an immersion brewer, the full lead-in sequence for espresso once a ma
 is set.
 
 **For espresso**, the machine itself matters: setting a machine profile (E61, dual boiler,
-lever, and others) shapes the pre-infusion timing to match it, and a **Classic / Turbo** shot
-style toggle chooses between a ratio-driven shot length and a fixed, fast one.
+lever, and others) shapes the pre-infusion timing to match it, and a **Classic / Turbo /
+Modern** shot style chooses how the shot is timed. Classic is ratio-driven, running as long as
+the roast needs; Turbo fixes a short, fast shot and opens the grind to match; Modern is for a
+high-flow basket on a medium-light roast or lighter — a short fixed pre-infusion (bloom, then a
+soak) followed by a fast 9-bar pull, its length read from the roast itself rather than fixed.
+Chosen on a darker roast, or a machine with no pre-infusion, Modern explains why it fell back to
+Classic timing instead.
 
 !!! note
     A coffee with water quality entered — general and carbonate hardness — has that folded

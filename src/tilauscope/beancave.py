@@ -55,7 +55,7 @@ from PIL.ImageQt import ImageQt # Import pour convertir l'image PIL en QImage
 
 from artisanlib.main import ApplicationWindow, getAppPath # noqa: F401 # pylint: disable=unused-import
 from artisanlib.widgets import MyQDoubleSpinBox
-from artisanlib.util import fill_gaps, convertTemp, cast, fromCtoFstrict, convertWeight, weight_units, smooth_list  # smooth_list moved from tgraphcanvas to util
+from artisanlib.util import fill_gaps, convertTemp, cast, fromCtoFstrict, smooth_list  # smooth_list moved from tgraphcanvas to util
 
 from artisanlib.atypes import ProfileData, ComputedProfileInformation
 
@@ -76,15 +76,17 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 
 from tilauscope.niimprint import NiimbotBLE, Niimprint_PaperType
 from tilauscope.tilau_ble_scanner import TilauBLEScanner
-from tilauscope.theme_qss import base_qss, apply_tilau_theme, tint
+from tilauscope.theme_qss import base_qss, apply_tilau_theme, tint, tooltip_qss
 from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, ReferenceProfile, BeanCaveContainer, GREEN_BEAN_COLUMNS, show_styled_message,
                                          THEME, standardization_map, ProbeDeviation, ProbeDeviationInterval, RoastingPhase, TilauProgressDialog, _IS_MACOS, _IS_WINDOWS,
-                                         open_in_os_viewer, TilauProgressRow, print_progress_pill)
-from tilauscope.header_icons import SVG_PROG_SEARCH, SVG_PROG_UPLOAD, SVG_PROG_AI
+                                         open_in_os_viewer, TilauProgressRow, print_progress_pill, ROASTING_BASIC_BASE, WEIGHT_LOSS_PCT_BY_CATEGORY,
+                                         get_ror_ideal_band, estimate_ror_dt, find_turning_point_index, find_flicks_crashes)
+from tilauscope.header_icons import SVG_PROG_UPLOAD, SVG_PROG_AI
 from tilauscope.roast_timeline import RoastReadyDialog
 from tilauscope.sack_manager import SackChipsRow, SackPool, confirm_release, prompt_release_if_emptied  # sack labels (Lot 1, §9.3)
 from tilauscope.beancave_catalogue import CatalogueListWidget  # rich catalogue list (Lot 5)
 from tilauscope.beancave_bean_sheet import BeanSheetWidget  # read-first bean sheet (Lot 5)
+from tilauscope.bean_qualifiers import physical_qualifier  # plain-language reading of density/humidity/aw
 from tilauscope.ai_support import TilauAIConfig
 from tilauscope.lebrewroastsee import LebrewWaterActivityChecker
 from tilauscope.tilau_wheel import FlavorSelectorDialog
@@ -138,7 +140,7 @@ DEFAULT_C_WL: Final[float] = -3.61
 # Ajout de 'Process' et 'Count' à la liste des en-têtes
 greencave_headers = [
             'Name', 'Farm', 'Country', 'Supplier', 'Category', 'Process', 'Crop', 'Density',
-            'Humidity', 'Water activity', 'Volume', 'Altitude', 'Specy', 'Variety',
+            'Humidity', 'Water activity', 'Altitude', 'Specy', 'Variety',
             'Stock', 'Flavour Notes', 'SCA score', 'Roasts','Weight',
             'Blend?', 'Ratio 1', 'Bean 2 Name', 'Ratio 2', 'Bean 3 Name', 'Ratio 3', 'Blend Notes', 'tips', 'uuid',
         ]
@@ -501,15 +503,7 @@ class SmoothHoverFilter(QObject):
                     background-color: {THEME['SURFACE']};
                     color: {THEME['TEXT']};
                     }}
-                QToolTip {{
-                    background-color: {THEME['BORDER']};
-                    color: white;
-                    border: 1px solid {THEME['SURFACE2']};
-                    padding: 5px;
-                    border-radius: 3px;
-                    font-size: 11px;
-                    opacity: 255;
-                }}
+                {tooltip_qss()}
             """)
 
         anim.valueChanged.connect(update_style)
@@ -891,14 +885,7 @@ class _DensityFloatWindow(QDialog):
                 border: 2px solid {THEME['ACCENT']};
                 border-radius: 16px;
             }}
-            QToolTip {{
-                background-color: {THEME['BORDER']};
-                color: white;
-                border: 1px solid {THEME['SURFACE2']};
-                padding: 5px;
-                border-radius: 3px;
-                font-size: 11px;
-            }}
+            {tooltip_qss()}
         """)
         cl = QVBoxLayout(card)
         cl.setContentsMargins(20, 14, 20, 14)
@@ -1160,8 +1147,8 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         if b != "":
             # set current record of the datatable pointing to the matched bean's uuid
             for row in range(self.datatable.rowCount()):
-                # Use the uuid field (column index 27) to find the match
-                uuid_item = self.datatable.item(row, 27)
+                # Use the uuid field (last column) to find the match
+                uuid_item = self.datatable.item(row, len(greencave_headers) - 1)
                 if uuid_item and uuid_item.text() == b.uuid:
                     self.datatable.selectRow(row)
                     self.datatable.scrollToItem(uuid_item)
@@ -1178,6 +1165,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self.generate_card_button.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
         self.roast.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
         self.remove_button.setEnabled(False)
+        self.new_crop_button.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
         self.update_ui_visibility()
         if self.is_directory_defined:
             self.main_tab.setFocus()
@@ -1948,7 +1936,6 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         self.tab_widget = QTabWidget()
         self.main_tab = QWidget()
-        self.file_management_tab = QWidget()
         self.roast_viewer_tab = QWidget()
         self.roast_plan_tab = QWidget()
         self.storage_tab = QWidget()  # conservation / water-activity dashboard
@@ -1959,11 +1946,9 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self.tab_widget.addTab(self.roast_viewer_tab, QApplication.translate("tilauscope_beancave","Roast Viewer"))
         self.tab_widget.addTab(self.roast_plan_tab, QApplication.translate("tilauscope_beancave","Roasting plan"))
         self.tab_widget.addTab(self.storage_tab, QApplication.translate("tilauscope_beancave","Stockage"))
-        self.tab_widget.addTab(self.file_management_tab, QApplication.translate("tilauscope_beancave","File Management")) # moved to the last position
         # refresh the TilauAmbient probe button state on entering the plan tab
         self.tab_widget.currentChanged.connect(self._on_beancave_tab_changed)
         self.setup_main_tab_ui()
-        self.setup_file_management_tab_ui()
         self.setup_roast_viewer_tab_ui()
         self.setup_roast_plan_tab_ui()
         self.setup_storage_tab_ui()
@@ -4899,10 +4884,14 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
     # Coffee science, not roaster-specific: a lighter target drops cooler, loses
     # less weight and runs a shorter absolute development than a darker target,
     # whatever the machine. Every quantitative coach check routes through here so
-    # a deliberately light roast is never judged against medium-roast assumptions.
+    # a deliberately light roast is never judged against a different level's
+    # assumptions. The category and its dtr/drop/dev_time fundamentals come from
+    # tilauscope_types.ROASTING_BASIC_BASE — the same table the roast plan
+    # generator (roast_plan_model.py) builds its plan from — so the coach never
+    # disagrees with the plan on what a given roast level requires.
     @staticmethod
     def roast_level_from_color(roast_color_val):
-        """Agtron whole-bean → 'light' | 'medium' | 'dark' | None (higher = lighter)."""
+        """Agtron whole-bean → one of AGTRON_SCALES' 8 category names, or None."""
         if roast_color_val is None:
             return None
         try:
@@ -4911,35 +4900,36 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             return None
         if v <= 0:
             return None
-        if v > 65:
-            return 'light'
-        if v < 45:
-            return 'dark'
-        return 'medium'
+        for a in AGTRON_SCALES:
+            try:
+                if a.agtron_range.min_value <= v <= a.agtron_range.max_value:
+                    return a.name
+            except (TypeError, ValueError):
+                pass
+        return None
 
     def roast_level_thresholds(self, roast_color_val):
         """Return (level, thresholds) for the target roast color.
 
-        thresholds carries: dtr (min,max %), wl (min,max %) and drop_c (low,high
-        bean-temp window in °C). When the color is unknown we fall back to a
-        medium-roast profile but mark the level None so callers can stay cautious.
+        thresholds carries: dtr (min,max %), wl (min,max %), drop_c (low,high
+        bean-temp window in °C) and dev_time (low,high absolute minutes FCs→DROP).
+        dtr/drop_c/dev_time come from ROASTING_BASIC_BASE (shared with the plan
+        generator); wl has no plan equivalent and lives in
+        WEIGHT_LOSS_PCT_BY_CATEGORY. When the color is unknown we fall back to
+        the Medium profile but keep level None so callers stay cautious.
         """
         level = self.roast_level_from_color(roast_color_val)
-        # dev_time = professional-convention development window in absolute minutes
-        # (FCs→DROP). For a light roast ~1:00–2:00 is a sound development, so
-        # 1:00–1:30 reads as on-target; under ~1:00 is where under-development
-        # risk genuinely rises. This is the domain floor the learned data must not
-        # override — % development ratio and absolute development time are two
-        # complementary readings, not one.
-        # DTR rises with darkness: a light roast drops soon after first crack
-        # (short development → lower ratio), a dark roast prolongs development
-        # (higher ratio). Weight loss likewise rises with darkness.
-        table = {
-            'light':  {'dtr': (12.0, 20.0), 'wl': (11.0, 15.0), 'drop_c': (188.0, 200.0), 'dev_time': (1.0, 2.0)},
-            'medium': {'dtr': (15.0, 24.0), 'wl': (13.0, 18.0), 'drop_c': (198.0, 210.0), 'dev_time': (1.5, 2.75)},
-            'dark':   {'dtr': (18.0, 28.0), 'wl': (15.0, 21.0), 'drop_c': (208.0, 222.0), 'dev_time': (2.0, 3.5)},
+        plan = next((p for p in ROASTING_BASIC_BASE.plans if p.name == level), None)
+        if plan is None:
+            plan = next(p for p in ROASTING_BASIC_BASE.plans if p.name == "Medium")
+        wl = WEIGHT_LOSS_PCT_BY_CATEGORY.get(plan.name, WEIGHT_LOSS_PCT_BY_CATEGORY["Medium"])
+        thresholds = {
+            'dtr': (plan.dtr_pct[0] * 100.0, plan.dtr_pct[1] * 100.0),
+            'wl': wl,
+            'drop_c': (float(plan.drop_temp[0]), float(plan.drop_temp[1])),
+            'dev_time': plan.development_time,
         }
-        return level, table.get(level or 'medium', table['medium'])
+        return level, thresholds
 
     def phase_rules_for_color(self, roast_color_val):
         """Phase-duration ranges for the roast's level, falling back per-phase to
@@ -4966,11 +4956,13 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         all_dry_times = []
         all_maillard_times = []
         all_dev_times = []
-        # Same times, but split by roast-level band so a light roast is later
-        # compared to past light roasts rather than a mixed-color average.
-        band_dry = {'light': [], 'medium': [], 'dark': []}
-        band_mai = {'light': [], 'medium': [], 'dark': []}
-        band_dev = {'light': [], 'medium': [], 'dark': []}
+        # Same times, but split by roast-level band (AGTRON_SCALES' 8 categories)
+        # so a roast is later compared to past roasts of the same category
+        # rather than a mixed-color average.
+        _band_names = [a.name for a in AGTRON_SCALES]
+        band_dry = {n: [] for n in _band_names}
+        band_mai = {n: [] for n in _band_names}
+        band_dev = {n: [] for n in _band_names}
         for entry in roast_data_list:
             try:
                 titre_grain = entry.get('Title')
@@ -5093,7 +5085,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         # (calculate_range returns None otherwise), so phase_rules_for_color
         # naturally falls back to the pooled rule when a band is too sparse.
         self.duration_rules_by_band = {}
-        for _b in ('light', 'medium', 'dark'):
+        for _b in _band_names:
             br = {}
             dr = calculate_range(band_dry[_b], min_cap=3.0, max_cap=12.0)
             if dr: br['drying'] = dr
@@ -5542,10 +5534,10 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         roast_level, lvl_th = self.roast_level_thresholds(roast_color_val)
         lvl_dtr_min, lvl_dtr_max = lvl_th['dtr']
         lvl_wl_min,  lvl_wl_max  = lvl_th['wl']
-        lvl_label = {
-            'light': QApplication.translate("tilauscope_beancave", "(light roast)"),
-            'dark':  QApplication.translate("tilauscope_beancave", "(dark roast)"),
-        }.get(roast_level, "")
+        lvl_label = (
+            QApplication.translate("tilauscope_beancave", "({0} roast)").format(roast_level)
+            if roast_level else ""
+        )
 
         # Effective weight-loss window, resolved once and shared by the coach
         # advice and the summary badge so they can never disagree. The floor
@@ -5570,12 +5562,10 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         if dtr_pct_val > 0:
             # Thresholds adapt to the target roast level (lighter roasts run a lower DTR).
             dtr_min_ctx, dtr_max_ctx = lvl_dtr_min, lvl_dtr_max
-            if roast_level == 'light':
-                dtr_label = QApplication.translate("tilauscope_beancave", "(light roast range)")
-            elif roast_level == 'dark':
-                dtr_label = QApplication.translate("tilauscope_beancave", "(dark roast range)")
-            else:
-                dtr_label = ""
+            dtr_label = (
+                QApplication.translate("tilauscope_beancave", "({0} roast range)").format(roast_level)
+                if roast_level else ""
+            )
 
             # The ratio is only an under-development signal when the *absolute*
             # development time is also short. When the time is adequate, a low
@@ -5733,6 +5723,11 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         #     Roaster-agnostic: a flat/negative RoR at FCs means the bean enters
         #     development with no thermal momentum (stall/crash risk), regardless
         #     of roaster type. No absolute "high" threshold is used here on purpose.
+        # Ideal RoR band for the development phase (FC → DROP), the same shared
+        # source used in-roast by the assistant (roast_asssistant.py) and by the
+        # plan generator's drying-band lookup (roast_plan_model.py).
+        dev_ror_lo, dev_ror_hi = get_ror_ideal_band("FC_DROP", mode)
+
         fcs_ror = computed.get('fcs_ror', None)
         if fcs_ror is not None:
             try:
@@ -5744,8 +5739,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                             "right at FC, a strong stall/crash signal. Add a touch of heat just "
                             "before FC next time to carry momentum into development."),
                         "bad")
-                elif fcs_ror_v < 2.0 * (1.8 if mode == 'F' else 1.0):
-                    # threshold in the log's own unit (2 °C/min ≈ 3.6 °F/min)
+                elif fcs_ror_v < dev_ror_lo:
                     advice_rows += advice_row("🐌",
                         QApplication.translate("tilauscope_beancave",
                             "Low RoR entering first crack: little momentum into "
@@ -5754,26 +5748,49 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             except (TypeError, ValueError):
                 pass
 
-        ror_finish = computed.get('finish_phase_ror', None)
-        ror_mid = computed.get('mid_phase_ror', None)
-        if ror_finish is not None and ror_mid is not None:
-            try:
-                ror_f = float(ror_finish)
-                ror_m = float(ror_mid)
-                if ror_f < 0:
+        # 5b. Crash/flick in development, via the same prominence-based local-extrema
+        #     detector the plan generator uses on historical logs — one algorithm,
+        #     not a separate ratio heuristic in the coach.
+        try:
+            ti = (list(data.get('timeindex', [])) + [-1] * 8)[:8]
+            charge_idx, drop_idx = ti[RoastingPhase.CHARGE], ti[RoastingPhase.DROP]
+            timex = data.get("timex", [])
+            raw_delta_bt = self.evaldeltas(data, "temp2") if charge_idx >= 0 < drop_idx else None
+            if (raw_delta_bt and timex and charge_idx >= 0 and drop_idx > charge_idx
+                    and len(timex) == len(raw_delta_bt) and drop_idx < len(timex)):
+                charge_ts = timex[charge_idx]
+                timex_shifted = [(t - charge_ts) for t in timex]
+                dry_idx, fc_idx = ti[RoastingPhase.DRYEND], ti[RoastingPhase.FCSTART]
+                phase_times = {
+                    "dry_end":  timex_shifted[dry_idx] if dry_idx > 0 else None,
+                    "fc_start": timex_shifted[fc_idx]  if fc_idx  > 0 else None,
+                    "drop":     timex_shifted[drop_idx],
+                }
+                bt_raw = data.get("temp2", [])
+                seg_slice = slice(charge_idx, drop_idx + 1)
+                seg_dt = estimate_ror_dt(timex_shifted[seg_slice])
+                tp_idx_local = find_turning_point_index(bt_raw[seg_slice], seg_dt)
+                flicks, crashes = find_flicks_crashes(
+                    raw_delta_bt[seg_slice], timex_shifted[seg_slice], phase_times, tp_idx_local,
+                    prominence=1.0 * (1.8 if mode == 'F' else 1.0),
+                )
+                dev_crashes = [e for e in crashes if e.get("phase") == 3]
+                dev_flicks  = [e for e in flicks  if e.get("phase") == 3]
+                if dev_crashes:
                     advice_rows += advice_row("📉",
                         QApplication.translate("tilauscope_beancave",
-                            "Negative RoR in development: temperature crashed before drop. "
-                            "This can cause baked character. Maintain at least 1–2°/min through drop."),
+                            "RoR crash detected in development: the rate dropped sharply before "
+                            "drop. This can cause baked character. Maintain at least {0:.0f}°/min "
+                            "through drop.").format(dev_ror_lo),
                         "bad")
-                elif ror_m > 0 and ror_f > ror_m * 1.4:
+                if dev_flicks:
                     advice_rows += advice_row("📈",
                         QApplication.translate("tilauscope_beancave",
-                            "RoR flick detected: rate accelerated significantly in development. "
+                            "RoR flick detected in development: the rate bumped up significantly. "
                             "This may indicate a heat spike. Reduce burner earlier to avoid scorching."),
                         "warn")
-            except (TypeError, ValueError):
-                pass
+        except (TypeError, ValueError, IndexError):
+            pass
 
         # ── 6. Density context ────────────────────────────────────────────────────
         selected_rows_chk = self.datatable.selectionModel().selectedRows()
@@ -5796,20 +5813,6 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             advice_rows = advice_row("✓",
                 QApplication.translate("tilauscope_beancave",
                     "All measured parameters are within the recommended ranges."), "ok")
-        selected_rows_chk = self.datatable.selectionModel().selectedRows()
-        if selected_rows_chk and self.cave:
-            chk_bean = self.cave.green_beans[selected_rows_chk[0].row()]
-            if chk_bean.density > 750:
-                advice_rows += advice_row("i",
-                    QApplication.translate("tilauscope_beancave",
-                        "<li><b>High Density:</b> Ensure high energy at start to penetrate the core.</li>")
-                    .replace("<li>", "").replace("</li>", "")
-                    .replace("<b>", "").replace("</b>", ""), "info")
-
-        if not advice_rows:
-            advice_rows = advice_row("✓",
-                QApplication.translate("tilauscope_beancave",
-                    "✅ All the phases are within the recommendation ranges"), "ok")
 
         # ── Translated labels ─────────────────────────────────────────────
         _total_time   = QApplication.translate("tilauscope_beancave", "Total Time")
@@ -5943,6 +5946,11 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
     def _extract_roast_metrics(self, data: dict) -> dict:
         c = data.get('computed', {})
         mode = data.get('mode', 'C')
+        ground = data.get('ground_color', 0) or 0
+        whole = data.get('whole_color', 0) or 0
+        level, lvl_th = self.roast_level_thresholds(ground if ground else whole)
+        dtr_target = sum(lvl_th['dtr']) / 2.0
+        wl_target = sum(lvl_th['wl']) / 2.0
         t_charge = 0
         t_dry    = c.get('DRY_time', 0) or 0
         t_fcs    = c.get('FCs_time', 0) or 0
@@ -5994,6 +6002,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             'auc_total': _auc('AUC'), 'auc_dry': _auc('dry_phase_AUC'),
             'auc_mid': _auc('mid_phase_AUC'), 'auc_fin': _auc('finish_phase_AUC'),
             'w_in': w_in, 'w_out': w_out, 'w_unit': w_unit,
+            'level': level, 'dtr_target': dtr_target, 'wl_target': wl_target,
         }
 
     def _generate_multi_coach_advice(self, metrics: list) -> list:
@@ -6002,28 +6011,40 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         def _c(col, txt): return f'<span style="color:{col};font-weight:600;">{txt}</span>'
         mode = metrics[0].get('mode', 'C') if metrics else 'C'
         tscale = 1.8 if mode == 'F' else 1.0   # cibles/écarts en ° pour le Fahrenheit
-        dtrs = [(m['title'][:22], m['dtr']) for m in metrics if m['dtr']]
+        # DTR and weight loss are compared against each roast's OWN roast-level
+        # target (ROASTING_BASIC_BASE / WEIGHT_LOSS_PCT_BY_CATEGORY, the same
+        # shared tables as the roast plan and the single-roast coach) — a light
+        # and a dark roast in the same comparison are no longer judged against
+        # one another's target.
+        dtrs = [(m['title'][:22], m['dtr'], m['dtr_target']) for m in metrics if m['dtr']]
         if dtrs:
-            best  = min(dtrs, key=lambda x: abs(x[1]-20))
-            worst = max(dtrs, key=lambda x: abs(x[1]-20))
+            best  = min(dtrs, key=lambda x: abs(x[1] - x[2]))
+            worst = max(dtrs, key=lambda x: abs(x[1] - x[2]))
             advices.append(QApplication.translate("tilauscope_beancave",
-                "DTR closest to 20%: {best} ({bv:.1f}%) — furthest: {worst} ({wv:.1f}%)").format(
-                    best=_c(OK, best[0]), bv=best[1], worst=_c(WARN, worst[0]), wv=worst[1]))
-        wls = [(m['title'][:22], m['wl']) for m in metrics if m['wl']]
+                "DTR closest to its roast-level target: {best} ({bv:.1f}% vs {bt:.0f}%) — "
+                "furthest: {worst} ({wv:.1f}% vs {wt:.0f}%)").format(
+                    best=_c(OK, best[0]), bv=best[1], bt=best[2],
+                    worst=_c(WARN, worst[0]), wv=worst[1], wt=worst[2]))
+        wls = [(m['title'][:22], m['wl'], m['wl_target']) for m in metrics if m['wl']]
         if wls:
-            best = min(wls, key=lambda x: abs(x[1]-15))
+            best = min(wls, key=lambda x: abs(x[1] - x[2]))
             advices.append(QApplication.translate("tilauscope_beancave",
-                "Weight loss closest to 15%: {best} ({bv:.1f}%)").format(
-                    best=_c(OK, best[0]), bv=best[1]))
+                "Weight loss closest to its roast-level target: {best} ({bv:.1f}% vs {bt:.0f}%)").format(
+                    best=_c(OK, best[0]), bv=best[1], bt=best[2]))
+        # RoR Total has no validated per-level reference anywhere else in the app
+        # (unlike DTR/weight loss) — it stays a relative consistency check against
+        # the group's own average, the same pattern as the drop BT and development
+        # spreads below, rather than an arbitrary absolute figure.
         rors = [(m['title'][:22], m['ror_total']) for m in metrics if m['ror_total']]
-        if rors:
-            target = 9 * tscale
-            best  = min(rors, key=lambda x: abs(x[1]-target))
-            worst = max(rors, key=lambda x: abs(x[1]-target))
+        if len(rors) >= 2:
+            avg = sum(r[1] for r in rors) / len(rors)
+            best  = min(rors, key=lambda x: abs(x[1] - avg))
+            worst = max(rors, key=lambda x: abs(x[1] - avg))
             if best[0] != worst[0]:
                 advices.append(QApplication.translate("tilauscope_beancave",
-                    "RoR Total closest to {tgt:.0f}°/min: {best} ({bv:.2f}) — furthest: {worst} ({wv:.2f})").format(
-                        tgt=target, best=_c(OK, best[0]), bv=best[1], worst=_c(WARN, worst[0]), wv=worst[1]))
+                    "RoR Total closest to the group average ({avg:.2f}°/min): {best} ({bv:.2f}) — "
+                    "furthest: {worst} ({wv:.2f})").format(
+                        avg=avg, best=_c(OK, best[0]), bv=best[1], worst=_c(WARN, worst[0]), wv=worst[1]))
         drops = [(m['title'][:22], m['drop_bt']) for m in metrics if m['drop_bt']]
         if len(drops) >= 2:
             spread = max(d[1] for d in drops) - min(d[1] for d in drops)
@@ -6044,33 +6065,46 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         return advices
 
     def _detect_crash_flick(self, data: dict, deltabt: list) -> "str | None":
-        """Détecte un accident de RoR en phase de développement (FCs→DROP) :
-        'crash' (RoR s'effondre vers 0), 'flick' (RoR rebondit), ou les deux.
-        RoR lissé pour éviter les faux positifs ; None si propre."""
+        """Détecte un accident de RoR en développement (FCs→DROP) via le même
+        détecteur à extrema locaux pondérés par proéminence que le plan de
+        torréfaction et le coach mono-roast — 'crash', 'flick', les deux, ou
+        None si le développement reste propre."""
         if not data or not deltabt:
             return None
         ti = (list(data.get('timeindex', [])) + [-1] * 8)[:8]
-        fcs, drop = ti[RoastingPhase.FCSTART], ti[RoastingPhase.DROP]
-        if fcs <= 0 or drop <= fcs:
+        charge_idx, drop_idx = ti[RoastingPhase.CHARGE], ti[RoastingPhase.DROP]
+        timex = data.get('timex', [])
+        if (charge_idx < 0 or drop_idx <= charge_idx or not timex
+                or len(timex) != len(deltabt) or drop_idx >= len(timex)):
             return None
-        seg = [deltabt[k] for k in range(fcs, min(drop, len(deltabt)))
-               if k < len(deltabt) and deltabt[k] is not None]
-        if len(seg) < 6:
+        try:
+            charge_ts = timex[charge_idx]
+            timex_shifted = [(t - charge_ts) for t in timex]
+            dry_idx, fc_idx = ti[RoastingPhase.DRYEND], ti[RoastingPhase.FCSTART]
+            phase_times = {
+                "dry_end":  timex_shifted[dry_idx] if dry_idx > 0 else None,
+                "fc_start": timex_shifted[fc_idx]  if fc_idx  > 0 else None,
+                "drop":     timex_shifted[drop_idx],
+            }
+            bt_raw = data.get("temp2", [])
+            seg_slice = slice(charge_idx, drop_idx + 1)
+            seg_dt = estimate_ror_dt(timex_shifted[seg_slice])
+            tp_idx_local = find_turning_point_index(bt_raw[seg_slice], seg_dt)
+            # Seuil de proéminence en °/min → mis à l'échelle pour le Fahrenheit.
+            tscale = 1.8 if data.get('mode', 'C') == 'F' else 1.0
+            flicks, crashes = find_flicks_crashes(
+                deltabt[seg_slice], timex_shifted[seg_slice], phase_times, tp_idx_local,
+                prominence=1.0 * tscale,
+            )
+        except (TypeError, ValueError, IndexError):
             return None
-        w = 5  # lissage ~5 s
-        r = [sum(seg[max(0, k - w + 1):k + 1]) / len(seg[max(0, k - w + 1):k + 1])
-             for k in range(len(seg))]
-        # Seuils en °/min → mis à l'échelle pour le Fahrenheit (ΔT_F = 1.8·ΔT_C).
-        tscale = 1.8 if data.get('mode', 'C') == 'F' else 1.0
-        r_min = min(r)
-        i_min = r.index(r_min)
-        crash = r_min <= 1.0 * tscale                          # RoR tombé à ~0/négatif
-        flick = (max(r[i_min:]) - r_min) >= 2.0 * tscale and i_min <= len(r) - 3
-        if crash and flick:
+        dev_crash = any(e.get("phase") == 3 for e in crashes)
+        dev_flick = any(e.get("phase") == 3 for e in flicks)
+        if dev_crash and dev_flick:
             return 'crash+flick'
-        if crash:
+        if dev_crash:
             return 'crash'
-        if flick:
+        if dev_flick:
             return 'flick'
         return None
 
@@ -7490,12 +7524,25 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self.water_activity_input.setMinimumHeight(30)
         self.water_activity_input.setToolTip(QApplication.translate("tilauscope_beancave","Water activity of green beans, a ratio from 0 to 1 (not a percentage). Specialty green is typically 0.45-0.60."))
 
-        self.volume_input = TilauSpinBox()
-        self.volume_input.setRange(0.0, 999.999)
-        self.volume_input.setDecimals(3)
-        self.volume_input.setSuffix("l")
-        self.volume_input.setMinimumHeight(30)
-        self.volume_input.setToolTip(QApplication.translate("tilauscope_beancave","Volume of green beans based on density in l."))
+        # Plain-language reading appended to the unit, e.g. "790 g/l (dense)".
+        # Base suffix and style are kept so the qualifier can be rebuilt on
+        # every change without accumulating.
+        self._phys_base_suffix = {
+            'density':  self.density_input.suffix(),
+            'humidity': self.last_humidity_input.suffix(),
+            'aw':       self.water_activity_input.suffix(),
+        }
+        self._phys_base_style = {
+            'density':  self.density_input.styleSheet(),
+            'humidity': self.last_humidity_input.styleSheet(),
+            'aw':       self.water_activity_input.styleSheet(),
+        }
+        self.density_input.valueChanged.connect(
+            lambda v: self._update_physical_qualifier('density', float(v)))
+        self.last_humidity_input.valueChanged.connect(
+            lambda v: self._update_physical_qualifier('humidity', float(v)))
+        self.water_activity_input.valueChanged.connect(
+            lambda v: self._update_physical_qualifier('aw', float(v)))
 
         self.altitude_input = TilauSpinBox()
         self.altitude_input.setRange(0, 3000)
@@ -7704,7 +7751,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             self.category_process_combo, self.process_combo, self.crop_input,
             self.density_input, self.last_humidity_input, self.weight_input,
             self.type_combo, self.bean1_ratio_input, self.water_activity_input,
-            self.volume_input, self.altitude_input, self.species_combo,
+            self.altitude_input, self.species_combo,
             self.varieties_combo, self.weight_left_input, self.flavour_notes_input,
             self.sca_input, self.bean2_combo, self.bean2_ratio_input,
             self.bean3_combo, self.bean3_ratio_input, self.blend_notes_input,
@@ -7863,8 +7910,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self.density_measure_btn.setStyleSheet(
             f"QPushButton{{background:{THEME['SURFACE']};border:1px solid {THEME['BORDER']};"
             f"border-radius:6px;}}QPushButton:hover{{border-color:{THEME['ACCENT']};}}"
-            "QToolTip{background-color:#2D2F3F;color:white;border:1px solid #585B70;"
-            "padding:5px;border-radius:3px;font-size:11px;}"
+            + tooltip_qss()
         )
         self.density_measure_btn.clicked.connect(self._open_density_window)
         _dens_box = QWidget()
@@ -7888,8 +7934,6 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             _gl3.addWidget(_w,    0, _ci * 2 + 1)
 
         self.water_activity_label = _gl3.itemAtPosition(0, 6).widget()  # ref pour update_ui_visibility
-
-        # volume_input reste instancié mais non affiché (conservé en base)
 
         # ════════════════════════════════════════════════════════════════════
         # GROUPE 4 — Blend components (conditionnel)
@@ -8076,6 +8120,23 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             "optional."))
         self.new_sack_button.clicked.connect(self._open_new_sack_wizard)
         _actions_layout.addWidget(self.new_sack_button)
+
+        # Shortcut of the same assistant, locked on the selected record
+        self.new_crop_button = QPushButton("🌱 " + QApplication.translate("tilauscope_beancave", "New crop"))
+        self.new_crop_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.new_crop_button.setStyleSheet(
+            f"QPushButton {{ background: transparent; color: {THEME['ACCENT']};"
+            f" border: 1px solid {THEME['BORDER']}; border-radius: 6px;"
+            f" padding: 5px 12px; font-weight: 600; }}"
+            f"QPushButton:hover {{ border-color: {THEME['ACCENT']}; }}"
+            f"QPushButton:disabled {{ color: {THEME['SUBTEXT']}; }}")
+        self.new_crop_button.setToolTip(QApplication.translate(
+            "tilauscope_beancave",
+            "Start the next harvest of the selected coffee: origin, process "
+            "and variety are inherited, you only enter the new year, the "
+            "weight and the measurements of the lot."))
+        self.new_crop_button.clicked.connect(self._open_new_crop_wizard)
+        _actions_layout.addWidget(self.new_crop_button)
         _sep_ns = QFrame()
         _sep_ns.setFrameShape(QFrame.Shape.VLine)
         _sep_ns.setFixedHeight(20)
@@ -8200,60 +8261,6 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             self._notice_bar.setVisible(show_form)
 
 
-    def setup_file_management_tab_ui(self) -> None:
-        file_management_layout = QVBoxLayout()
-
-        button_layout = QGridLayout()
-        self.update_alog_counts_button = QPushButton(QApplication.translate("tilauscope_beancave","Update Roast Sessions"))
-        self.update_alog_counts_button.clicked.connect(self.update_alog_counts)
-        self.update_alog_counts_button.setToolTip(QApplication.translate("tilauscope_beancave","Scan the ALog directory to count the number of roast sessions associated with each green bean type. This information will be displayed in the main table and can help you track how many times each type of green bean has been roasted."))
-        button_layout.addWidget(self.update_alog_counts_button, 2, 0)
-        self.update_alog_counts_button.setEnabled(False)
-
-        self.export_csv_button = QPushButton(QApplication.translate("tilauscope_beancave","Export Roasts for LLM"))
-        self.export_csv_button.clicked.connect(self.export_roast_data_to_csv)
-        self.export_csv_button.setToolTip(QApplication.translate("tilauscope_beancave","Export roast session data to a CSV file formatted for use with Large Language Models (LLMs). This can be useful for training AI models, performing data analysis, or sharing roast data in a structured format. The exported CSV will include details of each roast session, such as date, duration, temperature profiles, and associated green bean types."))
-        button_layout.addWidget(self.export_csv_button, 3, 0, 1, 1) # Prend 2 colonnes pour l'alignement
-        self.export_csv_button.setEnabled(False)
-
-        self.export_logs_button = QPushButton(QApplication.translate("tilauscope_beancave","Export Logs"))
-        self.export_logs_button.setToolTip(QApplication.translate("tilauscope_beancave","Export logs for diagnostics."))
-        self.export_logs_button.clicked.connect(self.export_logs_for_diagnostics)
-        button_layout.addWidget(self.export_logs_button, 3, 1)
-
-        self.export_pid_button = QPushButton(QApplication.translate("tilauscope_beancave","DEV TEST : Roasts for PID"))
-        self.export_pid_button.clicked.connect(self.export_pid_analysis_to_csv)
-        button_layout.addWidget(self.export_pid_button, 6, 0, 1, 1) # Prend 2 colonnes pour l'alignement
-        self.export_pid_button.setEnabled(True)
-
-        self.open_alarms_button = QPushButton(
-            QApplication.translate("tilauscope_beancave", "Edit Alarms"))
-        self.open_alarms_button.setToolTip(
-            QApplication.translate("tilauscope_beancave",
-                "Open the TilauScope alarm editor"))
-        self.open_alarms_button.clicked.connect(self._open_alarm_editor)
-        button_layout.addWidget(self.open_alarms_button, 7, 0, 1, 1)
-
-        # Sack ID labels tool moved to the Stockage tab (conservation
-        # dashboard). Handler _open_sack_labels() is kept and reused from there.
-
-
-
-        self.set_uuid_in_alog_button = QPushButton(QApplication.translate("tilauscope_beancave","Set UUID in old roast files"))
-        self.set_uuid_in_alog_button.clicked.connect(self.update_alogs_with_uuids)
-        self.set_uuid_in_alog_button.setToolTip(QApplication.translate("tilauscope_beancave","Update existing ALog roast session files with the UUIDs of the green beans as defined in the Beancave. This will allow for better tracking and association between your green bean records and roast sessions, especially for older roasts that were recorded before UUIDs were implemented. Use this function after defining your green beans and before performing any analysis that relies on UUIDs."))
-        button_layout.addWidget(self.set_uuid_in_alog_button, 4, 0, 1, 1)
-        self.set_uuid_in_alog_button.setVisible(False)  # not normally needed
-        self.set_uuid_in_alog_button.setEnabled(False)
-
-        # Update checking is owned by tilauscope.tilau_updater, which reads the
-        # installer assets attached to the tilauscope_fork GitHub releases.
-
-        self.file_management_tab.setLayout(file_management_layout)
-
-        file_management_layout.addLayout(button_layout)
-        file_management_layout.addStretch(3)
-
     @pyqtSlot()
     def _open_sack_labels(self) -> None:
         from tilauscope.sack_manager import SackLabelsDialog
@@ -8273,6 +8280,23 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             wiz.exec()
         except Exception:  # noqa: BLE001
             _logd.exception("new sack wizard failed")
+
+    # Same assistant, entered on the selected bean — new-crop flow only
+    @pyqtSlot()
+    def _open_new_crop_wizard(self) -> None:
+        try:
+            bean = self._current_selected_bean()
+            if bean is None:
+                return
+            from tilauscope.beancave_sack_wizard import NewSackWizard
+            wiz = NewSackWizard(self, source_bean=bean)
+            wiz.adjustSize()
+            parent_geo = self.geometry()
+            wiz.move(parent_geo.center().x() - wiz.width() // 2,
+                     parent_geo.center().y() - wiz.height() // 2)
+            wiz.exec()
+        except Exception:  # noqa: BLE001
+            _logd.exception("new crop wizard failed")
 
     # Syncs the catalogue rich list selection to the hidden datatable
     @pyqtSlot(int)
@@ -8450,29 +8474,17 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self._open_bean_sheet_from_scan(bean_uuid)
 
     @pyqtSlot()
-    def _open_alarm_editor(self) -> None:
-        from tilauscope.alarms import TilauAlarmDlg
-        dlg = TilauAlarmDlg(self.aw, self.aw)
-        dlg.show()
-
-    @pyqtSlot()
     def open_profile_maintenance(self) -> None:
         if not self.alog_directory or not Path(self.alog_directory).is_dir():
             self._show_message(self,
                 QApplication.translate("tilauscope_beancave", "Directory Error"),
                 QApplication.translate("tilauscope_beancave",
-                    "Please select a valid ALog directory in the File Management tab first."))
+                    "Please select a valid ALog directory first."))
             return
         from tilauscope.alog_repair import AlogRepairDialog
         self._alog_repair_dlg = AlogRepairDialog(self, self.aw)  # keep ref (non-modal)
         self._alog_repair_dlg.repaired.connect(lambda _p: self.trigger_cache_refresh())
         self._alog_repair_dlg.show()
-
-    @pyqtSlot()
-    def export_logs_for_diagnostics(self) -> None:
-        # Shared with the About dialog's "Report a bug" button.
-        from tilauscope.tilau_exceptions import report_a_bug
-        report_a_bug(self)
 
     def populate_table(self) -> None:
         if self.cave is None or not hasattr(self.cave, 'green_beans') or not self.is_directory_defined:
@@ -8555,9 +8567,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             self.generate_card_button.setEnabled(False)
             self.roast.setEnabled(False)
             self.remove_button.setEnabled(False)
-            self.set_uuid_in_alog_button.setEnabled(False)
-            self.export_csv_button.setEnabled(False)
-            self.update_alog_counts_button.setEnabled(False)
+            self.new_crop_button.setEnabled(False)
 
         elif len(beans) > 0:
             # Select the first row, which will trigger load_selected_bean_into_form
@@ -8572,9 +8582,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             self.generate_card_button.setEnabled(True)
             self.roast.setEnabled(True)
             self.remove_button.setEnabled(True)
-            self.set_uuid_in_alog_button.setEnabled(True)
-            self.export_csv_button.setEnabled(True)
-            self.update_alog_counts_button.setEnabled(True)
+            self.new_crop_button.setEnabled(True)
         else:
             # If the table is empty, ensure the form is cleared
             self.clear_form()
@@ -8594,6 +8602,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             self.generate_card_button.setEnabled(False)
             self.roast.setEnabled(False)
             self.remove_button.setEnabled(False)
+            self.new_crop_button.setEnabled(False)
             return
 
         row = selected_rows[0].row() # Prend la première ligne sélectionnée
@@ -8613,7 +8622,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             self.density_input.setValue(bean.density)
             self.last_humidity_input.setValue(bean.last_humidity)
             self.water_activity_input.setValue(bean.water_activity)
-            self.volume_input.setValue(bean.volume)
+            self._update_physical_qualifiers()  # unchanged values emit no signal
             self.altitude_input.setValue(bean.altitude)
             self.weight_input.setValue(bean.weight)
 
@@ -8722,6 +8731,31 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         except Exception as e:
             _logd.debug(f"crop age indicator skipped: {e}")
 
+    # ── physical measures: plain-language qualifier ──────────────
+    # Words and bands live in bean_qualifiers, shared with the read-only bean
+    # sheet, so a field can never read "normal" where the sheet flags it.
+    def _update_physical_qualifier(self, kind: str, value: float) -> None:
+        """Append the qualifier to the field suffix and colour the field."""
+        try:
+            widget = {'density': self.density_input,
+                      'humidity': self.last_humidity_input,
+                      'aw': self.water_activity_input}[kind]
+            word, color = physical_qualifier(kind, value)
+            base = self._phys_base_suffix[kind]
+            widget.setSuffix(f"{base} ({word})" if word else base)
+            style = self._phys_base_style[kind]
+            if color:
+                style += f"TilauSpinBox {{ color: {color}; }}"
+            widget.setStyleSheet(style)
+        except Exception as e:
+            _logd.debug(f"physical qualifier skipped ({kind}): {e}")
+
+    def _update_physical_qualifiers(self) -> None:
+        """Refresh all three qualifiers — for paths that set values silently."""
+        self._update_physical_qualifier('density', self.density_input.value())
+        self._update_physical_qualifier('humidity', self.last_humidity_input.value())
+        self._update_physical_qualifier('aw', self.water_activity_input.value())
+
     # ── sack chips (design v4 §6) ────────────────────────────────
     def _set_form_sacks(self, sacks: list[str]) -> None:
         """Mirror a bean's sack list into the form chips (label + row hidden when empty)."""
@@ -8816,7 +8850,6 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                     density         = self.density_input.value(),
                     last_humidity   = self.last_humidity_input.value(),
                     water_activity  = self.water_activity_input.value(),
-                    volume          = self.volume_input.value(),
                     altitude        = int(self.altitude_input.value()),
                     species         = self.species_combo.currentText(),
                     varieties       = self.varieties_combo.currentText(),
@@ -8896,7 +8929,6 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                 density=self.density_input.value(),
                 last_humidity=self.last_humidity_input.value(),
                 water_activity=self.water_activity_input.value(),
-                volume=self.volume_input.value(),
                 altitude=int(self.altitude_input.value()),
                 species=self.species_combo.currentText(),
                 varieties=self.varieties_combo.currentText(),
@@ -9011,15 +9043,14 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             7: 'density',
             8: 'last_humidity',
             9: 'water_activity',
-            10: 'volume',
-            11: 'altitude',
-            12: 'species',
-            13: 'varieties',
-            14: 'weight_left',
-            15: 'flavour_notes',
-            16: 'sca',
-            17: 'count',
-            18: 'weight',
+            10: 'altitude',
+            11: 'species',
+            12: 'varieties',
+            13: 'weight_left',
+            14: 'flavour_notes',
+            15: 'sca',
+            16: 'count',
+            17: 'weight',
         }
 
         sort_key = sort_key_map.get(column_index)
@@ -9040,7 +9071,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         # To this (handles numeric conversion safely):
         def get_sortable_val(bean, key):
             val = getattr(bean, key)
-            if key in ['weight', 'stock', 'sca', 'density', 'crop', 'count', 'last_humidity', 'water_activity', 'volume', 'altitude', 'weight_left', 'bean1_ratio', 'bean2_ratio', 'bean3_ratio']:
+            if key in ['weight', 'stock', 'sca', 'density', 'crop', 'count', 'last_humidity', 'water_activity', 'altitude', 'weight_left', 'bean1_ratio', 'bean2_ratio', 'bean3_ratio']:
                 try:
                     return float(val) if val is not None else 0.0
                 except (ValueError, TypeError):
@@ -9149,10 +9180,9 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                                     QApplication.translate("tilauscope_beancave","Unable to save file") + f" '{beancave_file_path}'. " +
                                     QApplication.translate("tilauscope_beancave","Error")+f": {e}", QMessageBox.Icon.Warning)
         else:
-            self.file_management_tab.setFocus() # if nothing has been set before, select the file management tab
             self._show_message(self,
                                 QApplication.translate("tilauscope_beancave","Save Error"),
-                                QApplication.translate("tilauscope_beancave","Please,  go to the file tab, select a directory to store the JSON beancave file and where your alog file are located. Then exit bean cave and relaunch it!"),
+                                QApplication.translate("tilauscope_beancave","Please select a directory to store the JSON beancave file and where your alog files are located. Then exit BeanCave and relaunch it!"),
                                 QMessageBox.Icon.Warning)
 
     @pyqtSlot()
@@ -9168,7 +9198,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self.density_input.setValue(0.0)
         self.last_humidity_input.setValue(0.0)
         self.water_activity_input.setValue(0.0)
-        self.volume_input.setValue(0.0)
+        self._update_physical_qualifiers()  # cleared form shows no qualifier
         self.altitude_input.setValue(0.0)
         self.species_combo.setCurrentIndex(0)
         self.varieties_combo.setCurrentIndex(0)
@@ -9560,100 +9590,6 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                 self.raise_()
 
     @pyqtSlot()
-    def update_alog_counts(self) -> None:
-        if not self.alog_directory:
-            self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Error"),
-                QApplication.translate("tilauscope_beancave",
-                    "Please, select a valid ALog directory first."),
-                QMessageBox.Icon.Warning)
-            return
-        directory = Path(self.alog_directory)
-        if not directory.is_dir():
-            return
-        if self.cave is None or not hasattr(self.cave, 'green_beans'):
-            return
-
-        progress = TilauProgressDialog(
-            QApplication.translate("tilauscope_beancave", "Scanning roast profiles..."),
-            self, len(self.cave.green_beans), SVG_PROG_SEARCH)
-        progress.show()
-
-        for bean in self.cave.green_beans:
-            bean.count  = 0
-            bean.weight = 0.0
-
-        flag_update    = False
-        orphaned_count = 0
-
-        # Track which filenames were claimed so we can detect orphans
-        claimed: set[str] = set()
-
-        for bi, bean in enumerate(self.cave.green_beans):
-            progress.pbar.setValue(bi)
-            QApplication.processEvents()
-
-            bean_uuid = getattr(bean, 'uuid', None)
-
-            # ── Primary path: UUID index lookup (O(1), no I/O) ───────────────
-            matched_fnames: list[str] = []
-            if bean_uuid and bean_uuid in self._alog_uuid_index:
-                matched_fnames = self._alog_uuid_index[bean_uuid]
-
-            for fname in matched_fnames:
-                claimed.add(fname)
-                filepath = directory / fname
-                try:
-                    data = self.get_alog_data(filepath)
-                    if data is None:
-                        continue
-                    flag_update = True
-                    bean.count += 1
-                    w_data = data.get('weight')
-                    if w_data:
-                        w = w_data[0]
-                        if isinstance(w, (int, float)) and w > 0:
-                            # normalise to grams before summing — profiles may be
-                            # stored in g/Kg/lb/oz; w_data[2] is the source unit.
-                            unit = w_data[2] if len(w_data) > 2 else 'g'
-                            try:
-                                src_idx = weight_units.index(unit)
-                            except ValueError:
-                                src_idx = 0  # unknown unit → assume grams
-                            bean.weight += convertWeight(float(w), src_idx, 0)
-                except OSError as e:
-                    _logd.warning(f"update_alog_counts: cannot read {fname}: {e}")
-
-        # Detect orphans: indexed files whose UUID doesn't match any cave bean
-        for fname, uuid_val in self._alog_file_uuid.items():
-            if fname not in claimed and uuid_val not in self.uuidmap:
-                orphaned_count += 1
-                _logd.warning(f"Orphaned roast: {fname} references missing UUID {uuid_val}")
-
-        if flag_update:
-            self.save_green_beans()
-            self.populate_table()
-
-        progress.pbar.setValue(len(self.cave.green_beans))
-
-        def _finish() -> None:
-            progress.hide()
-            progress.deleteLater()
-            # A clean scan is told by the ring's own check mark — a popup
-            # saying "it worked" on top of that is a second confirmation
-            # nobody asked for. Orphaned roasts are the one outcome that
-            # still needs a plain-language message, because it names files
-            # the operator may want to act on.
-            if orphaned_count:
-                self._show_message(self,
-                    QApplication.translate("tilauscope_beancave", "Update finished"),
-                    QApplication.translate("tilauscope_beancave",
-                        "Orphaned roasts were detected and logged."))
-
-        progress.pbar.dismissed.connect(_finish)
-        progress.pbar.succeed()
-
-    @pyqtSlot()
     def on_click_roast_properties(self) -> None:
         selected_row_index = self.datatable.currentRow()
         if selected_row_index == -1:
@@ -9785,462 +9721,6 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             self.save_settings() # Sauvegarde des nouveaux coefficients dans QSettings
         except Exception as e:
             _logd.error(f"Fatal error computing regression values: {e}")
-
-    @pyqtSlot()
-    def update_alogs_with_uuids(self) -> None:
-        """Counts roasts associated with green beans using partial name matching and UUIDs."""
-        if not self.cave or not self.cave.green_beans:
-            return
-        total_count = len(self._metadata_cache.records)
-        progress = TilauProgressDialog(
-            QApplication.translate("tilauscope_beancave", "Scanning roast profiles…"),
-            self, total_count, SVG_PROG_SEARCH)
-        progress.show()
-        updated_count = 0
-
-        # Reset counts
-        for bean in self.cave.green_beans:
-            bean.roasts = 0
-
-        uuid_pattern = re.compile(r'uuid:\s*([a-fA-F0-9-]{36})')
-        for i,record in enumerate(self._metadata_cache.records.values()):
-            filename = record.filename
-            progress.setValue(i)
-            QApplication.processEvents()
-
-            filepath = Path(self.alog_directory) / filename
-            try:
-                data = self.get_alog_data(filepath)
-                if data is None:
-                    continue
-                bean_field = data.get("beans", "")
-                title_field = data.get("title", "")
-
-                matched_bean = None
-                # 1. High Precision: UUID Match
-                uuid_match = uuid_pattern.search(bean_field)
-                if not uuid_match:
-                    # now we have no uuid in beans field
-                    clean_title = title_field.strip().lower()
-                    for bean in self.cave.green_beans:
-                        # Check if the bean name is a substring of the roast title
-                        if bean.name.lower() in clean_title:
-                            matched_bean = bean
-                            break
-                    if matched_bean:
-                        target_uuid = bean.uuid
-                        # Append the uuid on a real new line (matches the
-                        # canonical "\n".join(...) beans layout). Using "\\n"
-                        # here injected a literal backslash that repr then
-                        # re-escaped every save.
-                        data["beans"] = data["beans"].rstrip() + f"\nuuid: {target_uuid}"
-                        filepath.write_text(repr(data), encoding='utf-8')
-                        # Keep indexes consistent
-                        self._alog_uuid_index.setdefault(target_uuid, []).append(filename)
-                        self._alog_file_uuid[filename] = target_uuid
-                        updated_count += 1
-            except Exception as e:
-                _logd.error(f"Error parsing {filename}: {e}")
-
-        progress.setValue(total_count)
-        self.populate_table()
-        self._show_message(self,
-            QApplication.translate("tilauscope_beancave", "Update Complete"),
-            QApplication.translate("tilauscope_beancave", "Finished! Updated {} roast profiles with UUIDs.").format(updated_count))
-
-    def export_pid_analysis_to_csv(self):
-        total_count = len(self._metadata_cache.records)
-
-        if total_count ==0 :
-            return
-
-        downloads_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
-
-        default_path = str(Path(downloads_dir) / "roast_export.csv")
-
-        file_path = self._open_file_dialog_save(
-            QApplication.translate("tilauscope_beancave", "Export PID Analysis Data"),
-            default_path,
-            QApplication.translate("tilauscope_beancave", "CSV Files (*.csv);;All Files (*)")
-        )
-        if not file_path: return
-
-        progress = TilauProgressDialog(
-            QApplication.translate("tilauscope_beancave", "Extracting time-series data…"),
-            self, total_count, SVG_PROG_UPLOAD)
-        progress.show()
-
-        try:
-            with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.writer(csvfile)
-                # Header as requested + debugging info
-                writer.writerow([
-                    'UUID', 'Time_s', 'Phase_Index', 'ET', 'BT',
-                    'Delta_ET', 'Delta_BT', 'Airflow', 'Airwave', 'Burner', 'Drum'
-                ])
-
-                _UUID_RE = re.compile(r'uuid:\s*([a-fA-F0-9-]{36})')
-
-                for idx, record in enumerate(self._metadata_cache.records.values()):
-                    filename = record.filename
-                    progress.setValue(idx)
-                    if progress.wasCanceled(): break
-
-                    filepath = Path(self.alog_directory) / filename
-                    data = self.get_alog_data(filepath)
-                    if not data: continue
-
-
-                    timex = data.get('timex', [])
-                    temp1 = data.get('temp1', []) # ET
-                    temp2 = data.get('temp2', []) # BT
-                    t_idx = data.get('timeindex', [])
-
-                    # Machine event data
-                    ev_types = data.get('specialeventstype', [])
-                    ev_vals = data.get('specialeventsvalue', [])
-                    ev_times = data.get('specialevents', []) # Usually rel to charge
-
-                    bean_field = data.get("beans", "")
-                    title_field = data.get("title","")
-                    #                    first_part = re.split(r"[-/|,:;]", title_field, maxsplit=1)[0].strip()
-
-                    # Inside the per-file loop, replace the UUID block with:
-                    target_bean = None
-
-                    # 1. Fast path: reverse index gives UUID directly from filename
-                    file_uuid = self._alog_file_uuid.get(filename)
-                    if file_uuid:
-                        target_bean = self.uuidmap.get(file_uuid)
-
-                    # 2. Fallback: parse beans field for files not in the index
-                    if not target_bean:
-                        bean_field = data.get("beans", "")
-                        m = _UUID_RE.search(bean_field)
-                        if m:
-                            target_bean = self.uuidmap.get(m.group(1))
-
-                    # 3. Last resort: name-in-title
-                    if not target_bean:
-                        title_lc = title_field.lower()
-                        target_bean = next(
-                            (b for b in self.cave.green_beans if b.name.lower() in title_lc), None)
-
-                    roast_uuid = target_bean.uuid if target_bean is not None else filename
-                    charge_idx = t_idx[0] if t_idx and t_idx[0] >= 0 else 0
-
-                    # Store last known values for "step" logic
-                    last_settings = {0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0}
-
-                    raw_bt = data.get('temp2', [])
-                    raw_et = data.get('temp1', [])
-                    times = data.get('timex', [])
-
-                    # 2. Use a simple, continuous Delta calculation instead of evaldeltas
-                    # This avoids the "phase reset" bug in the recomputeDeltas function
-                    def calculate_continuous_ror(temp_list, time_list, window=30):
-                        ror = [0.0] * len(temp_list)
-                        for i in range(window, len(temp_list)):
-                            dt = time_list[i] - time_list[i-window]
-                            dy = temp_list[i] - temp_list[i-window]
-                            if dt > 0:
-                                # Calculate °/min
-                                ror[i] = (dy / dt) * 60.0
-                        return ror
-
-                    delta_bt_continuous = calculate_continuous_ror(raw_bt, times)
-                    delta_et_continuous = calculate_continuous_ror(raw_et, times)
-
-                    for i in range(len(timex)):
-                        curr_time_abs = timex[i]
-                        curr_time_rel = curr_time_abs - timex[charge_idx]
-
-                        # Identify Phase
-                        phase = -1
-                        for p_idx, p_start_i in enumerate(t_idx):
-                            if p_start_i != -1 and i >= p_start_i:
-                                phase = p_idx
-
-                        # Update machine settings logic (mimics findLastValidEvent)
-                        for d in range(len(ev_times)):
-                            if ev_times[d] <= curr_time_rel:
-                                e_type = ev_types[d]
-                                if e_type in last_settings:
-                                    # Convert internal scale to external %
-                                    raw_val = ev_vals[d] if ev_vals[d] is not None else 0.0
-                                    last_settings[e_type] = self.aw.qmc.eventsInternal2ExternalValue(raw_val)
-
-                        writer.writerow([
-                            roast_uuid,
-                            round(curr_time_rel, 1),
-                            phase,
-                            round(temp1[i], 2) if i < len(temp1) else '',
-                            round(temp2[i], 2) if i < len(temp2) else '',
-                            round(delta_et_continuous[i], 2) if delta_et_continuous and i < len(delta_et_continuous) and delta_et_continuous[i] is not None else 0.0,
-                            round(delta_bt_continuous[i], 2) if delta_bt_continuous and i < len(delta_bt_continuous) and delta_bt_continuous[i] is not None else 0.0,
-                            last_settings[1], # Airflow
-                            last_settings[3], # Airwave
-                            last_settings[0], # Burner
-                            last_settings[2]  # Drum
-                        ])
-            progress.setValue(total_count)
-            progress.hide()
-            progress.deleteLater()
-            self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Export"),
-                QApplication.translate("tilauscope_beancave", "Extended PID analysis data exported."))
-        except Exception as e:
-            self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Export Error"),
-                QApplication.translate("tilauscope_beancave", "Failed: ") + str(e))
-            if progress.isVisible():
-                progress.hide()
-                progress.deleteLater()
-
-    @pyqtSlot()
-    def export_roast_data_to_csv(self):
-        """Exports roast data to CSV with extended fields matching the full version."""
-        total_count = len(self._metadata_cache.records)
-        if total_count == 0:
-            return
-
-        from PyQt6.QtCore import QStandardPaths
-
-        downloads_dir = QStandardPaths.writableLocation(
-            QStandardPaths.StandardLocation.DownloadLocation
-        )
-
-        default_path = str(Path(downloads_dir) / "roast_export.csv")
-
-        file_path = self._open_file_dialog_save(
-            QApplication.translate("tilauscope_beancave", "Export Roast Data"),
-            default_path,
-            QApplication.translate("tilauscope_beancave", "CSV Files (*.csv);;All Files (*)")
-        )
-        if not file_path:
-            return
-
-        # Setup Progress Dialog
-        progress = TilauProgressDialog(
-            QApplication.translate("tilauscope_beancave", "Exporting roast data…"),
-            self, total_count, SVG_PROG_UPLOAD)
-        progress.show()
-
-        try:
-            with open(file_path, 'w', newline='', encoding='utf-8-sig' if _IS_WINDOWS else 'utf-8') as csvfile:
-                writer = csv.writer(csvfile)
-                # Extended Headers
-                writer.writerow([
-                    # ── Identity ──────────────────────────────────────────────
-                    'Date', 'Bean Name', 'UUID', 'unit',
-                    # ── Weights ───────────────────────────────────────────────
-                    'Batch Weight (g)', 'Weight Out (g)', 'Weight Loss (%)',
-                    # ── Times ─────────────────────────────────────────────────
-                    'Roast Time (s)', 'Dry Time (s)', 'Maillard Time (s)',
-                    'Development Time (s)', 'DTR (%)',
-                    # ── Turning Point ─────────────────────────────────────────
-                    'TP Time (s)', 'TP BT', 'TP ET',
-                    # ── Phase temperatures BT (calibration targets) ───────────
-                    'Charge BT', 'Dry End BT', 'FC BT', 'Drop BT',
-                    # ── Phase temperatures ET (machine fingerprint) ────────────
-                    'Charge ET', 'Dry End ET', 'FC ET', 'Drop ET',
-                    # ── ET/BT delta at TP (radiant vs drum fingerprint) ────────
-                    'TP ET-BT Delta',
-                    # ── Color ─────────────────────────────────────────────────
-                    'whole color', 'ground color', 'color system',
-                    # ── Bean properties ───────────────────────────────────────
-                    'density',
-                    # ── Ambient conditions ────────────────────────────────────
-                    'Ambient Temp', 'Ambient Humidity', 'Ambient Pressure',
-                    # ── Energy (RSE/CO2 — on-demand only) ────────────────────
-                    'BTU Preheat', 'BTU Roast', 'BTU Cooling',
-                    # ── AUC per phase ─────────────────────────────────────────
-                    'AUC Dry', 'AUC Maillard', 'AUC Development',
-                    # ── RoR per phase ─────────────────────────────────────────
-                    'Ror Dry', 'Ror Maillard', 'Ror Development', 'Total Ror',
-                    # ── Delta temp per phase ──────────────────────────────────
-                    'Delta Temp Dry', 'Delta Temp Maillard', 'Delta Temp Development',
-                    # ── Visual defects (boolean) ──────────────────────────────
-                    'Heavy FC', 'Low FC', 'Tipping', 'Scorching', 'Divots', 'Uneven',
-                    # ── Notes ─────────────────────────────────────────────────
-                    'Roasting Notes', 'Cupping Notes',
-                    # ── Sensory score (tilau_sensory_score — see RoastResultDialog) ──
-                    'Sensory Score',
-                ])
-
-                _UUID_RE = re.compile(r'uuid:\s*([a-fA-F0-9-]{36})')
-
-                for i, record in enumerate(self._metadata_cache.records.values()):
-                    filename = record.filename
-                    progress.setValue(i)
-                    if progress.wasCanceled(): break
-                    QApplication.processEvents()
-
-                    filepath = Path(self.alog_directory) / filename
-                    try:
-                        data = self.get_alog_data(filepath) # filepath ou alog_file
-                        if data is None:
-                            continue
-                        computed:ComputedProfileInformation = data.get("computed", {})
-                        bean_field = data.get("beans", "")
-                        title_field = data.get("title","")
-                        first_part = re.split(r"[-/|,:;]", title_field, maxsplit=1)[0].strip()
-
-                        # Inside the per-file loop, replace the UUID block with:
-                        target_bean = None
-
-                        # 1. Fast path: reverse index gives UUID directly from filename
-                        file_uuid = self._alog_file_uuid.get(filename)
-                        if file_uuid:
-                            target_bean = self.uuidmap.get(file_uuid)
-
-                        # 2. Fallback: parse beans field for files not in the index
-                        if not target_bean:
-                            bean_field = data.get("beans", "")
-                            m = _UUID_RE.search(bean_field)
-                            if m:
-                                target_bean = self.uuidmap.get(m.group(1))
-
-                        # 3. Last resort: name-in-title
-                        if not target_bean:
-                            title_lc = title_field.lower()
-                            target_bean = next(
-                                (b for b in self.cave.green_beans if b.name.lower() in title_lc), None)
-                        # Data Extraction
-                        w_in = float(computed.get('weightin', 0))
-                        w_out = float(computed.get('weightout', 0))
-                        w_loss = float(round(((w_in - w_out) / w_in * 100), 2)) if w_in > 0 else 0.0
-
-                        t_dry = round(float(computed.get("DRY_time", 0.0)), 1)
-                        t_fcs = round(float(computed.get("FCs_time", 0.0)), 1)
-                        t_drop = round(float(computed.get("DROP_time", 0.0)), 1)
-                        dtr = round(100.0*(t_drop-t_fcs)/t_drop,1)
-                        name = target_bean.name if target_bean else first_part
-                        if name == "":
-                            _logd.warning(f"Empty name for roast '{title_field}' in file '{filename}'. Using 'N/A' instead.")
-                            continue
-                        if w_in==0.0 or w_out==0.0:
-                            continue # skip entries with no weight or no drop time, as they are likely incomplete or failed roasts
-                        # ── Phase BT temperatures ─────────────────────────────
-                        _charge_bt  = computed.get('CHARGE_BT',  0.0) or 0.0
-                        _dry_bt     = computed.get('DRY_BT',     0.0) or 0.0
-                        _fc_bt      = computed.get('FCs_BT',     0.0) or 0.0
-                        _drop_bt    = computed.get('DROP_BT',    0.0) or 0.0
-                        # ── Phase ET temperatures ─────────────────────────────
-                        _charge_et  = computed.get('CHARGE_ET',  0.0) or 0.0
-                        _dry_et     = computed.get('DRY_ET',     0.0) or 0.0
-                        _fc_et      = computed.get('FCs_ET',     0.0) or 0.0
-                        _drop_et    = computed.get('DROP_ET',    0.0) or 0.0
-                        # ── ET/BT delta at TP (machine fingerprint) ───────────
-                        # Radiant: ET < BT at TP (negative delta, ~-26°C on SW)
-                        # Drum gas: ET > BT at TP (positive delta)
-                        _tp_bt      = computed.get('TP_BT',  0.0) or 0.0
-                        _tp_et      = computed.get('TP_ET',  0.0) or 0.0
-                        _tp_et_bt_delta = round(_tp_et - _tp_bt, 1) if _tp_bt > 0 and _tp_et > 0 else 'N/A'
-                        # ── Visual defects ────────────────────────────────────
-                        _heavy_fc   = 1 if data.get('heavyFC',   False) else 0
-                        _low_fc     = 1 if data.get('lowFC',     False) else 0
-                        _tipping    = 1 if data.get('tipping',   False) else 0
-                        _scorching  = 1 if data.get('scorching', False) else 0
-                        _divots     = 1 if data.get('divots',    False) else 0
-                        _uneven     = 1 if data.get('uneven',    False) else 0
-                        # ── Notes ─────────────────────────────────────────────
-                        _roast_notes  = (data.get('roastingnotes', '') or '').replace('\n', ' ').strip()
-                        _cupping_notes = (data.get('cuppingnotes', '') or '').replace('\n', ' ').strip()
-                        # ── Sensory score (populated by RoastResultDialog) ────
-                        # Field: data['tilau_sensory_score'] — float 0-100
-                        # TODO: add tilau_sensory_score field to RoastResultDialog
-                        _sensory_score = data.get('tilau_sensory_score', 'N/A')
-
-                        writer.writerow([
-                                # ── Identity ──────────────────────────────────
-                                data.get('roastisodate', 'N/A'),
-                                target_bean.name if target_bean else first_part,
-                                getattr(target_bean, 'uuid', 'N/A'),
-                                data.get("mode", "C"),
-                                # ── Weights ───────────────────────────────────
-                                w_in,
-                                w_out,
-                                w_loss,
-                                # ── Times ─────────────────────────────────────
-                                t_drop,  # total roast time
-                                t_dry,
-                                round((t_fcs - t_dry), 1) if t_fcs > t_dry else 0,
-                                round((t_drop - t_fcs), 1) if t_drop > t_fcs else 0,
-                                dtr,
-                                # ── Turning Point ─────────────────────────────
-                                computed.get('TP_time', 0.0),
-                                _tp_bt,   # TP BT  (fix: was inverted in previous version)
-                                _tp_et,   # TP ET
-                                # ── Phase BT temperatures ─────────────────────
-                                _charge_bt,
-                                _dry_bt,
-                                _fc_bt,
-                                _drop_bt,
-                                # ── Phase ET temperatures ─────────────────────
-                                _charge_et,
-                                _dry_et,
-                                _fc_et,
-                                _drop_et,
-                                # ── ET/BT delta at TP ─────────────────────────
-                                _tp_et_bt_delta,
-                                # ── Color ─────────────────────────────────────
-                                data.get('whole_color', 0),
-                                data.get('ground_color', 0),
-                                data.get("color_system", 'N/A'),
-                                # ── Bean properties ───────────────────────────
-                                computed.get('set_density', 'N/A') if target_bean and target_bean.density == 0 else target_bean.density if target_bean else 'N/A',
-                                # ── Ambient conditions ────────────────────────
-                                computed.get('ambient_temperature', 0),
-                                computed.get('ambient_humidity', 0),
-                                computed.get('ambient_pressure', 0),
-                                # ── Energy ────────────────────────────────────
-                                computed.get('BTU_preheat', 'N/A'),
-                                computed.get('BTU_roast', 'N/A'),
-                                computed.get('BTU_cooling', 'N/A'),
-                                # ── AUC ───────────────────────────────────────
-                                computed.get('dry_phase_AUC', 'N/A'),
-                                computed.get('mid_phase_AUC', 'N/A'),
-                                computed.get('finish_phase_AUC', 'N/A'),
-                                # ── RoR ───────────────────────────────────────
-                                computed.get('dry_phase_ror', 'N/A'),
-                                computed.get('mid_phase_ror', 'N/A'),
-                                computed.get('finish_phase_ror', 'N/A'),
-                                computed.get('total_ror', 'N/A'),
-                                # ── Delta temp ────────────────────────────────
-                                computed.get('dry_phase_delta_temp', 'N/A'),
-                                computed.get('mid_phase_delta_temp', 'N/A'),
-                                computed.get('finish_phase_delta_temp', 'N/A'),
-                                # ── Visual defects ────────────────────────────
-                                _heavy_fc,
-                                _low_fc,
-                                _tipping,
-                                _scorching,
-                                _divots,
-                                _uneven,
-                                # ── Notes ─────────────────────────────────────
-                                _roast_notes,
-                                _cupping_notes,
-                                # ── Sensory score ─────────────────────────────
-                                _sensory_score,
-                            ])
-                    except Exception as e:
-                        _logd.error(f"Error exporting {filename}: {e}")
-
-            progress.setValue(total_count)
-            progress.hide()
-            progress.deleteLater()
-            self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Export"),
-                QApplication.translate("tilauscope_beancave", "Extended data exported successfully."))
-        except Exception as e:
-            if progress.isVisible():
-                progress.hide()
-                progress.deleteLater()
-            self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Export Error"),
-                QApplication.translate("tilauscope_beancave", "Could not save CSV: ") + str(e),
-                QMessageBox.Icon.Critical)
 
     @pyqtSlot()
     def load_roast_in_artisan(self) -> None:
@@ -11171,7 +10651,6 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self.density_input.setValue(bean.density)
         self.last_humidity_input.setValue(bean.last_humidity)
         self.water_activity_input.setValue(bean.water_activity)
-        self.volume_input.setValue(bean.volume)
         self.altitude_input.setValue(bean.altitude)
         self.sca_input.setValue(bean.sca)
 
@@ -11219,7 +10698,6 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self.density_input.setValue(bean.density)
         self.last_humidity_input.setValue(bean.last_humidity)
         self.water_activity_input.setValue(bean.water_activity)
-        self.volume_input.setValue(bean.volume)
         self.altitude_input.setValue(bean.altitude)
         self.sca_input.setValue(bean.sca)
 

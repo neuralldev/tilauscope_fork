@@ -89,18 +89,43 @@ class PIType(Enum):
 
 
 class EspressoStyle(Enum):
-    # Two legitimate schools for pulling a roast-appropriate ratio.
+    # Three legitimate schools for pulling a roast-appropriate ratio.
     # CLASSIC keeps the grind the roast asks for and lets the shot run as long
     # as the ratio needs (a light roast reaches 1:3 in ~42 s). TURBO fixes the
     # shot at ~25 s and opens the grind to get the flow, which by construction
     # lands on nearly the same grind for every roast — in turbo the roast is
-    # expressed by the ratio alone. Neither is wrong; they are different drinks.
+    # expressed by the ratio alone. MODERN is the high-flow-basket school for
+    # light roasts: a short fixed pre-infusion (bloom + soak) followed by a
+    # fast 9-bar pull, with the pull length itself — not the grind — reading
+    # the roast. Neither school is wrong; they are different drinks.
     CLASSIC = "classic"
     TURBO = "turbo"
+    MODERN = "modern"
 
 
-ESPRESSO_STYLE_ORDER: tuple[EspressoStyle, ...] = (EspressoStyle.CLASSIC, EspressoStyle.TURBO)
+ESPRESSO_STYLE_ORDER: tuple[EspressoStyle, ...] = (
+    EspressoStyle.CLASSIC, EspressoStyle.TURBO, EspressoStyle.MODERN,
+)
 _TURBO_TARGET_S: int = 25
+
+# MODERN style: a fixed short pre-infusion (bloom then soak) ahead of a fast
+# 9-bar pull. 2.5 s / 7.5 s split to the nearest second, sum kept at 10 s.
+_MODERN_PI_WET_S: int = 3
+_MODERN_PI_DWELL_S: int = 7
+_MODERN_PI_S: int = _MODERN_PI_WET_S + _MODERN_PI_DWELL_S
+_MODERN_PULL_MIN_S: int = 10
+_MODERN_PULL_MAX_S: int = 20
+# High-flow baskets are built for light roasts; below MEDIUM_LIGHT the coffee
+# is soluble enough that a fast pull over-extracts, so the style only takes
+# over from MEDIUM_LIGHT up (min_agtron 65) and falls back to CLASSIC below it.
+_MODERN_MIN_AGTRON: float = 65.0
+# Pull length reads mostly the roast level (lighter → longer, denser/less
+# soluble structure) and a smaller share of green density.
+_MODERN_AGTRON_WEIGHT: float = 0.7
+_MODERN_DENSITY_WEIGHT: float = 0.3
+# Density band shared with _mod_density's own "normal" range (650-780 kg/m3).
+_MODERN_DENSITY_LO: float = 650.0
+_MODERN_DENSITY_HI: float = 780.0
 
 
 class EspressoMachine(Enum):
@@ -164,6 +189,9 @@ class NoteCode(Enum):
     SPREAD_EXCELLENT = "spread_excellent"
     RATIO_OFFSET = "ratio_offset"
     TURBO = "turbo"
+    MODERN = "modern"
+    MODERN_NO_PI = "modern_no_pi"
+    MODERN_TOO_DARK = "modern_too_dark"
     CAPACITY = "capacity"
     BASKET = "basket"
     AI_ADJUSTED = "ai_adjusted"
@@ -835,6 +863,21 @@ def _mod_moisture(inp: BrewInput) -> RecipeDelta:
 _PI_WET_S_PER_G: float = 0.17
 
 
+def _modern_pull_seconds(agtron: float, density: float) -> int:
+    """Pull length for the MODERN style: 10-20 s, weighted 70% roast level
+    (lighter roast → longer pull) / 30% green density (denser → longer pull).
+    Unknown density reads as neutral (mid-band) rather than pulling the score
+    toward either end."""
+    agtron_frac = max(0.0, min(1.0, (agtron - _MODERN_MIN_AGTRON) / (95.0 - _MODERN_MIN_AGTRON)))
+    if density > 0:
+        density_frac = max(0.0, min(1.0, (density - _MODERN_DENSITY_LO) / (_MODERN_DENSITY_HI - _MODERN_DENSITY_LO)))
+    else:
+        density_frac = 0.5
+    score = _MODERN_AGTRON_WEIGHT * agtron_frac + _MODERN_DENSITY_WEIGHT * density_frac
+    span = _MODERN_PULL_MAX_S - _MODERN_PULL_MIN_S
+    return int(round(_MODERN_PULL_MIN_S + span * score))
+
+
 def _espresso_profile(level: RoastLevel, days_off: int, agtron: float,
                       spec: EspressoMachineSpec, dose_g: float = 18.0) -> EspressoProfile:
     pi_s = level.pi_base_s
@@ -1134,6 +1177,22 @@ class BrewAdvisor:
             # factor is exactly 1.0, so the reference 28 s shot is preserved.
             lead_in = espresso.pre_brew_seconds + espresso.pi_seconds
             total_time_s = lead_in + round(_ESPRESSO_PULL_S * (ratio / 2.0))
+            if inp.espresso_style == EspressoStyle.MODERN:
+                if agtron < _MODERN_MIN_AGTRON:
+                    # High-flow basket is a light-roast tool; below the anchor
+                    # roast the coffee is soluble enough to over-extract fast —
+                    # fall back to CLASSIC timing rather than force the style.
+                    notes.append((Severity.WARN, NoteCode.MODERN_TOO_DARK, {}))
+                elif spec.pi_type == PIType.NONE:
+                    notes.append((Severity.WARN, NoteCode.MODERN_NO_PI, {}))
+                else:
+                    espresso.pi_wet_s = _MODERN_PI_WET_S
+                    espresso.pi_dwell_s = _MODERN_PI_DWELL_S
+                    espresso.pi_seconds = _MODERN_PI_S
+                    pull_s = _modern_pull_seconds(agtron, inp.density)
+                    lead_in = espresso.pre_brew_seconds + espresso.pi_seconds
+                    total_time_s = lead_in + pull_s
+                    notes.append((Severity.INFO, NoteCode.MODERN, {"s": pull_s}))
             if inp.espresso_style == EspressoStyle.TURBO:
                 # Turbo fixes the shot short and opens the grind to
                 # get the flow. Flow rises with the SQUARE of particle size

@@ -212,18 +212,18 @@ def test_back_to_back_lowers_the_charge_by_the_heat_soak_correction(
 _GR2_UUID = 'a82364a8-e9ad-447c-a3d8-5f49111dc3ee'
 
 
-def _charge_of(water_activity: float, minutes_since_drop: float | None) -> float:
-    """Charge BT for one back-to-back request, at a given measured Aw.
+def _charge_of(moisture_pct: float, minutes_since_drop: float | None) -> float:
+    """Charge BT for one back-to-back request, at a given measured moisture.
 
-    Deliberately cold and light: ambient 10 °C, humidity 30 %, density 550 g/L
-    push the pre-soak charge near the bottom of the natural band, which is the
-    only place the water-activity floor can reach the heat-soak correction.
-    A plan built in mild conditions never exercises this at all — which is
-    exactly why the bug survived the existing back-to-back test above.
+    Deliberately cold: ambient 10 °C, humidity 30 % and a neutral density push
+    the pre-soak charge near the bottom of the natural band, which is the
+    only place the water floor can reach the heat-soak correction. A plan built
+    in mild conditions never exercises this at all — which is exactly why the
+    bug survived the existing back-to-back test above.
     """
     model = H.make_plan_model(H.CORPUS_DIR)
     bean = H.make_bean(_GR2_UUID, '74110 GR2', process='Natural', altitude=1800,
-                       density=550.0, water_activity=water_activity)
+                       density=700.0, last_humidity=moisture_pct)
     result = model.generate_roast_plan(
         bean, H.agtron('Medium'), 10.0, 30.0, 400.0, 1800.0,
         None, False, minutes_since_drop,
@@ -232,20 +232,17 @@ def _charge_of(water_activity: float, minutes_since_drop: float | None) -> float
     return float(plan['Charge Temp'])
 
 
-@pytest.mark.parametrize('water_activity', [0.0, 0.52, 0.45])
-def test_measuring_water_activity_never_eats_the_heat_soak(
-    water_activity: float,
+@pytest.mark.parametrize('moisture_pct', [0.0, 9.5, 8.5])
+def test_measuring_the_water_never_eats_the_heat_soak(
+    moisture_pct: float,
 ) -> None:
-    """The soak keeps its full authority whatever the Aw reading says.
+    """The soak keeps its full authority whatever the water reading says.
 
-    The heat soak is allowed below the process band — that is its purpose.
-    The water-activity floor used to be applied to the already-soaked charge,
-    so a measured Aw under 0.55 clawed the charge back up to the band bottom:
-    −3.8 °C applied at Aw 0.52 and −1.8 °C at 0.45 instead of the −7.5 the law
-    prescribes, while the published "Heat Soak" block still announced the full
-    figure. Aw 0.52 and 0.54 are real beans in the live database, so this was
-    not a corner case: measuring water activity made the plan worse than
-    leaving it unmeasured.
+    The heat soak is allowed below the process band — that is its purpose. The
+    water floor used to be applied to the already-soaked charge, so a dry bean
+    clawed the charge back up to the band bottom while the published "Heat Soak"
+    block still announced the full figure: measuring the water made the plan
+    worse than leaving it unmeasured.
     """
     from tilauscope.roast_plan_model import heat_soak_correction
 
@@ -253,7 +250,7 @@ def test_measuring_water_activity_never_eats_the_heat_soak(
     expected, _, _ = heat_soak_correction(
         0.0, context.thermal_mass_index, context.heat_retention_index)
 
-    applied = _charge_of(water_activity, 0.0) - _charge_of(water_activity, None)
+    applied = _charge_of(moisture_pct, 0.0) - _charge_of(moisture_pct, None)
     assert applied == pytest.approx(expected, abs=0.15)
 
 
@@ -267,19 +264,21 @@ def _plan(**bean_fields: Any) -> dict[str, Any]:
     return result[0] if isinstance(result, tuple) else result
 
 
-def test_a_bean_with_both_readings_follows_its_water_activity() -> None:
-    """The exclusive-pair rule, end to end, on the bean that proves it matters.
+def test_the_charge_follows_the_water_mass_and_the_aw_never_moves_it() -> None:
+    """End to end, on the bean that proves the two are separate.
 
-    KoJoYo Sindoro Java reads 12.5 % moisture — wet — but aw 0.54 — dry. Reading
-    both used to move the charge in two directions at once; reading moisture
-    alone sends every lever the wrong way. The plan must follow the aw.
+    KoJoYo Sindoro Java reads 12.5 % moisture — a real mass of water to heat —
+    and aw 0.54, meaning that water leaves reluctantly. The charge answers the
+    MASS; the aw has no say there, whatever it reads.
     """
-    wet_reading_only = float(_plan(last_humidity=12.5)['Charge Temp'])
-    both_readings = float(_plan(last_humidity=12.5, water_activity=0.54)['Charge Temp'])
+    wet = float(_plan(last_humidity=12.5)['Charge Temp'])
+    wet_with_low_aw = float(_plan(last_humidity=12.5, water_activity=0.54)['Charge Temp'])
+    wet_with_high_aw = float(_plan(last_humidity=12.5, water_activity=0.70)['Charge Temp'])
     neutral = float(_plan(last_humidity=10.5)['Charge Temp'])
 
-    assert wet_reading_only > neutral, 'moisture alone reads this bean as wet'
-    assert both_readings < neutral, 'with aw present the bean must read DRY'
+    assert wet > neutral, 'a wetter bean takes a hotter charge'
+    assert wet_with_low_aw == pytest.approx(wet), 'the aw leaked into the charge'
+    assert wet_with_high_aw == pytest.approx(wet), 'the aw leaked into the charge'
 
 
 def test_culture_altitude_is_ignored_when_density_is_measured() -> None:
@@ -307,11 +306,13 @@ def test_ambient_humidity_no_longer_touches_the_plan() -> None:
     assert _at(20.0) == _at(95.0), 'ambient humidity still moves a plan output'
 
 
-def test_water_activity_alone_still_cannot_leave_the_process_band() -> None:
-    """Widening the floor must not turn it off: with no soak it still bites."""
-    band_bottom = 170.0  # _CHARGE_BAND_BY_PROCESS['natural']
-    assert _charge_of(0.35, None) == pytest.approx(band_bottom, abs=0.05)
-    assert _charge_of(0.52, None) > band_bottom
+def test_the_water_term_alone_still_cannot_leave_the_process_band() -> None:
+    """Water modulates INSIDE the band — only structure and the heat soak are
+    allowed out of it. The driest bean there is must still land in the band."""
+    band_bottom, band_top = 170.0, 180.0  # _CHARGE_BAND_BY_PROCESS['natural']
+    driest = _charge_of(5.5, None)
+    assert band_bottom <= driest <= band_top
+    assert _charge_of(9.5, None) > driest
 
 
 def test_every_scenario_documents_why_it_exists() -> None:
