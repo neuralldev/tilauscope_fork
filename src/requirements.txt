@@ -117,7 +117,7 @@ kiwisolver>=1.5.0
 pyparsing>=3.3.2
 mashumaro>=3.22
 types_fpdf2>=2.8.4.20260724
-beautifulsoup4==4.14.3
+beautifulsoup4==4.15.0
 instructor==1.14.5
 win_inet_pton==1.1.0; platform_system=='Windows'
 #google-api-python-client>=2.176.0; platform_system=='Windows'
