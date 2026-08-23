@@ -13,7 +13,7 @@ types-jmespath>=1.1.0.20260724
 types-xlrd>=2.0.0.20260518
 types-qrcode>=8.2.0.20260518
 lxml-stubs>=0.5.1
-mypy==2.3.0
+mypy==2.3.1
 pyright==1.1.411
 ruff>=0.15.22
 pylint==4.0.7
