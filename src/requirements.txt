@@ -78,7 +78,7 @@ pyfulgur==0.40.0 # HTML -> PDF engine used by Artisan's roast report export (htm
 # packages that differ per platform
 #
 ###
-pyinstaller==6.21.0; platform_system=='Linux' or sys_platform=='darwin' # on Windows pyinstaller is separately installed (see above)
+pyinstaller==6.22.2; platform_system=='Linux' or sys_platform=='darwin' # on Windows pyinstaller is separately installed (see above)
 #
 ########
 ### macOS specific packages
