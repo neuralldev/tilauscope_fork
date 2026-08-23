@@ -64,7 +64,7 @@ pydantic==2.13.3
 babel==2.18.0
 bleak==3.0.2
 python-statemachine==3.2.0
-yoctopuce==2.1.15129
+yoctopuce==2.1.15391
 PyQt6==6.11.0
 PyQt6-WebEngine==6.11.0
 qt6-tools==6.5.0.1.3
