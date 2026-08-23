@@ -529,6 +529,9 @@ class OnboardingWizard(QDialog):
             d = QFileDialog.getExistingDirectory(self, QApplication.translate("tilauscope_onboarding","Select folder"), start)
             if d:
                 QSettings().setValue(key, d)
+                if kind != "beancave":
+                    from tilauscope.alogmanager import directory_changed
+                    directory_changed(d)
         self._refresh_dir_labels()
 
     def _refresh_dir_labels(self) -> None:

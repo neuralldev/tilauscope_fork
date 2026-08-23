@@ -1,4 +1,97 @@
+## [4.2.14] 2026-08-23
+build 1
+* ⚡ [feat(l10n)] : German, Spanish, Italian, Simplified and Traditional Chinese are complete again. About 75 labels added since the last pass were showing in English inside an otherwise translated interface
 ## [4.2.13] 2026-08-14
+build 10
+* 🐛 [fix(roasting window)] : the drop now really closes the roast — the three phase blocks stay full instead of emptying to zero, none of them is left running, and the readouts keep the roast's own highest and lowest values instead of folding the cooling into them
+* 🐛 [fix(roasting window)] : a COOL END marked from Artisan now shows the « roaster is cooled » message like the panel's own button, and undoing it goes back to the cooling rather than back to development
+* 🐛 [fix(roasting window)] : event buttons fired after an event configuration change are listed in the live events again — the command was still sent, but its badge no longer reached the side panel
+* 🐛 [fix(roasting window)] : the status line now announces the automatic milestones again — AUTO-DRY, AUTO-FC and AUTO-DROP appear once the roast is loaded and the matching automation is enabled
+* 🐛 [fix(airwave)] : the extractor's own moves are now recorded at the exact value sent, and can no longer be overwritten a moment later by an event quantifier reading the same channel
+* 🐛 [fix(tilaupid)] : preheat and emergency heat-cut commands now hold off the event quantifier, so an automatic reading cannot push the burner back up right after the controller set it
+* 🐛 [fix(roasting window)] : moving a machine control now records exactly what the roaster received — values are snapped to the configured 5/10 step, zero and negative settings are stored at their real value instead of a shifted one, and the event is labelled with its value and unit
+* 🐛 [fix(roasting window)] : opening the window on a roast that is already running now adopts it — MONITOR shows as engaged instead of stopping the session at the first click, the milestone buttons come back live, and the phases, their timings and the assistant pick up where the roast actually is
+* 🐛 [fix(roasting window)] : the START/STOP button label can now be translated
+* 🐛 [fix(roasting window)] : the panel keeps working through the cooling — the timer restart at DROP no longer freezes the machine controls, the automation notice and the assistant until the end of the session
+build 9
+* ⚡ [feat(roasting window)] : a STOP HEAT control in the header cuts the heat in one gesture — hold it one second to stop every automation, set the burner to zero and open airflow and extraction, with the drum left turning and the panel asking you to empty it
+build 8
+* 🐛 [fix(roasting window)] : START now sits at the same height as MONITOR, and its label and glyph are dark on the blue fill instead of white on light blue
+* 🐛 [fix(roasting window)] : the header controls no longer overlap — the first row is sized to the pane's exact width, and the window grab strip has moved to the end of the second row where it has room
+build 7
+* 🐛 [fix(roasting window)] : the compact header now matches its approved mockup, with left-aligned secondary actions and filled, high-contrast button states
+* ⚡ [feat(roasting window)] : the compact header now matches the approved layout, with readable primary and secondary actions and consistent button sizing
+* ⚡ [feat(roasting window)] : the primary monitoring and roast controls now use a compact two-line header with readable state labels
+* ⚡ [feat(artisan)] : the Artisan canvas gets its own time axis back — the two-minute reserve and the manual-mode framing that TilauScope had added for an annotation it no longer draws there are gone, along with the annotation colour tables nothing reads any more
+* ⚡ [feat(tests)] : the cost of one sample is now measured on the bench — the 1 Hz path costs 17 µs and a full repaint 3.6 ms, against a 1000 ms beat
+* 🐛 [fix(tilaupid)] : choosing PID OFF now stops preheating control and clears the status immediately
+* ⚡ [feat(tilaupid)] : the preheat PID control now uses a joined ON/OFF selector in the graph toolbar
+* ⚡ [feat(tilaupid)] : a preheat-only PID ON/OFF control now appears in the graph toolbar and mirrors the live state
+* 🐛 [fix(tilaupid)] : the preheat setpoint now follows the selected roast plan charge temperature and updates the SV slider
+* 🐛 [fix(graph)] : curve display choices now persist between sessions
+* 🐛 [fix(roasting window)] : the SV control now has the same slider length as the other machine controls
+* ⚡ [feat(roasting window)] : machine controls now use colour-segmented sliders with more forgiving step buttons; clicking the percentage still opens the value roller
+build 6
+* ⚡ [feat(sources)] : the abandoned five-band shell is removed — about 8 000 lines of source and tests, plus the hidden shortcut that reached it. The curve engine built inside it stays, with its own test suite now hosted the way the application holds it
+* ⚡ [feat(startup)] : the application now opens directly in the TilauScope roasting window instead of the Artisan canvas
+build 5
+* 🐛 [fix(graph)] : the rate of rise no longer starts in the minute before the charge, where it was the drum warming up drawn under a legend that says the bean is rising
+* 🐛 [fix(graph)] : the Full scale / Charge to drop selector now waits for the recording to stop instead of appearing at the drop, while the beans are still cooling and the frame is still growing
+* 🐛 [fix(roasting window)] : tooltips over the panel buttons came up system white — every button carrying its own style now carries the theme's tooltip rule with it
+* 🐛 [fix(graph)] : each figure in the hover row is now named after the trace it came from — two rates ended in °/min side by side with nothing but colour telling them apart, and the machine's rate was being read as the rate of rise the panel shows
+* 🐛 [fix(graph)] : the roast card now steps past the forecast marker instead of covering it as the bean approaches the milestone it counts down to
+* ⚡ [feat(graph)] : the curves now take their colours from the same palette as the readouts beside them, one colour per probe: the bean and its rate in one family, the air and its rate in another, the rate always the quieter of the two. The rate-of-rise readout follows the bean instead of standing alone in green
+* ⚡ [feat(simulator)] : a x1 / x2 / x8 selector at the top right of the curve sets the replay speed while a simulation runs, in place of clicking the clock with a modifier key held
+* ⚡ [feat(preheat)] : the target line and the arrival mark now carry the same colour as the preheat card, so the chart and the card stop disagreeing. The arrival is a short tick on the target line rather than a second dashed rule across the plot, and the projected reading is no longer drawn as a ring above the climb
+* ⚡ [feat(preheat)] : the preheat card gives way once the drum is at temperature — the chart already says CHARGE NOW on the head of the climb — and the panel no longer repeats the same instruction a third time
+* 🐛 [fix(graph)] : the rate scale is no longer drawn before the charge, where nothing is plotted against it
+* 🐛 [fix(graph)] : the roast card leaves when recording stops, instead of staying on the curve announcing the cooling phase
+* ⚡ [feat(graph)] : the time axis now names every minute and rules every second one, instead of naming one minute in two
+* 🐛 [fix(preheat)] : the preheat chart opened on a three-minute scale — no preheat is over in three minutes, and the frame kept rescaling under the climb. It now uses the same fourteen-minute frame as the roast, and only opens further for a preheat that outruns it
+* 🐛 [fix(preheat)] : the projected reading is no longer drawn as a second circle around the head of the climb once the two have converged
+* 🐛 [fix(roasting window)] : opening a roast from a file now shows it straight away, instead of waiting for something else to repaint the window
+* 🐛 [fix(roasting window)] : stopping a recording now clears the cooling message and gives the phase blocks back, instead of leaving the cooling badge over a roast that has ended
+* ⚡ [feat(preheat)] : the preheat card now sits against the target line instead of riding the head of the climb, where it ended up covering the target and the projected arrival just as they mattered most. It no longer repeats the maturity badge already shown on the preheat panel, and the chart no longer leaves up to a minute of empty space to the right of the arrival
+* 🐛 [fix(preheat)] : when the drum reaches its target, the charge instruction no longer overflows the preheat panel — it takes the line the maturity badge was using, which has been on screen for the whole climb
+* 🐛 [fix(graph)] : the roast curve was drawing but never refreshing its state, so a roast opened from file showed no lever strips and no full-scale/charge-to-drop selector, and a preheat showed neither its card nor its target. The window now keeps the curve current from the moment it opens
+* ⚡ [feat(graph)] : the lever strips are drawn live, through the preheat and the roast, instead of appearing only once the roast was over. Each strip carries its current level in figures, so a lever held at zero no longer looks like a strip with nothing in it
+* ⚡ [feat(graph)] : the roast being shown is named above the curve — batch number and title, exactly as it is filed
+* 🐛 [fix(graph)] : the air temperature entry in the curve menu is now greyed out on a roast recorded without an air probe, instead of appearing to do nothing
+* ⚡ [feat(graph)] : the roasting window now draws the roast itself instead of borrowing Artisan's graph. The curve keeps a fixed frame so two roasts can be compared without either being stretched, and switches to a charge-to-drop view once the roast has an end. Artisan's own graph stops being rendered while the roasting window is up, which is most of what a sampling second used to cost
+* ⚡ [feat(graph)] : the roast annotations — the coach/expert card and the preheat monitor — are now drawn by TilauScope's own curve instead of being injected into Artisan's graph. The countdown to the next milestone, the milestone forecast marker and the coach/expert switch come with them; the setting that turns the roast card on and off keeps its meaning
+* ⚡ [feat(graph)] : the air temperature can now be traced alongside the bean, and switched off again, from the curve's right-click menu
+* ⚡ [feat(preheat)] : the preheat chart now shows when the drum is due to reach its target, on the target line itself, as soon as the arrival is close enough to be in view
+build 4
+* 🐛 [fix(devices)] : the application starts again after the upstream device rework. The TilauScope devices — the roasters, the smoke extractor, the ambient probe and the MQTT channels — are now declared in the shared device list Artisan moved them out of, so they keep the same identifiers and the roasts already recorded still name their channels correctly
+* 🐛 [fix(preheat pid)] : marking CHARGE no longer pauses temperature acquisition while the preheat PID saves what it learned. Its results are now written just after the mark instead of during it, so the recording keeps its rhythm at the very moment the beans go in
+* 🐛 [fix(colour reader)] : the application no longer crashes when it is quit after the colour reader card has been opened. Releasing the reader stopped halfway, so it kept searching for the device in the background and was still doing so while the application shut down
+* 🐛 [fix(dial-in)] : the colour measured at the end of a roast now files its scale with it, so the brewing advice no longer refuses the roast for missing colour data. Roasts already on file that carry a reading without a scale are read as Agtron
+* 🐛 [fix(extractor)] : a channel the smoke extractor drives itself is now recorded under its own name. It used to be written exactly like a gesture made on a control, so afterwards there was no way to tell which of the two had moved the channel
+build 3
+* ⚡ [feat(tilaupid)] : preheat annotation now shows how much TilauPID has learned for this setpoint
+* 🐛 [fix(preheat)] : with the preheat PID switched off in the roast setup, the preheat screen no longer announces that the PID is heating — it now reports no PID until one is actually driving the preheat
+* 🐛 [fix(routine check)] : the maintenance window now opens straight away. It used to spend 20 to 30 seconds reading every roast on file in full, to recover just the date and the batch weight of each
+* 🐛 [fix(roast setup)] : typing a weight or a temperature no longer freezes the window. Every keystroke was rebuilding the roast plan from nothing and re-reading the whole roast folder to do it
+* 🐛 [fix(roast plan)] : the plan built at the start of a roast no longer opens every roast on file. Only the roasts that can actually inform it — same bean, or same process and batch size — are read
+* ⚡ [feat(performance)] : the roast folder is now indexed once and kept current, instead of being read in full by each screen that needs it. The index updates on its own when a roast is saved, and is rebuilt when the roast folder is changed in the configuration
+* 🐛 [fix(preheat pid)] : the preheat PID reads a budget of recent roasts to learn from. That budget is now spent only on roasts that can actually teach it something — a simulated profile, another machine, the other probe or a roast recorded without ambient readings is set aside without being opened, instead of consuming a slot
+* ⚡ [feat(preheat pid)] : the preheat PID now looks further back when recent usable preheats are scarce, instead of giving up after ten profiles. On a typical archive it learns from twice as many roasts, and weighs what it learned accordingly. It stops as soon as it has enough, so a well-supplied archive costs no more than before
+* 🐛 [fix(roast repair)] : repairing a profile now updates the roast index straight away, so the roast plan and the roast list stop showing the reading from before the repair
+* ⚡ [feat(logging)] : the log configuration is now read from a JSON file instead of a YAML one, following the upstream change. The TilauScope-specific log stream and its debug level are preserved unchanged
+* 🐛 [fix(tests)] : the changelog test suite no longer carries a lint warning — its stubbed date object is now a plain class instead of a type built on the fly
+build 2
+* 🐛 [fix(roast assistant)] : in Guided, closing the detached assistant window now sends it back to the dock with the roast still running, instead of leaving the control panel showing as if Expert had been selected
+* ⚡ [feat(operator level)] : once a roast is recording, the Expert level can no longer be switched back to Guided — the level button stays locked until the roast ends. Leaving Guided for Expert mid-roast is still allowed
+* 🐛 [fix(startup)] : the application failed to start after the last upstream merge
+* 🐛 [fix(graph)] : when the canvas is clamped, following the roast no longer drags the temperature axis up and down
+* 🐛 [fix(icons)] : the unsynced cloud icon now matches the current icon set in dark mode
+* ⚡ [feat(events)] : event buttons and alarms can now drive the graph view with the commands zoom, pan, center, clamp, followMode, followModePanning, home, back and forward
+* 🐛 [fix(alarms)] : an alarm watching an extra device no longer fails when that device has not delivered a reading yet
+* 🐛 [fix(manual roasting)] : the manual ET/BT entry field now preselects its value, so typing replaces it directly
+* 🐛 [fix(machine setup)] : selecting a RoastHubs or ROEST machine no longer asks for a host address, a capacity and a heating type
+* ⚡ [feat(roasthubs)] : a profile uploaded to RoastHubs now carries the smoothing and RoR settings currently in use
+* 🐛 [fix(roast properties)] : on macOS the highlighted input fields no longer turn grey and unreadable
+* ⚡ [feat(dependencies)] : updated Artisan libraries (pymodbus, pyobjc, wheel) — a reinstall of the environment is required
 build 1
 ## [4.2.12] 2026-08-12
 build 2

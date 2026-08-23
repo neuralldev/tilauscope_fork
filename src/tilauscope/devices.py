@@ -2440,7 +2440,14 @@ class TilauscopeConfigDlg(QDialog):
         # ── BeanCave ──────────────────────────────────────────────────────
         settings = QSettings()
         settings.setValue("beancaveDirectory", self.beancaveDirectoryEdit.text().strip())
-        settings.setValue("alogDirectory", self.alogDirectoryEdit.text().strip())
+        _alog_dir = self.alogDirectoryEdit.text().strip()
+        _alog_dir_changed = _alog_dir != settings.value("alogDirectory", "", str)
+        settings.setValue("alogDirectory", _alog_dir)
+        if _alog_dir_changed:
+            # The corpus index is keyed by folder: pointing at another one voids
+            # it. Rebuild off-thread so the next roast plan does not pay the scan.
+            from tilauscope.alogmanager import directory_changed
+            directory_changed(_alog_dir)
 
         # ── General ───────────────────────────────────────────────────────
         aw.tilau_roaster = (

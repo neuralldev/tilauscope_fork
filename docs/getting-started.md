@@ -9,6 +9,9 @@
     Artisan's settings, a single menu for everything the fork adds, and one button that
     switches the whole interface between a guided layout and a full expert layout.
 
+At launch, TilauScope opens directly as the main roasting window. The Artisan window remains
+available from **TilauScope → Switch to Artisan window** when its full canvas is needed.
+
 ---
 
 ## The TilauScope menu
@@ -120,8 +123,14 @@ assistant no longer takes over the layout.
     you which regime is active: **🔕 …SUSPENDED** in Guided, plain **ALARM-SET** in Expert.
     Switch to Expert if you want your own alarms back.
 
+Once a roast is recording, the switch only works one way: you can leave Guided for Expert, but
+Expert stays Expert until the roast ends — the pill is greyed out. A roast started without
+guidance has no plan behind it, so there is nothing for the assistant to follow mid-way.
+
 Whatever the level, the assistant can be **docked** in place of the control panel or
-**detached** into its own floating window, using the ⤢ button in the header.
+**detached** into its own floating window, using the ⤢ button in the header. In Guided,
+closing the detached window sends the assistant back to the dock with its roast in progress
+untouched; in Expert it closes it.
 
 ![panel header in Guided green G pill](assets/getting-started-1.7.png)
 ![same header in Expert orange E pill](assets/getting-started-1.8.png)

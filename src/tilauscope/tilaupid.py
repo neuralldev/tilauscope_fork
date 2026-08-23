@@ -14,11 +14,13 @@
 # TiLau 2025
 
 import logging
+import math
 import time
 import types
-from typing import Final,TYPE_CHECKING
+from collections.abc import Mapping
+from typing import Any, Final,TYPE_CHECKING
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow
@@ -85,6 +87,82 @@ class PIDConfig:
     fan_brake_ror_threshold: float = 10.0    # °C/min: open fan above this RoR in fuzzy zone
     fan_brake_power: int = 45                # % damper opening during inertia braking
     fan_stabilise_power: int = 30            # % damper during hold phase (usually closed)
+
+    @classmethod
+    def from_mapping(cls, config: Mapping[str, Any] | None, *, target_sv: float) -> 'PIDConfig':
+        """Build a validated configuration from the public PID mapping.
+
+        PID keys may live directly in ``config`` or in its ``pid`` section.  The
+        latter wins, while ``targets.target_sv`` is handled by the caller because
+        it is expressed in Artisan's current display unit.
+        """
+        raw = config or {}
+        nested = raw.get("pid", {})
+        if nested is None:
+            nested = {}
+        if not isinstance(nested, Mapping):
+            raise ValueError("PID config section 'pid' must be a mapping")
+
+        defaults = cls()
+        names = {field.name for field in fields(cls)}
+        values: dict[str, Any] = {"target_sv": target_sv}
+        for name in names - {"target_sv"}:
+            if name in raw:
+                values[name] = raw[name]
+            if name in nested:
+                values[name] = nested[name]
+
+        for name, value in tuple(values.items()):
+            default = getattr(defaults, name)
+            try:
+                if isinstance(default, bool):
+                    if isinstance(value, bool):
+                        converted = value
+                    elif isinstance(value, str) and value.strip().lower() in {"true", "false", "on", "off", "1", "0"}:
+                        converted = value.strip().lower() in {"true", "on", "1"}
+                    else:
+                        raise ValueError("expected a boolean")
+                elif isinstance(default, int):
+                    converted = int(value)
+                else:
+                    converted = float(value)
+                    if not math.isfinite(converted):
+                        raise ValueError("must be finite")
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Invalid PID config value {name}={value!r}: {exc}") from exc
+            values[name] = converted
+
+        positive = {
+            "polling_dt", "soft_start_sec", "kp", "lead_sec_default",
+            "lead_sec_min", "lead_sec_max", "ror_short_sec",
+            "hold_integral_arm_sec", "hold_integral_unwind_pct_per_sec",
+        }
+        non_negative = {
+            "target_sv", "max_burner", "safety_margin_c", "burner_deadband",
+            "burner_slew_max", "p_ss_default", "hold_ki_pct_per_c_sec",
+            "hold_integral_limit_pct", "hold_integral_band_c",
+            "hold_integral_max_ror_c_per_min", "fan_brake_ror_threshold",
+            "fan_brake_power", "fan_stabilise_power",
+        }
+        for name in positive:
+            value = values.get(name, getattr(defaults, name))
+            if value <= 0:
+                raise ValueError(f"PID config value {name} must be > 0")
+        for name in non_negative:
+            value = values.get(name, getattr(defaults, name))
+            if value < 0:
+                raise ValueError(f"PID config value {name} must be >= 0")
+        for name in ("max_burner", "p_ss_default", "fan_brake_power", "fan_stabilise_power"):
+            value = values.get(name, getattr(defaults, name))
+            if value > 100:
+                raise ValueError(f"PID config value {name} must be <= 100")
+        for name in ("heater_slider", "fan_slider"):
+            value = values.get(name, getattr(defaults, name))
+            if not 0 <= value <= 3:
+                raise ValueError(f"PID config value {name} must be between 0 and 3")
+        if values.get("lead_sec_min", defaults.lead_sec_min) > values.get("lead_sec_max", defaults.lead_sec_max):
+            raise ValueError("PID config lead_sec_min must be <= lead_sec_max")
+        return cls(**values)
 
 
 @dataclass(slots=True)
@@ -177,6 +255,26 @@ class SlowHoldIntegrator:
 
 
 class TilauPreheatPID(AdaptivePIDMixin):
+    # ── Learning-maturity badge constants (annotation + TilauScope window) ──
+    # Marker → glyph/colour for the two capability lines (holding power, braking
+    # anticipation); level → segment fill/colour/label key for the EXPERIENCE band.
+    _BADGE_MARKER_GLYPH: Final[dict[str, str]] = {"check": "✓", "approx": "≈", "learning": "~"}
+    _BADGE_MARKER_COLOR: Final[dict[str, str]] = {"check": "#A6E3A1", "approx": "#89B4FA", "learning": "#F9E2AF"}
+    _BADGE_LEVEL_FILL: Final[dict[str, int]] = {"Learning": 1, "Estimated": 2, "Tuned": 3, "Calibrated": 4}
+    _BADGE_LEVEL_COLOR: Final[dict[str, str]] = {
+        "Learning": "#F9E2AF", "Estimated": "#89B4FA", "Tuned": "#89B4FA", "Calibrated": "#A6E3A1",
+    }
+    _BADGE_LEVEL_LABEL_KEY: Final[dict[str, str]] = {
+        "Learning": "LevelLearning", "Estimated": "LevelEstimated",
+        "Tuned": "LevelTuned", "Calibrated": "LevelCalibrated",
+    }
+    _BADGE_HOLD_TEXT_KEY: Final[dict[str, str]] = {
+        "check": "CapHold_check", "approx": "CapHold_approx", "learning": "CapHold_learning",
+    }
+    _BADGE_LEAD_TEXT_KEY: Final[dict[str, str]] = {
+        "check": "CapLead_check", "approx": "CapLead_approx", "learning": "CapLead_learning",
+    }
+
     def __init__(self, aw: 'ApplicationWindow', config: dict | None= None):
         self.aw = aw
 
@@ -202,10 +300,12 @@ class TilauPreheatPID(AdaptivePIDMixin):
 
         c = config or {}
         tg = c.get("targets", {"target_sv": 200})
+        if not isinstance(tg, Mapping):
+            raise ValueError("PID config section 'targets' must be a mapping")
 
         # target_sv from config is expected in the current Artisan unit; store internally in °C
         _raw_sv = tg.get("target_sv", self.aw.pidcontrol.sv)
-        self.cfg = PIDConfig(target_sv=self._to_c(_raw_sv))
+        self.cfg = PIDConfig.from_mapping(c, target_sv=self._to_c(_raw_sv))
         # Initialisation dynamique du RoR basée sur Artisan
 
         self.ror_span_sec = getattr(self.aw.qmc, "deltaBTspan", 15.0)
@@ -224,6 +324,16 @@ class TilauPreheatPID(AdaptivePIDMixin):
         self.prev_power = -1
         self.prev_fan = -1
         self.start_time = 0.0
+        # Ramp baseline (native unit, same channel as cycle()'s input) captured on the
+        # first valid cycle() — qmc temps are still empty at start(). None until then.
+        self.ramp_start_temp: float | None = None
+        # Learning-maturity badge for the preheat annotation: computed once per
+        # start() (QSettings + corpus reads) and cached as ready HTML fragments so
+        # the canvas redraw and the TilauScope window never touch disk. See
+        # _compute_learning_badge().
+        self.learning_badge: dict | None = None
+        self.learning_badge_html = ""
+        self.learning_badge_compact_html = ""
         # Sensor guard + independent Qt watchdog. The guard is pure
         # Python; the timer catches the distinct failure mode where sample()
         # stops calling cycle() and the last physical burner command persists.
@@ -249,6 +359,10 @@ class TilauPreheatPID(AdaptivePIDMixin):
         #             learned from signed overshoot (overshoot → brake earlier)
         self.p_ss = self.cfg.p_ss_default        # % steady hold near SV
         self.lead_sec = self.cfg.lead_sec_default # s projection lead
+        # Last projected temperature, published for the screens. None until
+        # the law has run once: a preheat that has not computed anything yet
+        # has no projection, and a zero would read as one.
+        self.t_proj_c: float | None = None
         self.computed_ramp_power = 80.0          # burner % ceiling for the far-from-SV ramp
         # Session-local bias trim. It is deliberately not persisted: a
         # qualified stable burner median transfers its useful final value into P_ss.
@@ -281,6 +395,9 @@ class TilauPreheatPID(AdaptivePIDMixin):
         self._adaptive_init(
             alog_dir=self.alog_directory,
             window=c.get("adaptive_window", 10),
+            # Read ceiling, distinct from the memory window: how deep the scanner
+            # may go when usable preheats are scarce. None = derive from window.
+            scan_budget=c.get("adaptive_scan_budget"),
             ambient=self.get_real_time_ambients(),
             aw=self.aw
         )
@@ -396,6 +513,8 @@ class TilauPreheatPID(AdaptivePIDMixin):
         # on the next preheat instead of slew-limiting up from a stale previous value.
         self.prev_power = -1
         self.prev_fan = -1
+        # Cleared here, captured on the first valid cycle() (see _cycle_validated).
+        self.ramp_start_temp = None
         self._hold_integrator.reset()
         self.start_time = time.perf_counter()
         # A new explicit start is the only operation that clears a
@@ -422,6 +541,10 @@ class TilauPreheatPID(AdaptivePIDMixin):
         # operator sanity-check the model against past roasts before trusting it, incl. in sim.
         _logd.info(self.format_law_diagnostic())
 
+        # Learning-maturity badge for the annotation: QSettings + corpus reads happen
+        # once, here — never on the canvas redraw path (see _compute_learning_badge).
+        self._compute_learning_badge()
+
         self.active = True
         # Profile replay has its own clock and may run faster than wall
         # time. The physical-sensor watchdog is therefore meaningful only on a
@@ -430,6 +553,187 @@ class TilauPreheatPID(AdaptivePIDMixin):
             self._safety_watchdog.start()
         else:
             self._safety_watchdog.stop()
+
+    # ── Learning-maturity badge (EXPERIENCE band + capability lines) ───────
+    # Built once per start(); the canvas annotation and the TilauScope window
+    # only concatenate the cached HTML — no QSettings/corpus read on a redraw.
+
+    # One block glyph per notch. A run of several widened the badge past the text
+    # lines and stretched the whole annotation; a single glyph reads as a notch and
+    # keeps the EXPERIENCE row narrower than the sentences below it.
+    _BADGE_SEG_BLOCK: Final[str] = "&#9608;"
+
+    @classmethod
+    def _badge_segments_html(cls, fill_n: int, color: str) -> str:
+        """4 segments drawn with block glyphs. Table cells with a px width/height and a
+        background colour are NOT honoured by Qt's rich-text subset — the cell collapses
+        to its glyph and the bar renders as a row of dots. Glyph runs always render."""
+        seg = cls._BADGE_SEG_BLOCK
+        gap = "&nbsp;"
+        filled = gap.join(seg for _ in range(fill_n))
+        empty = gap.join(seg for _ in range(4 - fill_n))
+        parts = []
+        if filled:
+            parts.append(f'<span style="color:{color};">{filled}</span>')
+        if empty:
+            parts.append(f'<span style="color:#45475A;">{gap if filled else ""}{empty}</span>')
+        return f'<span style="font-size:13px;">{"".join(parts)}</span>'
+
+    @classmethod
+    def _badge_capability_line(cls, marker: str, text: str) -> str:
+        if not text:   # missing label set: a bare marker glyph says nothing
+            return ""
+        glyph = cls._BADGE_MARKER_GLYPH[marker]
+        color = cls._BADGE_MARKER_COLOR[marker]
+        return (
+            f'<span style="color:{color};font-weight:bold;font-size:12px;">{glyph}</span>'
+            f'<span style="color:#CDD6F4;font-size:11px;"> {text}</span>'
+        )
+
+    def _compute_learning_badge(self) -> None:
+        """Resolve what the adaptive law knows about this SV into a fixed-geometry
+        badge: a 4-step EXPERIENCE level (with its counter) and two independently
+        resolved capability lines (holding power, braking anticipation).
+
+        Reads QSettings and the alog corpus — must run here, once, never on the
+        canvas redraw path. Any failure falls back to an empty badge rather than
+        raising: a missing learning summary must never take the annotation down.
+        """
+        try:
+            L = self.aw.qmc._tilau_labels
+        except Exception:  # noqa: BLE001 - a missing label set must not block the annotation
+            L = {}
+
+        try:
+            s = QSettings()
+            sv = self.cfg.target_sv
+            learned_p_ss, learned_lead, weight, provenance, prefixes = self._resolve_law_nodes(s, sv)
+            seed_p_ss, seed_lead = self._seed_law_params_from_history()
+            thermal_p_ss, thermal_lead = self._thermal_prior_params()
+
+            n_updates = 0
+            for prefix in prefixes:
+                try:
+                    n_updates += int(s.value(f"{prefix}/n_updates", 0, int) or 0)
+                except (TypeError, ValueError):
+                    continue
+
+            is_exact = provenance.startswith("learned@")
+            is_interp = provenance.startswith("interpolated:")
+            is_edge = provenance.startswith("edge-blend@")
+            has_seed_or_thermal = any(
+                v is not None for v in (seed_p_ss, seed_lead, thermal_p_ss, thermal_lead))
+
+            n_roasts = 0
+            if is_exact and n_updates >= 5:
+                level = "Calibrated"
+            elif is_exact or is_interp:
+                level = "Tuned"
+            elif is_edge or has_seed_or_thermal:
+                level = "Estimated"
+                n_roasts = int(self.law_corpus_summary(sv).get("n_held_calibrated", 0) or 0)
+            else:
+                level = "Learning"
+
+            def knob_marker(learned_val: float | None, seed_val: float | None,
+                             thermal_val: float | None) -> str:
+                # Both knobs share the same resolved node/weight; they diverge only
+                # when there is no node and the per-knob seed/thermal prior differs
+                # (_seed_law_params_from_history / _thermal_prior_params are each
+                # independently Optional per knob) — that divergence is expected.
+                if learned_val is not None:
+                    return "check" if weight >= 0.5 else "approx"
+                return "approx" if (seed_val is not None or thermal_val is not None) else "learning"
+
+            hold_marker = knob_marker(learned_p_ss, seed_p_ss, thermal_p_ss)
+            lead_marker = knob_marker(learned_lead, seed_lead, thermal_lead)
+
+            self.learning_badge = {
+                "level": level, "n_updates": n_updates, "n_roasts": n_roasts,
+                "hold_marker": hold_marker, "lead_marker": lead_marker,
+                "is_sim": getattr(self.aw, 'simulator', None) is not None,
+            }
+            self.learning_badge_html = self._build_learning_badge_html(L)
+            self.learning_badge_compact_html = self._build_learning_badge_compact_html(L)
+        except Exception:  # noqa: BLE001 - the annotation must degrade gracefully, never crash the canvas
+            _logd.exception("TilauPID learning badge computation failed")
+            self.learning_badge = None
+            self.learning_badge_html = ""
+            self.learning_badge_compact_html = ""
+
+    def _build_learning_badge_html(self, L: dict) -> str:
+        """EXPERIENCE band (segments + level/counter [+ sub-line]) and the two
+        capability lines, as one cached HTML fragment for the canvas annotation."""
+        b = self.learning_badge
+        if not b:
+            return ""
+        level = b["level"]
+        level_color = self._BADGE_LEVEL_COLOR[level]
+        fill_n = 0 if b["is_sim"] else self._BADGE_LEVEL_FILL[level]
+        segments = self._badge_segments_html(fill_n, level_color)
+
+        sub_line = ""
+        # A simulated preheat learns nothing, so the level colour would be a lie:
+        # the caution yellow marks it as evidence that will not be kept.
+        text_color = level_color
+        if b["is_sim"]:
+            level_text = L.get("SimNotRecorded", "Simulation — not recorded")
+            text_color = self._BADGE_LEVEL_COLOR["Learning"]
+        else:
+            level_word = L.get(self._BADGE_LEVEL_LABEL_KEY[level], level)
+            if level in ("Calibrated", "Tuned"):
+                counter = L.get("CounterPreheats", "{n} preheats").format(n=b["n_updates"])
+                level_text = f"{level_word} &middot; {counter}"
+            elif level == "Estimated":
+                # An edge-blend node, or a seed carried by the braking knob alone, can
+                # reach this level with no calibrated hold to count. Announcing
+                # "0 roasts" would contradict the level: the sub-line says it instead.
+                level_text = level_word
+                if b["n_roasts"] > 0:
+                    counter = L.get("CounterRoasts", "{n} roasts").format(n=b["n_roasts"])
+                    level_text = f"{level_word} &middot; {counter}"
+                sub_line = L.get("EstimatedSub", "Adjusted from nearby setpoints")
+            else:  # Learning: no evidence to count yet
+                level_text = level_word
+                sub_line = L.get("FirstPreheatSub", "First preheat at this setpoint")
+
+        sub_line_html = (
+            f'<div><span style="color:#6C7086;font-size:10px;">{sub_line}</span></div>'
+            if sub_line else ""
+        )
+        cap_hold = self._badge_capability_line(
+            b["hold_marker"], L.get(self._BADGE_HOLD_TEXT_KEY[b["hold_marker"]], ""))
+        cap_lead = self._badge_capability_line(
+            b["lead_marker"], L.get(self._BADGE_LEAD_TEXT_KEY[b["lead_marker"]], ""))
+
+        # Segments and level word share one line: a two-column table would collapse
+        # (Qt honours neither `width:100%` nor a px cell width in rich text).
+        return f"""
+                    <div style="margin-top:5px;"><span style="color:#6C7086;font-size:10px;">{L.get('Experience', 'EXPERIENCE')}</span></div>
+                    <div>{segments}<span style="color:{text_color};font-weight:bold;font-size:11px;"> &nbsp;{level_text}</span></div>
+                    {sub_line_html}
+                    <div style="margin-top:4px;">{cap_hold}</div>
+                    <div>{cap_lead}</div>
+                    """
+
+    def _build_learning_badge_compact_html(self, L: dict) -> str:
+        """TilauScope window mirror: segments + the level word only — no counter,
+        no room (see get_pid_status in displayscope.py)."""
+        b = self.learning_badge
+        if not b:
+            return ""
+        level = b["level"]
+        level_color = self._BADGE_LEVEL_COLOR[level]
+        fill_n = 0 if b["is_sim"] else self._BADGE_LEVEL_FILL[level]
+        segments = self._badge_segments_html(fill_n, level_color)
+        level_word = (L.get("SimNotRecorded", "Simulation — not recorded") if b["is_sim"]
+                      else L.get(self._BADGE_LEVEL_LABEL_KEY[level], level))
+        # Same rule as the canvas badge: a simulated run never wears a level colour.
+        text_color = self._BADGE_LEVEL_COLOR["Learning"] if b["is_sim"] else level_color
+        return (
+            f'{segments}'
+            f'<span style="color:{text_color};font-weight:bold;font-size:11px;"> &nbsp;{level_word}</span>'
+        )
 
     def stop(self, reason: str = "operator_abort") -> None:
         """Stop preheating with an explicit safety/learning disposition.
@@ -446,7 +750,11 @@ class TilauPreheatPID(AdaptivePIDMixin):
             self.aw.qmc.eventRecordActionSignal.emit(
                 4, 0.0, f"TilauPID Preheat stopped ({reason})", False)
             if reason in {"charge", "stable_complete"} and self._learning_allowed:
-                self._on_preheat_complete()
+                # CHARGE calls us with qmc.profileDataSemaphore held: learning ends in two
+                # full QSettings flushes, which would stall the sampling thread at the most
+                # timing-critical moment. Nothing it reads is protected by that semaphore
+                # (session state is PID-owned), so defer it one event-loop turn.
+                QTimer.singleShot(0, self._deferred_preheat_complete)
         if reason != "charge":
             self._force_safe_output(reason)
         self.active = False
@@ -454,6 +762,21 @@ class TilauPreheatPID(AdaptivePIDMixin):
         # first cycle) so it can't stamp a later, unrelated recording.
         self._pending_start_sv_native = None
         _logd.debug(f"Preheat PID stopped ({reason}).")
+
+    def _deferred_preheat_complete(self) -> None:
+        """Run the session's learning and persistence outside any caller's lock.
+
+        Scheduled by stop(); the session state it reads is frozen because cycle()
+        returns on `not self.active`. A new preheat started in between owns the
+        state now, so the stale result is dropped rather than learned.
+        """
+        if self.active:
+            _logd.debug("Deferred preheat learning dropped: a new session already started.")
+            return
+        try:
+            self._on_preheat_complete()
+        except Exception:  # noqa: BLE001 - an escaping exception would close the app
+            _logd.exception("Deferred preheat learning failed")
 
     def _force_safe_output(self, reason: str) -> None:
         """Command burner zero immediately, bypassing all output smoothing."""
@@ -583,6 +906,11 @@ class TilauPreheatPID(AdaptivePIDMixin):
         # ── Projected temperature: anticipate lag + FIR residual radiation ──
         t_proj = t_c + ror * (self.lead_sec / 60.0)
         proj_error = sv - t_proj                          # >0 below SV, <0 projected past SV
+        # Published for the screens: the quantity the law steers on is what
+        # explains a burner tapering while the drum is still short of target.
+        # Read, never recomputed elsewhere — a second implementation would
+        # eventually show a projection this law did not use.
+        self.t_proj_c = t_proj
 
         ambient_factor = self._ambient_corrector.compute_factor(
             self.ambient_cache or AmbientConditions())
@@ -613,14 +941,20 @@ class TilauPreheatPID(AdaptivePIDMixin):
             (eventRecordActionSignal) dans tous les cas, et on saute fireslideraction
             qui enverrait une commande matérielle inexistante.
         """
+        signal = getattr(self.aw, "tilaupidSliderCommandSignal", None)
+        if signal is not None:
+            # ApplicationWindow owns the signal and its receiving slot. Qt therefore
+            # queues this complete UI/hardware transaction when cycle() runs in the
+            # sampling worker, preserving command order without touching widgets here.
+            signal.emit(slider_nr, power, getattr(self.aw, 'simulator', None) is None)
+            return
+
+        # Lightweight non-Qt harness compatibility. Production ApplicationWindow
+        # always provides tilaupidSliderCommandSignal.
         self.aw.moveslider(slider_nr, power)
         self.aw.extraeventsactionslastvalue[slider_nr] = power
-        # Queued signal avoids cross-thread deadlock. eventvalue must encode the actual
-        # power (EventRecordAction dedups on type/value/string) — convert as recordsliderevent() does.
         ev_value = self.aw.qmc.eventsExternal2InternalValue(power)
         self.aw.qmc.eventRecordActionSignal.emit(slider_nr, ev_value, f"S{slider_nr}:{power}%", False)
-        # En simulateur pas de matériel à piloter — fireslideraction enverrait une
-        # commande série à un device fantôme et bloquerait le cycle.
         if getattr(self.aw, 'simulator', None) is None:
             self.aw.fireslideraction(slider_nr)
 
@@ -699,6 +1033,12 @@ class TilauPreheatPID(AdaptivePIDMixin):
             sv_internal = self.aw.qmc.eventsExternal2InternalValue(round(self._pending_start_sv_native))
             self.aw.qmc.eventRecordActionSignal.emit(4, sv_internal, "TilauPID Preheat started", False)
             self._pending_start_sv_native = None
+
+        # Climb-gauge baseline for the annotation: the first real sample on this
+        # channel (t is already BT or ET, whichever cycle() was fed — see the
+        # pidSource selection at the call site). qmc temps are still empty at start().
+        if self.ramp_start_temp is None:
+            self.ramp_start_temp = t
 
         #recompute ambients at every cycle if something is configured and accessible
         a = self.get_real_time_ambients()

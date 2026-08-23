@@ -76,7 +76,7 @@ from PyQt6.QtGui import QColor
 deltaLabelPrefix:Final[str] = '<html>&Delta;&thinsp;</html>' # prefix constant for labels to compose DeltaET/BT by prepending this prefix to ET/BT labels
 deltaLabelUTF8:Final[str] = 'Delta' if platform.system() == 'Linux' else '\u0394\u2009' # u("\u03B4") # prefix for non HTML Qt Widgets like QPushbuttons
 
-deltaLabelBigPrefix:Final[str] = '<big><b>&Delta;</b></big>&thinsp;<big><b>' # same as above for big/bold use cases
+deltaLabelBigPrefix:Final[str] = ('<b>&Delta;</b>&thinsp;' if platform.system() == 'Linux' else '<big><b>&Delta;</b></big>&thinsp;') # same as above for big/bold use cases
 deltaLabelMathPrefix:Final[str] = r'$\Delta\/$'  # prefix for labels in matplibgraphs to compose DeltaET/BT by prepending this prefix to ET/BT labels
 
 
@@ -610,12 +610,16 @@ def toDim(color:str) -> str:
 
 # creates QLinearGradient style from light to dark by default, or from dark to light if reverse is True
 @functools.cache
-def createGradient(rgb:QColor|str, tint_factor:float = 0.1, shade_factor:float = 0.1, reverse:bool = False) -> str:
+def createGradient(rgb:QColor|str, tint_factor:float = 0.1, shade_factor:float = 0.1, reverse:bool = False, left_to_right:bool = False) -> str:
     light_grad,dark_grad = createRGBGradient(rgb,tint_factor,shade_factor)
     if reverse:
         # dark to light
+        if left_to_right:
+            return f'QLinearGradient(x1:0,y1:0,x2:1,y2:0,stop:0 {dark_grad}, stop:1 {light_grad})'
         return f'QLinearGradient(x1:0,y1:0,x2:0,y2:1,stop:0 {dark_grad}, stop:1 {light_grad})'
     # light to dark (default)
+    if left_to_right:
+        return f'QLinearGradient(x1:0,y1:0,x2:1,y2:0,stop:0 {light_grad}, stop:1 {dark_grad})'
     return f'QLinearGradient(x1:0,y1:0,x2:0,y2:1,stop:0 {light_grad}, stop:1 {dark_grad})'
 
 # NOTE: for now alpha values of the rgb argument are ignored and resulting colors are RGB without alphas
@@ -1748,10 +1752,12 @@ def roast_message(profile:'ProfileData', org_id:str|None = None, machine_id:str|
         smooth_curves:bool = True,
         curvefilter:int = 3,
         medfilt_factor:int = 3, # has to be uneven
-        decay_smoothing_p:bool = False,
+        decay_smoothing_p:bool = False, # False: optimal smoothing
         add_additional_curves:int = 1, # 0:no additional curves, 1:visible additional curves, 2:all additional curves
         rate_of_rise:int = 1, # 0: no RoR curve, 1: only BT RoR, 2: ET and BT RoR
         limit_ror:bool = True,
+        ror_limit_min:int = 0,
+        ror_limit_max:int = 170,
         delta_span_ET:int = 20, # delta span RoR ET in seconds
         delta_span_BT:int = 20,  # delta span RoR BT in seconds
         medfilt_factor_RoR:int = 3, # has to be uneven
@@ -1772,9 +1778,6 @@ def roast_message(profile:'ProfileData', org_id:str|None = None, machine_id:str|
 
     if len(timex)<=0:
         return None
-
-    ror_limit_min:Final[int] = 0    # C/min
-    ror_limit_max:Final[int] = 170  # C/min
 
     mode:Final[str] = profile.get('mode', 'C')
 

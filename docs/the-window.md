@@ -19,18 +19,20 @@ sidebar expanded. This is the reference screenshot for the entire documentation.
 
 ## The header
 
-A single strip along the top carries the actions needed while roasting, in the order they are
-used:
+Two compact rows along the top carry the actions needed while roasting. The first row keeps the
+monitoring, recording, and timer controls together; the second row holds less frequent actions.
 
 | Control | What it does |
 |---|---|
 | **☰** | The main menu. |
 | **Power** | Turns monitoring on and off. |
 | **START / STOP** | Starts and stops recording. |
-| **RESET** | Clears the current roast. |
-| **BeanCave** | Opens the green-bean database. |
+| **RESET** | Clears the current roast. It stays on the secondary row. |
+| **BeanCave** | Opens the green-bean database. It stays on the secondary row. |
 | **G / E pill** | The operator level — see [Getting started](getting-started.md#guided-or-expert). |
-| **⤢** | Docks or detaches the assistant. |
+| **⇄** | Switches the control view. |
+| **⠿** | A grab strip for moving the window. It runs along the end of the secondary row. |
+| **STOP HEAT** | The emergency [heat cut](glossary.md#heat-cut). It appears at the end of the secondary row once monitoring is on, and is described below. |
 | Timer | The roast clock. |
 
 These are deliberately large and few. During a roast, the buttons that matter must be hittable
@@ -41,6 +43,42 @@ without aiming.
     record. Configure a device, or run the simulator, first.
 
 <!-- CAPTURE 2.2 — the header, cropped, at full width and legible. -->
+
+---
+
+## Cutting the heat in an emergency
+
+If a roast goes wrong — smoke you did not expect, a burner that will not come down, anything that
+means the batch has to end now — **STOP HEAT** puts the machine into a safe state in one gesture.
+It appears at the end of the secondary row as soon as monitoring is on, and nowhere else, so it is
+in the same place whether you are following the guided assistant or driving the controls yourself.
+
+**Hold it down for one second.** A red sweep fills the button while you hold. Releasing early, or
+sliding off the button, cancels it — a stray click cannot end a roast.
+
+When it fires, TilauScope:
+
+- stops anything that was driving the heat on your behalf — preheating control, PID, alarms and
+  profile playback — so nothing pushes the burner back up a second later;
+- sets the burner to zero;
+- opens airflow and, if you have an extractor paired, extraction to full.
+
+The drum keeps turning. Stopping it would press the beans against a hot wall, and that is how a
+scorch becomes a fire.
+
+The panel then turns red and shows the one thing left to do: **empty the drum into the cooling
+tray**. TilauScope does not do this for you — the beans come out by hand, and marking the end of
+the roast without them actually leaving the drum would only put a false milestone in your record.
+Monitoring and recording keep running, so you can watch the temperature come down.
+
+On a machine TilauScope cannot command, the message asks you to turn the burner off yourself
+instead. The heat cut still stops every automation.
+
+**RESET**, or turning monitoring off, releases the red state and gives the panel its normal look
+back.
+
+<!-- CAPTURE 2.2b — the panel just after STOP HEAT fires: red border, "HEAT CUT" message, red
+     timer. Reproduce with the simulator running, then hold STOP HEAT for one second. -->
 
 ---
 
@@ -84,28 +122,133 @@ CAPTURE 2.7 — the same area showing the drop/cooling message instead. -->
 
 ---
 
-## Machine controls, in two forms
+## The roast curve
 
-The four machine levers — on a typical setup burner, airflow, drum and extraction — can be
-displayed in **two different shapes**, and the choice is yours. A **slim vertical bar at the
-right edge of the control zone** switches between them: click it, and the controls change form.
-Its tooltip says what it does: *Toggle: horizontal sliders ↔ card controls*.
+The large area on the right is the roast itself, drawn by TilauScope. It is read at a glance and
+at arm's length, so it carries what matters during a roast and leaves the rest for
+[after](after-the-roast.md).
 
-**Slider rows** — one row per lever: name, a horizontal slider, **−** and **+** step buttons, and
-the current percentage. The steppers move by the machine's own step size, so a click is always a
-valid setting. Precise, compact, and familiar to an Artisan user.
+**What is on it.** The name of the roast above the plot — the batch number and the title you
+gave it, exactly as it is filed. The bean temperature as a thick line, its
+[rate of rise](glossary.md#ror--rate-of-rise) as a thinner one on its own scale at the right, and
+the three phases as coloured grounds beneath both.
 
-**Control cards** — one card per lever, each an upright block with **▲** at the top, the value in
-the middle, **▼** at the bottom, and the lever's name underneath. Big targets, no dragging, and
-usable without looking closely. This is the form to prefer on a touchscreen, or when standing at
+**Colours name probes, not quantities.** Each curve carries the colour of the readout it belongs
+to — so the bean and its rate are one family, the air and its rate another. Inside a family the
+temperature is the solid line and the rate the quieter one, which is why a rate is never mistaken
+for the line the roast is read from. Change a curve colour in Artisan's own settings and both the
+curve and its readout follow — blue for
+[drying](glossary.md#drying--dry), yellow for [Maillard](glossary.md#maillard), red for
+[development](glossary.md#development), deepening as the roast advances. Each milestone is marked
+where it happened, with its name and the temperature it was marked at. The
+[turning point](glossary.md#tp--turning-point) is marked too, even though it is never something
+you mark yourself.
+
+The time axis names every minute and rules every second one, so a duration can be read off it
+without counting.
+
+**Two views.** Above the curve, a two-part selector: **Full scale** keeps a fixed frame — one
+minute before the charge to fourteen minutes — so two roasts can be compared without either one
+having been stretched to fit. **Charge to drop** trims the frame to the roast that actually
+happened. The selector appears once you stop recording. Not at the drop: the beans are still in
+the cooling tray, the frame is still growing under the curve, and a window claiming to end at the
+drop would keep being wrong.
+
+The minute before the charge shows the two temperatures only. A rate of rise there is the drum
+warming up, not the beans climbing, so the rate starts at the charge.
+
+**Hovering.** Moving the pointer across the curve puts a line at that instant and reports what
+every trace held there, including the setting each lever was holding. **Every figure in that row
+is named**, in the same words the legend uses for its trace — two rates can appear side by side,
+and the one called *Rise* is the same rate of rise the large readout shows.
+
+### What the curve says next
+
+Two cards float over the curve, and only ever one at a time.
+
+Before the charge, while the drum climbs, a **preheat card** reports how far up it is and how
+long it has left. It sits against the target line rather than against the climb, so it stays
+where you last looked for it instead of travelling up the chart. The chart underneath shows the
+same thing: the target as a line, dashed while the drum is still climbing and solid once it is
+there, and — as soon as the arrival is close enough to be in frame — a mark on the target line at
+the moment the climb is due to meet it.
+
+Once the drum reaches its target the card gives way: the chart says **CHARGE NOW** on the head of
+the climb, where you are already looking, and there is nothing left to count down.
+
+Once the roast is running, a **roast card** takes over. It leaves when you stop recording — a
+card that says what to do next has nothing to say about a roast that has ended. It names the phase, counts down to the
+next milestone, and reports where the roast stands. A dashed marker on the curve shows where that
+countdown lands, and the card **steps over that marker** rather than covering it as the bean
+walks towards it.
+
+At the Guided level the card has **two faces**, and a small button in the top-left corner of the
+curve switches between them:
+
+| Button | The card shows |
+|---|---|
+| **🎯** | The coach view — the phase, what is coming, and what to do about it. |
+| **📊** | The full data view — every figure the roast has produced so far. |
+
+The button appears only at the Guided level. At Expert the full view is the only one, since an
+operator reading the whole table has already said which face they want.
+
+<!-- CAPTURE 2.8a — the curve mid-Maillard with the coach card showing and the 🎯 button visible.
+CAPTURE 2.8b — the same moment with the 📊 full data card. CAPTURE 2.8c — the preheat card and
+the target line, with the arrival mark in frame. -->
+
+### Choosing what is traced
+
+**Right-click anywhere on the curve** to open its options. Display choices are remembered for
+future sessions, so the curve returns with the same traces and lever layout the next time you
+open TilauScope.
+
+| Option | What it adds |
+|---|---|
+| **Air temperature** | Traces [ET](glossary.md#et--environmental-temperature) alongside the bean. Unavailable on a roast recorded without an air probe — there would be nothing to draw. |
+| **Machine response** | Traces the [machine response](glossary.md#machine-response) — the earliest sign that a burner change has landed. |
+| **One lane per channel** | Gives each machine lever its own strip beneath the curve. |
+| **Burner traced, others as gestures** | Traces only the burner, and reduces the others to marks at the moments they moved. |
+| **Rate of rise** | How much the rise is smoothed — three levels, from responsive to steady. |
+
+The rate scale on the right appears with the roast: before the charge the drum is climbing, not
+roasting, and a scale with nothing on it invites reading the drum against the wrong numbers.
+
+The last one is not a display setting. The rate of rise is never stored in a roast file; it is
+recalculated every time a roast is opened. Changing the level therefore changes what the rate
+**is**, on this roast and on every one opened afterwards.
+
+**The lever strips are drawn live**, throughout the preheat and the roast, and each one carries
+its current level in figures at its right edge. Reading a gesture against the curve it caused is
+the point of them, and that reading is worth most while the roast is still running. Before the
+first move on a channel, the strip shows the level the lever is being held at.
+
+**Replaying a simulated roast**, a small **x1 / x2 / x8** selector sits at the top right of the
+curve for as long as the simulation runs. It sets the replay speed directly, in place of clicking
+the clock with a modifier key held.
+
+<!-- CAPTURE 2.8d — the right-click menu open over the curve. CAPTURE 2.8e — a roast mid-Maillard
+showing the lever strips beneath the curve, in one-lane-per-channel mode, with at least two
+gestures already played on the burner. -->
+
+---
+
 the machine rather than sitting at the desk.
+## Machine controls
 
-Clicking the value itself, in either form, opens a roller to dial the number in directly.
+The four machine levers — on a typical setup burner, airflow, drum and extraction — use compact
+segmented controls. The filled segments show the current setting in the lever's colour; the
+remaining segments show the available range. The percentage remains visible beside the bar, so
+colour is never the only indication.
 
-!!! tip
-    The two forms are the same controls, not two modes: whichever is on screen, the value sent to
-    the machine is identical, and switching between them never changes the window's size. Pick
-    the shape that suits how you actually stand while roasting.
+The **−** and **+** buttons move by the machine's own step size. Each click is accepted even when
+the previous click was not immediate. Holding either button repeats the action, which is useful
+when making a larger adjustment with one hand.
+
+Clicking the percentage opens the roller, where the value can still be selected directly. The
+roller is the same precise control used by the previous slider presentation. Whichever way the
+value is chosen, it is aligned to the machine's step size before being sent, so the setting shown
+is always the one the machine received and the one recorded on the curve.
 
 Beneath both, and always visible, sits the **SV** row — the
 [setpoint](glossary.md#sv--setpoint-value) the PID is aiming for. It spans the full width and is
@@ -115,9 +258,8 @@ everything else is working towards.
 On a read-only machine, these controls are absent entirely — see
 [Preparing a roast](preparing-a-roast.md#machines-tilauscope-cannot-drive).
 
-<!-- CAPTURE 2.8 — the control zone in slider-row form, four levers plus the SV row.
-CAPTURE 2.9 — the same zone in card form, same values, so the two can be compared side by side.
-CAPTURE 2.10 — the value roller open on one control. -->
+<!-- CAPTURE 2.8 — the segmented control zone, four levers plus the SV row.
+CAPTURE 2.9 — the percentage roller open on one control. -->
 
 ---
 

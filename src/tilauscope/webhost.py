@@ -20,6 +20,7 @@
 # server plus an opt-in Control server for remote piloting (see wiki/RemoteControl-Protocol-v1.md §3).
 
 import logging
+from threading import Lock
 from typing import Callable, Optional
 
 from tilauscope.webrecords import TilauWebRecords
@@ -46,6 +47,7 @@ class TilauWebHost:
         self._records: Optional[TilauWebRecords] = None
         self._control = None  # TilauWebControl | None (opt-in)
         self._last_snapshot: Optional[dict] = None  # built on the Qt thread by TelemetryTap
+        self._snapshot_lock = Lock()
         self._pairing = None  # PairingManager (created with the Control server)
         self._started = False
 
@@ -67,13 +69,15 @@ class TilauWebHost:
             try:
                 from tilauscope.webcontrol import TilauWebControl, _default_snapshot
                 from tilauscope.pairing import PairingManager
-                if self._last_snapshot is None:
-                    self._last_snapshot = _default_snapshot()
+                with self._snapshot_lock:
+                    if self._last_snapshot is None:
+                        self._last_snapshot = _default_snapshot()
                 self._pairing = PairingManager()
                 self._control = TilauWebControl(
                     self._control_port,
-                    snapshot_provider=lambda: self._last_snapshot,
+                    snapshot_provider=self._snapshot_for_web,
                     pairing=self._pairing)
+                self._pairing.set_revoke_callback(self._control.revoke_device)
                 self._control.startWeb()
                 _log.info("TilauWebHost: Control server on port %s", self._control_port)
             except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
@@ -97,8 +101,11 @@ class TilauWebHost:
                 self._control.stopWeb()
         except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
             _log.debug("TilauWebHost: Control stop: %s", e)
+        if self._pairing is not None:
+            self._pairing.set_revoke_callback(None)
         self._records = None
         self._control = None
+        self._pairing = None
         self._started = False
 
     # ---- Records resolvers (BeanCave registers/clears these) ----------------
@@ -124,7 +131,13 @@ class TilauWebHost:
 
     def publish_snapshot(self, snapshot: dict) -> None:
         """Store the latest full snapshot (served to clients on connect)."""
-        self._last_snapshot = snapshot
+        with self._snapshot_lock:
+            self._last_snapshot = snapshot
+
+    def _snapshot_for_web(self) -> dict:
+        """Publish the immutable snapshot reference with an explicit memory fence."""
+        with self._snapshot_lock:
+            return self._last_snapshot or {}
 
     def patch_snapshot(self, **fields) -> None:
         """Amend a few fields of the stored snapshot without rebuilding it.
@@ -133,8 +146,9 @@ class TilauWebHost:
         was still monitoring, and a phone connecting afterwards must not be told
         the frozen view is live.
         """
-        if isinstance(self._last_snapshot, dict):
-            self._last_snapshot = {**self._last_snapshot, **fields}
+        with self._snapshot_lock:
+            if isinstance(self._last_snapshot, dict):
+                self._last_snapshot = {**self._last_snapshot, **fields}
 
     def publish_telemetry(self, telemetry: dict) -> None:
         """Fan out a per-tick delta to connected observers (thread-safe)."""

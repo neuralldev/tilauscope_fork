@@ -45,7 +45,7 @@ from PyQt6.QtGui import QColor, QKeyEvent, QFontMetrics
 from artisanlib.util import fromCtoFstrict
 from tilauscope.tilauscope_types import (
     GreenBean, THEME, show_styled_message, AGTRON_SCALES, format_batch_label,
-    open_in_os_viewer
+    open_in_os_viewer, ensure_color_system, resolve_color_system
 )
 
 # AI modules are optional — guard against ImportError if not yet deployed
@@ -866,9 +866,15 @@ class _RoastInsightsPanel(QWidget):
         self._targets_host: QWidget | None = None
         self._targets_hint: QLabel | None = None
 
+        self._engine = None                # TilauScopeRoastPlan, built on demand
+        self._engine_ctx = None            # roaster context the engine was built for
+        self._plan: dict | None = None    # latest plan, used by RoastSetupDialog
+
         self._debounce = QTimer(self)
         self._debounce.setSingleShot(True)
-        self._debounce.setInterval(250)
+        # 500 ms: a plan generation is not free even off the corpus scan, and
+        # typing a three-digit weight must not fire three of them.
+        self._debounce.setInterval(500)
         self._debounce.timeout.connect(self._launch)
 
         self._build_ui()
@@ -948,6 +954,9 @@ class _RoastInsightsPanel(QWidget):
 
     def shutdown(self) -> None:
         self._destroyed = True
+        self._plan = None
+        self._engine = None
+        self._engine_ctx = None
         try:
             self._debounce.stop()
         except RuntimeError:
@@ -958,6 +967,14 @@ class _RoastInsightsPanel(QWidget):
         super().closeEvent(event)
 
     # ── Compute (synchronous, GUI thread) ───────────────────────────────────────
+
+    def _engine_for(self, parent, ctx):  # noqa: ANN001
+        """The dialog's roast-plan engine, rebuilt only if the roaster changes."""
+        from tilauscope.roast_plan_model import TilauScopeRoastPlan
+        if self._engine is None or self._engine_ctx is not ctx:
+            self._engine = TilauScopeRoastPlan(parent=parent, roaster_ctx=ctx)
+            self._engine_ctx = ctx
+        return self._engine
 
     def _launch(self) -> None:
         if self._destroyed or self._pending is None:
@@ -995,10 +1012,12 @@ class _RoastInsightsPanel(QWidget):
         plan = None
         if plan_params is not None:
             try:
-                from tilauscope.roast_plan_model import TilauScopeRoastPlan
-                engine = TilauScopeRoastPlan(
-                    parent=plan_params["parent"], roaster_ctx=plan_params["ctx"]
-                )
+                # One engine for the whole dialog: a fresh instance drops the
+                # corpus index snapshot and the per-bean history cache, so every
+                # keystroke paid the historical scan again. The history cache is
+                # keyed by (bean, colour target, weight), so reusing it cannot
+                # serve a plan computed for other inputs.
+                engine = self._engine_for(plan_params["parent"], plan_params["ctx"])
                 result = engine.generate_roast_plan(
                     bean=plan_params["bean"],
                     agtron_target=plan_params["agtron_target"],
@@ -1036,10 +1055,18 @@ class _RoastInsightsPanel(QWidget):
         if self._destroyed or gen != self._gen:
             return
         if plan is None:
+            self._plan = None
             if self._target_scale is not None:
                 self._set_targets_hint(QApplication.translate(
                     "tilauscope_roast_setup", "Plan unavailable — see log for details."))
             return
+        self._plan = plan if isinstance(plan, dict) else None
+        charge_temp = self.charge_temperature()
+        owner = self.parentWidget()
+        if charge_temp is not None and owner is not None:
+            update_target = getattr(owner, "_on_plan_charge_temperature", None)
+            if callable(update_target):
+                update_target(charge_temp)
         try:
             mode = (self._last_setup or {}).get("mode", "C")
             targets = targets_from_plan(plan, mode)
@@ -1048,6 +1075,22 @@ class _RoastInsightsPanel(QWidget):
         if targets:
             self._render_targets(targets)
             self._set_targets_hint("")
+
+    def charge_temperature(self) -> float | None:
+        """Return the generated plan's charge temperature in display units."""
+        if self._plan is None:
+            return None
+        try:
+            value = float(self._plan["Charge Temp"])
+            return value if value > 0 else None
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    def ensure_plan(self) -> None:
+        """Finish a queued computation before a setup dialog is accepted."""
+        if self._pending is not None and self.charge_temperature() is None:
+            self._debounce.stop()
+            self._launch()
 
     # ── Rendering ──────────────────────────────────────────────────────────────
 
@@ -1828,6 +1871,11 @@ class RoastSetupDialog(QDialog):
             run_plan=True,
         )
 
+    @pyqtSlot(float)
+    def _on_plan_charge_temperature(self, temperature: float) -> None:
+        if self._pid_enable_cb.isChecked():
+            self._pid_value_edit.setText(f"{temperature:.0f}")
+
     # ── Optional settings tab ─────────────────────────────────────────────────
 
     def _build_optional_tab2(self, tab: QWidget) -> None:
@@ -2384,10 +2432,19 @@ class RoastSetupDialog(QDialog):
                 _log.warning("Could not migrate legacy TilauPID command: %s", exc)
 
             raw = self._pid_value_edit.text().strip()
+            self._insights_panel.ensure_plan()
             try:
                 pid_val = float(raw.replace(',', '.'))
             except ValueError:
                 pid_val = 0.0
+
+            # The generated plan owns the charge setpoint. Keep manual entry as
+            # a fallback when no target profile or plan is available.
+            if self._pid_enable_cb.isChecked():
+                plan_charge_temp = self._insights_panel.charge_temperature()
+                if plan_charge_temp is not None:
+                    pid_val = plan_charge_temp
+                    self._pid_value_edit.setText(f"{pid_val:.0f}")
 
             if self._pid_enable_cb.isChecked() and pid_val > 0.0:
                 # Case cochée ET SV donné → on remplit le START.
@@ -2402,6 +2459,12 @@ class RoastSetupDialog(QDialog):
                 # pidcontrol.pidSource every cycle (st2 if pidSource in [0,1] else st1).
                 try:
                     self._aw.pidcontrol.pidSource = 2 if self._pid_input_et_btn.isChecked() else 1
+                    self._aw.pidcontrol.setSV(pid_sv)
+                    slider_sv = getattr(self._aw, "sliderSV", None)
+                    if slider_sv is not None and slider_sv.value() != pid_sv:
+                        slider_sv.blockSignals(True)
+                        slider_sv.setValue(pid_sv)
+                        slider_sv.blockSignals(False)
                     _log.info("RoastSetupDialog: PID input source → %s",
                               "ET" if self._pid_input_et_btn.isChecked() else "BT")
                 except Exception as exc:  # pylint: disable=broad-except
@@ -4047,6 +4110,10 @@ class RoastResultDialog(QDialog):
 
         profile['whole_color']  = whole_color
         profile['ground_color'] = ground_color
+        # The scale travels with the reading: a snapshot taken before OK would
+        # otherwise carry the unset scale of the profile it was copied from.
+        profile['color_system'] = resolve_color_system(
+            str(profile.get('color_system') or ''), ground_color, whole_color)
 
         computed = dict(profile.get('computed') or {})
         if green > 0 and roasted > 0:
@@ -4159,6 +4226,9 @@ class RoastResultDialog(QDialog):
             qmc.weight        = (w0, roasted_w, w2)
             qmc.whole_color   = whole_color
             qmc.ground_color  = ground_color
+            # These fields are Agtron — name the scale so the saved profile
+            # does not read back as "no colour measured".
+            ensure_color_system(qmc)
             qmc.roasted_defects_weight = defects_w
 
             # Batch — persist a deliberate correction of the assigned identity
@@ -4184,6 +4254,28 @@ class RoastResultDialog(QDialog):
                 QApplication.translate("tilauscope_roast_setup",
                     "Could not save roast result:<br><b>{0}</b>").format(exc),
                 QMessageBox.Icon.Warning, rich=True,
+            )
+            return
+
+        # OffRecorder's autosave runs before this post-roast dialog opens.  The
+        # values above therefore only existed in memory and pressing "Save
+        # roast" used to close the dialog without updating the .alog file.
+        # Rewrite the autosaved/current profile, or ask for a destination when
+        # autosave is disabled.  Never close the dialog after a failed or
+        # cancelled save: the operator must retain a chance to retry.
+        try:
+            saved = bool(self._aw.fileSave(getattr(self._aw, 'curFile', None)))
+        except Exception as exc:  # noqa: BLE001
+            _log.error("RoastResultDialog profile save failed: %s", exc)
+            saved = False
+        if not saved:
+            show_styled_message(
+                self,
+                QApplication.translate("tilauscope_roast_setup", "Save Error"),
+                QApplication.translate("tilauscope_roast_setup",
+                    "The roast could not be saved. Your data is still in this window; "
+                    "choose Save roast to try again."),
+                QMessageBox.Icon.Warning,
             )
             return
 

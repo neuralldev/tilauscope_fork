@@ -227,9 +227,21 @@ class AlogScanner:
 
     ALOG_GLOB = "*.alog"
 
-    def __init__(self, alog_dir: str, window: int = 10, aw:ApplicationWindow | None = None):
+    ## Combien de profils on accepte d'OUVRIR quand les torréfactions
+    ## exploitables se font rares. Distinct de `window`, qui reste la
+    ## profondeur de mémoire ET le dénominateur de confiance.
+    _SCAN_BUDGET_MIN: Final[int] = 50
+    _SCAN_BUDGET_FACTOR: Final[int] = 5
+
+    def __init__(self, alog_dir: str, window: int = 10, aw:ApplicationWindow | None = None,
+                 scan_budget: int | None = None):
         self.alog_dir = Path(alog_dir)
         self.window = window
+        ## La lecture d'un profil ne coûte plus le parcours du corpus : le
+        ## portillon sur index écarte gratuitement ce qui n'est pas une preuve
+        ## PID. On peut donc chercher plus loin que `window` quand il le faut.
+        self.scan_budget = (scan_budget if scan_budget is not None
+                            else max(self._SCAN_BUDGET_MIN, window * self._SCAN_BUDGET_FACTOR))
         self.aw = aw
         qmc = getattr(aw, "qmc", None)
         machine = (
@@ -251,11 +263,24 @@ class AlogScanner:
             return "BT"
 
     def _list_recent(self) -> List[Path]:
-        """Return at most ``window`` alogs, newest-first.
+        """Return at most ``scan_budget`` index-qualified alogs, newest-first.
 
-        ``window`` is a hard I/O budget, not a target number of eligible
-        profiles. Otherwise a directory containing only ineligible or unrelated
-        roasts makes START parse the entire archive while looking for ten hits.
+        ``scan_budget`` is a hard I/O ceiling, not a target number of eligible
+        profiles: without one, an archive full of unrelated roasts would have
+        the preheat parse everything while looking for its ten hits.
+
+        Two things make a deeper look affordable now. The corpus index rules out
+        a simulated profile, another machine, the other probe or an implausible
+        ambient reading without opening anything — so the ceiling is only spent
+        on plausible candidates. And ``load_window`` stops the moment it holds
+        ``window`` usable roasts, so the full budget is paid only when the
+        evidence really is scarce, which is exactly when looking harder pays.
+
+        ``window`` deliberately stays what it was: how many roasts the adaptive
+        memory keeps, and the denominator of its confidence. Raising it to widen
+        the search would have DILUTED the learning — every correction is scaled
+        by n/window, so finding six roasts in a window of thirty weighs less
+        than three in a window of ten.
         """
         if not self.alog_dir.exists():
             _logd.warning(f"Répertoire alog introuvable : {self.alog_dir}")
@@ -265,7 +290,50 @@ class AlogScanner:
             key=lambda p: p.stat().st_mtime,
             reverse=True
         )
-        return files[:max(0, self.window)]
+        eligible = [f for f in files if self._index_admits(f)]
+        if len(eligible) < len(files):
+            _logd.debug(
+                f"AlogScanner: {len(files) - len(eligible)} profil(s) écartés sur index "
+                f"(simulé / autre machine / autre voie / ambiant) avant toute lecture")
+        return eligible[:max(0, self.scan_budget)]
+
+    def _index_admits(self, path: Path) -> bool:
+        """False only when the index PROVES this roast is not PID evidence.
+
+        Unknown to the index — or an index that cannot be read — means keep:
+        the full extraction below stays the authority, so a stale index can
+        only cost reads, never silently narrow what the PID learns from.
+        """
+        try:
+            from tilauscope.alogmanager import AlogIndex
+            meta = AlogIndex.instance().records(self.alog_dir).get(str(path))
+        except Exception:  # noqa: BLE001
+            return True
+        if meta is None:
+            return True
+        # Simulator data is never physical PID evidence. `tilau_exclude_learning`
+        # is deliberately NOT tested: it vetoes cooking/roast-plan learning only,
+        # not the independent machine preheat response.
+        if meta.simulated:
+            return False
+        if self.machine_fingerprint:
+            recorded = _normalise_identity(meta.roastertype or meta.machinesetup)
+            if recorded != self.machine_fingerprint:
+                return False
+        if self.control_channel is not None:
+            if self._control_channel(meta.pid_source) != self.control_channel:
+                return False
+        # Ambient plausibility — the single reason nearly every archived roast is
+        # turned away. Reading it from the index means the ten-file budget goes to
+        # roasts that can actually teach the PID something, instead of being
+        # spent discovering that a probe was not connected.
+        temp = meta.ambient_temp
+        if str(meta.mode).upper() == "F":
+            temp = fromFtoCstrict(temp)
+        if not AmbientConditions(temp_ambient=temp, humidity=meta.ambient_humidity,
+                                 pressure=meta.ambient_pressure).is_valid():
+            return False
+        return True
 
     def _extract_metrics(self, path: Path, params:RoastPreheatMetrics|None = None) -> RoastPreheatMetrics|None:
         """Parse un alog et retourne les métriques de préchauffe, ou None si absent."""
@@ -590,7 +658,8 @@ class AlogScanner:
                     break
         _logd.debug(
             f"AlogScanner: {len(results)} admissible(s) parmi les "
-            f"{len(candidates)} derniers fichiers de {self.alog_dir} "
+            f"{len(candidates)} profil(s) retenus sur index dans {self.alog_dir} "
+            f"(fenêtre mémoire {self.window}, plafond de lecture {self.scan_budget}) "
             f"en {(time.perf_counter() - started_at) * 1000.0:.0f} ms")
         return results
 
@@ -885,20 +954,24 @@ class StabilisationDetector:
 
     def __init__(self, window_sec: float = 30.0, tolerance_c: float = 1.0,
                  stability_std: float = 0.5, polling_dt: float = 1.0):
+        self.window_sec = float(window_sec)
         self.tolerance_c = tolerance_c
         self.stability_std = stability_std
         self.polling_dt = polling_dt
-        maxlen = max(5, int(window_sec / polling_dt))
-        self._temps: deque = deque(maxlen=maxlen)
-        self._times: deque = deque(maxlen=maxlen)
+        self._temps: deque[float] = deque()
+        self._times: deque[float] = deque()
         self.seconds_stable: float = 0.0
         self._stable_since: Optional[float] = None
 
-    def update(self, t_c: float, sv_c: float) -> None:
+    def update(self, t_c: float, sv_c: float, *, now: float | None = None) -> None:
         """Ajouter une mesure (°C interne)."""
-        now = time.perf_counter()
+        now = time.perf_counter() if now is None else float(now)
         self._temps.append(t_c)
         self._times.append(now)
+        cutoff = now - self.window_sec
+        while len(self._times) > 1 and self._times[1] <= cutoff:
+            self._times.popleft()
+            self._temps.popleft()
 
         if self._check_stable(sv_c):
             if self._stable_since is None:
@@ -917,7 +990,7 @@ class StabilisationDetector:
 
     def _check_stable(self, sv_c: float) -> bool:
         n = len(self._temps)
-        if n < 5:
+        if n < 5 or not self.has_full_window():
             return False
         m = mean(self._temps)
         s = stdev(self._temps) if n > 1 else 99.0
@@ -931,8 +1004,11 @@ class StabilisationDetector:
         return mean(self._temps)
 
     def has_full_window(self) -> bool:
-        """True once the detector contains a complete thermal observation window."""
-        return self._temps.maxlen is not None and len(self._temps) == self._temps.maxlen
+        """True once samples span the configured wall-clock observation window."""
+        return (
+            len(self._times) >= 2
+            and self._times[-1] - self._times[0] >= self.window_sec
+        )
 
     def is_stable(self, min_duration_sec: float = 10.0) -> bool:
         """Retourne True si stable depuis au moins min_duration_sec secondes."""
@@ -1064,6 +1140,7 @@ class AdaptivePIDMixin:
         window: int = 10,
         ambient: Optional[AmbientConditions] = None,
         aw: ApplicationWindow | None = None ,
+        scan_budget: int | None = None,
     ) -> None:
         """Initialise tous les sous-systèmes adaptatifs."""
         # Répertoire alog : fixé par l'application (clé QSettings 'alogDirectory',
@@ -1074,7 +1151,8 @@ class AdaptivePIDMixin:
 
         self.aw=aw
 
-        self._alog_scanner = AlogScanner(alog_dir, window, aw=self.aw)
+        self._alog_scanner = AlogScanner(alog_dir, window, aw=self.aw,
+                                         scan_budget=scan_budget)
         self._adaptive_memory = AdaptiveMemory(window)
         self._ambient_corrector = AmbientCorrector()
         self._stabilisation_detector = StabilisationDetector(
@@ -1248,6 +1326,7 @@ class AdaptivePIDMixin:
             str(scanner.alog_dir),
             window=scanner.window,
             aw=self.aw,
+            scan_budget=scanner.scan_budget,
         )
         changed = (
             refreshed.machine_fingerprint != scanner.machine_fingerprint

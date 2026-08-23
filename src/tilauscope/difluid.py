@@ -825,17 +825,24 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         return r
 
     def update_artisan_slider(self, slider_idx: int, value: int):
+        """Move the lever without recording anything (simulator / display only)."""
         if not self.aw: return
 
         # Mise à jour synchronisée avec l'historique Artisan
+        self.aw.block_quantification_sampling_ticks[slider_idx] = self.aw.sampling_ticks_to_block_quantifiction
         self.aw.moveslider(slider_idx, value)
-        self.aw.extraeventsactionslastvalue[slider_idx] = value
+        self.aw.extraeventsactionslastvalue[slider_idx] = self.aw.eventslidervalues[slider_idx]
         self.aw.fireslideraction(slider_idx)
 
     def updateArtisanDamperSlider(self, slidernr:int, slidervalue:int):
-            value:float = (float(slidervalue)+10.0)/10.0
-            self.aw.qmc.EventRecordAction(1, slidernr, float(value), f'S{slidernr}', False)
-            self.update_artisan_slider(slidernr, slidervalue)
+            # Named, not a bare value and unit: the plain shape is what a gesture on
+            # a control writes, and a channel the extractor drove itself would
+            # otherwise be read back afterwards as something the operator did.
+            # The shared transaction owns the event codec, the quantifier block and
+            # the clamp; it records through a queued signal, so the profile lock we
+            # are running under (pidOnET is called from sample_processing) is not an
+            # issue and no longer has to be bypassed.
+            self.aw.applyTilauSliderCommand(slidernr, slidervalue, True, f'Airwave S{slidernr}')
 
     def _get_omniflux_live(self)-> tuple[float, float]:
         # read registers from modbus if connected

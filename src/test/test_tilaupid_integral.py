@@ -191,3 +191,48 @@ def test_sv_command_resets_integral_and_reloads_continuous_law() -> None:
     assert integral.correction == 0.0
     assert pid.aw.qmc.tilau_preheat_sv_c == pytest.approx(205.5)
     assert applied_sv == [205.5]
+
+
+def test_pid_config_applies_flat_and_nested_values() -> None:
+    cfg = PIDConfig.from_mapping(
+        {
+            "max_burner": 72,
+            "heater_slider": 1,
+            "pid": {"kp": 3.5, "polling_dt": 0.5, "fan_enabled": "on"},
+        },
+        target_sv=205.0,
+    )
+    assert cfg.target_sv == pytest.approx(205.0)
+    assert cfg.max_burner == pytest.approx(72.0)
+    assert cfg.heater_slider == 1
+    assert cfg.kp == pytest.approx(3.5)
+    assert cfg.polling_dt == pytest.approx(0.5)
+    assert cfg.fan_enabled is True
+
+
+@pytest.mark.parametrize("config", [
+    {"max_burner": 101},
+    {"polling_dt": 0},
+    {"heater_slider": 4},
+    {"pid": {"fan_enabled": "perhaps"}},
+    {"lead_sec_min": 8, "lead_sec_max": 4},
+    {"pid": []},
+])
+def test_pid_config_rejects_unsafe_values(config: dict) -> None:
+    with pytest.raises(ValueError):
+        PIDConfig.from_mapping(config, target_sv=200.0)
+
+
+def test_slider_update_uses_application_signal_when_available() -> None:
+    emitted: list[tuple[int, int, bool]] = []
+    signal = SimpleNamespace(emit=lambda *args: emitted.append(args))
+    aw = SimpleNamespace(
+        simulator=None,
+        tilaupidSliderCommandSignal=signal,
+        moveslider=lambda *_args: pytest.fail("direct widget access"),
+    )
+    pid = cast(TilauPreheatPID, SimpleNamespace(aw=aw))
+
+    TilauPreheatPID._update_artisan_slider(pid, 3, 64)
+
+    assert emitted == [(3, 64, True)]

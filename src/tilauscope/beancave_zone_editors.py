@@ -883,6 +883,9 @@ class ZoneEditorDialog(QDialog):
                                         QApplication.translate("tilauscope_beancave", "The bean cave is not available."))
                     return
                 cave.green_beans.append(b)
+                if not hasattr(self._host, 'uuidmap'):
+                    self._host.uuidmap = {}
+                self._host.uuidmap[b.uuid] = b
 
             self._host.save_green_beans()
             # stock just hit 0 g: offer to reclaim this bean's labels

@@ -27,6 +27,8 @@ from PyQt6.QtGui   import QIcon, QPixmap, QPainter, QColor
 from PyQt6.QtSvg   import QSvgRenderer
 from PyQt6.QtWidgets import QPushButton
 
+from tilauscope.theme_qss import with_tooltip
+
 
 # ── Icon render size ──────────────────────────────────────────────────────────
 # Physical pixel size of the icon painted inside every button.
@@ -41,7 +43,7 @@ BTN_ICON_SIZE: Final[QSize] = QSize(18, 18)
 COL_IDLE:           Final[str] = "#45475A"   # Surface1 — muted, any inactive btn
 COL_ACTIVE:         Final[str] = "#CDD6F4"   # Text — generic active (unused directly)
 COL_PRESSED:        Final[str] = "#11111B"   # Crust — icon color when bg fills on press
-COL_DISABLED:       Final[str] = "#282837"   # Mantle-dim — disabled state
+COL_DISABLED:       Final[str] = "#6C7086"   # Overlay0 — visible disabled icon
 
 # Per-button semantic colors  (idle / active)
 COL_MENU:           Final[str] = "#89B4FA"   # Blue — menu hamburger, always this tone
@@ -50,6 +52,9 @@ COL_POWER_ACTIVE:   Final[str] = "#A6E3A1"   # Green
 
 COL_START_IDLE:     Final[str] = "#26458E"   # Blue dim
 COL_START_ACTIVE:   Final[str] = "#3D6EDF"   # Blue bright
+# Ink for a button whose own fill is light (compact START). Light-on-light was
+# unreadable — label and glyph both take this instead.
+COL_ON_LIGHT_FILL:  Final[str] = "#11111B"   # Crust
 
 COL_RESET_IDLE:     Final[str] = "#6A61AB"   # Lavender dim
 COL_RESET_ACTIVE:   Final[str] = "#4D458C"   # Lavender mid
@@ -273,36 +278,43 @@ def make_btn_style(
     border_active: str = "1px",
     bg:            str = "#181825",
     bg_hover:      str = "#1E1E2E",
+    fg:            str = "#CDD6F4",
+    fg_hover:      str = "#FFFFFF",
 ) -> str:
     """Generate a QSS stylesheet for a TilauScope header button (idle/active/hover/
     pressed/disabled). Caller must unpolish()+polish() after changing dynamic
     properties so Qt re-evaluates the sheet.
     """
-    return f"""
+    return with_tooltip(f"""
         QPushButton {{
             background-color: {bg};
             border: {border_idle} solid {color_idle};
             border-radius: 8px;
+            color: {fg};
         }}
         QPushButton[active="true"] {{
             border: {border_active} solid {color_active};
         }}
         QPushButton:hover {{
             background-color: {bg_hover};
-            border: 1px solid {color_hover};
+            border: 2px solid {color_hover};
+            color: {fg_hover};
         }}
         QPushButton:pressed {{
             background-color: {color_pressed};
+            color: #11111B;
         }}
         QPushButton:disabled {{
-            border: 1px solid #282837;
+            background-color: #252538;
+            border: 1px solid #6C7086;
+            color: #A6ADC8;
         }}
-    """
+    """)
 
 
 # ── Pre-built stylesheets for each header button ──────────────────────────────
 
-QSS_MENU: Final[str] = """
+QSS_MENU: Final[str] = with_tooltip("""
     QPushButton {
         background: transparent;
         border: none;
@@ -310,12 +322,12 @@ QSS_MENU: Final[str] = """
     }
     QPushButton:hover  { background: transparent; }
     QPushButton:pressed { background: transparent; }
-"""
+""")
 
 QSS_POWER: Final[str] = make_btn_style(
     color_idle=    "#313244",
     color_active=  COL_POWER_ACTIVE,
-    color_hover=   COL_POWER_HOVER,
+    color_hover=   COL_POWER_ACTIVE,
     color_pressed= COL_POWER_ACTIVE,
     border_idle=   "2px",
     border_active= "2px",
@@ -324,14 +336,14 @@ QSS_POWER: Final[str] = make_btn_style(
 QSS_START_STOP: Final[str] = make_btn_style(
     color_idle=    "#3D6EDF",
     color_active=  COL_START_ACTIVE,
-    color_hover=   "rgba(77,69,140,0.5)",
+    color_hover=   COL_START_ACTIVE,
     color_pressed= COL_START_ACTIVE,
 )
 
 QSS_RESET: Final[str] = make_btn_style(
     color_idle=    "#78798A",
     color_active=  COL_RESET_ACTIVE,
-    color_hover=   "rgba(77,69,140,0.5)",
+    color_hover=   COL_RESET_ACTIVE,
     color_pressed= COL_RESET_ACTIVE,
 )
 
@@ -373,4 +385,41 @@ QSS_DOCK: Final[str] = make_btn_style(
     color_active=  COL_DOCK_ACTIVE,
     color_hover=   COL_DOCK_HOVER,
     color_pressed= COL_DOCK_ACTIVE,
+)
+
+# Compact two-row header styles. These preserve the legacy styles above while
+# giving the approved layout the filled surfaces shown in its mockup.
+QSS_COMPACT_POWER: Final[str] = make_btn_style(
+    color_idle="#64856E", color_active=COL_POWER_ACTIVE,
+    color_hover="#CDD6F4", color_pressed=COL_POWER_ACTIVE,
+    bg="#26382D", bg_hover="#45475A",
+)
+QSS_COMPACT_START: Final[str] = make_btn_style(
+    color_idle="#638BD1", color_active=COL_START_ACTIVE,
+    color_hover="#CDD6F4", color_pressed=COL_START_ACTIVE,
+    bg="#89B4FA", bg_hover="#B4BEFE",
+    fg=COL_ON_LIGHT_FILL, fg_hover=COL_ON_LIGHT_FILL,
+)
+QSS_COMPACT_RESET: Final[str] = make_btn_style(
+    color_idle="#98765F", color_active=COL_RESET_ACTIVE,
+    color_hover="#CDD6F4", color_pressed=COL_RESET_ACTIVE,
+    bg="#29293D", bg_hover="#45475A",
+)
+QSS_COMPACT_BEANCAVE: Final[str] = make_btn_style(
+    color_idle="#5477AD", color_active=COL_BEANCAVE_ACTIVE,
+    color_hover="#CDD6F4", color_pressed=COL_BEANCAVE_IDLE,
+    bg="#29293D", bg_hover="#45475A",
+)
+# Emergency heat cut. Red on a dark red fill: the only critical-coloured
+# control of the header, so it cannot be confused with START or RESET.
+QSS_COMPACT_ESTOP: Final[str] = make_btn_style(
+    color_idle="#F38BA8", color_active="#F38BA8",
+    color_hover="#FFFFFF", color_pressed="#FFFFFF",
+    bg="#3A1E28", bg_hover="#5A2434",
+    border_idle="2px", border_active="2px",
+)
+QSS_COMPACT_SWAP: Final[str] = make_btn_style(
+    color_idle="#5F9D93", color_active=COL_SWAP_ACTIVE,
+    color_hover="#CDD6F4", color_pressed=COL_SWAP_ACTIVE,
+    bg="#29293D", bg_hover="#45475A",
 )

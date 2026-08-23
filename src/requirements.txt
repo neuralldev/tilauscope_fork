@@ -27,9 +27,9 @@
 # packages that are required on all platforms
 #
 setuptools==83.0.0
-wheel==0.47.0
+wheel==0.48.0
 pyserial==3.5
-pymodbus==3.14.0
+pymodbus==3.15.0
 python-snap7==3.1.0
 Phidget22==1.25.20260408
 Unidecode==1.4.0
@@ -43,7 +43,6 @@ persist-queue==1.1.0
 portalocker==3.2.0
 xlrd==2.0.2
 websockets>=16.1.1,<16.2.0
-PyYAML==6.0.3
 psutil==7.2.2
 protobuf>=7.35.1,<8.0.0
 numpy==2.4.6
@@ -85,10 +84,10 @@ pyinstaller==6.21.0; platform_system=='Linux' or sys_platform=='darwin' # on Win
 ### macOS specific packages
 ###
 appnope==0.1.4; sys_platform=='darwin'
-pyobjc-core==12.2.1; sys_platform=='darwin'
-pyobjc-framework-Cocoa==12.2.1; sys_platform=='darwin'
-pyobjc-framework-CoreBluetooth==12.2.1; sys_platform=='darwin'
-pyobjc-framework-libdispatch==12.2.1; sys_platform=='darwin'
+pyobjc-core==12.2.2; sys_platform=='darwin'
+pyobjc-framework-Cocoa==12.2.2; sys_platform=='darwin'
+pyobjc-framework-CoreBluetooth==12.2.2; sys_platform=='darwin'
+pyobjc-framework-libdispatch==12.2.2; sys_platform=='darwin'
 ###
 ########
 ### Linux specific packages
@@ -117,7 +116,7 @@ fonttools>=4.63.0
 kiwisolver>=1.5.0
 pyparsing>=3.3.2
 mashumaro>=3.22
-types_fpdf2>=2.8.4.20260518
+types_fpdf2>=2.8.4.20260724
 beautifulsoup4==4.14.3
 instructor==1.14.5
 win_inet_pton==1.1.0; platform_system=='Windows'

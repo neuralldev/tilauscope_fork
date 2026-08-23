@@ -25,7 +25,7 @@ import logging
 import secrets
 import threading
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 from PyQt6.QtCore import QSettings
 
@@ -42,19 +42,28 @@ class PairingManager:
         # between the control-server thread and the Qt thread; _lock guards every access.
         self._lock = threading.Lock()
         self._devices: dict = self._load()
+        self._revoke_callback: Optional[Callable[[str], None]] = None
+
+    def set_revoke_callback(self, callback: Optional[Callable[[str], None]]) -> None:
+        """Notify the live transport after a persistent device is revoked."""
+        with self._lock:
+            self._revoke_callback = callback
 
     # ---- pairing token (desktop) -------------------------------------------
 
     def mint_pairing_token(self) -> tuple:
         """Generate a fresh one-time PT (invalidates any previous one)."""
         token = 'pt_' + secrets.token_urlsafe(16)
-        self._pt = (token, time.time() + _PT_TTL)
+        with self._lock:
+            self._pt = (token, time.time() + _PT_TTL)
         return token, _PT_TTL
 
     def clear_pairing_token(self) -> None:
-        self._pt = None
+        with self._lock:
+            self._pt = None
 
-    def _consume_pt(self, token: str) -> bool:
+    def _consume_pt_locked(self, token: str) -> bool:
+        """Consume a pairing token while the caller holds ``_lock``."""
         if not self._pt or not token:
             return False
         tok, exp = self._pt
@@ -89,10 +98,13 @@ class PairingManager:
 
     def pair(self, token: str, device_id: str, display_name: str) -> Optional[str]:
         """Validate a PT and issue a persistent DT for this device."""
-        if not self._consume_pt(token):
-            return None
-        dt = 'dt_' + secrets.token_urlsafe(24)
         with self._lock:
+            # PT validation and consumption must be one critical section.  Besides
+            # free-threaded Python, this prevents two server workers from exchanging
+            # the same nominally one-time token.
+            if not self._consume_pt_locked(token):
+                return None
+            dt = 'dt_' + secrets.token_urlsafe(24)
             self._devices[device_id] = {'token': dt, 'name': display_name or device_id,
                                         'paired_at': int(time.time())}
             self._save(self._devices)
@@ -134,5 +146,13 @@ class PairingManager:
             removed = self._devices.pop(device_id, None) is not None
             if removed:
                 self._save(self._devices)
+            callback = self._revoke_callback
         if removed:
             _log.info("pairing: device revoked: %s", device_id)
+            # Run outside _lock: the callback crosses into the asyncio thread and
+            # must never be allowed to deadlock token verification/list_devices().
+            if callback is not None:
+                try:
+                    callback(device_id)
+                except Exception as e:  # noqa: BLE001
+                    _log.warning("pairing: live-session revocation failed: %s", e)

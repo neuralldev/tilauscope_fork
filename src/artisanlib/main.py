@@ -59,7 +59,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 import zlib
 import logging.config
-from yaml import safe_load as yaml_load
+import json
 from collections.abc import Callable
 from pydantic import TypeAdapter, ValidationError
 from typing import Final, cast, Any, override, Literal, TYPE_CHECKING
@@ -68,7 +68,7 @@ from functools import reduce as freduce
 
 
 
-##### BEGIN Profiling: use @profile annotations and check results using '# snakeviz *.profile'
+##### BEGIN Profiling: use @profile annotations and check results using '# snakeviz /users/luther/*.profile'
 #import cProfile
 #import pstats
 #from functools import wraps
@@ -88,7 +88,7 @@ from functools import reduce as freduce
 #        ps.dump_stats(f'/Users/luther/{datafn}')
 #        return retval
 #    return wrapper
-##### END Profiling
+#### END Profiling
 
 
 
@@ -114,16 +114,18 @@ from PyQt6.QtWidgets import (QApplication, QWidget, QMessageBox, QLabel, QMainWi
                          QInputDialog, QGroupBox, QLineEdit,
                          QSizePolicy, QVBoxLayout, QHBoxLayout, QPushButton,
                          QLCDNumber, QSpinBox, QComboBox,
-                         QSlider,
+                         QSlider, QToolButton,
                          QColorDialog, QFrame, QScrollArea, QProgressDialog,
                          QStyleFactory, QMenuBar, QMenu, QLayout, QDockWidget)
-from PyQt6.QtGui import (QScreen, QPageLayout, QAction, QImageReader, QWindow,
+from PyQt6.QtGui import (QScreen, QPageLayout, QAction, QWindow, 
+                            ## TILAU ##
+                            QImageReader, QShowEvent,
                             QKeySequence, QShortcut,
                             QPixmap,QColor,QDesktopServices,QIcon,
                             QRegularExpressionValidator, QDoubleValidator, QPainter, QCursor)
 from PyQt6.QtPrintSupport import (QPrinter,QPrintDialog)
 from PyQt6.QtCore import (QStandardPaths, QLibraryInfo, QTranslator, QLocale, QFileInfo, PYQT_VERSION_STR, pyqtSignal, pyqtSlot, QtMsgType,
-                          qVersion, QVersionNumber, QTime, QTimer, QFile, QIODevice, QTextStream, QSettings,
+                          qVersion, QVersionNumber, QTime, QTimer, QFile, QIODevice, QTextStream, QSettings, QSize,
                           QRegularExpression, QDate, QUrl, QUrlQuery, QDir, Qt, QPoint, QEvent, QDateTime, QThread, qInstallMessageHandler)
 from PyQt6.QtNetwork import QLocalSocket
 from PyQt6 import sip
@@ -143,7 +145,7 @@ with suppress_stdout_stderr():
 
 from matplotlib.backend_bases import _Mode as MPL_Mode # type:ignore[untyped-import,unused-ignore] # pylint: disable=import-private-name,unknown-option-value # @UnresolvedImport
 
-svgsupport = next((x for x in QImageReader.supportedImageFormats() if x == b'svg'),None)
+#svgsupport = next((x for x in QImageReader.supportedImageFormats() if x == b'svg'),None)
 
 from matplotlib.figure import Figure # type:ignore[untyped-import,unused-ignore]
 from matplotlib import rcParams, ticker # type:ignore[untyped-import,unused-ignore]
@@ -179,6 +181,9 @@ if TYPE_CHECKING:
     from artisanlib.kaleido import KaleidoPort # pylint: disable=unused-import
     from artisanlib.orbiter import Orbiter # pylint: disable=unused-import
     from artisanlib.phases_canvas import tphasescanvas # pylint: disable=unused-import
+    from artisanlib.simulator import Simulator # pylint: disable=unused-import
+    from artisanlib.large_lcds import (LargeMainLCDs, LargeDeltaLCDs, LargePIDLCDs, LargeExtraLCDs, LargePhasesLCDs, LargeScaleLCDs)  # pylint: disable=unused-import
+    import plus.schedule as plus_schedule # pylint: disable=unused-import
     ## TILAU ##
     from artisanlib.skycommand import SkyCommand # pylint: disable=unused-import
     from tilauscope.beancave import BeancaveDlg # pylint: disable=unused-import
@@ -198,7 +203,7 @@ if TYPE_CHECKING:
     from openpyxl.worksheet.worksheet import Worksheet # pylint: disable=unused-import
     import numpy.typing as npt # pylint: disable=unused-import
     from PyQt6.QtWidgets import QTableWidgetItem, QTableWidget, QScrollBar # pylint: disable=unused-import
-    from PyQt6.QtGui import QStyleHints, QClipboard, QKeyEvent, QMouseEvent, QDropEvent, QDragEnterEvent, QCloseEvent, QShowEvent, QResizeEvent, QValidator # pylint: disable=unused-import
+    from PyQt6.QtGui import QStyleHints, QClipboard, QKeyEvent, QMouseEvent, QDropEvent, QDragEnterEvent, QCloseEvent, QResizeEvent, QValidator # pylint: disable=unused-import
     from PyQt6.QtCore import QFile, QObject, QPermission, QMessageLogContext  # noqa: F401 # pylint: disable=unused-import,reimported # QFile is reimported for mypy!?
     from matplotlib.backend_bases import Event as MplEvent, MouseEvent # type:ignore[untyped-import,unused-ignore] # pylint: disable=unused-import
     from matplotlib.artist import Artist # type:ignore[untyped-import,unused-ignore] # pylint: disable=unused-import
@@ -212,7 +217,7 @@ try:
 except Exception: # pylint: disable=broad-except
     pass
 
-
+from artisanlib.pid_control import PIDcontrol, FujiPID, DtaPID
 from artisanlib.atypes import (ProfileData, ComputedProfileInformation, RecentRoast, CurveSimilarity, ProductionData, ProductionDataStr, Wheel)
 from artisanlib.util import (appFrozen, uchr, decodeLocal, decodeLocalStrict, encodeLocal, encodeLocalStrict, s2a, fill_gaps,
         deltaLabelPrefix, deltaLabelUTF8, deltaLabelBigPrefix, stringfromseconds, stringtoseconds,
@@ -224,15 +229,9 @@ from artisanlib.util import (appFrozen, uchr, decodeLocal, decodeLocalStrict, en
         comma2dot, is_proper_temp, weight_units, weight_units_lower, volume_units, float2float, float2str,
         convertWeight, convertVolume, rgba_colorname2argb_colorname, render_weight, serialize, deserialize, csv_load, exportProfile2CSV, findTPint,
         eventtime2string, toDim, signature_message, rec_int_to_float, smooth_list)
-
+from artisanlib.device_registry import DEVICE_ID_MIN, DEVICE_ID_MAX, DEVICE_ID_NONE, DEVICE_ID_VIRTUAL, get_device_name
 from artisanlib.qtsingleapplication import QtSingleApplication
 
-
-
-try:
-    from yoctopuce.yocto_api import YAPI # type: ignore[import-untyped]
-except ImportError:
-    pass
 
 # platform dependent imports:
 if sys.platform.startswith('darwin'):
@@ -245,8 +244,8 @@ if sys.platform.startswith('darwin'):
 #################### Main Application  ################################################
 #######################################################################################
 
-light_blue: Final[str] = '#4c97c3' # buttons CONTROL & RESET (was #2298c7)
-dark_blue: Final[str] = '#3979ae' # buttons ON & START (was #147bb3)
+#light_blue: Final[str] = '#4c97c3' # buttons CONTROL & RESET (was #2298c7)
+#dark_blue: Final[str] = '#3979ae' # buttons ON & START (was #147bb3)
 
 appGuid:Final[str] = '9068bd2fa8e54945a6be1f1a0a589e92'
 viewerAppGuid:Final[str] = '9068bd2fa8e54945a6be1f1a0a589e93'
@@ -593,6 +592,10 @@ app.setApplicationName(application_name)                                #needed 
 app.setOrganizationName(application_organization_name)                  #needed by QSettings() to store windows geometry in operating system
 app.setOrganizationDomain(application_organization_domain)              #needed by QSettings() to store windows geometry in operating system
 
+
+#app.setStyleSheet("") # setting any styleSheet on QApplication disables native dialogs on macOS
+
+
 if sys.platform.startswith('linux'):
     app.setDesktopFileName(application_desktop_file_name)
 
@@ -631,9 +634,9 @@ if not appFrozen() and __revision__ in {'', '0'}:
 # configure logging
 
 try:
-    yaml_path = Path(getResourcePath()) / 'logging.yaml'
-    with open(yaml_path, encoding='utf-8') as logging_conf:
-        conf = yaml_load(logging_conf)
+    conf_path = Path(getResourcePath()) / 'logging.json'
+    with open(conf_path, encoding='utf-8') as logging_conf:
+        conf = json.load(logging_conf)
         try:
             # set log file to Artisan data directory
 #            _datadir = getDataDirectory()
@@ -648,9 +651,9 @@ try:
         except Exception: # pylint: disable=broad-except
             pass
         logging.config.dictConfig(conf)
-        logging.info(f"Logging initialized from YAML. Target: {conf['handlers']['file']['filename']}")
+        logging.info(f"Logging initialized from JSON. Target: {conf['handlers']['file']['filename']}")
 except Exception as e: # pylint: disable=broad-except
-    print(f"CRITICAL: logging.yaml not found at {getResourcePath()}")
+    print(f"CRITICAL: logging.json not found at {getResourcePath()}")
     print(f"Logging Configuration Error: {e}")
     logging.basicConfig(level=logging.INFO)
     pass
@@ -716,16 +719,13 @@ from artisanlib.s7port import s7port
 from artisanlib.wsport import wsport
 from artisanlib.mqttport import mqttport
 from artisanlib.modbusport import modbusport
-from artisanlib.slider_style import artisan_slider_style
-from artisanlib.event_button_style import artisan_event_button_style
-from artisanlib.simulator import Simulator
+from artisanlib.slider_style import artisan_slider_style, artisan_slider_frame_style
+from artisanlib.button_style import (artisan_event_button_style, artisan_simulator_push_button_style_dict,
+    artisan_push_button_style_dict, artisan_sv_plus_push_button_style, artisan_sv_minus_push_button_style)
+from artisanlib.events_editor_style import artisan_events_editor_style
 from artisanlib.dialogs import HelpDlg, ArtisanInputDialog, ArtisanComboBoxDialog, ArtisanPortsDialog, ArtisanSliderLCDinputDlg
-from artisanlib.large_lcds import (LargeMainLCDs, LargeDeltaLCDs, LargePIDLCDs, LargeExtraLCDs, LargePhasesLCDs, LargeScaleLCDs)
 from artisanlib.logs import (serialLogDlg, errorDlg, messageDlg)
 from artisanlib.comm import serialport
-from artisanlib.pid_dialogs import (PXRpidDlgControl, PXG4pidDlgControl,
-    PID_DlgControl, DTApidDlgControl)
-from artisanlib.pid_control import FujiPID, PIDcontrol, DtaPID
 from artisanlib.widgets import (MyQLCDNumber, EventPushButton, MajorEventPushButton,
     AnimatedMajorEventPushButton, MinorEventPushButton, AuxEventPushButton, ClickableLCDFrame, Splitter, SliderUnclickable)
 
@@ -737,16 +737,16 @@ from artisanlib.scale import ScaleManager
 
 # import artisan.plus module
 import plus.config
-import plus.util
+import plus.util as plus_util
 import plus.sync
 import plus.queue
-import plus.controller
+import plus.controller as plus_controller
 import plus.connection
 import plus.register
 import plus.notifications
 import plus.blend
 import plus.stock
-import plus.schedule
+
 
 
 
@@ -761,7 +761,8 @@ class VMToolbar(NavigationToolbar): # pylint: disable=abstract-method
         self.toolitems: list[tuple[str, ...] | tuple[None, ...]] = [ # zuban:ignore[assignment] # pyrefly:ignore[bad-override]
                 ('Plus', QApplication.translate('Tooltip', 'Connect to plus service'), 'plus', 'plus'),
                 ('', QApplication.translate('Tooltip', 'Subscription'), 'plus-pro', 'subscription'),
-                (QApplication.translate('Toolbar', 'Home'), QApplication.translate('Tooltip', 'Reset original view'), 'home', 'home'),
+                (None, None, None, None),
+                (QApplication.translate('Toolbar', 'Home'), QApplication.translate('Tooltip', 'Reset original view / activate follow mode'), 'home', 'home'),
                 (QApplication.translate('Toolbar', 'Back'), QApplication.translate('Tooltip', 'Back to  previous view'), 'back', 'back'),
                 (QApplication.translate('Toolbar', 'Forward'), QApplication.translate('Tooltip', 'Forward to next view'), 'forward', 'forward'),
                 (None, None, None, None),
@@ -800,26 +801,7 @@ class VMToolbar(NavigationToolbar): # pylint: disable=abstract-method
 # add green flag menu on matplotlib v2.0 and later
         self.edit_curve_parameters_action = None
 
-        # adjust for dark or light canvas and set hover/selection style
-        for a in self.actions():
-            if self.qmc.palette['canvas'] == 'None':
-                canvas_color = QColor('#ECECEC')
-            else:
-                canvas_color = QColor(self.qmc.palette['canvas'])
-            if canvas_color.name() == '#000000': # on black we start with (1,1,1) for lighter
-                canvas_color = QColor('#222222')
-
-            if self.white_icons:
-                selected_canvas_color = canvas_color.lighter(250)
-                border_color = '#ffffff'
-            else:
-                selected_canvas_color = canvas_color.darker(120)
-                border_color = '#000000'
-            self.widgetForAction(a).setStyleSheet(' \
-                    QToolButton:checked {border:1px solid transparent; margin: 1px; padding: 2px; background-color:' + selected_canvas_color.name() + ';border-radius: 3px;} \
-                    QToolButton:hover {border:1px solid ' + border_color + '; margin: 2px; padding: 2px; background-color:transparent;border-radius: 3px;} \
-                    QToolButton:checked:hover {border:1px solid ' + border_color + '; margin: 2px; padding: 2px; background-color:' + selected_canvas_color.name() + ';border-radius: 3px;} \
-                    QToolButton {border:1px solid transparent; margin: 2px; padding: 2px; background-color: transparent;border-radius: 3px;}')
+        self.setIconSize(QSize(35,35))
 
         self.aw.updatePlusStatus(self)
 
@@ -842,6 +824,9 @@ class VMToolbar(NavigationToolbar): # pylint: disable=abstract-method
             formlayout.fedit_org = formlayout.fedit # type: ignore[attr-defined]
             formlayout.fedit = self.my_fedit  # pyright:ignore[reportPrivateImportUsage]
 
+        toolbar_ext_button = self.findChild(QToolButton, 'qt_toolbar_ext_button')
+        if toolbar_ext_button:
+            toolbar_ext_button.setIcon(self._icon('ext_button'))
 
 #######################################################################################
 #####   temporary hack for windows till better solution found about toolbar icon problem with py2exe and svg
@@ -972,31 +957,31 @@ class VMToolbar(NavigationToolbar): # pylint: disable=abstract-method
 
     # monkey patch matplotlib navigationbar zoom and pan to update background cache
     def release_pan_new(self, event:'MplEvent') -> None:
-        self.release_pan_org(event)
-        if self.qmc.ai is not None and [round(r) for r in self.axis_ranges] != [round(r) for r in self.getAxisRanges()]:
-            # only hide the background image if the axis ratio changed
-            self.qmc.ai.set_visible(False)
         # as since MPL 3.5 release_pan calls self.canvas.draw_idle() instead of _draw() we just invalidate the background here instead of
         # updating it
         #self.qmc.updateBackground()
         self.qmc.ax_background = None
+        self.release_pan_org(event)
+        if self.qmc.ai is not None and [round(r) for r in self.axis_ranges] != [round(r) for r in self.getAxisRanges()]:
+            # only hide the background image if the axis ratio changed
+            self.qmc.ai.set_visible(False)
 
     # monkey patch matplotlib navigationbar zoom rectangle to update background cache
     def release_zoom_new(self, event:'MplEvent') -> None:
-        self.release_zoom_org(event)
-        if self.qmc.ai is not None:
-            self.qmc.ai.set_visible(False)
         # as since MPL 3.5 release_zoom calls self.canvas.draw_idle() instead of _draw() we just invalidate the background here instead of
         # updating it
         #self.qmc.updateBackground()
         self.qmc.ax_background = None
+        self.release_zoom_org(event)
+        if self.qmc.ai is not None:
+            self.qmc.ai.set_visible(False)
 
     # monkey patch matplotlib navigationbar home/left/right history navigation to update background cache
     def update_view_new(self) -> None:
-        self.update_view_org()
         # as since MPL 3.5 _update_view calls self.canvas.draw_idle() instead of _draw() we just invalidate the background here instead of
         #self.qmc.updateBackground()
         self.qmc.ax_background = None
+        self.update_view_org()
 
     def getAxisRanges(self) -> list[float]:
         res = []
@@ -1069,33 +1054,17 @@ class VMToolbar(NavigationToolbar): # pylint: disable=abstract-method
             basedir = os.path.join(mpl.get_data_path(), 'images')
         if (self.white_icons and not name.startswith('plus')) or not self.white_icons and name.startswith('plus'):
             name = 'white_' + name
-        #dirty hack to prefer .svg over .png Toolbar icons
-        if not svgsupport:
-            name = name.replace('.svg','.png')
-        else:
-            name = name.replace('.png','.svg')
-        # large png icons introduced in MPL 2.1
-        name = name.replace('.png', '_large.png')
-        p = Path(basedir) /  name ## TILAU ##
-        pm = QPixmap(str(p))
-        # if not name.startswith('plus') and not name.startswith('white_plus'):
-        #     if self.white_icons:
-        #         pm = self.recolorIcon(pm, QColor('#dfdfdf'))
-        #     else:
-        #         pm = self.recolorIcon(pm, QColor('#424242'))
+#        #dirty hack to prefer .svg over .png Toolbar icons
+#        if not svgsupport:
+#            name = name.replace('.svg','.png')
+#        else:
+#            name = name.replace('.png','.svg')
+        name = name.replace('.png','.svg')
+        p = os.path.join(basedir, name)
+        pm = QPixmap(p)
         if hasattr(pm, 'setDevicePixelRatio'):
             pm.setDevicePixelRatio(self.devicePixelRatioF() or 1) # pyright:ignore[reportUnknownArgumentType]
-
         return QIcon(pm)
-
-#    @staticmethod
-#    def recolorIcon(pixmap:QPixmap, color:QColor) -> QPixmap:
-#        tmp = pixmap.toImage()
-#        for y in range(tmp.height()):
-#            for x in range(tmp.width()):
-#                color.setAlpha(tmp.pixelColor(x,y).alpha())
-#                tmp.setPixelColor(x,y,color)
-#        return QPixmap.fromImage(tmp)
 
     def update_message(self) -> None:
         if not self.qmc.twoAxisMode():
@@ -1236,7 +1205,7 @@ class VMToolbar(NavigationToolbar): # pylint: disable=abstract-method
             # ALT-click (OPTION on macOS) sends the log file by email
             self.aw.sendLog()
         else:
-            plus.controller.toggle(self.aw)
+            plus_controller.toggle(self.aw)
 
     def subscription(self) -> None:
         if self.aw.plus_paidUntil is not None: # after reset and authentication, it might still take a moment until the paidUntil is set via its signal
@@ -1284,15 +1253,15 @@ class VMToolbar(NavigationToolbar): # pylint: disable=abstract-method
 #                subscription_message_box = ArtisanMessageBox(self.aw, QApplication.translate('Message', 'Subscription'), message)
                 subscription_message_box = QMessageBox() # only without super this one shows the native dialog on macOS under Qt 6.6.2
 #                subscription_message_box.setTextFormat(Qt.TextFormat.RichText)
-                plus.util.setPlusIcon(subscription_message_box)
+                plus_util.setPlusIcon(subscription_message_box, self.aw.app.darkmode)
                 if percent_used_formatted != '':
                     percent_used_formatted = '\n' + percent_used_formatted
                 subscription_message_box.setText(QApplication.translate('Plus','Do you want to extend your subscription?'))
-                subscription_message_box.setInformativeText((QApplication.translate('Plus','Your subscription ends on') if remaining_days>0 else QApplication.translate('Plus','Your subscription ended on')) + f' {QDate(pu.year,pu.month,pu.day).toString(QLocale().dateFormat(QLocale.FormatType.ShortFormat))}\n{days}{percent_used_formatted}')
+                subscription_message_box.setInformativeText((QApplication.translate('Plus','Your subscription ends on') if remaining_days>0 else QApplication.translate('Plus','Your subscription ended on')) + f'   {QDate(pu.year,pu.month,pu.day).toString(QLocale().dateFormat(QLocale.FormatType.ShortFormat))}\n  {days}{percent_used_formatted}')
                 subscription_message_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
                 res = subscription_message_box.exec()
                 plus_link = plus.config.shop_base_url
-                if self.aw.plus_subscription == 'PRO':
+                if self.aw.plus_subscription in {'PRO', 'MAX'}:
                     plus_link += '/professional-roasters'
                 elif self.aw.plus_subscription == 'HOME':
                     plus_link += '/home-roasters'
@@ -1446,6 +1415,7 @@ class ApplicationWindow(QMainWindow):
     setSVSignal = pyqtSignal(float)
     fireslideractionSignal = pyqtSignal(int)
     fireslideraction_rawSignal = pyqtSignal(int,float)
+    tilaupidSliderCommandSignal = pyqtSignal(int,int,bool)
     moveButtonSignal = pyqtSignal(str)
     sendnotificationMessageSignal = pyqtSignal(str,str,NotificationType)
     updateSubscriptionSignal = pyqtSignal(str)
@@ -1483,6 +1453,7 @@ class ApplicationWindow(QMainWindow):
     updateScheduleSignal = pyqtSignal()
     disconnectPlusSignal = pyqtSignal() # connected/disconnected in plus/scheduler.py
     setTimerColorSignal = pyqtSignal(str)
+    loadThemeSignal = pyqtSignal(str,str)
 
     __slots__ = [ 'locale_str', 'app', 'superusermode', 'sample_loop_running', 'time_stopped', 'plus_account', 'plus_account_id', 'plus_remember_credentials', 'plus_email', 'plus_language', 'plus_subscription', 'percent_decimals',
         'plus_paidUntil', 'plus_rlimit', 'plus_used', 'plus_readonly', 'plus_user_id', 'appearance', 'mpl_fontproperties', 'full_screen_mode_active', 'processingKeyEvent', 'quickEventShortCut',
@@ -1523,9 +1494,9 @@ class ApplicationWindow(QMainWindow):
         'designerAction', 'simulatorAction', 'wheeleditorAction', 'transformAction', 'temperatureMenu', 'ConvertToFahrenheitAction',
         'ConvertToCelsiusAction', 'controlsAction', 'readingsAction', 'eventsEditorAction', 'buttonsAction', 'slidersAction', 'scheduleAction', 'lcdsAction', 'deltalcdsAction',
         'pidlcdsAction', 'scalelcdsAction', 'extralcdsAction', 'phaseslcdsAction', 'fullscreenAction', 'newRoastAction', 'loadSettingsAction', 'openRecentSettingMenu',
-        'saveAsSettingsAction', 'resetAction', 'messagelabel', 'button_font_size_pt', 'button_font_size', 'button_font_size_small', 'button_font_size_small_selected',
+        'saveAsSettingsAction', 'resetAction', 'messagelabel', 'button_font_size_pt', 'button_font_size', 'button_font_size_small',
         'button_font_size_tiny', 'button_font_size_micro',
-        'pushbuttonstyles_simulator', 'pushbuttonstyles', 'standard_button_tiny_height', 'standard_button_small_height', 'standard_button_height',
+        'standard_button_tiny_height', 'standard_button_small_height', 'standard_button_height',
         'buttonONOFF', 'buttonSTARTSTOP', 'buttonFCs', 'buttonFCe', 'buttonSCs', 'buttonSCe', 'buttonRESET', 'buttonCHARGE', 'buttonDROP',
         'buttonCONTROL', 'buttonEVENT', 'buttonSVp5', 'buttonSVp10', 'buttonSVp20', 'buttonSVm20', 'buttonSVm10', 'buttonSVm5', 'buttonDRY',
         'buttonCOOL', 'lcd1', 'lcd2', 'lcd3', 'lcd4', 'lcd5',
@@ -1547,7 +1518,7 @@ class ApplicationWindow(QMainWindow):
         'sliderLCD4', 'sliderGrpBox1', 'sliderGrpBox2', 'sliderGrpBox3', 'sliderGrpBox4', 'sliderSV', 'sliderLCDSV', 'sliderGrpBoxSV', 'leftlayout',
         'sliderFrame', 'sliderDock', 'lcdFrame', 'midlayout', 'editgraphdialog', 'artisanviewerFirstStart',
         'buttonpalette', 'extraeventbuttontextcolor', 'extraeventsactions', 'extraeventsdescriptions', 'extraeventstypes', 'extraeventsvalues',
-        'extraeventsvisibility', 'fileSaveAsAction', 'keyboardButtonStyles', 'language_menu_actions', 'loadThemeAction', 'main_button_min_width_str',
+        'extraeventsvisibility', 'fileSaveAsAction', 'keyboardButtonStyles', 'language_menu_actions', 'loadThemeAction',
         'minieventleft', 'minieventright', 'notificationManager', 'notificationsflag', 'ntb', 'productionPDFAction',
         'rankingPDFAction', 'roastReportMenu', 'roastReportPDFAction', 'saveAsThemeAction', 'sliderGrp12', 'sliderGrp34', 'sliderGrpBox1x', 'sliderGrpBox2x', 'sliderGrpBox3x', 'sliderGrpBox4x',
         'small_button_min_width_str', 'standard_button_min_width_px', 'tiny_button_min_width_str', 'recording_version', 'recording_revision', 'recording_build',
@@ -1559,8 +1530,10 @@ class ApplicationWindow(QMainWindow):
         'main_menu_actions_with_shortcuts', 'ui_mode', 'UIModeMenu',  'productionModeAction', 'defaultModeAction', 'expertModeAction', 'calculatorAction',
         'helpAboutAction', 'checkUpdateAction', 'errorAction', 'messageAction', 'serialAction', 'platformAction', 'aboutQtAction',
         'helpDocumentationAction', 'KshortCAction', 'profile_data_type_adapter', 'official_build', 'roasthubs_org_id', 'roasthubs_machine_id', 'roasthubs_token',
-        'qt_scale_factor' ]
-    __slots__ += ['tilau_menu' ] ## TILAU ##
+        'qt_scale_factor', 'automatic_registration_period', 'mqtt', 'orbiter', 'machineNameAction', 'main_button_min_width', 'main_button_min_width', 'pidbuttonFrame', 'phasesLCDsFrame', 'machineNameAction', 'automatic_registration_period', 'label_fmt', 'lcd_label_fmt', 'button_border_radius']
+        
+    ## TILAU ##
+    __slots__ += ['tilau_menu' ]
 
     nLCDS: Final[int] = 10 # maximum number of LCDs and extra devices (2x10 => 20 in total!)
 
@@ -1593,7 +1566,7 @@ class ApplicationWindow(QMainWindow):
         self.plus_email:str|None = None # if self.plus_remember_credentials is ticked, we remember here the login to be pre-set as plus_account in the dialog
         self.plus_language:str = 'en' # one of ["en", "de", "it", ..] indicates the language setting of the plus_account used on the artisan.plus platform,
                 # used in links back to objects on the platform (see plus/util.py#storeLink() and similars)
-        self.plus_subscription:str|None = None # one of [None, "HOME", "PRO"]
+        self.plus_subscription:str|None = None # one of [None, "HOME", "PRO", "MAX"]
         self.plus_paidUntil:datetime.datetime|None = None # either None if unknown or otherwise a datetime.datetime object with indicating the expiration date of the account
         self.plus_rlimit:float = 0 # account amount limit (kg); if 0 then considered as not valid
         self.plus_used:float = 0   # account amount greens roasted within rlimit (kg); if 0 then considered as not valid
@@ -1654,7 +1627,7 @@ class ApplicationWindow(QMainWindow):
         self.segmentresultsanno:Annotation|None = None
 
         # Schedule
-        self.schedule_window:plus.schedule.ScheduleWindow|None = None # None if scheduler is not active
+        self.schedule_window:plus_schedule.ScheduleWindow|None = None # None if scheduler is not active
         # the uuids of the scheduled items in local custom order on last closing the scheduler
         # persistet along the app settings
         self.scheduled_items_uuids:list[str] = []
@@ -1760,7 +1733,7 @@ class ApplicationWindow(QMainWindow):
 
         self.printer:QPrinter|None = None
 
-        self.main_widget:QWidget = QWidget(self)
+        self.main_widget = QWidget(self)
         #set a minimum size (main window can be bigger but never smaller)
         self.main_widget.setMinimumWidth(800)
         self.main_widget.setMinimumHeight(400)
@@ -1904,6 +1877,11 @@ class ApplicationWindow(QMainWindow):
         self.skycommand:SkyCommand|None = None # holds the Skycommand instance created on connect; reset to None on disconnect
         #TilauScope Annotation
         self.TilauScopeAnnotation :bool|None = False # if True TilauScope annotations are enabled in the profile
+        ## TILAU ## True while the TilauScope window draws the roast itself. The
+        ## matplotlib figure is then rendered for nobody, and that render is most
+        ## of the cost of a sampling tick. Not persisted: it describes what is on
+        ## screen right now, never a preference.
+        self.tilau_suspend_render :bool = False
         #TilauScope Notification
         self.TilauScopeNotification: bool|None = False # if true, at start the notification about beans will be displayed
         #Tilaudcope FC Automarking
@@ -2578,6 +2556,9 @@ class ApplicationWindow(QMainWindow):
         # using a QTimer to speed up startup a bit
         QTimer.singleShot(500,self.populateMachineMenu)
 
+        self.machineNameAction:QAction = QAction(QApplication.translate('Menu', 'Machine Name') + '...', self)
+        self.machineNameAction.triggered.connect(self.set_machine_name)
+
         self.deviceAction:QAction = QAction(QApplication.translate('Menu', 'Device...'), self)
         self.deviceAction.triggered.connect(self.deviceassigment)
         self.deviceAction.setShortcut('Ctrl+D')
@@ -2966,364 +2947,48 @@ class ApplicationWindow(QMainWindow):
 
         #create a Label object to display program status information
         self.messagelabel: QLabel = QLabel()
-
         ## TILAU ##
         self.messagelabel.setObjectName("StatusMessageLabel")
 
         f = self.messagelabel.font()
         f.setPointSize(self.messagelabel.font().pointSize()+1)
         self.messagelabel.setFont(f)
-
         self.messagelabel.setIndent(6)
+
         # set a few broad style parameters
-        if platform.system() == 'Linux':
-            self.button_font_size_pt = 11
-        else:
-            self.button_font_size_pt = 13
 
-        #TODO: delete # pylint: disable=fixme
+        self.button_border_radius = (15 if platform.system() == 'Linux' else 20)
+        self.button_font_size_pt = 13
+
+
         if platform.system() == 'Windows':
-            self.button_font_size = f'{self.button_font_size_pt - 2}pt'
+            self.button_font_size = self.button_font_size_pt + 1
+            self.button_font_size_small = self.button_font_size_pt
+            self.button_font_size_tiny = self.button_font_size_pt - 1
+            self.button_font_size_micro = self.button_font_size_pt - 2
         else:
-            self.button_font_size = f'{self.button_font_size_pt}pt'
-        self.button_font_size_small = f'{self.button_font_size_pt - 3}pt'
-        self.button_font_size_small_selected = f'{self.button_font_size_pt - 2}pt'
-        self.button_font_size_tiny = f'{self.button_font_size_pt - 4}pt'
-        self.button_font_size_micro = f'{self.button_font_size_pt - 5}pt'
+            self.button_font_size = self.button_font_size_pt
+            self.button_font_size_small = self.button_font_size_pt - 3
+            self.button_font_size_tiny = self.button_font_size_pt - 4
+            self.button_font_size_micro = self.button_font_size_pt - 5
 
-        #TODO: keep # pylint: disable=fixme
-        button_font_size_small_pt = self.button_font_size_pt - 3
-        button_font_size_small_selected_pt = self.button_font_size_pt - 2
-#        button_font_size_tiny_pt = self.button_font_size_pt - 4
-#        button_font_size_micro_pt = self.button_font_size_pt - 5
-        if platform.system() == 'Windows':
-            self.button_font_size_pt = self.button_font_size_pt - 2
-
-        self.main_button_min_width_str: str
+        self.main_button_min_width:int
+        self.standard_button_min_width_px: int
         self.small_button_min_width_str: str
         self.tiny_button_min_width_str: str
-        self.standard_button_min_width_px: int
 
         # button width in px
         if platform.system() == 'Windows':
-            # TODO: remove # pylint: disable=fixme
-            self.main_button_min_width_str = '110px'
+            self.main_button_min_width = 110
+            self.standard_button_min_width_px = 90
             self.small_button_min_width_str = '75px'
             self.tiny_button_min_width_str = '60px'
-            # TODO: keep # pylint: disable=fixme
-#            self.main_button_min_width_px = 110
-            self.standard_button_min_width_px = 90
-#            self.small_button_min_width_px = 75
-            #self.tiny_button_min_width_px = 60
         else:
-            # TODO: remove # pylint: disable=fixme
-            self.main_button_min_width_str = '100px'
+            self.main_button_min_width = 100
+            self.standard_button_min_width_px = 75
             self.small_button_min_width_str = '60px'
             self.tiny_button_min_width_str = '50px'
-            # TODO: keep # pylint: disable=fixme
-#            self.main_button_min_width_px = 100
-            self.standard_button_min_width_px = 75
-#            self.small_button_min_width_px = 60
-#            self.tiny_button_min_width_px = 50
 
-        border_modern = 'border-style:solid; border-radius:4;border-color:grey; border-width:0;' # modernize
-
-        self.pushbuttonstyles_simulator: dict[str, str] = {
-            'OFF':    """
-                QPushButton {
-                    min-width: """ + self.main_button_min_width_str + """;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size + """;
-                    font-weight: bold;
-                    color: #147bb3;
-                    background-color: white;
-                    border-radius:4;
-                }
-                QPushButton:!enabled {
-                    color: darkgrey;
-                    background-color: #E0E0E0;
-                }
-                QPushButton:pressed {
-                    color: #116D98;
-                    background-color: #EEEEEE;
-                }
-                QPushButton:hover:!pressed {
-                    color: #1985ba;
-                    background-color: #F5F5F5;
-                }
-            """,
-            'ON':    """
-                QPushButton {
-                    min-width: """ + self.main_button_min_width_str + """;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size + """;
-                    font-weight: bold;
-                    color: #cc0f50;
-                    background-color: white;
-                    border-radius:4;
-                }
-                QPushButton:!enabled {
-                    color: darkgrey;
-                    background-color: #E0E0E0;
-                }
-                QPushButton:pressed {
-                    color: #c70d49;
-                    background-color: #EEEEEE;
-                }
-                QPushButton:hover:!pressed {
-                    color: #d4336a;
-                    background-color: #F5F5F5;
-                }
-            """,
-            'STOP':     """
-                QPushButton {
-                    min-width: """ + self.main_button_min_width_str + """;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size + """;
-                    font-weight: bold;
-                    color: #147bb3;
-                    background-color: white;
-                    border-radius:4;
-                }
-                QPushButton:!enabled {
-                    color: #EFEFEF;
-                    background-color: darkgrey;
-                }
-                QPushButton:pressed {
-                    color: #116999;
-                    background-color: #EEEEEE;
-                }
-                QPushButton:hover:!pressed {
-                    color: #1985ba;
-                    background-color: #F5F5F5;
-                }
-            """,
-            'START':    """
-                QPushButton {
-                    min-width: """ + self.main_button_min_width_str + """;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size + """;
-                    font-weight: bold;
-                    color: yellow;
-                    background-color: #ff3d00;
-                    border-radius:4;
-                }
-                QPushButton:!enabled {
-                    color: darkgrey;
-                    background-color: #E0E0E0;
-                }
-                QPushButton:pressed {
-                    color: #EEEEEE;
-                    background-color: #116999;
-                }
-                QPushButton:hover:!pressed {
-                    color: white;
-                    background-color: red;
-                }
-            """,
-        }
-
-        self.pushbuttonstyles: dict[str, str] = {
-            'RESET':     """
-                QPushButton {
-                    min-width: """ + self.main_button_min_width_str + """;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size + """;
-                    font-weight: bold;
-                    color: white;
-                    background-color: #4c97c3;
-                    border-radius:4;
-                }
-                QPushButton:!enabled {
-                    color: darkgrey;
-                    background-color: lightgrey;
-                }
-                QPushButton:pressed {
-                    color: #EEEEEE;
-                    background-color: #1985ba;
-                }
-                QPushButton:hover:!pressed {
-                    color: white;
-                    background-color: #43a7cf;
-                }
-            """,
-            'OFF':    """
-                QPushButton {
-                    min-width: """ + self.main_button_min_width_str + """;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size + """;
-                    font-weight: bold;
-                    color: white;
-                    background-color: #3979ae;
-                    border-radius:4;
-                }
-                QPushButton:!enabled {
-                    color: darkgrey;
-                    background-color: #E0E0E0;
-                }
-                QPushButton:pressed {
-                    color: #EEEEEE;
-                    background-color: #116D98;
-                }
-                QPushButton:hover:!pressed {
-                    color: white;
-                    background-color: #1985ba;
-                }
-            """,
-            'ON':    """
-                QPushButton {
-                    min-width: """ + self.main_button_min_width_str + """;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size + """;
-                    font-weight: bold;
-                    color: white;
-                    background-color: #cc0f50;
-                    border-radius:4;
-                }
-                QPushButton:!enabled {
-                    color: darkgrey;
-                    background-color: #E0E0E0;
-                }
-                QPushButton:pressed {
-                    color: #EEEEEE;
-                    background-color: #c70d49;
-                }
-                QPushButton:hover:!pressed {
-                    color: white;
-                    background-color: #d4336a;
-                }
-            """,
-            'STOP':     """
-                QPushButton {
-                    min-width: """ + self.main_button_min_width_str + """;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size + """;
-                    font-weight: bold;
-                    color: white;
-                    background-color: #3979ae;
-                    border-radius:4;
-                }
-                QPushButton:!enabled {
-                    color: darkgrey;
-                    background-color: #E0E0E0;
-                }
-                QPushButton:pressed {
-                    color: #EEEEEE;
-                    background-color: #116999;
-                }
-                QPushButton:hover:!pressed {
-                    color: white;
-                    background-color: #1985ba;
-                }
-            """,
-            'START':    """
-                QPushButton {
-                    min-width: """ + self.main_button_min_width_str + """;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size + """;
-                    font-weight: bold;
-                    color: yellow;
-                    background-color: #ff3d00;
-                    border-radius:4;
-                }
-                QPushButton:!enabled {
-                    color: darkgrey;
-                    background-color: #E0E0E0;
-                }
-                QPushButton:pressed {
-                    color: #EEEEEE;
-                    background-color: #116999;
-                }
-                QPushButton:hover:!pressed {
-                    color: white;
-                    background-color: red;
-                }
-            """,
-            'PID':     """
-                QPushButton {
-                    min-width: """ + self.main_button_min_width_str + """;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size + """;
-                    font-weight: bold;
-                    color: white;
-                    background-color: #4c97c3;
-                    border-radius:4;
-                }
-                QPushButton:!enabled {
-                    color: darkgrey;
-                    background-color: lightgrey;
-                }
-                QPushButton:pressed {
-                    color: #EEEEEE;
-                    background-color: #1985ba;
-                }
-                QPushButton:hover:!pressed {
-                    color: white;
-                    background-color: #43a7cf;
-                }
-            """,
-            'PIDactive':     """
-                QPushButton {
-                    min-width: """ + self.main_button_min_width_str + """;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size + """;
-                    font-weight: bold;
-                    color: white;
-                    background-color: #cc0f50;
-                    border-radius:4;
-                }
-                QPushButton:!enabled {
-                    color: darkgrey;
-                    background-color: lightgrey;
-                }
-                QPushButton:pressed {
-                    color: #EEEEEE;
-                    background-color: #c70d49;
-                }
-                QPushButton:hover:!pressed {
-                    color: white;
-                    background-color: #d4336a;
-                }
-            """,
-            'SV +':     """
-                QPushButton {
-                    min-width: """ + str(self.standard_button_min_width_px) + """px;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size_small + """;
-                    font-weight: bold;
-                    color: white;
-                    background-color:""" + createGradient('#db5785') + """ ;
-                    border-radius:4;
-                }
-                QPushButton:pressed {
-                    color: #EEEEEE;
-                    background-color:""" + createGradient('#d4336a') + """ ;
-                }
-                QPushButton:hover:!pressed {
-                    color: white;
-                    background-color:""" + createGradient('#e480a2') + """ ;
-                                     }
-            """,
-            'SV -':     """
-                QPushButton {
-                    min-width: """ + str(self.standard_button_min_width_px) + """px;
-                    """ + border_modern + """
-                    font-size: """ + self.button_font_size_small + """;
-                    font-weight: bold;
-                    color: white;
-                    background-color:""" + createGradient('#64b7d8') + """ ;
-                    border-radius:4;
-                }
-                QPushButton:pressed {
-                    color: #EEEEEE;
-                    background-color:""" + createGradient('#43a7cf') + """ ;
-                }
-                QPushButton:hover:!pressed {
-                    color: white;
-                    background-color:""" + createGradient('#85cae1') + """ ;
-                }
-            """
-            }
         # we use this high to dynamically adjust the button size to different font sizes (important for high-dpi displays on Windows)
         self.standard_button_tiny_height:int
         self.standard_button_small_height:int
@@ -3340,154 +3005,143 @@ class ApplicationWindow(QMainWindow):
 
         #create ON/OFF buttons
 
-        self.buttonONOFF: QPushButton = QPushButton(QApplication.translate('Button', 'ON'))
-        self.buttonONOFF.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.buttonONOFF = QPushButton(QApplication.translate('Button', 'ON'))
         self.buttonONOFF.setToolTip(QApplication.translate('Tooltip', 'Start monitoring'))
-        self.buttonONOFF.setStyleSheet(self.pushbuttonstyles['OFF'])
-        self.buttonONOFF.setGraphicsEffect(self.makeShadow())
-#        self.buttonONOFF.pressed.connect(self.mainButtonPressed)
-#        self.buttonONOFF.released.connect(self.mainButtonReleased)
-        self.buttonONOFF.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.buttonONOFF.setMinimumHeight(self.standard_button_height)
+        self.buttonONOFF.setStyleSheet(artisan_push_button_style_dict['OFF'].format(
+            min_width=self.main_button_min_width,
+            font_size=self.button_font_size,
+            border_radius=self.button_border_radius))
         self.buttonONOFF.clicked.connect(self.qmc.ToggleMonitor)
         if self.app.artisanviewerMode:
             self.buttonONOFF.setVisible(False)
 
         #create START/STOP buttons
-        self.buttonSTARTSTOP: QPushButton = QPushButton(QApplication.translate('Button', 'START'))
-        self.buttonSTARTSTOP.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.buttonSTARTSTOP = QPushButton(QApplication.translate('Button', 'START'))
         self.buttonSTARTSTOP.setToolTip(QApplication.translate('Tooltip', 'Start recording'))
-        self.buttonSTARTSTOP.setStyleSheet(self.pushbuttonstyles['STOP'])
-        self.buttonSTARTSTOP.setGraphicsEffect(self.makeShadow())
-#        self.buttonSTARTSTOP.pressed.connect(self.mainButtonPressed)
-#        self.buttonSTARTSTOP.released.connect(self.mainButtonReleased)
-        self.buttonSTARTSTOP.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-
-        self.buttonSTARTSTOP.setMinimumHeight(self.standard_button_height)
+        self.buttonSTARTSTOP.setStyleSheet(artisan_push_button_style_dict['STOP'].format(
+            min_width=self.main_button_min_width,
+            font_size=self.button_font_size,
+            border_radius=self.button_border_radius))
         self.buttonSTARTSTOP.clicked.connect(self.qmc.ToggleRecorder)
         if self.app.artisanviewerMode:
             self.buttonSTARTSTOP.setVisible(False)
 
-        #create 1C START, 1C END, 2C START and 2C END buttons
-        self.buttonFCs: MinorEventPushButton = MinorEventPushButton(QApplication.translate('Button', 'FC\nSTART'))
-        self.buttonFCs.setToolTip(QApplication.translate('Tooltip', 'First Crack Start'))
-        self.buttonFCs.clicked.connect(self.qmc.mark1Cstart)
-
-        self.buttonFCe: MinorEventPushButton = MinorEventPushButton(QApplication.translate('Button', 'FC\nEND'))
-        self.buttonFCe.setToolTip(QApplication.translate('Tooltip', 'First Crack End'))
-        self.buttonFCe.clicked.connect(self.qmc.mark1Cend)
-
-        self.buttonSCs: MinorEventPushButton = MinorEventPushButton(QApplication.translate('Button', 'SC\nSTART'))
-        self.buttonSCs.setToolTip(QApplication.translate('Tooltip', 'Second Crack Start'))
-        self.buttonSCs.clicked.connect(self.qmc.mark2Cstart)
-
-        self.buttonSCe: MinorEventPushButton = MinorEventPushButton(QApplication.translate('Button', 'SC\nEND'))
-        self.buttonSCe.setToolTip(QApplication.translate('Tooltip', 'Second Crack End'))
-        self.buttonSCe.clicked.connect(self.qmc.mark2Cend)
-
         #create RESET button
-        self.buttonRESET: QPushButton = QPushButton(QApplication.translate('Button', 'RESET'))
-        self.buttonRESET.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.buttonRESET.setStyleSheet(self.pushbuttonstyles['RESET'])
-        self.buttonRESET.setGraphicsEffect(self.makeShadow())
-#        self.buttonRESET.pressed.connect(self.mainButtonPressed)
-#        self.buttonRESET.released.connect(self.mainButtonReleased)
-        self.buttonRESET.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.buttonRESET.setMinimumHeight(self.standard_button_height)
+        self.buttonRESET = QPushButton(QApplication.translate('Button', 'RESET'))
         self.buttonRESET.setToolTip(QApplication.translate('Tooltip', 'Reset'))
+        self.buttonRESET.setStyleSheet(artisan_push_button_style_dict['RESET'].format(
+            min_width=self.main_button_min_width,
+            font_size=self.button_font_size,
+            border_radius=self.button_border_radius))
         self.buttonRESET.clicked.connect(self.qmc.resetButtonAction)
 
-        #create CHARGE button
-        self.buttonCHARGE: AnimatedMajorEventPushButton = AnimatedMajorEventPushButton(QApplication.translate('Button', 'CHARGE'))
-        self.buttonCHARGE.setToolTip(QApplication.translate('Tooltip', 'Charge'))
-        self.buttonCHARGE.clicked.connect(self.qmc.markCharge)
-
-        #create DROP button
-        self.buttonDROP: MajorEventPushButton = MajorEventPushButton(QApplication.translate('Button', 'DROP'))
-        self.buttonDROP.setToolTip(QApplication.translate('Tooltip', 'Drop'))
-        self.buttonDROP.clicked.connect(self.qmc.markDrop)
-
         #create PID control button
-        self.buttonCONTROL: QPushButton = QPushButton(QApplication.translate('Button', 'CONTROL'))
-        self.buttonCONTROL.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.buttonCONTROL.setStyleSheet(self.pushbuttonstyles['PID'])
-        self.buttonCONTROL.setGraphicsEffect(self.makeShadow())
-#        self.buttonCONTROL.pressed.connect(self.mainButtonPressed)
-#        self.buttonCONTROL.released.connect(self.mainButtonReleased)
-        self.buttonCONTROL.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.buttonCONTROL.setMinimumHeight(self.standard_button_height)
+        self.buttonCONTROL = QPushButton(QApplication.translate('Button', 'CONTROL'))
+        self.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PID'].format(
+            min_width=self.main_button_min_width,
+            font_size=self.button_font_size,
+            border_radius=self.button_border_radius))
         self.buttonCONTROL.clicked.connect(self.PIDcontrol)
         if self.app.artisanviewerMode:
             self.buttonCONTROL.setVisible(False)
 
+
+        for button in [self.buttonONOFF, self.buttonSTARTSTOP, self.buttonRESET, self.buttonCONTROL]:
+            button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            button.setGraphicsEffect(self.makeShadow())
+            button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+            button.setMinimumHeight(self.standard_button_height)
+
+
+        #create CHARGE button
+        self.buttonCHARGE = AnimatedMajorEventPushButton(QApplication.translate('Button', 'CHARGE'))
+        self.buttonCHARGE.setToolTip(QApplication.translate('Tooltip', 'Charge'))
+        self.buttonCHARGE.clicked.connect(self.qmc.markCharge)
+
+        #create 1C START, 1C END, 2C START and 2C END buttons
+        self.buttonFCs = MinorEventPushButton(QApplication.translate('Button', 'FC\nSTART'))
+        self.buttonFCs.setToolTip(QApplication.translate('Tooltip', 'First Crack Start'))
+        self.buttonFCs.clicked.connect(self.qmc.mark1Cstart)
+
+        self.buttonFCe = MinorEventPushButton(QApplication.translate('Button', 'FC\nEND'))
+        self.buttonFCe.setToolTip(QApplication.translate('Tooltip', 'First Crack End'))
+        self.buttonFCe.clicked.connect(self.qmc.mark1Cend)
+
+        self.buttonSCs = MinorEventPushButton(QApplication.translate('Button', 'SC\nSTART'))
+        self.buttonSCs.setToolTip(QApplication.translate('Tooltip', 'Second Crack Start'))
+        self.buttonSCs.clicked.connect(self.qmc.mark2Cstart)
+
+        self.buttonSCe = MinorEventPushButton(QApplication.translate('Button', 'SC\nEND'))
+        self.buttonSCe.setToolTip(QApplication.translate('Tooltip', 'Second Crack End'))
+        self.buttonSCe.clicked.connect(self.qmc.mark2Cend)
+
+        #create DROP button
+        self.buttonDROP = MajorEventPushButton(QApplication.translate('Button', 'DROP'))
+        self.buttonDROP.setToolTip(QApplication.translate('Tooltip', 'Drop'))
+        self.buttonDROP.clicked.connect(self.qmc.markDrop)
+
         #create EVENT record button
-        self.buttonEVENT: AuxEventPushButton = AuxEventPushButton(QApplication.translate('Button', 'EVENT'))
+        self.buttonEVENT = AuxEventPushButton(QApplication.translate('Button', 'EVENT'))
         self.buttonEVENT.setToolTip(QApplication.translate('Tooltip', 'Event'))
         self.buttonEVENT.clicked.connect(self.qmc.EventRecord_action)
 
+
+
         #create PID+5 button
-        self.buttonSVp5: QPushButton = QPushButton(QApplication.translate('Button', 'SV +5'))
-        self.buttonSVp5.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.buttonSVp5.setStyleSheet(self.pushbuttonstyles['SV +'])
-        self.buttonSVp5.setMinimumWidth(90)
-        self.buttonSVp5.setMinimumHeight(self.standard_button_height)
+        self.buttonSVp5 = QPushButton(QApplication.translate('Button', 'SV +5'))
         self.buttonSVp5.setToolTip(QApplication.translate('Tooltip', 'Increases the current SV value by 5'))
-        self.buttonSVp5.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         #create PID+10 button
-        self.buttonSVp10: QPushButton = QPushButton(QApplication.translate('Button', 'SV +10'))
-        self.buttonSVp10.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.buttonSVp10.setStyleSheet(self.pushbuttonstyles['SV +'])
-        self.buttonSVp10.setMinimumWidth(90)
-        self.buttonSVp10.setMinimumHeight(self.standard_button_height)
+        self.buttonSVp10 = QPushButton(QApplication.translate('Button', 'SV +10'))
         self.buttonSVp10.setToolTip(QApplication.translate('Tooltip', 'Increases the current SV value by 10'))
-        self.buttonSVp10.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         #create PID+20 button
-        self.buttonSVp20: QPushButton = QPushButton(QApplication.translate('Button', 'SV +20'))
-        self.buttonSVp20.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.buttonSVp20.setStyleSheet(self.pushbuttonstyles['SV +'])
-        self.buttonSVp20.setMinimumWidth(90)
-        self.buttonSVp20.setMinimumHeight(self.standard_button_height)
+        self.buttonSVp20 = QPushButton(QApplication.translate('Button', 'SV +20'))
         self.buttonSVp20.setToolTip(QApplication.translate('Tooltip', 'Increases the current SV value by 20'))
-        self.buttonSVp20.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         #create PID-20 button
-        self.buttonSVm20: QPushButton = QPushButton(QApplication.translate('Button', 'SV -20'))
-        self.buttonSVm20.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.buttonSVm20.setStyleSheet(self.pushbuttonstyles['SV -'])
-        self.buttonSVm20.setMinimumWidth(90)
-        self.buttonSVm20.setMinimumHeight(self.standard_button_height)
+        self.buttonSVm20 = QPushButton(QApplication.translate('Button', 'SV -20'))
         self.buttonSVm20.setToolTip(QApplication.translate('Tooltip', 'Decreases the current SV value by 20'))
-        self.buttonSVm20.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         #create PID-10 button
-        self.buttonSVm10: QPushButton = QPushButton(QApplication.translate('Button', 'SV -10'))
-        self.buttonSVm10.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.buttonSVm10.setStyleSheet(self.pushbuttonstyles['SV -'])
-        self.buttonSVm10.setMinimumWidth(90)
-        self.buttonSVm10.setMinimumHeight(self.standard_button_height)
+        self.buttonSVm10 = QPushButton(QApplication.translate('Button', 'SV -10'))
         self.buttonSVm10.setToolTip(QApplication.translate('Tooltip', 'Decreases the current SV value by 10'))
-        self.buttonSVm10.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         #create PID-5 button
-        self.buttonSVm5: QPushButton = QPushButton(QApplication.translate('Button', 'SV -5'))
-        self.buttonSVm5.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.buttonSVm5.setStyleSheet(self.pushbuttonstyles['SV -'])
-        self.buttonSVm5.setMinimumWidth(90)
-        self.buttonSVm5.setMinimumHeight(self.standard_button_height)
+        self.buttonSVm5 = QPushButton(QApplication.translate('Button', 'SV -5'))
         self.buttonSVm5.setToolTip(QApplication.translate('Tooltip', 'Decreases the current SV value by 5'))
-        self.buttonSVm5.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+        sv_plus_style = artisan_sv_plus_push_button_style.format(
+            min_width=self.standard_button_min_width_px,
+            font_size=self.button_font_size_small,
+            border_radius=self.button_border_radius)
+        for button in [self.buttonSVp5, self.buttonSVp10, self.buttonSVp20]:
+            button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            button.setStyleSheet(sv_plus_style)
+            button.setMinimumWidth(90)
+            button.setMinimumHeight(self.standard_button_height)
+            button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+        sv_minus_style = artisan_sv_minus_push_button_style.format(
+            min_width=self.standard_button_min_width_px,
+            font_size=self.button_font_size_small,
+            border_radius=self.button_border_radius)
+        for button in [self.buttonSVm20, self.buttonSVm10, self.buttonSVm5]:
+            button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            button.setStyleSheet(sv_minus_style)
+            button.setMinimumWidth(90)
+            button.setMinimumHeight(self.standard_button_height)
+            button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         #HUD button (button_18 was removed)
 
         #create DRY button
-        self.buttonDRY: MinorEventPushButton = MinorEventPushButton(QApplication.translate('Button', 'DRY\nEND'))
+        self.buttonDRY = MinorEventPushButton(QApplication.translate('Button', 'DRY\nEND'))
         self.buttonDRY.setToolTip(QApplication.translate('Tooltip', 'Dry End'))
         self.buttonDRY.clicked.connect(self.qmc.markDryEnd)
 
         #create COOLe button
-        self.buttonCOOL: MinorEventPushButton = MinorEventPushButton(QApplication.translate('Button', 'COOL\nEND'))
+        self.buttonCOOL = MinorEventPushButton(QApplication.translate('Button', 'COOL\nEND'))
         self.buttonCOOL.setToolTip(QApplication.translate('Tooltip', 'Cool End'))
         self.buttonCOOL.clicked.connect(self.qmc.markCoolEnd)
 
@@ -3501,14 +3155,13 @@ class ApplicationWindow(QMainWindow):
 
         # NavigationToolbar VMToolbar
         self.ntb: VMToolbar = VMToolbar(self.qmc.canvas, self.main_widget)
-        #self.ntb.setMinimumHeight(50)
 
         #create LCD displays
         #RIGHT COLUMN
         self.lcd1: MyQLCDNumber = MyQLCDNumber() # time
         self.lcd1.setSegmentStyle(QLCDNumber.SegmentStyle.Flat)
         self.lcd1.setMinimumHeight(40)
-        self.lcd1.setMinimumWidth(100)
+        self.lcd1.setMinimumWidth(110)
         self.lcd1.setFrameStyle(QFrame.Shadow.Plain)
         # switch superusermode action:
         self.lcd1.clicked.connect(self.superusermodeLeftClicked)
@@ -3530,13 +3183,7 @@ class ApplicationWindow(QMainWindow):
         self.lcd6.display(zz)
         self.lcd7.display(zz)
 
-        self.lcd1.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['timer'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['timer'])};}}")
-        self.lcd2.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['et'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['et'])};}}")
-        self.lcd3.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['bt'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['bt'])};}}")
-        self.lcd4.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['deltaet'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['deltaet'])};}}")
-        self.lcd5.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['deltabt'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['deltabt'])};}}")
-        self.lcd6.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['sv'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['sv'])};}}")
-        self.lcd7.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['sv'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['sv'])};}}")
+        self.updateLCDcolors()
 
         self.lcd1.setToolTip(QApplication.translate('Tooltip', 'Timer'))
         self.lcd2.setToolTip(QApplication.translate('Tooltip', 'ET Temperature'))
@@ -3546,25 +3193,29 @@ class ApplicationWindow(QMainWindow):
         self.lcd6.setToolTip(QApplication.translate('Tooltip', 'Value of SV in PID'))
         self.lcd7.setToolTip(QApplication.translate('Tooltip', 'PID power %'))
 
+
+        self.lcd_label_fmt = ('<b>{}</b>' if platform.system() == 'Linux' else '<big><b>{}</b></big>')
+        self.extra_lcd_label_fmt = ('<small><b></small>{}</b>' if platform.system() == 'Linux' else '<b>{}</b>')
+
         #MET
         self.label2:QLabel = QLabel()
         self.label2.setAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
-        self.label2.setText(f"<big><b>{QApplication.translate('Label', 'ET')}</b></big>")
+        self.label2.setText(self.lcd_label_fmt.format(QApplication.translate('Label', 'ET')))
         self.setLabelColor(self.label2,self.qmc.palette['et'], self.qmc.ETcurve)
         #BT
         self.label3:QLabel = QLabel()
         self.label3.setAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
-        self.label3.setText(f"<big><b>{QApplication.translate('Label', 'BT')}</b></big>")
+        self.label3.setText(self.lcd_label_fmt.format(QApplication.translate('Label', 'BT')))
         self.setLabelColor(self.label3,self.qmc.palette['bt'], self.qmc.BTcurve)
         #DELTA MET
         self.label4:QLabel = QLabel()
         self.label4.setAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
-        self.label4.setText(f"{deltaLabelBigPrefix}{QApplication.translate('Label', 'ET')}</b></big>")
+        self.label4.setText(f"{deltaLabelBigPrefix}{self.lcd_label_fmt.format(QApplication.translate('Label', 'ET'))}")
         self.setLabelColor(self.label4,self.qmc.palette['deltaet'], self.qmc.DeltaETflag)
         # DELTA BT
         self.label5:QLabel = QLabel()
         self.label5.setAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
-        self.label5.setText(f"{deltaLabelBigPrefix}{QApplication.translate('Label', 'BT')}</b></big>")
+        self.label5.setText(f"{deltaLabelBigPrefix}{self.lcd_label_fmt.format(QApplication.translate('Label', 'BT'))}")
         self.setLabelColor(self.label5,self.qmc.palette['deltabt'], self.qmc.DeltaBTflag)
         # pid sv
         self.label6:QLabel = QLabel()
@@ -3621,8 +3272,8 @@ class ApplicationWindow(QMainWindow):
             self.extraLCDframe2[i].customContextMenuRequested.connect(self.setTare_slot)
             self.extraLCDframe2[i].left_clicked.connect(self.toggleExtraCurve2)
             self.extraLCDframe2[i].setVisible(False)
-            self.extraLCD1[i].setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['sv'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['sv'])};}}")
-            self.extraLCD2[i].setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['sv'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['sv'])};}}")
+            self.updateLCDcolor(self.extraLCD1[i], 'sv')
+            self.updateLCDcolor(self.extraLCD2[i], 'sv')
             #configure Labels
             self.extraLCDlabel1[i].setSizePolicy(QSizePolicy.Policy.Preferred,QSizePolicy.Policy.Preferred)
             self.extraLCDlabel2[i].setSizePolicy(QSizePolicy.Policy.Preferred,QSizePolicy.Policy.Preferred)
@@ -3639,13 +3290,6 @@ class ApplicationWindow(QMainWindow):
         #only leave operational the control button if the device is Fuji PID
         #the SV buttons are activated from the PID control panel
         self.buttonCONTROL.setVisible(False)
-
-        self.buttonSVp5.setVisible(False)
-        self.buttonSVp10.setVisible(False)
-        self.buttonSVp20.setVisible(False)
-        self.buttonSVm20.setVisible(False)
-        self.buttonSVm10.setVisible(False)
-        self.buttonSVm5.setVisible(False)
 
         #### EVENT MINI EDITOR: View&Edits events without opening roast properties Dlg.
         self.eventlabel: QLabel = QLabel(f"{QApplication.translate('Form Caption', 'Event')} #<b>0 </b>")
@@ -3665,9 +3309,6 @@ class ApplicationWindow(QMainWindow):
         self.minieventright.clicked.connect(self.incrEventNumber)
 
         self.lineEvent: QLineEdit = QLineEdit()
-        self.lineEvent.setMinimumWidth(200)
-
-        self.eventlabel.setStyleSheet("background-color:'#bdbdbd';")
 
         self.etypeComboBox: QComboBox = QComboBox()
         self.etypeComboBox.setToolTip(QApplication.translate('Tooltip', 'Type of event'))
@@ -3684,6 +3325,7 @@ class ApplicationWindow(QMainWindow):
         self.etimeline: QLineEdit = QLineEdit()
         self.etimeline.setValidator(QRegularExpressionValidator(regextime,self))
         self.etimeline.setMaximumWidth(50)
+        self.etimeline.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         #create EVENT mini button
         self.buttonminiEvent: QPushButton = QPushButton(QApplication.translate('Button', 'Update'))
@@ -3735,6 +3377,12 @@ class ApplicationWindow(QMainWindow):
         # We set the styles of event buttons assigned to self.lowerbuttondialog here
         # All stylesheet of its children (the actual event buttons) needs to be non-conflicting.
         # Any conflict will turn off merging of parent styles and just rely on the child stylesheet.
+        if platform.system() == 'Windows':
+            button_font_size_small_pt = self.button_font_size_pt
+            button_font_size_small_selected_pt = self.button_font_size_pt + 1
+        else:
+            button_font_size_small_pt = self.button_font_size_pt - 3
+            button_font_size_small_selected_pt = self.button_font_size_pt - 2
         self.lowerbuttondialog.setStyleSheet(
             artisan_event_button_style.format(
                 min_width=self.standard_button_min_width_px - 6,
@@ -3742,6 +3390,7 @@ class ApplicationWindow(QMainWindow):
                 padding=3,
                 default_font_size=button_font_size_small_pt,
                 selected_font_size=button_font_size_small_selected_pt))
+
 
         #initiate configuration
         self.lowerbuttondialogLayout.addStretch()
@@ -3815,10 +3464,16 @@ class ApplicationWindow(QMainWindow):
         self.level1frame = QFrame()
         self.level1layout = QHBoxLayout()   # matplotlib toolbox + RESET button + LCD Timer
         self.level1frame.setLayout(self.level1layout)
+        self.level1frame.setContentsMargins(17,0,0,0) # left, top, right, bottom
+        self.level1frame.setFixedHeight(75)
 
         level3layout = QHBoxLayout()   # PID buttons, graph, temperature LCDs
 
         pidbuttonLayout = QVBoxLayout()
+        pidbuttonLayout.setContentsMargins(15,0,5,0) # left, top, right, bottom
+        self.pidbuttonFrame = QFrame()
+        self.pidbuttonFrame.setLayout(pidbuttonLayout)
+        self.pidbuttonFrame.setVisible(False)
 
         EventsLayout = QHBoxLayout()
         EventsLayout.setContentsMargins(1,1,1,1)
@@ -3826,24 +3481,34 @@ class ApplicationWindow(QMainWindow):
 
         #EVENT MINIEDITOR layout
         EventsLayout.addWidget(self.eventlabel)
-        EventsLayout.addSpacing(4)
+        EventsLayout.addSpacing(10)
         EventsLayout.addWidget(self.etimeline)
-        EventsLayout.addSpacing(4)
+        EventsLayout.addSpacing(5)
         EventsLayout.addWidget(self.lineEvent)
-        EventsLayout.addSpacing(4)
+        EventsLayout.addSpacing(5)
         EventsLayout.addWidget(self.etypeComboBox)
-        EventsLayout.addSpacing(4)
+        EventsLayout.addSpacing(5)
         EventsLayout.addWidget(self.valueEdit)
-        EventsLayout.addSpacing(4)
-        EventsLayout.addWidget(self.eNumberSpinBox)
-        EventsLayout.addSpacing(4)
+#        EventsLayout.addSpacing(5)
+#        EventsLayout.addWidget(self.eNumberSpinBox) # we don't show it but use it still internally as reference
+        EventsLayout.addSpacing(25)
         EventsLayout.addWidget(self.minieventleft)
+        EventsLayout.addSpacing(2)
         EventsLayout.addWidget(self.minieventright)
-        EventsLayout.addSpacing(4)
+        EventsLayout.addSpacing(20)
         EventsLayout.addWidget(self.buttonminiEvent)
+        EventsLayout.addSpacing(2)
         self.EventsGroupLayout = QGroupBox()
         self.EventsGroupLayout.setLayout(EventsLayout)
         self.EventsGroupLayout.setVisible(False)
+
+
+        self.eventlabel.setObjectName('eventlabel')
+        self.etimeline.setObjectName('etimeline')
+        self.valueEdit.setObjectName('valueEdit')
+        self.minieventleft.setObjectName('minieventleft')
+        self.minieventright.setObjectName('minieventright')
+        self.buttonminiEvent.setObjectName('buttonminiEvent')
 
         LCDlayout = QVBoxLayout()
         LCDlayout.setSpacing(0)
@@ -3904,18 +3569,22 @@ class ApplicationWindow(QMainWindow):
         del w
 
         #PID Buttons
+        pidbuttonLayout.addSpacing(50)
         pidbuttonLayout.addWidget(self.buttonSVp20)
         pidbuttonLayout.addWidget(self.buttonSVp10)
         pidbuttonLayout.addWidget(self.buttonSVp5)
         pidbuttonLayout.addWidget(self.buttonSVm5)
         pidbuttonLayout.addWidget(self.buttonSVm10)
         pidbuttonLayout.addWidget(self.buttonSVm20)
+        pidbuttonLayout.addStretch()
 
         # phases LCDs
 
+        self.label_fmt = ('<sub><b>{}</b></sub>' if platform.system() == 'Linux' else '<small><b>{}</b></small>')
+
         # TP
         self.TPlabel: QLabel = QLabel()
-        self.TPlabel.setText('<small><b>' + QApplication.translate('Label', 'TP') + '&raquo;</b></small>')
+        self.TPlabel.setText(self.label_fmt.format(QApplication.translate('Label', 'TP')))
         self.TPlcd = QLCDNumber()
         self.TPlcd.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.TPlcd.customContextMenuRequested.connect(self.PhaseslcdClicked)
@@ -3933,7 +3602,7 @@ class ApplicationWindow(QMainWindow):
 
         # DRY
         self.DRYlabel: QLabel = QLabel()
-        self.DRYlabel.setText('<small><b>&raquo;' + QApplication.translate('Label', 'DRY') + '</b></small>')
+        self.DRYlabel.setText(self.label_fmt.format(QApplication.translate('Label', 'DRY')))
         self.DRYlcd = QLCDNumber()
         self.DRYlcd.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.DRYlcd.customContextMenuRequested.connect(self.PhaseslcdClicked)
@@ -3951,7 +3620,7 @@ class ApplicationWindow(QMainWindow):
 
         # FCs
         self.FCslabel: QLabel = QLabel()
-        self.FCslabel.setText('<small><b>&raquo;' + QApplication.translate('Label', 'FCs') + '</b></small>')
+        self.FCslabel.setText(self.label_fmt.format(QApplication.translate('Label', 'FCs')))
         self.FCslcd = QLCDNumber()
         self.FCslcd.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.FCslcd.customContextMenuRequested.connect(self.PhaseslcdClicked)
@@ -3960,16 +3629,13 @@ class ApplicationWindow(QMainWindow):
 
         # AUC LCD
         self.AUClabel: QLabel = QLabel()
-        self.AUClabel.setText('<small><b>' + QApplication.translate('Label', 'AUC') + '</b></small>')
+        self.AUClabel.setText(self.label_fmt.format(QApplication.translate('Label', 'AUC')))
         self.AUClcd: QLCDNumber = QLCDNumber()
         self.AUClcd.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.AUClcd.customContextMenuRequested.connect(self.AUClcdClicked)
         self.AUClcd.display('--')
         self.AUClcdFrame: QFrame = self.makePhasesLCDbox(self.AUClabel,self.AUClcd)
-#        self.AUClcdFrame.setFrameStyle(QFrame.Shadow.Plain)
         self.AUClcd.setNumDigits(3)
-        self.AUClcd.setMinimumWidth(65)
-        self.AUClcdFrame.setStyleSheet('QLCDNumber{border-radius:4; border-width: 0; border-color: black; border-style:solid; color: black; background-color: #e6e6e6;}')
 
         AUCLayout = QHBoxLayout()
         AUCLayout.addSpacing(20)
@@ -3983,8 +3649,8 @@ class ApplicationWindow(QMainWindow):
         self.AUCLCD.hide()
 
 
-        self.phasesLCDs: QFrame = QFrame()
-        self.phasesLCDs.setContentsMargins(0, 0, 0, 0)
+        self.phasesLCDs = QFrame()
+        self.phasesLCDs.setContentsMargins(10, 0, 0, 0) # left, top, right, bottom
         phasesLCDlayout = QHBoxLayout()
         phasesLCDlayout.addWidget(self.TPlcdFrame)
         phasesLCDlayout.addWidget(self.TP2DRYframe)
@@ -3993,14 +3659,34 @@ class ApplicationWindow(QMainWindow):
         phasesLCDlayout.addWidget(self.FCslcdFrame)
         phasesLCDlayout.setContentsMargins(0, 0, 0, 0)
         phasesLCDlayout.setSpacing(0)
+        phasesLCDlayoutVBox = QVBoxLayout()
+#        phasesLCDlayoutVBox.addStretch()
+#        phasesLCDlayoutVBox.addLayout(phasesLCDlayout)
+#        phasesLCDlayoutVBox.addStretch()
         self.phasesLCDs.setLayout(phasesLCDlayout)
         self.phasesLCDs.hide()
         self.phasesLCDs.setToolTip(QApplication.translate('Tooltip','Phase LCDs: right-click to cycle through TIME, PERCENTAGE and TEMP MODE'))
 
+
+        fullPhasesLCDlayout = QHBoxLayout()
+        fullPhasesLCDlayout.addWidget(self.phasesLCDs)
+        fullPhasesLCDlayout.addWidget(self.AUCLCD)
+        fullPhasesLCDlayout.setContentsMargins(0, 0, 0, 0)
+        fullPhasesLCDlayout.setSpacing(0)
+
+        self.phasesLCDsFrame: QFrame = QFrame()
+        self.phasesLCDsFrame.setContentsMargins(0, 0, 0, 0)
+        phasesLCDlayoutVBox = QVBoxLayout()
+        phasesLCDlayoutVBox.setContentsMargins(0, 0, 0, 0)
+        phasesLCDlayoutVBox.addStretch()
+        phasesLCDlayoutVBox.addLayout(fullPhasesLCDlayout)
+        phasesLCDlayoutVBox.addStretch()
+        self.phasesLCDsFrame.setLayout(phasesLCDlayoutVBox)
+
+
         #level 1
         self.level1layout.addStretch()
-        self.level1layout.addWidget(self.phasesLCDs)
-        self.level1layout.addWidget(self.AUCLCD)
+        self.level1layout.addWidget(self.phasesLCDsFrame)
         self.level1layout.addSpacing(20)
         self.level1layout.addWidget(self.buttonRESET)
         self.level1layout.addSpacing(10)
@@ -4009,13 +3695,13 @@ class ApplicationWindow(QMainWindow):
         self.level1layout.addWidget(self.buttonSTARTSTOP)
         self.level1layout.addSpacing(15)
         self.level1layout.addWidget(self.buttonCONTROL)
-        self.level1layout.addSpacing(10)
+        self.level1layout.addSpacing(20)
         self.level1layout.addWidget(self.lcd1)
         self.level1layout.setSpacing(0)
         self.level1layout.setContentsMargins(0,7,7,12) # left, top, right, bottom
 
         #level 3
-        level3layout.addLayout(pidbuttonLayout,0)
+        level3layout.addWidget(self.pidbuttonFrame,0)
 
         self.qpc:tphasescanvas|None = None
 
@@ -4064,7 +3750,6 @@ class ApplicationWindow(QMainWindow):
         midleftlayout.addLayout(level3layout)
         midleftlayout.addWidget(self.lowerbuttondialog)
         midleftlayout.addWidget(self.extrabuttondialogs)
-
         midleftlayout.addWidget(self.EventsGroupLayout)
 
         self.slider1:SliderUnclickable = self.slider()
@@ -4259,21 +3944,19 @@ class ApplicationWindow(QMainWindow):
         self.lcdFrame:QFrame = QFrame()
         self.lcdFrame.setLayout(LCDlayout)
         self.lcdFrame.setVisible(False)
-        self.lcdFrame.setContentsMargins(0,0,0,0)
+        self.lcdFrame.setContentsMargins(5,0,10,0) # left top right bottom
         self.lcdFrame.setSizePolicy(QSizePolicy.Policy.Maximum,QSizePolicy.Policy.Expanding) # prevent horizontal expansion (graph might not maximize otherwise)
 
-        self.midlayout:QHBoxLayout = QHBoxLayout()
-#        self.midlayout.addWidget(self.sliderFrame)
-#        self.midlayout.addWidget(self.sliderDock)
+        self.midlayout = QHBoxLayout()
         self.midlayout.addLayout(midleftlayout)
         self.midlayout.addWidget(self.lcdFrame)
         self.midlayout.setSpacing(0)
         self.midlayout.setContentsMargins(0,0,0,0)
 
-        mainlayout:QVBoxLayout = QVBoxLayout(self.main_widget)
+        mainlayout = QVBoxLayout(self.main_widget)
         mainlayout.addWidget(self.level1frame)
         mainlayout.addLayout(self.midlayout)
-        mainlayout.setContentsMargins(0,0,0,0)
+        mainlayout.setContentsMargins(0,0,0,0) # left, top, right, bottom
         mainlayout.setSpacing(0)
 
         self.displayonlymenus() # enable/disable menu items as needed
@@ -4325,6 +4008,7 @@ class ApplicationWindow(QMainWindow):
         self.setSVSignal.connect(self.setPIDsv)
         self.fireslideractionSignal.connect(self.fireslideraction)
         self.fireslideraction_rawSignal.connect(self.fireslideraction_raw)
+        self.tilaupidSliderCommandSignal.connect(self.applyTilauPIDSliderCommand)
         self.moveButtonSignal.connect(self.moveKbutton)
         self.sendnotificationMessageSignal.connect(self.sendNotificationMessage)
         self.updateSubscriptionSignal.connect(self.updateSubscription)
@@ -4364,6 +4048,7 @@ class ApplicationWindow(QMainWindow):
         self.comparatorAddProfileSignal.connect(self.comparatorAddProfileSlot, type=Qt.ConnectionType.QueuedConnection)  # type: ignore[call-arg]
         self.updateScheduleSignal.connect(self.updateSchedule, type=Qt.ConnectionType.QueuedConnection)  # type: ignore[call-arg]
         self.setTimerColorSignal.connect(self.setTimerColor, type=Qt.ConnectionType.QueuedConnection)  # type: ignore[call-arg]
+        self.loadThemeSignal.connect(self.loadThemeFile, type=Qt.ConnectionType.QueuedConnection)  # type: ignore[call-arg]
 
         self.notificationManager:NotificationManager|None = None
         if not self.app.artisanviewerMode:
@@ -4461,6 +4146,7 @@ class ApplicationWindow(QMainWindow):
         config_menu = QMenu(f"&{QApplication.translate('Menu', 'Config')}")
         if ui_mode in {UI_MODE.EXPERT, UI_MODE.DEFAULT}:
             config_menu.addMenu(self.machineMenu)
+            config_menu.addAction(self.machineNameAction)
         if ui_mode is UI_MODE.EXPERT:
             config_menu.addAction(self.deviceAction)
             config_menu.addAction(self.commportAction)
@@ -4563,7 +4249,6 @@ class ApplicationWindow(QMainWindow):
             help_menu.addAction(self.messageAction)
             help_menu.addAction(self.serialAction)
             help_menu.addAction(self.platformAction)
-        if ui_mode in {UI_MODE.EXPERT, UI_MODE.DEFAULT}:
             help_menu.addSeparator()
             help_menu.addAction(self.loadSettingsAction)
             help_menu.addMenu(self.openRecentSettingMenu)
@@ -4615,16 +4300,22 @@ class ApplicationWindow(QMainWindow):
     def setProductionMode(self, _:bool = False) -> None:
         if self.ui_mode is not UI_MODE.PRODUCTION:
             self.set_ui_mode(UI_MODE.PRODUCTION)
+        else:
+            self.productionModeAction.setChecked(True)
     @pyqtSlot()
     @pyqtSlot(bool)
     def setDefaultMode(self, _:bool = False) -> None:
         if self.ui_mode is not UI_MODE.DEFAULT:
             self.set_ui_mode(UI_MODE.DEFAULT)
+        else:
+            self.defaultModeAction.setChecked(True)
     @pyqtSlot()
     @pyqtSlot(bool)
     def setExpertMode(self, _:bool = False) -> None:
         if self.ui_mode is not UI_MODE.EXPERT:
             self.set_ui_mode(UI_MODE.EXPERT)
+        else:
+            self.expertModeAction.setChecked(True)
 
     def announce_current_ui_mode(self) -> None:
         if self.ui_mode is UI_MODE.PRODUCTION:
@@ -4637,7 +4328,7 @@ class ApplicationWindow(QMainWindow):
             f"{QApplication.translate('Menu', 'Mode')}: {mode_name}",True,None)
 
     # configures apps UI for different usage scenario by adjusting menus, dialogs, and shortcuts
-    def set_ui_mode(self, ui_mode:UI_MODE) -> None:
+    def set_ui_mode(self, ui_mode:UI_MODE, announce:bool = True) -> None:
         self.ui_mode = ui_mode
         self.productionModeAction.setChecked(ui_mode is UI_MODE.PRODUCTION)
         self.defaultModeAction.setChecked(ui_mode is UI_MODE.DEFAULT)
@@ -4646,10 +4337,10 @@ class ApplicationWindow(QMainWindow):
         self.set_menu(ui_mode)
         # configure toolbar
         self.set_toolbar(ui_mode)
-        # send message
-        self.announce_current_ui_mode()
+        if announce:
+            # send message
+            self.announce_current_ui_mode()
 
-    #
 
     def establish_phasescanvas(self) -> None:
         if self.qpc is None:
@@ -4709,7 +4400,7 @@ class ApplicationWindow(QMainWindow):
         return custom_name or scale_device[0]
 
     # today is expected to be w.r.t. local timezone
-    def scheduledItemsfilter(self, today:datetime.date, item:plus.schedule.ScheduledItem, hidden:bool = False) -> bool:
+    def scheduledItemsfilter(self, today:datetime.date, item:'plus_schedule.ScheduledItem', hidden:bool = False) -> bool:
         # if user filter is active only items not for a specific user or for the current user (if available) are listed
         # if machine filter is active only items not for a specific machine or for the current machine setup are listed in case a current machine is set
         return ((not self.schedule_visible_filter or not hidden) and
@@ -4720,9 +4411,11 @@ class ApplicationWindow(QMainWindow):
                         item.machine.strip() == self.qmc.roastertype_setup.strip())))
 
     def updateBadge(self, count:int|None = None) -> None:
-        if self.schedule_window is None:
-            item_count = (plus.schedule.ScheduleWindow.openScheduleItemsCount(self) if count is None else count)
-            plus.schedule.ScheduleWindow.setAppBadge(item_count)
+        if self.plus_account is not None and self.schedule_window is None: # if schedule_window is open it will itself update the app badge
+            # only if connected to plus
+            import plus.schedule as plus_schedule
+            item_count = (plus_schedule.ScheduleWindow.openScheduleItemsCount(self) if count is None else count)
+            plus_schedule.ScheduleWindow.setAppBadge(item_count)
 
     def blockTicks(self) -> int:
         return max(1, int(round(self.sampling_seconds_to_block_quantifiction / (self.qmc.delay / 1000))) + 1)
@@ -4773,7 +4466,7 @@ class ApplicationWindow(QMainWindow):
     # timer_color one of "timer" (black), "slowcoolingtimer" (red), "rstimer" (blue)
     @pyqtSlot(str)
     def setTimerColor(self, timer_color:str) -> None:
-        self.lcd1.setStyleSheet(f'QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF[timer_color])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB[timer_color])};}}')
+        self.updateLCDcolor(self.lcd1, timer_color)
         self.qmc.setTimerLargeLCDcolorSignal.emit(self.lcdpaletteF[timer_color], self.lcdpaletteB[timer_color])
 
     @override
@@ -4824,9 +4517,10 @@ class ApplicationWindow(QMainWindow):
     def updateSchedule(self) -> None:
         if self.schedule_window is None:
             # schedule window is closed
-            item_count:int = plus.schedule.ScheduleWindow.openScheduleItemsCount(self)
+            import plus.schedule as plus_schedule
+            item_count:int = plus_schedule.ScheduleWindow.openScheduleItemsCount(self)
             if self.scheduler_auto_open:
-                if item_count > 0 and plus.controller.is_connected():
+                if item_count > 0 and plus_controller.is_connected():
                     # if plus is connected and there are open schedule items, we open the scheduler window automatically
                     self.schedule(True)
                 elif item_count == 0:
@@ -5424,65 +5118,64 @@ class ApplicationWindow(QMainWindow):
         self.updatePlusStatus()
 
     def updatePlusStatus(self,ntb:VMToolbar|None = None) -> None:
+
+        def get_subscription_icon_state(icon_prefix:str, paid_until:datetime.datetime|None, rlimit:float, used:float, default_postfix:str) -> str:
+            icon_postfix = default_postfix
+            if paid_until is not None:
+                remaining_days = (paid_until.date() - datetime.datetime.now(datetime.UTC).date()).days
+                if remaining_days <= 0:
+                    icon_postfix = '-off'
+                elif remaining_days < 31:
+                    icon_postfix = '-low'
+                if rlimit > 0:
+                    percent_used = used/(rlimit/100)
+                    if percent_used >= 100:
+                        icon_postfix = '-off'
+                    elif percent_used >= 90:
+                        icon_postfix = '-low'
+            return f'{icon_prefix}{icon_postfix}'
+
+        def get_subscription_icon(plus_subscription:str|None, paid_until:datetime.datetime|None, rlimit:float, used:float, connected:bool) -> str|None:
+            if plus_subscription in {'HOME', 'PRO', 'MAX'}:
+                return get_subscription_icon_state(f'plus-{plus_subscription.lower()}', paid_until, rlimit, used, ('' if connected else '-on'))
+            return None
+
+
         if ntb is None:
             ntb = self.ntb
         try:
             subscription_icon = None
             if self.plus_account is not None:
-                if plus.controller.is_connected():
+                connected = plus_controller.is_connected()
+                subscription_icon = get_subscription_icon(self.plus_subscription, self.plus_paidUntil, self.plus_rlimit, self.plus_used, connected)
+                if connected:
                     if self.editgraphdialog is False:
                         # syncing from server in progress
                         plus_icon = 'plus-dirty'
                         tooltip = QApplication.translate('Tooltip', 'Syncing with the artisan platform')
-                    elif plus.controller.is_synced():
+                    elif plus_controller.is_synced():
                         plus_icon = 'plus-connected'
                         tooltip = QApplication.translate('Tooltip', 'Disconnect from the artisan platform')
                     else:
                         plus_icon = 'plus-unsynced'
                         tooltip = QApplication.translate('Tooltip', 'Upload to the artisan platform')
-                    if self.plus_subscription == 'HOME':
-                        subscription_icon = 'plus-home'
-                        if self.plus_paidUntil is not None:
-                            remaining_days = (self.plus_paidUntil.date() - datetime.datetime.now(datetime.UTC).date()).days
-                            if remaining_days <= 0:
-                                subscription_icon = 'plus-home-off'
-                            elif remaining_days < 31:
-                                subscription_icon = 'plus-home-low'
-                            if self.plus_rlimit > 0:
-                                percent_used = self.plus_used/(self.plus_rlimit/100)
-                                if percent_used >= 100:
-                                    subscription_icon = 'plus-home-off'
-                                elif percent_used >= 90:
-                                    subscription_icon = 'plus-home-low'
-                    elif self.plus_subscription == 'PRO':
-                        subscription_icon = 'plus-pro'
-                        if self.plus_paidUntil is not None:
-                            remaining_days = (self.plus_paidUntil.date() - datetime.datetime.now(datetime.UTC).date()).days
-                            if remaining_days <= 0:
-                                subscription_icon = 'plus-pro-off'
-                            elif remaining_days < 31:
-                                subscription_icon = 'plus-pro-low'
-                            if self.plus_rlimit > 0:
-                                percent_used = self.plus_used/(self.plus_rlimit/100)
-                                if percent_used >= 100:
-                                    subscription_icon = 'plus-pro-off'
-                                elif percent_used >= 90:
-                                    subscription_icon = 'plus-pro-low'
                 else:
                     plus_icon = 'plus-on'
                     tooltip = QApplication.translate('Tooltip', 'Disconnect from the artisan platform')
             else:
                 plus_icon = 'plus-off'
-                tooltip = QApplication.translate('Tooltip', 'Connect to the artisan platform')
-            if svgsupport:
-                plus_icon += '.svg'
-            else:
-                plus_icon += '.png'
+                tooltip = QApplication.translate('Plus', 'Sign in to your artisan account')
+#            if svgsupport:
+#                plus_icon += '.svg'
+#            else:
+#                plus_icon += '.png'
+            plus_icon += '.svg'
             if subscription_icon is not None:
-                if svgsupport:
-                    subscription_icon += '.svg'
-                else:
-                    subscription_icon += '.png'
+#                if svgsupport:
+#                    subscription_icon += '.svg'
+#                else:
+#                    subscription_icon += '.png'
+                subscription_icon += '.svg'
             if len(ntb.actions()) > 0: # pyright:ignore[reportUnknownArgumentType]
                 a = ntb.actions()[0] # the plus action is the first one
                 a.setIcon(ntb._icon(plus_icon)) # pylint: disable=protected-access
@@ -5832,19 +5525,19 @@ class ApplicationWindow(QMainWindow):
 
     def establish_etypes(self) -> None:
         # update ET/BT LCD label substitutions
-        ETname = self.qmc.device_name_subst(self.ETname)
-        BTname = self.qmc.device_name_subst(self.BTname)
-        self.label2.setText(f'<big><b>{ETname}</b></big>')
-        self.label3.setText(f'<big><b>{BTname}</b></big>')
+        ETname = self.lcd_label_fmt.format(self.qmc.device_name_subst(self.ETname))
+        BTname = self.lcd_label_fmt.format(self.qmc.device_name_subst(self.BTname))
+        self.label2.setText(self.lcd_label_fmt.format(ETname))
+        self.label3.setText(self.lcd_label_fmt.format(BTname))
         # update ET/BT Delta LCD label substitutions
-        self.label4.setText(f'{deltaLabelBigPrefix}{ETname}</b></big>')
-        self.label5.setText(f'{deltaLabelBigPrefix}{BTname}</b></big>')
+        self.label4.setText(f'{deltaLabelBigPrefix}{self.lcd_label_fmt.format(ETname)}')
+        self.label5.setText(f'{deltaLabelBigPrefix}{self.lcd_label_fmt.format(BTname)}')
         # update extra LCD label substitutions
         for i in range(len(self.qmc.extradevices)):
             if i < len(self.qmc.extraname1):
-                self.extraLCDlabel1[i].setText('<b>' + self.qmc.device_name_subst(self.qmc.extraname1[i]) + '</b>')
+                self.extraLCDlabel1[i].setText(self.extra_lcd_label_fmt.format(self.qmc.device_name_subst(self.qmc.extraname1[i])))
             if i < len(self.qmc.extraname2):
-                self.extraLCDlabel2[i].setText('<b>' + self.qmc.device_name_subst(self.qmc.extraname2[i]) + '</b>')
+                self.extraLCDlabel2[i].setText(self.extra_lcd_label_fmt.format(self.qmc.device_name_subst(self.qmc.extraname2[i])))
         self.settooltip()
 
     def populateListMenu(self, resourceName:str, ext:str, triggered:Callable[[bool], None], menu:QMenu, addMenu:bool = True,
@@ -5947,6 +5640,7 @@ class ApplicationWindow(QMainWindow):
                     org_roastersize = self.qmc.roastersize
                     org_roasterheating_setup = self.qmc.roasterheating_setup
                     org_roasterheating = self.qmc.roasterheating
+                    no_config = False
                     # reset roaster_setup_default to ensure we do not offer a default from a previously loaded machine setup
                     self.qmc.roastersize_setup_default = 0
                     self.qmc.roasterheating_setup_default = 0
@@ -5977,11 +5671,13 @@ class ApplicationWindow(QMainWindow):
                         if res:
                             QTimer.singleShot(700, self.qmc.startPhidgetManager)
                     elif action.data()[2] == 'RoastHubs':
+                        no_config = True # no further configurations required
                         from artisanlib.roasthubs import configureConnection
                         res = configureConnection(self)
                         if not res:
                             self.sendmessage(QApplication.translate('Message','Action canceled'))
                     elif action.data()[1] == 'ROEST' and self.qmc.device:
+                        no_config = True # no further configurations required
                         # select ROEST machine and retrieve MQTT credentials
                         from artisanlib.roest import RoestMachine, selectROESTmachine
                         roest_machine:RoestMachine|None = selectROESTmachine(self)
@@ -6016,7 +5712,7 @@ class ApplicationWindow(QMainWindow):
                         self.qmc.machinesetup = action.text()
                         res = True
                     ###
-                    if (self.qmc.device == 29 or 29 in self.qmc.extradevices) and self.modbus.type in {3,4}: # MODBUS TCP or UDP
+                    if not no_config and (self.qmc.device == 29 or 29 in self.qmc.extradevices) and self.modbus.type in {3,4}: # MODBUS TCP or UDP
                         # as default we offer the current settings MODBUS host, or if this is set to its default as after a factory reset (self.modbus.default_host) we take the one from the machine setup
                         defaultModbusHost:str = (self.modbus.host if org_modbus_host == self.modbus.default_host else org_modbus_host)
                         host, res2 = QInputDialog.getText(self,
@@ -6027,7 +5723,7 @@ class ApplicationWindow(QMainWindow):
                             self.modbus.host = host
                         else:
                             res = False
-                    elif self.qmc.device == 79 or 79 in self.qmc.extradevices: # S7
+                    elif not no_config and (self.qmc.device == 79 or 79 in self.qmc.extradevices): # S7
                         # as default we offer the current settings S7 host, or if this is set to its default as after a factory reset (self.s7.default_host) we take the one from the machine setup
                         defaultS7Host:str = (self.s7.host if org_s7_host == self.s7.default_host else org_s7_host)
                         host, res2 = QInputDialog.getText(self,
@@ -6038,7 +5734,7 @@ class ApplicationWindow(QMainWindow):
                             self.s7.host = host
                         else:
                             res = False
-                    elif self.qmc.device == 111 or 111 in self.qmc.extradevices: # WebSocket
+                    elif not no_config and (self.qmc.device == 111 or 111 in self.qmc.extradevices): # WebSocket
                         # as default we offer the current settings WebSocket host, or if this is set to its default as after a factory reset (self.ws.default_host) we take the one from the machine setup
                         defaultWSHost:str = (self.ws.host if org_ws_host == self.ws.default_host else org_ws_host)
                         host, res2 = QInputDialog.getText(self,
@@ -6049,7 +5745,7 @@ class ApplicationWindow(QMainWindow):
                             self.ws.host = host
                         else:
                             res = False
-                    elif self.qmc.device == 138 and not self.kaleidoSerial: # Kaleido Network
+                    elif not no_config and (self.qmc.device == 138 and not self.kaleidoSerial): # Kaleido Network
                         # as default we offer the current settings kaleido host, or if this is set to its default as after a factory reset (self.kaleido_default_host) we take the one from the machine setup
                         defaultKaleidoHost:str = (self.kaleidoHost if org_kaleido_host == self.kaleido_default_host else org_kaleido_host)
                         host, res2 = QInputDialog.getText(self,
@@ -6060,7 +5756,7 @@ class ApplicationWindow(QMainWindow):
                             self.kaleidoHost = host
                         else:
                             res = False
-                    elif self.qmc.device == 164: # Mugma
+                    elif not no_config and (self.qmc.device == 164): # Mugma
                         # as default we offer the current settings mugma host, or if this is set to its default as after a factory reset (self.mugma_default_host) we take the one from the machine setup
                         defaultMugmaHost:str = (self.mugmaHost if org_mugma_host == self.mugma_default_host else org_mugma_host)
                         host, res2 = QInputDialog.getText(self,
@@ -6071,7 +5767,7 @@ class ApplicationWindow(QMainWindow):
                             self.mugmaHost = host
                         else:
                             res = False
-                    elif action.data()[2] != 'RoastHubs' and action.data()[1] != 'ROEST' and (self.qmc.device in {0, 9, 19, 53, 101, 115, 126, 196} or ((self.qmc.device == 29 or 29 in self.qmc.extradevices) and self.modbus.type in {0, 1, 2}) or
+                    elif not no_config and (self.qmc.device in {0, 9, 19, 53, 101, 115, 126, 196} or ((self.qmc.device == 29 or 29 in self.qmc.extradevices) and self.modbus.type in {0, 1, 2}) or
                             (self.qmc.device == 134 and self.santokerSerial and not self.santokerBLE) or
                             (self.qmc.device == 138 and self.kaleidoSerial)): # Fuji, Center301, TC4, Hottop, Behmor or MODBUS serial, HB/ARC
                         select_device_name = None
@@ -6094,7 +5790,7 @@ class ApplicationWindow(QMainWindow):
                                     self.modbus.comport = new_port
                                 else: # Fuji or HOTTOP
                                     self.ser.comport = new_port
-                    elif self.qmc.device == 142: # IKAWA
+                    elif not no_config and self.qmc.device == 142: # IKAWA
                         # we request Bluetooth permission
                         permission_status:bool|None = self.app.getBluetoothPermission(request=True)
                         if permission_status is False:
@@ -6102,7 +5798,7 @@ class ApplicationWindow(QMainWindow):
                             QMessageBox.warning(None, #self, # only without super this one shows the native dialog on macOS under Qt 6.6.2 and later
                                     message, message)
                     if res:
-                        if self.qmc.roastersize_setup == 0 and action.data()[2] != 'RoastHubs' and action.data()[1] != 'ROEST':
+                        if not no_config and self.qmc.roastersize_setup == 0:
                             batchsize, res2 = QInputDialog.getDouble(self,
                                 QApplication.translate('Message', 'Machine'),
                                 QApplication.translate('Message', 'Machine Capacity (kg)'),
@@ -6117,7 +5813,7 @@ class ApplicationWindow(QMainWindow):
                             res = self.qmc.roastersize_setup != 0 # roastersize_setup was loaded from machine setup
                     if res:
                         # first establish roastersize_setup batchsizes as default batchsize (potentially unit converted)
-                        if self.qmc.roastersize_setup > 0  and action.data()[2] != 'RoastHubs' and action.data()[1] != 'ROEST':
+                        if not no_config and self.qmc.roastersize_setup > 0:
                             weight_unit = self.qmc.weight[2]
                             self.qmc.last_batchsize = convertWeight(self.qmc.roastersize_setup,1,0) # nominal batch size in g
                             nominal_batch_size = convertWeight(self.qmc.roastersize_setup,1,weight_units.index(weight_unit))
@@ -6125,7 +5821,7 @@ class ApplicationWindow(QMainWindow):
                             self.qmc.weight = (nominal_batch_size,0,weight_unit)
                         # size set, ask for heating
                         resi:int|None
-                        if self.qmc.roasterheating_setup == 0:
+                        if not no_config and self.qmc.roasterheating_setup == 0:
                             dlg:ArtisanComboBoxDialog = ArtisanComboBoxDialog(self, self, QApplication.translate('Message',
                                     'Machine'),QApplication.translate('Label', 'Heating'),self.qmc.heating_types,self.qmc.roasterheating_setup_default)
                             resi = dlg.idx if dlg.exec() else None
@@ -6243,10 +5939,14 @@ class ApplicationWindow(QMainWindow):
             if reply == QMessageBox.StandardButton.Cancel:
                 return
             if reply == QMessageBox.StandardButton.Yes:
-                self.loadSettings(fn=action.data()[0],remember=False,reset=False, theme=True)
-                self.sendmessage(QApplication.translate('Message','Loaded theme {0}').format(action.text()))
-                libtime.sleep(.8)
-                self.qmc.redraw(True)
+                self.loadThemeSignal.emit(action.data()[0], label)
+
+    @pyqtSlot(str,str)
+    def loadThemeFile(self, filename:str, theme_name:str) -> None:
+        res = self.settingsLoad(filename,theme=True,redraw=False)
+        self.qmc.redraw(False,False,True,True,False) # redraw without any recomputation but force renew axis to adjust for xkcd style change
+        if res:
+            self.sendmessage(QApplication.translate('Message','Loaded theme {0}').format(theme_name))
 
     def getcolorPairsToCheck(self) -> list[tuple[str,str,str,str]]:
         colorPairsToCheck = []
@@ -6495,17 +6195,7 @@ class ApplicationWindow(QMainWindow):
         self.lcdpaletteB['slowcoolingtimer'] = '#000000'
         self.lcdpaletteF['slowcoolingtimer'] = '#ffffff'
         self.setTimerColorSignal.emit('timer')
-        self.lcd2.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['et'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['et'])};}}")
-        self.setLabelColor(self.label2,self.qmc.palette['et'], self.qmc.ETcurve)
-        self.lcd3.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['bt'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['bt'])};}}")
-        self.setLabelColor(self.label3,self.qmc.palette['bt'], self.qmc.BTcurve)
-        self.lcd4.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['deltaet'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['deltaet'])};}}")
-        self.setLabelColor(self.label4,self.qmc.palette['deltaet'],self.qmc.DeltaETflag)
-        self.lcd5.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['deltabt'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['deltabt'])};}}")
-        self.setLabelColor(self.label5,self.qmc.palette['deltabt'],self.qmc.DeltaBTflag)
-        self.lcd6.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['sv'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['sv'])};}}")
-        # label always black?
-        self.lcd7.setStyleSheet(f"QLCDNumber {{ border-radius: 4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['sv'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['sv'])};}}")
+        self.updateLCDcolors()
         self.updateLCDproperties()
 
     # switches slider layout to its alternative layout if 'alternativeLayout' is True,
@@ -6542,8 +6232,8 @@ class ApplicationWindow(QMainWindow):
         background_color = self.qmc.palette['background']
         return self.colorDifference('#ffffff', background_color) < self.colorDifference('#000000',background_color)
 
-
     def updateCanvasColors(self, checkColors:bool=True) -> None:
+        self.setUpdatesEnabled(False) # disable display updates on main application window until the background color has been set on all sub widgets to gain performance
         canvas_color = self.qmc.palette['canvas']
         if canvas_color != 'None' and not QColor.isValidColor(canvas_color):
             # we re-initialize broken canvas color
@@ -6595,7 +6285,19 @@ class ApplicationWindow(QMainWindow):
             whitep = self.colorDifference('#ffffff',canvas_color) > self.colorDifference('#000000',canvas_color)
 
         self.qmc.fig.patch.set_facecolor(str(canvas_color))
-        self.setStyleSheet(f'QMainWindow{{background-color:{rgba_colorname2argb_colorname(canvas_color)};border: 0px solid black;}}')
+
+# with the following all QWidgets loose their native focus frame on macOS!
+#        self.setStyleSheet(f'QMainWindow{{background-color:{rgba_colorname2argb_colorname(canvas_color)}; border-width: 0px;}}')
+# thus it got replaced by setting that background to all direct children:
+
+        line_edit_color = ('#ffffff' if whitep else '#000000')
+        self.main_widget.setStyleSheet(f'* {{background-color:{rgba_colorname2argb_colorname(canvas_color)}; color: {rgba_colorname2argb_colorname(line_edit_color)}; border-width: 0px;}}')
+
+        self.EventsGroupLayout.setStyleSheet(artisan_events_editor_style.format(
+            background_color = rgba_colorname2argb_colorname(self.qmc.palette['background']),
+            line_edit_color = line_edit_color,
+            # path in style sheets needs always to use forward slashes, also on Windows
+            down_arrow_icon_path = Path.as_posix(Path(os.path.join(getResourcePath(),'Icons','arrow-down-01-stroke-rounded.svg')))))
 
 
         if current_background_color is None or current_background_color != str(canvas_color) or (whitep and self.qmc.palette['messages'] != '#ffffff'): # canvas color did not change, we do not need to redo the navigation bar
@@ -6607,41 +6309,66 @@ class ApplicationWindow(QMainWindow):
             if self.ntb.mode == MPL_Mode.ZOOM:
                 self.ntb.zoom() # type:ignore[no-untyped-call] # ZOOM is active, we deactivate it before changing the ToolBar
             self.removeToolBar(self.ntb)
-#            self.ntb.hide() # seems not to be necessary anymore with the removeToolBar() above
             self.ntb.destroy()
             self.ntb = VMToolbar(self.qmc.canvas, self.main_widget, whitep)
+            self.set_toolbar(self.ui_mode)
 
         if whitep:
             self.qmc.palette['messages'] = '#ffffff'
         else:
             self.qmc.palette['messages'] = '#000000'
         self.sendmessage('', append=False)
-        self.ntb.setMinimumHeight(50)
 
-        self.sliderFrame.setStyleSheet('QGroupBox {background-color:' + rgba_colorname2argb_colorname(canvas_color) + ';'
-                                    + 'color: ' + rgba_colorname2argb_colorname(title_color) + ';'
-                                    + 'border: 0px solid gray;'
-                                    + 'border-width: 0px;'
-                                    + 'padding-top: 12px;'
-                                    + 'padding-bottom: 5px;'
-                                    + 'padding-left: 0px;'
-                                    + 'padding-right: 0px;'
-                                    + '}'
-                                    + 'QGroupBox::title {background-color:' + rgba_colorname2argb_colorname(canvas_color) + ';'
-                                    + 'subcontrol-origin: margin;' # or border or margin
-                                    + 'subcontrol-position: top center;' #/* position at the top center */
-                                    + 'color: ' + self.qmc.palette['messages'] + ';'
-                                    + '}')
+        self.sliderFrame.setStyleSheet(artisan_slider_frame_style.format(
+            title_color = self.qmc.palette['messages'],
+            color = rgba_colorname2argb_colorname(title_color),
+            background_color = rgba_colorname2argb_colorname(canvas_color)))
 
         # ensure x/y coordinates are readable
         self.ntb.locLabel.setStyleSheet('QWidget {background-color:' + rgba_colorname2argb_colorname(canvas_color) + ';'
                                     + 'color: ' + rgba_colorname2argb_colorname(title_color) + ';'
                                     + '}' )
-        # make QToolBar background transparent
-        self.ntb.setStyleSheet('QToolBar {background-color:' + rgba_colorname2argb_colorname(canvas_color) + ';'
-                                    + 'border: 5px solid ' + rgba_colorname2argb_colorname(canvas_color) + ';'
-                                    + 'color: ' + rgba_colorname2argb_colorname(title_color) + ';'
-                                    + '}' )
+
+        # on black we start with (1,1,1) for lighter
+        selected_canvas_color = QColor('#222222' if canvas_color == '#000000' else canvas_color)
+        if whitep:
+            selected_canvas_color = selected_canvas_color.lighter(250)
+            border_color = '#dcdcdc'
+        else:
+            selected_canvas_color = selected_canvas_color.darker(120)
+            border_color = '#3c3c3c'
+
+        self.ntb.setStyleSheet(f"""
+            QToolBar {{
+                background-color: {rgba_colorname2argb_colorname(canvas_color)};
+                border: 1px solid {rgba_colorname2argb_colorname(canvas_color)};
+                color: {rgba_colorname2argb_colorname(title_color)};
+                spacing: 2px;
+            }}
+            QToolBar::separator {{
+                background-color: transparent;
+            }}
+            QToolButton:checked {{
+                background-color: {selected_canvas_color.name()};
+            }}
+            QToolButton:hover {{
+                border-color: {border_color};
+            }}
+            QToolButton:checked:hover {{
+                border-color: {border_color};
+                background-color: {selected_canvas_color.name()};
+            }}
+            QToolButton {{
+                border-width: 1px;
+                border-style: solid;
+                border-radius: 5px;
+                border-color: transparent;
+                margin: 0px;
+                padding: 0px;
+                background-color: transparent;
+            }}
+        """)
+
 
         if self.comparator is None:
             if self.qmc.background and self.qmc.title != '':
@@ -6656,10 +6383,6 @@ class ApplicationWindow(QMainWindow):
 
         self.level1layout.insertWidget(0,self.ntb)
 
-        if str(canvas_color) == 'None':
-            self.qmc.canvas.setStyleSheet('background-color:transparent;')
-            self.ntb.setStyleSheet('QToolBar {background-color:transparent;}')
-
         self.updateSliderColors()
         self.updatePhasesLCDsColors()
 
@@ -6667,10 +6390,11 @@ class ApplicationWindow(QMainWindow):
             colorPairsToCheck = self.getcolorPairsToCheck()
             self.checkColors(colorPairsToCheck)
 
-
         if hasattr(self, 'light_background_p'):
             # reset the cached property self.light_background_p
             del self.light_background_p
+
+        self.setUpdatesEnabled(True) # re-enable display updates
 
 
 
@@ -7157,6 +6881,39 @@ class ApplicationWindow(QMainWindow):
             else:
                 self.sendmessage(QApplication.translate('Message','super off'))
                 _log.info('Hottop super off')
+
+    ## TILAU ##
+    def tilau_set_simulator_speed(self, speed:int) -> None:
+        """Set the replay speed without touching the running/stopped state.
+
+        superusermodeLeftClicked() carries the same arithmetic, but only reaches
+        it through a click that also resumes a stopped simulator, and only with
+        a keyboard modifier held. TilauScope offers the three speeds as buttons,
+        which needs the speed change on its own.
+        """
+        if self.simulator is None or not self.qmc.flagstart:
+            return
+        try:
+            self.qmc.samplingSemaphore.acquire(1)
+            old_base = self.qmc.timeclock.getBase()
+            if old_base / 1000 == speed:
+                return
+            old_elapsed = self.qmc.timeclock.elapsed()
+            new_base = 1000 * speed
+            self.qmc.timeclock.setBase(new_base)
+            # The time base moved under the clock, so the clock has to be moved
+            # back onto the elapsed time it was already showing.
+            new_elapsed = self.qmc.timeclock.elapsed()
+            self.qmc.timeclock.addClock((new_elapsed - old_elapsed) / new_base)
+            self.updateWindowTitle()
+            self.qmc.updateDeltaSamples() # to get the delta_spans right
+            self.sendmessage(QApplication.translate('Message','Simulator started @{}x').format(speed))
+        except Exception as e: # pylint: disable=broad-except
+            _log.exception(e)
+        finally:
+            if self.qmc.samplingSemaphore.available() < 1:
+                self.qmc.samplingSemaphore.release(1)
+    ## TILAU ##
 
     @pyqtSlot(QPoint)
     def PhaseslcdClicked(self, _:QPoint) -> None: # pylint: disable=no-self-use # used as slot
@@ -7833,6 +7590,7 @@ class ApplicationWindow(QMainWindow):
 
 
     def setFonts(self, redraw:bool = True) -> None:
+        self.setUpdatesEnabled(False) # disable display updates on main application window until
         # try to select the right font for matplotlib according to the given locale and platform
         if self.qmc.graphfont == 0:
             try:
@@ -7974,6 +7732,7 @@ class ApplicationWindow(QMainWindow):
             self.mpl_fontproperties = FontProperties()
         if redraw:
             self.qmc.redraw(recomputeAllDeltas=False, forceRenewAxis=True, re_smooth_background=True)
+        self.setUpdatesEnabled(True)
 
     def set_mpl_fontproperties(self, fontpath:str) -> None:
         if os.path.exists(fontpath):
@@ -8010,7 +7769,7 @@ class ApplicationWindow(QMainWindow):
         LCDVbox = QVBoxLayout()
         LCDVbox.addWidget(label)
         LCDVbox.addWidget(lcd)
-        LCDVbox.addSpacing(5)
+        LCDVbox.addSpacing(12) # to align Phases LCDs with main buttons on the right vertically
         LCDVbox.setSpacing(0)
         LCDVbox.setContentsMargins(0, 0, 0, 0)
         frame.setStyleSheet('QLCDNumber{border-radius:4; border-width: 0; border-color: black; border-style:solid; color: black; background-color: #e6e6e6;}')
@@ -8425,7 +8184,6 @@ class ApplicationWindow(QMainWindow):
                 TP,TPlabel,DRY,DRYlabel,FCs,FCslabel,TP2DRYlabel,DRY2FCslabel,TP2DRYframeTooltip,DRY2FCsframeTooltip,phasesLCDsTooltip = self.getPhasesLCDsData()
 
                 if self.qmc.phasesLCDflag:
-                    label_fmt = '<small><b>{}</b></small>'
                     #
                     if TP is not None:
                         self.TPlcd.display(TP)
@@ -8435,11 +8193,11 @@ class ApplicationWindow(QMainWindow):
                         self.FCslcd.display(FCs)
                     #
                     if TPlabel is not None:
-                        self.TPlabel.setText(label_fmt.format(TPlabel))
+                        self.TPlabel.setText(self.label_fmt.format(TPlabel))
                     if DRYlabel is not None:
-                        self.DRYlabel.setText(label_fmt.format(DRYlabel))
+                        self.DRYlabel.setText(self.label_fmt.format(DRYlabel))
                     if FCslabel is not None:
-                        self.FCslabel.setText(label_fmt.format(FCslabel))
+                        self.FCslabel.setText(self.label_fmt.format(FCslabel))
                     #
                     if TP2DRYlabel is not None:
                         self.TP2DRYlabel.setText(TP2DRYlabel)
@@ -8828,6 +8586,40 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot(int)
     def fireslideraction(self, n:int) -> None:
         self.fireslideraction_internal(n)
+
+    ## TILAU ##
+    # Single actuator transaction for every TilauScope automation (preheat PID,
+    # extractor). Same shape as addEvent_internal(), which is what Artisan's own
+    # PID uses through addRawEventSignal: block the event quantifier, move,
+    # record, fire. An automation command is exact and is never snapped to the
+    # slider step size - applySliderStepSize() quantifies human gestures only.
+    # The event goes out on eventRecordActionSignal, a QueuedConnection, so the
+    # profileDataSemaphore is taken normally even when the caller already holds
+    # it (difluid runs inside sample_processing).
+    # description_fmt is rendered with the value that was really applied and
+    # names the driver, so an automated move is never read back afterwards as an
+    # operator gesture.
+    def applyTilauSliderCommand(self, n:int, value:int, fire_action:bool, description_fmt:str) -> None:
+        self.block_quantification_sampling_ticks[n] = self.sampling_ticks_to_block_quantifiction
+        self.moveslider(n, value)
+        applied:int = self.eventslidervalues[n]  # moveslider() clamps to the slider limits
+        self.extraeventsactionslastvalue[n] = applied
+        if self.qmc.flagstart:
+            try:
+                description = description_fmt.format(applied)
+            except (IndexError, KeyError, ValueError):
+                description = description_fmt
+            self.qmc.eventRecordActionSignal.emit(n, self.qmc.eventsExternal2InternalValue(applied), description, False)
+        if fire_action:
+            self.fireslideraction(n)
+
+    @pyqtSlot(int,int,bool)
+    def applyTilauPIDSliderCommand(self, n:int, power:int, fire_action:bool) -> None:
+        """Apply one PID actuator transaction on ApplicationWindow's GUI thread."""
+        # 'S<n>:<power>%' is the recorded shape the preheat controller is
+        # recognised by; a gesture on the same channel writes value and unit.
+        self.applyTilauSliderCommand(n, power, fire_action, f'S{n}:{{0}}%')
+
     @pyqtSlot(int,float)
     def fireslideraction_raw(self, n:int, v:float) -> None:
         self.fireslideraction_internal(n,v)
@@ -9838,7 +9630,7 @@ class ApplicationWindow(QMainWindow):
                                         if args.startswith('(') and args.endswith(')'):
                                             comma_pos = args.index(',')
                                             target = args[1:comma_pos].strip()
-                                            vs = args[comma_pos+1:-1].strip()
+                                            vs:str = args[comma_pos+1:-1].strip()
                                             try:
                                                 # <value> can be a formula like "1 - _" or "1 - $"
                                                 vs = str(eval(vs[:eval_limit])) # pylint: disable=eval-used
@@ -10936,7 +10728,7 @@ class ApplicationWindow(QMainWindow):
                                             self.updateExtraEventButtonsVisibilitySignal.emit()
                                             self.realignButtonsSignal.emit()
 
-                            # button(<e>) with <e> one of { ON, START, CHARGE, DRY, FCs, FCe, SCs, SCe, DROP, COOL, OFF }
+                            # button(<e>|<int>) with <e> one of { ON, START, CHARGE, DRY, FCs, FCe, SCs, SCe, DROP, COOL, OFF }
                             elif cs.startswith('button(') and cs.endswith(')'):
                                 try:
                                     try:
@@ -11279,9 +11071,133 @@ class ApplicationWindow(QMainWindow):
                                     self.sendmessage(f'Artisan Command: {cs}')
                                 except Exception as e: # pylint: disable=broad-except
                                     _log.exception(e)
+
+                            # zoom(<factor_x>[,<factor_y>]) zooms the canvas with <factor_x> and the optional <factor_y> floats indicating
+                            #  the zoom factor in x and y direction, respectivily. A factor 1 does not apply any zoom,
+                            #  a positive factor zooms in, a negative one zoom out. If <factor_y> is not given,
+                            #  it defaults to <factor_x>
+                            elif cs.startswith('zoom(') and cs.endswith(')'):
+                                try:
+                                    values = cs[len('zoom('):-1].split(',')
+                                    factor_x = factor_y = float(eval(values[0][:eval_limit])) # pylint: disable=eval-used
+                                    if len(values)>1:
+                                        factor_y = float(eval(values[1][:eval_limit])) # pylint: disable=eval-used
+                                    self.qmc.canvasZoomSignal.emit(factor_x,factor_y)
+                                except Exception as e: # pylint: disable=broad-except
+                                    _log.exception(e)
+                            # pan(<x>[,<y>]) pans the canvas with <x> and the optional <y>, two floats indicating
+                            #  the panning in x and y direction, respectivily. A pan of 0 does not apply any panning,
+                            #  a pan of 1 moves one full screen to the left/bottom, a pan of -1 moves canvas one full screen to the right/top.
+                            #  If <y> is not given, it defaults to <x>
+                            elif cs.startswith('pan(') and cs.endswith(')'):
+                                try:
+                                    values = cs[len('pan('):-1].split(',')
+                                    shift_factor_x = shift_factor_y = float(eval(values[0][:eval_limit])) # pylint: disable=eval-used
+                                    if len(values)>1:
+                                        shift_factor_y = float(eval(values[1][:eval_limit])) # pylint: disable=eval-used
+                                    self.qmc.canvasPanSignal.emit(shift_factor_x, shift_factor_y, -2) # -2: don't center
+                                except Exception as e: # pylint: disable=broad-except
+                                    _log.exception(e)
+
+                            # center(<pan_x>,<pan_y>[,<clamp>]) centers canvas and then applies panning according to the given pan_x/pan_y parameters
+                            #
+                            # if not recording and clamp
+                            #   -1: center canvas only horizontally to its x-axis limits
+                            #   {0-4}: center canvas to both axis limits
+                            # if recording, center the canvas w.r.t. the current zoom follow and clamp mode or the optional clamp argument given with
+                            #  -1: only along x-axis to current time
+                            #   0: w.r.t. axis limits
+                            #   1: w.r.t. current time and BT
+                            #   2: w.r.t. time and ET
+                            #   3: w.r.t. time and BT RoR (delta BT)
+                            #   4: w.r.t. time and ET RoR (delta ET)
+                            # clamp defaults to
+                            # -1 if xy-cursor widget is clamped to any temp or RoR curve (z-key)
+                            #  0 if zoom follow is OFF and xy-cursor not clamped
+                            #  1-4 if zoom follow is ON and xy-cursor not clamped, centering on the value zoom followed
+                            #
+                            # The float arguments <pan_x> and <pan_y> define additional panning w.r.t. this center position with a value of 0
+                            # not applying any additional panning, a value of 1 applying an additional panning of one full screen to the left/bottom
+                            # and a value of -1 applying an additional panning of one full screen to the right/top.
+                            elif cs.startswith('center(') and cs.endswith(')'):
+                                try:
+                                    raw_values = eval(f'[{cs[len('center('):-1]}]'[:eval_limit]) # pylint: disable=eval-used
+                                    if len(raw_values) > 1:
+                                        x = float(raw_values[0])
+                                        y = float(raw_values[1])
+                                        clamp = self.qmc.fmt_data_curve
+                                        if len(raw_values) > 2:
+                                            clamp = int(raw_values[2])
+                                        elif self.qmc.fmt_data_curve != 0:
+                                            clamp = -1
+                                        else:
+                                            clamp = 0
+                                            if self.qmc.zoom_follow:
+                                                if self.qmc.fmt_data_RoR:
+                                                    clamp = (4 if self.qmc.zoom_follow_onET else 3)
+                                                else:
+                                                    clamp = (2 if self.qmc.zoom_follow_onET else 1)
+                                        self.qmc.canvasPanSignal.emit(x, y, clamp)
+                                except Exception as e: # pylint: disable=broad-except
+                                    _log.exception(e)
+
+                            # clamp(<n>) : set clamp to 0: off, 1: BT@x, 2: ET@x, 3: BTB@x, 4: ETB@x
+                            elif cs.startswith('clamp(') and cs.endswith(')'):
+                                try:
+                                    new_clamp = max(0, min(4, toInt(eval(cs[len('clamp('):-1][:eval_limit])))) # pylint: disable=eval-used
+                                    if new_clamp != self.qmc.fmt_data_curve:
+                                        self.qmc.fmt_data_curve = new_clamp
+                                        self.sendmessage(self.qmc.xy_cursor_setting())
+                                except Exception as e: # pylint: disable=broad-except
+                                    _log.exception(e)
+
+                            # followMode(<bool>) enable/disable follow mode
+                            elif cs.startswith('followMode(') and cs.endswith(')'):
+                                try:
+                                    value_str = cs[len('followMode('):-1]
+                                    if value_str.lower() in {'yes', 'true', 't', '1'}:
+                                        self.qmc.zoom_follow = True
+                                        self.sendmessage(QApplication.translate('Message','follow on'))
+                                    else:
+                                        self.qmc.zoom_follow = False
+                                        self.sendmessage(QApplication.translate('Message','follow off'))
+                                except Exception as e: # pylint: disable=broad-except
+                                    _log.exception(e)
+
+                            # followModePanning(<x>[,<y>]) sets additional panning to be applied in follow mode after the centering
+                            #   indicated by the two floats <x> and the optional <y> in horizontal and vertical direction, respectively.
+                            #   0: no panning, 1: pan canvas one full screen to the left/bottom, -1: pan canvas one full screen to the right/top
+                            # If the <y> is not given, it defaults to <x>.
+                            elif cs.startswith('followModePanning(') and cs.endswith(')'):
+                                try:
+                                    values = cs[len('followModePanning('):-1].split(',')
+                                    factor_x = factor_y = float(eval(values[0][:eval_limit])) # pylint: disable=eval-used
+                                    if len(values)>1:
+                                        factor_y = float(eval(values[1][:eval_limit])) # pylint: disable=eval-used
+                                    self.qmc.zoom_follow_pan_x = factor_x
+                                    self.qmc.zoom_follow_pan_y = factor_y
+                                except Exception as e: # pylint: disable=broad-except
+                                    _log.exception(e)
+
+                            elif cs.strip() == 'home' and self.qmc.fig.canvas.toolbar is not None:
+                                self.qmc.fig.canvas.toolbar.home()
+                            elif cs.strip() == 'back' and self.qmc.fig.canvas.toolbar is not None:
+                                try:
+                                    if self.qmc.fig.canvas.toolbar._nav_stack._pos > 0: # type:ignore[attr-defined] # pylint: disable=protected-access
+                                        self.qmc.fig.canvas.toolbar.back()
+                                except Exception as e:
+                                    _log.error(e)
+                            elif cs.strip() == 'forward' and self.qmc.fig.canvas.toolbar is not None:
+                                try:
+                                    if self.qmc.fig.canvas.toolbar._nav_stack._pos < len(self.qmc.fig.canvas.toolbar._nav_stack) - 1:  # type:ignore[attr-defined] # pylint: disable=protected-access
+                                        self.qmc.fig.canvas.toolbar.forward()
+                                except Exception as e:
+                                    _log.error(e)
+
                             else:
                                 # command not recognized
                                 _log.info('Artisan Command <%s> not recognized', cs)
+
                 elif action == 21: # RC Command
                     # PHIDGETS   sn : has the form <hub_serial>[:<hub_port>], an optional serial number of the hub, optionally specifying the port number the module is connected to
                     ##  pulse(ch,min,max[,sn]) : sets the min/max pulse width in microseconds
@@ -11814,7 +11730,7 @@ class ApplicationWindow(QMainWindow):
             # set color of this button to "pressed"
             color = self.extraeventbuttoncolor[tee]
             backgroundcolor = self.extraeventbuttontextcolor[tee]
-        buttonstyle = f'min-width:{button_min_width};margin:0px;padding:0px;border-style:solid;border-color:darkgrey;border-width:0px;font-size:{button_font_size};font-weight:bold;{rounding}color:{color};'
+        buttonstyle = f'min-width:{button_min_width};margin:0px;padding:0px;border-style:solid;border-color:darkgrey;border-width:0px;font-size:{button_font_size}px;font-weight:bold;{rounding}color:{color};'
         #
         plain_style = f'QPushButton {{{buttonstyle}background:{createGradient(backgroundcolor)}}}'
         pressed_style = f'QPushButton:hover:pressed {{background:{createGradient(QColor(backgroundcolor).lighter(80).name())}}}'
@@ -12043,7 +11959,7 @@ class ApplicationWindow(QMainWindow):
             if style is not None and style != '':
                 self.messagelabel.setStyleSheet(style)
             else:
-                self.messagelabel.setStyleSheet(f"background-color:'transparent'; color: {rgba_colorname2argb_colorname(self.qmc.palette['messages'])};")
+                self.messagelabel.setStyleSheet(f"background-color:{rgba_colorname2argb_colorname(self.qmc.palette['canvas'])}; color: {rgba_colorname2argb_colorname(self.qmc.palette['messages'])};")
             message = self.arabicReshape(message)
             #keep a max of 100 messages
             if append:
@@ -12347,6 +12263,24 @@ class ApplicationWindow(QMainWindow):
     def showEventsMinieditor(self) -> None:
         self.EventsGroupLayout.setVisible(True)
 
+    def updateLCDcolor(self, lcd:MyQLCDNumber, color_tag:str) -> None:
+        argb_color = rgba_colorname2argb_colorname(self.lcdpaletteF[color_tag])
+        argb_background_color = rgba_colorname2argb_colorname(self.lcdpaletteB[color_tag])
+        lcd.setStyleSheet(
+            f'QLCDNumber {{ border-radius: 8; color: {argb_color}; background-color: {argb_background_color};}}')
+
+    def updateLCDcolors(self) -> None:
+        for lcd, color_tag in [
+                (self.lcd1, 'timer'),
+                (self.lcd2, 'et'),
+                (self.lcd3, 'bt'),
+                (self.lcd4, 'deltaet'),
+                (self.lcd5, 'deltabt'),
+                (self.lcd6, 'sv'),
+                (self.lcd7, 'sv')
+                ]:
+            self.updateLCDcolor(lcd, color_tag)
+
     def updateLCDproperties(self) -> None:
         # clear intChannel cache
         self.qmc.intChannel.cache_clear()
@@ -12356,16 +12290,14 @@ class ApplicationWindow(QMainWindow):
             if i < self.nLCDS:
                 self.extraLCDframe1[i].setVisible(bool(self.extraLCDvisibility1[i]))
                 if i < len(self.qmc.extraname1):
-                    l1 = '<b>' + self.qmc.device_name_subst(self.qmc.extraname1[i]) + '</b>'
-                    self.extraLCDlabel1[i].setText(l1)
+                    self.extraLCDlabel1[i].setText(self.extra_lcd_label_fmt.format(self.qmc.device_name_subst(self.qmc.extraname1[i])))
                     self.setLabelColor(self.extraLCDlabel1[i],self.qmc.extradevicecolor1[i], self.extraCurveVisibility1[i])
-                self.extraLCD1[i].setStyleSheet(f"QLCDNumber {{ border-radius:4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['sv'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['sv'])};}}")
+                self.updateLCDcolor(self.extraLCD1[i], 'sv')
                 self.extraLCDframe2[i].setVisible(bool(self.extraLCDvisibility2[i]))
                 if i < len(self.qmc.extraname2):
-                    l2 = '<b>' + self.qmc.device_name_subst(self.qmc.extraname2[i]) + '</b>'
-                    self.extraLCDlabel2[i].setText(l2)
+                    self.extraLCDlabel2[i].setText(self.extra_lcd_label_fmt.format(self.qmc.device_name_subst(self.qmc.extraname2[i])))
                     self.setLabelColor(self.extraLCDlabel2[i],self.qmc.extradevicecolor2[i], self.extraCurveVisibility2[i])
-                self.extraLCD2[i].setStyleSheet(f"QLCDNumber {{ border-radius:4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['sv'])}; background-color: {rgba_colorname2argb_colorname(self.lcdpaletteB['sv'])};}}")
+                self.updateLCDcolor(self.extraLCD2[i], 'sv')
         #hide the rest (just in case)
         for i in range(ndev,self.nLCDS):
             self.extraLCDframe1[i].setVisible(False)
@@ -13070,7 +13002,7 @@ class ApplicationWindow(QMainWindow):
                 elif k == Qt.Key.Key_Z and no_modifier: # 90:   #Z (toggle xy coordinates between 0: cursor, 1: BT, 2: ET, 3: BTB, 4: ETB)
                     if not self.qmc.designerflag and not self.qmc.wheelflag and self.comparator is None:
                         self.qmc.nextFmtDataCurve()
-                elif k == Qt.Key.Key_U and no_modifier: # 85:    #U (toggle running LCDs on/off)
+                elif k == Qt.Key.Key_U and no_modifier: # 85:   #U (toggle running LCDs on/off)
                     if not self.qmc.flagon:
                         if self.qmc.running_LCDs == 0 and self.curFile:
                             self.qmc.running_LCDs = 1
@@ -13217,13 +13149,25 @@ class ApplicationWindow(QMainWindow):
     def resetKeyboardButtonMarks(self) -> None:
         if self.qmc.flagon:
             if self.simulator:
-                self.buttonONOFF.setStyleSheet(self.pushbuttonstyles_simulator['ON'])
+                self.buttonONOFF.setStyleSheet(artisan_simulator_push_button_style_dict['ON'].format(
+                    min_width=self.main_button_min_width,
+                    font_size=self.button_font_size,
+                    border_radius=self.button_border_radius))
             else:
-                self.buttonONOFF.setStyleSheet(self.pushbuttonstyles['ON'])
+                self.buttonONOFF.setStyleSheet(artisan_push_button_style_dict['ON'].format(
+                    min_width=self.main_button_min_width,
+                    font_size=self.button_font_size,
+                    border_radius=self.button_border_radius))
         elif self.simulator:
-            self.buttonONOFF.setStyleSheet(self.pushbuttonstyles_simulator['OFF'])
+            self.buttonONOFF.setStyleSheet(artisan_simulator_push_button_style_dict['OFF'].format(
+                min_width=self.main_button_min_width,
+                font_size=self.button_font_size,
+                border_radius=self.button_border_radius))
         else:
-            self.buttonONOFF.setStyleSheet(self.pushbuttonstyles['OFF'])
+            self.buttonONOFF.setStyleSheet(artisan_push_button_style_dict['OFF'].format(
+                min_width=self.main_button_min_width,
+                font_size=self.button_font_size,
+                border_radius=self.button_border_radius))
         for b in [
                 self.buttonCHARGE,  # CHARGE
                 self.buttonDRY, # DRY END
@@ -13645,6 +13589,12 @@ class ApplicationWindow(QMainWindow):
                     # pf should not be modified before saving anymore this would break its hash
                     self.plusAddPath(cast(dict[str, Any], pf), filename_path)
                     serialize(filename_path, cast(dict[str, Any], pf))
+                    ## TILAU ## same as fileSave(): keep the corpus index current
+                    try:
+                        from tilauscope.alogmanager import note_profile_saved
+                        note_profile_saved(QFileInfo(filename_path).absoluteFilePath())
+                    except Exception as ex: # pylint: disable=broad-except
+                        _log.debug('alog index refresh skipped: %s', ex)
                     self.sendmessage(QApplication.translate('Message','Profile {0} saved in: {1}').format(filename,self.qmc.autosavepath))
                     self.setCurrentFile(filename_path,self.qmc.autosaveaddtorecentfilesflag)
                     self.qmc.fileCleanSignal.emit()
@@ -14139,11 +14089,12 @@ class ApplicationWindow(QMainWindow):
                 _log.info('profile loaded: %s', filename)
 
                 # update plus data set modification date
-                self.qmc.plus_file_last_modified = plus.util.getModificationDate(filename)
+                self.qmc.plus_file_last_modified = plus_util.getModificationDate(filename)
                 self.updatePlusStatus()
                 if self.plus_account is not None and plus.config.uuid_tag in obj_dict:
+                    import plus.schedule as plus_schedule
                     QTimer.singleShot(100, plus.sync.sync)
-                    QTimer.singleShot(700, lambda: plus.schedule.update_completed_item_from_loaded_profile(self))
+                    QTimer.singleShot(700, lambda: plus_schedule.update_completed_item_from_loaded_profile(self))
 
                 #check colors
                 self.checkColors(self.getcolorPairsToCheck())
@@ -15860,14 +15811,9 @@ class ApplicationWindow(QMainWindow):
 
     def getExtraDeviceSettings(self, settings:QSettings) -> None:
         self.qmc.extradevices = [toInt(x) for x in toList(settings.value('extradevices',self.qmc.extradevices))]
-        ## TILAU ## preserve TilauScope stable device ids (216/217…) through the clamp:
-        ## they sit far above len(devices) and are ids, not positions.
-        _tilau_ids = {d['id'] for d in self.qmc.tilau_devices.values()}
-        self.qmc.extradevices = [
-            (x if ((0 < x < len(self.qmc.devices)-1 and x != 18) or x in _tilau_ids) else 25)
-            for x in self.qmc.extradevices
-        ]
-        #        self.qmc.extradevices = [(x if (0 < x < len(self.qmc.devices)-1 and x != 18) else 25) for x in self.qmc.extradevices] # if out of range (note index is shifted by 1) or NONE, set to VIRTUAL
+        self.qmc.extradevices = [(x if (DEVICE_ID_MIN < x <= DEVICE_ID_MAX and x != DEVICE_ID_NONE) else DEVICE_ID_VIRTUAL) for x in self.qmc.extradevices] # if out of range (note index is shifted by 1) or NONE, set to VIRTUAL
+        ## TILAU ## TilauScope device ids are appended to the registry at import time,
+        ## so DEVICE_ID_MAX covers them and the upstream clamp above preserves them.
         self.qmc.extraname1 = list(map(str,list(toStringList(settings.value('extraname1',self.qmc.extraname1)))))
         self.qmc.extraname2 = list(map(str,list(toStringList(settings.value('extraname2',self.qmc.extraname2)))))
         self.qmc.extramathexpression1 = list(map(str,list(toStringList(settings.value('extramathexpression1',self.qmc.extramathexpression1)))))
@@ -16012,7 +15958,7 @@ class ApplicationWindow(QMainWindow):
         if self.official_build and validate_signature and ('version' not in profile or QVersionNumber.fromString(profile['version'])[0] >= QVersionNumber(4,2,0)):
 #        # testing:
 #        if validate_signature and 'version' in profile and 'signature' in profile:
-            # official builds validate all profile signatures for files generated by TilauScope versions >= v4.2
+            # official builds validate all profile signatures for files generated by Artisan versions >= v4.2
             # we validate the signature
             try:
                 with open(getResourcePath() + 'tilauscope_public_key.pem', 'rb') as f:
@@ -16036,12 +15982,11 @@ class ApplicationWindow(QMainWindow):
 
             if 'hash' in profile:
                 import hashlib
-                import json
                 profile_hash:str = profile['hash']
                 del profile['hash']
                 computed_hash = hashlib.sha256(json.dumps(rec_int_to_float(profile), sort_keys=True, ensure_ascii=True, separators=(',', ':')).encode()).hexdigest()
                 if profile_hash != computed_hash:
-                    _log.warning('profile hash invalid')
+                    _log.error('profile hash invalid')
                     if not quiet:
                         #reply = QMessageBox.question(self,
                         #            QApplication.translate('Message', 'Load profile?'),
@@ -16053,9 +15998,9 @@ class ApplicationWindow(QMainWindow):
 
         return profile
 
-    # validates profile as type correctProfileData, optional as from an official TilauScope build and calls setProfile on success to establish this data
+    # validates profile as type correctProfileData, optional as from an official Artisan build and calls setProfile on success to establish this data
     # called by loadFile(), importJSON(), ..
-    # if validate_signature the signature is used to validate that the profile data was generated by an official TilauScope build
+    # if validate_signature the signature is used to validate that the profile data was generated by an official Artisan build
     def setProfileDict(self, filename:str|None, profile_dict:dict[str,Any], quiet:bool = False, reset:bool = True, validate_signature:bool = False) -> bool:
         try:
             return self.setProfile(filename, self.validateProfileDict(profile_dict, quiet, validate_signature), quiet, reset)
@@ -17647,7 +17592,7 @@ class ApplicationWindow(QMainWindow):
             try:
                 ds = list(self.qmc.extradevices)
                 ds.insert(0,self.qmc.device)
-                profile['devices'] = [('PID' if d==0 else (self.qmc.devices[24] if d > len(self.qmc.devices) else self.qmc.devices[d-1])) for d in ds]
+                profile['devices'] = [('PID' if d<=0 else (get_device_name(DEVICE_ID_VIRTUAL) if d > DEVICE_ID_MAX else get_device_name(d))) for d in ds]
             except Exception: # pylint: disable=broad-except
                 pass
             profile['elevation'] = self.qmc.elevation
@@ -17725,7 +17670,7 @@ class ApplicationWindow(QMainWindow):
 
             if generate_hash:
                 # set sync_record_hash if any
-                sync_record_hash = plus.controller.updateSyncRecordHashAndSync()
+                sync_record_hash = plus_controller.updateSyncRecordHashAndSync()
                 if sync_record_hash is not None:
                     # we add the hash over the sync record to be able to detect offline changes
                     srh = encodeLocal(sync_record_hash)
@@ -17734,7 +17679,6 @@ class ApplicationWindow(QMainWindow):
 
                 # add hash
                 import hashlib
-                import json
                 profile['hash'] = hashlib.sha256(json.dumps(rec_int_to_float(profile), sort_keys=True, ensure_ascii=True, separators=(',', ':')).encode()).hexdigest()
 
             return profile
@@ -17789,13 +17733,21 @@ class ApplicationWindow(QMainWindow):
                     serialize(filename, cast(dict[str,Any], pf))
                     self.sendmessage(QApplication.translate('Message','Profile saved'))
                     _log.info('profile saved: %s', filename)
+                    ## TILAU ## the roast corpus grew by one profile: fold it
+                    ## into the shared index now, off-thread, so the next roast
+                    ## plan and the next routine check see it without rescanning
+                    try:
+                        from tilauscope.alogmanager import note_profile_saved
+                        note_profile_saved(QFileInfo(filename).absoluteFilePath())
+                    except Exception as ex: # pylint: disable=broad-except
+                        _log.debug('alog index refresh skipped: %s', ex)
                     if not copy:
                         self.setCurrentFile(filename)
                         self.curFile = filename
                         self.qmc.fileCleanSignal.emit()
 
                     # update plus data set modification date
-                    self.qmc.plus_file_last_modified = plus.util.getModificationDate(filename)
+                    self.qmc.plus_file_last_modified = plus_util.getModificationDate(filename)
 
                     if self.qmc.autosaveimage and not self.qmc.flagon:
                         #
@@ -18508,6 +18460,8 @@ class ApplicationWindow(QMainWindow):
         #remember swaplcds and swapdeltalcds
         old_swaplcds = self.qmc.swaplcds
         old_swapdeltalcds = self.qmc.swapdeltalcds
+        canvas_color_changed:bool = False # used to avoid unnecessary (expensive) call to updateCanvasColors()
+        graphfont_changed:bool = False # used to avoid unnecessary (expensive) call to setFonts()
         try:
             updateBatchCounter = True
             if filename is not None:
@@ -18615,7 +18569,6 @@ class ApplicationWindow(QMainWindow):
                 settings.setValue('recentFileList', recentFiles)
                 # reset recent settings
                 settings.setValue('recentSettingList', recentSettings)
-
 
                 if 'canvas' in self.qmc.palette:
                     self.updateCanvasColors(checkColors=False)
@@ -18727,9 +18680,9 @@ class ApplicationWindow(QMainWindow):
                     setDeviceDebugLogLevel(self.qmc.device_logging)
                 except Exception: # pylint: disable=broad-except
                     pass
-            self.qmc.device = toInt(settings.value('id',self.qmc.device))
-            if self.qmc.device < 0 or self.qmc.device-1 >= len(self.qmc.devices):
-                self.qmc.device = 18
+            self.qmc.device = max(0, toInt(settings.value('id',self.qmc.device)))
+            if not DEVICE_ID_MIN <= self.qmc.device <= DEVICE_ID_MAX:
+                self.qmc.device = DEVICE_ID_NONE
             # Phidget configurations
             self.qmc.phidget1048_types = [toInt(x) for x in toList(settings.value('phidget1048_types',self.qmc.phidget1048_types))]
             self.qmc.phidget1048_async = [toBool(x) for x in toList(settings.value('phidget1048_async',self.qmc.phidget1048_async))]
@@ -19061,7 +19014,10 @@ class ApplicationWindow(QMainWindow):
             #restore colors
             if settings.contains('Colors'):
                 for (k, v) in list(settings.value('Colors').items()):
-                    self.qmc.palette[str(k)] = s2a(toString(v))
+                    new_canvas_color = s2a(toString(v))
+                    if k == 'canvas' and 'canvas' in self.qmc.palette and self.qmc.palette['canvas'] != new_canvas_color:
+                        canvas_color_changed = True
+                    self.qmc.palette[str(k)] = new_canvas_color
                 if 'messages' in self.qmc.palette:
                     self.setLabelColor(self.messagelabel,self.qmc.palette['messages'])
                 if 'et' in self.qmc.palette:
@@ -19094,13 +19050,7 @@ class ApplicationWindow(QMainWindow):
                 for (k, v) in list(settings.value('Alphas').items()):
                     self.qmc.alpha[str(k)] = v
             #restore colors
-            self.lcd1.setStyleSheet(f"QLCDNumber {{ border-radius:4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['timer'])}; background: {rgba_colorname2argb_colorname(self.lcdpaletteB['timer'])};}}")
-            self.lcd2.setStyleSheet(f"QLCDNumber {{ border-radius:4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['et'])}; background: {rgba_colorname2argb_colorname(self.lcdpaletteB['et'])};}}")
-            self.lcd3.setStyleSheet(f"QLCDNumber {{ border-radius:4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['bt'])}; background: {rgba_colorname2argb_colorname(self.lcdpaletteB['bt'])};}}")
-            self.lcd4.setStyleSheet(f"QLCDNumber {{ border-radius:4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['deltaet'])}; background: {rgba_colorname2argb_colorname(self.lcdpaletteB['deltaet'])};}}")
-            self.lcd5.setStyleSheet(f"QLCDNumber {{ border-radius:4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['deltabt'])}; background: {rgba_colorname2argb_colorname(self.lcdpaletteB['deltabt'])};}}")
-            self.lcd6.setStyleSheet(f"QLCDNumber {{ border-radius:4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['sv'])}; background: {rgba_colorname2argb_colorname(self.lcdpaletteB['sv'])};}}")
-            self.lcd7.setStyleSheet(f"QLCDNumber {{ border-radius:4; color: {rgba_colorname2argb_colorname(self.lcdpaletteF['sv'])}; background: {rgba_colorname2argb_colorname(self.lcdpaletteB['sv'])};}}")
+            self.updateLCDcolors()
             self.readingslcdsflags = [toInt(x) for x in toList(settings.value('readingslcdsflags',self.readingslcdsflags))]
             self.controlsflags = [toInt(x) for x in toList(settings.value('controlsflags',self.controlsflags))]
             #restore flavors
@@ -19562,19 +19512,21 @@ class ApplicationWindow(QMainWindow):
             self.qmc.patheffects = toInt(settings.value('patheffects',self.qmc.patheffects))
             self.qmc.glow = toInt(settings.value('glow',self.qmc.glow))
             self.qmc.graphstyle = toInt(settings.value('graphstyle',self.qmc.graphstyle))
+            old_graphfont = self.qmc.graphfont
             self.qmc.graphfont = toInt(settings.value('graphfont',self.qmc.graphfont))
+            graphfont_changed = old_graphfont != self.qmc.graphfont
             if settings.contains('ETname'):
                 self.ETname = settings.value('ETname')
                 ETname_subst = self.qmc.device_name_subst(self.ETname)
-                self.label2.setText(f'<big><b>{ETname_subst}</b></big>')
-                self.label4.setText(f'{deltaLabelBigPrefix}{ETname_subst}</b></big>')
+                self.label2.setText(self.lcd_label_fmt.format(ETname_subst))
+                self.label4.setText(f"{deltaLabelBigPrefix}{self.lcd_label_fmt.format(ETname_subst)}")
             else:
                 self.ETname = QApplication.translate('Label', 'ET')
             if settings.contains('BTname'):
                 self.BTname = settings.value('BTname')
                 BTname_subst = self.qmc.device_name_subst(self.BTname)
-                self.label3.setText(f'<big><b>{BTname_subst}</b></big>')
-                self.label5.setText(f'{deltaLabelBigPrefix}{BTname_subst}</b></big>')
+                self.label3.setText(self.lcd_label_fmt.format(BTname_subst))
+                self.label5.setText(f"{deltaLabelBigPrefix}{self.lcd_label_fmt.format(BTname_subst)}")
             else:
                 self.BTname = QApplication.translate('Label', 'BT')
             settings.endGroup()
@@ -19766,7 +19718,7 @@ class ApplicationWindow(QMainWindow):
 
             try:
                 _log.info('machine: %s (%s, %skg, %s)', self.qmc.machinesetup, self.qmc.roastertype_setup, self.qmc.roastersize_setup, ([''] + self.qmc.sourcenames)[self.qmc.roasterheating_setup])
-                _log.info('device: %s (%s extra devices)', ('??' if self.qmc.device > len(self.qmc.devices) else (['PID']+self.qmc.devices)[self.qmc.device]), len(self.qmc.extradevices))
+                _log.info('device: %s (%s extra devices)', ('PID' if self.qmc.device <= 0 else ('??' if not (DEVICE_ID_MIN <= self.qmc.device <= DEVICE_ID_MAX) else get_device_name(self.qmc.device))), len(self.qmc.extradevices))
                 _log.info('serial: %s @%s', self.ser.comport, self.ser.baudrate)
                 _log.info('MODBUS %s: %s, %s %s%s%s@%s (%s, %s, %s / %s, %s)', ['Serial RTU','Serial ASCII','Serial Binary','TCP','UDP'][self.modbus.type],
                         self.modbus.host, self.modbus.comport, self.modbus.bytesize, self.modbus.parity, self.modbus.stopbits, self.modbus.baudrate, self.modbus.timeout, self.modbus.modbus_serial_connect_delay, self.modbus.serial_readRetries, self.modbus.IP_timeout, self.modbus.IP_retries)
@@ -20101,15 +20053,18 @@ class ApplicationWindow(QMainWindow):
             self.schedule_machine_filter = toBool(settings.value('ScheduleMachineFilter',self.schedule_machine_filter))
             self.schedule_visible_filter = toBool(settings.value('ScheduleVisibleFilter',self.schedule_visible_filter))
             self.scheduled_items_uuids = list(toStringList(settings.value('scheduled_items',self.scheduled_items_uuids)))
-            self.scheduleFlag = toBool(settings.value('Schedule',self.scheduleFlag))
             self.scheduler_tasks_visible = toBool(settings.value('SchedulerTasks',self.scheduler_tasks_visible))
             self.scheduler_completed_details_visible = toBool(settings.value('SchedulerCompletedDetails',self.scheduler_completed_details_visible))
             self.scheduler_filters_visible = toBool(settings.value('SchedulerFilter',self.scheduler_filters_visible))
-            if self.scheduleFlag:
-                try:
-                    QTimer.singleShot(700, lambda:self.schedule(True))
-                except Exception as e: # pylint: disable=broad-except
-                    _log.exception(e)
+            if settings.contains('Schedule'):
+                scheduleFlag = toBool(settings.value('Schedule',self.scheduleFlag))
+                if scheduleFlag and not self.scheduleFlag and not theme and not machine:
+                    # we automatically re-open the scheduler if it is not yet open
+                    self.scheduleFlag = scheduleFlag
+                    try:
+                        QTimer.singleShot(700, lambda:self.schedule(True))
+                    except Exception as e: # pylint: disable=broad-except
+                        _log.exception(e)
 
             self.LargeLCDsFlag = toBool(settings.value('LargeLCDs',self.LargeLCDsFlag))
             if self.LargeLCDsFlag:
@@ -20237,10 +20192,10 @@ class ApplicationWindow(QMainWindow):
                         self.recentRoasts = []
                 except Exception: # pylint: disable=broad-except
                     pass
-            try:
-                self.updateNewMenuRecentRoasts()
-            except Exception: # pylint: disable=broad-except
-                pass
+                try:
+                    self.updateNewMenuRecentRoasts()
+                except Exception: # pylint: disable=broad-except
+                    pass
 
             # used on startup to reload previous loaded profiles
             if settings.contains('lastLoadedProfile'):
@@ -20263,7 +20218,8 @@ class ApplicationWindow(QMainWindow):
 
 #--------------------------------
         try:
-            self.setFonts(redraw=redraw) # this one triggers a redraw by default to establish the correct fonts
+            if graphfont_changed or filename is None:
+                self.setFonts(redraw=redraw) # this one triggers a redraw by default to establish the correct fonts
             # only after this the correct aspect ratio of the qmc canvas is set
 
             if len(self.logofilename) > 0:
@@ -20348,12 +20304,12 @@ class ApplicationWindow(QMainWindow):
 
             if filename is None and self.plus_account is not None:
                 try:
-                    plus.controller.start(self)
+                    plus_controller.start(self)
                 except Exception as e: # pylint: disable=broad-except
                     _log.exception(e)
 
-            # this one has done here, if it is done on start of the section the slider title colors are not set correctly on Linux and macOS
-            if 'canvas' in self.qmc.palette:
+            # this one has to be done here, if it is done on start of the section the slider title colors are not set correctly on Linux and macOS
+            if 'canvas' in self.qmc.palette and (filename is None or canvas_color_changed):
                 self.updateCanvasColors(checkColors=False)
 
         except Exception as e: # pylint: disable=broad-except
@@ -20439,7 +20395,8 @@ class ApplicationWindow(QMainWindow):
                     else:
                         # send init message
                         from json import dumps as json_dumps
-                        msg = json_dumps(plus.schedule.GreenWebDisplay.INIT_PAYLOAD, indent=None, separators=(',', ':'))
+                        import plus.schedule as plus_schedule
+                        msg = json_dumps(plus_schedule.GreenWebDisplay.INIT_PAYLOAD, indent=None, separators=(',', ':'))
                         self.taskWebDisplayGreen_server.send_msg(msg)
                     return True
                 self.stopWebGreen()
@@ -20489,7 +20446,8 @@ class ApplicationWindow(QMainWindow):
                     else:
                         # send init message
                         from json import dumps as json_dumps
-                        msg = json_dumps(plus.schedule.RoastedWebDisplay.INIT_PAYLOAD, indent=None, separators=(',', ':'))
+                        import plus.schedule as plus_schedule
+                        msg = json_dumps(plus_schedule.RoastedWebDisplay.INIT_PAYLOAD, indent=None, separators=(',', ':'))
                         self.taskWebDisplayRoasted_server.send_msg(msg)
                     return True
                 self.stopWebRoasted()
@@ -22146,17 +22104,6 @@ class ApplicationWindow(QMainWindow):
 #--- END GROUP CurveStyles
 #--- BEGIN GROUP Axis
             settings.beginGroup('Axis')
-            xmin = self.qmc.startofx
-            if self.qmc.timeindex[0] != -1:
-                xmin -= self.qmc.timex[self.qmc.timeindex[0]]
-            settings.setValue('xmin',xmin)
-            settings.setValue('xmax',self.qmc.endofx)
-            settings.setValue('ymax',self.qmc.ylimit)
-            settings.setValue('ymin',self.qmc.ylimit_min)
-            settings.setValue('zmax',self.qmc.zlimit)
-            settings.setValue('zmin',self.qmc.zlimit_min)
-            settings.setValue('resetmaxtime',self.qmc.resetmaxtime)
-            settings.setValue('chargemintime',self.qmc.chargemintime)
             settings.setValue('legendloc',self.qmc.legendloc)
             settings.setValue('temp_grid',self.qmc.temp_grid)
             settings.setValue('time_grid',self.qmc.time_grid)
@@ -22587,9 +22534,9 @@ class ApplicationWindow(QMainWindow):
 #                    title_html = f'<a href="tilauscope://roast/{roast_uuid}">{title_html}</a>'
                 title_html = f'<a href="tilauscope://roast/{roast_uuid}">{title_html}</a>'
                 if bool(plus.sync.getSync(roast_uuid)):
-                    time_html = f"<a href='{plus.util.roastLink(roast_uuid)}' target='_blank'>{time_html}</a>"
+                    time_html = f"<a href='{plus_util.roastLink(roast_uuid)}' target='_blank'>{time_html}</a>"
                 if 'plus_coffee' in data and data['plus_coffee'] != '':
-                    beans_html = f"<a href=\"{plus.util.coffeeLink(data['plus_coffee'])}\" target=\"_blank\">{beans_html}</a>"
+                    beans_html = f"<a href=\"{plus_util.coffeeLink(data['plus_coffee'])}\" target=\"_blank\">{beans_html}</a>"
         except Exception: # pylint: disable=broad-except
             pass
         return libstring.Template(HTML_REPORT_TEMPLATE).safe_substitute(
@@ -23509,7 +23456,7 @@ class ApplicationWindow(QMainWindow):
 #                    title_html = '<a href="tilauscope://roast/{0}">{1}</a>'.format(roast_uuid,title_html)
                 title_html = f'<a href="tilauscope://roast/{roast_uuid}">{title_html}</a>'
                 if bool(plus.sync.getSync(roast_uuid)):
-                    time_html = f'<a href="{plus.util.roastLink(roast_uuid)}" target="_blank">{time_html}</a>'
+                    time_html = f'<a href="{plus_util.roastLink(roast_uuid)}" target="_blank">{time_html}</a>'
         except Exception as e: # pylint: disable=broad-except
             _log.exception(e)
         weight_fmt = ('{0:.2f}' if self.qmc.weight[2] in {'Kg', 'lb', 'oz'} else '{0:.0f}')
@@ -23759,7 +23706,7 @@ class ApplicationWindow(QMainWindow):
                                     pd['batchprefix'] = label
                                     label_chr_nr = label_chr_nr + 1
                                 # suppress default description
-    #                            if pd["title"] == QApplication.translate("Scope Title", "TilauScope"):
+    #                            if pd["title"] == QApplication.translate("Scope Title", "Roaster Scope"):
     #                                pd["title"] = ""
 
                                 entries += self.rankingData2htmlentry(pd,rd, cl) + '\n'
@@ -24653,13 +24600,13 @@ class ApplicationWindow(QMainWindow):
 #                    title_html = '<a href="tilauscope://roast/' + self.qmc.roastUUID + '">' + title_html + "</a>"
                 title_html = '<a href="tilauscope://roast/' + self.qmc.roastUUID + '">' + title_html + '</a>'
                 if bool(plus.sync.getSync(self.qmc.roastUUID)):
-                    datetime_html = f'<a href="{plus.util.roastLink(self.qmc.roastUUID)}" target="_blank">{datetime_html}</a>'
+                    datetime_html = f'<a href="{plus_util.roastLink(self.qmc.roastUUID)}" target="_blank">{datetime_html}</a>'
 #            if self.qmc.background and self.qmc.titleB is not None and self.qmc.titleB != "" and self.qmc.backgroundUUID is not None and plus.register.getPath(self.qmc.backgroundUUID):
 #                background_html = '<a href="tilauscope://roast/' + self.qmc.backgroundUUID + '">' + background_html + "</a>"
             if self.qmc.background and self.qmc.titleB != '' and self.qmc.backgroundUUID is not None:
                 background_html = '<a href="tilauscope://roast/' + self.qmc.backgroundUUID + '">' + background_html + '</a>'
             if beans_html != '' and self.qmc.plus_coffee is not None:
-                beans_html = f'<a href="{plus.util.coffeeLink(self.qmc.plus_coffee)}" target="_blank">{beans_html}</a>'
+                beans_html = f'<a href="{plus_util.coffeeLink(self.qmc.plus_coffee)}" target="_blank">{beans_html}</a>'
                 # note that blends are hard to link back as it requires to link component by component
             cupping_score, cupping_all_default = self.cuppingSum(self.qmc.flavors)
             cupping_notes = self.note2html(self.qmc.cuppingnotes).strip()
@@ -25350,6 +25297,13 @@ class ApplicationWindow(QMainWindow):
             # crashes the next open. ## TILAU ##
             if self.tilauscope_main.close():
                 self.tilauscope_main = None
+            else:
+                ## TILAU ## The close was refused (a roast is sampling), so
+                ## TilauScope stays up — but Artisan has just been revealed
+                ## above it. Both windows are now on screen, and the one that
+                ## suspended the figure is no longer the only one being looked
+                ## at: give Artisan its graph back.
+                self.tilau_suspend_render = False
         else:
             self.tilauscope_main = TilauScope(self, message)
             self.tilauscope_main.setWindowModality(Qt.WindowModality.NonModal)
@@ -25425,6 +25379,7 @@ class ApplicationWindow(QMainWindow):
         self.message_dlg.raise_()
         self.message_dlg.activateWindow()
 
+
     @pyqtSlot()
     @pyqtSlot(bool)
     def helpAbout(self, _:bool = False) -> None:
@@ -25440,66 +25395,6 @@ class ApplicationWindow(QMainWindow):
             return
         except Exception: # pylint: disable=broad-except
             _log.exception('TilauScope about dialog failed; falling back to Artisan about')
-
-        # pylint: disable=consider-using-f-string
-        coredevelopers:str = '<br>Rafael Cobo, Marko Luther &amp; Dave Baxter'
-        box = QMessageBox(self)
-
-        #create a html QString
-        from scipy import __version__ as SCIPY_VERSION_STR # type #  ignore # @UnresolvedImport
-        from pymodbus import __version__ as PYMODBUS_VERSION_STR
-        build:str = ''
-        if __build__ != '0': # pyright:ignore[reportUnnecessaryComparison]
-            build = ' build ' + __build__
-        name:str = (application_viewer_name if self.app.artisanviewerMode else application_name)
-        otherlibs:str = ''
-        try:
-            from Phidget22.Phidget import Phidget as PhidgetDriver # type: ignore[import-untyped]
-            phidgetlibversion = PhidgetDriver.getLibraryVersion()
-            otherlibs += ', ' + phidgetlibversion
-        except Exception as e: # pylint: disable=broad-except
-            _log.debug(e)
-        try:
-            from Phidget22 import __version__ as phidget_lib_version # type: ignore[import-untyped] # @UnresolvedImport
-            otherlibs += f' ({phidget_lib_version})'
-        except Exception: # pylint: disable=broad-except
-            pass
-        try:
-            yocto_version = YAPI.GetAPIVersion() # type:ignore[reportPossibleUnboundVariable,unused-ignore]
-            otherlibs += ', Yoctopuce ' + yocto_version
-        except Exception as e: # pylint: disable=broad-except
-            _log.exception(e)
-        unofficial = ('' if not appFrozen() or self.official_build else QApplication.translate('Message', 'unoffical TIlauScope build')) # fork, mod
-        ## TILAU ## AGPLv3-compliant fork attribution replacing "unofficial build" tag
-        unofficial = QApplication.translate('About', '<br><small>TilauScope — based on <a href="https://artisan-scope.org">Artisan Roaster Scope</a></small>')
-        box.about(self,
-                QApplication.translate('About', 'About'),
-                """<h2>{0} {1}{14}{2}</h2>{17}
-                <p>
-                <small>Python {3}, Qt {4}, PyQt {5}, Matplotlib {6}, NumPy {7}, SciPy {8}, pymodbus {11}{15}</small>
-                </p>
-                <p>{16}</p>
-                <p><b>{9}</b><small>{10}</small></p>
-                <p><b>{12}</b><br><small>{13}</small></p>
-                """.format( # noqa: UP030
-                name.lower(),
-                __version__,
-                (f' ({str(__revision__)})' if str(__revision__) != '' else ''),
-                platform.python_version(),
-                qVersion,
-                PYQT_VERSION_STR,
-                mpl.__version__,
-                numpy.__version__,
-                SCIPY_VERSION_STR,
-                QApplication.translate('About', 'Core Developers'),
-                coredevelopers,
-                PYMODBUS_VERSION_STR,
-                QApplication.translate('About', 'License'),
-                    '<a href="https://www.gnu.org/licenses/agpl-3.0.html">GNU Affero General Public License (AGPLv3.0)</a>',
-                build,
-                otherlibs, # pyright:ignore[reportUnknownArgumentType]
-                '<a href="https://artisan-scope.org">https://artisan-scope.org</a>',
-                unofficial))
 
     @pyqtSlot()
     @pyqtSlot(bool)
@@ -25517,8 +25412,6 @@ class ApplicationWindow(QMainWindow):
     def checkUpdate(self, _:bool = False) -> None:
         update_url = '<a href="https://artisan-scope.org">https://artisan-scope.org</a>'
         update_str = QApplication.translate('About', 'There was a problem retrieving the latest version information.  Please check your Internet connection, try again later, or check manually.')
-        import json
-        import json.decoder
         try:
             import requests
             r = requests.get('https://api.github.com/repos/artisan-roaster-scope/artisan/releases/latest', timeout=(2,4))
@@ -25580,6 +25473,15 @@ class ApplicationWindow(QMainWindow):
                         f'{fmt.upper()} Files (*.{fmt});;All Files (*)')[0]
                 if fileName:
                     imag.save(fileName, fmt)
+
+
+    @pyqtSlot()
+    @pyqtSlot(bool)
+    def set_machine_name(self, _:bool = False) -> None:
+        new_name, ok = QInputDialog.getText(self, QApplication.translate('Menu', 'Machine Name'), QApplication.translate('Menu', 'Machine Name'), text=self.qmc.roastertype_setup)
+        if ok:
+            self.qmc.roastertype_setup = new_name
+
 
     @pyqtSlot()
     @pyqtSlot(bool)
@@ -25860,7 +25762,10 @@ class ApplicationWindow(QMainWindow):
                 if self.qmc.flagon:
                     # if not sampling we also stop the communication loop with the Hottop here completely
                     self.hottop.stop()
-                self.buttonCONTROL.setStyleSheet(self.pushbuttonstyles['PID'])
+                self.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PID'].format(
+                    min_width=self.main_button_min_width,
+                    font_size=self.button_font_size,
+                    border_radius=self.button_border_radius))
 
     def HottopControlOn(self, autosuper:bool=True) -> None:
         # if super holds, the superusermode is automatically activated (if control is activated via an HOTTOP Command 'control')
@@ -25872,7 +25777,10 @@ class ApplicationWindow(QMainWindow):
                 res = self.hottop.takeHottopControl()
                 if res:
                     self.hottop.setHottop(drum_motor=True)
-                    self.buttonCONTROL.setStyleSheet(self.pushbuttonstyles['PIDactive'])
+                    self.buttonCONTROL.setStyleSheet(artisan_push_button_style_dict['PIDactive'].format(
+                        min_width=self.main_button_min_width,
+                        font_size=self.button_font_size,
+                        border_radius=self.button_border_radius))
                     if not self.HottopControlActive:
                         self.sendmessage(QApplication.translate('Message','Hottop control turned on'))
                     self.HottopControlActive = True
@@ -25898,6 +25806,7 @@ class ApplicationWindow(QMainWindow):
                     self.fujipid.setONOFFstandby(0)
                     self.sendmessage(QApplication.translate('Message','PID set to ON'))
             else:
+                from artisanlib.pid_dialogs import (PXRpidDlgControl, PXG4pidDlgControl, PID_DlgControl, DTApidDlgControl)
                 dialog:PXG4pidDlgControl|PXRpidDlgControl|DTApidDlgControl|PID_DlgControl
                 if self.ser.controlETpid[0] == 0:
                     dialog = PXG4pidDlgControl(self,self)
@@ -25915,6 +25824,7 @@ class ApplicationWindow(QMainWindow):
         elif self.qmc.device == 53:
             modifiers = QApplication.keyboardModifiers()
             if modifiers == Qt.KeyboardModifier.ControlModifier:
+                from artisanlib.pid_dialogs import PID_DlgControl
                 dialog = PID_DlgControl(self,self,self.PID_DlgControl_activeTab)
                 #modeless style dialog
                 dialog.show()
@@ -25927,6 +25837,7 @@ class ApplicationWindow(QMainWindow):
             if self.ui_mode is UI_MODE.PRODUCTION or modifiers == Qt.KeyboardModifier.ControlModifier:
                 self.pidcontrol.togglePID()
             else:
+                from artisanlib.pid_dialogs import PID_DlgControl
                 dialog = PID_DlgControl(self,self,self.PID_DlgControl_activeTab)
                 #modeless style dialog
                 dialog.show()
@@ -25989,7 +25900,6 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot()
     @pyqtSlot(bool)
     def loadSettings_triggered(self, _:bool = False) -> None:
-        _log.info('menu load settings')
         self.loadSettings()
 
     def loadSettings(self, fn:str|None = None, remember:bool = True, reset:bool = True,
@@ -26211,7 +26121,8 @@ class ApplicationWindow(QMainWindow):
                 if reply == QMessageBox.StandardButton.Cancel:
                     return
                 try:
-                    res = self.settingsLoad(filename,theme=True)
+                    res = self.settingsLoad(filename,theme=True,redraw=False)
+                    self.qmc.redraw(False,False,True,True,False) # redraw without any recomputation but force renew axis to adjust for xkcd style change
                     self.sendmessage(QApplication.translate('Message','Loaded theme {0}').format(filename))
                     if reset:
                         self.qmc.reset(soundOn=False)
@@ -26246,6 +26157,7 @@ class ApplicationWindow(QMainWindow):
                                 widget.updateRecentThemeActions()
                         self.themeMenu.clear()
                         self.populateThemeMenu()
+
                 except Exception as e: # pylint: disable=broad-except
                     _log.exception(e)
                     # remove file from the recent file list
@@ -26274,18 +26186,19 @@ class ApplicationWindow(QMainWindow):
     def schedule(self, b:bool = False) -> None:
         if b and self.schedule_window is None:
             if  not self.app.artisanviewerMode:  # no scheduler in ArtisanViewer mode
-                self.schedule_window = plus.schedule.ScheduleWindow(self, self, self.schedule_activeTab)
+                import plus.schedule as plus_schedule
+                self.schedule_window = plus_schedule.ScheduleWindow(self, self, self.schedule_activeTab)
                 self.scheduleFlag = True
                 self.scheduleAction.setChecked(True)
                 self.schedule_window.show()
         elif self.schedule_window is not None:
             self.schedule_window.close()
-            self.schedule_window = None
 
     @pyqtSlot()
     @pyqtSlot(bool)
     def largeLCDs(self, _:bool = False) -> None:
         if self.largeLCDs_dialog is None:
+            from artisanlib.large_lcds import LargeMainLCDs
             self.largeLCDs_dialog = LargeMainLCDs(self,self)
             self.largeLCDs_dialog.setModal(False)
             self.LargeLCDsFlag = True
@@ -26299,6 +26212,7 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot(bool)
     def largeDeltaLCDs(self, _:bool = False) -> None:
         if self.largeDeltaLCDs_dialog is None:
+            from artisanlib.large_lcds import LargeDeltaLCDs
             self.largeDeltaLCDs_dialog = LargeDeltaLCDs(self,self)
             self.largeDeltaLCDs_dialog.setModal(False)
             self.LargeDeltaLCDsFlag = True
@@ -26312,6 +26226,7 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot(bool)
     def largePIDLCDs(self, _:bool = False) -> None:
         if self.largePIDLCDs_dialog is None:
+            from artisanlib.large_lcds import LargePIDLCDs
             self.largePIDLCDs_dialog = LargePIDLCDs(self,self)
             self.largePIDLCDs_dialog.setModal(False)
             self.LargePIDLCDsFlag = True
@@ -26328,6 +26243,7 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot(bool)
     def largeScaleLCDs(self, _:bool = False) -> None:
         if self.largeScaleLCDs_dialog is None:
+            from artisanlib.large_lcds import LargeScaleLCDs
             self.largeScaleLCDs_dialog = LargeScaleLCDs(self,self)
             self.largeScaleLCDs_dialog.setModal(False)
             self.LargeScaleLCDsFlag = True
@@ -26341,6 +26257,12 @@ class ApplicationWindow(QMainWindow):
             self.scale_manager.scale2_disconnected_signal.connect(self.scale2disconnectedSlot)
             self.scale_manager.scale2_weight_changed_signal.connect(self.scale2WeightChangedSlot)
             self.largeScaleLCDs_dialog.show()
+            scale1_weight = self.scale_manager.get_scale1_last_weight()
+            if scale1_weight is not None:
+                self.scale1WeightChangedSlot(scale1_weight)
+            scale2_weight = self.scale_manager.get_scale2_last_weight()
+            if scale2_weight is not None:
+                self.scale2WeightChangedSlot(scale2_weight)
         else:
             try:
                 self.scale_manager.connect_scale1_signal.disconnect(self.scale1connectedSlot)
@@ -26427,6 +26349,7 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot(bool)
     def largeExtraLCDs(self, _:bool = False) -> None:
         if self.largeExtraLCDs_dialog is None:
+            from artisanlib.large_lcds import LargeExtraLCDs
             self.largeExtraLCDs_dialog = LargeExtraLCDs(self,self)
             self.largeExtraLCDs_dialog.setModal(False)
             self.LargeExtraLCDsFlag = True
@@ -26440,6 +26363,7 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot(bool)
     def largePhasesLCDs(self, _:bool = False) -> None:
         if self.largePhasesLCDs_dialog is None:
+            from artisanlib.large_lcds import LargePhasesLCDs
             self.largePhasesLCDs_dialog = LargePhasesLCDs(self,self)
             self.largePhasesLCDs_dialog.setModal(False)
             self.LargePhasesLCDsFlag = True
@@ -28139,9 +28063,8 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot(str)
     def loadAlarms(self, filename:str) -> None:
         try:
-            from json import load as json_load
             with open(filename, encoding='utf-8') as infile:
-                alarms = json_load(infile)
+                alarms = json.load(infile)
             self.qmc.alarmflag = alarms['alarmflags']
             self.qmc.alarmguard = alarms['alarmguards']
             self.qmc.alarmnegguard = alarms['alarmnegguards']
@@ -28834,8 +28757,14 @@ class ApplicationWindow(QMainWindow):
                 self.simulator = None
                 self.qmc.timeclock.setBase(1000)
                 self.sample_loop_running = True # we enable the sampling loop again that might have been stopped during the simulation via a timerLCD click
-                self.buttonONOFF.setStyleSheet(self.pushbuttonstyles['OFF'])
-                self.buttonSTARTSTOP.setStyleSheet(self.pushbuttonstyles['STOP'])
+                self.buttonONOFF.setStyleSheet(artisan_push_button_style_dict['OFF'].format(
+                    min_width=self.main_button_min_width,
+                    font_size=self.button_font_size,
+                    border_radius=self.button_border_radius))
+                self.buttonSTARTSTOP.setStyleSheet(artisan_push_button_style_dict['STOP'].format(
+                    min_width=self.main_button_min_width,
+                    font_size=self.button_font_size,
+                    border_radius=self.button_border_radius))
                 self.qmc.updateDeltaSamples() # to get the delta_spans right
                 self.sendmessage(QApplication.translate('Message','Simulator stopped'))
                 self.updateWindowTitle()
@@ -28875,6 +28804,7 @@ class ApplicationWindow(QMainWindow):
                         self.qmc.timeclock.setBase(1000*speed)
                         profile = deserialize(filename)
                         self.plusAddPath(profile, filename)
+                        from artisanlib.simulator import Simulator
                         self.simulator = Simulator(self.qmc.mode, profile)
                         ## TILAU ## the open profile may be a roast PLAN with no
                         ## recorded curve (empty/all -1 BT): there is nothing to
@@ -28888,8 +28818,8 @@ class ApplicationWindow(QMainWindow):
                                 'Simulator: this profile has no recorded curve to replay — open a past roast recording first'))
                         else:
                             self.simulatorpath = filename
-                            self.buttonONOFF.setStyleSheet(self.pushbuttonstyles_simulator['OFF'])
-                            self.buttonSTARTSTOP.setStyleSheet(self.pushbuttonstyles_simulator['STOP'])
+                            self.buttonONOFF.setStyleSheet(artisan_simulator_push_button_style_dict['OFF'].format(min_width=self.main_button_min_width, font_size=self.button_font_size))
+                            self.buttonSTARTSTOP.setStyleSheet(artisan_simulator_push_button_style_dict['STOP'].format(min_width=self.main_button_min_width, font_size=self.button_font_size))
                             self.qmc.updateDeltaSamples() # to get the delta_spans right
                             self.sendmessage(QApplication.translate('Message','Simulator started @{}x').format(speed))
                             self.updateWindowTitle()
@@ -28991,15 +28921,16 @@ class ApplicationWindow(QMainWindow):
 from tilauscope.tilau_exceptions import my_exception_hook
 sys.excepthook = my_exception_hook
 
+# 2026 update: the cocoa lib loads slow and the issue seems not to occur any longer
 # the following avoids the "No document could be created" dialog and the Console message
 # "The Artisan Profile type doesn't map to any NSDocumentClass." on startup (since pyobjc-core 3.1.1)
-if sys.platform.startswith('darwin'):
-    from Cocoa import NSDocument # type: ignore[import-untyped, attr-defined, unused-ignore] # @UnresolvedImport # pylint: disable=import-error,no-name-in-module
-    class Document(NSDocument): # type:ignore[misc,no-any-unimported] # zuban: ignore # pylint: disable= too-few-public-methods
-#        def windowNibName(self):
-#            return None #"Document"
-        def makeWindowControllers(self) -> None:
-            pass
+#if sys.platform.startswith('darwin'):
+#    from Cocoa import NSDocument # type: ignore[import-untyped, attr-defined, unused-ignore] # @UnresolvedImport # pylint: disable=import-error,no-name-in-module
+#    class Document(NSDocument): # type:ignore[misc,no-any-unimported] # zuban: ignore # pylint: disable= too-few-public-methods
+##        def windowNibName(self):
+##            return None #"Document"
+#        def makeWindowControllers(self) -> None:
+#            pass
 
 def qt_message_handler(mode:QtMsgType, context:'QMessageLogContext', message:str|None) -> None:
     if mode == QtMsgType.QtInfoMsg:
@@ -29068,7 +28999,7 @@ def initialize_locale(my_app:Artisan) -> str:
 
     if locale == '':
         if platform.system() == 'Darwin':
-            from Cocoa import NSUserDefaults # type:ignore[import-not-found,attr-defined,unused-ignore]  # @UnresolvedImport # pylint: disable=import-error,no-name-in-module
+            from Cocoa import NSUserDefaults # type:ignore[import-not-found,attr-defined,unused-ignore,import-untyped]  # @UnresolvedImport # pylint: disable=import-error,no-name-in-module
             defs = NSUserDefaults.standardUserDefaults()
             langs = defs.objectForKey_('AppleLanguages') # pyright:ignore[reportUnknownArgumentType]
             if langs.objectAtIndex_(0)[:7] == 'zh_Hans': # pyright:ignore[reportUnknownArgumentType]
@@ -29242,7 +29173,7 @@ def main() -> None:
     app.setActivationWindow(appWindow,activateOnMessage=False) # set the activation window for the QtSingleApplication
 
 
-    # only here deactivating the app napping seems to have an effect
+    # only here deactivating the app napping seems to have an effect (after GUI has been initialized)
     if sys.platform.startswith('darwin'):
         import appnope # pyright:ignore # @UnresolvedImport # type:ignore[import-not-found, unused-ignore] # pylint: disable=import-error,redefined-outer-name
         appnope.nope()
@@ -29273,7 +29204,7 @@ def main() -> None:
     QTimer.singleShot(0, appWindow.start_tilau_web_host)
 #    _log.debug("PRINT mpl.get_cachedir(): %s",mpl.get_cachedir())
 
-    appWindow.set_ui_mode(appWindow.ui_mode)
+    appWindow.set_ui_mode(appWindow.ui_mode, False)
 
     ## TILAU ## frameless custom title bar + Catppuccin styling for the main window
     ## (first, cautious iteration: native resize borders are kept, see tilauscope/main_window_style.py)
@@ -29307,7 +29238,11 @@ def main() -> None:
         app.lastWindowClosed.connect(lambda: QTimer.singleShot(0, lambda: appWindow.fileQuit()))
         appWindow.handleBeancave()  # open BeanCave as the top-level shell
     else:
-        appWindow.show()
+        ## TILAU ## Open the TilauScope shell as the initial roasting view.
+        ## Keep Artisan hidden before the event loop gets a chance to paint its
+        ## canvas; tilauscopeCall() restores it when TilauScope is closed.
+        appWindow.hide()
+        QTimer.singleShot(0, appWindow.tilauscopeCall)
 
     try:
         if sys.argv and len(sys.argv) > 1:

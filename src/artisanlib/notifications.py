@@ -180,17 +180,19 @@ class NotificationManager(QObject):
     # returns the plus icon as QIcon
     @staticmethod
     def notificationPlusIcon() -> QIcon:
-        basedir = os.path.join(getResourcePath(),'Icons')
-        if sys.platform.startswith('darwin'):
-            p = os.path.join(basedir, 'plus-notification.png')
-        else:
-            p = os.path.join(basedir, 'plus-notification.svg')
-        return QIcon(p)
+        return NotificationManager.notificationArtisanIcon()
+#        basedir = os.path.join(getResourcePath(),'Icons')
+#        if sys.platform.startswith('darwin'):
+#            p = os.path.join(basedir, 'plus-notification.png')
+#        else:
+#            p = os.path.join(basedir, 'plus-notification.svg')
+#        return QIcon(p)
 
     # returns the Artisan icon as QIcon
     @staticmethod
     def notificationArtisanIcon() -> QIcon:
         basedir = os.path.join(getResourcePath(),'Icons')
+        ## TILAU ## 
         if sys.platform.startswith('darwin'):
             p = os.path.join(basedir, 'tilauscope.png')
         else:

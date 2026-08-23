@@ -6,15 +6,22 @@
 #   Marko Luther <marko.luther@gmx.net> (maintainer) and all contributors
 #
 # LICENSE
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 2 of the License, or
-# version 3 of the License, or (at your option) any later version. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public License for more details.
-
+# This program or module is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# MAINTAINER
+# Marko Luther, 2026
+#
 # AUTHOR
 # Marko Luther, 2024
 
@@ -33,7 +40,7 @@ from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from artisanlib.ble_port import ClientBLE
 from artisanlib.async_comm import AsyncComm, AsyncIterable, IteratorReader
 from artisanlib.scale import Scale, ScaleSpecs, STATE_ACTION
-from artisanlib.util import float2float
+from artisanlib.util import float2float, round_base
 from artisanlib.atypes import SerialSettings
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -219,15 +226,24 @@ SERIAL_STOPBITS:Final[int] = 1
 SERIAL_PARITY:Final[str] = 'N'
 SERIAL_TIMEOUT:Final[float] = 0.1  # short read timeout so the thread can poll-and-exit
 
+
 #################
 # Acaia Protocol
-
 
 # Acaia message constants
 HEADER1:Final[bytes]      = b'\xef'
 HEADER2:Final[bytes]      = b'\xdd'
 
 HEARTBEAT_FREQUENCY:Final[int] = 5 # send the heartbeat every 5 sec
+
+RELAY_STREAMING:Final[bool] = False # if set, configure Acaia relay (and COSMO) scales to streaming mode, otherwise they work in non-streaming mode reporting only weight changes
+WEIGHT_ROUNDING:Final[bool] = False # if set, received weights are rounded to appropriate values based on scales readability
+# rounding for scales with readability>1 (to 4g), no rounding otherwise
+
+
+# ISP versions -> device model (CSMO series)
+ISP_VERSION_CSMO_L = 35      # CSMO-L, large scale (100kg)
+ISP_VERSION_CSMO_S = 36      # CSMO-S, small scale (10kg)
 
 # Colors
 BLACK:Final[Color] = (0,0,0)
@@ -245,8 +261,8 @@ BROWN:Final[Color] = (255,60,0)
 class AcaiaProtocol:
 
     __slots__ = [ '_send', '_weight_changed_handler', '_battery_changed_handler', '_tare_pressed_handler', '_logging', 'stable_only',
-            'decimals', 'heartbeat_frequency', 'scale_class', 'id_sent', 'fast_notifications_sent', 'slow_notifications_sent',
-            'weight', 'stable_weight', 'battery', 'firmware', 'unit', 'max_weight', 'readability', 'auto_off_timer', 'has_leds' ]
+            'decimals', 'heartbeat_frequency', 'scale_class', 'id_sent', 'info_msg_received', 'device_identified', 'fast_notifications_sent', 'slow_notifications_sent',
+            'weight', 'stable_weight', 'battery', 'isp_version', 'firmware', 'unit', 'max_weight', 'readability', 'repeatability', 'auto_off_timer', 'has_leds' ]
 
 
     def __init__(self,
@@ -254,7 +270,7 @@ class AcaiaProtocol:
             weight_changed_handler:Callable[[float,bool], None],
             battery_changed_handler: Callable[[int], None],
             tare_pressed_handler: Callable[[], None],
-            stable_only:bool=True, # if True only stable weight readings are reported by weight_changed_signal
+            stable_only:bool=False, # if True only stable weight readings are reported by weight_changed_signal
             decimals:int=1) -> None: # number of significant decimals (0, 1, ..) of the weight signal
         super().__init__()
 
@@ -276,6 +292,8 @@ class AcaiaProtocol:
         # Protocol parser variables
 
         self.id_sent:bool = False # ID is sent once after first data is received from scale
+        self.info_msg_received:bool = False # set once the INFO message is receive
+        self.device_identified:bool = False # set if device is properly identified from BLE or handshake information
         self.fast_notifications_sent:bool = False # after connect we switch fast notification on to receive first reading fast
         self.slow_notifications_sent:bool = False # after first reading is received we step down to slow readings again
 
@@ -283,10 +301,12 @@ class AcaiaProtocol:
         self.weight:float|None = None
         self.stable_weight:float|None = None
         self.battery:int|None = None
+        self.isp_version:int|None = None
         self.firmware:tuple[int,int,int]|None = None # on connect this is set to a triple of integers, (major, minor, patch)-version
         self.unit:int = UNIT.G
         self.max_weight:int = 0 # always in g
         self.readability:float = 0 # scale accuracy; minimal weight steps
+        self.repeatability:float = 0 # scale precision
         self.auto_off_timer:AUTO_OFF_TIMER = AUTO_OFF_TIMER.AUTO_SLEEP_OFF
         self.has_leds:bool = False # scale supports LED commands
 
@@ -300,6 +320,9 @@ class AcaiaProtocol:
     def get_readability(self) -> float:
         return self.readability
 
+    def get_repeatability(self) -> float:
+        return self.readability
+
     def get_heartbeat_frequency(self) -> int:
         return self.heartbeat_frequency
 
@@ -310,95 +333,147 @@ class AcaiaProtocol:
     def setLogging(self, b:bool) -> None:
         self._logging = b
 
-    # configure for the specific scale on connect
-    def on_connect(self, connected_service_UUID:str|None, connected_device_name:str|None) -> None:
+    def on_connect(self) -> None:
         self.reset_parser()
 
-        self.has_leds = False
-        if connected_service_UUID == ACAIA_LEGACY_SERVICE_UUID:
-            _log.debug('connected to Acaia Legacy Scale (%s)', connected_device_name)
-            self.scale_class = SCALE_CLASS.LEGACY
-            self.set_heartbeat_frequency(HEARTBEAT_FREQUENCY) # enable heartbeat
-
-            if connected_device_name is not None:
-                # Acaia Pearl/Lunar (Legacy)
-                self.max_weight = 2000
+    # configure for the specific scale based on the available ISP version received
+    def identify_device(self) -> None:
+        if not self.device_identified:
+            if self.isp_version == ISP_VERSION_CSMO_L:
+                # Acaia Cosmo 100kg
+                self.max_weight = 100*1000
+                self.readability = 1
+                self.repeatability = 20
+                self.has_leds = True
+                # COSMO is still a relay scale
+                self.scale_class = SCALE_CLASS.RELAY
+                self.set_heartbeat_frequency(0) # disable heartbeat
+                _log.info('connected to Acaia Cosmo 100kg (serial)')
+            #elif self.isp_version == ISP_VERSION_CSMO_S:
+            else:
+                # fallback to COSMO-10
+                self.max_weight = 10*1000
                 self.readability = 0.1
+                self.repeatability = 1
+                self.has_leds = True
+                # COSMO is still a relay scale
+                self.scale_class = SCALE_CLASS.RELAY
+                self.set_heartbeat_frequency(0) # disable heartbeat
+                _log.info('connected to Acaia Cosmo 10kg (serial)')
+        self.device_identified = True
 
-        elif connected_service_UUID == ACAIA_RELAY_SERVICE_UUID:
-            _log.debug('connected to Acaia Relay Scale (%s)', connected_device_name)
-            self.scale_class = SCALE_CLASS.RELAY
-            self.set_heartbeat_frequency(0) # disable heartbeat
+    # configure for the specific scale based on the avaulable BLE information
+    def identify_ble_device(self, connected_service_UUID:str|None, connected_device_name:str|None) -> None:
 
-            if connected_device_name is not None:
-                if connected_device_name.startswith('UMBRA'):
-                    # Acaia Umbra
-                    self.max_weight = 1000
-                    self.readability = 0.1
-                elif connected_device_name.startswith('COSMO-100'):
-                    # Acaia Cosmo 100kg
-                    self.max_weight = 100*1000
-                    self.readability = 10
-                    self.has_leds = True
-                elif connected_device_name.startswith('COSMO-10'):
-                    self.max_weight = 10*1000
-                    self.readability = 0.1
-                    self.has_leds = True
-                elif connected_device_name.startswith('ACAIAS-P'):
-                    self.max_weight = 500
-                    self.readability = 0.001
-                    self.has_leds = False
-                else:
-                    self.max_weight = 1000
-                    self.readability = 0.1
-                self.fast_notifications()
-                self.clear_fast_notifications_sent()
+        if not self.device_identified:
 
-        elif connected_service_UUID == ACAIA_SERVICE_UUID:
-            _log.debug('connected to Acaia Scale (%s)', connected_device_name)
-            self.scale_class = SCALE_CLASS.MODERN
-            # in principle the heartbeat on those newer scales with newer firmwares is not needed
-            # but it seems to be needed at least on Pearl 2021 as in some cases (1 of 5) the scale stops sending ID events on connect
-            # and thus never gets configured (slow/fast notifications) and thus sends weight messages
-            # to be on the safe side we keep sending the heartbeat for those scales
-            self.set_heartbeat_frequency(HEARTBEAT_FREQUENCY)
+            self.has_leds = False
+            if connected_service_UUID == ACAIA_LEGACY_SERVICE_UUID:
+                self.scale_class = SCALE_CLASS.LEGACY
+                self.set_heartbeat_frequency(HEARTBEAT_FREQUENCY) # enable heartbeat
 
-            if connected_device_name is not None:
-                if connected_device_name.startswith(('PYXIS', 'CINCO')):
-                    # Acaia Pearl (2021)
-                    self.max_weight = 500
-                    self.readability = 0.01
-                elif connected_device_name.startswith(('PEARL-', 'LUNAR-')):
-                    # Acaia Pearl (2021)
+                if connected_device_name is not None:
+                    # Acaia Pearl/Lunar (Legacy)
                     self.max_weight = 2000
                     self.readability = 0.1
-                elif connected_device_name.startswith('COSMO-100'):
-                    # Acaia Cosmo 100kg
-                    self.max_weight = 100*1000
-                    self.readability = 10
-                    self.has_leds = True
-                    # COSMO is still a relay scale
-                    self.scale_class = SCALE_CLASS.RELAY
-                    self.set_heartbeat_frequency(0) # disable heartbeat
-                elif connected_device_name.startswith('COSMO-10'):
-                    self.max_weight = 10*1000
-                    self.readability = 0.1
-                    self.has_leds = True
-                    # COSMO is still a relay scale
-                    self.scale_class = SCALE_CLASS.RELAY
-                    self.set_heartbeat_frequency(0) # disable heartbeat
+                    self.repeatability = 0.1
+                    _log.info('connected to Acaia Pearl/Lunar (Legacy): %s', connected_device_name)
                 else:
-                    # Acaia Lunar (PEARLS)
-                    self.max_weight = 3000
-                    self.readability = 0.1
-        elif connected_service_UUID is None: # serial COSMO
-            # Acaia Cosmo 10kg or 100kg
-            self.max_weight = 100*1000 # wrong for COSMO-10, but not essentially used
-            self.readability = 10
-            self.has_leds = True
-            # COSMO is still a relay scale
-            self.scale_class = SCALE_CLASS.RELAY
-            self.set_heartbeat_frequency(0) # disable heartbeat
+                    _log.info('connected to Acaia Legacy: %s', connected_device_name)
+
+            elif connected_service_UUID == ACAIA_RELAY_SERVICE_UUID:
+                self.scale_class = SCALE_CLASS.RELAY
+                self.set_heartbeat_frequency(0) # disable heartbeat
+
+                if connected_device_name is not None:
+                    if connected_device_name.startswith('UMBRA'):
+                        # Acaia Umbra
+                        self.max_weight = 1000
+                        self.readability = 0.1
+                        self.repeatability = 0.1
+                        _log.info('connected to Acaia Umbra: %s', connected_device_name)
+                    elif connected_device_name.startswith('COSMO-100'):
+                        # Acaia Cosmo 100kg (proto)
+                        self.max_weight = 100*1000
+                        self.readability = 1
+                        self.repeatability = 20
+                        self.has_leds = True
+                        _log.info('connected to Acaia COSMO-100 (proto): %s', connected_device_name)
+                    elif connected_device_name.startswith('COSMO-10'):
+                        # Acaia Cosmo 10kg (proto)
+                        self.max_weight = 10*1000
+                        self.readability = 0.1
+                        self.repeatability = 1
+                        self.has_leds = True
+                        _log.info('connected to Acaia COSMO-10 (proto): %s', connected_device_name)
+                    elif connected_device_name.startswith('ACAIAS-P'):
+                        # Acaia Pyxis Black 2025
+                        self.max_weight = 500
+                        self.readability = 0.01 # configurable to 0.05g / 0.001g
+                        self.repeatability = 0.01 # configurable to 0.05g
+                        self.has_leds = False
+                        _log.info('connected to Acaia Pyxis Black 2025: %s', connected_device_name)
+                    else:
+                        self.max_weight = 1000
+                        self.readability = 0.1
+                        self.repeatability = 0.1
+                        _log.info('connected to Acaia Relay: %s', connected_device_name)
+                    self.fast_notifications()
+                    self.clear_fast_notifications_sent()
+
+            elif connected_service_UUID == ACAIA_SERVICE_UUID:
+                self.scale_class = SCALE_CLASS.MODERN
+                # in principle the heartbeat on those newer scales with newer firmwares is not needed
+                # but it seems to be needed at least on Pearl 2021 as in some cases (1 of 5) the scale stops sending ID events on connect
+                # and thus never gets configured (slow/fast notifications) and thus sends weight messages
+                # to be on the safe side we keep sending the heartbeat for those scales
+                self.set_heartbeat_frequency(HEARTBEAT_FREQUENCY)
+
+                if connected_device_name is not None:
+                    if connected_device_name.startswith(('PYXIS', 'CINCO')):
+                        # Acaia Pyxis / Cinco (2021)
+                        self.max_weight = 500
+                        self.readability = 0.01 # configurable to 0.05g / 0.001g
+                        self.repeatability = 0.01 # configurable to 0.05g
+                        _log.info('connected to Acaia Pyxis / Cinco (2021): %s', connected_device_name)
+                    elif connected_device_name.startswith(('PEARL-', 'LUNAR-')):
+                        # Acaia Pearl (2021)
+                        self.max_weight = 2000
+                        self.readability = 0.1 # can be configured to 0.01
+                        self.repeatability = 0.1
+                        _log.info('connected to Acaia Pearl (2021): %s', connected_device_name)
+                    elif connected_device_name.startswith('COSMO-100'):
+                        # Acaia Cosmo 100kg
+                        self.max_weight = 100*1000
+                        self.readability = 1
+                        self.repeatability = 20
+                        self.has_leds = True
+                        # COSMO is still a relay scale
+                        self.scale_class = SCALE_CLASS.RELAY
+                        self.set_heartbeat_frequency(0) # disable heartbeat
+                        self.fast_notifications()
+                        self.clear_fast_notifications_sent()
+                        _log.info('connected to Acaia Cosmo 100kg (BLE): %s', connected_device_name)
+                    elif connected_device_name.startswith('COSMO-10'):
+                        # Acaia Cosmo 10kg
+                        self.max_weight = 10*1000
+                        self.readability = 0.1
+                        self.repeatability = 1
+                        self.has_leds = True
+                        # COSMO is still a relay scale
+                        self.scale_class = SCALE_CLASS.RELAY
+                        self.set_heartbeat_frequency(0) # disable heartbeat
+                        self.fast_notifications()
+                        self.clear_fast_notifications_sent()
+                        _log.info('connected to Acaia Cosmo 10kg (BLE): %s', connected_device_name)
+                    else:
+                        # Acaia Lunar (PEARLS)
+                        self.max_weight = 3000
+                        self.readability = 0.1
+                        self.repeatability = 0.1
+                        _log.info('connected to Acaia Lunar (PEARLS): %s', connected_device_name)
+
+        self.device_identified = True
 
 
 
@@ -407,42 +482,49 @@ class AcaiaProtocol:
 
     def reset_parser(self) -> None:
         self.id_sent = False
+        self.info_msg_received = False
+        self.device_identified = False
         self.fast_notifications_sent = False
         self.slow_notifications_sent = False
         self.weight = None
         self.stable_weight = None
         self.battery = None
+        self.isp_version = None
         self.firmware = None
         self.unit = UNIT.G
         self.max_weight = 0
         self.readability = 0
+        self.repeatability = 0
 
 
     ##
 
 
     def parse_info(self, data:bytes) -> None:
-        _log.debug('INFO MSG: %s', data)
+        if self._logging:
+            _log.debug('INFO MSG: %s', data)
+        else:
+            _log.debug('INFO MSG received')
+
+        if len(data)>2:
+            self.isp_version = data[2]
+            if self._logging:
+                _log.debug('isp_version: %s', self.isp_version)
 
         if len(data)>5:
-            self.firmware = (data[3],data[4],data[5])
-            _log.debug('firmware: %s.%s.%s', self.firmware[0], self.firmware[1], f'{self.firmware[2]:>03}')
+            self.firmware = (data[3],data[4],data[5]) # main/sub/add
+            if self._logging:
+                _log.debug('firmware: %s.%s.%s', self.firmware[0], self.firmware[1], f'{self.firmware[2]:>03}')
+
+            # data[2] ISP_VERSION
+#        if len(data)>6:
+#            _log.debug('password set: %s', data[6])
+
 
     def decode_weight(self, payload:bytes) -> tuple[float|None, bool]:
         try:
-            #big_endian = (payload[5] & 0x08) == 0x08 # bit 3 of byte 5 is set if weight is in big endian
-            big_endian = False
-
-            value:float = 0
-            if big_endian:
-                # first 4 bytes encode the weight as unsigned long (big endian)
-                value = ((payload[0] & 0xff) << 24) | \
-                        ((payload[1] & 0xff) << 16) | \
-                        ((payload[2] & 0xff) << 8) | \
-                        (payload[3] & 0xff)
-            else:
-                # first 4 bytes encode the weight as unsigned long (little endian)
-                value = ((payload[3] & 0xff) << 24) + \
+            # first 4 bytes encode the weight as unsigned long (little endian)
+            value:float = ((payload[3] & 0xff) << 24) + \
                     ((payload[2] & 0xff) << 16) + ((payload[1] & 0xff) << 8) + (payload[0] & 0xff)
 
             factor = payload[4]
@@ -464,9 +546,6 @@ class AcaiaProtocol:
                 elif self.unit == UNIT.OZ:
                     value = value * 28.3495 # scale set to oz displays 4 decimals
 
-#            if big_endian:
-#                stable = (payload[5] & 0x01) == 0x01
-#            else:
             stable = (payload[5] & 0x01) != 0x01
 
             # if 2nd bit of payload[5] is set, the reading is negative
@@ -477,21 +556,23 @@ class AcaiaProtocol:
             return None, False
 
     def update_weight(self, value:float|None, stable:bool|None = False) -> None:
-#        _log.debug('PRINT update_weight(%s,%s)', value, stable)
+        if self._logging:
+            _log.debug('update_weight(%s,%s)', value, stable)
         if value is not None and (not self.stable_only or stable):
+            if WEIGHT_ROUNDING and self.repeatability >= 1:
+                # round to full 4g
+                value = round_base(value, 4)
+                ## round to full 10g
+                ##value = round(value, -1)
             # convert the weight in g delivered with one decimal to an int
             value_rounded:float = float2float(value, self.decimals)
             if stable and value_rounded != self.stable_weight:
-                # if value is fresh and reading is stable (if self.stable_only is set)
+                # if value is fresh and reading is stable
+                self._weight_changed_handler(value_rounded, True)
                 self.stable_weight = value_rounded
-                self.weight = self.weight # we also update the last weight value to prevent it to be send again
-#                _log.debug('PRINT new stable weight: %s', self.stable_weight)
-                self._weight_changed_handler(self.stable_weight, bool(stable))
-            elif not stable and value_rounded != self.weight:
+            elif not stable:
+                self._weight_changed_handler(value_rounded, False)
                 self.stable_weight = None # non-stable weights invalidate the last stable weight to ensure a sequence of equal stable weights is reported if interleaved with non-stable weights
-                self.weight = value_rounded
-#                _log.debug('PRINT new weight: %s', self.weight)
-                self._weight_changed_handler(self.weight, bool(stable))
 
     # returns length of consumed data or -1 on error
     def parse_weight_event(self, payload:bytes) -> int:
@@ -526,7 +607,8 @@ class AcaiaProtocol:
     def parse_ack_event(self, payload:bytes) -> int:
         if len(payload) < EVENT_LEN.ACK:
             return -1
-#        _log.debug('ACK EVENT')
+        if self._logging:
+            _log.debug('ACK EVENT')
         consumed_extra = self.parse_extra_weight_time_data(payload[1:])
         return EVENT_LEN.ACK + consumed_extra
 
@@ -607,7 +689,7 @@ class AcaiaProtocol:
             val = -1
             if event == EVENT.WEIGHT:
                 val = self.parse_weight_event(payload)
-                if self.fast_notifications_sent and not self.slow_notifications_sent:
+                if self.fast_notifications_sent and not self.slow_notifications_sent and self.stable_weight is not None: # ensure that we turn slow only after receiving a stable weight
                     # after receiving the first weight quick,
                     # we slow down the weight notificatinos
                     self.slow_notifications()
@@ -637,7 +719,8 @@ class AcaiaProtocol:
     ##
 
     def parse_status(self, payload:bytes) -> None:
-#        _log.debug('STATUS')
+        if self._logging:
+            _log.debug('STATUS')
 
         # byte 0: message len
 
@@ -751,9 +834,12 @@ class AcaiaProtocol:
         try:
             if msg_type == CMD.INFO_A:
                 self.parse_info(data)
-                self.send_ID() # send after very INFO_A as handshake confirmation
-            elif msg_type == CMD.STATUS_A:
+                self.info_msg_received = True
+                if not self.id_sent:
+                    self.send_ID() # send after every INFO_A as handshake confirmation
+            elif msg_type == CMD.STATUS_A and self.info_msg_received:
                 self.parse_status(data)
+                self.identify_device()
             elif msg_type == CMD.EVENT_SA:
                 self.parse_scale_events(data)
             #
@@ -765,9 +851,9 @@ class AcaiaProtocol:
                 # Note: this event is needed to have the connected scale start to send weight messages even on relay scales which ignore the settings
                 self.fast_notifications()
 
-            if not self.id_sent:
-                # send ID only once per connect to initiate the handshake
-                self.send_ID()
+#            if not self.id_sent:
+#                # send ID only once per connect to initiate the handshake, but never before receiving the INFO_A message
+#                self.send_ID()
         except Exception as e: # pylint: disable=broad-except
             _log.exception(e)
             _log.debug('data: %s',data)
@@ -910,10 +996,10 @@ class AcaiaProtocol:
     # handshaking
     def send_ID(self) -> None:
         _log.debug('send ID')
+        self.id_sent = True
         self.send_message(MSG.IDENTIFY,b'\x2d\x2d\x2d\x2d\x2d\x2d\x2d\x2d\x2d\x2d\x2d\x2d\x2d\x2d\x2d')
         # Old-style id message (for scales with just one characteristic for both, notify and write (e.g. Pyxis)
         # self.send_message(MSG.IDENTIFY,b'\x30\x31\x32\x33\x34\x35\x36\x37\x38\x39\x30\x31\x32\x33\x34')
-        self.id_sent = True
 
     # NOTE: notifications configuration not supported by Umbra and newer scales!
 
@@ -933,7 +1019,7 @@ class AcaiaProtocol:
 
     def slow_notifications(self) -> None:
         _log.debug('slow notifications: %s', self.scale_class)
-        if self.scale_class == SCALE_CLASS.RELAY:
+        if self.scale_class == SCALE_CLASS.RELAY and not RELAY_STREAMING:
             self.send_event(
                 bytes([ # pairs of key/setting
                         0,  # weight id
@@ -961,7 +1047,7 @@ class AcaiaProtocol:
         self.send_event(
             bytes([ # pairs of key/setting
                     0,  # weight id
-                    1,  #i f self.scale_class == SCALE_CLASS.RELAY # 0: only weight changes are reported; 1: streaming weight changes at 1/10
+                    1,  #if self.scale_class == SCALE_CLASS.RELAY # 0: only weight changes are reported; 1: streaming weight changes at 1/10
                         # 0, 1, 3, 5, 7, 15, 31, 63, 127  # weight argument (speed of notifications in 1/10 sec) # larger values => slower updates
                         # 5 or 7 seems to be good values for this app in Artisan
 #                    1,   # battery id
@@ -1078,6 +1164,9 @@ class AcaiaBLE(ClientBLE): # pyright: ignore [reportGeneralTypeIssues] # Argumen
     def get_readability(self) -> float:
         return self.protocol.get_readability()
 
+    def get_repeatability(self) -> float:
+        return self.protocol.get_repeatability()
+
     ###
 
     def send_message(self, payload:bytes) -> None:
@@ -1099,8 +1188,8 @@ class AcaiaBLE(ClientBLE): # pyright: ignore [reportGeneralTypeIssues] # Argumen
             asyncio.run_coroutine_threadsafe(
                     self._read_queue.put(bytes(data)),
                     self._async_loop_thread.loop)
-            if self._logging:
-                _log.debug('received: %s',data)
+#            if self._logging:
+#                _log.debug('received: %s',data)
 
     def send_signal(self, action:STATE_ACTION) -> None:
         self.protocol.send_signal(action)
@@ -1139,7 +1228,8 @@ class AcaiaBLE(ClientBLE): # pyright: ignore [reportGeneralTypeIssues] # Argumen
     @override
     def on_connect(self) -> None:
         connected_service_UUID, connected_device_name = self.connected()
-        self.protocol.on_connect(connected_service_UUID, connected_device_name)
+        self.protocol.on_connect() # initialize protocol
+        self.protocol.identify_ble_device(connected_service_UUID, connected_device_name) # configure device based on the available BLE information
         # configure heartbeat
         self.set_heartbeat(self.protocol.get_heartbeat_frequency()) # send keep-alive heartbeat as configured by protocol.on_connect
         # report connection
@@ -1157,7 +1247,7 @@ class AcaiaBLE(ClientBLE): # pyright: ignore [reportGeneralTypeIssues] # Argumen
     # keep alive should be send every 3-5sec
     @override
     def heartbeat(self) -> None:
-        _log.debug('send heartbeat')
+#        _log.debug('send heartbeat')
         self.protocol.send_message(MSG.SYSTEM, b'\x02\x00')
 
 
@@ -1203,6 +1293,9 @@ class AcaiaAsync(AsyncComm):
     def get_readability(self) -> float:
         return self.protocol.get_readability()
 
+    def get_repeatability(self) -> float:
+        return self.protocol.get_repeatability()
+
     ###
 
     def send_message(self, payload:bytes) -> None:
@@ -1227,7 +1320,7 @@ class AcaiaAsync(AsyncComm):
     ###
 
     def connected_handler(self) -> None:
-        self.protocol.on_connect(None, None)
+        self.protocol.on_connect() # initialize protocol
         if self.outer_connected_handler is not None:
             self.outer_connected_handler()
 
@@ -1318,6 +1411,10 @@ class AcaiaBluetooth(Acaia): # pyright: ignore [reportGeneralTypeIssues] # Argum
     @override
     def readability(self) -> float:
         return self.acaia.get_readability()
+
+    @override
+    def repeatability(self) -> float:
+        return self.acaia.get_repeatability()
 
     # signal state actions to the user
     @override
@@ -1437,6 +1534,12 @@ class AcaiaSerial(Acaia): # pyright: ignore [reportGeneralTypeIssues] # Argument
     def readability(self) -> float:
         if self.acaia is not None:
             return self.acaia.get_readability()
+        return 1
+
+    @override
+    def repeatability(self) -> float:
+        if self.acaia is not None:
+            return self.acaia.get_repeatability()
         return 1
 
     # signal state actions to the user

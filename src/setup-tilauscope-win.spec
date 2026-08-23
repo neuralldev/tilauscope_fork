@@ -197,6 +197,7 @@ a = Analysis(['tilauscope.py'],
              datas=datas, # + copy_metadata('tzdata')
              hookspath=[],
              runtime_hooks=[r'pyinstaller_hooks\rthooks\pyi_rth_mplconfig.py'], # overwrites default MPL runtime hook which keeps loading font cache from (new) temp directory
+             # In-progress UI redesign, not published, excluded from distributed binaries.
              excludes=['pkg_resources', 'setuptools'], ## TILAU ## parity with macOS spec: keep pkg_resources/setuptools out of the frozen bundle (babel imports them optionally); avoids DeprecationWarning + startup scan
              hiddenimports=hiddenimports_list,
              win_no_prefer_redirects=False,
@@ -324,7 +325,7 @@ for fn in [
     r'includes\mstile-310x310.png',
     r'includes\safari-pinned-tab.svg',
     r'includes\site.webmanifest',
-    r'includes\logging.yaml',
+    r'includes\logging.json',
     r'includes\tilauscope_public_key.pem',
     ]:
     copy_file(SOURCE / fn, TARGETSTR)

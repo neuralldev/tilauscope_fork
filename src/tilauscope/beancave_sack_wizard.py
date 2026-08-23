@@ -1719,6 +1719,9 @@ class NewSackWizard(QDialog):
                 if sack_id:
                     bean.sacks = [sack_id]
                 host.cave.green_beans.append(bean)
+                if not hasattr(host, 'uuidmap'):
+                    host.uuidmap = {}
+                host.uuidmap[bean.uuid] = bean
                 target_uuid = bean.uuid
                 # explicit operator choice: the previous harvest is done
                 if mode == "newcrop" and self.nc_retire_chk.isChecked():

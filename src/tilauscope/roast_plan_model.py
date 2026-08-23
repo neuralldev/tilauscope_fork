@@ -29,6 +29,8 @@ from tilauscope.tilauscope_types import (AGTRON_SCALES, AgtronScale, ProbeDeviat
                                           get_ror_ideal_band, to_agtron, ROASTING_BASIC_BASE, clean_delta_bt, estimate_ror_dt, find_turning_point_index,
                                           which_roast_phase, find_flicks_crashes)
 from tilauscope.roasters import RoasterContext
+from tilauscope.alogmanager import (AlogIndex, AlogMetadata, burner_events,
+                                    phase_heater)
 from tilauscope import text_shaping
 from tilauscope.bean_energy import FloorProfile
 from tilauscope.roast_plan_snapshot import (
@@ -834,10 +836,130 @@ class TilauScopeRoastPlan:
         # DROP, when no regeneration can happen anymore.
         self._history_cache: dict[tuple, dict | None] = {}
 
+        # Corpus index snapshot, resolved lazily and held for this instance's
+        # lifetime. It is the pre-filter for every historical scan below.
+        self._index_snapshot: "dict[str, AlogMetadata] | None" = None
+
     def _list_alogs(self):
         if not self.alog_directory or not Path(self.alog_directory).is_dir():
             return []
         return [f for f in Path(self.alog_directory).iterdir() if f.is_file() and f.suffix == '.alog']
+
+    # ── Corpus index ─────────────────────────────────────────────────────────
+    # Every quality filter below reads scalars the index already holds (green
+    # weight, charge BT, TP temps, ambient, learning flags, bean field). Testing
+    # them BEFORE opening the profile is what keeps plan generation off the
+    # 240 KB-per-log parse path: only the handful of logs that survive is read.
+
+    def _index_records(self) -> "dict[str, AlogMetadata]":
+        """Index snapshot for the current alog directory. Never blocks on disk."""
+        if self._index_snapshot is None:
+            try:
+                self._index_snapshot = AlogIndex.instance().records(Path(self.alog_directory))
+            except Exception as exc:  # noqa: BLE001 — no index is not an error
+                _logd.debug(f"RoastPlan: corpus index unavailable ({exc})")
+                self._index_snapshot = {}
+        return self._index_snapshot
+
+    def _index_meta(self, log) -> "AlogMetadata | None":
+        return self._index_records().get(str(log))
+
+    @staticmethod
+    def _meta_charge_bt_c(meta: "AlogMetadata") -> float:
+        """Charge BT normalised to °C — computed values carry the LOG's unit."""
+        raw = float(meta.computed.get("CHARGE_BT", 0.0) or 0.0)
+        return fromFtoCstrict(raw) if (meta.mode == "F" and raw > 0.0) else raw
+
+    @staticmethod
+    def _meta_learning_eligible(meta: "AlogMetadata") -> bool:
+        """Index-side mirror of _learning_log_is_eligible()."""
+        if meta.simulated or meta.exclude_learning:
+            return False
+        try:
+            temp = float(meta.computed.get("ambient_temperature", 0.0) or 0.0)
+            humidity = float(meta.computed.get("ambient_humidity", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            return False
+        return -10.0 <= temp <= 60.0 and 0.0 < humidity <= 100.0 and temp != 0.0
+
+    def _prefilter_logs(self, logs, *, charge_weight_g: float = 0.0,
+                        weight_tol_ratio: "float | None" = None,
+                        weight_tol_abs: "float | None" = None,
+                        require_eligible: bool = True,
+                        process_needle: str = "") -> list:
+        """Drop the logs the in-loop filters would reject anyway.
+
+        Conservative by construction: a log with no index entry is KEPT, so the
+        full path stays authoritative and a stale or missing index can only cost
+        time, never change which roasts the plan learns from.
+        """
+        records = self._index_records()
+        if not records:
+            return list(logs)
+        _is_radiant = (self._roaster_ctx.is_radiant_electric
+                       if self._roaster_ctx is not None else None)
+        kept = []
+        for log in logs:
+            meta = records.get(str(log))
+            if meta is None:
+                kept.append(log)
+                continue
+            if require_eligible and not self._meta_learning_eligible(meta):
+                continue
+            charge_bt_c = self._meta_charge_bt_c(meta)
+            if 0.0 < charge_bt_c < 150.0:
+                continue
+            if process_needle and process_needle not in meta.bean_field.lower():
+                continue
+            if charge_weight_g > 0.0 and (weight_tol_ratio is not None
+                                          or weight_tol_abs is not None):
+                if meta.weight_in_g <= 0.0:
+                    continue
+                delta = abs(meta.weight_in_g - charge_weight_g)
+                if weight_tol_abs is not None and delta > weight_tol_abs:
+                    continue
+                if (weight_tol_ratio is not None
+                        and delta / charge_weight_g > weight_tol_ratio):
+                    continue
+            if _is_radiant is not None:
+                tp_bt = float(meta.computed.get("TP_BT", 0.0) or 0.0)
+                tp_et = float(meta.computed.get("TP_ET", 0.0) or 0.0)
+                if tp_bt > 0.0 and tp_et > 0.0:
+                    tp_delta = (tp_et - tp_bt) / (1.8 if meta.mode == "F" else 1.0)
+                    if _is_radiant and tp_delta < -5.0:
+                        continue
+                    if not _is_radiant and tp_delta > 5.0:
+                        continue
+            kept.append(log)
+        return kept
+
+    def _load_phase_times(self, file_name):
+        """Load a profile and derive its phase_times — no RoR, no smoothing.
+
+        _get_delta_bt() computes the whole smoothed RoR series; callers that
+        only need the phase boundaries (the cohort burner scan) paid that for
+        nothing. Sets self.lastprofiledata exactly like _get_delta_bt does, so
+        _extract_phase_heater() reads the same profile afterwards.
+        """
+        try:
+            with open(file=Path(self.alog_directory) / file_name, encoding="utf-8") as f:
+                self.lastprofiledata = cast('ProfileData', ast.literal_eval(f.read()))
+        except (OSError, ValueError, SyntaxError) as exc:
+            _logd.debug(f"_load_phase_times: unreadable {file_name} ({exc})")
+            return None
+        ti = self.lastprofiledata.get("timeindex", [])
+        tx = self.lastprofiledata.get("timex", [])
+        if (len(ti) == 0 or not tx or ti[RoastingPhase.CHARGE] == -1
+                or ti[RoastingPhase.DROP] == -1):
+            return None
+        if ti[RoastingPhase.DROP] <= ti[RoastingPhase.CHARGE]:
+            return None  # zero-length roast — _get_delta_bt returns empty slices here too
+        charge_ts = tx[ti[RoastingPhase.CHARGE]]
+        return {
+            "dry_end":  tx[ti[RoastingPhase.DRYEND]]  - charge_ts if ti[RoastingPhase.DRYEND]  > 0 else None,
+            "fc_start": tx[ti[RoastingPhase.FCSTART]] - charge_ts if ti[RoastingPhase.FCSTART] > 0 else None,
+            "drop":     tx[ti[RoastingPhase.DROP]]    - charge_ts,
+        }
 
     # Thin delegators onto the shared tilauscope_types implementations (single
     # source with the BeanCave coach) — kept as methods for the existing test
@@ -978,8 +1100,17 @@ class TilauScopeRoastPlan:
         if not bean_uuid:
             return []
         needle = bean_uuid.lower()
+        records = self._index_records()
         matches = []
         for log in historical_logs:
+            meta = records.get(str(log))
+            if meta is not None:
+                # The index already carries the uuid parsed out of the bean
+                # field; the substring scan below is the fallback for a log the
+                # index has not caught up with yet.
+                if meta.uuid.lower() == needle or needle in meta.bean_field.lower():
+                    matches.append(log)
+                continue
             try:
                 with open(log, encoding="utf-8") as f:
                     if needle in f.read().lower():
@@ -1029,31 +1160,11 @@ class TilauScopeRoastPlan:
     def _burner_events(self, data: dict, charge_ts: float) -> "list[tuple[float, float]]":
         """(t depuis charge, %) des seuls événements brûleur, triés par temps.
 
-        Doctrine Artisan : specialevents[k] est un INDEX dans timex (pas des
-        secondes) ; specialeventsvalue[k] est la valeur interne (8.0 → 70 %),
-        décodée par events_internal_to_external_value ; le brûleur est l'etype 3.
-
-        Centralisé : plusieurs lectures de la main de l'opérateur en dépendent
-        (valeur tenue par phase, descente avant le DRY END). Les faire chacune
-        de leur côté, c'est se garantir qu'elles divergeront.
+        Délégation vers alogmanager.burner_events : l'index du corpus lit la
+        main de l'opérateur avec exactement ce code. Deux lectures séparées,
+        c'est se garantir qu'elles divergeront.
         """
-        evt_idx  = data.get("specialevents", []) or []
-        evt_type = data.get("specialeventstype", []) or []
-        evt_val  = data.get("specialeventsvalue", []) or []
-        tx = data.get("timex", []) or []
-        out: list[tuple[float, float]] = []
-        for k in range(min(len(evt_idx), len(evt_type), len(evt_val))):
-            if int(evt_type[k]) != self._BURNER_ETYPE:
-                continue
-            i = int(evt_idx[k])
-            if not (0 <= i < len(tx)):
-                continue
-            pct = float(events_internal_to_external_value(float(evt_val[k])))
-            if not (0.0 <= pct <= 100.0):   # rejette l'encodage brut / aberrations
-                continue
-            out.append((float(tx[i]) - charge_ts, pct))
-        out.sort(key=lambda e: e[0])
-        return out
+        return burner_events(data, charge_ts)
 
     ## Bruit de charge : les premières secondes portent la montée du réglage
     ## initial (65→90→75 en 2 s), qui n'est pas une conduite de roast.
@@ -1135,46 +1246,9 @@ class TilauScopeRoastPlan:
         avant le milieu de phase (report du réglage de charge inclus). None par
         phase si aucun événement burner exploitable ou phase absente.
         """
-        try:
-            data = self.lastprofiledata
-            evt_idx  = data.get("specialevents", []) or []
-            ti = data.get("timeindex", []) or []
-            tx = data.get("timex", []) or []
-            if not (evt_idx and ti and tx) or ti[RoastingPhase.CHARGE] < 0:
-                return None, None, None, None, None
-            charge_ts = float(tx[ti[RoastingPhase.CHARGE]])
-            burner = self._burner_events(data, charge_ts)
-            if not burner:
-                return None, None, None, None, None
-
-            def _held_at(t_mid: float) -> "float | None":
-                # dernier réglage burner à ou avant t_mid (report de charge)
-                held = None
-                for t_sc, pct in burner:
-                    if t_sc <= t_mid + 1e-6:
-                        held = pct
-                    else:
-                        break
-                return held
-
-            t_dry  = phase_times.get("dry_end")
-            t_fc   = phase_times.get("fc_start")
-            t_drop = phase_times.get("drop")
-            dry = _held_at(t_dry / 2.0) if (t_dry and t_dry > 0) else None
-            mai = (_held_at((t_dry + t_fc) / 2.0)
-                   if (t_dry and t_fc and t_fc > t_dry) else None)
-            dev = (_held_at((t_fc + t_drop) / 2.0)
-                   if (t_fc and t_drop and t_drop > t_fc) else None)
-            # item C : valeur tenue À L'INSTANT du FC — le palier
-            # pre-FC appris (décision Tilau : FC appris, backup calcul du plan).
-            fc_h = _held_at(t_fc) if (t_fc and t_fc > 0) else None
-            # Valeur tenue À L'INSTANT du DRY END — voir le docstring : c'est
-            # l'observable du geste préventif anti-flick.
-            de_h = _held_at(t_dry) if (t_dry and t_dry > 0) else None
-            return dry, mai, dev, fc_h, de_h
-        except (KeyError, IndexError, TypeError, ValueError) as e:
-            _logd.debug(f"_extract_phase_heater failed: {e}")
-            return None, None, None, None, None
+        ## Corps délégué à alogmanager.phase_heater : l'index stocke ces cinq
+        ## valeurs par torréfaction, calculées par cette même fonction.
+        return phase_heater(self.lastprofiledata, phase_times)
 
     def _extract_phase_control(self, phase_times: dict, event_type: int
                                ) -> "tuple[float | None, float | None, float | None]":
@@ -1387,9 +1461,28 @@ class TilauScopeRoastPlan:
                        if self._roaster_ctx is not None else None)
         _needle = process_type.strip().lower()
         _samples: "list[float]" = []
-        for log in self._list_alogs():
-            _, _timex, _, _, phase_times = self._get_delta_bt(log)
-            if not _timex or not _learning_log_is_eligible(self.lastprofiledata):
+        ## Le process est écrit en clair dans le champ `beans` du .alog
+        ## (« Process: Washed / Wet Process ») — pas besoin de la fiche.
+        ## Tous les critères de cohorte (process, masse, brûleur de charge,
+        ## empreinte machine, éligibilité) se lisent dans l'index : seuls les
+        ## survivants sont ouverts, et sans calculer leur courbe de RoR — le
+        ## brûleur de phase ne dépend que des jalons.
+        _candidates = self._prefilter_logs(
+            self._list_alogs(), charge_weight_g=charge_weight_g,
+            weight_tol_abs=self._COHORT_WEIGHT_TOL_G, process_needle=_needle)
+        _records = self._index_records()
+        for log in _candidates:
+            ## Le brûleur de séchage est déjà dans l'index, lu par la même
+            ## fonction que le plan (alogmanager.phase_heater). Sur un log
+            ## indexé et complet, la cohorte n'ouvre donc aucun fichier ; on ne
+            ## retombe sur le profil que si l'index ne peut pas répondre.
+            _meta = _records.get(str(log))
+            if _meta is not None and _meta.heater_read:
+                if _meta.heater_dry is not None:
+                    _samples.append(_meta.heater_dry)
+                continue
+            phase_times = self._load_phase_times(log)
+            if phase_times is None or not _learning_log_is_eligible(self.lastprofiledata):
                 continue
             _computed = self.lastprofiledata.get("computed", {})
             _log_is_f = str(self.lastprofiledata.get("mode", "C")) == "F"
@@ -1397,8 +1490,6 @@ class TilauScopeRoastPlan:
             _charge_bt_c = fromFtoCstrict(_charge_bt) if (_log_is_f and _charge_bt > 0.0) else _charge_bt
             if 0.0 < _charge_bt_c < 150.0:
                 continue
-            ## Le process est écrit en clair dans le champ `beans` du .alog
-            ## (« Process: Washed / Wet Process ») — pas besoin de la fiche.
             if _needle not in str(self.lastprofiledata.get("beans", "")).lower():
                 continue
             _w = self.lastprofiledata.get("weight")
@@ -1507,6 +1598,12 @@ class TilauScopeRoastPlan:
         # P2: predictions are selected by their pre-roast target,
         # never by the actual colour (which would bias errors toward successes).
         prediction_snapshots: list[dict] = []
+        # Index pre-pass: quality filters 1-4 below all read scalars the index
+        # holds, so the logs they would reject are dropped before being parsed.
+        # The in-loop checks stay as the authority — a log the index does not
+        # know is kept and judged on the profile itself.
+        potential_logs = self._prefilter_logs(
+            potential_logs, charge_weight_g=charge_weight_g, weight_tol_ratio=0.25)
         for log in potential_logs:
             delta_bt, timex, bt, tp_index, phase_times = self._get_delta_bt(log)
 

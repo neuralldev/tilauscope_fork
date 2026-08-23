@@ -80,7 +80,8 @@ from tilauscope.theme_qss import base_qss, apply_tilau_theme, tint, tooltip_qss
 from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, ReferenceProfile, BeanCaveContainer, GREEN_BEAN_COLUMNS, show_styled_message,
                                          THEME, standardization_map, ProbeDeviation, ProbeDeviationInterval, RoastingPhase, TilauProgressDialog, _IS_MACOS, _IS_WINDOWS,
                                          open_in_os_viewer, TilauProgressRow, print_progress_pill, ROASTING_BASIC_BASE, WEIGHT_LOSS_PCT_BY_CATEGORY,
-                                         get_ror_ideal_band, estimate_ror_dt, find_turning_point_index, find_flicks_crashes)
+                                         get_ror_ideal_band, estimate_ror_dt, find_turning_point_index, find_flicks_crashes,
+                                         resolve_color_system)
 from tilauscope.header_icons import SVG_PROG_UPLOAD, SVG_PROG_AI
 from tilauscope.roast_timeline import RoastReadyDialog
 from tilauscope.sack_manager import SackChipsRow, SackPool, confirm_release, prompt_release_if_emptied  # sack labels (Lot 1, §9.3)
@@ -91,7 +92,8 @@ from tilauscope.ai_support import TilauAIConfig
 from tilauscope.lebrewroastsee import LebrewWaterActivityChecker
 from tilauscope.tilau_wheel import FlavorSelectorDialog
 from tilauscope.roasters import RoasterContext, RoasterManager
-from tilauscope.alogmanager import AlogCacheCollection, AlogMetadata, _AlogCacheIndexingWorker
+from tilauscope.alogmanager import (AlogCacheCollection, AlogIndex, AlogMetadata,
+                                    _AlogCacheIndexingWorker, directory_changed)
 from tilauscope.niimprint import NiimbotHeartbeat, NiimbotRFIDinfo
 from tilauscope.brew_advisor import BrewInput, WaterProfile
 from tilauscope.brew_advisor_dialog import BrewAdvisorDlg
@@ -413,6 +415,34 @@ def load_cave_beans() -> list:
     except Exception as e:
         _logd.error(f'load_cave_beans: unexpected error: {e}')
     return []
+
+
+def _atomic_write_text(path: Path, content: str, encoding: str) -> None:
+    """Durably replace *path* without ever exposing a partially written file."""
+    tmp_path = path.with_name(f'.{path.name}.{uuid.uuid4().hex}.tmp')
+    try:
+        with tmp_path.open('x', encoding=encoding, newline='') as tmp_file:
+            tmp_file.write(content)
+            tmp_file.flush()
+            os.fsync(tmp_file.fileno())
+        os.replace(tmp_path, path)
+
+        # Persist the directory entry too when the platform supports fsync on
+        # directories. The replace has already succeeded if this best-effort
+        # durability step is unavailable (notably on Windows).
+        try:
+            directory_fd = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+        except OSError:
+            pass
+    finally:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            _logd.warning('Unable to remove temporary BeanCave file: %s', tmp_path)
 
 import ctypes
 def apply_mica_acrylic_effect(window):
@@ -1079,7 +1109,11 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self.load_green_beans()
 
         # start the background task to collect alog information and avoid to read from multiple threads the same thing
-        self._metadata_cache = AlogCacheCollection()
+        # Seeded from the persisted index: the list paints from the previous
+        # session's entries while the background pass reconciles with disk.
+        self._metadata_cache = AlogCacheCollection(
+            records=dict(AlogIndex.instance().records(Path(self.alog_directory)))
+            if self.alog_directory else {})
         self._cache_thread = None
         self._cache_worker = None
 
@@ -1474,8 +1508,12 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             try:
                 if self._roaster_thread.isRunning():
                     self._roaster_worker.finished.disconnect(self._on_roaster_loaded)
+                    self._roaster_thread.requestInterruption()
                     self._roaster_thread.quit()
-                    self._roaster_thread.wait(500)
+                    if not self._roaster_thread.wait(2000):
+                        _log.warning("roaster worker did not stop cooperatively — terminate()")
+                        self._roaster_thread.terminate()
+                        self._roaster_thread.wait()
             except (TypeError, RuntimeError):
                 pass
             self._roaster_thread = None
@@ -1485,8 +1523,12 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         if hasattr(self, '_list_thread') and self._list_thread is not None:
             try:
                 if self._list_thread.isRunning():
+                    self._list_thread.requestInterruption()
                     self._list_thread.quit()
-                    self._list_thread.wait(300)
+                    if not self._list_thread.wait(2000):
+                        _log.warning("alog list worker did not stop cooperatively — terminate()")
+                        self._list_thread.terminate()
+                        self._list_thread.wait()
             except RuntimeError:
                 pass  # Qt object already deleted by deleteLater
             self._list_thread = None
@@ -1496,8 +1538,12 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             try:
                 if self._plan_roast_files_thread.isRunning():
                     self._plan_roast_files_worker.finished.disconnect(self._on_plan_combo_alog_load)
+                    self._plan_roast_files_thread.requestInterruption()
                     self._plan_roast_files_thread.quit()
-                    self._plan_roast_files_thread.wait(500)
+                    if not self._plan_roast_files_thread.wait(2000):
+                        _log.warning("plan worker did not stop cooperatively — terminate()")
+                        self._plan_roast_files_thread.terminate()
+                        self._plan_roast_files_thread.wait()
             except (RuntimeError, TypeError):
                 pass
             self._plan_roast_files_thread = None
@@ -1519,10 +1565,14 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         if hasattr(self, '_alog_thread') and self._alog_thread is not None:
             try:
                 if self._alog_thread.isRunning():
-                    self._alog_worker.finished.disconnect()
-                    self._alog_worker.error.disconnect()
+                    self._alog_worker.finished.disconnect(self._alog_worker_finished_on_plot_ok)
+                    self._alog_worker.error.disconnect(self._alog_worker_finished_on_plot_error)
+                    self._alog_thread.requestInterruption()
                     self._alog_thread.quit()
-                    self._alog_thread.wait(500)
+                    if not self._alog_thread.wait(2000):
+                        _log.warning("alog worker did not stop cooperatively — terminate()")
+                        self._alog_thread.terminate()
+                        self._alog_thread.wait()
             except (TypeError, RuntimeError):
                 pass
             self._alog_thread = None
@@ -1533,10 +1583,11 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             try:
                 if self._multi_alog_thread.isRunning():
                     try:
-                        self._multi_alog_worker.finished.disconnect()
-                        self._multi_alog_worker.error.disconnect()
+                        self._multi_alog_worker.finished.disconnect(self._on_multi_curve_loaded)
+                        self._multi_alog_worker.error.disconnect(self._on_multi_curve_error)
                     except (TypeError, RuntimeError):
                         pass
+                    self._multi_alog_thread.requestInterruption()
                     self._multi_alog_thread.quit()
                     if not self._multi_alog_thread.wait(1000):
                         _log.warning("multi alog thread did not stop — terminate()")
@@ -1555,6 +1606,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                         self.ai_worker.finished.disconnect(self._on_bean_ai_finished)
                     except (TypeError, RuntimeError):
                         pass
+                    self.ai_thread.requestInterruption()
                     self.ai_thread.quit()
                     if not self.ai_thread.wait(2000):   # 2s timeout
                         self.ai_thread.terminate()      # fallback hard-stop
@@ -1568,8 +1620,12 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         if hasattr(self, 'niimbot_thread') and self.niimbot_thread is not None:
             try:
                 if self.niimbot_thread.isRunning():
+                    self.niimbot_worker.cancel()
+                    self.niimbot_thread.requestInterruption()
                     self.niimbot_thread.quit()
-                    self.niimbot_thread.wait(500)
+                    if not self.niimbot_thread.wait(5000):
+                        _log.warning("print worker is finishing the current label")
+                        self.niimbot_thread.wait()
             except (RuntimeError, TypeError):
                 pass
             self.niimbot_thread = None
@@ -1582,8 +1638,11 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         if hasattr(self, '_niimbot_poll_thread') and self._niimbot_poll_thread is not None:
             try:
                 if self._niimbot_poll_thread.isRunning():
+                    self._niimbot_poll_thread.requestInterruption()
                     self._niimbot_poll_thread.quit()
-                    self._niimbot_poll_thread.wait(1000)
+                    if not self._niimbot_poll_thread.wait(1000):
+                        _log.warning("printer poll is finishing its current request")
+                        self._niimbot_poll_thread.wait()
             except (RuntimeError, TypeError):
                 pass
             self._niimbot_poll_thread = None
@@ -1800,10 +1859,15 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         worker.finished.connect(thread.quit)
         if on_err is not None:
             worker.error.connect(thread.quit)
+        cancelled = getattr(worker, 'cancelled', None)
+        if cancelled is not None:
+            cancelled.connect(thread.quit)
         if auto_delete:
             worker.finished.connect(worker.deleteLater)
             if on_err is not None:
                 worker.error.connect(worker.deleteLater)
+            if cancelled is not None:
+                cancelled.connect(worker.deleteLater)
             thread.finished.connect(thread.deleteLater)
         if on_done is not None:
             thread.finished.connect(on_done)
@@ -3771,12 +3835,15 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             try:
                 if self._alog_thread.isRunning():
                     try:
-                        self._alog_worker.finished.disconnect()
-                        self._alog_worker.error.disconnect()
+                        self._alog_worker.finished.disconnect(self._alog_worker_finished_on_plot_ok)
+                        self._alog_worker.error.disconnect(self._alog_worker_finished_on_plot_error)
                     except (TypeError, RuntimeError):
                         pass
+                    self._alog_thread.requestInterruption()
                     self._alog_thread.quit()
-                    self._alog_thread.wait(300)
+                    if not self._alog_thread.wait(2000):
+                        _log.warning("alog load cancellation is still pending")
+                        self._alog_thread.wait()
             except RuntimeError:
                 # C++ object already deleted by deleteLater
                 pass
@@ -3787,12 +3854,15 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             try:
                 if self._multi_alog_thread.isRunning():
                     try:
-                        self._multi_alog_worker.finished.disconnect()
-                        self._multi_alog_worker.error.disconnect()
+                        self._multi_alog_worker.finished.disconnect(self._on_multi_curve_loaded)
+                        self._multi_alog_worker.error.disconnect(self._on_multi_curve_error)
                     except (TypeError, RuntimeError):
                         pass
+                    self._multi_alog_thread.requestInterruption()
                     self._multi_alog_thread.quit()
-                    self._multi_alog_thread.wait(300)
+                    if not self._multi_alog_thread.wait(2000):
+                        _log.warning("multi alog load cancellation is still pending")
+                        self._multi_alog_thread.wait()
             except RuntimeError:
                 pass
             self._multi_alog_thread = None
@@ -3818,8 +3888,10 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             # par _on_multi_curve_loaded / _on_multi_curve_error.
             worker.finished.connect(thread.quit)
             worker.error.connect(thread.quit)
+            worker.cancelled.connect(thread.quit)
             worker.finished.connect(worker.deleteLater)
             worker.error.connect(worker.deleteLater)
+            worker.cancelled.connect(worker.deleteLater)
             # Stocker les refs Python AVANT de connecter deleteLater
             self._multi_alog_thread = thread
             self._multi_alog_worker = worker
@@ -3828,9 +3900,13 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             thread.finished.connect(thread.deleteLater)
         else:
             # Chemin mono — comportement original
-            worker.finished.connect(self._on_alog_thread_done)
             worker.finished.connect(thread.quit)
             worker.error.connect(thread.quit)
+            worker.cancelled.connect(thread.quit)
+            worker.finished.connect(worker.deleteLater)
+            worker.error.connect(worker.deleteLater)
+            worker.cancelled.connect(worker.deleteLater)
+            thread.finished.connect(self._on_alog_thread_done)
             thread.finished.connect(thread.deleteLater)
             self._alog_thread = thread
             self._alog_worker = worker
@@ -4655,26 +4731,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
 
-        # RoastResultDialog only injects into qmc. On the live path
-        # Artisan saves the profile itself at the end of the roast, but here the
-        # roast is already on disk: without an explicit write-back the edited
-        # weight / colour / batch / notes never reach the file, and every reader
-        # downstream (Advanced Stats, roast card, corpus index) keeps showing the
-        # pre-edit values.
-        try:
-            saved = self.aw.fileSave(str(filepath))
-        except Exception as e:  # noqa: BLE001
-            _logd.error(f"on_roast_finished_clicked: write-back failed: {e}")
-            saved = False
-        if not saved:
-            self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Save Error"),
-                QApplication.translate("tilauscope_beancave",
-                    "The roast results could not be written back to the profile file."),
-                QMessageBox.Icon.Warning)
-            return
-
-        # The file changed on disk: drop it from the read cache, reload the viewer
+        # RoastResultDialog has saved the changed profile. Drop it from the read cache, reload the viewer
         # (curve + Advanced Stats) and re-index so the roast list and the
         # reference corpus follow the edit.
         self._alog_cache.pop(str(filepath), None)
@@ -5186,9 +5243,13 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         ground = _num(data.get("ground_color", 0.0))
         whole = _num(data.get("whole_color", 0.0))
-        color_system: str = str(data.get("color_system", "") or "")
+        # A profile saved before the scale was filed with the reading carries an
+        # empty color_system; a reading without a scale is Agtron, not a missing
+        # measurement. Only the absence of a reading blocks the advice.
+        color_system: str = resolve_color_system(
+            str(data.get("color_system", "") or ""), ground, whole)
 
-        if color_system == "" or (ground == 0.0 and whole == 0.0):
+        if ground == 0.0 and whole == 0.0:
             self._show_message(self, QApplication.translate("tilauscope_beancave", "Missing color data"),
                                QApplication.translate("tilauscope_beancave", "Please enter color information in the roast property first."),
                                QMessageBox.Icon.Warning)
@@ -5280,7 +5341,8 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         ground_colour  = _colour_num(data.get("ground_color", 0))
         roast_colour   = ground_colour or whole_colour        # ground wins, whole falls back
         roastcolor     = roast_colour if roast_colour > 0 else "N/A"
-        colorsystem    = data.get("color_system", "N/A")
+        colorsystem    = resolve_color_system(
+            str(data.get("color_system", "") or ""), ground_colour, whole_colour) or "N/A"
         charge_unit    = data.get("weight", ["N/A", None, ""])[2]
         mode           = data.get("mode", "C")
 
@@ -6760,24 +6822,26 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             except Exception:
                 pass
 
-    # search for closest valid heater before xposition
-    def findLastValidEvent(self, e:int, xposition:float)->float:
+    # Value of channel `e` still in force at sample `sample_index`: a setting holds
+    # until the next one replaces it.
+    def findLastValidEvent(self, e:int, sample_index:int)->float:
         if self.last_plot_data is None:
             return 0.0
-        eventtypes = self.last_plot_data.get('specialeventstype', []) # event type are sliders values 0,1,2,3
-        eventvalues = self.last_plot_data.get('specialeventsvalue', []) # event values /10 in %
-        timestamp = self.last_plot_data.get('specialevents', [])  # event timestamps in seconds from charge time
+        eventtypes = self.last_plot_data.get('specialeventstype', []) # slider channel: 0,1,2,3
+        # Artisan-INTERNAL values (8.0 = 70%). The caller decodes them with
+        # eventsInternal2ExternalValue; they are not percentages here.
+        eventvalues = self.last_plot_data.get('specialeventsvalue', [])
+        # INDICES into timex, not seconds — in a .alog exactly as in the live qmc,
+        # since Artisan saves and reloads this list verbatim. Which is why they are
+        # compared against a sample index and never converted to a time.
+        timestamp = self.last_plot_data.get('specialevents', [])
         last_value = -1.0
 
         for d in range(len(eventvalues)):
             if eventtypes[d] == e: #check only event of type e
                 v = eventvalues[d] if eventvalues[d] is not None else 0.0
-                #if timeindex[0] > -1 and len(timex) > timeindex[0]: #fix 2025/11/20 set start depending on chage time or preheat depending on how it is stored
-                #    ts = timex[timestamp[d]]-timex[timeindex[0]]
-                #else:
-                #    ts = timex[timestamp[d]]
                 ts = timestamp[d] if timestamp[d] is not None else 0
-                if ts <= xposition:
+                if ts <= sample_index:
                     last_value = v
                 else:
                     return last_value
@@ -8890,7 +8954,16 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             )
 
         # ── Append, persist, refresh ───────────────────────────────────────
+        # Assign the identity before the first save: QR codes, roast links and
+        # web resolvers must never observe a newly-created bean with uuid="".
+        if new_bean_data is None:
+            return
+        if not new_bean_data.uuid:
+            new_bean_data.uuid = str(uuid.uuid4())
         self.cave.green_beans.append(new_bean_data)
+        if not hasattr(self, 'uuidmap'):
+            self.uuidmap = {}
+        self.uuidmap[new_bean_data.uuid] = new_bean_data
         self.save_green_beans()
         self.populate_table()
 
@@ -8912,10 +8985,11 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         if selected_row_index < len(self.cave.green_beans):
             # Create a new GreenBean object with the current form data
-            current_count = self.cave.green_beans[selected_row_index].count
+            existing_bean = self.cave.green_beans[selected_row_index]
+            current_count = existing_bean.count
             # captured before the record is replaced, to detect the 0 g
             # transition once the new values are in (design v4 §9.3).
-            prev_weight_left = float(getattr(self.cave.green_beans[selected_row_index], 'weight_left', 0.0) or 0.0)
+            prev_weight_left = float(getattr(existing_bean, 'weight_left', 0.0) or 0.0)
             # Déterminer si le type est 'Blend' pour nettoyer les champs inutiles
             is_blend_selected = self.type_combo.currentText() == "Blend"
             new_bean_data = GreenBean(
@@ -8936,7 +9010,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                 flavour_notes=self.flavour_notes_input.text(),
                 sca=self.sca_input.value(),
                 count=current_count,
-                weight=self.cave.green_beans[selected_row_index].weight,  # preserve roasted total on update
+                weight=existing_bean.weight,  # preserve roasted total on update
                 # --- Blend Fields (Mis à jour) ---
                 is_blend=is_blend_selected,
                 bean1_ratio=self.bean1_ratio_input.value(),
@@ -8946,12 +9020,19 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                 bean3_ratio=self.bean3_ratio_input.value() if is_blend_selected else 0.0,
                 blend_notes=self.blend_notes_input.text(),
                 # unique identifier
-                uuid=self.cave.green_beans[selected_row_index].uuid, # preserve uuid
+                uuid=existing_bean.uuid, # preserve uuid
                 # tips
-                tips=self.cave.green_beans[selected_row_index].tips,
+                tips=existing_bean.tips,
                 sacks=list(self._current_sacks),  # preserve sack labels on update
+                # Fields managed by other BeanCave views must survive an edit
+                # performed from this form.
+                conditioning=existing_bean.conditioning,
+                dial_ins=list(existing_bean.dial_ins),
             )
             self.cave.green_beans[selected_row_index] = new_bean_data
+            if existing_bean.uuid != new_bean_data.uuid:
+                self.uuidmap.pop(existing_bean.uuid, None)
+            self.uuidmap[new_bean_data.uuid] = new_bean_data
             _logd.debug(f"Green bean updated at {selected_row_index}: {new_bean_data.name}")
             self.save_green_beans()
             # stock just hit 0 g: offer to reclaim this bean's labels
@@ -9017,7 +9098,9 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             _logd.debug("Deletion cancelled.")
 
     def remove_green_bean(self, index:QModelIndex) -> None:
+        removed_bean = self.cave.green_beans[index.row()]
         del self.cave.green_beans[index.row()]
+        self.uuidmap.pop(removed_bean.uuid, None)
         self.save_green_beans()
         self.populate_table()
         self.clear_form()
@@ -9172,7 +9255,11 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             beancave_file_path = Path(self.beancave_directory) / BEANCAVE_FILE_NAME
             try:
                 beancave_file_path.parent.mkdir(parents=True, exist_ok=True)
-                beancave_file_path.write_text(self.cave.to_json(), encoding='utf-8-sig' if _IS_WINDOWS else 'utf-8')
+                _atomic_write_text(
+                    beancave_file_path,
+                    self.cave.to_json(),
+                    encoding='utf-8-sig' if _IS_WINDOWS else 'utf-8',
+                )
             except Exception as e:
                 _logd.error(f'Error writing to beancave.json: {e}')
                 self._show_message(self,
@@ -9576,6 +9663,10 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         if self.directory_validity_check(directory) and directory != self.alog_directory:
             self.alog_directory = directory.rstrip('\\') if _IS_WINDOWS else directory
             self.save_settings()
+            # New folder → the index built for the old one is void. Drop it and
+            # rebuild off-thread before any consumer asks.
+            directory_changed(self.alog_directory)
+            self._metadata_cache.records = {}
             self.update_directory_labels()
             self.list_alog_files()
             _logd.debug(QApplication.translate("tilauscope_beancave","ALog directory selected")+f": {self.alog_directory}")
@@ -10514,6 +10605,8 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self.ai_worker.finished.connect(self.ai_worker.deleteLater)
         self.ai_worker.error.connect(self.ai_thread.quit)        # error ne quittait pas le thread
         self.ai_worker.error.connect(self.ai_worker.deleteLater)
+        self.ai_worker.cancelled.connect(self.ai_thread.quit)
+        self.ai_worker.cancelled.connect(self.ai_worker.deleteLater)
         self.ai_thread.finished.connect(self.ai_thread.deleteLater)
 
         self.ai_thread.start()
@@ -10560,14 +10653,18 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
     @pyqtSlot()
     def stopLebrewAGmanager(self) -> None:
-        from artisanlib.ble_port import bluetooth_enabled
-        if bluetooth_enabled():
-            if self.aw.bleRoastSeeAGDeviceName is not None and self.bleRoastSeeAGDevice is not None:
-                try:
-                    self.bleRoastSeeAGDevice.disconnect()
-                except (TypeError, RuntimeError):
-                    pass
-                self.bleRoastSeeAGDevice = None
+        device = self.bleRoastSeeAGDevice
+        if device is None:
+            return
+        # LebrewWaterActivityChecker owns a ClientBLE and exposes stop().
+        # QObject.disconnect() only disconnects Qt signal connections; it does
+        # not stop the BLE runner and is not the lifecycle API for this object.
+        self.bleRoastSeeAGDevice = None
+        try:
+            device.stop()
+        except Exception as exc:  # noqa: BLE001
+            _log.error("Lebrew AquaGauge cleanup failed: %s", exc, exc_info=True)
+        else:
             _logd.debug('lebrew ag manager stopped')
 
     # ── TilauAmbient probe (same managed pattern as Lebrew above) ─────────────
@@ -11108,6 +11205,7 @@ class BeanAIWorker(QObject):
     # Signal to return the extracted GreenBean object
     finished = pyqtSignal(GreenBean)
     error = pyqtSignal(str)
+    cancelled = pyqtSignal()
 
     def __init__(self, ai: TilauAIConfig, url: str, coffee_beans_categories:list[str], coffee_processing_methods:dict[str, list[str]], coffee_producing_countries: list[str], coffee_bean_types:dict[str, list[str]], coffee_beans_species: list[str]):
         super().__init__()
@@ -11121,6 +11219,10 @@ class BeanAIWorker(QObject):
 
     def run(self):
         try:
+            thread = QThread.currentThread()
+            if thread.isInterruptionRequested():
+                self.cancelled.emit()
+                return
             from tilauscope.bean_extractor import CoffeeAIParser
             parser = CoffeeAIParser(
                                     self.ai,
@@ -11131,6 +11233,9 @@ class BeanAIWorker(QObject):
                                     self.coffee_beans_species)
             # This is the time-consuming Gemini call
             result = parser.get_bean_from_url(self.url)
+            if thread.isInterruptionRequested():
+                self.cancelled.emit()
+                return
             self.finished.emit(result)
         except Exception as e:
             self.error.emit(str(e))
@@ -11312,6 +11417,7 @@ class NiimbotWorker(QObject):
 class _RoasterLoadWorker(QObject):
     finished = pyqtSignal(object)   # emits the populated RoasterManager
     error    = pyqtSignal(str)
+    cancelled = pyqtSignal()
 
     def __init__(self, path: Path):
         super().__init__()
@@ -11320,9 +11426,16 @@ class _RoasterLoadWorker(QObject):
     @pyqtSlot()
     def run(self) -> None:
         try:
+            thread = QThread.currentThread()
+            if thread.isInterruptionRequested():
+                self.cancelled.emit()
+                return
             mgr = RoasterManager()
             if self._path.exists():
                 mgr.load_json(self._path)
+            if thread.isInterruptionRequested():
+                self.cancelled.emit()
+                return
             self.finished.emit(mgr)
         except Exception as e:
             self.error.emit(str(e))
@@ -11330,6 +11443,7 @@ class _RoasterLoadWorker(QObject):
 class _AlogLoadWorker(QObject):
     finished = pyqtSignal(object, object, object)  # profiledata, deltaet, deltabt
     error = pyqtSignal(str)
+    cancelled = pyqtSignal()
 
     def __init__(self, parent:BeancaveDlg, filepath: Path, aw: ApplicationWindow):
         super().__init__()
@@ -11340,11 +11454,24 @@ class _AlogLoadWorker(QObject):
     @pyqtSlot()
     def run(self) -> None:
         try:
+            thread = QThread.currentThread()
+            if thread.isInterruptionRequested():
+                self.cancelled.emit()
+                return
             data = self.parent.get_alog_data(self._path)
             if data is not None:
+                if thread.isInterruptionRequested():
+                    self.cancelled.emit()
+                    return
                 # evaldeltas is numpy — safe off-thread
                 deltaet = self._eval(data, "temp1")
+                if thread.isInterruptionRequested():
+                    self.cancelled.emit()
+                    return
                 deltabt = self._eval(data, "temp2")
+                if thread.isInterruptionRequested():
+                    self.cancelled.emit()
+                    return
                 self.finished.emit(data, deltaet, deltabt)
             else:
                 # Toujours émettre finished ou error — sinon la queue multi se bloque
@@ -11375,6 +11502,7 @@ class _AlogListWorker(QObject):
     """Scans the alog directory and formats display names off the main thread using cached metadata."""
     finished = pyqtSignal(list)   # list of (raw_filename, display_name)
     error    = pyqtSignal(str)
+    cancelled = pyqtSignal()
 
     def __init__(self, directory: Path, cache_records: dict[str, AlogMetadata]):
         super().__init__()
@@ -11390,12 +11518,19 @@ class _AlogListWorker(QObject):
         _GENERIC_TITLES = {'roaster scope', 'artisan', 'tilausope',''}
 
         try:
+            thread = QThread.currentThread()
+            if thread.isInterruptionRequested():
+                self.cancelled.emit()
+                return
             fnames = [f.name for f in self._directory.glob('*.alog')
                       if f.suffix.lower() == '.alog']
 
             # Build intermediate tuples: (fname, sort_epoch, display_name, base_name)
             triples: list[tuple[str, int, str, str]] = []
             for f in fnames:
+                if thread.isInterruptionRequested():
+                    self.cancelled.emit()
+                    return
                 f_path_str = str(self._directory / f)
                 meta = self._cache_records.get(f_path_str)
                 display, base_name, sort_epoch = _AlogListWorker._build_display(
@@ -11423,6 +11558,9 @@ class _AlogListWorker(QObject):
             disambiguated: set[int] = set()  # indices already given a suffix
             pairs: list[tuple[str, str]] = []
             for fname, _epoch, display, _base in triples:
+                if thread.isInterruptionRequested():
+                    self.cancelled.emit()
+                    return
                 if display in seen:
                     first_idx = seen[display]
                     if first_idx not in disambiguated:

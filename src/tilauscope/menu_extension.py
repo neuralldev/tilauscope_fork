@@ -85,6 +85,10 @@ class TilauMenuExtension:
             QApplication.translate('Menu', 'Roast Profile Maintenance...'), aw)
         self.act_profile_maintenance.triggered.connect(self._open_profile_maintenance)
 
+        self.act_custom_buttons = QAction(
+            QApplication.translate('Menu', 'Custom button management...'), aw)
+        self.act_custom_buttons.triggered.connect(self._open_custom_buttons)
+
         # EXPERT only — injected in Config menu after deviceAction
         self.act_config = QAction(QApplication.translate('Menu', 'TilauScope Config...'), aw)
         self.act_config.triggered.connect(aw.tilauscope_config)
@@ -117,7 +121,8 @@ class TilauMenuExtension:
         # menu. Pin NoRole on every action, matching Artisan's own treatment
         # (main.py:2219 and below).
         for _action in (self.act_main, self.act_beancave,
-                        self.act_profile_maintenance, self.act_config,
+                        self.act_profile_maintenance, self.act_custom_buttons,
+                        self.act_config,
                         self.act_first_config, self.act_debug,
                         self.act_pid_autotune, self.act_export_logs):
             _action.setMenuRole(QAction.MenuRole.NoRole)
@@ -135,6 +140,14 @@ class TilauMenuExtension:
             bc.open_profile_maintenance()
         except Exception:  # pylint: disable=broad-except
             _log.exception('opening roast profile maintenance failed')
+
+    def _open_custom_buttons(self, _checked: bool = False) -> None:
+        """Open the TilauScope master-detail editor for custom event buttons."""
+        try:
+            from tilauscope.custom_buttons import open_custom_button_manager
+            open_custom_button_manager(self._aw)
+        except Exception:  # pylint: disable=broad-except
+            _log.exception('opening custom button management failed')
 
     def _export_logs(self, _checked: bool = False) -> None:
         from tilauscope.tilau_exceptions import report_a_bug
@@ -185,6 +198,7 @@ class TilauMenuExtension:
         menu.addAction(self.act_main)
         menu.addAction(self.act_beancave)
         menu.addAction(self.act_profile_maintenance)
+        menu.addAction(self.act_custom_buttons)
         menu.addSeparator()
         menu.addAction(self.act_config)
         menu.addAction(self.act_first_config)

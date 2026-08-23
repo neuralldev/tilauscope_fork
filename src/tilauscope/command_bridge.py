@@ -116,6 +116,14 @@ class CommandBridge(QObject):
         try:
             kind = job.get('kind')
             done = job.get('done')
+            lease = job.get('lease')
+            # Hardware commands can wait in Qt's queued connection after the
+            # WebSocket thread accepted them.  Re-check their controller lease on
+            # the owning thread immediately before touching qmc/hardware.
+            if lease is not None and not lease.is_set():
+                if done is not None:
+                    done({'status': 'rejected', 'reason': 'NOT_CONTROLLER'})
+                return
             if kind == 'set_slider':
                 res = self._apply_set_slider(job.get('channel'), job.get('value'))
             elif kind == 'mark':

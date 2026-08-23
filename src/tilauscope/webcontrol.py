@@ -25,8 +25,9 @@ import json
 import logging
 import socket
 import time
+from collections import deque
 from contextlib import suppress
-from threading import Thread
+from threading import Event, Lock, Thread
 from typing import Callable, Optional, Set
 
 from aiohttp import web
@@ -38,6 +39,9 @@ PROTO_VERSION = 1
 _GRACE_S = 10.0          # deadman: keep control this long after a controller drops (§7)
 _SLIDER_DEBOUNCE = 0.3   # s — coalesce non-final set_slider per channel (§6)
 _DRUM_DEBOUNCE = 1.0     # s — drum is slower / more disruptive (§6)
+_MAX_CLIENTS = 8          # LAN UI: bound sockets and per-client broadcast work
+_WS_MAX_MSG_SIZE = 64 * 1024
+_COMMAND_BURST = 20       # commands accepted per rolling second, per socket
 
 
 def _device_label_from_ua(ua: str, device_id: str = '') -> str:
@@ -167,6 +171,7 @@ class TilauWebControl:
         # controller lock (§7) — all fields touched on the loop thread only
         self._controller = None       # device_id of the current controller (None = free)
         self._controller_ws = None    # its live socket (None while in the grace window)
+        self._controller_lease: Optional[Event] = None  # cleared to cancel queued Qt jobs
         self._grace_handle = None     # asyncio TimerHandle for the deadman grace
         self._takeover_pending = False  # a desktop takeover confirmation is open
         # per-channel set_slider coalescing (loop thread only)
@@ -174,11 +179,17 @@ class TilauWebControl:
         self._slider_timers: dict = {}
 
         self._loop: Optional[asyncio.AbstractEventLoop] = None
+        # Protect the small publication surface shared with Qt.  `_clients` and
+        # controller state remain loop-confined; only their published count and the
+        # loop reference cross threads.
+        self._cross_thread_lock = Lock()
+        self._published_client_count = 0
         self._thread: Optional[Thread] = None
         self._runner: Optional[web.AppRunner] = None
         self._zeroconf = None
         self._zc_info = None
         self._clients: Set[web.WebSocketResponse] = set()
+        self._connection_count = 0  # includes sockets still in hello/auth handshake
         self._seq = 0
         self._hb_task: Optional[asyncio.Task] = None
         # strong refs to in-flight broadcast sends: asyncio keeps only a weak ref
@@ -251,6 +262,17 @@ class TilauWebControl:
     # ---- WebSocket ----------------------------------------------------------
 
     async def _ws_handler(self, request: web.Request) -> web.WebSocketResponse:
+        # Increment before the first await so concurrent slow handshakes cannot all
+        # pass the limit while `_clients` is still empty.
+        if self._connection_count >= _MAX_CLIENTS:
+            raise web.HTTPServiceUnavailable(text='too many clients')
+        self._connection_count += 1
+        try:
+            return await self._ws_session(request)
+        finally:
+            self._connection_count -= 1
+
+    async def _ws_session(self, request: web.Request) -> web.WebSocketResponse:
         # Cross-origin upgrades are refused: a page served by any other site must not
         # be able to open a control socket. Browsers send Origin on a WS upgrade; a same-origin one matches Host.
         origin = request.headers.get('Origin')
@@ -259,7 +281,7 @@ class TilauWebControl:
             if urlsplit(origin).netloc != request.headers.get('Host', ''):
                 _log.warning("control: refused WS upgrade from origin %s", origin)
                 raise web.HTTPForbidden(text='forbidden origin')
-        ws = web.WebSocketResponse(heartbeat=None)
+        ws = web.WebSocketResponse(heartbeat=None, max_msg_size=_WS_MAX_MSG_SIZE)
         await ws.prepare(request)
 
         # handshake: expect `hello` first
@@ -313,6 +335,14 @@ class TilauWebControl:
                 device_id = aid
                 await self._send(ws, 'paired', {"device_token": dt, "device_id": aid,
                                                 "display_name": dn, "role": "observer"})
+                # pair() persists before the network send yields.  The desktop can
+                # revoke the freshly visible device during that yield; revalidate so
+                # such a socket cannot become active after its revocation callback.
+                if not self._pairing.verify_token(aid, dt):
+                    await self._send(ws, 'error', {"code": "AUTH_FAILED",
+                                                   "message": "device revoked"})
+                    await ws.close()
+                    return ws
             elif ap.get('device_token') and ap.get('device_id'):  # reconnect (present DT)
                 if not self._pairing.verify_token(str(ap['device_id']), str(ap['device_token'])):
                     await self._send(ws, 'error', {"code": "AUTH_FAILED",
@@ -330,36 +360,53 @@ class TilauWebControl:
         # re-attaches as the controller; everyone else is an observer.
         ws._tilau_device_id = device_id
         if self._controller == device_id:
-            self._controller_ws = ws
-            self._cancel_grace()
+            previous_ws = self._controller_ws
+            self._grant_controller(ws, device_id)
+            if previous_ws is not None and previous_ws is not ws:
+                # A device token is shared by tabs from the same browser profile.
+                # Keep exactly one live socket as the controller lease: the newest
+                # authenticated connection takes the lease and the older tab becomes
+                # an observer.  Device identity alone is not sufficient authority.
+                await self._send(previous_ws, 'event', {
+                    "kind": "control", "state": "revoked",
+                    "reason": "reconnected_elsewhere",
+                })
             _log.info("control: controller %s (re)attached", device_id)
-        welcome = self._welcome_provider()
-        welcome['role'] = 'controller' if self._controller == device_id else 'observer'
-        # real channels from Artisan slider config (bounds/step/enabled) when the
-        # command bridge is wired; the cached list is plain data (safe to read here)
-        if self._bridge is not None:
-            try:
-                chans = self._bridge.channels()
-                if chans:
-                    welcome['channels'] = chans
-            except Exception:  # noqa: BLE001
-                pass
-        await self._send(ws, 'welcome', welcome)
-        await self._send(ws, 'snapshot', self._snapshot_provider())
-
         self._clients.add(ws)
+        with self._cross_thread_lock:
+            self._published_client_count += 1
         _log.info("control: client connected (%d total)", len(self._clients))
         try:
+            welcome = self._welcome_provider()
+            welcome['role'] = 'controller' if self._controller == device_id else 'observer'
+            # real channels from Artisan slider config (bounds/step/enabled) when the
+            # command bridge is wired; the cached list is plain data (safe to read here)
+            bridge = self._bridge_for_web()
+            if bridge is not None:
+                try:
+                    chans = bridge.channels()
+                    if chans:
+                        welcome['channels'] = chans
+                except Exception:  # noqa: BLE001
+                    pass
+            await self._send(ws, 'welcome', welcome)
+            await self._send(ws, 'snapshot', self._snapshot_provider())
+
             async for msg in ws:
                 data = self._parse(msg)
                 if data and data.get('type') == 'command':
                     await self._handle_command(ws, data)
         finally:
+            was_registered = ws in self._clients
             self._clients.discard(ws)
+            if was_registered:
+                with self._cross_thread_lock:
+                    self._published_client_count -= 1
             # deadman (§7): if the controller drops, hold the lock for a grace
             # window so a brief wifi hiccup + reconnect keeps control. Hardware
             # never moves on its own — only a live controller can command.
             if ws is self._controller_ws:
+                self._invalidate_controller_lease()
                 self._controller_ws = None
                 self._start_grace()
             _log.info("control: client disconnected (%d left)", len(self._clients))
@@ -377,14 +424,27 @@ class TilauWebControl:
             await self._request_control(ws, did, ref)
             return
         if action == 'release_control':
-            if self._controller == did:
+            if self._controller == did and ws is self._controller_ws:
                 self._free_controller()
                 self.broadcast('event', {"kind": "control", "state": "released"})
-            await self._send(ws, 'ack', {"ref_seq": ref, "status": "ok"})
+                await self._send(ws, 'ack', {"ref_seq": ref, "status": "ok"})
+            else:
+                await self._send(ws, 'ack', {"ref_seq": ref, "status": "rejected",
+                                             "reason": "NOT_CONTROLLER"})
             return
 
-        # every other command requires the controller role
-        if self._controller != did or did is None:
+        # Release is deliberately exempt so a saturated/misbehaving client can
+        # always relinquish hardware.  Every other action is bounded before it can
+        # enqueue work on Qt's main thread or open a takeover dialog.
+        if self._command_rate_limited(ws):
+            await self._send(ws, 'ack', {"ref_seq": ref, "status": "rejected",
+                                         "reason": "RATE_LIMITED"})
+            return
+
+        # Every other command requires the live controller *connection*.  Several
+        # tabs can legitimately share one paired device_id/localStorage token; only
+        # the socket holding the current lease may operate the hardware.
+        if self._controller != did or did is None or ws is not self._controller_ws:
             await self._send(ws, 'ack', {"ref_seq": ref, "status": "rejected",
                                          "reason": "NOT_CONTROLLER"})
             return
@@ -408,6 +468,21 @@ class TilauWebControl:
         await self._send(ws, 'ack', {"ref_seq": ref, "status": "rejected",
                                      "reason": "BAD_MESSAGE"})
 
+    @staticmethod
+    def _command_rate_limited(ws: web.WebSocketResponse) -> bool:
+        now = time.monotonic()
+        history = getattr(ws, '_tilau_command_times', None)
+        if history is None:
+            history = deque()
+            ws._tilau_command_times = history
+        cutoff = now - 1.0
+        while history and history[0] <= cutoff:
+            history.popleft()
+        if len(history) >= _COMMAND_BURST:
+            return True
+        history.append(now)
+        return False
+
     async def _request_control(self, ws, did, ref) -> None:
         if did is None:
             await self._send(ws, 'ack', {"ref_seq": ref, "status": "rejected",
@@ -415,12 +490,17 @@ class TilauWebControl:
             return
         # free (or already ours) -> grant immediately (§7: 1st requester wins)
         if self._controller is None or self._controller == did:
+            old_ws = self._controller_ws
             self._grant_controller(ws, did)
+            if old_ws is not None and old_ws is not ws:
+                await self._send(old_ws, 'event', {"kind": "control", "state": "revoked",
+                                                   "reason": "taken_over"})
             await self._send(ws, 'ack', {"ref_seq": ref, "status": "ok"})
             await self._send(ws, 'event', {"kind": "control", "state": "granted"})
             return
         # contested -> explicit desktop confirmation, never a silent takeover (§7)
-        if self._bridge is None:
+        bridge = self._bridge_for_web()
+        if bridge is None:
             await self._send(ws, 'ack', {"ref_seq": ref, "status": "rejected",
                                          "reason": "NOT_CONTROLLER"})
             return
@@ -437,8 +517,8 @@ class TilauWebControl:
             if loop is not None:
                 loop.call_soon_threadsafe(
                     lambda: asyncio.ensure_future(self._resolve_takeover(ws, did, ref, bool(allowed))))
-        self._bridge.submit({'kind': 'confirm_takeover',
-                             'requester_name': self._device_name(did), 'done': _done})
+        bridge.submit({'kind': 'confirm_takeover',
+                       'requester_name': self._device_name(did), 'done': _done})
 
     async def _resolve_takeover(self, ws, did, ref, allowed) -> None:
         self._takeover_pending = False  # confirmation resolved (all paths)
@@ -460,14 +540,24 @@ class TilauWebControl:
         await self._send(ws, 'event', {"kind": "control", "state": "granted"})
 
     def _grant_controller(self, ws, did) -> None:
+        self._invalidate_controller_lease()
         self._cancel_grace()
         self._controller = did
         self._controller_ws = ws
+        self._controller_lease = Event()
+        self._controller_lease.set()
 
     def _free_controller(self) -> None:
+        self._invalidate_controller_lease()
         self._cancel_grace()
         self._controller = None
         self._controller_ws = None
+
+    def _invalidate_controller_lease(self) -> None:
+        """Cancel commands queued by the current controller before they reach Qt."""
+        if self._controller_lease is not None:
+            self._controller_lease.clear()
+            self._controller_lease = None
 
     def _start_grace(self) -> None:
         self._cancel_grace()
@@ -520,7 +610,13 @@ class TilauWebControl:
         if item is None:
             return
         value, ref, ws = item
-        if self._bridge is None:
+        did = getattr(ws, '_tilau_device_id', None)
+        if did is None or self._controller != did or ws is not self._controller_ws:
+            asyncio.ensure_future(self._send(ws, 'ack', {"ref_seq": ref,
+                                  "status": "rejected", "reason": "NOT_CONTROLLER"}))
+            return
+        bridge = self._bridge_for_web()
+        if bridge is None:
             asyncio.ensure_future(self._send(ws, 'ack', {"ref_seq": ref,
                                   "status": "rejected", "reason": "CHANNEL_ABSENT"}))
             return
@@ -530,8 +626,9 @@ class TilauWebControl:
             if loop is not None:
                 loop.call_soon_threadsafe(
                     lambda: asyncio.ensure_future(self._after_slider(ws, ref, res)))
-        self._bridge.submit({'kind': 'set_slider', 'channel': channel,
-                             'value': value, 'done': _done})
+        bridge.submit({'kind': 'set_slider', 'channel': channel,
+                       'value': value, 'lease': self._controller_lease,
+                       'done': _done})
 
     async def _after_slider(self, ws, ref, res: dict) -> None:
         ack = {"ref_seq": ref, "status": res.get('status', 'rejected')}
@@ -543,7 +640,8 @@ class TilauWebControl:
     # ---- simple commands (mark / recorder) via the bridge -------------------
 
     def _submit_command(self, ws, ref, job: dict) -> None:
-        if self._bridge is None:
+        bridge = self._bridge_for_web()
+        if bridge is None:
             asyncio.ensure_future(self._send(ws, 'ack', {"ref_seq": ref,
                                   "status": "rejected", "reason": "BAD_MESSAGE"}))
             return
@@ -554,7 +652,8 @@ class TilauWebControl:
                 loop.call_soon_threadsafe(
                     lambda: asyncio.ensure_future(self._after_command(ws, ref, res)))
         job['done'] = _done
-        self._bridge.submit(job)
+        job['lease'] = self._controller_lease
+        bridge.submit(job)
 
     async def _after_command(self, ws, ref, res: dict) -> None:
         ack = {"ref_seq": ref, "status": res.get('status', 'rejected')}
@@ -585,22 +684,72 @@ class TilauWebControl:
 
     def broadcast(self, mtype: str, payload: dict) -> None:
         """Thread-safe fan-out (call from the Qt thread for telemetry)."""
-        loop = self._loop
-        if loop is None:
-            return
         def _do():  # runs on the loop thread
             for ws in list(self._clients):
                 t = asyncio.ensure_future(self._send(ws, mtype, payload))
                 self._pending.add(t)
                 t.add_done_callback(self._pending.discard)
-        loop.call_soon_threadsafe(_do)
+        with self._cross_thread_lock:
+            loop = self._loop
+            if loop is None:
+                return
+            with suppress(RuntimeError):
+                loop.call_soon_threadsafe(_do)
 
     def client_count(self) -> int:
-        return len(self._clients)
+        with self._cross_thread_lock:
+            return self._published_client_count
 
     def attach_bridge(self, bridge) -> None:
         """Wire the downward command path (CommandBridge on the Qt main thread)."""
-        self._bridge = bridge
+        with self._cross_thread_lock:
+            self._bridge = bridge
+
+    def _bridge_for_web(self):
+        """Read the Qt-published bridge reference with an explicit memory fence."""
+        with self._cross_thread_lock:
+            return self._bridge
+
+    def revoke_device(self, device_id: str) -> None:
+        """Thread-safely terminate every authenticated session for a device."""
+        def _schedule() -> None:
+            task = asyncio.ensure_future(self._revoke_device_sessions(str(device_id)))
+            self._pending.add(task)
+            task.add_done_callback(self._pending.discard)
+
+        with self._cross_thread_lock:
+            loop = self._loop
+            if loop is None:
+                return
+            with suppress(RuntimeError):
+                loop.call_soon_threadsafe(_schedule)
+
+    async def _revoke_device_sessions(self, device_id: str) -> None:
+        sockets = [ws for ws in self._clients
+                   if getattr(ws, '_tilau_device_id', None) == device_id]
+
+        # Invalidate queued Qt work before notifying/closing sockets.  Clearing the
+        # controller without starting the reconnect grace is intentional: explicit
+        # desktop revocation is immediate and cannot be recovered with the old DT.
+        if self._controller == device_id:
+            self._free_controller()
+
+        # Drop debounced slider values belonging to the revoked device as well.
+        for channel, item in list(self._pending_slider.items()):
+            ws = item[2]
+            if getattr(ws, '_tilau_device_id', None) == device_id:
+                self._pending_slider.pop(channel, None)
+                self._cancel_slider_timer(channel)
+
+        for ws in sockets:
+            await self._send(ws, 'error', {
+                "code": "AUTH_FAILED", "message": "device revoked",
+            })
+            with suppress(Exception):
+                await ws.close(code=1008, message=b'device revoked')
+        if sockets:
+            _log.info("control: closed %d session(s) for revoked device %s",
+                      len(sockets), device_id)
 
     # ---- real client (Phase 4) ----------------------------------------------
 
@@ -764,25 +913,56 @@ class TilauWebControl:
 
     def startWeb(self) -> bool:
         _log.info('start TilauWebControl on port %s', self._port)
-        self._loop = asyncio.new_event_loop()
+        with self._cross_thread_lock:
+            self._loop = asyncio.new_event_loop()
         self._thread = Thread(target=self._start_background_loop,
                               args=(self._loop,), daemon=True)
         self._thread.start()
-        future = asyncio.run_coroutine_threadsafe(self._startup(), self._loop)
-        future.result()
+        try:
+            future = asyncio.run_coroutine_threadsafe(self._startup(), self._loop)
+            future.result()
+        except BaseException:
+            # Transactional startup: TCPSite.start() can fail after the runner and
+            # background loop already exist (typically EADDRINUSE).  Do not leave a
+            # daemon loop behind when TilauWebHost catches the startup exception.
+            self._abort_startup()
+            raise
         self._register_bonjour()
         return True
+
+    def _abort_startup(self) -> None:
+        loop = self._loop
+        thread = self._thread
+        if loop is not None and loop.is_running():
+            if self._runner is not None:
+                try:
+                    future = asyncio.run_coroutine_threadsafe(self._runner.cleanup(), loop)
+                    future.result(timeout=2)
+                except Exception:  # noqa: BLE001
+                    pass
+            with suppress(RuntimeError):
+                loop.call_soon_threadsafe(loop.stop)
+        if thread is not None:
+            thread.join(timeout=2)
+        self._runner = None
+        self._hb_task = None
+        with self._cross_thread_lock:
+            self._loop = None
+        self._thread = None
 
     def stopWeb(self) -> None:
         _log.info('stop TilauWebControl')
         self._unregister_bonjour()
-        if self._loop is not None:
+        with self._cross_thread_lock:
+            loop = self._loop
+            self._loop = None  # prevent new broadcasts before shutdown starts
+        if loop is not None:
             if self._runner is not None:
-                future = asyncio.run_coroutine_threadsafe(self._runner.cleanup(), self._loop)
+                future = asyncio.run_coroutine_threadsafe(self._runner.cleanup(), loop)
                 with suppress(Exception):
                     future.result(timeout=2)  # never wedge app shutdown
-            self._loop.call_soon_threadsafe(self._loop.stop)
-            self._loop = None
+            with suppress(RuntimeError):
+                loop.call_soon_threadsafe(loop.stop)
         if self._thread is not None:
             self._thread.join(timeout=2)  # daemon thread; give up rather than hang
             self._thread = None

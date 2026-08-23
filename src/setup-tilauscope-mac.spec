@@ -144,7 +144,8 @@ a = Analysis(
     pathex=[SPECPATH],
     binaries=BINARIES,
     datas=DATA_FILES,
-    hiddenimports=hidden_imports,   
+    hiddenimports=hidden_imports,
+    # In-progress UI redesign, not published, excluded from distributed binaries.
     excludes=['pkg_resources', 'setuptools', 'tkinter', 'mypy', 'curses', 'matplotlib.tests', 'numpy.tests', 'scipy.tests', 'numpy.lib.tests', 'numpy.ma.tests', 'numpy.matrixlib.tests', 'numpy.polynomial.tests', 'numpy.random.tests', 'numpy.testing.tests', 'numpy.typing.tests', 'scipy._lib.tests','scipy.constants.tests','scipy.datasets.tests','scipy.fft.tests','scipy.fftpack.tests','scipy.integrate._ivp.tests','scipy.interpolate.tests','scipy.io._harwell_boeing.tests','scipy.io.arff.tests','scipy.io.matlab.tests','scipy.io.tests','scipy.linalg.tests','scipy.ndimage.tests','scipy.odr.tests','scipy.optimize.tests','scipy.signal.tests','scipy.sparse.linalg._isolve.tests','scipy.sparse.linalg.tests','scipy.sparse.tests','scipy.spatial.tests','scipy.spatial.transform.tests','scipy.special.tests','scipy.stats.tests'], # CRITICAL: Exclude pkg_resources
     hooksconfig={'matplotlib': {'backends': ['QtAgg', 'svg']}},
     runtime_hooks=['./pyinstaller_hooks/rthooks/pyi_rth_mplconfig.py'], # [cite: 55]

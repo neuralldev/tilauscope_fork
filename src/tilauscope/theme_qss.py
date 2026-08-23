@@ -15,7 +15,8 @@ from tilauscope.tilauscope_types import THEME
 if TYPE_CHECKING:
     from PyQt6.QtWidgets import QWidget
 
-__all__ = ['apply_tilau_theme', 'base_qss', 'mono_family', 'restyle', 'tint', 'tooltip_qss']
+__all__ = ['apply_tilau_theme', 'base_qss', 'mono_family', 'restyle', 'tint', 'tooltip_qss',
+           'with_tooltip']
 
 _log = logging.getLogger(__name__)
 
@@ -81,6 +82,18 @@ QToolTip {{
     font-size: 12px;
 }}
 """
+
+
+def with_tooltip(qss: str) -> str:
+    """Return *qss* carrying the theme's tooltip rule.
+
+    Any widget given its own stylesheet becomes the sheet Qt styles its tooltip
+    from, and a sheet that says nothing about QToolTip leaves the tip system
+    white on a dark screen. A styled widget that also carries a tooltip must go
+    through here — the alternative is remembering it at every call site, which
+    is how the white tips got there in the first place.
+    """
+    return qss if 'QToolTip' in qss else qss + tooltip_qss()
 
 
 def base_qss(ground: bool = True) -> str:
@@ -374,12 +387,11 @@ def apply_tilau_theme(root: QWidget, ground: bool = True) -> None:
     Artisan's main window, never the QApplication.
 
     **Check what lives under `root` before calling this.** A stylesheet
-    cascades to every descendant, so a TilauScope window that *hosts* an
-    Artisan widget must not receive it: ``TilauScope`` in displayscope.py
-    reparents Artisan's ``main_widget`` into itself via ``take_body()``, which
-    puts Artisan's graph, event buttons and LCDs under a TilauScope root.
-    Such a window applies the base to its own sub-containers instead — see
-    ``TilauScope.init_ui``.
+    cascades to every descendant, so a window that hosts a widget drawing its
+    own colours must not receive it at the root: ``TilauScope`` in
+    displayscope.py puts the roast curve, which paints its whole surface
+    itself, beside its control panel. Such a window applies the base to its own
+    sub-containers instead — see ``TilauScope.init_ui``.
 
     Pass ``ground=False`` for a panel that composes with transparency **and for
     every window that sets ``WA_TranslucentBackground``** — the ground paints

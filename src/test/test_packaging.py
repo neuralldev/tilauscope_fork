@@ -274,3 +274,52 @@ def test_spec_hidden_imports_are_not_empty(spec: Path) -> None:
         'was restructured or the markers were dropped — the parity check above is '
         'comparing two empty sets.'
     )
+
+
+# ── the excluded package must stay unreachable from shipped code ────────────
+
+def test_the_render_gate_sits_below_the_lcd_updates() -> None:
+    """TilauScope suspends Artisan's figure while it draws the roast itself.
+
+    The obvious place for that gate is the top of ``updategraphics`` — and it is
+    the wrong one. ``updateLCDs()`` is called from inside that method, and
+    ``updateLCDs`` is what emits ``tilauUpdateSignal``: an early return would cut
+    TilauScope's own supply of samples while claiming to save its rendering. The
+    screen would go still, the figure would be "saved", and nothing would say so.
+
+    So the gate belongs strictly after the LCD call. This asserts the order in
+    the source, because there is no cheap way to assert it at runtime and the
+    mistake looks correct on the page.
+    """
+    src = (SRC_DIR / 'artisanlib' / 'canvas.py').read_text(encoding='utf-8')
+    tree = ast.parse(src)
+    method = next(
+        (n for n in ast.walk(tree)
+         if isinstance(n, ast.FunctionDef) and n.name == 'updategraphics'), None)
+    assert method is not None, 'updategraphics has gone missing'
+
+    lcd_lines = [n.lineno for n in ast.walk(method)
+                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                 and n.func.attr in {'updateLCDs', 'updatePhasesLCDs'}]
+    assert lcd_lines, 'updategraphics no longer updates the LCDs — check the gate'
+
+    gate_lines = [n.lineno for n in ast.walk(method)
+                  if isinstance(n, ast.Attribute) and n.attr == 'tilau_suspend_render']
+    assert gate_lines, 'the render gate is gone from updategraphics'
+    assert min(gate_lines) > min(lcd_lines), (
+        'the render gate moved above the LCD update: suspending the figure now '
+        'also suspends the samples TilauScope is drawn from')
+
+
+def test_every_header_button_styles_its_own_tooltip() -> None:
+    """Qt styles a tooltip from the sheet of the hovered widget itself when it
+    has one. Each header button carries its own sheet, so each has to carry the
+    tooltip rule too — otherwise the tip falls back to the system white on a
+    dark screen."""
+    from tilauscope import header_icons
+
+    sheets = {name: getattr(header_icons, name)
+              for name in dir(header_icons) if name.startswith('QSS_')}
+    assert sheets, 'no header button stylesheets found'
+    naked = [name for name, qss in sheets.items() if 'QToolTip' not in qss]
+    assert not naked, f'these sheets leave their tooltip unstyled: {naked}'

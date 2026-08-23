@@ -60,7 +60,8 @@ roast.
 
 **What changes on screen.** The damper slider is claimed automatically for AirWave control
 the moment it is paired, and stays available even on a read-only roaster, since the extractor
-is a separate device from the roaster link itself.
+is a separate device from the roaster link itself. Every move it makes is recorded on the curve
+at the exact value sent, marked as the extractor's own rather than as a gesture of yours.
 
 **Known limits.** Fan output below its practical minimum has little effect; the useful range
 starts around 30%.

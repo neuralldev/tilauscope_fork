@@ -35,6 +35,9 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 
 _BONJOUR_HOST: Final[str] = 'tilauscope.local.'
 _UUID_IN_BEANS = re.compile(r'uuid:\s*([a-fA-F0-9-]{36})')
+_MAX_PROFILE_BYTES: Final[int] = 32 * 1024 * 1024
+_MAX_PROFILE_READS: Final[int] = 4
+_MAX_CURVE_RENDERS: Final[int] = 2
 
 # Catppuccin Mocha — same identity as the app and the desktop roast card.
 # Deliberately a copy, not an import: this module depends on neither Qt nor any
@@ -63,7 +66,12 @@ def _fmt_mmss(seconds: float) -> str:
 def read_profile(filepath: str) -> Optional[dict]:
     """Parse an .alog (Artisan native repr(dict), UTF-8 — cf. artisanlib.util)."""
     try:
-        data = ast.literal_eval(Path(filepath).read_text(encoding='utf-8'))
+        path = Path(filepath)
+        if path.stat().st_size > _MAX_PROFILE_BYTES:
+            _log.warning("webrecords: profile exceeds %d bytes: %s",
+                         _MAX_PROFILE_BYTES, filepath)
+            return None
+        data = ast.literal_eval(path.read_text(encoding='utf-8'))
         return data if isinstance(data, dict) else None
     except Exception as e:  # noqa: BLE001
         _log.error(f"webrecords: cannot read {filepath}: {e}")
@@ -264,6 +272,9 @@ class TilauWebRecords:
         self._zeroconf = None
         self._zc_info = None
         self._png_cache: dict[str, tuple[float, bytes]] = {}  # uuid -> (mtime, png)
+        self._profile_slots: Optional[asyncio.Semaphore] = None
+        self._render_slots: Optional[asyncio.Semaphore] = None
+        self._render_inflight: dict[str, asyncio.Task] = {}
 
         self._app = web.Application(middlewares=[self._security_middleware])
         self._app.on_response_prepare.append(self._strip_server_header)
@@ -342,8 +353,12 @@ class TilauWebRecords:
     async def _roast_page(self, request: web.Request) -> web.Response:
         roast_uuid = request.match_info['uuid'].lower()
         # file I/O + repr parse off the event loop (keeps the server responsive)
-        loaded = await asyncio.get_running_loop().run_in_executor(
-            None, self._load_roast, roast_uuid)
+        slots = self._profile_slots
+        if slots is None:
+            raise web.HTTPServiceUnavailable(text='server starting')
+        async with slots:
+            loaded = await asyncio.get_running_loop().run_in_executor(
+                None, self._load_roast, roast_uuid)
         if loaded is None:
             return _error_page('Roast not found',
                                'No roast with this identifier — is TilauScope '
@@ -389,12 +404,16 @@ class TilauWebRecords:
         if cached and cached[0] == mtime:
             return web.Response(body=cached[1], content_type='image/png',
                                 headers={'Cache-Control': 'private, max-age=300'})
-        # matplotlib rendering is CPU-bound: run it off the event loop so a
-        # burst of requests cannot stall every other client (DoS resilience)
-        def _parse_and_render() -> Optional[bytes]:
-            profile = read_profile(filepath)
-            return render_curve_png(profile) if profile else None
-        png = await asyncio.get_running_loop().run_in_executor(None, _parse_and_render)
+        # Deduplicate simultaneous cache misses for one roast and cap distinct
+        # matplotlib jobs.  run_in_executor alone only moves an unbounded queue off
+        # the event loop; it does not provide backpressure.
+        task = self._render_inflight.get(roast_uuid)
+        if task is None:
+            task = asyncio.create_task(self._render_curve(filepath))
+            self._render_inflight[roast_uuid] = task
+            task.add_done_callback(
+                lambda done, key=roast_uuid: self._render_inflight.pop(key, None))
+        png = await asyncio.shield(task)
         if png is None:
             return web.Response(status=404)
         if len(self._png_cache) >= 10:  # tiny LRU-ish cap
@@ -402,6 +421,18 @@ class TilauWebRecords:
         self._png_cache[roast_uuid] = (mtime, png)
         return web.Response(body=png, content_type='image/png',
                             headers={'Cache-Control': 'private, max-age=300'})
+
+    async def _render_curve(self, filepath: str) -> Optional[bytes]:
+        slots = self._render_slots
+        if slots is None:
+            return None
+
+        def _parse_and_render() -> Optional[bytes]:
+            profile = read_profile(filepath)
+            return render_curve_png(profile) if profile else None
+
+        async with slots:
+            return await asyncio.get_running_loop().run_in_executor(None, _parse_and_render)
 
     async def _bean_page(self, request: web.Request) -> web.Response:
         uuid_str = request.match_info['uuid'].lower()
@@ -449,6 +480,8 @@ class TilauWebRecords:
     # ---- lifecycle (weblcds pattern) ----------------------------------------
 
     async def _startup(self) -> None:
+        self._profile_slots = asyncio.Semaphore(_MAX_PROFILE_READS)
+        self._render_slots = asyncio.Semaphore(_MAX_CURVE_RENDERS)
         self._runner = web.AppRunner(self._app)
         await self._runner.setup()
         site = web.TCPSite(self._runner, '0.0.0.0', self._port)
@@ -475,23 +508,62 @@ class TilauWebRecords:
         self._thread = Thread(target=self._start_background_loop,
                               args=(self._loop,), daemon=True)
         self._thread.start()
-        future = asyncio.run_coroutine_threadsafe(self._startup(), self._loop)
-        future.result()
+        try:
+            future = asyncio.run_coroutine_threadsafe(self._startup(), self._loop)
+            future.result()
+        except BaseException:
+            # AppRunner.setup() may have succeeded before the socket bind fails.
+            # Roll back both pieces here because TilauWebHost deliberately catches
+            # the exception and otherwise loses the only reference to this thread.
+            self._abort_startup()
+            raise
         self._register_bonjour()
         return True
+
+    def _abort_startup(self) -> None:
+        loop = self._loop
+        thread = self._thread
+        if loop is not None and loop.is_running():
+            if self._runner is not None:
+                try:
+                    future = asyncio.run_coroutine_threadsafe(self._runner.cleanup(), loop)
+                    future.result(timeout=2)
+                except Exception:  # noqa: BLE001
+                    pass
+            with suppress(RuntimeError):
+                loop.call_soon_threadsafe(loop.stop)
+        if thread is not None:
+            thread.join(timeout=2)
+        self._runner = None
+        self._loop = None
+        self._thread = None
 
     def stopWeb(self) -> None:
         _log.info('stop TilauWebRecords')
         self._unregister_bonjour()
-        if self._loop is not None:
-            if self._runner is not None:
-                future = asyncio.run_coroutine_threadsafe(self._runner.cleanup(), self._loop)
-                future.result()
-            self._loop.call_soon_threadsafe(self._loop.stop)
-            self._loop = None
-        if self._thread is not None:
-            self._thread.join()
-            self._thread = None
+        loop = self._loop
+        thread = self._thread
+        if loop is not None:
+            if self._runner is not None and loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(self._runner.cleanup(), loop)
+                try:
+                    future.result(timeout=2)
+                except Exception as e:  # noqa: BLE001
+                    # Shutdown must remain bounded even when an aiohttp handler or
+                    # executor never completes.  Cancelling is best-effort; stopping
+                    # the loop below is the final backstop.
+                    future.cancel()
+                    _log.warning('webrecords: cleanup timed out or failed: %s', e)
+            if loop.is_running():
+                with suppress(RuntimeError):
+                    loop.call_soon_threadsafe(loop.stop)
+        if thread is not None:
+            thread.join(timeout=2)
+            if thread.is_alive():
+                _log.warning('webrecords: server thread did not stop within 2 seconds')
+        self._runner = None
+        self._loop = None
+        self._thread = None
 
     # ---- Bonjour -------------------------------------------------------------
 

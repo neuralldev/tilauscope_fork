@@ -100,10 +100,45 @@ def test_history_uses_only_same_machine_and_control_channel(tmp_path: Path) -> N
     assert scanner._extract_metrics(excluded) is not None
 
 
-def test_window_never_reads_past_candidate_budget(
+def test_scan_stops_as_soon_as_the_memory_window_is_full(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """The read ceiling is a ceiling, not a target.
+
+    `window` is the memory depth AND the denominator of the learning confidence
+    (n/window), so it must not double as the I/O budget: widening the search by
+    raising it would dilute every correction. The scanner therefore stops the
+    moment it holds `window` usable roasts, and only keeps digging when they
+    are scarce.
+    """
+    for i in range(4):
+        path = tmp_path / f"valid-{i}.alog"
+        _write_alog(path, _alog_profile())
+        os.utime(path, (100.0 + i, 100.0 + i))
+
+    scanner = AlogScanner(str(tmp_path), window=2, aw=_aw())
+    opened: list[str] = []
+    original_extract = scanner._extract_metrics
+
+    def tracked_extract(path: Path) -> RoastPreheatMetrics | None:
+        opened.append(path.name)
+        return original_extract(path)
+
+    monkeypatch.setattr(scanner, "_extract_metrics", tracked_extract)
+    metrics = scanner.load_window()
+
+    assert len(metrics) == 2
+    # newest-first, and not one profile opened past the second hit
+    assert opened == ["valid-3.alog", "valid-2.alog"]
+
+
+def test_scan_digs_past_the_window_when_usable_roasts_are_scarce(tmp_path: Path) -> None:
+    """A recent run of unusable profiles no longer starves the learning.
+
+    The budget used to be `window` itself, so three unrelated roasts on top of
+    the pile left a window of one with nothing at all.
+    """
     valid = tmp_path / "old-valid.alog"
     wrong_1 = tmp_path / "new-wrong-machine.alog"
     wrong_2 = tmp_path / "new-wrong-source.alog"
@@ -115,18 +150,29 @@ def test_window_never_reads_past_candidate_budget(
     os.utime(wrong_2, (300.0, 300.0))
 
     scanner = AlogScanner(str(tmp_path), window=1, aw=_aw())
-    opened: list[str] = []
-    original_extract = scanner._extract_metrics
-
-    def tracked_extract(path: Path) -> RoastPreheatMetrics | None:
-        opened.append(path.name)
-        return original_extract(path)
-
-    monkeypatch.setattr(scanner, "_extract_metrics", tracked_extract)
     metrics = scanner.load_window()
 
-    assert metrics == []
-    assert opened == [wrong_2.name]
+    assert len(metrics) == 1
+
+
+def test_read_ceiling_is_honoured(tmp_path: Path) -> None:
+    """Never open more than `scan_budget` profiles, however big the archive."""
+    for i in range(12):
+        path = tmp_path / f"wrong-{i:02d}.alog"
+        _write_alog(path, _alog_profile(machine="Other roaster"))
+        os.utime(path, (100.0 + i, 100.0 + i))
+
+    scanner = AlogScanner(str(tmp_path), window=1, aw=_aw(), scan_budget=4)
+    assert scanner.scan_budget == 4
+    assert len(scanner._list_recent()) == 4
+    assert scanner.load_window() == []
+
+
+def test_read_ceiling_defaults_clear_of_the_memory_window() -> None:
+    """The default ceiling must never fall back to `window`, which is the bug
+    this whole split exists to prevent."""
+    assert AlogScanner("", window=1, aw=_aw()).scan_budget >= 50
+    assert AlogScanner("", window=30, aw=_aw()).scan_budget >= 150
 
 
 def test_robust_statistics_reject_single_sample_spikes() -> None:
@@ -137,11 +183,34 @@ def test_robust_statistics_reject_single_sample_spikes() -> None:
 
 def test_stabilisation_requires_a_complete_observation_window() -> None:
     detector = StabilisationDetector(window_sec=5.0, polling_dt=1.0)
-    for _ in range(4):
-        detector.update(200.0, 200.0)
+    for now in (0.0, 1.0, 2.0, 4.9):
+        detector.update(200.0, 200.0, now=now)
     assert not detector.has_full_window()
-    detector.update(200.0, 200.0)
+    detector.update(200.0, 200.0, now=5.0)
     assert detector.has_full_window()
+
+
+def test_stabilisation_window_uses_elapsed_time_not_sample_count() -> None:
+    detector = StabilisationDetector(window_sec=5.0, polling_dt=1.0)
+    for now in (0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6):
+        detector.update(200.0, 200.0, now=now)
+    assert not detector.has_full_window()
+
+    detector.update(200.0, 200.0, now=5.0)
+    assert detector.has_full_window()
+
+    detector.update(200.0, 200.0, now=10.1)
+    assert list(detector._times) == [5.0, 10.1]
+
+
+def test_stability_cannot_arm_before_full_elapsed_window() -> None:
+    detector = StabilisationDetector(window_sec=5.0, polling_dt=1.0)
+    for now in (0.0, 0.1, 0.2, 0.3, 0.4, 0.5):
+        detector.update(200.0, 200.0, now=now)
+    assert detector._stable_since is None
+
+    detector.update(200.0, 200.0, now=5.0)
+    assert detector._stable_since == pytest.approx(5.0)
 
 
 class _Detector(StabilisationDetector):

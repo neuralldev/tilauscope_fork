@@ -337,6 +337,58 @@ def to_agtron(value: float, system: str) -> float:
     return value  # unknown meter → assume already Agtron-comparable
 
 
+DEFAULT_COLOR_SYSTEM: str = "Agtron"
+
+
+def resolve_color_system(current: str, ground: float, whole: float,
+                         default: str = DEFAULT_COLOR_SYSTEM) -> str:
+    """Name the colour scale of a roast that carries a reading but no scale.
+
+    Artisan's colour-system index defaults to 0, and entry 0 is the empty
+    string: a profile saved without an explicit choice reads back as
+    `color_system: ''`. Every consumer that needs the scale to interpret the
+    figure — the dial-in advice, the label — takes that for "no colour
+    measured" and refuses a roast that was in fact measured. The TilauScope
+    colour fields are Agtron, so the scale is named as soon as a reading
+    exists.
+
+    Returns *current* when it is already set, *default* when a reading exists
+    without one, and "" when there is genuinely nothing measured.
+    """
+    cur = (current or "").strip()
+    if cur:
+        return cur
+    if ground > 0 or whole > 0:
+        return default
+    return ""
+
+
+def ensure_color_system(qmc: object, default: str = DEFAULT_COLOR_SYSTEM) -> str:
+    """Apply :func:`resolve_color_system` to a live Artisan canvas.
+
+    Called right after a colour reading is written to `qmc`, so the scale
+    reaches the saved profile with the value it describes. Returns the
+    resolved scale name.
+    """
+    def _num(name: str) -> float:
+        try:
+            return float(getattr(qmc, name, 0) or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    systems = list(getattr(qmc, "color_systems", None) or [])
+    try:
+        idx = int(getattr(qmc, "color_system_idx", 0) or 0)
+    except (TypeError, ValueError):
+        idx = 0
+    current = systems[idx] if 0 <= idx < len(systems) else ""
+
+    resolved = resolve_color_system(current, _num("ground_color"), _num("whole_color"), default)
+    if resolved and resolved != current and resolved in systems:
+        qmc.color_system_idx = systems.index(resolved)  # type: ignore[attr-defined]
+    return resolved
+
+
 def get_agtron_color(agtron: float) -> str:
     """Return the grain-colour hex that matches *agtron* on the SCA Gourmet scale.
 

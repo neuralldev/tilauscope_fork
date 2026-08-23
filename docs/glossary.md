@@ -163,6 +163,14 @@ between its own reports and cannot be reached in between.
 
 ## Machine behaviour
 
+#### Machine response
+
+How fast the [environmental temperature](#et--environmental-temperature) is climbing — the
+machine's own rate of rise, as opposed to the beans'. It moves within seconds of a burner change,
+while the beans take far longer to register it, so it is the earliest visible sign that a
+correction has taken effect. It says nothing about how the roast is going: only that the machine
+heard you.
+
 #### Thermal mass
 
 How much heat the machine's own metal stores. A high-thermal-mass drum keeps delivering heat
@@ -194,6 +202,21 @@ The temperature a [PID](#pid) is aiming for.
 Sailing past the target temperature because the machine's stored heat keeps arriving after the
 power has been cut. The higher the [thermal mass](#thermal-mass), the more of it there is, and
 the earlier the power has to come off to avoid it.
+
+#### Experience
+
+How much TilauScope's preheat control has learned about heating to a given
+[setpoint](#sv--setpoint-value) on your machine — shown as a four-step reading (*Learning*,
+*Estimated*, *Tuned*, *[Calibrated](#calibrated)*) next to the preheat countdown. It reflects
+real preheats recorded at that exact setpoint, not a fixed property of the machine, and it can
+read differently for holding power and for knowing when to ease off — one can be learned before
+the other.
+
+#### Calibrated
+
+The highest [Experience](#experience) reading: enough real preheats have been recorded at this
+exact setpoint that the holding power TilauScope applies is a settled result, not an estimate
+carried over from a nearby setpoint or from the machine's general thermal behaviour.
 
 ---
 
@@ -260,3 +283,10 @@ already stalled. A smooth curve is not proof that the roast is being fed.
 
 Drying driven so hard that the bean surface dries far ahead of its core, leaving the roast
 unevenly developed.
+
+#### Heat cut
+
+The safe state TilauScope commands when you hold **STOP HEAT**: every automation that was
+driving the heat is stopped, the burner goes to zero, and airflow and extraction open fully.
+The drum keeps turning and the beans stay in it — emptying the drum remains your gesture.
+See [The roasting window](the-window.md#cutting-the-heat-in-an-emergency).

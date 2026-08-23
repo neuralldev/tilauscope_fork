@@ -48,7 +48,6 @@ import textwrap
 import functools
 import psutil
 from psutil._common import bytes2human # pyright:ignore[reportPrivateImportUsage]
-from babel.units import get_unit_name
 
 from collections.abc import Callable, Sequence
 from typing import override, Final, Literal, Any, cast, TYPE_CHECKING
@@ -72,14 +71,19 @@ if TYPE_CHECKING:
 
 from artisanlib.util import (to_ascii, uchr, fill_gaps, deltaLabelPrefix, deltaLabelUTF8, deltaLabelMathPrefix, stringfromseconds,
         fromFtoC, fromFtoCstrict, fromCtoF, fromCtoFstrict, RoRfromFtoC, RoRfromFtoCstrict, RoRfromCtoF, RoRfromCtoFstrict, toInt, toString,
-        toFloat, application_name, stock_theme_directory, getResourcePath, getDirectory, convertWeight, right_to_left, float2str,
+        toFloat, application_name, getResourcePath, getDirectory, convertWeight, right_to_left, float2str,
         abbrevString, scaleFloat2String, is_proper_temp, weight_units, render_weight, volume_units, float2float, timearray2index,
         events_internal_to_external_value, events_external_to_internal_value, smooth_list, computeDeltas)
+## TILAU ##
+from artisanlib.util import stock_theme_directory
 from artisanlib import pid
 from artisanlib.time import ArtisanTime
 #from artisanlib.filters import LiveMedian
 from artisanlib.dialogs import ArtisanMessageBox
 from artisanlib.atypes import SerialSettings, BTBreakParams, BbpCache, AlarmSet, EnergyMetrics
+from artisanlib.button_style import artisan_push_button_style_dict, artisan_simulator_push_button_style_dict
+from artisanlib.device_registry import is_special_device, is_non_temp_device, is_non_temp_device_chan, is_phidget_device, is_binary_device
+from artisanlib.device_registry import TILAU_DEVICES ## TILAU ##
 
 # import artisan.plus modules
 from plus.util import roastLink
@@ -124,7 +128,6 @@ except Exception: # pylint: disable=broad-except
 ## TILAU ##
 from wakepy import keep
 from tilauscope.mqttbridge import TilauscopeMQTTClient, MQTTSensorConfig, TilauMqttPorts
-from tilauscope.tilauscope_types import get_agtron_color, get_roc_color as _omniflux_roc_color
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -211,6 +214,7 @@ class MplCanvas(FigureCanvas):
 
 # NOTE: to have pylint to verify proper __slot__ definitions using pylint one has to remove the super class FigureCanvas here temporarily
 #   as this does not has __slot__ definitions and thus __dict__ is contained which suppresses the warnings
+#class tgraphcanvas():
 class tgraphcanvas(QObject):
     updategraphicsSignal = pyqtSignal()
     updateLargeLCDsTimeSignal = pyqtSignal(str)
@@ -246,6 +250,8 @@ class tgraphcanvas(QObject):
     redrawSignal = pyqtSignal(bool,bool,bool,bool,bool)
     redrawKeepViewSignal = pyqtSignal(bool,bool,bool,bool,bool)
     monitorClosedDown = pyqtSignal()
+    canvasZoomSignal = pyqtSignal(float, float)
+    canvasPanSignal = pyqtSignal(float, float, int)
     # TilauScope live data push, decoupled from the qmc sample loop.
     # (code, display_str, raw_value, button_state). The slot is guarded
     # so it can never raise back into updateLCDs.
@@ -283,7 +289,7 @@ class tgraphcanvas(QObject):
         'YOCTO_dataRate', 'YOCTO_dataRatesStrings', 'YOCTO_dataRatesValues', 'phidget1018valueFactor', 'phidget1018_async', 'phidget1018_ratio', 'phidget1018_dataRates',
         'phidget1018_changeTriggers', 'phidget1018_changeTriggersValues', 'phidget1018_changeTriggersStrings', 'phidgetVCP100x_voltageRanges', 'phidgetVCP100x_voltageRangeValues',
         'phidgetVCP100x_voltageRangeStrings', 'phidgetDAQ1400_powerSupplyStrings', 'phidgetDAQ1400_powerSupply', 'phidgetDAQ1400_inputModeStrings', 'phidgetDAQ1400_inputMode',
-        'devices', 'phidgetDevices', 'nonSerialDevices', 'nonTempDevices', 'specialDevices', 'binaryDevices', 'extradevices', 'extratimex', 'extradevicecolor1', 'extradevicecolor2', 'extratemp1',
+        'extradevices', 'extratimex', 'extradevicecolor1', 'extradevicecolor2', 'extratemp1',
         'extratemp2', 'extrastemp1', 'extrastemp2', 'extractimex1', 'extractimex2', 'extractemp1', 'extractemp2', 'extratemp1lines', 'extratemp2lines', 'extrafill1lines', 'extrafill2lines',
         'extraname1', 'extraname2', 'extramathexpression1', 'extramathexpression2', 'extralinestyles1', 'extralinestyles2', 'extradrawstyles1', 'extradrawstyles2',
         'extralinewidths1', 'extralinewidths2', 'extramarkers1', 'extramarkers2', 'extramarkersizes1', 'extramarkersizes2', 'devicetablecolumnwidths', 'energytablecolumnwidths', 'extraNoneTempHint1',
@@ -318,7 +324,7 @@ class tgraphcanvas(QObject):
         'patheffects', 'graphstyle', 'graphfont', 'buttonvisibility', 'buttonactions', 'buttonactionstrings', 'extrabuttonactions', 'extrabuttonactionstrings',
         'xextrabuttonactions', 'xextrabuttonactionstrings', 'chargeTimerFlag', 'autoChargeFlag', 'autoDropFlag', 'autoChargeMode', 'autoDropMode', 'autoChargeIdx', 'autoDropIdx', 'markTPflag',
         'autoDRYflag', 'autoFCsFlag', 'autoCHARGEenabled', 'autoDRYenabled', 'autoFCsenabled', 'autoDROPenabled', 'projectionconstant',
-        'projectionmode', 'transMappingMode', 'weight', 'roasted_defects_weight', 'volume', 'density', 'roasted_defects_mode', 'density_roasted', 'volumeCalcUnit', 'volumeCalcWeightInStr',
+        'projectionmode', 'transMappingMode', 'weight', 'end_weight_est', 'roasted_defects_weight', 'volume', 'density', 'roasted_defects_mode', 'density_roasted', 'volumeCalcUnit', 'volumeCalcWeightInStr',
         'volumeCalcWeightOutStr', 'container_names', 'container_weights', 'specialevents', 'etypes', 'etypesdefault',
         'alt_etypesdefault', 'default_etypes_set', 'specialeventstype',
         'specialeventsStrings', 'specialeventsvalue', 'eventsGraphflag', 'clampEvents', 'renderEventsDescr', 'eventslabelschars', 'eventsshowflag',
@@ -385,7 +391,7 @@ class tgraphcanvas(QObject):
         'segmentpickflag', 'segmentdeltathreshold', 'segmentsamplesthreshold', 'stats_summary_rect', 'title_text', 'title_artist', 'title_width',
         'background_title_width', 'xlabel_text', 'xlabel_artist', 'xlabel_width', 'mathdictionary_base',
         'ambient_pressure_sampled', 'ambient_humidity_sampled', 'ambientTemp_sampled', 'backgroundmovespeed', 'chargeTimerPeriod', 'flavors_default_value',
-        'fmt_data_ON', 'l_subtitle', 'projectDeltaFlag', 'btbreak_params','bbpCache', 'glow',
+        'fmt_data_ON', 'l_subtitle', 'projectDeltaFlag', 'btbreak_params','bbpCache', 'bbpPrevRoast', 'glow',
         'custom_event_dlg_default_type', 'custom_event_dlg_default_type', 'foreground_event_ind', 'foreground_event_pick_position', 'foreground_event_last_picked_ind',
         'foreground_event_last_picked_pos', 'background_event_ind', 'background_event_pos', 'background_event_pick_position',
         'background_event_last_picked_ind', 'background_event_last_picked_pos', 'event_selected',
@@ -393,29 +399,16 @@ class tgraphcanvas(QObject):
         'CO2kg_per_BTU_default', 'CO2kg_per_BTU', 'Biogas_CO2_Reduction', 'Biogas_CO2_Reduction_default',
         'meterunitnames', 'meterreads_default', 'meterreads', 'meterlabels_setup', 'meterlabels', 'meterunits_setup', 'meterunits',
         'meterfuels_setup', 'meterfuels', 'metersources_setup', 'metersources', 'playbackdrop_min_roasttime', 'TP_max_roasttime',
-        'single_click_mpl_upperleft_corner_timer', 'single_click_mpl_upperleft_corner_TIMEOUT', 'profile_upload_limit', 'last_profile_upload_times']
+        'single_click_mpl_upperleft_corner_timer', 'single_click_mpl_upperleft_corner_TIMEOUT', 'profile_upload_limit', 'last_profile_upload_times',
+        'zoom_follow_pan_x', 'zoom_follow_pan_y', 'main_event_buttons_undo_enabled', 'plus_beans_reminder_on_start',
+        ]
          
     ## TILAU ##
     # extend slots to include TilauScope specific attributes
     __slots__ += ['AirwaveFan','AirwaveMode']
-    # mydevices to extend existing mapping dynamically
-    tilau_devices = {
-        "difluid": {"id": 190, "label": "Difluid AirWave", "nonserial": True, "nonTemp": (False, False)}, # intlet and calalyst temp
-        "tilau12": {"id": 191, "label": "TilauScope Ambient 12", "nonserial": True, "nonTemp": (False, True)},
-        "tilau34": {"id": 192, "label": "TilauScope Ambient 34", "nonserial": True, "nonTemp": (True, True)},
-        "tilau56": {"id": 193, "label": "TilauScope Ambient 56", "nonserial": True, "nonTemp": (True, True)},
-        "mqtt12" : {"id": 194, "label": "TilauScope MQTT 12", "nonserial": True, "nonTemp": (True, True)},
-        "mqtt34" : {"id": 195, "label": "TilauScope MQTT 34", "nonserial": True, "nonTemp": (True, True)},
-        "mqtt56" : {"id": 196, "label": "TilauScope MQTT 56", "nonserial": True, "nonTemp": (True, True)},
-        "mqtt78" : {"id": 197, "label": "TilauScope MQTT 78", "nonserial": True, "nonTemp": (True, True)},
-        "mqtt910": {"id": 198, "label": "TilauScope MQTT 910", "nonserial": True, "nonTemp": (True, True)},
-        "skywalker": {"id": 216, "label": "Skywalker V2", "nonserial": True, "nonTemp": (False, False)},
-        "skywalker_pf": {"id": 217, "label": "+Skywalker V2 (Burner/Airflow)", "nonserial": True, "nonTemp": (True, True)},
-        "trp_btet": {"id": 218, "label": "TRP Roaster (BT/ET)", "nonserial": False, "nonTemp": (False, False)},
-        "trp_hf": {"id": 219, "label": "+TRP Roaster (Heater/Fan)", "nonserial": False, "nonTemp": (True, True)},
-        "skycommand": {"id": 220, "label": "SkyCommand V1", "nonserial": True, "nonTemp": (False, False)},
-        "skycommand_pf": {"id": 221, "label": "+SkyCommand V1 (Burner/Airflow)", "nonserial": True, "nonTemp": (True, True)},
-    }
+    # TilauScope devices; registered in artisanlib.device_registry at import time.
+    # Kept as a class attribute so existing self.tilau_devices[...] call sites keep working.
+    tilau_devices = TILAU_DEVICES
 
     ## TILAU ##
     @staticmethod
@@ -674,7 +667,7 @@ class tgraphcanvas(QObject):
         self.errorlog:list[str] = []
 
         # default delay between readings in milliseconds
-        self.default_delay: Final[int] = 2000 # default 2s
+        self.default_delay: Final[int] = 1000 # default 1s
         self.delay:int = self.default_delay
         self.min_delay: Final[int] = 100 #250 # 1000 # Note that already a 0.25s min delay puts a lot of performance pressure on the app
 
@@ -860,428 +853,6 @@ class tgraphcanvas(QObject):
         self.phidgetDAQ1400_inputModeStrings: Final[list[str]] = ['NPN','PNP']
         self.phidgetDAQ1400_inputMode:int = 0
 
-        #menu of thermocouple devices
-        #device with first letter + only shows in extra device tab
-        #device with first letter - does not show in any tab (but its position in the list is important)
-        # device labels (used in Dialog config).
-
-        # ADD DEVICE: to add a device you have to modify several places. Search for the tag "ADD DEVICE:" in the code
-        # (check also the tags in comm.py and devices.py!!)
-        # - add to self.devices
-        self.devices: Final[list[str]] = [  # NOTE: the index of the elements in this list is one less than the device id indicated in the comments below
-                                            # The index of device "NONE" in self.devices is 17 not 18!
-                        #Fuji PID               #0
-                       'Omega HH806AU',         #1
-                       'Omega HH506RA',         #2
-                       'CENTER 309',            #3
-                       'CENTER 306',            #4
-                       'CENTER 305',            #5
-                       'CENTER 304',            #6
-                       'CENTER 303',            #7
-                       'CENTER 302',            #8
-                       'CENTER 301',            #9
-                       'CENTER 300',            #10
-                       'VOLTCRAFT K204',        #11
-                       'VOLTCRAFT K202',        #12
-                       'VOLTCRAFT 300K',        #13
-                       'VOLTCRAFT 302KJ',       #14
-                       'EXTECH 421509',         #15
-                       'Omega HH802U',          #16
-                       'Omega HH309',           #17
-                       'NONE',                  #18
-                       '-ARDUINOTC4',           #19
-                       'TE VA18B',              #20
-                       '+CENTER 309 34',        #21
-                       '+PID SV/DUTY %',        #22
-                       'Omega HHM28[6]',        #23
-                       '+VOLTCRAFT K204 34',    #24
-                       '+Virtual',              #25
-                       '-DTAtemperature',       #26
-                       'Program',               #27
-                       '+ArduinoTC4 34',        #28
-                       'MODBUS',                #29
-                       'VOLTCRAFT K201',        #30
-                       'Amprobe TMD-56',        #31
-                       '+ArduinoTC4 56',        #32
-                       '+MODBUS 34',            #33
-                       'Phidget 1048 4xTC 01',  #34
-                       '+Phidget 1048 4xTC 23', #35
-                       '+Phidget 1048 4xTC AT', #36
-                       'Phidget 1046 4xRTD 01', #37
-                       '+Phidget 1046 4xRTD 23',#38
-                       'Mastech MS6514',        #39
-                       'Phidget IO 01',         #40
-                       '+Phidget IO 23',        #41
-                       '+Phidget IO 45',        #42
-                       '+Phidget IO 67',        #43
-                       '+ArduinoTC4 78',        #44
-                       'Yocto Thermocouple',    #45
-                       'Yocto PT100',           #46
-                       'Phidget 1045 IR',       #47
-                       '+Program 34',           #48
-                       '+Program 56',           #49
-                       'DUMMY',                 #50
-                       '+CENTER 304 34',        #51
-                       'Phidget 1051 1xTC 01',  #52
-                       'Hottop BT/ET',          #53
-                       '+Hottop Heater/Fan',    #54
-                       '+MODBUS 56',            #55
-                       'Apollo DT301',          #56
-                       'EXTECH 755',            #57
-                       'Phidget TMP1101 4xTC 01',  #58
-                       '+Phidget TMP1101 4xTC 23', #59
-                       '+Phidget TMP1101 4xTC AT', #60
-                       'Phidget TMP1100 1xTC',     #61
-                       'Phidget 1011 IO 01',       #62
-                       'Phidget HUB IO 01',        #63
-                       '+Phidget HUB IO 23',       #64
-                       '+Phidget HUB IO 45',       #65
-                       '-Omega HH806W',            #66 NOT WORKING
-                       'VOLTCRAFT PL-125-T2',      #67
-                       'Phidget TMP1200 1xRTD A',  #68
-                       'Phidget IO Digital 01',    #69
-                       '+Phidget IO Digital 23',   #70
-                       '+Phidget IO Digital 45',   #71
-                       '+Phidget IO Digital 67',   #72
-                       'Phidget 1011 IO Digital 01', #73
-                       'Phidget HUB IO Digital 01', #74
-                       '+Phidget HUB IO Digital 23',#75
-                       '+Phidget HUB IO Digital 45',#76
-                       'VOLTCRAFT PL-125-T4',       #77
-                       '+VOLTCRAFT PL-125-T4 34',   #78
-                       'S7',                        #79
-                       '+S7 34',                    #80
-                       '+S7 56',                    #81
-                       '+S7 78',                    #82
-                       'Aillio Bullet R1 BT/DT',             #83
-                       '+Aillio Bullet R1 Heater/Fan',       #84
-                       '+Aillio Bullet R1 BT RoR/Drum',      #85
-                       '+Aillio Bullet R1 Voltage/Exhaust',  #86
-                       '+Aillio Bullet R1 State/Fan RPM',    #87
-                       '+Program 78',               #88
-                       '+Program 910',              #89
-                       '+Slider 01',                #90
-                       '+Slider 23',                #91
-                       '-Probat Middleware',                 #92
-                       '-Probat Middleware burner/drum',     #93
-                       '-Probat Middleware fan/pressure',    #94
-                       'Phidget DAQ1400 Current',   #95
-                       'Phidget DAQ1400 Frequency', #96
-                       'Phidget DAQ1400 Digital',   #97
-                       'Phidget DAQ1400 Voltage',   #98
-                       'Aillio Bullet R1 IBTS/BT',  #99
-                       'Yocto IR',                  #100
-                       'Behmor BT/CT',              #101
-                       '+Behmor 34',                #102
-                       'VICTOR 86B',                #103
-                       '+Behmor 56',                #104
-                       '+Behmor 78',                #105
-                       'Phidget HUB IO 0',          #106
-                       'Phidget HUB IO Digital 0',  #107
-                       'Yocto 4-20mA Rx',           #108
-                       '+MODBUS 78',                #109
-                       '+S7 910',                   #110
-                       'WebSocket',                 #111
-                       '+WebSocket 34',             #112
-                       '+WebSocket 56',             #113
-                       '+Phidget TMP1200 1xRTD B',  #114
-                       'HB BT/ET',                  #115
-                       '+HB DT/IT',                 #116
-                       '+HB AT',                    #117
-                       '+WebSocket 78',             #118
-                       '+WebSocket 910',            #119
-                       'Yocto 0-10V Rx',            #120
-                       'Yocto milliVolt Rx',        #121
-                       'Yocto Serial',              #122
-                       'Phidget VCP1000',           #123
-                       'Phidget VCP1001',           #124
-                       'Phidget VCP1002',           #125
-                       'ARC BT/ET',                 #126
-                       '+ARC MET/IT',               #127
-                       '+ARC AT',                   #128
-                       'Yocto Power',               #129
-                       'Yocto Energy',              #130
-                       'Yocto Voltage',             #131
-                       'Yocto Current',             #132
-                       'Yocto Sensor',              #133
-                       'Santoker BT/ET',            #134
-                       '+Santoker Power/Fan',       #135
-                       '+Santoker Drum',            #136
-                       'Phidget DAQ1500',           #137
-                       'Kaleido BT/ET',             #138
-                       '+Kaleido SV/AT',            #139
-                       '+Kaleido Drum/AH',          #140
-                       '+Kaleido Heater/Fan',       #141
-                       'IKAWA',                     #142
-                       '+IKAWA SET/RPM',            #143
-                       '+IKAWA Heater/Fan',         #144
-                       '+IKAWA State/Humidity',     #145
-                       'Phidget DAQ1000 01',        #146
-                       '+Phidget DAQ1000 23',       #147
-                       '+Phidget DAQ1000 45',       #148
-                       '+Phidget DAQ1000 67',       #149
-                       '+MODBUS 910',               #150
-                       '+S7 1112',                  #151
-                       'Phidget DAQ1200 01',        #152
-                       '+Phidget DAQ1200 23',       #153
-                       'Phidget DAQ1300 01',        #154
-                       '+Phidget DAQ1300 23',       #155
-                       'Phidget DAQ1301 01',        #156
-                       '+Phidget DAQ1301 23',       #157
-                       '+Phidget DAQ1301 45',       #158
-                       '+Phidget DAQ1301 67',       #159
-                       f'+IKAWA {deltaLabelUTF8}Humidity/{deltaLabelUTF8}Humidity Dir.',    #160
-                       '+Omega HH309 34',           #161
-                       'Digi-Sense 20250-07',       #162
-                       'Extech 42570',              #163
-                       'Mugma BT/ET',               #164
-                       '+Mugma Heater/Fan',         #165
-                       '+Mugma Heater/Catalyzer',   #166
-                       '+Mugma SV',                 #167
-                       'Phidget TMP1202 1xRTD A',   #168
-                       '+Phidget TMP1202 1xRTD B',  #169
-                       'ColorTrack Serial',         #170
-                       'Santoker R BT/ET',          #171
-                       '+Santoker IR/Board',        #172
-                       '+Santoker DeltaBT/DeltaET', #173
-                       'ColorTrack BT',             #174
-                       'Thermoworks BlueDOT',       #175
-                       'Aillio Bullet R2',          #176
-                       '+PID P/I',                  #177
-                       '+PID D/Error',              #178
-                       '+Shelly 3EM Pro Energy/Return', #179
-                       '+Shelly Plug Energy/Last',      #180
-                       '+Shelly 3EM Pro Power/S',       #181
-                       '+Shelly Plug Power/Temp',       #182
-                       '+Shelly Plug Voltage/Current',  #183
-                       'TASI TA612C',                   #184
-                       '+TASI TA612C 34',               #185
-                       '+CM ET/BT',                     #186
-                       '+RoastSeeNEXT Agtron/Crack',    #187
-                       '+RoastSeeNEXT RoR/FoR',         #188
-                       '+RoastSeeNEXT Distance/Time',   #189
-                       '+RoastSeeNEXT Yellow',          #190
-                       '+Phidget TMP1000',           #191
-                       '+Phidget HUM1000 Hum/Temp',  #192
-                       '+Phidget PRE1000',           #193
-                       '+Yocto Meteo Hum/Temp',      #194
-                       '+Yocto Meteo Pressure',      #195
-                       'Orbiter BT/ET',              #196
-                       '+Orbiter IT/DT',             #197
-                       '+Orbiter Sound/Drum',        #198
-                       '+Orbiter Damper/Heater',     #199
-                       '+Orbiter Air/RoR',           #200
-                       'MQTT',                       #201
-                       '+MQTT 34',                   #202
-                       '+MQTT 56',                   #203
-                       '+MQTT 78',                   #204
-                       '+MQTT 910',                  #205
-                       '+MQTT 1112',                 #206
-                       ]
-
-        # ADD DEVICE:
-        # ids of devices temperature conversions should not be applied
-        self.nonTempDevices : Final[dict[int,tuple[bool,bool]]] = {
-            # channel 1, channel 2
-            22: (False, True), # +PID SV/DUTY %
-            25: (True, True), # +Virtual
-            40: (True, True), # Phidget IO 01
-            41: (True, True), # +Phidget IO 23
-            42: (True, True), # +Phidget IO 45
-            43: (True, True), # +Phidget IO 67
-            50: (True, True), # DUMMY
-            54: (True, True), # +Hottop Heater/Fan
-            57: (True, True), # EXTECH 755
-            62: (True, True), # Phidget 1011 IO 01
-            63: (True, True), # Phidget HUB IO 01
-            64: (True, True), # +Phidget HUB IO 23
-            65: (True, True), # +Phidget HUB IO 45
-            69: (True, True), # Phidget IO Digital 01
-            70: (True, True), # +Phidget IO Digital 23
-            71: (True, True), # +Phidget IO Digital 45
-            72: (True, True), # +Phidget IO Digital 67
-            73: (True, True), # Phidget 1011 IO Digital 01
-            74: (True, True), # Phidget HUB IO Digital 0
-            75: (True, True), # +Phidget HUB IO Digital 23
-            76: (True, True), # +Phidget HUB IO Digital 45
-            84: (True, True), # +Aillio Bullet R1 Heater/Fan
-            85: (True, True), # +Aillio Bullet R1 BT RoR/Drum
-            87: (True, True), # +Aillio Bullet R1 State
-            90: (True, True), # +Slider 01
-            91: (True, True), # +Slider 23
-            95: (True, True), # Phidget DAQ1400 Current
-            96: (True, True), # Phidget DAQ1400 Frequency
-            97: (True, True), # Phidget DAQ1400 Digital
-            98: (True, True), # Phidget DAQ1400 Voltage
-            106: (True, True), # Phidget HUB IO 0
-            107: (True, True), # Phidget HUB IO Digital 0
-            108: (True, True), # Yocto 4-20mA Rx
-            120: (True, True), # Yocto-0-10V-Rx
-            121: (True, True), # Yocto-milliVolt-Rx
-            122: (True, True), # Yocto-Serial
-            123: (True, True), # Phidget VCP1000
-            124: (True, True), # Phidget VCP1001
-            125: (True, True), # Phidget VCP1002
-            129: (True, True), # Yocto Power
-            130: (True, True), # Yocto Energy
-            131: (True, True), # Yocto Voltage
-            132: (True, True), # Yocto Current
-            133: (True, True), # Yocto Sensor
-            135: (True, True), # Santoker Power/Fan
-            136: (True, True), # Santoker Drum
-            137: (True, True), # Phidget DAQ1500
-            140: (True, True), # Kaleido Drum/AH
-            141: (True, True), # Kaleido Heater/Fan
-            143: (False, True), # IKAWA Set/RPM
-            144: (True, True), # IKAWA Heater/Fan
-            145: (True, True), # IKAWA State/Humidity
-            146: (True, True), # Phidget DAQ1000 01
-            147: (True, True), # +Phidget DAQ1000 23
-            148: (True, True), # +Phidget DAQ1000 45
-            149: (True, True), # +Phidget DAQ1000 67
-            152: (True, True), # Phidget DAQ1200 01
-            153: (True, True), # +Phidget DAQ1200 23
-            154: (True, True), # Phidget DAQ1300 01
-            155: (True, True), # +Phidget DAQ1300 23
-            156: (True, True), # Phidget DAQ1301 01
-            157: (True, True), # +Phidget DAQ1301 23
-            158: (True, True), # +Phidget DAQ1301 45
-            159: (True, True), # +Phidget DAQ1301 67
-            160: (True, True), # IKAWA \Delta Humidity / \Delat Humidity direction
-            165: (True, True), # +Mugma Heater/Fan
-            166: (True, True), # +Mugma Heater/Catalyzer
-            170: (True, True), # ColorTrack Serial
-            173: (True, True), # +Santoker BT RoR / ET RoR
-            174: (True, True), # ColorTrack BT
-            177: (True, True), # +PID P/I
-            178: (True, True), # +PID D/Error
-            179: (True, True), # +Shelly 3EM Pro Energy/Return
-            180: (True, True), # +Shelly Plug Total/Last
-            181: (True, True), # +Shelly 3EM Pro Power/S
-            182: (True, False), # +Shelly Plug Power/Temp
-            183: (True, True), # +Shelly Plug Voltage/Current
-            187: (True, True), # +RoastSeeNEXT Agtron/Crack
-            188: (True, True), # +RoastSeeNEXT RoR/FOR
-            189: (True, True), # +RoastSeeNEXT Distance/Time
-            190: (True, True), # +RoastSeeNEXT Yellow
-            192: (True, False), # +Phidget HUM1000 Hum/Temp
-            193: (True, True), # +Phidget PRE1000
-            194: (True, False), # +Yocto Meteo Hum/Temp
-            195: (True, True), # +Yocto Meteo Pressure
-            198: (True, True), # +Orbiter Sound/Drum
-            199: (True, True), # +Orbiter Damper/Heater
-            200: (True, True)  # +Orbiter Air/RoR
-        }
-
-        # ADD DEVICE:
-        # ids of (main) Phidget devices (without a + in front of their name string) as well as Phidget TMP100, HUM100 or PRE1000
-        self.phidgetDevices : Final[list[int]] = [
-            34, # Phidget 1048
-            37, # Phidget 1046
-            40, # Phidget IO
-            47, # Phidget 1045
-            52, # Phidget 1051
-            58, # Phidget TMP1101
-            61, # Phidget TMP1100
-            62, # Phidget 1011
-            63, # Phidget HUB IO 01
-            64, # Phidget HUB IO 23 # + device but need to be mounted directly
-            65, # Phidget HUB IO 45 # + device but need to be mounted directly
-            68, # Phidget TMP1200
-            69, # Phidget IO Digital
-            73, # Phidget 1011 IO Digital
-            74, # Phidget HUB IO Digital 01
-            75, # Phidget HUB IO Digital 23 # + device but need to be mounted directly
-            76, # Phidget HUB IO Digital 45 # + device but need to be mounted directly
-            95, # Phidget DAQ1400 Current
-            96, # Phidget DAQ1400 Frequency
-            97, # Phidget DAQ1400 Digital
-            98, # Phidget DAQ1400 Voltage
-            106, # Phidget HUB IO 0
-            107, # Phidget HUB IO Digital 0
-            123, # Phidget VCP1000
-            124, # Phidget VCP1001
-            125, # Phidget VCP1002
-            137, # Phidget DAQ1500
-            146, # Phidget DAQ1000 01
-            152, # Phidget DAQ1200 01
-            154, # Phidget DAQ1300 01
-            156, # Phidget DAQ1301 01
-            168, # Phidget TMP1202
-            191, # +Phidget TMP1000
-            192, # +Phidget HUM1000 Hum/Temp
-            193, # +Phidget PRE1000
-        ]
-
-        # ADD DEVICE:
-        # ids of (main) devices (without a + in front of their name string)
-        # that do NOT communicate via any serial port thus do not need any serial port configuration
-        self.nonSerialDevices : Final[list[int]] = self.phidgetDevices + [
-            18, # NONE (manual)
-            27, # Program
-            45, # Yocto Thermocouple
-            46, # Yocto PT100
-            79, # S7
-            83, # Aillio Bullet R1 BT/DT
-            99, # Aillio Bullet R1 IBTS/BT
-            100, # Yocto IR
-            108, # Yocto 4-20mA Rx
-            111, # WebSocket
-            120, # Yocto-0-10V-Rx
-            121, # Yocto-milliVolt-Rx
-            122, # Yocto-Serial
-            129, # Yocto Power
-            130, # Yocto Energy
-            131, # Yocto Voltage
-            132, # Yocto Current
-            133, # Yocto Sensor
-            134, # Santoker BT/ET
-            138, # Kaleido BT/ET
-            142, # IKAWA,
-            164, # Mugma BT/ET
-            171, # Santoker R BT/ET
-            174, # ColorTrack BT
-            175, # Thermoworks BlueDOT
-            176, # Aillio Bullet R2
-            194, # +Yocto Meteo Hum/Temp
-            195  # +Yocto Meteo Pressure
-        ]
-    
-        # ADD DEVICE:
-        # ids of special devices certain input filters should not be applied
-        self.specialDevices : Final[list[int]] = [
-            18, # NONE (Manual)
-            25, # Virtual
-            50, # Dummy
-            90, # Slider01
-            91  # Slider23
-        ]
-
-        # ADD DEVICE:
-        # ids of devices with binary results (0 and 1) certain input filters should not be applied
-        self.binaryDevices : Final[list[int]] = [
-            69, # Phidget IO Digital 01
-            70, # Phidget IO Digital 23
-            71, # Phidget IO Digital 45
-            72, # Phidget IO Digital 67
-            73, # Phidget 1011 IO Digital 01
-            74, # Phidget HUB IO Digital 01
-            75, # Phidget HUB IO Digital 23
-            76  # Phidget HUB IO Digital 45
-        ]
-
-        ## TILAU ##
-        tlnbdev = len(self.devices)+1
-        self.devices.extend([d["label"] for d in self.tilau_devices.values()])
-        for i, (_, tldevice) in enumerate(self.tilau_devices.items()):
-            tldevice["id"] = i+tlnbdev  # Remplace l’ancien id par la position
-        self.nonTempDevices.update(
-            {info["id"]: info["nonTemp"] for info in self.tilau_devices.values()}
-        )
-        # Only extend with entries actually marked nonserial (e.g. BLE/MQTT
-        # devices) -- a genuinely serial TRP entry (nonserial=False) must keep
-        # showing the standard comport/baud config fields (see ports.py).
-        self.nonSerialDevices.extend([d["id"] for d in self.tilau_devices.values() if d.get("nonserial")])
 
         #extra devices
         self.extradevices:list[int] = []                            # list with indexes for extra devices
@@ -1408,6 +979,10 @@ class tgraphcanvas(QObject):
 
         self.zoom_follow:bool = False # if True, Artisan "follows" BT in the center by panning during recording. Activated via a click on the HOME icon
         self.zoom_follow_onET:bool = False # if True, the Zoom Follow follows ET (or ET RoR if fmt_data_RoR is set) instead of BT (or BT RoR if fmt_data_RoR is set)
+        # panning factor relative to the distance (xmax - xmin) applied after centering
+        #   0: no panning, 1: pan canvas one full screen to the left/bottom, -1: pan canvas one full screen to the right/top
+        self.zoom_follow_pan_x:float = 0
+        self.zoom_follow_pan_y:float = 0
 
         self.alignEvent = 0 # 0:CHARGE, 1:DRY, 2:FCs, 3:FCe, 4:SCs, 5:SCe, 6:DROP, 7:ALL
         self.alignnames = [
@@ -1448,7 +1023,9 @@ class tgraphcanvas(QObject):
         # this flag is reset after the warning dialog popped up once and is set to True again on OFF and
         self.plus_beans_reminder_on_start:bool = True
 
+        ## TILAU ##
         self.title:str = QApplication.translate('Scope Title', 'TilauScope')
+
         self.title_show_always:bool = False
         self.ambientTemp:float = 0.
         self.ambientTemp_sampled:float = 0. # keeps the measured ambientTemp over a restart
@@ -1845,6 +1422,7 @@ class tgraphcanvas(QObject):
 
         #[0]weight in, [1]weight out, [2]units (string)
         self.weight:tuple[float,float,str] = (0, 0, weight_units[1])
+        self.end_weight_est:int = 0 # 1: weight out in self.weight[1] is an estimate an not measured or manuel set; 0: otherwise
 
         self.roasted_defects_weight:float = 0.0 # weight of defects sorted from roasted weight in unit self.weight[2] (should always be positive and less than self.weight[1])
 
@@ -1861,7 +1439,7 @@ class tgraphcanvas(QObject):
 
 
         if platform.system() == 'Darwin':
-            # try to "guess" the users preferred temperature unit
+            # try to "guess" the users preferred weight unit
             try:
                 if not QSettings().value('AppleMetricUnits'):
                     self.weight = (0, 0, weight_units[2])
@@ -2197,22 +1775,15 @@ class tgraphcanvas(QObject):
 
         self.l_horizontalcrossline:Line2D|None = None
         self.l_verticalcrossline:Line2D|None = None
-
         self.l_timeline:Line2D|None = None
-        self.l_PIDrampSoak:Line2D|None = None
-        ## TILAU ## new artists for intersection point of BT
-        self.intersection_point:Line2D|None = None
-        self.intersection_point_line:Line2D|None = None
-        # ── Lissage position barre de prévision ──────────────────────────────
-        self._x_intersect_ema: float | None = None
-        self._x_intersect_display: float | None = None
         from tilauscope.tilau_intelligence import FirstCrackDetector
         self.fc_detector = FirstCrackDetector()
         ## TILAU — Dry End detector
         from tilauscope.tilau_intelligence import DryEndDetector
         self.de_detector = DryEndDetector()
-        ## TILAU — graph-coach proximity, published each redraw for the assistant
-        ## panel so its milestone buttons light with the "approaching" alert
+        ## TILAU — graph-coach proximity, published each time the roast card is
+        ## built so the assistant's milestone buttons light with the "approaching"
+        ## alert. Written by tilauscope/graph/annotation_text.py, read by the panel.
         self._tilau_coach_pub: dict | None = None
         ## TILAU — milestone detection suggestion (#10): when a detector fires it
         ## publishes here; the assistant surfaces a one-tap "confirm?" prompt.
@@ -2220,20 +1791,6 @@ class tgraphcanvas(QObject):
         ## default False) — the safe default is suggest + operator confirmation.
         self._tilau_milestone_suggest: dict | None = None
         self.aw.bleTilauScopeFCMarkdone = False
-        # newq annotation for tilau pid label
-        from tilauscope.annotations import TilauAnnotation, CoachViewToggle
-        self.tilau_pid_label = TilauAnnotation(self.canvas, self)
-        self.tilau_roast_annotation = TilauAnnotation(self.canvas, self)
-        self._tilau_labels: dict[str, str]={}
-        # Guided coach view toggle on the roast graph. ## TILAU ##
-        # _annotation_expert_view: chosen view, cached for O(1) hot-path reads.
-        # _coach_toggle_allowed: True only in Guided operator level.
-        self._annotation_expert_view: bool = QSettings().value(
-            "tilauscope/annotation_expert_view", False, type=bool)
-        self._coach_toggle_allowed: bool = False
-        self._coach_view_toggle = CoachViewToggle(self.canvas, self)
-        self.tilau_roast_annotation.companion = self._coach_view_toggle
-
 ## TILAU ##
 
         self.legend:Legend|None = None
@@ -2523,7 +2080,7 @@ class tgraphcanvas(QObject):
         # flag to toggle between Temp and RoR scale of xy-display
         self.fmt_data_RoR:bool = False
         self.fmt_data_ON:bool = True #; if False, the xy-display is deactivated
-        # toggle between using the 0: y-cursor pos, 1: BT@x, 2: ET@x, 3: BTB@x, 4: ETB@x (thus BT, ET or the corresponding background curve data at cursor position x)
+        # toggle between using the 0: y-cursor pos, 1: BT@x, 2: ET@x, 3: BTB@x, 4: ETB@x (thus BT, ET or the corresponding background curve data at cursor position
         # to display the y of the cursor coordinates
         self.fmt_data_curve = 0
         self.running_LCDs = 0 # if not 0 and not sampling visible LCDs show the readings at the cursor position of 1: foreground profile, 2: background profile
@@ -2557,6 +2114,7 @@ class tgraphcanvas(QObject):
 
         # Cache for BBP calculations
         self.bbpCache: BbpCache = {}
+        self.bbpPrevRoast: BbpCache = {}
 
         #EnergyUse
         # Energy conversion canstants
@@ -2752,9 +2310,9 @@ class tgraphcanvas(QObject):
         self.showBackgroundEventsSignal.connect(self.showBackgroundEvents)
         self.redrawSignal.connect(self.redraw, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
         self.redrawKeepViewSignal.connect(self.redraw_keep_view, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
+        self.canvasZoomSignal.connect(self.canvas_zoom, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
+        self.canvasPanSignal.connect(self.canvas_pan, type=Qt.ConnectionType.QueuedConnection) # type: ignore[call-arg]
 
-        ## TILAU ## 
-        self._init_Tilau_translations()
 
     #NOTE: empty Figure is initially drawn at the end of self.awsettingsload()
     #################################    FUNCTIONS    ###################################
@@ -2774,10 +2332,140 @@ class tgraphcanvas(QObject):
              (device_id == 83 and 2 < self.aw.s7.type[8+channel_offset] < 11) or # S7 910
              (device_id == 151 and 2 < self.aw.s7.type[8+channel_offset] < 11) or # S7 1112
               # any other binary device
-             device_id in self.binaryDevices or
+             is_binary_device(device_id) or
               # special device
-             device_id in self.specialDevices
+             is_special_device(device_id)
              )
+
+    @pyqtSlot(float, float)
+    def canvas_zoom(self, factor_x:float, factor_y:float) -> None:
+        try:
+            if self.fig.canvas.toolbar is not None and self.ax is not None:
+                if self.fig.canvas.toolbar._nav_stack() is None:  # type:ignore[attr-defined] # pylint: disable=protected-access
+                    self.fig.canvas.toolbar.push_current()   # Set the home button to this view.
+                xmin, xmax = self.ax.get_xlim()
+                ymin, ymax = self.ax.get_ylim()
+                if self.twoAxisMode() and self.delta_ax is not None:
+                    zmin, zmax = self.delta_ax.get_ylim()
+                else:
+                    zmin = ymin
+                    zmax = ymax
+                # update
+                if factor_x != 0:
+                    new_x_range = (xmax - xmin)/(2*factor_x)
+                    mid_x = (xmax - xmin)/2 + xmin
+                    xmin = mid_x - new_x_range
+                    xmax = mid_x + new_x_range
+                    # update state
+                    self.ax.set_xlim(xmin, xmax)
+                if factor_y != 0:
+                    new_y_range = (ymax - ymin)/(2*factor_y)
+                    mid_y = (ymax - ymin)/2 + ymin
+                    ymin = mid_y -  new_y_range
+                    ymax = mid_y + new_y_range
+                    # update state
+                    self.ax.set_ylim(ymin, ymax)
+                    # delta axis
+                    if self.twoAxisMode() and self.delta_ax is not None:
+                        new_z_range = (zmax - zmin)/(2*factor_y)
+                        mid_z = (zmax - zmin)/2 + zmin
+                        zmin = mid_z - new_z_range
+                        zmax = mid_z + new_z_range
+                        self.delta_ax.set_ylim(zmin, zmax)
+#                        self.delta_ax.set_xlim(xmin, xmax)
+
+                # remember current state in history
+                self.fig.canvas.toolbar.push_current()
+                self.fig.canvas.draw_idle()
+        except Exception as e:  # pylint: disable=broad-except
+            _log.exception(e)
+
+    # the center argument is interpreted as
+    # -2: don't center, just pan (for use by pan Artisan Command)
+    # -1: center to current time only during recording and otherwise like 0, center to current axis limits
+    #  0: center to current axis limits
+    #  during recording the following are actually follow-time only and keep y/z-achses to defaults:
+    #  1: current time and BT
+    #  2: current time and ET
+    #  3: current time and BT RoR (delta BT)
+    #  4: current time and ET RoR (delta ET)
+    # mode 1-4 are ignored if not recording and default to 0
+    @pyqtSlot(float, float, int)
+    def canvas_pan(self, factor_x:float, factor_y:float, center:int) -> None:
+        try:
+            if self.fig.canvas.toolbar is not None and self.ax is not None:
+                if self.fig.canvas.toolbar._nav_stack() is None:  # type:ignore[attr-defined] # pylint: disable=protected-access
+                    self.fig.canvas.toolbar.push_current()   # Set the home button to this view.
+                xmin, xmax = self.ax.get_xlim()
+                ymin, ymax = self.ax.get_ylim()
+                if self.twoAxisMode() and self.delta_ax is not None:
+                    zmin, zmax = self.delta_ax.get_ylim()
+                else:
+                    zmin = ymin
+                    zmax = ymax
+                # center
+                if center != -2:
+                    if center in {-1, 0} or not self.flagstart:
+                        chargetime = (self.timex[self.timeindex[0]] if self.timeindex[0] > -1 and self.timeindex[0] < len(self.timex) else 0)
+                        xmin = self.startofx
+                        xmax = self.endofx + chargetime
+                        if center != -1:
+                            ymin = self.ylimit_min
+                            ymax = self.ylimit
+                    elif (center == -1 or center>0) and len(self.timex)>0 and len(self.temp1)>0 and len(self.temp2)> 0:
+                        # only during recording we center relative to current time and optional to temp/RoR
+                        tx = self.timex[-1]
+                        xoffset = (xmax - xmin) / 2.
+                        xmin = tx - xoffset
+                        xmax = tx + xoffset
+                        if center in {1, 2}:
+                            # center on ET or BT
+                            yoffset = (ymax - ymin) / 2.
+                            yvalue = (self.temp1[-1] if center == 2 else self.temp2[-1])
+                            ymin = yvalue - yoffset
+                            ymax = yvalue + yoffset
+                            if self.twoAxisMode() and self.delta_ax is not None:
+                                zoffset = (zmax - zmin) / 2.
+                                zvalued = float(self.delta_ax.transData.inverted().transform((0,self.ax.transData.transform((0,yvalue))[1]))[1])
+                                zmin = zvalued - zoffset
+                                zmax = zvalued + zoffset
+                        elif center in {3, 4} and self.twoAxisMode() and self.delta_ax is not None:
+                            # center on ET RoR or BT RoR
+                            ror:float|None = None
+                            if center == 4 and len(self.delta1)>0:
+                                ror = self.delta1[-1]
+                            elif center == 3 and len(self.delta2)>0:
+                                ror = self.delta2[-1]
+                            if ror is not None:
+                                zoffset = (zmax - zmin) / 2.
+                                zmin = ror - zoffset
+                                zmax = ror + zoffset
+                                yoffset = (ymax - ymin) / 2.
+                                zvalue = float(self.ax.transData.inverted().transform((0,self.delta_ax.transData.transform((0,ror))[1]))[1])
+                                ymin = zvalue - yoffset
+                                ymax = zvalue + yoffset
+                # shift from center
+                shift_x = (xmax - xmin)*factor_x
+                xmin += shift_x
+                xmax += shift_x
+                shift_y = (ymax - ymin)*factor_y
+                ymin += shift_y
+                ymax += shift_y
+                # update state
+                self.ax.set_xlim(xmin, xmax)
+                self.ax.set_ylim(ymin, ymax)
+                # delta axis
+                if self.twoAxisMode() and self.delta_ax is not None:
+                    shift_z = (zmax - zmin)*factor_y
+                    zmin += shift_z
+                    zmax += shift_z
+                    self.delta_ax.set_ylim(zmin, zmax)
+#                    self.delta_ax.set_xlim(xmin, xmax)
+                # remember current state in history
+                self.fig.canvas.toolbar.push_current()
+                self.fig.canvas.draw_idle()
+        except Exception as e:   # pylint: disable=broad-except
+            _log.exception(e)
 
     # returns None if there is no weight at the given container_idx registered
     def get_container_weight(self, container_idx:int) -> float|None:
@@ -2785,16 +2473,7 @@ class tgraphcanvas(QObject):
             return self.container_weights[container_idx]
         return None
 
-    # toggles the y cursor coordinate see self.fmt_data_curve
-    def nextFmtDataCurve(self) -> None:
-        self.fmt_data_curve = (self.fmt_data_curve+1) % 5
-        if self.backgroundprofile is None and self.fmt_data_curve in {3, 4}:
-            self.fmt_data_curve = 0
-        if len(self.timex)<3 and self.fmt_data_curve in {1, 2}:
-            if self.backgroundprofile is None:
-                self.fmt_data_curve = 0
-            else:
-                self.fmt_data_curve = 3
+    def xy_cursor_setting(self) -> str:
         s = 'cursor position'
         if self.fmt_data_curve == 1:
             s = self.aw.BTname
@@ -2804,8 +2483,20 @@ class tgraphcanvas(QObject):
             s = f"{QApplication.translate('Label','Background')} {self.aw.BTname}"
         elif self.fmt_data_curve == 4:
             s = f"{QApplication.translate('Label','Background')} {self.aw.ETname}"
+        return QApplication.translate('Message', 'set y-coordinate to {}').format(s)
+
+    # toggles the xy cursor coordinate see self.fmt_data_curve
+    def nextFmtDataCurve(self) -> None:
+        self.fmt_data_curve = (self.fmt_data_curve+1) % 5
+        if self.backgroundprofile is None and self.fmt_data_curve in {3, 4}:
+            self.fmt_data_curve = 0
+        if len(self.timex)<3 and self.fmt_data_curve in {1, 2}:
+            if self.backgroundprofile is None:
+                self.fmt_data_curve = 0
+            else:
+                self.fmt_data_curve = 3
         self.aw.ntb.update_message()
-        self.aw.sendmessage(QApplication.translate('Message', 'set y-coordinate to {}').format(s))
+        self.aw.sendmessage(self.xy_cursor_setting())
 
     ## TILAU ##
     def on_leave_canvas(self, event):
@@ -4665,452 +4356,8 @@ class tgraphcanvas(QObject):
                 self.aw.largeExtraLCDs_dialog.updateValues(extra1,extra2)
         except Exception as e: # pylint: disable=broad-except
             _log.exception(e)
-## TILAU ##
-    def DrawIntersection_remove_artist(self, obj):
-        if obj is None:
-            return
-        # liste/tuple/array of artists ?
-        if isinstance(obj, (list, tuple, numpy.ndarray)):
-            for art in obj:
-                if hasattr(art, "remove"):
-                    try:
-                        art.remove()
-                    except NotImplementedError:
-                        # Cannot remove this artist, skip
-                        pass
-                    except Exception as e:
-                        _log.exception(e)
-                        
-        # single artist
-        elif hasattr(obj, "remove"):
-            try:
-                obj.remove()
-            except ValueError:
-                # Artist already removed or not in list, skip
-                pass
-            except NotImplementedError:
-                # Cannot remove this artist, skip
-                pass
-            except Exception as e:
-                _log.exception(e)
 
-    ## TILAU ## new optimized version
-    # Constant colour palettes — hoisted out of the 1-4 Hz formatting path so the
-    # dicts are built once, not rebuilt on every annotation refresh. ## TILAU ##
-    _PID_COLORS: Final[dict[str, str]] = {
-        "manual":      "#FF5555",  # Red    — alerte
-        "scheduling":  "#55FF55",  # Green  — mode scheduling
-        "ramp/soak":   "#55AAFF",  # Blue   — mode ramp/soak
-        "highlighted": "#FFFF55",  # Yellow — segment actif / warning
-        "label":       "#AAAAAA",  # Grey   — libellés
-        "value":       "#FFFFFF",  # White  — valeurs neutres
-        "close":       "#55FF55",  # Green  — input proche du SV (<5°)
-        "middle":      "#FFFF55",  # Yellow — input en approche du SV (<15°)
-    }
-    _ANNO_COLORS: Final[dict[str, str]] = {
-        "manual":      "#FF5555",  # Red    — alert / urgence
-        "highlighted": "#FFFF55",  # Yellow — warning / approche
-        "label":       "#AAAAAA",  # Grey   — libellés de ligne
-        "value":       "#FFFFFF",  # White  — valeurs neutres
-    }
-
-    def _init_Tilau_translations(self): # updates the static translation, language cannot be change while roasting
-        self._tilau_labels = {
-            'SV': QApplication.translate('Label', 'SV'),
-            'PID': QApplication.translate('Tab', 'PID'),
-            'Manual': QApplication.translate('Label', 'Manual'),
-            'Delta': QApplication.translate('Label', 'Delta'),
-            'Mode': QApplication.translate('Label', 'Mode'),
-            'ET': QApplication.translate('Label', 'ET'),
-            'BT': QApplication.translate('Label', 'BT'),
-            'Color': QApplication.translate('Label', 'Color'),
-            'Ramp': QApplication.translate('Table', 'Ramp'),
-            'Segments': QApplication.translate('Label', 'Segment'),
-            'Soak': QApplication.translate('Table', 'Soak'),
-            'Scheduling': QApplication.translate('Label', 'Scheduling'),
-            'PV': QApplication.translate('Label', 'PV'),
-            'Time': QApplication.translate('Label', 'Time'),
-            'Target': QApplication.translate('Label', 'Target'),
-            'Temp': QApplication.translate('Label', 'Temp'),
-            'FC': QApplication.translate('Label', 'FC'),
-            'SCS': QApplication.translate('Label', 'SC START'),
-            'SCE': QApplication.translate('Label', 'SC END'),
-            'DRY': QApplication.translate('Label', 'DRY'),
-            'DROP': QApplication.translate('Label', 'DROP'),
-            'Cooling': QApplication.translate('Label', 'Cooling'),
-            'DEV': QApplication.translate('Label', 'Development Phase'),
-            'MAI': QApplication.translate('Label', 'Maillard Phase'),
-            'FCcounter':QApplication.translate('tilauscope_graph', 'FC counter'),
-            'from':QApplication.translate('Label', 'from'),
-            'Preheat': QApplication.translate('Label', 'Preheat'),
-            ## TILAU ## TilauPID preheat annotation (Artisan canvas, no TilauScope window needed)
-            'Burner': QApplication.translate('tilauscope_graph', 'Burner'),
-            'ReadyIn': QApplication.translate('tilauscope_graph', 'Ready in'),
-            'ReadyToCharge': QApplication.translate('tilauscope_graph', 'Ready to charge'),
-            'Stabilizing': QApplication.translate('tilauscope_graph', 'Stabilizing'),
-            'DryingPhase': QApplication.translate('tilauscope_graph', 'Drying Phase'),
-            'CoolingPhase': QApplication.translate('Button', 'Cooling Phase'),
-            # ── Coach (guided simplified view) — cached once, never on the hot path
-            'coach_toward_dry':     QApplication.translate('tilauscope_graph', 'to DRY END'),
-            'coach_toward_fc':      QApplication.translate('tilauscope_graph', 'to 1C'),
-            'coach_toward_drop':    QApplication.translate('tilauscope_graph', 'to DROP'),
-            'coach_dry_in':         QApplication.translate('tilauscope_graph', 'DRY END in'),
-            'coach_fc_in':          QApplication.translate('tilauscope_graph', '1C in'),
-            'coach_on_track':       QApplication.translate('tilauscope_graph', '✓ On track'),
-            'coach_approaching_dry':QApplication.translate('tilauscope_graph', '⚠ Approaching DRY END — ease the heat'),
-            'coach_fc_imminent':    QApplication.translate('tilauscope_graph', '👂 1C imminent — get ready to cut power'),
-            'coach_fc_approaching': QApplication.translate('tilauscope_graph', '⚠ 1C approaching — get ready to reduce'),
-            'coach_cracks_heard':   QApplication.translate('tilauscope_graph', '👂 Cracks starting…'),
-            'coach_browning_ok':    QApplication.translate('tilauscope_graph', '✓ Steady browning'),
-            'coach_dev_ok':         QApplication.translate('tilauscope_graph', '✓ Development on track'),
-            'coach_underdeveloped': QApplication.translate('tilauscope_graph', '⚠ Under-developed — let it ride'),
-            'coach_ready_drop':     QApplication.translate('tilauscope_graph', '⏏ Ready to DROP'),
-            'coach_cool_fast':      QApplication.translate('tilauscope_graph', 'Cool down fast'),
-            'coach_dev_short':      QApplication.translate('tilauscope_graph', 'DEV'),
-        }
-        # Phase title + header colour per roast phase index — built once here
-        # (depends on the cached labels) instead of on every annotation refresh.
-        L = self._tilau_labels
-        self._tilau_phase_map: dict[str, tuple[str, str]] = {
-            'CHARGE': (L['DryingPhase'], '#42A5F5'),  # Blue   — CHARGE → DRY END
-            'DE':     (L['MAI'],         '#FFA726'),  # Orange — DRY END → FCs
-            'FC':     (L['DEV'],         '#EF5350'),  # Red    — FCs → DROP
-            'SCs':    (L['DEV'],         '#EF5350'),  # Red    — idem (SCs en cours)
-            'SCe':    (L['DEV'],         '#EF5350'),  # Red    — idem (SCe en cours)
-            'DROP':   (L['CoolingPhase'],'#26C6DA'),  # Cyan   — après DROP
-        }
-
-    def _hide_tilaupid_target_marker(self) -> None:
-        """## TILAU ## Hide the preheat target-forecast marker without discarding the artists."""
-        self._tilaupid_marker_visible = False
-        for artist in (getattr(self, 'tilaupid_target_line', None), getattr(self, 'tilaupid_target_dot', None)):
-            if artist is not None:
-                artist.set_visible(False)
-
-    def _draw_tilaupid_target_marker(self) -> None:
-        """## TILAU ## Dashed vertical line + red dot at the time TilauPID is projected
-        to reach its target SV — same style as the roast coach's own milestone forecast
-        (DrawIntersectionBetweenCurveandProjection), positioned by _get_tilaupid_text via
-        self._tilaupid_marker_x/y. Uses its own artists rather than the coach's
-        intersection_point/intersection_point_line: autoCHARGE can fire mid-ramp (BT dips
-        then climbs, matching the TP pattern), which would make the coach's own forecast
-        run concurrently with preheat and fight over a shared pair of artists."""
-        if not getattr(self, '_tilaupid_marker_visible', False) or self.ax is None:
-            self._hide_tilaupid_target_marker()
-            return
-        x_val, y_val = self._tilaupid_marker_x, self._tilaupid_marker_y
-        try:
-            line = getattr(self, 'tilaupid_target_line', None)
-            if line is None or line.axes is None:
-                self.tilaupid_target_line = self.ax.axvline(x=x_val, color='yellow', ls='--', lw=1, alpha=0.3)
-            else:
-                line.set_xdata([x_val, x_val])
-                line.set_visible(True)
-            dot = getattr(self, 'tilaupid_target_dot', None)
-            if dot is None or dot.axes is None:
-                self.tilaupid_target_dot = self.ax.plot(x_val, y_val, 'ro')[0]
-            else:
-                dot.set_data([x_val], [y_val])
-                dot.set_visible(True)
-            for artist in (self.tilaupid_target_line, self.tilaupid_target_dot):
-                if artist is not None and artist.axes is not None:
-                    self.ax.draw_artist(artist)
-        except Exception as e: # pylint: disable=broad-except
-            _log.exception(e)
-
-    def DrawPIDRampSoak(self, visible_bt: Line2D, initialize: int = 0) -> None:
-        if initialize == 3 or visible_bt is None:
-            self.tilau_pid_label.hide()
-            self._hide_tilaupid_target_marker()
-            return
-
-        if initialize == 2:
-            self.tilau_pid_label.hide()
-            self._hide_tilaupid_target_marker()
-
-        tx = self.timex[-1] if self.timex else 0.0
-        et = self.temp1[-1] if self.temp1 and len(self.temp1) > 0 else 0.0
-        bt = self.temp2[-1] if self.temp2 and len(self.temp2) > 0 else 0.0
-
-        ## TILAU ## The TilauPID preheat never turns Artisan's own PID on (it only pushes
-        ## the SV and drives the burner slider), so pidcontrol holds nothing meaningful
-        ## while it runs — it gets its own formatter. Preheat wins when both are live.
-        tilau_pid = getattr(self.aw, 'tilauPreheatingPid', None)
-        if tilau_pid is not None and tilau_pid.active:
-            text = self._get_tilaupid_text(tilau_pid, tx, et, bt)
-            self._draw_tilaupid_target_marker()
-        else:
-            text = self._get_pid_text(self.aw.pidcontrol, tx, et, bt)
-            self._hide_tilaupid_target_marker()
-
-        self.tilau_pid_label.show_at(tx, bt, text)
-
-    ## TILAU ## Whether the PID annotation slot must be painted this cycle: Artisan's
-    ## own PID running, or the TilauScope preheat PID driving the roaster. O(1), hot path.
-    def _tilau_pid_annotation_due(self) -> bool:
-        if self.aw.pidcontrol.pidActive:
-            return True
-        tilau_pid = getattr(self.aw, 'tilauPreheatingPid', None)
-        return tilau_pid is not None and tilau_pid.active
-
-    def _get_tilaupid_text(self, pid, tx: float, et: float, bt: float) -> str:
-        """## TILAU ## Preheat monitor drawn on the Artisan canvas while TilauPID ramps
-        the roaster to its target SV (recording started, CHARGE not marked yet). Reads
-        only qmc + the PID object — never the TilauScope window, which may well be closed.
-        All values stay in the current Artisan unit; sv_native() is the single conversion."""
-        L = self._tilau_labels
-        mode = self.mode
-        colors = self._PID_COLORS
-
-        sv = float(pid.sv_native())
-        # same input channel the PID cycle is fed with (see sample(): BT for pidSource 0/1)
-        on_bt = self.aw.pidcontrol.pidSource in (0, 1)
-        pid_input = bt if on_bt else et
-        delta = sv - pid_input
-
-        # proximity band: identical rule to the TilauScope SV mirror (5 % of SV, or past SV)
-        close = (delta <= 0) or (sv > 0 and abs(delta) <= 0.05 * sv)
-        if close:
-            header_color = colors['close']
-            delta_color = colors['close']
-        elif abs(delta) < 15:
-            header_color = colors['highlighted']
-            delta_color = colors['middle']
-        else:
-            header_color = '#89B4FA'
-            delta_color = colors['value']
-
-        # self.delta1/self.delta2 hold the RoR *display* value, clipped to None by RoRlimitFlag
-        # (default -10..45 C/min) whenever it exits that band — a bound sized for a normal roast,
-        # routinely exceeded during an aggressive preheat ramp. self.rateofchange1/2 is the same
-        # smoothed RoR before that clipping (also what the PID itself is fed), so it stays a real
-        # number here instead of flipping to None mid-ramp.
-        ror = self.rateofchange2 if on_bt else self.rateofchange1
-
-        # ETA to SV — same convention as the phase predictions: only meaningful while climbing.
-        # A tapering burner (lead-based anticipation, see TilauPreheatPID.compute_fuzzy_power)
-        # lets the displayed RoR sag to <=0 well before the close band is reached; that is
-        # normal deceleration, not a stall, so it gets its own label instead of a frozen --:--.
-        # Early in the ramp the RoR is still building thermal momentum, so a linear projection
-        # from that low instantaneous value can wildly overshoot (e.g. hours) — cap it and fall
-        # back to the same label rather than show an implausible countdown.
-        _TILAUPID_ETA_CAP_SEC = 600.  # 10 min
-        eta_seconds = (delta / ror * 60.) if (ror is not None and ror > 0 and delta > 0) else None
-        if close:
-            eta_str = L['ReadyToCharge']
-        elif eta_seconds is not None and eta_seconds <= _TILAUPID_ETA_CAP_SEC:
-            eta_str = stringfromseconds(eta_seconds)
-        elif delta > 0:
-            eta_str = L['Stabilizing']
-        else:
-            eta_str = '--:--'
-
-        # ## TILAU ## Same forecast-marker idea as the roast coach's own milestone dot
-        # (dashed vertical line + red dot), positioning the projected time TilauPID reaches
-        # its target SV. self.timex (and tx here) is in raw seconds — the axis tick LABELS
-        # are minutes, formatted for display only (see formtime_formatter) — so the offset
-        # is added in seconds too, not divided by 60.
-        if eta_seconds is not None and eta_seconds <= _TILAUPID_ETA_CAP_SEC and not close:
-            self._tilaupid_marker_visible = True
-            self._tilaupid_marker_x = tx + eta_seconds
-            self._tilaupid_marker_y = sv
-        else:
-            self._tilaupid_marker_visible = False
-
-        ror_str = f'{ror:.1f}' if ror is not None else '--'
-        burner = getattr(pid, 'prev_power', -1)
-        burner_str = f'{burner:.0f} %' if burner is not None and burner >= 0 else '--'
-        input_label = L['BT'] if on_bt else L['ET']
-
-        return f"""
-                <div style="min-width: 140px; background-color: rgba(24, 24, 37, 0.7); border: 1px solid #45475A; border-radius: 8px; padding: 10px;">
-                    <div style="border-bottom: 1px solid {header_color}; margin-bottom: 6px; padding-bottom: 2px;">
-                        <span style="color: {header_color}; font-weight: bold; font-size: 14px; letter-spacing: 1px;">
-                            {L['Preheat']} &middot; TilauPID
-                        </span>
-                    </div>
-                    <table border="0" cellspacing="0" cellpadding="2" style="width: 100%;">
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['Target']} {L['SV']}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{sv:.0f}&deg;{mode}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{input_label}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{pid_input:.1f}&deg;{mode}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['Delta']} {L['SV']}</td>
-                        <td align="right" style="color: {delta_color}; font-weight: bold; font-size: 12px;">{delta:+.1f}&deg;{mode}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">RoR</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{ror_str}&deg;{mode}/min</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['Burner']}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{burner_str}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['ReadyIn']}</td>
-                        <td align="right" style="color: {header_color}; font-weight: bold; font-size: 12px;">{eta_str}</td>
-                    </tr>
-                    </table>
-                </div>
-                """
-
-    def _get_pid_text(self, pid, tx, et, bt):
-        L = self._tilau_labels # Use cached translations
-        mode = self.mode
-        time_str = stringfromseconds(tx)
-
-        colors = self._PID_COLORS
-
-        mode_display = L['Scheduling'] if pid.pidGainScheduling else (f"{L['Ramp']}/{L['Soak']}" if pid.svMode == 1 and (pid.ramp_soak_engaged or 0) > 0 else L['Manual'])
-        _pid_mode_key = 'scheduling' if pid.pidGainScheduling else ('ramp/soak' if pid.svMode == 1 and (pid.ramp_soak_engaged or 0) > 0 else 'manual')
-        header_color = colors.get(_pid_mode_key, "#00CCFF")
-
-        html = f"""
-                <div style="min-width: 140px; background-color: rgba(24, 24, 37, 0.7); border: 1px solid #45475A; border-radius: 8px; padding: 10px;">
-                    <div style="border-bottom: 1px solid {header_color}; margin-bottom: 6px; padding-bottom: 2px;">
-                        <span style="color: {header_color}; font-weight: bold; font-size: 14px; letter-spacing: 1px;">
-                            {L['Mode']} {mode_display}
-                        </span>
-                    </div>   
-                    <table border="0" cellspacing="0" cellpadding="2" style="width: 100%;">
-                """
-        t1, t2 = (bt, et) if self.swapETBT else (et, bt)
-        l1, l2 = (L['BT'], L['ET']) if self.swapETBT else (L['ET'], L['BT'])
-        if pid.pidGainScheduling:
-            to_follow = L['SV'] if pid.pidGainSchedulingSV else L['PV']
-            if pid.pidGainSchedulingQuadratic:
-                sched_type = "(x2)"
-                sv_pv_val = pid.pidSchedule0 if bt <= pid.pidSchedule0 else (pid.pidSchedule1 if bt <= pid.pidSchedule1 else pid.pidSchedule2)
-            else:
-                sched_type = "(x)"
-                sv_pv_val = pid.pidSchedule0 if bt <= pid.pidSchedule0 else pid.pidSchedule1
-            html += f"""
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{to_follow} {sched_type}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{sv_pv_val:.0f}°{mode}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{l1}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{t1:.1f}°{mode}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{l2}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{t2:.1f}°{mode}</td>
-                    </tr>
-                    </table>
-                    """
-            return html
-        elif pid.svMode == 1 and (pid.ramp_soak_engaged or 0) > 0:
-            segment = pid.current_ramp_segment or 0
-            # number of actually configured segments (svValue != 0 or ramp/soak != 0)
-            rslen = sum(1 for i in range(pid.svLen) if pid.svValues[i] != 0.0 or pid.svRamps[i] != 0 or pid.svSoaks[i] != 0)
-            is_ramping = (pid.current_soak_segment < segment)
-            curr_seg = segment if is_ramping else pid.current_soak_segment
-            label =""
-            total_passed_segment_time=0.0
-            duration = "0:00"
-            current_segment_time = 0.0
-            total_current_segment_time = 0.0
-            pid_input = bt if pid.pidSource == 1 else et
-            total_ramp_current_segment = pid.svRamps[curr_seg-1] if curr_seg > 0 else 0.0
-            total_soak_current_segment = pid.svSoaks[curr_seg-1] if curr_seg > 0 else 0.0
-            if is_ramping:
-                ramp_color = colors['highlighted']
-                soak_color = "inherit"
-            else:
-                ramp_color = "inherit"
-                soak_color = colors['highlighted']
-            # RS time origin: after CHARGE (if RStimeAfterCHARGE and recording) else after PID ON
-            try:
-                if pid.RStimeAfterCHARGE and self.flagstart and self.timeindex[0] > -1:
-                    rs_t0 = self.timex[self.timeindex[0]]
-                else:
-                    rs_t0 = pid.time_pidON
-                rs_elapsed = tx - rs_t0  # time elapsed since RS started
-                if is_ramping:
-                    # time accumulated by all complete ramp+soak pairs before current segment
-                    segment_start_time = sum(pid.svRamps[:curr_seg-1]) + sum(pid.svSoaks[:curr_seg-1])
-                    elapsed_in_seg = rs_elapsed - segment_start_time
-                    total_current_segment_time = float(pid.svRamps[curr_seg-1]) if curr_seg > 0 else 0.0
-                    label = L['Ramp']
-                else:
-                    # ramps[:curr_seg] all consumed + soaks before current soak segment
-                    segment_start_time = sum(pid.svRamps[:curr_seg]) + sum(pid.svSoaks[:curr_seg-1])
-                    elapsed_in_seg = rs_elapsed - segment_start_time
-                    total_current_segment_time = float(pid.svSoaks[curr_seg-1]) if curr_seg > 0 else 0.0
-                    label = L['Soak']
-                elapsed_in_seg = max(0.0, elapsed_in_seg)
-                duration = stringfromseconds(elapsed_in_seg)
-                total_passed_segment_time = segment_start_time + elapsed_in_seg
-            except (IndexError, TypeError):
-                _log.error("Error while accessing PID Ramp/Soak segment data, likely due to missing or incomplete data from PID controller. Falling back to default values.")
-            sv = pid.svValues[curr_seg-1]
-            # now compute the color for pid_input versus sv
-            color_diff = abs(pid_input - sv)
-            if color_diff < 5:
-                mode_color = colors['close']
-            elif color_diff < 15:
-                mode_color = colors['middle']
-            else:                
-                mode_color = colors['value']
-
-            html += f"""
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['PID']}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">Segment {curr_seg} / {rslen} - {stringfromseconds(total_passed_segment_time)} / {stringfromseconds(pid.RS_total_time)}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['Segments']} Ramp/Soak</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;"><span style="{ramp_color}">{stringfromseconds(total_ramp_current_segment)}</span> / <span style="{soak_color}">{stringfromseconds(total_soak_current_segment)}</span></td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{label}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{duration} / {stringfromseconds(total_current_segment_time)}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['Delta']} {L['Temp']}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;"><span style="color: {mode_color}">{pid_input:.1f}</span>/{sv:.0f}°{mode}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{l1}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{t1:.1f}°{mode}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{l2}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{t2:.1f}°{mode}</td>
-                    </tr>
-                    </table>
-                    """
-
-            return html
-
-        # Manual case
-        sv = round(getattr(pid, 'svValue', 0.0), 1)
-        html += f"""
-                <tr>
-                    <td style="color: {colors['label']}; font-size: 11px;">{l1}</td>
-                    <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{t1:.1f}°{mode}</td>
-                </tr>
-                <tr>
-                    <td style="color: {colors['label']}; font-size: 11px;">{l2}</td>
-                    <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{t2:.1f}°{mode}</td>
-                </tr>
-                <tr>
-                    <td style="color: {colors['label']}; font-size: 11px;">{L['SV']}</td>
-                    <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{sv:.0f}°{mode}</td>
-                </tr>
-                <tr>
-                    <td style="color: {colors['label']}; font-size: 11px;">Delta {L['SV']}-{L['BT']}</td>
-                    <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{sv-bt:.0f}°{mode}</td>
-                </tr>
-                </table>
-                """
-        return html
-    
+    ## TILAU ## read by TilauScope's roast card, which is the only caller left.
     def EvalPredictiveValues(self)->dict[str, int]:
         if self.flagstart or not self.flagon:
             sample_delta2 = self.delta2
@@ -5148,8 +4395,6 @@ class tgraphcanvas(QObject):
             _log.exception(e)
         return mathdictionary
 
-    ## TILAU ## improved optimized version
-
     def _tilau_milestone_automark(self) -> bool:
         """## TILAU (#10) — whether a fired milestone detector should mark
         SILENTLY (True) or only suggest and wait for the operator's one-tap
@@ -5167,607 +4412,9 @@ class tgraphcanvas(QObject):
         except Exception:  # pylint: disable=broad-except
             return False
 
-    def set_coach_toggle_allowed(self, allowed: bool) -> None:
-        """Enable the guided coach view toggle on the roast graph. Driven by the
-        operator level from displayscope — never called on the hot path. ## TILAU ##"""
-        self._coach_toggle_allowed = allowed
-        toggle = getattr(self, '_coach_view_toggle', None)
-        if toggle is not None:
-            toggle.set_allowed(allowed)
-
-    def DrawRoastAnnotation(self):
-        _, info = self._get_phase_and_target()
-        x_val = float(self.timex[-1]) if self.timex else 0.0
-        # temp2 can hold None for curve gaps — float(None) would raise.
-        y_val = float(self.temp2[-1]) if self.temp2 and self.temp2[-1] is not None else 0.0
-        text = self._format_annotation_text(x_val, info)
-        self.tilau_roast_annotation.show_at(x_val, y_val, text)
-
-    # ── Lissage barre de prévision ────────────────────────────────────────────
-    _X_INTERSECT_EMA_ALPHA: float = 0.2
-    _X_INTERSECT_DEADBAND:  float = 3.0   # secondes
-
-    def DrawIntersectionBetweenCurveandProjection(self, l_projection, initialize: int=0) -> bool:
-        if l_projection is None or initialize == 3 or self.ax is None: return False
-
-        if initialize == 2:
-            for a in [self.intersection_point_line, self.intersection_point]:
-                if a: a.set_visible(False)
-            self.tilau_roast_annotation.hide()
-            self._x_intersect_ema = None
-            self._x_intersect_display = None
-            return True
-
-        ## TILAU ## Once FC is marked the phase target degenerates to the live BT
-        ## (see _get_phase_and_target: target = bt_last). The BT projection starts
-        ## at the current BT, so target always self-intersects the projection and
-        ## the forecast bar/dot would reappear superimposed on the live curve right
-        ## after FC. There is no forward FC forecast past FC: hide the artists and
-        ## defer to the text annotation (dev%, drop) drawn by the caller.
-        if len(self.timeindex) > 2 and self.timeindex[2] > 0:
-            for a in [self.intersection_point_line, self.intersection_point]:
-                if a: a.set_visible(False)
-            return False
-
-        xdata = numpy.asarray(l_projection.get_xdata(), dtype=float)
-        ydata = numpy.asarray(l_projection.get_ydata(), dtype=float)
-        if xdata.size < 2:
-            if initialize == 0:
-                for a in [self.intersection_point_line, self.intersection_point]:
-                    if a: a.set_visible(False)
-            return False
-        target, info = self._get_phase_and_target()
-        if ydata[0] <= target <= ydata[-1] or ydata[0] >= target >= ydata[-1]:
-            x_intersect_raw = numpy.interp(target, ydata, xdata)
-        else:
-            x_intersect_raw = target if initialize == 1 else None
-        if x_intersect_raw is None:
-            if initialize == 0:
-                for a in [self.intersection_point_line, self.intersection_point]:
-                    if a: a.set_visible(False)
-            return False
-
-        # ── Lissage EMA + dead band (affichage uniquement) ───────────────────
-        # x_intersect_raw → texte annotation (inter_time, inter_color) : sampling Artisan
-        # x_for_artists   → position artists Matplotlib : stabilisée
-        if initialize == 1:
-            self._x_intersect_ema = float(x_intersect_raw)
-            self._x_intersect_display = float(x_intersect_raw)
-            x_for_artists = float(x_intersect_raw)
-        else:
-            if self._x_intersect_ema is None:
-                self._x_intersect_ema = float(x_intersect_raw)
-            else:
-                self._x_intersect_ema = (
-                    self._X_INTERSECT_EMA_ALPHA * float(x_intersect_raw)
-                    + (1.0 - self._X_INTERSECT_EMA_ALPHA) * self._x_intersect_ema
-                )
-            if (self._x_intersect_display is None or
-                    abs(self._x_intersect_ema - self._x_intersect_display) >= self._X_INTERSECT_DEADBAND):
-                self._x_intersect_display = self._x_intersect_ema
-            x_for_artists = self._x_intersect_display
-
-        text = self._format_annotation_text(x_intersect_raw, info)
-        ymax = self.ax.get_ylim()[1]
-
-        # show_at() already calls setText()+adjustSize(); no need to size here.
-        self._update_or_create_artists(x_for_artists, target, ymax - 20.0, text, initialize)
-        return True
-
-    def _update_or_create_artists(self, x, y, ymax, text, initialize, flip=False, shift=False, pos_x=0.0, pos_y=0.0):
-        try:
-            x_val, y_val, ymax_val = float(x), float(y), float(ymax)
-        except (TypeError, ValueError):
-            return # Sécurity
-
-        if initialize == 1:
-            self.tilau_roast_annotation.hide()
-        else:
-            self.tilau_roast_annotation.show_at(x_val, y_val, text)
-            
-        if self.intersection_point_line is None or self.intersection_point_line.axes is None or initialize == 1:
-            if self.intersection_point_line:
-                try: self.intersection_point_line.remove()
-                except: pass
-            self.intersection_point_line = self.ax.axvline(x=x_val, color='yellow', ls='--', lw=1, alpha=0.3)
-        else:
-            self.intersection_point_line.set_xdata([x_val, x_val])
-            self.intersection_point_line.set_visible(True)
-
-        if self.intersection_point is None or self.intersection_point.axes is None or initialize == 1:
-            if self.intersection_point:
-                try: self.intersection_point.remove()
-                except: pass
-            self.intersection_point = self.ax.plot(x_val, y_val, 'ro')[0]
-        else:
-            self.intersection_point.set_data([x_val], [y_val])
-            self.intersection_point.set_visible(True)
-
-    def _get_omniflux_live(self, omniflux)-> tuple[float, float]:
-            # read registers from modbus if connected
-            
-            ci = omniflux.color_device_idx
-            ri = omniflux.roc_device_idx
-            try:
-                color_series = self.extratemp1[ci]
-                agtron = color_series[-1] if color_series else -1.0
-            except (IndexError, TypeError):
-                agtron = -1.0
-            try:
-                roc_series = self.extratemp2[ri]
-                roc = roc_series[-1] if roc_series else -1.0
-            except (IndexError, TypeError):
-                roc = -1.0
-            return agtron, roc
-
-    @staticmethod
-    def _dev_ratio_color_static(dev_pct: float, gap: float, mode: str, colors: dict) -> str:
-        """Colorie DEV Ratio en FC : alerte uniquement si ratio bas ET drop proche.
-        gap = drop_temp - bt (positif = encore de la marge, négatif = dépassé)
-        Seuils en °C, convertis en °F si nécessaire."""
-        warn_gap  = 15.0 if mode == 'C' else 27.0   # zone d'approche yellow
-        alert_gap = 10.0 if mode == 'C' else 18.0   # zone d'approche red
-        if dev_pct < 10.0 and gap < alert_gap:
-            return colors['manual']
-        if dev_pct < 13.0 and gap < warn_gap:
-            return colors['highlighted']
-        return colors['value']
-
-    def _coach_agtron(self):
-        """Live Agtron from the Omniflux if present, else None. ## TILAU ##"""
-        try:
-            dev = self.aw.bleAirwaveDevice
-            omniflux = dev.omniflux if dev is not None and hasattr(dev, 'omniflux') else None
-            if omniflux is not None and omniflux.color_device_idx != -1:
-                ag, _ = self._get_omniflux_live(omniflux)
-                return ag if ag != -1 else None
-        except Exception: # pylint: disable=broad-except
-            return None
-        return None
-
-    def _coach_html(self, idx, info, x_intersect, bt, et, mode, L, colors,
-                    phase_title, header_color) -> str:
-        """Guided simplified 'coach' card: header + one hero line + one colour-coded
-        verdict + one compact metric line. All strings come from the cached
-        _tilau_labels — no translator call here. ## TILAU ##
-
-        Verdicts are derived from the same signals the expert view already
-        colour-codes (milestone proximity, FC acoustic burst, DEV ratio, drop
-        proximity, cooling temp) — no new unvalidated thresholds.
-        """
-        GREEN  = '#A6E3A1'
-        YELLOW = colors['highlighted']
-        RED    = colors['manual']
-        LABEL  = colors['label']
-
-        # current BT RoR (°/min), guarded
-        try:
-            ror = self.delta2[-1] if self.delta2 and len(self.delta2) > 0 and self.delta2[-1] is not None else None
-        except Exception: # pylint: disable=broad-except
-            ror = None
-        ror_str = f" · RoR {ror:+.0f}" if ror is not None else ""
-
-        toward = ""
-        hero = ""
-        hero_color = colors['value']
-        verdict = ""
-        verdict_color = GREEN
-        compact = ""
-
-        if idx == "CHARGE":
-            toward = L['coach_toward_dry']
-            inter = info["rel_tx"] - (x_intersect - info["charge"])
-            inter_time = stringfromseconds(-inter) if inter < 0 else "--:--"
-            if inter < 0 and -inter < 45.0:
-                hero_color = RED
-            elif inter < 0 and -inter < 90.0:
-                hero_color = YELLOW
-            hero = f"{L['coach_dry_in']} {inter_time}"
-            _dry_approaching = inter < 0 and -inter < 90.0
-            if _dry_approaching:
-                verdict, verdict_color = L['coach_approaching_dry'], YELLOW
-            else:
-                verdict, verdict_color = L['coach_on_track'], GREEN
-            compact = f"{L['BT']} {bt:.0f}°→{info['target']:.0f}°{mode}{ror_str}"
-            ## TILAU ## publish coach proximity so the assistant panel's DRY END
-            ## button lights up together with this "approaching" alert (same
-            ## predicted-time signal, not a divergent temperature-gap threshold)
-            self._tilau_coach_pub = {"toward": "DE",
-                                     "eta_sec": (-inter if inter < 0 else -1.0),
-                                     "approaching": bool(_dry_approaching)}
-
-        elif idx == "DE":
-            toward = L['coach_toward_fc']
-            pred = info.get("pred_sec", 0.0)
-            hero = f"{L['coach_fc_in']} {stringfromseconds(pred) if pred and pred > 0 else '--:--'}"
-            # Hero colour tracks predicted time-to-1C, like the drying phase does.
-            if pred and pred > 0:
-                if pred < 45.0:
-                    hero_color = RED
-                elif pred < 90.0:
-                    hero_color = YELLOW
-            # Verdict priority: acoustic burst (strongest) → cracks heard →
-            # time-to-1C proximity (works without a mic) → steady browning.
-            fc_signal = False
-            if self.fc_detector._cached_crack_device_idx != -1:
-                cnt = self.fc_detector.last_count
-                thr = self.fc_detector.threshold
-                if thr > 0 and cnt >= thr:
-                    verdict, verdict_color, hero_color = L['coach_fc_imminent'], RED, RED
-                    fc_signal = True
-                elif cnt > 0:
-                    verdict, verdict_color = L['coach_cracks_heard'], YELLOW
-                    fc_signal = True
-            _fc_approaching = fc_signal
-            if not fc_signal:
-                if pred and 0 < pred < 90.0:
-                    verdict, verdict_color = L['coach_fc_approaching'], YELLOW
-                    _fc_approaching = True
-                else:
-                    verdict, verdict_color = L['coach_browning_ok'], GREEN
-            compact = f"{L['BT']} {bt:.0f}°{mode}{ror_str}"
-            ## TILAU ## publish coach proximity so the assistant panel's FC
-            ## button lights up together with this "1C approaching/imminent"
-            ## alert (same predictive signal, incl. acoustic crack burst)
-            self._tilau_coach_pub = {"toward": "FC",
-                                     "eta_sec": (pred if pred and pred > 0 else -1.0),
-                                     "approaching": bool(_fc_approaching)}
-            ag = self._coach_agtron()
-            if ag is not None:
-                compact += f" · {ag:.0f}Ag"
-
-        elif idx in ("FC", "SCs", "SCe"):
-            toward = L['coach_toward_drop']
-            dev_pct = info.get("dev_pct", 0.0)
-            DEV_TARGET = 20.0
-            hero = f"{L['coach_dev_short']} {dev_pct:.0f}% · {L['Target']} {DEV_TARGET:.0f}%"
-            drop_temp = info.get("drop_temp", 0.0)
-            gap = drop_temp - bt
-            warn_gap = 15.0 if mode == "C" else 27.0
-            # Drive the verdict from the DEVELOPMENT RATIO, not temperature: on
-            # this roaster BT can sit near the configured drop temp very early,
-            # so a temperature-first rule wrongly says "drop" at 5% dev.
-            if dev_pct >= DEV_TARGET - 2.0:
-                # development target reached → time to drop
-                verdict, verdict_color, hero_color = L['coach_ready_drop'], RED, GREEN
-            elif dev_pct < 13.0 and drop_temp > 0.0 and gap < warn_gap:
-                # hot enough to drop but not developed yet → hold / ease the heat
-                verdict, verdict_color, hero_color = L['coach_underdeveloped'], YELLOW, YELLOW
-            else:
-                verdict, verdict_color = L['coach_dev_ok'], GREEN
-            delta_t = bt - info.get('fctemp', bt)
-            compact = f"{L['coach_dev_short']} {stringfromseconds(info.get('dev_time', 0.0))} · Δ-T {delta_t:+.0f}°{mode}"
-
-        elif idx == "DROP":
-            hero = L['coach_cool_fast']
-            hot_limit  = 200.0 if mode == "C" else 392.0
-            warm_limit =  50.0 if mode == "C" else 122.0
-            hero_color = RED if bt > hot_limit else (YELLOW if bt > warm_limit else GREEN)
-            compact = f"{L['BT']} {bt:.0f}°{mode} · {L['ET']} {et:.0f}°{mode}"
-
-        else:
-            hero = f"{L['BT']} {bt:.0f}°{mode}"
-
-        toward_html = (f'<span style="color:#6C7086; font-size:10px;"> · {toward}</span>'
-                       if toward else "")
-        verdict_html = (f'<div style="font-size:12px; color:{verdict_color}; margin-bottom:5px;">{verdict}</div>'
-                        if verdict else "")
-        compact_html = (f'<div style="font-size:11px; color:{LABEL};">{compact}</div>'
-                        if compact else "")
-        return f"""
-                <div style="min-width: 130px; border: 1px solid #45475A; border-radius: 8px; padding: 9px;">
-                    <div style="border-bottom: 1px solid {header_color}; margin-bottom: 6px; padding-bottom: 2px;">
-                        <span style="color: {header_color}; font-weight: bold; font-size: 13px; letter-spacing: 1px;">{phase_title}</span>{toward_html}
-                    </div>
-                    <div style="font-size: 15px; font-weight: bold; color: {hero_color}; margin-bottom: 4px;">{hero}</div>
-                    {verdict_html}
-                    {compact_html}
-                </div>
-                """
-
-    def _format_annotation_text(self, x_intersect, info)->str:
-        # Pre-fetch common variables to avoid repeated dict hashing
-        L = self._tilau_labels # Use cached translations
-
-        colors = self._ANNO_COLORS
-
-        # charge = charge time in second since start of preheat
-        # rel_tx = elapsed time since charge in seconds
-        # bt = current bean temperature 
-        # et = environmental extract temperature
-        # target = target temperature from phase (target - bt is DeltaT)
-        # pred_sec = predictive First Crack in seconds
-        # fctemp = bean temperature recorded at FIRST CRACK
-        # fc_time = elapsed time since charge in seconds at FIRST CRACK
-        # dev_time = elapsted time in second since FIRST CRACK has been marked
-        # dev_pct = % of development x 100
-        # de_time = elapsed seconds since charger at DRY END
-        # dry pct = % of dry end x 100
-        # mai_pct = % of maillard x 100
-        # sc_dur = elapsed seconds between SECOND CRACK START AND END
-        # scs_temp = bean temperature at SECOND CRACK START
-        # sce_temp = bean temperature at SECOND CRACK END
-
-        # get_agtron_color / get_roc_color imported from tilauscope_types at module level
-
-        idx = info["index"]
-        mode = self.mode
-        bt = float(info["bt"])
-        et = float(info["et"])
-
-        # Phase title and header colour — map built once in _init_Tilau_translations
-        phase_title, header_color = self._tilau_phase_map.get(idx, (L['BT'], '#9E9E9E'))
-
-        # ## TILAU ## Guided simplified "coach" view. In Expert level the toggle
-        # is hidden and grain/colour targets are unset, so we always fall back to
-        # the full expert table below.
-        if self._coach_toggle_allowed and not self._annotation_expert_view:
-            return self._coach_html(idx, info, x_intersect, bt, et, mode,
-                                    L, colors, phase_title, header_color)
-
-        # Cache the formatted relative time
-        rel_time = stringfromseconds(info["rel_tx"])
-
-        html = f"""
-                <div style="min-width: 140px; border: 1px solid #45475A; border-radius: 8px; padding: 10px;">
-                    <div style="border-bottom: 1px solid {header_color}; margin-bottom: 6px; padding-bottom: 2px;">
-                        <span style="color: {header_color}; font-weight: bold; font-size: 14px; letter-spacing: 1px;">
-                            {phase_title}
-                        </span>
-                    </div>   
-                    <table border="0" cellspacing="0" cellpadding="2" style="width: 100%;">
-                """
-
-        if idx == "CHARGE" or idx == "DE":
-            label = L['DRY'] if idx == "CHARGE" else L['FC']
-            # difference between current prediction and real time mark in seconds
-            inter = info["rel_tx"] - (x_intersect - info["charge"])
-            # create a time stamp out of time difference if we're not yet reached the target (x_intersect)
-            inter_time = stringfromseconds(-inter) if inter < 0 else "--:--" 
-            # if close at 5% use a red color, if at 10% use yellow, else white or so
-            if inter < 0 and -inter < 45.0: # assume that at 45s from milestone we are in red
-                inter_color = colors['manual']
-            elif inter < 0 and -inter < 90: # assume that at 1:30 from milestone we might have to take care of settings
-                inter_color = colors['highlighted']
-            else:
-                inter_color = colors['value']
-            # if close at 5% use a red color, if at 10% use yellow, else white or so
-            inter_bt = bt-info['target']
-            if inter_bt < 0 and -inter_bt < 0.05 * info["target"]:
-                inter_bt_color = colors['manual']
-            elif inter_bt < 0 and -inter_bt < 0.10 * info["target"]:
-                inter_bt_color = colors['highlighted']
-            else:
-                inter_bt_color = colors['value']
-            
-            html += f"""
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['Time']}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{rel_time}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">Expected {L['DRY'] if idx=="CHARGE" else L['FC']} in</td>
-                        <td align="right" style="color: {inter_color}; font-weight: bold; font-size: 12px;">{inter_time}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['Target']} {L['DRY'] if idx=="CHARGE" else L['FC']}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{info['target']:.1f}°{mode}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['BT']}</td>
-                        <td align="right" style="color: {inter_bt_color}; font-weight: bold; font-size: 12px;">{bt:.1f}°{mode}</td>
-                    </tr>
-                    """
-            omniflux = self.aw.bleAirwaveDevice.omniflux if self.aw.bleAirwaveDevice is not None and hasattr(self.aw.bleAirwaveDevice, 'omniflux') else None
-            if omniflux is not None and omniflux.color_device_idx != -1:
-                agtron, roc = self._get_omniflux_live(omniflux)
-                if agtron != -1:
-                    ag_color  = get_agtron_color(agtron)
-                    roc_color = _omniflux_roc_color(roc)
-                    html += f"""
-                            <tr>
-                                <td style="color: {colors['label']}; font-size: 11px;">{L['Color']}</td>
-                                <td align="right" style="color: {ag_color}; font-weight: bold; font-size: 12px;">{agtron:.1f}Ag</td>
-                            </tr>
-                            <tr>
-                                <td style="color: {colors['label']}; font-size: 11px;">RoC</td>
-                                <td align="right" style="color: {roc_color}; font-weight: bold; font-size: 12px;">{roc:.1f}</td>
-                            </tr>
-                            """
-            if self.fc_detector._cached_crack_device_idx != -1 and idx=="DE": # only after dry end
-                    fc_cnt = self.fc_detector.last_count
-                    fc_burst = self.fc_detector.threshold
-                    if fc_cnt <= 0:
-                        fc_color = colors['value']
-                    elif fc_cnt < fc_burst:
-                        fc_color = colors['highlighted']  # cracks entendus, pas encore le seuil de déclenchement
-                    else:
-                        fc_color = colors['manual']        # seuil burst atteint → auto-FC imminent
-
-                    html += f"""
-                            <tr>
-                                <td style="color: {colors['label']}; font-size: 11px;">{L['FCcounter']}</td>
-                                <td align="right" style="color: {fc_color}; font-weight: bold; font-size: 12px;">{fc_cnt if fc_cnt != -1 else ''}</td>
-                            </tr>
-                            """
-
-            html += "</table>"
-            return html
-        
-        if idx == "FC" or idx == "SCs" or idx == "SCe":
-            # BT turns red when within bt_delta_limit of the drop target (approaching, not overshoot)
-            bt_delta_limit:float = 5.0 if self.mode =="C" else 32.0
-            delta_color:str = colors['manual'] if info["drop_temp"] > 0.0 and (info["drop_temp"] - bt) < bt_delta_limit else colors['value']
-            html += f"""
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">DEV Time</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{stringfromseconds(info['dev_time'])}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['Delta']}-T °{mode}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;"> {bt - info['fctemp']:.1f}°{mode}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['BT']}</td>
-                        <td align="right" style="color: {delta_color}; font-weight: bold; font-size: 12px;">{bt:.1f}°{mode}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">DEV Ratio</td>
-                        <td align="right" style="color: {self._dev_ratio_color_static(info['dev_pct'], info['drop_temp'] - bt, self.mode, colors)}; font-weight: bold; font-size: 12px;">{info["dev_pct"]:.1f}%</td>
-                    </tr>
-                    """
-            if idx == "SCs":
-                html +=  f"""
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['SCS']}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{info["scs_temp"]:.1f}°{mode}</td>
-                    </tr>
-                """
-            if idx == "SCe":
-                html +=  f"""
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['SCE']}</td>
-                        <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{info["sce_temp"]:.1f}°{mode}</td>
-                    </tr>
-                """
-            omniflux = self.aw.bleAirwaveDevice.omniflux if self.aw.bleAirwaveDevice is not None and hasattr(self.aw.bleAirwaveDevice, 'omniflux') else None
-            if omniflux is not None and omniflux.color_device_idx != -1:
-                agtron, roc = self._get_omniflux_live(omniflux)
-                if agtron != -1:
-                    ag_color  = get_agtron_color(agtron)
-                    roc_color = _omniflux_roc_color(roc)
-                    html += f"""
-                            <tr>
-                                <td style="color: {colors['label']}; font-size: 11px;">{L['Color']}</td>
-                                <td align="right" style="color: {ag_color}; font-weight: bold; font-size: 12px;">{agtron:.1f}Ag</td>
-                            </tr>
-                            <tr>
-                                <td style="color: {colors['label']}; font-size: 11px;">RoC</td>
-                                <td align="right" style="color: {roc_color}; font-weight: bold; font-size: 12px;">{roc:.1f}</td>
-                            </tr>
-                            """
-            html +="</table>"
-            return html
-        
-        if idx == "DROP":
-            hot_limit  = 200.0 if mode == "C" else 392.0  # encore très chaud — rouge
-            warm_limit =  50.0 if mode == "C" else 122.0  # refroidissement insuffisant — jaune
-            def _cool_color(t: float) -> str:
-                return colors['manual'] if t > hot_limit else (colors['highlighted'] if t > warm_limit else colors['value'])
-            bt_color = _cool_color(bt)
-            et_color = _cool_color(et)
-
-            html += f"""
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['BT']}</td>
-                        <td align="right" style="color: {bt_color}; font-weight: bold; font-size: 12px;">{bt:.1f}°{mode}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: {colors['label']}; font-size: 11px;">{L['ET']}</td>
-                        <td align="right" style="color: {et_color}; font-weight: bold; font-size: 12px;">{et:.1f}°{mode}</td>
-                    </tr>
-                    </table>
-                    """
-            return html
-        else:
-            html += f"""
-                        <tr>
-                            <td style="color: {colors['label']}; font-size: 11px;">{L['BT']}</td>
-                            <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{bt:.1f}°{mode}</td>
-                        </tr>
-                        </table>
-                        """
-        return html
-
-    def _get_phase_and_target(self):
-        """Calcule la phase et la cible avec initialisation sécurisée des clés."""
-        if not self.timeindex or not self.timex:
-            return 0.0, {"index": "init", "target": 0.0, "charge": 0.0, "rel_tx": 0.0, "bt": 0.0}
-
-        t_idx = self.timeindex
-        t_x = self.timex
-        temp2 = self.temp2
-        temp1 = self.temp1
-        charge = t_x[t_idx[0]]
-        rel_tx = t_x[-1] - charge
-        # temp1/temp2 can hold None for curve gaps — keep them numeric downstream.
-        bt_last = temp2[-1] if len(temp2) > 0 and temp2[-1] is not None else 0.0
-        et_last = temp1[-1] if len(temp1) > 0 and temp1[-1] is not None else 0.0
-        
-        # charge = charge time in second since start of preheat
-        # rel_tx = elapsed time since charge in seconds
-        # bt = current bean temperature 
-        # et = environmental extract tempperature
-        # target = target temperature from phase (target - bt is DeltaT)
-        # pred_sec = predictive First Crack in seconds
-        # fctemp = bean temperature recorded at FIRST CRACK
-        # fc_time = elapsed time since charge in seconds at FIRST CRACK
-        # dev_time = elapsted time in second since FIRST CRACK has been marked
-        # dev_pct = % of development x 100
-        # de_time = elapsed seconds since charger at DRY END
-        # dry pct = % of dry end x 100
-        # mai_pct = % of maillard x 100
-        # sc_dur = elapsed seconds between SECOND CRACK START AND END
-        # scs_temp = bean temperature at SECOND CRACK START
-        # sce_temp = bean temperature at SECOND CRACK END
-        # drop_temp = drop temperature set in phases
-        res = {
-            "index": "unknown", "charge": charge, "rel_tx": rel_tx, "bt": bt_last, "et": et_last,
-            "target": 0.0, "pred_sec": 0.0, "fctemp": 0.0, "fc_time": 0.0,
-            "dev_time": 0.0, "dev_pct": 0.0, "de_time": 0.0, "dry_pct": 0.0, 
-            "mai_pct": 0.0, "sc_dur": 0.0, "scs_temp": 0.0, "sce_temp": 0.0, 
-            "drop_temp": 0.0
-        }
-
-        if t_idx[6] > 0: # DROP
-            res.update({"index": "DROP", "drop": t_x[t_idx[6]], "drop_temp": temp2[t_idx[6]]})
-            target = res["drop_temp"]
-        
-        elif t_idx[2] > 0: # Après FCs
-            fctemp:float = temp2[t_idx[2]]
-            de_time:float = t_x[t_idx[1]] - charge 
-            fc_time:float = t_x[t_idx[2]] - charge
-            dev_time:float = rel_tx - fc_time
-            #_log.error(f"phase vals fc_time={fc_time} de_time={de_time} dev_time={dev_time}")
-            
-            res.update({
-                "fctemp": fctemp,
-                "fc_time": fc_time,
-                "de_time": de_time,
-                "dev_time": dev_time,
-                "dev_pct": (dev_time * 100. / rel_tx) if rel_tx > 0 else 0,
-                "dry_pct": (de_time * 100. / rel_tx) if rel_tx > 0 else 0,
-                "mai_pct": ((fc_time - de_time) * 100. / rel_tx) if rel_tx > 0 else 0,
-                "drop_temp" : self.phases[3] # drop temperature aimed
-            })
-            target = bt_last
-            
-            if t_idx[5] > 0: res.update({"index": "SCe", "sc_dur": t_x[t_idx[5]] - t_x[t_idx[4]], "sce_temp": temp2[t_idx[5]]})
-            elif t_idx[4] > 0: res.update({"index": "SCs", "scs_temp": temp2[t_idx[4]]})
-            else: res["index"] = "FC"
-
-        elif t_idx[1] > 0: # de DE à FCs
-            res["index"] = "DE"
-            p = self.EvalPredictiveValues()
-            res["pred_sec"] = p.get("pFCs", 0.0)
-            target = self.phases[2] if self.phases[2] > 0 else (self.phases_celsius_defaults[2] if self.mode == "C" else self.phases_fahrenheit_defaults[2]) # Fix 2026/03/07
-            #_logd.info(f"estimating predictive temp of FCs = {target} versus {self.phases[2]}")
-        else: # de CHARGE à DE
-            res["index"] = "CHARGE"
-            p = self.EvalPredictiveValues()
-            res["pred_sec"] = p.get("pDRY", 0.0)
-            target = self.phases[1] if self.phases[1] > 0 else (self.phases_celsius_defaults[1] if self.mode == "C" else self.phases_fahrenheit_defaults[1]) # Fix 2026/03/07
-            #_logd.info(f"estimating predictive temp of DE = {target} versus {self.phases[1]}")
-
-        res["target"] = target
-        return target, res
-
-    ## TILAU ################################################################################################################
-
-    # ADD DEVICE:
-
     # returns True if the extra device n, channel c, is of type MODBUS or S7, has no factor defined, nor any math formula, and is of type int
     # channel c is either 0 or 1
+    # ADD DEVICE:
     @functools.cache # noqa: B019 # pylint: disable=W1518 # Not relevant here, as qmc is only created once: [B019] Use of `functools.lru_cache` or `functools.cache` on methods can lead to memory leaks
     def intChannel(self, n:int, c:int) -> bool:
         if len(self.extradevices) > n:
@@ -5777,7 +4424,7 @@ class tgraphcanvas(QObject):
             if c == 1:
                 no_math_formula_defined = bool(self.extramathexpression2[n] == '')
             # MODBUS channels
-            for idx, dev_type in enumerate([29,33,55,109,150]): # MODBUS, MODBUS_34, MODBUS_56, MODBUS_78, MODBUS_910
+            for idx, dev_type in enumerate([29,33,55,109,150,207]): # MODBUS, MODBUS_34, MODBUS_56, MODBUS_78, MODBUS_910, MODBUS_1112
                 if self.extradevices[n] == dev_type:
                     return ((self.aw.modbus.inputFloatsAsInt[idx*2 + c] or self.aw.modbus.inputBCDsAsInt[idx*2 + c] or not self.aw.modbus.inputFloats[idx*2 + c]) and
                         self.aw.modbus.inputDivs[idx*2 + c] == 0 and
@@ -5823,9 +4470,7 @@ class tgraphcanvas(QObject):
             if self.BTprojectFlag:
                 if self.l_BTprojection is not None and self.BTcurve:
                     # show only if either the DeltaBT curve or LCD is shown (allows to suppress projects for cases where ET channel is used for other signals)
-                    ## TILAU ## 2025-11-21 modify behavior to not show BT projection if annotations are displayed
-                    if not self.aw.TilauScopeAnnotation: # modify behavior ##TILAU ## 2025-11-21 remove display of line if Airwave PID is on
-                        self.ax.draw_artist(self.l_BTprojection)
+                    self.ax.draw_artist(self.l_BTprojection)
                 if self.projectDeltaFlag and self.l_DeltaBTprojection is not None and self.DeltaBTflag:
                     self.ax.draw_artist(self.l_DeltaBTprojection)
             if self.l_AUCguide is not None and self.AUCguideFlag and self.AUCguideTime > 0 and self.AUCguideTime < self.endofx:
@@ -6415,10 +5060,7 @@ class tgraphcanvas(QObject):
                         if not self.fixmaxtime and not self.locktimex:
                             charge_offset:float = (0 if self.timeindex[0] == -1 else sample_timex[self.timeindex[0]])
                             now = sample_timex[-1] - charge_offset
-                            ## TILAU ##
-                            annotation_reserve:int = 120 if charge_offset > 0 else 0 # 2 minutes in seconds
-                            trigger_period:float = annotation_reserve + (self.endofx - self.startofx - charge_offset) / 14 
-                            #_log.error(f" start={self.startofx:.0f} end={self.endofx:.0f} charge={charge_offset:.0f} trigger = {trigger_period:.0f}")
+                            trigger_period:float = (self.endofx - self.startofx - charge_offset) / 14 # 14th part of the total x-axis length
                             if now > (self.endofx - trigger_period):
                                 extension_period:float = trigger_period * 4
                                 self.endofx = now + extension_period
@@ -6633,14 +5275,14 @@ class tgraphcanvas(QObject):
                                     alarm_temp = sample_temp2[-1]
                                     if alarm_idx is not None:
                                         alarm_temp -= sample_temp2[alarm_idx]
-                                elif asrc > 1 and ((asrc - 2) < (2 * len(self.extradevices))):  # extra devices
-                                    if asrc % 2 == 0:
+                                elif asrc > 1 and ((asrc - 2)//2 < len(self.extradevices)):  # extra devices
+                                    if asrc % 2 == 0 and len(sample_extratemp1[(asrc - 2)//2])>0:
                                         alarm_temp = sample_extratemp1[(asrc - 2)//2][-1]
-                                        if alarm_idx is not None:
+                                        if alarm_idx is not None and alarm_idx < len(sample_extratemp1[(asrc - 2)//2]):
                                             alarm_temp -= sample_extratemp1[(asrc - 2)//2][alarm_idx]
-                                    else:
+                                    elif len(sample_extratemp2[(asrc - 2)//2])>0:
                                         alarm_temp = sample_extratemp2[(asrc - 2)//2][-1]
-                                        if alarm_idx is not None:
+                                        if alarm_idx is not None and alarm_idx < len(sample_extratemp2[(asrc - 2)//2]):
                                             alarm_temp -= sample_extratemp2[(asrc - 2)//2][alarm_idx]
 
                                 # only evaluate a real reading: skip None (no source) and -1 (drop-out)
@@ -6825,8 +5467,7 @@ class tgraphcanvas(QObject):
                     if  not self.fixmaxtime and not self.locktimex:
                         now = (tx if self.timeindex[0] == -1 else tx - sample_timex[self.timeindex[0]])
                         if now > (self.endofx - 45):            # if difference is smaller than 45 seconds
-                            ## TILAU ##
-                            self.endofx = now               
+                            self.endofx = now + 180              # increase x limit by 3 minutes (180)
                             if self.ax is not None:
                                 self.ax.set_xlim(self.startofx,self.endofx)
                             self.xaxistosm()
@@ -6942,7 +5583,7 @@ class tgraphcanvas(QObject):
                     d2:float|None = delta2[idx]
                     if d2 is not None and d2 != -1 and  -100 < d2 < 1000:
                         deltabtstr = lcdformat%d2        # rate of change BT (degrees per minute)
-                    deltabt_raw = d2
+                        deltabt_raw = d2
             except Exception as e: # pylint: disable=broad-except
                 _log.exception(e)
             self.aw.lcd4.display(deltaetstr)
@@ -6987,7 +5628,7 @@ class tgraphcanvas(QObject):
                 if i < self.aw.nLCDS:
                     try:
                         extra1_value = resLCD
-                        if idx is not None and XTs1[i] and idx < len(XTs1[i]):
+                        if idx is not None and i < len(XTs1) and idx < len(XTs1[i]):
                             fmt = lcdformat
                             v = float(XTs1[i][idx])
                             if v != -1:
@@ -7009,7 +5650,7 @@ class tgraphcanvas(QObject):
                         self.aw.extraLCD1[i].display(extra1_value)
                     try:
                         extra2_value = resLCD
-                        if idx is not None and XTs2[i] and idx < len(XTs2[i]):
+                        if idx is not None and i < len(XTs2) and idx < len(XTs2[i]):
                             fmt = lcdformat
                             v = float(XTs2[i][idx])
                             if v != -1:
@@ -7112,10 +5753,16 @@ class tgraphcanvas(QObject):
                                     # get current limits
                                     xlim = self.ax.get_xlim()
                                     xlim_offset = (xlim[1] - xlim[0]) / 2.
-                                    xlim_new = (tx - xlim_offset, tx + xlim_offset)
+                                    xlim_shift = (xlim[1] - xlim[0])*self.zoom_follow_pan_x
+                                    xlim_new = (tx - xlim_offset + xlim_shift, tx + xlim_offset + xlim_shift)
                                     ylim = self.ax.get_ylim()
-                                    ylim_offset = (ylim[1] - ylim[0]) / 2.
-                                    ylim_new = (temp - ylim_offset, temp + ylim_offset)
+                                    if self.fmt_data_curve == 0:
+                                        ylim_offset = (ylim[1] - ylim[0]) / 2.
+                                        ylim_shift = (ylim[1] - ylim[0])*self.zoom_follow_pan_y
+                                        ylim_new = (temp - ylim_offset + ylim_shift, temp + ylim_offset + ylim_shift)
+                                    else:
+                                        # in clamp mode (any) we don't follow the y-axis, but only the x-axis
+                                        ylim_new = ylim
                                     if ylim != ylim_new or xlim != xlim_new:
                                         # set new limits to center current temp on canvas
                                         self.ax.set_xlim(xlim_new)
@@ -7124,8 +5771,9 @@ class tgraphcanvas(QObject):
                                             # keep the RoR axis constant
                                             zlim = self.delta_ax.get_ylim()
                                             zlim_offset = (zlim[1] - zlim[0]) / 2.
+                                            zlim_shift = (zlim[1] - zlim[0])*self.zoom_follow_pan_y
                                             tempd = float(self.delta_ax.transData.inverted().transform((0,self.ax.transData.transform((0,temp))[1]))[1])
-                                            zlim_new = (tempd - zlim_offset, tempd + zlim_offset)
+                                            zlim_new = (tempd - zlim_offset + zlim_shift, tempd + zlim_offset + zlim_shift)
                                             self.delta_ax.set_ylim(zlim_new)
                                         self.ax_background = None
                             else:
@@ -7142,11 +5790,17 @@ class tgraphcanvas(QObject):
                                         # get current limits
                                         xlim = self.ax.get_xlim()
                                         xlim_offset = (xlim[1] - xlim[0]) / 2.
-                                        xlim_new = (tx - xlim_offset, tx + xlim_offset)
+                                        xlim_shift = (xlim[1] - xlim[0])*self.zoom_follow_pan_x
+                                        xlim_new = (tx - xlim_offset + xlim_shift, tx + xlim_offset + xlim_shift)
                                         ylim = self.ax.get_ylim()
-                                        ylim_offset = (ylim[1] - ylim[0]) / 2.
-                                        rord = float(self.ax.transData.inverted().transform((0,self.delta_ax.transData.transform((0,ror))[1]))[1])
-                                        ylim_new = (rord - ylim_offset, rord + ylim_offset)
+                                        if self.fmt_data_curve == 0:
+                                            ylim_offset = (ylim[1] - ylim[0]) / 2.
+                                            ylim_shift = (ylim[1] - ylim[0])*self.zoom_follow_pan_y
+                                            rord = float(self.ax.transData.inverted().transform((0,self.delta_ax.transData.transform((0,ror))[1]))[1])
+                                            ylim_new = (rord - ylim_offset + ylim_shift, rord + ylim_offset + ylim_shift)
+                                        else:
+                                            # in clamp mode (any) we don't follow the y-axis, but only the x-axis
+                                            ylim_new = ylim
                                         if ylim != ylim_new or xlim != xlim_new:
                                             # set new limits to center current temp on canvas
                                             self.ax.set_xlim(xlim_new)
@@ -7159,7 +5813,13 @@ class tgraphcanvas(QObject):
 
                         ##### updated canvas
                         try:
-                            if not self.block_update:
+                            ## TILAU ## The gate belongs HERE and not at the top of this
+                            ## method: updateLCDs() above is what emits tilauUpdateSignal,
+                            ## so an early return would cut TilauScope's own supply of
+                            ## samples while claiming to save its rendering. Only the
+                            ## figure is skipped; every reading still reaches the screen
+                            ## that is actually being looked at.
+                            if not self.block_update and not self.aw.tilau_suspend_render:
                             #-- start update display
                                 #### lock shared resources to ensure that no other redraw is interfering with this one here #####
                                 self.profileDataSemaphore.acquire(1)
@@ -7259,77 +5919,19 @@ class tgraphcanvas(QObject):
                                             if self.BTcurve and self.l_temp2 is not None:
                                                 try:
                                                     self.ax.draw_artist(self.l_temp2)
-                                                    ## TILAU ## add annotation on PID Ramp Soak mode (or on the TilauPID preheat)
-                                                    if self._tilau_pid_annotation_due(): # if a PID is running display a summary of action in an annotation displayed at tx
-#                                                        self.adderror((QApplication.translate('Error Message','Exception:') + ' updategraphics() swaplcd {0}').format(str('DrawPIDRampSoak ')),-1)
-                                                        self.DrawPIDRampSoak(self.l_temp2,0) # update only
-#                                                        if self.pid_point_annotation is not None:
-#                                                            self.ax.draw_artist(self.pid_point_annotation)
-                                                    elif self.tilau_pid_label.isVisible(): # PID stopped without a CHARGE: drop the label
-                                                        self.tilau_pid_label.hide()
-                                                        self._hide_tilaupid_target_marker()
-                                                    ts_anno_drawn = False
-                                                    if self.l_BTprojection is not None and self.BTprojectFlag: 
-                                                        if self.aw.TilauScopeAnnotation and self.timeindex[0] >= 0:
-                                                            ts_anno_drawn = self.DrawIntersectionBetweenCurveandProjection(self.l_BTprojection, 0) 
-                                                            if ts_anno_drawn:
-                                                                for artist in [self.intersection_point, self.intersection_point_line]:
-                                                                    if artist is not None and artist.axes is not None and artist.get_visible():
-                                                                        try:
-                                                                            self.ax.draw_artist(artist)
-                                                                        except Exception:
-                                                                            pass    
-                                                    if not ts_anno_drawn and self.aw.TilauScopeAnnotation and self.timeindex[0] >= 0 and self.timex[0] > 0:
-                                                        self.DrawRoastAnnotation()
-                                                    ## TILAU ##
                                                 except Exception as e: # pylint: disable=broad-except
                                                     _log.exception(e)
-                                            else:
-                                                if self.aw.TilauScopeAnnotation and self.timeindex[0] >= 0 and self.timex[0] > 0:
-                                                    try:
-                                                        self.DrawRoastAnnotation()
-                                                    except Exception as e: # pylint: disable=broad-except
-                                                        _log.exception(e)
                                         else:
                                             # draw BT
                                             if self.BTcurve and self.l_temp2 is not None:
                                                 try:
                                                     self.ax.draw_artist(self.l_temp2)
-                                                    ## TILAU ## add annotation on PID Ramp Soak mode (or on the TilauPID preheat)
-                                                    if self._tilau_pid_annotation_due(): # if a PID is running display a summary of action in an annotation displayed at tx
-                                                        self.DrawPIDRampSoak(self.l_temp2, 0) # update only
-                                                    elif self.tilau_pid_label.isVisible(): # PID stopped without a CHARGE: drop the label
-                                                        self.tilau_pid_label.hide()
-                                                        self._hide_tilaupid_target_marker()
-                                                    ts_anno_drawn = False
-                                                    if self.l_BTprojection is not None and self.BTprojectFlag:
-                                                        if self.aw.TilauScopeAnnotation and self.timeindex[0]>=0:
-                                                            ts_anno_drawn = self.DrawIntersectionBetweenCurveandProjection(self.l_BTprojection, 0) # update only
-                                                            if ts_anno_drawn:
-                                                                if self.intersection_point is not None:
-                                                                    self.ax.draw_artist(self.intersection_point)
-                                                                if self.intersection_point_line is not None:
-                                                                    self.ax.draw_artist(self.intersection_point_line)
-                                                    if not ts_anno_drawn and self.aw.TilauScopeAnnotation and self.timeindex[0] >= 0 and self.timex[0] > 0:
-                                                        self.DrawRoastAnnotation()
-                                                    ## TILAU ##
                                                 except Exception as e: # pylint: disable=broad-except
                                                     _log.exception(e)
-                                            elif self.aw.TilauScopeAnnotation and self.timeindex[0] >= 0 and self.timex[0] > 0:
-                                                try:
-                                                    self.DrawRoastAnnotation()
-                                                except Exception as e: # pylint: disable=broad-except
-                                                    _log.exception(e)
-
                                             # draw ET
                                             if self.ETcurve and self.l_temp1 is not None:
                                                 try:
                                                     self.ax.draw_artist(self.l_temp1)
-                                                except Exception as e: # pylint: disable=broad-except
-                                                    _log.exception(e)
-                                            if self.aw.TilauScopeAnnotation and self.timeindex[0] >= 0 and self.timex[0] > 0 and not self.BTcurve:
-                                                try:
-                                                    self.DrawRoastAnnotation()
                                                 except Exception as e: # pylint: disable=broad-except
                                                     _log.exception(e)
 
@@ -7597,14 +6199,6 @@ class tgraphcanvas(QObject):
                         self.ax.lines[i].remove()
                     else:
                         break
-            ## TILAU ##
-            self.DrawIntersection_remove_artist(self.intersection_point)
-            self.DrawIntersection_remove_artist(self.intersection_point_line)
-            self.tilau_roast_annotation.hide()
-            self.DrawIntersection_remove_artist(getattr(self, 'tilaupid_target_line', None))
-            self.DrawIntersection_remove_artist(getattr(self, 'tilaupid_target_dot', None))
-            self.tilaupid_target_line = None
-            self.tilaupid_target_dot = None
 
 
     @pyqtSlot(int)
@@ -7834,18 +6428,12 @@ class tgraphcanvas(QObject):
                         self.aw.pidcontrol.svMode = 1
                         self.aw.pidcontrol.pidOn()
                         #_logd.debug("artisan pid on on alarm")
-                        ## TILAU ##
-                        self.DrawPIDRampSoak(self.l_temp2, 1) # type: ignore
-                        ## TILAU ##
                 elif action == 18 and self.Controlbuttonflag:
                     # RampSoak OFF
                     if self.device == 0: # FUJI PID
                         self.aw.fujipid.setrampsoak(0)
                     else:  # internal or external MODBUS PID control
                         self.aw.pidcontrol.svMode = 0
-                        ## TILAU ##
-                        self.tilau_pid_label.hide()
-                        ## TILAU ##
                         self.aw.pidcontrol.pidOff()
                 elif action == 19 and self.Controlbuttonflag:
                     # PID ON
@@ -7853,17 +6441,11 @@ class tgraphcanvas(QObject):
                         self.aw.fujipid.setONOFFstandby(0)
                     else: # internal or external MODBUS PID control or Arduino TC4 PID
                         self.aw.pidcontrol.pidOn()
-                        ## TILAU ##
-                        self.DrawPIDRampSoak(self.l_temp2, 1) # type: ignore
-                        ## TILAU ##
                 elif action == 20 and self.Controlbuttonflag:
                     # PID OFF
                     if self.device == 0: # FUJI PID
                         self.aw.fujipid.setONOFFstandby(1)
                     else: # internal or external MODBUS PID control or Arduino TC4 PID
-                        ## TILAU ##
-                        self.tilau_pid_label.hide()
-                        ## TILAU ##
                         self.aw.pidcontrol.pidOff()
                 elif action == 21:
                     # SV slider alarm
@@ -9662,14 +8244,26 @@ class tgraphcanvas(QObject):
             self.aw.buttonCOOL.setFlat(False)
             self.aw.buttonONOFF.setText(QApplication.translate('Button', 'ON'))
             if self.aw.simulator:
-                self.aw.buttonONOFF.setStyleSheet(self.aw.pushbuttonstyles_simulator['OFF'])
+                self.aw.buttonONOFF.setStyleSheet(artisan_simulator_push_button_style_dict['OFF'].format(
+                    min_width=self.aw.main_button_min_width,
+                    font_size=self.aw.button_font_size,
+                    border_radius=self.aw.button_border_radius))
             else:
-                self.aw.buttonONOFF.setStyleSheet(self.aw.pushbuttonstyles['OFF'])
+                self.aw.buttonONOFF.setStyleSheet(artisan_push_button_style_dict['OFF'].format(
+                    min_width=self.aw.main_button_min_width,
+                    font_size=self.aw.button_font_size,
+                    border_radius=self.aw.button_border_radius))
             self.aw.buttonSTARTSTOP.setText(QApplication.translate('Button', 'START'))
             if self.aw.simulator:
-                self.aw.buttonSTARTSTOP.setStyleSheet(self.aw.pushbuttonstyles_simulator['STOP'])
+                self.aw.buttonSTARTSTOP.setStyleSheet(artisan_simulator_push_button_style_dict['STOP'].format(
+                    min_width=self.aw.main_button_min_width,
+                    font_size=self.aw.button_font_size,
+                    border_radius=self.aw.button_border_radius))
             else:
-                self.aw.buttonSTARTSTOP.setStyleSheet(self.aw.pushbuttonstyles['STOP'])
+                self.aw.buttonSTARTSTOP.setStyleSheet(artisan_push_button_style_dict['STOP'].format(
+                    min_width=self.aw.main_button_min_width,
+                    font_size=self.aw.button_font_size,
+                    border_radius=self.aw.button_border_radius))
 
             # quantification is blocked if lock_quantification_sampling_ticks is not 0
             # (eg. after a change of the event value by button or slider actions)
@@ -9686,6 +8280,8 @@ class tgraphcanvas(QObject):
             self.aw.recording_version = str(__version__)
             self.aw.recording_revision = str(__revision__)
             self.aw.recording_build = str(__build__)
+
+            self.end_weight_est = 0
 
             # if we are in KeepON mode, the reset triggered by ON should respect the roastpropertiesflag ("Delete Properties on Reset")
             if self.roastpropertiesflag and (self.flagKeepON or not keepProperties):
@@ -9937,7 +8533,6 @@ class tgraphcanvas(QObject):
 
         self.aw.updatePlusStatus()
 
-        self.aw.set_ui_mode(self.aw.ui_mode)
         self.aw.announce_current_ui_mode()
 
         ### REDRAW  ##
@@ -10475,8 +9070,8 @@ class tgraphcanvas(QObject):
         self.background_title_width = 0
         backgroundtitle = backgroundtitle.strip()
         if backgroundtitle != '':
-            backgroundtitle = self.__dijkstra_to_ascii(backgroundtitle)
-            backgroundtitle = f'\n{abbrevString(backgroundtitle, 32)}'
+#            backgroundtitle = self.__dijkstra_to_ascii(backgroundtitle)
+            backgroundtitle = f'\n{self.__dijkstra_to_ascii(abbrevString(backgroundtitle, 32))}'
 
         self.l_subtitle = self.fig.suptitle(backgroundtitle,
                 horizontalalignment='right',verticalalignment='top',
@@ -10818,17 +9413,24 @@ class tgraphcanvas(QObject):
         if self.flagstart or self.xgrid == 0:
             return ''
         if self.roastersize_setup == 0 and self.roastertype_setup == '':
+
             if self.aw.qmc.xgrid < 3600:
+                res = 'mins'
+                if self.aw.locale_str != 'en':
+                    try:
+                        from babel.units import get_unit_name
+                        res = get_unit_name('duration-minute', length='short', locale=self.aw.locale_str) or 'mins'
+                    except Exception as e:  # pylint: disable=broad-except # UnknownLocaleError
+                        _log.exception(e)
+                return res
+            res = 'h'
+            if self.aw.locale_str != 'en':
                 try:
-                    return get_unit_name('duration-minute', length='short', locale=self.aw.locale_str) or 'min'
+                    from babel.units import get_unit_name
+                    return get_unit_name('duration-hour', length='short', locale=self.aw.locale_str) or 'h'
                 except Exception as e:  # pylint: disable=broad-except # UnknownLocaleError
                     _log.exception(e)
-                    return get_unit_name('duration-minute', length='short', locale='en') or 'min'
-            try:
-                return get_unit_name('duration-hour', length='short', locale=self.aw.locale_str) or 'h'
-            except Exception as e:  # pylint: disable=broad-except # UnknownLocaleError
-                _log.exception(e)
-                return get_unit_name('duration-hour', length='short', locale='en') or 'h'
+            return res
         if right_to_left(self.locale_str):
             return f"{(render_weight(self.roastersize_setup, 1, weight_units.index(self.weight[2]), right_to_left_lang=True) if self.roastersize_setup>=0 else '')}  {self.__dijkstra_to_ascii(self.roastertype_setup)}"
         return f"{self.__dijkstra_to_ascii(self.roastertype_setup)} {(render_weight(self.roastersize_setup, 1, weight_units.index(self.weight[2])) if self.roastersize_setup>0 else '')}"
@@ -10866,9 +9468,9 @@ class tgraphcanvas(QObject):
 
                     decay_smoothing_p = (not self.optimalSmoothing) or self.flagon
 
-                    scale = 1 if self.graphstyle == 1 else 0
-                    length = 700 # 100 (128 the default)
-                    randomness = 12 # 2 (16 default)
+                    scale = 1.5 if self.graphstyle == 1 else 0
+                    length = 800 # 100 (128 the default)
+                    randomness = 16 # 2 (16 default)
                     rcParams['path.sketch'] = (scale, length, randomness)
 
                     # if no axis are set, we need to forceRenewAxis in any case
@@ -12903,20 +11505,6 @@ class tgraphcanvas(QObject):
                     self.l_AUCguide = self.ax.axvline(self.AUCguideTime,visible=(self.AUCguideTime > 0 and self.AUCguideTime < self.endofx),color = self.palette['aucguide'],
                                                 label=self.aw.arabicReshape(QApplication.translate('Label', 'AUCguide')),
                                                 linestyle = '-', linewidth= 1, alpha = .5,sketch_params=None,path_effects=[])
-                ## TILAU ## if PID is active, draw the Ramp/Soak segments or manual mode information
-                if self.l_temp2 is not None :
-                    if len(self.timex)>0 and len(self.timeindex)>0 and self.timeindex[0] <= 0 and self._tilau_pid_annotation_due(): # if a PID is running display a summary of action in an annotation displayed at tx
-                        self.DrawPIDRampSoak(self.l_temp2,0)
-                    ts_anno_drawn = False
-                    if self.l_BTprojection is not None:
-                        if self.aw.TilauScopeAnnotation:
-                            ts_anno_drawn = self.DrawIntersectionBetweenCurveandProjection(self.l_BTprojection, 0)
-                    if not ts_anno_drawn and self.aw.TilauScopeAnnotation and self.timeindex[0] >= 0 and self.timex[0] > 0:
-                        self.DrawRoastAnnotation()
-                elif self.aw.TilauScopeAnnotation and self.timeindex[0] >= 0 and self.timex[0] > 0:
-                    self.DrawRoastAnnotation()
-
-                ##TILAU##
 
                 ############  ready to plot ############
                 self.updateBackground() # update bitlblit backgrounds
@@ -14181,7 +12769,6 @@ class tgraphcanvas(QObject):
                 self.EvalueColor = self.EvalueColor_default.copy()
                 self.EvalueTextColor = self.EvalueTextColor_default.copy()
                 self.aw.sendmessage(QApplication.translate('Message','Colors set to defaults'))
-#                self.aw.closeEventSettings()
 
         elif color == 2:
             self.aw.sendmessage(QApplication.translate('Message','Colors set to grey'))
@@ -14203,7 +12790,6 @@ class tgraphcanvas(QObject):
             self.backgroundxtcolor      = self.aw.convertToGreyscale(self.backgroundxtcolor)
             self.backgroundytcolor      = self.aw.convertToGreyscale(self.backgroundytcolor)
             self.aw.setLCDsBW()
-#            self.aw.closeEventSettings()
 
         elif color == 3:
             from artisanlib.colors import graphColorDlg
@@ -14247,23 +12833,15 @@ class tgraphcanvas(QObject):
                 self.backgrounddeltabtcolor = str(dialog.bgdeltabtButton.text())
                 self.backgroundxtcolor = str(dialog.bgextraButton.text())
                 self.backgroundytcolor = str(dialog.bgextra2Button.text())
-#                self.aw.closeEventSettings()
-
-#            #deleteLater() will not work here as the dialog is still bound via the parent
-#            #dialog.deleteLater() # now we explicitly allow the dialog an its widgets to be GCed
-#            # the following will immediately release the memory despite this parent link
-#            QApplication.processEvents() # we ensure events concerning this dialog are processed before deletion
-#            try: # sip not supported on older PyQt versions (RPi!)
-#                sip.delete(dialog)
-#                #print(sip.isdeleted(dialog))
-#            except Exception:  # pylint: disable=broad-except
-#                pass
+                # release the dialog
+                dialog.destroy()
+                del dialog
 
         #update screen with new colors
         self.aw.updateCanvasColors()
         self.aw.applyStandardButtonVisibility()
         self.aw.update_extraeventbuttons_visibility()
-        self.fig.canvas.draw_idle() #.redraw()
+        self.fig.canvas.draw_idle()
 
     def clearFlavorChart(self) -> None:
         self.flavorchart_plotf = None
@@ -14557,13 +13135,14 @@ class tgraphcanvas(QObject):
     # indicating which curves should not be temperature converted
     # True indicates a non-temperature device (data should not be converted)
     # False indicates a temperature device (data should be converted if temperature unit changes)
+    # ADD DEVICE:
     def generateNoneTempHints(self) -> None:
         self.extraNoneTempHint1 = []
         self.extraNoneTempHint2 = []
         for d in self.extradevices:
-            if d in self.nonTempDevices:
-                self.extraNoneTempHint1.append(self.nonTempDevices[d][0])
-                self.extraNoneTempHint2.append(self.nonTempDevices[d][1])
+            if is_non_temp_device(d):
+                self.extraNoneTempHint1.append(is_non_temp_device_chan(d,0))
+                self.extraNoneTempHint2.append(is_non_temp_device_chan(d,1))
             elif d == 29: # MODBUS
                 self.extraNoneTempHint1.append(self.aw.modbus.inputModes[0] == '')
                 self.extraNoneTempHint2.append(self.aw.modbus.inputModes[1] == '')
@@ -14576,6 +13155,12 @@ class tgraphcanvas(QObject):
             elif d == 109: # +MODBUS 78
                 self.extraNoneTempHint1.append(self.aw.modbus.inputModes[6] == '')
                 self.extraNoneTempHint2.append(self.aw.modbus.inputModes[7] == '')
+            elif d == 150: # +MODBUS 910
+                self.extraNoneTempHint1.append(self.aw.modbus.inputModes[8] == '')
+                self.extraNoneTempHint2.append(self.aw.modbus.inputModes[9] == '')
+            elif d == 207: # +MODBUS 1112
+                self.extraNoneTempHint1.append(self.aw.modbus.inputModes[10] == '')
+                self.extraNoneTempHint2.append(self.aw.modbus.inputModes[11] == '')
             elif d == 79: # S7
                 self.extraNoneTempHint1.append(not bool(self.aw.s7.mode[0]))
                 self.extraNoneTempHint2.append(not bool(self.aw.s7.mode[1]))
@@ -14606,9 +13191,6 @@ class tgraphcanvas(QObject):
             elif d == 119: # +WebSocket 910
                 self.extraNoneTempHint1.append(not bool(self.aw.ws.channel_modes[8]))
                 self.extraNoneTempHint2.append(not bool(self.aw.ws.channel_modes[9]))
-            elif d == 150: # +MODBUS 910
-                self.extraNoneTempHint1.append(self.aw.modbus.inputModes[8] == '')
-                self.extraNoneTempHint2.append(self.aw.modbus.inputModes[9] == '')
             elif d == 151: # +S7 1112
                 self.extraNoneTempHint1.append(not bool(self.aw.s7.mode[10]))
                 self.extraNoneTempHint2.append(not bool(self.aw.s7.mode[11]))
@@ -14682,9 +13264,6 @@ class tgraphcanvas(QObject):
     # the PhidgetManager which makes Phidgets accessible is only started if PhdigetsConfigured returns True
     def PhidgetsConfigured(self) -> bool:
 
-        # searching sets is faster than lists
-        phidget_device_ids = set(self.phidgetDevices)
-
         # collecting all device ids in use (from main or extra)
         device_ids_in_use = self.extradevices[:]
         device_ids_in_use.append(self.device)
@@ -14706,7 +13285,7 @@ class tgraphcanvas(QObject):
         slider_phidget_action_ids = { 9, 10, 11, 17 }
 
         return (
-            any(i in phidget_device_ids for i in device_ids_in_use) or                    # phidget main/extra device
+            any(is_phidget_device(i) for i in device_ids_in_use) or                       # phidget main/extra device
             any(i in {1, 3} for i in ambient_device_ids) or                               # phidget ambient device
             any(i in main_button_phidget_action_ids for i in self.buttonactions) or       # phidget actions in event button commands (CHARGE, .., COOL)
             any(i in main_button_phidget_action_ids for i in self.extrabuttonactions) or  # phidget actions in main event button commandss (ON, OFF, SAMPLE)
@@ -14740,7 +13319,7 @@ class tgraphcanvas(QObject):
                     _log.info('phidgetServer added')
                 except Exception as e: # pylint: disable=broad-except
                     _log.exception(e)
-                    if self.device in self.phidgetDevices:
+                    if is_phidget_device(self.device):
                         self.adderror(QApplication.translate('Error Message',"Exception: phidgetServer couldn't be added. Verify that the Phidget driver is correctly installed!"))
             if self.phidgetManager is None:
                 try:
@@ -14748,7 +13327,7 @@ class tgraphcanvas(QObject):
                     _log.info('phidgetManager started')
                 except Exception as e: # pylint: disable=broad-except
                     _log.exception(e)
-                    if self.device in self.phidgetDevices:
+                    if is_phidget_device(self.device):
                         self.adderror(QApplication.translate('Error Message',"Exception: PhidgetManager couldn't be started. Verify that the Phidget driver is correctly installed!"))
 
     def stopPhidgetManager(self) -> None:
@@ -15181,9 +13760,15 @@ class tgraphcanvas(QObject):
                 _log.exception(e)
 
             if self.aw.simulator:
-                self.aw.buttonONOFF.setStyleSheet(self.aw.pushbuttonstyles_simulator['ON'])
+                self.aw.buttonONOFF.setStyleSheet(artisan_simulator_push_button_style_dict['ON'].format(
+                    min_width=self.aw.main_button_min_width,
+                    font_size=self.aw.button_font_size,
+                    border_radius=self.aw.button_border_radius))
             else:
-                self.aw.buttonONOFF.setStyleSheet(self.aw.pushbuttonstyles['ON'])
+                self.aw.buttonONOFF.setStyleSheet(artisan_push_button_style_dict['ON'].format(
+                    min_width=self.aw.main_button_min_width,
+                    font_size=self.aw.button_font_size,
+                    border_radius=self.aw.button_border_radius))
 
             self.aw.buttonONOFF.setText(QApplication.translate('Button', 'OFF')) # text means click to turn OFF (it is ON)
             self.aw.buttonONOFF.setToolTip(QApplication.translate('Tooltip', 'Stop monitoring'))
@@ -15330,9 +13915,7 @@ class tgraphcanvas(QObject):
                 if not bool(self.aw.simulator) and self.device == self.tilau_devices["skycommand"]["id"] and self.aw.skycommand is not None:
                     self.aw.skycommand.stop()
                     self.aw.skycommand = None
-                
-                self.tilau_pid_label.hide()
-                self.tilau_roast_annotation.hide()
+
                 # disconnect difluid 
                 if not bool(self.aw.simulator) and self.device == self.tilau_devices["difluid"]["id"]:
                     self.stopDifluidManager()
@@ -15365,7 +13948,10 @@ class tgraphcanvas(QObject):
                 self.palette['canvas'] = self.palette['canvas_alt']
                 self.aw.updateCanvasColors(checkColors=False)
             #enable RESET button:
-            self.aw.buttonRESET.setStyleSheet(self.aw.pushbuttonstyles['RESET'])
+            self.aw.buttonRESET.setStyleSheet(artisan_push_button_style_dict['RESET'].format(
+                min_width=self.aw.main_button_min_width,
+                font_size=self.aw.button_font_size,
+                border_radius=self.aw.button_border_radius))
             self.aw.buttonRESET.setEnabled(True)
             self.aw.buttonRESET.setVisible(True)
 
@@ -15380,9 +13966,15 @@ class tgraphcanvas(QObject):
                 _log.exception(e)
 
             if self.aw.simulator:
-                self.aw.buttonONOFF.setStyleSheet(self.aw.pushbuttonstyles_simulator['OFF'])
+                self.aw.buttonONOFF.setStyleSheet(artisan_simulator_push_button_style_dict['OFF'].format(
+                    min_width=self.aw.main_button_min_width,
+                    font_size=self.aw.button_font_size,
+                    border_radius=self.aw.button_border_radius))
             else:
-                self.aw.buttonONOFF.setStyleSheet(self.aw.pushbuttonstyles['OFF'])
+                self.aw.buttonONOFF.setStyleSheet(artisan_push_button_style_dict['OFF'].format(
+                    min_width=self.aw.main_button_min_width,
+                    font_size=self.aw.button_font_size,
+                    border_radius=self.aw.button_border_radius))
             self.aw.buttonONOFF.setToolTip(QApplication.translate('Tooltip', 'Start monitoring'))
             self.aw.sendmessage(QApplication.translate('Message','Scope stopped'))
             self.aw.buttonONOFF.setText(QApplication.translate('Button', 'ON')) # text means click to turn OFF (it is ON)
@@ -15464,13 +14056,6 @@ class tgraphcanvas(QObject):
 
                 # activate "Stopping Mode" to ensure that sample() is not resetting the timer now (independent of the flagstart state)
 
-                ## TILAU ##
-                if self.l_BTprojection is not None and self.BTprojectFlag:
-                    _log.info('stop floating status annotation')
-                    if self.aw.TilauScopeAnnotation:
-                        self.DrawIntersectionBetweenCurveandProjection(self.l_BTprojection,2)
-                self.tilau_pid_label.hide()
-                self.tilau_roast_annotation.hide()
                 self.aw.buttonONOFF.setEnabled(False)
                 ge:QGraphicsEffect|None = self.aw.buttonONOFF.graphicsEffect()
                 if ge is not None:
@@ -16014,8 +14599,6 @@ class tgraphcanvas(QObject):
             self.stopTilauAmbientManager()
             self.stopTilauMqttManager()
             self.stopTilauPidManager()
-            self.tilau_pid_label.hide()
-            self.tilau_roast_annotation.hide()
             self.OffMonitor()
 
     @pyqtSlot()
@@ -16169,14 +14752,23 @@ class tgraphcanvas(QObject):
             self.aw.resetCurveVisibilities()
             self.flagstart = False
             if self.aw.simulator:
-                self.aw.buttonSTARTSTOP.setStyleSheet(self.aw.pushbuttonstyles_simulator['STOP'])
+                self.aw.buttonSTARTSTOP.setStyleSheet(artisan_simulator_push_button_style_dict['STOP'].format(
+                    min_width=self.aw.main_button_min_width,
+                    font_size=self.aw.button_font_size,
+                    border_radius=self.aw.button_border_radius))
             else:
-                self.aw.buttonSTARTSTOP.setStyleSheet(self.aw.pushbuttonstyles['STOP'])
+                self.aw.buttonSTARTSTOP.setStyleSheet(artisan_push_button_style_dict['STOP'].format(
+                    min_width=self.aw.main_button_min_width,
+                    font_size=self.aw.button_font_size,
+                    border_radius=self.aw.button_border_radius))
             if enableButton:
                 self.aw.buttonSTARTSTOP.setEnabled(True)
                 self.aw.buttonSTARTSTOP.setGraphicsEffect(self.aw.makeShadow())
             #enable RESET button:
-            self.aw.buttonRESET.setStyleSheet(self.aw.pushbuttonstyles['RESET'])
+            self.aw.buttonRESET.setStyleSheet(artisan_push_button_style_dict['RESET'].format(
+                min_width=self.aw.main_button_min_width,
+                font_size=self.aw.button_font_size,
+                border_radius=self.aw.button_border_radius))
             self.aw.buttonRESET.setEnabled(True)
             self.updateLCDtime()
             #prevents accidentally deleting a modified profile:
@@ -16297,11 +14889,11 @@ class tgraphcanvas(QObject):
             if self.flagstart:
                 try:
                     ## TILAU ## 
-                    # disable preheating PID — appel direct à stop() qui utilise
-                    # eventRecordActionSignal (QueuedConnection) — safe dans le sémaphore
+                    # disable preheating PID — safe sous profileDataSemaphore : stop()
+                    # n'émet que par QueuedConnection et diffère son apprentissage
+                    # (deux flush QSettings) hors de la section critique
                     if self.aw.tilauPreheatingPid is not None and self.aw.tilauPreheatingPid.active:
                         self.aw.tilauPreheatingPid.stop(reason="charge")
-                    self.tilau_pid_label.hide() # hide PID label if visible, as it might be shown at the wrong time after marking CHARGE if the PID was active before
                     ## TILAU — reset BOTH detectors at each CHARGE, then re-discover
                     ## devices (reset() clears the device cache → must re-run
                     ## detect/configure or the audio + Agtron signals stay dead).
@@ -16366,10 +14958,7 @@ class tgraphcanvas(QObject):
                             ## TILAU ##
                             if self.aw.pidcontrol.pidOnCHARGE and not self.aw.pidcontrol.pidActive and self.l_temp2 is not None:  
                                 self.aw.pidcontrol.pidOn()
-                                ## TILAu ##
                                 _logd.debug("artisan pid on mark charge")
-                                ## TILAU ##
-                                self.DrawPIDRampSoak(self.l_temp2, 0)
                         if self.chargeTimerPeriod > 0:
                             self.aw.setTimerColorSignal.emit('timer')
                         try:
@@ -16489,11 +15078,6 @@ class tgraphcanvas(QObject):
                     message = QApplication.translate('Message','[TP] recorded at {0} BT = {1}').format(st,st2)
                     #set message at bottom
                     self.aw.sendmessage(message)
-                    ## TILAU ##
-                    # update projection only after TP because before it does not make sense
-                    if self.l_BTprojection is not None and self.BTprojectFlag: # we update the intersection point after the projection are being recalculated
-                        if self.aw.TilauScopeAnnotation:
-                            self.DrawIntersectionBetweenCurveandProjection(self.l_BTprojection,1) # if recharge the artists will be recreated to have a clear zone
         except Exception as ex: # pylint: disable=broad-except
             _log.exception(ex)
             _, _, exc_tb = sys.exc_info()
@@ -17144,8 +15728,21 @@ class tgraphcanvas(QObject):
                 self.aw.roasthubs_org_id,
                 self.aw.roasthubs_machine_id,
                 self.aw.roasthubs_token,
-                on_upload_succeeded,
-                on_upload_failure)
+                # filter conf
+                interpolate_drops = self.interpolateDropsflag,
+                curvefilter = self.curvefilter,
+                medfilt_factor = self.median_filter_factor,
+                limit_ror = self.RoRlimitFlag,
+                ror_limit_min = self.RoRlimitm,
+                ror_limit_max = self.RoRlimit,
+                delta_span_ET = self.deltaETspan,
+                delta_span_BT = self.deltaBTspan,
+                medfilt_factor_RoR = self.median_filter_factor_RoR,
+                delta_ET_filter = self.deltaETfilter,
+                delta_BT_filter = self.deltaBTfilter,
+                # handlers
+                on_success=on_upload_succeeded,
+                on_failure=on_upload_failure)
 
 
 
@@ -17213,10 +15810,7 @@ class tgraphcanvas(QObject):
                             else:
                                 self.timeindex[6] = max(0,len(self.timex)-1)
                             if self.aw.pidcontrol.pidOffDROP and self.aw.pidcontrol.pidActive: # Arduino/TC4, Hottop, MODBUS
-                                ## TILAU ##
-                                self.tilau_pid_label.hide()
                                 self.aw.pidcontrol.pidOff()
-                                self.tilau_roast_annotation.hide()
                         else:
                             tx,et,bt = self.aw.ser.NONE()
                             if et != -1 and bt != -1:
@@ -18504,20 +17098,25 @@ class tgraphcanvas(QObject):
             _, _, exc_tb = sys.exc_info()
             self.adderror((QApplication.translate('Error Message','Exception:') + ' writestatistics() {0}').format(str(ex)),getattr(exc_tb, 'tb_lineno', '?'))
 
-    def cacheforBbp(self) -> None:
+    def cacheforBbp(self, copyPrevRoast:bool=False) -> None:
         try:
-            # mode
-            self.bbpCache['mode'] = self.mode
-            # drop temps
-            self.bbpCache['drop_bt'] = self.temp2[self.timeindex[6]]
-            self.bbpCache['drop_et'] = self.temp1[self.timeindex[6]]
-            # ending time epoch in mSec
-            self.bbpCache['end_roastepoch_msec'] = QDateTime.currentDateTime().toMSecsSinceEpoch()
-            # get the special events values at OFF and time of previous change relative to end
-            self.bbpCache['end_events'] = self.get_specialevents_at_timeindex(len(self.timex)-1)
-            # get the special events values at DROP and time of previous change relative to end
-            self.bbpCache['drop_events'] = self.get_specialevents_at_timeindex(self.timeindex[6])
-            self.bbpCache['drop_to_end'] = self.timex[-1] - self.timex[self.timeindex[6]]
+            if copyPrevRoast:
+                # copy the previous roast cache for use by this roast's bbp metric calculations
+                self.bbpPrevRoast = self.bbpCache.copy()
+            else:
+                # update the cache with current roast data ready to be used by the subsequent roast
+                # mode
+                self.bbpCache['mode'] = self.mode
+                # drop temps
+                self.bbpCache['drop_bt'] = self.temp2[self.timeindex[6]]
+                self.bbpCache['drop_et'] = self.temp1[self.timeindex[6]]
+                # ending time epoch in mSec
+                self.bbpCache['end_roastepoch_msec'] = QDateTime.currentDateTime().toMSecsSinceEpoch()
+                # get the special events values at OFF and time of previous change relative to end
+                self.bbpCache['end_events'] = self.get_specialevents_at_timeindex(len(self.timex)-1)
+                # get the special events values at DROP and time of previous change relative to end
+                self.bbpCache['drop_events'] = self.get_specialevents_at_timeindex(self.timeindex[6])
+                self.bbpCache['drop_to_end'] = self.timex[-1] - self.timex[self.timeindex[6]]
         except Exception: # pylint: disable=broad-except
             self.bbpCache = {}
 

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TilauScope header mockup</title>
+<style>
+  :root {
+    --bg: #1e1e2e;
+    --surface: #181825;
+    --border: #313244;
+    --surface1: #45475a;
+    --text: #cdd6f4;
+    --muted: #a6adc8;
+    --accent: #89b4fa;
+    --success: #a6e3a1;
+    --critical: #f38ba8;
+    --warning: #fab387;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: #101018;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .frame {
+    width: 390px;
+    padding: 10px;
+    background: var(--bg);
+    border: 2px solid #2d2d35;
+    border-radius: 8px;
+  }
+  .header {
+    width: 370px;
+    min-height: 76px;
+    padding: 5px 6px 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .primary, .secondary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .primary { height: 39px; }
+  .secondary {
+    height: 25px;
+    justify-content: flex-end;
+    border-top: 1px solid #28283b;
+  }
+  button {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    height: 30px;
+    color: var(--text);
+    background: #222236;
+    font: 700 11px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    letter-spacing: .1px;
+    white-space: nowrap;
+  }
+  .icon { width: 30px; padding: 0; font-size: 18px; }
+  .monitor {
+    width: 91px;
+    color: var(--success);
+    border: 1px solid #5b8d69;
+    background: #26382d;
+  }
+  .start {
+    flex: 1;
+    height: 34px;
+    color: #151522;
+    border-color: var(--accent);
+    background: var(--accent);
+    font-size: 12px;
+  }
+  .timer {
+    width: 66px;
+    color: var(--muted);
+    border: 0;
+    background: transparent;
+    font: 800 20px/1 "JetBrains Mono", Menlo, monospace;
+    text-align: right;
+  }
+  .secondary button {
+    height: 21px;
+    padding: 0 9px;
+    color: var(--muted);
+    background: transparent;
+    border-color: transparent;
+    font-size: 10px;
+  }
+  .secondary .reset { color: var(--warning); }
+  .secondary .level {
+    width: 25px;
+    padding: 0;
+    color: var(--warning);
+    border-color: var(--warning);
+  }
+  .caption {
+    margin-top: 12px;
+    color: #6c7086;
+    font: 11px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="header">
+      <div class="primary">
+        <button class="icon" aria-label="Menu">☰</button>
+        <button class="monitor">● MONITOR</button>
+        <button class="start">▶ START ROAST</button>
+        <div class="timer">00:00</div>
+      </div>
+      <div class="secondary">
+        <button class="reset">↻ RESET</button>
+        <button>BEAN CAVE</button>
+        <button class="level">G</button>
+        <button>⇄</button>
+      </div>
+    </div>
+    <div class="caption">390 px panel reference · proposed compact header</div>
+  </div>
+</body>
+</html>

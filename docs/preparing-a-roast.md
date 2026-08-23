@@ -123,7 +123,11 @@ The **⚙ MORE OPTIONS** tab decides what happens without being asked.
 **Enable TilauPID at start of roast**, with its **Target temp**, starts preheating the moment
 START is pressed — see [Preheating: TilauPID](#preheating-tilaupid) below for what it then
 does. **Input: BT / ET** chooses whether preheating aims at bean temperature or at air
-temperature.
+temperature. When a roast plan is selected, its charge temperature fills this setpoint
+automatically and is also applied to the SV slider.
+During preheating, the joined **PID ON / PID OFF** control in the graph toolbar lets you
+temporarily enable or disable TilauPID; it disappears once CHARGE is marked.
+Choosing **PID OFF** also removes TilauPID from the preheating status immediately.
 
 Under *Roast automation*, four milestones can be marked automatically:
 
@@ -246,17 +250,24 @@ values are still rejected, while all temporal protections remain active on a rea
 
 The assistant window is not required to see what preheating is doing. Whenever TilauPID is
 running, a **Preheat** panel is drawn on the roast graph itself, next to the bean temperature
-curve, and stays there until [CHARGE](glossary.md#charge) is marked. It reports the target
-[setpoint](glossary.md#sv--setpoint-value), the temperature being steered on — bean or air,
-whichever the **Input** setting selects — the remaining gap to the setpoint, the current
-[RoR](glossary.md#ror--rate-of-rise), the burner power TilauPID is applying, and how long the
-climb still has to run. The header changes colour as the machine closes in, and the remaining
-time is replaced by *Ready to charge* once the setpoint band is reached.
+curve, and stays there until [CHARGE](glossary.md#charge) is marked. It shows a countdown to the
+target [setpoint](glossary.md#sv--setpoint-value) and a bar tracking the climb toward it, on
+whichever temperature the **Input** setting steers on — bean or air. The header changes colour
+as the machine closes in. Early in the climb, while an arrival time would be pure guesswork, the
+panel simply reads *Heating*; it switches to *Stabilizing* when the power is easing off before
+the target, and to *Ready to charge* once the setpoint band is reached. Bean/air temperature,
+RoR and burner power are not repeated here — they are already on the graph and its LCDs.
 
-This is the same information the assistant's Preheat page gives, minus the commentary and the
-burner slider, for roasting straight from the Artisan window.
+Below the countdown, an [Experience](glossary.md#experience) reading states how much TilauPID
+already knows about heating to this exact setpoint — see [It learns your
+machine](#it-learns-your-machine) below for what the four levels mean.
 
-![the roast graph during preheating](assets/preparing-a-roast-5.16.png)
+This is a leaner version of the same story the assistant's Preheat page tells, for roasting
+straight from the Artisan window.
+
+<!-- CAPTURE 5.16 — the redesigned Preheat panel on the roast graph: countdown, climb bar and
+the Experience reading with its two capability lines, mid-preheat with a Tuned or Calibrated
+reading if a suitable roast history is available. -->
 
 ### It learns your machine
 
@@ -264,6 +275,19 @@ burner slider, for roasting straight from the Artisan window.
 previous roasts at the same setpoint: the power needed to *hold* that temperature, and how
 early to ease off to arrive without overshooting. Both are properties of your machine and your
 room, not of a specification sheet — which is why they are measured rather than assumed.
+
+The Preheat panel states where that learning stands as an
+[Experience](glossary.md#experience) reading: *Learning* the first time this exact setpoint is
+used, *Estimated* once a nearby setpoint or the machine's general thermal behaviour can stand
+in for it, *Tuned* once real preheats at this exact setpoint have been recorded, and
+*[Calibrated](glossary.md#calibrated)* once enough of them have — a settled reading, not
+something to chase. Two lines underneath say plainly what has and has not been learned yet:
+whether the holding power for this setpoint is known, estimated from other roasts, or still
+being found; and, separately, whether TilauPID already knows when to ease off approaching the
+setpoint, or is still learning that too. The two need not agree — a machine that already holds
+a temperature well can still be finding out how early to brake, or the other way round. In
+**Simulator**, the Experience reading says so instead of a level, since a replayed preheat
+teaches TilauPID nothing about the real machine.
 
 There is no calibration button and nothing to maintain. A completed preheat can benefit the
 next one once it contains enough trustworthy evidence: at least a minute of observation, a
@@ -315,7 +339,9 @@ take priority, and no Artisan profile structure is changed.
     to the preheating described above, which needs no calibration from you. Use it only to
     tune Artisan's PID itself; it has its own **PID Parameters Help** for what the gains mean.
 
-![the roast graph during preheating](assets/preparing-a-roast-5.15.png)
+<!-- CAPTURE 5.15 — the roast graph during preheating, showing the Preheat panel's Experience
+reading and its two capability lines in a Learning or Estimated state, contrasted with the
+capture at 5.16 above. -->
 
 ---
 

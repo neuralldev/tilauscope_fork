@@ -301,6 +301,7 @@ class ScaleManager(QObject):
             except Exception as e: # pylint: disable=broad-except
                 _log.error(e)
             self.scale1 = None
+            self.scale1_last_weight = None
 
     @pyqtSlot(int,str,str)
     def set_scale1_slot(self, model:int, ident:str, name:str) -> None:
@@ -444,6 +445,7 @@ class ScaleManager(QObject):
             except Exception as e: # pylint: disable=broad-except
                 _log.error(e)
             self.scale2 = None
+            self.scale2_last_weight = None
 
     @pyqtSlot(int,str,str)
     def set_scale2_slot(self, model:int, ident:str, name:str) -> None:

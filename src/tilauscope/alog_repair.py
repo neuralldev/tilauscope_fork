@@ -193,6 +193,14 @@ def write_alog(data: dict, path: Path) -> None:
     multi-line ``beans`` accumulated runs of backslashes (``\\\\\\\\n`` instead
     of one separator) and accents were mangled to ``\\xNN``. """
     path.write_text(repr(data), encoding='utf-8')
+    ## Single write funnel for every repair — including the rename path, where
+    ## the scan prunes the old entry and indexes the new one. Without this the
+    ## corpus index would keep serving the pre-repair reading of the profile.
+    try:
+        from tilauscope.alogmanager import note_profile_saved
+        note_profile_saved(path)
+    except Exception as exc:  # noqa: BLE001 — a repair must never fail on its cache
+        _log.debug("alog index refresh skipped after repair: %s", exc)
 
 
 ## ── Learning state of a roast: admitted / not reviewed / excluded ──────────

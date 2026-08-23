@@ -7282,6 +7282,15 @@ class RoastAssistantPanel(QWidget):
 
 # ── Visibilité du panel, cacher le panneau par le bouton ────────────────────────────────────────────────────
     def hide_from_button(self):
+        """✕ of the floating shell.
+
+        Guided has no closed state: the ✕ sends the assistant back to the dock
+        with its session intact, instead of dropping the operator on the
+        control panel (which reads as Expert). Expert closes for real.
+        """
+        if getattr(self, "_operator_level", "guided") == "guided":
+            self.anchor_requested.emit()
+            return
         self._stop_assistant()
         self.hide()
         self.closed.emit()   # host re-syncs open/close state
@@ -7306,6 +7315,18 @@ class RoastAssistantPanel(QWidget):
             return
         self._bean_header.btn_toggle.setChecked(True)
         self._start_assistant()
+
+    def emergency_disengage(self) -> None:
+        """Drop every command authority the assistant holds, after a heat cut.
+
+        Guidance itself stays on screen — the operator still needs to read it —
+        but AUTO is released so nothing re-pushes a lever behind the cut.
+        """
+        try:
+            if getattr(self, "_ap_state", "off") != "off":
+                self._ap_set_state("off")
+        except Exception:  # pylint: disable=broad-except
+            _logd.exception("emergency_disengage: releasing AUTO failed")
 
     # ── Anchoring support ──────────────────────────────────────────
 

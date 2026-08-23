@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from artisanlib.util import fromFtoCstrict
+import tilauscope.tilaupid as tilaupid_module
 from tilauscope.tilaupid import TilauPreheatPID
 from tilauscope.tilaupid_adaptative import StabilisationDetector
 from tilauscope.tilaupid_safety import PreheatSensorGuard, SensorSafetyLimits
@@ -169,7 +170,7 @@ def _minimal_stop_pid(*, learning_allowed: bool = True) -> SimpleNamespace:
     def force_safe(reason: str) -> None:
         safe.append(reason)
 
-    return SimpleNamespace(
+    pid = SimpleNamespace(
         active=True,
         _learning_allowed=learning_allowed,
         _safety_watchdog=_Timer(),
@@ -180,23 +181,62 @@ def _minimal_stop_pid(*, learning_allowed: bool = True) -> SimpleNamespace:
         learned=learned,
         safe=safe,
     )
+    pid._deferred_preheat_complete = lambda: TilauPreheatPID._deferred_preheat_complete(pid)
+    return pid
 
 
-def test_charge_hands_off_and_learns_only_from_a_clean_session() -> None:
+def _stop_capturing_schedule(pid: SimpleNamespace, reason: str,
+                             monkeypatch: pytest.MonkeyPatch) -> list:
+    """Run stop() and return what it posted to the event loop, without a Qt loop.
+
+    Learning is deferred rather than called, so the assertion of record is what
+    stop() *schedules* — running the callback by hand would bypass its gates.
+    """
+    scheduled: list = []
+
+    class _FakeQTimer:
+        @staticmethod
+        def singleShot(msec: int, fn) -> None:  # noqa: ANN001 - mirrors the Qt signature
+            scheduled.append((msec, fn))
+
+    monkeypatch.setattr(tilaupid_module, "QTimer", _FakeQTimer)
+    TilauPreheatPID.stop(pid, reason=reason)
+    return scheduled
+
+
+def test_charge_hands_off_and_learns_only_from_a_clean_session(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     pid = _minimal_stop_pid()
-    TilauPreheatPID.stop(pid, reason="charge")
-    assert pid.learned == [True]
+    scheduled = _stop_capturing_schedule(pid, "charge", monkeypatch)
+    # markCharge holds profileDataSemaphore across this call and persistence flushes
+    # QSettings twice: learning must leave the critical section before it runs.
+    assert pid.learned == []
     assert pid.safe == []
     assert not pid.active
+    assert [msec for msec, _ in scheduled] == [0]
+
+    scheduled[0][1]()
+    assert pid.learned == [True]
 
     degraded = _minimal_stop_pid(learning_allowed=False)
-    TilauPreheatPID.stop(degraded, reason="charge")
+    assert _stop_capturing_schedule(degraded, "charge", monkeypatch) == []
     assert degraded.learned == []
 
 
-def test_operator_abort_cuts_heat_and_does_not_learn() -> None:
+def test_deferred_learning_is_dropped_when_a_new_preheat_already_started(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     pid = _minimal_stop_pid()
-    TilauPreheatPID.stop(pid, reason="operator_abort")
+    scheduled = _stop_capturing_schedule(pid, "charge", monkeypatch)
+    # A START between the mark and the deferred turn owns the session state now.
+    pid.active = True
+    scheduled[0][1]()
+    assert pid.learned == []
+
+
+def test_operator_abort_cuts_heat_and_does_not_learn(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    pid = _minimal_stop_pid()
+    assert _stop_capturing_schedule(pid, "operator_abort", monkeypatch) == []
     assert pid.safe == ["operator_abort"]
     assert pid.learned == []
 

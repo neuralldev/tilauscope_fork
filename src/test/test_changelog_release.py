@@ -12,10 +12,16 @@ SPEC.loader.exec_module(changelog)
 def test_new_version_is_added_at_head(tmp_path, monkeypatch):
     release = tmp_path / "ReleaseHistory.md"
     release.write_text("## [4.2.11] 2026-08-09\nbuild 3\n* existing\n", encoding="utf-8")
+
+    class FixedDay:
+        @staticmethod
+        def isoformat():
+            return "2026-08-10"
+
     class FixedDate:
         @staticmethod
         def today():
-            return type("Day", (), {"isoformat": lambda self: "2026-08-10"})()
+            return FixedDay()
 
     monkeypatch.setattr(changelog, "date", FixedDate)
 

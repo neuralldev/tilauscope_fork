@@ -14,13 +14,9 @@
 # TiLau 2025
 
 # routine check
-import json
 import logging
-import ast
 from pathlib import Path
 from typing import Final
-
-_ALOG_MAX_BYTES: Final[int] = 2 * 1024 * 1024  # 2 MB safety cap
 
 from PyQt6.QtCore import (
     Qt, QDateTime, QObject, pyqtSignal, QThread,
@@ -35,8 +31,7 @@ from PyQt6.QtWidgets import (
 )
 
 from tilauscope.tilauscope_types import THEME, show_styled_message
-# reuse Artisan's canonical weight helpers as single source of truth
-from artisanlib.util import weight_units, convertWeight, decodeLocalStrict
+from tilauscope.alogmanager import AlogIndex
 from tilauscope.theme_qss import apply_tilau_theme
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -550,10 +545,17 @@ class TilauRoutineCheck(QDialog):
 
 class AlogScanner(QObject):
     """
-    Reads .alog files in a background thread.
+    Refreshes the shared corpus index in a background thread and reports the
+    roasts recorded since the last cleaning.
 
     Emits finished(data_list, count) where data_list is a list of
     (QDateTime, weight_grams: int) tuples for all roasts after last_clean.
+
+    This panel needs exactly two fields per profile — the roast date and the
+    green weight — both of which the index already holds. It therefore never
+    reads a full .alog: the previous version ran ast.literal_eval over the
+    whole corpus (~3.3 s of CPU for 97 logs, and far longer under GIL
+    contention with the live plotting loop) to recover two scalars.
     """
 
     finished: pyqtSignal = pyqtSignal(object, int)
@@ -570,79 +572,25 @@ class AlogScanner(QObject):
         dates_with_weight: list[tuple[QDateTime, int]] = []
         try:
             if self.directory is not None and self.directory.is_dir():
-                files = sorted(
-                    (f for f in self.directory.iterdir() if f.suffix == ".alog"),
-                    key=lambda f: f.stat().st_mtime,
-                )
-                for filepath in files:
-                    try:
-                        self._parse_file(filepath, dates_with_weight)
-                    except Exception as exc:
-                        # Per-file error: log and continue with remaining files
-                        _log.warning("Skipping %s: %s", filepath.name, exc)
+                thread = QThread.currentThread()
+
+                def _stop() -> bool:
+                    return bool(thread is not None and thread.isInterruptionRequested())
+
+                records = AlogIndex.instance().refresh(self.directory, _stop)
+                for meta in records.values():
+                    dt = QDateTime.fromString(meta.roastisodate, Qt.DateFormat.ISODate)
+                    if not dt.isValid():
+                        # No usable roast date — fall back on the recorded epoch
+                        # rather than dropping the roast from the cleaning count.
+                        if meta.roastepoch > 0:
+                            dt = QDateTime.fromSecsSinceEpoch(meta.roastepoch)
+                        else:
+                            continue
+                    if dt <= self.last_clean:
+                        continue  # older than last cleaning — skip
+                    dates_with_weight.append((dt, round(meta.weight_in_g)))
         except Exception as exc:
             _log.error("AlogScanner fatal error: %s", exc)
 
         self.finished.emit(dates_with_weight, len(dates_with_weight))
-
-    def _parse_file(
-        self, filepath: Path, out: list[tuple[QDateTime, int]]
-    ) -> None:
-        size = filepath.stat().st_size
-        if size == 0 or size > _ALOG_MAX_BYTES:
-            # Not an error: empty or oversized files are silently ignored.
-            _log.debug("Ignoring %s (size=%d)", filepath.name, size)
-            return
-
-        # Artisan .alog files are Python-repr dicts (True/False/None, single
-        # quotes), read canonically via ast.literal_eval — see
-        # artisanlib.util.deserialize(). literal_eval is the working path; JSON
-        # is only a defensive fallback for any file that happens to be valid JSON.
-        raw = filepath.read_bytes()
-        text = raw.decode("utf-8", errors="replace")
-        try:
-            data = ast.literal_eval(text)
-        except (ValueError, SyntaxError):
-            try:
-                data = json.loads(text)
-            except json.JSONDecodeError:
-                raise ValueError("Unparsable (not a Python-repr or JSON dict)") from None
-
-        if not isinstance(data, dict):
-            raise ValueError("Expected dict, got " + type(data).__name__)
-
-        iso = data.get("roastisodate", "")
-        if not isinstance(iso, str) or not iso:
-            raise ValueError(f"Missing roastisodate in {filepath.name}")
-        dt = QDateTime.fromString(iso, Qt.DateFormat.ISODate)
-        if not dt.isValid():
-            raise ValueError(f"Invalid roastisodate: {iso!r}")
-
-        if dt <= self.last_clean:
-            return  # older than last cleaning — skip
-
-        out.append((dt, self._weight_grams(data.get("weight", []))))
-
-    @staticmethod
-    def _weight_grams(raw_weight: object) -> int:
-        """
-        Convert the profile's stored input weight to grams.
-
-        Artisan stores ``weight`` as ``[weight_in, weight_out, unit]`` where
-        ``unit`` is one of 'g', 'Kg', 'lb', 'oz'. The unit must be honoured —
-        a roast recorded in Kg is otherwise read as if it were grams.
-        """
-        if isinstance(raw_weight, (list, tuple)) and raw_weight:
-            try:
-                value = float(raw_weight[0])
-            except (TypeError, ValueError):
-                return 0
-            unit = decodeLocalStrict(raw_weight[2], "g") if len(raw_weight) >= 3 else "g"
-            try:
-                unit_idx = weight_units.index(unit)
-            except ValueError:
-                unit_idx = 0  # unknown unit → assume grams
-            return round(convertWeight(value, unit_idx, 0))  # → index 0 = grams
-        if isinstance(raw_weight, (int, float)):
-            return round(raw_weight)
-        return 0

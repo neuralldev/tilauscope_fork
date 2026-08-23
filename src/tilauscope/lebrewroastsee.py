@@ -72,6 +72,20 @@ class C1Protocol:
     def build_full_message(self, function: int, command: int, data: bytes = b'') -> bytes:
         return struct.pack('BB', function, command) + data
 
+def _drop(signal) -> None:
+    """Disconnect every slot from *signal*, tolerating none being connected.
+
+    PyQt raises TypeError from a no-argument disconnect() when the signal has
+    no slots left. Callers of stop() routinely disconnect their own slots
+    first, so that is the normal case — and an exception here used to abort
+    stop() before it reached the BLE client, leaving the scan running.
+    """
+    try:
+        signal.disconnect()
+    except TypeError:
+        pass
+
+
 class LebrewC1BLE(ClientBLE, C1Protocol): # pyright: ignore [reportGeneralTypeIssues] # Argument to class must be a base class
     connected_signal = pyqtSignal()     # issued on connect
     disconnected_signal = pyqtSignal()  # issued on disconnect
@@ -165,9 +179,9 @@ class LebrewColorChecker(QObject): # pyright: ignore [reportGeneralTypeIssues] #
         self.color_changed_signal.emit(color)
 
     def stop(self):
-        self.color_changed_signal.disconnect()
-        self.connected_signal.disconnect()
-        self.disconnected_signal.disconnect()
+        _drop(self.color_changed_signal)
+        _drop(self.connected_signal)
+        _drop(self.disconnected_signal)
         self.c1.stop()
 
 # LebrewBLE class for BLE communication with the Lebrew AquaGauge device
@@ -217,7 +231,7 @@ class AGProtocol:
         return self.parse_lebrew_data(payload)
 
     def build_full_message(self, function: int, command: int, data: bytes = b'') -> bytes:
-        return struct.pack('BB', function, command, data)
+        return struct.pack('BB', function, command) + data
 
 class LebrewAGBLE(ClientBLE, AGProtocol): # pyright: ignore [reportGeneralTypeIssues] # Argument to class must be a base class
     connected_signal = pyqtSignal()     # issued on connect
@@ -366,7 +380,7 @@ class LebrewWaterActivityChecker(QObject): # pyright: ignore [reportGeneralTypeI
                 return
 
     def stop(self):
-        self.wa_changed_signal.disconnect()
-        self.connected_signal.disconnect()
-        self.disconnected_signal.disconnect()
+        _drop(self.wa_changed_signal)
+        _drop(self.connected_signal)
+        _drop(self.disconnected_signal)
         self.ag.stop()

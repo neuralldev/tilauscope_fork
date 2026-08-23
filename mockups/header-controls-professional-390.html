@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TilauScope professional header mockup</title>
+<style>
+:root { --base:#1e1e2e; --surface:#181825; --panel:#242438; --line:#45475a; --text:#cdd6f4; --muted:#a6adc8; --blue:#89b4fa; --green:#a6e3a1; --amber:#fab387; --red:#f38ba8; --teal:#94e2d5; }
+* { box-sizing:border-box; }
+body { margin:0; padding:24px; background:#0f0f16; color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+figure { width:390px; margin:0 0 24px; }
+.window { width:390px; padding:10px; border:2px solid #2d2d35; border-radius:9px; background:var(--base); }
+.toolbar { width:370px; padding:7px 8px 6px; border:1px solid var(--line); border-radius:8px; background:var(--surface); }
+.row { display:flex; align-items:center; gap:6px; }
+.primary { height:40px; }
+.secondary { height:32px; margin-top:6px; padding-top:6px; border-top:1px solid #303047; }
+button { height:32px; border:1px solid var(--line); border-radius:7px; background:var(--panel); color:var(--text); font:700 11px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+.icon-only { width:32px; padding:0; font-size:19px; }
+.control { display:flex; align-items:center; justify-content:center; gap:7px; padding:0 9px; }
+.control .glyph { display:grid; place-items:center; width:21px; height:21px; border-radius:5px; font-size:15px; }
+.monitor { width:91px; border-color:#64856e; color:var(--green); background:#26382d; }
+.monitor .glyph { background:#4d7659; color:#152019; }
+.start { width:119px; border-color:#638bd1; color:#101522; background:var(--blue); }
+.start .glyph { background:#5f85cb; color:#101522; }
+.timer { width:93px; margin-left:auto; color:var(--text); font:800 25px/1 "JetBrains Mono",Menlo,monospace; text-align:right; letter-spacing:0; }
+.secondary button { height:25px; padding:0 10px; color:var(--text); background:#29293d; border-color:#52546a; }
+.secondary button:hover, button:hover { background:#45475a; border-color:#cdd6f4; color:#fff; }
+.secondary .reset { color:var(--amber); border-color:#98765f; }
+.secondary .bean { color:var(--blue); border-color:#5477ad; }
+.secondary .level { width:31px; padding:0; color:var(--amber); border-color:var(--amber); background:#382d2e; }
+.secondary .swap { width:31px; padding:0; color:var(--teal); border-color:#5f9d93; }
+.status { margin:12px 0 0; color:var(--green); font:700 11px/1.2 "JetBrains Mono",Menlo,monospace; }
+figcaption { margin-top:8px; color:#8d91aa; font-size:11px; }
+.note { width:390px; color:#8d91aa; font-size:12px; line-height:1.5; }
+</style>
+</head>
+<body>
+<figure>
+  <div class="window">
+    <div class="toolbar">
+      <div class="row primary">
+        <button class="icon-only" aria-label="Menu">☰</button>
+        <button class="control monitor"><span class="glyph">●</span>MONITOR</button>
+        <button class="control start"><span class="glyph">▶</span>START</button>
+        <div class="timer">00:00</div>
+      </div>
+      <div class="row secondary">
+        <button class="reset">↻ RESET</button>
+        <button class="bean">● BEAN CAVE</button>
+        <button class="level">G</button>
+        <button class="swap">⇄</button>
+      </div>
+    </div>
+    <div class="status">OFFLINE&nbsp;&nbsp; ALARM-SET='TILAUSE T'</div>
+  </div>
+  <figcaption>390 px reference · idle / ready state · hover any control</figcaption>
+</figure>
+
+<figure>
+  <div class="window">
+    <div class="toolbar">
+      <div class="row primary">
+        <button class="icon-only" aria-label="Menu">☰</button>
+        <button class="control monitor"><span class="glyph">●</span>MONITOR</button>
+        <button class="control start" style="background:var(--red);border-color:#d27691"><span class="glyph">■</span>STOP</button>
+        <div class="timer">04:32</div>
+      </div>
+      <div class="row secondary">
+        <button class="reset">↻ RESET</button>
+        <button class="bean">● BEAN CAVE</button>
+        <button class="level">G</button>
+        <button class="swap">⇄</button>
+      </div>
+    </div>
+    <div class="status">ARTISAN CONNECTED&nbsp;&nbsp; ROAST SESSION STARTED</div>
+  </div>
+  <figcaption>390 px reference · roasting state · STOP becomes the dominant action</figcaption>
+</figure>
+
+<div class="note">The primary row is the only row that changes its meaning during a roast. The secondary row stays geometrically stable, so the operator's finger never chases a moving target.</div>
+</body>
+</html>

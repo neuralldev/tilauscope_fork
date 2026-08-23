@@ -6,7 +6,7 @@ updates:
     interval: weekly
   commit-message:
     prefix: "[skip ci]"
-  open-pull-requests-limit: 0
+  open-pull-requests-limit: 10
   allow:
     # Allow both direct and indirect updates for all packages
     - dependency-type: "all"

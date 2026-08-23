@@ -91,3 +91,69 @@ def test_skywalker_ble_loop_drains_tasks_before_join() -> None:
     assert future.done()
     assert loop_thread._loop.is_closed()
 
+
+
+def test_a_checker_reaches_its_client_even_with_nothing_connected(
+        qapp: object, monkeypatch) -> None:  # noqa: ARG001  # the Qt objects below need it
+    """`stop()` disconnects its own signals before releasing the BLE client.
+
+    The caller has usually disconnected its slots already, and PyQt raises
+    TypeError from a no-argument disconnect() on a signal with none left. That
+    exception used to abort stop() before the client was released, so the
+    client kept its reconnect flag and started a fresh scan right after the
+    shared loop closed — CoreBluetooth then called into a finalising
+    interpreter, which is a segfault on quit rather than an error anyone sees.
+    """
+    from PyQt6.QtCore import QObject, pyqtSignal
+
+    from tilauscope import lebrewroastsee
+
+    stopped: list[str] = []
+
+    class _FakeC1(QObject):
+        connected_signal = pyqtSignal()
+        disconnected_signal = pyqtSignal()
+        color_changed_signal = pyqtSignal(float)
+
+        def __init__(self, _name: str) -> None:
+            super().__init__()
+
+        def stop(self) -> None:
+            stopped.append('client')
+
+    monkeypatch.setattr(lebrewroastsee, 'LebrewC1BLE', _FakeC1)
+    checker = lebrewroastsee.LebrewColorChecker('device-uuid')
+
+    # Nobody subscribed to the checker's outgoing signals — the state the
+    # owner leaves behind once it has dropped its own slots, and the one that
+    # used to make stop() raise on its very first line.
+    checker.stop()
+
+    assert stopped == ['client']
+
+
+def test_aquagauge_checker_stop_reaches_its_ble_client(
+        qapp: object, monkeypatch) -> None:  # noqa: ARG001
+    from PyQt6.QtCore import QObject, pyqtSignal
+
+    from tilauscope import lebrewroastsee
+
+    stopped: list[str] = []
+
+    class _FakeAG(QObject):
+        connected_signal = pyqtSignal()
+        disconnected_signal = pyqtSignal()
+        wa_changed_signal = pyqtSignal(float)
+
+        def __init__(self, _name: str) -> None:
+            super().__init__()
+
+        def stop(self) -> None:
+            stopped.append('client')
+
+    monkeypatch.setattr(lebrewroastsee, 'LebrewAGBLE', _FakeAG)
+    checker = lebrewroastsee.LebrewWaterActivityChecker('device-uuid')
+
+    checker.stop()
+
+    assert stopped == ['client']
