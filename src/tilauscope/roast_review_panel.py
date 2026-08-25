@@ -29,7 +29,7 @@ Built once per switch, never in the sampling path.
 """
 
 import logging
-from typing import Final
+from typing import Any, Final
 
 from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QFrame, QGridLayout, QPushButton)
@@ -76,6 +76,10 @@ class RoastReviewPanel(QWidget):
         self._lay.setContentsMargins(0, 4, 0, 0)
         self._lay.setSpacing(6)
         self._empty = True
+        # The roast this page describes, frozen as it was built. A caller acting
+        # on the review must use this and not the live session, which may have
+        # moved on since. None until a refresh succeeds.
+        self._profile: dict[str, Any] | None = None
 
     # ── public API ────────────────────────────────────────────────────────
 
@@ -111,6 +115,14 @@ class RoastReviewPanel(QWidget):
             lbl.setStyleSheet(f"color: {THEME['SUBTEXT']};")
             self._lay.addWidget(lbl)
             self._lay.addStretch(1)
+
+    def reviewed_profile(self) -> dict[str, Any] | None:
+        """The roast this page describes, or None when it describes none.
+
+        A copy: the snapshot is the page's own record of what it drew, and a
+        caller editing the roast must not be able to rewrite it.
+        """
+        return None if self._profile is None else dict(self._profile)
 
     def has_roast(self) -> bool:
         """True when a roast with a CHARGE and a DROP is on screen."""
@@ -175,6 +187,9 @@ class RoastReviewPanel(QWidget):
     # ── construction ──────────────────────────────────────────────────────
 
     def _clear(self) -> None:
+        # The snapshot goes with the page it describes: a refresh that fails
+        # must leave no roast behind, or the next caller acts on the previous one.
+        self._profile = None
         self._drop_children(self._lay)
 
     def _drop_children(self, layout) -> None:

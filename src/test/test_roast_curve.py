@@ -153,6 +153,64 @@ def test_view_switches_paint_in_silence(state, roast_curve, caplog) -> None:
     assert _errors(caplog) == [], f'{state}: {_errors(caplog)}'
 
 
+def test_profile_swap_is_locked_while_monitoring_or_roasting(roast_curve) -> None:
+    """The prominent swap button must never mutate a live roast."""
+    aw = H.scenario('replay')
+    aw.curFile = '/tmp/foreground-roast.alog'
+    switched: list[bool] = []
+    aw.switch = lambda: switched.append(True)
+    curve = roast_curve(aw)
+
+    assert curve._switch_btn.isEnabled()
+    curve._on_switch_clicked()
+    assert switched == [True]
+
+    # Monitoring is already sampling, even before CHARGE.
+    aw.qmc.flagon = True
+    aw.qmc.flagstart = False
+    curve.tick()
+    assert not curve._switch_btn.isEnabled()
+    assert 'locked' in curve._switch_btn.toolTip().lower()
+    curve._on_switch_clicked()
+    assert switched == [True]
+
+    # Recording after CHARGE remains locked as well.
+    aw.qmc.flagstart = True
+    curve.tick()
+    assert not curve._switch_btn.isEnabled()
+    curve._on_switch_clicked()
+    assert switched == [True]
+
+    aw.qmc.flagon = aw.qmc.flagstart = False
+    curve.tick()
+    assert curve._switch_btn.isEnabled()
+    curve._on_switch_clicked()
+    assert switched == [True, True]
+
+
+def test_profile_swap_is_disabled_when_no_profile_is_loaded(roast_curve) -> None:
+    aw = H.scenario('cold')
+    switched: list[bool] = []
+    aw.switch = lambda: switched.append(True)
+    curve = roast_curve(aw)
+
+    assert not curve._switch_btn.isEnabled()
+    assert 'load a roast profile' in curve._switch_btn.toolTip().lower()
+    curve._on_switch_clicked()
+    assert switched == []
+
+    # Either side is enough: switch() can promote a background or demote a
+    # file-backed foreground profile.
+    aw.qmc.backgroundprofile = {}
+    curve.tick()
+    assert curve._switch_btn.isEnabled()
+
+    aw.qmc.backgroundprofile = None
+    aw.curFile = '/tmp/finished-roast.alog'
+    curve.tick()
+    assert curve._switch_btn.isEnabled()
+
+
 def test_a_growing_roast_never_breaks_the_screen(roast_curve, caplog) -> None:
     """Walk a roast sample by sample, the way Artisan's loop grows the arrays.
 
@@ -709,6 +767,78 @@ def test_a_loaded_roast_is_not_given_the_current_lever_values(roast_curve) -> No
         'a loaded roast was given the live lever values'
 
 
+def test_close_setting_values_are_repositioned_not_dropped() -> None:
+    """Every close gesture keeps a value directly above/below its own dot."""
+    from tilauscope.graph.curve import _lane_label_layout
+
+    # Compact labels fit the dense visual regression on two rows without any
+    # horizontal displacement toward a neighbouring marker.
+    dots = [100.0, 108.0, 116.0, 124.0, 132.0, 140.0, 148.0]
+    widths = [14.0] * len(dots)
+    placements = _lane_label_layout(list(zip(dots, widths, strict=True)), 0.0, 220.0)
+
+    assert len(placements) == len(dots)
+    labels = [(x, x + width, row)
+              for (x, row), width in zip(placements, widths, strict=True)]
+    for start, end, row in labels:
+        assert 0.0 <= start < end <= 220.0
+        peers = [(other_start, other_end) for other_start, other_end, other_row in labels
+                 if other_row == row and (other_start, other_end) != (start, end)]
+        assert all(end <= other_start or start >= other_end
+                   for other_start, other_end in peers)
+    assert all(abs((start + end) / 2.0 - dot) < 0.01
+               for (start, end, _row), dot in zip(labels, dots, strict=True))
+    assert max(row for _start, _end, row in labels) == 1
+
+
+def test_dense_setting_values_keep_a_two_row_lane(roast_curve) -> None:
+    """Dense values never make the setting lane grow beyond two rows."""
+    from tilauscope.graph.curve import _LANE_MARK_HEIGHT, _LANE_MODE_BURNER
+
+    aw = H.scenario('replay')
+    qmc = aw.qmc
+    qmc.specialevents = []
+    qmc.specialeventstype = []
+    qmc.specialeventsvalue = []
+    qmc.specialeventsStrings = []
+    charge = qmc.timeindex[0]
+    for offset, value in zip(range(290, 339, 8), range(31, 38), strict=True):
+        qmc.add_event(charge + offset, H.DAMPER, value)
+
+    curve = roast_curve(aw)
+    curve._set_lane_mode(_LANE_MODE_BURNER)
+    curve.tick()
+    lane, kind = next((rect, row_kind) for channel, rect, row_kind in curve._lane_rows
+                      if channel == H.DAMPER)
+    mark_heights = [rect.height() for _channel, rect, row_kind in curve._lane_rows
+                    if row_kind == 'marks']
+
+    assert kind == 'marks'
+    assert all(height == pytest.approx(lane.height()) for height in mark_heights)
+    assert lane.height() <= _LANE_MARK_HEIGHT
+
+
+def test_drying_annotation_omits_only_its_redundant_bt_row(roast_curve) -> None:
+    """Drying already exposes BT in the readout/hover; later phases keep it."""
+    from tilauscope.graph import annotation_text as text
+
+    drying = roast_curve(H.scenario('drying'))
+    drying.annotations.set_coach_allowed(True)
+    drying.annotations.expert_view = True
+    drying.tick()
+    dry_html = drying.annotations.roast.text()
+
+    maillard = roast_curve(H.scenario('maillard'))
+    maillard.annotations.set_coach_allowed(True)
+    maillard.annotations.expert_view = True
+    maillard.tick()
+    maillard_html = maillard.annotations.roast.text()
+
+    bt_cell = f">{text._labels()['BT']}</td>"  # noqa: SLF001 - exact rendered label
+    assert bt_cell not in dry_html
+    assert bt_cell in maillard_html
+
+
 # ── the preheat, on an axis of its own ───────────────────────────────────
 
 def _climbing(minutes: int = 8, target: float = 185.0):
@@ -1254,31 +1384,54 @@ def test_the_preheat_monitor_is_not_governed_by_that_switch(roast_curve) -> None
 # ── the title, the preheat card and the two selectors ────────────────────
 
 def test_the_curve_names_the_roast_it_is_showing(roast_curve) -> None:
-    """Which coffee this is, above the plot. Artisan composes the line — batch
-    prefix, number, the name the operator gave it — so it is read rather than
-    recomposed: two screens must never disagree about which roast this is."""
+    """Which coffee this is, above the plot. This composes the line itself from
+    qmc.title and the batch prefix/number rather than reading Artisan's own
+    title_text cache, which is only refreshed inside setProfileTitle() and can
+    still hold a previous roast's composed text after a plain File > Open."""
     curve = roast_curve(H.scenario('maillard'))
     curve.tick()
     band = QRectF(curve.plot_rect().left(), 2.0, 300.0, curve.plot_rect().top() - 4.0)
     assert _near_colour(curve, THEME['TEXT'], band) == 0, 'a nameless roast was named'
 
     aw = H.scenario('maillard')
-    aw.qmc.title_text = 'Ethiopia Guji'
+    aw.qmc.title = 'Ethiopia Guji'
     curve = roast_curve(aw)
     curve.tick()
     assert _near_colour(curve, THEME['TEXT'], band) > 0, 'the roast title was not drawn'
 
 
 def test_the_application_name_is_not_a_roast_title(roast_curve) -> None:
-    """Artisan parks its own name in that field when there is nothing to show.
+    """Artisan parks its own name in qmc.title when there is nothing to show.
     Printing it over the curve tells the operator what they already know."""
     aw = H.scenario('maillard')
-    aw.qmc.title_text = 'TilauScope'
+    aw.qmc.title = 'TilauScope'
     curve = roast_curve(aw)
     curve.tick()
     band = QRectF(curve.plot_rect().left(), 2.0, 300.0, curve.plot_rect().top() - 4.0)
     assert _near_colour(curve, THEME['TEXT'], band) == 0, \
         'the placeholder title was drawn as a roast name'
+
+
+def test_the_curve_composes_the_batch_prefix_into_the_title(roast_curve) -> None:
+    """The batch prefix and number are recomposed here from the raw fields,
+    not read from Artisan's cached title_text, so this drives qmc.title and
+    the batch fields directly and checks the composed string reaches the
+    painter rather than merely that something was drawn."""
+    from unittest.mock import MagicMock
+
+    aw = H.scenario('maillard')
+    aw.qmc.title = 'Ethiopia Guji'
+    aw.qmc.roastbatchprefix = 'R-'
+    aw.qmc.roastbatchnr = 42
+    curve = roast_curve(aw)
+    curve.tick()
+    _paint(curve)
+
+    painter = MagicMock()
+    curve._draw_title(painter, aw.qmc)
+    texts = [call.args[-1] for call in painter.drawText.call_args_list]
+    assert any('R-42 Ethiopia Guji' in t for t in texts), \
+        f'the composed batch prefix did not reach the screen: {texts}'
 
 
 def test_the_air_option_says_so_when_there_is_no_air_to_trace(roast_curve) -> None:

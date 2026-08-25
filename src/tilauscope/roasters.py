@@ -26,7 +26,7 @@ from mashumaro.mixins.dict import DataClassDictMixin
 import json
 import math
 from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS
-from typing import Final
+from typing import Any, Final
 import logging
 _logd: Final[logging.Logger] = logging.getLogger('tilau')
 
@@ -416,6 +416,12 @@ class Roaster(DataClassDictMixin):
     supports_auto_airflow_events: bool = False
     supports_profile_replay: bool = False
 
+    # Burner step-response lag (s): time from a heater slider change to
+    # roughly half its effect on RoR, measured on the historical corpus
+    # (tools/bench/bench_slider_response.py). None = no bench data yet;
+    # RoastSetupDialog then falls back to the operator's last QSettings value.
+    burner_reaction_time_s: float | None = None
+
     # Explicit JSON field so the plan generator never has to guess from
     # manufacturer/model strings. True = FIR/NIR/infrared heater technology.
     is_radiant_electric: bool = False
@@ -524,6 +530,9 @@ class RoasterContext:
     has_heater_control:  bool = True
     has_airflow_control: bool = True
 
+    # None = no bench-measured value for this roaster (see Roaster.burner_reaction_time_s).
+    burner_reaction_time_s: "float | None" = None
+
     @classmethod
     def from_roaster(cls, roaster: "Roaster") -> "RoasterContext":
         """Build a RoasterContext from a Roaster dataclass instance."""
@@ -595,6 +604,7 @@ class RoasterContext:
             # locked unless the drum declares progressive speed ramps
             drum_midroast_locked     = not (dc is not None and dc.variable_speed
                                             and getattr(dc, 'smooth_speed_transition', False)),
+            burner_reaction_time_s   = roaster.burner_reaction_time_s,
         )
 
     # ── helpers ──────────────────────────────────────────────
@@ -883,3 +893,55 @@ def sync_roaster_to_qmc(aw: object, name: str | None) -> bool:
         _logd.exception('TilauScope: sync_roaster_to_qmc redraw failed')
 
     return True
+
+
+# ============================================================
+# ROAST CONTEXT RESOLUTION (single owner of the aw-level cache)
+# ============================================================
+
+#: Marks "nothing resolved yet" — distinct from the empty name (no roaster),
+#: which is a legitimate cached result.
+_NO_CACHED_NAME: Final[object] = object()
+
+
+def roast_context_for(aw: Any, name: str | None = None) -> RoasterContext | None:
+    """Single resolver for the selected roaster's context, cached on *aw*.
+
+    Sole writer of ``aw._tilau_roast_context`` and ``aw._tilau_inlet_air_mode``:
+    every reader goes through here, so a roaster change in Devices can never
+    leave two components reasoning on two different machines.
+
+    *name* defaults to ``aw.tilau_roaster``. The empty string and the literal
+    ``'None'`` both mean "no roaster" and resolve to None, as does an unknown
+    name. The resolution is cached together with the name it was made for, so
+    a None result is cached too and roasters.json is read once per selection.
+    Never raises: a missing or broken registry yields None.
+    """
+    if name is None:
+        name = str(getattr(aw, 'tilau_roaster', '') or '')
+    name = str(name or '')
+    if name == 'None':
+        name = ''
+
+    if getattr(aw, '_tilau_roast_context_name', _NO_CACHED_NAME) == name:
+        return getattr(aw, '_tilau_roast_context', None)
+
+    context: RoasterContext | None = None
+    if name:
+        try:
+            context = RoasterManager(name).get_roast_context()
+        except Exception:  # pylint: disable=broad-except
+            _logd.exception('TilauScope: roaster context lookup failed for %r', name)
+            context = None
+
+    aw._tilau_roast_context = context
+    aw._tilau_roast_context_name = name
+    # Inlet air path (push/pull) for the pull-aware advice; no roaster = push.
+    aw._tilau_inlet_air_mode = (
+        getattr(context, 'inlet_air_mode', 'push') if context is not None else 'push')
+    return context
+
+
+def invalidate_roast_context(aw: Any) -> None:
+    """Drop the cached resolution so the next roast_context_for() re-resolves."""
+    aw._tilau_roast_context_name = _NO_CACHED_NAME

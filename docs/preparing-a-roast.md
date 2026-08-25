@@ -148,7 +148,23 @@ Under *Roast automation*, four milestones can be marked automatically:
     Automatic first-crack marking listens for cracks, so it needs an acoustic source: the
     TilauAmbient probe or an Omniflux. See [Hardware and peripherals](hardware.md).
 
-![the ⚙ MORE OPTIONS tab](assets/preparing-a-roast-5.9.png)
+Under *Roast Replay*, a background curve loaded before the sheet was opened can be replayed
+live during the roast: **Enable roast replay** turns it on, and **Burner reaction time** sets
+how far ahead the replay looks when following the curve — see
+[Roast Replay](glossary.md#roast-replay) in the glossary. The box stays unavailable, with a
+short explanation, until a background curve is loaded and the machine profile supports replay.
+Choosing replay disables the [Guided](getting-started.md#guided-or-expert) level for that roast:
+a replay follows a recorded curve, not the guided plan.
+
+!!! note "Stopping a replay mid-roast"
+    A header button next to the operator level control mirrors this setting once the roast is
+    running, and turns replay off immediately — too much drift from the curve, or a change of
+    mind, does not need the roast to be interrupted. Changing the roasting machine in Settings
+    while the window is open disarms an already-running replay the same way, since a replay
+    armed for one machine's profile no longer applies once the machine changes.
+
+<!-- CAPTURE 5.9 — the ⚙ MORE OPTIONS tab with the new Roast Replay card visible (a background
+curve loaded, box ticked, burner reaction time filled in) -->
 
 ---
 

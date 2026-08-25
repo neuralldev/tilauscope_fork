@@ -37,7 +37,7 @@ def _scope(*, running: bool = True, charged: bool = True) -> SimpleNamespace:
     status_updates: list[bool] = []
     scope = SimpleNamespace(
         _is_simulator=True,
-        _timer_state="roasting" if charged else "idle",
+        _timer_state="roasting" if charged else "preheat",
         aw=aw,
         p_timer=_IntervalTimer(),
         update_status_text=lambda: status_updates.append(True),
@@ -96,6 +96,61 @@ def test_timer_click_restores_roasting_style_on_resume(qapp: Any) -> None:
     assert scope.aw.sample_loop_running is True
     assert scope._timer_state == "roasting"
     assert scope.p_timer.interval == 600
+
+
+def test_simulator_auto_charge_promotes_dark_timer_to_roasting(qapp: Any) -> None:
+    """A CHARGE outside TilauScope must still clear the preheat appearance."""
+    _prepare_artisan_import(qapp)
+    scope = _scope(running=True, charged=True)
+    scope._timer_state = "idle"
+
+    scope._sync_simulator_timer_style()
+
+    assert scope._timer_state == "roasting"
+    assert scope._styles == ["roasting"]
+    assert scope.p_timer.interval == 600
+
+
+def test_simulator_preheat_promotes_dark_timer_to_fixed_preheat(qapp: Any) -> None:
+    """Recording before CHARGE is active and must never look stopped."""
+    _prepare_artisan_import(qapp)
+    scope = _scope(running=True, charged=False)
+    scope._timer_state = "idle"
+
+    scope._sync_simulator_timer_style()
+
+    assert scope._timer_state == "preheat"
+    assert scope._styles == ["preheat"]
+    assert scope.p_timer.interval == 600
+
+
+def test_preheat_timer_is_light_and_has_no_opacity_effect(qapp: Any) -> None:
+    from PyQt6.QtWidgets import QLabel
+    from PyQt6.QtWidgets import QGraphicsOpacityEffect
+    from tilauscope.tilauscope_types import THEME
+
+    _prepare_artisan_import(qapp)
+    label = QLabel("00:10")
+    opacity = QGraphicsOpacityEffect(label)
+    label.setGraphicsEffect(opacity)
+    scope = SimpleNamespace(timer_lbl=label, timer_opacity=opacity)
+
+    _tilauscope()._update_timer_style(scope, "preheat")
+
+    assert label.graphicsEffect() is None
+    assert scope.timer_opacity is None
+    assert THEME['TEXT'].lower() in label.styleSheet().lower()
+
+
+def test_simulator_sync_does_not_overwrite_emergency_timer(qapp: Any) -> None:
+    _prepare_artisan_import(qapp)
+    scope = _scope(running=True, charged=True)
+    scope._timer_state = "emergency"
+
+    scope._sync_simulator_timer_style()
+
+    assert scope._timer_state == "emergency"
+    assert scope._styles == []
 
 
 def test_timer_click_before_recording_does_not_toggle_superuser_mode(qapp: Any) -> None:

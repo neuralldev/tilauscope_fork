@@ -709,6 +709,12 @@ def _format_annotation_text(qmc: Any, x_intersect, info, coach: bool = False)->s
         else:
             inter_bt_color = colors['value']
         
+        bt_row = "" if idx == "CHARGE" else f"""
+                <tr>
+                    <td style="color: {colors['label']}; font-size: 11px;">{L['BT']}</td>
+                    <td align="right" style="color: {inter_bt_color}; font-weight: bold; font-size: 12px;">{bt:.1f}°{mode}</td>
+                </tr>
+                """
         html += f"""
                 <tr>
                     <td style="color: {colors['label']}; font-size: 11px;">{L['Time']}</td>
@@ -722,10 +728,7 @@ def _format_annotation_text(qmc: Any, x_intersect, info, coach: bool = False)->s
                     <td style="color: {colors['label']}; font-size: 11px;">{L['Target']} {L['DRY'] if idx=="CHARGE" else L['FC']}</td>
                     <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{info['target']:.1f}°{mode}</td>
                 </tr>
-                <tr>
-                    <td style="color: {colors['label']}; font-size: 11px;">{L['BT']}</td>
-                    <td align="right" style="color: {inter_bt_color}; font-weight: bold; font-size: 12px;">{bt:.1f}°{mode}</td>
-                </tr>
+                {bt_row}
                 """
         omniflux = qmc.aw.bleAirwaveDevice.omniflux if qmc.aw.bleAirwaveDevice is not None and hasattr(qmc.aw.bleAirwaveDevice, 'omniflux') else None
         if omniflux is not None and omniflux.color_device_idx != -1:

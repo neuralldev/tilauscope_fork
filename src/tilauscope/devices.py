@@ -41,6 +41,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
 )
 from PyQt6.QtGui import QCursor, QPalette, QColor
+from PyQt6 import sip
 
 from tilauscope.theme_qss import base_qss, tooltip_qss
 from tilauscope.tilauscope_types import THEME, show_styled_message, TilauProgress
@@ -2458,6 +2459,16 @@ class TilauscopeConfigDlg(QDialog):
         from tilauscope.roasters import sync_roaster_to_qmc
         sync_roaster_to_qmc(aw, aw.tilau_roaster) # mirror onto the canvas machine label
         self._apply_roaster_slider_visibilities()
+        # The Replay header and the assistant's advisor were both built for
+        # the previously selected roaster. Realign them on the new one; guarded
+        # so a failure here cannot abort the settings still to be applied below.
+        tilauscope = getattr(aw, "tilauscope_main", None)
+        if tilauscope is not None:
+            try:
+                if not sip.isdeleted(tilauscope):
+                    tilauscope.refresh_replay_capability()
+            except Exception as e:  # pylint: disable=broad-except
+                _log.warning("refresh_replay_capability failed: %s", e)
         aw.TilauScopeAnnotation  = self.tilauScopeAnnotationCheckBox.isChecked()
         aw.TilauScopeNotification = self.tilauScopeNotificationCheckBox.isChecked()
 

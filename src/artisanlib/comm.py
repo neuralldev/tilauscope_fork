@@ -1984,9 +1984,11 @@ class serialport:
                     # ## TILAU ## auto-identification shunts manual roaster
                     # selection in the device dialog (spec Sec19.2); generic
                     # mode (no match) leaves the existing selection untouched.
-                    self.aw.tilau_roaster = self.trpRoasterContext.display_name
-                    from tilauscope.roasters import sync_roaster_to_qmc  ## TILAU ##
-                    sync_roaster_to_qmc(self.aw, self.aw.tilau_roaster) ## TILAU ## mirror onto the canvas machine label
+                    # We are on the sampling thread: adopting the roaster
+                    # redraws the canvas and realigns the TilauScope controls,
+                    # so it is handed to the GUI thread rather than done here.
+                    self.aw.tilauRoasterIdentifiedSignal.emit(
+                        self.trpRoasterContext.display_name) ## TILAU ##
                 if self.aw.seriallogflag:
                     profile = 'generic' if self.trpRoasterContext is None else self.trpRoasterContext.display_name
                     self.aw.addserial(

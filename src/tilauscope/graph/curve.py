@@ -31,7 +31,7 @@ from typing import Any, Final
 
 from PyQt6.QtCore import QPointF, QSettings, QRectF, Qt
 from PyQt6.QtGui import QAction, QColor, QFont, QFontMetricsF, QPainter, QPen, QPixmap, QPolygonF
-from PyQt6.QtWidgets import QApplication, QHBoxLayout, QMenu, QPushButton, QWidget
+from PyQt6.QtWidgets import QApplication, QHBoxLayout, QMenu, QPushButton, QToolButton, QWidget
 
 from artisanlib.util import convertRoRstrict, convertTemp, findTPint
 from tilauscope.graph import smoothing as smooth
@@ -47,6 +47,7 @@ from tilauscope.graph.common import (
     rise_series,
 )
 from tilauscope.graph.preheat import reading as preheat_reading
+from tilauscope.theme_qss import tooltip_qss
 from tilauscope.tilauscope_types import THEME
 
 # ── fixed axis extents — never autoscaled, never recomputed from data ──────
@@ -161,9 +162,13 @@ _LEGEND_FONT_PT: Final[int] = 10
 _LANE_MAX: Final[float] = 100.0
 _LANE_PEN_WIDTH: Final[float] = 1.6
 _LANE_FILL_ALPHA: Final[int] = 70
-_LANE_MARK_HEIGHT: Final[float] = 19.0   # a channel shown as gestures needs no amplitude
-_LANE_AREA_UNITS: Final[float] = 2.4     # the traced channel is worth this many mark rows
+_LANE_MARK_HEIGHT: Final[float] = 28.0
+# Keep the traced channel at its established amplitude. Only gesture lanes need
+# extra height for their second value row.
+_LANE_AREA_HEIGHT: Final[float] = 19.0 * 2.4
 _BURNER_INDEX: Final[int] = 3            # Air=0, Drum=1, Damper=2, Burner=3
+_LANE_LABEL_ROWS: Final[int] = 2
+_LANE_LABEL_GAP: Final[float] = 1.0
 
 # Two ways to read what was played. 'lanes' gives every channel its own baseline
 # and its own shape; 'burner' traces the one lever that writes the roast and
@@ -180,6 +185,41 @@ _LANE_MODE_KEY: Final[str] = 'tilauscope/curve_lane_mode'
 
 
 _background_rise_cache: dict[str, Any] = {}
+
+
+def _lane_label_layout(
+    markers: list[tuple[float, float]], left: float, right: float,
+) -> list[tuple[float, int]]:
+    """Place every lane value directly above or below its own event dot.
+
+    ``markers`` contains ``(dot_x, label_width)`` in chronological order. A
+    value entered a few seconds after the previous one can share almost the
+    same pixel column on the fourteen-minute view. Values alternate between two
+    compact rows and never create a taller lane. They remain centred on their
+    marker; clipping at a frame edge is the sole case where exact centring is
+    geometrically impossible.
+    """
+    if not markers or right <= left:
+        return []
+
+    row_right = [float('-inf')] * _LANE_LABEL_ROWS
+    placed: list[tuple[float, int]] = []
+
+    for dot_x, raw_width in markers:
+        width = min(max(1.0, raw_width), right - left)
+        x = max(left, min(dot_x - width / 2.0, right - width))
+        free = [i for i, end in enumerate(row_right)
+                if x >= end + _LANE_LABEL_GAP]
+        # If both rows are saturated, keep the point/value association exact.
+        # A local overlap is less misleading than moving the value toward a
+        # neighbouring marker, and the compact chip makes this case uncommon.
+        row = free[0] if free else min(range(_LANE_LABEL_ROWS),
+                                       key=lambda i: row_right[i])
+        row_right[row] = max(row_right[row], x + width)
+
+        placed.append((x, row))
+
+    return placed
 
 
 def _reference_colour(colour: str) -> QColor:
@@ -487,8 +527,39 @@ class RoastCurveWidget(QWidget):
         self._pid_on.clicked.connect(lambda: self._toggle_pid(True))
         self._pid_off.clicked.connect(lambda: self._toggle_pid(False))
         self._pid_btn.setVisible(False)
+
+        # Swaps foreground and background (Artisan's own "Switch Profiles"),
+        # right by the title since that is exactly what it renames. Like the
+        # native action, it is locked while Artisan is sampling: switch()
+        # mutates the live roast arrays and has no defensive guard of its own.
+        self._switch_btn = QToolButton(self)
+        self._switch_btn.setText('⇄')
+        self._switch_btn.setFixedSize(22, 22)
+        self._switch_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._switch_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._switch_btn.setToolTip(QApplication.translate(
+            'tilauscope', 'Swap the foreground roast and the background curve'))
+        self._switch_btn.setStyleSheet(f"""
+            QToolButton {{
+                background-color: {THEME['SURFACE']};
+                border: 1px solid {THEME['SURFACE1']};
+                border-radius: 5px;
+                font-size: 12px;
+                color: {THEME['SUBTEXT']};
+            }}
+            QToolButton:hover {{ border: 1px solid {THEME['ACCENT']}; color: {THEME['TEXT']}; }}
+            QToolButton:disabled {{
+                background-color: {THEME['BG']};
+                border: 1px solid {THEME['BORDER']};
+                color: {THEME['OVERLAY0']};
+            }}
+            {tooltip_qss()}
+        """)
+        self._switch_btn.clicked.connect(self._on_switch_clicked)
+
         self._sync_pid_button()
         self._sync_view_button()
+        self._sync_switch_button()
 
         # Avoids a flash of the platform-default background before the first
         # resizeEvent has had a chance to build the cached frame.
@@ -633,6 +704,93 @@ class RoastCurveWidget(QWidget):
         self._pid_btn.move(right - self._pid_btn.width(),
                            max(0, int(r.top()) - self._pid_btn.height() - 5))
 
+    def _place_switch_button(self) -> None:
+        # Fallback position, used before the title has ever painted (or
+        # once it draws with no text at all): right after the coach
+        # toggle's own slot, which is reserved only when that toggle is
+        # actually shown (Expert level has no coach toggle at all —
+        # reserving its space anyway just pushes this button needlessly
+        # far right). Once there is a title, _draw_title repositions the
+        # button right after the text itself, since only the paint pass
+        # knows how wide that text is.
+        r = self._plot_rect
+        if r.width() <= 1:
+            return
+        left = r.left()
+        if not self.annotations.view_toggle.isHidden():
+            left += _TOGGLE_CLEARANCE
+        self._switch_btn.move(int(left),
+                              max(0, int(r.top()) - self._switch_btn.height() - 5))
+
+    def _on_switch_clicked(self) -> None:
+        # A disabled Qt button cannot emit clicked, but keep the same lock here
+        # as a safety net for shortcuts, tests and future programmatic callers.
+        if self._switch_locked() or not self._switch_has_profile():
+            self._sync_switch_button()
+            return
+        try:
+            self._aw.switch()
+        except AttributeError:
+            report_once('RoastCurveWidget: no switch() on aw')
+            return
+        # switch() does not go through loadFile() in the common case (one
+        # side empty), so it never fires the "profile loaded" signal chain
+        # that would otherwise re-evaluate the review panel on its own — do
+        # it here instead. hide first: the swap may have moved the operator
+        # out of a state that qualified for review just as easily as into one.
+        scope = getattr(self._aw, 'tilauscope_main', None)
+        if scope is not None:
+            try:
+                scope.hide_roast_review()
+                scope.show_roast_review()
+            except Exception:  # pylint: disable=broad-except
+                report_once('RoastCurveWidget: review panel refresh failed')
+        _background_rise_cache.clear()
+        self._reconcile_view()
+        self.update()
+
+    def _switch_locked(self) -> bool:
+        qmc = getattr(self._aw, 'qmc', None)
+        return bool(qmc is not None and (
+            getattr(qmc, 'flagon', False)
+            or getattr(qmc, 'flagstart', False)))
+
+    def _switch_has_profile(self) -> bool:
+        """Whether Artisan has a foreground or background profile to swap."""
+        qmc = getattr(self._aw, 'qmc', None)
+        if qmc is None:
+            return False
+        foreground = bool(getattr(self._aw, 'curFile', None))
+        background = (
+            getattr(qmc, 'backgroundprofile', None) is not None
+            or bool(getattr(qmc, 'backgroundpath', None))
+        )
+        if not background:
+            try:
+                # Plotter/analyzer backgrounds have arrays but no profile path.
+                background = (len(qmc.temp1B) > 2 or len(qmc.temp2B) > 2)
+            except (AttributeError, TypeError):
+                pass
+        return foreground or background
+
+    def _sync_switch_button(self) -> None:
+        locked = self._switch_locked()
+        has_profile = self._switch_has_profile()
+        enabled = has_profile and not locked
+        if self._switch_btn.isEnabled() != enabled:
+            self._switch_btn.setEnabled(enabled)
+        if locked:
+            tooltip = QApplication.translate(
+                'tilauscope', 'Profile swap is locked while monitoring or roasting')
+        elif not has_profile:
+            tooltip = QApplication.translate(
+                'tilauscope', 'Profile swap — load a roast profile first')
+        else:
+            tooltip = QApplication.translate(
+                'tilauscope', 'Swap the foreground roast and the background curve')
+        if self._switch_btn.toolTip() != tooltip:
+            self._switch_btn.setToolTip(tooltip)
+
     def _place_view_button(self) -> None:
         # Above the plot, never inside it. Floating over the tracing area put it
         # on top of the curves and the milestone chips in the close-up view —
@@ -714,6 +872,7 @@ class RoastCurveWidget(QWidget):
         a child widget from inside its parent's paintEvent re-enters the paint
         pipeline.
         """
+        self._sync_switch_button()
         qmc = getattr(self._aw, 'qmc', None)
         if qmc is None:
             return
@@ -777,7 +936,7 @@ class RoastCurveWidget(QWidget):
         if self._lane_mode == _LANE_MODE_LANES:
             heights = [_LANE_ROW_HEIGHT for _row in plan]
         else:
-            heights = [_LANE_MARK_HEIGHT * _LANE_AREA_UNITS if kind == 'area'
+            heights = [_LANE_AREA_HEIGHT if kind == 'area'
                        else _LANE_MARK_HEIGHT for _n, kind in plan]
         count = len(plan)
         if count:
@@ -799,6 +958,7 @@ class RoastCurveWidget(QWidget):
             y += row_h + _LANE_ROW_GAP
         self._frame_key = None   # paintEvent rebuilds with the current window
         self._place_view_button()
+        self._place_switch_button()
 
     def _ensure_frame(self, w: int, h: int) -> None:
         """Rebuild the cached frame only when something painted into it changed.
@@ -975,22 +1135,59 @@ class RoastCurveWidget(QWidget):
     def _draw_title(self, painter: QPainter, qmc: Any) -> None:
         """What is being roasted, above the plot.
 
-        Artisan composes this — batch prefix, batch number, the name the
-        operator gave the roast — and holds the result on the canvas. Reading
-        it rather than recomposing it means the two screens can never disagree
-        about which roast this is.
+        The batch prefix and number are composed here, from the raw fields
+        Artisan always keeps current — not read from qmc.title_text, Artisan's
+        own composed cache, which is only refreshed inside setProfileTitle()
+        and can still hold a previous roast's composed title after a plain
+        File > Open.
         """
-        text = str(getattr(qmc, 'title_text', '') or getattr(qmc, 'title', '') or '')
-        text = text.strip()
+        # qmc.title can outlive a reset(): clearMeasurements() always empties
+        # qmc.timex, but the title itself is only cleared when the operator's
+        # "Delete Properties on Reset" preference (roastpropertiesflag) is on
+        # — Switch Profiles resets with that preference as found, so the old
+        # title routinely survives with no curve behind it any more. Whether
+        # there is a live title to show is decided by qmc.timex, never by the
+        # title text alone; title_text (Artisan's own composed cache with
+        # batch prefix/number) only supplies the nicer display text once a
+        # live curve is confirmed present.
+        has_foreground_curve = bool(getattr(qmc, 'timex', None))
+        title_raw = str(getattr(qmc, 'title', '') or '').strip() if has_foreground_curve else ''
+        title_b = str(getattr(qmc, 'titleB', '') or '').strip()
         # The placeholder Artisan sets when there is nothing to name is the
-        # application's own name, which on this screen says nothing at all. A
-        # background-only view names the reference instead.
-        if not text or text == QApplication.translate('Scope Title', 'TilauScope'):
-            text = str(getattr(qmc, 'titleB', '') or '').strip()
+        # application's own name, which on this screen says nothing at all.
+        if title_raw == QApplication.translate('Scope Title', 'TilauScope'):
+            title_raw = ''
+        # qmc.title_text (Artisan's own composed cache) is only refreshed
+        # inside setProfileTitle() — a plain File > Open sets qmc.title
+        # straight from the loaded profile without going through it, so the
+        # cache can still hold a *previous* roast's composed title. Compose
+        # the batch prefix ourselves instead, from the raw fields setProfile()
+        # always keeps current, so this never lags behind the loaded file.
+        if title_raw:
+            bnr = getattr(qmc, 'roastbatchnr', 0) or 0
+            bprefix = str(getattr(qmc, 'roastbatchprefix', '') or '')
+            if bnr:
+                text = f'{bprefix}{bnr} {title_raw}'
+            elif bprefix:
+                text = f'{bprefix} {title_raw}'
+            else:
+                text = title_raw
+        else:
+            text = ''
+        # Parentheses always mean "background reference", whether it is the
+        # only thing loaded or sits alongside a live roast — never let a
+        # background-only view read like a live title with nothing around it.
+        if not text:
+            text = f"({title_b})" if title_b else ''
+        elif title_b and title_b != text:
+            text = f"{text} ({title_b})"
         if not text:
             return
         r = self._plot_rect
-        # After the view toggle when it is out, so the two never overlap.
+        # After the coach toggle when it is actually shown — mirrors
+        # _place_switch_button's fallback. The swap button itself sits to
+        # the *right* of the title text, not before it, so it is moved here
+        # once the text's actual width is known.
         left = r.left()
         if not self.annotations.view_toggle.isHidden():
             left += _TOGGLE_CLEARANCE
@@ -999,10 +1196,13 @@ class RoastCurveWidget(QWidget):
         f.setBold(True)
         painter.setFont(f)
         painter.setPen(QPen(QColor(THEME['TEXT'])))
+        avail_width = max(40.0, self._view_btn.x() - left - 10.0)
         painter.drawText(
-            QRectF(left, 2.0, max(40.0, self._view_btn.x() - left - 10.0),
-                   r.top() - 4.0),
+            QRectF(left, 2.0, avail_width, r.top() - 4.0),
             int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), text)
+        text_width = min(QFontMetricsF(f).horizontalAdvance(text), avail_width)
+        self._switch_btn.move(int(left + text_width + 6),
+                              max(0, int(r.top()) - self._switch_btn.height() - 5))
 
     def _draw_forecast(self, painter: QPainter) -> None:
         """Where the bean is due to reach the target of the phase it is in.
@@ -1712,39 +1912,43 @@ class RoastCurveWidget(QWidget):
         painter.drawLine(QPointF(lane.left(), cy), QPointF(lane.right(), cy))
 
         font = QFont()
-        font.setPointSize(_LEGEND_FONT_PT)
+        font.setPointSize(_LEGEND_FONT_PT - 1)
         font.setBold(True)
         painter.setFont(font)
         metrics = QFontMetricsF(font)
-        last_right = lane.left() - 1.0
-        for i, (t, v) in enumerate(points):
-            if not self._t_min <= t <= self._t_max:
-                continue
-            x = self._x(t)
-            # Gestures a second apart share a pixel column at this zoom. Only
-            # the later one is drawn there: it is the setting that held, and the
-            # earlier dot would otherwise keep the label and contradict the
-            # crosshair.
-            nxt = points[i + 1][0] if i + 1 < len(points) else None
-            if (nxt is not None and self._t_min <= nxt <= self._t_max
-                    and abs(self._x(nxt) - x) < 1.0):
-                continue
+        marks: list[tuple[float, str, float]] = []
+        for t, v in points:
+            if self._t_min <= t <= self._t_max:
+                text = f'{int(round(v))}'
+                marks.append((self._x(t), text,
+                              metrics.horizontalAdvance(text) + 2.0))
+
+        placements = _lane_label_layout(
+            [(x, width) for x, _text, width in marks], lane.left(), lane.right())
+        row_height = lane.height() / _LANE_LABEL_ROWS
+        for (_x, text, width), (label_x, row) in zip(marks, placements, strict=True):
+            chip = QRectF(
+                label_x,
+                lane.top() + row * row_height + 1.0,
+                width,
+                max(8.0, row_height - 2.0),
+            )
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(THEME['CRUST']))
+            painter.drawRoundedRect(chip, 2.0, 2.0)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.setPen(QPen(colour))
+            painter.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), text)
+
+        # Markers are painted last. Even under pathological label density the
+        # point remains visible and cannot be mistaken for part of a number.
+        for x, _text, _width in marks:
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QColor(THEME['BG']))
             painter.drawEllipse(QPointF(x, cy), 4.5, 4.5)
             painter.setBrush(colour)
             painter.drawEllipse(QPointF(x, cy), 3.0, 3.0)
             painter.setBrush(Qt.BrushStyle.NoBrush)
-            text = f'{int(round(v))}'
-            width = metrics.horizontalAdvance(text)
-            # Values crowd where gestures cluster: the dot always survives, the
-            # number gives way. A half-covered figure is worse than no figure.
-            if x + 6.0 > last_right:
-                painter.setPen(QPen(colour))
-                painter.drawText(QRectF(x + 6.0, lane.top(), width + 4.0, lane.height()),
-                                 int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
-                                 text)
-                last_right = x + 6.0 + width + 5.0
 
     def _held_now(self, n: int) -> float | None:
         """What the operator has this lever set to, right now.

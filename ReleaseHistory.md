@@ -1,6 +1,28 @@
-## [4.2.15] 2026-08-25
+## [4.2.16] 2026-08-25
 build 1
+## [4.2.15] 2026-08-25
+build 4
+build 3
+build 2
+build 1
+* ⚡ [feat(roast setup)] : a new Roast Replay toggle in roast setup — enabled when a background curve is loaded — replays that curve live from CHARGE, choosing bean-temperature tracking automatically when the machine has one and disabling Guided for the roast; a header button next to the operator level lets you stop the replay instantly at any time, and its burner reaction time is preset per roaster (editable, remembered for next time)
+* ⚡ [feat(roasting window)] : the background reference curve's own name now shows in parentheses next to the live roast title, so it's always clear which curve is which
+* ⚡ [feat(roasting window)] : a swap glyph next to the title now calls Switch Profiles directly from the curve, with a themed tooltip
+* 🐛 [fix(roasting window)] : the background curve's name reliably shows in parentheses again after Switch Profiles, after loading a new roast over an existing background, and whenever the header playback controls change outside TilauScope's own dialog
+* 🐛 [fix(roasting window)] : the roast review panel now refreshes correctly right after using Switch Profiles
 * 🐛 [fix(roasting window)] : a lever set twice within the same second now shows the setting that actually held — the curve labelled the first of the two, so the figure written on the lane disagreed with the one the crosshair reported at that instant
+* ⚡ [feat(roast replay)] : Roast Replay is now offered only on machines whose profile supports it — the header replay control is greyed out with an explanation on a machine that does not support replay, and an already-armed replay is disarmed immediately if the machine is changed in Settings while the roasting window is open
+* ⚡ [feat(roast replay)] : hovering the header replay control now says why it is unavailable — not supported by this machine, or available only before CHARGE — instead of one catch-all sentence
+* ⚡ [feat(roasting window)] : the swap glyph on the curve that calls Switch Profiles is now locked while monitoring or recording, since swapping would rewrite the live roast's own arrays, and locked when there is nothing to swap — neither a roast opened from a file nor a background curve loaded; hovering it says which of the two applies
+* 🐛 [fix(roasting window)] : entering the roasted weight and colour from the roast review now always applies to the roast actually being reviewed — it was reading the coffee currently selected in BeanCave instead, so the wrong bean's record could be updated
+* 🐛 [fix(roast replay)] : an armed replay now actually starts at CHARGE on a controllable machine — setting it up failed while inspecting the recorded bean-temperature trace, so playback was left half-configured and the levers were never replayed; the choice between following bean temperature and following elapsed time is now made correctly whether or not that trace exists
+* 🐛 [fix(roasting window)] : the spacing between the burner row and the setpoint row in the compact control panel now matches the rows above it
+* 🐛 [fix(roasting window)] : closing and reopening the roasting window no longer leaves the previous window listening in the background, where it could turn a running replay off by itself when a background curve was loaded or cleared
+* 🐛 [fix(guided assistant)] : changing the roasting machine in Settings now updates the guided assistant's machine-specific advice as well, instead of leaving it advising on the previously selected machine
+* 🐛 [fix(settings)] : changing the roasting machine in Settings no longer risks leaving the rest of that settings page — annotations, notifications, sensors — unapplied
+* 🐛 [fix(devices)] : a roasting machine that identifies itself when it connects is now adopted safely while a roast is sampling — the canvas redraw it triggers was being run from the sampling loop, which can bring the application down later with no traceback, and the guided assistant's advice and the replay control were left on the previously selected machine
+* 🐛 [fix(simulator)] : starting the simulator now completes — it was failing part-way while restyling the ON and START buttons, so the rate-of-rise sampling spans were never adjusted to the replay speed, the window title and the "Simulator started" message never appeared, and the roasting window kept the status and bean list of the previous session
+* 🐛 [fix(roasting window)] : the roast review now forgets the roast it was showing when it cannot read the next one, so entering a weight from a review can never be applied to a roast that has left the screen
 ## [4.2.14] 2026-08-23
 build 2
 * ⚡ [feat(roasting window)] : the roast curve is readable from a step back — the axis figures, the channel names beside each lane, the values on the lanes and the legend under the chart are all a size up, and the margins widened to give them the room

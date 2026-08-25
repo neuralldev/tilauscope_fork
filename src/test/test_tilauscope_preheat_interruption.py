@@ -62,6 +62,7 @@ def _scope(tilauscope: Any, *, charged: bool) -> SimpleNamespace:
         ),
         is_roasting=True,
         preheating=not charged,
+        replay_enabled=False,
         roast_bridge=SimpleNamespace(notify_roast_state=lambda _state: None),
         btn_reset=_WidgetDouble(),
         btn_start_stop=_WidgetDouble(),

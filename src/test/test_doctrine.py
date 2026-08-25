@@ -36,6 +36,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from string import Formatter
 from typing import Final
 
 import doctrine
@@ -232,6 +233,173 @@ def test_ws_thread_never_touches_qt_state(module: str) -> None:
                     for line, detail in sorted(deepest))
         + '\n\nRoute it through TilauCommandBridge.submit() (queued connection) '
           'so the access happens on the Qt main thread.'
+    )
+
+
+#: Artisan's device functions run on the sampling thread. Reading ``qmc`` there
+#: is what they are for; *changing the application* from there is not.
+ARTISAN_DIR: Final[Path] = Path(__file__).resolve().parent.parent / 'artisanlib'
+
+#: Work the TRP handshake must not do inline — each redraws the canvas or
+#: rebuilds widgets, and the sampling thread may do neither.
+GUI_ONLY_IN_HANDSHAKE: Final[tuple[str, ...]] = (
+    'sync_roaster_to_qmc', 'refresh_replay_capability')
+
+
+def test_roaster_auto_identification_is_handed_to_the_gui_thread() -> None:
+    """The TRP handshake may name the roaster; it may not adopt it.
+
+    ``_trp_handshake`` runs inside a device function, i.e. on the sampling
+    thread. Adopting a roaster redraws the canvas and realigns the TilauScope
+    controls that reason on the machine — Qt work, with the same delayed
+    ``SIGTRAP`` signature as the rule above. The adoption therefore leaves by
+    signal and lands on ApplicationWindow's GUI thread.
+    """
+    comm = doctrine.parse(ARTISAN_DIR / 'comm.py')
+    handshake = next(
+        node for node in ast.walk(comm)
+        if isinstance(node, ast.FunctionDef) and node.name == '_trp_handshake'
+    )
+
+    called = {
+        node.func.attr if isinstance(node.func, ast.Attribute) else node.func.id
+        for node in ast.walk(handshake)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, (ast.Attribute, ast.Name))
+    }
+    forbidden = sorted(set(GUI_ONLY_IN_HANDSHAKE) & called)
+    assert not forbidden, (
+        'artisanlib/comm.py _trp_handshake() does GUI work on the sampling '
+        f'thread: {", ".join(forbidden)}.\n'
+        'Emit tilauRoasterIdentifiedSignal instead — it lands on the GUI '
+        'thread through applyTilauRoasterIdentification().'
+    )
+
+    assigned = {
+        doctrine.attribute_chain(target)
+        for node in ast.walk(handshake)
+        if isinstance(node, ast.Assign)
+        for target in node.targets
+        if isinstance(target, ast.Attribute)
+    }
+    assert 'self.aw.tilau_roaster' not in assigned, (
+        'the handshake sets aw.tilau_roaster itself — the readers that cache a '
+        'machine context are never told, so the assistant keeps advising on '
+        'the previous roaster.'
+    )
+    assert 'tilauRoasterIdentifiedSignal' in ast.unparse(handshake), (
+        'the handshake no longer hands the identified roaster to the GUI thread.'
+    )
+
+    # The other end has to exist, or the emit is a silent no-op.
+    main = doctrine.parse(ARTISAN_DIR / 'main.py')
+    app = next(
+        node for node in ast.walk(main)
+        if isinstance(node, ast.ClassDef) and node.name == 'ApplicationWindow'
+    )
+    declared = {
+        target.id
+        for node in app.body if isinstance(node, ast.Assign)
+        for target in node.targets if isinstance(target, ast.Name)
+    }
+    assert 'tilauRoasterIdentifiedSignal' in declared, (
+        'ApplicationWindow does not declare tilauRoasterIdentifiedSignal.')
+    slots = {
+        node.name for node in ast.walk(app)
+        if isinstance(node, ast.FunctionDef)
+    }
+    assert 'applyTilauRoasterIdentification' in slots, (
+        'the signal has no slot on the GUI side.')
+    source = (ARTISAN_DIR / 'main.py').read_text(encoding='utf-8')
+    assert ('self.tilauRoasterIdentifiedSignal.connect('
+            'self.applyTilauRoasterIdentification)') in source, (
+        'the signal is declared but never connected — emitting it does nothing.'
+    )
+
+
+# ── stylesheet templates ─────────────────────────────────────────────────────
+
+#: Button stylesheets are ``str.format`` templates held in one module and filled
+#: in from many call sites. A placeholder added to a template is invisible to
+#: every caller that does not supply it — see the docstring below.
+STYLE_TEMPLATE_MODULE: Final[str] = 'button_style.py'
+STYLE_TEMPLATE_CALLERS: Final[tuple[str, ...]] = ('main.py', 'canvas.py')
+
+
+def _style_templates() -> dict[str, dict[str, str]]:
+    """{dict name: {key: template}} for every button-style dict."""
+    tree = doctrine.parse(ARTISAN_DIR / STYLE_TEMPLATE_MODULE)
+    found: dict[str, dict[str, str]] = {}
+    for node in tree.body:
+        target = None
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            target = node.target.id
+        elif (isinstance(node, ast.Assign) and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name)):
+            target = node.targets[0].id
+        if target and target.endswith('_dict') and isinstance(node.value, ast.Dict):
+            found[target] = ast.literal_eval(node.value)
+    return found
+
+
+def test_every_button_style_call_fills_its_template() -> None:
+    """A stylesheet template and its callers must agree on the placeholders.
+
+    ``str.format`` fails only at the moment of the call, with a ``KeyError``
+    naming the placeholder and nothing naming the template. These calls sit
+    inside broad ``except`` blocks that log and swallow, so the visible symptom
+    is not a wrong-looking button — it is every statement *after* the call in
+    that try block silently not running. Adding a placeholder to a template is
+    therefore a change every call site has to be checked against, which is what
+    this does.
+    """
+    templates = _style_templates()
+    assert templates, 'no button-style dicts found — did the module move?'
+
+    required = {
+        name: {key: {field for _, field, _, _ in Formatter().parse(tpl) if field}
+               for key, tpl in entries.items()}
+        for name, entries in templates.items()
+    }
+
+    offenders: list[str] = []
+    for module in STYLE_TEMPLATE_CALLERS:
+        tree = doctrine.parse(ARTISAN_DIR / module)
+        for node in ast.walk(tree):
+            # <dict>['KEY'].format(...)
+            if not (isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == 'format'
+                    and isinstance(node.func.value, ast.Subscript)):
+                continue
+            sub = node.func.value
+            if not (isinstance(sub.value, ast.Name) and sub.value.id in required):
+                continue
+            if not (isinstance(sub.slice, ast.Constant)
+                    and isinstance(sub.slice.value, str)):
+                continue
+            needed = required[sub.value.id].get(sub.slice.value)
+            if needed is None:
+                offenders.append(
+                    f'  artisanlib/{module}:{node.lineno}: '
+                    f'{sub.value.id}[{sub.slice.value!r}] is not a key of that dict')
+                continue
+            supplied = {kw.arg for kw in node.keywords if kw.arg is not None}
+            if any(kw.arg is None for kw in node.keywords):
+                continue        # **kwargs — cannot be judged statically
+            missing = sorted(needed - supplied)
+            if missing:
+                offenders.append(
+                    f'  artisanlib/{module}:{node.lineno}: '
+                    f'{sub.value.id}[{sub.slice.value!r}] does not supply '
+                    f'{", ".join(missing)}')
+
+    assert not offenders, (
+        'button stylesheet calls do not fill their template:\n'
+        + '\n'.join(sorted(offenders))
+        + f'\n\nEvery placeholder declared in artisanlib/{STYLE_TEMPLATE_MODULE} '
+          'has to be passed by every caller, or the call raises KeyError at '
+          'runtime and takes the rest of its try block down with it.'
     )
 
 

@@ -22,6 +22,7 @@ from PyQt6.QtCore import QPropertyAnimation, pyqtProperty, pyqtSignal, QEasingCu
 
 # get settings
 import logging
+import math
 import os
 import time
 from pathlib import Path
@@ -61,6 +62,7 @@ from tilauscope.canvas_style import CanvasStyleHook
 from tilauscope.graph.common import dimmed, within_share
 from tilauscope.graph.curve import RoastCurveWidget
 from tilauscope.roast_review_panel import RoastReviewPanel
+from tilauscope.roasters import invalidate_roast_context, roast_context_for
 from tilauscope.theme_qss import apply_tilau_theme, base_qss, tint, tooltip_qss, with_tooltip
 from tilauscope.wake_classes import TilauController
 
@@ -84,6 +86,11 @@ _CTRL_TOGGLE_RESERVE_PX: Final[int] = 16
 # line up regardless of platform: the style's default margin differs between a
 # widget-installed layout (~12 px macOS, 9 Windows) and a nested one (0).
 _SLIDER_ROW_MARGINS: Final[tuple[int, int, int, int]] = (11, 2, 11, 2)
+
+# SV lives outside the fixed-height event-control stack.  In the compact panel
+# that layout boundary visually eats part of one regular row pitch; restore the
+# missing distance so BURNER → SV matches the spacing of the four rows above.
+_SV_ROW_GAP_CORRECTION_PX: Final[int] = 8
 
 # Two-row header geometry — mockups/header-controls-professional-390.html.
 # The primary row budget is exact: pane 390 - pane margins 20 = 370 usable.
@@ -115,6 +122,25 @@ _TIMER_FONT_PX: Final[int] = 25
 # control is validated in live roasting.
 _USE_SEGMENTED_SLIDER: Final[bool] = True
 
+
+def _has_usable_bt_trace(values: object) -> bool:
+    """Return whether a background BT series contains a real reading.
+
+    Artisan stores smoothed background temperatures in a NumPy array.  Its
+    truth value is deliberately undefined once it contains more than one
+    element, so this check must inspect readings instead of calling bool() on
+    the container.  ``-1`` is Artisan's missing-reading sentinel.
+    """
+    try:
+        for value in values:  # type: ignore[union-attr]
+            if value is None:
+                continue
+            reading = float(value)
+            if math.isfinite(reading) and reading != -1.0:
+                return True
+    except (TypeError, ValueError):
+        return False
+    return False
 
 
 def _mono_font_family() -> str:
@@ -3044,6 +3070,15 @@ class TilauScope(QWidget):
         # Same rule: init_ui() reads the emergency latch when it decides whether
         # the heat cut is visible.
         self._emergency_latched: bool = False
+        # Opening on an already-running Artisan session is a first-show concern,
+        # not a construction concern.  The one-shot flag also prevents a return
+        # from BeanCave from rebuilding phase state a second time.
+        self._live_state_adoption_queued: bool = False
+        # Same rule once more: init_ui() ends on _refresh_replay_button(), and
+        # the header button reads both of these. Declared after the build, the
+        # first refresh died on an AttributeError.
+        self.replay_enabled: bool = False
+        self.replay_reaction_time_s: float = 10.0
         # static strings — same rule again: init_ui() ends on update_status_text(),
         # which reads str_roastsession. Declared after the build, that first call
         # died on an AttributeError swallowed by its own guard, leaving MONITOR and
@@ -3200,15 +3235,19 @@ class TilauScope(QWidget):
         # Masquer messagelabel si TilauScope s'ouvre pendant une torréfaction déjà active
         self.aw.messagelabel.setVisible(False)
 
-        # Everything above builds the window in its idle state. If Artisan is
-        # already monitoring or recording, take that state over now — last, so
-        # every widget, string and counter it touches exists.
-        self._adopt_live_artisan_state()
-
-         # What's New splash — shown once per build
+        # What's New splash — shown once per build
         self.alarm_fired_signal.connect(self.handle_alarm_trigger)
         # Live data from qmc, decoupled via signal (slot is exception-guarded).
         self.aw.qmc.tilauUpdateSignal.connect(self.update_ui_from_artisan)
+        # A background curve can be loaded/cleared from Artisan's own menu at
+        # any time (not just through RoastSetupDialog) — keep the header
+        # REPLAY button's eligibility in sync with that, not just at init.
+        # Both slots are kept on the instance and dropped in closeEvent: aw
+        # outlives this window, and a connection surviving the close keeps the
+        # closed instance alive and still reacting on the next session's qmc.
+        self._on_background_changed = lambda *_: self._refresh_replay_button()
+        self.aw.loadBackgroundSignal.connect(self._on_background_changed)
+        self.aw.clearBackgroundSignal.connect(self._on_background_changed)
         if message != "":
             QTimer.singleShot(500, lambda: self.showMessage(message))
         else:
@@ -3294,6 +3333,20 @@ class TilauScope(QWidget):
         # ever ask the curve to catch up with it.
         if self.curve is not None:
             self.curve.tick()
+        self._queue_live_artisan_state_adoption()
+
+    def _queue_live_artisan_state_adoption(self) -> None:
+        """Adopt an existing live session once the new window fully exists.
+
+        showEvent runs only after tilauscopeCall() has assigned this instance to
+        ``aw.tilauscope_main`` and connected its live signals.  One additional
+        event-loop turn lets show() finish before the adoption changes controls,
+        phase state and bridge notifications.
+        """
+        if self._live_state_adoption_queued:
+            return
+        self._live_state_adoption_queued = True
+        QTimer.singleShot(0, self._adopt_live_artisan_state)
 
     @override
     def hideEvent(self, a0: 'QHideEvent|None') -> None:
@@ -3408,6 +3461,14 @@ class TilauScope(QWidget):
         # Détacher le flux de données live qmc -> TilauScope
         try:
             self.aw.qmc.tilauUpdateSignal.disconnect(self.update_ui_from_artisan)
+        except (TypeError, RuntimeError):
+            pass
+        try:
+            self.aw.loadBackgroundSignal.disconnect(self._on_background_changed)
+        except (TypeError, RuntimeError):
+            pass
+        try:
+            self.aw.clearBackgroundSignal.disconnect(self._on_background_changed)
         except (TypeError, RuntimeError):
             pass
 
@@ -3623,6 +3684,15 @@ class TilauScope(QWidget):
         self.btn_level.setProperty('variant', 'icon')   # fixed square: no base padding
         self.btn_level.clicked.connect(self._cycle_operator_level)
 
+        # Roast Replay: visible at all times so it can be killed on the spot
+        # (too much delta, emergency, ...) — but it can only ARM before CHARGE;
+        # see _toggle_replay_button / _refresh_replay_button.
+        self.btn_replay = QPushButton("↻")
+        self.btn_replay.setFixedSize(*_HDR2_LEVEL)
+        self.btn_replay.setProperty('variant', 'icon')
+        self.btn_replay.setCheckable(True)
+        self.btn_replay.clicked.connect(self._toggle_replay_button)
+
         secondary_header = QHBoxLayout()
         secondary_header.setContentsMargins(*_HDR2_MARGINS)
         secondary_header.setSpacing(_HDR2_GAP)
@@ -3630,6 +3700,7 @@ class TilauScope(QWidget):
         secondary_header.addWidget(self.btn_beancave)
         secondary_header.addWidget(_lvl_sep)
         secondary_header.addWidget(self.btn_level)
+        secondary_header.addWidget(self.btn_replay)
         secondary_header.addWidget(self.swap_button)
         header_column = QVBoxLayout()
         header_column.setContentsMargins(0, 0, 0, 0)
@@ -3981,6 +4052,7 @@ class TilauScope(QWidget):
         QTimer.singleShot(0, self._lock_control_zone_height)
 
         # SV slider row — beneath the toggle zone, always shown
+        mc_lay.addSpacing(_SV_ROW_GAP_CORRECTION_PX)
         mc_lay.addWidget(self._sv_row_widget)
 
         # 5. ÉVÉNEMENTS
@@ -4121,6 +4193,25 @@ class TilauScope(QWidget):
             # Re-evaluate once geometry has settled to avoid a transient scrollbar.
             QTimer.singleShot(150, self._place_assistant)
 
+        # ── Roast Replay init ──────────────────────────────────────
+        # Armed by RoastSetupDialog (pre-CHARGE) or by the header button;
+        # only ever engaged at CHARGE (see arm_roast_replay / _engage_replay).
+        # Any playback left armed in Artisan's own settings from a previous
+        # session is cleared below — we control this, not leftover state.
+        try:
+            # backgroundPlaybackEvents/backgroundReproduce persist in QSettings
+            # across sessions (main.py restoreSettings) — a value left ticked
+            # from a previous session must not silently arm anything now.
+            # Skipped while a roast is already recording (TilauScope opening
+            # mid-roast, e.g. after a restart) so an in-progress automation
+            # is never yanked out from under the operator.
+            if not self.aw.qmc.flagstart:
+                self.aw.qmc.backgroundReproduce = False
+                self.aw.qmc.turn_playback_event_OFF()
+                self.aw.qmc.backgroundPlaybackDROP = False
+        except Exception:  # pylint: disable=broad-except
+            pass
+
         # ── Operator level init ──────────────────────────────────
         # Two levels only: Guided (default) and Expert. Legacy "standard" and
         # new installs both fall back to Guided.
@@ -4130,6 +4221,7 @@ class TilauScope(QWidget):
             QSettings().setValue("tilauscope/operator_level", _saved_level)
         self._operator_level: str = _saved_level
         self._apply_operator_level(_saved_level, from_init=True)
+        self._refresh_replay_button()
 
         self.init = False
 
@@ -4186,6 +4278,11 @@ class TilauScope(QWidget):
             pass
         self.raise_()
         self.activateWindow()
+        # A child dialog just closed (e.g. Artisan's own Profile Background
+        # window) — its "Load" button sets qmc.backgroundprofile directly,
+        # without going through loadBackgroundSignal, so this is the only
+        # reliable point to catch it back.
+        self._refresh_replay_button()
 
     def _lock_control_zone_height(self) -> None:
         """Freeze the control zone to the taller of the slider/card views so the
@@ -4351,9 +4448,10 @@ class TilauScope(QWidget):
             self.collapsible_events.alarm_sidebar.add_triggered_alarm(target_alarm)
 
     # ── Timer visual state machine ────────────────────────────────────────────
-    # Three states:
-    #   "idle"    : pre-charge, grey + slow opacity pulse (waiting / preheating)
-    #   "roasting": charge → drop, white solid (no effect)
+    # Visual states:
+    #   "idle"    : stopped/off, grey + slow opacity pulse
+    #   "preheat" : recording before CHARGE, white solid (no effect)
+    #   "roasting": CHARGE → DROP, white solid (no effect)
     #   "paused"  : simulator paused, orange + fast colour blink
     #
     # Call _update_timer_style(state) from any code path that changes the state.
@@ -4361,7 +4459,7 @@ class TilauScope(QWidget):
 
     def _update_timer_style(self, state: str) -> None:
         """
-        Updates the timer look based on state: "roasting", "idle", or "paused"
+        Update the timer look for idle, preheat, roasting, paused or emergency.
         """
         self._timer_state = state
 
@@ -4369,8 +4467,9 @@ class TilauScope(QWidget):
         if not hasattr(self, "timer_opacity"):
             self.timer_opacity = None
 
-        if  state == "roasting" or state == "engaged":
-            # ROASTING: Lighter color, NO blinking
+        if state in ("preheat", "roasting", "engaged"):
+            # An active session is always readable: light colour, no blinking.
+            # "engaged" is retained for monitoring-only compatibility.
             if self.timer_lbl.graphicsEffect() is not None:
                 self.timer_lbl.setGraphicsEffect(None)
             self.timer_opacity = None
@@ -4411,21 +4510,34 @@ class TilauScope(QWidget):
             )
 
     def _sync_simulator_timer_style(self) -> None:
-        """Reflect Artisan's simulator pause state without waiting for a tick."""
+        """Make the timer reflect the complete current simulator state.
+
+        Auto-CHARGE can update ``timeindex`` without taking the same UI path as
+        the local CHARGE button.  Synchronising only pause/resume left the timer
+        permanently in its dark pre-charge style even though the roast clock
+        was already running.
+        """
         if not self._is_simulator:
             return
 
         qmc = self.aw.qmc
         paused = bool(qmc.flagon and qmc.flagstart and not self.aw.sample_loop_running)
         current_state = getattr(self, "_timer_state", "idle")
+        if current_state == "emergency":
+            return
         if paused:
             if current_state != "paused":
                 self._update_timer_style("paused")
             self.p_timer.setInterval(300)
-        elif current_state == "paused":
-            # Before CHARGE the recording is engaged but still waiting; after
-            # CHARGE the regular steady roasting style must be restored.
-            self._update_timer_style("roasting" if qmc.timeindex[0] > -1 else "idle")
+        else:
+            # Before CHARGE the recording is preheating; after CHARGE the
+            # regular steady roasting style is authoritative. Both are light
+            # and fixed. Do
+            # this on every state mismatch, not only when resuming a pause:
+            # simulator auto-CHARGE may transition directly idle → roasting.
+            expected = "roasting" if qmc.timeindex[0] > -1 else "preheat"
+            if current_state != expected:
+                self._update_timer_style(expected)
             self.p_timer.setInterval(600)
 
     def pulse(self):
@@ -4436,8 +4548,9 @@ class TilauScope(QWidget):
         self._follow_idle_changes()
         state = getattr(self, "_timer_state", "idle")
 
-        # 1. If roasting, ensure no effect is active and stop
-        if state == "roasting":
+        # 1. Every active non-paused state is steady: ensure no stale opacity
+        # effect survives a transition and stop before the pulse logic.
+        if state in ("preheat", "roasting", "engaged", "emergency"):
             if self.timer_lbl.graphicsEffect() is not None:
                 self.timer_lbl.setGraphicsEffect(None)
             return
@@ -4688,10 +4801,10 @@ class TilauScope(QWidget):
             self.msg_lbl.raise_()  # Force the label to the top of the stack
             # Style the container to highlight preheating mode
             self.phase_container.setStyleSheet(f"background: {THEME['CRUST']}; border-radius: 15px; border: 1px solid #F38BA866;")
-            # Entering preheat owns the engaged timer state. Leaving preheat
+            # Entering preheat owns the light, fixed timer state. Leaving preheat
             # does not: the caller already knows whether the next state is
             # roasting (CHARGE) or idle (STOP before CHARGE).
-            self._update_timer_style("engaged")
+            self._update_timer_style("preheat")
         else:
             self.phase_container.setStyleSheet(f"background: {THEME['CRUST']}; border-radius: 15px; border: none;")
             # hide messag and show roasting phases zones
@@ -4857,11 +4970,15 @@ class TilauScope(QWidget):
         self.automation_lbl.hide()
 
     def _level_switch_allowed(self) -> bool:
-        """False while a recording roast forbids the Expert → Guided switch.
+        """False while a recording roast forbids the Expert → Guided switch,
+        or while Roast Replay is armed/active — a replay session has no plan
+        of its own, Guided has nothing to guide with.
 
         Guided → Expert stays free: dropping the guidance mid-roast is safe,
         while adopting it on a roast that has no plan is not.
         """
+        if self.replay_enabled:
+            return False
         if getattr(self, "_operator_level", "guided") != "expert":
             return True
         try:
@@ -4874,11 +4991,17 @@ class TilauScope(QWidget):
         try:
             allowed = self._level_switch_allowed()
             self.btn_level.setEnabled(allowed)
-            self.btn_level.setToolTip(
-                getattr(self, "_level_tooltip", "") if allowed
-                else QApplication.translate(
+            if allowed:
+                _tip = getattr(self, "_level_tooltip", "")
+            elif self.replay_enabled:
+                _tip = QApplication.translate(
                     "tilauscope_window",
-                    "Operator level: Expert — locked until the roast ends"))
+                    "Operator level: Expert — locked while Roast Replay is active")
+            else:
+                _tip = QApplication.translate(
+                    "tilauscope_window",
+                    "Operator level: Expert — locked until the roast ends")
+            self.btn_level.setToolTip(_tip)
         except Exception:  # pylint: disable=broad-except
             pass
 
@@ -4977,6 +5100,167 @@ class TilauScope(QWidget):
             QSettings().setValue("tilauscope/assistant_anchored", True)
             self.update_button_style(self.btn_assistant, True, False, False, True)
             self._place_assistant()
+
+    # ── Roast Replay ─────────────────────────────────────────────────
+    # Replays a loaded background curve during a live roast, driving Artisan's
+    # own playback engine (canvas.py playbackevent/playbackdrop). Armed from
+    # RoastSetupDialog or the header button; only ever engaged at CHARGE
+    # (see _engage_replay) — this is deliberate, not deferred by accident:
+    # the automation must never be live before the operator actually commits
+    # to CHARGE, and Artisan's own qmc flags stay untouched (and the native
+    # Playback Events checkbox unchecked) until that exact moment.
+
+    def _roaster_supports_profile_replay(self) -> bool:
+        """Return the selected roaster's declared Replay capability.
+
+        roast_context_for() owns the resolution and its aw-level cache; an
+        unknown or absent roaster resolves to no context and is deliberately
+        incompatible, matching RoastSetupDialog's safe default.
+        """
+        return bool(getattr(roast_context_for(self.aw), "supports_profile_replay", False))
+
+    def refresh_replay_capability(self) -> None:
+        """Re-resolve the selected roaster and realign everything reasoning on
+        it — the header REPLAY button and the assistant's advisor. Called after
+        the roaster changes in Devices; never raises into its caller.
+        """
+        try:
+            invalidate_roast_context(self.aw)
+            self._refresh_replay_button()
+            assistant = getattr(self, "roast_assistant", None)
+            if assistant is not None:
+                assistant.reload_roaster_context()
+        except Exception:  # pylint: disable=broad-except
+            _log.exception("TilauScope: refresh_replay_capability failed")
+
+    def arm_roast_replay(self, reaction_time_s: float) -> None:
+        """Arms replay for the upcoming CHARGE. Called by RoastSetupDialog._on_ok()
+        or the header button.
+
+        A replay session has no plan of its own to guide — Guided is locked
+        out immediately so launch_guided_assistant() (fired right after by
+        the same workflow) becomes a no-op.
+        """
+        if not self._roaster_supports_profile_replay():
+            self.replay_enabled = False
+            self._refresh_replay_button()
+            return
+        self.replay_enabled = True
+        self.replay_reaction_time_s = reaction_time_s
+        self._apply_operator_level("expert")
+        self._refresh_replay_button()
+
+    def _disable_roast_replay(self) -> None:
+        """Turns replay off immediately — the emergency-override path."""
+        self.replay_enabled = False
+        try:
+            qmc = self.aw.qmc
+            qmc.backgroundReproduce = False
+            qmc.turn_playback_event_OFF()
+        except Exception:  # pylint: disable=broad-except
+            pass
+        self._refresh_level_lock()
+        self._refresh_replay_button()
+
+    def _replay_externally_active(self) -> bool:
+        """True if Artisan's native Background dialog already has playback
+        engaged — bypassing this button/RoastSetupDialog entirely is a valid,
+        pre-existing way to use it, and the icon must not lie about it."""
+        try:
+            qmc = self.aw.qmc
+            return bool(qmc.backgroundPlaybackEvents or qmc.backgroundReproduce)
+        except Exception:  # pylint: disable=broad-except
+            return False
+
+    def _toggle_replay_button(self) -> None:
+        """Header REPLAY button: OFF at any time (including a replay armed
+        natively via Artisan's own Background dialog), ON only while
+        pre-CHARGE and a background curve is loaded (see _refresh_replay_button)."""
+        if self.replay_enabled or self._replay_externally_active():
+            self._disable_roast_replay()
+        else:
+            try:
+                pre_charge = self.aw.qmc.timeindex[0] == -1
+                has_background = self.aw.qmc.backgroundprofile is not None
+            except Exception:  # pylint: disable=broad-except
+                pre_charge, has_background = False, False
+            if (self._roaster_supports_profile_replay()
+                    and pre_charge and has_background):
+                self.arm_roast_replay(self.replay_reaction_time_s)
+        self._refresh_replay_button()
+
+    def _refresh_replay_button(self) -> None:
+        """Keep the header REPLAY button in sync with replay_enabled,
+        eligibility, and any playback armed natively via Artisan's own
+        Background dialog (see _replay_externally_active)."""
+        try:
+            pre_charge = self.aw.qmc.timeindex[0] == -1
+            has_background = self.aw.qmc.backgroundprofile is not None
+        except Exception:  # pylint: disable=broad-except
+            pre_charge, has_background = False, False
+        supports_replay = self._roaster_supports_profile_replay()
+        if self.replay_enabled and not supports_replay:
+            # Capability may change while the window stays open (Devices).
+            # Disarm our automation immediately; the recursive refresh returns
+            # here with replay_enabled already false.
+            self._disable_roast_replay()
+            return
+        lit = self.replay_enabled or self._replay_externally_active()
+        can_arm = supports_replay and pre_charge and has_background
+        self.btn_replay.blockSignals(True)
+        self.btn_replay.setChecked(lit)
+        self.btn_replay.blockSignals(False)
+        self.btn_replay.setEnabled(lit or can_arm)
+        _col = "#89B4FA" if lit else THEME['SUBTEXT']
+        self.btn_replay.setStyleSheet(
+            f"QPushButton {{ background: {THEME['SURFACE']}; color: {_col};"
+            f" border: 1px solid {_col}; border-radius: 6px;"
+            f" font-size: 15px; font-weight: 800; }}"
+            f"QPushButton:hover {{ background: {THEME['BG']}; }}"
+            f"QPushButton:disabled {{ color: {THEME['BORDER']};"
+            f" border: 1px solid {THEME['BORDER']}; }}"
+            + tooltip_qss()
+        )
+        if lit:
+            _tip = QApplication.translate("tilauscope_window", "Roast Replay: ON — click to stop")
+        elif not supports_replay:
+            _tip = QApplication.translate("tilauscope_window", "Roast Replay — not supported by this roaster")
+        elif can_arm:
+            _tip = QApplication.translate("tilauscope_window", "Roast Replay — replays the loaded background curve")
+        elif not pre_charge:
+            _tip = QApplication.translate("tilauscope_window", "Roast Replay — available only before CHARGE")
+        else:
+            _tip = QApplication.translate("tilauscope_window", "Roast Replay — load a background curve before CHARGE to enable")
+        self.btn_replay.setToolTip(_tip)
+
+    def _engage_replay(self) -> None:
+        """Engages Artisan's real playback engine at CHARGE — called from
+        _handle_milestone_events (data==0). Picks the replay strategy:
+        read-only roasters get the aid message only (no sliders to move);
+        controllable ones get full slider replay, tracking BT once available
+        (Artisan itself falls back to time-based before TP, see
+        canvas.py playbackevent()) with a time-based fallback if the
+        background curve has no usable BT trace.
+        """
+        qmc = self.aw.qmc
+        if not self._roaster_supports_profile_replay():
+            self._disable_roast_replay()
+            return
+        if qmc.backgroundprofile is None:
+            # armed but nothing to replay after all
+            self.replay_enabled = False
+            self._refresh_replay_button()
+            return
+        readonly = bool(getattr(self.aw, "tilau_roaster_readonly", False))
+        qmc.backgroundReproduce = True
+        if not readonly:
+            has_bt = _has_usable_bt_trace(qmc.stemp2B)
+            qmc.replayType = 1 if has_bt else 0
+            qmc.specialeventplayback = [True, True, True, True]
+            qmc.specialeventplaybackramp = [True, True, True, True]
+            qmc.ramp_lookahead = max(0, int(round(self.replay_reaction_time_s)))
+            qmc.turn_playback_event_ON()
+        self._refresh_replay_button()
 
     def launch_guided_assistant(self) -> None:
         """Démarre et ancre l'assistant depuis le workflow Beancave → RoastSetup.
@@ -5128,7 +5412,14 @@ class TilauScope(QWidget):
 
     def _enter_roast_weights(self) -> None:
         """Weight/colour entry from the review, then take the new values in."""
-        self._open_roast_result_dialog()
+        # The review may describe a roast other than the row currently selected
+        # in BeanCave.  Carry the identity frozen when this review was built;
+        # never let a later UI selection decide which coffee the edit belongs to.
+        profile = self.roast_review.reviewed_profile()
+        if profile is None:
+            _log.warning("review result form skipped: no reviewed profile snapshot")
+            return
+        self._open_roast_result_dialog(profile)
         if getattr(self, '_review_shown', False):
             self.roast_review.refresh()
 
@@ -6326,6 +6617,8 @@ class TilauScope(QWidget):
                 self.set_phase("DRY", 0)
                 self.mark_button_active(0)
                 self.roast_bridge.notify_phase("DRY")
+                if self.replay_enabled:
+                    self._engage_replay()
             else:
                 self.current_phase = None
                 self.phase_starts = {"DRY": None, "MAI": None, "DEV": None}
@@ -6714,8 +7007,8 @@ class TilauScope(QWidget):
             self.last_update_second = -1
             self.phase_starts = {"DRY": None, "MAI": None, "DEV": None}
             self.current_phase = None
-            # Switch timer to idle/preheating style while waiting for CHARGE
-            self._update_timer_style("idle")
+            # Recording is active while waiting for CHARGE: clear and steady.
+            self._update_timer_style("preheat")
             self._hide_artisan_standard_buttons()
             # start preheating
             self.handle_preheat(True)
@@ -6731,6 +7024,8 @@ class TilauScope(QWidget):
             self._update_timer_style("idle")   # back to grey pulse
             self.roast_bridge.notify_roast_state(False)   # stops the assistant
             self._hide_automation_banner()   # clear automation notice at roast end
+            if self.replay_enabled:
+                self._disable_roast_replay()   # a replay session never carries over to the next roast
             if self.preheating:
                 self.handle_preheat(False)
                 self.preheating = False
@@ -6774,7 +7069,7 @@ class TilauScope(QWidget):
                 lcd.reset_alert()
                 lcd.init_minmax()
 
-    def _open_roast_result_dialog(self) -> None:
+    def _open_roast_result_dialog(self, review_profile: dict | None = None) -> None:
         """Ouvre RoastResultDialog en fin de roast — même pattern que
         BeancaveDlg.on_roast_finished_clicked."""
         # The callback is delayed by 800ms. Re-check the live profile so a
@@ -6785,40 +7080,25 @@ class TilauScope(QWidget):
             return
         try:
             from tilauscope.roast_properties import RoastResultDialog
-            from tilauscope.tilauscope_types import GreenBean
 
             # reset() (ON/RESET) may have wiped qmc.title/qmc.beans.
             # Restore the live values stashed at setup so the save filename
-            # and the .alog bean linkage are correct. Live DROP path only.
+            # and the .alog bean linkage are correct. Live DROP path only: a
+            # review owns its own frozen identity and must never consume a
+            # stale live-session stash.
             qmc = self.aw.qmc
-            default_title = QApplication.translate('Scope Title', 'TilauScope')
-            stash_title = getattr(self.aw, '_tilau_live_title', '')
-            stash_beans = getattr(self.aw, '_tilau_live_beans', '')
-            if stash_title and (not qmc.title or qmc.title == default_title):
-                qmc.title = stash_title
-                qmc.title_show_always = True
-            if stash_beans and not getattr(qmc, 'beans', ''):
-                qmc.beans = stash_beans
-
-            bean = None
-            bc = getattr(self.aw, 'beancaveWindow', None)
-
-            # Priorité 1 — BeancaveDlg ouvert et cave disponible
-            if bc is not None and bc.cave is not None:
-                row = bc.datatable.currentRow()
-                if 0 <= row < len(bc.cave.green_beans):
-                    bean = bc.cave.green_beans[row]
-
-            # Priorité 2 — cave en mémoire → recherche par nom
-            if bean is None and bc is not None and bc.cave is not None:
-                name = getattr(bc, 'current_bean_name', None)
-                if name:
-                    bean = next(
-                        (b for b in bc.cave.green_beans if b.name == name), None)
-
-            # Fallback — bean vide
-            if bean is None:
-                bean = GreenBean()
+            if review_profile is None:
+                default_title = QApplication.translate('Scope Title', 'TilauScope')
+                stash_title = getattr(self.aw, '_tilau_live_title', '')
+                stash_beans = getattr(self.aw, '_tilau_live_beans', '')
+                if stash_title and (not qmc.title or qmc.title == default_title):
+                    qmc.title = stash_title
+                    qmc.title_show_always = True
+                if stash_beans and not getattr(qmc, 'beans', ''):
+                    qmc.beans = stash_beans
+                bean_description = getattr(qmc, 'beans', '') or ''
+            else:
+                bean_description = str(review_profile.get('beans') or '')
 
             # green_weight depuis qmc.weight
             green_weight = 0.0
@@ -6827,7 +7107,15 @@ class TilauScope(QWidget):
             except (ValueError, TypeError, IndexError):
                 pass
 
-            dlg = RoastResultDialog(bean, self.aw, green_weight=green_weight)
+            # Passing no bean deliberately activates UUID resolution from the
+            # roast description.  BeanCave's currently highlighted row is not
+            # evidence about the roast being edited.
+            dlg = RoastResultDialog(
+                None,
+                self.aw,
+                green_weight=green_weight,
+                bean_description=bean_description,
+            )
             dlg.exec()
         except Exception as e:
             _log.warning(f"_open_roast_result_dialog: {e}")

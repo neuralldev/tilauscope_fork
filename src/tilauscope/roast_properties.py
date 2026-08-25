@@ -1974,7 +1974,7 @@ class RoastSetupDialog(QDialog):
         """Builds the ⚙ MORE OPTIONS tab content."""
         t = QVBoxLayout(tab)
         t.setContentsMargins(0, 16, 0, 0)
-        t.setSpacing(20)
+        t.setSpacing(14)
 
         # ── 2. TilauPID ───────────────────────────────────────────────────────
         t.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "TilauPID on START")))
@@ -2088,21 +2088,19 @@ class RoastSetupDialog(QDialog):
             f"border: 1px solid {THEME['BORDER']}; }}"
         )
         auto_c = QVBoxLayout(auto_card)
-        auto_c.setContentsMargins(16, 14, 16, 16)
-        auto_c.setSpacing(14)
+        auto_c.setContentsMargins(16, 10, 16, 10)
+        auto_c.setSpacing(6)
 
-        auto_hint = QLabel(QApplication.translate("tilauscope_roast_setup", "Automatic detection of key roast events."))
-        auto_hint.setStyleSheet(
-            f"color: {THEME['SUBTEXT']}; font-size: 11px; font-style: italic; border: none;"
-        )
-        auto_c.addWidget(auto_hint)
+        # Hint moved to each checkbox's tooltip — "Roast automation" section
+        # label above already says what the card is for; a static line here
+        # only ate space that 4 checkboxes don't need.
 
         def _make_auto_cb(label: str, sublabel: str, enabled: bool = True) -> QCheckBox:
             cb = QCheckBox(label)
             cb.setEnabled(enabled)
             cb.setToolTip(sublabel)
             cb.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            cb.setMinimumHeight(28)
+            cb.setMinimumHeight(22)
             cb.setStyleSheet(self.styleSheet() + self._tooltip_style())
             return cb
 
@@ -2124,8 +2122,6 @@ class RoastSetupDialog(QDialog):
         active_row.addStretch()
         auto_c.addLayout(active_row)
 
-        auto_c.addWidget(_separator())
-
         # Row 2: DRY END / FIRST CRACK (TilauScope detectors)
         self._auto_dry_end_cb = _make_auto_cb(
             QApplication.translate("tilauscope_roast_setup", "Auto Dry End"),
@@ -2144,6 +2140,63 @@ class RoastSetupDialog(QDialog):
         detect_row.addStretch()
         auto_c.addLayout(detect_row)
         t.addWidget(auto_card)
+
+        # ── 4. Roast Replay ─────────────────────────────────────────────────
+        # Single row, tooltip carries the explanation — tab3 has no scroll area,
+        # a full card here overflows the dialog's fixed height (see _on_ok note).
+        t.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Roast Replay")))
+
+        replay_card = QFrame()
+        replay_card.setStyleSheet(
+            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px;"
+            f"border: 1px solid {THEME['BORDER']}; }}"
+        )
+        replay_c = QHBoxLayout(replay_card)
+        replay_c.setContentsMargins(16, 10, 16, 10)
+        replay_c.setSpacing(14)
+
+        self._replay_enable_cb = QCheckBox(QApplication.translate("tilauscope_roast_setup", "Enable roast replay"))
+        self._replay_enable_cb.setStyleSheet(
+            f"QCheckBox {{ color: {THEME['TEXT']}; font-size: 13px; border: none; }}"
+            f"QCheckBox::indicator {{ width:17px; height:17px; border-radius:4px;"
+            f"border:1px solid {THEME['BORDER']}; background:{THEME['BG']}; }}"
+            f"QCheckBox::indicator:checked {{ background:{THEME['ACCENT']};"
+            f"border:1px solid {THEME['ACCENT']}; }}"
+            f"QCheckBox:disabled {{ color: {THEME['SUBTEXT']}; }}"
+            + self._tooltip_style()
+        )
+        replay_c.addWidget(self._replay_enable_cb)
+        replay_c.addStretch()
+
+        # Shown instead of the reaction-time control when replay is unavailable
+        # (no background curve loaded, or roaster does not support it) — a
+        # disabled checkbox's own tooltip is too easy to miss.
+        self._replay_status_lbl = QLabel()
+        self._replay_status_lbl.setWordWrap(False)
+        self._replay_status_lbl.setStyleSheet(
+            f"color: {THEME['SUBTEXT']}; font-size: 11px; font-style: italic; border: none;"
+        )
+        replay_c.addWidget(self._replay_status_lbl)
+
+        self._replay_reaction_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Burner reaction time"))
+        self._replay_reaction_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px; border: none;")
+        self._replay_reaction_spin = QSpinBox()
+        self._replay_reaction_spin.setRange(0, 999)
+        self._replay_reaction_spin.setSuffix(" s")
+        self._replay_reaction_spin.setMinimumHeight(32)
+        self._replay_reaction_spin.setMaximumWidth(100)
+        self._replay_reaction_spin.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self._replay_reaction_spin.setStyleSheet(
+            f"QSpinBox {{ background: {THEME['BG']}; color: {THEME['ACCENT']}; font-weight: bold;"
+            f"border: 1px solid {THEME['ACCENT']}; border-radius: 6px; padding: 4px 10px; font-size: 13px; }}"
+            f"QSpinBox:focus {{ border-color: {THEME['LAVENDER']}; }}"
+            f"QSpinBox:disabled {{ color: {THEME['BORDER']}; border-color: {THEME['BORDER']}; }}"
+        )
+        replay_c.addWidget(self._replay_reaction_lbl)
+        replay_c.addWidget(self._replay_reaction_spin)
+        t.addWidget(replay_card)
+        self._replay_enable_cb.toggled.connect(self._replay_reaction_spin.setEnabled)
+
         t.addStretch()
 
     def _populate_optional_tab(self) -> None:
@@ -2210,6 +2263,41 @@ class RoastSetupDialog(QDialog):
         except Exception as exc:
             _log.debug("Could not read auto flags: %s", exc)
 
+        # Roast Replay — only meaningful if this roaster supports it AND a
+        # background curve is already loaded when the dialog opens.
+        try:
+            supports_replay = bool(getattr(self._roaster_ctx, "supports_profile_replay", False))
+            has_background = self._aw.qmc.backgroundprofile is not None
+            available = supports_replay and has_background
+            self._replay_enable_cb.setChecked(False)
+            self._replay_enable_cb.setEnabled(available)
+            self._replay_reaction_spin.setEnabled(False)
+            if not supports_replay:
+                _replay_status = QApplication.translate(
+                    "tilauscope_roast_setup", "Not supported by this roaster")
+            elif not has_background:
+                _replay_status = QApplication.translate(
+                    "tilauscope_roast_setup", "Load a background curve first (Roast > Background)")
+            else:
+                _replay_status = ""
+            _replay_tip = (_replay_status if _replay_status else QApplication.translate(
+                "tilauscope_roast_setup",
+                "Replays the loaded background curve during this roast — disables Guided."))
+            self._replay_enable_cb.setToolTip(_replay_tip)
+            # Reason text replaces the reaction-time control while unavailable —
+            # a disabled checkbox's own tooltip is too easy to miss.
+            self._replay_status_lbl.setText(_replay_status)
+            self._replay_status_lbl.setVisible(not available)
+            self._replay_reaction_lbl.setVisible(available)
+            self._replay_reaction_spin.setVisible(available)
+
+            bench_value = getattr(self._roaster_ctx, "burner_reaction_time_s", None)
+            reaction_default = (bench_value if bench_value is not None
+                                 else QSettings().value("tilauscope/replay_burner_reaction_time_s", 10.0, type=float))
+            self._replay_reaction_spin.setValue(int(round(reaction_default)))
+        except Exception as exc:
+            _log.debug("Could not initialise Roast Replay controls: %s", exc)
+
     @pyqtSlot(int)
     def _on_profile_changed(self, index: int) -> None:
         data = self._profile_combo.itemData(index)
@@ -2254,9 +2342,15 @@ class RoastSetupDialog(QDialog):
 
     @pyqtSlot()
     def _on_ok(self) -> None:
+        # Roast Replay needs the loaded background curve to survive into the
+        # live roast — read the checkbox before reset() clears anything.
+        replay_wanted = self._replay_enable_cb.isEnabled() and self._replay_enable_cb.isChecked()
+        replay_reaction_s = float(self._replay_reaction_spin.value())
+
         # first reset artisan main before loading
         self._aw.qmc.reset()
-        self._aw.clearBackgroundSignal.emit()
+        if not replay_wanted:
+            self._aw.clearBackgroundSignal.emit()
 
         # now store values
         title  = self._title_combo.currentText().strip()
@@ -2542,6 +2636,11 @@ class RoastSetupDialog(QDialog):
             # showMessage() AND we already show it once via show_styled_message()
             # below — that produced two identical message boxes.
             self._aw.tilauscopeCall(False)
+        # Roast Replay: arm now (locks Expert) so the launch_guided_assistant()
+        # call right below becomes a no-op — a replay session has no plan to guide.
+        if replay_wanted and self._aw.tilauscope_main is not None:
+            QSettings().setValue("tilauscope/replay_burner_reaction_time_s", replay_reaction_s)
+            self._aw.tilauscope_main.arm_roast_replay(replay_reaction_s)
         # Workflow guidé : ancre et démarre l'assistant automatiquement.
         # QTimer(0) diffère au prochain tick pour laisser Qt traiter show/raise.
         _aw = self._aw
@@ -2896,9 +2995,11 @@ class RoastResultDialog(QDialog):
 
     def __init__(
         self,
-        bean: GreenBean,
-        aw: 'ApplicationWindow',
+        bean: GreenBean | None,
+        aw: ApplicationWindow,
         green_weight: float = 0.0,
+        *,
+        bean_description: str | None = None,
     ) -> None:
         super().__init__(parent=None)
         self.setModal(True)
@@ -2912,8 +3013,11 @@ class RoastResultDialog(QDialog):
         self._bean         = bean
         self._aw           = aw
         self._green_weight = green_weight
-        # bean may arrive None (DROP path) or empty (no BeanCave row)
-        # → resolve from qmc.beans: uuid lookup first, text parse as a net.
+        # A review passes the beans field frozen with the displayed roast.
+        # None means the normal live path and therefore reads qmc.beans.
+        self._bean_description = bean_description
+        # bean may arrive None (DROP path) or empty (no BeanCave row): resolve
+        # from the frozen/live description, uuid first and text as a net.
         if self._bean is None or not getattr(self._bean, 'name', ''):
             resolved = self._resolve_bean()
             if resolved is not None:
@@ -2971,14 +3075,17 @@ class RoastResultDialog(QDialog):
     def _resolve_bean(self) -> 'GreenBean | None':
         """Resolve the roasted bean when the caller could not supply one.
 
-        Priority 1: uuid embedded in qmc.beans → BeanCave uuidmap (full bean).
-        Priority 2 (net): parse qmc.beans text into a minimal GreenBean.
-        Returns None if qmc.beans is empty/unusable.
+        Priority 1: uuid embedded in the reviewed/live roast description →
+        BeanCave uuidmap (full bean). Priority 2 (net): parse that description
+        into a minimal GreenBean. Returns None if it is empty/unusable.
         """
-        try:
-            beans_txt = (getattr(self._aw.qmc, 'beans', '') or '').strip()
-        except Exception:  # noqa: BLE001
-            beans_txt = ''
+        if self._bean_description is None:
+            try:
+                beans_txt = (getattr(self._aw.qmc, 'beans', '') or '').strip()
+            except Exception:  # noqa: BLE001
+                beans_txt = ''
+        else:
+            beans_txt = str(self._bean_description or '').strip()
         if not beans_txt:
             return None
 
@@ -4221,6 +4328,11 @@ class RoastResultDialog(QDialog):
         # Inject into Artisan
         try:
             qmc = self._aw.qmc
+            # A review owns the identity frozen with the displayed roast.  Set
+            # it only on Save so Cancel remains side-effect free, including for
+            # legacy unlinked roasts whose correct description is empty.
+            if self._bean_description is not None:
+                qmc.beans = self._bean_description
             # qmc.weight is a typed tuple (in, out, unit) at runtime — rebuild as tuple
             w0, _, w2 = qmc.weight
             qmc.weight        = (w0, roasted_w, w2)

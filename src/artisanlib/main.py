@@ -1416,6 +1416,8 @@ class ApplicationWindow(QMainWindow):
     fireslideractionSignal = pyqtSignal(int)
     fireslideraction_rawSignal = pyqtSignal(int,float)
     tilaupidSliderCommandSignal = pyqtSignal(int,int,bool)
+    ## TILAU ## auto-identified roaster, emitted from the sampling thread
+    tilauRoasterIdentifiedSignal = pyqtSignal(str)
     moveButtonSignal = pyqtSignal(str)
     sendnotificationMessageSignal = pyqtSignal(str,str,NotificationType)
     updateSubscriptionSignal = pyqtSignal(str)
@@ -4009,6 +4011,7 @@ class ApplicationWindow(QMainWindow):
         self.fireslideractionSignal.connect(self.fireslideraction)
         self.fireslideraction_rawSignal.connect(self.fireslideraction_raw)
         self.tilaupidSliderCommandSignal.connect(self.applyTilauPIDSliderCommand)
+        self.tilauRoasterIdentifiedSignal.connect(self.applyTilauRoasterIdentification) ## TILAU ##
         self.moveButtonSignal.connect(self.moveKbutton)
         self.sendnotificationMessageSignal.connect(self.sendNotificationMessage)
         self.updateSubscriptionSignal.connect(self.updateSubscription)
@@ -8619,6 +8622,25 @@ class ApplicationWindow(QMainWindow):
         # 'S<n>:<power>%' is the recorded shape the preheat controller is
         # recognised by; a gesture on the same channel writes value and unit.
         self.applyTilauSliderCommand(n, power, fire_action, f'S{n}:{{0}}%')
+
+    ## TILAU ##
+    @pyqtSlot(str)
+    def applyTilauRoasterIdentification(self, name:str) -> None:
+        """Adopt an auto-identified roaster on ApplicationWindow's GUI thread.
+
+        The TRP handshake runs on the sampling thread, and adopting a roaster
+        redraws the canvas and rebuilds the TilauScope controls that reason on
+        the machine — neither of which may be touched from there.
+        """
+        try:
+            self.tilau_roaster = name
+            from tilauscope.roasters import sync_roaster_to_qmc  # noqa: PLC0415
+            sync_roaster_to_qmc(self, name)
+            ts = self.tilauscope_main
+            if ts is not None and not sip.isdeleted(ts):
+                ts.refresh_replay_capability()
+        except Exception:  # pylint: disable=broad-except
+            _log.exception('TilauScope: applyTilauRoasterIdentification failed')
 
     @pyqtSlot(int,float)
     def fireslideraction_raw(self, n:int, v:float) -> None:
@@ -28831,8 +28853,8 @@ class ApplicationWindow(QMainWindow):
                                 'Simulator: this profile has no recorded curve to replay — open a past roast recording first'))
                         else:
                             self.simulatorpath = filename
-                            self.buttonONOFF.setStyleSheet(artisan_simulator_push_button_style_dict['OFF'].format(min_width=self.main_button_min_width, font_size=self.button_font_size))
-                            self.buttonSTARTSTOP.setStyleSheet(artisan_simulator_push_button_style_dict['STOP'].format(min_width=self.main_button_min_width, font_size=self.button_font_size))
+                            self.buttonONOFF.setStyleSheet(artisan_simulator_push_button_style_dict['OFF'].format(min_width=self.main_button_min_width, font_size=self.button_font_size, border_radius=self.button_border_radius))
+                            self.buttonSTARTSTOP.setStyleSheet(artisan_simulator_push_button_style_dict['STOP'].format(min_width=self.main_button_min_width, font_size=self.button_font_size, border_radius=self.button_border_radius))
                             self.qmc.updateDeltaSamples() # to get the delta_spans right
                             self.sendmessage(QApplication.translate('Message','Simulator started @{}x').format(speed))
                             self.updateWindowTitle()

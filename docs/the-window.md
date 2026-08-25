@@ -30,7 +30,8 @@ monitoring, recording, and timer controls together; the second row holds less fr
 | **RESET** | Clears the current roast. It stays on the secondary row. |
 | **BeanCave** | Opens the green-bean database. It stays on the secondary row, and is locked while monitoring is on — the database is a between-roasts screen. |
 | **G / E pill** | The operator level — see [Getting started](getting-started.md#guided-or-expert). |
-| **⇄** | Switches the control view. |
+| **↻** | [Roast Replay](glossary.md#roast-replay). Lit while a replay is running; click stops it immediately. Only clickable before CHARGE, only once a background curve is loaded, and only on a machine whose profile supports replay — hovering it while disabled says which of these is missing: not supported by this machine, or available only before CHARGE. See [Preparing a roast](preparing-a-roast.md#automating-the-start). |
+| **⇄** | Mirrors the window layout: the machine controls and the live column trade sides around the curve. The choice is remembered. |
 | **⠿** | A grab strip for moving the window. It runs along the end of the secondary row. |
 | **Crossed-out flame** | The emergency [heat cut](glossary.md#heat-cut). It appears at the end of the secondary row once monitoring is on, and is described below. |
 | Timer | The roast clock. |
@@ -43,6 +44,9 @@ without aiming.
     record. Configure a device, or run the simulator, first.
 
 <!-- CAPTURE 2.2 — the header, cropped, at full width and legible. -->
+
+<!-- CAPTURE 2.2c — the header replay control shown disabled and hovered, with its tooltip
+naming the reason: machine not supported, or before-CHARGE-only. -->
 
 ---
 
@@ -136,6 +140,16 @@ at arm's length, so it carries what matters during a roast and leaves the rest f
 gave it, exactly as it is filed. The bean temperature as a thick line, its
 [rate of rise](glossary.md#ror--rate-of-rise) as a thinner one on its own scale at the right, and
 the three phases as coloured grounds beneath both.
+
+**Beside the roast title sits a swap control.** It trades the roast on screen for its own
+background reference: the curve you were reading and the one drawn behind it change places, and
+so do their names above the plot. It is unavailable while monitoring or recording, since the
+swap rewrites the roast being recorded, and unavailable when there is nothing to swap — neither
+a roast opened from a file nor a background curve loaded. Hovering it says which of the two
+applies.
+
+<!-- CAPTURE 2.8f — the roast title area on the curve showing the swap glyph beside the title,
+both in its normal clickable state and greyed out while recording. -->
 
 **Colours name probes, not quantities.** Each curve carries the colour of the readout it belongs
 to — so the bean and its rate are one family, the air and its rate another. Inside a family the

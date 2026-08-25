@@ -42,7 +42,7 @@ from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, 
     get_agtron_color, get_roc_color, get_ror_color_by_phase, get_ror_ideal_band,
     format_batch_label, to_agtron)
 from tilauscope.theme_qss import tint, tooltip_qss
-from tilauscope.roasters import RoasterManager, RoasterContext
+from tilauscope.roasters import RoasterContext, roast_context_for
 from tilauscope.roast_plan_model import TilauScopeRoastPlan, heat_soak_correction
 from tilauscope.roast_plan_snapshot import build_prediction_snapshot
 # moteur de trim pur (v1b) — calé hors-app sur le corpus de roasts
@@ -4812,21 +4812,15 @@ class RoastAssistantPanel(QWidget):
         # Détecteur de crash RoR (réinitialisé à chaque changement de phase)
         self._crash_detector = _RoRCrashDetector()
 
-        # create link with advisor
-        self.roast_context = None
-        if self.aw.tilau_roaster and self.aw.tilau_roaster != 'None':
-            self.roast_context = RoasterManager().get_roast_context(self.aw.tilau_roaster)
+        # create link with advisor — roast_context_for() owns the resolution
+        # and publishes it on aw (context + inlet air path) so the phase pages
+        # can gate their control sliders without a signature change.
+        self.roast_context = roast_context_for(self.aw)
         self.advisor = RoasterPhysicsAdvisor(self.roast_context)
         # Advisor tips are invariant for a phase (they depend only on the
-        # roaster context, fixed for the panel's lifetime). Cache the joined
-        # string per phase so the 1 Hz refresh never re-runs the advisor.
+        # roaster context). Cache the joined string per phase so the 1 Hz
+        # refresh never re-runs the advisor; reload_roaster_context() clears it.
         self._advisor_tips_cache: dict[int, str] = {}
-        # Cache the resolved RoasterContext (and inlet air path) on aw so the
-        # phase pages can gate their control sliders without a signature change.
-        self.aw._tilau_roast_context = self.roast_context
-        # Cache the inlet air path (push/pull) for the pages' pull-aware advice.
-        self.aw._tilau_inlet_air_mode = (
-            getattr(self.roast_context, "inlet_air_mode", "push") if self.roast_context is not None else "push")
         # Lag actionneur→BT de la machine : fenêtre du débounce burner.
         # RECALÉ sur le banc (étude 1, item E) : l'effet du feu est un
         # intégrateur LENT — mi-effet ~25-30 s, plein effet 60 s+, BT lisible
@@ -7326,6 +7320,19 @@ class RoastAssistantPanel(QWidget):
             return
         self._bean_header.btn_toggle.setChecked(True)
         self._start_assistant()
+
+    def reload_roaster_context(self) -> None:
+        """Re-resolve the roaster context and rebuild the advisor on it.
+
+        The roaster can change in Devices while this panel lives; the advice
+        text is the only thing that moves, so this is safe to call mid-roast.
+        """
+        try:
+            self.roast_context = roast_context_for(self.aw)
+            self.advisor = RoasterPhysicsAdvisor(self.roast_context)
+            self._advisor_tips_cache.clear()
+        except Exception:  # pylint: disable=broad-except
+            _logd.exception("reload_roaster_context: roaster context reload failed")
 
     def emergency_disengage(self) -> None:
         """Drop every command authority the assistant holds, after a heat cut.
