@@ -194,6 +194,227 @@ def test_the_burner_leads_the_channel_order() -> None:
     assert channel_order([0, 0, 0, 0]) == []
 
 
+def test_the_background_roast_is_aligned_on_its_own_charge() -> None:
+    """Artisan may move its background to align DRY, FC or DROP.
+
+    Those canvas offsets must not leak into the comparison: the two roasts
+    share zero at CHARGE, and a vertical nudge does not rewrite the recorded
+    temperatures TilauScope draws.
+    """
+    from tilauscope.graph.curve import _background_roast
+
+    qmc = H.FakeQmc()
+    qmc.background = True
+    qmc.backgroundprofile = {}
+    qmc.timeB = [500.0, 520.0, 540.0]
+    qmc.timeindexB = [1, 0, 0, 0, 0, 0, 2, 0]
+    qmc.temp1B = [195.0, 205.0, 215.0]
+    qmc.temp2B = [115.0, 125.0, 135.0]
+    qmc.stemp1B = list(qmc.temp1B)
+    qmc.stemp2B = list(qmc.temp2B)
+    qmc.delta1B = [5.0, 6.0, 7.0]
+    qmc.delta2B = [8.0, 9.0, 10.0]
+    qmc.backgroundprofile_moved_x = 400
+    qmc.backgroundprofile_moved_y = 15
+
+    reference = _background_roast(qmc, show_air=True, show_machine=True)
+    assert reference is not None
+    timex, air, bean, rise, machine, mode = reference
+    assert timex == [-20.0, 0.0, 20.0]
+    assert air == [180.0, 190.0, 200.0]
+    assert bean == [100.0, 110.0, 120.0]
+    assert rise == [12.0, 12.0, 12.0]
+    assert machine == [12.0, 12.0, 12.0]
+    assert mode == 'C'
+    assert qmc.recomputed == 1
+
+    _background_roast(qmc, show_air=True, show_machine=True)
+    assert qmc.recomputed == 1, 'the static reference recomputed its rise on repaint'
+
+    # Loading a foreground can hide Artisan's own background canvas without
+    # unloading the reference. DisplayScope must keep the comparison.
+    qmc.background = False
+    assert _background_roast(qmc, show_air=True, show_machine=True) is not None
+
+    qmc.backgroundprofile = None
+    assert _background_roast(qmc, show_air=True, show_machine=True) is None
+
+
+def test_the_reference_keeps_the_live_hue_at_lower_strength() -> None:
+    from PyQt6.QtGui import QColor
+    from tilauscope.graph.curve import _REFERENCE_ALPHA, _reference_colour
+
+    live = QColor('#89B4FA')
+    reference = _reference_colour(live.name())
+    assert reference.alpha() == _REFERENCE_ALPHA
+    assert reference.red() == live.red()
+    assert reference.green() == live.green()
+    assert reference.blue() == live.blue()
+
+
+def test_a_loaded_background_paints_the_same_requested_traces(
+        roast_curve, caplog) -> None:
+    """Bean/rise are always mirrored; air/machine follow the same switches."""
+    aw = H.scenario('maillard')
+    qmc = aw.qmc
+    qmc.background = True
+    qmc.backgroundprofile = {}
+    qmc.timeB = [t + 300.0 for t in qmc.timex]
+    qmc.timeindexB = list(qmc.timeindex)
+    qmc.temp1B = list(qmc.temp1)
+    qmc.temp2B = list(qmc.temp2)
+    qmc.stemp1B = list(qmc.temp1)
+    qmc.stemp2B = list(qmc.temp2)
+    qmc.delta1B = list(qmc.delta1)
+    qmc.delta2B = list(qmc.delta2)
+    qmc.backgroundprofile_moved_y = 0
+
+    curve = roast_curve(aw)
+    calls: list[tuple] = []
+    draw = curve._draw_reference
+
+    def record(painter, *series) -> None:  # noqa: ANN001
+        calls.append(series)
+        draw(painter, *series)
+
+    curve._draw_reference = record
+    with caplog.at_level(logging.ERROR):
+        curve.show_air_temperature = False
+        curve.show_machine_response = False
+        _paint(curve)
+        curve.show_air_temperature = True
+        curve.show_machine_response = True
+        _paint(curve)
+
+    assert _errors(caplog) == []
+    assert len(calls) == 2
+    # timex, temp1, temp2, delta2, delta1, mode
+    assert calls[0][1] == [] and calls[0][4] == []
+    assert calls[0][2] and calls[0][3]
+    assert calls[1][1] and calls[1][4]
+
+
+def test_loading_a_foreground_does_not_hide_the_reference_from_displayscope(
+        roast_curve, caplog) -> None:
+    """Artisan's hide-after-load flag belongs to its canvas, not this comparison."""
+    aw = H.scenario('replay')
+    qmc = aw.qmc
+    qmc.backgroundprofile = {}
+    qmc.timeB = [t + 180.0 for t in qmc.timex]
+    qmc.timeindexB = list(qmc.timeindex)
+    qmc.temp1B = list(qmc.temp1)
+    qmc.temp2B = list(qmc.temp2)
+    qmc.stemp1B = list(qmc.stemp1)
+    qmc.stemp2B = list(qmc.stemp2)
+    qmc.backgroundprofile_moved_y = 0
+    # What ApplicationWindow.loadFile does when hideBgafterprofileload is set.
+    qmc.background = False
+
+    curve = roast_curve(aw)
+    calls: list[tuple] = []
+    draw = curve._draw_reference
+
+    def record(painter, *series) -> None:  # noqa: ANN001
+        calls.append(series)
+        draw(painter, *series)
+
+    curve._draw_reference = record
+    with caplog.at_level(logging.ERROR):
+        curve.tick()
+        _paint(curve)
+
+    assert _errors(caplog) == []
+    assert len(calls) == 1
+
+
+def test_a_background_is_drawn_without_a_foreground_roast(
+        roast_curve, caplog) -> None:
+    """A reference is roast data, not an empty chart, even when it stands alone."""
+    aw = H.scenario('replay')
+    qmc = aw.qmc
+    qmc.background = True
+    qmc.backgroundprofile = {}
+    qmc.timeB = [t + 240.0 for t in qmc.timex]
+    qmc.timeindexB = list(qmc.timeindex)
+    qmc.temp1B = list(qmc.temp1)
+    qmc.temp2B = list(qmc.temp2)
+    qmc.stemp1B = list(qmc.stemp1)
+    qmc.stemp2B = list(qmc.stemp2)
+    qmc.backgroundprofile_moved_y = 0
+    qmc.titleB = 'Reference roast'
+
+    qmc.timex = []
+    qmc.temp1 = []
+    qmc.temp2 = []
+    qmc.stemp1 = []
+    qmc.stemp2 = []
+    qmc.delta1 = []
+    qmc.delta2 = []
+    qmc.timeindex = [-1] * 8
+    qmc.flagon = qmc.flagstart = False
+
+    curve = roast_curve(aw)
+    calls: list[tuple] = []
+    draw = curve._draw_reference
+
+    def record(painter, *series) -> None:  # noqa: ANN001
+        calls.append(series)
+        draw(painter, *series)
+
+    curve._draw_reference = record
+    with caplog.at_level(logging.ERROR):
+        curve.show()
+        curve.tick()
+        _paint(curve)
+
+    assert _errors(caplog) == []
+    assert len(calls) == 1
+    assert calls[0][0][qmc.timeindexB[0]] == 0.0
+    assert curve._rate_axis
+    assert curve._t_min <= 0.0 <= curve._t_max
+    assert curve._closeup
+    assert curve._seg_closeup.isChecked()
+    assert curve._view_btn.isVisibleTo(curve)
+
+
+def test_the_context_menu_can_remove_the_loaded_reference(roast_curve) -> None:
+    from PyQt6.QtWidgets import QMenu
+
+    aw = H.scenario('replay')
+    qmc = aw.qmc
+    qmc.background = True
+    qmc.backgroundprofile = {}
+    qmc.timeB = list(qmc.timex)
+    qmc.timeindexB = list(qmc.timeindex)
+    qmc.temp1B = list(qmc.temp1)
+    qmc.temp2B = list(qmc.temp2)
+    qmc.stemp1B = list(qmc.stemp1)
+    qmc.stemp2B = list(qmc.stemp2)
+    cleared: list[bool] = []
+
+    def clear() -> None:
+        cleared.append(True)
+        qmc.background = False
+        qmc.backgroundprofile = None
+        qmc.timeB = []
+        qmc.temp1B = []
+        qmc.temp2B = []
+
+    aw.clearbackgroundRedraw = clear
+    curve = roast_curve(aw)
+    menu = QMenu(curve)
+    action = curve._add_background_menu_action(menu)
+
+    assert action is not None
+    assert action.text() == 'Remove reference curve'
+    action.trigger()
+    assert cleared == [True]
+    assert qmc.backgroundprofile is None
+
+    empty_menu = QMenu(curve)
+    assert curve._add_background_menu_action(empty_menu) is None
+
+
 # ── the guard that keeps the guards honest ───────────────────────────────
 
 def test_no_graph_module_swallows_an_exception_in_silence() -> None:
@@ -1444,3 +1665,41 @@ def test_the_view_selector_waits_for_the_roast_to_close(roast_curve) -> None:
     aw.qmc.flagstart = False                # the operator stops
     curve.tick()
     assert not curve._view_btn.isHidden(), 'the selector never came back'
+
+
+def test_a_finished_roast_opens_charge_to_drop(roast_curve) -> None:
+    """The useful comparison is the roast itself; the full session is optional."""
+    aw = H.scenario('replay')
+    curve = roast_curve(aw)
+    curve.show()
+    curve.tick()
+    _paint(curve)
+
+    charge = int(aw.qmc.timeindex[0])
+    drop = int(aw.qmc.timeindex[6])
+    expected_end = aw.qmc.timex[drop] - aw.qmc.timex[charge] + 60.0
+    assert curve._closeup
+    assert curve._seg_closeup.isChecked()
+    assert curve._t_min == -60.0
+    assert curve._t_max == expected_end
+
+    curve._set_closeup(False)
+    _paint(curve)
+    assert curve._seg_full.isChecked()
+    assert curve._t_max > expected_end
+
+
+def test_two_gestures_on_one_second_keep_only_the_one_that_held() -> None:
+    """A slider clicked twice inside a sampling tick records two events at the
+    same instant. Only the last one ever applied: drawing both hands the label
+    to a setting that never held, and the crosshair then contradicts it."""
+    from tilauscope.graph.curve import RoastCurveWidget
+
+    timex = [0.0, 1.0, 2.0, 3.0]
+    events = [1, 1, 3]
+    types = [0, 0, 0]
+    pcts = [50, 55, 60]
+
+    points = RoastCurveWidget._channel_points(None, timex, events, types, pcts, 0)
+
+    assert points == [(1.0, 55.0), (3.0, 60.0)]

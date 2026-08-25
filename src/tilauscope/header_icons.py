@@ -71,6 +71,9 @@ COL_ASSISTANT_ACTIVE: Final[str] = "#F9E2AF" # Amber bright
 COL_SWAP_IDLE:      Final[str] = "#78798A"   # Overlay0
 COL_SWAP_ACTIVE:    Final[str] = "#4A614A"   # Sage green dim
 
+# btn_estop — emergency heat cut. The only critical tone of the header.
+COL_ESTOP:          Final[str] = "#F38BA8"   # Red
+
 # btn_dock — assistant float (idle) ↔ anchor (active)
 COL_DOCK_IDLE:      Final[str] = "#78798A"   # Overlay0 — floating
 COL_DOCK_ACTIVE:    Final[str] = "#94E2D5"   # Teal — anchored
@@ -169,6 +172,17 @@ SVG_SWAP: Final[str] = (
     '<path d="M4 15h16"/>'
     '<path d="M14 5l4 4-4 4"/>'
     '<path d="M10 11l-4 4 4 4"/>'
+    '</svg>'
+)
+
+# ── btn_estop — flamme barrée : le brûleur est coupé ─────────────────────────
+# Names the lever it cuts (BURNER) rather than an abstract "stop", so it cannot
+# be read as stopping the recording. Outline-only like every header glyph.
+SVG_HEATCUT: Final[str] = (
+    f'<svg {_SVG_ATTRS}>'
+    '<path d="M12 3c3.5 3.2 5.5 5.9 5.5 9a5.5 5.5 0 0 1-11 0c0-1.6.6-3 1.7-4.4'
+    ' .7 1.2 1.5 1.9 2.3 2.1-.3-2.5.2-4.7 1.5-6.7z"/>'
+    '<line x1="4" y1="20" x2="20" y2="4"/>'
     '</svg>'
 )
 
@@ -412,12 +426,16 @@ QSS_COMPACT_BEANCAVE: Final[str] = make_btn_style(
 )
 # Emergency heat cut. Red on a dark red fill: the only critical-coloured
 # control of the header, so it cannot be confused with START or RESET.
+# padding:0 — the style's default button padding would push the glyph off centre
+# in a button this narrow.
 QSS_COMPACT_ESTOP: Final[str] = make_btn_style(
     color_idle="#F38BA8", color_active="#F38BA8",
     color_hover="#FFFFFF", color_pressed="#FFFFFF",
     bg="#3A1E28", bg_hover="#5A2434",
     border_idle="2px", border_active="2px",
-)
+) + """
+        QPushButton { padding: 0px; }
+"""
 QSS_COMPACT_SWAP: Final[str] = make_btn_style(
     color_idle="#5F9D93", color_active=COL_SWAP_ACTIVE,
     color_hover="#CDD6F4", color_pressed=COL_SWAP_ACTIVE,

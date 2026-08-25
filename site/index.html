@@ -3,357 +3,138 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
-<!--
-  tilauscope.org front page.
-
-  Everything this page needs is served from this origin: no font CDN, no
-  analytics, no badge service, no embedded video. That is not a stylistic
-  preference, it is what lets the policy below be written without a single
-  escape hatch. Adding one third-party asset later means widening the policy,
-  so weigh it as such.
-
-  The <meta> policy is the fallback for hosts that cannot set headers. Prefer
-  the real headers in `.htaccess` — meta cannot carry frame-ancestors, and a
-  header cannot be stripped by an injected tag the way a meta element can.
-
-  TLS is live via Cloudflare (DNS-proxied, Flexible mode): the edge terminates
-  HTTPS for the visitor, but the Cloudflare→IONOS hop behind it is still plain
-  HTTP — the origin itself has no certificate. `upgrade-insecure-requests` is
-  safe here because every asset is same-origin: the browser's https:// request
-  for it lands on the Cloudflare edge, same as the page did, not on the origin
-  directly. See `.htaccess` for why the origin must NOT add its own http→https
-  redirect under Flexible mode.
--->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'; upgrade-insecure-requests">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-
-<title>TilauScope — a guided roasting assistant for home coffee roasters</title>
-<meta name="description" content="TilauScope adds a guided layer to Artisan Roaster Scope: a roast plan built from your own past roasts, live recommendations while the drum turns, and a green-coffee database. Free software, AGPL v3.">
-
+<title>TilauScope — guided roasting, built on Artisan</title>
+<meta name="description" content="TilauScope turns Artisan into a guided roasting workspace: plan from your own roast history, get the next move live, compare batches and manage green coffee. Free for macOS and Windows.">
+<link rel="canonical" href="https://tilauscope.org/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="TilauScope — your roast, with a next move">
+<meta property="og:description" content="A guided roasting layer for Artisan, from green coffee to the next better batch.">
+<meta property="og:url" content="https://tilauscope.org/">
+<meta property="og:image" content="https://tilauscope.org/media/roast-live-20260824.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon-32x32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="theme-color" content="#1E1E2E">
+<meta name="theme-color" content="#17151c">
 <meta name="color-scheme" content="dark light">
-
 <link rel="stylesheet" href="site.css">
 <script src="site.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
-<a class="skip" href="#start">Skip to content</a>
-
-<header class="topbar">
-  <a class="brand" href="#top">
+<header class="topbar" id="top">
+  <a class="brand" href="#top" aria-label="TilauScope home">
     <svg class="brand-mark" viewBox="0 0 512 512" aria-hidden="true" focusable="false">
-      <defs>
-        <mask id="crease" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
-          <rect x="0" y="0" width="512" height="512" fill="#fff"></rect>
-          <path d="M 256,104 C 294,170 218,212 256,256 C 294,300 218,342 256,408" fill="none" stroke="#000" stroke-width="36" stroke-linecap="round"></path>
-        </mask>
-      </defs>
-      <g transform="rotate(-28 256 256)">
-        <path mask="url(#crease)" fill="currentColor" d="M 256,51 C 338.8,51 406,142.8 406,256 C 406,369.2 338.8,461 256,461 C 173.2,461 106,369.2 106,256 C 106,142.8 173.2,51 256,51 Z"></path>
-      </g>
+      <defs><mask id="crease" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect x="0" y="0" width="512" height="512" fill="#fff"></rect><path d="M256 104c38 66-38 108 0 152s-38 86 0 152" fill="none" stroke="#000" stroke-width="36" stroke-linecap="round"></path></mask></defs>
+      <g transform="rotate(-28 256 256)"><path mask="url(#crease)" fill="currentColor" d="M256 51c82.8 0 150 91.8 150 205s-67.2 205-150 205-150-91.8-150-205S173.2 51 256 51Z"></path></g>
     </svg>
     <span class="brand-name">TilauScope</span>
   </a>
-  <nav class="topnav" aria-label="Main">
-    <a href="https://docs.tilauscope.org" target="_blank" rel="noopener noreferrer">Documentation</a>
-    <a href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">Source</a>
-    <a class="topnav-cta" href="https://github.com/neuralldev/tilauscope_fork/releases/latest" target="_blank" rel="noopener noreferrer">Download</a>
+  <nav class="topnav" aria-label="Main navigation">
+    <a href="#why">Why TilauScope</a>
+    <a href="#workflow">Workflow</a>
+    <a href="https://docs.tilauscope.org" target="_blank" rel="noopener noreferrer">Docs</a>
+    <a class="nav-cta" href="https://github.com/neuralldev/tilauscope_fork/releases/latest" target="_blank" rel="noopener noreferrer">Download free</a>
   </nav>
 </header>
 
-<main id="top">
-
-  <!-- ————————————————————————— hero ————————————————————————— -->
-  <section class="hero">
-   <div class="hero-lead">
+<main id="main">
+  <section class="hero" aria-labelledby="hero-title">
     <div class="hero-copy">
-      <p class="eyebrow">Free software · macOS and Windows</p>
-      <h1>Artisan records the roast.<br><em>TilauScope tells you what to do next.</em></h1>
-      <p class="lede">
-        A guided assistant for people roasting 250&nbsp;g at a time. Before you charge, it builds
-        a plan from the coffee, the batch and your machine. While the drum turns, it says which
-        lever to move and when — and it learns those numbers from your own past roasts of the
-        same bean, not from a reference curve.
-      </p>
+      <p class="eyebrow"><span class="signal" aria-hidden="true"></span> Guided roasting, built on Artisan</p>
+      <h1 id="hero-title">Your roast,<br><em>with a next move.</em></h1>
+      <p class="lede">TilauScope turns the data already inside Artisan into useful decisions: a plan before charge, clear guidance while the drum turns, and a better starting point for the next batch.</p>
       <div class="cta-row">
-        <a class="btn btn-primary" href="https://github.com/neuralldev/tilauscope_fork/releases/latest" target="_blank" rel="noopener noreferrer">
-          Download the latest release
-        </a>
-        <a class="btn btn-ghost" href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">
-          Browse the source
-        </a>
+        <a class="btn btn-primary" href="https://github.com/neuralldev/tilauscope_fork/releases/latest" target="_blank" rel="noopener noreferrer">Download TilauScope <span aria-hidden="true">↗</span></a>
+        <a class="btn btn-secondary" href="#product">See it in action <span aria-hidden="true">↓</span></a>
       </div>
-      <p class="cta-note">Signed and notarised on macOS · installer on Windows · AGPL&nbsp;v3</p>
+      <ul class="trust-list" aria-label="Availability"><li>macOS &amp; Windows</li><li>Free &amp; open source</li><li>Works locally</li></ul>
     </div>
 
-    <figure class="hero-photo">
-      <img src="hero.png" width="1000" height="1250" decoding="async"
-           alt="Roasted beans dropping from the roasting chamber into the cooling tray.">
-    </figure>
-   </div>
+    <div class="hero-visual" aria-label="TilauScope live roast guidance preview">
+      <div class="hero-orbit orbit-one" aria-hidden="true"></div><div class="hero-orbit orbit-two" aria-hidden="true"></div>
+      <div class="decision-card decision-card-main">
+        <div class="decision-topline"><span>Live guidance</span><span class="live-pill">On plan</span></div>
+        <p class="decision-action">Reduce heat to <strong>70%</strong></p>
+        <p class="decision-detail">in 12 seconds · first crack expected 09:24</p>
+        <div class="mini-curve" aria-hidden="true"><svg viewBox="0 0 540 150" preserveAspectRatio="none"><path class="mini-grid" d="M0 32H540M0 76H540M0 120H540"></path><path class="curve-muted" d="M0 130C70 108 115 106 160 80s85-28 130-44 96-8 130-18 82-12 120-15"></path><path class="curve-main" d="M0 138C50 135 95 115 130 92s70-44 110-48 76 8 114-5 76-29 112-17 49 10 74 1"></path><circle cx="466" cy="22" r="5"></circle></svg></div>
+        <div class="decision-stats"><span><small>Bean</small>182.8 °C</span><span><small>RoR</small>8.3 °/min</span><span><small>Phase</small>Maillard</span></div>
+      </div>
+      <div class="float-card float-history"><span>↗</span><strong>Learned from 6 roasts</strong><small>same coffee · similar batch</small></div>
+      <div class="float-card float-stock"><span>14.5%</span><strong>Development target</strong><small>updated live</small></div>
+    </div>
+  </section>
 
-    <figure class="scope" id="start">
-      <figcaption class="scope-head">
-        <span class="scope-title">Ethiopia Guji · Natural · 250&nbsp;g</span>
-        <span class="scope-tag" data-scope-phase>Charge</span>
-      </figcaption>
+  <section class="proof-strip" aria-label="Product foundations">
+    <div><strong>Artisan underneath</strong><span>The trusted roasting engine stays intact.</span></div>
+    <div><strong>Your history, not a template</strong><span>Plans come from comparable batches of the same coffee.</span></div>
+    <div><strong>One continuous record</strong><span>Green stock, roast, result and brew stay connected.</span></div>
+  </section>
 
-      <!-- The curve is drawn to canvas rather than hand-authored as path data:
-           it comes from the same milestone list the readouts do, so the two can
-           never drift apart. -->
-      <canvas class="scope-canvas" width="1120" height="520"
-              data-roast-curve
-              role="img"
-              aria-label="Bean temperature curve of a 250 g natural Ethiopia roast: charge at 200 °C, turning point at 1:28, dry end at 4:55, first crack at 9:26, drop at 11:12 and 205 °C."></canvas>
+  <section class="section outcomes" id="why" aria-labelledby="why-title">
+    <div class="section-intro"><p class="eyebrow">A useful layer, not more noise</p><h2 id="why-title">Less second-guessing.<br><em>More repeatable coffee.</em></h2><p>TilauScope is designed for home and small-batch roasters who want Artisan’s depth without having to interpret every signal alone, every time.</p></div>
+    <div class="outcome-grid">
+      <article class="outcome-card"><span class="card-number">01</span><div class="card-icon" aria-hidden="true">→</div><h3>Decide while it matters</h3><p>See the one action that matters now — heat, air, charge or drop — with timing based on where this roast is actually heading.</p><span class="card-proof">Live phase verdicts · drop countdown · crash &amp; flick warnings</span></article>
+      <article class="outcome-card"><span class="card-number">02</span><div class="card-icon" aria-hidden="true">≈</div><h3>Repeat what worked</h3><p>Build the next plan from your own comparable roasts, then see whether the batch is ahead or behind in seconds.</p><span class="card-proof">Same bean · similar batch size · your machine</span></article>
+      <article class="outcome-card"><span class="card-number">03</span><div class="card-icon" aria-hidden="true">↻</div><h3>Close the loop</h3><p>Connect green-coffee identity, roast result, colour, tasting and brew so each batch teaches the next one something useful.</p><span class="card-proof">BeanCave · roast comparison · brew planning</span></article>
+    </div>
+  </section>
 
+  <section class="demo-section" id="product" aria-labelledby="demo-title">
+    <div class="demo-heading"><div><p class="eyebrow">A roast in motion</p><h2 id="demo-title">The curve stays technical.<br><em>The decision becomes clear.</em></h2></div><p>This live illustration is generated in the browser from one roast timeline. Watch the advice change as the batch moves from charge to drop.</p></div>
+    <figure class="scope">
+      <figcaption class="scope-head"><span class="scope-title"><i aria-hidden="true"></i> Ethiopia Guji · Natural · 250 g</span><span class="scope-tag" data-scope-phase>Charge</span></figcaption>
+      <canvas class="scope-canvas" width="1120" height="520" data-roast-curve role="img" aria-label="Animated bean temperature curve of a 250 gram natural Ethiopia roast, with live phase guidance from charge to drop."></canvas>
       <div class="readouts">
-        <div class="readout">
-          <span class="readout-label">Time</span>
-          <span class="readout-value" data-readout="time">00:00</span>
-        </div>
-        <div class="readout readout-bt">
-          <span class="readout-label">Bean</span>
-          <span class="readout-value" data-readout="bt">200<span class="unit">°C</span></span>
-        </div>
-        <div class="readout readout-ror">
-          <span class="readout-label">Rate of rise</span>
-          <span class="readout-value" data-readout="ror">0.0<span class="unit">°/min</span></span>
-        </div>
-        <div class="readout readout-say">
-          <span class="readout-label">TilauScope says</span>
-          <span class="readout-value readout-say-text" data-readout="say">Charge now — drum at 200&nbsp;°C</span>
-        </div>
+        <div class="readout"><span class="readout-label">Time</span><span class="readout-value" data-readout="time">00:00</span></div>
+        <div class="readout readout-bt"><span class="readout-label">Bean</span><span class="readout-value" data-readout="bt">200<span class="unit">°C</span></span></div>
+        <div class="readout readout-ror"><span class="readout-label">Rate of rise</span><span class="readout-value" data-readout="ror">0.0<span class="unit">°/min</span></span></div>
+        <div class="readout readout-say"><span class="readout-label">TilauScope says</span><span class="readout-value readout-say-text" data-readout="say">Charge now — drum at 200 °C</span></div>
       </div>
     </figure>
   </section>
 
-  <!-- ———————————————————— what it actually is ———————————————————— -->
-  <section class="band">
-    <div class="prose">
-      <h2>It is Artisan, with an opinion added on top</h2>
-      <p>
-        <a href="https://github.com/artisan-roaster-scope/artisan" target="_blank" rel="noopener noreferrer">Artisan
-        Roaster Scope</a> is a professional-grade instrument. It records and plots everything,
-        exposes every setting it has, and leaves every decision to whoever is operating it. That
-        is exactly right for a professional, and it is a great deal to carry on a Saturday
-        morning with a 250&nbsp;g drum.
-      </p>
-      <p>
-        TilauScope changes none of that. The curve, the recording, the devices and the alarms are
-        Artisan's, untouched underneath. What TilauScope adds sits above them: a layer that has a
-        view on what should happen next, and says so out loud. You can switch it off — <span
-        class="term">Expert</span> level puts Artisan's full control panel back in front and the
-        extra layer steps back.
-      </p>
-    </div>
+  <section class="section workflow" id="workflow" aria-labelledby="workflow-title">
+    <div class="section-intro section-intro-wide"><p class="eyebrow">One workflow, end to end</p><h2 id="workflow-title">From green coffee to the<br><em>next better batch.</em></h2></div>
+    <article class="workflow-row">
+      <div class="workflow-copy"><span class="step-label">Before · Know what you are roasting</span><h3>Give every coffee a memory.</h3><p>BeanCave keeps origin, process, density, stock, water activity and tasting notes together. Pick the coffee and TilauScope can judge the batch before it starts.</p><ul><li>Stock and sack management</li><li>Supplier-assisted coffee entry</li><li>QR labels that reopen the record</li></ul></div>
+      <figure class="product-shot"><img src="media/beancave-20260824.png" width="1600" height="1054" loading="lazy" decoding="async" alt="BeanCave green-coffee record with stock, origin, process and physical measures."></figure>
+    </article>
+    <article class="workflow-row workflow-row-reverse">
+      <div class="workflow-copy"><span class="step-label">During · Keep one eye on the roast</span><h3>Turn a dense graph into a next move.</h3><p>Artisan keeps recording every probe and event. The TilauScope panel adds a focused view of the phase, the deviation from plan and the next useful intervention.</p><ul><li>Guidance announced before it is due</li><li>First-crack detection and drop projection</li><li>Guided and Expert layouts in one click</li></ul></div>
+      <figure class="product-shot"><img src="media/roast-live-20260824.png" width="1600" height="782" loading="lazy" decoding="async" alt="TilauScope roasting screen showing controls, live curves and phase readouts."></figure>
+    </article>
+    <article class="workflow-row">
+      <div class="workflow-copy"><span class="step-label">After · Learn without guesswork</span><h3>Compare batches, not just curves.</h3><p>Overlay comparable roasts, align their milestones and read the result against your own history. Correct a late mark, add colour and tasting, then feed the outcome into the next plan.</p><ul><li>Multi-roast consistency view</li><li>Phase and development analysis</li><li>Resting reminders and brew recipes</li></ul></div>
+      <figure class="product-shot"><img src="media/roast-compare-20260824.png" width="1600" height="990" loading="lazy" decoding="async" alt="TilauScope Roast Viewer comparing three batches with aligned phase bars."></figure>
+    </article>
   </section>
 
-  <!-- ————————————————————— the roast, in order ————————————————————— -->
-  <section class="band band-deep phases" aria-labelledby="phases-title">
-    <div class="prose">
-      <p class="eyebrow">Through one roast</p>
-      <h2 id="phases-title">What it says, and when</h2>
-      <p>
-        The order below is the order it happens in. Each phase is a different question, so the
-        assistant answers a different one at each.
-      </p>
-    </div>
-
-    <ol class="phase-list">
-      <li class="phase" data-phase>
-        <div class="phase-rail" aria-hidden="true"><span class="phase-dot"></span></div>
-        <div class="phase-body">
-          <p class="phase-clock">before 00:00</p>
-          <h3>Charge and drying</h3>
-          <p>
-            The preparation sheet already knows the coffee, reads your scale, and judges the batch
-            before it starts — too large for the drum, too dense for the heat you have. It brings
-            the machine to charge temperature on its own, using a controller that has learned how
-            your roaster overshoots. The plan exists before the beans do.
-          </p>
-        </div>
-      </li>
-
-      <li class="phase" data-phase>
-        <div class="phase-rail" aria-hidden="true"><span class="phase-dot"></span></div>
-        <div class="phase-body">
-          <p class="phase-clock">04:55 · dry end</p>
-          <h3>Maillard</h3>
-          <p>
-            Heat reductions are announced <em>before</em> they are due, not reported after. A live
-            reading tells you whether you are ahead of or behind the plan, in seconds rather than
-            in vague terms, and the assistant re-derives the phase you are aiming for from your own
-            previous roasts of this bean at a comparable batch size.
-          </p>
-        </div>
-      </li>
-
-      <li class="phase" data-phase>
-        <div class="phase-rail" aria-hidden="true"><span class="phase-dot"></span></div>
-        <div class="phase-body">
-          <p class="phase-clock">09:26 · first crack</p>
-          <h3>Development</h3>
-          <p>
-            First crack is detected and offered for marking rather than left to your ear alone. A
-            drop countdown accounts for the curve flattening out instead of extrapolating a
-            straight line, and a projected development ratio updates as it goes. If the curve
-            crashes or flicks, you hear about it while there is still time to answer.
-          </p>
-        </div>
-      </li>
-
-      <li class="phase" data-phase>
-        <div class="phase-rail" aria-hidden="true"><span class="phase-dot"></span></div>
-        <div class="phase-body">
-          <p class="phase-clock">11:12 · drop</p>
-          <h3>After the drop</h3>
-          <p>
-            A summary while it is still fresh, then the record read back against your own history —
-            not against a generic target. Finish the entry later, compare several roasts side by
-            side, correct a milestone you marked a beat late. When the coffee has rested enough to
-            brew, it says so, and hands you a recipe calculated from that roast.
-          </p>
-        </div>
-      </li>
-    </ol>
+  <section class="artisan-section" aria-labelledby="artisan-title">
+    <div class="artisan-copy"><p class="eyebrow">Artisan does. TilauScope adds.</p><h2 id="artisan-title">Nothing you trust is taken away.</h2><p>TilauScope is a modified version of Artisan Roaster Scope. Its curve engine, device support, recording and expert controls remain available underneath.</p><p>The added layer organizes the work around the roaster: prepare, guide, review, repeat. Switch to <span class="term">Expert</span> and the full Artisan control panel returns.</p><a class="text-link" href="https://docs.tilauscope.org" target="_blank" rel="noopener noreferrer">Explore the documentation <span aria-hidden="true">↗</span></a></div>
+    <div class="stack-visual" aria-label="Product layer diagram"><div class="stack-layer stack-tilau"><span>Guidance · workflow · memory</span><strong>TilauScope</strong></div><div class="stack-connector" aria-hidden="true"></div><div class="stack-layer stack-artisan"><span>Curves · recording · devices</span><strong>Artisan Roaster Scope</strong></div></div>
   </section>
 
-  <!-- ———————————————————— around the roast ———————————————————— -->
-  <section class="band" aria-labelledby="around-title">
-    <div class="prose">
-      <p class="eyebrow">Around the drum</p>
-      <h2 id="around-title">A coffee has an identity</h2>
-      <p>
-        None of the learning above is possible without it. Two roasts of the same bag have to be
-        two roasts of <em>one coffee</em>, not two unrelated files — so the fork carries a database
-        for the green side of the shelf as well as the roasted one.
-      </p>
-    </div>
-
-    <div class="grid">
-      <article class="card">
-        <h3>BeanCave</h3>
-        <p>
-          A record per green coffee: stock, provenance, cupping notes, and assisted entry that
-          reads a supplier page for you. Every roast points back to it.
-        </p>
-      </article>
-      <article class="card">
-        <h3>Sacks and conservation</h3>
-        <p>
-          Bringing in a new bag is a guided step. Water activity is tracked per sack, and the
-          dashboard flags the ones drifting towards trouble before you taste it.
-        </p>
-      </article>
-      <article class="card">
-        <h3>Labels and QR</h3>
-        <p>
-          Printed labels for coffees, roasts and sacks, with the physical label pool tracked as
-          reusable. Scanning one opens its record — from a webcam or from your phone.
-        </p>
-      </article>
-      <article class="card">
-        <h3>Piloting from a phone</h3>
-        <p>
-          Pair a phone and drive the roast from beside the machine, with a deadman safeguard that
-          takes over if the connection drops mid-roast.
-        </p>
-      </article>
-    </div>
+  <section class="section hardware" id="hardware" aria-labelledby="hardware-title">
+    <div class="hardware-heading"><div><p class="eyebrow">Built for a real roasting bench</p><h2 id="hardware-title">Your instruments,<br><em>in one conversation.</em></h2></div><p>Dedicated integrations extend Artisan’s own broad device support, so measurements can inform the workflow instead of living in separate apps.</p></div>
+    <ul class="device-list"><li><strong>Skywalker V2</strong><span>Roaster control</span></li><li><strong>DiFluid AirWave</strong><span>Extraction</span></li><li><strong>DiFluid Omniflux</strong><span>Colour &amp; acoustics</span></li><li><strong>Acaia</strong><span>Scales</span></li><li><strong>Niimbot B21S</strong><span>Labels</span></li><li><strong>TilauAmbient</strong><span>Ambient probe</span></li><li><strong>Lebrew AquaGauge</strong><span>Water activity</span></li></ul>
   </section>
 
-  <!-- ———————————————————— hardware ———————————————————— -->
-  <section class="band band-deep" aria-labelledby="hw-title">
-    <div class="prose">
-      <p class="eyebrow">Talks to</p>
-      <h2 id="hw-title">The bench it was built on</h2>
-      <p>
-        Each device is integrated for what it actually adds, and the documentation states its
-        limits as plainly as its uses. Artisan's own long list of supported meters keeps working
-        underneath.
-      </p>
-    </div>
-    <ul class="chips">
-      <li>Skywalker V2 <span>roaster</span></li>
-      <li>DiFluid AirWave <span>extraction</span></li>
-      <li>DiFluid Omniflux <span>colour · acoustics</span></li>
-      <li>TilauAmbient <span>ambient probe</span></li>
-      <li>Acaia <span>scale</span></li>
-      <li>Niimbot B21S <span>labels</span></li>
-      <li>Lebrew AquaGauge <span>water activity</span></li>
-    </ul>
+  <section class="final-cta" aria-labelledby="final-title">
+    <div class="final-glow" aria-hidden="true"></div><p class="eyebrow">Free software · AGPL v3</p><h2 id="final-title">Make the next batch<br><em>less of a guess.</em></h2><p>Download TilauScope for macOS or Windows. Keep your data local, keep Artisan’s depth, and add a guide that learns your roasting bench.</p>
+    <div class="cta-row cta-centered"><a class="btn btn-primary" href="https://github.com/neuralldev/tilauscope_fork/releases/latest" target="_blank" rel="noopener noreferrer">Get the latest release <span aria-hidden="true">↗</span></a><a class="btn btn-secondary" href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">View source</a></div><span class="final-note">Signed and notarised on macOS · installer on Windows · no account required</span>
   </section>
 
-  <!-- ———————————————————— the fork ———————————————————— -->
-  <section class="band band-fork" aria-labelledby="fork-title">
-    <div class="fork">
-      <div class="fork-copy">
-        <p class="eyebrow">Free software</p>
-        <h2 id="fork-title">All of it is on GitHub</h2>
-        <p>
-          Source, releases and issue tracker live in one public repository. Builds for macOS and
-          Windows are produced there and attached to each release.
-        </p>
-        <p>
-          For anything that is not a bug report — a question about the app, the supported hardware,
-          or the project itself — write to
-          <a href="mailto:tilauscope@gmail.com">tilauscope@gmail.com</a>.
-        </p>
-        <div class="cta-row">
-          <a class="btn btn-primary" href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">
-            neuralldev/tilauscope_fork
-          </a>
-          <a class="btn btn-ghost" href="https://github.com/neuralldev/tilauscope_fork/releases/latest" target="_blank" rel="noopener noreferrer">
-            Releases
-          </a>
-        </div>
-      </div>
-
-      <aside class="notice">
-        <h3>Attribution</h3>
-        <p>
-          TilauScope is a modified version of
-          <a href="https://github.com/artisan-roaster-scope/artisan" target="_blank" rel="noopener noreferrer">Artisan
-          Roaster Scope</a>, copyright Marko Luther and the Artisan contributors. It is
-          <strong>not affiliated with, nor endorsed by, the Artisan project.</strong>
-          Modifications by Tilau began in 2025 and are ongoing.
-        </p>
-        <p>
-          Please report TilauScope problems on the TilauScope tracker, never on Artisan's.
-          Artisan's own code stays under the GPL; the combined work is distributed under the
-          <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU
-          Affero General Public License v3</a>.
-        </p>
-      </aside>
-    </div>
-  </section>
-
+  <section class="legal-band" aria-labelledby="legal-title"><h2 id="legal-title">Attribution</h2><p>TilauScope is a modified version of <a href="https://github.com/artisan-roaster-scope/artisan" target="_blank" rel="noopener noreferrer">Artisan Roaster Scope</a>, copyright Marko Luther and the Artisan contributors. It is not affiliated with, nor endorsed by, the Artisan project. Please report TilauScope problems on the <a href="https://github.com/neuralldev/tilauscope_fork/issues" target="_blank" rel="noopener noreferrer">TilauScope tracker</a>.</p></section>
 </main>
 
 <footer class="footer">
-  <div class="footer-inner">
-    <p class="footer-privacy">
-      This page loads nothing from anywhere else. No fonts, scripts, images or badges from third
-      parties, no analytics, no cookies, no storage. Nothing you do here is recorded.
-    </p>
-    <nav class="footer-nav" aria-label="Footer">
-      <a href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">Source</a>
-      <a href="https://docs.tilauscope.org" target="_blank" rel="noopener noreferrer">Documentation</a>
-      <a href="https://github.com/neuralldev/tilauscope_fork/issues" target="_blank" rel="noopener noreferrer">Report a problem</a>
-      <a href="mailto:tilauscope@gmail.com">Contact</a>
-      <a href="https://github.com/neuralldev/tilauscope_fork/blob/main/NOTICE" target="_blank" rel="noopener noreferrer">Notice</a>
-      <a href="https://github.com/neuralldev/tilauscope_fork/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">AGPL v3</a>
-    </nav>
-    <p class="footer-legal">
-      © 2025–2026 Tilau · Type set in Fraunces and JetBrains Mono, both under the SIL Open Font License.
-    </p>
-  </div>
+  <div class="footer-brand"><span class="brand-name">TilauScope</span><p>A guided roasting layer for Artisan.</p></div>
+  <nav class="footer-nav" aria-label="Footer navigation"><a href="https://docs.tilauscope.org" target="_blank" rel="noopener noreferrer">Documentation</a><a href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">Source</a><a href="https://github.com/neuralldev/tilauscope_fork/discussions" target="_blank" rel="noopener noreferrer">Community</a><a href="mailto:tilauscope@gmail.com">Contact</a><a href="https://github.com/neuralldev/tilauscope_fork/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">AGPL v3</a></nav>
+  <p class="footer-privacy">No analytics. No cookies. No third-party assets. © 2025–2026 Tilau.</p>
 </footer>
-
 </body>
 </html>

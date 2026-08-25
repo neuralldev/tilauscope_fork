@@ -26,7 +26,7 @@ class ProjectionParams:
     min_points: int = 8
     max_sample_age_s: float = 5.0
     max_eta_s: float = 8.0 * 60.0
-    min_ror: float = 0.5
+    min_ror: float = 0.5          # °C/min — scaled to the display unit per call
     max_relative_residual: float = 0.35
 
 
@@ -67,7 +67,10 @@ class OperatorTrajectoryProjector:
         target_bt: float,
         phase_started_s: float,
         fc_started_s: float | None = None,
+        ror_scale: float = 1.0,
     ) -> TrajectoryProjection | None:
+        """`ror_scale` turns the °C/min floor into the unit the samples carry."""
+        min_ror = self.p.min_ror * ror_scale
         samples = list(self._samples)
         if len(samples) < self.p.min_points:
             return None
@@ -97,7 +100,7 @@ class OperatorTrajectoryProjector:
         slope = 0.0 if den <= 1e-12 else (
             sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys, strict=True)) / den)
         intercept = mean_y - slope * mean_x  # predicted RoR at newest sample
-        if intercept < self.p.min_ror:
+        if intercept < min_ror:
             return None
 
         eta_min = self._solve_eta_minutes(delta_bt, intercept, slope)
@@ -107,13 +110,13 @@ class OperatorTrajectoryProjector:
         if eta_s < 0.0 or eta_s > self.p.max_eta_s:
             return None
         terminal = intercept + slope * eta_min
-        if terminal < self.p.min_ror:
+        if terminal < min_ror:
             return None
 
         fitted = [intercept + slope * x for x in xs]
         rms = math.sqrt(sum(
             (actual - fit) ** 2 for actual, fit in zip(ys, fitted, strict=True)) / len(ys))
-        relative_residual = rms / max(abs(mean_y), self.p.min_ror)
+        relative_residual = rms / max(abs(mean_y), min_ror)
         if relative_residual > self.p.max_relative_residual:
             return None
         span_conf = min(1.0, span_s / self.p.window_s)

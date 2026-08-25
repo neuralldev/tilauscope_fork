@@ -1,14 +1,6 @@
 /* ===========================================================================
-   tilauscope.org — the hero instrument, and the phase rail.
-
-   The curve is not decoration and it is not traced art: it is interpolated
-   from one list of milestones, and the readouts below it are read from the
-   same list. There is no second copy of the roast to fall out of step.
-
-   Nothing here touches the network or any storage. If that ever stops being
-   true, the Content-Security-Policy in index.html has to be widened, which is
-   the moment to reconsider.
-   =========================================================================== */
+   tilauscope.org — the live roast instrument.
+  =========================================================================== */
 
 (function () {
   "use strict";
@@ -383,7 +375,28 @@
   function boot() {
     readTheme();
     if (!resize()) { return; }
-    if (reduced.matches) { still(); } else { play(); }
+    if (reduced.matches) {
+      still();
+      return;
+    }
+
+    // The demonstration now sits below the marketing introduction. Keep it at
+    // charge until it is actually visible, otherwise the whole roast would
+    // finish while the visitor is still reading the hero.
+    lastUntil = 0;
+    render(0);
+    updateReadouts(0);
+    if ("IntersectionObserver" in window) {
+      var demoWatcher = new IntersectionObserver(function (entries) {
+        if (entries[0] && entries[0].isIntersecting) {
+          demoWatcher.disconnect();
+          play();
+        }
+      }, { rootMargin: "0px 0px -18% 0px", threshold: 0.18 });
+      demoWatcher.observe(canvas);
+    } else {
+      play();
+    }
   }
 
   // Redraw on anything that changes the geometry or the palette. The curve is
@@ -414,18 +427,4 @@
   }
 
   boot();
-
-  /* --- phase rail -------------------------------------------------------- *
-   * The dot on the rail lights for the phase you are reading. It is a
-   * position indicator, nothing more — no content depends on it.            */
-
-  var phases = document.querySelectorAll("[data-phase]");
-  if (phases.length && "IntersectionObserver" in window) {
-    var watcher = new IntersectionObserver(function (entries) {
-      for (var i = 0; i < entries.length; i++) {
-        entries[i].target.classList.toggle("is-live", entries[i].isIntersecting);
-      }
-    }, { rootMargin: "-42% 0px -42% 0px" });
-    for (var j = 0; j < phases.length; j++) { watcher.observe(phases[j]); }
-  }
 })();

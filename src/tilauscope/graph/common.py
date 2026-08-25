@@ -74,6 +74,29 @@ def channel_order(visible: object) -> list[int]:
 DROP: Final[int] = 6
 
 
+#: A share of an ABSOLUTE reading is not a physical band unless it is judged in
+#: °C: the two scales share no origin, so 5 % of 392 °F is 10.9 °C where 5 % of
+#: 200 °C is 10. Every approach band in TilauScope goes through `within_share`.
+def delta_scale(mode: str) -> float:
+    """Factor turning a °C difference or rate into the display unit."""
+    return 1.8 if mode == 'F' else 1.0
+
+
+def within_share(delta: float, target: float, share: float, mode: str = 'C') -> bool:
+    """True when `delta` is inside `share` of `target`, both in display unit.
+
+    The judgement is made in the °C frame so an operator reading °F gets the
+    same physical band, not a wider one.
+    """
+    try:
+        if target <= 0.0:
+            return False
+        target_c = (target - 32.0) / 1.8 if mode == 'F' else target
+        return abs(delta) / delta_scale(mode) <= share * target_c
+    except (TypeError, ValueError):
+        return False
+
+
 def marked(timeindex: Any, i: int) -> bool:
     """True if milestone `i` has been placed.
 

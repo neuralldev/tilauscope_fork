@@ -70,22 +70,48 @@ _ARRIVAL_PAD: Final[float] = 20.0
 _PREHEAT_SPAN: Final[float] = _TIME_MAX
 _LEAD_IN: Final[float] = 60.0     # the minute before charge, kept in view
 _TAIL_OUT: Final[float] = 60.0    # ...and ends one minute after drop
-_TEMP_MIN: Final[float] = 40.0
-_TEMP_MAX: Final[float] = 240.0
-_TEMP_STEP: Final[float] = 40.0
+# The engine draws in °C — one frame inside. The SCALES, though, belong to the
+# operator: an axis is read, not computed. Both are therefore stated in the
+# display unit on round figures, and converted once into the °C frame below.
+# Reading 104 · 176 · 248 up the side of a chart is not reading Fahrenheit.
+_TEMP_AXIS: Final[dict[str, tuple[float, float, float]]] = {
+    #        lo      hi     step
+    'C': (  40.0,  240.0,   40.0),
+    'F': ( 100.0,  460.0,   60.0),
+}
+#: (max, step) for the rise axis, same rule. A rate carries no offset.
+_ROR_AXIS: Final[dict[str, tuple[float, float]]] = {
+    'C': ( 24.0,  8.0),
+    'F': ( 45.0, 15.0),
+}
 _ROR_MIN: Final[float] = 0.0
-_ROR_MAX: Final[float] = 24.0
-_ROR_STEP: Final[float] = 8.0
+
+
+def _temp_axis_c(mode: str) -> tuple[float, float, float]:
+    """The temperature axis in °C — bounds and step, from the operator's unit."""
+    lo, hi, step = _TEMP_AXIS.get(mode, _TEMP_AXIS['C'])
+    return (convertTemp(lo, mode, 'C'), convertTemp(hi, mode, 'C'),
+            step / (1.8 if mode == 'F' else 1.0))
+
+
+def _ror_axis_c(mode: str) -> tuple[float, float]:
+    """The rise axis in °C/min — ceiling and step, from the operator's unit."""
+    top, step = _ROR_AXIS.get(mode, _ROR_AXIS['C'])
+    scale = 1.8 if mode == 'F' else 1.0
+    return top / scale, step / scale
 
 # ── layout ───────────────────────────────────────────────────────────────────
-_MARGIN_LEFT: Final[int] = 56      # room for temp axis labels
-_MARGIN_RIGHT: Final[int] = 60     # room for RoR axis labels
+_MARGIN_LEFT: Final[int] = 68      # room for temp axis labels, and for the lane names
+_MARGIN_RIGHT: Final[int] = 68     # room for RoR axis labels
 _MARGIN_TOP: Final[int] = 36       # unit captions, and the view selector above the plot
-_MARGIN_BOTTOM: Final[int] = 56    # time axis labels, then the legend row beneath them
+_MARGIN_BOTTOM: Final[int] = 62    # time axis labels, then the legend row beneath them
 
 _GRAIN_PEN_WIDTH: Final[float] = 3.0
 _ROR_PEN_WIDTH: Final[float] = 2.0
 _MACHINE_ROR_PEN_WIDTH: Final[float] = 1.6
+#: Reference traces keep the probe hues, but sit far enough behind the live
+#: roast that the operator never has to ask which line is the one being driven.
+_REFERENCE_ALPHA: Final[int] = 72
 
 # Curve colours come from Artisan's own palette — the same source the readouts
 # beside the chart are painted from, so the two can never disagree about which
@@ -99,7 +125,9 @@ _COLOR_GRAIN: Final[str] = '#89B4FA'          # blue — grain temperature
 _COLOR_AIR: Final[str] = '#FAB387'            # peach — air temperature
 _AIR_PEN_WIDTH: Final[float] = 1.8
 
-_AXIS_FONT_PT: Final[int] = 9
+# Axis figures and lane names are read at a glance from a step back, not
+# studied: both were a size that had to be squinted at.
+_AXIS_FONT_PT: Final[int] = 11
 _TITLE_FONT_PT: Final[int] = 12
 #: Room the coach toggle takes in the top margin, so the title clears it.
 _TOGGLE_CLEARANCE: Final[float] = 36.0
@@ -125,15 +153,15 @@ _MARK_DOT_RADIUS: Final[float] = 4.0
 # single axis makes them cross constantly and asks the eye to untangle
 # comparisons that mean nothing. Separate baselines make crossing impossible,
 # and each channel is named beside its own lane instead of in a legend.
-_LANE_ROW_HEIGHT: Final[float] = 24.0
+_LANE_ROW_HEIGHT: Final[float] = 26.0
 _LANE_ROW_GAP: Final[float] = 4.0
 _LANE_MAX_SHARE: Final[float] = 0.34
 _LANE_GAP: Final[float] = 12.0
-_LEGEND_FONT_PT: Final[int] = 8
+_LEGEND_FONT_PT: Final[int] = 10
 _LANE_MAX: Final[float] = 100.0
 _LANE_PEN_WIDTH: Final[float] = 1.6
 _LANE_FILL_ALPHA: Final[int] = 70
-_LANE_MARK_HEIGHT: Final[float] = 17.0   # a channel shown as gestures needs no amplitude
+_LANE_MARK_HEIGHT: Final[float] = 19.0   # a channel shown as gestures needs no amplitude
 _LANE_AREA_UNITS: Final[float] = 2.4     # the traced channel is worth this many mark rows
 _BURNER_INDEX: Final[int] = 3            # Air=0, Drum=1, Damper=2, Burner=3
 
@@ -149,6 +177,114 @@ _HOVER_FONT_PT: Final[int] = 10
 _SHOW_AIR_KEY: Final[str] = 'tilauscope/curve_show_air_temperature'
 _SHOW_MACHINE_RESPONSE_KEY: Final[str] = 'tilauscope/curve_show_machine_response'
 _LANE_MODE_KEY: Final[str] = 'tilauscope/curve_lane_mode'
+
+
+_background_rise_cache: dict[str, Any] = {}
+
+
+def _reference_colour(colour: str) -> QColor:
+    """The live trace's hue at reference strength."""
+    result = QColor(colour)
+    result.setAlpha(_REFERENCE_ALPHA)
+    return result
+
+
+def _background_rise_series(qmc: Any, *, machine: bool = False) -> list[Any]:
+    """Once recompute one background rate-of-rise series.
+
+    Artisan's held ``delta1B``/``delta2B`` may still belong to the previous
+    background until its own canvas redraws. TilauScope can paint first,
+    especially while a profile is loaded during monitoring, so it computes
+    from the current temperature arrays instead. The cache follows profile and
+    array identity: loading another background invalidates it without adding
+    recurring work to the paint path.
+    """
+    try:
+        timex = qmc.timeB
+        stemp1 = qmc.stemp1B if len(qmc.stemp1B) == len(timex) else qmc.temp1B
+        stemp2 = qmc.stemp2B if len(qmc.stemp2B) == len(timex) else qmc.temp2B
+        timeindex = qmc.timeindexB
+        charge = int(timeindex[0])
+        drop = int(timeindex[6])
+    except (AttributeError, IndexError, TypeError, ValueError):
+        return []
+    if not timex or not 0 <= charge < len(timex):
+        return []
+
+    key = (id(qmc.backgroundprofile), id(timex), id(stemp1), id(stemp2),
+           len(timex), float(timex[0]),
+           float(timex[-1]), charge, drop,
+           getattr(qmc, 'background_profile_sampling_interval', None))
+    if (_background_rise_cache.get('owner') is not qmc
+            or _background_rise_cache.get('key') != key):
+        _background_rise_cache.clear()
+        _background_rise_cache['owner'] = qmc
+        _background_rise_cache['key'] = key
+        try:
+            kwargs: dict[str, Any] = {}
+            interval = getattr(qmc, 'background_profile_sampling_interval', None)
+            if interval is not None and float(interval) > 0.0:
+                kwargs['deltaETsamples'] = max(
+                    1, int(round(float(qmc.deltaETspan) / float(interval))))
+                kwargs['deltaBTsamples'] = max(
+                    1, int(round(float(qmc.deltaBTspan) / float(interval))))
+            start = min(charge + 10, len(timex) - 1)
+            kwargs['optimalSmoothing'] = bool(
+                getattr(qmc, 'optimalSmoothing', False))
+            d1, d2 = qmc.recomputeDeltas(
+                timex, start, drop, stemp1, stemp2, **kwargs)
+            _background_rise_cache['delta1'] = list(d1 or [])
+            _background_rise_cache['delta2'] = list(d2 or [])
+        except Exception:
+            report_once('RoastCurveWidget: background rise recompute failed')
+            _background_rise_cache['delta1'] = []
+            _background_rise_cache['delta2'] = []
+    return list(_background_rise_cache.get(
+        'delta1' if machine else 'delta2', []))
+
+
+def _background_roast(qmc: Any, *, show_air: bool,
+                      show_machine: bool) -> tuple[
+                          list[float], list[Any], list[Any],
+                          list[Any], list[Any], str] | None:
+    """A loaded reference in its own CHARGE-relative frame.
+
+    Artisan mutates ``timeB`` when its background is aligned on DRY, FC or
+    DROP, and mutates the temperatures when the background is nudged vertically.
+    Those are canvas adjustments, not roast data. Removing both offsets here
+    gives TilauScope one invariant comparison: CHARGE on CHARGE, at the recorded
+    temperatures, regardless of how Artisan's separate canvas was arranged.
+    """
+    # ``background`` is only the visibility flag of Artisan's own canvas. It
+    # is commonly reset to False when a foreground profile is opened, while
+    # the reference itself remains fully loaded in the B arrays. DisplayScope
+    # owns its comparison visibility: only removing ``backgroundprofile``
+    # removes the reference here.
+    if getattr(qmc, 'backgroundprofile', None) is None:
+        return None
+    try:
+        raw_time = list(qmc.timeB)
+        raw_bt = list(qmc.temp2B)
+        raw_air = list(qmc.temp1B) if show_air else []
+        timeindex = list(qmc.timeindexB)
+        charge = int(timeindex[0])
+        mode = str(qmc.mode)
+    except (AttributeError, IndexError, TypeError, ValueError):
+        return None
+    if len(raw_time) < 2 or not 0 <= charge < len(raw_time):
+        return None
+
+    origin = float(raw_time[charge])
+    timex = [float(t) - origin for t in raw_time]
+    try:
+        y_offset = float(getattr(qmc, 'backgroundprofile_moved_y', 0.0) or 0.0)
+    except (TypeError, ValueError):
+        y_offset = 0.0
+    temp2 = [float(v) - y_offset if v not in (None, -1) else v for v in raw_bt]
+    temp1 = [float(v) - y_offset if v not in (None, -1) else v for v in raw_air]
+    delta2 = _background_rise_series(qmc)
+    delta1 = _background_rise_series(qmc, machine=True) if show_machine else []
+    return timex, temp1, temp2, delta2, delta1, mode
 
 
 def _crisp(x: float) -> float:
@@ -258,10 +394,11 @@ class RoastCurveWidget(QWidget):
         # different climb over a different span, and squeezing it into the
         # roast's box would draw a flat line along the bottom for twenty
         # minutes — so the bounds are state, not constants.
-        self._temp_lo: float = _TEMP_MIN
-        self._temp_hi: float = _TEMP_MAX
-        self._temp_step: float = _TEMP_STEP
+        self._temp_lo, self._temp_hi, self._temp_step = _temp_axis_c('C')
+        self._ror_max, self._ror_step = _ror_axis_c('C')
         self._time_step: float = _TIME_STEP
+        #: The unit the axes are LABELLED in. The values behind them stay °C.
+        self._mode: str = 'C'
         #: The live preheat, when one is running before the charge.
         self._preheat: Any = None
         #: Whether the right-hand rate scale is drawn. There is no rate before
@@ -281,7 +418,7 @@ class RoastCurveWidget(QWidget):
         # trims to charge -1:00 .. drop +1:00 once the roast is over, and 'full'
         # then opens out to the whole session. Temperature and rise axes never
         # move in any view — only the time axis does.
-        self._closeup: bool = False
+        self._closeup: bool = True
         self._t_min: float = -_LEAD_IN
         self._t_max: float = _TIME_MAX
 
@@ -505,7 +642,8 @@ class RoastCurveWidget(QWidget):
             self._view_btn.move(int(r.right()) - self._view_btn.width(),
                                 max(0, int(r.top()) - self._view_btn.height() - 5))
 
-    def _window_for(self, timex: list[Any], charge: int, drop: int) -> tuple[float, float]:
+    def _window_for(self, timex: list[Any], charge: int, drop: int,
+                    *, closeup: bool | None = None) -> tuple[float, float]:
         """Time window in charge-relative seconds.
 
         While a roast is running the scale never moves: the minute before charge
@@ -526,7 +664,8 @@ class RoastCurveWidget(QWidget):
                     return -_LEAD_IN, math.ceil(elapsed / _TIME_STEP) * _TIME_STEP
             return -_LEAD_IN, _TIME_MAX
         t_charge = timex[charge]
-        if self._closeup:
+        use_closeup = self._closeup if closeup is None else closeup
+        if use_closeup:
             return -_LEAD_IN, (timex[drop] - t_charge) + _TAIL_OUT
         # "Full" has to mean the whole session, preheat included — that is what the
         # operator sees in Artisan and what the word promises. Rounded out to whole
@@ -564,8 +703,7 @@ class RoastCurveWidget(QWidget):
         self.update()
 
     def _reconcile_view(self) -> None:
-        """Show or hide the view selector, and leave a close-up that no longer
-        has a roast to frame.
+        """Show the view selector when a finished foreground or reference exists.
 
         The close-up only means something once the roast is closed. The drop is
         not that moment: the beans are still in the cooling tray, the recording
@@ -580,14 +718,24 @@ class RoastCurveWidget(QWidget):
         if qmc is None:
             return
         try:
+            charge = int(qmc.timeindex[0])
             drop = int(qmc.timeindex[6])
-            readable = (0 < drop < len(qmc.timex)
+            foreground = 0 <= charge < len(qmc.timex)
+            readable = (foreground and 0 < drop < len(qmc.timex)
                         and not getattr(qmc, 'flagstart', False))
         except (AttributeError, IndexError, TypeError, ValueError):
+            foreground = False
             readable = False
-        if not readable and self._closeup:
-            self._closeup = False
-            self._sync_view_button()
+        if not foreground and not getattr(qmc, 'flagstart', False):
+            try:
+                background_charge = int(qmc.timeindexB[0])
+                background_drop = int(qmc.timeindexB[6])
+                background = qmc.backgroundprofile is not None
+                readable = (background
+                            and 0 <= background_charge < len(qmc.timeB)
+                            and 0 < background_drop < len(qmc.timeB))
+            except (AttributeError, IndexError, TypeError, ValueError):
+                pass
         if self._view_btn.isVisible() != readable:
             self._view_btn.setVisible(readable)
 
@@ -660,8 +808,9 @@ class RoastCurveWidget(QWidget):
         change when a profile is loaded. The screen ratio belongs here too, so
         moving the window to a display of a different density rebuilds it.
         """
-        key = (w, h, self._t_min, self._t_max, self._lane_mode,
+        key = (w, h, self._t_min, self._t_max, self._lane_mode, self._mode,
                self._temp_lo, self._temp_hi, self._temp_step, self._time_step,
+               self._ror_max, self._ror_step,
                self._preheat is not None, self._rate_axis,
                tuple(n for n, _r, _k in self._lane_rows),
                self.devicePixelRatioF(), self._channel_labels())
@@ -706,11 +855,18 @@ class RoastCurveWidget(QWidget):
 
         target_c = float(getattr(preheat, 'target_c', 0.0) or 0.0)
         seen = [c for c in (_sample_temp_c(v, mode) for v in temp2[-1:]) if c is not None]
-        top = max([target_c, *seen]) if (target_c or seen) else _TEMP_MAX
-        self._temp_step = 40.0
-        self._temp_lo = 0.0
-        self._temp_hi = max(self._temp_step * 2,
-                            math.ceil((top + 20.0) / self._temp_step) * self._temp_step)
+        top = max([target_c, *seen]) if (target_c or seen) else _temp_axis_c(mode)[1]
+        # The climb sets its own ceiling, but the ladder is still the operator's:
+        # the rounding is done on round figures in the display unit, then the
+        # three numbers are handed back to the °C frame the engine draws in.
+        scale = 1.8 if mode == 'F' else 1.0
+        lo_n, step_n = (40.0, 60.0) if mode == 'F' else (0.0, 40.0)
+        top_n = convertTemp(top, 'C', mode) + 20.0 * scale
+        hi_n = max(lo_n + step_n * 2,
+                   lo_n + math.ceil((top_n - lo_n) / step_n) * step_n)
+        self._temp_step = step_n / scale
+        self._temp_lo = convertTemp(lo_n, mode, 'C')
+        self._temp_hi = convertTemp(hi_n, mode, 'C')
 
     def _draw_preheat(self, painter: QPainter, timex: list[Any], temp2: list[Any],
                       mode: str, preheat: Any) -> None:
@@ -827,8 +983,11 @@ class RoastCurveWidget(QWidget):
         text = str(getattr(qmc, 'title_text', '') or getattr(qmc, 'title', '') or '')
         text = text.strip()
         # The placeholder Artisan sets when there is nothing to name is the
-        # application's own name, which on this screen says nothing at all.
+        # application's own name, which on this screen says nothing at all. A
+        # background-only view names the reference instead.
         if not text or text == QApplication.translate('Scope Title', 'TilauScope'):
+            text = str(getattr(qmc, 'titleB', '') or '').strip()
+        if not text:
             return
         r = self._plot_rect
         # After the view toggle when it is out, so the two never overlap.
@@ -1008,8 +1167,8 @@ class RoastCurveWidget(QWidget):
 
     def _y_ror(self, ror_c: float) -> float:
         r = self._plot_rect
-        clipped = max(_ROR_MIN, min(ror_c, _ROR_MAX))
-        return r.bottom() - (clipped / _ROR_MAX) * r.height()
+        clipped = max(_ROR_MIN, min(ror_c, self._ror_max))
+        return r.bottom() - (clipped / self._ror_max) * r.height()
 
     def _visible_channels(self) -> list[int]:
         """The lanes, live and afterwards alike.
@@ -1090,7 +1249,9 @@ class RoastCurveWidget(QWidget):
                        fmt_clock(t))
             t += label_step
 
-        # temperature grid + left axis labels
+        # temperature grid + left axis labels. The bounds are °C — the frame the
+        # engine draws in — and the figure beside each line is that same height
+        # said in the operator's unit: the single conversion of this axis.
         temp = self._temp_lo
         while temp <= self._temp_hi + 1e-6:
             y = self._y_temp(temp)
@@ -1099,20 +1260,21 @@ class RoastCurveWidget(QWidget):
             p.setPen(text_pen)
             label_rect = QRectF(0.0, y - 9.0, float(_MARGIN_LEFT) - 8.0, 18.0)
             p.drawText(label_rect, int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
-                       str(int(temp)))
+                       str(round(convertTemp(temp, 'C', self._mode))))
             temp += self._temp_step
 
         # RoR right axis labels (shares the horizontal grid drawn above). None
         # before the charge: no rate is drawn there, and a scale with nothing on
         # it invites reading the drum temperature against the wrong numbers.
-        ror = _ROR_MIN if self._rate_axis else _ROR_MAX + 1.0
-        while ror <= _ROR_MAX + 1e-6:
+        _rise_scale = 1.8 if self._mode == 'F' else 1.0
+        ror = _ROR_MIN if self._rate_axis else self._ror_max + 1.0
+        while ror <= self._ror_max + 1e-6:
             y = self._y_ror(ror)
             p.setPen(text_pen)
             label_rect = QRectF(r.right() + 8.0, y - 9.0, float(_MARGIN_RIGHT) - 10.0, 18.0)
             p.drawText(label_rect, int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
-                       str(int(ror)))
-            ror += _ROR_STEP
+                       str(round(ror * _rise_scale)))
+            ror += self._ror_step
 
         # One ground per channel, and its name written beside it: a lane that
         # carries its own label needs no legend entry.
@@ -1141,11 +1303,13 @@ class RoastCurveWidget(QWidget):
         p.setPen(text_pen)
         p.drawText(QRectF(0.0, 2.0, float(_MARGIN_LEFT) - 4.0, 16.0),
                    int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
-                   QApplication.translate('tilauscope', '°C'))
+                   QApplication.translate('tilauscope', '°F') if self._mode == 'F'
+                   else QApplication.translate('tilauscope', '°C'))
         if self._rate_axis:
             p.drawText(QRectF(r.right() + 8.0, 2.0, float(_MARGIN_RIGHT) - 10.0, 16.0),
                        int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
-                       QApplication.translate('tilauscope', '°C/min'))
+                       QApplication.translate('tilauscope', '°F/min') if self._mode == 'F'
+                       else QApplication.translate('tilauscope', '°C/min'))
 
         p.end()
         return pm
@@ -1201,7 +1365,7 @@ class RoastCurveWidget(QWidget):
             if float(t) > self._t_max:
                 break          # past the window: stop, never pile points on the edge
             ror_c = _sample_ror_c(v, mode)
-            if ror_c is None or not _ROR_MIN <= ror_c <= _ROR_MAX:
+            if ror_c is None or not _ROR_MIN <= ror_c <= self._ror_max:
                 if len(current) > 1:
                     segments.append(current)
                 current = QPolygonF()
@@ -1210,6 +1374,45 @@ class RoastCurveWidget(QWidget):
         if len(current) > 1:
             segments.append(current)
         return segments
+
+    def _draw_reference(self, painter: QPainter, timex: list[Any], temp1: list[Any],
+                        temp2: list[Any], delta2: list[Any], delta1: list[Any],
+                        mode: str) -> None:
+        """Paint the loaded roast with the exact live trace vocabulary, dimmed."""
+        if self.show_machine_response and len(delta1) >= len(timex) - 2 and delta1:
+            pen = QPen(_reference_colour(self._machine_rise_colour()))
+            pen.setWidthF(_MACHINE_ROR_PEN_WIDTH)
+            pen.setStyle(Qt.PenStyle.DashLine)
+            painter.setPen(pen)
+            for poly in self._build_ror_segments(timex, delta1, mode):
+                painter.drawPolyline(poly)
+
+        if len(delta2) >= len(timex) - 2 and delta2:
+            pen = QPen(_reference_colour(self._rise_colour()))
+            pen.setWidthF(_ROR_PEN_WIDTH)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(pen)
+            for poly in self._build_ror_segments(timex, delta2, mode):
+                painter.drawPolyline(poly)
+
+        if temp1:
+            pen = QPen(_reference_colour(self._air_colour()))
+            pen.setWidthF(_AIR_PEN_WIDTH)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(pen)
+            for poly in self._build_temp_segments(timex, temp1, mode):
+                painter.drawPolyline(poly)
+
+        if temp2:
+            pen = QPen(_reference_colour(self._grain_colour()))
+            pen.setWidthF(_GRAIN_PEN_WIDTH)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(pen)
+            for poly in self._build_temp_segments(timex, temp2, mode):
+                painter.drawPolyline(poly)
 
     # ── phases and milestones (paint-time, on top of the cached frame) ──
     def _phase_spans(self, timex: list[Any],
@@ -1390,7 +1593,17 @@ class RoastCurveWidget(QWidget):
             except (IndexError, TypeError, ValueError):
                 continue
         points.sort(key=lambda q: q[0])
-        return points
+        # Two gestures on one second — a slider clicked twice in the same tick —
+        # are one setting as far as the roast is concerned: the last one is what
+        # held. Keeping both would draw a riser of no width and hand the label
+        # to the value that never applied.
+        collapsed: list[tuple[float, float]] = []
+        for pt in points:
+            if collapsed and collapsed[len(collapsed) - 1][0] == pt[0]:
+                collapsed[len(collapsed) - 1] = pt
+            else:
+                collapsed.append(pt)
+        return collapsed
 
     def _draw_settings(self, painter: QPainter, timex: list[Any], events: list[Any],
                        types: list[Any], pcts: list[Any], colors: list[Any]) -> None:
@@ -1504,10 +1717,18 @@ class RoastCurveWidget(QWidget):
         painter.setFont(font)
         metrics = QFontMetricsF(font)
         last_right = lane.left() - 1.0
-        for t, v in points:
+        for i, (t, v) in enumerate(points):
             if not self._t_min <= t <= self._t_max:
                 continue
             x = self._x(t)
+            # Gestures a second apart share a pixel column at this zoom. Only
+            # the later one is drawn there: it is the setting that held, and the
+            # earlier dot would otherwise keep the label and contradict the
+            # crosshair.
+            nxt = points[i + 1][0] if i + 1 < len(points) else None
+            if (nxt is not None and self._t_min <= nxt <= self._t_max
+                    and abs(self._x(nxt) - x) < 1.0):
+                continue
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QColor(THEME['BG']))
             painter.drawEllipse(QPointF(x, cy), 4.5, 4.5)
@@ -1585,6 +1806,31 @@ class RoastCurveWidget(QWidget):
                              label)
             x += 15.0 + width + 13.0
 
+    def _draw_curve_legend(self, painter: QPainter, *, phases: bool = True) -> None:
+        """The trace legend, with phase grounds only when they were painted."""
+        painter.setClipping(False)
+        legend: list[tuple[str, str, str]] = [
+            (self._grain_colour(), QApplication.translate('tilauscope', 'Bean'), 'line'),
+            (self._rise_colour(), QApplication.translate('tilauscope', 'Rise'), 'line'),
+        ]
+        if self.show_air_temperature:
+            legend.insert(1, (self._air_colour(),
+                              QApplication.translate('tilauscope', 'Air'), 'line'))
+        if self.show_machine_response:
+            legend.append((self._machine_rise_colour(),
+                           QApplication.translate('tilauscope', 'Machine response'), 'dash'))
+        if phases:
+            legend.extend((
+                (THEME[_PHASE_DRYING[0]],
+                 QApplication.translate('tilauscope', 'Drying'), 'block'),
+                (THEME[_PHASE_MAILLARD[0]],
+                 QApplication.translate('tilauscope', 'Maillard'), 'block'),
+                (THEME[_PHASE_DEVELOPMENT[0]],
+                 QApplication.translate('tilauscope', 'Development'), 'block'),
+            ))
+        self._draw_legend(painter, legend, self._plot_rect.left(),
+                          self._lanes_bottom() + 30.0)
+
     # ── hover readout ────────────────────────────────────────────────────
     def _t_for_x(self, x: float) -> float:
         r = self._plot_rect
@@ -1654,8 +1900,8 @@ class RoastCurveWidget(QWidget):
         for reading, colour, to_y, lo, hi in (
                 (temp_c, grain, self._y_temp, self._temp_lo, self._temp_hi),
                 (air_c, air, self._y_temp, self._temp_lo, self._temp_hi),
-                (ror_c, rise, self._y_ror, _ROR_MIN, _ROR_MAX),
-                (machine_c, machine_rise, self._y_ror, _ROR_MIN, _ROR_MAX)):
+                (ror_c, rise, self._y_ror, _ROR_MIN, self._ror_max),
+                (machine_c, machine_rise, self._y_ror, _ROR_MIN, self._ror_max)):
             if reading is None or not lo <= reading <= hi:
                 continue
             centre = QPointF(x, to_y(reading))
@@ -1742,6 +1988,30 @@ class RoastCurveWidget(QWidget):
             cursor += vw + gap
 
     # ── right-click: the place the spec reserves for curve settings ─────
+    def _clear_background(self) -> None:
+        """Remove the loaded reference through Artisan's own cleanup path."""
+        try:
+            self._aw.clearbackgroundRedraw()
+        except Exception:
+            report_once('RoastCurveWidget: clearing background failed')
+            return
+        # Do not retain either the computed rate or a selector that belonged to
+        # the reference-only state until the next one-second screen tick.
+        _background_rise_cache.clear()
+        self._reconcile_view()
+        self.update()
+
+    def _add_background_menu_action(self, menu: QMenu) -> QAction | None:
+        qmc = getattr(self._aw, 'qmc', None)
+        if qmc is None or getattr(qmc, 'backgroundprofile', None) is None:
+            return None
+        menu.addSeparator()
+        action = QAction(
+            QApplication.translate('tilauscope', 'Remove reference curve'), menu)
+        action.triggered.connect(self._clear_background)
+        menu.addAction(action)
+        return action
+
     def contextMenuEvent(self, event: Any) -> None:  # noqa: N802 (Qt override)
         menu = QMenu(self)
         menu.setStyleSheet(menu_qss())
@@ -1801,6 +2071,8 @@ class RoastCurveWidget(QWidget):
             act_level.triggered.connect(
                 lambda _c, key=level.key: self._set_smoothing(key))
             smoothing.addAction(act_level)
+
+        self._add_background_menu_action(menu)
 
         menu.exec(event.globalPos())
 
@@ -1910,21 +2182,49 @@ class RoastCurveWidget(QWidget):
 
         # Time is measured from CHARGE, not from the start of monitoring: qmc.timex
         # covers the preheat too, which would paint the drum warm-up and the charge
-        # plunge inside the roast window. Before CHARGE is marked (sentinel -1)
-        # there is no roast to draw — the frame alone is the state.
+        # plunge inside the roast window. Before the foreground CHARGE is marked
+        # (sentinel -1), only a loaded reference can define a roast frame.
         drawable = 0 <= charge < len(timex)
         preheat = None if drawable else self._preheat
-        self._rate_axis = drawable
+        # A preheat owns a different time frame. Outside it, a loaded reference
+        # is a perfectly drawable roast even when there is no foreground yet.
+        reference = (None if preheat is not None else _background_roast(
+            qmc, show_air=self.show_air_temperature,
+            show_machine=self.show_machine_response))
+        reference_only = not drawable and reference is not None
+        self._rate_axis = drawable or reference_only
+        # The unit the axes are labelled in, and the rise scale that goes with
+        # it. Both are in the frame key, so a unit switched mid-session rebuilds
+        # the frame instead of leaving °C figures on a °F chart.
+        self._mode = mode
+        self._ror_max, self._ror_step = _ror_axis_c(mode)
         if drawable:
-            self._t_min, self._t_max = self._window_for(timex, charge, drop)
-            self._temp_lo, self._temp_hi = _TEMP_MIN, _TEMP_MAX
-            self._temp_step, self._time_step = _TEMP_STEP, _TIME_STEP
+            # DROP does not close a live roast: cooling is still being recorded.
+            # Keep the fixed live scale without throwing away the operator's
+            # preferred view, which becomes active as soon as recording stops.
+            self._t_min, self._t_max = self._window_for(
+                timex, charge, drop,
+                closeup=self._closeup and not getattr(qmc, 'flagstart', False))
+            self._temp_lo, self._temp_hi, self._temp_step = _temp_axis_c(mode)
+            self._time_step = _TIME_STEP
         elif preheat is not None:
             self._set_preheat_axes(timex, temp2, mode, preheat)
+        elif reference is not None:
+            ref_timex = reference[0]
+            try:
+                ref_index = list(qmc.timeindexB)
+                ref_charge = int(ref_index[0])
+                ref_drop = int(ref_index[6])
+            except (AttributeError, IndexError, TypeError, ValueError):
+                ref_charge, ref_drop = -1, -1
+            self._t_min, self._t_max = self._window_for(
+                ref_timex, ref_charge, ref_drop, closeup=self._closeup)
+            self._temp_lo, self._temp_hi, self._temp_step = _temp_axis_c(mode)
+            self._time_step = _TIME_STEP
         else:
             self._t_min, self._t_max = -_LEAD_IN, _TIME_MAX
-            self._temp_lo, self._temp_hi = _TEMP_MIN, _TEMP_MAX
-            self._temp_step, self._time_step = _TEMP_STEP, _TIME_STEP
+            self._temp_lo, self._temp_hi, self._temp_step = _temp_axis_c(mode)
+            self._time_step = _TIME_STEP
 
         # The frame carries the time labels, so it must be current for this window
         # before it is blitted. _ensure_frame is a no-op unless the window moved.
@@ -1942,6 +2242,15 @@ class RoastCurveWidget(QWidget):
                                 events, ev_types, ev_pcts, ev_colors)
             return
         if not drawable:
+            if reference is not None:
+                painter.setClipRect(self._plot_rect)
+                self._draw_reference(painter, *reference)
+                # There is no foreground time in which to place gestures. Keep
+                # the lane behaviour of the genuinely empty state, but do not
+                # cover the valid reference with an empty-state message.
+                self._draw_settings(painter, [], [], [], [], ev_colors)
+                self._draw_curve_legend(painter, phases=False)
+                return
             # An empty plot must say why it is empty. Before the charge is marked
             # there is no roast window to draw into — and without this line the
             # operator cannot tell that apart from a chart that is simply broken.
@@ -1998,6 +2307,12 @@ class RoastCurveWidget(QWidget):
 
         # Phases sit under everything: they are a ground, not a mark.
         self._draw_phase_bands(painter, timex, timeindex)
+
+        # The reference lives in the same CHARGE-relative frame as this roast.
+        # It is painted first, so every live trace remains the visual authority
+        # even where the two roasts follow one another exactly.
+        if reference is not None:
+            self._draw_reference(painter, *reference)
 
         # A short delta1 is not a mid-append transient but a profile recorded
         # with Artisan's ET rate switched off: tracing the fragment would show a
@@ -2057,24 +2372,4 @@ class RoastCurveWidget(QWidget):
 
         # One legend for the whole chart, on its own row under the time axis.
         # Anywhere inside a plot it either covers a trace or gets covered by one.
-        painter.setClipping(False)
-        legend: list[tuple[str, str, str]] = [
-            (self._grain_colour(), QApplication.translate('tilauscope', 'Bean'), 'line'),
-            (self._rise_colour(), QApplication.translate('tilauscope', 'Rise'), 'line'),
-        ]
-        if self.show_air_temperature:
-            legend.insert(1, (self._air_colour(),
-                              QApplication.translate('tilauscope', 'Air'), 'line'))
-        if self.show_machine_response:
-            legend.append((self._machine_rise_colour(),
-                           QApplication.translate('tilauscope', 'Machine response'), 'dash'))
-        # The phase grounds are the only colours left unnamed — the machine
-        # channels carry their names beside their own lanes.
-        legend.extend((
-            (THEME[_PHASE_DRYING[0]], QApplication.translate('tilauscope', 'Drying'), 'block'),
-            (THEME[_PHASE_MAILLARD[0]], QApplication.translate('tilauscope', 'Maillard'), 'block'),
-            (THEME[_PHASE_DEVELOPMENT[0]],
-             QApplication.translate('tilauscope', 'Development'), 'block'),
-        ))
-        self._draw_legend(painter, legend, self._plot_rect.left(),
-                          self._lanes_bottom() + 28.0)
+        self._draw_curve_legend(painter)

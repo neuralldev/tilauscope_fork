@@ -205,6 +205,8 @@ class _TooltipWidget(QFrame):
 
     # Emitted when the "brew this coffee" CTA is clicked; carries the .alog path.
     prepare_requested = pyqtSignal(str)
+    pointer_entered = pyqtSignal()
+    pointer_left = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -227,6 +229,14 @@ class _TooltipWidget(QFrame):
         path = QPainterPath()
         path.addRoundedRect(0.0, 0.0, float(self.width()), float(self.height()), 10.0, 10.0)
         self.setMask(QRegion(path.toFillPolygon().toPolygon()))
+
+    def enterEvent(self, event) -> None:
+        self.pointer_entered.emit()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        self.pointer_left.emit()
+        super().leaveEvent(event)
 
     def _lbl(self, text: str = "", color: str = _C_TEXT,
              size: int = 11, bold: bool = False, italic: bool = False) -> QLabel:
@@ -532,7 +542,16 @@ class RoastReadyDialog(QDialog):
         # tooltip — native QWidget via QGraphicsProxyWidget (added to scene after build)
         self._tooltip_widget = _TooltipWidget()
         self._tooltip_widget.prepare_requested.connect(self._on_prepare)
+        self._tooltip_widget.pointer_entered.connect(self._keep_tooltip_open)
+        self._tooltip_widget.pointer_left.connect(self._schedule_tooltip_hide)
         self._tooltip_proxy: QGraphicsProxyWidget | None = None
+        # Let the pointer cross the small gap between a roast bar and its card.
+        # If it does not enter the card, the card disappears promptly instead of
+        # remaining stuck over the planning after the bar is no longer hovered.
+        self._tooltip_hide_timer = QTimer(self)
+        self._tooltip_hide_timer.setSingleShot(True)
+        self._tooltip_hide_timer.setInterval(180)
+        self._tooltip_hide_timer.timeout.connect(self._hide_tooltip)
 
         self._setup_ui()
         self._start_scan()
@@ -764,6 +783,7 @@ class RoastReadyDialog(QDialog):
 
     # ── scene construction ────────────────────────────────────────────────────
     def _build_scene(self) -> None:
+        self._tooltip_hide_timer.stop()
         # Detach the tooltip BEFORE clearing so scene.clear() doesn't destroy it;
         # reusing the polished widget avoids a tiny unstyled font on the first card.
         if self._tooltip_proxy is not None:
@@ -937,6 +957,22 @@ class RoastReadyDialog(QDialog):
         delta = (d - today).days
         self._view.scroll_to_day(today_idx + delta)
 
+    # ── tooltip lifetime ──────────────────────────────────────────────────────────────
+    def _keep_tooltip_open(self) -> None:
+        self._tooltip_hide_timer.stop()
+        self._view.setDragMode(QGraphicsView.DragMode.NoDrag)
+
+    def _schedule_tooltip_hide(self) -> None:
+        if (self._tooltip_proxy is not None and self._tooltip_proxy.isVisible()
+                and not self._tooltip_hide_timer.isActive()):
+            self._tooltip_hide_timer.start()
+
+    def _hide_tooltip(self) -> None:
+        if self._tooltip_proxy is not None:
+            self._tooltip_proxy.hide()
+        self._hover_key = None
+        self._view.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+
     # ── event filter (hover tooltip + date label click) ───────────────────────
     def eventFilter(self, source, event) -> bool:
         if source is self._view.viewport():
@@ -946,7 +982,7 @@ class RoastReadyDialog(QDialog):
                 # Over the tooltip itself → freeze panning so its CTA button is
                 # clickable, and keep the card shown.
                 if self._tooltip_proxy is not None and item is self._tooltip_proxy:
-                    self._view.setDragMode(QGraphicsView.DragMode.NoDrag)
+                    self._keep_tooltip_open()
                     self._view.viewport().unsetCursor()
                     return False
 
@@ -955,6 +991,7 @@ class RoastReadyDialog(QDialog):
                 if isinstance(item, QGraphicsRectItem):
                     data = item.data(0)
                     if isinstance(data, dict) and self._tooltip_proxy is not None:
+                        self._tooltip_hide_timer.stop()
                         key = data.get("filepath") or data.get("name")
                         # Only (re)place the card when moving onto a DIFFERENT roast,
                         # so it stays put while the cursor travels to the CTA.
@@ -968,18 +1005,17 @@ class RoastReadyDialog(QDialog):
                         return True
 
                 if isinstance(item, QGraphicsTextItem) and isinstance(item.data(0), date):
+                    self._schedule_tooltip_hide()
                     self._view.viewport().setCursor(Qt.CursorShape.PointingHandCursor)
                     return False
 
-                # Empty space / markers: keep the card (sticky) so the user can reach
-                # its button; it is dismissed on a new roast or when leaving the view.
+                # Empty space / markers: dismiss shortly. The delay is cancelled
+                # by _TooltipWidget.enterEvent so its CTA remains reachable.
+                self._schedule_tooltip_hide()
                 self._view.viewport().unsetCursor()
 
             elif event.type() == event.Type.Leave:
-                if self._tooltip_proxy:
-                    self._tooltip_proxy.hide()
-                self._hover_key = None
-                self._view.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+                self._schedule_tooltip_hide()
 
             elif event.type() == event.Type.MouseButtonPress:
                 item = self._scene.itemAt(self._view.mapToScene(event.pos()), self._view.transform())

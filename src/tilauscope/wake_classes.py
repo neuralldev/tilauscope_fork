@@ -20,13 +20,11 @@ from PyQt6.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 
 from wakepy import keep
 
-from typing import TYPE_CHECKING
-
 _log = logging.getLogger(__name__)
 
 
 class TilauWorkerThread(QObject):
-    """Holds the wakepy keep.presenting lock for the duration of a roast.
+    """Holds the wakepy keep.presenting lock while monitoring is active.
 
     Runs in a dedicated QThread. Stop is driven by QThread.requestInterruption()
     called from TilauController.finish() — no cross-thread attribute access needed.
@@ -47,19 +45,19 @@ class TilauWorkerThread(QObject):
 
 
 class TilauController(QObject):
-    """Manages the wake-lock lifecycle, driven by roast ON/OFF signals.
+    """Manages the wake-lock lifecycle, driven by monitoring ON/OFF state.
 
-    Usage (canvas.py):
-        self.tilau_ssbserver = TilauController()
-        # on roast start:
+    Usage (displayscope.py):
+        self.tilau_ssbserver = TilauController(self)
+        # when monitoring starts:
         self.tilau_ssbserver.start()
-        # on roast stop / reset / app close:
-        self.tilau_ssbserver.terminatingSignal.emit()
+        # when monitoring stops or the app closes:
+        self.tilau_ssbserver.finish()
     """
     terminatingSignal = pyqtSignal()
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
         self._thread: QThread | None = None
         self._worker: TilauWorkerThread | None = None
         self.terminatingSignal.connect(self.finish)
@@ -79,7 +77,11 @@ class TilauController(QObject):
         _log.info('TilauScope wake: releasing sleep lock')
         self._thread.requestInterruption()  # signals worker loop to exit
         self._thread.quit()
-        self._thread.wait(3000)             # max 3s — keep.presenting releases quickly
+        if not self._thread.wait(3000):     # keep.presenting normally releases within 500ms
+            # Keep the QThread referenced: destroying a running QThread aborts
+            # the process. A later finish() call can wait for it again.
+            _log.warning('TilauScope wake: worker did not stop within 3 seconds')
+            return
         self._thread = None
         self._worker = None
 

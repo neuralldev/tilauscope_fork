@@ -15,6 +15,59 @@ here is everything reached later, from **BeanCave → Roast Viewer**.
 
 ---
 
+## The roast review
+
+The moment a recording is stopped, the left of the roasting window has nothing left to steer. The
+[machine controls](the-window.md#machine-controls), the readouts above them and the status line
+all describe a live session, so the whole column is given over to the **roast review**: what the
+roast did, and how it compares to the plan.
+
+The same thing happens when a past roast is opened from **File → Open**, whether to look at it or
+to replay it in the simulator. There is nothing to switch on or off — starting a recording, or a
+simulation, hands the column back to the live session, and RESET clears it.
+
+The review reads from the top down:
+
+**The verdict.** One sentence saying whether the roast ran to plan, the single deviation that
+mattered most, and one thing to do differently next time. It is the only part meant to be read
+during a two-second glance; everything below it is the evidence behind it.
+
+**The phase ribbon.** Drying, Maillard and development, each with its duration and its share of
+the roast.
+
+**The milestones.** Charge, turning point, dry end, first crack and drop — each with its time, its
+bean temperature, and how far it landed from the plan. Timing is compared on the clock for the
+early milestones and on temperature for the drop, because that is how each one is actually steered.
+
+**Four figures.** [Development](glossary.md#dtr--development-time-ratio),
+[development rise](glossary.md#development-rise), the peak
+[rate of rise](glossary.md#ror--rate-of-rise) and
+[weight loss](glossary.md#weight-loss). Each is shown with the plan's target or the usual range
+for that roast colour, so no figure has to be judged on its own.
+
+Below them sit the weights, the colour and the room conditions the roast was recorded in, and
+**Full roast card**, which opens the same reading with the curve on it.
+
+!!! note "When there is no plan to compare against"
+    A roast started outside the guided assistant, and any roast file recorded before this feature
+    existed, carries no plan. The review says so — **NO PLAN RECORDED** — and shows the figures
+    against the usual ranges for the roast colour instead of inventing a comparison. The rate of
+    rise column takes the place of the deviation column.
+
+!!! note "Colour is reported, never prescribed"
+    When the plan has a colour target, the measured colour is shown next to it. The advice never
+    tells you to drop hotter or cooler to correct a colour: no reliable relationship between drop
+    temperature and colour has been established, and inventing one would be worse than silence.
+
+If the roasted weight has not been entered yet, the review offers to take it — the only missing
+value that can still be measured at that moment. Filling it in updates the review straight away.
+
+<!-- CAPTURE 8.0 — the roasting window just after STOP: the left column given over to the roast
+     review of a roast that ran to plan — readouts and status line gone, verdict block at the top,
+     phase ribbon, milestone table with the VS PLAN column, and the four figures. -->
+
+---
+
 ## Finishing a roast later
 
 A roast is not always completed on the spot — a batch relaunched with **Restart batch**
@@ -57,6 +110,8 @@ Selecting **two or more roasts** turns on two extra views:
 ![The Roasting Curve tab, single roast, all milestones labelled](assets/after-the-roast-8.2.png)
 
 ![Consistency view on 3+ roasts of the same coffee](assets/after-the-roast-8.3.png)
+
+<!-- CAPTURE 8.3 — Consistency view on 3+ roasts of the same coffee; the phase ribbon under the curve now reads one decimal (e.g. Drying 49.5%) -->
 
 ![Aligned view
 on the same set](assets/after-the-roast-8.4.png)

@@ -365,6 +365,9 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
     connected_signal = pyqtSignal()
     disconnected_signal = pyqtSignal()
 
+    # Settling time left to the device after a mode change before the next subcommand.
+    MODE_SETTLE_DELAY: Final[float] = 0.3
+
     # map event command to roasting stages
     AirwaveEventsMap = {
         "PREHEAT":  (AirwaveCommands.ROASTINGSTAGE, AirwaveEvents.ROASTING_STAGE_PREHEAT),
@@ -578,60 +581,78 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
 #                _logd.debug("hold on set, not fully initialized")
                 return ""
         #split commands
- #       _logd.debug(f"difluid interpreter processing command {commands}")
         messages = commands.split(',')
-  #      _logd.debug(f"difluid interpreter found {len(messages)} commands to process")
-        # process all found commands in a row
-        for c in messages:
+        # Every subcommand runs: a compound like "MODE STD,FAN 30" must apply the
+        # speed too, otherwise the AirWave keeps the mode default (75%).
+        results = []
+        for idx, c in enumerate(messages):
             _logd.debug(f"difluid interpreter processing subcommand {c}")
             c1  = c.strip() # remove any blanks at start and end
             c1  = c1.upper() # convert all commands in upper case
-            s = c1.split(' ') # now break command in <command> <argument>
+            s = c1.split() # now break command in <command> <argument>
             if len(s) != 2: #missing argument
                 _logd.debug(f"difluid interpreter no argument found in command {c}")
                 continue
             command = s[0]
-            s[0].strip()
-            s[1].strip()
-#            _logd.debug(f"difluid interpreter set process {command}")
             if command.startswith("FAN"):
-                fanspeed = int(s[1])
-                if fanspeed >= AirwaveSpeed.MINIMUM and fanspeed <= AirwaveSpeed.MAXIMUM:
-                    return self.set_succionspeed(fanspeed)
-                return f"fanspeed out of authorized values {s[1]}"
-            if command.startswith("MODE"):
-                if s[1]   == "STD":
-                    return self.set_mode(AirwaveFanMode.STANDARD)
-                elif s[1]   == "EXT":
-                    return self.set_mode(AirwaveFanMode.EXTREME)
-                elif s[1]   == "FAN":
-                    return self.set_mode(AirwaveFanMode.FAN)
-                return f"unknown mode {s[1]}"
-            if command.startswith("POWER"):
+                try:
+                    fanspeed = int(s[1])
+                except ValueError:
+                    results.append(f"fanspeed not a number {s[1]}")
+                    continue
+                if AirwaveSpeed.MINIMUM <= fanspeed <= AirwaveSpeed.MAXIMUM:
+                    results.append(self.set_succionspeed(fanspeed))
+                else:
+                    results.append(f"fanspeed out of authorized values {s[1]}")
+            elif command.startswith("MODE"):
+                if s[1] == "STD":
+                    results.append(self.set_mode(AirwaveFanMode.STANDARD))
+                elif s[1] == "EXT":
+                    results.append(self.set_mode(AirwaveFanMode.EXTREME))
+                elif s[1] == "FAN":
+                    results.append(self.set_mode(AirwaveFanMode.FAN))
+                else:
+                    results.append(f"unknown mode {s[1]}")
+                    continue
+                # The device applies the mode default speed itself; leave it time to
+                # settle so a following FAN value is not overwritten by that default.
+                if idx < len(messages) - 1:
+                    time.sleep(self.MODE_SETTLE_DELAY)
+            elif command.startswith("POWER"):
                 if s[1] == "ON":
-                    return self.set_state(AirwaveCommands.STATUS, AirwaveState.ON)
-                if s[1] == "OFF":
-                    return self.set_state(AirwaveCommands.STATUS, AirwaveState.OFF)
-                return f"unknown state {s[1]}"
-            if command.startswith("EVENT"):
+                    results.append(self.set_state(AirwaveCommands.STATUS, AirwaveState.ON))
+                elif s[1] == "OFF":
+                    results.append(self.set_state(AirwaveCommands.STATUS, AirwaveState.OFF))
+                else:
+                    results.append(f"unknown state {s[1]}")
+            elif command.startswith("EVENT"):
                 _logd.debug(f"send {s[1]} map event")
-                ev = self.AirwaveEventsMap[s[1]]
-                return self.set_state(ev[0], ev[1], False)
-            if command.startswith("CONTROL"):
+                ev = self.AirwaveEventsMap.get(s[1])
+                if ev is None:
+                    results.append(f"unknown event {s[1]}")
+                else:
+                    results.append(self.set_state(ev[0], ev[1], False))
+            elif command.startswith("CONTROL"):
                 if s[1] == "MANUAL":
-                    return self.set_state(AirwaveCommands.AUTOMODE, AirwaveControlMode.AIRWAVE_CONTROL_MANUAL)
-                if s[1] == "AUTO":
-                    return self.set_state(AirwaveCommands.AUTOMODE, AirwaveControlMode.AIRWAVE_CONTROL_AUTO)
-                return f"unknown control mode {s[1]}"
-            if command.startswith("OMNIFLUX"):
-                if s[1] =="ARM":
+                    results.append(self.set_state(AirwaveCommands.AUTOMODE, AirwaveControlMode.AIRWAVE_CONTROL_MANUAL))
+                elif s[1] == "AUTO":
+                    results.append(self.set_state(AirwaveCommands.AUTOMODE, AirwaveControlMode.AIRWAVE_CONTROL_AUTO))
+                else:
+                    results.append(f"unknown control mode {s[1]}")
+            elif command.startswith("OMNIFLUX"):
+                if s[1] == "ARM":
                     self.armOmniflux()
-                    return "omniflux armed"
-                if s[1]=="DISARM":
+                    results.append("omniflux armed")
+                elif s[1] == "DISARM":
                     self.disarmOmniflux()
-                    return "omniflux disarmed"
-            return f'command {s[1]} must be arm or disarm'
-        return("send command, no command found")
+                    results.append("omniflux disarmed")
+                else:
+                    results.append(f"command {s[1]} must be arm or disarm")
+            else:
+                results.append(f"unknown command {command}")
+        if not results:
+            return "send command, no command found"
+        return results[-1]
 
     # ask from BLE for value
     # answer to qtsignal emission, a command is requested from the main thread

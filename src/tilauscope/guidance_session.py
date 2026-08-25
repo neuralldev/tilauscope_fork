@@ -46,6 +46,10 @@ class GuidanceSample:
     viability_requires_established: bool = False
     fc_started_s: float | None = None
     authority_hold: bool = False
+    #: Factor turning a °C/min threshold into the unit `ror` carries (1.8 in °F).
+    #: The session frame is the operator's unit; only the doctrine constants
+    #: buried in the engines are stated in °C and need it.
+    ror_scale: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -103,7 +107,8 @@ class GuidanceSession:
 
     def tick(self, sample: GuidanceSample) -> GuidanceSessionState:
         observation = self.observer.update(
-            sample.wall_s, sample.ror, viability_floor=sample.viability_floor)
+            sample.wall_s, sample.ror, viability_floor=sample.viability_floor,
+            ror_scale=sample.ror_scale)
         self.projector.update(sample.roast_s, sample.bt, sample.ror)
         deviation = None
         if sample.ror is not None and sample.target_ror is not None and sample.target_ror > 0:
@@ -119,6 +124,7 @@ class GuidanceSession:
                 target_bt=sample.target_bt,
                 phase_started_s=sample.phase_started_s,
                 fc_started_s=sample.fc_started_s,
+                ror_scale=sample.ror_scale,
             )
         projection_credible = (
             projection is not None

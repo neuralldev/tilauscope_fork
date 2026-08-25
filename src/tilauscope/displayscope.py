@@ -39,7 +39,7 @@ from tilauscope.tilauscope_types import THEME, _IS_WINDOWS, _IS_MACOS, TilauMess
 from tilauscope.whats_new import maybe_show_whats_new
 from tilauscope.header_icons import (
     SVG_MENU, SVG_POWER, SVG_PLAY, SVG_STOP,
-    SVG_RESET, SVG_BEANCAVE, SVG_ASSISTANT, SVG_SWAP,
+    SVG_RESET, SVG_BEANCAVE, SVG_ASSISTANT, SVG_SWAP, SVG_HEATCUT,
     BTN_ICON_SIZE,
     COL_MENU, COL_DISABLED,
     COL_POWER_IDLE, COL_POWER_ACTIVE, COL_ON_LIGHT_FILL,
@@ -47,7 +47,7 @@ from tilauscope.header_icons import (
     COL_BEANCAVE_IDLE, COL_BEANCAVE_ACTIVE,
     COL_ASSISTANT_IDLE, COL_ASSISTANT_ACTIVE,
     COL_SWAP_IDLE, COL_SWAP_ACTIVE,
-    COL_DOCK_IDLE, COL_DOCK_ACTIVE,
+    COL_DOCK_IDLE, COL_DOCK_ACTIVE, COL_ESTOP,
     apply_icon,
     QSS_MENU, QSS_ASSISTANT, QSS_DOCK,
     QSS_COMPACT_POWER, QSS_COMPACT_START, QSS_COMPACT_RESET,
@@ -58,9 +58,11 @@ from tilauscope.visualalarm import AlarmData
 from tilauscope.artisan_message_ticker import ArtisanMessageTicker, ArtisanMessageHook
 from tilauscope.axes_config import AxesConfigHook
 from tilauscope.canvas_style import CanvasStyleHook
-from tilauscope.graph.common import dimmed
+from tilauscope.graph.common import dimmed, within_share
 from tilauscope.graph.curve import RoastCurveWidget
+from tilauscope.roast_review_panel import RoastReviewPanel
 from tilauscope.theme_qss import apply_tilau_theme, base_qss, tint, tooltip_qss, with_tooltip
+from tilauscope.wake_classes import TilauController
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -84,29 +86,26 @@ _CTRL_TOGGLE_RESERVE_PX: Final[int] = 16
 _SLIDER_ROW_MARGINS: Final[tuple[int, int, int, int]] = (11, 2, 11, 2)
 
 # Two-row header geometry — mockups/header-controls-professional-390.html.
-# The primary row budget is exact: pane 390 - pane margins 20 = 370 usable, of
-# which the row margins take 8 and the gaps 18. Every width below is part of
-# that sum, so widening one control must be paid for by another; otherwise the
-# row overflows and its last items are painted on top of each other.
+# The primary row budget is exact: pane 390 - pane margins 20 = 370 usable.
+# The 24 px taken by the drag handle immediately before the timer is paid for
+# by the compact START width; otherwise the row overflows and its last items
+# are painted on top of each other.
 _HDR2_GAP:      Final[int] = 6
 _HDR2_MARGINS:  Final[tuple[int, int, int, int]] = (4, 0, 4, 0)
 _HDR2_MENU:     Final[tuple[int, int]] = (32, 32)
 _HDR2_POWER:    Final[tuple[int, int]] = (91, 32)
-_HDR2_START:    Final[tuple[int, int]] = (119, 32)
+_HDR2_START:    Final[tuple[int, int]] = (95, 32)
 _HDR2_RESET:    Final[tuple[int, int]] = (72, 28)
 _HDR2_BEANCAVE: Final[tuple[int, int]] = (92, 28)
 _HDR2_LEVEL:    Final[tuple[int, int]] = (31, 28)
 _HDR2_SWAP:     Final[tuple[int, int]] = (31, 28)
-# Emergency heat cut. 74 px is what the secondary row has left once RESET,
-# BEAN CAVE, the level pill, the swap control and the grab strip are paid for;
-# widening it pushes the last item off the row. The grab strip falls back to its
-# minimum while the cut is on screen — during a roast, safety outranks comfort
-# in moving the window.
-_HDR2_ESTOP:    Final[tuple[int, int]] = (74, 28)
-# The drag handle lives on the secondary row, where the slack is, and stretches
-# across it: a wide grab strip instead of a 20 px sliver fighting for the
-# primary row's last pixels.
-_HDR2_DRAG_MIN: Final[int] = 24
+# Emergency heat cut. A crossed-out flame, not a label: the word shouted louder
+# than anything else on the row. Wider than the 31 px icon buttons beside it so
+# the target stays easy to hit under stress and the control keeps its own rank —
+# it is the only critical-coloured item of the header.
+_HDR2_ESTOP:    Final[tuple[int, int]] = (40, 28)
+# Compact drag target directly to the left of the primary-row timer.
+_HDR2_DRAG_W:   Final[int] = 24
 
 # Header timer: pinned to the width of "-88:88" since the countdown before
 # CHARGE can go negative. Single authority for the size across every timer state.
@@ -773,6 +772,11 @@ class EventPanel(QWidget):
         # Allow resizing for this panel
         self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # This is a satellite of the roasting window, never a destination. Shown
+        # at monitoring ON, it used to take activation with it: macOS delivers
+        # pointer movement to the active window only, so the whole header went
+        # numb — no hover, no tooltip — until the next click brought it back.
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         self.bm = button_manager
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.layout = QVBoxLayout(self)
@@ -1372,6 +1376,7 @@ class ClickableLabel(QLabel):
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
+
 
 class HoldToFireButton(QPushButton):
     """Header button that fires only once the pointer is held down for
@@ -2969,6 +2974,13 @@ class TilauScope(QWidget):
         super().__init__(None)
 
         self.aw = aw
+        # DisplayScope owns the keep-awake lifecycle: monitoring can now be
+        # operated without relying on Artisan's canvas to hold this service.
+        self.tilau_ssbserver = TilauController(self)
+        self._wake_monitoring = False
+        app = QApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.tilau_ssbserver.finish)
 
         # Initialisation du pont Artisan
         self.artisan_conf = ArtisanSettings(aw)
@@ -3063,10 +3075,17 @@ class TilauScope(QWidget):
         self.str_emergency_extraction  = QApplication.translate("tilauscope_window", "extraction full")
         self.str_emergency_status      = QApplication.translate("tilauscope_window", "⚠ HEAT CUT")
         self.str_emergency_nothing     = QApplication.translate("tilauscope_window", "no lever could be commanded")
-        self.str_emergency_latched     = QApplication.translate("tilauscope_window", "HEAT CUT")
         self.str_emergency_title       = QApplication.translate("tilauscope_window", "⚠️ HEAT CUT")
         self.str_emergency_empty_drum  = QApplication.translate("tilauscope_window", "Empty the drum into the cooling tray now")
         self.str_emergency_manual_burner = QApplication.translate("tilauscope_window", "Turn the burner off on the machine, then empty the drum")
+        # The glyph carries no words, so the tip has to name the control, the
+        # gesture and what it leaves the operator to do — not just the effect.
+        self.str_emergency_tip = QApplication.translate(
+            "tilauscope_window",
+            "EMERGENCY HEAT CUT — hold one second.\n"
+            "Stops everything driving the heat, sets the burner to zero and opens "
+            "airflow and extraction.\n"
+            "The drum keeps turning: empty it into the cooling tray yourself.")
 
         self.init_ui()
 
@@ -3249,6 +3268,13 @@ class TilauScope(QWidget):
                 setattr(self, attr, flags)
             hide_method()
 
+        # Artisan calls this on ON, including when monitoring is switched on from
+        # its own side rather than from our MONITOR button. The heat cut has to
+        # be on screen from that instant — waiting for START is too late, since
+        # the drum is already heating.
+        self._refresh_beancave_availability()
+        self._refresh_emergency_visibility()
+
     @override
     def showEvent(self, a0: 'QShowEvent|None') -> None:
         """The roast is drawn by our own curve while this window is up.
@@ -3283,6 +3309,17 @@ class TilauScope(QWidget):
         if qmc.flagon and a0 is not None:
             a0.ignore()
             return
+
+        # Monitoring is off, so this window no longer owns a wake lock. Also
+        # detach the application-level fallback to avoid retaining a closed
+        # DisplayScope instance.
+        self.tilau_ssbserver.finish()
+        app = QApplication.instance()
+        if app is not None:
+            try:
+                app.aboutToQuit.disconnect(self.tilau_ssbserver.finish)
+            except (TypeError, RuntimeError):
+                pass
 
         # don't lose a slider change still inside its coalescing window
         self.flush_pending_slider_commits()
@@ -3554,16 +3591,11 @@ class TilauScope(QWidget):
         # Hold to fire: a stray click must not end a live roast, and a modal
         # confirmation is not allowed while one is running. Hidden until
         # something can actually be hot (see _refresh_emergency_visibility).
-        self.btn_estop = HoldToFireButton(
-            QApplication.translate('tilauscope_window', 'STOP HEAT'), 1000)
+        self.btn_estop = HoldToFireButton("", 1000)
         self.btn_estop.setFixedSize(*_HDR2_ESTOP)
         self.btn_estop.setStyleSheet(QSS_COMPACT_ESTOP)
-        _estop_font = QFont(self.btn_estop.font())
-        _estop_font.setPixelSize(10)          # fits "STOP HEAT" inside 74 px
-        _estop_font.setWeight(QFont.Weight.Black)
-        self.btn_estop.setFont(_estop_font)
-        self.btn_estop.setToolTip(QApplication.translate(
-            'tilauscope_window', 'Hold one second: cuts the burner and opens airflow and extraction'))
+        apply_icon(self.btn_estop, SVG_HEATCUT, COL_ESTOP)
+        self.btn_estop.setToolTip(self.str_emergency_tip)
         self.btn_estop.fired.connect(self.handle_emergency)
         self.btn_estop.hide()
 
@@ -3605,13 +3637,10 @@ class TilauScope(QWidget):
         header_column.addLayout(header)
         header_column.addLayout(secondary_header)
 
-        # Drag handle — zone de déplacement explicite.
-        # Two-row header: it rides the secondary row, which is the only one with
-        # slack, and takes every spare pixel of it. On the primary row it would
-        # be squeezed under its own minimum and painted over START.
-        # Cursor SizeAllCursor signale visuellement la zone draggable
+        # Drag handle — zone de déplacement explicite, première ligne juste à
+        # gauche du compteur. SizeAllCursor signale visuellement la zone.
         self.drag_handle = QLabel("⠿")  # braille pattern = grab icon léger
-        self.drag_handle.setFixedHeight(_HDR2_SWAP[1])
+        self.drag_handle.setFixedSize(_HDR2_DRAG_W, _HDR2_START[1])
         self.drag_handle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.drag_handle.setStyleSheet(f"""
             QLabel {{ color: {THEME['SURFACE1']}; font-size: 18px; border: none;
@@ -3624,10 +3653,9 @@ class TilauScope(QWidget):
         self.drag_handle.mousePressEvent   = self._handle_drag_press
         self.drag_handle.mouseMoveEvent    = self._handle_drag_move
         self.drag_handle.mouseReleaseEvent = self._handle_drag_release
-        self.drag_handle.setMinimumWidth(_HDR2_DRAG_MIN)
-        self.drag_handle.setSizePolicy(QSizePolicy.Policy.Expanding,
+        self.drag_handle.setSizePolicy(QSizePolicy.Policy.Fixed,
                                        QSizePolicy.Policy.Fixed)
-        secondary_header.addWidget(self.drag_handle, 1)
+        secondary_header.addStretch(1)
         # Far right of the secondary row, under the timer: reachable in
         # every panel mode (the header sits outside the panel stack).
         secondary_header.addWidget(self.btn_estop)
@@ -3656,7 +3684,14 @@ class TilauScope(QWidget):
         self.timer_lbl.setSizePolicy(QSizePolicy.Policy.Expanding,
                                      QSizePolicy.Policy.Preferred)
 
-        header.addWidget(self.timer_lbl)
+        # Keep the handle visually attached to the counter without charging a
+        # second top-level layout gap to the already exact primary-row budget.
+        counter_group = QHBoxLayout()
+        counter_group.setContentsMargins(0, 0, 0, 0)
+        counter_group.setSpacing(0)
+        counter_group.addWidget(self.drag_handle)
+        counter_group.addWidget(self.timer_lbl)
+        header.addLayout(counter_group)
         left_pane.addLayout(header_column)
 
         # Status label — affiche l'état de la session (monitoring, recording, emergency)
@@ -3994,6 +4029,19 @@ class TilauScope(QWidget):
         self._anchor_host.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._anchor_host.setStyleSheet("background: transparent; border: none;")
         self._panel_stack.addWidget(self._anchor_host)              # index 1
+        # Page 2 — roast review. Takes the place of the controls once they are
+        # inert: a finished roast, or a profile opened from a file.
+        self._review_host = QScrollArea()
+        self._review_host.setWidgetResizable(True)
+        self._review_host.setFrameShape(QFrame.Shape.NoFrame)
+        self._review_host.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._review_host.setStyleSheet("background: transparent; border: none;")
+        self.roast_review = RoastReviewPanel(self.aw, self)
+        self.roast_review.card_requested.connect(self._open_roast_card)
+        self.roast_review.weight_requested.connect(self._enter_roast_weights)
+        self._review_host.setWidget(self.roast_review)
+        self._panel_stack.addWidget(self._review_host)              # index 2
+        self._review_shown: bool = False
         self._panel_stack.setCurrentIndex(0)
         left_pane.addWidget(self._panel_stack, 1)
 
@@ -4489,7 +4537,8 @@ class TilauScope(QWidget):
         if pid and pid.active:
             sv = pid.sv_native()   # cfg.target_sv est °C interne ; bt est natif
             delta = sv - float(bt)
-            return (delta <= 0) or abs(delta) <= (0.05 * sv)
+            # Même bande que la courbe et l'annotation — jugée en °C.
+            return (delta <= 0) or within_share(delta, sv, 0.05, self.aw.qmc.mode)
         return False
 
     def _tilaupid_armed(self) -> bool:
@@ -5003,7 +5052,11 @@ class TilauScope(QWidget):
             self.roast_assistant.give_body()
             self._body_in_host = False
 
-        self._panel_stack.setCurrentIndex(1 if want_host else 0)
+        # Page order of precedence: the anchored assistant wins (it is only
+        # anchored while the operator asked for it), then the roast review,
+        # then the controls.
+        self._panel_stack.setCurrentIndex(
+            1 if want_host else (2 if getattr(self, '_review_shown', False) else 0))
 
         if open_ and not anchored:
             self.roast_assistant.show()
@@ -5013,6 +5066,71 @@ class TilauScope(QWidget):
 
         self.btn_dock.setEnabled(open_)
         self.update_button_style(self.btn_dock, anchored, False, False, True)  # icon/state via pipeline
+
+    # ── Roast review ───────────────────────────────────────────────────
+
+    def _has_charged_roast(self) -> bool:
+        """True only after CHARGE: preheating alone is not a roast result."""
+        try:
+            timeindex = self.aw.qmc.timeindex
+            return bool(timeindex and timeindex[0] > -1)
+        except (AttributeError, IndexError, TypeError):
+            return False
+
+    def show_roast_review(self) -> None:
+        """Hand the whole left column over to the roast review.
+
+        A roast being consulted is not being steered: the machine controls, the
+        readouts and the status line all describe a live session and say nothing
+        about a finished one, so they go and the review takes the space. There
+        is no way in and no way out — START or RESET brings the column back.
+        """
+        try:
+            if (self.aw.qmc.flagstart or not self._has_charged_roast()
+                    or not self.roast_review.has_roast()):
+                return
+            self.roast_review.refresh()
+            self._review_shown = True
+            self._set_live_column_visible(False)
+            self._place_assistant()
+        except Exception as e:  # pylint: disable=broad-except
+            _log.warning("show_roast_review: %s", e)
+
+    def hide_roast_review(self) -> None:
+        """Give the column back to the live session (START, RESET)."""
+        if not hasattr(self, "roast_review"):
+            return   # called from a status refresh before the panel is built
+        try:
+            if not self._review_shown:
+                return
+            self._review_shown = False
+            self._set_live_column_visible(True)
+            self._place_assistant()
+        except Exception as e:  # pylint: disable=broad-except
+            _log.warning("hide_roast_review: %s", e)
+
+    def _set_live_column_visible(self, visible: bool) -> None:
+        """Show or hide everything above the panel that only means something live."""
+        for widget in (self.lcds, self.status_lbl):
+            widget.setVisible(visible)
+        if not visible:
+            self.automation_lbl.hide()
+
+    def _open_roast_card(self) -> None:
+        """The full card, over the panel: same figures, plus the curve."""
+        try:
+            from tilauscope.roast_card import RoastCardDialog
+            from tilauscope.roast_debrief import profile_from_qmc, display_name
+            profile = profile_from_qmc(self.aw)
+            RoastCardDialog(profile, self, bean_name=display_name(profile)).exec()
+        except Exception as e:  # pylint: disable=broad-except
+            _log.warning("_open_roast_card: %s", e)
+
+    def _enter_roast_weights(self) -> None:
+        """Weight/colour entry from the review, then take the new values in."""
+        self._open_roast_result_dialog()
+        if getattr(self, '_review_shown', False):
+            self.roast_review.refresh()
 
     def _on_assistant_closed(self) -> None:
         """Re-sync open/close state when the floating ✕ closes the assistant. """
@@ -5044,7 +5162,10 @@ class TilauScope(QWidget):
 
     def _on_beancave_closed(self): # fix 2026/04/25: this is needed to uncheck the button if Beancave is closed by other means than the button (e.g. by Artisan or by the user with the window close button)
         """Called when BeancaveDlg is closed to unmark the button."""
+        # Through the helper: monitoring may have been switched on while the
+        # database was open, and the button must come back locked, not enabled.
         self.update_button_style(self.btn_beancave, True)
+        self._refresh_beancave_availability()
 
     def update_button_style(self, button:QPushButton, active:bool, emergency:bool=False, checked:bool=False, updateonly:bool=False):
         if not updateonly:
@@ -5279,7 +5400,13 @@ class TilauScope(QWidget):
             self.update_status_text() # immediately update status to avoid waiting for first data from Artisan
             self._update_timer_style("engaged") # Update timer style based on power state
             self.update_button_style(self.swap_button, False)
+            self._refresh_beancave_availability()
             self._refresh_emergency_visibility()
+            # ToggleMonitor can raise a reset prompt before it sets the flag, so
+            # the state read above may still be the old one. Re-read once the
+            # event loop has unwound.
+            QTimer.singleShot(0, self._refresh_beancave_availability)
+            QTimer.singleShot(0, self._refresh_emergency_visibility)
         else:
             if self.is_roasting: # if stop is pressed during a roast, we first stop recording.
                 self.toggle_start_stop(pressed=False, force=True)
@@ -5304,11 +5431,28 @@ class TilauScope(QWidget):
             self._update_timer_style("idle") # Update timer style based on power state
             self.update_status_text() # immediately update status to avoid waiting for first data from Artisan
             self._clear_emergency_state()   # nothing is hot any more
+            self._refresh_beancave_availability()
             self._refresh_emergency_visibility()
             # Restaurer messagelabel Artisan au retour en mode OFF
             self.aw.messagelabel.setVisible(True)
 
     # ── Emergency heat cut ───────────────────────────────────────────────
+
+    def _refresh_beancave_availability(self) -> None:
+        """Lock BEAN CAVE while monitoring is on. The database is a between-roasts
+        screen: opening it over a live roast puts a second window in front of the
+        readouts, and loading a record from it overwrites the device configuration
+        the running session depends on."""
+        try:
+            btn = getattr(self, 'btn_beancave', None)
+            if btn is None:
+                return
+            win = getattr(self.aw, 'beancaveWindow', None)
+            if win is not None and win.isVisible():
+                return          # already open: leave it its open-state styling
+            self.update_button_style(btn, not self.aw.qmc.flagon, False, False)
+        except Exception:  # pylint: disable=broad-except
+            pass
 
     def _refresh_emergency_visibility(self) -> None:
         """Show the heat cut only while something can be hot: monitoring on,
@@ -5449,7 +5593,7 @@ class TilauScope(QWidget):
         try:
             self.update_button_style(self.btn_power, False, True)
             self._update_timer_style('emergency')
-            self.btn_estop.setText(self.str_emergency_latched)
+            apply_icon(self.btn_estop, SVG_HEATCUT, COL_DISABLED)
             self.btn_estop.setEnabled(False)
             self.btn_estop.show()
 
@@ -5485,7 +5629,8 @@ class TilauScope(QWidget):
             return
         self._emergency_latched = False
         try:
-            self.btn_estop.setText(QApplication.translate('tilauscope_window', 'STOP HEAT'))
+            apply_icon(self.btn_estop, SVG_HEATCUT, COL_ESTOP)
+            self.btn_estop.setToolTip(self.str_emergency_tip)
             self.btn_estop.setEnabled(True)
             self.msg_lbl.hide()
             self.msg_lbl.setStyleSheet(
@@ -5504,6 +5649,8 @@ class TilauScope(QWidget):
 
     def handle_reset(self):
         self._clear_emergency_state()
+        # Nothing left on screen to review once the canvas is cleared.
+        self.hide_roast_review()
         self.aw.qmc.resetButtonAction()
 
     # ── Relance back-to-back (bouton « Restart batch » de la page cooling) ─────
@@ -6276,14 +6423,30 @@ class TilauScope(QWidget):
         self.mark_button_active(btn_idx)
 
     # called to refresh screen at start and when paused/resumed
+    def _sync_wake_lock(self) -> None:
+        """Apply only monitoring ON/OFF edges to DisplayScope's wake lock.
+
+        Reading qmc.flagon here covers state changes initiated by DisplayScope,
+        Artisan, the simulator, alarms, or remote control. Merely opening
+        DisplayScope does not acquire a lock.
+        """
+        try:
+            monitoring = bool(self.aw.qmc.flagon)
+            if monitoring == self._wake_monitoring:
+                return
+            if monitoring:
+                self.tilau_ssbserver.start()
+            else:
+                self.tilau_ssbserver.finish()
+            self._wake_monitoring = monitoring
+        except Exception as e:  # the status UI must survive a platform wake error
+            _log.warning("wake lock synchronization failed: %s", e)
+
     def update_status_text(self):
         try:
             if not hasattr(self, 'aw') or not self.aw or not hasattr(self.aw, 'qmc') or not self.aw.qmc: # artisan is not correctly initialized yet
                 return
-            if hasattr(self, 'menu_btn'):
-                self.menu_btn.raise_()  # Pulls the button to the very front
-                self.menu_btn.activateWindow() # Ensures it captures mouse events
-                _log.info("raise button")
+            self._sync_wake_lock()
             status_text = f"ARTISAN "+QApplication.translate("tilauscope_window","CONNECTED") if self.aw.qmc.flagon else QApplication.translate("tilauscope_window","OFFLINE")
             # if there is an alarm set selected
 
@@ -6321,6 +6484,13 @@ class TilauScope(QWidget):
                     self._hide_artisan_standard_buttons()
                 # START locks Expert in place, STOP releases it.
                 self._refresh_level_lock()
+                # A recording that just ended leaves the controls with nothing
+                # to steer: the review takes their place. Deferred so the stop
+                # path (result dialog, save, cooling) finishes first.
+                if not self.is_roasting:
+                    QTimer.singleShot(0, self.show_roast_review)
+                else:
+                    self.hide_roast_review()
             self._last_flagstart = self.is_roasting
             if self.is_roasting: # replace text with roast information
                 status_text = self.str_roastsession.upper()
@@ -6534,6 +6704,7 @@ class TilauScope(QWidget):
         # state, and a START was taken for a STOP — post-roast result dialog
         # popping up 800 ms after pressing START.
         was_roasting = self.is_roasting
+        had_charge = was_roasting and self._has_charged_roast()
         self.aw.qmc.ToggleRecorder(pressed)
         if not was_roasting :
             self.aw._tilaupid_user_disabled = False
@@ -6574,7 +6745,8 @@ class TilauScope(QWidget):
             # Mode batch (relance back-to-back) : PAS de formulaire — la saisie
             # poids/couleur est différée dans Repair ALogs (design validé), le
             # roast est sauvegardé incomplet silencieusement par la relance.
-            if not self.aw.simulator and not getattr(self, '_relaunch_pending', False):
+            if (had_charge and not self.aw.simulator
+                    and not getattr(self, '_relaunch_pending', False)):
                 QTimer.singleShot(800, self._open_roast_result_dialog)
             # reset phases display to normal
             for p in self.phases.values():
@@ -6587,9 +6759,14 @@ class TilauScope(QWidget):
             # left the badge on screen over a roast that had ended.
             self._clear_cooling_face()
             # now update the current message label to display main info on roast session
-            self.msg_lbl.setText(QApplication.translate(
-                "tilauscope_window",
-                "Roasting has ended — press OFF to see the figures."))
+            if had_charge:
+                self.msg_lbl.setText(QApplication.translate(
+                    "tilauscope_window",
+                    "Roasting has ended — press OFF to see the figures."))
+            else:
+                self.msg_lbl.setText(QApplication.translate(
+                    "tilauscope_window",
+                    "Preheating interrupted — monitoring remains active."))
             # Restaurer messagelabel Artisan : fin de torréfaction
             self.aw.messagelabel.setVisible(True)
             # Réinitialiser les alertes de fond et tooltips min/max
@@ -6600,6 +6777,12 @@ class TilauScope(QWidget):
     def _open_roast_result_dialog(self) -> None:
         """Ouvre RoastResultDialog en fin de roast — même pattern que
         BeancaveDlg.on_roast_finished_clicked."""
+        # The callback is delayed by 800ms. Re-check the live profile so a
+        # preheat interruption (or a RESET during the delay) never opens a
+        # post-roast form for a roast that did not reach CHARGE.
+        if not self._has_charged_roast():
+            _log.info("post-roast result skipped: recording stopped before CHARGE")
+            return
         try:
             from tilauscope.roast_properties import RoastResultDialog
             from tilauscope.tilauscope_types import GreenBean

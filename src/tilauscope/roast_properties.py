@@ -3310,13 +3310,13 @@ class RoastResultDialog(QDialog):
                 return "––"
 
         try:
-            timeindex = qmc.timeindex          # [TP, DRY, FCs, FCe, SCs, SCe, DROP, +1]
+            timeindex = qmc.timeindex          # [CHARGE, DRYe, FCs, FCe, SCs, SCe, DROP, +1]
             timex     = qmc.timex
             temp2     = qmc.temp2              # BT array
             stats     = qmc.statisticstimes    # [0, drying, maillard, finish, 0, ...]
 
             charge_i = timeindex[0] if timeindex and timeindex[0] > 0 else -1
-            dry_i    = timeindex[1] if timeindex and len(timeindex) > 1 and timeindex[1] > 0 else -1
+            fc_i     = timeindex[2] if timeindex and len(timeindex) > 2 and timeindex[2] > 0 else -1
             drop_i   = timeindex[6] if timeindex and len(timeindex) > 6 and timeindex[6] > 0 else -1
 
             total_s      = (timex[drop_i] - timex[charge_i]) if (charge_i >= 0 and drop_i >= 0) else None
@@ -3327,9 +3327,9 @@ class RoastResultDialog(QDialog):
             total_s_stat = sum(stats[1:4]) if stats and len(stats) >= 4 and stats[3] > 0 else None
 
             # Fallback: statisticstimes not yet computed (pre-STOP).
-            # Derive dev time and total directly from timeindex/timex.
-            if dev_s is None and dry_i >= 0 and drop_i >= 0:
-                dev_s = timex[drop_i] - timex[dry_i]
+            # Development runs from FIRST CRACK to DROP, never from DRY END.
+            if dev_s is None and fc_i >= 0 and drop_i >= 0:
+                dev_s = timex[drop_i] - timex[fc_i]
                 total_s_stat = total_s
         except Exception:  # noqa: BLE001
             total_s = charge_bt = drop_bt = dev_s = total_s_stat = None

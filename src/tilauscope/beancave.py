@@ -123,9 +123,9 @@ _PLOT_PALETTE: Final[dict[str, str]] = {
 }
 
 # Tailles de police du Roast Viewer — centralisées pour un rendu lisible et cohérent
-_FS_TITLE:  Final[int] = 11   # titre du graphe
-_FS_AXIS:   Final[int] = 10   # labels d'axe (x / y)
-_FS_TICK:   Final[int] = 9    # graduations
+_FS_TITLE:  Final[int] = 13   # titre du graphe
+_FS_AXIS:   Final[int] = 12   # labels d'axe (x / y)
+_FS_TICK:   Final[int] = 11   # graduations
 _FS_EVENT:  Final[int] = 9    # annotations d'événement (Charge / DE / FCs / Drop)
 _FS_HOVER:  Final[int] = 8    # tooltips hover sur la courbe
 _FS_LEGEND: Final[int] = 9    # légendes
@@ -198,6 +198,13 @@ _SVG_ALIGN = f"""<svg width="16" height="16" viewBox="0 0 16 16" fill="none"
   <path d="M11 8L9 6M11 8L9 10" stroke="{THEME['TEXT']}" stroke-width="1.3"
     stroke-linecap="round" stroke-linejoin="round"/>
 </svg>""".encode()
+
+
+def _safe_filename(text: str, fallback: str) -> str:
+    """Build a filesystem-safe base name: no separator runs, no leading/trailing dash."""
+    name = re.sub(r'[^\w]+', '-', text or '')
+    name = re.sub(r'-{2,}', '-', name).strip('-')
+    return name or fallback
 
 
 def _svg_bytes_to_icon(svg_bytes: bytes, size: int = 16) -> "QIcon":
@@ -4131,6 +4138,27 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         nrows = len(rows)
         labels, label_colors = [], []
         dry_c, mai_c, dev_c = self._PHASE_COLORS
+        _bar_h = 0.72
+        # Place utile du ruban en points, sur les deux axes : l'axe x couvre
+        # 0-100 %, une largeur de texte se convertit donc en % de ruban. La
+        # hauteur d'une barre borne la taille de police posable dessus.
+        try:
+            _fig = ax.figure
+            _pos = ax.get_position()
+            # 0.90 : la mise en page contrainte peut encore rétrécir l'axe pour
+            # loger les noms de roast à gauche — on sous-estime volontairement.
+            _ax_pts = _pos.width * _fig.get_figwidth() * 72.0 * 0.90
+            _bar_pts = (_pos.height * _fig.get_figheight() * 72.0
+                        / (nrows + 0.2) * _bar_h)
+        except Exception:
+            _ax_pts, _bar_pts = 430.0, 10.0
+        # Plus grande taille tenant dans la hauteur de barre ; None si aucune.
+        _fs = next((f for f in range(_FS_TICK - 1, 5, -1) if f * 1.15 <= _bar_pts), None)
+        def _fits(text: str, width_pct: float, fontsize: int) -> bool:
+            # 0.60 em par caractère : approximation large pour une police
+            # proportionnelle, plus 8 % de marge pour ne pas coller aux bords.
+            need_pts = len(text) * 0.60 * fontsize * 1.08
+            return _ax_pts > 0 and (need_pts / _ax_pts * 100.0) <= width_pct
         for row_idx, (i, curve, m) in enumerate(rows):
             y = nrows - 1 - row_idx  # première courbe (référence) en haut
             dry = m.get('drying_pct') or 0.0
@@ -4144,11 +4172,20 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                 (mai, dry, QApplication.translate("tilauscope_beancave", "Maillard"), mai_c),
                 (dev, dry + mai, QApplication.translate("tilauscope_beancave", "Dev"), dev_c),
             ):
-                ax.barh(y, val, left=left, height=0.55, color=col,
+                ax.barh(y, val, left=left, height=_bar_h, color=col,
                         edgecolor=bg_color, linewidth=1.2, alpha=0.92)
-                if val >= 11:
-                    ax.text(left + val / 2, y, f"{lab} {val:.0f}%", ha='center', va='center',
-                            fontsize=_FS_TICK - 1, color=THEME['BG'])
+                # Une décimale : deux roasts proches (49,5 % vs 50,2 %) ne doivent
+                # pas s'afficher avec le même chiffre. Repli sur le seul
+                # pourcentage, puis rien du tout, si le segment est trop étroit.
+                if _fs is None:
+                    continue
+                for _txt, _size in ((f"{lab} {val:.1f}%", _fs),
+                                    (f"{val:.1f}%", _fs),
+                                    (f"{val:.1f}%", _fs - 1)):
+                    if _size >= 6 and _fits(_txt, val, _size):
+                        ax.text(left + val / 2, y, _txt, ha='center', va='center',
+                                fontsize=_size, color=THEME['BG'])
+                        break
             short = (curve['title'][:16] + '…') if len(curve['title']) > 16 else curve['title']
             labels.append(f"{short} · {m.get('total_fmt', '')}")
             label_colors.append(palette[i][0])
@@ -4197,7 +4234,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         lim = numpy.ceil(max_abs / 5.0) * 5.0
         ax.set_ylim(-lim, lim)
         from matplotlib.colors import to_hex, to_rgba
-        ylab = to_hex(to_rgba(_PLOT_PALETTE['ylabel'], 0.75), keep_alpha=True)
+        ylab = to_hex(to_rgba(_PLOT_PALETTE['ylabel'], 1.0), keep_alpha=True)
         ax.set_ylabel("Δ" + QApplication.translate("Label", "BT") + f" (°{mode})",
                       fontsize=_FS_TICK, color=ylab)
         ax.tick_params(axis='both', colors=ylab, labelsize=_FS_TICK - 1)
@@ -4245,14 +4282,15 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         mode = self._multi_curves[0]['data'].get('mode', 'C') if self._multi_curves[0]['data'] else 'C'
 
         from matplotlib.colors import to_hex, to_rgba
-        ylabel_alpha_color = to_hex(to_rgba(_PLOT_PALETTE['ylabel'], 0.75), keep_alpha=True)
+        ylabel_alpha_color = to_hex(to_rgba(_PLOT_PALETTE['ylabel'], 1.0), keep_alpha=True)
 
         self.fig.clear()
         # Deux lignes empilées : graphe principal (BT/ET/RoR) + ruban de phases.
         # Hauteur du ruban proportionnelle au nombre de roasts (sinon les barres
-        # s'écrasent et mordent la légende dès 4-5 courbes).
+        # s'écrasent et mordent la légende dès 4-5 courbes) : chaque ligne doit
+        # rester plus haute que l'étiquette posée dessus.
         n_data = sum(1 for c in self._multi_curves if c.get('data')) or 1
-        ribbon_h = 0.55 + 0.45 * n_data
+        ribbon_h = 0.75 + 0.62 * n_data
         # 4 lignes : graphe / résiduel ΔBT / ruban / bande-légende. Le résiduel
         # partage l'axe x du graphe (l'axe temps vit donc sur le résiduel). La
         # légende a sa propre cellule réservée → pas de chevauchement.
@@ -4772,7 +4810,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             _logd.debug(f"roast card: RoR unavailable: {e}")
 
         title = str(data.get('title') or 'roast')
-        safe_name = re.sub(r'[^\w\-]+', '-', title).strip('-') or "roast"
+        safe_name = _safe_filename(title, "roast")
         downloads_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
         if not downloads_dir:
             downloads_dir = str(Path.home() / "Downloads")
@@ -6538,8 +6576,8 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             self.fig.set_facecolor(bg_color)
             from matplotlib.colors import to_hex, to_rgba # type:ignore[untyped-import,unused-ignore] # ty:ignore[ignore]
 
-            xlabel_alpha_color = to_hex(to_rgba(_PLOT_PALETTE['xlabel'], 0.75), keep_alpha=True)
-            ylabel_alpha_color = to_hex(to_rgba(_PLOT_PALETTE['ylabel'], 0.75), keep_alpha=True)
+            xlabel_alpha_color = to_hex(to_rgba(_PLOT_PALETTE['xlabel'], 1.0), keep_alpha=True)
+            ylabel_alpha_color = to_hex(to_rgba(_PLOT_PALETTE['ylabel'], 1.0), keep_alpha=True)
 
             ax1.set_facecolor(bg_color)
             ax1.tick_params(axis='x', colors=xlabel_alpha_color, labelsize=_FS_TICK)
@@ -10877,7 +10915,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         downloads_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
         if not downloads_dir:
             downloads_dir = str(Path.home() / "Downloads")
-        safe_name = re.sub(r'[^\w\-]+', '-', (bean.name or "bean")).strip('-') or "bean"
+        safe_name = _safe_filename(bean.name, "bean")
         default_name = str(Path(downloads_dir) / f"{safe_name}.jpg")
         file_path = self._open_file_dialog_save(
             QApplication.translate("tilauscope_beancave","Save Bean Card"),

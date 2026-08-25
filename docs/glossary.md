@@ -92,6 +92,13 @@ The share of total roast time spent in [development](#development), as a percent
 common target sits somewhere between the high teens and low twenties, depending on the
 coffee and the intended cup.
 
+#### Development rise
+
+How much the bean temperature climbed between [first crack](#fc--first-crack) and the
+[drop](#drop), in degrees. Where [DTR](#dtr--development-time-ratio) measures development in
+time, the development rise measures it in heat: two roasts can share a DTR and still finish
+very differently if one gained twice as many degrees over that stretch.
+
 #### Charge weight — green weight
 
 The weight of green coffee going into the drum. It sets the whole scale of the roast: phase
@@ -286,7 +293,8 @@ unevenly developed.
 
 #### Heat cut
 
-The safe state TilauScope commands when you hold **STOP HEAT**: every automation that was
-driving the heat is stopped, the burner goes to zero, and airflow and extraction open fully.
+The safe state TilauScope commands when you hold the **crossed-out flame** button: every
+automation that was driving the heat is stopped, the burner goes to zero, and airflow and
+extraction open fully.
 The drum keeps turning and the beans stay in it — emptying the drum remains your gesture.
 See [The roasting window](the-window.md#cutting-the-heat-in-an-emergency).

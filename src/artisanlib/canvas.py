@@ -126,7 +126,6 @@ except Exception: # pylint: disable=broad-except
     pass
 
 ## TILAU ##
-from wakepy import keep
 from tilauscope.mqttbridge import TilauscopeMQTTClient, MQTTSensorConfig, TilauMqttPorts
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -1846,11 +1845,6 @@ class tgraphcanvas(QObject):
         ############################  Thread Server #################################################
         #server that spawns a thread dynamically to sample temperature (press button ON to make a thread press OFF button to kill it)
         self.threadserver:Athreadserver = Athreadserver(self.aw)
-        ## TILAU ##
-        self.tilau_ssbserver:TilauController = TilauController(self.aw)
-        ############################  Wakepy #################################################
-        #monitors screen saver preventer execution
-        self.onoffPreventSleep:bool= False        
         ##########################     Designer variables       #################################
         self.designerflag:bool = False
         self.designerconnections:list[int|None] = [None,None,None,None]   #mouse event ids
@@ -13568,10 +13562,6 @@ class tgraphcanvas(QObject):
 
 #SCHEDULER:
 
-            # now that reset has validated that we can run, start the screen saver 
-            ##TILAU ## 
-            self.tilau_ssbserver.start() # start TilauScope screen saver server (if not already started)
-
             # set properties from selected Schedule
             if self.aw.schedule_window is not None and self.aw.plus_account is not None:
                 # NOTE: scheduler is only active if connected to artisan.plus
@@ -14095,10 +14085,6 @@ class tgraphcanvas(QObject):
                 self.flagon = False
 
                 self.getMeterReads()
-
-                ##TILAU ## 
-                # finish screen locking task ## TILAU ##
-                self.tilau_ssbserver.terminatingSignal.emit()
 
             except Exception as ex: # pylint: disable=broad-except
                 _log.exception(ex)
@@ -20367,68 +20353,3 @@ class Athreadserver(QWidget):
     @pyqtSlot()
     def terminating(self) -> None:
         self.terminatingSignal.emit()
-
-###     Screen Saver thread ## TILAU ##
-class TilauWorkerThread(QObject): # pylint: disable=too-few-public-methods # pyright: ignore [reportGeneralTypeIssues] # Argument to class must be a base class
-    finished = pyqtSignal()
-    
-    def __init__(self, aw:'ApplicationWindow') -> None:
-        super().__init__()
-        self.aw = aw
-
-    def run(self):
-        # Using the context manager ensures that even if an error occurs, 
-        # the keep-awake state is released gracefully.
-        _log.debug("TilauScope: Activating wakepy keep-awake mode.")
-        with keep.presenting(): 
-            while self.aw.qmc.onoffPreventSleep:
-                libtime.sleep(1) # Keep the thread alive to maintain the wake-lock
-        _log.debug("TilauScope: Releasing keep-awake mode.")
-        self.finished.emit()
-
-###     Screen Saver thread ## TILAU ##
-class TilauController(QWidget): # pylint: disable=too-few-public-methods # pyright: ignore [reportGeneralTypeIssues] # Argument to class must be a base class
-    terminatingSignal = pyqtSignal()
-    
-    def __init__(self, aw:'ApplicationWindow') -> None:
-        super().__init__()
-        self.aw = aw
-        self.thread = None
-        self.worker = None
-        self.terminatingSignal.connect(self.finish)
-    
-    # defines and run the screen saver loop 
-    def runlongtaskl(self):
-        # Always clean up existing thread if it's still hanging around
-        try:
-            if self.thread and self.thread.isRunning():
-                self.aw.qmc.onoffPreventSleep = False
-                self.thread.quit()
-                self.thread.wait()
-        except Exception:
-            pass            
-        self.thread = QThread()
-        self.worker = TilauWorkerThread(self.aw)
-        self.worker.moveToThread(self.thread)
-        self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
-        self.thread.start()
-    
-    def start(self):
-        if not self.aw.qmc.onoffPreventSleep:
-            _log.info("Tilauscope : Prevent screen saver/hibernation started")
-            self.aw.qmc.onoffPreventSleep = True
-            self.runlongtaskl()
-
-    @pyqtSlot()
-    def finish(self):
-        self.aw.qmc.onoffPreventSleep = False # clear flag
-        # The worker thread loop will exit on its next iteration
-        try:
-            if self.thread is not None and self.thread.isRunning(): # if thread is still running kill it
-                self.thread.quit()
-        except Exception:
-            pass    
-        _log.info("Tilauscope : Releasing screen saver lock")

@@ -172,7 +172,7 @@ class ObservationParams:
     stability_window_s: float = 12.0
     stability_hold_s: float = 8.0
     min_points: int = 5
-    spread_abs: float = 2.0
+    spread_abs: float = 2.0       # °C/min — scaled to the display unit per call
     spread_rel: float = 0.25
 
 
@@ -197,7 +197,10 @@ class LiveTrajectoryObserver:
         self._ror.clear()
         self._stable_since = None
 
-    def update(self, now_s: float, ror: float | None, *, viability_floor: float) -> TrajectoryObservation:
+    def update(self, now_s: float, ror: float | None, *, viability_floor: float,
+               ror_scale: float = 1.0) -> TrajectoryObservation:
+        """`ror_scale` turns the °C/min spread into the unit the samples carry;
+        `viability_floor` already arrives in that unit."""
         if ror is not None and math.isfinite(float(ror)):
             self._ror.append((now_s, float(ror)))
         cutoff = now_s - self.p.stability_window_s
@@ -212,7 +215,7 @@ class LiveTrajectoryObserver:
             and enough_span
             and median is not None
             and spread is not None
-            and spread <= max(self.p.spread_abs, abs(median) * self.p.spread_rel)
+            and spread <= max(self.p.spread_abs * ror_scale, abs(median) * self.p.spread_rel)
         )
         if candidate:
             if self._stable_since is None:

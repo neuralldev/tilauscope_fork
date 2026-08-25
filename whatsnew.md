@@ -9,7 +9,7 @@ This release turns the roasting window into the application itself — TilauScop
 * **The roast being shown is named above the curve** — batch number and title, exactly as it is filed. The time axis names every minute, the curves take their colours from the readouts beside them (one colour per probe, the rate always the quieter of the two), and **air temperature can be traced alongside the bean** from the curve's right-click menu.
 * **The lever strips are drawn live**, through the preheat and the roast, each carrying its current level in figures — a lever held at zero no longer looks like an empty strip.
 * **A compact two-line header** carries the monitoring and roast controls with readable state labels, and **machine controls use colour-segmented sliders** with more forgiving step buttons; clicking the percentage still opens the value roller.
-* **A STOP HEAT control cuts the heat in one gesture.** Hold it one second: every automation stops, the burner goes to zero, airflow and extraction open, the drum keeps turning and the panel asks you to empty it.
+* **An emergency heat cut works in one gesture.** Hold it one second: every automation stops, the burner goes to zero, airflow and extraction open, the drum keeps turning and the panel asks you to empty it.
 * While a simulation runs, an **x1 / x2 / x8 selector** at the top right of the curve sets the replay speed.
 * **Event buttons and alarms can now drive the graph view** — zoom, pan, center, clamp, follow mode, home, back and forward.
 * The main window carries a **TilauScope title bar** in the Catppuccin theme, extended to the menu bar, dropdown menus, tooltips and scrollbars.

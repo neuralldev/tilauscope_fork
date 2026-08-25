@@ -110,9 +110,14 @@ def _extract_uuid_from_beans_field(beans_text: str) -> str|None:
     return m.group(1) if m else None
 
 
-def _eta_minutes(current_bt: float, target_bt: float, ror: float) -> float|None:
-    """Temps estimé (minutes) pour atteindre target_bt au RoR courant."""
-    if ror is None or ror <= 0.5:
+def _eta_minutes(current_bt: float, target_bt: float, ror: float,
+                 scale: float = 1.0) -> float|None:
+    """Temps estimé (minutes) pour atteindre target_bt au RoR courant.
+
+    scale : 1.8 en °F — le garde 0.5 est en doctrine °C/min et les entrées
+    (BT, RoR) sont en unité native.
+    """
+    if ror is None or ror <= 0.5 * scale:
         return None
     delta = target_bt - current_bt
     if delta <= 0:
@@ -311,18 +316,22 @@ def _ror_smoothed(ror: float, ror_hist) -> float:
     return ror
 
 
-def _ror_trend(delta2_history: "list[float] | deque[float]") -> str:
+def _ror_trend(delta2_history: "list[float] | deque[float]",
+               scale: float = 1.0) -> str:
     """
     Analyse les 5 dernières valeurs de RoR pour déterminer la tendance.
     Retourne '↑' / '→' / '↓'.
+
+    scale : 1.8 en °F — le seuil ±0,5 est un ÉCART de RoR en doctrine °C/min,
+    l'historique est en unité native.
     """
     if len(delta2_history) < 3:
         return "→"
     recent = list(delta2_history)[-5:]
     slope = recent[-1] - recent[0]
-    if slope > 0.5:
+    if slope > 0.5 * scale:
         return "↑"
-    if slope < -0.5:
+    if slope < -0.5 * scale:
         return "↓"
     return "→"
 
@@ -1954,7 +1963,7 @@ class _PreheatPage(QWidget):
         """Refresh the preheat page (signature unchanged — driven by displayscope).
         soak_note : ligne heat-soak back-to-back (batch 2+), affichée sous le héros."""
         unit  = f"°{mode}"
-        trend = _ror_trend(ror_hist)
+        trend = _ror_trend(ror_hist, 1.8 if mode == 'F' else 1.0)
         ror_chip = f"{ror:.1f}" if ror is not None else "--"
         # °F doctrine: deltas/RoR scale ×1.8, absolute temps convert via
         # fromCtoFstrict. °C path stays bit-identical (s=1, identity temps).
@@ -1982,7 +1991,7 @@ class _PreheatPage(QWidget):
             span = sv - ref_low
             self._set_progress(((bt - ref_low) / span * 100.0) if span > 0 else 0.0)
 
-            eta = _eta_minutes(bt, sv, ror) if ror is not None and ror > 0.5 else None
+            eta = _eta_minutes(bt, sv, ror, s) if ror is not None and ror > 0.5 * s else None
             ## Chip colours are a channel palette (one hue per measured quantity),
             ## not semantics — kept literal so they don't follow THEME severity tones.
             self.chips.set_chips([
@@ -2216,7 +2225,7 @@ class _DryingPage(QWidget):
                 t_tp_sec: float = -1.0,
                 crash_detector: "_RoRCrashDetector | None" = None) -> None:
         """Update the drying page (signature unchanged — driven by displayscope)."""
-        trend = _ror_trend(ror_hist)
+        trend = _ror_trend(ror_hist, 1.8 if mode == 'F' else 1.0)
         # °F doctrine: RoR bands and temperature SPANS scale ×1.8; absolute
         # temperatures convert via fromCtoFstrict. °C path is bit-identical.
         s = 1.8 if mode == 'F' else 1.0
@@ -2298,7 +2307,7 @@ class _DryingPage(QWidget):
                           else (_S_WARN if gap < 20 * s else _S_CRIT))
 
         # ── ETA to DRY END ──────────────────────────────────────────────────────
-        eta = _eta_minutes(bt, dry_end_temp, ror)
+        eta = _eta_minutes(bt, dry_end_temp, ror, s)
 
         # ── Projection d'overrun du séchage vs plan ─────────────────────────────
         # Symétrique au baked-risk de la page Maillard. Les durées du plan étant
@@ -2582,7 +2591,7 @@ class _MaillardPage(QWidget):
                 bean: GreenBean|None, mode: str = 'C',
                 crash_detector: "_RoRCrashDetector | None" = None) -> None:
         ror_s, ror_sub = _S_OK, ""
-        trend = _ror_trend(ror_hist)
+        trend = _ror_trend(ror_hist, 1.8 if mode == 'F' else 1.0)
         # °F : RoR et spans de température scalés ×1,8 ; chemin °C inchangé.
         s = 1.8 if mode == 'F' else 1.0
         ror_target = _plan_ror(plan, "Target ROR Maillard")
@@ -2913,7 +2922,7 @@ class _DevelopmentPage(QWidget):
                 c_dtr: float = -0.06, c_wl: float = -3.61,
                 weight_loss_pct: float = 14.0,
                 crash_detector: "_RoRCrashDetector | None" = None) -> None:
-        trend = _ror_trend(ror_hist)
+        trend = _ror_trend(ror_hist, 1.8 if mode == 'F' else 1.0)
 
         # ── Cibles RoR du plan (utilisées par l'ETA et le statut RoR) ───────────
         ror_target_avg  = _plan_ror(plan, "Target ROR Dev (Avg)")
@@ -3432,8 +3441,8 @@ class _CoolingPage(QWidget):
         Updates the Cooling page.
         ror: expect negative values during cooling.
         """
-        trend = _ror_trend(ror_hist)
         mode_c = (self.aw.qmc.mode == 'C')
+        trend = _ror_trend(ror_hist, 1.0 if mode_c else 1.8)
 
         # Thresholds (mode-aware)
         ceiling_bt  = 220.0 if mode_c else fromCtoFstrict(220.0)
@@ -5542,6 +5551,7 @@ class RoastAssistantPanel(QWidget):
     def _on_ambient_changed(self, temp: float, hum: float) -> None:
         """
         Reçu depuis RoastDataBridge quand l'ambiant change significativement.
+        `temp` arrive en °C (normalisé par le bridge), l'unité du plan.
         Régénère le plan uniquement si on est encore en PREHEAT ou DRY.
         """
         if not self.is_active:
@@ -6826,6 +6836,7 @@ class RoastAssistantPanel(QWidget):
             # early post-TP recovery. Keep the current authority pending during
             # the same grace already used by Drying advice; real risks still
             # preempt inside GuidanceSession.
+            ror_scale=_scale,
             authority_hold=(self._current_phase == self._PHASE_DRY and (
                 ctx["t_tp_sec"] <= 0.0
                 or _roast_now - ctx["t_tp_sec"] < _DryingPage._TP_GRACE_SEC))))

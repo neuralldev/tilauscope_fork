@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-latest
     # This file ships inside the published snapshot and is meant to run in the
     # public repository only. In the private repo it stays inert: builds there
-    # are done locally from `continuous`.
+    # are done locally from `dev`.
     if: github.repository == 'neuralldev/tilauscope_fork'
 
     permissions:

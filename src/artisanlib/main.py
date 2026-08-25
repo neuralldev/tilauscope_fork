@@ -9529,23 +9529,31 @@ class ApplicationWindow(QMainWindow):
                                 ##  airwave(<target>,<value>) : command is packed and reprocessed ## TILAU ##
                                 elif c.startswith('airwave'):
                                     if self.bleAirwaveDevice is not None:
-                                        r = c.replace("airwave(", "").replace(")", "").split(',')
-                                        #_logd.debug(f"command received {r}")
-                                        c1:str = r[0].strip()
-                                        c1 = c1.upper()
-                                        c2:str = r[1].strip()
-                                        c2 = c2.upper()
-                                        _logd.debug(f"command split in c1={c1} c2={c2}")
-                                        if len(c1) > 0  and c1=="SET":
-                                            self.airwaveSendMessageSignal.emit(c2)
-                                        elif len(c1) > 0 and c1=="GET" :
-                                            self.airwaveGetMessageSignal.emit(c2)
-                                        elif len(c1) > 0 and len(c2) > 0:
-                                            ## TILAU ## direct form airwave(<target>,<value>) — e.g. airwave(FAN,30),
-                                            # airwave(MODE,EXT), airwave(POWER,ON). Reassemble into the
-                                            # "<command> <argument>" string the Difluid interpreter expects.
-                                            # (Only SET/GET are reserved verbs; anything else is a command.)
-                                            self.airwaveSendMessageSignal.emit(f"{c1} {c2}")
+                                        ## TILAU ## keep every comma-separated subcommand: "MODE STD,FAN 30"
+                                        # must reach the interpreter whole, else only the mode is applied.
+                                        aw_args = c[len('airwave('):].strip()
+                                        if aw_args.endswith(')'):
+                                            aw_args = aw_args[:-1]
+                                        aw_parts = [p.strip().upper() for p in aw_args.split(',') if p.strip()]
+                                        aw_verb = aw_parts[0] if aw_parts else ''
+                                        aw_payload = ''
+                                        if aw_verb in ('SET', 'GET'):
+                                            aw_payload = ','.join(aw_parts[1:])
+                                        elif aw_parts:
+                                            ## TILAU ## direct form: either "<cmd> <arg>[,<cmd> <arg>...]"
+                                            # or the legacy pair form airwave(FAN,30) / airwave(MODE,EXT).
+                                            if any(' ' in p for p in aw_parts):
+                                                aw_payload = ','.join(aw_parts)
+                                            else:
+                                                aw_payload = ','.join(
+                                                    f'{aw_parts[i]} {aw_parts[i+1]}'
+                                                    for i in range(0, len(aw_parts) - 1, 2))
+                                        _logd.debug(f"airwave command verb={aw_verb} payload={aw_payload}")
+                                        if aw_payload:
+                                            if aw_verb == 'GET':
+                                                self.airwaveGetMessageSignal.emit(aw_payload)
+                                            else:
+                                                self.airwaveSendMessageSignal.emit(aw_payload)
                                             
                                 ##  tilauambient(<command>) : command is packed and reprocessed ## TILAU ##
                                 elif c.startswith('tilauambient'):
@@ -14099,6 +14107,11 @@ class ApplicationWindow(QMainWindow):
                 #check colors
                 self.checkColors(self.getcolorPairsToCheck())
 
+                ## TILAU ## 
+                # an opened profile is a roast to look at
+                if self.tilauscope_main is not None:
+                    QTimer.singleShot(0, self.tilauscope_main.show_roast_review)
+
         except OSError as ex:
             _, _, exc_tb = sys.exc_info()
             self.qmc.adderror((QApplication.translate('Error Message', 'IO Error:') + ' {0}: {1}').format(str(ex),str(filename)),getattr(exc_tb, 'tb_lineno', '?'))
@@ -18469,7 +18482,7 @@ class ApplicationWindow(QMainWindow):
 
                 settings = QSettings(filename, QSettings.Format.IniFormat)
 
-                # a proper artisan-settings.aset file needs at least to contain a Mode tag
+                # a proper tilauscope-settings.aset file needs at least to contain a Mode tag
                 if not (theme or machine) and not settings.contains('Mode'):
                     self.qmc.adderror(QApplication.translate('Error Message','Exception: {} not a valid settings file').format(str(filename)))
                     return False
@@ -26014,7 +26027,7 @@ class ApplicationWindow(QMainWindow):
         if self.settingspath:
             fname = self.settingspath
         else:
-            fname = path.absoluteFilePath(QApplication.translate('Message','artisan-settings'))
+            fname = path.absoluteFilePath('tilauscope-settings')
         filename = self.ArtisanSaveFileDialog(msg=QApplication.translate('Message', 'Save Settings'), path=fname, ext='*.aset')
         if filename:
             self.settingspath = filename

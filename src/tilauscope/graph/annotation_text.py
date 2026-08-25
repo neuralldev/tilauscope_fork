@@ -41,7 +41,7 @@ from PyQt6.QtWidgets import QApplication
 
 from artisanlib.util import stringfromseconds
 from tilauscope.tilauscope_types import get_agtron_color
-from tilauscope.graph.common import report_once
+from tilauscope.graph.common import delta_scale, report_once, within_share
 from tilauscope.tilauscope_types import get_roc_color as _omniflux_roc_color
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -188,14 +188,15 @@ def _get_tilaupid_text(qmc: Any, pid, et: float, bt: float) -> str:
         pid_input = bt if on_bt else et
         delta = sv - pid_input
 
-        # proximity band: identical rule to the TilauScope SV mirror (5 % of SV, or past SV)
-        close = (delta <= 0) or (sv > 0 and abs(delta) <= 0.05 * sv)
+        # proximity band: identical rule to the TilauScope SV mirror (5 % of SV,
+        # or past SV) — judged in °C so °F reads the same physical band
+        close = (delta <= 0) or within_share(delta, sv, 0.05, mode)
         # Approach-state colour — drives the top rule, header, gauge fill and (except
         # STABILIZING, always yellow) the hero line: green in the close band, yellow
         # while approaching (<15° away), blue while still far.
         if close:
             state_color = '#A6E3A1'
-        elif abs(delta) < 15:
+        elif abs(delta) < 15 * delta_scale(mode):
             state_color = '#F9E2AF'
         else:
             state_color = '#89B4FA'
@@ -701,9 +702,9 @@ def _format_annotation_text(qmc: Any, x_intersect, info, coach: bool = False)->s
             inter_color = colors['value']
         # if close at 5% use a red color, if at 10% use yellow, else white or so
         inter_bt = bt-info['target']
-        if inter_bt < 0 and -inter_bt < 0.05 * info["target"]:
+        if inter_bt < 0 and within_share(inter_bt, info["target"], 0.05, mode):
             inter_bt_color = colors['manual']
-        elif inter_bt < 0 and -inter_bt < 0.10 * info["target"]:
+        elif inter_bt < 0 and within_share(inter_bt, info["target"], 0.10, mode):
             inter_bt_color = colors['highlighted']
         else:
             inter_bt_color = colors['value']
@@ -764,7 +765,9 @@ def _format_annotation_text(qmc: Any, x_intersect, info, coach: bool = False)->s
     
     if idx == "FC" or idx == "SCs" or idx == "SCe":
         # BT turns red when within bt_delta_limit of the drop target (approaching, not overshoot)
-        bt_delta_limit:float = 5.0 if qmc.mode =="C" else 32.0
+        # A DIFFERENCE from the drop target: it scales (×1.8). 32 is the
+        # freezing offset and has no business in a gap.
+        bt_delta_limit:float = 5.0 * delta_scale(qmc.mode)
         delta_color:str = colors['manual'] if info["drop_temp"] > 0.0 and (info["drop_temp"] - bt) < bt_delta_limit else colors['value']
         html += f"""
                 <tr>

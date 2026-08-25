@@ -20,6 +20,7 @@ import logging
 import time as _time
 from typing import Final
 from artisanlib.pid_control import PIDcontrol
+from artisanlib.util import fromCtoFstrict
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QTextBrowser, QWidget,
                              QLabel, QGroupBox, QFormLayout, QApplication, QFrame)
 from PyQt6.QtCore import Qt, QPoint, QTimer, QPropertyAnimation, pyqtSlot
@@ -108,14 +109,27 @@ class PIDAutotune(QDialog):
             self.preheating = False
         self.filtered_ror = 0.0
 
+    # ── Unités ────────────────────────────────────────────────────────────────
+    # BT, SV et RoR arrivent ici en unité d'AFFICHAGE (qmc.temp2, pidSchedule*),
+    # et les libellés les réaffichent tels quels. Les seuils du réglage sont en
+    # doctrine °C : ils sont convertis vers le natif au point de comparaison.
+    @property
+    def _delta_scale(self) -> float:
+        """Facteur d'échelle pour un ÉCART ou un RoR exprimé en °C."""
+        return 1.8 if self.aw.qmc.mode == 'F' else 1.0
+
+    def _abs_native(self, temp_c: float) -> float:
+        """Température ABSOLUE °C ramenée à l'unité d'affichage."""
+        return fromCtoFstrict(temp_c) if self.aw.qmc.mode == 'F' else temp_c
+
     def is_stable(self, window_size: int = 5, max_spread: float = 0.4) -> bool:
         """Stabilité sur une fenêtre temporelle cohérente avec le cycle Artisan
-        (window_size points temp2, max_spread en °C)."""
+        (window_size points temp2, max_spread en °C — mis à l'échelle en °F)."""
         temps = self.aw.qmc.temp2
         if len(temps) < window_size:
             return False
         recent = temps[-window_size:]
-        return (max(recent) - min(recent)) < max_spread
+        return (max(recent) - min(recent)) < max_spread * self._delta_scale
 
     def setup_ui(self):
         self.main_layout = QVBoxLayout(self)
@@ -251,14 +265,14 @@ class PIDAutotune(QDialog):
                 self.pid.pidKp = self.default_presets[95]['kp']
                 self.pid.pidKi = self.default_presets[95]['ki']
                 self.pid.pidKd = self.default_presets[95]['kd']
-                self.pid.confPIDweights(self.default_presets[95]["beta"], self.default_presets["95"]["gamma"])
+                self.pid.confPIDweights(self.default_presets[95]["beta"], self.default_presets[95]["gamma"])
                 self.pid.pidSchedule0 = 95.0
 
                 # Point 2 (Schedule 1)
                 self.pid.pidKp1 = self.default_presets[150]['kp']
                 self.pid.pidKi1 = self.default_presets[150]['ki']
                 self.pid.pidKd1 = self.default_presets[150]['kd']
-                self.pid.confPIDweights(self.default_presets[150]["beta"], self.default_presets["150"]["gamma"])
+                self.pid.confPIDweights(self.default_presets[150]["beta"], self.default_presets[150]["gamma"])
                 self.pid.pidSchedule1 = 150.0
 
                 # Point 3 (Schedule 2)
@@ -390,13 +404,14 @@ class PIDAutotune(QDialog):
         return "Preheat: Kp↓ Kd↑"
 
     def _near_target_threshold(self, bt: float) -> float:
-        """Seuil d'erreur (°C) pour "près de la consigne" : ±4.0 sous 95°C (Turning
-        Point), ±3.0 sous 150°C (Maillard), ±2.0 au-delà (finition)."""
-        if bt <= 95.0:
-            return 4.0
-        if bt <= 150.0:
-            return 3.0
-        return 2.0
+        """Seuil d'erreur pour "près de la consigne" : ±4.0 sous 95°C (Turning
+        Point), ±3.0 sous 150°C (Maillard), ±2.0 au-delà (finition). `bt` est
+        en unité d'affichage ; bandes et seuil sont convertis depuis le °C."""
+        if bt <= self._abs_native(95.0):
+            return 4.0 * self._delta_scale
+        if bt <= self._abs_native(150.0):
+            return 3.0 * self._delta_scale
+        return 2.0 * self._delta_scale
 
     def update_logic(self) -> None:   # type: ignore[override]
         if not self.isVisible() or self.aw is None:
@@ -450,14 +465,14 @@ class PIDAutotune(QDialog):
 
             # ── Point 12 : seuil adaptatif ───────────────────────────────────────
             if self.preheating:
-                is_near_target = abs(error) <= 10.0
+                is_near_target = abs(error) <= 10.0 * self._delta_scale
             else:
                 threshold      = self._near_target_threshold(bt)
                 # Point 4 : la stabilité est intégrée dans la condition
                 is_near_target = abs(error) <= threshold and self.is_stable()
 
-            ignore_braking  = bt < 90.0
-            is_overspeeding = current_ror > 50.0 and not ignore_braking
+            ignore_braking  = bt < self._abs_native(90.0)
+            is_overspeeding = current_ror > 50.0 * self._delta_scale and not ignore_braking
 
             # ── Ramping : pas encore à la consigne ──────────────────────────────
             if not is_near_target:

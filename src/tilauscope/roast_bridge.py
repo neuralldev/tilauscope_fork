@@ -21,13 +21,15 @@ from typing import Final, TYPE_CHECKING
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
+from artisanlib.util import fromFtoCstrict
+
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow
 
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
 # ── Seuils de déclenchement ambient_updated ─────────────────────────────────
-_AMBIENT_TEMP_DELTA: float = 3.0   # °C / °F — changement significatif
+_AMBIENT_TEMP_DELTA: float = 3.0   # °C — changement significatif (l'ambiant est normalisé en °C)
 _AMBIENT_HUM_DELTA:  float = 5.0   # % RH
 
 
@@ -41,7 +43,7 @@ class RoastDataBridge(QObject):
     bt_updated             = pyqtSignal(float)          # BT courante
     et_updated             = pyqtSignal(float)          # ET courante
     ror_updated            = pyqtSignal(float)          # RoR courant
-    ambient_updated        = pyqtSignal(float, float)   # (temp, hum) — si Δ significatif
+    ambient_updated        = pyqtSignal(float, float)   # (temp °C, hum) — si Δ significatif
     phase_changed          = pyqtSignal(str)            # clé de phase
     roast_state_changed    = pyqtSignal(bool)           # True = roast ON
 
@@ -155,18 +157,22 @@ class RoastDataBridge(QObject):
         Lit la température ambiante depuis la source configurée dans Artisan.
         Stratégie : dernière valeur live de l'extradevice (pas la moyenne figée).
         Retourne None si aucune source n'est configurée ou si les données manquent.
+
+        Le plan travaille en °C : les séries qmc portent l'unité d'AFFICHAGE,
+        la conversion se fait donc ici, à la frontière d'entrée.
         """
         try:
             qmc = self.aw.qmc
+            _to_c = fromFtoCstrict if qmc.mode == 'F' else float
             source = int(qmc.ambientTempSource or 0)
             if source == 0:
                 # Pas de source configurée — fallback sur qmc.ambientTemp one-shot
                 v = float(qmc.ambientTemp or 0.0)
-                return v if v != 0.0 else None
+                return _to_c(v) if v != 0.0 else None
             if source == 1:  # ET
-                return float(qmc.temp1[-1]) if qmc.temp1 else None
+                return _to_c(float(qmc.temp1[-1])) if qmc.temp1 else None
             if source == 2:  # BT
-                return float(qmc.temp2[-1]) if qmc.temp2 else None
+                return _to_c(float(qmc.temp2[-1])) if qmc.temp2 else None
             # Extra device : source ≥ 3
             # Artisan encode : source=3 → extratemp1[0], 4 → extratemp2[0],
             #                  source=5 → extratemp1[1], 6 → extratemp2[1], …
@@ -178,7 +184,7 @@ class RoastDataBridge(QObject):
                 series  = qmc.RTextratemp2[dev_idx] if use_t2 else qmc.RTextratemp1[dev_idx]
             if series is not None and (not qmc.flagstart or len(series)):
                 v = float(series[-1]) if qmc.flagstart else float(series) # RT array is a list of float not a list of (list of float)
-                return v if v != -1 else None
+                return _to_c(v) if v != -1 else None
         except (IndexError, TypeError, AttributeError, ValueError):
             pass
         return None

@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 from PyQt6.QtCore import QSettings, QTimer
 from PyQt6.QtWidgets import QApplication
 
-from artisanlib.util import fromFtoCstrict, fromCtoFstrict
+from artisanlib.util import fromFtoCstrict, fromCtoFstrict, convertRoRstrict
 from tilauscope.tilaupid_adaptative import AdaptivePIDMixin, AmbientConditions, AmbientCorrector
 from tilauscope.tilaupid_safety import PreheatSensorGuard, SensorSafetyLimits
 
@@ -453,8 +453,14 @@ class TilauPreheatPID(AdaptivePIDMixin):
         if not (t or h or p):
             return None
         ms = self._map_ambient_source
+        # AmbientConditions is a °C frame; the mapped channels carry the DISPLAY
+        # unit. Sources 3/4 are RoR channels — a rate converts by scale only.
+        _t_raw = ms(t, qmc)
+        if _t_raw is not None and qmc.mode == 'F':
+            _t_raw = (convertRoRstrict(_t_raw, 'F', 'C') if t in (3, 4)
+                      else fromFtoCstrict(_t_raw))
         return AmbientConditions(
-            temp_ambient=ms(t, qmc) or 20.0,
+            temp_ambient=_t_raw or 20.0,
             humidity    =ms(h, qmc) or 50.0,
             pressure    =ms(p, qmc) or 1013.25,
         )

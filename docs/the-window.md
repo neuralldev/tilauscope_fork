@@ -28,11 +28,11 @@ monitoring, recording, and timer controls together; the second row holds less fr
 | **Power** | Turns monitoring on and off. |
 | **START / STOP** | Starts and stops recording. |
 | **RESET** | Clears the current roast. It stays on the secondary row. |
-| **BeanCave** | Opens the green-bean database. It stays on the secondary row. |
+| **BeanCave** | Opens the green-bean database. It stays on the secondary row, and is locked while monitoring is on — the database is a between-roasts screen. |
 | **G / E pill** | The operator level — see [Getting started](getting-started.md#guided-or-expert). |
 | **⇄** | Switches the control view. |
 | **⠿** | A grab strip for moving the window. It runs along the end of the secondary row. |
-| **STOP HEAT** | The emergency [heat cut](glossary.md#heat-cut). It appears at the end of the secondary row once monitoring is on, and is described below. |
+| **Crossed-out flame** | The emergency [heat cut](glossary.md#heat-cut). It appears at the end of the secondary row once monitoring is on, and is described below. |
 | Timer | The roast clock. |
 
 These are deliberately large and few. During a roast, the buttons that matter must be hittable
@@ -49,9 +49,12 @@ without aiming.
 ## Cutting the heat in an emergency
 
 If a roast goes wrong — smoke you did not expect, a burner that will not come down, anything that
-means the batch has to end now — **STOP HEAT** puts the machine into a safe state in one gesture.
-It appears at the end of the secondary row as soon as monitoring is on, and nowhere else, so it is
+means the batch has to end now — the heat cut puts the machine into a safe state in one gesture.
+
+It is the red button showing a **crossed-out flame**, the only red control of the header. It
+appears at the end of the secondary row as soon as monitoring is on, and nowhere else, so it is
 in the same place whether you are following the guided assistant or driving the controls yourself.
+Hovering over it names what it does.
 
 **Hold it down for one second.** A red sweep fills the button while you hold. Releasing early, or
 sliding off the button, cancels it — a stray click cannot end a roast.
@@ -77,8 +80,9 @@ instead. The heat cut still stops every automation.
 **RESET**, or turning monitoring off, releases the red state and gives the panel its normal look
 back.
 
-<!-- CAPTURE 2.2b — the panel just after STOP HEAT fires: red border, "HEAT CUT" message, red
-     timer. Reproduce with the simulator running, then hold STOP HEAT for one second. -->
+<!-- CAPTURE 2.2b — the panel just after the heat cut fires: red border, "HEAT CUT" message, red
+     timer, and the flame button greyed out. Reproduce with the simulator running, then hold the
+     crossed-out flame for one second. -->
 
 ---
 
@@ -145,7 +149,9 @@ where it happened, with its name and the temperature it was marked at. The
 you mark yourself.
 
 The time axis names every minute and rules every second one, so a duration can be read off it
-without counting.
+without counting. The temperature scale on the left and the rate scale on the right are drawn in
+the unit you set in Artisan, on round figures of that unit — degrees Celsius or degrees
+Fahrenheit, never one converted into the other beside the curve.
 
 **Two views.** Above the curve, a two-part selector: **Full scale** keeps a fixed frame — one
 minute before the charge to fourteen minutes — so two roasts can be compared without either one
@@ -257,6 +263,12 @@ everything else is working towards.
 
 On a read-only machine, these controls are absent entirely — see
 [Preparing a roast](preparing-a-roast.md#machines-tilauscope-cannot-drive).
+
+When there is nothing left to steer — the recording has been stopped, or a past roast has been
+opened from a file — the entire left column is given over to the
+[roast review](after-the-roast.md#the-roast-review): the controls, the readouts above them and
+the status line all describe a live session and say nothing about a finished one, so they make
+way for it. Starting a recording or pressing RESET brings them back.
 
 <!-- CAPTURE 2.8 — the segmented control zone, four levers plus the SV row.
 CAPTURE 2.9 — the percentage roller open on one control. -->

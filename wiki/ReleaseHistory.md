@@ -1,4 +1,28 @@
+## [4.2.15] 2026-08-25
+build 1
+* 🐛 [fix(roasting window)] : a lever set twice within the same second now shows the setting that actually held — the curve labelled the first of the two, so the figure written on the lane disagreed with the one the crosshair reported at that instant
 ## [4.2.14] 2026-08-23
+build 2
+* ⚡ [feat(roasting window)] : the roast curve is readable from a step back — the axis figures, the channel names beside each lane, the values on the lanes and the legend under the chart are all a size up, and the margins widened to give them the room
+* 🐛 [fix(roasting window)] : the phase ribbon of the roast review now fits its own width — each band shows its name, duration and share when there is room, and drops back to the duration or the share alone rather than running its text past the edge of the bar
+* ⚡ [feat(roasting window)] : stopping a recording — or opening a past roast from a file — now gives the whole left column over to a roast review, readouts and status line included, since none of them describe a finished roast: a one-sentence verdict comparing the roast to its plan, the phase ribbon, every milestone with its deviation from the plan, and development, development rise, peak rate of rise and weight loss each shown against their target. A roast with no plan recorded says so instead of inventing a comparison, and the review offers to take the roasted weight when it is still missing
+* 🐛 [fix(beancave)] : the suggested file name for an exported bean or roast card no longer strings dashes together — a name like « Yellow Bourbon - Washed (Wet Process) - 2024 » is now offered as `Yellow-Bourbon-Washed-Wet-Process-2024.jpg`
+* 🐛 [fix(airwave)] : an alarm asking for a mode and a speed at once (`MODE STD,FAN 30`) now applies both — only the mode was sent, so the extractor kept the standard mode's own default speed of 75% instead of the requested value
+* 🐛 [fix(post-roast)] : the end-of-roast summary now measures development from FIRST CRACK to DROP — before the roast statistics were computed it was counting from DRY END, inflating the development time and the DTR
+* ⚡ [feat(beancave)] : the phase ribbon under a roast comparison now shows one decimal — two roasts split 49.5% and 50.2% no longer read as the same figure. The rows are taller, and a label that still cannot fit its bar shrinks to the percentage alone rather than overflowing it
+* ⚡ [feat(roasting window)] : the curve now draws its temperature and rate scales in the unit you set in Artisan — a Fahrenheit roast is read on round Fahrenheit figures instead of a Celsius ladder
+* 🐛 [fix(tilaupid)] : the room reading taken from a probe is now converted before it reaches the preheat controller — in Fahrenheit it was judged out of range and the ambient correction was quietly dropped
+* 🐛 [fix(roast plan)] : a room-temperature change during preheat or drying now reaches the living plan in Fahrenheit too — the regenerated plan was ignoring it
+* 🐛 [fix(tilaupid)] : the PID tuning assistant now reads its own thresholds in your unit — in Fahrenheit it treated every preheat as a finishing phase and never released the braking guard
+* 🐛 [fix(roasting window)] : the preheat approach band, the bean temperature turning red before the drop, and the milestone approach colours now mark the same distance from target in Fahrenheit as in Celsius
+* 🐛 [fix(guided assistant)] : rate stability, milestone projection, the rate trend arrow and the estimated time to a milestone now use the same physical thresholds in Fahrenheit as in Celsius
+* ⚡ [feat(beancave)] : the graduations and axis labels on the roast charts are larger and drawn at full brightness — the dimmed, undersized figures were hard to read
+* ⚡ [feat(roasting window)] : the emergency heat cut is now a crossed-out flame instead of the STOP HEAT label — the word shouted louder than anything else on the header, and the glyph names the lever it cuts. The button keeps its red, stays wider than its neighbours, and hovering it still says what it does
+* ⚡ [feat(roasting window)] : the emergency heat cut names itself on hover — now that the button is a glyph, the tip gives the control's name, the one-second hold and the gesture it leaves you, instead of only listing what it moves
+* 🐛 [fix(roasting window)] : BEAN CAVE is locked while monitoring is on — opening the database over a live roast hid the readouts behind a second window, and loading a record from it overwrote the device configuration the running session depends on
+* 🐛 [fix(roasting window)] : the emergency heat cut now appears the moment monitoring is on, not at START — it was missing during preheat, exactly when the drum is heating with nothing recording yet, and it also stayed hidden when monitoring was switched on from Artisan's own side
+* 🐛 [fix(roasting window)] : hovering a header control shows its tooltip again once monitoring is on — the live events panel took the window focus with it when it appeared, and macOS then sends pointer movement to that panel instead, leaving the whole roasting window numb to hover until the next click
+* 🔧 [build(tools)] : the development branch is now named `dev` instead of `continuous`, which removes the clash with Artisan upstream's moving `continuous` tag — the Release Manager buttons and status panel follow the new name
 build 1
 * ⚡ [feat(l10n)] : German, Spanish, Italian, Simplified and Traditional Chinese are complete again. About 75 labels added since the last pass were showing in English inside an otherwise translated interface
 ## [4.2.13] 2026-08-14

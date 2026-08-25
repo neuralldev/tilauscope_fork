@@ -127,6 +127,29 @@ class RoastCardDialog(QDialog):
         sub.setProperty('variant', 'secondary')
         layout.addWidget(sub)
 
+        # ---- verdict --------------------------------------------------------
+        # Same source as the Roast Review panel: two different words about one
+        # roast would be a defect, not a nuance.
+        try:
+            from tilauscope.roast_debrief import build_debrief
+            snap = profile.get("tilau_roast_plan_snapshot")
+            debrief = build_debrief(profile, snap, str(profile.get("mode") or "C"))
+            if debrief.headline:
+                accent = {"ok": THEME['SUCCESS'], "attention": THEME['YELLOW']}.get(
+                    debrief.severity, THEME['BORDER'])
+                verdict = QLabel(
+                    f"<b>{debrief.headline}</b> {debrief.detail}<br>"
+                    f"<span style='color:{THEME['SUBTEXT']};'>{debrief.next_time}</span>")
+                verdict.setWordWrap(True)
+                verdict.setTextFormat(Qt.TextFormat.RichText)
+                verdict.setStyleSheet(
+                    f"background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']};"
+                    f" border-left: 3px solid {accent}; border-radius: 8px;"
+                    f" padding: 8px 10px; font-size: 12px;")
+                layout.addWidget(verdict)
+        except Exception as e:  # pylint: disable=broad-except
+            _log.debug("roast card verdict: %s", e)
+
         layout.addWidget(self._separator())
 
         # ---- curve ----------------------------------------------------------
