@@ -15,7 +15,7 @@ types-qrcode>=8.2.0.20260518
 lxml-stubs>=0.5.1
 mypy==2.3.0
 pyright==1.1.411
-ruff>=0.15.22
+ruff>=0.16.4
 pylint==4.0.7
 pre-commit>=4.6.2
 pytest>=9.1.1
