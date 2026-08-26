@@ -5,6 +5,8 @@
 (function () {
   "use strict";
 
+  document.documentElement.classList.add("js");
+
   /* --- the roast -------------------------------------------------------- *
    * A 250 g natural Ethiopia on a small electric drum. Charge temperature is
    * what the bean probe reads at the moment the beans land on it, which is
@@ -427,4 +429,40 @@
   }
 
   boot();
+
+  /* --- quiet reveal rhythm ---------------------------------------------- *
+   * Motion reinforces the page hierarchy without making the roast tool feel
+   * theatrical. Everything remains visible when JS is unavailable.         */
+
+  var revealItems = document.querySelectorAll(
+    ".section-intro, .outcome-card, .demo-heading, .scope, .workflow-row, " +
+    ".artisan-copy, .stack-visual, .hardware-heading, .device-list, .final-cta"
+  );
+
+  var outcomeIndex = 0;
+  for (var revealIndex = 0; revealIndex < revealItems.length; revealIndex++) {
+    revealItems[revealIndex].classList.add("reveal");
+    if (revealItems[revealIndex].classList.contains("outcome-card")) {
+      revealItems[revealIndex].classList.add("reveal-delay-" + outcomeIndex);
+      outcomeIndex++;
+    }
+  }
+
+  if (!reduced.matches && "IntersectionObserver" in window) {
+    var revealWatcher = new IntersectionObserver(function (entries) {
+      for (var entryIndex = 0; entryIndex < entries.length; entryIndex++) {
+        if (entries[entryIndex].isIntersecting) {
+          entries[entryIndex].target.classList.add("is-visible");
+          revealWatcher.unobserve(entries[entryIndex].target);
+        }
+      }
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    for (revealIndex = 0; revealIndex < revealItems.length; revealIndex++) {
+      revealWatcher.observe(revealItems[revealIndex]);
+    }
+  } else {
+    for (revealIndex = 0; revealIndex < revealItems.length; revealIndex++) {
+      revealItems[revealIndex].classList.add("is-visible");
+    }
+  }
 })();

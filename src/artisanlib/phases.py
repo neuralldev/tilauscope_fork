@@ -243,8 +243,7 @@ class phasesGraphDlg(ArtisanDialog):
             settings.setValue('Phases',self.aw.qmc.phases)
         ## TILAU ##
         if self.aw.tilauscope_main is not None:
-            for p in self.aw.tilauscope_main.phases.values():
-                p.update_subtitle(self.aw.tilauscope_main._update_phase_subtitle(p.alias))
+            self.aw.tilauscope_main.refresh_phase_subtitles()
 
 
     def bevents2phases(self) -> None:

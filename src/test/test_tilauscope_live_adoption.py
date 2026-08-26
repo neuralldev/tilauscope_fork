@@ -13,8 +13,10 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 from typing import Any, Final
+
+from _window_source import window_method, window_method_node
 
 
 DISPLAY_SCOPE: Final[Path] = (
@@ -23,24 +25,11 @@ DISPLAY_SCOPE: Final[Path] = (
 
 
 def _method_node(name: str) -> ast.FunctionDef:
-    tree = ast.parse(DISPLAY_SCOPE.read_text(encoding='utf-8'))
-    cls = next(
-        node for node in tree.body
-        if isinstance(node, ast.ClassDef) and node.name == 'TilauScope'
-    )
-    return next(
-        node for node in cls.body
-        if isinstance(node, ast.FunctionDef) and node.name == name
-    )
+    return window_method_node(name)[1]
 
 
 def _method(name: str, globals_: dict[str, Any] | None = None) -> Any:
-    node = _method_node(name)
-    node.decorator_list = []
-    module = ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[]))
-    namespace: dict[str, Any] = {} if globals_ is None else dict(globals_)
-    exec(compile(module, DISPLAY_SCOPE, 'exec'), namespace)  # noqa: S102
-    return namespace[name]
+    return window_method(name, globals_)
 
 
 def _calls(node: ast.FunctionDef) -> list[str]:
@@ -125,7 +114,9 @@ def _live_scope(*, recording: bool) -> tuple[Any, list[Any]]:
     qmc = SimpleNamespace(
         flagon=True,
         flagstart=recording,
-        timeindex=[0, -1, -1, -1, -1, -1, -1, -1],
+        # Artisan's own unmarked form: CHARGE is -1 because 0 is a valid sample
+        # index, every milestone after it is 0 (canvas.py tgraphcanvas.timeindex).
+        timeindex=[0, 0, 0, 0, 0, 0, 0, 0],
         timex=[100.0, 101.0],
         temp2=[180.0, 181.0],
     )
@@ -168,6 +159,9 @@ def _live_scope(*, recording: bool) -> tuple[Any, list[Any]]:
         _bt_at_drop=None,
         _bt_drop_timestamp=None,
     )
+    # the real sentinel reader, not a stand-in: a double that reimplements it
+    # is free to drift from the code under test, which is the whole defect.
+    scope._milestone_marked = MethodType(_method('_milestone_marked'), scope)
     return scope, calls
 
 

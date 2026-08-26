@@ -5010,11 +5010,11 @@ class TilauScopeRoastPlan:
             "Density": f"{density:.1f}",
             "Bean Humidity": f"{humidity:.1f}",
             "Water Activity Used": f"{bean.water_activity:.3f}" if bean.water_activity > 0.0 else "Not measured",
-            f"Ambient Temp": f"{_to_native(ambient_temp_c):.1f}",
+            "Ambient Temp": f"{_to_native(ambient_temp_c):.1f}",
             "Ambient Humidity": f"{ambient_humidity:.1f}",
-            f"Charge Temp":    f"{_to_native(charge_bt_temperature):.0f}",
-            f"End of Dry Temp": f"{_to_native(  dry_bt_temperature):.0f}",
-            f"First Crack Temp": f"{_to_native(fc_bt):.0f}",
+            "Charge Temp":    f"{_to_native(charge_bt_temperature):.0f}",
+            "End of Dry Temp": f"{_to_native(  dry_bt_temperature):.0f}",
+            "First Crack Temp": f"{_to_native(fc_bt):.0f}",
             # ── Provenance ───────────────────────────────────────────────────
             # Two forms of the same fact, and the distinction is load-bearing.
             # The "... Source" entries are LABELS: operator-facing text, carrying
@@ -5056,7 +5056,7 @@ class TilauScopeRoastPlan:
                 "adher_ok":     round(3.0 * _tol_factor * _ror_scale, 1),
                 "adher_warn":   round(7.0 * _tol_factor * _ror_scale, 1),
             },
-            f"Drop Temp":      f"{_to_native(drop_bt_temperature):.0f}",
+            "Drop Temp":      f"{_to_native(drop_bt_temperature):.0f}",
             "Dry Phase":self.format_time(dry_time_min),
             "Dry Phase %": f"{dry_phase_percent:.1f}",
             "Maillard Phase":self.format_time(maillard_time_min),
@@ -5071,20 +5071,20 @@ class TilauScopeRoastPlan:
             "Extraction (%) (Dry|Mai|Dev)": f"{' | '.join(extraction)}",
             "AirWave Mode (Dry|Mai|Dev)": f"{' | '.join(airwave_mode)}",
             "Target DTR": f"{dtr_achieved * 100.0:.1f}", # Resulting DTR — consequence of the retained durations, not a target (owner ruling 2026-08-04)
-            f"ROR Dry End":         f"{dry_ror_average * _ror_scale:.0f}",
-            f"ROR Dry Peak":        f"{dry_ror_peak * _ror_scale:.0f}",
-            f"Target ROR Maillard": f"{ror_maillard * _ror_scale:.1f}",
+            "ROR Dry End":         f"{dry_ror_average * _ror_scale:.0f}",
+            "ROR Dry Peak":        f"{dry_ror_peak * _ror_scale:.0f}",
+            "Target ROR Maillard": f"{ror_maillard * _ror_scale:.1f}",
             # Valeur d'ARRIVÉE du Maillard, déduite de la décroissance en
             # puissance k de la machine — la moyenne seule ne dit pas où on
             # atterrit, et c'est l'atterrissage qui décide du FC.
-            f"Target ROR at FC": f"{ror_fc_c * _ror_scale:.1f}",
+            "Target ROR at FC": f"{ror_fc_c * _ror_scale:.1f}",
             "Maillard Conflict": _mai_conflict,   # "" | acceleration | crash | illegible
             ## Diagnostic seul : la courbe planifiée demande une pente que la
             ## machine ne tient pas. "" = rien à signaler. N'allonge PAS le
             ## séchage — voir le bloc _peak_ror_note pour pourquoi.
             "Peak ROR Warning": _peak_ror_note,
-            f"Target ROR Dev (Avg)": f"{dev_ror * _ror_scale:.1f}",
-            f"Target ROR at Drop":  f"{drop_ror * _ror_scale:.1f}",
+            "Target ROR Dev (Avg)": f"{dev_ror * _ror_scale:.1f}",
+            "Target ROR at Drop":  f"{drop_ror * _ror_scale:.1f}",
             "Estimated TP":         f"{_to_native(tp_temperature):.0f}",
             "Heater at TP": f"{heater_tp:.0f}",
             # Anticipated Maillard→Dev heater steps, BT-triggered (native unit).

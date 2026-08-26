@@ -12,6 +12,8 @@ from typing import Any
 ROAST_PROPERTIES = Path(__file__).parents[1] / 'tilauscope' / 'roast_properties.py'
 DISPLAY_SCOPE = Path(__file__).parents[1] / 'tilauscope' / 'displayscope.py'
 
+from _window_source import window_method, window_method_node
+
 
 def _class_method(path: Path, class_name: str, method_name: str) -> ast.FunctionDef:
     tree = ast.parse(path.read_text(encoding='utf-8'))
@@ -82,8 +84,8 @@ def test_result_dialog_keeps_data_open_when_save_fails() -> None:
 
 def test_review_passes_its_frozen_profile_to_result_form() -> None:
     """The review identity must travel with the weight-edit request."""
-    enter_weights = _compile_method(
-        DISPLAY_SCOPE, 'TilauScope', '_enter_roast_weights',
+    enter_weights = window_method(
+        '_enter_roast_weights',
         {'_log': SimpleNamespace(warning=lambda *_args: None)},
     )
     profile = {'beans': 'Coffee A\nuuid: aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'}
@@ -107,8 +109,8 @@ def test_a_review_showing_no_roast_opens_no_result_form() -> None:
     Opening the form anyway would let it fall back to the live session, which is
     exactly the wrong-coffee bug the snapshot exists to prevent.
     """
-    enter_weights = _compile_method(
-        DISPLAY_SCOPE, 'TilauScope', '_enter_roast_weights',
+    enter_weights = window_method(
+        '_enter_roast_weights',
         {'_log': SimpleNamespace(warning=lambda *_args: None)},
     )
     opened: list[dict] = []
@@ -160,8 +162,7 @@ def test_review_bean_resolution_uses_roast_uuid_not_current_selection() -> None:
 
 def test_result_form_does_not_read_beancave_selection() -> None:
     """The display-scope bridge must feed the reviewed beans description."""
-    open_form = _class_method(
-        DISPLAY_SCOPE, 'TilauScope', '_open_roast_result_dialog')
+    open_form = window_method_node('_open_roast_result_dialog')[1]
     attributes = {
         node.attr for node in ast.walk(open_form) if isinstance(node, ast.Attribute)
     }

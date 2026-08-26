@@ -14110,6 +14110,12 @@ class tgraphcanvas(QObject):
             # Find the indexes of non-negative elements
             positive_value_indexes = numpy.where(arr >= 0)[0]
 
+            ## TILAU ## a meter that never read at all (cable out: every sample
+            ## is the -1 sentinel) leaves this empty, and the index below raises.
+            ## Same verdict as the empty list above and the noisy array below.
+            if len(positive_value_indexes) == 0:
+                return extratemp, -1, True  # invalid meter read
+
             # Check for too many invalid readings at begin and end
             if (positive_value_indexes[0] > max_begin_invalid_samples or
                 positive_value_indexes[-1] < (len(extratemp) - max_end_invalid_samples -1)):

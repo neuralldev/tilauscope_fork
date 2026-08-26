@@ -1565,7 +1565,7 @@ class RoastSetupDialog(QDialog):
         # Bean
         t1.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Bean")))
         self._bean_info_frame = QFrame()
-        self._bean_info_frame.setStyleSheet(f" border: none;")
+        self._bean_info_frame.setStyleSheet(" border: none;")
         bean_info_layout = QVBoxLayout(self._bean_info_frame)
         bean_info_layout.setContentsMargins(5, 5, 5, 5)
         bean_info_layout.setSpacing(2)

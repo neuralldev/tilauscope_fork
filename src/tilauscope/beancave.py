@@ -5946,7 +5946,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
 
         # ── RoR par phase : 3 metric cards côte à côte ────────────────────
         ror_cards = (
-            f'<tr>'
+            '<tr>'
             + metric_card(_ror_dry,
                         f"{get_ror('dry_phase_ror')} °/min")
             + metric_card(_ror_mai,
@@ -5955,7 +5955,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                         f"{get_ror('finish_phase_ror')} °/min")
             + metric_card(_ror_total,
                         f"{get_ror('total_ror')} °/min")
-            + f'</tr>'
+            + '</tr>'
         )
 
         # ── Assembly ──────────────────────────────────────────────────────
@@ -6705,7 +6705,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
             for i in range(8):
                 # Création d'une annotation par ligne de texte
                 self.annot_squares.append(self.ax1.annotate(
-                    f"■",
+                    "■",
                     xy=(0,0),
                     xytext=(20, 20), # Même base que self.annot
                     textcoords="offset points",
@@ -6884,19 +6884,6 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
                 else:
                     return last_value
         return last_value
-
-    @pyqtSlot(float, float)
-    def update_markers(self, marker:Line2D, x_data:float, y_val:float):
-        # Vérifie si l'objet Qt n'a pas été supprimé par le moteur C++
-        if self.canvas is None or self.canvas.isHidden():
-            return
-        try:
-            marker = marker
-            marker.set_data([x_data], [y_val])
-            marker.set_visible(True)
-            #self.canvas.draw_idle()
-        except Exception as e:
-            _log.debug(f"Error while updating markers: {e}")
 
     def on_plot_leave(self, event):
         """Fired when the mouse leaves the entire canvas area."""
@@ -8044,7 +8031,7 @@ class BeancaveDlg(QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to 
         self.blend_group_box.setStyleSheet(
             self.blend_group_box.styleSheet().replace(
                 f"border: 1px solid {THEME['BORDER']};",
-                f"border: 1px solid rgba(166,227,161,60);"
+                "border: 1px solid rgba(166,227,161,60);"
             )
         )
         _gl4 = QGridLayout(self.blend_group_box)

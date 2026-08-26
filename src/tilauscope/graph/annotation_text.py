@@ -298,7 +298,6 @@ def _get_tilaupid_text(qmc: Any, pid, et: float, bt: float) -> str:
 def _get_pid_text(qmc: Any, pid, tx, et, bt):
     L = _labels() # Use cached translations
     mode = qmc.mode
-    time_str = stringfromseconds(tx)
 
     colors = _PID_COLORS
 
@@ -350,7 +349,6 @@ def _get_pid_text(qmc: Any, pid, tx, et, bt):
         label =""
         total_passed_segment_time=0.0
         duration = "0:00"
-        current_segment_time = 0.0
         total_current_segment_time = 0.0
         pid_input = bt if pid.pidSource == 1 else et
         total_ramp_current_segment = pid.svRamps[curr_seg-1] if curr_seg > 0 else 0.0
@@ -721,11 +719,11 @@ def _format_annotation_text(qmc: Any, x_intersect, info, coach: bool = False)->s
                     <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{rel_time}</td>
                 </tr>
                 <tr>
-                    <td style="color: {colors['label']}; font-size: 11px;">Expected {L['DRY'] if idx=="CHARGE" else L['FC']} in</td>
+                    <td style="color: {colors['label']}; font-size: 11px;">Expected {label} in</td>
                     <td align="right" style="color: {inter_color}; font-weight: bold; font-size: 12px;">{inter_time}</td>
                 </tr>
                 <tr>
-                    <td style="color: {colors['label']}; font-size: 11px;">{L['Target']} {L['DRY'] if idx=="CHARGE" else L['FC']}</td>
+                    <td style="color: {colors['label']}; font-size: 11px;">{L['Target']} {label}</td>
                     <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{info['target']:.1f}°{mode}</td>
                 </tr>
                 {bt_row}

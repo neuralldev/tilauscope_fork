@@ -174,7 +174,7 @@ class RoastCardDialog(QDialog):
                 w_line = ""
         if w_line:
             wl = QLabel(w_line)
-            wl.setStyleSheet(f"font-size: 13px; font-weight: 700; ")
+            wl.setStyleSheet("font-size: 13px; font-weight: 700; ")
             layout.addWidget(wl)
 
         # ---- agtron / DTR / duration ----------------------------------------

@@ -21,6 +21,7 @@ from types import SimpleNamespace
 from typing import Any, Final
 
 import _guard
+from _window_source import window_method, window_method_node, window_source
 
 from tilauscope import roasters
 from tilauscope.roasters import invalidate_roast_context, roast_context_for
@@ -220,22 +221,7 @@ def test_charge_engages_replay_with_a_numpy_bt_trace(sandbox: Path) -> None:
 # Pure model layer: no Qt, no widget, only the shipped roasters.json.
 
 def _method(name: str, globals_: dict[str, Any] | None = None) -> Any:
-    """Compile one TilauScope method out of displayscope.py, without importing
-    it (importing pulls artisanlib.main and its process-wide Qt objects in)."""
-    tree = ast.parse(DISPLAY_SCOPE.read_text(encoding='utf-8'))
-    cls = next(
-        node for node in tree.body
-        if isinstance(node, ast.ClassDef) and node.name == 'TilauScope'
-    )
-    node = next(
-        item for item in cls.body
-        if isinstance(item, ast.FunctionDef) and item.name == name
-    )
-    node.decorator_list = []
-    module = ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[]))
-    namespace: dict[str, Any] = {} if globals_ is None else dict(globals_)
-    exec(compile(module, DISPLAY_SCOPE, 'exec'), namespace)  # noqa: S102
-    return namespace[name]
+    return window_method(name, globals_)
 
 
 def test_no_roaster_and_unknown_roaster_both_resolve_to_no_replay() -> None:
@@ -355,16 +341,7 @@ def test_refresh_replay_capability_never_raises_into_its_caller() -> None:
 # ── Lifecycle: the aw-level signals must not outlive the window ────────────
 
 def test_background_signals_are_disconnected_on_close() -> None:
-    source = DISPLAY_SCOPE.read_text(encoding='utf-8')
-    tree = ast.parse(source)
-    cls = next(
-        node for node in tree.body
-        if isinstance(node, ast.ClassDef) and node.name == 'TilauScope'
-    )
-    close_event = next(
-        node for node in cls.body
-        if isinstance(node, ast.FunctionDef) and node.name == 'closeEvent'
-    )
+    close_event = window_method_node('closeEvent')[1]
     disconnected = {
         ast.unparse(call.func.value)
         for call in ast.walk(close_event)
@@ -373,32 +350,36 @@ def test_background_signals_are_disconnected_on_close() -> None:
     }
     assert 'self.aw.loadBackgroundSignal' in disconnected
     assert 'self.aw.clearBackgroundSignal' in disconnected
-    # A bare lambda cannot be disconnected — the slot has to be held.
-    assert 'self._on_background_changed = lambda' in source
+    # A bare lambda cannot be disconnected — the slot has to be held. It is
+    # bound where the window is wired up, which is not where closeEvent lives.
+    assert 'self._on_background_changed = lambda' in window_source(
+        '_wire_after_build')
 
 
 def test_replay_attributes_are_declared_before_the_ui_is_built() -> None:
-    tree = ast.parse(DISPLAY_SCOPE.read_text(encoding='utf-8'))
+    """They are read by the header button, which the build refreshes on its way out.
+
+    The declarations now live in _declare_state(), which the constructor runs
+    before init_ui(); the general form of this rule is checked in
+    test_tilauscope_window_construction.py.
+    """
+    tree = ast.parse(window_source('_declare_state'))
     cls = next(
-        node for node in tree.body
-        if isinstance(node, ast.ClassDef) and node.name == 'TilauScope'
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.ClassDef) and node.name in ('TilauScope', 'BuildMixin')
+        and any(isinstance(m, ast.FunctionDef) and m.name == '_declare_state'
+                for m in node.body)
     )
-    init = next(
+    declare = next(
         node for node in cls.body
-        if isinstance(node, ast.FunctionDef) and node.name == '__init__'
+        if isinstance(node, ast.FunctionDef) and node.name == '_declare_state'
     )
-    declared: dict[str, int] = {}
-    for node in ast.walk(init):
-        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Attribute):
-            declared.setdefault(node.target.attr, node.lineno)
-    build = next(
-        call.lineno for call in ast.walk(init)
-        if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
-        and call.func.attr == 'init_ui'
-    )
+    declared = {
+        node.target.attr for node in ast.walk(declare)
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Attribute)
+    }
     for attr in ('replay_enabled', 'replay_reaction_time_s'):
-        assert attr in declared, f'{attr} is not declared in __init__'
-        assert declared[attr] < build, f'{attr} is declared after init_ui()'
+        assert attr in declared, f'{attr} is not declared in _declare_state()'
     # No defensive getattr() left over now that the attributes always exist.
-    assert 'getattr(self, "replay_enabled"' not in DISPLAY_SCOPE.read_text(
-        encoding='utf-8')
+    assert 'getattr(self, "replay_enabled"' not in window_source(
+        '_refresh_replay_button')

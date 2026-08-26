@@ -113,3 +113,60 @@ def test_roast_screen_defensively_ignores_a_raw_ror_sentinel(qapp: Any) -> None:
 
     assert ror_lcd.lbl_value.text() == 'u.u'
     assert received == []
+
+
+def _value_font_px(readout: Any) -> int:
+    sheet = readout.lbl_value.styleSheet()
+    size = sheet.split('font-size:')[1].split('px')[0]
+    return int(size.strip())
+
+
+def test_ror_readout_keeps_its_size_across_colour_bands(qapp: Any) -> None:  # noqa: ARG001
+    """The rate-of-rise readout is the larger of the three (docs/the-window.md).
+
+    ``set_ror_color`` rewrites the whole value stylesheet, so it has to carry
+    the size the readout was built at — it used to emit a smaller one, and the
+    counter shrank for good on the first band crossing of every roast.
+    """
+    from tilauscope.widgets.readouts import LCDReadout
+
+    ror = LCDReadout('RoR °C/m', '#89B4FA', is_main=True)
+    bt = LCDReadout('BT °C', '#FAB387')
+    built = _value_font_px(ror)
+
+    assert built > _value_font_px(bt), 'the RoR readout is built larger than BT'
+
+    for value in (3.0, 12.0, 18.0, 25.0, 7.0):
+        ror.set_ror_color(value, 'C')
+        assert _value_font_px(ror) == built
+
+
+def test_overshoot_pulse_stops_when_the_value_comes_back_down(qapp: Any) -> None:  # noqa: ARG001
+    """Crossing the alert target and coming back must leave no pulse behind.
+
+    The repaint shortcut compares against a ratio cached before the crossing,
+    so a value returning close to where it left kept the alert pulsing over a
+    reading that was back in range — the rate of rise crosses its 20 °C/min
+    threshold in both directions during a normal climb.
+    """
+    from PyQt6.QtCore import QAbstractAnimation
+
+    from tilauscope.widgets.readouts import LCDReadout
+
+    def _readout() -> Any:
+        return LCDReadout('RoR °C/m', '#89B4FA', is_main=True,
+                          alert_target=20.0, alert_range=10.0)
+
+    ror = _readout()
+    ror.set_alert_value(19.5)     # inside the approach band
+    ror.set_alert_value(20.3)     # over target — the pulse starts
+    assert ror._pulsing is True
+
+    ror.set_alert_value(19.55)    # back under, within the shortcut's tolerance
+    assert ror._pulsing is False
+    assert ror._pulse_anim.state() == QAbstractAnimation.State.Stopped
+
+    # and the face is the one this reading would have shown all along
+    never_crossed = _readout()
+    never_crossed.set_alert_value(19.55)
+    assert ror._current_bg.name() == never_crossed._current_bg.name()

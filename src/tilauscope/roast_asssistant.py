@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QPushButton, QComboBox, QListView, QStyledItemDelegate,
-    QScrollArea, QStackedWidget, QSizePolicy, QApplication,
+    QStackedWidget, QSizePolicy, QApplication,
     QGraphicsOpacityEffect,
 )
 from PyQt6.QtCore import Qt, QPoint, QTimer, pyqtSlot, pyqtSignal
@@ -39,7 +39,7 @@ from artisanlib.main import ApplicationWindow
 from artisanlib.util import fromCtoFstrict, fromFtoCstrict, weight_units, convertWeight
 
 from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, THEME,
-    get_agtron_color, get_roc_color, get_ror_color_by_phase, get_ror_ideal_band,
+    get_ror_color_by_phase, get_ror_ideal_band,
     format_batch_label, to_agtron)
 from tilauscope.theme_qss import tint, tooltip_qss
 from tilauscope.roasters import RoasterContext, roast_context_for
@@ -404,28 +404,24 @@ _HEATER_COL_BY_PHASE: Final = {"drying": 0, "maillard": 1, "development": 2}
 
 
 def _apply_slider_value(aw, idx: int, value: float) -> bool:
-    """Pose une valeur ABSOLUE sur un slider Artisan en un geste — même chemin
-    que _QuickAdjustButton (setValue + handle_ui_input_released déclenche
-    l'événement Artisan et l'action machine). Borne au range du slider et
-    arrondit au pas de résolution de l'événement. Retourne True si appliqué.
+    """Pose une valeur ABSOLUE sur un levier machine en un geste — même chemin
+    que _QuickAdjustButton : la fenêtre TilauScope borne au range du levier puis
+    déclenche l'événement Artisan et l'action machine. Arrondit ici au pas de
+    résolution de l'événement. Retourne True si appliqué.
 
     C'est la brique des actions one-tap : appliquer un step de rampe heater
     au brûleur sans que l'opérateur ait à cliquer N fois sur ± du quick-adjust."""
     try:
         if not bool(aw.eventslidervisibilities[idx]):
             return False
-        sld = aw.tilauscope_main.sld_list[idx]
-        if sld is None:
-            return False
         try:
             step = int(aw.eventSliderStepSize(idx)) or 1
         except Exception:  # pylint: disable=broad-except
             step = 1
-        target = int(round(value / step) * step)
-        target = max(sld.minimum(), min(sld.maximum(), target))
-        sld.setValue(target)
-        aw.tilauscope_main.handle_ui_input_released(idx)
-        return True
+        # Rounding to the event step is this caller's business; the range and
+        # the trip out to the machine belong to the window.
+        return bool(aw.tilauscope_main.set_slider_value(
+            idx, int(round(value / step) * step)))
     except (AttributeError, IndexError, TypeError) as e:
         _logd.warning(f"apply slider {idx}={value} failed: {e}")
         return False
@@ -756,8 +752,7 @@ def _read_slider_pct(aw, idx: int):
     try:
         if not bool(aw.eventslidervisibilities[idx]):
             return None
-        sld = aw.tilauscope_main.sld_list[idx]
-        return int(sld.value()) if sld is not None else None
+        return aw.tilauscope_main.slider_value(idx)
     except (AttributeError, IndexError, TypeError):
         return None
 
@@ -1531,7 +1526,7 @@ class _QuickAdjustButton(QFrame):
     Au survol : la valeur se dimme et deux demi-zones ↑ / ↓ apparaissent.
     Clic haut → +step, Clic bas → −step, via le slider Artisan correspondant.
 
-    slider_idx : index dans aw.sld_list (0=slider1, 1=slider2, ...)
+    slider_idx : index du levier machine (0=Air, 1=Drum, 2=Damper, 3=Burner)
     color      : couleur hex de la valeur (identitaire du slider)
     """
     def __init__(
@@ -1639,20 +1634,17 @@ class _QuickAdjustButton(QFrame):
         self._sep.setGeometry(8, half, max(0, width - 16), 1)
         super().resizeEvent(event)
 
-    def _get_sld(self):
-        """Retourne le slider Artisan correspondant, via tilauscope_main."""
+    def _value(self):
+        """Valeur courante du levier, ou None s'il n'existe pas."""
         try:
-            return self.aw.tilauscope_main.sld_list[self._idx]
-        except (AttributeError, IndexError):
+            return self.aw.tilauscope_main.slider_value(self._idx)
+        except AttributeError:
             return None
 
     def refresh_value(self) -> None:
         """Lit la valeur courante du slider et met à jour l'affichage."""
-        sld = self._get_sld()
-        if sld is not None:
-            self._lbl_val.setText(f"{sld.value()}%")
-        else:
-            self._lbl_val.setText("--")
+        value = self._value()
+        self._lbl_val.setText("--" if value is None else f"{value}%")
 
     def enterEvent(self, event) -> None:  # type: ignore[override]
         self._lbl_widget.setGraphicsEffect(self._dim_effect(0.45))
@@ -1680,25 +1672,22 @@ class _QuickAdjustButton(QFrame):
             return 5
 
     def _on_up(self) -> None:
-        sld = self._get_sld()
-        if sld is None:
+        value = self._value()
+        if value is None:
             return
         try:
-            new_val = min(sld.maximum(), sld.value() + self._step())
-            sld.setValue(new_val)
-            self.aw.tilauscope_main.handle_ui_input_released(self._idx)
+            # the window clamps to the lever's own range
+            self.aw.tilauscope_main.set_slider_value(self._idx, value + self._step())
             self.refresh_value()
         except Exception as e:
             _logd.warning(f"QuickAdjust up failed: {e}")
 
     def _on_dn(self) -> None:
-        sld = self._get_sld()
-        if sld is None:
+        value = self._value()
+        if value is None:
             return
         try:
-            new_val = max(sld.minimum(), sld.value() - self._step())
-            sld.setValue(new_val)
-            self.aw.tilauscope_main.handle_ui_input_released(self._idx)
+            self.aw.tilauscope_main.set_slider_value(self._idx, value - self._step())
             self.refresh_value()
         except Exception as e:
             _logd.warning(f"QuickAdjust dn failed: {e}")
@@ -4336,7 +4325,7 @@ class _BeanHeader(QFrame):
         if bean.last_humidity:
             line2_parts.append(QApplication.translate("Label","Humidity")+f" {bean.last_humidity:.1f}%")
         if agtron:
-            line2_parts.append(f"▶ "+QApplication.translate("Label","target")+f"  {agtron.name}  ({agtron.description})")
+            line2_parts.append("▶ "+QApplication.translate("Label","target")+f"  {agtron.name}  ({agtron.description})")
         lines = []
         if line1_parts:
             lines.append("  ·  ".join(line1_parts))
@@ -7115,7 +7104,7 @@ class RoastAssistantPanel(QWidget):
             tpid = getattr(self.aw, "tilauPreheatingPid", None)
             slider_idx = getattr(tpid, "cfg", None) and tpid.cfg.heater_slider or 3
             heater_pct = int(
-                self.aw.tilauscope_main.sld_list[slider_idx].value()
+                self.aw.tilauscope_main.slider_value(slider_idx) or 0
                 if hasattr(self.aw, "tilauscope_main") else 0
             )
         except Exception:

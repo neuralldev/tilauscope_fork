@@ -84,8 +84,12 @@ def test_rebuilt_event_panel_keeps_its_notification_connection(
     from tilauscope import displayscope
 
     assert tgraphcanvas is not None
-    monkeypatch.setattr(displayscope, 'ButtonManager', _ButtonManager)
-    monkeypatch.setattr(displayscope, 'EventPanel', _Panel)
+    # update_events_from_artisan is a slice of the window living in its own
+    # module, and it looks both names up in that module's globals.
+    from tilauscope.window import live
+
+    monkeypatch.setattr(live, 'ButtonManager', _ButtonManager)
+    monkeypatch.setattr(live, 'EventPanel', _Panel)
 
     old_panel = _Panel()
     received: list[tuple[str, str, str, str]] = []

@@ -78,6 +78,7 @@ def _scope(tilauscope: Any, *, charged: bool) -> SimpleNamespace:
         set_button_state=lambda *_args: None,
         _clear_cooling_face=lambda: None,
     )
+    scope._milestone_marked = MethodType(tilauscope._milestone_marked, scope)
     scope._has_charged_roast = MethodType(tilauscope._has_charged_roast, scope)
     return scope
 
@@ -95,11 +96,13 @@ def test_stop_during_preheat_does_not_schedule_post_roast_dialog(
     qapp: Any, monkeypatch: Any,
 ) -> None:
     tilauscope = _tilauscope(qapp)
-    from tilauscope import displayscope
+    # toggle_start_stop is a slice of the window that lives in its own module,
+    # and it reads QTimer out of that module's globals, not displayscope's.
+    from tilauscope.window import lifecycle
 
     scheduled: list[tuple[int, Any]] = []
     monkeypatch.setattr(
-        displayscope, 'QTimer',
+        lifecycle, 'QTimer',
         SimpleNamespace(singleShot=lambda delay, callback: scheduled.append((delay, callback))),
     )
     scope = _scope(tilauscope, charged=False)
@@ -114,11 +117,13 @@ def test_stop_after_charge_still_schedules_post_roast_dialog(
     qapp: Any, monkeypatch: Any,
 ) -> None:
     tilauscope = _tilauscope(qapp)
-    from tilauscope import displayscope
+    # toggle_start_stop is a slice of the window that lives in its own module,
+    # and it reads QTimer out of that module's globals, not displayscope's.
+    from tilauscope.window import lifecycle
 
     scheduled: list[tuple[int, Any]] = []
     monkeypatch.setattr(
-        displayscope, 'QTimer',
+        lifecycle, 'QTimer',
         SimpleNamespace(singleShot=lambda delay, callback: scheduled.append((delay, callback))),
     )
     scope = _scope(tilauscope, charged=True)

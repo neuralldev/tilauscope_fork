@@ -1079,7 +1079,7 @@ class NiimbotLabelBuilder:
         # if ROTATE_90, rotate the image 90 degrees clockwise to match printer orientation
         if ROTATE_90:
             img = img.rotate(-90, expand=True)
-            _logd.debug(f"[LABEL] Image tournée de 90° pour orientation papier (ROTATE_90=True)")
+            _logd.debug("[LABEL] Image tournée de 90° pour orientation papier (ROTATE_90=True)")
 
         # Diagnostic : compter les pixels noirs et la zone de contenu
         black_px = sum(1 for y in range(img.height) for x in range(img.width) if img.getpixel((x, y)) == 0)

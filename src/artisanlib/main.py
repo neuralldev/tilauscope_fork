@@ -8448,10 +8448,11 @@ class ApplicationWindow(QMainWindow):
                 self.slider1.setValue(self.sliderLCD1.intValue())
             self.slider1released()
             self.eventslidermoved[0] = 0
-        ## TILAU ##
-        # move tilauscope sliders if needed
+        ## TILAU ## mirror this value into the TilauScope window. Inward only:
+        ## TILAU ## the value already belongs to Artisan, so committing it back
+        ## TILAU ## out would overwrite it with whatever the window still showed.
         if self.tilauscope_main is not None: # tilauscope started
-                self.tilauscope_main.sld_list[0].setValue(v)
+            self.tilauscope_main.mirror_slider_from_artisan(0, v)
     @pyqtSlot(int)
     def updateSlider2LCD(self,v:int) -> None:
         self.updateSliderLCD(1, self.applySliderStepSize(1,v))
@@ -8461,10 +8462,11 @@ class ApplicationWindow(QMainWindow):
                 self.slider2.setValue(self.sliderLCD2.intValue())
             self.slider2released()
             self.eventslidermoved[1] = 0
-        ## TILAU ##
-        # move tilauscope sliders if needed
+        ## TILAU ## mirror this value into the TilauScope window. Inward only:
+        ## TILAU ## the value already belongs to Artisan, so committing it back
+        ## TILAU ## out would overwrite it with whatever the window still showed.
         if self.tilauscope_main is not None: # tilauscope started
-                self.tilauscope_main.sld_list[1].setValue(v)
+            self.tilauscope_main.mirror_slider_from_artisan(1, v)
     @pyqtSlot(int)
     def updateSlider3LCD(self,v:int) -> None:
         self.updateSliderLCD(2, self.applySliderStepSize(2,v))
@@ -8474,10 +8476,11 @@ class ApplicationWindow(QMainWindow):
                 self.slider3.setValue(self.sliderLCD3.intValue())
             self.slider3released()
             self.eventslidermoved[2] = 0
-        ## TILAU ##
-        # move tilauscope sliders if needed
+        ## TILAU ## mirror this value into the TilauScope window. Inward only:
+        ## TILAU ## the value already belongs to Artisan, so committing it back
+        ## TILAU ## out would overwrite it with whatever the window still showed.
         if self.tilauscope_main is not None: # tilauscope started
-                self.tilauscope_main.sld_list[2].setValue(v)
+            self.tilauscope_main.mirror_slider_from_artisan(2, v)
     @pyqtSlot(int)
     def updateSlider4LCD(self,v:int) -> None:
         self.updateSliderLCD(3, self.applySliderStepSize(3,v))
@@ -8487,11 +8490,11 @@ class ApplicationWindow(QMainWindow):
                 self.slider4.setValue(self.sliderLCD4.intValue())
             self.slider4released()
             self.eventslidermoved[3] = 0
-        ## TILAU ##
-        # move tilauscope sliders if needed
+        ## TILAU ## mirror this value into the TilauScope window. Inward only:
+        ## TILAU ## the value already belongs to Artisan, so committing it back
+        ## TILAU ## out would overwrite it with whatever the window still showed.
         if self.tilauscope_main is not None: # tilauscope started
-                self.tilauscope_main.sld_list[3].setValue(v)
-      
+            self.tilauscope_main.mirror_slider_from_artisan(3, v)
 
     # sets sliderLCD to slider.value
     def resetSliderLCD(self, n:int) -> None:

@@ -69,7 +69,9 @@ UNTRANSLATABLE_SOURCE_DEBT: Final[dict[str, int]] = {}
 #: new fork string would take if it were filed under the wrong context.
 UPSTREAM_VALUE_SITES: Final[dict[str, int]] = {
     'beancave.py': 10,
-    'displayscope.py': 2,
+    # The two event-button sites moved out of displayscope.py with the widget
+    # that owns them; same two sites, same count, new home.
+    'parts.py': 2,
 }
 
 #: The one place allowed to touch ``QMessageBox`` as a dialog: it *is* the

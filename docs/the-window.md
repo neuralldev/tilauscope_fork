@@ -66,9 +66,11 @@ sliding off the button, cancels it — a stray click cannot end a roast.
 When it fires, TilauScope:
 
 - stops anything that was driving the heat on your behalf — preheating control, PID, alarms and
-  profile playback — so nothing pushes the burner back up a second later;
+  profile playback — so nothing pushes the burner back up a second later. A roast replay running
+  at the time is ended with them, and the replay control in the header goes off to say so;
 - sets the burner to zero;
-- opens airflow and, if you have an extractor paired, extraction to full.
+- opens airflow and, if you have an extractor paired, extraction to full. On a roaster with no
+  airflow lever, nothing is moved there — the control in that position drives something else.
 
 The drum keeps turning. Stopping it would press the beans against a hot wall, and that is how a
 scorch becomes a fire.
@@ -125,8 +127,25 @@ the roast continues.
 When the roast reaches its end, the same area is taken over by the drop and cooling message, so
 the instruction of the moment occupies the space that the phase blocks no longer need.
 
+**If the machine stops sending temperatures, that area says so.** A roaster can be selected and
+its port open and still return nothing — a cable out of its socket is enough. After about five
+seconds without a reading, the block is replaced by a red-bordered warning naming the cause and
+what to check, and the preheat message it replaces disappears rather than sharing the space: a
+preheat that measures nothing is not a preheat, and the warning has to be the only thing in
+view. The two temperature readouts show `u.u` throughout, which is what they show whenever no
+value is arriving.
+
+If nothing had been measured yet, **the recording is stopped as well**, since it had nothing to
+record. Once the beans are in the drum this no longer happens: a break in communication is often
+brief, and a roast under way is worth more than a tidy ending. The warning still appears after
+the drop, because the cooling is steered on the falling temperature and its automatic detection
+watches the same probe. It clears by itself the moment a reading arrives, and the panel goes
+back to exactly what it was showing — the cooling message included.
+
 <!-- CAPTURE 2.6 — the three phase blocks mid-Maillard, with the active phase visibly current.
-CAPTURE 2.7 — the same area showing the drop/cooling message instead. -->
+CAPTURE 2.7 — the same area showing the drop/cooling message instead.
+CAPTURE 2.7b — the same area showing the no-temperature warning. Reproduce by starting
+monitoring with the roaster's cable unplugged and waiting five seconds. -->
 
 ---
 

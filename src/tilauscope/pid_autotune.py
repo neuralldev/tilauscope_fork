@@ -151,7 +151,7 @@ class PIDAutotune(QDialog):
         # Header with Help Button
         header = QHBoxLayout()
         title_lbl = QLabel(QApplication.translate("tilauscope_pid","<b>Monitoring & Tuning</b>").upper())
-        title_lbl.setStyleSheet(f"color: white; font-size: 18px; font-weight: 900; ")
+        title_lbl.setStyleSheet("color: white; font-size: 18px; font-weight: 900; ")
 
         # close button
         self.close_btn = QPushButton("✕")
@@ -585,7 +585,7 @@ class HelpDialog(QDialog):
         # Header
         header = QHBoxLayout()
         title_lbl = QLabel(QApplication.translate("tilauscope_pid","PID Parameters Help").upper())
-        title_lbl.setStyleSheet(f"color: white; font-size: 16px; font-weight: 900; ")
+        title_lbl.setStyleSheet("color: white; font-size: 16px; font-weight: 900; ")
 
         self.close_btn = QPushButton("✕")
         self.close_btn.setFixedSize(30, 30)
