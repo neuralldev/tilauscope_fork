@@ -28,7 +28,7 @@ import time
 from collections import deque
 from contextlib import suppress
 from threading import Event, Lock, Thread
-from typing import Callable, Optional, Set
+from typing import Callable, Final, Optional, Set
 
 from aiohttp import web
 
@@ -42,6 +42,12 @@ _DRUM_DEBOUNCE = 1.0     # s — drum is slower / more disruptive (§6)
 _MAX_CLIENTS = 8          # LAN UI: bound sockets and per-client broadcast work
 _WS_MAX_MSG_SIZE = 64 * 1024
 _COMMAND_BURST = 20       # commands accepted per rolling second, per socket
+
+
+#: How long the handshake waits for the Qt thread to describe its controls
+#: before falling back to the last description. Short: a phone that has just
+#: scanned a QR code is waiting on this.
+_INTERFACE_TIMEOUT: Final[float] = 2.0
 
 
 def _device_label_from_ua(ua: str, device_id: str = '') -> str:
@@ -214,6 +220,13 @@ class TilauWebControl:
 
     @web.middleware
     async def _security_middleware(self, request: web.Request, handler):
+        # Before anything is served: the plain-ws trade in protocol §7 is only
+        # sound while the other end is on the home network. Checked here rather
+        # than assumed from the bind address, which is every interface.
+        from tilauscope.weblan import reject_remote_peer  # noqa: PLC0415
+        if reject_remote_peer(request, 'control'):
+            return web.Response(status=403, text='forbidden',
+                                content_type='text/plain')
         try:
             resp = await handler(request)
         except web.HTTPException as e:
@@ -379,16 +392,15 @@ class TilauWebControl:
         try:
             welcome = self._welcome_provider()
             welcome['role'] = 'controller' if self._controller == device_id else 'observer'
-            # real channels from Artisan slider config (bounds/step/enabled) when the
-            # command bridge is wired; the cached list is plain data (safe to read here)
-            bridge = self._bridge_for_web()
-            if bridge is not None:
-                try:
-                    chans = bridge.channels()
-                    if chans:
-                        welcome['channels'] = chans
-                except Exception:  # noqa: BLE001
-                    pass
+            # Real controls from Artisan's own config (bounds, step, enabled, unit),
+            # rebuilt on the Qt thread for THIS connect rather than served from a
+            # cache built at startup — see _interface_for_welcome.
+            iface = await self._interface_for_welcome()
+            if iface:
+                if iface.get('channels'):
+                    welcome['channels'] = iface['channels']
+                if iface.get('unit'):
+                    welcome['unit'] = iface['unit']
             await self._send(ws, 'welcome', welcome)
             await self._send(ws, 'snapshot', self._snapshot_provider())
 
@@ -636,6 +648,44 @@ class TilauWebControl:
             if res.get(k) is not None:
                 ack[k] = res[k]
         await self._send(ws, 'ack', ack)
+
+    async def _interface_for_welcome(self) -> Optional[dict]:
+        """The controls to announce, rebuilt on the Qt thread before we speak.
+
+        `welcome` is the only message that describes the machine, and the phone
+        believes it for the whole session. A slider renamed, re-bounded or hidden
+        by a button-palette swap — or a switch to °F — would otherwise reach a
+        client that connected afterwards as the configuration of an hour ago,
+        with nothing on either side to notice the disagreement.
+
+        Falls back to the last built description if the Qt thread cannot answer
+        in time (a modal dialog is open, say): stale controls still beat none,
+        and the handshake must not hang on the desktop being idle.
+        """
+        bridge = self._bridge_for_web()
+        if bridge is None:
+            return None
+        loop = self._loop
+        fut: asyncio.Future = asyncio.get_running_loop().create_future()
+
+        def _done(res):  # runs on the Qt main thread -> marshal back to the loop
+            if loop is None:
+                return
+
+            def _settle() -> None:
+                if not fut.done():
+                    fut.set_result(res if isinstance(res, dict) else {})
+            loop.call_soon_threadsafe(_settle)
+
+        try:
+            bridge.submit({'kind': 'interface', 'done': _done})
+            return await asyncio.wait_for(fut, _INTERFACE_TIMEOUT)
+        except Exception:  # noqa: BLE001  timeout included
+            _log.debug("control: interface refresh timed out; serving the last one")
+            try:
+                return bridge.interface()
+            except Exception:  # noqa: BLE001
+                return None
 
     # ---- simple commands (mark / recorder) via the bridge -------------------
 

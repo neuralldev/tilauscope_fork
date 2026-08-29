@@ -37,3 +37,6 @@
 # correction to the attribution notice waits a year to reach anybody.
 /index.html
   Cache-Control: public, max-age=0, must-revalidate
+
+/roasting-skywalker.html
+  Cache-Control: public, max-age=0, must-revalidate

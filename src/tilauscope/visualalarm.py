@@ -327,6 +327,9 @@ class AlarmTimelineDialog(QDialog):
         if hasattr(self, "_ai_panel") and self._ai_panel.isVisible():
             self._ai_panel.reposition()
 
+    #: Artisan's alarm-action index for "Call Program" (ACTION_LIST key 1).
+    _CALL_PROGRAM_ACTION = 1
+
     def _build_alarm_payload(self) -> tuple[str, str]:
         """Build system + user messages for the AI alarm narrative."""
         alarm_objects = self.timeline_widget.alarm_objects
@@ -355,7 +358,11 @@ class AlarmTimelineDialog(QDialog):
 
             # Action
             action = ACTION_LIST.get(d.action, "Action")
-            value  = f" → {d.msg}" if d.msg else ""
+            if d.action == self._CALL_PROGRAM_ACTION:
+                # See alarms.py: the program's command line never leaves.
+                value = " → <external program>" if d.msg else ""
+            else:
+                value = f" → {d.msg}" if d.msg else ""
 
             # Trigger condition (sensor threshold)
             condition = ""

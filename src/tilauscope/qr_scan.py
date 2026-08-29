@@ -16,10 +16,13 @@
 # QR scan module — BeanCave webcam scanner (spec: wiki/QR-Scan-Spec.md). Decodes
 # TilauScope label QR codes (roast/bean/sack) into a normalized (kind, id) result.
 # The camera runs only while the dialog is open; decoding is throttled (~5 Hz).
+# Frames stay in memory: the only path that writes one to disk is the
+# TILAU_QR_DEBUG diagnostic below, and it cleans up after itself.
 
 import os
 import re
 import sys
+import shutil
 import logging
 import tempfile
 from pathlib import Path
@@ -113,6 +116,21 @@ def _macos_request_camera_access(callback) -> bool:
     except Exception as e:  # noqa: BLE001
         _log.warning(f"AVFoundation camera request unavailable: {e}")
         return False
+
+
+def qr_debug_mode() -> str:
+    """Read ``TILAU_QR_DEBUG``: ``''`` (off), ``'session'`` or ``'keep'``.
+
+    A snapshot is a camera frame, so it holds whatever the lens was pointed at
+    and not merely the label. ``'session'`` is what any truthy value gives: the
+    image lives as long as the scan window. ``TILAU_QR_DEBUG=keep`` is the
+    explicit choice to leave it on disk afterwards, and it is announced in the
+    log when it happens.
+    """
+    raw = (os.environ.get('TILAU_QR_DEBUG') or '').strip().lower()
+    if raw in ('', '0', 'false', 'no', 'off'):
+        return ''
+    return 'keep' if raw == 'keep' else 'session'
 
 
 # ---------------------------------------------------------------------------
@@ -231,6 +249,7 @@ class ScanQRDialog(QDialog):
         # backends fail readback silently).
         self._latest_frame = None
         self._diag_logged = False  # one-shot pipeline diagnostics at INFO
+        self._debug_dir: Optional[Path] = None  # created on the first snapshot
         self._decode_timer = QTimer(self)
         self._decode_timer.setInterval(int(self._DECODE_INTERVAL_S * 1000))
         self._decode_timer.timeout.connect(self._decode_tick)
@@ -447,6 +466,7 @@ class ScanQRDialog(QDialog):
         self._latest_frame = None
         self._camera = None
         self._session = None
+        self._discard_debug_dir()
 
     def _on_camera_error(self, _error, error_string: str) -> None:
         _log.warning(f"Camera error: {error_string}")
@@ -490,9 +510,53 @@ class ScanQRDialog(QDialog):
                     _log.debug(f"widget grab conversion failed: {e}")
         return None, 'none'
 
+    def _debug_dir_path(self) -> Optional[Path]:
+        """Private directory for the snapshots, created on first use.
+
+        mkdtemp picks an unguessable name and the operating system creates the
+        directory 0700. A fixed name under the shared temp directory would not:
+        gettempdir() is per-user on macOS and Windows but falls back to a
+        world-readable /tmp whenever TMPDIR is unset, and the code cannot see
+        which of the two it got.
+        """
+        if self._debug_dir is None:
+            try:
+                self._debug_dir = Path(tempfile.mkdtemp(prefix='tilauscope-qr-'))
+                _log.info("QR debug snapshots: %s", self._debug_dir)
+            except Exception as e:  # noqa: BLE001
+                _log.debug(f"debug directory unavailable: {e}")
+                return None
+        return self._debug_dir
+
+    def _discard_debug_dir(self) -> None:
+        """Camera frames do not outlive the scan window unless asked to."""
+        if self._debug_dir is None:
+            return
+        if qr_debug_mode() == 'keep':
+            _log.warning("QR debug snapshot left on disk: %s", self._debug_dir)
+            return
+        try:
+            shutil.rmtree(self._debug_dir, ignore_errors=True)
+        except Exception as e:  # noqa: BLE001
+            _log.debug(f"debug snapshot cleanup failed: {e}")
+        self._debug_dir = None
+
+    def _write_debug_snapshot(self, arr) -> None:
+        """Save what the decoder sees, readable by this account only."""
+        directory = self._debug_dir_path()
+        if directory is None:
+            return
+        try:
+            from PIL import Image
+            snapshot = directory / 'decoder-view.png'
+            Image.fromarray(arr).save(snapshot)
+            os.chmod(snapshot, 0o600)
+        except Exception as e:  # noqa: BLE001
+            _log.debug(f"debug snapshot failed: {e}")
+
     def _log_diagnostics(self, arr, source: str) -> None:
         """One-shot pipeline report + optional debug snapshots
-        (TILAU_QR_DEBUG=1 dumps what the decoder sees to the temp dir)."""
+        (TILAU_QR_DEBUG dumps what the decoder sees — see qr_debug_mode)."""
         if not self._diag_logged:
             self._diag_logged = True
             frame = self._latest_frame
@@ -501,18 +565,16 @@ class ScanQRDialog(QDialog):
             rng = f"{int(arr.min())}-{int(arr.max())}" if arr is not None else '-'
             _log.info("QR scan pipeline: source=%s frame_format=%s gray=%s range=%s",
                       source, fmt, shape, rng)
-        if os.environ.get('TILAU_QR_DEBUG'):
+        mode = qr_debug_mode()
+        if mode:
             # surface the pipeline state right in the dialog (no log digging)
             shape = f"{arr.shape[1]}x{arr.shape[0]}" if arr is not None else 'none'
             rng = f"{int(arr.min())}-{int(arr.max())}" if arr is not None else '-'
-            self._status.setText(f"debug: source={source} gray={shape} range={rng}")
+            kept = " · snapshot kept on disk" if mode == 'keep' else ""
+            self._status.setText(
+                f"debug: source={source} gray={shape} range={rng}{kept}")
             if arr is not None:
-                try:
-                    from PIL import Image
-                    p = Path(tempfile.gettempdir()) / 'tilauscope_qr_debug.png'
-                    Image.fromarray(arr).save(p)
-                except Exception as e:  # noqa: BLE001
-                    _log.debug(f"debug snapshot failed: {e}")
+                self._write_debug_snapshot(arr)
 
     def _decode_tick(self) -> None:
         if not _HAS_DECODER:

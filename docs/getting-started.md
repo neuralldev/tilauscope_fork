@@ -9,8 +9,9 @@
     Artisan's settings, a single menu for everything the fork adds, and one button that
     switches the whole interface between a guided layout and a full expert layout.
 
-At launch, TilauScope opens directly as the main roasting window. The Artisan window remains
-available from **TilauScope → Switch to Artisan window** when its full canvas is needed.
+At launch, TilauScope opens directly as the main roasting window, and it is the application:
+closing it closes TilauScope. The Artisan window it is built on stays behind it and is not
+something you need to visit.
 
 ---
 
@@ -23,11 +24,14 @@ Artisan's own menus.
 
 | Entry | What it does |
 |---|---|
-| **Switch to TilauScope** / **Switch to Artisan window** | Moves between the two windows. The label always names where you are *going*, not where you are. |
 | **BeanCave** | Opens the green-bean database. |
+| **Roast Profile Maintenance...** | Lists and repairs saved roast files. |
+| **Custom button management...** | Arranges the buttons you press during a roast — see [The TilauScope window](the-window.md#arranging-your-own-buttons). |
 | **TilauScope Config...** | All fork settings, in four tabs. |
 | **Redo First-Time Setup...** | Replays the first-run wizard. |
 
+<!-- CAPTURE 1.1 — the TilauScope menu, fully open. The first entry is now
+BeanCave: the Switch to TilauScope / Switch to Artisan window entry is gone. -->
 ![the TilauScope menu, fully open](assets/getting-started-1.1.png)
 
 ### Version and bug reports

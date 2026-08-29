@@ -50,7 +50,7 @@
   <FilesMatch "\.(woff2?|ttf|otf)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
-  <FilesMatch "^index\.html$">
+  <FilesMatch "\.html$">
     Header set Cache-Control "public, max-age=0, must-revalidate"
   </FilesMatch>
 </IfModule>

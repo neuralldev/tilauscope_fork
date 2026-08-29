@@ -79,7 +79,7 @@ server {
     add_header Cross-Origin-Embedder-Policy "require-corp" always;
 
     location /fonts/ { add_header Cache-Control "public, max-age=31536000, immutable" always; }
-    location = /index.html { add_header Cache-Control "public, max-age=0, must-revalidate" always; }
+    location ~ \.html$ { add_header Cache-Control "public, max-age=0, must-revalidate" always; }
 
     server_tokens off;
 }

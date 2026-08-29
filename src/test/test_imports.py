@@ -74,7 +74,6 @@ KNOWN_UNIMPORTABLE: Final[dict[str, str]] = {}
 #: alarms/devices/onboarding/mqttbridge/menu_extension already do. The test
 #: below fails if the list GROWS — new contamination is a regression.
 ARTISAN_MAIN_IMPORTERS: Final[frozenset[str]] = frozenset({
-    'beancave',
     'difluid',
     'displayscope',
     'pid_autotune',

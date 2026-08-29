@@ -165,8 +165,11 @@ class ClickableValue(QLabel):
 
     def update_style(self, highlight=False):
         style = "font-weight: bold; font-size: 15px; border: none;"
-        if highlight: self.setStyleSheet(f"color: {THEME['CRUST']}; background-color: {self.color}; border-radius: 4px; {style}")
-        else: self.setStyleSheet(f"color: {self.color}; background: transparent; {style}")
+        # QLabel:disabled — the value stays readable but stops claiming a colour
+        # it can no longer act on (control out of reach).
+        dim = f"QLabel:disabled {{ color: {THEME['SURFACE2']}; background: transparent; }}"
+        if highlight: self.setStyleSheet(f"QLabel {{ color: {THEME['CRUST']}; background-color: {self.color}; border-radius: 4px; {style} }} {dim}")
+        else: self.setStyleSheet(f"QLabel {{ color: {self.color}; background: transparent; {style} }} {dim}")
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:

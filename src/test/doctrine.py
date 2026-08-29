@@ -216,6 +216,194 @@ def raw_message_box_sites(path: Path) -> list[Site]:
     return sites
 
 
+#: The only module allowed to assemble a model message. Everything else asks
+#: it for one, which is what makes the scrubbing unconditional.
+AI_MESSAGE_GATE: Final[str] = 'tilau_privacy.py'
+
+#: Tag for a prompt built outside the gate.
+AI_PAYLOAD: Final[str] = 'ai-payload'
+
+
+def raw_ai_message_sites(path: Path) -> list[Site]:
+    """Model messages assembled by hand instead of through the privacy gate.
+
+    A chat message is a dict with ``role`` and ``content``, or a literal list
+    handed to a ``messages=`` argument. Both mean a payload was built where
+    ``prepare_ai_messages()`` could not see it, and a payload the scrubber does
+    not see is a payload that leaves with whatever the user typed in it.
+
+    The rule is structural rather than textual on purpose: the strings ``role``
+    and ``content`` are far too common to grep for.
+    """
+    if path.name == AI_MESSAGE_GATE:
+        return []
+    sites: list[Site] = []
+    for node in ast.walk(parse(path)):
+        if isinstance(node, ast.Dict):
+            keys = {
+                key.value for key in node.keys
+                if isinstance(key, ast.Constant) and isinstance(key.value, str)
+            }
+            if {'role', 'content'} <= keys:
+                sites.append(Site(
+                    path.name, node.lineno,
+                    'builds a model message by hand — go through '
+                    'tilau_privacy.prepare_ai_messages()', AI_PAYLOAD))
+        elif isinstance(node, ast.Call):
+            for kw in node.keywords:
+                if kw.arg == 'messages' and isinstance(kw.value, (ast.List, ast.Tuple)):
+                    sites.append(Site(
+                        path.name, node.lineno,
+                        'passes a literal messages= list to a model call — go '
+                        'through tilau_privacy.prepare_ai_messages()',
+                        AI_PAYLOAD))
+    return sites
+
+
+#: The module holding the disclosure gate.
+AI_DISCLOSURE_GATE: Final[str] = 'tilau_privacy_ui.py'
+
+#: Tag for an AI request started without naming its recipient.
+AI_DISCLOSURE: Final[str] = 'ai-disclosure'
+
+#: Modules that reach the model but never from the UI thread, so they cannot
+#: raise a dialog and must not try: their callers hold the gate instead.
+_OFF_THREAD_AI: Final[frozenset[str]] = frozenset({
+    'bean_extractor.py',
+})
+
+#: Constructing one of these starts an AI request against a supplier page.
+_AI_WORKERS: Final[frozenset[str]] = frozenset({
+    'BeanAIWorker', '_WizardAIWorker',
+})
+
+
+def ungated_ai_launch_sites(path: Path) -> list[Site]:
+    """AI requests started without the operator being told who receives them.
+
+    Art. 13 is satisfied once per provider, not once per installation, and the
+    place it has to happen is where the request is *launched* — the only place
+    that runs on the UI thread and can still stop. A module that starts a
+    request and never names ``ensure_ai_disclosure()`` has no such place.
+
+    Textual on the gate name and structural on the launch: naming the gate is
+    the whole obligation, so the presence of the name is the whole check.
+    """
+    if path.name in (AI_MESSAGE_GATE, AI_DISCLOSURE_GATE) or path.name in _OFF_THREAD_AI:
+        return []
+    tree = parse(path)
+    launches: list[Site] = []
+    gated = False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            if node.id == 'ensure_ai_disclosure':
+                gated = True
+            elif node.id == 'prepare_ai_messages':
+                launches.append(Site(
+                    path.name, node.lineno,
+                    'sends a prompt without naming the recipient — call '
+                    'tilau_privacy_ui.ensure_ai_disclosure() first',
+                    AI_DISCLOSURE))
+            elif node.id in _AI_WORKERS:
+                launches.append(Site(
+                    path.name, node.lineno,
+                    f'starts {node.id} without naming the recipient — call '
+                    'tilau_privacy_ui.ensure_ai_disclosure() first',
+                    AI_DISCLOSURE))
+        elif isinstance(node, ast.Attribute) and node.attr == 'ensure_ai_disclosure':
+            gated = True
+    return [] if gated else launches
+
+
+#: Tag for a credential that would reach the settings file.
+SERIALISED_SECRET: Final[str] = 'serialised-secret'
+
+#: Field names that hold a credential. Matched as substrings on the field name,
+#: so ``password_encoded`` and ``_apikey`` are both caught.
+_SECRET_FIELDS: Final[tuple[str, ...]] = (
+    'apikey', 'api_key', 'passwd', 'password', 'secret', 'token', 'credential',
+)
+
+#: Field names that merely *look* like one. ``username`` contains no secret,
+#: and the keychain needs it in the settings to name the account.
+_NOT_SECRET_FIELDS: Final[frozenset[str]] = frozenset({
+    'token_limit', 'max_tokens', 'secret_hint',
+})
+
+
+def serialised_secret_sites(path: Path) -> list[Site]:
+    """Credential fields a dataclass would write into the settings file.
+
+    Artisan writes *every* setting into an exported ``.aset``, which is how a
+    machine setup is shared — so a credential a dataclass serialises does not
+    just sit on the operator's disk, it travels. The keychain holds them
+    instead, and the field says so with ``field_options(serialize='omit')``.
+
+    Base64 does not exempt a field: it is an encoding, not a cipher.
+    """
+    sites: list[Site] = []
+    for node in ast.walk(parse(path)):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        if not any('dataclass' in ast.unparse(d) for d in node.decorator_list):
+            continue
+        for stmt in node.body:
+            if not isinstance(stmt, ast.AnnAssign) or not isinstance(stmt.target, ast.Name):
+                continue
+            name = stmt.target.id
+            lowered = name.lower().lstrip('_')
+            if lowered in _NOT_SECRET_FIELDS:
+                continue
+            if not any(tag in lowered for tag in _SECRET_FIELDS):
+                continue
+            declared = ast.unparse(stmt.value) if stmt.value is not None else ''
+            if "serialize='omit'" in declared or 'serialize="omit"' in declared:
+                continue
+            sites.append(Site(
+                path.name, stmt.lineno,
+                f'dataclass field {node.name}.{name} is written to the settings '
+                "— keep it in the keychain and declare "
+                "field(metadata=field_options(serialize='omit'))",
+                SERIALISED_SECRET))
+    return sites
+
+
+#: Tag for a file written to a guessable name in the shared temp directory.
+PREDICTABLE_TEMP: Final[str] = 'predictable-temp-path'
+
+
+def predictable_temp_path_sites(path: Path) -> list[Site]:
+    """Paths built under the shared temp directory rather than a private one.
+
+    ``tempfile.gettempdir()`` is per-user on macOS and Windows, but it falls
+    back to a world-readable ``/tmp`` whenever TMPDIR is unset — and that
+    fallback is invisible, because the call reads identically either way. Given
+    a fixed file name it yields a path any local account can read, or
+    pre-create as a symlink aimed somewhere the roaster can write.
+
+    What prompted the rule was a diagnostic writing camera frames there. The
+    safe idioms name themselves: ``mkdtemp``, ``TemporaryDirectory``,
+    ``NamedTemporaryFile`` — each an unguessable name inside a directory the
+    operating system creates private.
+    """
+    sites: list[Site] = []
+    for node in ast.walk(parse(path)):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        named = (func.attr if isinstance(func, ast.Attribute)
+                 else func.id if isinstance(func, ast.Name) else '')
+        if named != 'gettempdir':
+            continue
+        sites.append(Site(
+            path.name, node.lineno,
+            'builds a path under the shared temp directory — use '
+            'tempfile.mkdtemp() or TemporaryDirectory() so the name is '
+            'unguessable and the directory private',
+            PREDICTABLE_TEMP))
+    return sites
+
+
 def attribute_chain(node: ast.expr) -> str:
     """Render a dotted expression back to text: ``self.aw.qmc.timex``."""
     parts: list[str] = []

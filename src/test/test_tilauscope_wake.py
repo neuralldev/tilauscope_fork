@@ -14,14 +14,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from threading import Event
-from typing import Any, Iterator
+from typing import Any
+
+import pytest
 
 
+@pytest.mark.usefixtures('qapp')  # owns the Qt objects QThread needs
 def test_wake_controller_start_is_idempotent_and_finish_releases(
-    qapp: Any, monkeypatch: Any,
-) -> None:  # noqa: ARG001 - qapp owns the Qt objects used by QThread
+    monkeypatch: Any,
+) -> None:
     from tilauscope import wake_classes
 
     acquired = Event()

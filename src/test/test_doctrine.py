@@ -68,7 +68,10 @@ UNTRANSLATABLE_SOURCE_DEBT: Final[dict[str, int]] = {}
 #: upstream catalogue. Frozen anyway, because this is also the shape a genuinely
 #: new fork string would take if it were filed under the wrong context.
 UPSTREAM_VALUE_SITES: Final[dict[str, int]] = {
-    'beancave.py': 10,
+    # The ten sites left beancave.py with the slices that own them: nine in the
+    # roast drawing, one in the written report. Same sites, same total, new homes.
+    'viewer_plot.py': 9,
+    'analysis.py': 1,
     # The two event-button sites moved out of displayscope.py with the widget
     # that owns them; same two sites, same count, new home.
     'parts.py': 2,
@@ -174,6 +177,96 @@ def test_the_styled_dialog_helper_still_exists() -> None:
         f'show_styled_message() is gone from {STYLED_DIALOG_MODULE} — the '
         'no-raw-QMessageBox rule now forbids something with no replacement.'
     )
+
+
+# ── outbound payloads ────────────────────────────────────────────────────────
+
+def test_no_prompt_is_assembled_outside_the_privacy_gate() -> None:
+    """Every AI payload goes through ``prepare_ai_messages()``.
+
+    This is the rule the GDPR work rests on. Sanitising at the four call sites
+    that exist today would hold exactly until the fifth is written, and the
+    fifth will be written by someone copying the shape of an existing one — the
+    unsanitised shape is the one that reads as normal Python.
+    """
+    offenders = [
+        site
+        for path in doctrine.source_files()
+        for site in doctrine.raw_ai_message_sites(path)
+    ]
+    assert not offenders, (
+        'model payload built outside tilau_privacy.prepare_ai_messages():\n'
+        + '\n'.join(f'  {s}' for s in offenders)
+    )
+
+
+def test_no_credential_is_written_into_the_settings_file() -> None:
+    """No dataclass field holding a credential reaches the settings.
+
+    Artisan writes every setting into an exported ``.aset``, which is how a
+    machine setup is shared between roasters — so a credential serialised here
+    leaves with the profile. The keychain holds them instead.
+    """
+    offenders = [
+        site
+        for path in doctrine.source_files()
+        for site in doctrine.serialised_secret_sites(path)
+    ]
+    assert not offenders, (
+        'credential written into the settings file:\n'
+        + '\n'.join(f'  {s}' for s in offenders)
+    )
+
+
+def test_the_keychain_store_still_exists() -> None:
+    """Guard the guard: the rule above needs something to obey."""
+    source = (doctrine.PKG_DIR / 'tilau_secrets.py').read_text(encoding='utf-8')
+    for symbol in ('def get_secret(', 'def set_secret(', 'def delete_secret(',
+                   'def ai_account(', 'def mqtt_account('):
+        assert symbol in source, (
+            f'{symbol} is gone from tilau_secrets.py — the no-credential-in-'
+            'settings rule now forbids something with no replacement.'
+        )
+
+
+def test_no_ai_request_starts_without_naming_its_recipient() -> None:
+    """Every AI launch site passes through ``ensure_ai_disclosure()``.
+
+    Scrubbing says what may leave; the disclosure says who receives it, and
+    only the launch site — on the UI thread, still able to stop — can ask. A
+    sixth launch site copied from a fifth would otherwise inherit the silence.
+    """
+    offenders = [
+        site
+        for path in doctrine.source_files()
+        for site in doctrine.ungated_ai_launch_sites(path)
+    ]
+    assert not offenders, (
+        'AI request started without tilau_privacy_ui.ensure_ai_disclosure():\n'
+        + '\n'.join(f'  {s}' for s in offenders)
+    )
+
+
+def test_the_disclosure_gate_still_exists() -> None:
+    """Guard the guard: the rule above needs something to obey."""
+    source = (doctrine.PKG_DIR / doctrine.AI_DISCLOSURE_GATE).read_text(encoding='utf-8')
+    for symbol in ('def ensure_ai_disclosure(', 'def ensure_geo_consent(',
+                   'def show_ai_payload_preview('):
+        assert symbol in source, (
+            f'{symbol} is gone from {doctrine.AI_DISCLOSURE_GATE} — the '
+            'disclosure rule now forbids something with no replacement.'
+        )
+
+
+def test_the_privacy_gate_still_exists() -> None:
+    """Guard the guard: the rule above needs something to obey."""
+    source = (doctrine.PKG_DIR / doctrine.AI_MESSAGE_GATE).read_text(encoding='utf-8')
+    for symbol in ('def prepare_ai_messages(', 'def sanitize_url(',
+                   'def sanitize_text('):
+        assert symbol in source, (
+            f'{symbol} is gone from {doctrine.AI_MESSAGE_GATE} — the '
+            'no-raw-prompt rule now forbids something with no replacement.'
+        )
 
 
 # ── thread discipline ────────────────────────────────────────────────────────
@@ -452,3 +545,118 @@ def test_pylupdate_really_drops_non_literals(tmp_path: Path) -> None:
             f'pylupdate6 now extracts {skipped!r}. The frozen debt in this file '
             'is no longer debt — re-measure and lower the baselines.'
         )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Resources named relative to the module that reads them
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _parents_of(node: ast.expr) -> int | None:
+    """Depth of a ``Path(__file__)[.resolve()].parent...`` chain, or None."""
+    depth = 0
+    while True:
+        if isinstance(node, ast.Call) and not _is_path_of_file(node):
+            node = node.func                     # unwrap ``.resolve()``
+            continue
+        if isinstance(node, ast.Attribute):
+            if node.attr == 'parent':
+                depth += 1
+            elif node.attr != 'resolve':
+                return None
+            node = node.value
+            continue
+        break
+    return depth if _is_path_of_file(node) else None
+    return None
+
+
+def _is_path_of_file(node: ast.expr) -> bool:
+    """``Path(__file__)`` exactly — not ``Path(anything_else)``."""
+    return (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            and node.func.id == 'Path' and len(node.args) == 1
+            and isinstance(node.args[0], ast.Name) and node.args[0].id == '__file__')
+
+
+def _resource_sites() -> list[tuple[Path, int, Path]]:
+    """Every ``Path(__file__).parent[...] / "literal"`` and where it points."""
+    sites: list[tuple[Path, int, Path]] = []
+    for path in doctrine.source_files():
+        for node in ast.walk(doctrine.parse(path)):
+            if not (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div)):
+                continue
+            if not (isinstance(node.right, ast.Constant)
+                    and isinstance(node.right.value, str)):
+                continue
+            depth = _parents_of(node.left)
+            if depth is None:
+                continue
+            base = path.resolve()
+            for _ in range(depth):
+                base = base.parent
+            sites.append((path, node.lineno, base / node.right.value))
+    return sites
+
+
+def test_every_module_relative_resource_exists() -> None:
+    """A file named from ``__file__`` must still be there once the module moves.
+
+    This is the failure that survived the BeanCave split: ``load_parameters``
+    read its parameter file from its own directory, the method moved one package
+    deeper, and the read silently logged and returned — surfacing hundreds of
+    lines away as a KeyError on an empty dictionary. Nothing in the suite could
+    see it, because nothing constructs the dialog. The path is checkable without
+    Qt, so it is checked here.
+    """
+    sites = _resource_sites()
+    assert sites, 'no module-relative resource found — the matcher stopped working'
+
+    missing = [
+        f'  tilauscope/{path.relative_to(doctrine.PKG_DIR)}:{lineno} -> {target}'
+        for path, lineno, target in sites if not target.exists()
+    ]
+    assert not missing, (
+        'these modules name a resource that is not where they look for it:\n'
+        + '\n'.join(missing)
+        + '\n\nA module that moved into a sub-package is one directory deeper '
+          'than it was; resolve package data from the package, not from the '
+          'module that happens to read it.'
+    )
+
+
+def test_no_module_writes_to_a_guessable_temp_path() -> None:
+    """Nothing lands on a name another local account could guess.
+
+    ``tempfile.gettempdir()`` reads the same whether it returns the per-user
+    directory macOS and Windows provide or the world-readable ``/tmp`` it falls
+    back to when TMPDIR is unset, so a fixed file name under it is a leak the
+    code cannot see. The QR diagnostic wrote camera frames that way.
+    """
+    offenders = [
+        site
+        for path in doctrine.source_files()
+        for site in doctrine.predictable_temp_path_sites(path)
+    ]
+    assert not offenders, (
+        'file written to a guessable path in the shared temp directory:\n'
+        + '\n'.join(f'  {s}' for s in offenders)
+    )
+
+
+def test_the_qr_snapshot_still_cleans_up_after_itself() -> None:
+    """Guard the guard: the scanner's only disk write stays bounded.
+
+    A camera frame holds whatever the lens was pointed at. The diagnostic may
+    keep one while the scan window is open; keeping it afterwards has to be an
+    explicit request, and has to be announced.
+    """
+    source = (doctrine.PKG_DIR / 'qr_scan.py').read_text(encoding='utf-8')
+    for symbol in ('def qr_debug_mode(', 'def _discard_debug_dir(',
+                   'mkdtemp(prefix=', '0o600'):
+        assert symbol in source, (
+            f'{symbol} is gone from qr_scan.py — the debug snapshot no longer '
+            'protects or removes the camera frames it writes.'
+        )
+    assert 'self._discard_debug_dir()' in source, (
+        'nothing calls _discard_debug_dir() — the snapshot now outlives the '
+        'scan window.'
+    )

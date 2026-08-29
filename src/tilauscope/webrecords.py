@@ -309,6 +309,13 @@ class TilauWebRecords:
 
     @web.middleware
     async def _security_middleware(self, request: web.Request, handler):
+        # Before anything is served: the plain-ws trade in protocol §7 is only
+        # sound while the other end is on the home network. Checked here rather
+        # than assumed from the bind address, which is every interface.
+        from tilauscope.weblan import reject_remote_peer  # noqa: PLC0415
+        if reject_remote_peer(request, 'records'):
+            return web.Response(status=403, text='forbidden',
+                                content_type='text/plain')
         try:
             resp = await handler(request)
         except web.HTTPException as e:

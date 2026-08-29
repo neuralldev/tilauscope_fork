@@ -204,3 +204,86 @@ def migrate_identity(app: QCoreApplication | None = None) -> bool:
         _log.exception('data directory migration failed')
 
     return migrated
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Credentials out of the settings file and into the OS keychain
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Where the AI key and the broker password used to sit. Both groups exist
+# because the settings are written once at the top level and once under
+# Device — so a secret left behind in either is a secret still on disk.
+_AI_KEYS: tuple[str, ...] = ('tilauai', 'Device/tilauai')
+_MQTT_KEYS: tuple[str, ...] = ('tilaumqttbridge', 'Device/tilaumqttbridge')
+
+
+def _plain(entry: dict, encoded_field: str, clear_field: str) -> str:
+    """The credential in one settings dict, whichever form it was left in."""
+    import base64
+
+    encoded = entry.get(encoded_field) or ''
+    if encoded:
+        try:
+            return base64.b64decode(encoded).decode('utf-8')
+        except Exception:  # noqa: BLE001
+            pass
+    return entry.get(clear_field) or ''
+
+
+def migrate_secrets_to_keyring(settings: QSettings | None = None) -> None:
+    """Move stored credentials into the keychain and strip them from settings.
+
+    Before this release the AI key and the broker password were kept in the
+    settings — base64 for one copy, cleartext for the other. That file is also
+    what Artisan writes into an exported ``.aset``, so a shared machine setup
+    carried the operator's credentials with it.
+
+    Runs on every launch and is a no-op once there is nothing left to move.
+    Never removes a credential it did not manage to store somewhere first.
+    """
+    from tilauscope.tilau_secrets import ai_account, mqtt_account, set_secret
+
+    # The argument exists so this can be pointed at a copy of a real settings
+    # file and its effect read before it is let loose on the original.
+    if settings is None:
+        settings = QSettings()
+    moved = 0
+
+    for key in _AI_KEYS:
+        entry = settings.value(key, None)
+        if not isinstance(entry, dict):
+            continue
+        secret = _plain(entry, 'apikey_encoded', '_apikey')
+        client_id = entry.get('client_id') or 'google'
+        if secret and not set_secret(ai_account(str(client_id)), secret):
+            _log.warning('keychain refused the AI key; leaving %s alone', key)
+            continue
+        if _strip(settings, key, entry, ('apikey_encoded', '_apikey')):
+            moved += 1
+
+    for key in _MQTT_KEYS:
+        entry = settings.value(key, None)
+        if not isinstance(entry, dict):
+            continue
+        secret = _plain(entry, 'password_encoded', '_password')
+        user = _plain(entry, 'username_encoded', '_username')
+        host = entry.get('broker_url') or ''
+        port = entry.get('port') or 1883
+        if secret and not set_secret(mqtt_account(user, str(host), port), secret):
+            _log.warning('keychain refused the broker password; leaving %s alone', key)
+            continue
+        if _strip(settings, key, entry, ('password_encoded', '_password')):
+            moved += 1
+
+    if moved:
+        settings.sync()
+        _log.info('moved credentials out of the settings file in %d group(s)', moved)
+
+
+def _strip(settings: QSettings, key: str, entry: dict, fields: tuple[str, ...]) -> bool:
+    """Rewrite one settings group without its credential fields."""
+    if not any(entry.get(f) for f in fields):
+        return False
+    cleaned = {k: v for k, v in entry.items() if k not in fields}
+    settings.setValue(key, cleaned)
+    return True

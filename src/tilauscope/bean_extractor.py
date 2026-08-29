@@ -35,6 +35,7 @@ from pydantic import BaseModel, Field
 
 from tilauscope.tilauscope_types import GreenBean
 from tilauscope.ai_support import TilauAIConfig
+from tilauscope.tilau_privacy import prepare_ai_messages, sanitize_url
 import instructor as _instructor
 import openai as _openai
 
@@ -103,6 +104,30 @@ _HEADERS = {
 }
 
 _MIN_TEXT_LENGTH = 300  # chars — if below, page is likely JS-only
+
+
+class RefusedURL(ValueError):
+    """The address cannot be fetched: not public, or not a web page.
+
+    Refusing here is both a privacy and a safety decision. The page we fetch is
+    forwarded to a third-party model, so an intranet address would hand the
+    local network to an outside service.
+    """
+
+    def __init__(self, reason: str) -> None:
+        from PyQt6.QtWidgets import QApplication  # noqa: PLC0415
+        if reason in ("private-host", "port"):
+            message = QApplication.translate(
+                "tilauscope_beancave",
+                "This address is not a public page. TilauScope only reads "
+                "supplier pages published on the internet.")
+        else:
+            message = QApplication.translate(
+                "tilauscope_beancave",
+                "This address cannot be read. Paste the http or https link of "
+                "the supplier page.")
+        super().__init__(message)
+        self.reason = reason
 
 
 def _extract_json_ld(soup: BeautifulSoup) -> str:
@@ -194,6 +219,11 @@ def scrape_url(url: str) -> tuple[str, str]:
     Returns a merged text optimised for the AI prompt, and a short note
     describing what was found (for debugging).
     """
+    verdict = sanitize_url(url)
+    if not verdict.ok:
+        raise RefusedURL(verdict.refused or "unusable")
+    url = verdict.url
+
     response = requests.get(url, headers=_HEADERS, timeout=15)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, "html.parser")
@@ -305,6 +335,15 @@ class CoffeeAIParser:
         def _cancelled() -> bool:
             return cancel_token is not None and cancel_token.is_cancelled
 
+        verdict = sanitize_url(url)
+        if not verdict.ok:
+            raise RefusedURL(verdict.refused or "unusable")
+        # From here the raw address is gone: what is fetched, logged and sent
+        # to the model is the same purged URL.
+        url = verdict.url
+        if verdict.removed:
+            _log.info("bean_extractor: URL purged (%s)", ", ".join(verdict.removed))
+
         _emit("scraping…")
         try:
             page_text, diag = scrape_url(url)
@@ -360,16 +399,16 @@ class CoffeeAIParser:
             return None
 
         client, model_name = self._build_client()
+        messages, _report = prepare_ai_messages(
+            system_prompt, user_prompt, task=str(AITask.BEAN_EXTRACT)
+        )
         from typing import cast  # noqa: PLC0415
         extracted = cast(
             GreenBeanSchema,
             client.chat.completions.create(
                 model=model_name,
                 response_model=GreenBeanSchema,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user",   "content": user_prompt},
-                ],
+                messages=messages,
             ),
         )
         return GreenBean(**extracted.model_dump())

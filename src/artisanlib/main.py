@@ -592,6 +592,16 @@ app.setApplicationName(application_name)                                #needed 
 app.setOrganizationName(application_organization_name)                  #needed by QSettings() to store windows geometry in operating system
 app.setOrganizationDomain(application_organization_domain)              #needed by QSettings() to store windows geometry in operating system
 
+## TILAU ## Move the AI key and the broker password out of the settings file and
+## into the OS keychain. Must run after the identity above is set (QSettings()
+## resolves through it) and before the first settings read, so what loads is
+## already clean. No-op once there is nothing left to move.
+try:
+    from tilauscope.settings_migration import migrate_secrets_to_keyring
+    migrate_secrets_to_keyring()
+except Exception: # pylint: disable=broad-except
+    pass
+
 
 #app.setStyleSheet("") # setting any styleSheet on QApplication disables native dialogs on macOS
 
@@ -1416,6 +1426,12 @@ class ApplicationWindow(QMainWindow):
     fireslideractionSignal = pyqtSignal(int)
     fireslideraction_rawSignal = pyqtSignal(int,float)
     tilaupidSliderCommandSignal = pyqtSignal(int,int,bool)
+    # Acknowledges the value clamped and applied by the centralized GUI-thread
+    # transaction. This is a software-path proof, not a device-level feedback.
+    tilaupidSliderAppliedSignal = pyqtSignal(int,int,bool)
+    # Emitted only by the human slider-release path. Automated TilauScope
+    # transactions call moveslider() directly and therefore never emit it.
+    tilauManualSliderMovedSignal = pyqtSignal(int,int)
     ## TILAU ## auto-identified roaster, emitted from the sampling thread
     tilauRoasterIdentifiedSignal = pyqtSignal(str)
     moveButtonSignal = pyqtSignal(str)
@@ -4188,11 +4204,11 @@ class ApplicationWindow(QMainWindow):
         if ui_mode is not UI_MODE.PRODUCTION:
             if ui_mode is UI_MODE.EXPERT:
                 tools_menu.addMenu(self.analyzeMenu)
-            tools_menu.addAction(self.roastCompareAction)
-            tools_menu.addAction(self.designerAction)
+            #tools_menu.addAction(self.roastCompareAction)
+            #tools_menu.addAction(self.designerAction)
             if ui_mode is UI_MODE.EXPERT:
                 tools_menu.addAction(self.simulatorAction)
-                tools_menu.addAction(self.wheeleditorAction)
+                #tools_menu.addAction(self.wheeleditorAction)
             tools_menu.addSeparator()
             if ui_mode is UI_MODE.EXPERT:
                 tools_menu.addAction(self.transformAction)
@@ -8550,6 +8566,7 @@ class ApplicationWindow(QMainWindow):
 
     # if updateLCD=True, call moveslider() which in turn updates the LCD
     def sliderReleased(self, n:int, force:bool = False, updateLCD:bool = False) -> bool:
+        operator_value:int|None = None
         if n == 0:
             sv1 = self.slider1.value()
             if force or (self.eventslidermoved[0] and sv1 != self.eventslidervalues[0]) or abs(sv1-self.eventslidervalues[0]) > 3:
@@ -8559,6 +8576,7 @@ class ApplicationWindow(QMainWindow):
                 if updateLCD or (self.eventslidercoarse[0] and sv1 != self.slider1.value()):
                     self.moveslider(0,sv1,forceLCDupdate=True) # move slider if need and update slider LCD
                 self.recordsliderevent(n)
+                operator_value = sv1
         elif n == 1:
             sv2 = self.slider2.value()
             if force or (self.eventslidermoved[1] and sv2 != self.eventslidervalues[1]) or abs(sv2-self.eventslidervalues[1]) > 3:
@@ -8568,6 +8586,7 @@ class ApplicationWindow(QMainWindow):
                 if updateLCD or (self.eventslidercoarse[1] and sv2 != self.slider2.value()):
                     self.moveslider(1,sv2,forceLCDupdate=True) # move slider if need and update slider LCD
                 self.recordsliderevent(n)
+                operator_value = sv2
         elif n == 2:
             sv3 = self.slider3.value()
             if force or (self.eventslidermoved[2] and sv3 != self.eventslidervalues[2]) or abs(sv3-self.eventslidervalues[2]) > 3:
@@ -8577,6 +8596,7 @@ class ApplicationWindow(QMainWindow):
                 if updateLCD or (self.eventslidercoarse[2] and sv3 != self.slider3.value()):
                     self.moveslider(2,sv3,forceLCDupdate=True) # move slider if need and update slider LCD
                 self.recordsliderevent(n)
+                operator_value = sv3
         elif n == 3:
             sv4 = self.slider4.value()
             if force or (self.eventslidermoved[3] and sv4 != self.eventslidervalues[3]) or abs(sv4-self.eventslidervalues[3]) > 3:
@@ -8586,6 +8606,9 @@ class ApplicationWindow(QMainWindow):
                 if updateLCD or (self.eventslidercoarse[3] and sv4 != self.slider4.value()):
                     self.moveslider(3,sv4,forceLCDupdate=True) # move slider if need and update slider LCD
                 self.recordsliderevent(n)
+                operator_value = sv4
+        if operator_value is not None:
+            self.tilauManualSliderMovedSignal.emit(n, operator_value)
         return False
 
     # n=0 : slider1; n=1 : slider2; n=2 : slider3; n=3 : slider4
@@ -8625,6 +8648,9 @@ class ApplicationWindow(QMainWindow):
         # 'S<n>:<power>%' is the recorded shape the preheat controller is
         # recognised by; a gesture on the same channel writes value and unit.
         self.applyTilauSliderCommand(n, power, fire_action, f'S{n}:{{0}}%')
+        self.tilaupidSliderAppliedSignal.emit(
+            n, int(self.eventslidervalues[n]), fire_action
+        )
 
     ## TILAU ##
     @pyqtSlot(str)
@@ -20791,13 +20817,16 @@ class ApplicationWindow(QMainWindow):
             settings = QSettings()
             records_port = settings.value('tilauscope/web_port', 8123, type=int)
             control_port = settings.value('tilauscope/remote_port', 8765, type=int)
-            ## TILAU ## remote control is opt-in; TILAU_REMOTE=1 is a dev override
-            ## (mirrors TILAU_HEADLESS) so it can be enabled without a UI toggle yet.
+            ## TILAU ## both servers are opt-in; TILAU_WEB=1 / TILAU_REMOTE=1 are dev
+            ## overrides (mirroring TILAU_HEADLESS) to enable one without the UI toggle.
+            records_enabled = (settings.value('tilauscope/web_enabled', False, type=bool)
+                               or os.environ.get('TILAU_WEB') == '1')
             control_enabled = (settings.value('tilauscope/remote_enabled', False, type=bool)
                                or os.environ.get('TILAU_REMOTE') == '1')
-            _log.info('start_tilau_web_host: records_port=%s control_port=%s remote_enabled=%s',
-                      records_port, control_port, control_enabled)
+            _log.info('start_tilau_web_host: records_port=%s web_enabled=%s control_port=%s remote_enabled=%s',
+                      records_port, records_enabled, control_port, control_enabled)
             self.tilau_web_host = TilauWebHost(records_port, control_port,
+                                               records_enabled=records_enabled,
                                                control_enabled=control_enabled)
             self.tilau_web_host.start()
             if control_enabled and self.tilau_web_host.control_active():
@@ -28762,10 +28791,25 @@ class ApplicationWindow(QMainWindow):
             self.beancaveWindow.finished.connect(self._tilau_reshow_after_beancave)
 
     @pyqtSlot(bool)
-    def handlePIDAutotune(self, _:bool = False) -> None:   
+    def handlePIDAutotune(self, checked:bool = False) -> None:
         from tilauscope.pid_autotune import PIDAutotune
-        self.pidAutotuneWindow = PIDAutotune(self, self)
-        self.pidAutotuneWindow.show()
+
+        if not checked:
+            if self.PIDAutotune is not None:
+                self.PIDAutotune.close()
+            return
+
+        if self.PIDAutotune is None:
+            dialog = PIDAutotune(self, self)
+            self.PIDAutotune = dialog
+
+            def clear_pid_autotune(_:object|None = None) -> None:
+                if self.PIDAutotune is dialog:
+                    self.PIDAutotune = None
+
+            dialog.destroyed.connect(clear_pid_autotune)
+
+        self.PIDAutotune.present()
 
     @pyqtSlot()
     @pyqtSlot(bool)
@@ -29240,6 +29284,31 @@ def main() -> None:
     ## here, before the headless/direct boot branch, so it runs in BOTH boot paths.
     ## Deferred via QTimer so it never blocks startup.
     QTimer.singleShot(0, appWindow.start_tilau_web_host)
+
+    ## TILAU ## Pay the slow first-time costs while the operator is still looking
+    ## at a freshly opened window, instead of on the click that starts a roast.
+    ## Both are once-per-process and neither has a user-visible effect.
+    def _prime_slow_paths() -> None:
+        # Bluetooth adapter state, so the first ON already holds a real answer
+        # instead of the optimistic default. The import stays inside this
+        # callback: ble_port pulls bleak in, which startup must not pay, and
+        # the probe itself runs on its own thread.
+        from artisanlib.ble_port import bluetooth_available
+        bluetooth_available()
+
+        # scipy.signal is imported lazily by PID.irrFilter, so the very first
+        # confSoftwarePID() — which switching monitoring on always performs —
+        # paid the whole scipy import on the GUI thread. Import it here on a
+        # thread of its own; Python's import lock makes a concurrent import
+        # wait for this one rather than duplicate it.
+        def _warm_scipy() -> None:
+            try:
+                from scipy.signal import iirfilter  # noqa: F401
+            except Exception as e:  # pylint: disable=broad-except
+                _log.debug('scipy pre-import skipped: %s', e)
+        threading.Thread(target=_warm_scipy, name='ScipyWarmup', daemon=True).start()
+
+    QTimer.singleShot(0, _prime_slow_paths)
 #    _log.debug("PRINT mpl.get_cachedir(): %s",mpl.get_cachedir())
 
     appWindow.set_ui_mode(appWindow.ui_mode, False)
@@ -29256,29 +29325,33 @@ def main() -> None:
     ## TILAU ## headless boot: hide the Artisan main window and promote BeanCave to
     ## the primary shell. Mode was decided above (appWindow._tilau_headless) so
     ## settingsLoad could already skip the fullscreen restore.
+    ## TILAU ## Drive quit ourselves in BOTH boot modes: the Artisan window is
+    ## hidden either way, so Qt's own quit-on-last-window fires with nothing on
+    ## screen and ends the process WITHOUT closeApp() — settings unsaved, the web
+    ## host still listening, BLE still scanning. Closing the last TilauScope
+    ## window is how this application is quit, so it must quit it properly.
+    ## We must not key quit on BeanCave.finished — the roast workflow legitimately
+    ## closes BeanCave during the hand-off to TilauScope (roast_properties.py:_on_ok
+    ## -> self._parent_widget.close()), which would otherwise quit the app right as
+    ## roasting begins. lastWindowClosed does not fire during the hand-off because
+    ## TilauScope is opened first.
+    app.setQuitOnLastWindowClosed(False)
+    ## TILAU ## Defer fileQuit to the next event-loop tick. Connecting it directly
+    ## to lastWindowClosed runs closeApp() *during* a window's closeEvent, so
+    ## closeApp -> beancaveWindow.close() re-enters BeanCave's own closeEvent and
+    ## tears down a still-running BeanCave QThread -> qFatal ("QThread: Destroyed
+    ## while thread is still running"). Deferring lets the originating close unwind
+    ## first, then quits cleanly.
+    app.lastWindowClosed.connect(lambda: QTimer.singleShot(0, lambda: appWindow.fileQuit()))
     if appWindow._tilau_headless:
         _log.info('TILAU: headless boot active (Artisan window hidden)')
         appWindow.hide()
-        # Drive quit ourselves: the Artisan window is hidden, so we want a clean
-        # fileQuit() (settings saved, BLE stopped) when the last VISIBLE Tilau
-        # window closes. We must not key quit on BeanCave.finished — the roast
-        # workflow legitimately closes BeanCave during the hand-off to TilauScope
-        # (roast_properties.py:_on_ok -> self._parent_widget.close()), which would
-        # otherwise quit the app right as roasting begins. lastWindowClosed does
-        # not fire during the hand-off because TilauScope is opened first.
-        app.setQuitOnLastWindowClosed(False)
-        # Defer fileQuit to the next event-loop tick. Connecting it directly to
-        # lastWindowClosed runs closeApp() *during* a window's closeEvent, so
-        # closeApp -> beancaveWindow.close() re-enters BeanCave's own closeEvent
-        # and tears down a still-running BeanCave QThread -> qFatal ("QThread:
-        # Destroyed while thread is still running"). Deferring lets the
-        # originating close unwind first, then quits cleanly.
-        app.lastWindowClosed.connect(lambda: QTimer.singleShot(0, lambda: appWindow.fileQuit()))
         appWindow.handleBeancave()  # open BeanCave as the top-level shell
     else:
-        ## TILAU ## Open the TilauScope shell as the initial roasting view.
-        ## Keep Artisan hidden before the event loop gets a chance to paint its
-        ## canvas; tilauscopeCall() restores it when TilauScope is closed.
+        ## TILAU ## Open the TilauScope shell as the initial roasting view, and
+        ## keep Artisan hidden before the event loop gets a chance to paint its
+        ## canvas. There is no way back to that window in this mode: closing
+        ## TilauScope closes the application.
         appWindow.hide()
         QTimer.singleShot(0, appWindow.tilauscopeCall)
 

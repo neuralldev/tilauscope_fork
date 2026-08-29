@@ -22,43 +22,16 @@ from typing import Final, NamedTuple
 from typing import TYPE_CHECKING
 import logging
 from artisanlib.main import ApplicationWindow # pylint: disable=unused-import
-from tilauscope.tilauscope_types import resolve_de_window, resolve_fc_window
+from tilauscope.tilauscope_types import (resolve_de_window, resolve_fc_window,
+                                         classify_extra_channel,
+                                         resolve_crack_channel)
 
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
-# --- Extra-device channel classification --------------------------------------
-# Shared by FirstCrackDetector and DryEndDetector. Substring phrases match
-# explicit multi-word names; exact tokens match short codes WITHOUT the
-# substring footgun ("roc" in "process", "fc" in "fcs target").
-# Priority resolves overlaps: RoC before Color ("rate of color" contains
-# "color"); SC before FC ("second crack" contains "crack").
-_EXTRA_TOKEN_RE: Final = re.compile(r"[a-z0-9]+")
-
-_EXTRA_MATCH: Final[dict[str, tuple[tuple[str, ...], tuple[str, ...]]]] = {
-    #  category : (substring phrases,                              exact tokens)
-    "roc":   (("rate of color", "rate of colour", "rateofcolor"), ("roc",)),
-    "color": (("agtron", "ground color", "ground colour",
-               "whole color", "whole colour"),                    ("color", "colour")),
-    "sc":    (("second crack", "sc counter", "sccounter"),        ("sc", "tlsc")),
-    "fc":    (("first crack", "fc counter", "fccounter",
-               "crack counter"),                                  ("fc", "tlfc", "crack")),
-}
-_EXTRA_PRIORITY: Final[tuple[str, ...]] = ("roc", "color", "sc", "fc")
-
-
-def classify_extra_channel(name: str) -> str | None:
-    """Map an extra-device channel name to 'roc'|'color'|'sc'|'fc' or None.
-    Deterministic and collision-safe: at most one category per channel."""
-    if not name:
-        return None
-    low = name.lower()
-    tokens = set(_EXTRA_TOKEN_RE.findall(low))
-    for cat in _EXTRA_PRIORITY:
-        subs, exact = _EXTRA_MATCH[cat]
-        if any(s in low for s in subs) or (tokens & set(exact)):
-            return cat
-    return None
+# Extra-device channel classification lives in tilauscope_types: the drawing
+# pass needs it too, and this module imports artisanlib.main — which the
+# curve must never pull in. Re-exported here for existing callers.
 
 class FirstCrackDetector:
     """
@@ -128,11 +101,8 @@ class FirstCrackDetector:
                 cat = classify_extra_channel(name)
                 if cat is None:
                     continue
-                if cat == "fc" and self._cached_crack_device_idx == -1:
-                    self._cached_crack_device_idx     = i
-                    self._cached_crack_device_channel = ch
-                    found_crack_idx = i
-                    _log.info(f"FC_Detector: FC counter @ extra {i} ch{ch} ({name})")
+                if cat == "fc":
+                    pass   # the FC slot is resolved once, below
                 elif cat == "sc" and self._cached_sc_device_idx == -1:
                     # SC counter is fused with FC pre-fire (attribution
                     # inverts between builds), and offset-corrected post-fire.
@@ -142,6 +112,26 @@ class FirstCrackDetector:
                 # 'color'/'roc' deliberately ignored here: no reliable colour
                 # threshold exists at FC, and RoC is a DryEnd signal (negative
                 # slope by FC). Colour stays a DryEnd-only signal.
+
+        crack = resolve_crack_channel(qmc.extraname1, qmc.extraname2,
+                                      qmc.extratemp1, qmc.extratemp2)
+        if crack is not None:
+            self._cached_crack_device_idx, self._cached_crack_device_channel = crack
+            found_crack_idx = crack[0]
+            _log.info(f"FC_Detector: FC counter @ extra {crack[0]} ch{crack[1]}")
+
+        # The FC and SC slots are FUSED by the reader, and fusing only makes
+        # sense within one device: attribution inverts between firmware builds,
+        # so one channel of a device carries everything and its twin reads ~0.
+        # Across two devices it is not the same signal counted twice — it is two
+        # instruments added together. A machine can carry both an acoustic probe
+        # and the Omniflux pair, so drop an SC slot that belongs to another one.
+        if (self._cached_sc_device_idx != -1
+                and self._cached_sc_device_idx != self._cached_crack_device_idx):
+            _log.info(f"FC_Detector: SC counter @ extra {self._cached_sc_device_idx} "
+                      f"dropped — not the device the crack counter is on")
+            self._cached_sc_device_idx     = -1
+            self._cached_sc_device_channel = -1
 
         return found_crack_idx
 
@@ -290,6 +280,59 @@ class FirstCrackDetector:
 
     def get_window_count(self) -> int:
         return len(self.crack_timestamps)
+
+    #: How far back a reader may look for the last answer. The acoustic probe
+    #: writes -1 on any tick it does not answer, which on real roasts is most of
+    #: them; a counter is cumulative, so the last answer still stands. Past this
+    #: many samples the probe is genuinely silent and the reading is gone.
+    _READ_LOOKBACK: int = 15
+
+    def read_total(self) -> int | None:
+        """Cumulative pops on the fused FC+SC channels, or None when nothing is
+        counting — no channel configured, or the probe silent for a while.
+
+        Public because the display needs the raw counter and cannot use the
+        sliding window: that window is only fed while FC is still unmarked, and
+        a readout has to keep reading through development. Unlike the marking
+        path this one tolerates gaps: a missed BLE read is not a reset, and a
+        bar that blinked out on every one of them would be unreadable.
+        """
+        fc = self._read_recent(self._cached_crack_device_idx,
+                               self._cached_crack_device_channel)
+        sc = self._read_recent(self._cached_sc_device_idx,
+                               self._cached_sc_device_channel)
+        if fc is None and sc is None:
+            return None
+        return (fc or 0) + (sc or 0)
+
+    def crack_channel(self) -> "tuple[int, int] | None":
+        """(extra-device index, channel) the acoustic counter is bound to, or
+        None. What a drawing pass needs to walk the recorded series itself."""
+        if self._cached_crack_device_idx == -1:
+            return None
+        return self._cached_crack_device_idx, self._cached_crack_device_channel
+
+    def _read_recent(self, idx: int, channel: int) -> int | None:
+        """Last answered value on a counter channel, within the lookback.
+
+        Saved profiles carry the series interpolated to floats, so the integer
+        part is the count — 0.0, 0.33, 0.67, 1.0 is one pop, not three.
+        """
+        if idx == -1 or getattr(self, 'aw_qmc', None) is None:
+            return None
+        qmc = self.aw_qmc
+        try:
+            if qmc.flagstart:
+                series = qmc.extratemp1[idx] if channel == 1 else qmc.extratemp2[idx]
+                for value in reversed(series[-self._READ_LOOKBACK:]):
+                    if value is not None and value >= 0:
+                        return int(value)
+                return None
+            rt = qmc.RTextratemp1 if channel == 1 else qmc.RTextratemp2
+            value = rt[idx]
+            return int(value) if value is not None and value >= 0 else None
+        except (AttributeError, IndexError, TypeError, ValueError):
+            return None
 
 
 # ---------------------------------------------------------------------------

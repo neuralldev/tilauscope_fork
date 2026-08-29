@@ -507,13 +507,25 @@ class ZoneEditorDialog(QDialog):
 
     # ── AI fill from supplier URL (expert form only, Lot 5 restore) ─────────
     def _on_click_ai_parse(self) -> None:
-        from tilauscope.beancave import BeanAIWorker, URLInputDialog
+        from tilauscope.cave.workers import BeanAIWorker
+        from tilauscope.cave.widgets import URLInputDialog
 
         dlg = URLInputDialog(self)
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         url_to_analyze = dlg.url_input.text().strip()
         if not url_to_analyze:
+            return
+
+        # Who receives the page text must be named once per provider.
+        from tilauscope.tilau_privacy_ui import (  # noqa: PLC0415
+            Gate, ensure_ai_disclosure, show_roast_blocked,
+        )
+        gate = ensure_ai_disclosure(self, getattr(self._host, 'ai', None), getattr(self._host, 'aw', None))
+        if gate is Gate.BLOCKED_ROAST:
+            show_roast_blocked(self)
+            return
+        if gate is not Gate.ALLOW:
             return
 
         self._ai_progress = TilauProgressDialog(
@@ -755,7 +767,7 @@ class ZoneEditorDialog(QDialog):
                     QApplication.translate("tilauscope_beancave", "Configure scale 1 in Artisan to measure density."))
                 return
             if self._density_win is None:
-                from tilauscope.beancave import _DensityFloatWindow
+                from tilauscope.cave.widgets import _DensityFloatWindow
                 self._density_win = _DensityFloatWindow(self)
                 self._density_win.density_picked.connect(self._receive_density)
                 self._density_win.tare_requested.connect(sm.tare_scale1_signal.emit)

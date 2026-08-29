@@ -23,6 +23,12 @@ from typing import Optional
 
 from PyQt6.QtCore import QObject, pyqtSlot
 
+# One source for the chart's scales and hues, shared with the desktop curve
+# engine — see `graph.common`. Qt-light: no widget is pulled in by this.
+from tilauscope.graph.common import (
+    COLOR_AIR, COLOR_GRAIN, dimmed, ror_axis, temp_axis,
+)
+
 _log = logging.getLogger(__name__)
 
 
@@ -86,42 +92,52 @@ def _num(v) -> Optional[float]:
         return None
 
 
-def _axf(v) -> Optional[float]:
-    # plain float for axis limits — NO sentinel filtering (a temp/RoR axis floor
-    # can legitimately be <= -1, unlike a live reading).
-    try:
-        return float(v)
-    except (TypeError, ValueError):
-        return None
+def _mode(qmc) -> str:
+    """The operator's temperature unit, as the display side spells it."""
+    return 'F' if str(getattr(qmc, 'mode', 'C')).upper() == 'F' else 'C'
 
 
 def _axes(qmc) -> dict:
-    """Artisan's configured axis bounds so the phone graph keeps the same shape and
-    limits as the desktop canvas (temp = y, RoR = z, in the current unit)."""
-    return {'tmin': _axf(getattr(qmc, 'ylimit_min', None)),
-            'tmax': _axf(getattr(qmc, 'ylimit', None)),
-            'rmin': _axf(getattr(qmc, 'zlimit_min', None)),
-            'rmax': _axf(getattr(qmc, 'zlimit', None))}
+    """The chart's scales, read from the table the desktop curve engine draws from.
+
+    NOT Artisan's own ylimit/zlimit: TilauScope shows its own curve engine, whose
+    frame is `graph.common`'s and no longer Artisan's. Taking the bounds from qmc
+    left the phone with a RoR ceiling below the desktop's, which silently flattened
+    the post-TP peak against the top of the phone's frame — the one moment the rate
+    has to be readable.
+
+    Stated in the operator's unit, which is also the unit of the samples on the
+    wire (they are Artisan's arrays, untouched), and carried with the payload so
+    the client can label its readouts without a second source.
+    """
+    mode = _mode(qmc)
+    tmin, tmax, tstep = temp_axis(mode)
+    rmin, rmax, rstep = ror_axis(mode)
+    return {'tmin': tmin, 'tmax': tmax, 'tstep': tstep,
+            'rmin': rmin, 'rmax': rmax, 'rstep': rstep, 'unit': mode}
 
 
 def _colors(qmc) -> dict:
-    """Artisan's own curve colours, straight from the user-configurable palette.
+    """The curve hues, resolved exactly as the desktop engine resolves them.
 
     The phone must draw BT/ET/RoR in exactly the hues the desktop uses: the same
     curve in two different colours on two screens is precisely the sort of thing
-    that gets misread mid-roast. Missing keys are simply omitted and the client
-    keeps its built-in defaults.
+    that gets misread mid-roast. So the rate is NOT Artisan's `deltabt` entry —
+    the engine paints a rate in its own probe's colour, one step back (`dimmed`),
+    which is what keeps a rate from being read as the line it belongs to.
     """
     pal = getattr(qmc, 'palette', None) or {}
-    out = {}
-    for key, name in (('bt', 'bt'), ('et', 'et'), ('deltabt', 'ror')):
+
+    def _entry(key: str, fallback: str) -> str:
         try:
             v = pal.get(key)
         except Exception:  # noqa: BLE001
-            continue
-        if isinstance(v, str) and v:
-            out[name] = v
-    return out
+            return fallback
+        return v if isinstance(v, str) and v else fallback
+
+    bt = _entry('bt', COLOR_GRAIN)
+    return {'bt': bt, 'et': _entry('et', COLOR_AIR),
+            'ror': dimmed(bt, COLOR_GRAIN)}
 
 
 class TelemetryTap(QObject):

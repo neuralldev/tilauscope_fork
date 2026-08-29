@@ -55,7 +55,7 @@ from PyQt6.QtWidgets import (
 )
 
 from tilauscope.sack_manager import SackLabelsDialog, SackPool
-from tilauscope.tilauscope_types import THEME, GreenBean, show_styled_message
+from tilauscope.tilauscope_types import THEME, GreenBean, no_enter_default, show_styled_message
 
 _logd = logging.getLogger('tilaudebug')
 
@@ -375,6 +375,10 @@ class NewSackWizard(QDialog):
         else:
             self._goto(self._PAGE_INTRO)
 
+        # Return must not reach the ✕ / Cancel this dialog builds first
+        # (tilauscope_types.no_enter_default).
+        no_enter_default(self)
+
     # ── Frameless drag ────────────────────────────────────────────────────────
     def mousePressEvent(self, event):  # noqa: N802
         if event.button() == Qt.MouseButton.LeftButton:
@@ -503,6 +507,18 @@ class NewSackWizard(QDialog):
         if not url:
             self.url_edit.setFocus()
             return
+
+        # Who receives the page text must be named once per provider.
+        from tilauscope.tilau_privacy_ui import (  # noqa: PLC0415
+            Gate, ensure_ai_disclosure, show_roast_blocked,
+        )
+        gate = ensure_ai_disclosure(self, getattr(self._host, 'ai', None), getattr(self._host, 'aw', None))
+        if gate is Gate.BLOCKED_ROAST:
+            show_roast_blocked(self)
+            return
+        if gate is not Gate.ALLOW:
+            return
+
         self.start_btn.setEnabled(False)
         self.ai_status_lbl.setText("⏳ " + QApplication.translate("tilauscope_sacks", "Fetching and analyzing website content..."))
         self.ai_status_lbl.show()

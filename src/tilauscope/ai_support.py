@@ -27,7 +27,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Final
 
-from mashumaro import DataClassDictMixin
+from mashumaro import DataClassDictMixin, field_options
 
 from PyQt6.QtCore    import Qt, QObject, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -186,29 +186,79 @@ _CLIENT_ID_TO_PROVIDER: dict[str, str] = {
 
 @dataclass
 class TilauAIConfig(DataClassDictMixin):
+    """Which provider and model to use. The key itself lives in the keychain.
+
+    ``apikey_encoded`` is read on the way in and never written on the way out:
+    it is where installations before this release kept the key, and reading it
+    once is what migrates them. Both it and ``_apikey`` are omitted from
+    ``to_dict()``, so nothing secret reaches the settings file — nor the
+    ``.aset`` an operator exports to share a machine setup.
+    """
+
     client_id:       str = "google"
-    apikey_encoded:  str = ""
     engine:          str = "google/gemini-2.0-flash"
 
-    # Transient – never serialised
-    _apikey: str = field(default="", repr=False)
+    # Legacy, read-only: migrated to the keychain on first access, then dropped.
+    apikey_encoded:  str = field(default="",
+                                 metadata=field_options(serialize="omit"))
+
+    # Session cache for the keychain value. Never serialised.
+    _apikey: str = field(default="", repr=False,
+                         metadata=field_options(serialize="omit"))
+
+    def _stored_apikey(self) -> str:
+        """The key as the keychain holds it, cached. No migration, no writes.
+
+        Kept apart from the property so the setter can ask what is already
+        stored without re-entering the legacy adoption below — which calls the
+        setter, and would not come back.
+        """
+        if self._apikey:
+            return self._apikey
+        from tilauscope.tilau_secrets import ai_account, get_secret  # noqa: PLC0415
+        stored = get_secret(ai_account(self.client_id))
+        if stored:
+            self._apikey = stored
+        return stored
 
     @property
     def apikey(self) -> str:
+        stored = self._stored_apikey()
+        if stored:
+            return stored
+
+        # Nothing in the keychain: this is an installation that still keeps its
+        # key in the settings. Move it, once, then answer from the keychain.
         if self.apikey_encoded:
             try:
-                return base64.b64decode(self.apikey_encoded).decode("utf-8")
-            except Exception:
-                return self._apikey
-        return self._apikey
+                legacy = base64.b64decode(self.apikey_encoded).decode("utf-8")
+            except Exception:  # noqa: BLE001
+                return ""
+            if legacy:
+                self.apikey = legacy
+                return legacy
+        return ""
 
     @apikey.setter
     def apikey(self, value: str) -> None:
-        if value is not None:
-            self._apikey = value
-            self.apikey_encoded = base64.b64encode(
-                value.encode("utf-8")
-            ).decode("utf-8")
+        if value is None:
+            return
+        # Settings dialogs write every field back on OK, changed or not. Going
+        # to the keychain for a value it already holds costs an access the
+        # operating system may well ask the operator to approve.
+        if value == self._stored_apikey():
+            return
+        from tilauscope.tilau_secrets import (  # noqa: PLC0415
+            ai_account, delete_secret, set_secret,
+        )
+        self._apikey = value
+        account = ai_account(self.client_id)
+        if value:
+            set_secret(account, value)
+        else:
+            delete_secret(account)
+        # The settings copy is superseded the moment the keychain holds it.
+        self.apikey_encoded = ""
 
     @property
     def is_configured(self) -> bool:
@@ -239,8 +289,11 @@ def _fetch_models(provider_name: str, key: str) -> list[str]:
     client_id = info.get("client_id", "")
 
     if client_id == "google":
-        url = f"{endpoint}?key={urllib.parse.quote(key, safe='')}"
-        req = urllib.request.Request(url)
+        # Header, not ?key=: a query string is written to every proxy and
+        # server log along the way, and an API key is a credential.
+        req = urllib.request.Request(endpoint, headers={
+            "x-goog-api-key": key,
+        })
     elif client_id == "anthropic":
         req = urllib.request.Request(endpoint, headers={
             "x-api-key":        key,
@@ -338,6 +391,11 @@ class AIProviderPickerDialog(QDialog):
         self._build_ui()
         self._populate(current)
         self.resize(520, 0)
+
+        # Return must not reach the ✕ this dialog builds first. Imported here:
+        # tilauscope_types is a circular dependency for this module (see _theme).
+        from tilauscope.tilauscope_types import no_enter_default  # noqa: PLC0415
+        no_enter_default(self)
 
     # ── UI construction ───────────────────────────────────────────────────────
 
@@ -577,6 +635,12 @@ class AIProviderPickerDialog(QDialog):
             self._engine_edit.setText(default)
         if hasattr(self, "_key_edit"):
             self._key_edit.setPlaceholderText(info.get("key_hint", "…"))
+            # Keys are held per provider, so show the one belonging to the
+            # provider now selected — not the one still in the box, which
+            # would otherwise be saved under someone else's name.
+            from tilauscope.tilau_secrets import ai_account, get_secret  # noqa: PLC0415
+            client_id = info.get("client_id", provider_name.lower())
+            self._key_edit.setText(get_secret(ai_account(client_id)))
         self._refresh_status()
 
     def _open_key_url(self) -> None:

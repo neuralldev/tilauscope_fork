@@ -47,6 +47,7 @@ Intégration minimale dans tilaupid.py :
 from __future__ import annotations
 
 import logging
+import threading
 import time
 import math
 from collections import deque
@@ -1183,14 +1184,59 @@ class AdaptivePIDMixin:
         self._thermal_shadow: ThermalShadowSession | None = None
         self._thermal_active: bool = False
 
-        # Chargement initial de l'historique
-        self._load_history()
+        # Chargement initial de l'historique — hors du thread GUI.
+        # Le gestionnaire est construit au clic ON, et la fenêtre de lecture
+        # vaut jusqu'à `scan_budget` profils : la parser sur place gelait
+        # l'interface ~1,5 s avant que le monitoring ne démarre. Le préchauffage
+        # se joint au worker au START, bien après le clic.
+        self._history_ready = threading.Event()
+        self._history_thread: threading.Thread | None = None
+        self._start_history_worker()
         # One-time migration: drop the pre-redesign relay-law persisted state.
         self._migrate_persisted_law()
         _logd.debug(
             f"AdaptivePIDMixin initialisé | alog_dir={alog_dir} "
-            f"window={window} | {len(self._adaptive_memory._history)} torréfactions en mémoire"
+            f"window={window} | historique en cours de chargement"
         )
+
+    # ── Chargement de l'historique en tâche de fond ───────────────────────────
+
+    def _start_history_worker(self) -> None:
+        """Charge le corpus dans un thread dédié. Ne touche que des fichiers.
+
+        Le worker n'accède ni à Qt ni à qmc : le scanner a figé la machine et la
+        voie de contrôle à sa construction, sur le thread GUI.
+        """
+        self._history_ready.clear()
+
+        def _work() -> None:
+            try:
+                self._load_history()
+            except Exception as exc:  # noqa: BLE001
+                _logd.debug(f"Chargement de l'historique adaptatif abandonné : {exc}")
+            finally:
+                self._history_ready.set()
+
+        self._history_thread = threading.Thread(
+            target=_work, name="TilauPIDHistory", daemon=True)
+        self._history_thread.start()
+
+    def _ensure_history_loaded(self, timeout: float = 30.0) -> None:
+        """Attend la fin du worker. Sans effet une fois l'historique chargé.
+
+        Un dépassement laisse la mémoire adaptative partielle plutôt que de
+        retenir le START : un préchauffage sans apprentissage reste conduit par
+        les valeurs par défaut.
+        """
+        if self._history_ready.is_set():
+            return
+        started_at = time.perf_counter()
+        if not self._history_ready.wait(timeout):
+            _logd.warning("Historique adaptatif toujours en chargement — "
+                          "démarrage sans apprentissage complet")
+            return
+        _logd.debug("TilauPID: historique adaptatif attendu "
+                    f"{(time.perf_counter() - started_at) * 1000.0:.0f} ms au START")
 
     @staticmethod
     def _configured_alog_dir() -> str:
@@ -1757,6 +1803,9 @@ class AdaptivePIDMixin:
         # Never let the previous preheat's plateau qualify the new
         # session or bias its terminal P_ss estimate.
         self._stabilisation_detector.reset()
+        # Point de jointure unique : le worker lancé au ON a normalement fini
+        # bien avant le START. Sinon on l'attend ici, pas au clic ON.
+        self._ensure_history_loaded()
         context_changed = self._refresh_learning_context()
         # START is a real-time command: never rescan the archive when
         # the manager already loaded this exact machine/input context.
@@ -1786,6 +1835,7 @@ class AdaptivePIDMixin:
 
         Called from TilauPreheatPID.start() to initialize thermal model parameters.
         """
+        self._ensure_history_loaded()
         return self._adaptive_memory.get_thermal_characteristics(
             target_sv=target_sv,
             ambient=self._current_ambient,

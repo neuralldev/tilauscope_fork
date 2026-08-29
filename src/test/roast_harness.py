@@ -67,8 +67,22 @@ class FakeCrackDetector:
 
     def __init__(self) -> None:
         self._cached_crack_device_idx: int = -1
+        self._cached_sc_device_idx: int = -1
         self.last_count: int = 0
         self.threshold: int = 3
+
+    def crack_channel(self) -> "tuple[int, int] | None":
+        """(index, channel) of the acoustic counter, or None when unbound."""
+        if self._cached_crack_device_idx == -1:
+            return None
+        return self._cached_crack_device_idx, 1
+
+    def read_total(self) -> int | None:
+        """Cumulative pops, or None when no channel is configured — the shape
+        the crack bar reads. Silent by default, like the real detector."""
+        if self._cached_crack_device_idx == -1 and self._cached_sc_device_idx == -1:
+            return None
+        return self.last_count
 
 
 class FakeQmc(QObject):

@@ -4862,6 +4862,8 @@ class RoastAssistantPanel(QWidget):
         self.setFixedWidth(420)
 
         self._build_ui()
+        # Cached once: the coach line is written on every 1 Hz refresh.
+        self._crack_phrases = self._crack_gestures()
         self._connect_signals()
 
         # Positionnement initial (à droite de la fenêtre parente)
@@ -4992,6 +4994,61 @@ class RoastAssistantPanel(QWidget):
         self._fit_stack_to_current(0)        # collapse inactive pages
 
     # ── Connexions signaux ─────────────────────────────────────────────────────
+
+    def _publish_plan_fc(self) -> None:
+        """Expose the planned first crack, in charge-relative seconds, for the
+        curve to draw beside the one actually heard. The plan carries it as
+        "mm:ss"; anything else leaves the marker off rather than guessed."""
+        secs: float | None = None
+        try:
+            raw = (self._plan or {}).get("FC Time")
+            if raw:
+                mm, _sep, ss = str(raw).partition(":")
+                secs = float(int(mm) * 60 + int(ss))
+        except (AttributeError, TypeError, ValueError):
+            secs = None
+        self.aw.tilau_plan_fc_sec = secs
+
+    # ── crack phase → coach line ─────────────────────────────────────────
+    #: What the assistant says at each phase of the acoustic crack. The bar on
+    #: the canvas carries the reading; the gesture stays here, where guidance
+    #: has always lived, so the screen never speaks with two voices.
+    def _crack_gestures(self) -> dict:
+        return {
+            'quiet': QApplication.translate(
+                "tilauscope_roast_assistant", "Listen for the first pops."),
+            'first': QApplication.translate(
+                "tilauscope_roast_assistant",
+                "Hold the burner. Let it come. First crack is starting."),
+            'rolling': QApplication.translate(
+                "tilauscope_roast_assistant",
+                "Hold the burner where it is. Development has started. "
+                "Watch for the pops to thin out."),
+            'settling': QApplication.translate(
+                "tilauscope_roast_assistant",
+                "First crack is done — set your drop. "
+                "Every 10 s from here darkens the cup."),
+        }
+
+    def _speak_crack_phase(self, coach: "_CoachLine") -> None:
+        """Fold the crack phase into the coach line, without shouting over it.
+
+        The two phases that carry news — the crack starting, and the crack over
+        — speak whenever nothing more urgent is being said. The two that merely
+        describe a steady state only fill a line that is otherwise empty: a
+        crash warning is not worth replacing with "listen for the pops".
+        """
+        phase = getattr(self.aw, "tilau_crack_phase", None)
+        if phase is None:
+            return
+        text = self._crack_phrases.get(phase)
+        if not text:
+            return
+        if phase in ("first", "settling"):
+            if coach._level in (None, _S_OK):
+                coach.set(text, _S_OK)
+        elif not coach.text():
+            coach.set(text, _S_OK)
 
     def _connect_signals(self) -> None:
         self._bean_header.btn_toggle.clicked.connect(self._on_toggle)
@@ -5259,6 +5316,7 @@ class RoastAssistantPanel(QWidget):
                 minutes_since_last_drop=self._minutes_since_last_drop(),
             )
             self._plan = plan_dict
+            self._publish_plan_fc()
             self._plan_initial = plan_dict   # référence figée pour le bilan EOR
             self._capture_prediction_snapshot(plan_dict)  # P2 pre-roast truth
             self._build_soak_note()
@@ -5268,6 +5326,7 @@ class RoastAssistantPanel(QWidget):
         except Exception as e:
             _logd.warning(f"RoastAssistant: plan indisponible ({e})")
             self._plan = None
+            self._publish_plan_fc()
             self._plan_initial = None
 
         # Snapshot the actual control acquisition of this launch. A machine
@@ -5639,6 +5698,7 @@ class RoastAssistantPanel(QWidget):
                 minutes_since_last_drop=self._minutes_since_last_drop(),
             )
             self._plan = plan_dict
+            self._publish_plan_fc()
             self._plan_initial = plan_dict
             self._capture_prediction_snapshot(plan_dict)                     # P2
             self._build_soak_note()
@@ -5647,6 +5707,7 @@ class RoastAssistantPanel(QWidget):
             for _m, _t, _bt in self._replans_applied:
                 try:
                     self._plan = rp.replan_from_milestone(self._plan, _m, _t, _bt)
+                    self._publish_plan_fc()
                 except Exception as _e:
                     _logd.warning(f"RoastAssistant: replay replan {_m} failed ({_e})")
             _logd.debug("RoastAssistant: plan regenerated successfully")
@@ -5676,6 +5737,7 @@ class RoastAssistantPanel(QWidget):
             _logd.debug(f"RoastAssistant: replan {milestone} skipped (implausible anchor)")
             return
         self._plan = new_plan
+        self._publish_plan_fc()
         self._replans_applied.append((milestone, float(t_actual_min), float(bt_native)))
         # Notice coach one-shot (informatif ~15 s ; warn si DTR hors bande).
         warn = new_plan.get("Replan Warning")
@@ -6912,6 +6974,7 @@ class RoastAssistantPanel(QWidget):
                 mode=mode,
                 crash_detector=_phase_safety_detector,
             )
+            self._speak_crack_phase(self._page_mai.coach)
 
         elif self._current_phase == self._PHASE_DEV:
             self._page_dev.refresh(
@@ -6926,6 +6989,7 @@ class RoastAssistantPanel(QWidget):
                 c_dtr=self._c_dtr, c_wl=self._c_wl,
                 crash_detector=_phase_safety_detector,
             )
+            self._speak_crack_phase(self._page_dev.coach)
 
         elif self._current_phase == self._PHASE_DROP:
             # Couleur prédite pour le résumé (même modèle que DevPage), FIGÉE
@@ -7172,7 +7236,7 @@ class RoastAssistantPanel(QWidget):
         """
         # ── 1. Load beans — mandatory, abort only here ─────────────────────────
         try:
-            from tilauscope.beancave import load_cave_beans
+            from tilauscope.cave.common import load_cave_beans
             beans = load_cave_beans()
         except Exception as e:
             _logd.warning(f"RoastAssistant: cannot load beans ({e})")

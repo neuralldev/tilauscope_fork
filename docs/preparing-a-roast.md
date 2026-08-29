@@ -264,6 +264,15 @@ values are still rejected, while all temporal protections remain active on a rea
 
 ### Following the preheat on the roast graph
 
+The graph draws the climb up to the charge as soon as the machine is being read, whether
+TilauPID is driving it or you are heating by hand. Until a first temperature arrives it says
+which of the three nothings you are looking at: no roaster chosen yet, a machine that has not
+answered, or a reading in hand and the charge still to come. Time runs from the moment the probes
+started, the temperature scale opens as far as the drum goes, and every burner, air or drum
+setting you play during the preheat is placed on that time — so a hand-driven preheat is
+followed on the graph exactly like a controlled one. What TilauPID adds to it is the target
+line, the arrival mark on that line, and the panel below.
+
 The assistant window is not required to see what preheating is doing. Whenever TilauPID is
 running, a **Preheat** panel is drawn on the roast graph itself, next to the bean temperature
 curve, and stays there until [CHARGE](glossary.md#charge) is marked. It shows a countdown to the

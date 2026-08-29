@@ -13,6 +13,7 @@
 # AUTHOR
 # TiLau 2025
 
+import re
 import uuid
 import math
 import logging
@@ -24,7 +25,7 @@ from mashumaro.config import BaseConfig
 from PyQt6.QtWidgets import (QApplication, QMessageBox, QDialog, QVBoxLayout, QHBoxLayout,
                              QFrame, QLabel, QWidget, QPushButton, QSizePolicy)
 from PyQt6.QtCore import (Qt, QPropertyAnimation, QTimer, QElapsedTimer, QRectF, QSize,
-                          QEvent, pyqtSignal)
+                          QEvent, QObject, pyqtSignal)
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QIcon
 
 _IS_MACOS   = platform.system() == "Darwin"
@@ -915,6 +916,60 @@ def replace_accents(texte):
 # over to the OS's own viewer, ensuring it comes up in front: a WindowStaysOnTopHint
 # window would otherwise keep the viewer underneath, and re-raising ourselves would push it behind again.
 
+class _EnterGuard(QObject):
+    """Swallows a Return that reached the dialog because nothing else wanted it.
+
+    A key pressed in a field is delivered to that field. It only travels up to
+    the dialog when the field leaves it unhandled — which is exactly the journey
+    that ends in the default button being fired. Stopping it here stops that and
+    nothing else: a focused button still takes its own Return, and a field that
+    handles Return (committing an edit on `returnPressed`) has already done so
+    by the time we see it.
+    """
+
+    def eventFilter(self, obj: object, event: object) -> bool:  # noqa: N802 (Qt)
+        try:
+            if (event.type() == QEvent.Type.KeyPress
+                    and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)):
+                return True
+        except (AttributeError, RuntimeError):
+            pass
+        return False
+
+
+def no_enter_default(dialog) -> None:
+    """Stop the Return key from throwing `dialog` away.
+
+    Qt gives each QPushButton in a QDialog `autoDefault`, so a Return nobody
+    else claimed activates the first button Qt finds — and in every TilauScope
+    dialog that button is the frameless chrome's ✕, wired to reject, close or
+    cancel. Typing a name and pressing Return therefore committed the edit AND
+    discarded the window in one keystroke, which reads as the edit having failed.
+
+    Two things, because the trap has two halves. The buttons standing right now
+    lose `autoDefault` — all of them, not just the destructive one: leave one
+    standing and Return simply finds that instead, which is how a Revoke or a
+    Delete sitting in a row ends up one keystroke away from an edit. And a guard
+    is installed on the dialog for the rest, since a list of rows builds buttons
+    long after this call and no sweep can reach forward in time.
+
+    Consequence worth knowing before calling it: Return no longer confirms
+    anything in this dialog. That is a gain wherever the key could only close or
+    cancel, and a loss in a plain form where Enter is meant to mean OK — those
+    should keep their default button and not call this.
+    """
+    try:
+        for button in dialog.findChildren(QPushButton):
+            button.setAutoDefault(False)
+            button.setDefault(False)
+        if getattr(dialog, '_tilau_enter_guard', None) is None:
+            guard = _EnterGuard(dialog)      # parented: lives as long as the dialog
+            dialog._tilau_enter_guard = guard
+            dialog.installEventFilter(guard)
+    except Exception as exc:  # noqa: BLE001  a keyboard nicety, never a crash
+        _log.warning("no_enter_default failed: %s", exc)
+
+
 def drop_stay_on_top(window) -> None:
     """Let another application come in front of `window`.
 
@@ -954,6 +1009,12 @@ def open_in_os_viewer(file_path: str, window=None, helpers=()) -> None:
             subprocess.Popen(["xdg-open", file_path])  # noqa: S603,S607
     except Exception as exc:  # noqa: BLE001
         _log.error("Failed to open file %s: %s", file_path, exc)
+
+
+#: How long a styled dialog takes to fade out after a button is pressed. A
+#: caller that puts the focus somewhere on the way out has to outlast it, or
+#: Qt hands the focus back to whatever had it before the dialog opened.
+STYLED_MESSAGE_FADE_MS: int = 400
 
 
 def show_styled_message(parent, title, text, icon=QMessageBox.Icon.Information, rich=False, width:int= 0, buttons:list[str]=None):
@@ -1043,7 +1104,7 @@ class TilauMessageBox(QMessageBox):
 
     def start_fade_out(self):
         self.fade_anim = QPropertyAnimation(self, b"windowOpacity")
-        self.fade_anim.setDuration(400)
+        self.fade_anim.setDuration(STYLED_MESSAGE_FADE_MS)
         self.fade_anim.setStartValue(1.0)
         self.fade_anim.setEndValue(0.0)
         self.fade_anim.finished.connect(self.close)
@@ -1811,3 +1872,111 @@ def resolve_de_window(plan_target_c: float, bt_dry_offset_c: float = 0.0,
 def resolve_fc_window(plan_target_c: float, bt_fc_offset_c: float = 0.0,
                       half_c: float = _MILESTONE_HALF_C) -> tuple[float, float, float, float]:
     return resolve_milestone_window(plan_target_c, PROFESSION_FC_TRUE_C, bt_fc_offset_c, half_c)
+
+
+# --- Extra-device channel classification --------------------------------------
+# Shared by FirstCrackDetector and DryEndDetector. Substring phrases match
+# explicit multi-word names; exact tokens match short codes WITHOUT the
+# substring footgun ("roc" in "process", "fc" in "fcs target").
+# Priority resolves overlaps: RoC before Color ("rate of color" contains
+# "color"); SC before FC ("second crack" contains "crack").
+_EXTRA_TOKEN_RE: Final = re.compile(r"[a-z0-9]+")
+
+_EXTRA_MATCH: Final[dict[str, tuple[tuple[str, ...], tuple[str, ...]]]] = {
+    #  category : (substring phrases,                              exact tokens)
+    "roc":   (("rate of color", "rate of colour", "rateofcolor"), ("roc",)),
+    "color": (("agtron", "ground color", "ground colour",
+               "whole color", "whole colour"),                    ("color", "colour")),
+    "sc":    (("second crack", "sc counter", "sccounter"),        ("sc", "tlsc")),
+    "fc":    (("first crack", "fc counter", "fccounter",
+               "crack counter"),                                  ("fc", "tlfc",
+                                                                   "crack", "cracks")),
+}
+#: Names the ACOUSTIC probe gives its counter. Several channels can classify as
+#: "fc" on the same machine — the Omniflux pair (FCcounter/SCCounter) is declared
+#: whether or not anything ever writes to it, and on this hardware it never does:
+#: it has no Bluetooth acquisition at all. The acoustic channel is the one that
+#: counts, so it wins the binding whatever order the devices are declared in.
+_ACOUSTIC_TOKENS: Final[frozenset[str]] = frozenset(("crack", "cracks"))
+_EXTRA_PRIORITY: Final[tuple[str, ...]] = ("roc", "color", "sc", "fc")
+
+
+def classify_extra_channel(name: str) -> str | None:
+    """Map an extra-device channel name to 'roc'|'color'|'sc'|'fc' or None.
+    Deterministic and collision-safe: at most one category per channel."""
+    if not name:
+        return None
+    low = name.lower()
+    tokens = set(_EXTRA_TOKEN_RE.findall(low))
+    for cat in _EXTRA_PRIORITY:
+        subs, exact = _EXTRA_MATCH[cat]
+        if any(s in low for s in subs) or (tokens & set(exact)):
+            return cat
+    return None
+
+def resolve_crack_channel(extraname1: "list[str]",
+                          extraname2: "list[str]",
+                          extratemp1: "list | None" = None,
+                          extratemp2: "list | None" = None) -> "tuple[int, int] | None":
+    """Which extra-device channel carries the crack counter: (index, channel).
+
+    A machine can declare several. The acoustic probe writes to a channel named
+    for the crack; the Omniflux pair (FCcounter/SCCounter) is declared whether or
+    not anything ever writes to it. Either can be the dead one on any given
+    roast, so the name alone cannot decide — what COUNTED does.
+
+    Liveness is judged per DEVICE, not per channel: attribution inverts between
+    firmware builds, so a device can route every pop to its SC channel and leave
+    its FC channel flat. Reading only the FC channel would call that device dead
+    while it was the one doing the counting.
+
+    Preference: a device that counted something, then the acoustic one among
+    them. With no readings to go on — discovery runs before the first sample —
+    an unread device outranks one seen to be flat and yields to one seen to
+    count. Callers pair the result with the SC channel of the SAME device.
+
+    Shared by the detector's own discovery and by the drawing pass, which has to
+    resolve the channel on a roast merely opened from a file: discovery runs on
+    monitor-on and at CHARGE, neither of which a reopened profile goes through.
+    """
+    def series_of(idx: int, ch: int):
+        try:
+            if ch == 1 and extratemp1 is not None:
+                return extratemp1[idx]
+            if ch == 2 and extratemp2 is not None:
+                return extratemp2[idx]
+        except (IndexError, TypeError):
+            return None
+        return None
+
+    def counted(idx: int) -> "bool | None":
+        """Whether either crack channel of this device ever rose above zero."""
+        seen = False
+        for ch, names in ((1, extraname1), (2, extraname2)):
+            name = names[idx].lower() if idx < len(names) else ""
+            if classify_extra_channel(name) not in ("fc", "sc"):
+                continue
+            series = series_of(idx, ch)
+            if series is None or len(series) == 0:
+                continue
+            seen = True
+            if any(v is not None and v > 0 for v in series):
+                return True
+        return False if seen else None
+
+    best: "tuple[int, int, int, int] | None" = None
+    liveness: "dict[int, bool | None]" = {}
+    for i in range(max(len(extraname1), len(extraname2))):
+        for ch, names in ((1, extraname1), (2, extraname2)):
+            name = names[i].lower() if i < len(names) else ""
+            if classify_extra_channel(name) != "fc":
+                continue
+            if i not in liveness:
+                liveness[i] = counted(i)
+            live = liveness[i]
+            rank = 2 if live else (0 if live is False else 1)
+            acoustic = bool(set(_EXTRA_TOKEN_RE.findall(name)) & _ACOUSTIC_TOKENS)
+            candidate = (rank, int(acoustic), i, ch)
+            if best is None or candidate[:2] > best[:2]:
+                best = candidate
+    return None if best is None else (best[2], best[3])

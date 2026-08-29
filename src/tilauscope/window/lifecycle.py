@@ -437,6 +437,7 @@ class LifecycleMixin:
             self.update_button_style(self.btn_reset, not qmc.flagstart)
             for btn in self.event_buttons.values():
                 btn.setEnabled(True)
+            self._apply_controls_enabled(True)
             self.event_panel.show()
             self._update_timer_style("engaged")
 

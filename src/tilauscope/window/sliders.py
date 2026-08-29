@@ -167,6 +167,22 @@ class SlidersMixin:
         if self.aw.pidcontrol.pidActive != self.is_pid_active:
             self.is_pid_active = self.aw.pidcontrol.pidActive
 
+    def _apply_controls_enabled(self, enabled: bool) -> None:
+        """Enable/disable every machine control at once.
+
+        Off the machine, a slider reaches nothing: it must not read as usable.
+        Disabling the row widget carries label, slider, steppers and value with
+        it. The SV row keeps its own preheat lock on top of this one.
+        """
+        enabled = bool(enabled)
+        if enabled == self._controls_enabled:
+            return
+        self._controls_enabled = enabled
+        for row_w in self._slider_row_widgets:
+            row_w.setEnabled(enabled)
+        for w in self._sv_widgets:
+            w.setEnabled(enabled and not self._sv_locked)
+
     def _apply_sv_lock(self, locked: bool) -> None:
         """Enable/disable the whole SV row. No-op unless the state actually flips,
         so this stays O(1) on the pulse path. """
@@ -178,7 +194,7 @@ class SlidersMixin:
             "Set point driven by TilauPID while preheating"
         ) if locked else ""
         for w in self._sv_widgets:
-            w.setEnabled(not locked)
+            w.setEnabled(not locked and self._controls_enabled)
             w.setToolTip(tip)
 
     def check_sliders_update(self):

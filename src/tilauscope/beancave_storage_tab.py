@@ -483,7 +483,7 @@ class StorageTab(QWidget):
             _logd.info("StorageTab: starting dedicated MQTT client (broker=%s:%s)",
                        getattr(cfg, "broker_url", "?"), getattr(cfg, "port", "?"))
             self._mqtt = TilauscopeMQTTClient(cfg, self.host.aw)
-            connected = self._mqtt.start()
+            connected = self._mqtt.start() and self._mqtt.wait_connected()
             _logd.info("StorageTab: dedicated MQTT connected=%s", connected)
             if connected:
                 self._subscribe_storage(self._mqtt, topics)

@@ -3,676 +3,2205 @@
 # TilauScope is free software: you can redistribute it and/or modify it under
 # the terms of the GNU Affero General Public License as published by the Free
 # Software Foundation, either version 3 of the License, or (at your option) any
-# later version. It is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
-# for more details. You should have received a copy of the GNU Affero General
-# Public License along with this program. If not, see
-# <https://www.gnu.org/licenses/>.
+# later version.
 
-# AUTHOR
-# TiLau 2025
+"""Semantic assistant for Artisan's software PID.
 
+The historic window exposed and modified Kp/Ki/Kd heuristically. This version
+keeps engineering values behind an expert disclosure and lets the operator act
+on observable behaviours: react, catch up, brake and stabilise.
+"""
 
-# Script de configuration automatique du Gain Scheduling PID
-# Cibles : 60°C, 100°C, 150°C
+from __future__ import annotations
+
 import logging
-import time as _time
-from typing import Final
-from artisanlib.pid_control import PIDcontrol
-from artisanlib.util import fromCtoFstrict
-from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QTextBrowser, QWidget,
-                             QLabel, QGroupBox, QFormLayout, QApplication, QFrame)
-from PyQt6.QtCore import Qt, QPoint, QTimer, QPropertyAnimation, pyqtSlot
-from tilauscope.tilauscope_types import RoastingPhase, THEME
-from artisanlib.main import ApplicationWindow
+import math
+import time
+from collections import deque
+from datetime import UTC, datetime
+from functools import partial
+from pathlib import Path
+from typing import Final, TYPE_CHECKING, TypedDict
+
+from PyQt6.QtCore import QPoint, QPropertyAnimation, QStandardPaths, Qt, QTimer
+from PyQt6.QtGui import QCloseEvent, QMouseEvent
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QFrame,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QTextBrowser,
+    QVBoxLayout,
+    QWidget,
+)
+
+from tilauscope.pid_calibration import (
+    CalibrationLimits,
+    CalibrationProtocol,
+    CalibrationReadinessInputs,
+    CalibrationReadinessReport,
+    CalibrationRuntimeInterlocks,
+    LiveCalibrationCoordinator,
+    PIDCandidate,
+    ZeroOutputQualification,
+    evaluate_calibration_readiness,
+    runtime_interlock_reason,
+    run_reference_simulation,
+)
+from tilauscope.pid_calibration_store import (
+    CalibrationMachineIdentity,
+    build_machine_identity,
+    write_hardware_pilot_manifest,
+    write_calibration_journal,
+    write_zero_qualification_evidence,
+)
+from tilauscope.pid_calibration_runner import (
+    LiveCalibrationSampleObserver,
+    PIDCalibrationRunner,
+    temperature_to_c,
+)
+from tilauscope.pid_semantics import (
+    Behaviour,
+    PIDNarrative,
+    PIDObservation,
+    adjust_pid_behaviour,
+    narrate_pid,
+)
+from tilauscope.roasters import RoasterManager
+from tilauscope.tilauscope_types import THEME
+from tilauscope.theme_qss import apply_tilau_theme
+
+if TYPE_CHECKING:
+    from artisanlib.main import ApplicationWindow
+
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
-from tilauscope.theme_qss import apply_tilau_theme
+
+class _EngineSnapshot(TypedDict):
+    active: bool
+    pv: float | None
+    target: float
+    p: float
+    i: float
+    d: float
+    output: float | None
+    output_min: float
+    output_max: float
+    kp: float | None
+    ki: float | None
+    kd: float | None
 
 
 class PIDAutotune(QDialog):
-    def __init__(self, parent: QWidget, aw:ApplicationWindow):
-        super().__init__()
-        # ground=False: the grounded base would paint the rectangle opaque and
-        # square off the rounded card this window draws inside it.
+    """Explain and adjust Artisan's software PID without exposing raw gains."""
+
+    # Filled one exact (roaster_id, actuator_signature) pair at a time only
+    # after its physical pilot passes. The shipped empty set cannot heat.
+    _LIVE_CALIBRATION_ACTUATORS: Final[
+        frozenset[tuple[str, str]]
+    ] = frozenset()
+    # First reduced-risk pilot: current ITOP Cyberroaster + exact slider-4
+    # actuator from the operator's 2026-08-28 configuration. A successful run
+    # is always cut to 0% and rolled back for review; it cannot retain gains.
+    _SUPERVISED_PILOT_ACTUATORS: Final[frozenset[tuple[str, str]]] = frozenset({
+        (
+            "itop-cyberroaster",
+            "559c368d9f76411191563ecb16bb67f2012eecc30ca8a8d1be7a5506c11af947",
+        ),
+    })
+    _CONFIG_FIELDS: Final[tuple[str, ...]] = (
+        "pidKp", "pidKi", "pidKd",
+        "pidKp1", "pidKi1", "pidKd1",
+        "pidKp2", "pidKi2", "pidKd2",
+        "pidGainScheduling", "pidGainSchedulingSV",
+        "pidGainSchedulingQuadratic",
+        "pidSchedule0", "pidSchedule1", "pidSchedule2",
+        "pidPsetpointWeight", "pidDsetpointWeight",
+        "pidSource", "pidCycle",
+        "pidPositiveTarget", "pidNegativeTarget", "invertControl",
+        "dutyMin", "dutyMax", "dutySteps", "duty_filter",
+        "derivative_filter", "pidDlimit",
+        "pidIlimitFactor", "pidIWP", "pidIRoC", "pidIRoCthreshold",
+        "sv_filter",
+        "positiveTargetRangeLimit", "positiveTargetMin", "positiveTargetMax",
+        "negativeTargetRangeLimit", "negativeTargetMin", "negativeTargetMax",
+    )
+    _OFFSET_MIN: Final[int] = -2
+    _OFFSET_MAX: Final[int] = 2
+    _SETTLE_WAIT_MS: Final[int] = 15_000
+
+    def __init__(self, parent: QWidget | None, aw: ApplicationWindow) -> None:
+        # A frameless modeless child can be constructed but never presented as
+        # a native window on macOS. Keep ownership only for a visible parent
+        # and explicitly retain the Dialog window type below.
+        visible_parent = parent if parent is not None and parent.isVisible() else None
+        super().__init__(visible_parent)
         apply_tilau_theme(self, ground=False)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setWindowFlags(
+            Qt.WindowType.Dialog
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+        )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setModal(False)
 
-        # Variables de monitoring
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_logic)
-        self.is_monitoring = False
-
-        self.error_integral = 0.0  # Pour le suivi kI
-        self.last_error = 0.0      # Pour le suivi kD
-
         self.aw = aw
-        self.pid:PIDcontrol = aw.pidcontrol
-        self.unit = aw.qmc.mode     # °C or °F
+        self.pid = aw.pidcontrol
+        self.is_monitoring = False
+        self._cooling_down = False
+        self._pv_history: deque[tuple[float, float]] = deque(maxlen=8)
+        self._readiness_history: deque[
+            tuple[float, float, float, float]
+        ] = deque(maxlen=45)
+        self._error_history: deque[float] = deque(maxlen=90)
+        self._candidate_state: str | None = None
+        self._candidate_count = 0
+        self._calibration_engineering = ""
+        self._zero_output_qualified = False
+        self._qualified_machine_fingerprint: str | None = None
+        self._calibration_runner: PIDCalibrationRunner | None = None
+        self._last_calibration_journal_path: Path | None = None
+        self._current_narrative = PIDNarrative("stopped", "high")
+        self._latest_schedule_value = 0.0
+        self._baseline_config: dict[str, float | int | bool] | None = None
+        self._undo_stack: list[
+            tuple[dict[str, float | int | bool], dict[Behaviour, int]]
+        ] = []
+        self._offsets: dict[Behaviour, int] = {
+            "reaction": 0,
+            "recovery": 0,
+            "braking": 0,
+            "stability": 0,
+        }
+        self._behaviour_widgets: dict[
+            Behaviour, tuple[QPushButton, QLabel, QPushButton]
+        ] = {}
+        self.anim: QPropertyAnimation | None = None
+        self.oldPos = QPoint()
 
-        self.last_bt = 0.0
-        self.last_update_time: float = _time.monotonic()
-        self._kp_adjustment_integral: float = 0.0   # accumulateur pour convergence Kp
-        self._ki_error_window: list[float] = []   # fenêtre glissante des erreurs
-        _KI_WINDOW_SIZE: int = 10                 # 10 cycles × 2 s = 20 s d'historique
-        _KI_TRIGGER_ABS: float = 3.0             # seuil en °C·s (somme) pour déclencher
-        _KI_DECAY: float = 0.95                  # decay par cycle si pas de déclenchement
-        self._ror_history: list[float] = []
-        _ROR_SMOOTH_N: int = 4   # moyenne glissante sur 4 valeurs brutes
+        # setup_ui() replaces these placeholders immediately.  Initialising
+        # them here makes their lifetime explicit to static type checkers too.
+        self.lbl_headline = QLabel()
+        self.lbl_reason = QLabel()
+        self.lbl_suggestion = QLabel()
+        self.lbl_pv = QLabel()
+        self.lbl_sp = QLabel()
+        self.lbl_output = QLabel()
+        self.scope_combo = QComboBox()
+        self.lbl_change = QLabel()
+        self.lbl_calibration = QLabel()
+        self.btn_calibration_check = QPushButton()
+        self.btn_calibration_live = QPushButton()
+        self.btn_undo = QPushButton()
+        self.btn_restore = QPushButton()
+        self.btn_keep = QPushButton()
+        self.lbl_engineering = QLabel()
+        self.btn_start = QPushButton()
+        self.btn_stop = QPushButton()
 
-        self.init_presets()
+        self.timer = QTimer(self)
+        self.timer.setInterval(1000)
+        self.timer.timeout.connect(self.update_logic)
+        self._settle_timer = QTimer(self)
+        self._settle_timer.setSingleShot(True)
+        self._settle_timer.timeout.connect(self._settle_wait_finished)
+
         self.setup_ui()
         self.aw.PIDAutotuneMenuAction.setChecked(True)
+        self._render_narrative(self._current_narrative, None, None)
+        self._update_behaviour_controls()
 
-    def _smooth_ror(self, raw_ror: float) -> float:
-        """Lisse le RoR par moyenne glissante pour réduire le bruit capteur."""
-        _ROR_SMOOTH_N = 4
-        self._ror_history.append(raw_ror)
-        if len(self._ror_history) > _ROR_SMOOTH_N:
-            self._ror_history.pop(0)
-        return sum(self._ror_history) / len(self._ror_history)
+    @staticmethod
+    def _tr(text: str) -> str:
+        return QApplication.translate("tilauscope_pid", text)
 
-    def _compute_ror(self, bt: float) -> float:
-        """Calcule le RoR (°C/min) en mesurant le delta-temps réel entre appels."""
-        now = _time.monotonic()
-        dt_s = now - self.last_update_time          # secondes écoulées
-        if dt_s < 0.1:                              # garde-fou anti-division par zéro
-            ror = 0.0
-        else:
-            ror = (bt - self.last_bt) / dt_s * 60.0
-        self.last_bt = bt
-        self.last_update_time = now
-        return ror
+    def setup_ui(self) -> None:
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
-    def init_presets(self):
-        if self.aw is None or self.aw.qmc.temp2 is None or len(self.aw.qmc.temp2) < 2 or len(self.aw.qmc.timeindex)==0 or self.aw.qmc.timeindex[RoastingPhase.CHARGE]==-1:
-            self.default_presets = {
-                185:  {'kp': 12, 'ki': 0.02, 'kd': 180.0, 'beta': 0.0, 'gamma': 0.0}
-            }
-            self.pid.pidGainScheduling = False
-            self.pid.pidGainSchedulingQuadratic = False
-            self.pid.pidGainSchedulingSV = True
-            self.preheating = True
-
-            # preheating or not starting and not charged
-        else:
-            self.default_presets = {
-                95:  {'kp': 12, 'ki': 0.05, 'kd': 40.0,  'beta': 0.3, 'gamma': 0.0},
-                150: {'kp': 10, 'ki': 0.04, 'kd': 60.0,  'beta': 0.3, 'gamma': 0.0},
-                185: {'kp': 8, 'ki': 0.02, 'kd': 120.0, 'beta': 0.3, 'gamma': 0.0}
-            }
-            self.preheating = False
-        self.filtered_ror = 0.0
-
-    # ── Unités ────────────────────────────────────────────────────────────────
-    # BT, SV et RoR arrivent ici en unité d'AFFICHAGE (qmc.temp2, pidSchedule*),
-    # et les libellés les réaffichent tels quels. Les seuils du réglage sont en
-    # doctrine °C : ils sont convertis vers le natif au point de comparaison.
-    @property
-    def _delta_scale(self) -> float:
-        """Facteur d'échelle pour un ÉCART ou un RoR exprimé en °C."""
-        return 1.8 if self.aw.qmc.mode == 'F' else 1.0
-
-    def _abs_native(self, temp_c: float) -> float:
-        """Température ABSOLUE °C ramenée à l'unité d'affichage."""
-        return fromCtoFstrict(temp_c) if self.aw.qmc.mode == 'F' else temp_c
-
-    def is_stable(self, window_size: int = 5, max_spread: float = 0.4) -> bool:
-        """Stabilité sur une fenêtre temporelle cohérente avec le cycle Artisan
-        (window_size points temp2, max_spread en °C — mis à l'échelle en °F)."""
-        temps = self.aw.qmc.temp2
-        if len(temps) < window_size:
-            return False
-        recent = temps[-window_size:]
-        return (max(recent) - min(recent)) < max_spread * self._delta_scale
-
-    def setup_ui(self):
-        self.main_layout = QVBoxLayout(self)
-        # Set margins to at least 10 to provide "breathing room" for the rounded corners
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
-
-        self.container = QFrame()
-        self.container.setStyleSheet(f"""
-            QFrame {{
-                background-color: {THEME['BG']};
-                border: 1px solid {THEME['BORDER']};
-                border-radius: 20px;
-            }}
-        """)
-
-        self.content_layout = QVBoxLayout(self.container)
-        self.main_layout.addWidget(self.container)
-
-        # Header with Help Button
-        header = QHBoxLayout()
-        title_lbl = QLabel(QApplication.translate("tilauscope_pid","<b>Monitoring & Tuning</b>").upper())
-        title_lbl.setStyleSheet("color: white; font-size: 18px; font-weight: 900; ")
-
-        # close button
-        self.close_btn = QPushButton("✕")
-        self.close_btn.setFixedSize(30, 30)
-        self.close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
-        self.close_btn.clicked.connect(self.fade_out_and_close)
-        self.close_btn.setStyleSheet(f"QPushButton {{ background: {THEME['SURFACE']}; color: white; border-radius: 15px; border: 1px solid {THEME['BORDER']}; }} QPushButton:hover {{ background: {THEME['CRITICAL']}; }}")
-
-        # help button
-        help_btn = QPushButton("?")
-        help_btn.setFixedSize(24, 24)
-        help_btn.setProperty('variant', 'icon')   # fixed size: no base padding
-        help_btn.setStyleSheet(
-            f"border-radius: 12px; background-color: {THEME['ACCENT']};"
-            f" color: {THEME['BG']}; font-weight: bold;")
-        help_btn.clicked.connect(self.show_help)
-
-        header.addWidget(title_lbl); header.addWidget(help_btn); header.addStretch(); header.addWidget(self.close_btn)
-        self.content_layout.addLayout(header)
-
-        # 2. MONITORING GRID (Original Parameters)
-        mon_layout = QHBoxLayout()
-
-        # Temperatures Group
-        temp_group = self.create_group(QApplication.translate("tilauscope_pid","Temperatures"))
-        self.lbl_bt = self.add_row(temp_group, QApplication.translate("tilauscope_pid","Current Bean Temperature"))
-        self.lbl_sv = self.add_row(temp_group, QApplication.translate("tilauscope_pid","Artisan PID SV"))
-        self.lbl_error = self.add_row(temp_group,QApplication.translate("tilauscope_pid","PID Delta (BT-SV)"))
-
-        # PID Values Group
-        pid_group = self.create_group("PID Parameters")
-        self.lbl_kp = self.add_row(pid_group, "kP (Prop)")
-        self.lbl_ki = self.add_row(pid_group, "kI (Int)")
-        self.lbl_kd = self.add_row(pid_group, "kD (Deriv)")
-
-        mon_layout.addWidget(temp_group)
-        mon_layout.addWidget(pid_group)
-        self.content_layout.addLayout(mon_layout)
-
-        # 3. ADVANCED (BETA/GAMMA)
-        adv_group = self.create_group(QApplication.translate("tilauscope_pid","Configuration Structure (2-DOF)"))
-        self.lbl_beta = self.add_row(adv_group, "Beta")
-        self.lbl_gamma = self.add_row(adv_group, "Gamma")
-        self.content_layout.addWidget(adv_group)
-
-        # 4. STATUS & CONSOLE
-        self.lbl_status = QLabel(QApplication.translate("tilauscope_pid","Ready"))
-        self.lbl_status.setStyleSheet(f"color: {THEME['ACCENT']}; font-weight: bold; border: none;")
-        self.content_layout.addWidget(self.lbl_status)        # Status et Boutons
-
-        # 5. BUTTONS
-        btn_layout = QHBoxLayout()
-        self.btn_preset = self.create_btn(QApplication.translate("tilauscope_pid","Load Presets").upper(), THEME['WARNING'], self.apply_default_presets)
-        self.btn_start = self.create_btn(QApplication.translate("tilauscope_pid","Start").upper(), THEME['ACCENT'], self.start_monitoring)
-        self.btn_stop = self.create_btn(QApplication.translate("tilauscope_pid","Stop").upper(), THEME['ACCENT'], self.stop_monitoring)
-        self.btn_stop.setEnabled(False)
-
-        btn_layout.addWidget(self.btn_preset)
-        btn_layout.addWidget(self.btn_start)
-        btn_layout.addWidget(self.btn_stop)
-        self.content_layout.addLayout(btn_layout)
-
-        self.resize(350, 480)
-
-    def create_group(self, title):
-        group = QGroupBox(title)
-        # Target QGroupBox::title specifically to ensure it isn't black
-        group.setStyleSheet(f"""
-            QGroupBox {{
-                color: {THEME['SUBTEXT']};
-                font-weight: bold;
-                border: 1px solid {THEME['BORDER']};
-                border-radius: 10px;
-                margin-top: 15px;
-                padding-top: 10px;
-            }}
-            QGroupBox::title {{
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0 5px;
-                color: {THEME['ACCENT']}; /* Or SUBTEXT */
-            }}
-        """)
-        QFormLayout(group)
-        return group
-
-    def add_row(self, group, label_text):
-        # Create the field label (the text on the left)
-        field_lbl = QLabel(label_text)
-        field_lbl.setProperty('variant', 'secondary') # Set color here
-
-        # The value label (the text on the right)
-        lbl = QLabel("-")
-        lbl.setStyleSheet(f"color: {THEME['TEXT']}; border: none;")
-
-        group.layout().addRow(field_lbl, lbl)
-        return lbl
-
-    def create_btn(self, text, color, slot):
-        btn = QPushButton(text)
-        btn.setFixedHeight(40)
-        btn.clicked.connect(slot)
-        btn.setStyleSheet(f"QPushButton {{ background-color: {color}; color: {THEME['BG']}; border-radius: 8px; font-weight: bold; border: none; }} QPushButton:hover {{ background-color: white; }}")
-        return btn
-
-    def apply_default_presets(self):
-        """Applique les réglages optimisés au contrôleur Artisan"""
-        try:
-            if not self.preheating:
-                # Point 1 (Schedule 0)
-                self.pid.pidKp = self.default_presets[95]['kp']
-                self.pid.pidKi = self.default_presets[95]['ki']
-                self.pid.pidKd = self.default_presets[95]['kd']
-                self.pid.confPIDweights(self.default_presets[95]["beta"], self.default_presets[95]["gamma"])
-                self.pid.pidSchedule0 = 95.0
-
-                # Point 2 (Schedule 1)
-                self.pid.pidKp1 = self.default_presets[150]['kp']
-                self.pid.pidKi1 = self.default_presets[150]['ki']
-                self.pid.pidKd1 = self.default_presets[150]['kd']
-                self.pid.confPIDweights(self.default_presets[150]["beta"], self.default_presets[150]["gamma"])
-                self.pid.pidSchedule1 = 150.0
-
-                # Point 3 (Schedule 2)
-                self.pid.pidKp2 = self.default_presets[185]['kp']
-                self.pid.pidKi2 = self.default_presets[185]['ki']
-                self.pid.pidKd2 = self.default_presets[185]['kd']
-                self.pid.pidSchedule2 = 185.0
-
-                # Activation des modes requis
-                self.pid.pidGainScheduling = True
-                self.pid.pidGainSchedulingQuadratic = True
-                self.pid.pidGainSchedulingSV = True
-            else:
-                self.pid.pidKp = self.default_presets[185]['kp']
-                self.pid.pidKi = self.default_presets[185]['ki']
-                self.pid.pidKd = self.default_presets[185]['kd']
-                self.pid.pidSchedule0 = 185.0
-            # prefer PoM and DoM not PoE and DoE
-            self.pid.pidPsetpointWeight = 0.0
-            self.pid.pidDsetpointWeight = 0.0
-            self.lbl_status.setText(QApplication.translate("tilauscope_pid","Presets loaded"))
-            _log.info("Presets PID appplied")
-        except Exception as e:
-            _log.error(f"Error while setting PID presets: {e}")
-
-    def start_monitoring(self):
-        self.is_monitoring = True
-        self.error_integral = 0.0
-        self.last_error = 0.0
-        self.timer.start(2000) # Intervalle de 2s
-        self.btn_start.setEnabled(False)
-        self.btn_stop.setEnabled(True)
-        #self.btn_reset.setEnabled(False)
-        self.lbl_status.setText(QApplication.translate("tilauscope_pid","Analysing..."))
-
-    def stop_monitoring(self):
-        self.is_monitoring = False
-        self.timer.stop()
-        self.btn_start.setEnabled(True)
-        self.btn_stop.setEnabled(False)
-        #self.btn_reset.setEnabled(True)
-        self.lbl_status.setText(QApplication.translate("tilauscope_pid","Monitoring stopped"))
-
-    def get_active_pid_slots(self, bt:float):
-        """Determines which PID attributes to modify based on scheduling."""
-        try:
-            if not self.pid.pidGainScheduling:
-                return "pidKp", "pidKi", "pidKd"
-            if bt <= self.pid.pidSchedule0 : # slot 0 if scheduling in interval or not scheduling
-                return "pidKp", "pidKi", "pidKd"
-            elif bt <= self.pid.pidSchedule1: # slot x1
-                return "pidKp1", "pidKi1", "pidKd1"
-            else: # slot x2
-                return "pidKp2", "pidKi2", "pidKd2"
-        except AttributeError:
-            return "pidKp", "pidKi", "pidKd" # Fallback to default
-
-    def _adjust_kp(self, kp_val: float, error: float, attr_p: str, attr_i: str, attr_d: str) -> str:
-        """Ajustement Kp par pas absolu (pas multiplicatif) pour éviter la dérive
-        exponentielle ; pas proportionnel à l'erreur résiduelle, avec borne."""
-        # Pas absolu ≤ 0.05 — insensible à la valeur courante de Kp
-        step = min(abs(error) * 0.002, 0.05)
-        delta = step if error > 0 else -step
-        new_kp = max(0.5, min(kp_val + delta, 30.0))   # bornes durables
-        setattr(self.pid, attr_p, new_kp)
-        self.pid.setPID(kp=new_kp, ki=getattr(self.pid, attr_i), kd=getattr(self.pid, attr_d)) # Update PID with new values
-        _log.info(f"AUTOTUNE > Kp: {kp_val:.4f} → {new_kp:.4f}  (err={error:.2f})")
-        return "Adjust Kp"
-
-    def _adjust_ki(self, ki_val: float, error: float, attr_p:str, attr_i: str, attr_d: str) -> str | None:
-        """
-        Ajuste Ki à partir d'une fenêtre glissante avec decay.
-        Évite la dérive lente due à un integral sans borne temporelle.
-        """
-        _KI_WINDOW_SIZE = 10
-        _KI_TRIGGER_ABS = 3.0
-        _KI_DECAY        = 0.95
-
-        self._ki_error_window.append(error)
-        if len(self._ki_error_window) > _KI_WINDOW_SIZE:
-            self._ki_error_window.pop(0)
-
-        integral = sum(self._ki_error_window)
-
-        if abs(integral) > _KI_TRIGGER_ABS:
-            # Pas absolu sur Ki (pas multiplicatif) pour éviter la divergence
-            step = 0.002 if integral > 0 else -0.002
-            new_ki = max(0.002, min(ki_val + step, 0.5))
-            setattr(self.pid, attr_i, new_ki)
-            self.pid.setPID(kp=getattr(self.pid, attr_p), ki=new_ki, kd=getattr(self.pid, attr_d)) # Update PID with new values
-            _log.info(f"AUTOTUNE > Ki: {ki_val:.4f} → {new_ki:.4f}  (Σerr={integral:.2f})")
-            self._ki_error_window.clear()   # reset fenêtre après action
-            return "Adjust Ki"
-
-        # Decay doux de l'intégrale (les erreurs passées comptent moins avec le temps)
-        self._ki_error_window = [e * _KI_DECAY for e in self._ki_error_window]
-        return None
-
-    def _decay_kd(self, kd_val: float, attr_p:str, attr_i: str, attr_d: str) -> None:
-        """Réduit Kd quand la consigne est tenue, avec plancher absolu."""
-        _KD_MIN = 10.0
-        new_kd = max(kd_val * 0.99, _KD_MIN)
-        setattr(self.pid, attr_d, new_kd)
-        self.pid.setPID(kp=getattr(self.pid, attr_p), ki=getattr(self.pid, attr_i), kd=new_kd) # Update PID with new values
-        _log.debug(f"AUTOTUNE > Kd decay: {kd_val:.1f} → {new_kd:.1f}")
-
-    def _preheat_adjust(
-        self,
-        kp_val: float, kd_val: float,
-        attr_p: str, attr_d: str,
-        error: float
-    ) -> str:
-        """Ajustements preheating avec bornes strictes : Kd monte doucement
-        (plafond 300), Kp descend doucement (plancher 4)."""
-        _KD_MAX_PREHEAT = 300.0
-        _KD_STEP        = 5.0    # pas absolu montant
-        _KP_MIN_PREHEAT = 4.0
-        _KP_STEP        = 0.3    # pas absolu descendant
-
-        new_kd = min(kd_val + _KD_STEP, _KD_MAX_PREHEAT)
-        new_kp = max(kp_val - _KP_STEP, _KP_MIN_PREHEAT)
-
-        setattr(self.pid, attr_d, new_kd)
-        setattr(self.pid, attr_p, new_kp)
-        _log.info(
-            f"AUTOTUNE > Preheat — Kp: {kp_val:.3f}→{new_kp:.3f}, "
-            f"Kd: {kd_val:.1f}→{new_kd:.1f}  (err={error:.2f})"
+        container = QFrame()
+        container.setObjectName("PIDAssistantContainer")
+        container.setStyleSheet(
+            f"QFrame#PIDAssistantContainer {{ background-color: {THEME['BG']};"
+            f" border: 1px solid {THEME['BORDER']}; border-radius: 20px; }}"
         )
-        return "Preheat: Kp↓ Kd↑"
+        shell = QVBoxLayout(container)
+        shell.setContentsMargins(22, 18, 22, 20)
+        shell.setSpacing(12)
+        content_scroll = QScrollArea()
+        content_scroll.setObjectName("PIDAssistantScroll")
+        content_scroll.setWidgetResizable(True)
+        content_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        content_scroll.setStyleSheet(
+            "QScrollArea { background: transparent; border: none; }"
+        )
+        content_body = QWidget()
+        content_body.setStyleSheet("background: transparent;")
+        content = QVBoxLayout(content_body)
+        content.setContentsMargins(0, 0, 0, 0)
+        content.setSpacing(12)
+        content_scroll.setWidget(content_body)
+        main_layout.addWidget(container)
 
-    def _near_target_threshold(self, bt: float) -> float:
-        """Seuil d'erreur pour "près de la consigne" : ±4.0 sous 95°C (Turning
-        Point), ±3.0 sous 150°C (Maillard), ±2.0 au-delà (finition). `bt` est
-        en unité d'affichage ; bandes et seuil sont convertis depuis le °C."""
-        if bt <= self._abs_native(95.0):
-            return 4.0 * self._delta_scale
-        if bt <= self._abs_native(150.0):
-            return 3.0 * self._delta_scale
-        return 2.0 * self._delta_scale
+        header = QHBoxLayout()
+        title = QLabel(self._tr("UNDERSTAND AND ADJUST THE PID"))
+        title.setStyleSheet("color:white; font-size:18px; font-weight:900; border:none;")
+        help_btn = QPushButton("?")
+        help_btn.setFixedSize(26, 26)
+        help_btn.setProperty("variant", "icon")
+        help_btn.clicked.connect(self.show_help)
+        close_btn = QPushButton("✕")
+        close_btn.setFixedSize(30, 30)
+        close_btn.setProperty("variant", "icon")
+        close_btn.clicked.connect(self.fade_out_and_close)
+        close_btn.setStyleSheet(
+            f"QPushButton {{ background-color: {THEME['SURFACE']}; color: white;"
+            f" border-radius: 15px; border: 1px solid {THEME['BORDER']}; }}"
+            f"QPushButton:hover {{ background-color: {THEME['CRITICAL']}; }}"
+        )
+        header.addWidget(title)
+        header.addWidget(help_btn)
+        header.addStretch()
+        header.addWidget(close_btn)
+        shell.addLayout(header)
+        shell.addWidget(content_scroll, 1)
 
-    def update_logic(self) -> None:   # type: ignore[override]
-        if not self.isVisible() or self.aw is None:
+        intro = QLabel(self._tr(
+            "TilauScope translates Artisan's calculations into machine behaviour. "
+            "Technical PID values stay hidden."
+        ))
+        intro.setWordWrap(True)
+        intro.setStyleSheet(f"color:{THEME['SUBTEXT']}; border:none;")
+        content.addWidget(intro)
+
+        calibration_group = QGroupBox(self._tr("AUTOMATIC TEST — ABOUT 10 MINUTES"))
+        calibration_group.setStyleSheet(self._group_style())
+        calibration_layout = QVBoxLayout(calibration_group)
+        calibration_intro = QLabel(self._tr(
+            "The future guided test will observe a small heat increase and decrease, "
+            "try a cautious setting, then keep it only if the response improves."
+        ))
+        calibration_intro.setWordWrap(True)
+        calibration_intro.setStyleSheet(f"color:{THEME['TEXT']}; border:none;")
+        self.lbl_calibration = QLabel(self._tr(
+            "First validate the complete procedure in software. No heat command is sent."
+        ))
+        self.lbl_calibration.setWordWrap(True)
+        self.lbl_calibration.setStyleSheet(
+            f"color:{THEME['SUBTEXT']}; font-size:12px; border:none;"
+        )
+        calibration_buttons = QHBoxLayout()
+        self.btn_calibration_check = self._secondary_button(
+            self._tr("CHECK WITHOUT HEATING")
+        )
+        self.btn_calibration_live = self._primary_button(
+            self._tr("PREPARE THE MACHINE TEST")
+        )
+        self.btn_calibration_live.setToolTip(self._tr(
+            "Review every automatic check and the three confirmations."
+        ))
+        self.btn_calibration_check.clicked.connect(self._run_calibration_self_test)
+        self.btn_calibration_live.clicked.connect(self.show_calibration_readiness)
+        calibration_buttons.addWidget(self.btn_calibration_check)
+        calibration_buttons.addWidget(self.btn_calibration_live)
+        calibration_layout.addWidget(calibration_intro)
+        calibration_layout.addWidget(self.lbl_calibration)
+        calibration_layout.addLayout(calibration_buttons)
+        content.addWidget(calibration_group)
+
+        state_card = QFrame()
+        state_card.setStyleSheet(
+            f"QFrame {{ background-color: {THEME['SURFACE']};"
+            f" border: 1px solid {THEME['BORDER']}; border-radius: 12px; }}"
+        )
+        state_layout = QVBoxLayout(state_card)
+        state_layout.setContentsMargins(16, 14, 16, 14)
+        self.lbl_headline = QLabel()
+        self.lbl_headline.setWordWrap(True)
+        self.lbl_headline.setStyleSheet(
+            f"color:{THEME['ACCENT']}; font-size:17px; font-weight:800;"
+        )
+        self.lbl_reason = QLabel()
+        self.lbl_reason.setWordWrap(True)
+        self.lbl_reason.setStyleSheet(f"color:{THEME['TEXT']}; font-size:13px;")
+        self.lbl_suggestion = QLabel()
+        self.lbl_suggestion.setWordWrap(True)
+        self.lbl_suggestion.setStyleSheet(
+            f"color:{THEME['WARNING']}; font-size:12px; font-weight:600;"
+        )
+        state_layout.addWidget(self.lbl_headline)
+        state_layout.addWidget(self.lbl_reason)
+        state_layout.addWidget(self.lbl_suggestion)
+
+        facts = QHBoxLayout()
+        self.lbl_pv = self._fact(facts, self._tr("TEMPERATURE"))
+        self.lbl_sp = self._fact(facts, self._tr("TARGET"))
+        self.lbl_output = self._fact(facts, self._tr("HEAT REQUEST"))
+        state_layout.addLayout(facts)
+        content.addWidget(state_card)
+
+        behaviour_group = QGroupBox(self._tr("CHANGE THE BEHAVIOUR"))
+        behaviour_group.setStyleSheet(self._group_style())
+        behaviour_grid = QGridLayout(behaviour_group)
+        behaviour_grid.setHorizontalSpacing(10)
+        behaviour_grid.setVerticalSpacing(8)
+
+        rows: tuple[tuple[Behaviour, str, str, str, int, int], ...] = (
+            ("reaction", self._tr("CURRENT GAP"), self._tr("React less"),
+             self._tr("React more"), -1, 1),
+            ("recovery", self._tr("LASTING DELAY"), self._tr("Catch up less"),
+             self._tr("Catch up more"), -1, 1),
+            ("braking", self._tr("INERTIA"), self._tr("Brake less"),
+             self._tr("Brake more"), -1, 1),
+            # Visual axis is stable -> active, while the semantic core receives
+            # +1 for calmer and -1 for more active.
+            ("stability", self._tr("COMMAND"), self._tr("More stable"),
+             self._tr("More responsive"), 1, -1),
+        )
+        for row, (behaviour, label, left_text, right_text, left_dir, right_dir) in enumerate(rows):
+            name = QLabel(label)
+            name.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-weight:700; border:none;")
+            left = self._semantic_button(left_text)
+            right = self._semantic_button(right_text)
+            indicator = QLabel("○  ○  ●  ○  ○")
+            indicator.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            indicator.setMinimumWidth(120)
+            indicator.setStyleSheet(
+                f"color:{THEME['ACCENT']}; font-size:15px; font-weight:800; border:none;"
+            )
+            left.clicked.connect(partial(self._apply_behaviour, behaviour, left_dir, -1))
+            right.clicked.connect(partial(self._apply_behaviour, behaviour, right_dir, 1))
+            behaviour_grid.addWidget(name, row, 0)
+            behaviour_grid.addWidget(left, row, 1)
+            behaviour_grid.addWidget(indicator, row, 2)
+            behaviour_grid.addWidget(right, row, 3)
+            self._behaviour_widgets[behaviour] = (left, indicator, right)
+
+        scope_row = QHBoxLayout()
+        scope_row.addWidget(QLabel(self._tr("Apply the change:")))
+        self.scope_combo = QComboBox()
+        self.scope_combo.addItems([
+            self._tr("in this temperature zone"),
+            self._tr("throughout the whole range"),
+        ])
+        scope_row.addWidget(self.scope_combo)
+        scope_row.addStretch()
+        behaviour_grid.addLayout(scope_row, len(rows), 0, 1, 4)
+        content.addWidget(behaviour_group)
+
+        self.lbl_change = QLabel()
+        self.lbl_change.setWordWrap(True)
+        self.lbl_change.setStyleSheet(
+            f"color:{THEME['LAVENDER']}; font-size:12px; border:none;"
+        )
+        content.addWidget(self.lbl_change)
+
+        history_row = QHBoxLayout()
+        self.btn_undo = self._secondary_button(self._tr("UNDO LAST CHANGE"))
+        self.btn_restore = self._secondary_button(self._tr("RESTORE SESSION START"))
+        self.btn_keep = self._secondary_button(self._tr("KEEP AS REFERENCE"))
+        self.btn_undo.clicked.connect(self.undo_last_change)
+        self.btn_restore.clicked.connect(self.restore_session_start)
+        self.btn_keep.clicked.connect(self.keep_as_reference)
+        history_row.addWidget(self.btn_undo)
+        history_row.addWidget(self.btn_restore)
+        history_row.addWidget(self.btn_keep)
+        content.addLayout(history_row)
+
+        expert_group = QGroupBox(self._tr("ENGINEER DETAILS"))
+        expert_group.setCheckable(True)
+        expert_group.setChecked(False)
+        expert_group.setStyleSheet(self._group_style())
+        expert_layout = QVBoxLayout(expert_group)
+        self.lbl_engineering = QLabel("—")
+        self.lbl_engineering.setWordWrap(True)
+        self.lbl_engineering.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.lbl_engineering.setStyleSheet(
+            f"color:{THEME['SUBTEXT']}; font-family:monospace; border:none;"
+        )
+        expert_layout.addWidget(self.lbl_engineering)
+        self.lbl_engineering.setVisible(False)
+        expert_group.toggled.connect(self.lbl_engineering.setVisible)
+        content.addWidget(expert_group)
+
+        controls = QHBoxLayout()
+        self.btn_start = self._primary_button(self._tr("START EXPLANATION"))
+        self.btn_stop = self._secondary_button(self._tr("STOP"))
+        self.btn_stop.setEnabled(False)
+        self.btn_start.clicked.connect(self.start_monitoring)
+        self.btn_stop.clicked.connect(self.stop_monitoring)
+        controls.addWidget(self.btn_start)
+        controls.addWidget(self.btn_stop)
+        shell.addLayout(controls)
+
+        screen = self.screen() or QApplication.primaryScreen()
+        if screen is None:
+            window_width, window_height = 760, 620
+        else:
+            available = screen.availableGeometry()
+            window_width = min(760, max(520, int(available.width() * 0.82)))
+            window_height = min(620, max(420, int(available.height() * 0.72)))
+        self.resize(window_width, window_height)
+        self.setMaximumHeight(window_height)
+
+    def present(self) -> None:
+        """Show, centre and activate the assistant as a top-level dialog."""
+        self.setWindowOpacity(1.0)
+        self.show()
+
+        parent = self.parentWidget()
+        frame = self.frameGeometry()
+        if parent is not None and parent.isVisible():
+            frame.moveCenter(parent.frameGeometry().center())
+        else:
+            screen = self.screen() or QApplication.primaryScreen()
+            if screen is not None:
+                frame.moveCenter(screen.availableGeometry().center())
+        self.move(frame.topLeft())
+
+        # Activation before show() is ignored by the macOS window server.
+        QTimer.singleShot(0, self._bring_to_front)
+
+    def _bring_to_front(self) -> None:
+        self.raise_()
+        self.activateWindow()
+
+    @staticmethod
+    def _group_style() -> str:
+        return (
+            f"QGroupBox {{ color:{THEME['ACCENT']}; font-weight:bold;"
+            f" border:1px solid {THEME['BORDER']}; border-radius:10px;"
+            " margin-top:14px; padding-top:10px; }}"
+            "QGroupBox::title { subcontrol-origin:margin; subcontrol-position:top left;"
+            " padding:0 6px; }"
+        )
+
+    @staticmethod
+    def _fact(layout: QHBoxLayout, title: str) -> QLabel:
+        column = QVBoxLayout()
+        name = QLabel(title)
+        name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        name.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:10px; border:none;")
+        value = QLabel("—")
+        value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        value.setStyleSheet(
+            f"color:{THEME['TEXT']}; font-size:16px; font-weight:700; border:none;"
+        )
+        column.addWidget(name)
+        column.addWidget(value)
+        layout.addLayout(column)
+        layout.addStretch()
+        return value
+
+    @staticmethod
+    def _semantic_button(text: str) -> QPushButton:
+        button = QPushButton(text)
+        button.setMinimumHeight(34)
+        button.setStyleSheet(
+            f"QPushButton {{ background-color: {THEME['SURFACE']}; color:{THEME['TEXT']};"
+            f" border:1px solid {THEME['BORDER']}; border-radius:7px; padding:5px 10px; }}"
+            f"QPushButton:hover {{ border-color:{THEME['ACCENT']}; }}"
+            f"QPushButton:disabled {{ color:{THEME['BORDER']}; }}"
+        )
+        return button
+
+    @staticmethod
+    def _primary_button(text: str) -> QPushButton:
+        button = QPushButton(text)
+        button.setMinimumHeight(40)
+        button.setStyleSheet(
+            f"QPushButton {{ background-color: {THEME['ACCENT']}; color:{THEME['BG']};"
+            " border:none; border-radius:8px; font-weight:bold; }}"
+            "QPushButton:disabled { background-color:#45475A; }"
+        )
+        return button
+
+    @staticmethod
+    def _secondary_button(text: str) -> QPushButton:
+        button = QPushButton(text)
+        button.setMinimumHeight(36)
+        button.setStyleSheet(
+            f"QPushButton {{ background-color: {THEME['SURFACE']}; color:{THEME['TEXT']};"
+            f" border:1px solid {THEME['BORDER']}; border-radius:8px; padding:5px 10px; }}"
+            f"QPushButton:hover {{ border-color:{THEME['LAVENDER']}; }}"
+            f"QPushButton:disabled {{ color:{THEME['BORDER']}; }}"
+        )
+        return button
+
+    def _run_calibration_self_test(self) -> None:
+        """Run the 600-second state machine without any actuator connection."""
+        self.btn_calibration_check.setEnabled(False)
+        self.lbl_calibration.setText(self._tr(
+            "Checking the 600-second sequence in the virtual machine…"
+        ))
+        QApplication.processEvents()
+        try:
+            protocol = run_reference_simulation(
+                current_kp=float(self.pid.pidKp),
+                current_ki=float(self.pid.pidKi),
+            )
+            if (
+                protocol.phase != "complete"
+                or protocol.plant is None
+                or protocol.candidate is None
+                or protocol.validation_result is None
+                or not protocol.validation_result.accepted
+            ):
+                reason = protocol.reason or self._tr("unknown software failure")
+                self.lbl_calibration.setText(self._tr(
+                    "The safety rehearsal refused the candidate. No setting was changed. "
+                ) + str(reason))
+                return
+            plant = protocol.plant
+            candidate = protocol.candidate
+            self.lbl_calibration.setText(self._tr(
+                "Safety rehearsal passed: all 600 seconds, identification, cautious "
+                "trial and rollback decision were exercised without sending heat. "
+                "The real-machine test remains locked until its hardware safety checks pass."
+            ))
+            self._calibration_engineering = (
+                "\ncalibration-self-test=passed"
+                f"  K={plant.gain_c_per_pct:.4g} °C/%"
+                f"  tau={plant.tau_sec:.0f}s  delay={plant.delay_sec:.0f}s"
+                f"  candidate={candidate.kp:.4g}/{candidate.ki:.4g}/{candidate.kd:.4g}"
+            )
+        except Exception:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+            _log.exception("PID calibration software self-test failed")
+            self.lbl_calibration.setText(self._tr(
+                "The software safety rehearsal failed. No setting was changed."
+            ))
+        finally:
+            self.btn_calibration_check.setEnabled(True)
+
+    def _live_calibration_readiness(
+        self,
+        *,
+        machine_empty: bool,
+        airflow_safe: bool,
+        supervised: bool,
+    ) -> CalibrationReadinessReport:
+        """Read current application facts without issuing any command."""
+        qmc = self.aw.qmc
+        slider_target = int(getattr(self.pid, "pidPositiveTarget", 0))
+        heater_slider = slider_target - 1 if 1 <= slider_target <= 4 else None
+
+        identity = self._calibration_machine_identity()
+        actions = getattr(self.aw, "eventslideractions", ())
+        action_configured = (
+            heater_slider is not None
+            and heater_slider < len(actions)
+            and int(actions[heater_slider]) != 0
+        )
+        slider_values = getattr(self.aw, "eventslidervalues", ())
+        current_power: float | None = None
+        if heater_slider is not None and heater_slider < len(slider_values):
+            value = slider_values[heater_slider]
+            if value is not None and math.isfinite(float(value)):
+                current_power = float(value)
+
+        slider_mins = getattr(self.aw, "eventslidermin", ())
+        slider_maxs = getattr(self.aw, "eventslidermax", ())
+        slider_min = (
+            float(slider_mins[heater_slider])
+            if heater_slider is not None and heater_slider < len(slider_mins)
+            else 0.0
+        )
+        slider_max = (
+            float(slider_maxs[heater_slider])
+            if heater_slider is not None and heater_slider < len(slider_maxs)
+            else 100.0
+        )
+        power_min = max(slider_min, float(self.pid.dutyMin))
+        power_max = min(slider_max, float(self.pid.dutyMax))
+
+        values = tuple(self._readiness_history)
+        temperatures = [point[1] for point in values]
+        errors = [abs(point[2]) for point in values]
+        rors = [abs(point[3]) for point in values]
+        sensor_valid = bool(
+            values
+            and all(math.isfinite(value) for value in temperatures)
+        )
+        preheat_pid = getattr(self.aw, "tilauPreheatingPid", None)
+        try:
+            self._capture_config()
+            rollback_available = True
+        except (AttributeError, TypeError, ValueError):
+            rollback_available = False
+
+        return evaluate_calibration_readiness(CalibrationReadinessInputs(
+            monitoring_active=bool(getattr(qmc, "flagon", False)),
+            machine_identity_known=identity is not None,
+            roast_started=bool(getattr(qmc, "flagstart", False)),
+            software_pid_selected=self.pid.externalPIDControl() == 0,
+            gain_scheduling_active=bool(self.pid.pidGainScheduling),
+            artisan_pid_active=bool(self.pid.pidActive),
+            sensor_valid=sensor_valid,
+            stable_sample_count=len(values),
+            max_abs_error_c=max(errors, default=math.inf),
+            temperature_span_c=(
+                max(temperatures) - min(temperatures)
+                if temperatures else math.inf
+            ),
+            max_abs_ror_c_per_min=max(rors, default=math.inf),
+            heater_slider=heater_slider,
+            heater_action_configured=bool(action_configured),
+            actuator_direction_normal=not bool(self.pid.invertControl),
+            current_power_pct=current_power,
+            power_min_pct=power_min,
+            power_max_pct=power_max,
+            required_power_room_pct=13.0,
+            simulator_active=getattr(self.aw, "simulator", None) is not None,
+            preheat_pid_active=bool(
+                preheat_pid is not None and getattr(preheat_pid, "active", False)
+            ),
+            rollback_snapshot_available=rollback_available,
+            machine_empty_confirmed=machine_empty,
+            airflow_safe_confirmed=airflow_safe,
+            supervision_confirmed=supervised,
+        ))
+
+    def _calibration_machine_identity(
+        self,
+    ) -> CalibrationMachineIdentity | None:
+        """Resolve the selected roaster and exact actuator path, or fail closed."""
+        display_name = str(getattr(self.aw, "tilau_roaster", "") or "")
+        slider_target = int(getattr(self.pid, "pidPositiveTarget", 0))
+        heater_slider = slider_target - 1
+        try:
+            roaster = RoasterManager().get_by_display_name(display_name)
+            if roaster is None:
+                return None
+            actions = self.aw.eventslideractions
+            commands = self.aw.eventslidercommands
+            minimums = self.aw.eventslidermin
+            maximums = self.aw.eventslidermax
+            factors = self.aw.eventsliderfactors
+            offsets = self.aw.eventslideroffsets
+            return build_machine_identity(
+                roaster_id=roaster.roaster_id,
+                display_name=display_name,
+                temperature_unit=str(self.aw.qmc.mode),
+                pid_source=int(self.pid.pidSource),
+                heater_slider=heater_slider,
+                action_id=int(actions[heater_slider]),
+                action_command=str(commands[heater_slider]),
+                slider_min=int(minimums[heater_slider]),
+                slider_max=int(maximums[heater_slider]),
+                slider_factor=float(factors[heater_slider]),
+                slider_offset=float(offsets[heater_slider]),
+                inverted=bool(self.pid.invertControl),
+            )
+        except (AttributeError, IndexError, TypeError, ValueError):
+            return None
+
+    def _zero_output_is_qualified_for_current_machine(self) -> bool:
+        identity = self._calibration_machine_identity()
+        return bool(
+            self._zero_output_qualified
+            and identity is not None
+            and self._qualified_machine_fingerprint == identity.fingerprint
+        )
+
+    @classmethod
+    def _live_calibration_profile_authorized(
+        cls, identity: CalibrationMachineIdentity | None
+    ) -> bool:
+        return bool(
+            identity is not None
+            and (identity.roaster_id, identity.actuator_signature)
+            in cls._LIVE_CALIBRATION_ACTUATORS
+        )
+
+    @classmethod
+    def _supervised_pilot_profile_authorized(
+        cls, identity: CalibrationMachineIdentity | None
+    ) -> bool:
+        return bool(
+            identity is not None
+            and (identity.roaster_id, identity.actuator_signature)
+            in cls._SUPERVISED_PILOT_ACTUATORS
+        )
+
+    @staticmethod
+    def _export_hardware_pilot_manifest(
+        identity: CalibrationMachineIdentity,
+    ) -> Path:
+        root = QStandardPaths.writableLocation(
+            QStandardPaths.StandardLocation.AppDataLocation
+        )
+        if not root:
+            raise OSError("application data directory is unavailable")
+        return write_hardware_pilot_manifest(
+            Path(root) / "tilauscope" / "pid-calibration", identity
+        )
+
+    @staticmethod
+    def _record_zero_output_evidence(
+        identity: CalibrationMachineIdentity,
+    ) -> bool:
+        try:
+            root = QStandardPaths.writableLocation(
+                QStandardPaths.StandardLocation.AppDataLocation
+            )
+            if not root:
+                return False
+            write_zero_qualification_evidence(
+                Path(root) / "tilauscope" / "pid-calibration", identity
+            )
+            return True
+        except OSError:
+            _log.exception("PID zero-output evidence could not be persisted")
+            return False
+
+    def _build_live_calibration_runner(
+        self,
+        *,
+        readiness: CalibrationReadinessReport,
+        identity: CalibrationMachineIdentity,
+        review_only: bool = False,
+    ) -> PIDCalibrationRunner:
+        """Build the real adapter, without starting it or exposing it in the UI."""
+        current_identity = self._calibration_machine_identity()
+        if (
+            not readiness.ready
+            or current_identity is None
+            or current_identity.fingerprint != identity.fingerprint
+            or not self._zero_output_is_qualified_for_current_machine()
+        ):
+            raise RuntimeError("live calibration safety gate is not satisfied")
+
+        slider = identity.heater_slider
+        values = self.aw.eventslidervalues
+        minimums = self.aw.eventslidermin
+        maximums = self.aw.eventslidermax
+        baseline_power = float(values[slider])
+        power_min = max(float(minimums[slider]), float(self.pid.dutyMin))
+        power_max = min(float(maximums[slider]), float(self.pid.dutyMax))
+        engine = self._read_engine()
+        target_c = temperature_to_c(float(engine["target"]), identity.temperature_unit)
+        baseline_config = self._capture_config()
+        protocol = CalibrationProtocol(
+            CalibrationLimits(
+                target_c=target_c,
+                baseline_power_pct=baseline_power,
+                power_min_pct=power_min,
+                power_max_pct=power_max,
+            ),
+            current_kp=float(self.pid.pidKp),
+            current_ki=float(self.pid.pidKi),
+            current_kd=float(self.pid.pidKd),
+        )
+
+        def read_temperature() -> float | None:
+            return self._read_engine()["pv"]
+
+        def read_source_token() -> object | None:
+            qmc = self.aw.qmc
+            series = qmc.timex if qmc.flagstart else qmc.on_timex
+            return series[-1] if series else None
+
+        observer = LiveCalibrationSampleObserver(
+            read_temperature=read_temperature,
+            read_source_token=read_source_token,
+            temperature_unit=identity.temperature_unit,
+            stale_after_sec=protocol.limits.stale_after_sec,
+        )
+
+        def apply_candidate(candidate: PIDCandidate) -> None:
+            candidate_config = dict(baseline_config)
+            candidate_config.update({
+                "pidKp": candidate.kp,
+                "pidKi": candidate.ki,
+                "pidKd": candidate.kd,
+            })
+            self._apply_config(candidate_config)
+
+        def persist_journal(coordinator: LiveCalibrationCoordinator) -> None:
+            if coordinator.phase == "complete":
+                outcome = "complete"
+            elif coordinator.phase == "refused":
+                outcome = "refused"
+            elif coordinator.phase == "safe_stop":
+                outcome = "safe_stop"
+            else:
+                raise ValueError("cannot persist a non-terminal calibration")
+            root = QStandardPaths.writableLocation(
+                QStandardPaths.StandardLocation.AppDataLocation
+            )
+            if not root:
+                raise OSError("application data directory is unavailable")
+            timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%fZ")
+            journal_path = (
+                Path(root)
+                / "tilauscope"
+                / "pid-calibration"
+                / f"run-{timestamp}-{identity.fingerprint[:12]}.json"
+            )
+            write_calibration_journal(
+                journal_path,
+                identity=identity,
+                events=coordinator.audit_events,
+                outcome=outcome,
+                reason=coordinator.reason,
+            )
+            self._last_calibration_journal_path = journal_path
+
+        if self._calibration_runner is not None:
+            self._calibration_runner.close()
+        runner = PIDCalibrationRunner(
+            LiveCalibrationCoordinator(
+                protocol,
+                heater_slider=slider,
+                zero_output_qualified=True,
+                request_power=self.aw.tilaupidSliderCommandSignal.emit,
+                apply_candidate=apply_candidate,
+                restore_config=lambda: self._apply_config(baseline_config),
+            ),
+            readiness_provider=lambda: self._live_calibration_readiness(
+                machine_empty=True,
+                airflow_safe=True,
+                supervised=True,
+            ),
+            sample_provider=observer.sample,
+            runtime_stop_provider=lambda manual, communication: (
+                self._runtime_calibration_stop_reason(
+                    manual_override=manual,
+                    communication_ok=communication,
+                    expected_machine_fingerprint=identity.fingerprint,
+                )
+            ),
+            applied_signal=self.aw.tilaupidSliderAppliedSignal,
+            manual_signal=self.aw.tilauManualSliderMovedSignal,
+            persist_journal=persist_journal,
+            review_only=review_only,
+            parent=self,
+        )
+        self._calibration_runner = runner
+        return runner
+
+    def _runtime_calibration_stop_reason(
+        self,
+        *,
+        manual_override: bool,
+        communication_ok: bool,
+        expected_machine_fingerprint: str | None = None,
+    ) -> str | None:
+        """Map current ApplicationWindow state to the coordinator interlock."""
+        qmc = self.aw.qmc
+        preheat_pid = getattr(self.aw, "tilauPreheatingPid", None)
+        current_identity = self._calibration_machine_identity()
+        identity_unchanged = bool(
+            expected_machine_fingerprint is None
+            or (
+                current_identity is not None
+                and current_identity.fingerprint == expected_machine_fingerprint
+            )
+        )
+        return runtime_interlock_reason(CalibrationRuntimeInterlocks(
+            monitoring_active=bool(getattr(qmc, "flagon", False)),
+            roast_started=bool(getattr(qmc, "flagstart", False)),
+            software_pid_selected=self.pid.externalPIDControl() == 0,
+            machine_identity_unchanged=identity_unchanged,
+            artisan_pid_active=bool(self.pid.pidActive),
+            simulator_active=getattr(self.aw, "simulator", None) is not None,
+            preheat_pid_active=bool(
+                preheat_pid is not None and getattr(preheat_pid, "active", False)
+            ),
+            manual_override=manual_override,
+            communication_ok=communication_ok,
+        ))
+
+    def show_calibration_readiness(self) -> None:
+        CalibrationReadinessDialog(self).exec()
+
+    def _capture_config(self) -> dict[str, float | int | bool]:
+        return {name: getattr(self.pid, name) for name in self._CONFIG_FIELDS}
+
+    def _apply_config(self, config: dict[str, float | int | bool]) -> None:
+        for name in self._CONFIG_FIELDS:
+            if name in config:
+                setattr(self.pid, name, config[name])
+        if self.pid.externalPIDControl() == 0:
+            self.pid.confSoftwarePID(reset=False)
+
+    def _apply_behaviour(
+        self, behaviour: Behaviour, engine_direction: int, visual_delta: int
+    ) -> None:
+        if not self.is_monitoring or self._cooling_down:
+            return
+        if not self.pid.pidActive or self.pid.externalPIDControl() != 0:
+            self.lbl_change.setText(self._tr(
+                "Behaviour controls require Artisan's active software PID."
+            ))
+            return
+        old_offset = self._offsets[behaviour]
+        new_offset = max(self._OFFSET_MIN, min(self._OFFSET_MAX, old_offset + visual_delta))
+        if new_offset == old_offset:
+            return
+
+        current = self._capture_config()
+        changed = adjust_pid_behaviour(
+            current,
+            behaviour,
+            engine_direction,
+            all_zones=(self.scope_combo.currentIndex() == 1),
+            schedule_value=self._latest_schedule_value,
+            mode=self.aw.qmc.mode,
+        )
+        if changed == current:
+            self.lbl_change.setText(self._tr(
+                "This behaviour is already at its safe adjustment limit."
+            ))
+            return
+        self._undo_stack.append((current, dict(self._offsets)))
+        self._apply_config(changed)
+        self._offsets[behaviour] = new_offset
+        self._begin_settle_wait(behaviour, engine_direction)
+        self._update_behaviour_controls()
+
+    def _begin_settle_wait(self, behaviour: Behaviour, direction: int) -> None:
+        descriptions = {
+            ("reaction", -1): self._tr("Reaction made gentler."),
+            ("reaction", 1): self._tr("Reaction made stronger."),
+            ("recovery", -1): self._tr("Lasting-delay catch-up reduced."),
+            ("recovery", 1): self._tr("Lasting-delay catch-up increased."),
+            ("braking", -1): self._tr("Inertia braking reduced."),
+            ("braking", 1): self._tr("Inertia braking increased."),
+            ("stability", 1): self._tr("Command made more stable."),
+            ("stability", -1): self._tr("Command made more responsive."),
+        }
+        self.lbl_change.setText(
+            descriptions[(behaviour, direction)] + " " +
+            self._tr("Waiting for the machine to respond before another change.")
+        )
+        self._cooling_down = True
+        self._settle_timer.start(self._SETTLE_WAIT_MS)
+
+    def _settle_wait_finished(self) -> None:
+        self._cooling_down = False
+        self.lbl_change.setText(self._tr(
+            "The response can now be assessed. Change one behaviour at a time."
+        ))
+        self._update_behaviour_controls()
+
+    def _update_behaviour_controls(self) -> None:
+        allowed = (
+            self.is_monitoring
+            and self.pid.pidActive
+            and self.pid.externalPIDControl() == 0
+            and not self._cooling_down
+        )
+        for behaviour, (left, indicator, right) in self._behaviour_widgets.items():
+            index = self._offsets[behaviour] - self._OFFSET_MIN
+            rendered = ["○", "○", "○", "○", "○"]
+            rendered[index] = "●"
+            indicator.setText("  ".join(rendered))
+            left.setEnabled(allowed and self._offsets[behaviour] > self._OFFSET_MIN)
+            right.setEnabled(allowed and self._offsets[behaviour] < self._OFFSET_MAX)
+        scheduling = bool(self.pid.pidGainScheduling)
+        self.scope_combo.setEnabled(allowed and scheduling)
+        if not scheduling:
+            self.scope_combo.setCurrentIndex(1)
+        self.btn_undo.setEnabled(bool(self._undo_stack))
+        self.btn_restore.setEnabled(self._baseline_config is not None)
+        self.btn_keep.setEnabled(self._baseline_config is not None)
+
+    def _read_engine(self) -> _EngineSnapshot:
+        engine = self.aw.qmc.pid
+        engine.pidSemaphore.acquire(1)
+        try:
+            pv = None if engine.lastInput is None else float(engine.lastInput)
+            target = float(engine.target)
+            if pv is None:
+                kp = ki = kd = None
+            else:
+                kp = float(engine.getKp(pv))
+                ki = float(engine.getKi(pv))
+                kd = float(engine.getKd(pv))
+            output_min = max(float(engine.outMin), float(self.pid.dutyMin))
+            output_max = min(float(engine.outMax), float(self.pid.dutyMax))
+            output = None if engine.lastOutput is None else float(engine.lastOutput)
+            if output is not None:
+                output = min(output_max, max(output_min, float(output)))
+            return {
+                "active": bool(engine.active and self.pid.pidActive),
+                "pv": pv,
+                "target": target,
+                "p": float(engine.Pterm),
+                "i": float(engine.Iterm),
+                "d": float(engine.Dterm),
+                "output": output,
+                "output_min": output_min,
+                "output_max": output_max,
+                "kp": kp,
+                "ki": ki,
+                "kd": kd,
+            }
+        finally:
+            engine.pidSemaphore.release(1)
+
+    def _ror(self, pv: float, now: float) -> float:
+        self._pv_history.append((now, pv))
+        if len(self._pv_history) < 2:
+            return 0.0
+        first_time, first_pv = self._pv_history[0]
+        dt = now - first_time
+        if dt <= 0.1:
+            return 0.0
+        native_ror = (pv - first_pv) / dt * 60.0
+        return native_ror / 1.8 if self.aw.qmc.mode == "F" else native_ror
+
+    def update_logic(self) -> None:
+        if not self.isVisible():
             self.stop_monitoring()
             return
+        if self.pid.externalPIDControl() != 0:
+            self._render_external_pid()
+            return
         try:
-            if not hasattr(self.aw.qmc, 'temp2') or len(self.aw.qmc.temp2) < 2:
-                return
-            if not self.pid.pidActive:
-                self.stop_monitoring()
-                return
+            data = self._read_engine()
+            pv_raw = data["pv"]
+            valid = pv_raw is not None and pv_raw != -1.0
+            pv = pv_raw if pv_raw is not None and pv_raw != -1.0 else 0.0
+            target = data["target"] if valid else 0.0
+            scale = 1.8 if self.aw.qmc.mode == "F" else 1.0
+            error_c = (target - pv) / scale if valid else 0.0
+            now = time.monotonic()
+            ror_c = self._ror(pv, now) if valid else 0.0
+            if valid:
+                self._error_history.append(error_c)
+                self._readiness_history.append((
+                    now,
+                    temperature_to_c(pv, self.aw.qmc.mode),
+                    error_c,
+                    ror_c,
+                ))
 
-            bt  = self.aw.qmc.temp2[-1]
+            observation = PIDObservation(
+                active=bool(data["active"]),
+                valid=valid,
+                error_c=error_c,
+                ror_c_per_min=ror_c,
+                output_pct=(float(data["output"]) if data["output"] is not None else None),
+                output_min_pct=float(data["output_min"] or 0.0),
+                output_max_pct=float(data["output_max"] or 0.0),
+                p_term=float(data["p"] or 0.0),
+                i_term=float(data["i"] or 0.0),
+                d_term=float(data["d"] or 0.0),
+                recent_errors_c=tuple(self._error_history),
+            )
+            narrative = self._stabilise_narrative(narrate_pid(observation))
+            self._latest_schedule_value = target if self.pid.pidGainSchedulingSV else pv
+            self._render_narrative(narrative, observation, data)
+            self._render_engineering(data, observation)
+            self._update_behaviour_controls()
+        except Exception:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+            _log.exception("PID semantic observation failed")
+            self._render_narrative(PIDNarrative("unavailable", "high"), None, None)
 
-            # ── Point 3 + 11 : RoR réel lissé ──────────────────────────────────
-            raw_ror     = self._compute_ror(bt)
-            current_ror = self._smooth_ror(raw_ror)
+    def _stabilise_narrative(self, narrative: PIDNarrative) -> PIDNarrative:
+        immediate = {"stopped", "unavailable", "power_limited", "coasting"}
+        if narrative.state in immediate or narrative.state == self._current_narrative.state:
+            self._current_narrative = narrative
+            self._candidate_state = None
+            self._candidate_count = 0
+            return narrative
+        if self._candidate_state == narrative.state:
+            self._candidate_count += 1
+        else:
+            self._candidate_state = narrative.state
+            self._candidate_count = 1
+        if self._candidate_count >= 2:
+            self._current_narrative = narrative
+            self._candidate_state = None
+            self._candidate_count = 0
+        return self._current_narrative
 
-            # ── SV selon mode scheduling ─────────────────────────────────────────
-            sv = self.pid.svValue
-            if self.pid.pidGainScheduling:
-                if self.pid.pidGainSchedulingQuadratic:
-                    if bt <= self.pid.pidSchedule0:
-                        sv = self.pid.pidSchedule0
-                    elif bt <= self.pid.pidSchedule1:
-                        sv = self.pid.pidSchedule1
-                    else:
-                        sv = self.pid.pidSchedule2
-                else:
-                    sv = self.pid.pidSchedule0 if bt <= self.pid.pidSchedule0 else self.pid.pidSchedule1
+    def _render_narrative(
+        self,
+        narrative: PIDNarrative,
+        observation: PIDObservation | None,
+        data: _EngineSnapshot | None,
+    ) -> None:
+        messages = {
+            "stopped": (self._tr("Artisan's PID is stopped."),
+                self._tr("Start the software PID to explain and adjust its behaviour."), ""),
+            "unavailable": (self._tr("The temperature signal is not available."),
+                self._tr("TilauScope will not interpret or adjust an invalid measurement."),
+                self._tr("Check the selected input and sensor connection.")),
+            "power_limited": (self._tr("Artisan is already requesting all allowed heat."),
+                self._tr("The temperature remains below target, but the command cannot go higher."),
+                self._tr("Changing PID behaviour cannot add power. Check the limit, target or machine capacity.")),
+            "coasting": (self._tr("Artisan has cut the heat and is letting inertia act."),
+                self._tr("The temperature is still rising while the heat request is at its minimum."),
+                self._tr("Wait for the machine response before changing the behaviour.")),
+            "oscillating": (self._tr("The corrections are too fast for this machine."),
+                self._tr("The temperature has crossed the target repeatedly."),
+                self._tr("Try React less or Catch up less, one notch at a time.")),
+            "braking": (self._tr("Artisan is starting to brake before the target."),
+                self._tr("The temperature is still below target, but it is already rising quickly."),
+                self._tr("Use Brake less/more only if the final approach is consistently wrong.")),
+            "catching_up": (self._tr("Artisan is catching up a lasting delay."),
+                self._tr("The temperature has remained below target long enough to build a progressive correction."),
+                self._tr("Reduce catch-up if this later causes overshoot.")),
+            "accelerating": (self._tr("Artisan is accelerating toward the target."),
+                self._tr("The current temperature gap is asking for more heat."),
+                self._tr("React more/less changes the strength of this immediate response.")),
+            "above_target": (self._tr("The temperature is above the target."),
+                self._tr("Artisan is reducing its heat request to return toward the target."),
+                self._tr("If this repeats, try Brake more or Catch up less.")),
+            "holding": (self._tr("The target is being held."),
+                self._tr("No large correction is currently required."),
+                self._tr("Keep this setting if the command also remains calm.")),
+        }
+        headline, reason, suggestion = messages[narrative.state]
+        self.lbl_headline.setText(headline)
+        self.lbl_reason.setText(reason)
+        self.lbl_suggestion.setText(suggestion)
 
-            error = sv - bt
+        if observation is None or not observation.valid or data is None:
+            self.lbl_pv.setText("—")
+            self.lbl_sp.setText("—")
+            self.lbl_output.setText("—")
+            return
+        suffix = f" °{self.aw.qmc.mode}"
+        pv = data["pv"]
+        self.lbl_pv.setText("—" if pv is None else f"{pv:.1f}{suffix}")
+        self.lbl_sp.setText(f"{data['target']:.1f}{suffix}")
+        output = data["output"]
+        self.lbl_output.setText("—" if output is None else f"{output:.0f} %")
 
-            # ── UI temperatures ──────────────────────────────────────────────────
-            self.lbl_bt.setText(f"{bt:.2f}")
-            self.lbl_sv.setText(f"{sv:.2f}")
-            self.lbl_error.setText(f"{error:.2f}")
+    def _render_engineering(
+        self, data: _EngineSnapshot, observation: PIDObservation
+    ) -> None:
+        kp, ki, kd = data["kp"], data["ki"], data["kd"]
+        if kp is None or ki is None or kd is None:
+            gain_text = "—/—/—"
+        else:
+            gain_text = f"{kp:.4g}/{ki:.4g}/{kd:.4g}"
+        self.lbl_engineering.setText(
+            f"source={self.pid.pidSource}  gains={gain_text}\n"
+            f"error={observation.error_c:+.2f} °C  RoR={observation.ror_c_per_min:+.2f} °C/min\n"
+            f"terms={observation.p_term:+.2f} / {observation.i_term:+.2f} / {observation.d_term:+.2f}\n"
+            f"output={observation.output_pct}  limits=[{observation.output_min_pct:.0f}, "
+            f"{observation.output_max_pct:.0f}]  schedule={'on' if self.pid.pidGainScheduling else 'off'}"
+            f"{self._calibration_engineering}"
+        )
 
-            # ── Slots actifs ─────────────────────────────────────────────────────
-            attr_p, attr_i, attr_d = self.get_active_pid_slots(bt)
-            kp_val = getattr(self.pid, attr_p)
-            ki_val = getattr(self.pid, attr_i)
-            kd_val = getattr(self.pid, attr_d)
+    def _render_external_pid(self) -> None:
+        self.lbl_headline.setText(self._tr("An external hardware PID is selected."))
+        self.lbl_reason.setText(self._tr(
+            "This assistant currently explains and adjusts Artisan's internal software PID only."
+        ))
+        self.lbl_suggestion.setText(self._tr(
+            "Use the hardware controller's own certified tuning procedure."
+        ))
+        self.lbl_pv.setText("—")
+        self.lbl_sp.setText("—")
+        self.lbl_output.setText("—")
+        self._update_behaviour_controls()
 
-            mode  = "sv" if not self.pid.pidGainScheduling else "sch"
-            mode1 = ("x2" if self.pid.pidGainSchedulingQuadratic else "x") if self.pid.pidGainScheduling else ""
-            _log.info(
-                f"AUTOTUNE > mode:{mode}{mode1} BT:{bt:.1f} SV:{sv:.1f} "
-                f"Err:{error:.1f} RoR:{current_ror:.1f} | PID:{kp_val:.2f}/{ki_val:.3f}/{kd_val:.1f}"
+    def start_monitoring(self) -> None:
+        self.is_monitoring = True
+        self._pv_history.clear()
+        self._readiness_history.clear()
+        self._error_history.clear()
+        self._candidate_state = None
+        self._candidate_count = 0
+        self._baseline_config = self._capture_config()
+        self._undo_stack.clear()
+        self._offsets = dict.fromkeys(self._offsets, 0)
+        self.lbl_change.setText(self._tr(
+            "Explanation started. No setting changes until you press a behaviour button."
+        ))
+        self.timer.start()
+        self.btn_start.setEnabled(False)
+        self.btn_stop.setEnabled(True)
+        self.update_logic()
+        self._update_behaviour_controls()
+
+    def stop_monitoring(self) -> None:
+        self.is_monitoring = False
+        self.timer.stop()
+        self._settle_timer.stop()
+        self._cooling_down = False
+        self.btn_start.setEnabled(True)
+        self.btn_stop.setEnabled(False)
+        self.lbl_change.setText(self._tr("Explanation stopped."))
+        self._update_behaviour_controls()
+
+    def undo_last_change(self) -> None:
+        if not self._undo_stack:
+            return
+        config, offsets = self._undo_stack.pop()
+        self._apply_config(config)
+        self._offsets = offsets
+        self._settle_timer.stop()
+        self._cooling_down = False
+        self.lbl_change.setText(self._tr("Last behaviour change undone."))
+        self._update_behaviour_controls()
+
+    def restore_session_start(self) -> None:
+        if self._baseline_config is None:
+            return
+        self._apply_config(self._baseline_config)
+        self._undo_stack.clear()
+        self._offsets = dict.fromkeys(self._offsets, 0)
+        self._settle_timer.stop()
+        self._cooling_down = False
+        self.lbl_change.setText(self._tr("The session-start setting has been restored."))
+        self._update_behaviour_controls()
+
+    def keep_as_reference(self) -> None:
+        self._baseline_config = self._capture_config()
+        self._undo_stack.clear()
+        self._offsets = dict.fromkeys(self._offsets, 0)
+        self.lbl_change.setText(self._tr("The current behaviour is now the session reference."))
+        self._update_behaviour_controls()
+
+    def show_help(self) -> None:
+        HelpDialog(self).exec()
+
+    def fade_out_and_close(self) -> None:
+        animation = QPropertyAnimation(self, b"windowOpacity")
+        self.anim = animation
+        animation.setDuration(250)
+        animation.setStartValue(1.0)
+        animation.setEndValue(0.0)
+        animation.finished.connect(self.close)
+        animation.start()
+
+    def mousePressEvent(self, a0: QMouseEvent | None) -> None:
+        if a0 is None:
+            return
+        self.oldPos = a0.globalPosition().toPoint()
+
+    def mouseMoveEvent(self, a0: QMouseEvent | None) -> None:
+        if a0 is None:
+            return
+        delta = a0.globalPosition().toPoint() - self.oldPos
+        self.move(self.x() + delta.x(), self.y() + delta.y())
+        self.oldPos = a0.globalPosition().toPoint()
+
+    def closeEvent(self, a0: QCloseEvent | None) -> None:
+        self.stop_monitoring()
+        if self._calibration_runner is not None:
+            self._calibration_runner.close()
+            self._calibration_runner = None
+        self.aw.PIDAutotuneMenuAction.setChecked(False)
+        if a0 is not None:
+            a0.accept()
+
+
+# This tightly coupled child dialog deliberately calls its owning assistant's
+# non-public read-only helpers; they are not part of the application API.
+# pylint: disable=protected-access
+class CalibrationReadinessDialog(QDialog):
+    """Prerequisite review plus the zero-output-only qualification bench."""
+
+    def __init__(self, assistant: PIDAutotune) -> None:
+        super().__init__(assistant)
+        self.assistant = assistant
+        self.oldPos = QPoint()
+        self.qualification = ZeroOutputQualification(timeout_sec=60.0)
+        self._qualification_identity: CalibrationMachineIdentity | None = None
+        self._runner: PIDCalibrationRunner | None = None
+        self._report: CalibrationReadinessReport | None = None
+        self._applied_signal = getattr(
+            assistant.aw, "tilaupidSliderAppliedSignal", None
+        )
+        if self._applied_signal is not None:
+            self._applied_signal.connect(self._zero_applied)
+        self._timeout_timer = QTimer(self)
+        self._timeout_timer.setInterval(500)
+        self._timeout_timer.timeout.connect(self._poll_qualification)
+        self._guide_timer = QTimer(self)
+        self._guide_timer.setInterval(1000)
+        self._guide_timer.timeout.connect(self.refresh)
+        self._details_visible = False
+        apply_tilau_theme(self, ground=False)
+        self.setWindowFlags(
+            Qt.WindowType.Dialog
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setStyleSheet(
+            "QDialog { background: transparent; }"
+            f"QFrame#CalibrationPreparationCard {{ background-color:{THEME['BG']};"
+            f" border:1px solid {THEME['BORDER']}; border-radius:20px; }}"
+            f"QLabel, QCheckBox {{ color:{THEME['TEXT']}; }}"
+        )
+        self.setWindowTitle(assistant._tr("PREPARE THE 10-MINUTE TEST"))
+        self.setModal(True)
+        screen = assistant.screen() or QApplication.primaryScreen()
+        if screen is None:
+            dialog_width, dialog_height = 680, 520
+        else:
+            available = screen.availableGeometry()
+            dialog_width = min(680, max(440, int(available.width() * 0.86)))
+            dialog_height = min(520, max(360, int(available.height() * 0.68)))
+        self.resize(dialog_width, dialog_height)
+        # The centre scrolls; never let Qt's content size push the buttons off-screen.
+        self.setMaximumHeight(dialog_height)
+        window_layout = QVBoxLayout(self)
+        window_layout.setContentsMargins(10, 10, 10, 10)
+        card = QFrame()
+        card.setObjectName("CalibrationPreparationCard")
+        window_layout.addWidget(card)
+        outer_layout = QVBoxLayout(card)
+        outer_layout.setContentsMargins(18, 16, 18, 16)
+        outer_layout.setSpacing(10)
+        scroll = QScrollArea()
+        scroll.setObjectName("CalibrationPreparationScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        body = QWidget()
+        body.setStyleSheet("background: transparent;")
+        layout = QVBoxLayout(body)
+        scroll.setWidget(body)
+        outer_layout.addWidget(scroll, 1)
+        title = QLabel(assistant._tr("BEFORE ANY HEAT COMMAND"))
+        title.setStyleSheet(
+            f"color:{THEME['ACCENT']}; font-size:17px; font-weight:800;"
+        )
+        explanation = QLabel(assistant._tr(
+            "TilauScope shows one action at a time. Nothing advances until the "
+            "current step is safely completed."
+        ))
+        explanation.setWordWrap(True)
+        self.guide_progress = QLabel()
+        self.guide_progress.setStyleSheet(
+            f"color:{THEME['SUBTEXT']}; font-size:11px; font-weight:700;"
+        )
+        self.guide_title = QLabel()
+        self.guide_title.setWordWrap(True)
+        self.guide_title.setStyleSheet(
+            f"color:{THEME['ACCENT']}; font-size:20px; font-weight:800;"
+        )
+        self.machine_empty = QCheckBox(assistant._tr("The machine is empty"))
+        self.airflow_safe = QCheckBox(assistant._tr(
+            "The drum and airflow are in their safe test position"
+        ))
+        self.supervised = QCheckBox(assistant._tr(
+            "I will remain beside the machine for the whole test"
+        ))
+        self.checks = QTextBrowser()
+        self.checks.setOpenExternalLinks(False)
+        self.checks.setStyleSheet(
+            f"QTextBrowser {{ background-color:{THEME['SURFACE']};"
+            f" color:{THEME['TEXT']}; border:1px solid {THEME['BORDER']};"
+            " border-radius:8px; padding:10px; }}"
+        )
+        self.status = QLabel()
+        self.status.setWordWrap(True)
+        self.status.setStyleSheet(
+            f"color:{THEME['WARNING']}; font-weight:700;"
+        )
+        self.next_steps = QLabel()
+        self.next_steps.setObjectName("CalibrationNextSteps")
+        self.next_steps.setWordWrap(True)
+        self.next_steps.setStyleSheet(
+            f"color:{THEME['TEXT']}; background-color:{THEME['SURFACE']};"
+            f" border:1px solid {THEME['BORDER']}; border-radius:8px;"
+            " padding:16px; font-size:15px;"
+        )
+        self.zero_warning = QLabel(assistant._tr(
+            "The shutdown qualification can only command 0% heat. It never "
+            "restores the previous power; the heater remains stopped."
+        ))
+        self.zero_warning.setWordWrap(True)
+        self.zero_warning.setStyleSheet(
+            f"color:{THEME['WARNING']}; font-weight:700;"
+        )
+        self.zero_button = assistant._secondary_button(
+            assistant._tr("TEST THE PHYSICAL 0% SHUTDOWN")
+        )
+        self.zero_button.clicked.connect(self._request_zero)
+        self.physical_off = QCheckBox(assistant._tr(
+            "I can see that the physical heater is off"
+        ))
+        self.physical_off.setEnabled(False)
+        self.confirm_zero = assistant._primary_button(
+            assistant._tr("CONFIRM PHYSICAL SHUTDOWN")
+        )
+        self.confirm_zero.setEnabled(False)
+        self.confirm_zero.clicked.connect(self._confirm_physical_shutdown)
+        live_buttons = QHBoxLayout()
+        self.start_live = assistant._primary_button(
+            assistant._tr("START THE SUPERVISED 10-MINUTE TEST")
+        )
+        self.start_live.setEnabled(False)
+        self.start_live.clicked.connect(self._start_live_test)
+        self.stop_live = assistant._secondary_button(
+            assistant._tr("STOP TEST AND CUT HEAT")
+        )
+        self.stop_live.setEnabled(False)
+        self.stop_live.clicked.connect(self._stop_live_test)
+        live_buttons.addWidget(self.start_live)
+        live_buttons.addWidget(self.stop_live)
+        buttons = QHBoxLayout()
+        self.details_button = assistant._secondary_button(
+            assistant._tr("SHOW TECHNICAL DETAILS")
+        )
+        self.export_pilot = assistant._secondary_button(
+            assistant._tr("EXPORT HARDWARE PILOT SHEET")
+        )
+        close = assistant._primary_button(assistant._tr("CLOSE"))
+        self.details_button.clicked.connect(self._toggle_details)
+        self.export_pilot.clicked.connect(self._export_pilot_sheet)
+        close.clicked.connect(self.accept)
+        buttons.addWidget(self.details_button)
+        buttons.addWidget(self.export_pilot)
+        buttons.addStretch()
+        buttons.addWidget(close)
+
+        layout.addWidget(title)
+        layout.addWidget(explanation)
+        layout.addWidget(self.guide_progress)
+        layout.addWidget(self.guide_title)
+        layout.addWidget(self.next_steps)
+        layout.addWidget(self.machine_empty)
+        layout.addWidget(self.airflow_safe)
+        layout.addWidget(self.supervised)
+        layout.addWidget(self.checks, 1)
+        layout.addWidget(self.status)
+        layout.addWidget(self.zero_warning)
+        layout.addWidget(self.zero_button)
+        layout.addWidget(self.physical_off)
+        layout.addWidget(self.confirm_zero)
+        layout.addLayout(live_buttons)
+        outer_layout.addLayout(buttons)
+        for checkbox in (
+            self.machine_empty,
+            self.airflow_safe,
+            self.supervised,
+        ):
+            checkbox.toggled.connect(self.refresh)
+        self.checks.hide()
+        self.export_pilot.hide()
+        if (
+            not self.assistant.is_monitoring
+            and not self.assistant._readiness_history
+        ):
+            # Read-only observation: this never starts either PID or sends heat.
+            self.assistant.start_monitoring()
+        self.refresh()
+        self._guide_timer.start()
+
+    def _toggle_details(self) -> None:
+        self._details_visible = not self._details_visible
+        self.checks.setVisible(self._details_visible)
+        self.export_pilot.setVisible(self._details_visible)
+        self.details_button.setText(self.assistant._tr(
+            "HIDE TECHNICAL DETAILS"
+            if self._details_visible else "SHOW TECHNICAL DETAILS"
+        ))
+
+    def _show_blocking_message(self, text: str) -> None:
+        """Keep an exceptional stop visible instead of returning to the wizard."""
+        self._guide_timer.stop()
+        self.guide_progress.setText(self.assistant._tr("ACTION REQUIRED"))
+        self.guide_title.setText(self.assistant._tr("The test remains locked"))
+        self.next_steps.setText(text)
+
+    def _displayed_test_point(self) -> tuple[float | None, float | None, str]:
+        """Return current BT and PID target in the unit shown by Artisan."""
+        try:
+            engine = self.assistant._read_engine()
+            pv = engine["pv"]
+            target = float(engine["target"])
+            if pv is None or not math.isfinite(float(pv)):
+                pv = None
+            if not math.isfinite(target):
+                target = None
+            return (
+                None if pv is None else float(pv),
+                target,
+                str(self.assistant.aw.qmc.mode),
+            )
+        except (AttributeError, TypeError, ValueError):
+            return None, None, str(getattr(self.assistant.aw.qmc, "mode", "C"))
+
+    def _current_heater_power(self) -> float | None:
+        slider = int(getattr(self.assistant.pid, "pidPositiveTarget", 0)) - 1
+        values = getattr(self.assistant.aw, "eventslidervalues", ())
+        try:
+            if not 0 <= slider < len(values):
+                return None
+            value = float(values[slider])
+            return value if math.isfinite(value) else None
+        except (IndexError, TypeError, ValueError):
+            return None
+
+    def _next_steps_text(
+        self, report: CalibrationReadinessReport
+    ) -> str:
+        """Return only the single action the operator should perform now."""
+        blocked = set(report.blocking_codes)
+        if "sensor_valid" in blocked:
+            return self.assistant._tr(
+                "TilauScope is waiting for a valid bean-temperature reading. "
+                "Check that the BT value is displayed and changing normally."
             )
 
-            # ── Point 12 : seuil adaptatif ───────────────────────────────────────
-            if self.preheating:
-                is_near_target = abs(error) <= 10.0 * self._delta_scale
-            else:
-                threshold      = self._near_target_threshold(bt)
-                # Point 4 : la stabilité est intégrée dans la condition
-                is_near_target = abs(error) <= threshold and self.is_stable()
-
-            ignore_braking  = bt < self._abs_native(90.0)
-            is_overspeeding = current_ror > 50.0 * self._delta_scale and not ignore_braking
-
-            # ── Ramping : pas encore à la consigne ──────────────────────────────
-            if not is_near_target:
-                p = QApplication.translate("tilauscope_pid", "preheating ") if self.preheating else ""
-                self.lbl_status.setText(
-                    QApplication.translate("tilauscope_pid", "Ramping") + f"... {p}RoR:{current_ror:.1f}"
+        if "power_headroom" in blocked:
+            slider_target = int(getattr(
+                self.assistant.pid, "pidPositiveTarget", 0
+            ))
+            heater_slider = slider_target - 1
+            minimums = getattr(self.assistant.aw, "eventslidermin", ())
+            maximums = getattr(self.assistant.aw, "eventslidermax", ())
+            current = self._current_heater_power()
+            slider_min = (
+                float(minimums[heater_slider])
+                if 0 <= heater_slider < len(minimums) else 0.0
+            )
+            slider_max = (
+                float(maximums[heater_slider])
+                if 0 <= heater_slider < len(maximums) else 100.0
+            )
+            safe_min = max(slider_min, float(self.assistant.pid.dutyMin)) + 13.0
+            safe_max = min(slider_max, float(self.assistant.pid.dutyMax)) - 13.0
+            if safe_min <= safe_max:
+                pv, target, unit = self._displayed_test_point()
+                current_text = (
+                    self.assistant._tr("unknown")
+                    if current is None or not math.isfinite(current)
+                    else f"{current:g}%"
                 )
-                self.lbl_kp.setText(f"{kp_val:.4f}")
-                self.lbl_ki.setText(f"{ki_val:.4f}")
-                self.lbl_kd.setText(f"{kd_val:.4f}")
+                pv_text = "—" if pv is None else f"{pv:g} °{unit}"
+                target_text = "—" if target is None else f"{target:g} °{unit}"
+                return self.assistant._tr(
+                    "TilauScope is observing only; you control the heater.\n\n"
+                    "Temperature to reach: {target}   •   Current BT: {temperature}\n"
+                    "Set the heater between {minimum:g}% and {maximum:g}% "
+                    "(currently {current})."
+                ).format(
+                    target=target_text,
+                    temperature=pv_text,
+                    minimum=safe_min,
+                    maximum=safe_max,
+                    current=current_text,
+                )
+            return self.assistant._tr(
+                "The configured heater range is too narrow for a safe test. "
+                "The automatic test remains locked."
+            )
+
+        if "sensor_stable" in blocked:
+            collected = min(len(self.assistant._readiness_history), 30)
+            pv, target, unit = self._displayed_test_point()
+            power = self._current_heater_power()
+            if pv is not None and target is not None:
+                tolerance = 0.7 * (1.8 if unit == "F" else 1.0)
+                direction = "hold"
+                if pv < target - tolerance:
+                    direction = "increase"
+                elif pv > target + tolerance:
+                    direction = "decrease"
+                power_text = "—" if power is None else f"{power:g}%"
+                if direction == "increase":
+                    return self.assistant._tr(
+                        "Increase the heater slightly.\n\n"
+                        "Current BT: {temperature:g} °{unit}   •   Target: "
+                        "{target:g} °{unit}   •   Heater: {power}"
+                    ).format(
+                        temperature=pv, target=target, unit=unit, power=power_text
+                    )
+                if direction == "decrease":
+                    return self.assistant._tr(
+                        "Decrease the heater slightly.\n\n"
+                        "Current BT: {temperature:g} °{unit}   •   Target: "
+                        "{target:g} °{unit}   •   Heater: {power}"
+                    ).format(
+                        temperature=pv, target=target, unit=unit, power=power_text
+                    )
+            return self.assistant._tr(
+                "Do not change anything. TilauScope is checking stability: "
+                "{collected}/30 seconds. It will advance automatically."
+            ).format(collected=collected)
+
+        human_codes = {
+            "machine_empty_confirmed",
+            "airflow_safe_confirmed",
+            "supervision_confirmed",
+        }
+        if "machine_empty_confirmed" in blocked:
+            return self.assistant._tr(
+                "Look inside the machine. If there is no coffee or other material, "
+                "confirm the first statement below."
+            )
+        if "airflow_safe_confirmed" in blocked:
+            return self.assistant._tr(
+                "Put the drum and airflow in the safe positions used for an empty "
+                "machine test, then confirm the statement below."
+            )
+        if "supervision_confirmed" in blocked:
+            return self.assistant._tr(
+                "Only continue if you can remain beside the machine and reach its "
+                "physical heat cut-off for the whole test."
+            )
+        if blocked - human_codes:
+            return self.assistant._tr(
+                "A machine setting still prevents the test. Open the technical "
+                "details below to see the single crossed setting."
+            )
+        return self.assistant._tr(
+            "Preparation is complete. The next button sends only 0% heat so you "
+            "can verify that the physical heater really stops."
+        )
+
+    def _guide_heading(
+        self, report: CalibrationReadinessReport
+    ) -> tuple[str, str]:
+        blocked = set(report.blocking_codes)
+        human_codes = {
+            "machine_empty_confirmed",
+            "airflow_safe_confirmed",
+            "supervision_confirmed",
+        }
+        if self.qualification.phase == "failed":
+            return self.assistant._tr("ACTION REQUIRED"), self.assistant._tr(
+                "Shutdown not confirmed"
+            )
+        if self.qualification.phase == "software_zero_confirmed":
+            return self.assistant._tr("STEP 4 OF 6"), self.assistant._tr(
+                "Check that the heater is really off"
+            )
+        if self.qualification.phase == "qualified" and not report.ready:
+            return self.assistant._tr("STEP 5 OF 6"), self.assistant._tr(
+                "Return to the stable holding point"
+            )
+        if self.qualification.phase == "qualified":
+            return self.assistant._tr("STEP 6 OF 6"), self.assistant._tr(
+                "The supervised test is ready"
+            )
+        if blocked & human_codes and blocked <= human_codes:
+            return self.assistant._tr("STEP 3 OF 6"), self.assistant._tr(
+                "Confirm one physical condition"
+            )
+        if "sensor_valid" in blocked:
+            return self.assistant._tr("STEP 1 OF 6"), self.assistant._tr(
+                "Read the temperature"
+            )
+        return self.assistant._tr("STEP 2 OF 6"), self.assistant._tr(
+            "Reach and hold the test temperature"
+        )
+
+    def refresh(self) -> None:
+        report = self.assistant._live_calibration_readiness(
+            machine_empty=self.machine_empty.isChecked(),
+            airflow_safe=self.airflow_safe.isChecked(),
+            supervised=self.supervised.isChecked(),
+        )
+        self._report = report
+        descriptions = {
+            "monitoring_active": self.assistant._tr("Monitoring is active"),
+            "machine_identity_known": self.assistant._tr(
+                "The selected machine and its heater control path are identified"
+            ),
+            "no_roast_running": self.assistant._tr("No roast is running"),
+            "software_pid_selected": self.assistant._tr(
+                "Artisan's internal software PID is selected"
+            ),
+            "gain_scheduling_disabled": self.assistant._tr(
+                "Gain scheduling is off for this single-temperature test"
+            ),
+            "artisan_pid_stopped": self.assistant._tr(
+                "Artisan's PID is stopped before takeover"
+            ),
+            "sensor_valid": self.assistant._tr("The temperature signal is valid"),
+            "sensor_stable": self.assistant._tr(
+                "Temperature has been stable for at least 30 seconds"
+            ),
+            "heater_slider_configured": self.assistant._tr(
+                "A heater slider is assigned to the PID"
+            ),
+            "heater_action_configured": self.assistant._tr(
+                "The heater slider has a hardware action"
+            ),
+            "normal_actuator_direction": self.assistant._tr(
+                "Increasing the command means increasing heat"
+            ),
+            "power_headroom": self.assistant._tr(
+                "There is enough heat range above and below the holding power"
+            ),
+            "no_simulator": self.assistant._tr("The Artisan simulator is stopped"),
+            "preheat_pid_stopped": self.assistant._tr(
+                "TilauPID preheat is no longer commanding the heater"
+            ),
+            "rollback_snapshot_available": self.assistant._tr(
+                "The complete PID configuration can be restored"
+            ),
+            "machine_empty_confirmed": self.assistant._tr(
+                "Machine empty — confirmed"
+            ),
+            "airflow_safe_confirmed": self.assistant._tr(
+                "Safe drum and airflow position — confirmed"
+            ),
+            "supervision_confirmed": self.assistant._tr(
+                "Continuous human supervision — confirmed"
+            ),
+        }
+        rows: list[str] = []
+        for check in report.checks:
+            colour = THEME["SUCCESS"] if check.passed else THEME["WARNING"]
+            mark = "✓" if check.passed else "✕"
+            rows.append(
+                f'<div style="color:{colour}; margin:3px">'
+                f"{mark}&nbsp;&nbsp;{descriptions[check.code]}</div>"
+            )
+        self.checks.setHtml("".join(rows))
+        progress, heading = self._guide_heading(report)
+        self.guide_progress.setText(progress)
+        self.guide_title.setText(heading)
+        if self.qualification.phase == "failed":
+            self.next_steps.setText(self.assistant._tr(
+                "Heat remains commanded at 0%. Close this window, correct the "
+                "problem, then restart the guided preparation from the beginning."
+            ))
+        elif self.qualification.phase == "software_zero_confirmed":
+            self.next_steps.setText(self.assistant._tr(
+                "Look at the machine, not only the screen. If the physical heater "
+                "is off, tick the confirmation below and validate it."
+            ))
+        elif self.qualification.phase == "qualified" and report.ready:
+            self.next_steps.setText(self.assistant._tr(
+                "All conditions are now stable again. You may start the supervised "
+                "10-minute test. Stay beside the machine."
+            ))
+        else:
+            self.next_steps.setText(self._next_steps_text(report))
+
+        blocked = set(report.blocking_codes)
+        human_codes = {
+            "machine_empty_confirmed",
+            "airflow_safe_confirmed",
+            "supervision_confirmed",
+        }
+        confirmations_active = (
+            self.qualification.phase == "idle"
+            and blocked <= human_codes
+        )
+        self.machine_empty.setVisible(
+            confirmations_active and not self.machine_empty.isChecked()
+        )
+        self.airflow_safe.setVisible(
+            confirmations_active
+            and self.machine_empty.isChecked()
+            and not self.airflow_safe.isChecked()
+        )
+        self.supervised.setVisible(
+            confirmations_active
+            and self.machine_empty.isChecked()
+            and self.airflow_safe.isChecked()
+            and not self.supervised.isChecked()
+        )
+        self.zero_button.setEnabled(
+            report.ready and self.qualification.phase == "idle"
+        )
+        self.zero_button.setVisible(
+            report.ready and self.qualification.phase == "idle"
+        )
+        self.zero_warning.setVisible(self.zero_button.isVisible())
+        awaiting_physical = self.qualification.phase == "software_zero_confirmed"
+        self.physical_off.setVisible(awaiting_physical)
+        self.confirm_zero.setVisible(awaiting_physical)
+        identity = self.assistant._calibration_machine_identity()
+        identity_matches = bool(
+            identity is not None
+            and self._qualification_identity is not None
+            and identity.fingerprint == self._qualification_identity.fingerprint
+        )
+        profile_authorized = self.assistant._live_calibration_profile_authorized(
+            identity
+        )
+        pilot_authorized = self.assistant._supervised_pilot_profile_authorized(
+            identity
+        )
+        self.start_live.setText(self.assistant._tr(
+            "START THE SUPERVISED 10-MINUTE TEST"
+            if profile_authorized
+            else "START THE REVIEW-ONLY HARDWARE PILOT"
+        ))
+        self.export_pilot.setEnabled(identity is not None and self._runner is None)
+        self.start_live.setEnabled(
+            self._runner is None
+            and report.ready
+            and self.qualification.phase == "qualified"
+            and identity_matches
+            and (profile_authorized or pilot_authorized)
+        )
+        self.start_live.setVisible(
+            self.qualification.phase == "qualified" and report.ready
+        )
+        self.stop_live.setVisible(self._runner is not None)
+        self.status.hide()
+        if self.qualification.phase == "qualified":
+            if not profile_authorized and not pilot_authorized:
+                self.status.setText(self.assistant._tr(
+                    "The 0% shutdown is qualified, but this machine profile has not "
+                    "yet passed its supervised hardware pilot. Starting remains locked."
+                ))
+                self.status.show()
+        elif self.qualification.phase == "failed":
+            self.status.setText(self.assistant._tr(
+                "The shutdown qualification is no longer valid. Heat remains at 0%."
+            ))
+            self.status.show()
+
+    def _request_zero(self) -> None:
+        self.refresh()
+        if self._report is None or not self._report.ready:
+            return
+        answer = QMessageBox.question(
+            self,
+            self.assistant._tr("COMMAND 0% HEAT"),
+            self.assistant._tr(
+                "This sends only a 0% heater command through the configured hardware "
+                "action. The previous power will not be restored. Continue?"
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        if self._applied_signal is None:
+            self._show_blocking_message(self.assistant._tr(
+                "The central transaction acknowledgement is unavailable. Nothing was sent."
+            ))
+            return
+        identity = self.assistant._calibration_machine_identity()
+        if identity is None:
+            self._show_blocking_message(self.assistant._tr(
+                "The exact machine and heater control path cannot be identified. Nothing was sent."
+            ))
+            return
+        slider = int(self.assistant.pid.pidPositiveTarget) - 1
+        self.qualification = ZeroOutputQualification(timeout_sec=60.0)
+        if not self.qualification.start(
+            self._report,
+            heater_slider=slider,
+            now_sec=time.monotonic(),
+        ):
+            self.refresh()
+            return
+        self._qualification_identity = identity
+        self.zero_button.setEnabled(False)
+        self._timeout_timer.start()
+        self.assistant.aw.tilaupidSliderCommandSignal.emit(slider, 0, True)
+
+    def _zero_applied(
+        self, heater_slider: int, applied_power: int, action_fired: bool
+    ) -> None:
+        current_identity = self.assistant._calibration_machine_identity()
+        if (
+            self._qualification_identity is None
+            or current_identity is None
+            or current_identity.fingerprint
+            != self._qualification_identity.fingerprint
+        ):
+            self.qualification.invalidate("machine_identity_changed")
+            self.assistant._zero_output_qualified = False
+            self.refresh()
+            return
+        accepted = self.qualification.acknowledge(
+            heater_slider=heater_slider,
+            applied_power_pct=applied_power,
+            action_fired=action_fired,
+            now_sec=time.monotonic(),
+        )
+        if accepted:
+            self.physical_off.setEnabled(True)
+            self.confirm_zero.setEnabled(True)
+        self.refresh()
+
+    def _confirm_physical_shutdown(self) -> None:
+        if not self.physical_off.isChecked():
+            return
+        current_identity = self.assistant._calibration_machine_identity()
+        if (
+            self._qualification_identity is None
+            or current_identity is None
+            or current_identity.fingerprint
+            != self._qualification_identity.fingerprint
+        ):
+            self.qualification.invalidate("machine_identity_changed")
+            self.assistant._zero_output_qualified = False
+            self.refresh()
+            return
+        if self.qualification.confirm_physical_shutdown(
+            heater_is_off=True,
+            now_sec=time.monotonic(),
+        ):
+            self._timeout_timer.stop()
+            self.physical_off.setEnabled(False)
+            self.confirm_zero.setEnabled(False)
+            if not self.assistant._record_zero_output_evidence(current_identity):
+                self.qualification.invalidate("evidence_persistence_failed")
+                self.assistant._zero_output_qualified = False
+                self.assistant._qualified_machine_fingerprint = None
+                self.assistant.lbl_calibration.setText(self.assistant._tr(
+                    "The 0% shutdown was observed, but its proof could not be saved. "
+                    "The machine test remains locked."
+                ))
+                self.refresh()
                 return
+            self.assistant._zero_output_qualified = True
+            self.assistant._qualified_machine_fingerprint = current_identity.fingerprint
+            self.assistant.lbl_calibration.setText(self.assistant._tr(
+                "Physical 0% shutdown qualified for this session. "
+                "The heater remains stopped and the 10-minute heat test is still locked."
+            ))
+        self.refresh()
 
-            # ── Ajustements ─────────────────────────────────────────────────────
-            action = QApplication.translate("tilauscope_pid", "Stable")
+    def _poll_qualification(self) -> None:
+        if self.qualification.poll(time.monotonic()) == "failed":
+            self._timeout_timer.stop()
+            self.physical_off.setEnabled(False)
+            self.confirm_zero.setEnabled(False)
+            self._show_blocking_message(self.assistant._tr(
+                "Shutdown qualification timed out. Heat remains commanded at 0%."
+            ))
 
-            if self.preheating:
-                # Point 8 : pas absolus avec bornes
-                action = self._preheat_adjust(kp_val, kd_val, attr_p, attr_d, error)
+    def _start_live_test(self) -> None:
+        self.refresh()
+        identity = self.assistant._calibration_machine_identity()
+        if (
+            self._report is None
+            or not self._report.ready
+            or not self.start_live.isEnabled()
+            or identity is None
+        ):
+            return
+        answer = QMessageBox.question(
+            self,
+            self.assistant._tr("START SUPERVISED HEAT TEST"),
+            self.assistant._tr(
+                "The machine is empty and supervised. TilauScope will vary heat for "
+                "about 10 minutes and cut it to 0% on any anomaly. Start now?"
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            runner = self.assistant._build_live_calibration_runner(
+                readiness=self._report,
+                identity=identity,
+                review_only=(
+                    not self.assistant._live_calibration_profile_authorized(identity)
+                ),
+            )
+            runner.progress.connect(self._live_progress)
+            runner.finished.connect(self._live_finished)
+            self._runner = runner
+            self.start_live.setEnabled(False)
+            self.stop_live.setEnabled(True)
+            self._guide_timer.stop()
+            runner.start()
+        except Exception:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+            _log.exception("PID supervised calibration could not start")
+            self.stop_live.setEnabled(False)
+            self._show_blocking_message(self.assistant._tr(
+                "The test could not start. Heat remains at 0%."
+            ))
 
-            else:
-                # Point 5 : ajustement Kp convergent
-                if abs(error) > 0.5:
-                    action = self._adjust_kp(kp_val, error, attr_p, attr_i, attr_d)
-                    kp_val = getattr(self.pid, attr_p)   # valeur mise à jour
+    def _export_pilot_sheet(self) -> None:
+        identity = self.assistant._calibration_machine_identity()
+        if identity is None:
+            self.status.setText(self.assistant._tr(
+                "Select a known machine and configure its heater action first."
+            ))
+            return
+        try:
+            path = self.assistant._export_hardware_pilot_manifest(identity)
+            self.status.setText(
+                self.assistant._tr(
+                    "Pilot sheet saved without sending heat: "
+                ) + str(path)
+            )
+        except OSError:
+            _log.exception("PID hardware pilot sheet could not be exported")
+            self.status.setText(self.assistant._tr(
+                "The pilot sheet could not be saved. No heat was sent."
+            ))
 
-                # Point 6 : ajustement Ki avec fenêtre glissante + decay
-                ki_action = self._adjust_ki(ki_val, error, attr_p, attr_i, attr_d)
-                if ki_action:
-                    action = ki_action
-                    ki_val = getattr(self.pid, attr_i)
+    def _stop_live_test(self) -> None:
+        if self._runner is not None:
+            self._runner.abort("operator_cancelled")
 
-                # Point 7 : freinage ou decay Kd borné
-                if is_overspeeding:
-                    new_kd = min(kd_val + 2.0, 250.0)   # pas absolu, pas multiplicatif
-                    setattr(self.pid, attr_d, new_kd)
-                    self.pid.setPID(kp=getattr(self.pid, attr_p), ki=getattr(self.pid, attr_i), kd=new_kd) # Update PID with new values
-                    _log.info(f"AUTOTUNE > Braking: RoR={current_ror:.1f} Kd:{kd_val:.1f}→{new_kd:.1f}")
-                    action = "Braking (Kd+)"
-                elif abs(error) < 0.2:
-                    self._decay_kd(kd_val, attr_p, attr_i, attr_d)
+    def _live_progress(self, phase: str, elapsed_sec: int) -> None:
+        phases = {
+            "baseline": self.assistant._tr("Observing the stable level"),
+            "step_up": self.assistant._tr("Observing a little more heat"),
+            "recover_up": self.assistant._tr("Waiting for recovery"),
+            "step_down": self.assistant._tr("Observing a little less heat"),
+            "recover_down": self.assistant._tr("Waiting for recovery"),
+            "identifying": self.assistant._tr("Understanding the machine response"),
+            "validating": self.assistant._tr("Trying the cautious setting"),
+            "deciding": self.assistant._tr("Checking the final result"),
+        }
+        label = phases.get(phase, self.assistant._tr("Securing the test"))
+        self.guide_progress.setText(self.assistant._tr("TEST IN PROGRESS"))
+        self.guide_title.setText(label)
+        self.next_steps.setText(self.assistant._tr(
+            "Elapsed time: {elapsed}/600 seconds. Stay beside the machine."
+        ).format(elapsed=elapsed_sec))
+        self.stop_live.show()
 
-            # ── UI PID values ────────────────────────────────────────────────────
-            self.lbl_status.setText(action)
-            self.lbl_kp.setText(f"{getattr(self.pid, attr_p):.4f}")
-            self.lbl_ki.setText(f"{getattr(self.pid, attr_i):.4f}")
-            self.lbl_kd.setText(f"{getattr(self.pid, attr_d):.4f}")
+    def _live_finished(self, phase: str, reason: str) -> None:
+        self.stop_live.setEnabled(False)
+        if "journal_persistence_failed" in reason:
+            self.guide_progress.setText(self.assistant._tr("TEST FINISHED"))
+            self.guide_title.setText(self.assistant._tr("Report unavailable"))
+            self.next_steps.setText(self.assistant._tr(
+                "Heat is at 0% and the previous settings were restored, but the "
+                "report could not be saved. Do not authorize this machine."
+            ))
+            return
+        if reason == "pilot_completed_pending_review":
+            self.status.setText(self.assistant._tr(
+                "The pilot sequence completed. Heat is at 0%, the previous settings "
+                "were restored and the report is ready for review."
+            ))
+        elif phase == "complete":
+            self.status.setText(self.assistant._tr(
+                "The response improved safely. The cautious setting was kept and "
+                "the complete report was saved."
+            ))
+        else:
+            self.status.setText(self.assistant._tr(
+                "The test stopped safely: heat was cut to 0%, the previous settings "
+                "were restored and the report was saved."
+            ))
+        if self.assistant._last_calibration_journal_path is not None:
+            self.status.setText(
+                self.status.text()
+                + "\n"
+                + self.assistant._tr("Report: ")
+                + str(self.assistant._last_calibration_journal_path)
+            )
+        self.guide_progress.setText(self.assistant._tr("TEST FINISHED"))
+        self.guide_title.setText(self.assistant._tr("The machine is safe"))
+        self.next_steps.setText(self.status.text())
+        self.status.hide()
 
-        except Exception as e:
-            _log.error(f"Erreur autotune: {e}")
+    def mousePressEvent(self, a0: QMouseEvent | None) -> None:
+        if a0 is not None and a0.button() == Qt.MouseButton.LeftButton:
+            self.oldPos = a0.globalPosition().toPoint()
 
-    def show_help(self):
-        """Opens a resizable help window with PID explanations."""
-        help_window = HelpDialog(self)
-        help_window.exec() # Use .exec() for a modal window or .show() for non-modal
-
-    def fade_out_and_close(self):
-        self.anim = QPropertyAnimation(self, b"windowOpacity")
-        self.anim.setDuration(400)
-        self.anim.setStartValue(1.0); self.anim.setEndValue(0.0)
-        self.anim.finished.connect(self.close)
-        self.anim.start()
-
-    def mousePressEvent(self, event):
-        self.oldPos = event.globalPosition().toPoint()
-
-    def mouseMoveEvent(self, event):
-        delta = QPoint(event.globalPosition().toPoint() - self.oldPos)
+    def mouseMoveEvent(self, a0: QMouseEvent | None) -> None:
+        if a0 is None or not a0.buttons() & Qt.MouseButton.LeftButton:
+            return
+        delta = a0.globalPosition().toPoint() - self.oldPos
         self.move(self.x() + delta.x(), self.y() + delta.y())
-        self.oldPos = event.globalPosition().toPoint()
+        self.oldPos = a0.globalPosition().toPoint()
 
-    def closeEvent(self, event):
-        """Ensures everything stops when the user closes the window."""
-        self.stop_monitoring()
-        self.aw.PIDAutotuneMenuAction.setChecked(False)
-        _log.info("PID Autotune monitor closed and timer stopped.")
-        event.accept()
+    def closeEvent(self, a0: QCloseEvent | None) -> None:
+        self._timeout_timer.stop()
+        if self._runner is not None and self._runner.coordinator.phase == "running":
+            self._runner.abort("preparation_window_closed")
+        if self._applied_signal is not None:
+            try:
+                self._applied_signal.disconnect(self._zero_applied)
+            except (TypeError, RuntimeError):
+                pass
+        if a0 is not None:
+            a0.accept()
+# pylint: enable=protected-access
 
 
 class HelpDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(None) # Detach from parent to ensure frameless consistency
-        apply_tilau_theme(self, ground=False)  # frameless translucent: no ground rule
-
-        # Window Configuration
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        apply_tilau_theme(self, ground=False)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool
+        )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.resize(550, 500)
+        self.resize(600, 580)
+        self.oldPos = QPoint()
+        self._setup_ui()
 
-        self.setup_ui()
+    def _setup_ui(self) -> None:
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(10, 10, 10, 10)
+        container = QFrame()
+        container.setObjectName("MainContainer")
+        container.setStyleSheet(
+            f"QFrame#MainContainer {{ background-color: {THEME['BG']};"
+            f" border: 1px solid {THEME['BORDER']}; border-radius: 20px; }}"
+        )
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(24, 20, 24, 24)
+        outer.addWidget(container)
 
-    def setup_ui(self):
-        self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
-
-        # Main Styled Container
-        self.container = QFrame()
-        self.container.setStyleSheet(f"""
-            QFrame#MainContainer {{
-                background-color: {THEME['BG']};
-                border: 1px solid {THEME['BORDER']};
-                border-radius: 20px;
-            }}
-            QLabel {{ border: none; }} /* Force-remove borders from all child labels */
-        """)
-        self.container.setObjectName("MainContainer") # Specific ID prevents style leaking
-        self.content_layout = QVBoxLayout(self.container)
-        self.content_layout.setContentsMargins(25, 20, 25, 25)
-        self.main_layout.addWidget(self.container)
-
-        # Header
         header = QHBoxLayout()
-        title_lbl = QLabel(QApplication.translate("tilauscope_pid","PID Parameters Help").upper())
-        title_lbl.setStyleSheet("color: white; font-size: 16px; font-weight: 900; ")
+        title = QLabel(QApplication.translate("tilauscope_pid", "UNDERSTANDING THE PID"))
+        title.setStyleSheet("color:white; font-size:16px; font-weight:900; border:none;")
+        close_btn = QPushButton("✕")
+        close_btn.setFixedSize(30, 30)
+        close_btn.setProperty("variant", "icon")
+        close_btn.clicked.connect(self.close)
+        header.addWidget(title)
+        header.addStretch()
+        header.addWidget(close_btn)
+        layout.addLayout(header)
 
-        self.close_btn = QPushButton("✕")
-        self.close_btn.setFixedSize(30, 30)
-        self.close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
-        self.close_btn.clicked.connect(self.close)
-        self.close_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: {THEME['SURFACE']}; color: white; border-radius: 15px; border: 1px solid {THEME['BORDER']};
-            }}
-            QPushButton:hover {{ background: {THEME['CRITICAL']}; }}
-        """)
-        header.addWidget(title_lbl); header.addStretch(); header.addWidget(self.close_btn)
-        self.content_layout.addLayout(header)
-
-        # Themed Text Display
-        self.text_display = QTextBrowser()
-        self.text_display.setOpenExternalLinks(True)
-        self.text_display.setStyleSheet(f"""
-            QTextBrowser {{
-                background-color: {THEME['SURFACE']};
-                color: {THEME['TEXT']};
-                border: 1px solid {THEME['BORDER']};
-                border-radius: 12px;
-                padding: 15px;
-                font-family: 'Segoe UI', sans-serif;
-                line-height: 1.5;
-            }}
-            /* Custom Scrollbar Styling */
-            QScrollBar:vertical {{
-                border: none; background: transparent; width: 8px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {THEME['BORDER']}; border-radius: 4px; min-height: 20px;
-            }}
-        """)
-
-        # HTML Content
-        self.text_display.setHtml(QApplication.translate("tilauscope_pid","""
-         <h3>PID Parameters Glossary</h3>
-        <p><b>kP (Proportional):</b> Determines the immediate correction strength.
-        If the temperature is far from the target, kP applies a strong corrective action.</p>
-        <p><b>kI (Integral):</b> Eliminates long-term residual errors.
-        It accumulates small deviations over time to ensure the temperature reaches the exact target.</p>
-        <p><b>kD (Derivative):</b> Acts as a 'brake'. It anticipates overshoots by
-        reacting to the rate of change (RoR) to stabilize the system before it exceeds the target.</p>
+        text = QTextBrowser()
+        text.setStyleSheet(
+            f"QTextBrowser {{ background-color: {THEME['SURFACE']}; color:{THEME['TEXT']};"
+            f" border:1px solid {THEME['BORDER']}; border-radius:10px; padding:14px; }}"
+        )
+        text.setHtml(QApplication.translate("tilauscope_pid", """
+        <h3>The four behaviours</h3>
+        <p><b>React:</b> how strongly Artisan answers the temperature gap visible now.</p>
+        <p><b>Catch up:</b> how quickly Artisan builds an extra correction when the
+        machine remains behind the target.</p>
+        <p><b>Brake:</b> how much heat Artisan removes when temperature is already
+        moving quickly toward the target.</p>
+        <p><b>Stabilise:</b> how much Artisan ignores tiny command changes that the
+        machine cannot usefully reproduce.</p>
         <hr>
-        <h3>Advanced Settings</h3>
-        <p><b>Beta (P-Weighting):</b> Adjusts how much the Proportional action reacts to changes
-        in the Setpoint (SV) vs. changes in the actual temperature (BT).</p>
-        <p><b>Gamma (D-Weighting):</b> Adjusts how much the Derivative action reacts to Setpoint changes
-        to prevent sudden spikes in output when you move the target temperature.</p>
-        <p><b>Gain Scheduling:</b> Automatically switches PID values based on the current temperature
-        range to optimize stability at different roasting phases.</p>
-        <hr>
-        <h3>How to use</h3>
-        <p><b>Choose between SV or Scheduling mode</b> Adjusts in Artisan PID dialog the usage mode
-        either Regular SV (scheduling uncked), scheduling mode in linear (x), quadratic (x2) modes.
-        close Dialog and run the PID Autotune windows.</p>
-        <p><b>Load presents</b>: Click on the <b>Load Peeset</b> button to inject the default PID
-        settings to start tunning. This is not mandatory, you can start the process without changing the
-        current values.</p>
-        <p><b>Click on Start</b> to start the PID Autotune process, that is spying what Artisan does and
-        could adjust the settings on the fly if it detects that they are not optimal. The routine updates
-        kP, kI, kD, beta and gamme if required. You can stop it and restart it at any time while Artisan PID
-        is running.</p>
+        <h3>Safe method</h3>
+        <p>Change one behaviour by one notch. Wait for the machine to respond.
+        Keep the change only if the full response improves. If Artisan already
+        requests maximum heat, stronger PID settings cannot add more power.</p>
+        <p>The normal screen intentionally hides engineering gains. They remain
+        available under Engineer details for diagnosis and export.</p>
         """))
+        layout.addWidget(text)
 
-        self.content_layout.addWidget(self.text_display)
+        close = QPushButton(QApplication.translate("tilauscope_pid", "CLOSE"))
+        close.setMinimumHeight(40)
+        close.clicked.connect(self.close)
+        layout.addWidget(close)
 
-        # Footer Button
-        btn_close = QPushButton(QApplication.translate("tilauscope_pid", "CLOSE"))
-        btn_close.setFixedHeight(40)
-        btn_close.clicked.connect(self.close)
-        btn_close.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {THEME['ACCENT']}; color: {THEME['BG']};
-                border-radius: 10px; font-weight: bold; border: none; margin-top: 10px;
-            }}
-            QPushButton:hover {{ background-color: {THEME['LAVENDER']}; }}
-        """)
-        self.content_layout.addWidget(btn_close)
+    def mousePressEvent(self, a0: QMouseEvent | None) -> None:
+        if a0 is None:
+            return
+        self.oldPos = a0.globalPosition().toPoint()
 
-    # Mouse Events for dragging the frameless window
-    def mousePressEvent(self, event):
-        self.oldPos = event.globalPosition().toPoint()
-
-    def mouseMoveEvent(self, event):
-        delta = QPoint(event.globalPosition().toPoint() - self.oldPos)
+    def mouseMoveEvent(self, a0: QMouseEvent | None) -> None:
+        if a0 is None:
+            return
+        delta = a0.globalPosition().toPoint() - self.oldPos
         self.move(self.x() + delta.x(), self.y() + delta.y())
-        self.oldPos = event.globalPosition().toPoint()
+        self.oldPos = a0.globalPosition().toPoint()

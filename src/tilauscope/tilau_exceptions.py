@@ -18,6 +18,8 @@ import zipfile
 import traceback
 import platform
 import logging
+import re
+from collections.abc import Iterable
 from pathlib import Path
 from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QDialog, QVBoxLayout, QHBoxLayout,
@@ -26,6 +28,35 @@ from PyQt6.QtCore import QStandardPaths, QUrl
 from PyQt6.QtGui import QFont, QDesktopServices
 
 from tilauscope.theme_qss import apply_tilau_theme
+
+
+# The scrubber itself lives in tilau_privacy: the same rules serve this
+# archive and the payloads sent to an AI provider, and one table is the
+# only way they stay in step. sanitize_log_text is re-exported because the
+# crash reporter and its tests have always reached for it here.
+from tilauscope.tilau_privacy import (  # noqa: F401
+    runtime_sensitive_values as _runtime_sensitive_values,
+    sanitize_log_text,
+)
+
+
+def _write_sanitized_log(zipf: zipfile.ZipFile, log_path: Path, arcname: str,
+                         sensitive_values: Iterable[str]) -> None:
+    """Stream one scrubbed text log into ``zipf`` without archiving raw bytes."""
+    with log_path.open("r", encoding="utf-8", errors="replace") as source, \
+            zipf.open(arcname, "w") as destination:
+        for line in source:
+            destination.write(
+                sanitize_log_text(line, sensitive_values).encode("utf-8")
+            )
+
+
+def _sanitized_archive_filename(name: str,
+                                sensitive_values: Iterable[str]) -> str:
+    """Keep log entry names useful without leaking a user-supplied filename."""
+    scrubbed = sanitize_log_text(name, sensitive_values)
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", scrubbed).strip("._")
+    return safe_name or "diagnostic.log"
 
 
 class TilauCrashDialog(QDialog):
@@ -127,9 +158,12 @@ class TilauCrashDialog(QDialog):
             self.adjustSize()
 
 def export_logs_to_zip():
+    artisan_filepath = None
     for handler in logging.root.handlers:
-        artisan_filepath = Path(handler.baseFilename)
-        break # use first only
+        base_filename = getattr(handler, "baseFilename", None)
+        if base_filename:
+            artisan_filepath = Path(base_filename)
+            break # use first file handler only
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     zip_filename = f"Tilau_Debug_{platform.system()}_{timestamp}.zip"
     other_logs_directory = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)) / "tilauscope"
@@ -137,12 +171,32 @@ def export_logs_to_zip():
 
     if save_path:
         try:
+            sensitive_values = _runtime_sensitive_values()
             with zipfile.ZipFile(save_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for path in other_logs_directory, artisan_filepath.parent:
+                log_directories = [other_logs_directory]
+                if artisan_filepath is not None:
+                    log_directories.append(artisan_filepath.parent)
+                seen_logs: set[Path] = set()
+                used_names: set[str] = set()
+                for path in log_directories:
                     if path.exists():
                         # Grab artisan and tilau logs
                         for log in list(path.glob("*.log*")) + list(path.glob("tilau_*.log")):
-                            zipf.write(log, arcname=f"logs/{log.name}")
+                            resolved = log.resolve()
+                            if resolved in seen_logs or not log.is_file():
+                                continue
+                            seen_logs.add(resolved)
+                            archive_name = _sanitized_archive_filename(
+                                log.name, sensitive_values
+                            )
+                            suffix = 2
+                            while archive_name in used_names:
+                                archive_name = f"{log.stem}_{suffix}{log.suffix}"
+                                suffix += 1
+                            used_names.add(archive_name)
+                            _write_sanitized_log(
+                                zipf, log, f"logs/{archive_name}", sensitive_values
+                            )
 
                 # Add a system info file
                 sys_info = f"OS: {platform.system()} {platform.release()}\nPython: {sys.version}\nQt: 6.11"

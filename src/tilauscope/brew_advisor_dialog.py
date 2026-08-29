@@ -37,6 +37,7 @@ from PyQt6.QtWidgets import (
 from artisanlib.util import fromCtoFstrict
 from tilauscope.tilauscope_types import THEME, show_styled_message, print_progress_pill
 from tilauscope.ai_support import normalize_engine, get_suppress_thinking_params, provider_base_url
+from tilauscope.tilau_privacy import prepare_ai_messages
 from tilauscope.brew_advisor import (
     BrewAdvisor, BrewInput, BrewRecipe, BrewFamily, WaterProfile, Severity,
     EspressoMachine, AgitationCode, GrindCat, NoteCode, PIType,
@@ -1807,6 +1808,18 @@ class BrewAdvisorDlg(QDialog):
             return
         svc = self._ai_service()
         cfg = self._ai_cfg()
+
+        # Who receives this must be named once per provider, before the first
+        # request reaches it.
+        from tilauscope.tilau_privacy_ui import (  # noqa: PLC0415
+            Gate, ensure_ai_disclosure, show_roast_blocked,
+        )
+        gate = ensure_ai_disclosure(self, cfg, self.aw)
+        if gate is Gate.BLOCKED_ROAST:
+            show_roast_blocked(self)
+            return
+        if gate is not Gate.ALLOW:
+            return
         rec = self.service.last
         inp = self.service.input
         lang = QLocale.system().name().split("_")[0]
@@ -1846,8 +1859,9 @@ class BrewAdvisorDlg(QDialog):
         base = provider_base_url(_engine)
         thinking = get_suppress_thinking_params(_engine)
         api_key = cfg.apikey
-        messages = [{"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content}]
+        messages, _report = prepare_ai_messages(
+            system_prompt, user_content, task=str(_BREW_TASK)
+        )
 
         def _work(cancel, on_token: Callable[[str], None]) -> str:
             import time as _time  # noqa: PLC0415

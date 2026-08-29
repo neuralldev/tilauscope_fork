@@ -47,7 +47,7 @@ from PyQt6.QtWidgets import (
 )
 
 from tilauscope.tilauscope_types import (
-    THEME, AGTRON_SCALES, GreenBean, show_styled_message, TilauProgress,
+    THEME, AGTRON_SCALES, GreenBean, no_enter_default, show_styled_message, TilauProgress,
 )
 from tilauscope.roasters import RoasterManager, canonical_roaster_name
 
@@ -534,6 +534,10 @@ class AlogRepairDialog(QDialog):
         # The scan starts from showEvent, once the window is actually on
         # screen — opening it by mistake must not cost a wait.
         self._first_show = True
+
+        # Return must not reach the ✕ / Cancel this dialog builds first
+        # (tilauscope_types.no_enter_default).
+        no_enter_default(self)
 
     # ── styling ────────────────────────────────────────────────────────────
     def _style(self) -> str:

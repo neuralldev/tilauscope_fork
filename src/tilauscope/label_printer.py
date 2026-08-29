@@ -170,6 +170,13 @@ def qr_base_url() -> str:
         port = 8123
     return f"http://tilauscope.local:{port}"
 
+def bean_qr_payload(bean: GreenBean) -> str:
+    # The one payload a green-bean QR may carry (spec wiki/QR-Scan-Spec.md §2.1).
+    # Never encode the record itself: the scanner routes on this URL, a phone
+    # camera opens it directly, and a full record overflows the QR capacity.
+    return f"{qr_base_url()}/bean/{bean.uuid}"
+
+
 def generate_qr_image(payload: str, fill_color: str = "black", back_color: str = "white"):
     # shared QR builder for both label types (tilauscope:// deep links);
     # colors must keep strong dark/light contrast to stay scannable
@@ -976,7 +983,7 @@ class GreenBeanLabelPrinter(_FontMixin):
 
     def _generate_qr(self, bean: GreenBean):
         # http URL payload (spec §2.1) — phone camera opens the bean page directly
-        return generate_qr_image(f"{qr_base_url()}/bean/{bean.uuid}",
+        return generate_qr_image(bean_qr_payload(bean),
                                  fill_color=C_GREEN_BG.name(), back_color=C_GREEN_BODY_BG.name())
 
     def generate_qr_code(self, bean: GreenBean):

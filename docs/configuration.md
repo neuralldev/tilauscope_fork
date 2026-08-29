@@ -57,14 +57,20 @@ the Artisan window hidden.
 
 ### Remote access
 
-**Record web server (phone QR scan)** and its **Port** run the small web server a phone camera
-talks to when scanning a label — see [Labels and QR](labels-and-qr.md). **Remote control (phone
+**Record web server (phone QR scan)** runs the small web server a phone camera talks to when
+scanning a label — see [Labels and QR](labels-and-qr.md). It is off until you tick **Let a
+phone open records by scanning a label**: a fresh installation opens no network port, printed
+labels still print, and a phone scanning one reaches nothing until you switch it on. The
+**Port** beside it stays greyed out while the server is off. **Remote control (phone
 piloting)**, its own **Port**, and **Pair a phone…** set up controlling the roast from a
-phone — see [Piloting from a phone](phone-piloting.md). Both take effect only after a
-restart, and are covered in their own chapters, since what they enable matters more than the
-toggle itself.
+phone — see [Piloting from a phone](phone-piloting.md). Both are off by default, take effect
+only after a restart, and are covered in their own chapters, since what they enable matters
+more than the toggle itself.
 
 ![the UI Features and Remote access groups](assets/configuration-4.4.png)
+
+<!-- CAPTURE 4.4 — Configuration → GENERAL, the UI Features and Remote access groups, with
+the new record web server tick box unticked and its Port field greyed out. -->
 
 ### Diagnostics
 
@@ -238,6 +244,50 @@ picker. This is what
 [filling a bean record from a supplier's page](beancave.md#filling-a-record-from-the-suppliers-page)
 needs — nothing that reads or writes a bean record silently sends data anywhere without this
 being set up first.
+
+What is sent is the roast, brew or bean data the feature is about, and it is cleaned first:
+e-mail addresses, telephone numbers, bank details, file paths, network and device identifiers,
+and the operator and organisation names set in Artisan are removed from the request before it
+leaves — including from anything you typed yourself in a notes field. The provider is the one
+configured here, and TilauScope sends nothing to any AI provider until you configure it.
+
+
+Your key is not kept in TilauScope's settings. It is handed to the keychain your system already
+runs — Keychain Access on macOS, Credential Manager on Windows — and TilauScope asks for it when
+it needs it. This matters beyond your own machine: exporting your settings writes *every*
+setting into the file, which is how a machine setup is shared between roasters, and a key kept
+in the settings would leave with it. One key is remembered per provider, so switching provider
+and back does not mean typing it again. An installation that still had its key in the settings
+moves it across on the next launch, without asking.
+
+The same is true of the **broker password** above.
+
+
+### Privacy
+
+Before the very first request to a provider, TilauScope names it and says what the request
+carries, what is stripped out of it on the way, and what never leaves the machine at all — your
+provider key, your roast files and your bean library stay here. The provider may be outside the
+European Union and keeps requests for its own retention period. Answering **Not now** cancels
+that request and nothing is sent; answering **Send to …** lets it go and does not ask again for
+that provider. Changing the provider, or the model, brings the notice back: what it names is who
+receives your data, so a new recipient is announced rather than inheriting an answer given about
+someone else. The notice is never raised with a batch in the drum — a request made mid-roast is
+refused with an explanation instead, and works normally once the roast is over.
+
+**Location lookup** covers the one place TilauScope needs to know where you are: the online
+weather in the roasting plan. Finding your town means handing your internet address to a lookup
+service outside the European Union, so the first time you use it TilauScope says so and lets you
+choose between looking it up and typing the three values yourself — choosing to type them puts
+the cursor in the first of the three.
+
+Both answers are shown here with an **Ask me again** button, which forgets the answer so the
+notice appears once more the next time the feature is used. A line reading *not asked yet* means
+nothing has been granted, and there is nothing to forget.
+
+<!-- CAPTURE 4.13 — the INTEGRATIONS tab, Privacy group: AI provider disclosure showing
+"acknowledged for Gemini" with its Ask me again button enabled, and Location lookup showing
+"not asked yet" with its button greyed out. -->
 
 
 <!-- CAPTURE 4.9 — the INTEGRATIONS tab, MQTT Broker group filled in with TLS, Protocol, Timeout

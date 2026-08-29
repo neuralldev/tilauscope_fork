@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (
 _log = logging.getLogger(__name__)
 
 from tilauscope.theme_qss import apply_tilau_theme, tint
-from tilauscope.tilauscope_types import THEME
+from tilauscope.tilauscope_types import THEME, no_enter_default
 
 
 class PairingDialog(QDialog):
@@ -250,6 +250,9 @@ class PairingDialog(QDialog):
             w = item.widget()
             if w is not None:
                 w.deleteLater()
+        if self._host.pairing:
+            # The window may have been open across the day a device timed out.
+            self._host.pairing.sweep_expired()
         devices = self._host.pairing.list_devices() if self._host.pairing else {}
         self._dev_sig = self._dev_signature(devices)
         self._dev_title.setText(
@@ -258,14 +261,32 @@ class PairingDialog(QDialog):
             empty = QLabel(QApplication.translate("tilauscope_devices", "No paired device yet."))
             empty.setProperty('variant', 'secondary')
             self._dev_layout.insertWidget(0, empty)
-            return
-        for did, info in devices.items():
-            self._dev_layout.insertWidget(self._dev_layout.count() - 1, self._device_row(did, info))
+        else:
+            for did, info in devices.items():
+                self._dev_layout.insertWidget(self._dev_layout.count() - 1,
+                                              self._device_row(did, info))
+        no_enter_default(self)
+
 
     @staticmethod
     def _dev_signature(devices: dict) -> tuple:
         # id + name so the list also rebuilds on a rename (not just add/remove).
         return tuple(sorted((k, str(v.get('name') or '')) for k, v in devices.items()))
+
+    @staticmethod
+    def _last_used_text(info: dict) -> str:
+        """When this device last connected, in words an operator can act on."""
+        seen = int(info.get('last_seen') or info.get('paired_at') or 0)
+        if not seen:
+            return ''
+        days = max(0, int(time.time()) - seen) // 86400
+        if days < 1:
+            return QApplication.translate("tilauscope_devices", "Last used today")
+        if days == 1:
+            return QApplication.translate("tilauscope_devices", "Last used yesterday")
+        stamp = time.strftime('%Y-%m-%d', time.localtime(seen))
+        return QApplication.translate(
+            "tilauscope_devices", "Last used {0} days ago — {1}").format(days, stamp)
 
     def _device_row(self, device_id: str, info: dict) -> QWidget:
         row = QFrame()
@@ -291,8 +312,10 @@ class PairingDialog(QDialog):
             QTimer.singleShot(0, edit.selectAll)
             return row
 
+        # Last used, not paired-on: a device is kept alive by connecting, and
+        # the only entry worth revoking is the one that stopped.
         try:
-            when = time.strftime('%Y-%m-%d %H:%M', time.localtime(int(info.get('paired_at', 0))))
+            when = self._last_used_text(info)
         except Exception:  # noqa: BLE001
             when = ''
         txt = QLabel(f"<b style='color:{THEME['TEXT']}'>{name}</b>"

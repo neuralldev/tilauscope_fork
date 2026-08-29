@@ -13354,8 +13354,10 @@ class tgraphcanvas(QObject):
                 self.aw.tilauscope_mqtt_client = TilauscopeMQTTClient(self.aw.mqttConfig, self.aw)
                 self.aw.tilauscope_mqtt_client.connected_signal.connect(self.slotStartTilauScopeMqtt)
                 self.aw.tilauscope_mqtt_client.disconnected_signal.connect(self.slotStopTilauScopeMqtt)
+                # Fire and forget: the sensor list is loaded by the connected
+                # slot (slotStartTilauScopeMqtt), so switching monitoring on no
+                # longer waits for a broker that may never answer.
                 self.aw.tilauscope_mqtt_client.start()
-                self.loadTilauMqttSensors()
                 _logd.info('TilauScope MQTT manager started')
             else:
                 _logd.warning('Tilau MQTT manager not started: broker username or password is empty')
@@ -13364,9 +13366,9 @@ class tgraphcanvas(QObject):
     def loadTilauMqttSensors(self) -> None:
         """Load the sensor list and subscribe it. Idempotent.
 
-        Called both after start() and from the connected slot: start() only waits
-        2 s for the CONNACK, and a broker answering later used to leave the sensor
-        list unloaded for the whole session.
+        Driven by the connected slot: start() does not wait for the CONNACK, so
+        this is where a broker answering at its own pace — or reconnecting later
+        in the session — gets its sensors subscribed.
         """
         if self.aw.tilauscope_mqtt_client is None or not self.aw.tilauscope_mqtt_client.is_connected:
             return
@@ -13391,8 +13393,8 @@ class tgraphcanvas(QObject):
     @pyqtSlot()
     def startTilauAmbientManager(self) -> None:
         ## TILAU ##
-        from artisanlib.ble_port import bluetooth_enabled
-        if bluetooth_enabled():
+        from artisanlib.ble_port import bluetooth_available
+        if bluetooth_available():
             _logd.info('Tilau Ambient manager starting')
             if self.aw.bleTilauScopeDevice is None and self.aw.bleTilauScopeDeviceName  is not None: # TilauScope support  
                 from tilauscope.tilauambient import TilauAmbient
@@ -13402,19 +13404,19 @@ class tgraphcanvas(QObject):
 
     @pyqtSlot()
     def stopTilauAmbientManager(self) -> None:
-        ## TILAU ##
-        from artisanlib.ble_port import bluetooth_enabled
-        if bluetooth_enabled():
-            if self.aw.bleTilauScopeDevice is not None: # if omniflux mode started,then try to stop it first, then shut ble down
-                self.aw.bleTilauScopeDevice.disconnect()
-                self.aw.bleTilauScopeDevice = None
-            _logd.info('TilauScopeAmbient manager stopped')
+        ## TILAU ## Teardown is unconditional: a device object that exists owns a
+        ## transport that has to be closed, adapter switched off in the meantime
+        ## or not (see stopSkywalkerManager).
+        if self.aw.bleTilauScopeDevice is not None: # if omniflux mode started,then try to stop it first, then shut ble down
+            self.aw.bleTilauScopeDevice.disconnect()
+            self.aw.bleTilauScopeDevice = None
+        _logd.info('TilauScopeAmbient manager stopped')
 
     @pyqtSlot()
     def startDifluidManager(self) -> None:
         ## TILAU ##
-        from artisanlib.ble_port import bluetooth_enabled
-        if bluetooth_enabled():
+        from artisanlib.ble_port import bluetooth_available
+        if bluetooth_available():
             _logd.info('difluid manager starting')
             if self.aw.bleAirwaveDeviceName is not None and self.aw.bleAirwaveDevice is None: # Difluid support  
                 from tilauscope.difluid import Difluid
@@ -13426,15 +13428,13 @@ class tgraphcanvas(QObject):
 
     @pyqtSlot()
     def stopDifluidManager(self) -> None:
-        from artisanlib.ble_port import bluetooth_enabled
-        ## TILAU ##
-        if bluetooth_enabled():
-            if self.aw.bleAirwaveEmulateOmniflux and self.aw.bleAirwaveDevice is not None: # if omniflux mode started,then try to stop it first, then shut ble down
-                self.aw.bleAirwaveDevice.disarmOmniflux()
-            if self.aw.bleAirwaveDevice is not None:
-                self.aw.bleAirwaveDevice.disconnect()
-                self.aw.bleAirwaveDevice = None
-            _logd.info('difluid manager stopped')
+        ## TILAU ## Teardown is unconditional (see stopTilauAmbientManager).
+        if self.aw.bleAirwaveEmulateOmniflux and self.aw.bleAirwaveDevice is not None: # if omniflux mode started,then try to stop it first, then shut ble down
+            self.aw.bleAirwaveDevice.disarmOmniflux()
+        if self.aw.bleAirwaveDevice is not None:
+            self.aw.bleAirwaveDevice.disconnect()
+            self.aw.bleAirwaveDevice = None
+        _logd.info('difluid manager stopped')
 
     @pyqtSlot()
     def sendRoastingStage(self) -> None:
@@ -13483,10 +13483,10 @@ class tgraphcanvas(QObject):
         ## application shutdown when a short simulator test exits immediately.
         if self.aw.simulator is not None:
             return
-        from artisanlib.ble_port import bluetooth_enabled
+        from artisanlib.ble_port import bluetooth_available
         # Take roaster control only when the Cyberroaster is the selected device
         # (connecting asserts the verified burner safe-off and locks the panel).
-        if bluetooth_enabled() and self.device == self.tilau_devices["skywalker"]["id"]:
+        if bluetooth_available() and self.device == self.tilau_devices["skywalker"]["id"]:
             if self.aw.bleSkywalkerDeviceName and self.aw.bleSkywalkerDeviceName != 'none' and self.aw.bleSkywalkerDevice is None:    
                 from tilauscope.tc4ble import TilauTC4BLE
                 # ## TILAU ## Inject the live-roast predicate: the link-loss

@@ -151,6 +151,18 @@ The result is presented for review before anything is saved.
     Extraction reads a web page written for humans, so **check the result**: it is a first draft
     to correct, not an authority.
 
+The link is cleaned before it is used. Shops append a great deal to an address — campaign tags,
+click identifiers, and sometimes a customer, order or session reference tying the page to you —
+and all of that is removed: what is fetched and sent for extraction is the product page itself.
+Paste the link as you copied it; there is nothing to tidy up by hand.
+
+Only a public supplier page can be read. An address on your own network, or a link that is not
+http or https, is refused with a message rather than fetched — that page would be handed to an
+outside service, and nothing on your network belongs there.
+
+The first time a supplier page is sent to a given AI provider, TilauScope names that provider and
+says what the request carries before anything leaves — see [Configuration](configuration.md#privacy).
+
 ![the Add New Bean choice dialog](assets/beancave-3.8.png)
 
 ![the URL input.](assets/beancave-3.9.png)

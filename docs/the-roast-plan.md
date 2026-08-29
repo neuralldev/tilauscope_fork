@@ -19,7 +19,11 @@ short step-by-step form: pick the coffee, enter the parameters, adjust probe off
 The **batch weight** and **roast level** come back as you last left them, since a bag is usually
 worked through at one batch size and one roast level over several sessions. The ambient fields
 do not: they describe the room as it is now, and are filled from the online weather or the
-ambient probe. Two actions close it out:
+ambient probe. The online weather has to work out where you are first, which means handing your
+internet address to a lookup service abroad, so it asks before doing so the first time — see
+[Configuration](configuration.md#privacy). Typing the three values by hand is always an option:
+choosing it puts the cursor in the temperature field, ready to type over.
+Two actions close it out:
 
 - **⚡ Generate Roast Plan** — becomes available only once every required field is filled, and
   produces **a PDF**. That document is the plan: everything described below is in it.

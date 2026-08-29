@@ -46,6 +46,9 @@ COL_PRESSED:        Final[str] = "#11111B"   # Crust — icon color when bg fill
 COL_DISABLED:       Final[str] = "#6C7086"   # Overlay0 — visible disabled icon
 
 # Per-button semantic colors  (idle / active)
+# Convention: ACTIVE is always the BRIGHTER tone. update_button_style() passes
+# active=enabled, and make_btn_style() paints the [active="true"] border with it,
+# so a darker "active" hides both the glyph and the border on the dark ground.
 COL_MENU:           Final[str] = "#89B4FA"   # Blue — menu hamburger, always this tone
 COL_POWER_IDLE:     Final[str] = "#45475A"   # Surface1
 COL_POWER_ACTIVE:   Final[str] = "#A6E3A1"   # Green
@@ -56,20 +59,20 @@ COL_START_ACTIVE:   Final[str] = "#3D6EDF"   # Blue bright
 # unreadable — label and glyph both take this instead.
 COL_ON_LIGHT_FILL:  Final[str] = "#11111B"   # Crust
 
-COL_RESET_IDLE:     Final[str] = "#6A61AB"   # Lavender dim
-COL_RESET_ACTIVE:   Final[str] = "#4D458C"   # Lavender mid
+COL_RESET_IDLE:     Final[str] = "#4D458C"   # Lavender dim
+COL_RESET_ACTIVE:   Final[str] = "#B4BEFE"   # Lavender bright
 
 COL_PID_IDLE:       Final[str] = "#78798A"   # Overlay0
 COL_PID_ACTIVE:     Final[str] = "#F9E2AF"   # Yellow / Amber
 
-COL_BEANCAVE_IDLE:  Final[str] = "#3D6EDF"   # Blue
-COL_BEANCAVE_ACTIVE: Final[str] = "#1F3E88"  # Blue dark
+COL_BEANCAVE_IDLE:  Final[str] = "#2A4C99"   # Blue dim
+COL_BEANCAVE_ACTIVE: Final[str] = "#89B4FA"  # Blue bright
 
 COL_ASSISTANT_IDLE: Final[str] = "#A68B00"   # Gold dim  (provisional feature)
 COL_ASSISTANT_ACTIVE: Final[str] = "#F9E2AF" # Amber bright
 
-COL_SWAP_IDLE:      Final[str] = "#78798A"   # Overlay0
-COL_SWAP_ACTIVE:    Final[str] = "#4A614A"   # Sage green dim
+COL_SWAP_IDLE:      Final[str] = "#4A614A"   # Sage green dim
+COL_SWAP_ACTIVE:    Final[str] = "#A6E3A1"   # Green bright
 
 # btn_estop — emergency heat cut. The only critical tone of the header.
 COL_ESTOP:          Final[str] = "#F38BA8"   # Red
@@ -421,7 +424,7 @@ QSS_COMPACT_RESET: Final[str] = make_btn_style(
 )
 QSS_COMPACT_BEANCAVE: Final[str] = make_btn_style(
     color_idle="#5477AD", color_active=COL_BEANCAVE_ACTIVE,
-    color_hover="#CDD6F4", color_pressed=COL_BEANCAVE_IDLE,
+    color_hover="#CDD6F4", color_pressed=COL_BEANCAVE_ACTIVE,
     bg="#29293D", bg_hover="#45475A",
 )
 # Emergency heat cut. Red on a dark red fill: the only critical-coloured

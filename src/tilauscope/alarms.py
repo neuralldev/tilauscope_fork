@@ -36,7 +36,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QGraphicsOpacityEffect,
 )
 
-from tilauscope.tilauscope_types import THEME, show_styled_message
+from tilauscope.tilauscope_types import THEME, no_enter_default, show_styled_message
 from tilauscope.ai_service import AITask
 from tilauscope.ai_float_panel import AIFloatPanel
 
@@ -1552,6 +1552,10 @@ class TilauAlarmDlg(QDialog):
         self._live_timer.timeout.connect(self._poll_fired_state)
         self._live_timer.start()
 
+        # Return must not reach the ✕ / Cancel this dialog builds first
+        # (tilauscope_types.no_enter_default).
+        no_enter_default(self)
+
     # ── construction ──────────────────────────────────────────────────────
 
     def _build_ui(self) -> None:
@@ -2107,6 +2111,11 @@ class TilauAlarmDlg(QDialog):
             if a.action == Action.EVENT_BUTTON:
                 content = self.adapter.event_button_label(a.arg)
                 arg = f' #{a.arg}' + (f' ({content})' if content else '')
+            elif a.action == Action.CALL_PROGRAM:
+                # Minimisation: the command line is a local path and often
+                # carries credentials. Whether a program runs is all the audit
+                # needs; which one is nobody else's business.
+                arg = ' : <external program>' if a.arg else ''
             elif action_takes_arg(a.action) and a.arg:
                 arg = f' = {a.arg}' if a.action in _SLIDER_ACTIONS else f' : {a.arg}'
             else:
@@ -2253,17 +2262,33 @@ class TilauAlarmDlg(QDialog):
 
     @pyqtSlot()
     def _close_dialog(self) -> None:
-        self._live_timer.stop()
-        self._close_overlay()
-        self._teardown_ai_panel()
-        self.adapter.save(self.alarms)
-        self.aw.qmc.alarm_popup_timout = int(self._popup_timeout.value())
-        settings = QSettings()
-        settings.setValue('TilauAlarmsGeometry', self.saveGeometry())
-        settings.setValue('TilauAlarmsGroupByPhase', self._group_by_phase)
-        if getattr(self.aw, 'tilauscope_main', None) is not None:
-            self.aw.tilauscope_main.update_status_text()
+        # Reached from closeEvent, a Qt virtual: an exception escaping here goes
+        # to the crash hook, which exits the application. Persisting the alarms
+        # must never be able to do that, hence the guard around the whole body.
+        try:
+            self._live_timer.stop()
+            self._close_overlay()
+            self._teardown_ai_panel()
+            self.adapter.save(self.alarms)
+            self.aw.qmc.alarm_popup_timout = int(self._popup_timeout.value())
+            settings = QSettings()
+            settings.setValue('TilauAlarmsGeometry', self.saveGeometry())
+            settings.setValue('TilauAlarmsGroupByPhase', self._group_by_phase)
+            if getattr(self.aw, 'tilauscope_main', None) is not None:
+                self.aw.tilauscope_main.update_status_text()
+        except Exception:  # noqa: BLE001 - closing must not take the app down
+            _log.exception('alarm editor close')
         self.accept()
+
+    def keyPressEvent(self, a0) -> None:  # type: ignore[override]
+        # ESC on a QDialog runs reject() -> hide(), which never delivers a
+        # closeEvent: the alarm edits stayed unsaved and the live poll kept
+        # running on a hidden window. Route it through close() so the dialog
+        # always leaves by its single exit.
+        if a0 is not None and a0.key() == Qt.Key.Key_Escape:
+            self.close()
+            return
+        super().keyPressEvent(a0)
 
     def closeEvent(self, a0: QCloseEvent | None) -> None:  # type: ignore[override]
         del a0

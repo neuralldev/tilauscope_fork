@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'none'; manifest-src 'self'; upgrade-insecure-requests">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Roasting the Skywalker — method, templates and the arrival</title>
+<meta name="description" content="How to roast on a Skywalker V2 (ITOP Cyberroaster): why a radiant drum is driven differently, what each control really does, three measured templates for light, medium light and medium, and the pair of numbers that sets your colour.">
+<link rel="canonical" href="https://tilauscope.org/roasting-skywalker.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="TilauScope">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Roasting the Skywalker — the roast is written before the crack">
+<meta property="og:description" content="Measured on 87 roasts: the envelope, the four controls, three templates by roast level, and the arrival pair that decides colour.">
+<meta property="og:url" content="https://tilauscope.org/roasting-skywalker.html">
+<meta property="og:image" content="https://tilauscope.org/media/tilauscope-social-1200x630.jpg">
+<meta property="og:image:secure_url" content="https://tilauscope.org/media/tilauscope-social-1200x630.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="TilauScope — guided roasting built on Artisan.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Roasting the Skywalker">
+<meta name="twitter:description" content="The envelope, the four controls, three measured templates, and the arrival pair that decides colour.">
+<meta name="twitter:image" content="https://tilauscope.org/media/tilauscope-social-1200x630.jpg">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32x32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0d0d0c">
+<meta name="color-scheme" content="dark">
+<link rel="stylesheet" href="site.css">
+<link rel="stylesheet" href="roasting-skywalker.css">
+<script src="roasting-skywalker.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar" id="top">
+  <a class="brand" href="/" aria-label="TilauScope home">
+    <svg class="brand-mark" viewBox="0 0 512 512" aria-hidden="true" focusable="false">
+      <defs><mask id="crease" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><rect x="0" y="0" width="512" height="512" fill="#fff"></rect><path d="M256 104c38 66-38 108 0 152s-38 86 0 152" fill="none" stroke="#000" stroke-width="36" stroke-linecap="round"></path></mask></defs>
+      <g transform="rotate(-28 256 256)"><path mask="url(#crease)" fill="currentColor" d="M256 51c82.8 0 150 91.8 150 205s-67.2 205-150 205-150-91.8-150-205S173.2 51 256 51Z"></path></g>
+    </svg>
+    <span class="brand-name">TilauScope</span>
+  </a>
+  <nav class="topnav" aria-label="Main navigation">
+    <a href="/#why">Why TilauScope</a>
+    <a href="/#workflow">Workflow</a>
+    <a class="is-current" href="roasting-skywalker.html" aria-current="page">Skywalker guide</a>
+    <a href="https://docs.tilauscope.org" target="_blank" rel="noopener noreferrer">Docs</a>
+    <a class="nav-cta" href="https://github.com/neuralldev/tilauscope_fork/releases/latest" target="_blank" rel="noopener noreferrer">Download free</a>
+  </nav>
+</header>
+
+<main id="main">
+  <article class="doc">
+    <div class="doc-kicker">
+      <a class="doc-back" href="/">&larr; TilauScope</a>
+      <p class="doc-meta"><span>Skywalker V2 &middot; ITOP Cyberroaster</span><span>87 roasts of my own, 10 from another operator</span><span>Method article</span></p>
+    </div>
+
+<p class="eyebrow">Method · Skywalker V2</p>
+        <h1 class="art-title">The roast is written<br><em>before the crack</em></h1>
+        <p class="art-standfirst">Two of my batches weigh the same 400 g, run the same burner staircase, the same airflow, and finish in the same eleven and a half minutes. One reads 64 on the Agtron. The other reads 56. Eight points apart, from the same conduct.</p>
+
+        <div class="art-sec">
+          <p class="prose">What separated them was not the driving. It was the arrival: one entered first crack half a minute earlier, stayed in eight seconds longer, and came out 4.6 °C hotter. That is the whole argument of this article, and everything before it exists to put you in a position to choose that arrival deliberately.</p>
+          <p class="prose">Everything here is measured on one machine—a Skywalker V2, sold in some markets as the ITOP Cyberroaster—across 87 usable roasts of my own plus ten from another operator. Numbers carry a badge: <span class="badge b-measured">measured</span> means it comes from those logs, with the sample size attached; <span class="badge b-doctrine">doctrine</span> means it is a rule I hold, with the physics behind it; <span class="badge b-open">open</span> means I do not know yet and will say so.</p>
+          <p class="prose">The magnitudes belong to this machine. The <em>bands</em> belong to the coffee. Nothing in section 2 transfers to a gas drum unchanged, and section 1 explains why.</p>
+          <div class="call">
+            <p class="call-t">About the sample size</p>
+            <p>It is deliberately small. I have restricted it to roasts I consider sound—known machine calibration, a method I still stand behind, a result I can account for—rather than sweeping in everything the machine has ever recorded. A bigger corpus would only have produced tighter-looking intervals around values I do not trust. <b>The logs record what I did, not what was right</b>, and a median of my own mistakes is not a target.</p>
+          </div>
+        </div>
+
+        <div class="toc toc-gap">
+          <p class="eyebrow">Contents</p>
+          <ol>
+            <li><a href="#a1">Three ways to move heat</a></li>
+            <li><a href="#a2">The four controls</a></li>
+            <li><a href="#a3">Setup is most of the roast</a></li>
+            <li><a href="#a4">One envelope</a></li>
+            <li><a href="#a5">Phase by phase</a></li>
+            <li><a href="#a6">Three templates</a></li>
+            <li><a href="#a7">The arrival</a></li>
+            <li><a href="#a8">Matching the coffee</a></li>
+            <li><a href="#a9">The next roast</a></li>
+            <li><a href="#a10">Where TilauScope fits</a></li>
+          </ol>
+        </div>
+
+        <!-- 1 -->
+        <div class="art-sec" id="a1">
+          <h2><span class="num">01</span>Three ways to move heat</h2>
+          <p class="prose">Most roasting advice you will read online was written for a gas drum. On a gas drum, heat reaches the bean mostly by <b>conduction</b>—a hot steel wall the beans tumble against—with convection as a second channel. The Skywalker does something different: an infrared element sits <b>inside the drum</b>, and radiates. The beans are heated by light, not by the wall.</p>
+          <div class="tw">
+            <table>
+              <thead><tr><th>Dominant transfer</th><th>Typical machine</th><th>What the air control does</th><th>Burner behaviour</th></tr></thead>
+              <tbody>
+                <tr><td><b>Conduction</b></td><td>Classic gas drum</td><td><b>Cools</b>—forced convection strips heat from the bean surface</td><td>Slow, and the steel keeps radiating after you cut it</td></tr>
+                <tr><td><b>Convection</b></td><td>Fluid bed</td><td><b>Is</b> the heat—air is the carrier</td><td>Very fast, almost no lag</td></tr>
+                <tr class="hi"><td><b>Radiation</b></td><td>Skywalker V2 · FIR/NIR, pull-type</td><td><b>Carries</b> the heat—see below; this one is the machine, not the physics</td><td>25–45 s to build, but cuts almost instantly</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="prose">Four consequences follow, and each one contradicts something you have probably read.</p>
+          <ul class="clean">
+            <li><b>ET below BT is normal here.</b> On a classic drum the environmental probe runs hotter than the beans. On this one the bean probe overtakes it right after the turning point, by around 26 °C. Nothing is broken.</li>
+            <li><b>The ET/BT rate ratio will not find your dry end.</b> It is a machine-shaped number on a radiant roaster, not a phase indicator. Use temperature and colour.</li>
+            <li><b>Soaking does nothing.</b> The classic opening move—charge, hold the burner low, let the drum's mass equalise—assumes there is a mass to equalise with. Here there is almost none. <span class="badge b-doctrine">doctrine</span></li>
+            <li><b>Cutting the burner cuts the heat immediately.</b> There is no steel reservoir to coast on. This is what makes the baked roast so easy to produce on this machine, and section 5 is largely about avoiding it.</li>
+          </ul>
+
+          <h3>And a fourth thing, which is not about radiation at all</h3>
+          <p class="prose">I attributed this one to the radiant principle for a long time, and I was wrong. It is how this particular machine is built. I took mine apart to be sure, and once you have seen it open, several things you do at the controls stop being conventions and start being obvious.</p>
+
+          <figure>
+            <div class="fig-head">
+              <p class="fig-lbl">Figure 1</p>
+              <p class="fig-ttl">What is behind the panels, and what each part does to your roast</p>
+            </div>
+            <div class="fig-body">
+              <svg viewBox="0 0 920 412" width="100%" role="img" class="fig-svg"
+                   aria-label="Left: the drum seen from the front—a perforated basket with three helical vanes, the radiant element inside it forward and to the right, the bean bed at the bottom, and the bean probe entering from the front face low on the right, in the bed. Right: the air path—one fan at the far end of the exhaust tube pulls everything, air enters through a passive grille at the rear and crosses the perforated drum, the environment probe sits in the exhaust at the top rear, and the extractor stacks on the machine's fan in series. Every opening on the front is a competing intake.">
+                <defs>
+                  <marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                    <path d="M0,0 L10,5 L0,10 z" fill="var(--blue)"/>
+                  </marker>
+                  <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M0,0 L10,5 L0,10 z" fill="var(--rose)"/>
+                  </marker>
+                </defs>
+
+                <!-- ================= PANEL A—the drum face ================= -->
+                <text x="12" y="24" font-family="var(--mono)" font-size="11.5" font-weight="700" letter-spacing="1.6" fill="var(--ember-deep)">THE DRUM FACE</text>
+
+                <path d="M96,100 L128,58 L246,58 L286,100 Z" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+                <rect x="86" y="100" width="200" height="248" rx="3" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.4"/>
+
+                <!-- outer shroud + perforated drum -->
+                <circle cx="186" cy="228" r="90" fill="var(--surface-3)" stroke="var(--line)" stroke-width="1.3"/>
+                <circle cx="186" cy="228" r="78" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="3 3.4"/>
+
+                <!-- three helical vanes -->
+                <g fill="none" stroke="var(--ink-3)" stroke-width="2.4" stroke-linecap="round" opacity=".85">
+                  <path d="M186,228 Q166,168 118,186"/>
+                  <path d="M186,228 Q236,190 246,246"/>
+                  <path d="M186,228 Q160,282 196,300"/>
+                </g>
+                <circle cx="186" cy="228" r="7" fill="var(--surface-2)" stroke="var(--ink-3)" stroke-width="1.3"/>
+
+                <!-- bean bed -->
+                <path d="M124,278 Q186,326 248,278 A78,78 0 0 1 124,278 Z" fill="var(--line)" opacity=".9"/>
+                <path d="M124,278 Q186,326 248,278" fill="var(--line)" opacity=".9"/>
+
+                <!-- element -->
+                <circle cx="238" cy="180" r="18" fill="var(--ember)" stroke="var(--ember-deep)" stroke-width="1.5"/>
+                <line x1="238" y1="160" x2="238" y2="136" stroke="var(--ember-deep)" stroke-width="1.2"/>
+                <text x="238" y="128" text-anchor="middle" font-family="var(--mono)" font-size="11.5" fill="var(--ember)">radiant</text>
+
+                <!-- BT probe, in the bed, front bottom right -->
+                <circle cx="230" cy="286" r="5" fill="var(--bt)"/>
+                <line x1="234" y1="290" x2="286" y2="318" stroke="var(--bt)" stroke-width="1.5"/>
+                <text x="292" y="322" font-family="var(--mono)" font-size="11.5" fill="var(--bt)">BT</text>
+                <text x="292" y="336" font-family="var(--mono)" font-size="10.5" fill="var(--ink-3)">in the bed</text>
+
+                <text x="12" y="372" font-family="var(--mono)" font-size="11" fill="var(--ink-3)">Perforated wall—the air goes THROUGH the bed, not around it.</text>
+                <text x="12" y="388" font-family="var(--mono)" font-size="11" fill="var(--ink-3)">Thin sheet, three vanes: no reservoir, but a bed always turning.</text>
+
+                <!-- ================= PANEL B—the air path ================= -->
+                <text x="432" y="24" font-family="var(--mono)" font-size="11.5" font-weight="700" letter-spacing="1.6" fill="var(--ember-deep)">THE AIR PATH · ONE FAN, EVERYTHING UNDER SUCTION</text>
+
+                <text x="452" y="48" font-family="var(--mono)" font-size="10.5" fill="var(--ink-3)">front</text>
+                <text x="688" y="48" text-anchor="end" font-family="var(--mono)" font-size="10.5" fill="var(--ink-3)">rear</text>
+
+                <rect x="450" y="112" width="240" height="212" rx="3" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.4"/>
+
+                <!-- drum in side view, perforated -->
+                <rect x="470" y="150" width="200" height="132" rx="26" fill="var(--surface-3)" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="3 3.4"/>
+                <path d="M478,250 Q570,286 662,250 L662,266 Q570,300 478,266 Z" fill="var(--line)" opacity=".9"/>
+                <text x="570" y="278" text-anchor="middle" font-family="var(--mono)" font-size="10.5" fill="var(--ink-3)">bean bed</text>
+
+                <!-- intake grille, rear -->
+                <rect x="654" y="100" width="34" height="12" rx="2" fill="var(--surface-3)" stroke="var(--blue)" stroke-width="1.4"/>
+                <line x1="671" y1="82" x2="671" y2="146" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#ah1)"/>
+                <text x="700" y="88" font-family="var(--mono)" font-size="11" fill="var(--blue)">intake</text>
+                <text x="700" y="102" font-family="var(--mono)" font-size="10.5" fill="var(--ink-3)">passive grille</text>
+
+                <!-- sweep across the drum, then through the bed -->
+                <path d="M660,158 C600,146 520,152 496,196 C486,224 512,248 552,254"
+                      fill="none" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ah1)"/>
+                <g stroke="var(--blue)" stroke-width="1.4" opacity=".85">
+                  <line x1="580" y1="272" x2="580" y2="238" marker-end="url(#ah1)"/>
+                  <line x1="612" y1="272" x2="612" y2="238" marker-end="url(#ah1)"/>
+                  <line x1="644" y1="268" x2="644" y2="234" marker-end="url(#ah1)"/>
+                </g>
+                <path d="M652,224 C668,208 668,186 664,166" fill="none" stroke="var(--blue)" stroke-width="1.6" stroke-dasharray="5 4"/>
+
+                <!-- exhaust out the rear, ET probe -->
+                <path d="M664,166 L690,166 L690,196 L724,196" fill="none" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#ah1)"/>
+                <circle cx="690" cy="172" r="4.6" fill="var(--et)"/>
+                <line x1="694" y1="169" x2="726" y2="140" stroke="var(--et)" stroke-width="1.5"/>
+                <text x="732" y="138" font-family="var(--mono)" font-size="11.5" fill="var(--et)">ET</text>
+                <text x="732" y="152" font-family="var(--mono)" font-size="10.5" fill="var(--ink-3)">in the exhaust</text>
+
+                <!-- machine fan, at the far end -->
+                <circle cx="748" cy="196" r="19" fill="var(--surface)" stroke="var(--ink-2)" stroke-width="1.6"/>
+                <g fill="none" stroke="var(--ink-2)" stroke-width="1.6" stroke-linecap="round">
+                  <path d="M748,196 Q742,180 754,180"/><path d="M748,196 Q762,192 756,206"/><path d="M748,196 Q740,210 732,200"/>
+                </g>
+                <line x1="767" y1="196" x2="805" y2="196" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#ah1)"/>
+                <text x="748" y="234" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--ink-2)">machine fan</text>
+                <text x="748" y="248" text-anchor="middle" font-family="var(--mono)" font-size="10.5" fill="var(--ink-3)">the only mover</text>
+
+                <!-- extractor, in series -->
+                <circle cx="828" cy="196" r="19" fill="var(--surface)" stroke="var(--ember)" stroke-width="1.6"/>
+                <g fill="none" stroke="var(--ember)" stroke-width="1.6" stroke-linecap="round">
+                  <path d="M828,196 Q822,180 834,180"/><path d="M828,196 Q842,192 836,206"/><path d="M828,196 Q820,210 812,200"/>
+                </g>
+                <line x1="847" y1="196" x2="884" y2="196" stroke="var(--blue)" stroke-width="1.6" marker-end="url(#ah1)"/>
+                <text x="828" y="234" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--ember)">extractor</text>
+                <text x="828" y="248" text-anchor="middle" font-family="var(--mono)" font-size="10.5" fill="var(--ember-deep)">stacks in series</text>
+
+                <!-- BT at the front bottom -->
+                <circle cx="486" cy="258" r="4.6" fill="var(--bt)"/>
+                <line x1="482" y1="260" x2="446" y2="286" stroke="var(--bt)" stroke-width="1.5"/>
+                <text x="442" y="298" text-anchor="end" font-family="var(--mono)" font-size="11.5" fill="var(--bt)">BT</text>
+
+                <!-- parasitic intakes on the front face -->
+                <g stroke="var(--rose)" stroke-width="1.5">
+                  <line x1="424" y1="126" x2="452" y2="132" marker-end="url(#ah2)"/>
+                  <line x1="424" y1="196" x2="452" y2="196" marker-end="url(#ah2)"/>
+                  <line x1="424" y1="316" x2="452" y2="310" marker-end="url(#ah2)"/>
+                </g>
+                <text x="418" y="130" text-anchor="end" font-family="var(--mono)" font-size="10.5" fill="var(--rose)">chute</text>
+                <text x="418" y="200" text-anchor="end" font-family="var(--mono)" font-size="10.5" fill="var(--rose)">tryer</text>
+                <text x="418" y="320" text-anchor="end" font-family="var(--mono)" font-size="10.5" fill="var(--rose)">chaff</text>
+
+                <text x="432" y="372" font-family="var(--mono)" font-size="11" fill="var(--rose)">Every opening is a competing intake: it steals air from the bed.</text>
+                <text x="432" y="388" font-family="var(--mono)" font-size="11" fill="var(--ink-3)">And an extractor adds to the fan—it does not replace it.</text>
+              </svg>
+            </div>
+            <div class="legend">
+              <span><i class="swatch sw-blue"></i> Air, pulled</span>
+              <span><i class="swatch sw-ember"></i> Radiant element · extractor</span>
+              <span><i class="swatch sw-bt"></i> BT, in the bed</span>
+              <span><i class="swatch sw-et"></i> ET, in the exhaust</span>
+              <span><i class="swatch sw-rose"></i> Parasitic intakes</span>
+            </div>
+            <figcaption>Drawn from the machine apart. Left, the drum face: a perforated basket with three helical vanes, the element inside it forward and to the right, and the bean probe entering from the front face low on the right—in the bed. Right, the air path: intake and exhaust are both at the rear, on opposite sides, and everything between them is pulled by a single fan at the far end of the exhaust tube. Nothing in this machine is ever blown.</figcaption>
+          </figure>
+
+          <h3>The drum is a perforated basket, and it weighs nothing</h3>
+          <ul class="clean">
+            <li><b>The air goes through the bed, not around it.</b> The drum wall is perforated over its whole surface, so the beans sit in a screen with air being pulled across them. Airflow here is a through-flow, not a breeze over a surface—which is what makes the fan a delivery mechanism rather than a coolant. Section 2 is built on this.</li>
+            <li><b>There is no thermal reservoir.</b> Thin sheet metal and nothing else. What you set at the burner arrives now, and when you cut it there is nothing left to coast on. This is why soaking does nothing on this machine, and why the baked roast is the easiest mistake available to you. <span class="badge b-doctrine">doctrine</span></li>
+            <li><b>Three helical vanes turn the bed over continuously.</b> Evenness comes from the vanes, not from a long roast—which is what makes the short profiles in section 6 safe rather than reckless.</li>
+          </ul>
+
+          <h3>One fan, at the far end, and the whole machine under suction</h3>
+          <p class="prose">Nothing is blown in. A single fan sits at the outlet end of the exhaust tube and pulls; air enters through a passive grille at the rear. There is no pressurised side anywhere in this machine.</p>
+          <p class="prose">Which has a consequence no manual mentions: <b>every opening you leave is another intake</b>, competing with the one that goes through the beans. The tryer, the chaff drawer, the charge chute—opening one mid-roast does not merely let you look or listen, it short-circuits air away from the bed. Use the tryer briefly, and read the curve after you have closed it rather than while it is open.</p>
+          <p class="prose">And an extractor, if you run one, <b>stacks on this fan in series</b>—it adds to it, it does not replace it. That single fact is why two operators' airflow numbers are not comparable, and section 6 is where it bites.</p>
+
+          <h3>The two probes are at opposite ends of the machine</h3>
+          <p class="prose">This is the part that changes how you read your own curves. <b>BT sits at the front, low on the right, in the bean bed.</b> That is the right place for it: it reads the mass. <b>ET sits at the other extremity</b>—top, rear, in the exhaust where the air leaves. They are not two views of one thing. They are two instruments in two different places, doing two different jobs.</p>
+          <ul class="clean">
+            <li><b>BT is only as good as the bed covering it.</b> A small charge makes a shallower bed that presents itself to the probe less reliably, and the reading goes noisy. In my logs the spread of first-crack temperature is <b>17.9 °C below 270 g against 4.5 °C above 350 g</b>. <span class="badge b-measured">measured</span> Same machine, same probe—a different amount of coffee sitting on it.</li>
+            <li><b>Which is exactly why the rear-feet trick works.</b> Raising the back feet about 1.5 cm tips the machine forward and the bed slides toward the front, which is to say toward the probe. It does not change the roast. It restores contact, and on small batches the improvement in the bean curve and its rate of rise is immediate. <span class="badge b-doctrine">doctrine</span></li>
+            <li><b>ET reads what leaves</b>, not the atmosphere the beans sit in. That is half of why ET runs below BT: the gas reaching it has already handed its heat to the beans, and there is no burner between them to put any back. The other half is the radiation. On a gas drum the environmental probe sits in the <em>incoming</em> stream, which is why it reads hot—the opposite arrangement, not a different calibration.</li>
+            <li><b>So stop comparing them.</b> The ET/BT rate ratio is a phase indicator on machines where both probes look at the same thing; here they are at opposite ends of the machine. And ET lifts on its own when you open the fan—more gas per second past the bead, no change in heating at all. <b>Judge an airflow move on the bean probe, or on nothing.</b></li>
+          </ul>
+
+          <h3>One thousand watts, for five hundred grams</h3>
+          <p class="prose">The plate on the back reads 1000 W and 500 g capacity. That is the whole energy budget, and it is worth holding in mind before planning anything ambitious: at 400 g of green there is no headroom to bully this machine with. It is also the plainest explanation of what section 2 goes on to measure—that the burner's authority is concentrated at the top of its range and collapses in the lower half. You are not driving a machine with power to spare.</p>
+
+          <h3>What all of that does to the airflow control</h3>
+          <p class="prose">Put the pieces together—room air pulled in at the rear, drawn past an element that may or may not be hot, then through a perforated bed—and the sign of the airflow control turns out to be <em>conditional</em> rather than fixed:</p>
+          <ul class="clean">
+            <li><b>Element hot</b>—the air arrives carrying its energy and delivers it through the bed. Opening the fan raises the rate of rise.</li>
+            <li><b>Element low</b>, around 40 % and below—the air arrives barely warmed. It no longer carries heat. It moves smoke out, and takes energy with it.</li>
+            <li><b>Fan very high</b>—more air than the element can warm, whatever its level. It brakes.</li>
+          </ul>
+          <p class="prose">So airflow is neither a heat source nor a coolant. It is the burner's <b>delivery mechanism</b>, and how much good it does is bounded by how much the burner is actually giving it. Hold on to this; section 2 is where it pays off.</p>
+        </div>
+
+        <!-- 2 -->
+        <div class="art-sec" id="a2">
+          <h2><span class="num">02</span>The four controls, and what each can actually do</h2>
+          <p class="prose">I measured this the boring way: every isolated control move in the logs—at least two points of travel, nothing else touched in the preceding fifteen seconds—treated as one experiment, and the change in rate of rise read against the trend line fitted to the twelve seconds before the move. 573 isolated moves out of 2,264. The rest were combined, which is itself the finding: three quarters of real roasting is more than one hand at a time.</p>
+          <div class="tw">
+            <table>
+              <caption>Change in rate of rise per one point of control travel · Skywalker V2 · n = 81 roasts <span class="badge b-measured">measured</span></caption>
+              <thead><tr><th>Control</th><th>Window</th><th class="n">°C/min per point</th><th class="n">n</th><th>Role</th></tr></thead>
+              <tbody>
+                <tr><td class="lev">Burner</td><td>25–45 s</td><td class="n">+0.28</td><td class="n">118</td><td>Carries the energy. Slow integrator, still growing past 60 s.</td></tr>
+                <tr><td class="lev">Airflow</td><td>8–25 s</td><td class="n">+0.11</td><td class="n">66</td><td><b>Positive.</b> Supports the reaction. Never a brake.</td></tr>
+                <tr><td class="lev">Extraction</td><td>15–35 s</td><td class="n">−0.33</td><td class="n">34</td><td>The real brake—and the fastest, readable from 10 s.</td></tr>
+                <tr><td class="lev">Drum</td><td>—</td><td class="n">artefact</td><td class="n">37</td><td>Not a control. A setup parameter. See below.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>The burner's authority lives high and early</h3>
+          <p class="prose">The headline number hides the useful one. A reduction taken from 75 % or above returns <b>+1.17 °C/min per point</b> (n 28)—the first brake of the roast is the most powerful gesture in the whole session. A reduction starting from 45–55 % returns +0.03. Below roughly half power a cold radiant element barely couples to the beans; the control is still there, the authority is gone.</p>
+          <p class="prose">Phase matters even more than position: the same move is worth +0.41 during drying and +0.18 during Maillard. Plan on the burner being half as persuasive after the dry end as before it, and take your reductions early.</p>
+          <div class="call">
+            <p class="call-t">The judging window</p>
+            <p>A five-point burner move is worth about 1 °C on the bean probe after one minute, and about 3 °C after two. <b>Judging a burner move before 60 to 90 seconds is judging noise</b>—and stacking a second move before the first has landed is how you get a roast that oscillates for the rest of its life.</p>
+          </div>
+
+          <h3>Airflow delivers the burner, and that is the whole story</h3>
+          <p class="prose">Point for point, opening the fan measures +0.11 °C/min in my logs. But that number is an average over the way <em>I</em> use it—with the burner high—and the sign is not a property of the control. It is a property of the pair.</p>
+          <p class="prose">Room air is pulled in at the rear, past an element that is on to whatever degree you have set, then <em>through</em> the perforated drum and the bed. What arrives at the beans is the burner's energy, delivered. When the element is hot, more air is more heat—this is how I hold up a curve that is falling too fast without touching the burner at all. When the element is low, the same gesture cools, with smoke evacuation as its only remaining benefit. Pushed very high it brakes regardless, because no element level can warm that much air.</p>
+          <p class="prose">Two practical consequences of the machine being under suction throughout. <b>What you open competes with the bed.</b> The tryer and the chaff drawer are intakes too, and air that comes in there is air that did not pass the beans—so a long look through the tryer is a small airflow cut you did not make on purpose. And <b>opening the fan lifts the ET reading on its own</b>, because that probe is in the exhaust rather than in the drum. Do not read that lift as heat arriving. <b>Judge an airflow move on the bean probe, or on nothing.</b></p>
+          <div class="call">
+            <p class="call-t">The same fact, seen twice</p>
+            <p>The airflow lever and the burner's authority cliff are not two findings. Below roughly half power the element is not warming the incoming air—so the burner has lost its authority <em>and</em> the fan has lost its purpose at the same moment, for the same reason. <b>A roast run at 40 % burner with the fan open is not being driven. It is being baked while its smoke is removed.</b></p>
+          </div>
+          <p class="prose">In practice it moves in a monotone staircase, four or five points at a time, and it does not come back down—because the burner is coming down at the same time, and the two are one gesture rather than two. If you need to genuinely slow the roast, that is the extraction's job.</p>
+
+          <h3>Extraction follows the smoke, not the curve</h3>
+          <p class="prose">Point for point the extractor is about 1.2× the burner, in the opposite direction, and it acts three times faster. Three to five points will lie a curve down. Which is exactly why it should be moved in ones and twos, and steered by what is coming off the beans—a smoky natural wants more—rather than used as a rate-of-rise brake.</p>
+          <p class="prose">There is a structural point here that matters more than the coefficient. The extractor does not have its own path through the machine—it <b>sits downstream of the machine's own fan and adds to it</b>. Its two controls are therefore not independent: the fan sets the flow, the extractor raises it, and the air the beans actually see is the sum. Which is why a fan setting only means something alongside the extraction setting it was used with, and why the templates in section 6 always give both columns together. A single number for airflow, quoted on its own, is not information about this machine.</p>
+          <p class="prose">One rule is not optional: <b>an extraction brake left in place after the curve has recovered will stall the roast.</b> Bring it back toward its planned value as soon as the rate is back in band.</p>
+
+          <h3>The drum is decided by the charge, and then it stops</h3>
+          <p class="prose">Batch weight decides drum speed. Nothing else, and never again during the roast. <span class="badge b-doctrine">doctrine</span> The speed you want is the one that keeps the vanes turning the whole bed over; past it the beans fly and strike the element, which sits inside the drum rather than outside it. Under it the bed slumps and the top of it stops being reached.</p>
+          <p class="prose">There is a measurement reason too, and section 1 explains it. The bean probe sits <em>in the bed</em>. Change the drum speed and the bed reorganises around it: the <em>displayed</em> rate of rise takes an excursion of −9 to −15 °C/min at thirty seconds—<b>in both directions</b>, whether you sped up or slowed down, and it has not settled by forty. Nothing happened to the roast. You will read it as a crash and correct a problem that does not exist.</p>
+        </div>
+
+        <!-- 3 -->
+        <div class="art-sec" id="a3">
+          <h2><span class="num">03</span>Setup is most of the roast</h2>
+          <p class="prose">The settings are the cause; the curve is the consequence. By the time the beans are in the drum, the peak rate of rise you are going to get is already decided—by charge temperature, batch size and the burner you set. Chasing it afterwards with the controls is how a roast gets baked. The corrections belong to the <em>next</em> roast, and section 9 is about those.</p>
+          <div class="tw">
+            <table>
+              <caption>Charge settings by batch size <span class="badge b-measured">measured</span> · median of recent roasts</caption>
+              <thead><tr><th>Parameter</th><th class="n">≤ 300 g</th><th class="n">&gt; 300 g</th><th>Note</th></tr></thead>
+              <tbody>
+                <tr><td>Charge temperature</td><td class="n">~175 °C</td><td class="n">~185 °C</td><td>Coffee-specific band runs 174–191</td></tr>
+                <tr><td>Burner</td><td class="n">70 %</td><td class="n">75–80 %</td><td>80 % is my ceiling, for wear</td></tr>
+                <tr><td>Airflow</td><td class="n">25–30</td><td class="n">30–40</td><td>Higher for light roasts</td></tr>
+                <tr><td>Drum</td><td class="n">60–75</td><td class="n">80</td><td>60–65 below 200 g</td></tr>
+                <tr><td>Extraction</td><td class="n">30</td><td class="n">30</td><td>Baseline; rises with the smoke</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="call">
+            <p class="call-t">Why the charge burner is not negotiable</p>
+            <p>Across 91 roasts the turning point lands at a median of 74 seconds, with a tight spread of 70 to 76, and it is <b>indifferent to batch size</b>. But that consistency is conditional on charging with the burner at 70–80 %. Below that the machine climbs back more slowly and the turning point recedes. A plan that asks for less than 70 % during drying cannot promise you a turning point at 1:15.</p>
+          </div>
+          <p class="prose">One thing you do not have to plan around: the room. Ambient conditions have little effect here—29 roasts below 21 °C against 3 above 24, at comparable weight and identical setup, with nothing separating them. <span class="badge b-measured">measured</span> Which is what you would want to be true, since a machine strongly coupled to the room is a machine you cannot reproduce from one day to the next.</p>
+          <p class="prose">On batch size: I treat anything at or under 300 g as a small batch and 300–500 g as a large one. My real median is 350 g, though the manufacturer quotes 400.</p>
+          <div class="call">
+            <p class="call-t">Small batches need one mechanical fix first</p>
+            <p><b>Raise the rear feet by about 1.5 cm.</b> <span class="badge b-doctrine">doctrine</span> The bed pools toward the front and stays in contact with the bean probe, and the improvement is not subtle: without it, bean temperature and rate of rise on a small batch are frankly fanciful, and no amount of careful driving will rescue a curve you cannot trust. With it, a 250 g batch measures as honestly as a 400 g one. Do this before you conclude anything at all about a small batch.</p>
+          </div>
+        </div>
+
+        <!-- 4 -->
+        <div class="art-sec" id="a4">
+          <h2><span class="num">04</span>One envelope, whatever the roast level</h2>
+          <p class="prose">There is one shape of rate-of-rise curve on this machine, and every roast level uses it. What changes between a light and a medium is not the envelope—it is where you stop.</p>
+
+          <figure>
+            <div class="fig-head">
+              <p class="fig-lbl">Figure 2</p>
+              <p class="fig-ttl">The envelope, as the machine actually runs it</p>
+            </div>
+            <div class="fig-body"><div id="fig-env"></div></div>
+            <div class="legend">
+              <span><i class="swatch sw-ror"></i> Median rate of rise, n = 30 · 400 g</span>
+              <span><i class="swatch sw-ember"></i> Milestones</span>
+            </div>
+            <figcaption>Median of thirty 400 g roasts. The peak sits at 15.3 °C/min just after the turning point; the curve passes 11 at the dry end, 8.4 entering first crack, and 5.6 at the drop. The usual peak across 96 roasts is 16.2 °C/min; a Cormorant, for comparison, sits at 21. Wet lots can push a curve like this one to 20.</figcaption>
+          </figure>
+
+          <ul class="clean">
+            <li><b>Peak 15–16 °C/min just after the turning point.</b> The median peak across 96 roasts is 16.2 <span class="badge b-measured">measured</span>—read that as the machine's usual reach, not as a wall. Some lots, very wet ones especially, give up a lot of energy early and will take the peak to 20. If you are up there, the useful thing is to know that you are.</li>
+            <li><b>About 12 entering Maillard</b>, decaying smoothly.</li>
+            <li><b>About 9 entering first crack.</b> Braking below 8 at the crack on this machine tends to crash the curve rather than settle it.</li>
+            <li><b>About 5 at the drop.</b> This is the number that matters at the end, and it is the one people mistake for a first-crack target.</li>
+          </ul>
+
+          <h3>The turning point follows mass, not charge temperature</h3>
+          <p class="prose">This surprises people, and it is strongly measured: across 94 roasts the turning point correlates with batch weight at −0.75, and with charge temperature at only +0.29. At 250 g it lands near 119 °C; above 320 g, near 93 °C. Charge temperature moves the <em>timing</em> of drying, not its depth.</p>
+          <p class="prose">Which is why <b>you should not target a drying time at all.</b> Hold the envelope, and the mass produces the duration: roughly three minutes at 150 g, four at a small batch, five and a half to six at 350–400 g. Aiming for 4:30 at 400 g asks for an average of 17.5 °C/min across drying, and an average cannot exceed a peak—so on most coffees it simply will not happen. On a wet lot that genuinely runs to 20, it can. Read the number as a warning that you are asking for the top of what the machine has, not as an impossibility.</p>
+
+          <div class="call">
+            <p class="call-t">Maillard is never longer than drying</p>
+            <p>Four minutes of drying and three of Maillard is fine. Five and four is fine. <b>Three and three is not</b>—the curve has no room to come down. Measured across 92 roasts the ratio sits at 0.69, with only 2 % above 1.0, and all three templates in section 6 land on exactly 0.7. When the two fight, it is Maillard that yields: drying has a duration anchor held by the mass, Maillard only has an envelope, and an envelope tightens.</p>
+          </div>
+        </div>
+
+        <!-- 5 -->
+        <div class="art-sec" id="a5">
+          <h2><span class="num">05</span>Phase by phase</h2>
+
+          <h3>Charge to turning point—do nothing</h3>
+          <p class="prose">There is nothing useful to do in the first minute. No soak, no early correction. The turning point arrives around 1:15 and tells you whether the setup was right; that is its job.</p>
+
+          <h3>Drying—still nothing, if the setup was right</h3>
+          <p class="prose">This is the part that reads as heresy. If charge temperature, burner and airflow were set correctly, <b>you do not need to touch anything before the dry end.</b> My first announced reduction falls ten to fifteen seconds <em>after</em> it, not before. A pre-dry-end reduction is a learned correction for a specific coffee that has misbehaved before—not a step in the method.</p>
+          <p class="prose">The dry end lands at 149–151 °C on my light roasts, tightly (interquartile range 147–151 across 91 roasts).</p>
+
+          <h3>Maillard—the phase that lies to you</h3>
+          <div class="call key">
+            <p class="call-t">The most important paragraph here</p>
+            <p class="pull">A smooth, decaying rate of rise does not prove the roast is being fed.</p>
+            <p>Maillard reactions are endothermic: they consume the energy you supply. Pulling the burner back here does not gently decelerate the roast—it <b>starves the reaction</b>. The temperature keeps climbing on the drum's residual heat, the curve stays beautiful, and the chemistry has already let go. That is the baked roast: flat, toasted bread, no sweetness. The curve is blind to the worst fault it can have.</p>
+          </div>
+          <p class="prose">This is why I hold the burner at 60 % or above through mid-Maillard, and why reductions here have to be <b>anticipated</b>. The burner has 25–45 seconds of lag and half the authority it had during drying; a late reduction costs double. Open the airflow as the burner comes down—that is the supporting move, and it is why the two trajectories in every template below run in opposite directions.</p>
+          <p class="prose">The extraction rises here too, following the smoke rather than the curve. A natural or an anaerobic that starts smoking wants more; a clean washed coffee may not need any change at all.</p>
+
+          <h3>First crack—set the burner and stop</h3>
+          <p class="prose">The burner is placed at the crack, around 50 %, and the airflow steps up. After that you are not adjusting anything: you are choosing when to stop.</p>
+
+          <h3>Development—you enter it, you don't steer it</h3>
+          <p class="prose">After the crack the bean generates its own heat. The burner is no longer a meaningful lever—it entertains rather than drives—and the useful quantity is the <b>arrival</b>: at the current rate, when do you reach the drop temperature you want? Hold the burner around 45 %. Do not let it collapse; a burner cut to 20–30 % after the crack produces exactly the flat, papery cup people blame on the coffee.</p>
+          <div class="call open">
+            <p class="call-t">The one exception</p>
+            <p>Rarely, the exotherm does not take: the rate collapses right after the crack because the bean has not got enough energy of its own. This is the only moment in development where the burner is a lever again, because nothing else is competing with it. One notch—the rule does not change because the situation is urgent—and mind the window: the burner needs 30–45 seconds to act, so beyond roughly a minute past the crack it no longer has time. <b>Check the extraction first</b>: if it rose in the last thirty seconds chasing smoke from the crack, it is braking harder than the burner can push, and it responds in ten seconds rather than forty.</p>
+            <p>Past that window, do not make a pointless gesture. Name the trade honestly—dropping now gives you an underdeveloped cup, which brewing can partly rescue; waiting gives you a baked one, which it cannot—and drop. The real correction is in the next roast's setup.</p>
+          </div>
+        </div>
+
+        <!-- 6 -->
+        <div class="art-sec" id="a6">
+          <h2><span class="num">06</span>Three templates</h2>
+          <p class="prose">Trajectories are sampled on a milestone axis, so they line up regardless of how long each roast took. Values are control positions in percent.</p>
+
+          <figure>
+            <div class="fig-head">
+              <p class="fig-lbl">Figure 4</p>
+              <p class="fig-ttl">Burner down, air up—three roast levels</p>
+            </div>
+            <div class="fig-body"><div id="fig-gab"></div></div>
+            <div class="legend">
+              <span><i class="swatch sw-ember"></i> Burner</span>
+              <span><i class="swatch sw-blue"></i> Airflow</span>
+              <span class="q">solid = light (Keben) · dashed = medium light · dotted = medium</span>
+            </div>
+            <figcaption>The paired staircase is the signature of the machine: the burner comes down in soft steps and holds around 45 % through development, while the air climbs monotonically and never returns. The light template's airflow reaches 80 because that operator has no extractor—see the translation below.</figcaption>
+          </figure>
+
+          <h3>Light · 336 g · reference from another operator</h3>
+          <div class="tw">
+            <table>
+              <caption>Ten competition light roasts, same operator, no extractor <span class="badge b-measured">measured</span></caption>
+              <thead><tr><th>Control</th><th class="n">Charge</th><th class="n">Mid-dry</th><th class="n">Dry end</th><th class="n">Mid-Mai</th><th class="n">FC</th><th class="n">Mid-dev</th><th class="n">Drop</th></tr></thead>
+              <tbody>
+                <tr><td class="lev">Burner</td><td class="n">80</td><td class="n">75</td><td class="n">72</td><td class="n">62</td><td class="n">45</td><td class="n">40</td><td class="n">40</td></tr>
+                <tr><td class="lev">Airflow</td><td class="n">40</td><td class="n">40</td><td class="n">40</td><td class="n">58</td><td class="n">70</td><td class="n">78</td><td class="n">80</td></tr>
+                <tr><td class="lev">Extraction</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="prose"><span class="mono">Drum 80 · drying 4:42 (53 %) · Maillard 3:07 (35 %) · development 1:02 · total 9:17 · DTR 10.8 % · loss 12.8 %</span><br><span class="mono">Charge 175 °C · TP 101 °C at 1:01 · dry end 156 · FC 189 · drop 195 · peak 16.7</span></p>
+
+          <h3>Medium light · 250 g</h3>
+          <div class="tw">
+            <table>
+              <caption>My roasts, whole-bean Agtron 62–70, n = 18 <span class="badge b-measured">measured</span></caption>
+              <thead><tr><th>Control</th><th class="n">Charge</th><th class="n">Mid-dry</th><th class="n">Dry end</th><th class="n">Mid-Mai</th><th class="n">FC</th><th class="n">Mid-dev</th><th class="n">Drop</th></tr></thead>
+              <tbody>
+                <tr><td class="lev">Burner</td><td class="n">75</td><td class="n">70</td><td class="n">60</td><td class="n">58</td><td class="n">50</td><td class="n">45</td><td class="n">45</td></tr>
+                <tr><td class="lev">Airflow</td><td class="n">25</td><td class="n">25</td><td class="n">30</td><td class="n">33</td><td class="n">35</td><td class="n">45</td><td class="n">50</td></tr>
+                <tr><td class="lev">Extraction</td><td class="n">30</td><td class="n">30</td><td class="n">32</td><td class="n">35</td><td class="n">36</td><td class="n">45</td><td class="n">40</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="prose"><span class="mono">Drum 72 · drying 4:57 · Maillard 3:48 · development 1:08 · total 9:39 · DTR 13.5 % · loss 12.9 %</span><br><span class="mono">Charge 175 °C · TP 117 °C at 1:14 · dry end 151 · FC 187 · drop 196 · peak 15.2 · Agtron 64.7</span></p>
+
+          <h3>Medium · 400 g</h3>
+          <div class="tw">
+            <table>
+              <caption>My roasts, whole-bean Agtron below 62, n = 31 <span class="badge b-measured">measured</span></caption>
+              <thead><tr><th>Control</th><th class="n">Charge</th><th class="n">Mid-dry</th><th class="n">Dry end</th><th class="n">Mid-Mai</th><th class="n">FC</th><th class="n">Mid-dev</th><th class="n">Drop</th></tr></thead>
+              <tbody>
+                <tr><td class="lev">Burner</td><td class="n">75</td><td class="n">75</td><td class="n">70</td><td class="n">63</td><td class="n">50</td><td class="n">45</td><td class="n">45</td></tr>
+                <tr><td class="lev">Airflow</td><td class="n">30</td><td class="n">30</td><td class="n">30</td><td class="n">35</td><td class="n">35</td><td class="n">50</td><td class="n">55</td></tr>
+                <tr><td class="lev">Extraction</td><td class="n">30</td><td class="n">30</td><td class="n">32</td><td class="n">37</td><td class="n">35</td><td class="n">40</td><td class="n">40</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="prose"><span class="mono">Drum 80 · drying 5:42 · Maillard 3:52 · development 1:42 · total 11:27 · DTR 15.5 % · loss 13.8 %</span><br><span class="mono">Charge 185 °C · TP 93 °C at 1:15 · dry end 150 · FC 187 · drop 200 · peak 16.1 · Agtron 56.0</span></p>
+
+          <h3>If your machine has an extractor and the template does not</h3>
+          <p class="prose">The light template comes from an operator with no extraction, so all of their flow comes from the machine's own fan. I run a DiFluid AirWave. I originally published a conversion here—one point of extraction worth a fraction of a point of airflow—derived by matching the two trajectories milestone by milestone, and I have withdrawn it: it rested on the unchecked assumption that two operators arriving at their own settings are moving the same air.</p>
+          <p class="prose">What replaces it is not a number but a piece of construction, and it is the more useful of the two. <b>An extractor does not have its own route through the machine. It sits downstream of the machine's fan and adds to it.</b> There is one air path, one bed, and two pumps in line on it. So the fan number and the extraction number are two halves of a single setting, and neither means anything quoted alone.</p>
+          <div class="call">
+            <p class="call-t">What that tells you to do</p>
+            <p>Read the airflow column of a template <b>together with its extraction column</b>, as one figure. A template with no extraction column is not telling you to run your fan at 70—it is telling you what that operator needed with the single lever they had. On a machine with two levers, the same delivery is reached at a lower fan setting, and how much lower is yours to find on your own machine. <b>I cannot give you the exchange rate</b>, and I am not going to invent one. <span class="badge b-open">open</span></p>
+          </div>
+          <p class="prose">It also settles the apparent disagreement at first crack. That operator takes air to 70 because the fan is all they have; I sit at 35 with the extractor at 35. Those may well be the same total delivery expressed with different hardware—the structure says they could be, and nothing in either log says otherwise.</p>
+
+          <h3>Small batches</h3>
+          <p class="prose">At 250 g I only roast light and medium light, so I have no measured medium template at that size. The rule transposes without change: a medium at 250 g is the same conduct with a <b>longer development and a slightly higher drop temperature</b>. Which is, as the next section argues, the only thing that ever separates the two.</p>
+        </div>
+
+        <!-- 7 -->
+        <div class="art-sec" id="a7">
+          <h2><span class="num">07</span>The arrival—time and temperature, together</h2>
+          <p class="prose">Here is the comparison that started this article. My roast level was confounded with batch size, so I held size constant: 400 g only, light-leaning batches (Agtron 64, n 6) against mediums (Agtron 56, n 30).</p>
+          <div class="tw">
+            <table>
+              <caption>Same machine, same batch size, eight points of Agtron apart <span class="badge b-measured">measured</span></caption>
+              <thead><tr><th></th><th class="n">Agtron 64</th><th class="n">Agtron 56</th><th class="n">Difference</th></tr></thead>
+              <tbody>
+                <tr><td>Burner, charge → crack</td><td class="n">77 / 72 / 66 / 62 / 50</td><td class="n">75 / 75 / 70 / 63 / 50</td><td>near-identical</td></tr>
+                <tr><td>Drying</td><td class="n">5:54</td><td class="n">5:42</td><td class="n">−12 s</td></tr>
+                <tr><td>Maillard</td><td class="n">4:01</td><td class="n">3:52</td><td class="n">−9 s</td></tr>
+                <tr><td>Total time</td><td class="n">11:30</td><td class="n">11:29</td><td class="n">none</td></tr>
+                <tr class="hi"><td><b>Development</b></td><td class="n">1:34</td><td class="n">1:42</td><td class="n">+8 s</td></tr>
+                <tr class="hi"><td><b>Drop temperature</b></td><td class="n">195.1 °C</td><td class="n">199.7 °C</td><td class="n">+4.6 °C</td></tr>
+                <tr><td>Development ratio</td><td class="n">14.0 %</td><td class="n">15.5 %</td><td class="n">+1.5 pt</td></tr>
+                <tr><td>Rate at drop</td><td class="n">4.4</td><td class="n">5.5</td><td class="n">+1.1</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <figure>
+            <div class="fig-head">
+              <p class="fig-lbl">Figure 3</p>
+              <p class="fig-ttl">Same conduct, different arrival</p>
+            </div>
+            <div class="fig-body"><div id="fig-arr"></div></div>
+            <div class="legend">
+              <span><i class="swatch sw-bt"></i> Agtron 64 · n 6</span>
+              <span><i class="swatch sw-blue"></i> Agtron 56 · n 30</span>
+              <span><i class="swatch sw-mark"></i> First crack · drop</span>
+            </div>
+            <figcaption>Both curves are medians of 400 g batches. They track within a few degrees the whole way; the medium reaches first crack thirty-three seconds earlier, stays in eight seconds longer, and lands 4.6 °C higher. Total roast time is identical to the second.</figcaption>
+          </figure>
+
+          <p class="prose">So I tested the claim properly, across all 54 recent roasts that carry a colour reading.</p>
+          <div class="grid3">
+            <div class="card"><p class="stat">0.22</p><p class="stat-sub">R² · drop temperature alone</p><p>Not enough on its own.</p></div>
+            <div class="card"><p class="stat">0.45</p><p class="stat-sub">R² · development ratio alone</p><p>The number most people steer by.</p></div>
+            <div class="card"><p class="stat">0.59</p><p class="stat-sub">R² · both together</p><p>Adding batch weight changes nothing.</p></div>
+          </div>
+          <div class="call key">
+            <p class="call-t">The finding</p>
+            <p class="pull">Neither the time nor the temperature decides the colour. The pair decides it.</p>
+            <p>In usable form: <b>ten extra seconds of development is worth about 1.5 points of Agtron; one extra degree at the drop is worth about 0.3.</b> Which gives you a conversion between the two levers—<b>1 °C of drop temperature is worth 2 seconds of development</b>—and lets you choose which one to spend.</p>
+            <p>The model predicts colour to within 3.2 points. My machine repeats colour to within 3.5 points between consecutive roasts of the same coffee. In other words, the pair predicts the result as accurately as the machine is capable of repeating it, and there is nothing left in the curve to extract.</p>
+          </div>
+          <p class="prose">The practical consequence is a change of attention. Everything up to the crack is about arriving in good condition—fed, not baked, on the envelope. From the crack onward there is exactly one decision left, and it has two coordinates: how long, and how hot. Make that decision before you are in it, because it takes about ten seconds to execute and you will not have time to think.</p>
+        </div>
+
+        <!-- 8 -->
+        <div class="art-sec" id="a8">
+          <h2><span class="num">08</span>Matching the coffee</h2>
+          <p class="prose">The magnitudes above are the machine's. The bands are the coffee's, and the most useful way I have found to think about a green coffee is: <em>when does it start paying for itself?</em></p>
+          <p class="prose">Sucrose is a non-reducing sugar. It has to be inverted before it can enter Maillard at all. That single fact separates the two families you will roast most:</p>
+          <ul class="clean">
+            <li><b>Washed</b>—the sucrose barrier is intact, the energy demand is high and sustained through Maillard. These take heat well and give a clean, sharp first crack. Charge them hot.</li>
+            <li><b>Natural and anaerobic</b>—fermentation has already left reducing sugars available, so browning starts earlier and the reaction becomes self-sustaining sooner. The surface is fragile: charge lower and gentler or you will tip and scorch it. And they smoke, so a plan for them without an extraction path is an incomplete plan.</li>
+            <li><b>Robusta-introgressed varieties</b> (Sarchimor, Catimor, Castillo)—lower sucrose and a thicker cell wall, so the demand arrives latest of all.</li>
+          </ul>
+          <p class="prose">Density and altitude shift the same dial: a dense high-grown coffee absorbs more and cracks later and hotter; a low-grown or old-crop lot accelerates and everything arrives early. Moisture above 11 % lengthens drying—give it time rather than fire. Small screens react fast, so make smaller gestures.</p>
+          <p class="prose">Water activity deserves its own line, because it is not the same variable as moisture. <b>It does not change how much energy the coffee needs; it changes where that energy is paid.</b> Free water is paid during drying. Bound water—below about 0.50 aw—keeps coming out during Maillard, competing with the reaction you are trying to feed.</p>
+          <div class="call open">
+            <p class="call-t">What I am not going to tell you</p>
+            <p>You will read that a denser coffee needs more heat. I cannot support it from my own data: the density on my records is a value from the supplier's sheet, and it is collinear with batch size in my logs, so the two cannot be separated. It may well be true. It is not measured here, and I would rather leave a gap than fill it with a plausible rule.</p>
+          </div>
+        </div>
+
+        <!-- 9 -->
+        <div class="art-sec" id="a9">
+          <h2><span class="num">09</span>The next roast is where you fix things</h2>
+          <p class="prose">Since the settings are the cause, corrections belong between roasts, not inside them. The granularity is strict and it is the hardest discipline in the method: <b>five points on one control, one control at a time</b>, or two to four degrees on charge temperature. Never a large corrective gesture. Small, aimed, judged on the next batch of the same coffee.</p>
+          <div class="tw">
+            <table>
+              <caption>Fault on roast k → response on roast k+1 · 34 consecutive pairs within the same coffee <span class="badge b-measured">measured</span></caption>
+              <thead><tr><th>What went wrong</th><th class="n">n</th><th>What I changed next time</th></tr></thead>
+              <tbody>
+                <tr><td>Rate at drop above 7—finished too lively</td><td class="n">8</td><td>Burner −5 at mid-Maillard and at the crack; charge +1.5 °C</td></tr>
+                <tr><td>Development ratio below 12.5 %</td><td class="n">4</td><td>Burner −5 at the crack; charge +1.5 °C</td></tr>
+                <tr><td>Rate at drop below 3.5—dead finish</td><td class="n">4</td><td>Setup burner +2.5, setup airflow +5</td></tr>
+                <tr><td>Peak above 18.5</td><td class="n">3</td><td>Burner −4 mid-Maillard, −10 at the crack; setup unchanged</td></tr>
+                <tr><td>Drying under 4:40</td><td class="n">3</td><td>Setup burner −5; burner −8 at the crack; charge +2 °C</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="prose">The dominant pattern: too much energy late in the curve is fixed by lowering the <em>trajectory</em> a notch; a dead finish is fixed by raising the <em>setup</em>. About 59 % of these corrections moved the next roast toward target—coffee and room variance take the rest, which is roughly the honest hit rate you should expect.</p>
+          <p class="prose">For colour, use the conversion from section 7 rather than total roast time; total time barely correlates with colour at all (+0.19). Read colour <b>from one batch to the next</b>, not against an absolute scale: reproduce the profile and the colour lands in the same bracket, a few Agtron points wide, every time. That repeatability—about 3.5 points on my machine—is precisely what makes the conversion usable. What does not travel is the slope itself, between machines and between coffees; learn yours. And never pool whole-bean and ground readings into one statistic.</p>
+          <p class="prose">Rough guardrails, not dogma: drying 4:40–6:30 · peak at or below 18.5 · development ratio 12.5–18 % · rate at drop 3.5–7 · weight loss 12–15 % for light, up to 18–20 % for dark. A deliberate target outside these is not a fault—one of my coffees is roasted to an 8.5 % development ratio on purpose.</p>
+        </div>
+
+        <!-- 10 -->
+        <div class="art-sec" id="a10">
+          <h2><span class="num">10</span>Where TilauScope fits</h2>
+          <p class="prose">Everything above is a method you can run with a notebook. I built it into software because two parts of it are tedious to do by hand under time pressure, and one part is impossible.</p>
+          <ul class="clean">
+            <li><b>The envelope, computed for the batch in front of you.</b> The turning point law, the ceiling, the Maillard-to-drying ratio—these produce the phase durations rather than being targets you pick.</li>
+            <li><b>First crack and drop temperature, learned from this coffee's own history</b>, rather than from a grid. From the second roast onward the plan knows what this lot actually does on your machine.</li>
+            <li><b>Reductions announced before they are due</b>, because a burner move that lands 40 seconds late costs double during Maillard.</li>
+            <li><b>The arrival, projected live.</b> The impossible part: at the current rate, when do you reach your drop temperature, what development ratio does that give, and what colour did that produce last time. Section 7 is the reason this exists.</li>
+          </ul>
+          <p class="prose">It is a modified Artisan, free software, and it never drops for you—charging and dropping are the two moments that commit the coffee, and they stay in your hand.</p>
+        </div>
+
+  </article>
+</main>
+
+<footer class="footer">
+  <div class="footer-brand"><span class="brand-name">TilauScope</span><p>A guided roasting layer for Artisan.</p></div>
+  <nav class="footer-nav" aria-label="Footer navigation"><a href="https://docs.tilauscope.org" target="_blank" rel="noopener noreferrer">Documentation</a><a href="https://github.com/neuralldev/tilauscope_fork" target="_blank" rel="noopener noreferrer">Source</a><a href="https://github.com/neuralldev/tilauscope_fork/discussions" target="_blank" rel="noopener noreferrer">Community</a><a href="mailto:tilauscope@gmail.com">Contact</a><a href="https://github.com/neuralldev/tilauscope_fork/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">AGPL v3</a></nav>
+  <p class="footer-privacy">No analytics. No cookies. No third-party assets. © 2025–2026 Tilau.</p>
+</footer>
+</body>
+</html>

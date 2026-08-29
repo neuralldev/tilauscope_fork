@@ -31,6 +31,7 @@ import logging
 import platform
 import subprocess
 import threading
+import time
 
 from concurrent.futures import CancelledError as FutureCancelledError, Future
 
@@ -53,24 +54,130 @@ if TYPE_CHECKING:
 _log = logging.getLogger(__name__)
 
 ##TILAU ##
-def bluetooth_enabled(timeout: float = 1.0) -> bool:
+# ── Adapter state: probed once, shared by every caller ───────────────────────
+# Whether the radio is on is a property of the machine, not of the caller, but
+# it used to be asked once per manager — three times on ON, twice more on OFF,
+# again on every BeanCave open — and each ask spawns a `system_profiler`
+# subprocess on macOS. It is now probed at most once per TTL and shared.
+#
+# Two accessors, because the callers are not asking the same question:
+#   bluetooth_enabled()   — blocking, for the sites that REPORT the answer to
+#                           the operator ("Printer: Bluetooth N/A"); served from
+#                           the cache when it is fresh.
+#   bluetooth_available() — never blocks, for the start paths on the GUI thread;
+#                           refreshes in the background when stale.
+# Teardown asks neither: a manager that exists must be closed whether or not the
+# adapter is still on (see stopSkywalkerManager).
+
+_BT_STATE_TTL: Final[float] = 20.0      # how long a probe result stays authoritative
+_BT_PROBE_TIMEOUT: Final[float] = 5.0   # hard ceiling on the OS query itself
+
+
+def _probe_bluetooth(timeout: float = _BT_PROBE_TIMEOUT) -> bool:
+    """One OS query, no cache. Optimistic on failure: an unanswered probe must
+    not amputate the BLE path — a connection attempt reports its own failure."""
     try:
-        # Run the async function in a temporary event loop
         return asyncio.run(bluetooth_enabled_async(timeout))
-    except Exception:
-        # Final safety fallback
+    except Exception:  # pylint: disable=broad-except
         return True
-    
+
+
+class _BluetoothState:
+    """Process-wide cache of the adapter state. Thread-safe."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        # Held for the whole probe so concurrent first-callers pay one subprocess.
+        self._probe_lock = threading.Lock()
+        self._value: bool | None = None
+        self._checked_at: float = 0.0
+
+    def _fresh(self, max_age: float) -> bool | None:
+        with self._lock:
+            if self._value is None or (time.monotonic() - self._checked_at) > max_age:
+                return None
+            return self._value
+
+    def _store(self, value: bool) -> None:
+        with self._lock:
+            self._value = value
+            self._checked_at = time.monotonic()
+
+    def get(self, max_age: float = _BT_STATE_TTL,
+            timeout: float = _BT_PROBE_TIMEOUT) -> bool:
+        """Blocking, but at most one OS query per TTL across all callers."""
+        cached = self._fresh(max_age)
+        if cached is not None:
+            return cached
+        with self._probe_lock:
+            cached = self._fresh(max_age)   # a racing caller may have just stored one
+            if cached is not None:
+                return cached
+            value = _probe_bluetooth(timeout)
+            self._store(value)
+            return value
+
+    def peek(self, max_age: float = _BT_STATE_TTL) -> bool:
+        """Never blocks: last known answer, refreshed in the background when
+        stale, optimistic when nothing has ever been probed."""
+        cached = self._fresh(max_age)
+        if cached is not None:
+            return cached
+        self.refresh_async()
+        with self._lock:
+            return True if self._value is None else self._value
+
+    def refresh_async(self) -> None:
+        """Probe off the calling thread. No-op while one is already in flight."""
+        if not self._probe_lock.acquire(blocking=False):
+            return
+
+        def _work() -> None:
+            try:
+                self._store(_probe_bluetooth())
+            finally:
+                self._probe_lock.release()
+
+        threading.Thread(target=_work, name='BluetoothProbe', daemon=True).start()
+
+    def invalidate(self) -> None:
+        """Force the next ask to re-query the OS."""
+        with self._lock:
+            self._value = None
+            self._checked_at = 0.0
+
+
+_bluetooth_state: Final[_BluetoothState] = _BluetoothState()
+
+
+def bluetooth_enabled(timeout: float = _BT_PROBE_TIMEOUT) -> bool:
+    return _bluetooth_state.get(timeout=timeout)
+
+
+def bluetooth_available(max_age: float = _BT_STATE_TTL) -> bool:
+    return _bluetooth_state.peek(max_age)
+
+
+def invalidate_bluetooth_state() -> None:
+    _bluetooth_state.invalidate()
+
+
 ##TILAU ##
-async def bluetooth_enabled_async(timeout: float = 1.0) -> bool:
+async def bluetooth_enabled_async(timeout: float = _BT_PROBE_TIMEOUT) -> bool:
     os_name = platform.system()
     if os_name=="Darwin":
         try:
+            # A bounded query: system_profiler can hang on a wedged Bluetooth
+            # stack, and an unbounded one froze the whole window with it.
             output = subprocess.check_output(
                 ["system_profiler", "SPBluetoothDataType"],
-                text=True
+                text=True,
+                timeout=max(1.0, timeout)
             )
             return "State: On" in output
+        except subprocess.TimeoutExpired:
+            _log.warning('system_profiler did not answer within %ss — assuming Bluetooth is available', timeout)
+            return True
         except subprocess.CalledProcessError:
             return False
     if os_name=="Windows":

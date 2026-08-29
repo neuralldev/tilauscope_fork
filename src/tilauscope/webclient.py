@@ -281,8 +281,8 @@ canvas{width:100%;height:100%;display:block}
   <div class=stage>
    <div class=chartwrap><canvas id=cv></canvas></div>
    <div class=reads>
-    <div class="read bt"><div class=v id=r_bt>–</div><div class=k>BT °C</div></div>
-    <div class="read et"><div class=v id=r_et>–</div><div class=k>ET °C</div></div>
+    <div class="read bt"><div class=v id=r_bt>–</div><div class=k>BT <span id=u_bt>°C</span></div></div>
+    <div class="read et"><div class=v id=r_et>–</div><div class=k>ET <span id=u_et>°C</span></div></div>
     <div class="read ror"><div class=v id=r_ror>–</div><div class=k>RoR</div></div>
     <div class="read dt"><div class=v id=r_dt>–</div><div class=k>ΔT</div></div>
    </div>
@@ -372,7 +372,11 @@ var markers=[],phase='idle',chargeT=null,clock=0,haveData=false;
 var MARKLBL={CHARGE:'CHARGE',DRYe:'DE',DRY:'DE',FCs:'FCs',SCs:'SCs',DROP:'DROP'};
 /* 4b: milestone sequence (from welcome.controls.mark) + recorder state. */
 var markSeq=[],recording=false;
-var axes=null;          // Artisan axis limits {tmin,tmax,rmin,rmax} (snapshot)
+/* the chart's scales, from the SAME table the desktop curve engine draws from
+   (graph/common.py) — bounds, grid steps and the unit they are stated in. The
+   samples on the wire are in that unit too, so nothing is converted here. */
+var axes=null;
+var tunit='C';          // temperature unit the desktop reads in ('C' | 'F')
 /* curve colours: these are only the fallback — the desktop sends its own palette
    so BT/ET/RoR are the SAME hue on both screens (a curve that changes colour
    between the two is read wrong mid-roast). */
@@ -416,6 +420,12 @@ function paintReads(d){
  var bt=(d.bt!=null?d.bt:lastVal('bt')),et=(d.et!=null?d.et:lastVal('et'));
  $('r_dt').textContent=(bt!=null&&et!=null)?Math.round(et-bt):'–';}
 
+/* the readouts are labelled in the desktop's unit, never in an assumed one: the
+   figures ARE Artisan's, so a °C caption over a Fahrenheit reading is not a
+   cosmetic slip — it misstates the roast by 180 degrees. */
+function applyUnit(u){if(!u||u===tunit)return;tunit=u;
+ $('u_bt').textContent='°'+tunit;$('u_et').textContent='°'+tunit;}
+
 /* the readout numbers are the curve's legend — recolour them with it, or the key
    to reading the graph drifts away from the graph. Callers redraw straight after. */
 function applyColors(c){if(!c)return;
@@ -448,7 +458,7 @@ function drawChart(){
  else{var te=extent(bt.concat(et));if(!te)te=[20,220];
   tmin=Math.floor((te[0]-8)/10)*10;tmax=Math.ceil((te[1]+8)/10)*10;
   if(tmax-tmin<40)tmax=tmin+40;
-  var re=extent(ror);rmin=0;rmax=15;if(re){rmin=Math.min(0,Math.floor(re[0]/5)*5);rmax=Math.max(15,Math.ceil(re[1]/5)*5);}}
+  var re=extent(ror);rmin=0;rmax=24;if(re){rmin=Math.min(0,Math.floor(re[0]/5)*5);rmax=Math.max(24,Math.ceil(re[1]/5)*5);}}
  if(tmax<=tmin)tmax=tmin+40;if(rmax<=rmin)rmax=rmin+15;
  // x-axis is a GROWING WINDOW, not a tight fit: start ~10 min wide so early data
  // isn't stretched across the screen, then extend one minute at a time keeping ~1
@@ -470,13 +480,18 @@ function drawChart(){
  // grid + temp axis
  ctx.font=(10*DPR)+'px ui-monospace,monospace';ctx.textBaseline='middle';
  ctx.lineWidth=1;
- for(var g=tmin;g<=tmax;g+=(tmax-tmin>120?40:20)){var y=YT(g);
+ // the desktop sends its own grid steps: same lines at the same figures, so a
+ // height on one screen is the same height on the other. Only guessed when the
+ // scales haven't arrived yet.
+ var ts=(axes&&axes.tstep>0)?axes.tstep:(tmax-tmin>120?40:20);
+ var rs=(axes&&axes.rstep>0)?axes.rstep:(rmax-rmin>30?10:5);
+ for(var g=tmin;g<=tmax;g+=ts){var y=YT(g);
   ctx.strokeStyle='rgba(49,50,68,.7)';ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(W-PR,y);ctx.stroke();
-  ctx.fillStyle='#6C7086';ctx.textAlign='right';ctx.fillText(g,PL-4*DPR,y);}
+  ctx.fillStyle='#6C7086';ctx.textAlign='right';ctx.fillText(Math.round(g),PL-4*DPR,y);}
  // ror axis labels (right)
  ctx.textAlign='left';
- for(var gr=rmin;gr<=rmax;gr+=(rmax-rmin>30?10:5)){ctx.fillStyle='#586074';
-  ctx.fillText(gr,W-PR+4*DPR,YR(gr));}
+ for(var gr=rmin;gr<=rmax;gr+=rs){ctx.fillStyle='#586074';
+  ctx.fillText(Math.round(gr),W-PR+4*DPR,YR(gr));}
  // markers
  for(var mi=0;mi<markers.length;mi++){var mk=markers[mi];if(mk.t==null)continue;
   var mx=X(mk.t);if(mx<PL||mx>W-PR)continue;
@@ -678,7 +693,7 @@ function setSnapshot(d){
  recording=!!d.recording;
  // absent on older desktops -> assume live (the pre-existing behaviour)
  monitorOn=(d.monitoring!==false);setDot(monitorOn?'on':'grace');
- if(d.axes)axes=d.axes;
+ if(d.axes){axes=d.axes;applyUnit(axes.unit);}
  applyColors(d.colors);
  ltime=(d.ltime!=null?d.ltime:null);
  ingestSliders(d.sliders);haveData=true;
@@ -704,7 +719,7 @@ function pushTele(d){
  // reconcile the recorder state every tick rather than trusting a single event:
  // the desktop may have started/stopped while we were away or asleep.
  if('recording' in d&&!!d.recording!==recording){recording=!!d.recording;render4b();}
- if(d.axes)axes=d.axes;   // sent whenever Artisan's own axis bounds change
+ if(d.axes){axes=d.axes;applyUnit(axes.unit);}  // resent whenever the scales change
  if(d.colors)applyColors(d.colors);
  if(d.t!=null&&chargeT==null){chargeT=clock-d.t;rebase(-chargeT);}
  else if(d.t==null&&chargeT!=null){rebase(chargeT);chargeT=null;}
@@ -855,6 +870,7 @@ function connect(){
    case 'paired':localStorage.setItem('tdt',d.device_token);if(d.role)role=d.role;break;
    case 'welcome':
     if(d.roaster)$('roaster').textContent=d.roaster;
+    applyUnit(d.unit);
     chans=(d.channels||[]);   // the desktop already excludes SV and disabled sliders
     // 4b milestone sequence (desktop already trims to the amateur set per operator
     // level); keep only names we can label, preserving order.

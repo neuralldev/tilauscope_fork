@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QDialog, QFrame,
                              QHBoxLayout, QLabel, QPushButton, QVBoxLayout,
                              QWidget)
 
-from tilauscope.tilauscope_types import THEME, show_styled_message, print_progress_pill
+from tilauscope.tilauscope_types import THEME, no_enter_default, show_styled_message, print_progress_pill
 
 _logd = logging.getLogger(__name__)
 
@@ -905,6 +905,10 @@ class SackLabelsDialog(QDialog):
         self._state_timer.setInterval(1500)
         self._state_timer.timeout.connect(self._refresh_printer_state)
         self._state_timer.start()
+
+        # Return must not reach the ✕ / Cancel this dialog builds first
+        # (tilauscope_types.no_enter_default).
+        no_enter_default(self)
 
     # ── frameless drag ───────────────────────────────────────────────────────
     def mousePressEvent(self, event):  # noqa: N802

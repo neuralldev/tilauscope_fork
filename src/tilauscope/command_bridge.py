@@ -60,9 +60,10 @@ class CommandBridge(QObject):
         super().__init__()
         self._aw = aw
         self._job.connect(self._on_job)  # AutoConnection -> queued to main thread
-        # welcome channels, from real Artisan slider config, built on the main
-        # thread and cached (plain data → safe to read from the WS loop thread).
-        self._channels = self._build_channels()
+        # welcome interface description, from real Artisan config, built on the
+        # main thread and cached (plain data → safe to read from the WS loop
+        # thread). Rebuilt on every connect, see refresh_interface().
+        self._interface = self._build_interface()
 
     # ---- capabilities (welcome channels, §5) --------------------------------
 
@@ -100,9 +101,31 @@ class CommandBridge(QObject):
             out.append(ch)
         return out
 
-    def channels(self) -> list:
-        """Cached welcome channels (plain data; safe to read off the main thread)."""
-        return list(self._channels)
+    def _unit(self) -> str:
+        """The operator's temperature unit — the samples on the wire are in it."""
+        try:
+            return 'F' if str(self._aw.qmc.mode).upper() == 'F' else 'C'
+        except Exception:  # noqa: BLE001
+            return 'C'
+
+    def _build_interface(self) -> dict:
+        """Everything `welcome` states about the desktop's controls (§5)."""
+        return {'channels': self._build_channels(), 'unit': self._unit()}
+
+    def refresh_interface(self) -> dict:
+        """Rebuild the cached description. Main thread only — a job kind, not an API.
+
+        The slider configuration is not fixed for the session: a button-palette
+        swap rebinds visibilities, labels and bounds at runtime (main.setbuttonsfrom),
+        and the unit can be changed in Artisan's settings. A description built once
+        at startup announces a machine the desktop no longer has.
+        """
+        self._interface = self._build_interface()
+        return dict(self._interface)
+
+    def interface(self) -> dict:
+        """Last built description (plain data; safe to read off the main thread)."""
+        return dict(self._interface)
 
     # ---- public (any thread) ------------------------------------------------
 
@@ -136,6 +159,8 @@ class CommandBridge(QObject):
                 res = self._do_discard(job.get('confirm'))
             elif kind == 'confirm_takeover':
                 res = self._confirm_takeover(job.get('requester_name') or 'A phone')
+            elif kind == 'interface':
+                res = self.refresh_interface()
             else:
                 res = {'status': 'rejected', 'reason': 'BAD_MESSAGE'}
             if done is not None:

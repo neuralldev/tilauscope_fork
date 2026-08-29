@@ -302,6 +302,25 @@ class AIFloatPanel(QWidget):
         """)
         self._cancel_btn.clicked.connect(self._on_cancel)
 
+        self._preview_btn = QPushButton(
+            QApplication.translate("tilauscope_ai", "What is sent")
+        )
+        self._preview_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._preview_btn.setToolTip(QApplication.translate(
+            "tilauscope_ai",
+            "Read the exact text that would be sent to your AI provider."))
+        self._preview_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent; color: {T['SUBTEXT']};
+                border: 1px solid {T['BORDER']}; border-radius: 8px;
+                padding: 7px 14px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{ color: {T['TEXT']}; border-color: {T['TEXT']}; }}
+            QPushButton:disabled {{ color: {T['BORDER']}; }}
+        """)
+        self._preview_btn.clicked.connect(self._on_preview)
+
         self._clear_btn = QPushButton(
             QApplication.translate("tilauscope_ai", "Clear")
         )
@@ -320,6 +339,7 @@ class AIFloatPanel(QWidget):
         btn_row.addWidget(self._generate_btn)
         btn_row.addWidget(self._cancel_btn)
         btn_row.addStretch()
+        btn_row.addWidget(self._preview_btn)
         btn_row.addWidget(self._clear_btn)
         body_l.addLayout(btn_row)
 
@@ -410,10 +430,12 @@ class AIFloatPanel(QWidget):
 
     # ── Button handlers ───────────────────────────────────────────────────────
 
-    def _on_generate(self) -> None:
+    def _resolve_payload(self) -> tuple[str, str] | None:
+        """The two halves of the request, before any scrubbing. None when
+        there is nothing to send."""
         if self._payload_fn is None:
             _log.warning("AIFloatPanel: no payload_fn for %s", self._task_type)
-            return
+            return None
 
         result = self._payload_fn()
 
@@ -428,19 +450,54 @@ class AIFloatPanel(QWidget):
             user_content = result
 
         if not user_content.strip():
-            return
+            return None
+        return system_prompt, user_content
 
-        from tilauscope.ai_service import _CancelToken                   # noqa: PLC0415
-        from tilauscope.ai_support import get_suppress_thinking_params, normalize_engine  # noqa: PLC0415
-        import re as _re                                                  # noqa: PLC0415
-
-        # Always read from live aw.tilau_aiConfig so changes in Settings are reflected
-        # without restarting the panel.
+    def _live_ai_config(self):
+        """Read from live aw.tilau_aiConfig so a change in Settings applies
+        without restarting the panel."""
         ai = None
         if self._aw is not None:
             ai = getattr(self._aw, "tilau_aiConfig", None)
         if ai is None:
             ai = self._ai_service.ai_config
+        return ai
+
+    def _on_preview(self) -> None:
+        """Show the exact text this panel would send, scrubbed, without
+        sending it."""
+        from tilauscope.tilau_privacy_ui import show_ai_payload_preview  # noqa: PLC0415
+
+        ai = self._live_ai_config()
+        if ai is None or not getattr(ai, "engine", None) or not getattr(ai, "apikey", None):
+            self._text_area.setPlainText(
+                "⚠  AI provider not configured.\n"
+                "Open Settings → TilauScope → Configure AI Provider.")
+            self._set_status("error", THEME["CRITICAL"])
+            return
+        payload = self._resolve_payload()
+        if payload is None:
+            self._text_area.setPlainText(QApplication.translate(
+                "tilauscope_ai",
+                "There is nothing to send yet — this panel has no roast to "
+                "describe."))
+            return
+        system_prompt, user_content = payload
+        recipient = getattr(ai, "provider_name", "") or ""
+        show_ai_payload_preview(self, system_prompt, user_content,
+                                recipient, task=str(self._task_type))
+
+    def _on_generate(self) -> None:
+        payload = self._resolve_payload()
+        if payload is None:
+            return
+        system_prompt, user_content = payload
+
+        from tilauscope.ai_service import _CancelToken                   # noqa: PLC0415
+        from tilauscope.ai_support import get_suppress_thinking_params, normalize_engine  # noqa: PLC0415
+        import re as _re                                                  # noqa: PLC0415
+
+        ai = self._live_ai_config()
 
         if ai is None or not getattr(ai, "engine", None) or not getattr(ai, "apikey", None):
             msg = "⚠  AI provider not configured.\nOpen Settings → TilauScope → Configure AI Provider."
@@ -448,11 +505,25 @@ class AIFloatPanel(QWidget):
             self._set_status("error", THEME["CRITICAL"])
             return
 
+        # Who receives this must be named once per provider, before the first
+        # request reaches it.
+        from tilauscope.tilau_privacy_ui import (  # noqa: PLC0415
+            Gate, ensure_ai_disclosure, roast_blocked_message,
+        )
+        gate = ensure_ai_disclosure(self, ai, self._aw)
+        if gate is Gate.BLOCKED_ROAST:
+            self._text_area.setPlainText("⚠  " + roast_blocked_message())
+            self._set_status("error", THEME["WARNING"])
+            return
+        if gate is not Gate.ALLOW:
+            return
+
         task_type = self._task_type
-        messages  = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": user_content},
-        ]
+        # Single choke point: no payload leaves TilauScope unscrubbed.
+        from tilauscope.tilau_privacy import prepare_ai_messages  # noqa: PLC0415
+        messages, _report = prepare_ai_messages(
+            system_prompt, user_content, task=str(task_type)
+        )
 
         from tilauscope.ai_support import provider_base_url   # add to imports
         _engine     = normalize_engine(ai.engine)

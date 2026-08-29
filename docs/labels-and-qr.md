@@ -104,7 +104,10 @@ closes.
 **From a phone, with its own camera app.** No app or pairing is needed: the label's QR is a
 plain web address. Opening it on a phone already on the same network as TilauScope shows the
 same record — bean details, or a roast's curve, figures and tasting notes — as a page in the
-phone's browser.
+phone's browser. This path has to be switched on first: tick **Let a phone open records by
+scanning a label** in [Configuration](configuration.md#remote-access) and restart. Until then
+labels still print and the webcam scan above still works, but a phone scanning one reaches
+nothing.
 
 !!! note
     The phone needs to be on the same local network as the computer running TilauScope.

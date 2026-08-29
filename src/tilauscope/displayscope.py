@@ -401,6 +401,11 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
                 background-color: {color};
                 color: {THEME['CRUST']};
             }}
+            QPushButton:disabled {{
+                background-color: {THEME['BORDER']};
+                color: {THEME['SURFACE2']};
+                border: 1px solid transparent;
+            }}
         """
 
     def align_panels(self):
@@ -563,6 +568,12 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
         # ⤢ button floats it for a two-panel layout; Expert is main panel only.
         self.roast_assistant.set_panel_anchor_visible(is_guided)
         self.roast_assistant.set_operator_level(level)  # propagate level (controls btn_toggle visibility)
+        # The canvas overlays that read the level too — the crack bar shows the
+        # phase word alone in Guided, and adds the meter and the figures above it.
+        try:
+            self.curve.set_operator_level(level)
+        except Exception:
+            pass
 
         # Guided-only coach view toggle on the roast graph. The toggle belongs
         # to our own curve now; the getattr keeps this working before the curve
@@ -888,6 +899,7 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             # event buttons
             for btn in self.event_buttons.values():
                 btn.setEnabled(True)
+            self._apply_controls_enabled(True)
             self.event_panel.show()
             self.aw.qmc.ToggleMonitor()
             self.update_status_text() # immediately update status to avoid waiting for first data from Artisan
@@ -915,6 +927,7 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             # event buttons
             for btn in self.event_buttons.values():
                 btn.setEnabled(False)
+            self._apply_controls_enabled(False)
             self.event_panel.hide()
             self.update_button_style(self.swap_button, True)
             self.aw.qmc.ToggleMonitor()
@@ -1059,6 +1072,15 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
                 color: {THEME['CRUST']};
                 padding-left: 18px;
                 padding-top: 2px;
+            }}
+
+            /* Au repos (hors monitoring) le bouton est inaccessible : il doit
+               le montrer. Sans cette regle Qt repeint la forme active. */
+            QPushButton:disabled {{
+                background: {THEME['BORDER']};
+                color: {THEME['SURFACE2']};
+                border: 1px solid {THEME['SURFACE1']};
+                border-left: 5px solid {THEME['SURFACE2']};
             }}
             """)
         else:

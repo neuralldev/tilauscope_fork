@@ -16,19 +16,20 @@
 #
 # webhost.py
 #
-# App-level owner of the TilauScope web servers: always-on read-only Records
+# App-level owner of the TilauScope web servers: an opt-in read-only Records
 # server plus an opt-in Control server for remote piloting (see wiki/RemoteControl-Protocol-v1.md §3).
 
 import logging
 from threading import Lock
-from typing import Callable, Optional
-
-from tilauscope.webrecords import TilauWebRecords
+from typing import TYPE_CHECKING, Callable, Optional
 
 _log = logging.getLogger(__name__)
 
-# TilauWebControl is imported lazily in start() so the opt-in server (and its
-# aiohttp WS machinery) is only touched when remote control is actually enabled.
+# Both servers are imported lazily in start() so a disabled server (and its
+# aiohttp machinery) is never touched.
+
+if TYPE_CHECKING:
+    from tilauscope.webrecords import TilauWebRecords
 
 
 class TilauWebHost:
@@ -36,15 +37,18 @@ class TilauWebHost:
 
     Lifecycle is driven by ApplicationWindow: start() in main() for both boot
     paths, stop() in closeApp(). Independent of the BeanCave window — BeanCave
-    registers the Records resolvers via set_records_resolvers() when available.
+    registers the Records resolvers via set_records_resolvers() when available
+    (a no-op while the Records server is disabled).
     """
 
     def __init__(self, records_port: int, control_port: int, *,
+                 records_enabled: bool = False,
                  control_enabled: bool = False) -> None:
         self._records_port = records_port
         self._control_port = control_port
+        self._records_enabled = records_enabled
         self._control_enabled = control_enabled
-        self._records: Optional[TilauWebRecords] = None
+        self._records: Optional['TilauWebRecords'] = None
         self._control = None  # TilauWebControl | None (opt-in)
         self._last_snapshot: Optional[dict] = None  # built on the Qt thread by TelemetryTap
         self._snapshot_lock = Lock()
@@ -54,15 +58,21 @@ class TilauWebHost:
     def start(self) -> None:
         if self._started:
             return
-        # Records: always-on read-only server (phone QR scan target).
-        try:
-            self._records = TilauWebRecords(self._records_port)
-            self._records.startWeb()
-            _log.info("TilauWebHost: Records server on port %s", self._records_port)
-        except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
-            # a failed Records server (port in use, …) must never break startup
-            _log.warning("TilauWebHost: Records server not started: %s", e)
-            self._records = None
+        # Records: opt-in read-only server (phone QR scan target). Off by
+        # default -> no listening socket unless the operator asked for one.
+        if self._records_enabled:
+            try:
+                from tilauscope.webrecords import TilauWebRecords
+                self._records = TilauWebRecords(self._records_port)
+                self._records.startWeb()
+                _log.info("TilauWebHost: Records server on port %s", self._records_port)
+            except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
+                # a failed Records server (port in use, …) must never break startup
+                _log.warning("TilauWebHost: Records server not started: %s", e)
+                self._records = None
+        else:
+            _log.info("TilauWebHost: Records server disabled (opt-in) — set "
+                      "tilauscope/web_enabled or launch with TILAU_WEB=1")
         # Control: opt-in remote-piloting server (Bonjour _tilauscope._tcp).
         # Started only when explicitly enabled -> zero attack surface otherwise.
         if self._control_enabled:

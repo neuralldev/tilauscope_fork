@@ -85,7 +85,9 @@ convenient to fill it in. Confirming it writes the result into the roast file.
 ## The Roast Viewer
 
 **BeanCave → Roast Viewer** lists every roast file on the left; selecting one — or several —
-fills the right side.
+fills the right side. The list is ordered by coffee, so it opens on the roast you are most
+likely to want rather than on the top row: whichever roast is currently loaded in TilauScope,
+or failing that the one you had selected last time, or failing that your most recent roast.
 
 **Load in Artisan** opens the roast in Artisan's own view for full analysis. **Background**
 loads it as a comparison curve behind whatever is roasting or being reviewed next.
@@ -179,6 +181,8 @@ without one simply does not teach the plan anything about drop temperature.
 
 With an AI provider configured, **✦ AI Summary** writes a short account of the roast from its
 recorded figures — a starting point for notes, not a replacement for judging the cup.
+**What is sent** in the same panel shows the exact text the request would carry, cleaned as it
+will be sent, along with a line naming what was taken out of it; reading it sends nothing.
 
 **🏷 Label PDF** prints the roast's label straight from the form, using the weight and colour
 just entered, so the bag can be labelled while the batch is still cooling. Saving the form

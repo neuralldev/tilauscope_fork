@@ -43,12 +43,12 @@ from PyQt6.QtWidgets import (
 from artisanlib.main import ApplicationWindow
 from artisanlib.util import (
     events_internal_to_external_value,
-    fromCtoFstrict,
-    fromFtoCstrict,
     rgba_colorname2argb_colorname,
 )
 from dataclasses import dataclass, field
 from mashumaro import DataClassDictMixin
+from tilauscope.button_labels import subst_button_label
+from tilauscope.button_layout import corner_radii, split_groups, tray_and_rows
 from tilauscope.graph.common import dimmed
 from tilauscope.theme_qss import tint, tooltip_qss, with_tooltip
 from tilauscope.tilauscope_types import THEME
@@ -112,69 +112,6 @@ class ButtonManager(DataClassDictMixin):
         """Factory to create the manager from QSettings."""
         conf = artisan_conf
 
-        def substButtonLabel(label:str, eventtype:int, etypes, eventvalue:float, mode:str) -> str:
-            et:int = eventtype
-            res:str = label
-            value = events_internal_to_external_value(eventvalue)
-            tempvalueF = (value if mode == 'F' else int(round(fromFtoCstrict(value))))
-            tempvalueC = (value if mode == 'C' else int(round(fromCtoFstrict(value))))
-            sign = ''
-            percent = ''
-            evType = eventtype
-            if et < len(etypes):
-                if evType == -1:
-                    evType = 4 # and map the first entry to 4
-                elif evType == 4:
-                    evType = 9 # and map the entry 4 to 9
-                elif evType > 8:
-                    evType += 1
-            if et != 9 and 4 < et < 14 and value > 0:
-                sign = '+'
-            if 9 < et < 14:
-                percent = '%'
-            if et > 8:
-                et = et - 10
-            if et > 4:
-                et = et - 5
-            if et < 4 and et != 9:
-                map_source = conf.slider_names[et]
-                res = res.replace('\\t',map_source)
-            for var,subst in [
-                    ('\\0', QApplication.translate('Label','OFF')),
-                    ('\\1', QApplication.translate('Label','ON')),
-                    ('\\2', (QApplication.translate('Label','ON'))),
-                    ('\\3', (QApplication.translate('Label','OFF'))),
-                    ('\\a', QApplication.translate('Label','AUTO')),
-                    ('\\A', (QApplication.translate('Label','MANUAL'))),
-                    ('\\b', QApplication.translate('Label','FLAP')),
-                    ('\\c', QApplication.translate('Label','CLOSE')),
-                    ('\\C', (QApplication.translate('Label','OPEN'))),
-                    ('\\d', QApplication.translate('Label','CONTROL')),
-                    ('\\D', QApplication.translate('Label','DISCHARGE')),
-                    ('\\e', etypes[2]),
-                    ('\\h', QApplication.translate('Label','HEATING')),
-                    ('\\i', QApplication.translate('Label','STIRRER')),
-                    ('\\f', QApplication.translate('Label','FILL')),
-                    ('\\F', f'{tempvalueF}{mode}'),
-                    ('\\l', QApplication.translate('Label','COOLING')),
-                    ('\\m', QApplication.translate('Label','MANUAL')),
-                    ('\\M', (QApplication.translate('Label','AUTO'))),
-                    ('\\o', QApplication.translate('Label','OPEN')),
-                    ('\\O', (QApplication.translate('Label','CLOSE'))),
-                    ('\\p', QApplication.translate('Label','STOP')),
-                    ('\\P', (QApplication.translate('Label','START'))),
-                    ('\\q', etypes[0]),
-                    ('\\r', etypes[3]),
-                    ('\\R', QApplication.translate('Label','RELEASE')),
-                    ('\\s', QApplication.translate('Label','START')),
-                    ('\\S', (QApplication.translate('Label','STOP'))),
-                    ('\\T', f'{tempvalueC}{mode}'),
-                    ('\\V', f'{sign}{value}{percent}'),
-                    ('\\w', etypes[1])
-                    ]:
-                res = res.replace(var,str(subst))
-            return res
-
         # Helper to parse Artisan's CSV format in .aset / QSettings
 
         labels = conf.aw.extraeventslabels
@@ -202,7 +139,8 @@ class ButtonManager(DataClassDictMixin):
                 _value_label = f'{_sign}{_ext}{_percent}'
 
                 btn_list.append(ExtraEventButton(
-                    label=substButtonLabel(labels[i].replace('\\n', chr(10)), types[i], types, values[i], temp_mode),
+                    label=subst_button_label(labels[i].replace('\\n', chr(10)), types[i],
+                                             conf.slider_names, values[i], temp_mode),
                     action_type=int(actions[i]),
                     command=cmds[i],
                     description=descs[i],
@@ -278,6 +216,14 @@ class ArtisanSettings:
         }
 
 
+#: Space left between two welded groups — this is the gap the operator placed.
+_GROUP_SPACING: Final[int] = 20
+#: One row of buttons plus the container's own padding.
+_MIN_PANEL_H: Final[int] = 75
+#: Width of a button's identity stripe, matching the milestone strip's own.
+_STRIPE_W: Final[int] = 5
+
+
 class EventPanel(QWidget):
 
     # signal émis après chaque action : (label, commande, timestamp, couleur_hex)
@@ -329,63 +275,84 @@ class EventPanel(QWidget):
         """)
 
 
-        # Use the custom FlowLayout instead of QGridLayout
-        self.flow_layout = FlowLayout(self.container, margin=10, spacing=8)
+        # The FlowLayout carries welded groups, not single buttons: a group is
+        # the run of buttons between two gaps, and it must never be split by a
+        # wrap. Rows the operator chose survive as hard breaks.
+        self.flow_layout = FlowLayout(
+            self.container, margin=10, spacing=_GROUP_SPACING, centered=True)
 
-        visible_buttons = [b for b in button_manager.buttons if b.visible]
+        buttons = button_manager.buttons
+        per_row = max(1, int(getattr(
+            getattr(button_manager.artisan_conf, 'aw', None), 'buttonlistmaxlen', 14)))
+        _tray, rows = tray_and_rows(buttons, per_row)
 
-        for i, btn_obj in enumerate(visible_buttons):
-            btn = QPushButton(btn_obj.label)
-            # IMPORTANT: Fixed size prevents the layout from stretching them.
-            # Keep BOTH dimensions fixed here. This panel is a free
-            # floating bar on a FlowLayout, not the 330px milestone grid — the
-            # width was dropped once by mistake, carrying over that grid's fix,
-            # and the row became a ragged run of content-sized buttons.
-            btn.setFixedSize(90, 45)
-            # tooltip now exposes the event type and the signed/percent offset value, not just the command
-            tip = f"<b>{btn_obj.get_action_name()}</b><br>"
-            tip += QApplication.translate('Tooltip', '<b>Type </b>= ') + btn_obj.type_label + '<br>'
-            if btn_obj.ui_type != 4:  # type 4 = no event assigned -> no offset value to show
-                tip += QApplication.translate('Tooltip', '<b>Value </b>= ') + btn_obj.value_label + '<br>'
-            if btn_obj.command:
-                tip += QApplication.translate('Tooltip', '<b>Documentation </b>= ') + btn_obj.command
-            btn.setToolTip(tip)
-            btn.setStyleSheet(with_tooltip(f"""
-                QPushButton {{
-                    background: {THEME['BG']}; color: {THEME['TEXT']}; border-radius: 6px;
-                    border-left: 4px solid {btn_obj.color}; border-top: 1px solid {THEME['BORDER']};
-                    border-bottom: 1px solid {THEME['BORDER']}; border-right: 1px solid {THEME['BORDER']};
-                    font-size: 11px;
-                    font-weight: bold;
-                }}
-                QPushButton:hover {{ background: #28283D; }}
-                QPushButton:pressed {{ background: {btn_obj.color}; color: {btn_obj.text_color}; }}
-            """))
-            btn.clicked.connect(lambda checked, i=i, b_w=btn, b_o=btn_obj: self.execute_action(i, b_w, b_o))
-            self.flow_layout.addWidget(btn)
+        for row_no, chunk in enumerate(rows):
+            groups = split_groups(chunk, buttons)
+            for group in groups:
+                self.flow_layout.addWidget(self._build_group(group, buttons))
+            if groups and row_no < len(rows) - 1:
+                self.flow_layout.addBreak()
 
         self.layout.addWidget(self.container)
 
         self.oldPos = QPoint()
 
-        # --- SMART DYNAMIC INITIAL SIZE ---
-
-        # 1. Configuration matching your button/layout settings
-        btn_h = 45      # From btn.setFixedHeight(45)
-        spacing = 8     # From FlowLayout(..., spacing=8)
-        v_margins = 30  # Space for container padding and borders
-
-        num_buttons = len(visible_buttons)
-
-        # 2. Calculate rows based on the actual parent width
-        # We use the parent's width to estimate how many buttons fit per row
+        # --- INITIAL SIZE ---
+        # Ask the layout rather than counting buttons: what wraps is a group of
+        # unequal width, and a row can end before the width runs out, so no
+        # arithmetic over a button count describes the result any more.
         parent_w = self.parent().width() if self.parent() else 800
-        btns_per_row = max(1, (parent_w - 20) // (90 + spacing)) # 90 is btn fixed width
-        num_rows = (num_buttons + btns_per_row - 1) // btns_per_row if num_buttons > 0 else 1
+        self.setFixedHeight(max(_MIN_PANEL_H, self.layout.heightForWidth(parent_w) + 10))
 
-        # 3. Final height calculation
-        calculated_height = (num_rows * btn_h) + (max(0, num_rows - 1) * spacing) + v_margins
-        self.setFixedHeight(calculated_height)
+    def _build_group(self, group, buttons) -> QFrame:
+        """One welded run of buttons: no spacing inside, rounded at the ends."""
+        frame = QFrame()
+        lay = QHBoxLayout(frame)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        for position, index in enumerate(group):
+            lay.addWidget(self._build_button(buttons[index], position, len(group)))
+        return frame
+
+    def _build_button(self, btn_obj: ExtraEventButton, position: int,
+                      size: int) -> QPushButton:
+        btn = QPushButton(btn_obj.label)
+        # IMPORTANT: Fixed size prevents the layout from stretching them.
+        # Keep BOTH dimensions fixed here. This panel is a free
+        # floating bar on a FlowLayout, not the 330px milestone grid — the
+        # width was dropped once by mistake, carrying over that grid's fix,
+        # and the row became a ragged run of content-sized buttons.
+        btn.setFixedSize(90, 45)
+        # tooltip now exposes the event type and the signed/percent offset value, not just the command
+        tip = f"<b>{btn_obj.get_action_name()}</b><br>"
+        tip += QApplication.translate('Tooltip', '<b>Type </b>= ') + btn_obj.type_label + '<br>'
+        if btn_obj.ui_type != 4:  # type 4 = no event assigned -> no offset value to show
+            tip += QApplication.translate('Tooltip', '<b>Value </b>= ') + btn_obj.value_label + '<br>'
+        if btn_obj.command:
+            tip += QApplication.translate('Tooltip', '<b>Documentation </b>= ') + btn_obj.command
+        btn.setToolTip(tip)
+        left, right = corner_radii(position, size)
+        # The edge between two welded buttons has to outweigh the block's own
+        # outline, or a welded pair reads as one button carrying two lines of
+        # text — the corner rounding that says otherwise sits a button away.
+        edge = THEME['SURFACE1'] if position < size - 1 else THEME['BORDER']
+        btn.setStyleSheet(with_tooltip(f"""
+            QPushButton {{
+                background: {THEME['BG']}; color: {THEME['TEXT']};
+                border-top-left-radius: {left}px; border-bottom-left-radius: {left}px;
+                border-top-right-radius: {right}px; border-bottom-right-radius: {right}px;
+                border-left: {_STRIPE_W}px solid {btn_obj.color};
+                border-top: 1px solid {THEME['BORDER']};
+                border-bottom: 1px solid {THEME['BORDER']}; border-right: 1px solid {edge};
+                font-size: 11px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: #28283D; }}
+            QPushButton:pressed {{ background: {btn_obj.color}; color: {btn_obj.text_color}; }}
+        """))
+        btn.clicked.connect(
+            lambda checked, b_w=btn, b_o=btn_obj: self.execute_action(b_o.index, b_w, b_o))
+        return btn
 
     def update_panel_height(self):
         # Get the height required for the current width
@@ -576,7 +543,8 @@ class SegmentedControlSlider(TilauscopeSlider):
             filled = (self.value() - self.minimum()) / (self.maximum() - self.minimum())
         filled_count = round(filled * self._SEGMENT_COUNT)
 
-        active = QColor(self.accent_color)
+        # Disabled = out of reach: the value still reads, in grey.
+        active = QColor(self.accent_color if self.isEnabled() else THEME['SURFACE2'])
         inactive = QColor(THEME['BORDER'])
         for index in range(self._SEGMENT_COUNT):
             left = track_rect.left() + index * (segment_width + segment_gap)

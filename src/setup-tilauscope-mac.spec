@@ -55,6 +55,11 @@ hidden_imports = [
     ## TILAU ## makes a wrong resolution show up in warn-*.txt.
     'proto.IkawaCmd_pb2',
     'proto.artisan_roast_pb2',
+    ## TILAU ## keyring (credentials in the OS keychain, tilau_secrets) needs no
+    ## TILAU ## entry here: PyInstaller's own hook-keyring.py collects every
+    ## TILAU ## backend AND copies the package metadata, which is where keyring
+    ## TILAU ## reads its entry points from — a hidden import cannot do the
+    ## TILAU ## second half, so listing the backends by hand would not help.
     ]
 data_collection = []
 binaries_collection = []

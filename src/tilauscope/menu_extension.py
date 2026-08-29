@@ -103,7 +103,8 @@ class TilauMenuExtension:
         self.act_debug.setCheckable(True)
         self.act_debug.triggered.connect(aw.tilauscopeDebug)
 
-        self.act_pid_autotune = QAction(QApplication.translate('Menu', 'PID Autotune'), aw)
+        self.act_pid_autotune = QAction(
+            QApplication.translate('Menu', 'Understand and adjust PID...'), aw)
         self.act_pid_autotune.setCheckable(True)
         self.act_pid_autotune.triggered.connect(aw.handlePIDAutotune)
 
@@ -173,9 +174,13 @@ class TilauMenuExtension:
         self.refresh_main_label(getattr(aw, '_tilau_headless', False), bool(aw.tilauscope_main))
 
     def refresh_main_label(self, headless: bool, tilau_open: bool) -> None:
-        # In headless mode the Shift+T action is a view-toggle between
-        # the Artisan window and TilauScope; the label states where it goes.
-        # In normal mode it keeps the plain 'TilauScope' label.
+        # The action only exists as a VIEW TOGGLE, and only headless mode has two
+        # views to toggle between. In normal mode TilauScope is the application:
+        # Artisan's window is hidden at boot and closing TilauScope quits, so the
+        # entry could only ever take the operator somewhere they cannot come back
+        # from. Hidden rather than removed — set_menu() runs before the boot mode
+        # is known, so the decision has to be one this method can revisit.
+        self.act_main.setVisible(headless)
         if not headless:
             self.act_main.setText('TilauScope')
         elif tilau_open:

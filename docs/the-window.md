@@ -236,6 +236,47 @@ operator reading the whole table has already said which face they want.
 CAPTURE 2.8b — the same moment with the 📊 full data card. CAPTURE 2.8c — the preheat card and
 the target line, with the arrival mark in frame. -->
 
+### Listening to the crack
+
+If your probe counts cracks, TilauScope tells you what it is hearing — as a state, not as a tally.
+A number of pops is trivia while a batch is running; what you need to know is whether
+[first crack](glossary.md#fc--first-crack) has started, whether it is rolling, and whether it is
+over.
+
+**A bar appears above the plot, between the roast title and the view controls.** It is there only
+while the probe is counting. Nothing is counting, nothing is shown — there is no greyed-out box to
+wonder about in the middle of a roast.
+
+The bar names one of four states:
+
+| It says | It means |
+|---|---|
+| **QUIET** | The probe is listening and hearing nothing yet. |
+| **FIRST POPS** | Isolated cracks. The crack is beginning. |
+| **ROLLING** | Cracks are coming steadily. [Development](glossary.md#development) has started. |
+| **SETTLING** | The pops have thinned out and stayed thin. The crack is done. |
+
+**What to do about it is said where advice is always said** — on the assistant's instruction line,
+not on the bar. The bar reports; the assistant tells you the gesture. Nothing on screen speaks
+twice.
+
+At the Guided level the bar shows the state alone. At Standard it adds a meter and the number of
+pops heard over the last half-minute or so; at Expert it adds the running total the probe has
+counted since it started listening.
+
+**The state never overrules the milestone.** ROLLING appears once first crack is marked, however
+it was marked — by you or by [automatic detection](configuration.md). The bar is a reading, and
+it is never what decides that first crack happened.
+
+**Along the foot of the plot, one tick per pop.** The ticks pile up where the cracks were dense and
+thin out where they were not, so the shape of the crack stays on the curve after it is over. Beside
+it, a faint dotted rule marks where the [roast plan](the-roast-plan.md) expected first crack — the
+distance between that rule and the crack you actually heard is what tells you the batch ran early
+or late, while there is still a drop to place.
+
+<!-- CAPTURE 2.8g — the curve during first crack, with the crack bar above the plot reading
+ROLLING and the tick band along the foot of the plot, at the Standard level. -->
+
 ### Choosing what is traced
 
 **Right-click anywhere on the curve** to open its options. Display choices are remembered for
@@ -293,6 +334,10 @@ Beneath both, and always visible, sits the **SV** row — the
 [setpoint](glossary.md#sv--setpoint-value) the PID is aiming for. It spans the full width and is
 never hidden by the toggle, because the setpoint is not a lever like the others: it is the target
 everything else is working towards.
+
+Until monitoring is switched on, the levers are greyed out and do not respond: with the link to
+the machine closed, a setting sent from here would reach nothing. They come to life with the
+**ON** button, at the same moment as the milestone buttons.
 
 On a read-only machine, these controls are absent entirely — see
 [Preparing a roast](preparing-a-roast.md#machines-tilauscope-cannot-drive).
@@ -354,7 +399,51 @@ automatic one.
 Placing it where your hand naturally goes — beside the machine, not beside the curve — is the
 point of it floating.
 
-<!-- CAPTURE 2.14 — the floating event panel, positioned away from the main window. -->
+The panel keeps the grouping you set: buttons that belong together are welded into one block,
+and a block is never cut in two by the panel wrapping onto another line — it moves down whole.
+Narrowing the panel puts fewer blocks per line, never fewer buttons per block, so a pair you
+reach for without looking stays where your hand expects it at any width.
+
+<!-- CAPTURE 2.14 — the floating event panel, narrow enough to wrap, showing two welded blocks
+on separate lines. -->
+
+### Arranging your own buttons
+
+**TilauScope → Custom button management…** shows those buttons laid out exactly as they will
+appear during the roast: in rows, with the same welded groups. Drag any button to move it —
+within its row, into another row, or into the tray at the bottom. A row holds as many buttons
+as **Buttons per row** allows; past that, the next one moves down a row on its own.
+
+**Add gap** drops an empty slot into a row. A gap is what separates one group of welded
+buttons from the next, so it is how you keep *Burner up / Burner down* together and apart from
+*Air on / Air off*. Nothing is pressed on a gap; it only leaves the space.
+
+The tray at the bottom, **Not on the roast screen**, holds buttons that exist but are never
+drawn: they are there to be fired by an alarm. Drag one into a row and it appears on the roast
+screen; drag a button down into the tray and it disappears from it, keeping its command.
+
+Selecting a button opens the panel below the rows:
+
+| Field | What it sets |
+|---|---|
+| **Button text** | What is written on the button. **Insert** offers the substitutions by name — a new line, the event name, the value, the temperature, and the ON/OFF, START/STOP, OPEN/CLOSE and AUTO/MANUAL pairs. |
+| **Shows as** | The text as the operator will read it, in your language, with every substitution applied. Switch between **released** and **pressed** to see the pairs that change with the button's state. |
+| **Hover hint** | The sentence shown when the pointer rests on the button during a roast. |
+| **Colours** | The fill and the text. The seven swatches are the application's own palette; the two buttons on the left open a full colour picker. |
+| **Records** | The event the press writes to the roast: an event name, then **set to**, **change by** or **change by % of**, then the value. **Nothing** records no event — useful for a button that only drives the machine. |
+| **Show on roast screen** | Unticked, the button leaves the roast screen but keeps everything you set on it, and stays in place greyed out. It becomes a plain gap only once it carries nothing at all, and a tray button if it sits above every visible one. |
+| **Machine command** | The command sent to the machine when the button is pressed. Folded away unless you roast at Expert level, where it is open by default. |
+
+Nothing is written until you press **Apply**; **Cancel** leaves the buttons as they were.
+
+!!! note "The colour reads differently on each bar"
+    The editor previews the button as Artisan's own bar draws it, with the colour as the
+    button's background. The floating panel keeps its dark buttons and shows the same colour
+    as a stripe down the left edge, which stays legible against the roast curve behind it.
+    The rows, the blocks and the text are identical on both.
+
+<!-- CAPTURE 2.15 — the custom button editor with two rows, one gap splitting a row into two
+groups, one button in the tray, and a button selected so the panel below is filled in. -->
 
 ---
 

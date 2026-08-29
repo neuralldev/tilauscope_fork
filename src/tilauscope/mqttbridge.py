@@ -30,7 +30,7 @@ from PyQt6.QtCore import pyqtSignal, QObject, QSettings, pyqtSlot
 from PyQt6.QtWidgets import QApplication
 
 from dataclasses import dataclass, field
-from mashumaro import DataClassDictMixin
+from mashumaro import DataClassDictMixin, field_options
 
 import paho.mqtt.client as mqtt
 from paho.mqtt.client import MQTTMessage
@@ -103,9 +103,13 @@ class MQTTConfig(DataClassDictMixin):
     topic: str = "/#"
     client_id: str = "Tilauscope"
     username_encoded: str = ""
-    password_encoded: str = ""
+    # Legacy, read-only: migrated to the keychain on first access, then dropped.
+    password_encoded: str = field(default="",
+                                  metadata=field_options(serialize="omit"))
     _username: str = field(default="mqtt", repr=False)
-    _password: str = field(default="mqtt", repr=False)
+    # Session cache for the keychain value. Never serialised.
+    _password: str = field(default="", repr=False,
+                           metadata=field_options(serialize="omit"))
     keepalive: int = 60
     qos: int = 1
     tls: bool = False  # encrypted broker; the CA bundle is the system one, self-signed certificates are rejected
@@ -131,20 +135,64 @@ class MQTTConfig(DataClassDictMixin):
             self._username = value
             self.username_encoded = base64.b64encode(value.encode('utf-8')).decode('utf-8')
 
+    def _stored_password(self) -> str:
+        """The password as the keychain holds it, cached. No migration, no writes.
+
+        Kept apart from the property so the setter can ask what is already
+        stored without re-entering the legacy adoption below — which calls the
+        setter, and would not come back.
+        """
+        if self._password:
+            return self._password
+        from tilauscope.tilau_secrets import get_secret, mqtt_account  # noqa: PLC0415
+        stored = get_secret(mqtt_account(self.username, self.broker_url, self.port))
+        if stored:
+            self._password = stored
+        return stored
+
     @property
     def password(self) -> str:
+        """The broker password, from the keychain rather than the settings.
+
+        A password kept in the settings travels with an exported ``.aset``,
+        which is how a machine setup is shared. This one does not.
+        """
+        stored = self._stored_password()
+        if stored:
+            return stored
+
+        # Nothing in the keychain: an installation that still keeps it in the
+        # settings. Move it, once, then answer from the keychain.
         if self.password_encoded:
             try:
-                return base64.b64decode(self.password_encoded).decode('utf-8')
-            except Exception:
-                return self._password
-        return self._password
+                legacy = base64.b64decode(self.password_encoded).decode('utf-8')
+            except Exception:  # noqa: BLE001
+                return ""
+            if legacy:
+                self.password = legacy
+                return legacy
+        return ""
 
     @password.setter
     def password(self, value: str) -> None:
-        if value is not None:
-            self._password = value
-            self.password_encoded = base64.b64encode(value.encode('utf-8')).decode('utf-8')
+        if value is None:
+            return
+        # The configuration dialog writes every field back on OK, changed or
+        # not. Going to the keychain for a value it already holds costs an
+        # access the operating system may well ask the operator to approve.
+        if value == self._stored_password():
+            return
+        from tilauscope.tilau_secrets import (  # noqa: PLC0415
+            delete_secret, mqtt_account, set_secret,
+        )
+        self._password = value
+        account = mqtt_account(self.username, self.broker_url, self.port)
+        if value:
+            set_secret(account, value)
+        else:
+            delete_secret(account)
+        # The settings copy is superseded the moment the keychain holds it.
+        self.password_encoded = ""
 
 
 # ---------------------------------------------------------------------------
@@ -311,9 +359,14 @@ class TilauscopeMQTTClient(QObject):
     # -- lifecycle -----------------------------------------------------------
 
     def start(self, device_logging: bool = False) -> bool:
-        """Start transport. Returns True once the broker confirms the connection,
-        False when it stays silent for longer than the configured timeout (a TLS
-        broker needs more than a plain one: the handshake happens in there)."""
+        """Start the transport and return at once.
+
+        Returns whether the transport could be LAUNCHED — not whether the broker
+        answered. The CONNACK arrives on `connected_signal`, and everything that
+        depends on it (subscriptions, sensor list) hangs off that slot, so no
+        caller has to wait here. A caller that must report a verdict to the
+        operator asks for it explicitly with wait_connected().
+        """
         if not self.config.username:
             _logd.error("TilauMQTT start(): missing credentials")
             return False
@@ -322,13 +375,27 @@ class TilauscopeMQTTClient(QObject):
         except Exception as e:
             _logd.error("TilauMQTT start() error: %s", e)
             return False
+        return True
+
+    def wait_connected(self, timeout: float | None = None) -> bool:
+        """Block until the broker confirms, or the timeout expires.
+
+        Only for the paths whose whole purpose is the verdict — the connection
+        test and the one-shot sensor reads. Never on the ON path: a broker that
+        is down froze the window for the full timeout before monitoring started
+        (a TLS broker needs more than a plain one: the handshake happens in here).
+        """
+        if self.is_connected:
+            return True
         from PyQt6.QtCore import QEventLoop, QTimer
+        wait_ms = max(500, int((self.config.connect_timeout if timeout is None
+                                else timeout) * 1000))
         loop = QEventLoop()
         timer = QTimer()
         timer.setSingleShot(True)
         timer.timeout.connect(loop.quit)
         self.connected_signal.connect(loop.quit)
-        timer.start(max(500, int(self.config.connect_timeout * 1000)))
+        timer.start(wait_ms)
         loop.exec()
         try:
             self.connected_signal.disconnect(loop.quit)

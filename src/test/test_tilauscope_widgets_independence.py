@@ -114,7 +114,7 @@ def test_the_package_imports_without_artisan(tmp_path: Path) -> None:
 
 def test_every_exported_name_is_really_there() -> None:
     """``__all__`` is the package's public face; a typo in it is a broken import."""
-    import tilauscope.widgets as widgets
+    from tilauscope import widgets
 
     missing = [name for name in widgets.__all__ if not hasattr(widgets, name)]
     assert missing == [], missing

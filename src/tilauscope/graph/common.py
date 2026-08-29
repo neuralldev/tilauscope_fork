@@ -30,6 +30,7 @@ from typing import Any, Final
 
 from PyQt6.QtGui import QColor
 
+from artisanlib.util import convertTemp
 from tilauscope.tilauscope_types import THEME
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -97,13 +98,70 @@ def within_share(delta: float, target: float, share: float, mode: str = 'C') -> 
         return False
 
 
+# ── the chart's scales ───────────────────────────────────────────────────────
+# One table, two screens. The desktop curve engine draws from it and the phone
+# is told it verbatim (telemetry_tap), because a graph that keeps the same
+# bounds on both is the only way the same roast reads the same on both. A RoR
+# ceiling lower on the phone than on the desk does not merely look different:
+# the post-TP peak is the moment the rate matters most, and the phone would
+# flatten it against the top of its frame with nothing to say it had.
+#
+# The engine draws in °C — one frame inside. The SCALES, though, belong to the
+# operator: an axis is read, not computed. Both are therefore stated in the
+# display unit on round figures, and converted into the °C frame on request.
+# Reading 104 · 176 · 248 up the side of a chart is not reading Fahrenheit.
+_TEMP_AXIS: Final[dict[str, tuple[float, float, float]]] = {
+    #        lo      hi     step
+    'C': (  40.0,  240.0,   40.0),
+    'F': ( 100.0,  460.0,   60.0),
+}
+#: (max, step) for the rise axis, same rule. A rate carries no offset.
+_ROR_AXIS: Final[dict[str, tuple[float, float]]] = {
+    'C': ( 24.0,  8.0),
+    'F': ( 45.0, 15.0),
+}
+ROR_MIN: Final[float] = 0.0
+
+#: Fallback curve hues, for a palette that does not answer. One per PROBE, not
+#: per quantity: the bean and its rate are one family, the air and its rate
+#: another — see `dimmed` for what separates the two members of a family.
+COLOR_GRAIN: Final[str] = '#89B4FA'          # blue — grain temperature
+COLOR_AIR: Final[str] = '#FAB387'            # peach — air temperature
+
+
+def temp_axis(mode: str) -> tuple[float, float, float]:
+    """The temperature axis in the DISPLAY unit — lo, hi and grid step."""
+    return _TEMP_AXIS.get(mode, _TEMP_AXIS['C'])
+
+
+def ror_axis(mode: str) -> tuple[float, float, float]:
+    """The rise axis in the DISPLAY unit — floor, ceiling and grid step."""
+    top, step = _ROR_AXIS.get(mode, _ROR_AXIS['C'])
+    return ROR_MIN, top, step
+
+
+def temp_axis_c(mode: str) -> tuple[float, float, float]:
+    """The temperature axis in °C — bounds and step, from the operator's unit."""
+    lo, hi, step = temp_axis(mode)
+    return (convertTemp(lo, mode, 'C'), convertTemp(hi, mode, 'C'),
+            step / delta_scale(mode))
+
+
+def ror_axis_c(mode: str) -> tuple[float, float]:
+    """The rise axis in °C/min — ceiling and step, from the operator's unit."""
+    _lo, top, step = ror_axis(mode)
+    scale = delta_scale(mode)
+    return top / scale, step / scale
+
+
 def marked(timeindex: Any, i: int) -> bool:
     """True if milestone `i` has been placed.
 
-    The "unmarked" sentinel is mode-dependent and this is the trap the whole
-    package walks past: index 0 reads -1 when unset in every mode, but indices
-    1..7 read -1 in a real roast and 0 in the simulator. One test, used
-    everywhere, keeps the two modes from disagreeing about what marked means.
+    The "unmarked" sentinel is PER INDEX, not per mode — the trap the whole
+    package walks past. `timeindex` resets to [-1,0,0,0,0,0,0,0] in every mode:
+    CHARGE reads -1 because 0 is a valid sample index, while 1..7 read 0 when
+    unmarked. Testing `> -1` on a milestone is therefore always true and
+    silently disables whatever it was guarding. One test, used everywhere.
     """
     try:
         if i == 0:

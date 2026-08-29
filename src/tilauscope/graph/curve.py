@@ -36,7 +36,11 @@ from PyQt6.QtWidgets import QApplication, QHBoxLayout, QMenu, QPushButton, QTool
 from artisanlib.util import convertRoRstrict, convertTemp, findTPint
 from tilauscope.graph import smoothing as smooth
 from tilauscope.graph.annotation import AnnotationLayer
+from tilauscope.graph.crackbar import CrackBar
 from tilauscope.graph.common import (
+    COLOR_AIR as _COLOR_AIR,
+    COLOR_GRAIN as _COLOR_GRAIN,
+    ROR_MIN as _ROR_MIN,
     channel_order,
     fmt_clock,
     fmt_temp,
@@ -45,10 +49,12 @@ from tilauscope.graph.common import (
     report_once,
     dimmed,
     rise_series,
+    ror_axis_c as _ror_axis_c,
+    temp_axis_c as _temp_axis_c,
 )
 from tilauscope.graph.preheat import reading as preheat_reading
 from tilauscope.theme_qss import tooltip_qss
-from tilauscope.tilauscope_types import THEME
+from tilauscope.tilauscope_types import THEME, resolve_crack_channel
 
 # ── fixed axis extents — never autoscaled, never recomputed from data ──────
 _TIME_MAX: Final[float] = 840.0   # 14:00 in seconds — the FULL-SCALE window
@@ -71,35 +77,8 @@ _ARRIVAL_PAD: Final[float] = 20.0
 _PREHEAT_SPAN: Final[float] = _TIME_MAX
 _LEAD_IN: Final[float] = 60.0     # the minute before charge, kept in view
 _TAIL_OUT: Final[float] = 60.0    # ...and ends one minute after drop
-# The engine draws in °C — one frame inside. The SCALES, though, belong to the
-# operator: an axis is read, not computed. Both are therefore stated in the
-# display unit on round figures, and converted once into the °C frame below.
-# Reading 104 · 176 · 248 up the side of a chart is not reading Fahrenheit.
-_TEMP_AXIS: Final[dict[str, tuple[float, float, float]]] = {
-    #        lo      hi     step
-    'C': (  40.0,  240.0,   40.0),
-    'F': ( 100.0,  460.0,   60.0),
-}
-#: (max, step) for the rise axis, same rule. A rate carries no offset.
-_ROR_AXIS: Final[dict[str, tuple[float, float]]] = {
-    'C': ( 24.0,  8.0),
-    'F': ( 45.0, 15.0),
-}
-_ROR_MIN: Final[float] = 0.0
-
-
-def _temp_axis_c(mode: str) -> tuple[float, float, float]:
-    """The temperature axis in °C — bounds and step, from the operator's unit."""
-    lo, hi, step = _TEMP_AXIS.get(mode, _TEMP_AXIS['C'])
-    return (convertTemp(lo, mode, 'C'), convertTemp(hi, mode, 'C'),
-            step / (1.8 if mode == 'F' else 1.0))
-
-
-def _ror_axis_c(mode: str) -> tuple[float, float]:
-    """The rise axis in °C/min — ceiling and step, from the operator's unit."""
-    top, step = _ROR_AXIS.get(mode, _ROR_AXIS['C'])
-    scale = 1.8 if mode == 'F' else 1.0
-    return top / scale, step / scale
+# The scales come from `graph.common`: the phone is told the same table, and a
+# chart that changes bounds between the two screens is read wrong on one of them.
 
 # ── layout ───────────────────────────────────────────────────────────────────
 _MARGIN_LEFT: Final[int] = 68      # room for temp axis labels, and for the lane names
@@ -121,9 +100,7 @@ _REFERENCE_ALPHA: Final[int] = 72
 # temperature is the solid line and the rate the quieter one, so a rate is never
 # mistaken for the line the roast is read from.
 #
-# The constants below are the fallbacks for a palette that does not answer.
-_COLOR_GRAIN: Final[str] = '#89B4FA'          # blue — grain temperature
-_COLOR_AIR: Final[str] = '#FAB387'            # peach — air temperature
+# The hues and their fallbacks live in `graph.common`, which the phone reads too.
 _AIR_PEN_WIDTH: Final[float] = 1.8
 
 # Axis figures and lane names are read at a glance from a step back, not
@@ -132,6 +109,10 @@ _AXIS_FONT_PT: Final[int] = 11
 _TITLE_FONT_PT: Final[int] = 12
 #: Room the coach toggle takes in the top margin, so the title clears it.
 _TOGGLE_CLEARANCE: Final[float] = 36.0
+#: The crack band: a thin strip at the foot of the plot, and how dark one
+#: pop is drawn — light enough that density has somewhere to build.
+_CRACK_BAND_HEIGHT: Final[float] = 9.0
+_CRACK_TICK_ALPHA: Final[int] = 90
 _MARK_FONT_PT: Final[int] = 11     # a milestone is read across the room, not squinted at
 
 # Phase grounds. Blue then yellow then red: peach and red sat one step apart on
@@ -363,6 +344,24 @@ def _sample_temp_c(raw: Any, mode: str) -> float | None:
     return convertTemp(float(raw), mode, 'C')
 
 
+def _readings(temp2: list[Any], wanted: int = 2) -> bool:
+    """True once `wanted` samples carry an actual reading.
+
+    A probe answering nothing fills the arrays with the -1 sentinel, and a
+    frame built on those says "the drum is climbing" over a chart with no line
+    on it. The empty state has a sentence for that case; this is what leaves it
+    the room to say it.
+    """
+    seen = 0
+    for raw in temp2:
+        if raw is None or raw == -1:
+            continue
+        seen += 1
+        if seen >= wanted:
+            return True
+    return False
+
+
 def _sample_ror_c(raw: Any, mode: str) -> float | None:
     """Convert one raw qmc.delta1/delta2 sample to °C/min, or None.
 
@@ -441,6 +440,10 @@ class RoastCurveWidget(QWidget):
         self._mode: str = 'C'
         #: The live preheat, when one is running before the charge.
         self._preheat: Any = None
+        #: Whether the pre-charge climb owns the frame this pass. True for a
+        #: controller-driven preheat AND for a drum taken up by hand: both are
+        #: the same rise, read on the same axis.
+        self._climb_frame: bool = False
         #: Whether the right-hand rate scale is drawn. There is no rate before
         #: the charge — the drum is climbing, not roasting — and a scale with
         #: nothing on it invites reading the drum against the wrong numbers.
@@ -450,6 +453,9 @@ class RoastCurveWidget(QWidget):
             saved_lane_mode if saved_lane_mode in (_LANE_MODE_LANES, _LANE_MODE_BURNER)
             else _LANE_MODE_LANES)
         self._lane_rows: list[tuple[int, QRectF, str]] = []
+        #: Pop times, rebuilt only when the recorded counter grows.
+        self._crack_key: tuple[int, ...] | None = None
+        self._crack_cache: list[float] = []
         self._frame: QPixmap | None = None
         self._frame_key: tuple[Any, ...] | None = None
 
@@ -557,6 +563,13 @@ class RoastCurveWidget(QWidget):
         """)
         self._switch_btn.clicked.connect(self._on_switch_clicked)
 
+        # The acoustic counter, read as a phase. It sits in the middle of this
+        # same strip: the two ends are taken, the middle is empty on every
+        # roast, and a readout there covers none of the trace it comments on.
+        self._crack_bar = CrackBar(aw, self)
+        self._crack_bar.set_operator_level(
+            settings.value('tilauscope/operator_level', 'guided', type=str))
+
         self._sync_pid_button()
         self._sync_view_button()
         self._sync_switch_button()
@@ -577,6 +590,11 @@ class RoastCurveWidget(QWidget):
         self._layout()
 
     # ── public API ───────────────────────────────────────────────────────
+    def set_operator_level(self, level: str) -> None:
+        """Propagate the level to the overlays that read it."""
+        self._crack_bar.set_operator_level(level)
+        self._place_crack_bar()
+
     @staticmethod
     def _segment_qss(left: bool, right: bool = True) -> str:
         radius = ''
@@ -703,6 +721,30 @@ class RoastCurveWidget(QWidget):
                  else int(r.right()))
         self._pid_btn.move(right - self._pid_btn.width(),
                            max(0, int(r.top()) - self._pid_btn.height() - 5))
+
+    def _place_crack_bar(self) -> None:
+        # Centred in what the two ends of the strip leave free. Clamped rather
+        # than overlapped: on a narrow window the controls keep their places and
+        # the bar gives way, because they can be clicked and it cannot.
+        if not self._crack_bar.isVisible():
+            return
+        r = self._plot_rect
+        if r.width() <= 1:
+            return
+        left = int(r.left())
+        if not self.annotations.view_toggle.isHidden():
+            left += int(_TOGGLE_CLEARANCE)
+        if self._switch_btn.isVisible():
+            left = max(left, self._switch_btn.x() + self._switch_btn.width() + 8)
+        right = int(r.right())
+        for btn in (self._pid_btn, self._speed_btn, self._view_btn):
+            if btn.isVisible():
+                right = min(right, btn.x() - 8)
+        width = self._crack_bar.width()
+        x = left + max(0, (right - left - width) // 2)
+        self._crack_bar.move(
+            x, max(0, int(r.top()) - self._crack_bar.height() - 5))
+        self._crack_bar.setVisible(right - left >= width)
 
     def _place_switch_button(self) -> None:
         # Fallback position, used before the title has ever painted (or
@@ -858,6 +900,8 @@ class RoastCurveWidget(QWidget):
             # window is open; the lanes are laid out from it.
             self._layout()
         self.annotations.tick()
+        self._crack_bar.refresh()
+        self._place_crack_bar()
         self.update()
 
     def _reconcile_view(self) -> None:
@@ -959,6 +1003,7 @@ class RoastCurveWidget(QWidget):
         self._frame_key = None   # paintEvent rebuilds with the current window
         self._place_view_button()
         self._place_switch_button()
+        self._place_crack_bar()
 
     def _ensure_frame(self, w: int, h: int) -> None:
         """Rebuild the cached frame only when something painted into it changed.
@@ -971,7 +1016,7 @@ class RoastCurveWidget(QWidget):
         key = (w, h, self._t_min, self._t_max, self._lane_mode, self._mode,
                self._temp_lo, self._temp_hi, self._temp_step, self._time_step,
                self._ror_max, self._ror_step,
-               self._preheat is not None, self._rate_axis,
+               self._climb_frame, self._rate_axis,
                tuple(n for n, _r, _k in self._lane_rows),
                self.devicePixelRatioF(), self._channel_labels())
         if key != self._frame_key:
@@ -979,7 +1024,7 @@ class RoastCurveWidget(QWidget):
             self._frame_key = key
 
     def _set_preheat_axes(self, timex: list[Any], temp2: list[Any], mode: str,
-                          preheat: Any) -> None:
+                          preheat: Any | None) -> None:
         """An axis that contains the climb, on both sides.
 
         Time runs from the moment the probes started, not from a charge that has
@@ -1016,6 +1061,12 @@ class RoastCurveWidget(QWidget):
         target_c = float(getattr(preheat, 'target_c', 0.0) or 0.0)
         seen = [c for c in (_sample_temp_c(v, mode) for v in temp2[-1:]) if c is not None]
         top = max([target_c, *seen]) if (target_c or seen) else _temp_axis_c(mode)[1]
+        if not target_c:
+            # No controller, so no number to wait for: the ceiling would then be
+            # the reading of the moment, and a climb re-scales its own frame
+            # every forty degrees. The roast's ceiling holds it still, and the
+            # climb still opens it further if it goes above.
+            top = max(top, _temp_axis_c(mode)[1])
         # The climb sets its own ceiling, but the ladder is still the operator's:
         # the rounding is done on round figures in the display unit, then the
         # three numbers are handed back to the °C frame the engine draws in.
@@ -1029,12 +1080,16 @@ class RoastCurveWidget(QWidget):
         self._temp_hi = convertTemp(hi_n, mode, 'C')
 
     def _draw_preheat(self, painter: QPainter, timex: list[Any], temp2: list[Any],
-                      mode: str, preheat: Any) -> None:
+                      mode: str, preheat: Any | None) -> None:
         """The drum climbing towards its target, with the target drawn on it.
 
         Nothing of the roast belongs here: no milestones, no phase bands, no
         rate axis. A preheat has one question and this answers it — how far up
         the drum is, and how far there is left.
+
+        `preheat` is None when no controller is driving the climb. The line is
+        the same line; what falls away is what only a controller knows — the
+        target, the arrival and the ready badge.
         """
         r = self._plot_rect
         base = float(timex[0]) if timex else 0.0
@@ -1105,7 +1160,7 @@ class RoastCurveWidget(QWidget):
                            target_c, preheat, state)
 
     def _draw_arrival(self, painter: QPainter, elapsed: float, target_c: float,
-                      preheat: Any, colour: QColor) -> None:
+                      preheat: Any | None, colour: QColor) -> None:
         """Where the climb is due to meet the target, drawn on the chart.
 
         The countdown is already written on the card. This puts the same figure
@@ -1196,7 +1251,12 @@ class RoastCurveWidget(QWidget):
         f.setBold(True)
         painter.setFont(f)
         painter.setPen(QPen(QColor(THEME['TEXT'])))
-        avail_width = max(40.0, self._view_btn.x() - left - 10.0)
+        # The crack bar shares this strip when the probe is counting, so the
+        # title stops at it rather than running underneath it.
+        limit = float(self._view_btn.x())
+        if self._crack_bar.isVisible():
+            limit = min(limit, float(self._crack_bar.x()))
+        avail_width = max(40.0, limit - left - 10.0)
         painter.drawText(
             QRectF(left, 2.0, avail_width, r.top() - 4.0),
             int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter), text)
@@ -1664,6 +1724,101 @@ class RoastCurveWidget(QWidget):
             color.setAlpha(alpha)
             painter.fillRect(QRectF(self._x(lo), r.top(), self._x(hi) - self._x(lo), r.height()),
                              color)
+
+    def _crack_times(self, timex: list[Any]) -> list[float]:
+        """When each pop was heard, in charge-relative seconds.
+
+        Read off the recorded counter rather than accumulated live, so a roast
+        reopened from a file draws exactly what the roast that ran drew. The
+        probe writes -1 on any tick it does not answer — most of them — and a
+        saved profile carries the series interpolated to floats, so only the
+        integer part is the count: 0.0, 0.33, 0.67, 1.0 is one pop, not three.
+        """
+        qmc = getattr(self._aw, 'qmc', None)
+        if qmc is None:
+            return []
+        det = getattr(qmc, 'fc_detector', None)
+        channel = det.crack_channel() if det is not None else None
+        if channel is None:
+            # Discovery runs on monitor-on and at CHARGE; a roast merely opened
+            # from a file goes through neither, so resolve it from the names.
+            try:
+                channel = resolve_crack_channel(qmc.extraname1, qmc.extraname2,
+                                                qmc.extratemp1, qmc.extratemp2)
+            except (AttributeError, TypeError):
+                channel = None
+        if channel is None:
+            return []
+        idx, ch = channel
+        try:
+            series = qmc.extratemp1[idx] if ch == 1 else qmc.extratemp2[idx]
+        except (AttributeError, IndexError, TypeError):
+            return []
+        if not series:
+            return []
+        key = (idx, ch, len(series), len(timex))
+        if key == self._crack_key:
+            return self._crack_cache
+        times: list[float] = []
+        previous: int | None = None
+        for i, value in enumerate(series):
+            if value is None or value < 0 or i >= len(timex):
+                continue
+            count = int(value)
+            if previous is not None and count > previous:
+                times.extend([float(timex[i])] * min(count - previous, 16))
+            previous = count
+        self._crack_key = key
+        self._crack_cache = times
+        return times
+
+    def _draw_crack_band(self, painter: QPainter, timex: list[Any]) -> None:
+        """One tick per pop heard, along the foot of the plot.
+
+        No smoothing and no gradient: overlapping ticks build the density on
+        their own, which is the honest picture — a crack is a count of events,
+        not a continuous quantity. Drawn under everything else, because it is a
+        ground the roast is read against, not a mark on the roast.
+        """
+        times = self._crack_times(timex)
+        if not times:
+            return
+        r = self._plot_rect
+        top = r.bottom() - _CRACK_BAND_HEIGHT - 2.0
+        colour = QColor(THEME['WARNING'])
+        colour.setAlpha(_CRACK_TICK_ALPHA)
+        pen = QPen(colour)
+        pen.setWidthF(1.0)
+        painter.setPen(pen)
+        for t in times:
+            if not self._t_min <= t <= self._t_max:
+                continue
+            x = self._x(t)
+            painter.drawLine(QPointF(x, top), QPointF(x, top + _CRACK_BAND_HEIGHT))
+
+    def _draw_planned_fc(self, painter: QPainter) -> None:
+        """The first crack the plan expected, beside the one that was heard.
+
+        The gap between the two rules is the whole point: it is what says the
+        batch ran early or late while there is still a drop to place.
+        """
+        planned = getattr(self._aw, 'tilau_plan_fc_sec', None)
+        if planned is None or not self._t_min <= planned <= self._t_max:
+            return
+        r = self._plot_rect
+        x = self._x(float(planned))
+        pen = QPen(QColor(THEME['OVERLAY0']))
+        pen.setWidthF(1.2)
+        pen.setStyle(Qt.PenStyle.DotLine)
+        painter.setPen(pen)
+        painter.drawLine(QPointF(x, r.top()), QPointF(x, r.bottom()))
+        f = QFont()
+        f.setPointSize(_AXIS_FONT_PT)
+        painter.setFont(f)
+        painter.setPen(QPen(QColor(THEME['OVERLAY0'])))
+        painter.drawText(QRectF(x + 4.0, r.top() + 2.0, 90.0, 14.0),
+                         int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
+                         QApplication.translate('tilauscope', 'FC planned'))
 
     def _draw_milestones(self, painter: QPainter, timex: list[Any], temp2: list[Any],
                          mode: str, timeindex: list[Any], tp_index: int) -> None:
@@ -2359,6 +2514,7 @@ class RoastCurveWidget(QWidget):
         charge = -1
         drop = -1
         monitoring = False
+        no_meter = False
         if qmc is not None:
             try:
                 timex = list(qmc.timex)
@@ -2376,6 +2532,11 @@ class RoastCurveWidget(QWidget):
                            for v in qmc.specialeventsvalue]
                 ev_colors = list(qmc.EvalueColor)
                 monitoring = bool(qmc.flagon)
+                # Artisan's "NONE" device: no meter is configured at all, so no
+                # reading is coming until one is chosen. A different nothing from
+                # a cable out, and a different fix.
+                no_meter = (int(getattr(qmc, 'device', 0)) == 18
+                            and getattr(self._aw, 'simulator', None) is None)
             except Exception:
                 # Live data can be mid-mutation on the sampling thread's cadence;
                 # skip this frame rather than risk a half-read list. Keeping the
@@ -2390,13 +2551,24 @@ class RoastCurveWidget(QWidget):
         # (sentinel -1), only a loaded reference can define a roast frame.
         drawable = 0 <= charge < len(timex)
         preheat = None if drawable else self._preheat
-        # A preheat owns a different time frame. Outside it, a loaded reference
-        # is a perfectly drawable roast even when there is no foreground yet.
-        reference = (None if preheat is not None else _background_roast(
+        # The climb up to the charge owns a time frame of its own, and it owns
+        # it whether or not a controller is driving it. A drum taken up by hand
+        # is the same rise, played with the same levers, and it used to be given
+        # the empty "waiting for charge" chart for the whole preheat: nothing
+        # advanced, and every gesture of that preheat was drawn nowhere, because
+        # the only frame on offer was measured from a charge that had not
+        # happened. The controller adds a target and a countdown to this frame;
+        # it is not what creates it.
+        climb_frame = preheat is not None or (
+            not drawable and monitoring and len(timex) > 1 and _readings(temp2))
+        # Outside that frame, a loaded reference is a perfectly drawable roast
+        # even when there is no foreground yet.
+        reference = (None if climb_frame else _background_roast(
             qmc, show_air=self.show_air_temperature,
             show_machine=self.show_machine_response))
         reference_only = not drawable and reference is not None
         self._rate_axis = drawable or reference_only
+        self._climb_frame = climb_frame
         # The unit the axes are labelled in, and the rise scale that goes with
         # it. Both are in the frame key, so a unit switched mid-session rebuilds
         # the frame instead of leaving °C figures on a °F chart.
@@ -2411,7 +2583,7 @@ class RoastCurveWidget(QWidget):
                 closeup=self._closeup and not getattr(qmc, 'flagstart', False))
             self._temp_lo, self._temp_hi, self._temp_step = _temp_axis_c(mode)
             self._time_step = _TIME_STEP
-        elif preheat is not None:
+        elif climb_frame:
             self._set_preheat_axes(timex, temp2, mode, preheat)
         elif reference is not None:
             ref_timex = reference[0]
@@ -2436,7 +2608,7 @@ class RoastCurveWidget(QWidget):
         if self._frame is not None:
             painter.drawPixmap(0, 0, self._frame)
         self._draw_title(painter, qmc)
-        if preheat is not None:
+        if climb_frame:
             self._draw_preheat(painter, timex, temp2, mode, preheat)
             # The lanes were laid out but never reached: a preheat used to leave
             # four empty strips under the climb, which is where the operator
@@ -2455,20 +2627,28 @@ class RoastCurveWidget(QWidget):
                 self._draw_settings(painter, [], [], [], [], ev_colors)
                 self._draw_curve_legend(painter, phases=False)
                 return
-            # An empty plot must say why it is empty. Before the charge is marked
-            # there is no roast window to draw into — and without this line the
-            # operator cannot tell that apart from a chart that is simply broken.
-            # Two different nothings. While monitoring runs, a curve is still
-            # coming; once it is off, none ever will — saying "waiting" then would
-            # be a lie. The preheat is deliberately not drawn here: on a roast axis
-            # it paints the drum warm-up and the charge plunge inside the roast
-            # window, which is the very thing this axis exists to avoid.
-            if monitoring:
-                headline = QApplication.translate('tilauscope', 'Waiting for charge')
-                detail = ''
-            else:
+            # An empty plot must say why it is empty, and the reasons are not
+            # interchangeable. Monitoring off: nothing is coming, and saying
+            # "waiting" would be a lie. Monitoring on with nothing measured: the
+            # wait is on the machine, not on the operator — announcing a charge
+            # here told someone with an unplugged roaster that the application
+            # was ready for their beans. Monitoring on with a reading: the climb
+            # takes the frame a sample later, so this is genuinely the charge
+            # being waited for. The fix for a silent machine is not repeated
+            # here: the phase box beside this one carries it in full, and a
+            # warning said three ways is a warning read none.
+            if not monitoring:
                 headline = QApplication.translate('tilauscope', 'No roast recorded')
                 detail = QApplication.translate('tilauscope', 'The curve starts when the charge is marked.')
+            elif no_meter:
+                headline = QApplication.translate('tilauscope', 'No meter connected')
+                detail = QApplication.translate('tilauscope', 'Configure a device in Machine > Device.')
+            elif not _readings(temp2, 1):
+                headline = QApplication.translate('tilauscope', 'Waiting for the machine')
+                detail = QApplication.translate('tilauscope', 'The curve starts with the first temperature reading.')
+            else:
+                headline = QApplication.translate('tilauscope', 'Waiting for charge')
+                detail = ''
             r = self._plot_rect
             f = QFont()
             f.setPointSize(_AXIS_FONT_PT + 2)
@@ -2511,6 +2691,7 @@ class RoastCurveWidget(QWidget):
 
         # Phases sit under everything: they are a ground, not a mark.
         self._draw_phase_bands(painter, timex, timeindex)
+        self._draw_crack_band(painter, timex)
 
         # The reference lives in the same CHARGE-relative frame as this roast.
         # It is painted first, so every live trace remains the visual authority
@@ -2570,6 +2751,9 @@ class RoastCurveWidget(QWidget):
         # can cross is a label that cannot be read. Their rules cross both plots,
         # which is what ties a setting to the moment it was played.
         painter.setClipRect(self._full_rect())
+        # Before the marked milestones, so the crack that was HEARD keeps the
+        # stronger rule and the plan stays the fainter of the two.
+        self._draw_planned_fc(painter)
         self._draw_milestones(painter, timex, temp2, mode, timeindex, tp_index)
         self._draw_hover(painter, timex, temp2, temp1, delta2, delta1, mode,
                          events, ev_types, ev_pcts, ev_colors)

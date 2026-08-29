@@ -44,7 +44,7 @@ from PyQt6.QtGui import QCursor, QPalette, QColor
 from PyQt6 import sip
 
 from tilauscope.theme_qss import base_qss, tooltip_qss
-from tilauscope.tilauscope_types import THEME, show_styled_message, TilauProgress
+from tilauscope.tilauscope_types import THEME, no_enter_default, show_styled_message, TilauProgress
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -551,6 +551,10 @@ class TilauscopeConfigDlg(QDialog):
         self.setMinimumSize(720, 560)
         self.resize(780, 620)
 
+        # Return must not reach the ✕ / Cancel this dialog builds first
+        # (tilauscope_types.no_enter_default).
+        no_enter_default(self)
+
     # ── Drag-to-move ─────────────────────────────────────────────────────────
 
     def mousePressEvent(self, event) -> None:  # noqa: ANN001
@@ -833,6 +837,18 @@ class TilauscopeConfigDlg(QDialog):
         layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "Remote access")))
         web_group = QGroupBox(QApplication.translate("tilauscope_devices", "Record web server (phone QR scan)"))
         wg = QFormLayout(web_group)
+        self.webServerCheckBox = QCheckBox(
+            QApplication.translate("tilauscope_devices", "Let a phone open records by scanning a label")
+        )
+        self.webServerCheckBox.setToolTip(
+            QApplication.translate("tilauscope_devices",
+                "Run the read-only record server a phone camera talks to when scanning a "
+                "printed QR code. Off by default: while it is off, labels still print but a "
+                "phone scanning one reaches nothing. Takes effect after a restart.")
+        )
+        self.webServerCheckBox.setChecked(
+            QSettings().value('tilauscope/web_enabled', False, type=bool)
+        )
         self.webPortSpin = QSpinBox()
         self.webPortSpin.setRange(1024, 65535)
         self.webPortSpin.setValue(QSettings().value('tilauscope/web_port', 8123, type=int))
@@ -843,7 +859,11 @@ class TilauscopeConfigDlg(QDialog):
                 "labels — change it only if it conflicts with another service. "
                 "Takes effect after a restart. Default: 8123.")
         )
+        wg.addRow(self.webServerCheckBox)
         wg.addRow(QApplication.translate("tilauscope_devices", "Port:"), self.webPortSpin)
+        # the port only matters while the server runs
+        self.webPortSpin.setEnabled(self.webServerCheckBox.isChecked())
+        self.webServerCheckBox.toggled.connect(self.webPortSpin.setEnabled)
         layout.addWidget(web_group)
 
         # remote control (phone piloting) — opt-in, boot-time (main.py
@@ -1376,6 +1396,33 @@ class TilauscopeConfigDlg(QDialog):
         self._ai_configure_btn.clicked.connect(self._open_ai_provider_picker)
         ai_layout.addWidget(self._ai_configure_btn)
         layout.addWidget(ai_group)
+
+        # ── Privacy ───────────────────────────────────────────────────────
+        # Sits under the AI provider it governs: the disclosure names that
+        # provider, so the way to be told again belongs next to the way to
+        # change who is told about.
+        layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "Privacy")))
+        privacy_group = QGroupBox(QApplication.translate("tilauscope_devices", "What leaves this computer"))
+        privacy_layout = QVBoxLayout(privacy_group)
+        privacy_layout.setSpacing(8)
+
+        privacy_intro = QLabel(QApplication.translate(
+            "tilauscope_devices",
+            "What leaves this computer does so only after you have been told, "
+            "once, who receives it. You can ask to be told again."))
+        privacy_intro.setWordWrap(True)
+        privacy_layout.addWidget(privacy_intro)
+
+        self._privacy_ai_lbl, self._privacy_ai_btn = self._privacy_row(
+            privacy_layout,
+            QApplication.translate("tilauscope_devices", "AI provider disclosure"),
+            self._forget_ai_disclosure)
+        self._privacy_geo_lbl, self._privacy_geo_btn = self._privacy_row(
+            privacy_layout,
+            QApplication.translate("tilauscope_devices", "Location lookup"),
+            self._forget_geo_consent)
+        self._privacy_update_labels()
+        layout.addWidget(privacy_group)
 
         layout.addStretch()
 
@@ -2136,7 +2183,7 @@ class TilauscopeConfigDlg(QDialog):
         client = TilauscopeMQTTClient(self._mqtt_config_from_form(), self.aw)
         result = None
         try:
-            if client.start():
+            if client.start() and client.wait_connected():
                 # same conversion the sampling loop applies, so the reported
                 # figure is the one that will be recorded
                 result = TilauMqttPorts(client).check_sensor(sensor, mode=self.aw.qmc.mode)
@@ -2199,7 +2246,7 @@ class TilauscopeConfigDlg(QDialog):
     def _test_mqtt_connection(self) -> None:
         from tilauscope.mqttbridge import TilauscopeMQTTClient
         mqtt_client = TilauscopeMQTTClient(self._mqtt_config_from_form(), self.aw)
-        connected = mqtt_client.start()
+        connected = mqtt_client.start() and mqtt_client.wait_connected()
         mqtt_client.stop()
         if connected:
             show_styled_message(
@@ -2239,12 +2286,91 @@ class TilauscopeConfigDlg(QDialog):
     @pyqtSlot()
     def _open_ai_provider_picker(self) -> None:
         from tilauscope.ai_support import AIProviderPickerDialog
+        before = (getattr(self.aw.tilau_aiConfig, "client_id", ""),
+                  getattr(self.aw.tilau_aiConfig, "engine", ""))
         dlg = AIProviderPickerDialog(self.aw.tilau_aiConfig, self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self.aw.tilau_aiConfig = dlg.result_config
             if hasattr(self.aw, "tilau_ai_service"):
                 self.aw.tilau_ai_service.ai_config = self.aw.tilau_aiConfig
+            after = (getattr(dlg.result_config, "client_id", ""),
+                     getattr(dlg.result_config, "engine", ""))
+            if after != before:
+                # A new recipient, or a new model at the same one: the operator
+                # is told again rather than inheriting an answer about someone
+                # else.
+                from tilauscope.tilau_privacy_ui import forget_ai_disclosure
+                forget_ai_disclosure()
             self._ai_update_status_label()
+            self._privacy_update_labels()
+
+    # ── Privacy section ──────────────────────────────────────────────────────
+
+    def _privacy_row(self, parent_layout, title: str, on_forget):
+        """One consent line: what it is, where it stands, and how to undo it."""
+        row = QHBoxLayout()
+        row.addWidget(QLabel(title))
+        row.addStretch()
+        value = QLabel()
+        value.setTextFormat(Qt.TextFormat.RichText)
+        row.addWidget(value)
+        btn = QPushButton(QApplication.translate("tilauscope_devices", "Ask me again"))
+        btn.setProperty('variant', 'outline')
+        btn.clicked.connect(on_forget)
+        row.addWidget(btn)
+        parent_layout.addLayout(row)
+        return value, btn
+
+    def _privacy_update_labels(self) -> None:
+        """Nothing granted yet means nothing to forget — the button says so by
+        being unavailable rather than by doing nothing."""
+        from tilauscope.tilau_privacy_ui import (
+            acknowledged_ai_provider, geo_consent_granted,
+        )
+        provider = acknowledged_ai_provider()
+        if provider:
+            name = provider
+            try:
+                from tilauscope.ai_support import _CLIENT_ID_TO_PROVIDER
+                name = _CLIENT_ID_TO_PROVIDER.get(provider, provider.capitalize())
+            except Exception:  # noqa: BLE001
+                pass
+            self._privacy_ai_lbl.setText(
+                f"<span style='color:{THEME['SUCCESS']};'>"
+                + QApplication.translate("tilauscope_devices",
+                                         "acknowledged for {0}").format(name)
+                + "</span>")
+        else:
+            self._privacy_ai_lbl.setText(
+                f"<span style='color:{THEME['SUBTEXT']};'>"
+                + QApplication.translate("tilauscope_devices", "not asked yet")
+                + "</span>")
+        self._privacy_ai_btn.setEnabled(bool(provider))
+
+        granted = geo_consent_granted()
+        if granted:
+            self._privacy_geo_lbl.setText(
+                f"<span style='color:{THEME['SUCCESS']};'>"
+                + QApplication.translate("tilauscope_devices", "allowed")
+                + "</span>")
+        else:
+            self._privacy_geo_lbl.setText(
+                f"<span style='color:{THEME['SUBTEXT']};'>"
+                + QApplication.translate("tilauscope_devices", "not asked yet")
+                + "</span>")
+        self._privacy_geo_btn.setEnabled(granted)
+
+    @pyqtSlot()
+    def _forget_ai_disclosure(self) -> None:
+        from tilauscope.tilau_privacy_ui import forget_ai_disclosure
+        forget_ai_disclosure()
+        self._privacy_update_labels()
+
+    @pyqtSlot()
+    def _forget_geo_consent(self) -> None:
+        from tilauscope.tilau_privacy_ui import forget_geo_consent
+        forget_geo_consent()
+        self._privacy_update_labels()
 
     # ─────────────────────────────────────────────────────────────────────────
     # Ok / Cancel
@@ -2590,16 +2716,20 @@ class TilauscopeConfigDlg(QDialog):
                     "BeanCave home mode will take effect the next time you start TilauScope."),
             )
 
-        # record web server port -> QSettings (spec wiki/QR-Scan-Spec.md §2.1)
+        # record web server -> QSettings (spec wiki/QR-Scan-Spec.md §2.1); the
+        # server itself is opt-in and boot-time, like remote control below
+        _w_prev = QSettings().value('tilauscope/web_enabled', False, type=bool)
+        _w_new  = self.webServerCheckBox.isChecked()
         _p_prev = QSettings().value('tilauscope/web_port', 8123, type=int)
         _p_new  = self.webPortSpin.value()
-        if _p_new != _p_prev:
+        if _w_new != _w_prev or _p_new != _p_prev:
+            QSettings().setValue('tilauscope/web_enabled', _w_new)
             QSettings().setValue('tilauscope/web_port', _p_new)
             show_styled_message(
                 self,
                 QApplication.translate("tilauscope_devices", "Restart required"),
                 QApplication.translate("tilauscope_devices",
-                    "The record web server port will take effect the next time you "
+                    "The record web server will take effect the next time you "
                     "start TilauScope. Labels printed from now on will encode the new port."),
             )
 

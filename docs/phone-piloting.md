@@ -20,8 +20,15 @@ valid for a short time — a fresh code is a tap away if it expires before it's 
 
 Opening that link on a phone, on the same network as the computer, pairs it: the phone shows
 up in the pairing dialog's device list right away, named automatically from what kind of
-phone it is. From there it can be **renamed**, or **revoked** — revoking takes effect
-immediately, the next time that phone tries to reach TilauScope.
+phone it is. Each entry says when that phone last connected, so the one you use every roast
+is easy to tell apart from one you have stopped using. From there it can be **renamed**, or
+**revoked** — revoking takes effect immediately, the next time that phone tries to reach
+TilauScope.
+
+A phone that has not connected for **a month** stops being paired on its own and drops off
+the list. Nothing is lost: opening **Pair a phone…** and scanning the code again takes a few
+seconds. This is what keeps a phone you have sold, lost or simply forgotten from staying
+able to reach your roaster indefinitely.
 
 A newly paired phone can watch the roast, but cannot yet steer it — see **Taking control**
 below.
@@ -31,6 +38,12 @@ below.
     account and no password. That is deliberate: it is a convenience for piloting from
     across the room, not a way to control a roast from outside the house. Treat the pairing
     link the way you would a house key.
+
+    TilauScope enforces that rather than trusting it: a phone can only pair, connect or open
+    a record page **from an address on your own network**. Anything reaching the port from
+    elsewhere — a forwarded port on your router, a network that hands out public addresses —
+    is refused outright, whatever code or token it presents. Remote access through a VPN
+    service is refused on the same grounds.
 
 <!-- CAPTURE 10.1 — the Pair a phone dialog, QR and countdown visible. CAPTURE 10.2 — the
 paired-devices list with one phone paired. -->
@@ -67,11 +80,25 @@ CAPTURE 10.6 — a phone in control vs. an observer phone, side by side. -->
 
 ---
 
+## The curve
+
+The phone draws the same graph as the computer, on the same scales: identical temperature and
+rate-of-rise bounds, identical gridlines, identical curve colours. A height read on the phone
+is the same height on the desktop, which is the point — a rate that looks like it is near the
+top of the frame has to mean the same thing on both screens.
+
+Readings are shown in whichever temperature unit the application is set to, and labelled with
+it. Nothing is converted along the way: the phone displays the computer's own figures.
+
+---
+
 ## Controls
 
 Whichever sliders are visible on the desktop appear on the phone, in the same order, with the
 same labels and the same limits — hide one on the desktop and it disappears from the phone
-too. Dragging a bar moves it live on the phone; letting go is what actually sends the change.
+too. The list is read afresh each time a phone connects, so a control renamed, re-bounded or
+hidden between two connections arrives correct rather than as it stood when the application
+started. Dragging a bar moves it live on the phone; letting go is what actually sends the change.
 Tapping the value instead opens a scrollable picker, for landing on an exact number rather
 than a drag.
 

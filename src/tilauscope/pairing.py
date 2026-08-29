@@ -34,6 +34,17 @@ _log = logging.getLogger(__name__)
 _PT_TTL = 120           # seconds (protocol §7)
 _DEVICES_KEY = 'tilauscope/remote_devices'
 
+# A device token is permanent until revoked, which assumes the operator
+# remembers every phone they ever paired. One that has not connected for a
+# month stops being valid: re-pairing is a QR scan, and a phone sold, lost or
+# forgotten stops carrying a key to the roaster.
+_DT_IDLE_TTL = 30 * 86400
+
+# `last_seen` is written on every successful connection, and a flaky link
+# reconnects often. Only persist when the stored value is this far behind, so
+# the settings file is not rewritten on every handshake.
+_LAST_SEEN_RESOLUTION = 3600
+
 
 class PairingManager:
     def __init__(self) -> None:
@@ -43,6 +54,10 @@ class PairingManager:
         self._lock = threading.Lock()
         self._devices: dict = self._load()
         self._revoke_callback: Optional[Callable[[str], None]] = None
+        self._start_idle_clock()
+        # A phone silent for a month is forgotten at startup, so the desktop
+        # never lists — nor honours — a device that stopped being used.
+        self.sweep_expired()
 
     def set_revoke_callback(self, callback: Optional[Callable[[str], None]]) -> None:
         """Notify the live transport after a persistent device is revoked."""
@@ -105,21 +120,84 @@ class PairingManager:
             if not self._consume_pt_locked(token):
                 return None
             dt = 'dt_' + secrets.token_urlsafe(24)
+            now = int(time.time())
             self._devices[device_id] = {'token': dt, 'name': display_name or device_id,
-                                        'paired_at': int(time.time())}
+                                        'paired_at': now, 'last_seen': now}
             self._save(self._devices)
         _log.info("pairing: device paired: %s", device_id)
         return dt
 
+    def _start_idle_clock(self) -> None:
+        """Give every device already paired a last-seen of now.
+
+        Without this an upgrade would read the pairing date as the last sign of
+        life and expire a phone used yesterday but paired three months ago. The
+        idle clock starts when the rule does, not before it existed.
+        """
+        with self._lock:
+            now = int(time.time())
+            missing = [d for d in self._devices.values()
+                       if isinstance(d, dict) and not d.get('last_seen')]
+            for dev in missing:
+                dev['last_seen'] = now
+            if missing:
+                self._save(self._devices)
+
+    @staticmethod
+    def _idle_seconds(dev: dict) -> int:
+        """How long since this device last connected."""
+        seen = int(dev.get('last_seen') or dev.get('paired_at') or 0)
+        return int(time.time()) - seen if seen else 0
+
+    def _drop_if_idle_locked(self, device_id: str, dev: dict) -> bool:
+        """Forget a device that has not connected for a month. Caller holds the lock."""
+        if self._idle_seconds(dev) < _DT_IDLE_TTL:
+            return False
+        self._devices.pop(device_id, None)
+        self._save(self._devices)
+        _log.info("pairing: device expired after %d days idle: %s",
+                  self._idle_seconds(dev) // 86400, device_id)
+        return True
+
+    def sweep_expired(self) -> int:
+        """Forget every device idle for longer than the limit. Returns the count."""
+        with self._lock:
+            stale = [d for d, dev in self._devices.items()
+                     if isinstance(dev, dict) and self._idle_seconds(dev) >= _DT_IDLE_TTL]
+            for device_id in stale:
+                self._devices.pop(device_id, None)
+            if stale:
+                self._save(self._devices)
+        for device_id in stale:
+            _log.info("pairing: device expired (idle): %s", device_id)
+        return len(stale)
+
     def verify_token(self, device_id: str, device_token: str) -> bool:
         """Constant-time match of a presented DT against the stored one.
-        No HMAC (Web Crypto unavailable over plain http); a revoked DT no longer matches."""
+
+        No HMAC (Web Crypto unavailable over plain http); a revoked DT no longer
+        matches, and neither does one whose device has been silent for a month.
+        A match records the connection, which is what keeps the device alive and
+        what lets the desktop show which phones are still in use.
+        """
         with self._lock:
             dev = self._devices.get(device_id)
+            if dev and self._drop_if_idle_locked(device_id, dev):
+                return False
             token = str(dev.get('token', '')) if dev else ''
         if not token:
             return False
-        return hmac.compare_digest(token, device_token or '')
+        if not hmac.compare_digest(token, device_token or ''):
+            return False
+
+        with self._lock:
+            dev = self._devices.get(device_id)
+            if dev is not None:
+                now = int(time.time())
+                if now - int(dev.get('last_seen') or 0) >= _LAST_SEEN_RESOLUTION:
+                    dev['last_seen'] = now
+                    self._save(self._devices)
+        return True
 
     def list_devices(self) -> dict:
         # Deep copy under the lock: callers iterate names off-thread (dialog

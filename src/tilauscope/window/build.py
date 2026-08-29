@@ -156,6 +156,11 @@ class BuildMixin:
         # SV row widgets + lock state (read-only while TilauPID preheats)
         self._sv_widgets: tuple = ()
         self._sv_locked: bool = False
+        # machine controls reachable only while monitoring: at rest they are
+        # disabled, and must look it (see _apply_controls_enabled). Starts True
+        # because Qt widgets are born enabled — the flag tracks reality, and the
+        # build-time call is what puts them at rest.
+        self._controls_enabled: bool = True
 
         # Main store, namespaced key; migration from the legacy Artisan-named file
         # is handled by settings_migration.
@@ -299,13 +304,15 @@ class BuildMixin:
 
         self.aw.tilauscopeMain.setChecked(True)
 
-        # Shift+T view-toggle from within TilauScope. The act_main
+        # Shift+T view-toggle from within TilauScope, headless only. The act_main
         # QAction/shortcut lives on the Artisan window, which is hidden (and thus
-        # receives no key events) in headless mode — so we register a window-local
-        # shortcut here so Shift+T reaches tilauscopeCall() while TilauScope has
-        # focus. Harmless in normal mode (Artisan stays visible on toggle).
-        self._view_toggle_sc = QShortcut(QKeySequence("Shift+T"), self)
-        self._view_toggle_sc.activated.connect(self.aw.tilauscopeCall)
+        # receives no key events) there — so the shortcut is registered on this
+        # window instead. In normal mode there is no second view to reach: Artisan
+        # stays hidden and closing TilauScope quits, so a key that closed it would
+        # read as a view switch and end the session instead.
+        if getattr(self.aw, '_tilau_headless', False):
+            self._view_toggle_sc = QShortcut(QKeySequence("Shift+T"), self)
+            self._view_toggle_sc.activated.connect(self.aw.tilauscopeCall)
 
         self.aw.pidcontrol.activateSVSlider(True)
 
@@ -921,6 +928,8 @@ class BuildMixin:
 
         # Mirror Artisan's per-slider visibilities onto the rows
         self._apply_slider_visibility_mirror()
+        # At build time nothing is monitored yet: the controls start at rest.
+        self._apply_controls_enabled(bool(self.aw.qmc.flagon))
 
         # ── Assemble the control zone ─────────────────────────────────────────
         ctrl_zone = QHBoxLayout()
