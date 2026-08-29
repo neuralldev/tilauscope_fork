@@ -1,4 +1,22 @@
+## [4.2.19] 2026-08-29
+build 2
+* ⚡ [feat(l10n)] : German, Spanish, Italian, Simplified and Traditional Chinese are complete again. Close to 400 labels added since the last pass — the PID assistant, the ambient and extractor commands, the weather and location settings — were showing in English inside an otherwise translated interface
+* 🐛 [fix(pid assistant)] : the two confirmations before a heat command — cutting the heater to 0% and starting the supervised heat test — now use the application's own dialog instead of the system one, and their buttons name the action (Cancel / Continue, Cancel / Start) rather than answering Yes or No
+build 1
+* 🐛 [fix(brew planning)] : the card shown when pointing at a roast is now translated — the roast date, colour, best day and window labels, the four readiness readings and the bean-sheet field names all stayed in English whatever the chosen language
+* 🐛 [fix(brew planning)] : the legend below the title no longer misspells « Aujourd'hui » in French
+* 🐛 [fix(i18n)] : around 200 more interface strings — across the PID coaching screen, the privacy notices, the ALog repair tool, the button labels, the bean cave scan and plan screens, the AUTO indicator, the update banner and the window's Maximize/Restore tooltip — now translate correctly instead of always showing English, because several screens routed their text through a helper the translation extractor could not see into
 ## [4.2.18] 2026-08-29
+build 1
+build 2
+* 🐛 [fix(bean cave)] : with no roast folder configured, the roast list scanned the application's own working folder instead of saying nothing was set — an unset path was being read as the current directory
+* ⚡ [feat(bean cave)] : the roast list now reports what it did — how many roasts it painted, a folder that answered nothing, a scan that failed, a missing setting, or a scan whose result arrived too late to be used; all of them were previously recorded only in debug logging, so an empty list left no trace to work from
+* 🐛 [fix(header)] : in French, the button that stops a recording read COMMENCER — the word for start; it now reads ARRÊT, and the same inverted label is corrected everywhere it appeared, including the phone remote
+* 🐛 [fix(header)] : the RESET and BEAN CAVE buttons no longer cut off their French labels — the words were nearly twice the length of the English ones and did not fit the boxes; the labels are now shortened and RESET has been given the extra width the header row still had spare
+* 🐛 [fix(bean cave)] : selecting a roast now always draws that roast — the curve was read from the row holding the keyboard cursor rather than the row actually highlighted, which after a list refresh or a ctrl-click pointed at another roast or at nothing at all, leaving the preview blank or showing the wrong batch
+* 🐛 [fix(bean cave)] : the automatic list refresh no longer skips redrawing a curve it believes is already up — it recorded which roast was on screen by asking the list instead of the roast it had just drawn, and got no answer when the list had been rebuilt meanwhile
+* 🐛 [fix(bean cave)] : closing the application after having opened BeanCave no longer crashes it — a roast curve still being read from disk when BeanCave was closed was left running, and the application aborted on the way out
+* 🐛 [fix(bean cave)] : a roast whose curve cannot be drawn now says so in the log — the failure was recorded only in debug logging, so a blank curve left no trace to work from
 build 1
 * 🐛 [fix(roasting window)] : the RESET, BEAN CAVE and swap buttons in the header no longer look greyed out when they are available — their available tone was darker than their unavailable one, so both the icon and the outline disappeared into the background; they now brighten when they can be used
 ## [4.2.17] 2026-08-26

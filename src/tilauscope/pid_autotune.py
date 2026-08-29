@@ -76,7 +76,7 @@ from tilauscope.pid_semantics import (
     narrate_pid,
 )
 from tilauscope.roasters import RoasterManager
-from tilauscope.tilauscope_types import THEME
+from tilauscope.tilauscope_types import THEME, show_styled_message
 from tilauscope.theme_qss import apply_tilau_theme
 
 if TYPE_CHECKING:
@@ -221,10 +221,6 @@ class PIDAutotune(QDialog):
         self._render_narrative(self._current_narrative, None, None)
         self._update_behaviour_controls()
 
-    @staticmethod
-    def _tr(text: str) -> str:
-        return QApplication.translate("tilauscope_pid", text)
-
     def setup_ui(self) -> None:
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -254,7 +250,7 @@ class PIDAutotune(QDialog):
         main_layout.addWidget(container)
 
         header = QHBoxLayout()
-        title = QLabel(self._tr("UNDERSTAND AND ADJUST THE PID"))
+        title = QLabel(QApplication.translate("tilauscope_pid", "UNDERSTAND AND ADJUST THE PID"))
         title.setStyleSheet("color:white; font-size:18px; font-weight:900; border:none;")
         help_btn = QPushButton("?")
         help_btn.setFixedSize(26, 26)
@@ -276,7 +272,7 @@ class PIDAutotune(QDialog):
         shell.addLayout(header)
         shell.addWidget(content_scroll, 1)
 
-        intro = QLabel(self._tr(
+        intro = QLabel(QApplication.translate("tilauscope_pid", 
             "TilauScope translates Artisan's calculations into machine behaviour. "
             "Technical PID values stay hidden."
         ))
@@ -284,16 +280,16 @@ class PIDAutotune(QDialog):
         intro.setStyleSheet(f"color:{THEME['SUBTEXT']}; border:none;")
         content.addWidget(intro)
 
-        calibration_group = QGroupBox(self._tr("AUTOMATIC TEST — ABOUT 10 MINUTES"))
+        calibration_group = QGroupBox(QApplication.translate("tilauscope_pid", "AUTOMATIC TEST — ABOUT 10 MINUTES"))
         calibration_group.setStyleSheet(self._group_style())
         calibration_layout = QVBoxLayout(calibration_group)
-        calibration_intro = QLabel(self._tr(
+        calibration_intro = QLabel(QApplication.translate("tilauscope_pid", 
             "The future guided test will observe a small heat increase and decrease, "
             "try a cautious setting, then keep it only if the response improves."
         ))
         calibration_intro.setWordWrap(True)
         calibration_intro.setStyleSheet(f"color:{THEME['TEXT']}; border:none;")
-        self.lbl_calibration = QLabel(self._tr(
+        self.lbl_calibration = QLabel(QApplication.translate("tilauscope_pid", 
             "First validate the complete procedure in software. No heat command is sent."
         ))
         self.lbl_calibration.setWordWrap(True)
@@ -302,12 +298,12 @@ class PIDAutotune(QDialog):
         )
         calibration_buttons = QHBoxLayout()
         self.btn_calibration_check = self._secondary_button(
-            self._tr("CHECK WITHOUT HEATING")
+            QApplication.translate("tilauscope_pid", "CHECK WITHOUT HEATING")
         )
         self.btn_calibration_live = self._primary_button(
-            self._tr("PREPARE THE MACHINE TEST")
+            QApplication.translate("tilauscope_pid", "PREPARE THE MACHINE TEST")
         )
-        self.btn_calibration_live.setToolTip(self._tr(
+        self.btn_calibration_live.setToolTip(QApplication.translate("tilauscope_pid", 
             "Review every automatic check and the three confirmations."
         ))
         self.btn_calibration_check.clicked.connect(self._run_calibration_self_test)
@@ -344,29 +340,29 @@ class PIDAutotune(QDialog):
         state_layout.addWidget(self.lbl_suggestion)
 
         facts = QHBoxLayout()
-        self.lbl_pv = self._fact(facts, self._tr("TEMPERATURE"))
-        self.lbl_sp = self._fact(facts, self._tr("TARGET"))
-        self.lbl_output = self._fact(facts, self._tr("HEAT REQUEST"))
+        self.lbl_pv = self._fact(facts, QApplication.translate("tilauscope_pid", "TEMPERATURE"))
+        self.lbl_sp = self._fact(facts, QApplication.translate("tilauscope_pid", "TARGET"))
+        self.lbl_output = self._fact(facts, QApplication.translate("tilauscope_pid", "HEAT REQUEST"))
         state_layout.addLayout(facts)
         content.addWidget(state_card)
 
-        behaviour_group = QGroupBox(self._tr("CHANGE THE BEHAVIOUR"))
+        behaviour_group = QGroupBox(QApplication.translate("tilauscope_pid", "CHANGE THE BEHAVIOUR"))
         behaviour_group.setStyleSheet(self._group_style())
         behaviour_grid = QGridLayout(behaviour_group)
         behaviour_grid.setHorizontalSpacing(10)
         behaviour_grid.setVerticalSpacing(8)
 
         rows: tuple[tuple[Behaviour, str, str, str, int, int], ...] = (
-            ("reaction", self._tr("CURRENT GAP"), self._tr("React less"),
-             self._tr("React more"), -1, 1),
-            ("recovery", self._tr("LASTING DELAY"), self._tr("Catch up less"),
-             self._tr("Catch up more"), -1, 1),
-            ("braking", self._tr("INERTIA"), self._tr("Brake less"),
-             self._tr("Brake more"), -1, 1),
+            ("reaction", QApplication.translate("tilauscope_pid", "CURRENT GAP"), QApplication.translate("tilauscope_pid", "React less"),
+             QApplication.translate("tilauscope_pid", "React more"), -1, 1),
+            ("recovery", QApplication.translate("tilauscope_pid", "LASTING DELAY"), QApplication.translate("tilauscope_pid", "Catch up less"),
+             QApplication.translate("tilauscope_pid", "Catch up more"), -1, 1),
+            ("braking", QApplication.translate("tilauscope_pid", "INERTIA"), QApplication.translate("tilauscope_pid", "Brake less"),
+             QApplication.translate("tilauscope_pid", "Brake more"), -1, 1),
             # Visual axis is stable -> active, while the semantic core receives
             # +1 for calmer and -1 for more active.
-            ("stability", self._tr("COMMAND"), self._tr("More stable"),
-             self._tr("More responsive"), 1, -1),
+            ("stability", QApplication.translate("tilauscope_pid", "COMMAND"), QApplication.translate("tilauscope_pid", "More stable"),
+             QApplication.translate("tilauscope_pid", "More responsive"), 1, -1),
         )
         for row, (behaviour, label, left_text, right_text, left_dir, right_dir) in enumerate(rows):
             name = QLabel(label)
@@ -388,11 +384,11 @@ class PIDAutotune(QDialog):
             self._behaviour_widgets[behaviour] = (left, indicator, right)
 
         scope_row = QHBoxLayout()
-        scope_row.addWidget(QLabel(self._tr("Apply the change:")))
+        scope_row.addWidget(QLabel(QApplication.translate("tilauscope_pid", "Apply the change:")))
         self.scope_combo = QComboBox()
         self.scope_combo.addItems([
-            self._tr("in this temperature zone"),
-            self._tr("throughout the whole range"),
+            QApplication.translate("tilauscope_pid", "in this temperature zone"),
+            QApplication.translate("tilauscope_pid", "throughout the whole range"),
         ])
         scope_row.addWidget(self.scope_combo)
         scope_row.addStretch()
@@ -407,9 +403,9 @@ class PIDAutotune(QDialog):
         content.addWidget(self.lbl_change)
 
         history_row = QHBoxLayout()
-        self.btn_undo = self._secondary_button(self._tr("UNDO LAST CHANGE"))
-        self.btn_restore = self._secondary_button(self._tr("RESTORE SESSION START"))
-        self.btn_keep = self._secondary_button(self._tr("KEEP AS REFERENCE"))
+        self.btn_undo = self._secondary_button(QApplication.translate("tilauscope_pid", "UNDO LAST CHANGE"))
+        self.btn_restore = self._secondary_button(QApplication.translate("tilauscope_pid", "RESTORE SESSION START"))
+        self.btn_keep = self._secondary_button(QApplication.translate("tilauscope_pid", "KEEP AS REFERENCE"))
         self.btn_undo.clicked.connect(self.undo_last_change)
         self.btn_restore.clicked.connect(self.restore_session_start)
         self.btn_keep.clicked.connect(self.keep_as_reference)
@@ -418,7 +414,7 @@ class PIDAutotune(QDialog):
         history_row.addWidget(self.btn_keep)
         content.addLayout(history_row)
 
-        expert_group = QGroupBox(self._tr("ENGINEER DETAILS"))
+        expert_group = QGroupBox(QApplication.translate("tilauscope_pid", "ENGINEER DETAILS"))
         expert_group.setCheckable(True)
         expert_group.setChecked(False)
         expert_group.setStyleSheet(self._group_style())
@@ -435,8 +431,8 @@ class PIDAutotune(QDialog):
         content.addWidget(expert_group)
 
         controls = QHBoxLayout()
-        self.btn_start = self._primary_button(self._tr("START EXPLANATION"))
-        self.btn_stop = self._secondary_button(self._tr("STOP"))
+        self.btn_start = self._primary_button(QApplication.translate("tilauscope_pid", "START EXPLANATION"))
+        self.btn_stop = self._secondary_button(QApplication.translate("tilauscope_pid", "STOP"))
         self.btn_stop.setEnabled(False)
         self.btn_start.clicked.connect(self.start_monitoring)
         self.btn_stop.clicked.connect(self.stop_monitoring)
@@ -541,7 +537,7 @@ class PIDAutotune(QDialog):
     def _run_calibration_self_test(self) -> None:
         """Run the 600-second state machine without any actuator connection."""
         self.btn_calibration_check.setEnabled(False)
-        self.lbl_calibration.setText(self._tr(
+        self.lbl_calibration.setText(QApplication.translate("tilauscope_pid", 
             "Checking the 600-second sequence in the virtual machine…"
         ))
         QApplication.processEvents()
@@ -557,14 +553,14 @@ class PIDAutotune(QDialog):
                 or protocol.validation_result is None
                 or not protocol.validation_result.accepted
             ):
-                reason = protocol.reason or self._tr("unknown software failure")
-                self.lbl_calibration.setText(self._tr(
+                reason = protocol.reason or QApplication.translate("tilauscope_pid", "unknown software failure")
+                self.lbl_calibration.setText(QApplication.translate("tilauscope_pid", 
                     "The safety rehearsal refused the candidate. No setting was changed. "
                 ) + str(reason))
                 return
             plant = protocol.plant
             candidate = protocol.candidate
-            self.lbl_calibration.setText(self._tr(
+            self.lbl_calibration.setText(QApplication.translate("tilauscope_pid", 
                 "Safety rehearsal passed: all 600 seconds, identification, cautious "
                 "trial and rollback decision were exercised without sending heat. "
                 "The real-machine test remains locked until its hardware safety checks pass."
@@ -577,7 +573,7 @@ class PIDAutotune(QDialog):
             )
         except Exception:  # noqa: BLE001  # pylint: disable=broad-exception-caught
             _log.exception("PID calibration software self-test failed")
-            self.lbl_calibration.setText(self._tr(
+            self.lbl_calibration.setText(QApplication.translate("tilauscope_pid", 
                 "The software safety rehearsal failed. No setting was changed."
             ))
         finally:
@@ -941,7 +937,7 @@ class PIDAutotune(QDialog):
         if not self.is_monitoring or self._cooling_down:
             return
         if not self.pid.pidActive or self.pid.externalPIDControl() != 0:
-            self.lbl_change.setText(self._tr(
+            self.lbl_change.setText(QApplication.translate("tilauscope_pid", 
                 "Behaviour controls require Artisan's active software PID."
             ))
             return
@@ -960,7 +956,7 @@ class PIDAutotune(QDialog):
             mode=self.aw.qmc.mode,
         )
         if changed == current:
-            self.lbl_change.setText(self._tr(
+            self.lbl_change.setText(QApplication.translate("tilauscope_pid", 
                 "This behaviour is already at its safe adjustment limit."
             ))
             return
@@ -972,25 +968,25 @@ class PIDAutotune(QDialog):
 
     def _begin_settle_wait(self, behaviour: Behaviour, direction: int) -> None:
         descriptions = {
-            ("reaction", -1): self._tr("Reaction made gentler."),
-            ("reaction", 1): self._tr("Reaction made stronger."),
-            ("recovery", -1): self._tr("Lasting-delay catch-up reduced."),
-            ("recovery", 1): self._tr("Lasting-delay catch-up increased."),
-            ("braking", -1): self._tr("Inertia braking reduced."),
-            ("braking", 1): self._tr("Inertia braking increased."),
-            ("stability", 1): self._tr("Command made more stable."),
-            ("stability", -1): self._tr("Command made more responsive."),
+            ("reaction", -1): QApplication.translate("tilauscope_pid", "Reaction made gentler."),
+            ("reaction", 1): QApplication.translate("tilauscope_pid", "Reaction made stronger."),
+            ("recovery", -1): QApplication.translate("tilauscope_pid", "Lasting-delay catch-up reduced."),
+            ("recovery", 1): QApplication.translate("tilauscope_pid", "Lasting-delay catch-up increased."),
+            ("braking", -1): QApplication.translate("tilauscope_pid", "Inertia braking reduced."),
+            ("braking", 1): QApplication.translate("tilauscope_pid", "Inertia braking increased."),
+            ("stability", 1): QApplication.translate("tilauscope_pid", "Command made more stable."),
+            ("stability", -1): QApplication.translate("tilauscope_pid", "Command made more responsive."),
         }
         self.lbl_change.setText(
             descriptions[(behaviour, direction)] + " " +
-            self._tr("Waiting for the machine to respond before another change.")
+            QApplication.translate("tilauscope_pid", "Waiting for the machine to respond before another change.")
         )
         self._cooling_down = True
         self._settle_timer.start(self._SETTLE_WAIT_MS)
 
     def _settle_wait_finished(self) -> None:
         self._cooling_down = False
-        self.lbl_change.setText(self._tr(
+        self.lbl_change.setText(QApplication.translate("tilauscope_pid", 
             "The response can now be assessed. Change one behaviour at a time."
         ))
         self._update_behaviour_controls()
@@ -1135,35 +1131,35 @@ class PIDAutotune(QDialog):
         data: _EngineSnapshot | None,
     ) -> None:
         messages = {
-            "stopped": (self._tr("Artisan's PID is stopped."),
-                self._tr("Start the software PID to explain and adjust its behaviour."), ""),
-            "unavailable": (self._tr("The temperature signal is not available."),
-                self._tr("TilauScope will not interpret or adjust an invalid measurement."),
-                self._tr("Check the selected input and sensor connection.")),
-            "power_limited": (self._tr("Artisan is already requesting all allowed heat."),
-                self._tr("The temperature remains below target, but the command cannot go higher."),
-                self._tr("Changing PID behaviour cannot add power. Check the limit, target or machine capacity.")),
-            "coasting": (self._tr("Artisan has cut the heat and is letting inertia act."),
-                self._tr("The temperature is still rising while the heat request is at its minimum."),
-                self._tr("Wait for the machine response before changing the behaviour.")),
-            "oscillating": (self._tr("The corrections are too fast for this machine."),
-                self._tr("The temperature has crossed the target repeatedly."),
-                self._tr("Try React less or Catch up less, one notch at a time.")),
-            "braking": (self._tr("Artisan is starting to brake before the target."),
-                self._tr("The temperature is still below target, but it is already rising quickly."),
-                self._tr("Use Brake less/more only if the final approach is consistently wrong.")),
-            "catching_up": (self._tr("Artisan is catching up a lasting delay."),
-                self._tr("The temperature has remained below target long enough to build a progressive correction."),
-                self._tr("Reduce catch-up if this later causes overshoot.")),
-            "accelerating": (self._tr("Artisan is accelerating toward the target."),
-                self._tr("The current temperature gap is asking for more heat."),
-                self._tr("React more/less changes the strength of this immediate response.")),
-            "above_target": (self._tr("The temperature is above the target."),
-                self._tr("Artisan is reducing its heat request to return toward the target."),
-                self._tr("If this repeats, try Brake more or Catch up less.")),
-            "holding": (self._tr("The target is being held."),
-                self._tr("No large correction is currently required."),
-                self._tr("Keep this setting if the command also remains calm.")),
+            "stopped": (QApplication.translate("tilauscope_pid", "Artisan's PID is stopped."),
+                QApplication.translate("tilauscope_pid", "Start the software PID to explain and adjust its behaviour."), ""),
+            "unavailable": (QApplication.translate("tilauscope_pid", "The temperature signal is not available."),
+                QApplication.translate("tilauscope_pid", "TilauScope will not interpret or adjust an invalid measurement."),
+                QApplication.translate("tilauscope_pid", "Check the selected input and sensor connection.")),
+            "power_limited": (QApplication.translate("tilauscope_pid", "Artisan is already requesting all allowed heat."),
+                QApplication.translate("tilauscope_pid", "The temperature remains below target, but the command cannot go higher."),
+                QApplication.translate("tilauscope_pid", "Changing PID behaviour cannot add power. Check the limit, target or machine capacity.")),
+            "coasting": (QApplication.translate("tilauscope_pid", "Artisan has cut the heat and is letting inertia act."),
+                QApplication.translate("tilauscope_pid", "The temperature is still rising while the heat request is at its minimum."),
+                QApplication.translate("tilauscope_pid", "Wait for the machine response before changing the behaviour.")),
+            "oscillating": (QApplication.translate("tilauscope_pid", "The corrections are too fast for this machine."),
+                QApplication.translate("tilauscope_pid", "The temperature has crossed the target repeatedly."),
+                QApplication.translate("tilauscope_pid", "Try React less or Catch up less, one notch at a time.")),
+            "braking": (QApplication.translate("tilauscope_pid", "Artisan is starting to brake before the target."),
+                QApplication.translate("tilauscope_pid", "The temperature is still below target, but it is already rising quickly."),
+                QApplication.translate("tilauscope_pid", "Use Brake less/more only if the final approach is consistently wrong.")),
+            "catching_up": (QApplication.translate("tilauscope_pid", "Artisan is catching up a lasting delay."),
+                QApplication.translate("tilauscope_pid", "The temperature has remained below target long enough to build a progressive correction."),
+                QApplication.translate("tilauscope_pid", "Reduce catch-up if this later causes overshoot.")),
+            "accelerating": (QApplication.translate("tilauscope_pid", "Artisan is accelerating toward the target."),
+                QApplication.translate("tilauscope_pid", "The current temperature gap is asking for more heat."),
+                QApplication.translate("tilauscope_pid", "React more/less changes the strength of this immediate response.")),
+            "above_target": (QApplication.translate("tilauscope_pid", "The temperature is above the target."),
+                QApplication.translate("tilauscope_pid", "Artisan is reducing its heat request to return toward the target."),
+                QApplication.translate("tilauscope_pid", "If this repeats, try Brake more or Catch up less.")),
+            "holding": (QApplication.translate("tilauscope_pid", "The target is being held."),
+                QApplication.translate("tilauscope_pid", "No large correction is currently required."),
+                QApplication.translate("tilauscope_pid", "Keep this setting if the command also remains calm.")),
         }
         headline, reason, suggestion = messages[narrative.state]
         self.lbl_headline.setText(headline)
@@ -1200,11 +1196,11 @@ class PIDAutotune(QDialog):
         )
 
     def _render_external_pid(self) -> None:
-        self.lbl_headline.setText(self._tr("An external hardware PID is selected."))
-        self.lbl_reason.setText(self._tr(
+        self.lbl_headline.setText(QApplication.translate("tilauscope_pid", "An external hardware PID is selected."))
+        self.lbl_reason.setText(QApplication.translate("tilauscope_pid", 
             "This assistant currently explains and adjusts Artisan's internal software PID only."
         ))
-        self.lbl_suggestion.setText(self._tr(
+        self.lbl_suggestion.setText(QApplication.translate("tilauscope_pid", 
             "Use the hardware controller's own certified tuning procedure."
         ))
         self.lbl_pv.setText("—")
@@ -1222,7 +1218,7 @@ class PIDAutotune(QDialog):
         self._baseline_config = self._capture_config()
         self._undo_stack.clear()
         self._offsets = dict.fromkeys(self._offsets, 0)
-        self.lbl_change.setText(self._tr(
+        self.lbl_change.setText(QApplication.translate("tilauscope_pid", 
             "Explanation started. No setting changes until you press a behaviour button."
         ))
         self.timer.start()
@@ -1238,7 +1234,7 @@ class PIDAutotune(QDialog):
         self._cooling_down = False
         self.btn_start.setEnabled(True)
         self.btn_stop.setEnabled(False)
-        self.lbl_change.setText(self._tr("Explanation stopped."))
+        self.lbl_change.setText(QApplication.translate("tilauscope_pid", "Explanation stopped."))
         self._update_behaviour_controls()
 
     def undo_last_change(self) -> None:
@@ -1249,7 +1245,7 @@ class PIDAutotune(QDialog):
         self._offsets = offsets
         self._settle_timer.stop()
         self._cooling_down = False
-        self.lbl_change.setText(self._tr("Last behaviour change undone."))
+        self.lbl_change.setText(QApplication.translate("tilauscope_pid", "Last behaviour change undone."))
         self._update_behaviour_controls()
 
     def restore_session_start(self) -> None:
@@ -1260,14 +1256,14 @@ class PIDAutotune(QDialog):
         self._offsets = dict.fromkeys(self._offsets, 0)
         self._settle_timer.stop()
         self._cooling_down = False
-        self.lbl_change.setText(self._tr("The session-start setting has been restored."))
+        self.lbl_change.setText(QApplication.translate("tilauscope_pid", "The session-start setting has been restored."))
         self._update_behaviour_controls()
 
     def keep_as_reference(self) -> None:
         self._baseline_config = self._capture_config()
         self._undo_stack.clear()
         self._offsets = dict.fromkeys(self._offsets, 0)
-        self.lbl_change.setText(self._tr("The current behaviour is now the session reference."))
+        self.lbl_change.setText(QApplication.translate("tilauscope_pid", "The current behaviour is now the session reference."))
         self._update_behaviour_controls()
 
     def show_help(self) -> None:
@@ -1343,7 +1339,7 @@ class CalibrationReadinessDialog(QDialog):
             f" border:1px solid {THEME['BORDER']}; border-radius:20px; }}"
             f"QLabel, QCheckBox {{ color:{THEME['TEXT']}; }}"
         )
-        self.setWindowTitle(assistant._tr("PREPARE THE 10-MINUTE TEST"))
+        self.setWindowTitle(QApplication.translate("tilauscope_pid", "PREPARE THE 10-MINUTE TEST"))
         self.setModal(True)
         screen = assistant.screen() or QApplication.primaryScreen()
         if screen is None:
@@ -1373,11 +1369,11 @@ class CalibrationReadinessDialog(QDialog):
         layout = QVBoxLayout(body)
         scroll.setWidget(body)
         outer_layout.addWidget(scroll, 1)
-        title = QLabel(assistant._tr("BEFORE ANY HEAT COMMAND"))
+        title = QLabel(QApplication.translate("tilauscope_pid", "BEFORE ANY HEAT COMMAND"))
         title.setStyleSheet(
             f"color:{THEME['ACCENT']}; font-size:17px; font-weight:800;"
         )
-        explanation = QLabel(assistant._tr(
+        explanation = QLabel(QApplication.translate("tilauscope_pid", 
             "TilauScope shows one action at a time. Nothing advances until the "
             "current step is safely completed."
         ))
@@ -1391,11 +1387,11 @@ class CalibrationReadinessDialog(QDialog):
         self.guide_title.setStyleSheet(
             f"color:{THEME['ACCENT']}; font-size:20px; font-weight:800;"
         )
-        self.machine_empty = QCheckBox(assistant._tr("The machine is empty"))
-        self.airflow_safe = QCheckBox(assistant._tr(
+        self.machine_empty = QCheckBox(QApplication.translate("tilauscope_pid", "The machine is empty"))
+        self.airflow_safe = QCheckBox(QApplication.translate("tilauscope_pid", 
             "The drum and airflow are in their safe test position"
         ))
-        self.supervised = QCheckBox(assistant._tr(
+        self.supervised = QCheckBox(QApplication.translate("tilauscope_pid", 
             "I will remain beside the machine for the whole test"
         ))
         self.checks = QTextBrowser()
@@ -1418,7 +1414,7 @@ class CalibrationReadinessDialog(QDialog):
             f" border:1px solid {THEME['BORDER']}; border-radius:8px;"
             " padding:16px; font-size:15px;"
         )
-        self.zero_warning = QLabel(assistant._tr(
+        self.zero_warning = QLabel(QApplication.translate("tilauscope_pid", 
             "The shutdown qualification can only command 0% heat. It never "
             "restores the previous power; the heater remains stopped."
         ))
@@ -1427,26 +1423,26 @@ class CalibrationReadinessDialog(QDialog):
             f"color:{THEME['WARNING']}; font-weight:700;"
         )
         self.zero_button = assistant._secondary_button(
-            assistant._tr("TEST THE PHYSICAL 0% SHUTDOWN")
+            QApplication.translate("tilauscope_pid", "TEST THE PHYSICAL 0% SHUTDOWN")
         )
         self.zero_button.clicked.connect(self._request_zero)
-        self.physical_off = QCheckBox(assistant._tr(
+        self.physical_off = QCheckBox(QApplication.translate("tilauscope_pid", 
             "I can see that the physical heater is off"
         ))
         self.physical_off.setEnabled(False)
         self.confirm_zero = assistant._primary_button(
-            assistant._tr("CONFIRM PHYSICAL SHUTDOWN")
+            QApplication.translate("tilauscope_pid", "CONFIRM PHYSICAL SHUTDOWN")
         )
         self.confirm_zero.setEnabled(False)
         self.confirm_zero.clicked.connect(self._confirm_physical_shutdown)
         live_buttons = QHBoxLayout()
         self.start_live = assistant._primary_button(
-            assistant._tr("START THE SUPERVISED 10-MINUTE TEST")
+            QApplication.translate("tilauscope_pid", "START THE SUPERVISED 10-MINUTE TEST")
         )
         self.start_live.setEnabled(False)
         self.start_live.clicked.connect(self._start_live_test)
         self.stop_live = assistant._secondary_button(
-            assistant._tr("STOP TEST AND CUT HEAT")
+            QApplication.translate("tilauscope_pid", "STOP TEST AND CUT HEAT")
         )
         self.stop_live.setEnabled(False)
         self.stop_live.clicked.connect(self._stop_live_test)
@@ -1454,12 +1450,12 @@ class CalibrationReadinessDialog(QDialog):
         live_buttons.addWidget(self.stop_live)
         buttons = QHBoxLayout()
         self.details_button = assistant._secondary_button(
-            assistant._tr("SHOW TECHNICAL DETAILS")
+            QApplication.translate("tilauscope_pid", "SHOW TECHNICAL DETAILS")
         )
         self.export_pilot = assistant._secondary_button(
-            assistant._tr("EXPORT HARDWARE PILOT SHEET")
+            QApplication.translate("tilauscope_pid", "EXPORT HARDWARE PILOT SHEET")
         )
-        close = assistant._primary_button(assistant._tr("CLOSE"))
+        close = assistant._primary_button(QApplication.translate("tilauscope_pid", "CLOSE"))
         self.details_button.clicked.connect(self._toggle_details)
         self.export_pilot.clicked.connect(self._export_pilot_sheet)
         close.clicked.connect(self.accept)
@@ -1505,16 +1501,17 @@ class CalibrationReadinessDialog(QDialog):
         self._details_visible = not self._details_visible
         self.checks.setVisible(self._details_visible)
         self.export_pilot.setVisible(self._details_visible)
-        self.details_button.setText(self.assistant._tr(
-            "HIDE TECHNICAL DETAILS"
-            if self._details_visible else "SHOW TECHNICAL DETAILS"
-        ))
+        self.details_button.setText(
+            QApplication.translate("tilauscope_pid", "HIDE TECHNICAL DETAILS")
+            if self._details_visible else
+            QApplication.translate("tilauscope_pid", "SHOW TECHNICAL DETAILS")
+        )
 
     def _show_blocking_message(self, text: str) -> None:
         """Keep an exceptional stop visible instead of returning to the wizard."""
         self._guide_timer.stop()
-        self.guide_progress.setText(self.assistant._tr("ACTION REQUIRED"))
-        self.guide_title.setText(self.assistant._tr("The test remains locked"))
+        self.guide_progress.setText(QApplication.translate("tilauscope_pid", "ACTION REQUIRED"))
+        self.guide_title.setText(QApplication.translate("tilauscope_pid", "The test remains locked"))
         self.next_steps.setText(text)
 
     def _displayed_test_point(self) -> tuple[float | None, float | None, str]:
@@ -1552,7 +1549,7 @@ class CalibrationReadinessDialog(QDialog):
         """Return only the single action the operator should perform now."""
         blocked = set(report.blocking_codes)
         if "sensor_valid" in blocked:
-            return self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", 
                 "TilauScope is waiting for a valid bean-temperature reading. "
                 "Check that the BT value is displayed and changing normally."
             )
@@ -1578,13 +1575,13 @@ class CalibrationReadinessDialog(QDialog):
             if safe_min <= safe_max:
                 pv, target, unit = self._displayed_test_point()
                 current_text = (
-                    self.assistant._tr("unknown")
+                    QApplication.translate("tilauscope_pid", "unknown")
                     if current is None or not math.isfinite(current)
                     else f"{current:g}%"
                 )
                 pv_text = "—" if pv is None else f"{pv:g} °{unit}"
                 target_text = "—" if target is None else f"{target:g} °{unit}"
-                return self.assistant._tr(
+                return QApplication.translate("tilauscope_pid", 
                     "TilauScope is observing only; you control the heater.\n\n"
                     "Temperature to reach: {target}   •   Current BT: {temperature}\n"
                     "Set the heater between {minimum:g}% and {maximum:g}% "
@@ -1596,7 +1593,7 @@ class CalibrationReadinessDialog(QDialog):
                     maximum=safe_max,
                     current=current_text,
                 )
-            return self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", 
                 "The configured heater range is too narrow for a safe test. "
                 "The automatic test remains locked."
             )
@@ -1614,7 +1611,7 @@ class CalibrationReadinessDialog(QDialog):
                     direction = "decrease"
                 power_text = "—" if power is None else f"{power:g}%"
                 if direction == "increase":
-                    return self.assistant._tr(
+                    return QApplication.translate("tilauscope_pid", 
                         "Increase the heater slightly.\n\n"
                         "Current BT: {temperature:g} °{unit}   •   Target: "
                         "{target:g} °{unit}   •   Heater: {power}"
@@ -1622,14 +1619,14 @@ class CalibrationReadinessDialog(QDialog):
                         temperature=pv, target=target, unit=unit, power=power_text
                     )
                 if direction == "decrease":
-                    return self.assistant._tr(
+                    return QApplication.translate("tilauscope_pid", 
                         "Decrease the heater slightly.\n\n"
                         "Current BT: {temperature:g} °{unit}   •   Target: "
                         "{target:g} °{unit}   •   Heater: {power}"
                     ).format(
                         temperature=pv, target=target, unit=unit, power=power_text
                     )
-            return self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", 
                 "Do not change anything. TilauScope is checking stability: "
                 "{collected}/30 seconds. It will advance automatically."
             ).format(collected=collected)
@@ -1640,26 +1637,26 @@ class CalibrationReadinessDialog(QDialog):
             "supervision_confirmed",
         }
         if "machine_empty_confirmed" in blocked:
-            return self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", 
                 "Look inside the machine. If there is no coffee or other material, "
                 "confirm the first statement below."
             )
         if "airflow_safe_confirmed" in blocked:
-            return self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", 
                 "Put the drum and airflow in the safe positions used for an empty "
                 "machine test, then confirm the statement below."
             )
         if "supervision_confirmed" in blocked:
-            return self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", 
                 "Only continue if you can remain beside the machine and reach its "
                 "physical heat cut-off for the whole test."
             )
         if blocked - human_codes:
-            return self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", 
                 "A machine setting still prevents the test. Open the technical "
                 "details below to see the single crossed setting."
             )
-        return self.assistant._tr(
+        return QApplication.translate("tilauscope_pid", 
             "Preparation is complete. The next button sends only 0% heat so you "
             "can verify that the physical heater really stops."
         )
@@ -1674,30 +1671,30 @@ class CalibrationReadinessDialog(QDialog):
             "supervision_confirmed",
         }
         if self.qualification.phase == "failed":
-            return self.assistant._tr("ACTION REQUIRED"), self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", "ACTION REQUIRED"), QApplication.translate("tilauscope_pid", 
                 "Shutdown not confirmed"
             )
         if self.qualification.phase == "software_zero_confirmed":
-            return self.assistant._tr("STEP 4 OF 6"), self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", "STEP 4 OF 6"), QApplication.translate("tilauscope_pid", 
                 "Check that the heater is really off"
             )
         if self.qualification.phase == "qualified" and not report.ready:
-            return self.assistant._tr("STEP 5 OF 6"), self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", "STEP 5 OF 6"), QApplication.translate("tilauscope_pid", 
                 "Return to the stable holding point"
             )
         if self.qualification.phase == "qualified":
-            return self.assistant._tr("STEP 6 OF 6"), self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", "STEP 6 OF 6"), QApplication.translate("tilauscope_pid", 
                 "The supervised test is ready"
             )
         if blocked & human_codes and blocked <= human_codes:
-            return self.assistant._tr("STEP 3 OF 6"), self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", "STEP 3 OF 6"), QApplication.translate("tilauscope_pid", 
                 "Confirm one physical condition"
             )
         if "sensor_valid" in blocked:
-            return self.assistant._tr("STEP 1 OF 6"), self.assistant._tr(
+            return QApplication.translate("tilauscope_pid", "STEP 1 OF 6"), QApplication.translate("tilauscope_pid", 
                 "Read the temperature"
             )
-        return self.assistant._tr("STEP 2 OF 6"), self.assistant._tr(
+        return QApplication.translate("tilauscope_pid", "STEP 2 OF 6"), QApplication.translate("tilauscope_pid", 
             "Reach and hold the test temperature"
         )
 
@@ -1709,50 +1706,50 @@ class CalibrationReadinessDialog(QDialog):
         )
         self._report = report
         descriptions = {
-            "monitoring_active": self.assistant._tr("Monitoring is active"),
-            "machine_identity_known": self.assistant._tr(
+            "monitoring_active": QApplication.translate("tilauscope_pid", "Monitoring is active"),
+            "machine_identity_known": QApplication.translate("tilauscope_pid", 
                 "The selected machine and its heater control path are identified"
             ),
-            "no_roast_running": self.assistant._tr("No roast is running"),
-            "software_pid_selected": self.assistant._tr(
+            "no_roast_running": QApplication.translate("tilauscope_pid", "No roast is running"),
+            "software_pid_selected": QApplication.translate("tilauscope_pid", 
                 "Artisan's internal software PID is selected"
             ),
-            "gain_scheduling_disabled": self.assistant._tr(
+            "gain_scheduling_disabled": QApplication.translate("tilauscope_pid", 
                 "Gain scheduling is off for this single-temperature test"
             ),
-            "artisan_pid_stopped": self.assistant._tr(
+            "artisan_pid_stopped": QApplication.translate("tilauscope_pid", 
                 "Artisan's PID is stopped before takeover"
             ),
-            "sensor_valid": self.assistant._tr("The temperature signal is valid"),
-            "sensor_stable": self.assistant._tr(
+            "sensor_valid": QApplication.translate("tilauscope_pid", "The temperature signal is valid"),
+            "sensor_stable": QApplication.translate("tilauscope_pid", 
                 "Temperature has been stable for at least 30 seconds"
             ),
-            "heater_slider_configured": self.assistant._tr(
+            "heater_slider_configured": QApplication.translate("tilauscope_pid", 
                 "A heater slider is assigned to the PID"
             ),
-            "heater_action_configured": self.assistant._tr(
+            "heater_action_configured": QApplication.translate("tilauscope_pid", 
                 "The heater slider has a hardware action"
             ),
-            "normal_actuator_direction": self.assistant._tr(
+            "normal_actuator_direction": QApplication.translate("tilauscope_pid", 
                 "Increasing the command means increasing heat"
             ),
-            "power_headroom": self.assistant._tr(
+            "power_headroom": QApplication.translate("tilauscope_pid", 
                 "There is enough heat range above and below the holding power"
             ),
-            "no_simulator": self.assistant._tr("The Artisan simulator is stopped"),
-            "preheat_pid_stopped": self.assistant._tr(
+            "no_simulator": QApplication.translate("tilauscope_pid", "The Artisan simulator is stopped"),
+            "preheat_pid_stopped": QApplication.translate("tilauscope_pid", 
                 "TilauPID preheat is no longer commanding the heater"
             ),
-            "rollback_snapshot_available": self.assistant._tr(
+            "rollback_snapshot_available": QApplication.translate("tilauscope_pid", 
                 "The complete PID configuration can be restored"
             ),
-            "machine_empty_confirmed": self.assistant._tr(
+            "machine_empty_confirmed": QApplication.translate("tilauscope_pid", 
                 "Machine empty — confirmed"
             ),
-            "airflow_safe_confirmed": self.assistant._tr(
+            "airflow_safe_confirmed": QApplication.translate("tilauscope_pid", 
                 "Safe drum and airflow position — confirmed"
             ),
-            "supervision_confirmed": self.assistant._tr(
+            "supervision_confirmed": QApplication.translate("tilauscope_pid", 
                 "Continuous human supervision — confirmed"
             ),
         }
@@ -1769,17 +1766,17 @@ class CalibrationReadinessDialog(QDialog):
         self.guide_progress.setText(progress)
         self.guide_title.setText(heading)
         if self.qualification.phase == "failed":
-            self.next_steps.setText(self.assistant._tr(
+            self.next_steps.setText(QApplication.translate("tilauscope_pid", 
                 "Heat remains commanded at 0%. Close this window, correct the "
                 "problem, then restart the guided preparation from the beginning."
             ))
         elif self.qualification.phase == "software_zero_confirmed":
-            self.next_steps.setText(self.assistant._tr(
+            self.next_steps.setText(QApplication.translate("tilauscope_pid", 
                 "Look at the machine, not only the screen. If the physical heater "
                 "is off, tick the confirmation below and validate it."
             ))
         elif self.qualification.phase == "qualified" and report.ready:
-            self.next_steps.setText(self.assistant._tr(
+            self.next_steps.setText(QApplication.translate("tilauscope_pid", 
                 "All conditions are now stable again. You may start the supervised "
                 "10-minute test. Stay beside the machine."
             ))
@@ -1832,11 +1829,11 @@ class CalibrationReadinessDialog(QDialog):
         pilot_authorized = self.assistant._supervised_pilot_profile_authorized(
             identity
         )
-        self.start_live.setText(self.assistant._tr(
-            "START THE SUPERVISED 10-MINUTE TEST"
+        self.start_live.setText(
+            QApplication.translate("tilauscope_pid", "START THE SUPERVISED 10-MINUTE TEST")
             if profile_authorized
-            else "START THE REVIEW-ONLY HARDWARE PILOT"
-        ))
+            else QApplication.translate("tilauscope_pid", "START THE REVIEW-ONLY HARDWARE PILOT")
+        )
         self.export_pilot.setEnabled(identity is not None and self._runner is None)
         self.start_live.setEnabled(
             self._runner is None
@@ -1852,13 +1849,13 @@ class CalibrationReadinessDialog(QDialog):
         self.status.hide()
         if self.qualification.phase == "qualified":
             if not profile_authorized and not pilot_authorized:
-                self.status.setText(self.assistant._tr(
+                self.status.setText(QApplication.translate("tilauscope_pid", 
                     "The 0% shutdown is qualified, but this machine profile has not "
                     "yet passed its supervised hardware pilot. Starting remains locked."
                 ))
                 self.status.show()
         elif self.qualification.phase == "failed":
-            self.status.setText(self.assistant._tr(
+            self.status.setText(QApplication.translate("tilauscope_pid", 
                 "The shutdown qualification is no longer valid. Heat remains at 0%."
             ))
             self.status.show()
@@ -1867,26 +1864,29 @@ class CalibrationReadinessDialog(QDialog):
         self.refresh()
         if self._report is None or not self._report.ready:
             return
-        answer = QMessageBox.question(
+        # Index of the clicked button, -1 when the dialog is dismissed: anything
+        # other than the confirm button leaves the heater exactly as it is.
+        answer = show_styled_message(
             self,
-            self.assistant._tr("COMMAND 0% HEAT"),
-            self.assistant._tr(
+            QApplication.translate("tilauscope_pid", "COMMAND 0% HEAT"),
+            QApplication.translate("tilauscope_pid",
                 "This sends only a 0% heater command through the configured hardware "
                 "action. The previous power will not be restored. Continue?"
             ),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
+            icon=QMessageBox.Icon.Question,
+            buttons=[QApplication.translate("tilauscope_pid", "Cancel"),
+                     QApplication.translate("tilauscope_pid", "Continue")],
         )
-        if answer != QMessageBox.StandardButton.Yes:
+        if answer != 1:
             return
         if self._applied_signal is None:
-            self._show_blocking_message(self.assistant._tr(
+            self._show_blocking_message(QApplication.translate("tilauscope_pid", 
                 "The central transaction acknowledgement is unavailable. Nothing was sent."
             ))
             return
         identity = self.assistant._calibration_machine_identity()
         if identity is None:
-            self._show_blocking_message(self.assistant._tr(
+            self._show_blocking_message(QApplication.translate("tilauscope_pid", 
                 "The exact machine and heater control path cannot be identified. Nothing was sent."
             ))
             return
@@ -1954,7 +1954,7 @@ class CalibrationReadinessDialog(QDialog):
                 self.qualification.invalidate("evidence_persistence_failed")
                 self.assistant._zero_output_qualified = False
                 self.assistant._qualified_machine_fingerprint = None
-                self.assistant.lbl_calibration.setText(self.assistant._tr(
+                self.assistant.lbl_calibration.setText(QApplication.translate("tilauscope_pid", 
                     "The 0% shutdown was observed, but its proof could not be saved. "
                     "The machine test remains locked."
                 ))
@@ -1962,7 +1962,7 @@ class CalibrationReadinessDialog(QDialog):
                 return
             self.assistant._zero_output_qualified = True
             self.assistant._qualified_machine_fingerprint = current_identity.fingerprint
-            self.assistant.lbl_calibration.setText(self.assistant._tr(
+            self.assistant.lbl_calibration.setText(QApplication.translate("tilauscope_pid", 
                 "Physical 0% shutdown qualified for this session. "
                 "The heater remains stopped and the 10-minute heat test is still locked."
             ))
@@ -1973,7 +1973,7 @@ class CalibrationReadinessDialog(QDialog):
             self._timeout_timer.stop()
             self.physical_off.setEnabled(False)
             self.confirm_zero.setEnabled(False)
-            self._show_blocking_message(self.assistant._tr(
+            self._show_blocking_message(QApplication.translate("tilauscope_pid", 
                 "Shutdown qualification timed out. Heat remains commanded at 0%."
             ))
 
@@ -1987,17 +1987,18 @@ class CalibrationReadinessDialog(QDialog):
             or identity is None
         ):
             return
-        answer = QMessageBox.question(
+        answer = show_styled_message(
             self,
-            self.assistant._tr("START SUPERVISED HEAT TEST"),
-            self.assistant._tr(
+            QApplication.translate("tilauscope_pid", "START SUPERVISED HEAT TEST"),
+            QApplication.translate("tilauscope_pid",
                 "The machine is empty and supervised. TilauScope will vary heat for "
                 "about 10 minutes and cut it to 0% on any anomaly. Start now?"
             ),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
+            icon=QMessageBox.Icon.Question,
+            buttons=[QApplication.translate("tilauscope_pid", "Cancel"),
+                     QApplication.translate("tilauscope_pid", "Start")],
         )
-        if answer != QMessageBox.StandardButton.Yes:
+        if answer != 1:
             return
         try:
             runner = self.assistant._build_live_calibration_runner(
@@ -2017,27 +2018,27 @@ class CalibrationReadinessDialog(QDialog):
         except Exception:  # noqa: BLE001  # pylint: disable=broad-exception-caught
             _log.exception("PID supervised calibration could not start")
             self.stop_live.setEnabled(False)
-            self._show_blocking_message(self.assistant._tr(
+            self._show_blocking_message(QApplication.translate("tilauscope_pid", 
                 "The test could not start. Heat remains at 0%."
             ))
 
     def _export_pilot_sheet(self) -> None:
         identity = self.assistant._calibration_machine_identity()
         if identity is None:
-            self.status.setText(self.assistant._tr(
+            self.status.setText(QApplication.translate("tilauscope_pid", 
                 "Select a known machine and configure its heater action first."
             ))
             return
         try:
             path = self.assistant._export_hardware_pilot_manifest(identity)
             self.status.setText(
-                self.assistant._tr(
+                QApplication.translate("tilauscope_pid", 
                     "Pilot sheet saved without sending heat: "
                 ) + str(path)
             )
         except OSError:
             _log.exception("PID hardware pilot sheet could not be exported")
-            self.status.setText(self.assistant._tr(
+            self.status.setText(QApplication.translate("tilauscope_pid", 
                 "The pilot sheet could not be saved. No heat was sent."
             ))
 
@@ -2047,19 +2048,19 @@ class CalibrationReadinessDialog(QDialog):
 
     def _live_progress(self, phase: str, elapsed_sec: int) -> None:
         phases = {
-            "baseline": self.assistant._tr("Observing the stable level"),
-            "step_up": self.assistant._tr("Observing a little more heat"),
-            "recover_up": self.assistant._tr("Waiting for recovery"),
-            "step_down": self.assistant._tr("Observing a little less heat"),
-            "recover_down": self.assistant._tr("Waiting for recovery"),
-            "identifying": self.assistant._tr("Understanding the machine response"),
-            "validating": self.assistant._tr("Trying the cautious setting"),
-            "deciding": self.assistant._tr("Checking the final result"),
+            "baseline": QApplication.translate("tilauscope_pid", "Observing the stable level"),
+            "step_up": QApplication.translate("tilauscope_pid", "Observing a little more heat"),
+            "recover_up": QApplication.translate("tilauscope_pid", "Waiting for recovery"),
+            "step_down": QApplication.translate("tilauscope_pid", "Observing a little less heat"),
+            "recover_down": QApplication.translate("tilauscope_pid", "Waiting for recovery"),
+            "identifying": QApplication.translate("tilauscope_pid", "Understanding the machine response"),
+            "validating": QApplication.translate("tilauscope_pid", "Trying the cautious setting"),
+            "deciding": QApplication.translate("tilauscope_pid", "Checking the final result"),
         }
-        label = phases.get(phase, self.assistant._tr("Securing the test"))
-        self.guide_progress.setText(self.assistant._tr("TEST IN PROGRESS"))
+        label = phases.get(phase, QApplication.translate("tilauscope_pid", "Securing the test"))
+        self.guide_progress.setText(QApplication.translate("tilauscope_pid", "TEST IN PROGRESS"))
         self.guide_title.setText(label)
-        self.next_steps.setText(self.assistant._tr(
+        self.next_steps.setText(QApplication.translate("tilauscope_pid", 
             "Elapsed time: {elapsed}/600 seconds. Stay beside the machine."
         ).format(elapsed=elapsed_sec))
         self.stop_live.show()
@@ -2067,25 +2068,25 @@ class CalibrationReadinessDialog(QDialog):
     def _live_finished(self, phase: str, reason: str) -> None:
         self.stop_live.setEnabled(False)
         if "journal_persistence_failed" in reason:
-            self.guide_progress.setText(self.assistant._tr("TEST FINISHED"))
-            self.guide_title.setText(self.assistant._tr("Report unavailable"))
-            self.next_steps.setText(self.assistant._tr(
+            self.guide_progress.setText(QApplication.translate("tilauscope_pid", "TEST FINISHED"))
+            self.guide_title.setText(QApplication.translate("tilauscope_pid", "Report unavailable"))
+            self.next_steps.setText(QApplication.translate("tilauscope_pid", 
                 "Heat is at 0% and the previous settings were restored, but the "
                 "report could not be saved. Do not authorize this machine."
             ))
             return
         if reason == "pilot_completed_pending_review":
-            self.status.setText(self.assistant._tr(
+            self.status.setText(QApplication.translate("tilauscope_pid", 
                 "The pilot sequence completed. Heat is at 0%, the previous settings "
                 "were restored and the report is ready for review."
             ))
         elif phase == "complete":
-            self.status.setText(self.assistant._tr(
+            self.status.setText(QApplication.translate("tilauscope_pid", 
                 "The response improved safely. The cautious setting was kept and "
                 "the complete report was saved."
             ))
         else:
-            self.status.setText(self.assistant._tr(
+            self.status.setText(QApplication.translate("tilauscope_pid", 
                 "The test stopped safely: heat was cut to 0%, the previous settings "
                 "were restored and the report was saved."
             ))
@@ -2093,11 +2094,11 @@ class CalibrationReadinessDialog(QDialog):
             self.status.setText(
                 self.status.text()
                 + "\n"
-                + self.assistant._tr("Report: ")
+                + QApplication.translate("tilauscope_pid", "Report: ")
                 + str(self.assistant._last_calibration_journal_path)
             )
-        self.guide_progress.setText(self.assistant._tr("TEST FINISHED"))
-        self.guide_title.setText(self.assistant._tr("The machine is safe"))
+        self.guide_progress.setText(QApplication.translate("tilauscope_pid", "TEST FINISHED"))
+        self.guide_title.setText(QApplication.translate("tilauscope_pid", "The machine is safe"))
         self.next_steps.setText(self.status.text())
         self.status.hide()
 

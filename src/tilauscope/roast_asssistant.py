@@ -4376,7 +4376,7 @@ class _AutoCockpitPage(QWidget):
         self._bar = QFrame()
         self._bar_lay = QHBoxLayout(self._bar)
         self._bar_lay.setContentsMargins(14, 10, 14, 10)
-        self._lbl_pilot = QLabel("● AUTO")
+        self._lbl_pilot = QLabel(QApplication.translate("tilauscope_roast_assistant", "● AUTO"))
         self._lbl_phase = QLabel("")
         self._bar_lay.addWidget(self._lbl_pilot)
         self._bar_lay.addWidget(self._lbl_phase)

@@ -5,7 +5,9 @@
 
 from PyQt6.QtCore import QPoint, Qt
 from PyQt6.QtGui import QMouseEvent
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget,
+)
 
 from tilauscope.tilauscope_types import THEME
 from tilauscope.theme_qss import tooltip_qss
@@ -44,7 +46,7 @@ class _TilauTitleBar(QWidget):
         btn_min.clicked.connect(aw.showMinimized)
 
         btn_max = QPushButton('□')
-        btn_max.setToolTip('Maximize / Restore')
+        btn_max.setToolTip(QApplication.translate("tilauscope_window", 'Maximize / Restore'))
         btn_max.clicked.connect(self._toggle_maximized)
 
         btn_close = QPushButton('✕')

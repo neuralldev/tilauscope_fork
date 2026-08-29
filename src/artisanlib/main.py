@@ -231,6 +231,7 @@ from artisanlib.util import (appFrozen, uchr, decodeLocal, decodeLocalStrict, en
         eventtime2string, toDim, signature_message, rec_int_to_float, smooth_list)
 from artisanlib.device_registry import DEVICE_ID_MIN, DEVICE_ID_MAX, DEVICE_ID_NONE, DEVICE_ID_VIRTUAL, get_device_name
 from artisanlib.qtsingleapplication import QtSingleApplication
+from artisanlib.translation_paths import translation_search_paths
 
 
 # platform dependent imports:
@@ -29114,17 +29115,17 @@ def initialize_locale(my_app:Artisan) -> str:
     try:
         qt_trans_path:str = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
 
-        trans_paths:list[str] = []
-        # add the translations path for binary installations
-        if sys.platform.startswith('darwin'):
-            trans_paths.append(QApplication.applicationDirPath() + '/../translations')
-        else:
-            trans_paths.append(QApplication.applicationDirPath() + '/translations')
-        # add the translations path for source installations
-        trans_paths.append('translations')
-        ## TILAU ## necessary for debugger to load correct language on mcos with visual studio code
-        trans_paths.append('src/translations') 
-        
+        # Absolute installation-anchored paths are required here: startup has
+        # already changed CWD to the user data directory. Relative paths made
+        # every application translation miss both under VS Code and in the
+        # compiled macOS bundle (where catalogs live in Contents/Resources).
+        trans_paths = translation_search_paths(
+            __file__,
+            QApplication.applicationDirPath(),
+            frozen_root=getattr(sys, '_MEIPASS', None),
+            system=platform.system(),
+        )
+
         #load Qt translations
         for qt_trans_module in qt_translation_modules:
             # each QTranslator can only hold one file
@@ -29140,11 +29141,15 @@ def initialize_locale(my_app:Artisan) -> str:
         #load Artisan translations
         appTranslator:QTranslator = QTranslator(my_app)
         artisan_qm_file:str = f'artisan_{locale}'
+        artisan_translation_loaded = locale == 'en'
         for trans_path in trans_paths:
             if appTranslator.load(artisan_qm_file, trans_path):
                 _log.info('loading Artisan translations %s from %s', artisan_qm_file, trans_path)
+                artisan_translation_loaded = True
                 break
         my_app.installTranslator(appTranslator)
+        if not artisan_translation_loaded:
+            _log.error('could not load %s; searched %s', artisan_qm_file, trans_paths)
     except Exception as e:
         _log.exception(e)
 

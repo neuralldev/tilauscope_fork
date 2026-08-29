@@ -91,11 +91,10 @@ def subst_button_label(label: str, event_type: int, etypes: list[str],
     def _name(i: int) -> str:
         return etypes[i] if 0 <= i < len(etypes) else ''
 
-    tr = QApplication.translate
-    on, off = tr('Label', 'ON'), tr('Label', 'OFF')
-    auto, manual = tr('Label', 'AUTO'), tr('Label', 'MANUAL')
-    close, opened = tr('Label', 'CLOSE'), tr('Label', 'OPEN')
-    start, stop = tr('Label', 'START'), tr('Label', 'STOP')
+    on, off = QApplication.translate('Label', 'ON'), QApplication.translate('Label', 'OFF')
+    auto, manual = QApplication.translate('Label', 'AUTO'), QApplication.translate('Label', 'MANUAL')
+    close, opened = QApplication.translate('Label', 'CLOSE'), QApplication.translate('Label', 'OPEN')
+    start, stop = QApplication.translate('Label', 'START'), QApplication.translate('Label', 'STOP')
     for var, subst in (
             ('\\0', off),
             ('\\1', on),
@@ -103,17 +102,17 @@ def subst_button_label(label: str, event_type: int, etypes: list[str],
             ('\\3', off if state else on),
             ('\\a', auto),
             ('\\A', manual if state else auto),
-            ('\\b', tr('Label', 'FLAP')),
+            ('\\b', QApplication.translate('Label', 'FLAP')),
             ('\\c', close),
             ('\\C', opened if state else close),
-            ('\\d', tr('Label', 'CONTROL')),
-            ('\\D', tr('Label', 'DISCHARGE')),
+            ('\\d', QApplication.translate('Label', 'CONTROL')),
+            ('\\D', QApplication.translate('Label', 'DISCHARGE')),
             ('\\e', _name(2)),
-            ('\\h', tr('Label', 'HEATING')),
-            ('\\i', tr('Label', 'STIRRER')),
-            ('\\f', tr('Label', 'FILL')),
+            ('\\h', QApplication.translate('Label', 'HEATING')),
+            ('\\i', QApplication.translate('Label', 'STIRRER')),
+            ('\\f', QApplication.translate('Label', 'FILL')),
             ('\\F', f'{tempvalue_f}{mode}'),
-            ('\\l', tr('Label', 'COOLING')),
+            ('\\l', QApplication.translate('Label', 'COOLING')),
             ('\\m', manual),
             ('\\M', auto if state else manual),
             ('\\o', opened),
@@ -122,7 +121,7 @@ def subst_button_label(label: str, event_type: int, etypes: list[str],
             ('\\P', start if state else stop),
             ('\\q', _name(0)),
             ('\\r', _name(3)),
-            ('\\R', tr('Label', 'RELEASE')),
+            ('\\R', QApplication.translate('Label', 'RELEASE')),
             ('\\s', start),
             ('\\S', stop if state else start),
             ('\\T', f'{sign}{tempvalue_c}{mode}'),

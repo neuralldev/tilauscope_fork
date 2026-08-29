@@ -147,28 +147,27 @@ def _disclosure_text(cfg: TilauAIConfig) -> str:
     who    = cfg.provider_name
     named  = f'{who} ({model})' if model else who
 
-    T = QApplication.translate
     return '\n\n'.join((
-        T('tilauscope_privacy', 'This request leaves your computer.'),
-        T('tilauscope_privacy',
+        QApplication.translate('tilauscope_privacy', 'This request leaves your computer.'),
+        QApplication.translate('tilauscope_privacy',
           'TilauScope has no intelligence of its own. To answer, it sends '
           'your question and the roast data it needs to the AI provider you '
           'configured:') + f'\n\n        {named}',
-        T('tilauscope_privacy',
+        QApplication.translate('tilauscope_privacy',
           'Sent: your question, the roast figures and the bean record — and '
           'nothing else.'),
-        T('tilauscope_privacy',
+        QApplication.translate('tilauscope_privacy',
           'Removed before sending: e-mail addresses, telephone numbers, bank '
           'details, file paths, network and device identifiers, your operator '
           'and company names.'),
-        T('tilauscope_privacy',
+        QApplication.translate('tilauscope_privacy',
           'Stays here: your provider key, your roast files, your bean '
           'library.'),
-        T('tilauscope_privacy',
+        QApplication.translate('tilauscope_privacy',
           'The provider may be outside the European Union and keeps the '
           'request for its own retention period. Nothing you send is used to '
           'decide anything on your behalf.'),
-        T('tilauscope_privacy',
+        QApplication.translate('tilauscope_privacy',
           'You can read the exact text before every request: use "What is '
           'sent" in the panel.'),
     ))
@@ -462,28 +461,27 @@ def ensure_geo_consent(parent: QWidget | None) -> bool:
 
     from tilauscope.tilauscope_types import show_styled_message  # noqa: PLC0415
 
-    T = QApplication.translate
     text = '\n\n'.join((
-        T('tilauscope_beancave', 'Where should the weather be read?'),
-        T('tilauscope_beancave',
+        QApplication.translate('tilauscope_beancave', 'Where should the weather be read?'),
+        QApplication.translate('tilauscope_beancave',
           'TilauScope does not know where you are. To read the weather it '
           'first asks ip-api.com, a service outside the European Union, '
           'which turns your internet address into a town — then asks '
           'Open-Meteo for that town\'s temperature, humidity and pressure.'),
-        T('tilauscope_beancave',
+        QApplication.translate('tilauscope_beancave',
           'Your internet address is what identifies your connection. Neither '
           'service is told anything about you or your coffee.'),
-        T('tilauscope_beancave',
+        QApplication.translate('tilauscope_beancave',
           'You can always type the three values by hand instead.'),
     ))
     try:
         clicked = show_styled_message(
             parent,
-            T('tilauscope_beancave', 'Online weather'),
+            QApplication.translate('tilauscope_beancave', 'Online weather'),
             text,
             QMessageBox.Icon.Information,
-            buttons=[T('tilauscope_beancave', "I'll type it"),
-                     T('tilauscope_beancave', 'Find my town and fill them in')],
+            buttons=[QApplication.translate('tilauscope_beancave', "I'll type it"),
+                     QApplication.translate('tilauscope_beancave', 'Find my town and fill them in')],
         )
     except Exception as exc:  # noqa: BLE001
         _log.error('Location consent could not be shown: %s', exc)

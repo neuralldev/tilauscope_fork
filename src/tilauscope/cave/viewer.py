@@ -624,7 +624,7 @@ class ViewerMixin:
             return data
 
         except Exception as e:
-            _logd.error(f"Erreur lors de la lecture/parsing de {path.name}: {e}")
+            _log.error(f"could not read/parse {path.name}: {e}", exc_info=True)
             return None
 
     def _stop_list_scan(self) -> None:
@@ -672,9 +672,14 @@ class ViewerMixin:
 
     @pyqtSlot()
     def list_alog_files(self) -> None:
-        if not self.alog_directory:
+        # Path("") is PosixPath("."), which is truthy and exists — so an unset
+        # setting used to sail past this guard and scan the working directory
+        # instead, which startup has already moved to the user data folder.
+        raw_dir = str(self.alog_directory or "").strip()
+        if not raw_dir or raw_dir == '.':
+            _log.warning("no roast folder configured — the roast list stays empty")
             return
-        directory = Path(self.alog_directory)
+        directory = Path(raw_dir)
         if not directory.exists() or not directory.is_dir():
             self.roast_plot_label.setText(
                 QApplication.translate("tilauscope_beancave",
@@ -702,7 +707,7 @@ class ViewerMixin:
         self._list_thread, self._list_worker = self._launch_worker(
             _AlogListWorker(directory, self._metadata_cache.records),
             on_ok=self._on_alog_list_ready,
-            on_err=lambda e: _logd.error(f"list_alog_files: {e}"),
+            on_err=lambda e: _log.error(f"roast folder scan failed: {e}"),
             on_done=self._on_list_thread_done,
         )
 
@@ -720,6 +725,17 @@ class ViewerMixin:
         # whatever happens to the connection afterwards.
         sender = self.sender()
         if sender is not None and sender is not getattr(self, '_list_worker', None):
+            # Dropping a replaced scan is routine — two run on the way in, and
+            # the first is meant to lose. Dropping one with an empty list and no
+            # scan behind it is not: nothing will paint, and the operator is
+            # left with a blank list the log never mentions. Say that one out loud.
+            if (self.roast_list_widget.count() == 0
+                    and getattr(self, '_list_worker', None) is None):
+                _log.warning(
+                    "a roast scan finished after being replaced, with nothing "
+                    "running behind it — the roast list is left empty")
+            else:
+                _logd.debug("dropping the result of a roast scan that was replaced")
             return
 
         # This handler owns the painted list, so it starts from empty. Clearing
@@ -729,10 +745,12 @@ class ViewerMixin:
         self._selection_debounce.stop()
 
         if not items:
+            _log.warning(f"roast folder scan returned nothing: {self.alog_directory}")
             self.roast_list_widget.addItem(
                 QApplication.translate("tilauscope_beancave",
                     "No alog files found in the directory."))
             return
+        _log.info(f"roast list painted: {len(items)} roasts")
 
         # Batch-populate using blockSignals so itemSelectionChanged doesn't
         # fire on every addItem, while keeping the widget's visual state intact.
@@ -902,9 +920,19 @@ class ViewerMixin:
             # Réactiver le tab stats normal
             self.viewer_tabs.setTabEnabled(self.viewer_tabs.indexOf(self.stats_tab), True)
 
-            m = self.roast_list_widget.currentItem()
+            # The roast to draw is the SELECTED one, not the current one. Qt
+            # tracks the two apart: the current item is the keyboard cursor, and
+            # it is None right after the list is rebuilt and stale after a
+            # ctrl-click that drops the row it still points at. Reading it here
+            # drew another roast than the highlighted one, or raised on None and
+            # left the canvas exactly as it was — a blank curve, no log line.
+            m = selected_items[0]
             metadata = m.data(Qt.ItemDataRole.UserRole)
-            filepath = Path(self.alog_directory) / metadata["raw_fname"]
+            raw_fname = (metadata or {}).get("raw_fname", "")
+            if not raw_fname:
+                _log.warning("selected roast carries no file name — curve not redrawn")
+                return
+            filepath = Path(self.alog_directory) / raw_fname
             if not filepath.exists():
                 _log.error(f"File not found in beancave plot routine: {filepath}")
                 return
@@ -957,14 +985,14 @@ class ViewerMixin:
                     try:
                         self._alog_worker.finished.disconnect(self._alog_worker_finished_on_plot_ok)
                         self._alog_worker.error.disconnect(self._alog_worker_finished_on_plot_error)
-                    except (TypeError, RuntimeError):
+                    except (AttributeError, TypeError, RuntimeError):
                         pass
                     self._alog_thread.requestInterruption()
                     self._alog_thread.quit()
                     if not self._alog_thread.wait(2000):
                         _log.warning("alog load cancellation is still pending")
                         self._alog_thread.wait()
-            except RuntimeError:
+            except (AttributeError, RuntimeError):
                 # C++ object already deleted by deleteLater
                 pass
             self._alog_thread = None
@@ -976,14 +1004,14 @@ class ViewerMixin:
                     try:
                         self._multi_alog_worker.finished.disconnect(self._on_multi_curve_loaded)
                         self._multi_alog_worker.error.disconnect(self._on_multi_curve_error)
-                    except (TypeError, RuntimeError):
+                    except (AttributeError, TypeError, RuntimeError):
                         pass
                     self._multi_alog_thread.requestInterruption()
                     self._multi_alog_thread.quit()
                     if not self._multi_alog_thread.wait(2000):
                         _log.warning("multi alog load cancellation is still pending")
                         self._multi_alog_thread.wait()
-            except RuntimeError:
+            except (AttributeError, RuntimeError):
                 pass
             self._multi_alog_thread = None
             self._multi_alog_worker = None
@@ -1031,6 +1059,9 @@ class ViewerMixin:
             thread.finished.connect(thread.deleteLater)
             self._alog_thread = thread
             self._alog_worker = worker
+            # The roast this load is for. The completion handler cannot ask the
+            # list any more: by then the list may have been rebuilt underneath.
+            self._loading_fname = filepath.name
         thread.start()
 
     def _alog_load_cancelled(self, filename: str) -> None:
@@ -1318,14 +1349,20 @@ class ViewerMixin:
     def _alog_worker_finished_on_plot_ok(self, profiledata, deltaet, deltabt):
         _logd.debug("finished worker")
         self.lastprofiledata = profiledata
-        item_now = self.roast_list_widget.currentItem()
-        self._displayed_fname = ((item_now.data(Qt.ItemDataRole.UserRole) or {}).get("raw_fname", "")
-                                 if item_now else "")
+        # What is on the canvas is what this load carried. Asking the list here
+        # answered "" whenever a background refresh had rebuilt it in the
+        # meantime, and a blank booking makes the next refresh believe the
+        # canvas shows another roast than it does.
+        self._displayed_fname = getattr(self, '_loading_fname', '')
+        row_now = self._find_item_by_metadata(
+            self.roast_list_widget, "raw_fname", self._displayed_fname)
+        item_now = (self.roast_list_widget.item(row_now)
+                    if row_now is not None and row_now >= 0 else None)
         self.display_roast_info(self.lastprofiledata)
         self.plot_bt_curve_preview(self.lastprofiledata, deltaet, deltabt)  # type: ignore
         self._update_roast_plan_values()
         # ── Update header label with roast display name ──────────────────────
-        item = self.roast_list_widget.currentItem()
+        item = item_now
         if item is not None:
             self.roast_plot_label.setText(item.text())
         # ── Timeline hand-off: profile now fully loaded → open the Brew Advisor ──

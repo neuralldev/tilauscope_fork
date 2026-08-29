@@ -694,7 +694,7 @@ class BeanTabBuildMixin:
         _editing_prefix.setStyleSheet(f"color:{THEME['SUBTEXT']};font-size:10px;")
         self._notice_name_label = QLabel("—")
         self._notice_name_label.setStyleSheet(f"color:{THEME['TEXT']};font-weight:600;font-size:11px;")
-        self._type_tag_label = QLabel("Single Origin")
+        self._type_tag_label = QLabel(QApplication.translate("tilauscope_beancave", "Single Origin"))
         self._type_tag_label.setStyleSheet(
             f"background:{tint('ACCENT', 25)};border:1px solid {tint('ACCENT', 60)};"
             f"border-radius:4px;color:{THEME['ACCENT']};font-size:10px;padding:1px 6px;"

@@ -51,7 +51,11 @@ _HDR2_POWER:    Final[tuple[int, int]] = (91, 32)
 
 _HDR2_START:    Final[tuple[int, int]] = (95, 32)
 
-_HDR2_RESET:    Final[tuple[int, int]] = (72, 28)
+# Sized on the longest label the button carries, not on the English one:
+# a fixed box shows every language the same width, and the French RESET is
+# twice the letters. The 14 px over the English fit come out of the row's
+# own slack (362 of 370 used), so nothing else on the row moves.
+_HDR2_RESET:    Final[tuple[int, int]] = (86, 28)
 
 _HDR2_BEANCAVE: Final[tuple[int, int]] = (92, 28)
 

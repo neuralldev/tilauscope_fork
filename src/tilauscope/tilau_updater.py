@@ -444,7 +444,7 @@ class _UpdateAvailableDialog(QDialog):
         outer.addWidget(container)
 
         # ── Title ──────────────────────────────────────────────────────────
-        title = QLabel("🚀  UPDATE AVAILABLE")
+        title = QLabel(QApplication.translate("tilauscope_updates", "🚀  UPDATE AVAILABLE"))
         title.setStyleSheet(
             f"color: {_THEME['ACCENT']}; font-size: 18px; font-weight: 800; letter-spacing: 1px;"
         )

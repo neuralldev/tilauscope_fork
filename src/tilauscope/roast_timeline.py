@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import (
     Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint, QSettings,
     QRunnable, QThreadPool, QObject, pyqtSignal,
+    QT_TRANSLATE_NOOP,   # declares strings the extractor must see when translate() is fed a variable
 )
 
 from tilauscope.tilauscope_types import THEME
@@ -182,6 +183,22 @@ class _TimelineScanWorker(QRunnable):
 
 
 # ── tooltip widget (QGraphicsProxyWidget) ─────────────────────────────────────
+
+# Bean-sheet fields the card shows, in display order. They are matched against
+# the English keys written into the record, so the list must stay English; only
+# what reaches the screen is translated. QT_TRANSLATE_NOOP is what puts these in
+# the catalogue — the extractor cannot see a translate() call fed a variable.
+_CARD_META_KEYS: tuple[str, ...] = (
+    QT_TRANSLATE_NOOP("tilauscope_roast_review", "Origin"),
+    QT_TRANSLATE_NOOP("tilauscope_roast_review", "Process"),
+    QT_TRANSLATE_NOOP("tilauscope_roast_review", "SCA"),
+    QT_TRANSLATE_NOOP("tilauscope_roast_review", "Altitude"),
+    QT_TRANSLATE_NOOP("tilauscope_roast_review", "Density"),
+    QT_TRANSLATE_NOOP("tilauscope_roast_review", "Water activity"),
+    QT_TRANSLATE_NOOP("tilauscope_roast_review", "Flavour notes"),
+)
+
+
 class _TooltipWidget(QFrame):
     """
     Native Qt tooltip card rendered via QGraphicsProxyWidget.
@@ -277,10 +294,14 @@ class _TooltipWidget(QFrame):
         self._body_layout.setContentsMargins(12, 7, 12, 0)
         self._body_layout.setSpacing(1)
 
-        self._row_roasted = self._make_data_row("Roasted")
-        self._row_agtron  = self._make_data_row("Agtron")
-        self._row_peak    = self._make_data_row("Best day")
-        self._row_window  = self._make_data_row("Window")
+        self._row_roasted = self._make_data_row(
+            QApplication.translate("tilauscope_roast_review", "Roasted"), "roasted")
+        self._row_agtron  = self._make_data_row(
+            QApplication.translate("tilauscope_roast_review", "Agtron"), "agtron")
+        self._row_peak    = self._make_data_row(
+            QApplication.translate("tilauscope_roast_review", "Best day"), "peak")
+        self._row_window  = self._make_data_row(
+            QApplication.translate("tilauscope_roast_review", "Window"), "window")
         for row_w in (self._row_roasted, self._row_agtron, self._row_peak, self._row_window):
             self._body_layout.addWidget(row_w)
 
@@ -323,14 +344,16 @@ class _TooltipWidget(QFrame):
 
         outer.addWidget(body)
 
-    def _make_data_row(self, label_text: str) -> QWidget:
+    def _make_data_row(self, label_text: str, key: str) -> QWidget:
         row = QWidget()
         hl = QHBoxLayout(row)
         hl.setContentsMargins(0, 0, 0, 0)
         hl.setSpacing(4)
         lbl = self._lbl(label_text, self._C_LABEL, 11)
         val = self._lbl("", self._C_TEXT, 11, bold=True)
-        val.setObjectName(f"val_{label_text.lower()}")
+        # Named after the English key, not the shown label: an object name that
+        # changes with the interface language is not a name.
+        val.setObjectName(f"val_{key.lower()}")
         hl.addWidget(lbl)
         hl.addStretch()
         hl.addWidget(val)
@@ -392,14 +415,19 @@ class _TooltipWidget(QFrame):
         ws, wp, we, wt = data["win_s"], data["win_peak"], data["win_e"], data["tail_end"]
         today_off = (_date.today() - data["date"]).days
         if today_off < ws:
-            txt, col = "Not ready yet", self._C_NOT_YET
+            txt, col = QApplication.translate(
+                "tilauscope_roast_review", "Not ready yet"), self._C_NOT_YET
         elif today_off <= we:
             days_left = we - today_off
-            txt, col  = f"In window · best d+{wp} · {days_left}d left", self._C_IN_WIN
+            txt, col  = QApplication.translate(
+                "tilauscope_roast_review",
+                "In window · best d+{0} · {1}d left").format(wp, days_left), self._C_IN_WIN
         elif today_off <= wt:
-            txt, col  = "Near peak · drink soon", self._C_NEAR
+            txt, col  = QApplication.translate(
+                "tilauscope_roast_review", "Near peak · drink soon"), self._C_NEAR
         else:
-            txt, col  = "Past window", self._C_PAST
+            txt, col  = QApplication.translate(
+                "tilauscope_roast_review", "Past window"), self._C_PAST
         self._dot.setStyleSheet(f"border-radius:3px; background:{col}; border:none;")
         self._status_lbl.setText(txt)
         self._status_lbl.setStyleSheet(
@@ -433,13 +461,14 @@ class _TooltipWidget(QFrame):
             if ":" in line:
                 k, _, v = line.partition(":")
                 meta_map[k.strip()] = v.strip()
-        for key in ("Origin", "Process", "SCA", "Altitude", "Density", "Water activity", "Flavour notes"):
+        for key in _CARD_META_KEYS:
             if key in meta_map and meta_map[key]:
                 # Defensive: strip any trailing backslash / pipe / box-drawing
                 # noise from over-escaped beans so the compact card stays clean.
                 val = re.sub(r"[\s|｜│\\]+$", "", meta_map[key])[:50]
                 if val:
-                    self._add_meta_pair(key, val)
+                    self._add_meta_pair(
+                        QApplication.translate("tilauscope_roast_review", key), val)
         has_meta = self._meta_layout.count() > 0
         self._div_meta.setVisible(has_meta)
         self._meta_widget.setVisible(has_meta)

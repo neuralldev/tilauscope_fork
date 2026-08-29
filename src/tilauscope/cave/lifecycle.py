@@ -169,6 +169,7 @@ class LifecycleMixin:
         self.sort_order = Qt.SortOrder.AscendingOrder
         self.last_plot_data: dict|None = None
         self._displayed_fname: str = ""   # roast the curve is currently showing
+        self._loading_fname: str = ""     # roast the in-flight load is for
 
         self.np: NiimbotBLE|None = None
         self._print_pill = None   # host A — pastille de progression d'impression
@@ -524,6 +525,12 @@ class LifecycleMixin:
                 timer.stop()
             except RuntimeError:
                 pass  # already collected by Qt
+
+        # --- Curve load (mono + multi) ---
+        # These threads are parented to the dialog, so Qt destroys them with it.
+        # A load still in flight at that point is destroyed while running, which
+        # Qt reports as fatal and aborts the process on the way out.
+        self._cancel_alog_thread()
 
         # --- Indexer (Cache load) ---
         if hasattr(self, '_indexer_thread') and self._indexer_thread is not None:
@@ -996,7 +1003,7 @@ class LifecycleMixin:
         header.addStretch()
         # QR scan entry point (spec wiki/QR-Scan-Spec.md §3.1) — the camera
         # only runs while the scan dialog is open, hence a button, never always-on.
-        self.scan_qr_btn = QPushButton("📷  SCAN")
+        self.scan_qr_btn = QPushButton(QApplication.translate("tilauscope_beancave", "📷  SCAN"))
         self.scan_qr_btn.setFixedHeight(30)
         self.scan_qr_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.scan_qr_btn.setToolTip(QApplication.translate(
@@ -1018,7 +1025,7 @@ class LifecycleMixin:
         # owns it is hidden), so give the home a direct way to open the roast view.
         # tilauscopeCall() opens TilauScope and hides BeanCave (view-switch).
         if getattr(self.aw, '_tilau_headless', False):
-            self.open_tilauscope_btn = QPushButton("▶  TilauScope")
+            self.open_tilauscope_btn = QPushButton(QApplication.translate("tilauscope_beancave", "▶  TilauScope"))
             self.open_tilauscope_btn.setFixedHeight(30)
             self.open_tilauscope_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             self.open_tilauscope_btn.setToolTip(QApplication.translate(

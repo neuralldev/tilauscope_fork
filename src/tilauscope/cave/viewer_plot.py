@@ -40,7 +40,7 @@ from PyQt6.QtWidgets import (QApplication, QMessageBox, QMenu) # @UnusedImport @
 from tilauscope.tilauscope_types import (show_styled_message,
                                          THEME, RoastingPhase)
 from tilauscope.cave.common import (
-    _log, _logd, _PLOT_PALETTE, _FS_TITLE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_HOVER, _FS_LEGEND)
+    _log, _PLOT_PALETTE, _FS_TITLE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_HOVER, _FS_LEGEND)
 
 
 class ViewerPlotMixin:
@@ -395,7 +395,7 @@ class ViewerPlotMixin:
             self.last_plot_data = data # type: ignore
 
         except Exception as e:
-            _logd.error(f"Error generating plot: {e}")
+            _log.error(f"Error generating plot: {e}", exc_info=True)
             self.fig.clear()
             self.fig.set_facecolor(_PLOT_PALETTE["background"])
             self.canvas.draw()

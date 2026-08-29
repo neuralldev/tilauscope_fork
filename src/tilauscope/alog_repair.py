@@ -151,24 +151,23 @@ def plausibility_checks(values: dict[str, float]) -> list[str]:
 
 def build_beans_field(bean: GreenBean) -> str:
     """Canonical beans text - mirrors roast_properties._build_beans_field."""
-    t = QApplication.translate
     parts: list[str] = []
     if bean.name:
         parts.append(bean.name)
     if bean.country:
         parts.append(bean.country)
     if bean.farm:
-        parts.append("{0} {1}".format(t("tilauscope_beancave", "Farm:"), bean.farm))
+        parts.append("{0} {1}".format(QApplication.translate("tilauscope_beancave", "Farm:"), bean.farm))
     if bean.process:
-        parts.append("{0} {1}".format(t("tilauscope_beancave", "Process"), bean.process))
+        parts.append("{0} {1}".format(QApplication.translate("tilauscope_beancave", "Process"), bean.process))
     if bean.varieties:
-        parts.append("{0} {1}".format(t("tilauscope_beancave", "Variety"), bean.varieties))
+        parts.append("{0} {1}".format(QApplication.translate("tilauscope_beancave", "Variety"), bean.varieties))
     if bean.altitude:
-        parts.append("{0} {1}m".format(t("tilauscope_beancave", "Altitude:"), bean.altitude))
+        parts.append("{0} {1}m".format(QApplication.translate("tilauscope_beancave", "Altitude:"), bean.altitude))
     if bean.sca:
-        parts.append(t("tilauscope_beancave", "SCA: {0}").format(f"{bean.sca:.1f}"))
+        parts.append(QApplication.translate("tilauscope_beancave", "SCA: {0}").format(f"{bean.sca:.1f}"))
     if bean.uuid:
-        parts.append(t("tilauscope_beancave", "uuid: {0}").format(bean.uuid))
+        parts.append(QApplication.translate("tilauscope_beancave", "uuid: {0}").format(bean.uuid))
     return "\n".join(parts)
 
 
