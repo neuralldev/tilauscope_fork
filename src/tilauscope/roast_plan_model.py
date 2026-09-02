@@ -27,12 +27,13 @@ import numpy as np
 
 from tilauscope.tilauscope_types import (AGTRON_SCALES, AgtronScale, ProbeDeviation, RoasterBasicPlan, RoasterBasicPlanPerPhase, GreenBean, RoastingPhase,
                                           get_ror_ideal_band, to_agtron, ROASTING_BASIC_BASE, clean_delta_bt, estimate_ror_dt, find_turning_point_index,
-                                          which_roast_phase, find_flicks_crashes)
+                                          which_roast_phase, find_flicks_crashes,
+                                          GREEN_MOISTURE_NEUTRAL_PCT, weight_loss_target)
 from tilauscope.roasters import RoasterContext
 from tilauscope.alogmanager import (AlogIndex, AlogMetadata, burner_events,
                                     phase_heater)
 from tilauscope import text_shaping
-from tilauscope.bean_energy import FloorProfile
+from tilauscope.bean_energy import FloorProfile, match_variety_family
 from tilauscope.roast_plan_snapshot import (
     complete_prediction_snapshot, summarize_prediction_errors)
 from artisanlib.atypes import ProfileData
@@ -60,12 +61,45 @@ _DEV_BURNER_DROP_CAP: Final[float] = 6.0
 ## bean and ambient constants only modulate a few degrees inside it. The target
 ## roast level does NOT move the charge — it is expressed in the phase timings
 ## and the heater ladder instead.
-_CHARGE_BAND_BY_PROCESS: dict[str, tuple[float, float]] = {
-    "washed":  (180.0, 190.0),
-    "natural": (170.0, 180.0),
-    "decaf":   (160.0, 170.0),
+## Le PROCESS encode un risque de SURFACE — les sucres d'un nature brûlent si on
+## charge chaud — donc c'est un PLAFOND, pas une bande. La borne basse n'a jamais
+## encodé de sécurité : charger plus froid n'est jamais dangereux, c'est seulement
+## plus lent. La garder fermée écrasait toute intention de conduite plus lente sur
+## un lavé, dont la borne basse valait déjà le neutre (arbitrage Tilau 2026-09-01).
+_CHARGE_NEUTRAL_C: float = 185.0
+## Décalage de surface par process, depuis le neutre. Reproduit les milieux des
+## anciennes bandes au degré près : 185 / 175 / 165.
+_CHARGE_PROCESS_OFFSET_C: dict[str, float] = {
+    "washed":    0.0,
+    "natural": -10.0,
+    "decaf":   -20.0,
 }
+## Plafond de surface par process — les anciennes bornes HAUTES, inchangées.
+_CHARGE_CEILING_BY_PROCESS: dict[str, float] = {
+    "washed":  190.0,
+    "natural": 180.0,
+    "decaf":   170.0,
+}
+## Plancher unique, physique et non plus lié au process : sous ce niveau un lot
+## ne retourne pas proprement sur un radiant. C'est l'ancienne borne basse la plus
+## basse du jeu, donc rien de ce qui était atteignable ne cesse de l'être.
+_CHARGE_FLOOR_C: float = 160.0
 _CHARGE_MODULATION_MAX_C: float = 5.0
+
+## ── Destination : à quoi sert ce café (Hoos 2026, étape 1) ──────────────────
+## La chaîne est destination → développement → perte de masse, et elle n'a qu'un
+## maillon : la destination n'entre nulle part ailleurs. Un second terme direct
+## ferait doublon avec le développement et le contredirait.
+## « Omni » = filtre ET espresso, donc développement médian entre les deux.
+## Écart tenu petit (arbitrage Tilau) : quelques secondes de développement se
+## voient en tasse, et sur les bandes claires radiantes 0:45-1:00 un écart plus
+## franc sortirait de la bande.
+_DEV_DESTINATION_BONUS_SEC: dict[str, float] = {
+    "filter":   0.0,
+    "omni":     5.0,
+    "espresso": 10.0,
+}
+_DEV_DESTINATION_DEFAULT: str = "omni"
 
 ## ── Les variables du grain vert ──────────────────────────────────────────────
 ## Arbitrage Tilau 2026-08-13 (spec §2.2). aw et humidité ne sont PAS une paire :
@@ -83,13 +117,42 @@ _AW_NEUTRAL: Final[float] = 0.60
 ## Graduation de l'aw sur elle-même, pas une conversion vers l'humidité.
 _AW_PER_INDEX: Final[float] = 0.05
 _AW_INDEX_MAX: Final[float] = 3.0            # aw 0,45–0,75
-_MOISTURE_NEUTRAL: Final[float] = 10.5
+## Source unique, partagée avec la cible de perte de masse (coach) : une
+## seule valeur déplace les deux.
+_MOISTURE_NEUTRAL: Final[float] = GREEN_MOISTURE_NEUTRAL_PCT
 _MOISTURE_POINTS_MAX: Final[float] = 3.0     # 7,5–13,5 %
-_STRUCTURE_DENSITY_NEUTRAL: Final[float] = 700.0
 _STRUCTURE_DENSITY_PER_INDEX: Final[float] = 50.0
+## Bande morte de la densite, arbitrage Tilau du 2026-09-01. Le terme densite
+## etait une droite centree sur 700 g/L valant jusqu'a +-7 C de charge. Compte
+## sur le catalogue de reference, pondere par les torrefactions reellement
+## faites : la zone que Hoos endosse (densite franchement basse, sous 650) sort
+## 1 roast sur 91, et la bande 650-750 qu'il dit de NE PAS surinterpreter en
+## sort 80 sur 91 — la loi consacrait donc la quasi-totalite de son autorite a
+## departager des cafes qu'on ne sait pas departager, sur une valeur de fiche
+## fournisseur et non une mesure par deplacement d'eau (l'ecart-type de densite
+## INTRA-famille de cultivar vaut 83 % de l'ecart-type global : le champ n'a
+## aucune structure grossiere). Entre les deux bornes le plan ne prononce donc
+## plus rien. L'asymetrie que demande Hoos — la branche basse compte, la haute
+## beaucoup moins — est portee par la LARGEUR de bande (-20 en bas, +40 en
+## haut) et par la demi-pente au-dessus, pas par un plafond separe.
+## ⚠️ Non calibre, et non calibrable : la charge est PRESCRITE par le plan, donc
+## la relire dans le corpus renverrait la loi qu'on cherche a juger. Ce qui
+## s'ameliore ici est l'accord entre ce que la loi pretend savoir et ce qu'elle
+## sait, pas une justesse mesuree.
+_STRUCTURE_DEAD_BAND_LOW: Final[float] = 680.0
+_STRUCTURE_DEAD_BAND_HIGH: Final[float] = 740.0
+_STRUCTURE_DENSE_SLOPE_WEIGHT: Final[float] = 0.5
 _STRUCTURE_ALT_NEUTRAL: Final[float] = 1400.0
 _STRUCTURE_ALT_PER_INDEX: Final[float] = 400.0
 _STRUCTURE_INDEX_MAX: Final[float] = 2.0
+## Poids du repli altitude, mesure faite le 2026-09-01 sur le catalogue de
+## reference : sur les 23 fiches portant les DEUX valeurs, r(altitude, densite)
+## = 0,45 — l'altitude explique donc environ 20 % de la variance de densite, et
+## contredit son SIGNE 7 fois sur 23 (Raek, 626 g/L a 1800 m : la densite
+## demande -5,2 C de charge, l'altitude en reclamait +3,5). Un proxy a ce
+## niveau d'accord ne peut pas parler avec la voix d'une mesure : il garde sa
+## graduation, il perd son autorite.
+_STRUCTURE_PROXY_WEIGHT: Final[float] = 0.20
 
 _SRC_MEASURED: Final[str] = "measured"
 _SRC_PROXY: Final[str] = "proxy"
@@ -289,18 +352,35 @@ def _resolve_green_structure(density_g_l: "float | None",
     it stands in for — the old `max(0, alt-1000)/200` was always positive and
     effectively unbounded, so at 1800 m it alone spent +4.0 °C of the ±5 cap and
     no bean could ever read as "less dense than neutral" through it.
+
+    The fallback is also WEIGHTED DOWN, because altitude causes nothing: the
+    tree answers to light, to mean temperature, to the day/night swing and to
+    how fast the cherry ripens, and a coffee grown at 200 m in an ocean current
+    reaches the density of one grown at 1500 m. Measured against the reference
+    catalogue it agrees with density only about a fifth of the way, so it is
+    given a fifth of a measurement's voice: enough to lean the plan, never
+    enough to invert it. See `_STRUCTURE_PROXY_WEIGHT`.
     """
     _density = _plausible_reading(density_g_l, 250.0, 1000.0, "bean density")
     if _density is not None:
-        _index = (_density - _STRUCTURE_DENSITY_NEUTRAL) / _STRUCTURE_DENSITY_PER_INDEX
+        if _density < _STRUCTURE_DEAD_BAND_LOW:
+            _index = ((_density - _STRUCTURE_DEAD_BAND_LOW)
+                      / _STRUCTURE_DENSITY_PER_INDEX)
+        elif _density > _STRUCTURE_DEAD_BAND_HIGH:
+            _index = ((_density - _STRUCTURE_DEAD_BAND_HIGH)
+                      / _STRUCTURE_DENSITY_PER_INDEX
+                      * _STRUCTURE_DENSE_SLOPE_WEIGHT)
+        else:
+            _index = 0.0
         return _GreenPairValue(
             _clamp(_index, -_STRUCTURE_INDEX_MAX, _STRUCTURE_INDEX_MAX),
             _SRC_MEASURED, f"density {_density:.0f} g/L")
     _altitude = _plausible_reading(culture_altitude_m, 1.0, 3500.0, "culture altitude")
     if _altitude is not None:
         _index = (_altitude - _STRUCTURE_ALT_NEUTRAL) / _STRUCTURE_ALT_PER_INDEX
+        _index = _clamp(_index, -_STRUCTURE_INDEX_MAX, _STRUCTURE_INDEX_MAX)
         return _GreenPairValue(
-            _clamp(_index, -_STRUCTURE_INDEX_MAX, _STRUCTURE_INDEX_MAX),
+            _index * _STRUCTURE_PROXY_WEIGHT,
             _SRC_PROXY, f"altitude {_altitude:.0f} m")
     return _GreenPairValue()
 
@@ -679,18 +759,24 @@ class _ChargeSetup:
     """Charge band by process, bean/ambient modulation (capped), and
     inter-batch heat-soak correction (banc 2026-08-05).
 
-    `band` and `nominal_temperature_c` (the pre-modulation band midpoint)
-    are still needed by the caller after this stage returns: `band` for the
-    water-activity floor further down, `nominal_temperature_c` for the FC
-    regression, which the original code interleaves between the band and
-    the modulation. `temperature_c` is the final charge BT, after
-    modulation and heat soak."""
+    `nominal_temperature_c` is the pre-modulation band midpoint, BEFORE the
+    cultivar-family prior: it is still needed by the caller after this stage
+    returns, for the FC regression, which the original code interleaves
+    between the band and the modulation — and that regression is learned from
+    charges actually practised, so a declared prior has no business shifting
+    it. `temperature_c` is the final charge BT, family prior, modulation and
+    heat soak included. `band` is the process band the modulation is clamped
+    into."""
     band: "tuple[float, float]"
     nominal_temperature_c: float
     temperature_c: float
     soak_dcharge_c: float = 0.0
     soak_dheater_pct: int = 0
     soak_tau_min: float = 0.0
+    ## Ce que la famille de cultivar a réellement déplacé, pour que l'opérateur
+    ## voie le prior au lieu de le subir. Vide/0 = aucune famille reconnue.
+    family_name: str = ""
+    family_delta_c: float = 0.0
 
 @dataclass(frozen=True)
 class _DropAndDevRor:
@@ -813,6 +899,12 @@ class TilauScopeRoastPlan:
         self.alog_directory:str=""
         settings = QSettings()
         self.alog_directory = Path(settings.value('alogDirectory', "", str))
+        ## Destination du café. Lue en réglage plutôt que passée en paramètre :
+        ## les trois appelants de generate_roast_plan (dont le replan en cours de
+        ## roast) restent inchangés. Relue à CHAQUE plan — le moteur est mis en
+        ## cache par ses appelants, donc une valeur figée ici resterait celle du
+        ## premier plan alors que l'utilisateur peut changer de destination.
+        self.roast_destination: str = self._read_roast_destination()
         self.parent = parent
         self.mode = "C"  # ← safe default; overwritten below if Artisan is available
         # parent IS the ApplicationWindow (aw); its temperature unit lives on aw.qmc.mode.
@@ -2725,7 +2817,8 @@ class TilauScopeRoastPlan:
         return _effect
 
     @staticmethod
-    def _charge_setup(*, process_type_lower: str,
+    def _charge_setup(*, process_type_lower: str, varieties: str = "",
+                       family_weight: float = 0.0,
                        moisture: "_GreenPairValue", structure: "_GreenPairValue",
                        ambient_temp_c: "float | None",
                        minutes_since_last_drop: "float | None",
@@ -2745,7 +2838,7 @@ class TilauScopeRoastPlan:
         # at ±_CHARGE_MODULATION_MAX_C. Decaf is tested first (can co-occur with a
         # process word, e.g. "decaf washed").
         if "decaf" in process_type_lower or "decaffeinated" in process_type_lower:
-            _charge_band = _CHARGE_BAND_BY_PROCESS["decaf"]
+            _process_key = "decaf"
         elif ("honey" in process_type_lower or "pulped natural" in process_type_lower
               or "wet hulled" in process_type_lower or "natural" in process_type_lower
               or "dry process" in process_type_lower or "anaerobic" in process_type_lower
@@ -2754,15 +2847,63 @@ class TilauScopeRoastPlan:
               or "yeast" in process_type_lower):
             # Fermented/anaerobic processes group with the naturals: they carry
             # the same surface sugars from extended contact with the mucilage/fruit.
-            _charge_band = _CHARGE_BAND_BY_PROCESS["natural"]
+            _process_key = "natural"
         else:
-            _charge_band = _CHARGE_BAND_BY_PROCESS["washed"]
-        _charge_temperature: float = _mean(_charge_band[0], _charge_band[1])
+            _process_key = "washed"
+        _charge_band = (_CHARGE_FLOOR_C, _CHARGE_CEILING_BY_PROCESS[_process_key])
+
+        ## ── Équation double : process ET famille (Hoos 2026) ────────────────
+        ## charge = neutre + Δprocess + w · Δfamille (+ modulations, plus bas)
+        ##
+        ## Les deux termes ne sont PAS de même nature, et c'est ce qui interdit
+        ## une moyenne pondérée : le PROCESS est un risque de surface, donc un
+        ## plafond ; la FAMILLE est une intention de rythme, donc une cible. Le
+        ## clamp plus bas fait gagner la sécurité sur la préférence — un Typica
+        ## nature ne peut pas se charger comme un Typica lavé, ce qui est la
+        ## bonne précédence et ce que dit Hoos (le process ajoute une couche
+        ## sans effacer la génétique).
+        ##
+        ## Le poids `w` n'est pas une constante à régler : c'est la confiance
+        ## dans l'identité génétique, la réserve que Hoos pose lui-même (20-25 %
+        ## de pollinisation croisée, erreurs de pépinière). w = 0 ramène
+        ## exactement au comportement antérieur, donc aucun roast dont la variété
+        ## est inconnue ne change.
+        ##
+        ## Transmission MESURÉE (bench_charge_authority.py) : +0,41 °C de TP par
+        ## °C de charge, soit ~2 s de séchage par °C — les ±4 °C valent ~15 s.
+        ## Sens par famille DÉCLARÉ, pas appris : le corpus n'a ni assez de
+        ## cultivars ni de signal qualité pour le valider.
+        ## `_charge_nominal` reste le milieu de bande AVANT la famille : c'est
+        ## lui qui alimente la régression FC. La famille est un prior DÉCLARÉ ;
+        ## la régression est APPRISE sur des charges réellement pratiquées, et la
+        ## décaler d'un prior ferait bouger une prédiction apprise au nom d'une
+        ## variété saisie à la main.
+        _charge_nominal: float = _CHARGE_NEUTRAL_C + _CHARGE_PROCESS_OFFSET_C[_process_key]
+        _charge_temperature: float = _charge_nominal
+        _family_name: str = ""
+        _family_delta: float = 0.0
+        _matched = match_variety_family(varieties)
+        if _matched is not None and family_weight > 0.0:
+            _family_name, _raw_delta = _matched
+            _family_delta = family_weight * _raw_delta
+            _charge_temperature += _family_delta
+            _logd.info(
+                f"RoastPlan: charge family {_family_name} {_raw_delta:+.0f}°C "
+                f"x weight {family_weight:.2f} = {_family_delta:+.1f}°C")
 
         # ── Modulation by bean and ambient constants, capped ────────────────
         # Only a few degrees of authority: the band is the doctrine, these
-        # constants brush around it. Batch weight is deliberately absent — a small
-        # batch charges at the same temperature. Each input is gated on a
+        # constants brush around it. Batch weight is deliberately absent — not
+        # because the mass does not matter, it dominates, but because the charge
+        # is far too weak a lever to answer it. Measured on the corpus
+        # (bench_charge_authority.py, n=56 since 2025-11): the charge moves the
+        # turning point by +0.41 °C per degree while 100 g move it by -17 °C, so
+        # compensating a 150 g swing would take +63 °C of charge, twice the range
+        # the machine offers. Setting the charge from the batch size (Hoos) is a
+        # gas-drum rule: there the preheated drum IS the energy store, while a
+        # radiant electric feeds the batch from the element in real time. The
+        # batch size is answered by the burner and the phase durations instead.
+        # Each input is gated on a
         # plausibility window first (out-of-window readings contribute 0).
         # One term per physical quantity: the water MASS to heat and the STRUCTURE
         # to heat it through. The aw is deliberately absent — it says how easily
@@ -2797,6 +2938,8 @@ class TilauScopeRoastPlan:
         # Applied AFTER the band clamp, like the heat soak: the band encodes a
         # SURFACE risk (process sugars), the density a STRUCTURE one, and a dense
         # bean legitimately charges past what its process band alone allows.
+        # Silent for the many beans inside the density dead band — the override
+        # still exists, it simply has nothing to say between 680 and 740 g/L.
         _mod_structure = _clamp(
             _CHARGE_C_PER_STRUCTURE_INDEX * structure.value if structure.known else 0.0,
             -_CHARGE_STRUCTURE_MAX_C, _CHARGE_STRUCTURE_MAX_C)
@@ -2830,7 +2973,8 @@ class TilauScopeRoastPlan:
                     f"{_soak_dheater:+d}% ({minutes_since_last_drop:.0f} min since drop, τ={_soak_tau:.0f} min)")
 
         return _ChargeSetup(
-            band=_charge_band, nominal_temperature_c=_charge_temperature,
+            family_name=_family_name, family_delta_c=_family_delta,
+            band=_charge_band, nominal_temperature_c=_charge_nominal,
             temperature_c=charge_bt_temperature, soak_dcharge_c=_soak_dcharge_c,
             soak_dheater_pct=_soak_dheater, soak_tau_min=_soak_tau)
 
@@ -2879,14 +3023,45 @@ class TilauScopeRoastPlan:
     ## neutre en forme : contrôlé sur le Cormorant (nominale 450 g, roasts à
     ## 500 g), il prédit un creux de 0,531 pour 0,544 mesuré — 2,5 °C d'erreur,
     ## contre 18 °C pour la part fixe seule.
-    _TP_DIP_SHARE: Final[float] = 0.487
+    ## ── Point de retournement : TABLE D'ANCRES, pas une formule ─────────────
+    ## Une seule formule sur toute la plage extrapole hors du mesuré sans le
+    ## dire. Comme pour une déviation de sonde, ce qui décrit la machine est un
+    ## JEU DE CONSTANTES PAR PALIER, chacune traçable à sa mesure et à son n.
+    ##
+    ## ⚠️ Les ancres sont NEUTRES PAR MACHINE : un RATIO de masse (lot / nominal)
+    ## vers une PART DE CREUX (1 − TP/charge). Une table en grammes absolus et en
+    ## °C ne transférerait à aucun autre torréfacteur — la forme relative est ce
+    ## qui laisse une loi mesurée ici servir une machine sur laquelle elle n'a
+    ## pas été ajustée (validé sur le corpus Cormorant, nominal 450 g).
+    ##
+    ## Mesuré sur le corpus RÉCENT seul (depuis nov. 2025) : les cinq roasts de
+    ## 300 g du corpus sont tous de l'ancienne méthode et donnaient un TP 12 °C
+    ## trop bas — une table bâtie dessus aurait figé l'artefact.
+    ##
+    ## (ratio de masse, part de creux, n)
+    _TP_DIP_ANCHORS: Final[tuple[tuple[float, float, int], ...]] = (
+        (0.375, 0.2962,  3),   # 3 points seulement — plateau, pas une pente
+        (0.625, 0.3155, 17),   # solide
+        (0.875, 0.4386,  7),   # faible — à recharger quand le palier se remplit
+        (1.000, 0.5014, 27),   # solide
+    )
+    ## Sous la première ancre : MAINTIEN PLAT. Le corpus y a trois roasts (100,
+    ## 150 et 208 g) qui tombent tous vers la même part — le plateau est ce que
+    ## les données disent, pas un renoncement.
+    ##
+    ## Au-dessus de la dernière : on PROLONGE avec la sensibilité validée plutôt
+    ## que de maintenir plat. Deux raisons — au-dessus du nominal il existe une
+    ## théorie (plus de masse, creux plus profond) et un point de validation
+    ## EXTERNE (Cormorant à 500 g pour 450 nominal, part mesurée 0,544).
+    ## ⚠️ Réserve : ce corpus-ci mesure 0,5365 au ratio 1,19 (n=2), soit une pente
+    ## plus douce que 0,396. Deux points ne suffisent pas à renverser une loi
+    ## validée sur une autre machine — à rouvrir quand le palier se remplit.
     _TP_DIP_MASS_SENSITIVITY: Final[float] = 0.396
-    ## Bornes de la part de creux. Le plancher n'est pas un garde-fou : c'est le
-    ## PLATEAU mesuré. La part cesse de descendre sous ~280 g — 0,313 à 150 g,
-    ## 0,316 entre 200 et 280 g, contre 0,497 au-dessus de 340 g. La droite de
-    ## masse, prolongée, prédisait 0,24 à 150 g : 12 °C de TP en trop, et autant
-    ## de montée en moins avant le DRY END.
-    _TP_DIP_SHARE_MIN: Final[float] = 0.31
+    ## Bornes de sécurité : un lot absurde ne doit pas sortir le TP du tambour.
+    ## ⚠️ Le minimum doit rester SOUS la plus basse ancre (0,2962), sinon il
+    ## écrase le plateau mesuré : à 0,31 toute la plage de ratio ≤ 0,554 sortait
+    ## un 0,31 plat et la table n'était jamais honorée en bas de palier.
+    _TP_DIP_SHARE_MIN: Final[float] = 0.28
     _TP_DIP_SHARE_MAX: Final[float] = 0.65
 
     def _nominal_weight_g(self) -> float:
@@ -2916,12 +3091,27 @@ class TilauScopeRoastPlan:
 
         Le TP suit la MASSE chargée (r = −0,75), pas la température de charge
         (r = +0,29) : un petit lot retourne beaucoup plus haut qu'un gros à
-        température de charge égale (119 °C médians sous 320 g contre 93 au-dessus).
+        température de charge égale.
         """
-        _share = cls._TP_DIP_SHARE
-        if charge_weight_g > 0.0 and nominal_weight_g > 0.0:
-            _share += (cls._TP_DIP_MASS_SENSITIVITY
-                       * (charge_weight_g - nominal_weight_g) / nominal_weight_g)
+        _anchors = cls._TP_DIP_ANCHORS
+        if charge_weight_g <= 0.0 or nominal_weight_g <= 0.0:
+            ## Lot ou machine inconnus : l'ancre nominale, la mieux échantillonnée.
+            ## Ancre la plus proche du nominal — pas une égalité flottante :
+            ## une table re-mesurée à 0,999 lèverait StopIteration.
+            _share = min(_anchors, key=lambda a: abs(a[0] - 1.0))[1]
+        else:
+            _ratio = charge_weight_g / nominal_weight_g
+            if _ratio <= _anchors[0][0]:
+                _share = _anchors[0][1]
+            elif _ratio >= _anchors[-1][0]:
+                _share = (_anchors[-1][1]
+                          + cls._TP_DIP_MASS_SENSITIVITY * (_ratio - _anchors[-1][0]))
+            else:
+                _share = _anchors[-1][1]
+                for (_r0, _s0, _), (_r1, _s1, _) in zip(_anchors, _anchors[1:]):
+                    if _r0 <= _ratio <= _r1:
+                        _share = _s0 + (_s1 - _s0) * (_ratio - _r0) / (_r1 - _r0)
+                        break
         _share = _clamp(_share, cls._TP_DIP_SHARE_MIN, cls._TP_DIP_SHARE_MAX)
         return charge_temperature_c * (1.0 - _share)
 
@@ -2936,6 +3126,18 @@ class TilauScopeRoastPlan:
         qui interdit une conduite réelle est un bug — c'est exactement le défaut
         corrigé ici : à 4:30 fixe, il bloquait un roast de référence de Tilau
         séché en 3:37 à 244 g.
+
+        ⚠️ DEUX SITES D'APPEL, DEUX POUVOIRS DIFFÉRENTS — se lire ensemble,
+        sinon chacun donne une fausse impression de l'autre :
+
+        - `_envelope_timing` le reçoit BORNÉ à la durée que l'enveloppe vient
+          de déduire. Il n'y rallonge donc jamais : il n'y sert qu'à empêcher
+          une correction d'eau négative de descendre sous le réalisable, au
+          moment même où le Maillard est calé sur le séchage.
+        - `_calibrate_and_floor_phase_durations` l'applique ENSUITE, en plancher
+          plein, sur la durée finale — enveloppe et apprentissage compris. C'est
+          là que le garde-fou d'absurdité vit, et il RALLONGE : une durée sous
+          le plancher est remontée et le total s'étend.
 
         Deux variables, aucune régression sur le corpus :
 
@@ -3030,6 +3232,32 @@ class TilauScopeRoastPlan:
     ## laisse les deux pentes au même chiffre une fois arrondies sur le plan.
     _DESCENT_MARGIN: Final[float] = 0.95
 
+    ## ── Pente moyenne du séchage : loi de MONTÉE, pas constante ──────────────
+    ## L'enveloppe prêtait à toute fournée la moyenne de ses deux premiers
+    ## points, (16+12)/2 = 14 °C/min. La machine ne fait pas ça : mesuré par
+    ## bande de masse, 13,5 au-dessus de 380 g mais 10,3 entre 200 et 260 g.
+    ## Physiquement, une petite fournée retourne HAUT (TP 119 °C contre 93) donc
+    ## elle démarre déjà dans la partie décroissante de la courbe — elle ne voit
+    ## jamais le pic post-TP que l'enveloppe lui prête. Ce pic est une géométrie
+    ## de GROSSE fournée.
+    ##
+    ## La grandeur qui la décrit est la MONTÉE à couvrir, que le plan connaît
+    ## déjà : plus le trajet est long, plus la moyenne est haute, parce qu'un
+    ## long trajet part d'un TP bas où le pic est réellement disponible.
+    ## Ajusté sur le corpus récent (n=56, depuis nov. 2025) : R² 0,53, r +0,73.
+    ##
+    ## ⚠️ La boucle n'est PAS fermée ici, et c'est l'écart qui le prouve : le plan
+    ## PRESCRIT la durée de séchage, donc si elle était tenue la pente réalisée
+    ## vaudrait 14. Elle vaut 10,3 à 250 g. Le plan n'est pas atteint, et l'écart
+    ## croît de façon monotone quand la fournée diminue — un écho ne ferait pas ça.
+    ##
+    ## Ne porte QUE sur le séchage : c'est ce qui a été mesuré. Mettre toute
+    ## l'enveloppe à cette échelle a été essayé et donne 15:31 sur 250 g.
+    _DRY_ROR_RISE_INTERCEPT: Final[float] = 6.79
+    _DRY_ROR_PER_RISE_C: Final[float] = 0.110
+    ## Garde-fou bas : sous ce niveau la pente ne décrit plus un séchage.
+    _DRY_ROR_MIN_C: Final[float] = 6.0
+
     @classmethod
     def _envelope_timing(cls, *, envelope: "tuple[float, float, float, float]",
                          tp_time_min: float, tp_bt_c: float, dry_bt_c: float,
@@ -3050,14 +3278,39 @@ class TilauScopeRoastPlan:
         the rest is 12 → 8.
         """
         _post_tp, _de, _pre_fc, _at_fc = envelope
-        _dry_ror: float = (_post_tp + _de) / 2.0
         _dry_rise: float = dry_bt_c - tp_bt_c
+        ## Pente moyenne du séchage : loi de montée, plafonnée par la moyenne de
+        ## l'enveloppe. Le plafond ne mord pas sur les montées observées (60 °C
+        ## donne 13,4 contre 14) — c'est un filet, pour que la loi ne puisse
+        ## jamais demander à la machine plus que ce que l'enveloppe promet.
+        ## Le plafond gagne sur le plancher : `_clamp` rend `lo` quand lo > hi,
+        ## donc un plancher figé à 6 sortirait au-dessus du plafond sur une
+        ## machine dont l'enveloppe moyenne descend sous 6 °C/min — le garde-fou
+        ## demanderait alors plus que ce que l'enveloppe promet, l'inverse de
+        ## son rôle.
+        _dry_ror_cap: float = (_post_tp + _de) / 2.0
+        _dry_ror: float = _clamp(
+            cls._DRY_ROR_RISE_INTERCEPT + cls._DRY_ROR_PER_RISE_C * max(0.0, _dry_rise),
+            min(cls._DRY_ROR_MIN_C, _dry_ror_cap), _dry_ror_cap)
         _dry_time: float = (tp_time_min + _dry_rise / _dry_ror
                             if _dry_rise > 0.0 and _dry_ror > 0.0 else tp_time_min)
         ## Corrections eau/ambiante ET plancher machine entrent ICI, pas après :
         ## appliqués en aval, ils déplaçaient le séchage sur lequel on venait
         ## justement de caler le Maillard.
-        _dry_time = max(tp_time_min, _dry_time + dry_correction_min, dry_floor_min)
+        ## Le plancher ne peut pas dépasser l'attente : c'est un MINIMUM, et un
+        ## minimum au-dessus de ce que la machine fait en moyenne est une
+        ## contradiction. Il est calibré sur 0,75 × plafond (12 °C/min) quand la
+        ## loi de montée en donne 13,9 sur une grosse fournée — il allongeait
+        ## alors le séchage de 45 s au lieu de le garder. Borné ICI, il retrouve
+        ## son rôle : rattraper une correction d'eau trop courte, jamais rallonger.
+        ##
+        ## ⚠️ Ce bornage vaut pour CE site seulement. Le garde-fou d'absurdité
+        ## n'est pas perdu : `_calibrate_and_floor_phase_durations` réapplique le
+        ## MÊME plancher, non borné, sur la durée finale, après l'enveloppe et
+        ## après l'apprentissage. Une durée physiquement hors d'atteinte y est
+        ## toujours remontée.
+        _dry_floor_min = min(dry_floor_min, _dry_time)
+        _dry_time = max(tp_time_min, _dry_time + dry_correction_min, _dry_floor_min)
         if _dry_rise > 0.0 and _dry_time > tp_time_min:
             _dry_ror = _dry_rise / (_dry_time - tp_time_min)
 
@@ -3074,7 +3327,8 @@ class TilauScopeRoastPlan:
         ## impossible, le RoR n'a pas le temps de descendre. C'est un RAPPORT,
         ## d'où _MAILLARD_TO_DRYING_MAX, et non une simple comparaison.
         ## C'est le MAILLARD qui cède. Le séchage a une ancre de DURÉE tenue par
-        ## la masse (3:00 à 150 g, 4:00 à 400 g, cf. _dry_floor_min) ; le Maillard
+        ## la masse (3:00 à 150 g, 4:00 à 400 g, `_dry_floor_min`, tenue en aval
+        ## par `_calibrate_and_floor_phase_durations` et non ici) ; le Maillard
         ## n'en a pas — il n'a qu'une enveloppe, et une enveloppe se resserre.
         ## Rallonger le séchage pour couvrir un Maillard trop long donnait 4:50 de
         ## séchage sur 150 g, deux fois le roast réel.
@@ -3219,6 +3473,9 @@ class TilauScopeRoastPlan:
         # le total est la somme des trois (calculé plus bas), donc c'est LUI qui
         # s'allonge quand un garde-fou mord. Recalculer le Maillard par
         # soustraction ici écraserait la durée apprise de l'historique.
+        # ⚠️ C'EST ICI que le plancher de séchage rallonge — `_envelope_timing`
+        # reçoit le même chiffre mais borné à la durée déduite, donc il n'y peut
+        # que retenir, jamais étendre. Ce bloc-ci est le garde-fou d'absurdité.
         # ⚠️ Le plancher de séchage DÉPEND DU POIDS depuis le 2026-08-08 : voir
         # _dry_floor_min. Il valait 4,5 min en dur, ce qui le rendait faux aux
         # deux bouts — trop contraignant sur un petit lot (il écrasait jusqu'à la
@@ -4178,6 +4435,13 @@ class TilauScopeRoastPlan:
             # --- 4. Build the PCHIP grids from the anchors (shared builder) ---
             return self._build_pchip_curve(waypoints)
 
+    @staticmethod
+    def _read_roast_destination() -> str:
+        """Destination courante du café, normalisée sur la table des bonus."""
+        _dest = str(QSettings().value('tilauscope/roast_destination',
+                                      _DEV_DESTINATION_DEFAULT, str) or "").strip().lower()
+        return _dest if _dest in _DEV_DESTINATION_BONUS_SEC else _DEV_DESTINATION_DEFAULT
+
     def generate_roast_plan(self, bean:GreenBean, agtron_target:AgtronScale, ambient_temp:float, ambient_humidity:float, charge_weight:float, roast_altitude:float, bt_deviation:ProbeDeviation|None, airwave_present:bool=False, minutes_since_last_drop:'float | None'=None):
 
         # ── UNIT NORMALISATION ───────────────────────────────────────────────────
@@ -4186,6 +4450,10 @@ class TilauScopeRoastPlan:
         # to °C here so every formula below is unit-safe.
         # We convert back to the native unit only in the final output dict.
         from artisanlib.util import fromFtoCstrict, fromCtoFstrict
+
+        # La destination peut avoir changé depuis la construction du moteur
+        # (celui-ci est mis en cache par ses appelants) : on la relit ici.
+        self.roast_destination = self._read_roast_destination()
 
         _is_fahrenheit = (self.mode == "F")
 
@@ -4395,12 +4663,21 @@ class TilauScopeRoastPlan:
         # on the modulation/soak outcome, and the modulation/soak does not
         # depend on fc_bt, so pulling the whole stage ahead of the regression
         # does not change the result.
+        ## Poids du terme de famille = confiance dans l'identité génétique.
+        ## Hoos la pose lui-même : 20-25 % de pollinisation croisée, erreurs de
+        ## pépinière, identifications à l'œil. Un mélange dilue la génétique du
+        ## composant nommé, d'où la demi-confiance ; une variété absente ou non
+        ## reconnue annule le terme et ramène au comportement antérieur.
+        _family_weight: float = 0.0
+        if getattr(bean, "varieties", ""):
+            _family_weight = 0.5 if getattr(bean, "is_blend", False) else 1.0
         _charge = self._charge_setup(
             process_type_lower=process_type_lower,
+            varieties=getattr(bean, "varieties", "") or "",
+            family_weight=_family_weight,
             moisture=_moisture, structure=_structure,
             ambient_temp_c=_ambient_measured_c, minutes_since_last_drop=minutes_since_last_drop,
             thermal_mass_idx=_thermal_mass_idx, heat_retention_idx=_heat_retention_idx)
-        _charge_band = _charge.band
         _charge_temperature = _charge.nominal_temperature_c
 
         # FC regression adjustment by charge temperature
@@ -4459,6 +4736,16 @@ class TilauScopeRoastPlan:
         # for the doctrine comments on the split.
         total_time_min, dry_time_min, dev_time_min = self._base_phase_durations(
             roast_constraints=roast_constraints, structure=_structure)
+        ## Destination : le seul endroit où elle agit. `dev_time_min` est un
+        ## INTRANT de l'enveloppe (arbitrage 2026-08-04 : le développement garde
+        ## sa durée, c'est son ΔT qui se déduit), donc le décalage se propage
+        ## seul jusqu'à la température de largage et à la cible de perte de masse.
+        _dest_bonus_min: float = (_DEV_DESTINATION_BONUS_SEC[self.roast_destination] / 60.0)
+        if _dest_bonus_min > 0.0:
+            dev_time_min += _dest_bonus_min
+            total_time_min += _dest_bonus_min
+            _logd.info(f"RoastPlan: destination {self.roast_destination} "
+                       f"+{_dest_bonus_min * 60.0:.0f}s of development")
         _grid_dry_time_min: float = dry_time_min
 
         heater_dry_base:float = roast_constraints.heater_cmfc[0]*100
@@ -5008,7 +5295,10 @@ class TilauScopeRoastPlan:
             "Weight": charge_weight,
             "Process Type": process_type,
             "Density": f"{density:.1f}",
-            "Bean Humidity": f"{humidity:.1f}",
+            # Also the numeric input the weight-loss target reads back
+            # (weight_loss_target_from_plan) — `or 0.0` because an unmeasured
+            # lot carries None here and a format would raise.
+            "Bean Humidity": f"{(humidity or 0.0):.1f}",
             "Water Activity Used": f"{bean.water_activity:.3f}" if bean.water_activity > 0.0 else "Not measured",
             "Ambient Temp": f"{_to_native(ambient_temp_c):.1f}",
             "Ambient Humidity": f"{ambient_humidity:.1f}",
@@ -5064,6 +5354,15 @@ class TilauScopeRoastPlan:
             "FC Time":self.format_time(fc_time_min),
             "Development Phase":self.format_time(dev_time_min),
             "Development Phase %": f"{dev_phase_percent:.1f}",
+            # Numeric twin of "Development Phase", which is a M:SS string and
+            # unparseable downstream. With "Bean Humidity" it is what the
+            # weight-loss target is read back from.
+            "Development Phase (min)": f"{dev_time_min:.2f}",
+            # What the cultivar family moved on the charge, so the operator sees
+            # the prior instead of being quietly steered by it. Empty = none read.
+            "Charge Family": _charge.family_name,
+            "Charge Family Delta": f"{_charge.family_delta_c:+.0f}",
+            "Roast Destination": self.roast_destination,
             "Total Time":self.format_time(drop_time_min),
             "Drum Speed (%) (Dry|Mai|Dev)": f"{' | '.join(drum_speed_pct)}",
             "Heater (%) (Dry|Mai|Dev)": f"{' | '.join(heater)}",
@@ -5095,6 +5394,13 @@ class TilauScopeRoastPlan:
             "Dev Profile Source": _dev_ramp_source.label,  # learned (n=N) | default
             "FC Anticipation (s)": f"{fc_anticipation_sec:.0f}",
             "Target Agtron": target_roast_category, # Use the determined category
+            # What the plan promises on the scale, so the roast can be validated
+            # after the fact: the lot's water plus the dry matter the colour and
+            # the development burn off.
+            "Target Weight Loss": (
+                f"{_wl_target.target:.1f}" if (_wl_target := weight_loss_target(
+                    target_roast_category, moisture_pct=(humidity or 0.0),
+                    dev_time_min=dev_time_min)) else "N/A"),
             # Point 8: surface roaster capability flags so the UI/alarm factory
             # can adapt their behaviour without importing roasters.py.
             "Roaster": ctx.display_name if ctx else "Unknown",
@@ -6906,6 +7212,7 @@ class BuildPRoastPlanPDF(FPDF):
 
         ratio_data = [
             (QApplication.translate("tilauscope_roast_plan","Target Agtron Profile"), plan_data.get("Target Agtron")),
+            (QApplication.translate("tilauscope_roast_plan","Target weight loss (%)"), plan_data.get("Target Weight Loss")),
             (QApplication.translate("tilauscope_roast_plan","History support"), plan_data.get("History Support", "grid only")),
             (QApplication.translate("tilauscope_roast_plan","History profile"), plan_data.get("History Profile Source", "grid")),
             (QApplication.translate("tilauscope_roast_plan","Resulting DTR (%)"), plan_data.get("Target DTR")),

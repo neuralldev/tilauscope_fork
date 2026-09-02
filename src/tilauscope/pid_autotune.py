@@ -37,6 +37,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
+    QSizeGrip,
     QScrollArea,
     QTextBrowser,
     QVBoxLayout,
@@ -138,6 +139,20 @@ class PIDAutotune(QDialog):
     _OFFSET_MIN: Final[int] = -2
     _OFFSET_MAX: Final[int] = 2
     _SETTLE_WAIT_MS: Final[int] = 15_000
+    _MACHINE_SETUP_CODES: Final[frozenset[str]] = frozenset({
+        "monitoring_active",
+        "machine_identity_known",
+        "no_roast_running",
+        "software_pid_selected",
+        "gain_scheduling_disabled",
+        "artisan_pid_stopped",
+        "heater_slider_configured",
+        "heater_action_configured",
+        "normal_actuator_direction",
+        "no_simulator",
+        "preheat_pid_stopped",
+        "rollback_snapshot_available",
+    })
 
     def __init__(self, parent: QWidget | None, aw: ApplicationWindow) -> None:
         # A frameless modeless child can be constructed but never presented as
@@ -271,6 +286,10 @@ class PIDAutotune(QDialog):
         header.addWidget(close_btn)
         shell.addLayout(header)
         shell.addWidget(content_scroll, 1)
+        grip_row = QHBoxLayout()
+        grip_row.addStretch()
+        grip_row.addWidget(QSizeGrip(container))
+        shell.addLayout(grip_row)
 
         intro = QLabel(QApplication.translate("tilauscope_pid", 
             "TilauScope translates Artisan's calculations into machine behaviour. "
@@ -1326,6 +1345,8 @@ class CalibrationReadinessDialog(QDialog):
         self._guide_timer.setInterval(1000)
         self._guide_timer.timeout.connect(self.refresh)
         self._details_visible = False
+        self._awaiting_final_shutdown_confirmation = False
+        self._final_result_text = ""
         apply_tilau_theme(self, ground=False)
         self.setWindowFlags(
             Qt.WindowType.Dialog
@@ -1416,7 +1437,7 @@ class CalibrationReadinessDialog(QDialog):
         )
         self.zero_warning = QLabel(QApplication.translate("tilauscope_pid", 
             "The shutdown qualification can only command 0% heat. It never "
-            "restores the previous power; the heater remains stopped."
+            "restores the previous power. You must verify the physical heater."
         ))
         self.zero_warning.setWordWrap(True)
         self.zero_warning.setStyleSheet(
@@ -1442,12 +1463,24 @@ class CalibrationReadinessDialog(QDialog):
         self.start_live.setEnabled(False)
         self.start_live.clicked.connect(self._start_live_test)
         self.stop_live = assistant._secondary_button(
-            QApplication.translate("tilauscope_pid", "STOP TEST AND CUT HEAT")
+            QApplication.translate("tilauscope_pid", "STOP TEST AND REQUEST 0% HEAT")
         )
         self.stop_live.setEnabled(False)
         self.stop_live.clicked.connect(self._stop_live_test)
         live_buttons.addWidget(self.start_live)
         live_buttons.addWidget(self.stop_live)
+        self.final_physical_off = QCheckBox(QApplication.translate("tilauscope_pid",
+            "I have verified that the physical heater is off"
+        ))
+        self.confirm_final_shutdown = assistant._primary_button(
+            QApplication.translate("tilauscope_pid", "CONFIRM HEATER IS PHYSICALLY OFF")
+        )
+        self.confirm_final_shutdown.clicked.connect(
+            self._confirm_final_physical_shutdown
+        )
+        self.final_physical_off.toggled.connect(
+            self.confirm_final_shutdown.setEnabled
+        )
         buttons = QHBoxLayout()
         self.details_button = assistant._secondary_button(
             QApplication.translate("tilauscope_pid", "SHOW TECHNICAL DETAILS")
@@ -1458,11 +1491,12 @@ class CalibrationReadinessDialog(QDialog):
         close = assistant._primary_button(QApplication.translate("tilauscope_pid", "CLOSE"))
         self.details_button.clicked.connect(self._toggle_details)
         self.export_pilot.clicked.connect(self._export_pilot_sheet)
-        close.clicked.connect(self.accept)
+        close.clicked.connect(self._request_close)
         buttons.addWidget(self.details_button)
         buttons.addWidget(self.export_pilot)
         buttons.addStretch()
         buttons.addWidget(close)
+        buttons.addWidget(QSizeGrip(card))
 
         layout.addWidget(title)
         layout.addWidget(explanation)
@@ -1479,6 +1513,8 @@ class CalibrationReadinessDialog(QDialog):
         layout.addWidget(self.physical_off)
         layout.addWidget(self.confirm_zero)
         layout.addLayout(live_buttons)
+        layout.addWidget(self.final_physical_off)
+        layout.addWidget(self.confirm_final_shutdown)
         outer_layout.addLayout(buttons)
         for checkbox in (
             self.machine_empty,
@@ -1488,6 +1524,8 @@ class CalibrationReadinessDialog(QDialog):
             checkbox.toggled.connect(self.refresh)
         self.checks.hide()
         self.export_pilot.hide()
+        self.final_physical_off.hide()
+        self.confirm_final_shutdown.hide()
         if (
             not self.assistant.is_monitoring
             and not self.assistant._readiness_history
@@ -1548,6 +1586,47 @@ class CalibrationReadinessDialog(QDialog):
     ) -> str:
         """Return only the single action the operator should perform now."""
         blocked = set(report.blocking_codes)
+        setup_messages = {
+            "monitoring_active": QApplication.translate("tilauscope_pid",
+                "Start monitoring, then wait for the first temperature reading."
+            ),
+            "machine_identity_known": QApplication.translate("tilauscope_pid",
+                "Select the machine and configure its heater control before continuing."
+            ),
+            "no_roast_running": QApplication.translate("tilauscope_pid",
+                "Finish or reset the current roast before preparing an empty-machine test."
+            ),
+            "software_pid_selected": QApplication.translate("tilauscope_pid",
+                "Select Artisan's internal software PID before continuing."
+            ),
+            "gain_scheduling_disabled": QApplication.translate("tilauscope_pid",
+                "Turn gain scheduling off for this single-temperature test."
+            ),
+            "artisan_pid_stopped": QApplication.translate("tilauscope_pid",
+                "Stop Artisan's PID. TilauScope must be the only automatic heat controller."
+            ),
+            "heater_slider_configured": QApplication.translate("tilauscope_pid",
+                "Assign the heater output to one Artisan event slider."
+            ),
+            "heater_action_configured": QApplication.translate("tilauscope_pid",
+                "Configure the hardware action of the heater slider."
+            ),
+            "normal_actuator_direction": QApplication.translate("tilauscope_pid",
+                "Correct the heater direction: a higher command must produce more heat."
+            ),
+            "no_simulator": QApplication.translate("tilauscope_pid",
+                "Stop the Artisan simulator before using the physical machine."
+            ),
+            "preheat_pid_stopped": QApplication.translate("tilauscope_pid",
+                "Stop TilauPID preheating. Only the test may command the heater."
+            ),
+            "rollback_snapshot_available": QApplication.translate("tilauscope_pid",
+                "The PID settings could not be backed up. Close this window and try again."
+            ),
+        }
+        for check in report.checks:
+            if not check.passed and check.code in self.assistant._MACHINE_SETUP_CODES:
+                return setup_messages[check.code]
         if "sensor_valid" in blocked:
             return QApplication.translate("tilauscope_pid", 
                 "TilauScope is waiting for a valid bean-temperature reading. "
@@ -1690,6 +1769,10 @@ class CalibrationReadinessDialog(QDialog):
             return QApplication.translate("tilauscope_pid", "STEP 3 OF 6"), QApplication.translate("tilauscope_pid", 
                 "Confirm one physical condition"
             )
+        if blocked & self.assistant._MACHINE_SETUP_CODES:
+            return QApplication.translate("tilauscope_pid", "ACTION REQUIRED"), QApplication.translate("tilauscope_pid",
+                "Secure the machine settings"
+            )
         if "sensor_valid" in blocked:
             return QApplication.translate("tilauscope_pid", "STEP 1 OF 6"), QApplication.translate("tilauscope_pid", 
                 "Read the temperature"
@@ -1767,8 +1850,8 @@ class CalibrationReadinessDialog(QDialog):
         self.guide_title.setText(heading)
         if self.qualification.phase == "failed":
             self.next_steps.setText(QApplication.translate("tilauscope_pid", 
-                "Heat remains commanded at 0%. Close this window, correct the "
-                "problem, then restart the guided preparation from the beginning."
+                "TilauScope requested 0%, but physical shutdown is not confirmed. "
+                "Use the machine's heat cut-off and verify the heater before continuing."
             ))
         elif self.qualification.phase == "software_zero_confirmed":
             self.next_steps.setText(QApplication.translate("tilauscope_pid", 
@@ -1846,6 +1929,16 @@ class CalibrationReadinessDialog(QDialog):
             self.qualification.phase == "qualified" and report.ready
         )
         self.stop_live.setVisible(self._runner is not None)
+        self.final_physical_off.setVisible(
+            self._awaiting_final_shutdown_confirmation
+        )
+        self.confirm_final_shutdown.setVisible(
+            self._awaiting_final_shutdown_confirmation
+        )
+        self.confirm_final_shutdown.setEnabled(
+            self._awaiting_final_shutdown_confirmation
+            and self.final_physical_off.isChecked()
+        )
         self.status.hide()
         if self.qualification.phase == "qualified":
             if not profile_authorized and not pilot_authorized:
@@ -1856,7 +1949,8 @@ class CalibrationReadinessDialog(QDialog):
                 self.status.show()
         elif self.qualification.phase == "failed":
             self.status.setText(QApplication.translate("tilauscope_pid", 
-                "The shutdown qualification is no longer valid. Heat remains at 0%."
+                "The shutdown qualification is no longer valid. Do not assume that "
+                "the physical heater is off."
             ))
             self.status.show()
 
@@ -1974,7 +2068,8 @@ class CalibrationReadinessDialog(QDialog):
             self.physical_off.setEnabled(False)
             self.confirm_zero.setEnabled(False)
             self._show_blocking_message(QApplication.translate("tilauscope_pid", 
-                "Shutdown qualification timed out. Heat remains commanded at 0%."
+                "Shutdown qualification timed out. Use the machine's physical heat "
+                "cut-off and verify the heater."
             ))
 
     def _start_live_test(self) -> None:
@@ -1992,7 +2087,8 @@ class CalibrationReadinessDialog(QDialog):
             QApplication.translate("tilauscope_pid", "START SUPERVISED HEAT TEST"),
             QApplication.translate("tilauscope_pid",
                 "The machine is empty and supervised. TilauScope will vary heat for "
-                "about 10 minutes and cut it to 0% on any anomaly. Start now?"
+                "about 10 minutes, request 0% on any anomaly, then require physical "
+                "shutdown verification. Start now?"
             ),
             icon=QMessageBox.Icon.Question,
             buttons=[QApplication.translate("tilauscope_pid", "Cancel"),
@@ -2000,6 +2096,11 @@ class CalibrationReadinessDialog(QDialog):
         )
         if answer != 1:
             return
+        self._awaiting_final_shutdown_confirmation = False
+        self._final_result_text = ""
+        self.final_physical_off.setChecked(False)
+        self.final_physical_off.hide()
+        self.confirm_final_shutdown.hide()
         try:
             runner = self.assistant._build_live_calibration_runner(
                 readiness=self._report,
@@ -2019,7 +2120,8 @@ class CalibrationReadinessDialog(QDialog):
             _log.exception("PID supervised calibration could not start")
             self.stop_live.setEnabled(False)
             self._show_blocking_message(QApplication.translate("tilauscope_pid", 
-                "The test could not start. Heat remains at 0%."
+                "The test could not start. Use the machine's physical heat cut-off "
+                "and verify the heater."
             ))
 
     def _export_pilot_sheet(self) -> None:
@@ -2067,40 +2169,99 @@ class CalibrationReadinessDialog(QDialog):
 
     def _live_finished(self, phase: str, reason: str) -> None:
         self.stop_live.setEnabled(False)
+        runner = self._runner
+        shutdown_dispatched = bool(
+            runner is not None
+            and runner.coordinator.shutdown_command_dispatched
+        )
+        self._runner = None
+        if self.assistant._calibration_runner is runner:
+            self.assistant._calibration_runner = None
+        if runner is not None:
+            runner.close()
         if "journal_persistence_failed" in reason:
-            self.guide_progress.setText(QApplication.translate("tilauscope_pid", "TEST FINISHED"))
-            self.guide_title.setText(QApplication.translate("tilauscope_pid", "Report unavailable"))
-            self.next_steps.setText(QApplication.translate("tilauscope_pid", 
-                "Heat is at 0% and the previous settings were restored, but the "
-                "report could not be saved. Do not authorize this machine."
-            ))
-            return
-        if reason == "pilot_completed_pending_review":
-            self.status.setText(QApplication.translate("tilauscope_pid", 
-                "The pilot sequence completed. Heat is at 0%, the previous settings "
-                "were restored and the report is ready for review."
-            ))
+            result = QApplication.translate("tilauscope_pid",
+                "The previous PID settings were restored, but the report could not "
+                "be saved. Do not authorize this machine."
+            )
+        elif reason == "pilot_completed_pending_review":
+            result = QApplication.translate("tilauscope_pid",
+                "The pilot sequence completed. The previous PID settings were "
+                "restored and the report is ready for review."
+            )
         elif phase == "complete":
-            self.status.setText(QApplication.translate("tilauscope_pid", 
+            result = QApplication.translate("tilauscope_pid",
                 "The response improved safely. The cautious setting was kept and "
                 "the complete report was saved."
-            ))
+            )
         else:
-            self.status.setText(QApplication.translate("tilauscope_pid", 
-                "The test stopped safely: heat was cut to 0%, the previous settings "
-                "were restored and the report was saved."
-            ))
+            result = QApplication.translate("tilauscope_pid",
+                "The test stopped and the previous PID settings were restored. "
+                "The report was saved."
+            )
         if self.assistant._last_calibration_journal_path is not None:
-            self.status.setText(
-                self.status.text()
+            result = (
+                result
                 + "\n"
                 + QApplication.translate("tilauscope_pid", "Report: ")
                 + str(self.assistant._last_calibration_journal_path)
             )
+        dispatch_text = (
+            QApplication.translate("tilauscope_pid",
+                "The 0% command was dispatched through Artisan's configured action."
+            )
+            if shutdown_dispatched else
+            QApplication.translate("tilauscope_pid",
+                "TilauScope could not confirm dispatch of the 0% command. Use the "
+                "machine's physical heat cut-off now."
+            )
+        )
+        self._final_result_text = result
+        self._awaiting_final_shutdown_confirmation = True
         self.guide_progress.setText(QApplication.translate("tilauscope_pid", "TEST FINISHED"))
-        self.guide_title.setText(QApplication.translate("tilauscope_pid", "The machine is safe"))
-        self.next_steps.setText(self.status.text())
+        self.guide_title.setText(QApplication.translate("tilauscope_pid", "VERIFY THE PHYSICAL HEATER"))
+        self.next_steps.setText(
+            dispatch_text
+            + "\n\n"
+            + QApplication.translate("tilauscope_pid",
+                "Look at the machine. If necessary, use its physical heat cut-off. "
+                "Confirm below only when the heater is really off."
+            )
+            + "\n\n"
+            + result
+        )
+        self.final_physical_off.setChecked(False)
+        self.final_physical_off.show()
+        self.confirm_final_shutdown.setEnabled(False)
+        self.confirm_final_shutdown.show()
         self.status.hide()
+
+    def _confirm_final_physical_shutdown(self) -> None:
+        if (
+            not self._awaiting_final_shutdown_confirmation
+            or not self.final_physical_off.isChecked()
+        ):
+            return
+        self._awaiting_final_shutdown_confirmation = False
+        self.final_physical_off.hide()
+        self.confirm_final_shutdown.hide()
+        self.guide_progress.setText(QApplication.translate("tilauscope_pid", "TEST FINISHED"))
+        self.guide_title.setText(QApplication.translate("tilauscope_pid", "Physical heater shutdown confirmed"))
+        self.next_steps.setText(self._final_result_text)
+
+    def _request_close(self) -> None:
+        if self._runner is not None:
+            runner = self._runner
+            runner.close()
+            if self._runner is runner:
+                self._runner = None
+                if self.assistant._calibration_runner is runner:
+                    self.assistant._calibration_runner = None
+            return
+        if self._awaiting_final_shutdown_confirmation:
+            self.guide_title.setText(QApplication.translate("tilauscope_pid", "Verify the physical heater before closing"))
+            return
+        self.accept()
 
     def mousePressEvent(self, a0: QMouseEvent | None) -> None:
         if a0 is not None and a0.button() == Qt.MouseButton.LeftButton:
@@ -2115,8 +2276,21 @@ class CalibrationReadinessDialog(QDialog):
 
     def closeEvent(self, a0: QCloseEvent | None) -> None:
         self._timeout_timer.stop()
-        if self._runner is not None and self._runner.coordinator.phase == "running":
-            self._runner.abort("preparation_window_closed")
+        runner = self._runner
+        if runner is not None:
+            runner.close()
+            if self._runner is runner:
+                self._runner = None
+                if self.assistant._calibration_runner is runner:
+                    self.assistant._calibration_runner = None
+            if a0 is not None:
+                a0.ignore()
+            return
+        if self._awaiting_final_shutdown_confirmation:
+            self.guide_title.setText(QApplication.translate("tilauscope_pid", "Verify the physical heater before closing"))
+            if a0 is not None:
+                a0.ignore()
+            return
         if self._applied_signal is not None:
             try:
                 self._applied_signal.disconnect(self._zero_applied)
@@ -2194,6 +2368,10 @@ class HelpDialog(QDialog):
         close.setMinimumHeight(40)
         close.clicked.connect(self.close)
         layout.addWidget(close)
+        grip_row = QHBoxLayout()
+        grip_row.addStretch()
+        grip_row.addWidget(QSizeGrip(container))
+        layout.addLayout(grip_row)
 
     def mousePressEvent(self, a0: QMouseEvent | None) -> None:
         if a0 is None:

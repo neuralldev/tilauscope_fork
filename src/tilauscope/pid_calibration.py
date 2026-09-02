@@ -1106,6 +1106,10 @@ class LiveCalibrationCoordinator:
         self.last_command: CalibrationCommand | None = None
         self._restored = False
         self._complete_after_ack = False
+        # None means that no terminal 0% command has been requested yet.
+        # True confirms only dispatch through Artisan's configured action; the
+        # operator must still confirm that the physical heater is off.
+        self.shutdown_command_dispatched: bool | None = None
         self._audit_events: list[CalibrationAuditEvent] = []
         self._last_timestamp_sec = 0.0
 
@@ -1176,9 +1180,23 @@ class LiveCalibrationCoordinator:
         timestamp = self._last_timestamp_sec if now_sec is None else now_sec
         self._last_timestamp_sec = timestamp
         pending = self.pending
-        if self.phase != "running" or pending is None:
+        if pending is None:
             return False
         if heater_slider != pending.heater_slider:
+            return False
+        if self.phase in {"complete", "safe_stop", "refused"} and pending.power_pct == 0:
+            self.pending = None
+            self.shutdown_command_dispatched = bool(
+                action_fired and applied_power_pct == 0
+            )
+            if self.shutdown_command_dispatched:
+                self._record(
+                    "power_acknowledged",
+                    timestamp_sec=timestamp,
+                    power_pct=0,
+                )
+            return self.shutdown_command_dispatched
+        if self.phase != "running":
             return False
         if not action_fired:
             self._emergency_stop("heater_action_not_fired", now_sec=timestamp)
@@ -1216,6 +1234,29 @@ class LiveCalibrationCoordinator:
         if self.phase in {"safe_stop", "refused"} and self.last_command is not None:
             return self.last_command
         return self._emergency_stop(reason, now_sec=now_sec)
+
+    def request_zero_after_complete(self, *, now_sec: float) -> None:
+        """Stop heat after an accepted run without rolling back its PID gains."""
+        if self.phase != "complete":
+            raise RuntimeError("calibration is not complete")
+        self._last_timestamp_sec = now_sec
+        self.pending = PendingPowerCommand(
+            heater_slider=self.heater_slider,
+            power_pct=0,
+            issued_at_sec=now_sec,
+        )
+        self.last_requested_power = 0
+        self.shutdown_command_dispatched = False
+        self._record(
+            "power_requested",
+            timestamp_sec=now_sec,
+            power_pct=0,
+            reason="test_complete",
+        )
+        try:
+            self.request_power(self.heater_slider, 0, True)
+        except Exception:  # noqa: BLE001 - physical confirmation remains mandatory
+            self.pending = None
 
     def _execute(
         self, command: CalibrationCommand, now_sec: float
@@ -1302,9 +1343,14 @@ class LiveCalibrationCoordinator:
         self._last_timestamp_sec = timestamp
         self.phase = "refused" if refused else "safe_stop"
         self.reason = reason
-        self.pending = None
+        self.pending = PendingPowerCommand(
+            heater_slider=self.heater_slider,
+            power_pct=0,
+            issued_at_sec=timestamp,
+        )
         self._complete_after_ack = False
         self.last_requested_power = 0
+        self.shutdown_command_dispatched = False
         self._record(
             "emergency_stop",
             timestamp_sec=timestamp,
@@ -1320,7 +1366,7 @@ class LiveCalibrationCoordinator:
         try:
             self.request_power(self.heater_slider, 0, True)
         except Exception:  # noqa: BLE001 - restoration must still be attempted
-            pass
+            self.pending = None
         self._restore_once(timestamp)
         command = CalibrationCommand(
             phase="refused" if refused else "safe_stop",

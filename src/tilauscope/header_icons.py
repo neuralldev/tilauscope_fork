@@ -189,6 +189,27 @@ SVG_HEATCUT: Final[str] = (
     '</svg>'
 )
 
+# ── date fields — calendrier, et calendrier barré quand la date est omise ────
+# Même convention de rature que SVG_HEATCUT : la diagonale dit « sans ».
+SVG_CALENDAR: Final[str] = (
+    f'<svg {_SVG_ATTRS}>'
+    '<rect x="3.5" y="5" width="17" height="15" rx="2"/>'
+    '<line x1="3.5" y1="9.5" x2="20.5" y2="9.5"/>'
+    '<line x1="8" y1="3" x2="8" y2="6.5"/>'
+    '<line x1="16" y1="3" x2="16" y2="6.5"/>'
+    '</svg>'
+)
+
+SVG_CALENDAR_OFF: Final[str] = (
+    f'<svg {_SVG_ATTRS}>'
+    '<rect x="3.5" y="5" width="17" height="15" rx="2"/>'
+    '<line x1="3.5" y1="9.5" x2="20.5" y2="9.5"/>'
+    '<line x1="8" y1="3" x2="8" y2="6.5"/>'
+    '<line x1="16" y1="3" x2="16" y2="6.5"/>'
+    '<line x1="4" y1="21" x2="20" y2="3"/>'
+    '</svg>'
+)
+
 # ── btn_dock — ancre marine (ring + hampe + jas + arc) ## TILAU ── ───────────
 # Anchored = teal, floating = muted. Stroke-only, lisible à 18 px.
 SVG_DOCK: Final[str] = (

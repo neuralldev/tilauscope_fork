@@ -33,13 +33,21 @@ from PyQt6.QtWidgets import (QApplication, QMessageBox) # @UnusedImport @Reimpor
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
-from tilauscope.tilauscope_types import (AGTRON_SCALES, THEME, RoastingPhase, ROASTING_BASIC_BASE, WEIGHT_LOSS_PCT_BY_CATEGORY,
+from tilauscope.tilauscope_types import (AGTRON_SCALES, THEME, RoastingPhase, ROASTING_BASIC_BASE, weight_loss_target,
                                          get_ror_ideal_band, estimate_ror_dt, find_turning_point_index, find_flicks_crashes,
                                          resolve_color_system)
 from tilauscope.brew_advisor import BrewInput, WaterProfile
 from tilauscope.brew_advisor_dialog import BrewAdvisorDlg
 from tilauscope.cave.common import (
     _logd)
+
+
+def _safe_moisture(value) -> float:
+    """Green moisture as a float; 0.0 when absent or unreadable (= not measured)."""
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 class AnalysisMixin:
@@ -83,24 +91,31 @@ class AnalysisMixin:
                 pass
         return None
 
-    def roast_level_thresholds(self, roast_color_val):
+    def roast_level_thresholds(self, roast_color_val, *,
+                               moisture_pct: float = 0.0,
+                               dev_time_min: float = 0.0):
         """Return (level, thresholds) for the target roast color.
 
-        thresholds carries: dtr (min,max %), wl (min,max %), drop_c (low,high
-        bean-temp window in °C) and dev_time (low,high absolute minutes FCs→DROP).
-        dtr/drop_c/dev_time come from ROASTING_BASIC_BASE (shared with the plan
-        generator); wl has no plan equivalent and lives in
-        WEIGHT_LOSS_PCT_BY_CATEGORY. When the color is unknown we fall back to
-        the Medium profile but keep level None so callers stay cautious.
+        thresholds carries: dtr (min,max %), wl (min,max %), wl_target (%),
+        drop_c (low,high bean-temp window in °C) and dev_time (low,high absolute
+        minutes FCs→DROP). dtr/drop_c/dev_time come from ROASTING_BASIC_BASE
+        (shared with the plan generator); wl comes from `weight_loss_target()`,
+        which needs the lot's water and the development on top of the colour —
+        pass both when the roast has them, or the target falls back to a neutral
+        moisture and drops the development term. When the color is unknown we
+        fall back to the Medium profile but keep level None so callers stay
+        cautious.
         """
         level = self.roast_level_from_color(roast_color_val)
         plan = next((p for p in ROASTING_BASIC_BASE.plans if p.name == level), None)
         if plan is None:
             plan = next(p for p in ROASTING_BASIC_BASE.plans if p.name == "Medium")
-        wl = WEIGHT_LOSS_PCT_BY_CATEGORY.get(plan.name, WEIGHT_LOSS_PCT_BY_CATEGORY["Medium"])
+        wl = weight_loss_target(plan.name, moisture_pct=moisture_pct,
+                                dev_time_min=dev_time_min)
         thresholds = {
             'dtr': (plan.dtr_pct[0] * 100.0, plan.dtr_pct[1] * 100.0),
-            'wl': wl,
+            'wl': (wl.low, wl.high),
+            'wl_target': wl.target,
             'drop_c': (float(plan.drop_temp[0]), float(plan.drop_temp[1])),
             'dev_time': plan.development_time,
         }
@@ -515,7 +530,10 @@ class AnalysisMixin:
         roast_color_val = roast_colour if roast_colour > 0 else None
 
         # Single resolution of the roast-level thresholds, reused by every check.
-        roast_level, lvl_th = self.roast_level_thresholds(roast_color_val)
+        roast_level, lvl_th = self.roast_level_thresholds(
+            roast_color_val,
+            moisture_pct=_safe_moisture(data.get("moisture_greens")),
+            dev_time_min=development / 60.0)
         lvl_dtr_min, lvl_dtr_max = lvl_th['dtr']
         lvl_wl_min,  lvl_wl_max  = lvl_th['wl']
         lvl_label = (
@@ -537,7 +555,11 @@ class AnalysisMixin:
             if _linked:
                 _proc = getattr(_linked, 'process', '').lower()
                 if any(p in _proc for p in ['natural', 'honey', 'anaerobic']):
-                    wl_hi_eff = max(wl_hi_eff, 20.0)
+                    # Surface sugars and looser chaff cost a little extra, but the
+                    # water and the development are now in the target itself: the
+                    # old absolute 20 % ceiling double-counted them and made the
+                    # "high" branch unreachable.
+                    wl_hi_eff += 1.0
                     wl_proc_hint = QApplication.translate("tilauscope_beancave", "(natural/honey)")
                 elif 'washed' in _proc:
                     wl_proc_hint = QApplication.translate("tilauscope_beancave", "(washed)")

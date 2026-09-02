@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 from PyQt6.QtCore import QSemaphore, Qt
-from PyQt6.QtWidgets import QMessageBox, QScrollArea, QWidget
+from PyQt6.QtWidgets import QSizeGrip, QScrollArea, QWidget
 
 from tilauscope.pid_autotune import CalibrationReadinessDialog, PIDAutotune
 
@@ -172,6 +172,7 @@ def test_present_creates_a_visible_dialog_window(
     scroll = window.findChild(QScrollArea, "PIDAssistantScroll")
     assert scroll is not None
     assert scroll.widgetResizable()
+    assert window.findChild(QSizeGrip) is not None
 
 
 def test_present_with_a_visible_main_window_parent(
@@ -380,6 +381,7 @@ def test_preparation_dialog_reveals_one_guided_action_at_a_time(
     assert dialog.windowFlags() & Qt.WindowType.FramelessWindowHint
     assert dialog.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
     assert dialog.findChild(QWidget, "CalibrationPreparationCard") is not None
+    assert dialog.findChild(QSizeGrip) is not None
     assert "valid bean-temperature" in dialog.next_steps.text()
     assert not dialog.checks.isVisible()
     assert dialog.machine_empty.isHidden()
@@ -417,6 +419,24 @@ def test_preparation_dialog_reveals_one_guided_action_at_a_time(
     dialog.close()
 
 
+def test_preparation_secures_controllers_before_requesting_manual_heat(
+    semantic_window: tuple[PIDAutotune, _Control, _Action],
+) -> None:
+    window, control, _ = semantic_window
+    control.pidActive = True
+    window.aw.qmc.pid.lastInput = 200.0
+    window.aw.eventslidervalues[3] = 30
+    window._readiness_history.extend(
+        (float(second), 200.0, 0.1, 0.1) for second in range(30)
+    )
+
+    dialog = CalibrationReadinessDialog(window)
+
+    assert "Stop Artisan's PID" in dialog.next_steps.text()
+    assert "heater slightly" not in dialog.next_steps.text()
+    dialog.close()
+
+
 def test_exporting_pilot_sheet_never_sends_an_actuator_command(
     monkeypatch: pytest.MonkeyPatch,
     semantic_window: tuple[PIDAutotune, _Control, _Action],
@@ -451,9 +471,8 @@ def test_zero_shutdown_bench_only_sends_zero_and_never_restores_power(
     dialog.airflow_safe.setChecked(True)
     dialog.supervised.setChecked(True)
     monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes,
+        "tilauscope.pid_autotune.show_styled_message",
+        lambda *_args, **_kwargs: 1,
     )
     monkeypatch.setattr(window, "_record_zero_output_evidence", lambda _identity: True)
 
@@ -489,9 +508,8 @@ def test_zero_shutdown_proof_is_invalidated_when_actuator_path_changes(
     dialog.airflow_safe.setChecked(True)
     dialog.supervised.setChecked(True)
     monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        lambda *_args, **_kwargs: QMessageBox.StandardButton.Yes,
+        "tilauscope.pid_autotune.show_styled_message",
+        lambda *_args, **_kwargs: 1,
     )
 
     # Hold the acknowledgement so the control path can change in flight.
@@ -503,6 +521,88 @@ def test_zero_shutdown_proof_is_invalidated_when_actuator_path_changes(
     assert dialog.qualification.phase == "failed"
     assert dialog.qualification.reason == "machine_identity_changed"
     assert not window._zero_output_qualified
+    dialog.close()
+
+
+def test_zero_dispatch_failure_never_claims_physical_shutdown(
+    monkeypatch: pytest.MonkeyPatch,
+    semantic_window: tuple[PIDAutotune, _Control, _Action],
+) -> None:
+    window, control, _ = semantic_window
+    control.pidActive = False
+    window._readiness_history.extend(
+        (float(second), 200.0, 0.1, 0.1) for second in range(30)
+    )
+    dialog = CalibrationReadinessDialog(window)
+    dialog.machine_empty.setChecked(True)
+    dialog.airflow_safe.setChecked(True)
+    dialog.supervised.setChecked(True)
+    monkeypatch.setattr(
+        "tilauscope.pid_autotune.show_styled_message",
+        lambda *_args, **_kwargs: 1,
+    )
+    window.aw.tilaupidSliderCommandSignal.callbacks.clear()
+    window.aw.tilaupidSliderCommandSignal.connect(
+        lambda slider, power, _fire: window.aw.tilaupidSliderAppliedSignal.emit(
+            slider, power, False
+        )
+    )
+
+    dialog._request_zero()
+
+    assert dialog.qualification.phase == "failed"
+    assert dialog.qualification.reason == "heater_action_not_fired"
+    assert "physical shutdown is not confirmed" in dialog.next_steps.text()
+    assert "remains at 0%" not in dialog.next_steps.text()
+    dialog.close()
+
+
+def test_terminal_result_disconnects_runner_and_requires_physical_confirmation(
+    semantic_window: tuple[PIDAutotune, _Control, _Action],
+) -> None:
+    window, _control, _ = semantic_window
+    dialog = CalibrationReadinessDialog(window)
+    closed: list[bool] = []
+    runner = SimpleNamespace(
+        coordinator=SimpleNamespace(shutdown_command_dispatched=True),
+        close=lambda: closed.append(True),
+    )
+    dialog._runner = runner
+    window._calibration_runner = runner
+
+    dialog._live_finished("safe_stop", "operator_cancelled")
+
+    assert closed == [True]
+    assert dialog._runner is None
+    assert window._calibration_runner is None
+    assert dialog._awaiting_final_shutdown_confirmation
+    assert "VERIFY THE PHYSICAL HEATER" in dialog.guide_title.text()
+    assert "machine is safe" not in dialog.next_steps.text().lower()
+    assert not dialog.final_physical_off.isHidden()
+    assert not dialog.confirm_final_shutdown.isEnabled()
+
+    dialog.final_physical_off.setChecked(True)
+    assert dialog.confirm_final_shutdown.isEnabled()
+    dialog._confirm_final_physical_shutdown()
+
+    assert not dialog._awaiting_final_shutdown_confirmation
+    assert "Physical heater shutdown confirmed" in dialog.guide_title.text()
+    dialog.close()
+
+
+def test_terminal_dialog_cannot_close_before_physical_confirmation(
+    semantic_window: tuple[PIDAutotune, _Control, _Action],
+) -> None:
+    window, _control, _ = semantic_window
+    dialog = CalibrationReadinessDialog(window)
+    dialog._awaiting_final_shutdown_confirmation = True
+
+    dialog._request_close()
+
+    assert dialog._awaiting_final_shutdown_confirmation
+    assert "before closing" in dialog.guide_title.text()
+    dialog.final_physical_off.setChecked(True)
+    dialog._confirm_final_physical_shutdown()
     dialog.close()
 
 

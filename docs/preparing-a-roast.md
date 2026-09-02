@@ -87,6 +87,24 @@ drives the roast plan and the predictions on the INSIGHTS tab.
 
 ---
 
+## Saying what the coffee is for
+
+The **⚙ OPTIONS** tab opens on **Roast intent**, above the target profile, because it decides
+what that profile has to serve.
+
+**What is this coffee for?** — *Filter*, *[Omni](glossary.md#omni)* or *Espresso*. It is the
+one thing here you choose; everything else on the card is read for you. The choice sets the
+development time: filter the shortest, espresso the longest, omni between the two. The gap is a
+handful of seconds, which is enough to be tasted, and it carries through to the drop temperature
+and to the [weight loss](glossary.md#weight-loss) to aim for. Your choice is remembered for the
+next roast.
+
+**Bean family** states what TilauScope read from the coffee's variety and what it did with it —
+for example *Bourbon — takes a slower roast (−4 °C on the charge)*. When the record names no
+variety, or names one that is not placed in a [family](glossary.md#bean-family), it says *not
+known — using the standard pace* and the charge is exactly what it would have been before. The
+line is there so the adjustment is visible rather than silently applied.
+
 ## Judging the batch before it starts
 
 The **ⓘ INSIGHTS** tab reads the batch and says what it expects — before the drum turns.
@@ -100,8 +118,13 @@ overloading.
 **Phase cheat-sheet (RoR)** gives the [RoR](glossary.md#ror--rate-of-rise) bands worth
 holding in each phase, available before the roast rather than discovered during it.
 
-**Predicted targets** projects total time, [DTR](glossary.md#dtr--development-time-ratio) and
-weight loss.
+**Predicted targets** projects the charge temperature, total time,
+[DTR](glossary.md#dtr--development-time-ratio) and [weight loss](glossary.md#weight-loss).
+**Charge** comes first because it is the first figure you act on: it is the temperature to
+preheat to, whether you let TilauPID do it or heat by hand. It was previously only visible in
+the preheating setpoint, and only when TilauPID was switched on. The weight-loss figure is the one to aim for on the
+scale after cooling, worked out from this lot's moisture and the development the plan holds —
+so entering the coffee's moisture before roasting makes it worth reading.
 
 **STRATEGY** condenses the whole thing into one sentence for this coffee, on this machine, at
 this target.
@@ -124,7 +147,10 @@ The **⚙ MORE OPTIONS** tab decides what happens without being asked.
 START is pressed — see [Preheating: TilauPID](#preheating-tilaupid) below for what it then
 does. **Input: BT / ET** chooses whether preheating aims at bean temperature or at air
 temperature. When a roast plan is selected, its charge temperature fills this setpoint
-automatically and is also applied to the SV slider.
+automatically and is also applied to the SV slider — until you type a setpoint of your own.
+From then on the field is yours: the plan stops replacing it and states its own figure beside
+it instead, as *Plan recommends 186 °C*, with **use** to go back to it in one click. The
+recommendation only appears while the two differ.
 During preheating, the joined **PID ON / PID OFF** control in the graph toolbar lets you
 temporarily enable or disable TilauPID; it disappears once CHARGE is marked.
 Choosing **PID OFF** also removes TilauPID from the preheating status immediately.
@@ -359,10 +385,12 @@ take priority, and no Artisan profile structure is changed.
 ![the Preheat page](assets/preparing-a-roast-5.14.png)
 
 !!! note "PID Autotune is a different tool"
-    **TilauScope → PID Autotune** is an advanced, separate tool. It calibrates *Artisan's own*
-    PID gains by watching bean temperature as the machine heats, band by band. It is unrelated
-    to the preheating described above, which needs no calibration from you. Use it only to
-    tune Artisan's PID itself; it has its own **PID Parameters Help** for what the gains mean.
+    **TilauScope → PID Autotune** is a separate guided tool for *Artisan's own* software PID.
+    It first checks the setup without heating. A supported machine can then run a supervised,
+    empty-machine test lasting about ten minutes around one stable temperature. The screen gives
+    one preparation instruction at a time and keeps the engineering gains hidden. Every test ends
+    with a 0% heat command and requires you to verify physically that the heater is off. This is
+    unrelated to TilauPID preheating, which needs no calibration from you.
 
 <!-- CAPTURE 5.15 — the roast graph during preheating, showing the Preheat panel's Experience
 reading and its two capability lines in a Learning or Estimated state, contrasted with the

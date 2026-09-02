@@ -174,16 +174,19 @@ def test_the_turning_point_matches_what_the_machine_actually_does() -> None:
     assert _TP(184.9, 400.0, 400.0) == pytest.approx(93.1, abs=6.0)
 
 
-def test_the_old_fixed_share_is_the_behaviour_at_the_nominal_batch() -> None:
-    """The mass term is a DEVIATION from the machine's operating point, so a
-    roaster loaded exactly to nominal keeps a pure share-of-charge dip."""
-    assert _TP(180.0, 400.0, 400.0) == pytest.approx(180.0 * (1.0 - 0.487))
+def test_a_batch_at_nominal_takes_the_measured_nominal_anchor() -> None:
+    """The dip is read from the anchor table, not fitted by a formula: a roaster
+    loaded exactly to nominal takes the anchor measured at that ratio (n=27),
+    which is the best-sampled row of the table."""
+    assert _TP(180.0, 400.0, 400.0) == pytest.approx(180.0 * (1.0 - 0.5014))
 
 
-def test_an_unknown_batch_or_machine_falls_back_to_the_fixed_share() -> None:
+def test_an_unknown_batch_or_machine_falls_back_to_the_nominal_anchor() -> None:
     """Neither argument may be required: the curve must still be drawable when
-    the roaster is unknown or the weight has not been entered."""
-    assert _TP(180.0) == pytest.approx(180.0 * (1.0 - 0.487))
+    the roaster is unknown or the weight has not been entered. The fallback is
+    the nominal anchor rather than an average across ratios, which would
+    describe no real batch."""
+    assert _TP(180.0) == pytest.approx(180.0 * (1.0 - 0.5014))
     assert _TP(180.0, 250.0, 0.0) == pytest.approx(_TP(180.0))
     assert _TP(180.0, 0.0, 400.0) == pytest.approx(_TP(180.0))
 
@@ -191,10 +194,13 @@ def test_an_unknown_batch_or_machine_falls_back_to_the_fixed_share() -> None:
 def test_an_absurd_batch_cannot_push_the_turning_point_out_of_the_drum() -> None:
     """A 50 g sample or a triple overload must still yield a drawable curve.
 
-    The low bound is the MEASURED plateau, not a safety margin: the dip stops
-    deepening below roughly 280 g (share 0.313 at 150 g, 0.316 at 250 g).
+    Below the first anchor the MEASURED plateau holds — the dip stops deepening
+    under roughly 150 g of a 400 g machine. The low clamp sits below that
+    plateau on purpose: raised to the plateau value it would flatten the whole
+    bottom of the table and the measured anchors would never be reached.
     """
-    assert _TP(180.0, 50.0, 400.0) == pytest.approx(180.0 * 0.69)
+    assert _TP(180.0, 50.0, 400.0) == pytest.approx(180.0 * (1.0 - 0.2962))
+    assert _TP(180.0, 150.0, 400.0) == pytest.approx(_TP(180.0, 50.0, 400.0))
     assert _TP(180.0, 1200.0, 400.0) == pytest.approx(180.0 * 0.35)
 
 

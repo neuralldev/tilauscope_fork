@@ -19,8 +19,9 @@ tracks — the pool of ids, assigning and releasing one — is covered in
 | Label | Printed from | What it shows | Its QR opens |
 |---|---|---|---|
 | **Roast label** | A roast's record → **Print label**, or the result form at the end of a roast → **🏷 Label PDF** | Bean, origin, roast date, key roast figures, flavour notes, a QR | The roast's record |
-| **Green bean label** | A coffee's record → **Print label** | Supplier, crop, process, altitude, density, cupping notes, a QR | The coffee's record |
+| **Green bean label** | A coffee's record → **Print label** | Supplier, crop, process, variety, altitude, moisture, water activity, cupping notes, a QR | The coffee's record |
 | **Sack label** | The sack labels tool (see [Sacks, stock and conservation](sacks-and-storage.md)) | A label id and a QR — nothing else | Whichever coffee currently holds that id |
+| **Coffee label** | **TilauScope → Print a Coffee Label…** | Whatever is typed in: name, roaster, origin, process, roast level, roast date, weight, tasting notes | Nothing — it carries no QR |
 
 Roast and bean labels print as a PDF sized to the label itself — 10×15 cm by default, or 7×9 cm
 for a compact pochette, set once in [Configuration → 🖨 Printing](configuration.md) — so any
@@ -35,7 +36,13 @@ nothing in the record: the form can still be corrected and printed again, or aba
 the form is saved without a label having been printed, TilauScope asks once whether to print
 one before closing.
 
+<!-- CAPTURE 4.1 — a printed roast label PDF, new light treatment: no dark header
+     band, the coffee name in deep brown ink on the paper, an accent rule under the
+     masthead, the bean mark alone in the top corner. Print a roast label for a blend
+     so the MELANGE chip and its ratios show. -->
 ![a printed roast label PDF](assets/labels-and-qr-4.1.png)
+<!-- CAPTURE 4.1b — the same treatment on a green bean label: print one from a
+     coffee's record, blend, with cupping notes filled in. -->
 ![a printed green bean label PDF](assets/labels-and-qr-4.1.png)
 
 ---
@@ -44,8 +51,8 @@ one before closing.
 
 Roast labels can also print directly to a paired Niimbot thermal printer, in two sizes: a
 full spec sheet on an 80 mm roll, or a condensed card on a 30 mm roll (small enough that the
-QR is dropped — there is no room to make it useful at that size). Sack labels always use the
-30 mm roll.
+QR is dropped — there is no room to make it useful at that size). Sack labels and labels for a
+bought coffee always use the 30 mm roll.
 
 **🖨 Print label** opens a preview with a copies count, then prints in the background.
 Printing is refused, with a plain explanation rather than a silent failure, when the roll is
@@ -77,6 +84,38 @@ make before the next batch, not a result to read.
 
 ![the print preview with the copies count](assets/labels-and-qr-4.4.png)
 ![a print blocked with a plain-language reason](assets/labels-and-qr-4.5.png)
+
+---
+
+## A label for a coffee bought already roasted
+
+A bag bought from a roaster has no roast of its own to print from, and there is no reason to
+file it among the green coffees. **TilauScope → Print a Coffee Label…** opens a window where
+the label is simply typed out, and prints it on the Niimbot's 50×30 mm roll.
+
+Only the **coffee name** is required. Everything else — who roasted it, origin, process,
+roast level, roast date, weight, tasting notes — is optional, and anything left empty is left
+off the label rather than printed as a blank or a dash. The calendar button beside the date
+switches it off: struck through, the date is left off the label. The fewer fields are filled, the
+larger the remaining lines are set, so a bag labelled with a name and a weight reads from
+across the room.
+
+The preview is the label itself, at print size and magnified: what is on screen is what comes
+out of the printer. It follows the typing, so nothing needs to be printed to be checked.
+
+The window stays open after printing, with the fields still filled — several bags from the
+same lot are one click each. **Clear** empties the form for the next coffee, and **Recall
+last** brings back the label printed most recently, which survives closing the window and
+quitting the application. Nothing is added to the coffee catalogue: this label is printed and
+forgotten.
+
+The **⚖** button beside the weight reads it straight off a paired scale, as every other weight
+field in TilauScope does.
+
+<!-- CAPTURE 4.6 — the Print a Coffee Label window, filled in with a full example
+     (name, roaster, origin, process, roast level, date, weight, tasting notes) so
+     the preview shows a complete label, printer connected with the 50×30 roll. -->
+![the coffee label window with its live preview](assets/labels-and-qr-4.6.png)
 
 ---
 

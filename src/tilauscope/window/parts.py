@@ -23,7 +23,7 @@ sliders it publishes. They belong to the window, not to a widget library.
 from __future__ import annotations
 
 import logging
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from PyQt6.QtCore import QEvent, QPoint, QRect, QSettings, QSize, QTimer, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QPainter
@@ -40,7 +40,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from artisanlib.main import ApplicationWindow
 from artisanlib.util import (
     events_internal_to_external_value,
     rgba_colorname2argb_colorname,
@@ -56,7 +55,22 @@ from tilauscope.widgets.flow_layout import FlowLayout
 from tilauscope.widgets.readouts import ExtraCounterWidget, LCDReadout
 
 
+if TYPE_CHECKING:
+    # Annotation only — importing artisanlib.main at runtime executes a
+    # settings migration against the real preferences and drags the whole
+    # application into any process that only wanted this widget.
+    from artisanlib.main import ApplicationWindow
+
 _log: Final[logging.Logger] = logging.getLogger(__name__)
+
+#: Artisan numbers an extra device's two channels 0 and 1 (`intChannel`, which
+#: indexes its Modbus and S7 tables at `pair * 2 + c` over 12 slots). Our own
+#: counters carry a source id of 1 or 2, and feeding that straight in as the
+#: channel walked one slot past the end on the last Modbus pair — and answered
+#: the wrong question everywhere else, since neither branch of `intChannel`
+#: matches a channel of 2. Translate at the boundary, never pass a source id
+#: where a channel is expected.
+_CHANNEL_OF_SOURCE: Final[dict[int, int]] = {1: 0, 2: 1}
 
 
 @dataclass
@@ -698,8 +712,14 @@ class ExtraCountersPanel(QWidget):
         """Reset all counter displays to dashes (used at power-off / start)."""
         qmc = self.artisan_conf.aw.qmc
         for widget, src, idx in self.active_counters:
-            is_int = qmc.intChannel(idx, 1 if src == 1 else 2)
-            dash = "--" if (not qmc.LCDdecimalplaces or is_int) else "-.-"
+            try:
+                is_int = qmc.intChannel(idx, _CHANNEL_OF_SOURCE[src])
+                dash = "--" if (not qmc.LCDdecimalplaces or is_int) else "-.-"
+            except (IndexError, TypeError):
+                # Same shielding as update_values: a counter whose channel
+                # cannot be read must show a dash, never keep the window from
+                # opening. This runs while the panels are being built.
+                dash = "--"
             widget.update_value(dash)
 
     def update_values(self):
@@ -715,7 +735,7 @@ class ExtraCountersPanel(QWidget):
         qmc = self.artisan_conf.aw.qmc
         for widget, src, idx in self.active_counters:
             try:
-                is_int = qmc.intChannel(idx, 1 if src == 1 else 2)
+                is_int = qmc.intChannel(idx, _CHANNEL_OF_SOURCE[src])
                 dash   = "--" if (not qmc.LCDdecimalplaces or is_int) else "-.-"
 
                 if qmc.flagstart:

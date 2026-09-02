@@ -40,6 +40,9 @@ from tilauscope.roast_plan_model import (
     _resolve_green_aw,
     _resolve_green_moisture,
     _resolve_green_structure,
+    _STRUCTURE_DEAD_BAND_LOW,
+    _STRUCTURE_INDEX_MAX,
+    _STRUCTURE_PROXY_WEIGHT,
     TilauScopeRoastPlan,
     TilauscopeAlarmFactory,
     _PlanSource,
@@ -978,7 +981,8 @@ def test_density_beats_culture_altitude() -> None:
     other soil, other density — so the measurement always wins."""
     resolved = _resolve_green_structure(650.0, 1800.0)
     assert resolved.source == "measured"
-    assert resolved.value == pytest.approx((650.0 - 700.0) / 50.0)
+    assert resolved.value == pytest.approx(
+        (650.0 - _STRUCTURE_DEAD_BAND_LOW) / 50.0)
     assert resolved.value < 0.0, "a light bean must read light, whatever its altitude"
 
 
@@ -990,7 +994,14 @@ def test_culture_altitude_is_only_the_fallback_and_is_centred() -> None:
     high = _resolve_green_structure(0.0, 2000.0)
     assert low.source == "proxy" and low.value < 0.0
     assert high.value > 0.0
-    assert abs(_resolve_green_structure(0.0, 3500.0).value) <= 2.0
+    # And it speaks with a fraction of a measurement's voice: on the reference
+    # catalogue altitude agrees with density only about a fifth of the way and
+    # contradicts its sign 7 times in 23, so the proxy may lean the plan but
+    # can no longer invert what a real density would have said.
+    _proxy_ceiling = _STRUCTURE_INDEX_MAX * _STRUCTURE_PROXY_WEIGHT
+    assert abs(_resolve_green_structure(0.0, 3500.0).value) == pytest.approx(
+        _proxy_ceiling)
+    assert _proxy_ceiling < abs(_resolve_green_structure(626.0, 1800.0).value)
 
 
 def test_no_structure_reading_means_no_modifier() -> None:
@@ -1560,21 +1571,24 @@ def _charge(process_type_lower="washed", density=700.0, culture_altitude=0.0,
 
 
 def test_charge_setup_washed_process_lands_in_its_band() -> None:
+    # The process sets the CEILING (surface risk); the floor is a single machine
+    # value shared by every process — charging cooler is never dangerous, only
+    # slower, so a closed lower bound protected nothing (owner ruling 2026-09-01).
     result = _charge(process_type_lower="washed")
-    assert result.band == (180.0, 190.0)
-    assert 180.0 <= result.temperature_c <= 190.0
+    assert result.band == (160.0, 190.0)
+    assert result.temperature_c == pytest.approx(185.0)
 
 
 def test_charge_setup_natural_process_lands_in_its_band() -> None:
     result = _charge(process_type_lower="natural")
-    assert result.band == (170.0, 180.0)
-    assert 170.0 <= result.temperature_c <= 180.0
+    assert result.band == (160.0, 180.0)
+    assert result.temperature_c == pytest.approx(175.0)
 
 
 def test_charge_setup_decaf_process_lands_in_its_band() -> None:
     result = _charge(process_type_lower="decaf")
     assert result.band == (160.0, 170.0)
-    assert 160.0 <= result.temperature_c <= 170.0
+    assert result.temperature_c == pytest.approx(165.0)
 
 
 def test_charge_setup_decaf_washed_resolves_to_decaf_not_washed() -> None:
@@ -1588,12 +1602,14 @@ def test_charge_setup_anaerobic_label_lands_on_the_natural_band() -> None:
     """Fermented/anaerobic processes group with the naturals (owner ruling):
     they carry the same surface sugars from extended mucilage/fruit contact."""
     result = _charge(process_type_lower="anaerobic fermentation")
-    assert result.band == (170.0, 180.0)
+    assert result.band == (160.0, 180.0)
+    assert result.temperature_c == pytest.approx(175.0)
 
 
 def test_charge_setup_unrecognised_process_falls_back_to_washed() -> None:
     result = _charge(process_type_lower="gesha")
-    assert result.band == (180.0, 190.0)
+    assert result.band == (160.0, 190.0)
+    assert result.temperature_c == pytest.approx(185.0)
 
 
 def test_the_in_band_modulation_is_capped_and_never_leaves_the_band() -> None:

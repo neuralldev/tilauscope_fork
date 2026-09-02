@@ -19,6 +19,7 @@ import math
 import logging
 import platform
 from dataclasses import dataclass, field
+from typing import Final, NamedTuple
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.dict import DataClassDictMixin
 from mashumaro.config import BaseConfig
@@ -696,8 +697,9 @@ class ProbeDeviation(DataClassDictMixin):
 
 @dataclass
 class RoasterBasicPlanPerPhase:
-   # No charge temperature here: charge is owned by _CHARGE_BAND_BY_PROCESS
-   # in roast_plan_model (band by process, in measured BT).
+   # No charge temperature here: charge is owned by _CHARGE_FLOOR_C and
+   # _CHARGE_CEILING_BY_PROCESS in roast_plan_model (a single machine floor,
+   # a ceiling per process, in measured BT).
    name: str
    heater_cmfc: tuple[float, float, float]
    total_time: tuple[float, float]
@@ -820,21 +822,122 @@ ROASTING_BASIC_BASE: RoasterBasicPlan = RoasterBasicPlan(
     ]
 )
 
-# Weight-loss % target window by Agtron category (names match AGTRON_SCALES).
-# Coach-only fundamental: the plan generator has no weight-loss table to share,
-# so this progression is interpolated on ROASTING_BASIC_BASE's dtr_pct curve
-# and validated against the specialty-coffee convention (~12-15% light,
-# 18-20%+ dark).
-WEIGHT_LOSS_PCT_BY_CATEGORY: dict[str, tuple[float, float]] = {
-    "Very Light":     (10.5, 13.0),
-    "Light":          (11.5, 14.5),
-    "Medium Light":   (13.0, 16.0),
-    "Medium":         (14.0, 17.5),
-    "Medium Dark":    (15.5, 19.0),
-    "Dark":           (16.5, 20.0),
-    "Very Dark":      (18.0, 21.5),
-    "Extremely Dark": (19.0, 22.5),
+# Neutral green moisture (%). The reference a lot is read against when its own
+# moisture was not measured. Shared with the plan model's charge modulation, so
+# a single value moves both.
+GREEN_MOISTURE_NEUTRAL_PCT: float = 10.5
+
+# Weight loss decomposes: the WATER the lot carried, plus the DRY MATTER burnt
+# off. The water is measured (green moisture), so only the dry matter is
+# modelled here — and it depends on the DEVELOPMENT as much as on the colour.
+# Corpus, n=92: at constant colour, dry-matter loss rises +2.2 points per minute
+# of development; development alone explains R^2=0.24 of it against 0.08 for
+# colour alone. Keying the band on colour only keys it on the weak variable.
+# The chain is: destination (espresso/filter) -> development -> weight loss, so
+# the destination never enters here, it enters through the development.
+# Anchor: Hoos — light filter, 1:00 development, loss = moisture + 1 to 2 points.
+DRY_MATTER_DEV_REF_MIN: float = 1.0
+DRY_MATTER_PCT_PER_DEV_MIN: float = 2.2
+# Set to the model's own measured residual spread (+/-1.7 points on the corpus):
+# below that the flag reports weighing noise, not roasting — on a 300 g batch one
+# point of loss is 3 g, the order of the chaff. The target is a bearing, not a
+# fine verdict; nothing is flagged inside this tolerance.
+WEIGHT_LOSS_TOLERANCE_PCT: float = 1.7
+
+# Dry-matter loss (%) at the reference development, by Agtron category (names
+# match AGTRON_SCALES).
+DRY_MATTER_LOSS_PCT_BY_CATEGORY: dict[str, float] = {
+    "Very Light":     0.6,
+    "Light":          1.0,   # Hoos anchor
+    "Medium Light":   1.1,
+    "Medium":         1.3,
+    # Below this line the values are CONVENTION, not measurement: the measured
+    # range stops around 51 Agtron, and prolonging the observed colour slope to
+    # Vienna/French would produce absurd numbers.
+    "Medium Dark":    2.2,
+    "Dark":           3.5,
+    "Very Dark":      5.0,
+    "Extremely Dark": 6.5,
 }
+
+
+class WeightLossTarget(NamedTuple):
+    """Prescribed weight loss (%) and the band around it that reads as on-target."""
+
+    target: float
+    low:    float
+    high:   float
+
+
+_PLANS_BY_NAME: "dict[str, RoasterBasicPlanPerPhase]" = {}
+
+
+def _plan_by_name(category: str) -> "RoasterBasicPlanPerPhase | None":
+    """Roast-level plan row by name, indexed on first use.
+
+    Built lazily rather than at import time: `ROASTING_BASIC_BASE` is defined
+    above but the module is imported from the 1 Hz refresh path, and a linear
+    scan per lookup is the kind of cost that has no reason to be there.
+    """
+    if not _PLANS_BY_NAME:
+        _PLANS_BY_NAME.update({p.name: p for p in ROASTING_BASIC_BASE.plans})
+    return _PLANS_BY_NAME.get(category)
+
+
+def weight_loss_target(category: "str | None", *,
+                       moisture_pct: float = 0.0,
+                       dev_time_min: float = 0.0) -> "WeightLossTarget | None":
+    """Weight loss to aim for: the lot's water, plus the colour's dry matter,
+    plus what the development adds to it.
+
+    `moisture_pct` outside [5, 20] counts as not measured and falls back to
+    GREEN_MOISTURE_NEUTRAL_PCT; `dev_time_min` <= 0 counts as not known and
+    falls back to the roast level's conventional development. Returns None for
+    an unknown category.
+    """
+    if not category:
+        return None
+    base = DRY_MATTER_LOSS_PCT_BY_CATEGORY.get(category)
+    if base is None:
+        return None
+    water = (moisture_pct if 5.0 <= moisture_pct <= 20.0
+             else GREEN_MOISTURE_NEUTRAL_PCT)
+    if dev_time_min <= 0.0:
+        # Not "no development", but "development not known": fall back to the
+        # one this roast level conventionally gets, from the plan's own table.
+        # Zeroing the term instead would silently target a 1:00 development for
+        # every colour, and under-aim a medium roast by more than a point.
+        _plan = _plan_by_name(category)
+        dev_time_min = (sum(_plan.development_time) / 2.0 if _plan
+                        else DRY_MATTER_DEV_REF_MIN)
+    dev_extra = DRY_MATTER_PCT_PER_DEV_MIN * (dev_time_min - DRY_MATTER_DEV_REF_MIN)
+    # A development short enough to drive the dry matter negative would mean the
+    # bean lost less than its water, which cannot happen.
+    target = water + max(0.0, base + dev_extra)
+    return WeightLossTarget(target,
+                            target - WEIGHT_LOSS_TOLERANCE_PCT,
+                            target + WEIGHT_LOSS_TOLERANCE_PCT)
+
+
+def weight_loss_target_from_plan(plan: "dict | None") -> "WeightLossTarget | None":
+    """`weight_loss_target` read off a generated plan dict.
+
+    Single place where the plan's three keys are named. The plan also publishes
+    the rounded figure under "Target Weight Loss", but that string carries
+    neither the tolerance band nor the decimals, so the panels recompute from
+    the same inputs the printed plan used rather than parsing their own display.
+    Returns None on a plan that predates these keys.
+    """
+    if not plan:
+        return None
+    def _num(key: str) -> float:
+        try:
+            return float(plan.get(key) or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+    return weight_loss_target(plan.get("Target Agtron"),
+                              moisture_pct=_num("Bean Humidity"),
+                              dev_time_min=_num("Development Phase (min)"))
 #
 # category = Traditional Wet
 # process = Washed / Wet Process

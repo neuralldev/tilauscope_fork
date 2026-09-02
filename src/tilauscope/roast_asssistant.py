@@ -40,7 +40,7 @@ from artisanlib.util import fromCtoFstrict, fromFtoCstrict, weight_units, conver
 
 from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, THEME,
     get_ror_color_by_phase, get_ror_ideal_band,
-    format_batch_label, to_agtron)
+    format_batch_label, to_agtron, weight_loss_target_from_plan)
 from tilauscope.theme_qss import tint, tooltip_qss
 from tilauscope.roasters import RoasterContext, roast_context_for
 from tilauscope.roast_plan_model import TilauScopeRoastPlan, heat_soak_correction
@@ -348,6 +348,20 @@ def _plan_ror(plan: dict | None, key: str, default: float = 0.0) -> float:
         return float(plan.get(key, default))
     except (TypeError, ValueError):
         return default
+
+
+def _planned_weight_loss(plan: dict | None, default: float = 14.0) -> float:
+    """Weight loss the plan promises (%), for the Agtron model.
+
+    The bean is not weighed yet mid-roast, so the plan's own target is the best
+    estimate available — and a fixed 14 % was worth up to ~5 Agtron points of
+    bias on a dry lot with a short development (c_wl is -3.6 per point).
+    Falls back to `default` when the plan predates these keys.
+    """
+    if not plan:
+        return default
+    target = weight_loss_target_from_plan(plan)
+    return target.target if target else default
 
 
 def _parse_plan_duration(plan: dict | None, key: str) -> float | None:
@@ -4690,6 +4704,9 @@ class RoastAssistantPanel(QWidget):
         self._plan_initial: dict|None = None
         self._replans_applied: list[tuple[str, float, float]] = []   # (milestone, t_min, bt_native)
         self._replan_attempted: set[str] = set()                     # one-shot guard (O(1) hot path)
+        # Wet-lot reading, armed once at the turning point (see _arm_wet_lot_tp_note)
+        self._wet_lot_tp_note: str = ""
+        self._wet_lot_tp_note_until: float = 0.0
         self._replan_notice: "tuple[str, str, float] | None" = None  # (texte, niveau, expiration monotonic)
         self._soak_note: "str | None" = None   # ligne heat-soak affichée en preheat (cache)
         # #10 : bandeau « jalon détecté — confirmer ? » (bip one-shot par suggestion)
@@ -4842,6 +4859,9 @@ class RoastAssistantPanel(QWidget):
             "Manual trajectory · {0} in ~{1} · phase ~{2} · terminal RoR {3} · confidence {4}%")
         self._tpl_guidance_dtr = QApplication.translate(
             "tilauscope_roast_assistant", " · projected DTR {0}%")
+        self._tpl_wet_lot_tp = QApplication.translate(
+            "tilauscope_roast_assistant",
+            "Hold the burner — a wet lot ({0} %) turns high, then resists; cutting now leaves it short mid-roast")
         self.aw._tilau_guidance_decision = self._guidance_session.arbiter.decision()
 
         # Coefficients couleur (lus depuis QSettings — mêmes defaults que beancave)
@@ -5249,6 +5269,8 @@ class RoastAssistantPanel(QWidget):
         self._plan_initial = None         # plan vivant : reset session
         self._replans_applied = []
         self._replan_attempted = set()
+        self._wet_lot_tp_note = ""
+        self._wet_lot_tp_note_until = 0.0
         self._replan_notice = None
         self._burner_last_pct = None
         self.aw._tilau_burner_watch = None
@@ -5397,6 +5419,8 @@ class RoastAssistantPanel(QWidget):
         self._plan_initial = None
         self._replans_applied = []
         self._replan_attempted = set()
+        self._wet_lot_tp_note = ""
+        self._wet_lot_tp_note_until = 0.0
         self._replan_notice = None
         self._burner_last_pct = None
         self.aw._tilau_burner_watch = None
@@ -5831,6 +5855,38 @@ class RoastAssistantPanel(QWidget):
             ctx["t_tp_sec"] = -1.0
 
         return ctx
+
+    #: How long the wet-lot reading stays offered to the advice selector (s).
+    _WET_LOT_NOTE_TTL_SEC: float = 120.0
+    #: Moisture above which a lot counts as wet enough to turn high.
+    _WET_LOT_MOISTURE_PCT: float = 11.5
+    #: Turning point overshoot (°C) that makes the reading worth showing.
+    _WET_LOT_TP_MARGIN_C: float = 3.0
+
+    def _arm_wet_lot_tp_note(self, bt_tp: float, planned_tp: float,
+                             mode: str, now_s: float) -> None:
+        """Arm the wet-lot reading when a wet lot turns above what the plan expected.
+
+        A wet lot takes the energy fast before evaporation, so it turns high and
+        then resists once the water changes state. Read as a runaway, that high
+        turning point gets the burner cut, and the roast runs out of energy in
+        the middle — the long way to a baked cup. Silent when the lot is not wet
+        or the turning point landed where it was planned: there is nothing to
+        correct then, and a reading that always fires stops being read.
+
+        `planned_tp` is read by the caller BEFORE the TP replan: the replan
+        re-anchors "Estimated TP" onto the measured turning point, so reading it
+        here would compare the measurement to itself.
+        """
+        _moisture = _plan_ror(self._plan, "Bean Humidity")
+        if planned_tp <= 0.0 or _moisture < self._WET_LOT_MOISTURE_PCT:
+            return
+        _margin = (self._WET_LOT_TP_MARGIN_C * 9.0 / 5.0 if mode == 'F'
+                   else self._WET_LOT_TP_MARGIN_C)
+        if bt_tp < planned_tp + _margin:
+            return
+        self._wet_lot_tp_note = self._tpl_wet_lot_tp.format(f"{_moisture:.1f}")
+        self._wet_lot_tp_note_until = now_s + self._WET_LOT_NOTE_TTL_SEC
 
     # ── Dispatch de refresh par phase ──────────────────────────────────────────
 
@@ -6782,7 +6838,11 @@ class RoastAssistantPanel(QWidget):
                 if 0 < _tp_idx < len(self.aw.qmc.temp2):
                     _bt_tp = float(self.aw.qmc.temp2[_tp_idx])
                     if _bt_tp > 0:
+                        # Le TP planifié se lit AVANT le recalage : celui-ci
+                        # réancre "Estimated TP" sur la mesure.
+                        _planned_tp = _plan_ror(self._plan, "Estimated TP")
                         self._apply_replan("tp", ctx["t_tp_sec"] / 60.0, _bt_tp)
+                        self._arm_wet_lot_tp_note(_bt_tp, _planned_tp, mode, _now)
             except Exception:  # pylint: disable=broad-except
                 pass
 
@@ -6921,6 +6981,11 @@ class RoastAssistantPanel(QWidget):
             _candidates.append(AdviceCandidate(
                 "operator-wait", self._tr_guidance_wait, AdviceCategory.WAIT,
                 allowed_modes=frozenset({GuidanceMode.OBSERVE_ACTION})))
+        if self._wet_lot_tp_note and _now <= self._wet_lot_tp_note_until:
+            _candidates.append(AdviceCandidate(
+                "wet-lot-turning-point", self._wet_lot_tp_note,
+                AdviceCategory.INFORMATION,
+                expires_at_s=self._wet_lot_tp_note_until))
         if self._guidance_projection is not None:
             _candidates.append(AdviceCandidate(
                 "operator-projection", self.aw._tilau_guidance_projection_text,
@@ -6987,6 +7052,7 @@ class RoastAssistantPanel(QWidget):
                 mode=mode,
                 c0=self._c0, c_bt=self._c_bt,
                 c_dtr=self._c_dtr, c_wl=self._c_wl,
+                weight_loss_pct=_planned_weight_loss(self._plan),
                 crash_detector=_phase_safety_detector,
             )
             self._speak_crack_phase(self._page_dev.coach)
@@ -7011,7 +7077,8 @@ class RoastAssistantPanel(QWidget):
                     # Coefficients calibrés en °C — convertir la BT en mode °F
                     _bt_ref_c = fromFtoCstrict(_bt_ref) if mode == 'F' else _bt_ref
                     _agtron_pred_cooling = max(20.0, min(130.0,
-                        self._c0 + self._c_bt * _bt_ref_c + self._c_dtr * dtr + self._c_wl * 14.0
+                        self._c0 + self._c_bt * _bt_ref_c + self._c_dtr * dtr
+                        + self._c_wl * _planned_weight_loss(self._plan)
                     ))
             except Exception:
                 pass

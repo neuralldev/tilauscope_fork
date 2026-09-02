@@ -27,7 +27,7 @@ two can never disagree about the same roast.
 
 Band tables are never redefined here: roast levels come from
 `tilauscope_types.ROASTING_BASIC_BASE` (the table the plan generator itself
-builds from) and weight loss from `roast_insights.weight_loss_band()`.
+builds from) and weight loss from `tilauscope_types.weight_loss_target()`.
 """
 
 from dataclasses import dataclass, field
@@ -40,7 +40,7 @@ except ImportError:
     from PyQt5.QtWidgets import QApplication  # type: ignore # @UnusedImport @Reimport  @UnresolvedImport
 
 from tilauscope.tilauscope_types import (AGTRON_SCALES, ROASTING_BASIC_BASE,
-                                         WEIGHT_LOSS_PCT_BY_CATEGORY, to_agtron)
+                                         to_agtron, weight_loss_target)
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -137,10 +137,6 @@ def _dtr_band(category: "str | None") -> tuple[float, float]:
     return (plan.dtr_pct[0] * 100.0, plan.dtr_pct[1] * 100.0)
 
 
-def _weight_loss_band(category: "str | None") -> "tuple[float, float] | None":
-    if not category:
-        return None
-    return WEIGHT_LOSS_PCT_BY_CATEGORY.get(category)
 
 
 def profile_from_qmc(aw) -> dict:
@@ -170,6 +166,9 @@ def profile_from_qmc(aw) -> dict:
         "ground_color": getattr(qmc, "ground_color", 0) or 0,
         "whole_color": getattr(qmc, "whole_color", 0) or 0,
         "color_system": getattr(qmc, "color_system", "Agtron") or "Agtron",
+        # The debrief's weight-loss target reads this: without it a live roast
+        # and the same roast reloaded would not be judged against the same target.
+        "moisture_greens": getattr(qmc, "moisture_greens", 0) or 0,
         "ambientTemp": getattr(qmc, "ambientTemp", 0) or 0,
         "ambient_humidity": getattr(qmc, "ambient_humidity", 0) or 0,
         "ambient_pressure": getattr(qmc, "ambient_pressure", 0) or 0,
@@ -370,13 +369,24 @@ def build_debrief(profile: dict, snapshot: "dict | None" = None,
         out.figures["weight_loss"] = Figure(
             band=QApplication.translate("tilauscope_review", "roasted weight missing"))
     else:
-        band = _weight_loss_band(category)
-        if band:
-            sev = "ok" if band[0] <= loss <= band[1] else "attention"
-            out.figures["weight_loss"] = Figure(
-                f"{loss:.1f} %",
-                QApplication.translate("tilauscope_review", "typical {0}–{1} % at this colour").format(
-                    f"{band[0]:.0f}", f"{band[1]:.0f}"), sev)
+        # The target is the lot's water plus the dry matter the colour and the
+        # development burn off — it is stated as an aim, not as a fault: on a
+        # home batch one point of loss is a few grams, the order of the chaff.
+        _dev_min = (_pos(computed.get("finishphasetime")) or 0.0) / 60.0
+        target = weight_loss_target(
+            category,
+            moisture_pct=_pos(profile.get("moisture_greens")) or 0.0,
+            dev_time_min=_dev_min)
+        if target:
+            sev = "ok" if target.low <= loss <= target.high else "attention"
+            if _dev_min > 0.0:
+                band = QApplication.translate(
+                    "tilauscope_review", "aim {0} % at this colour and {1} of development").format(
+                        f"{target.target:.1f}", fmt_mmss(_dev_min * 60.0))
+            else:
+                band = QApplication.translate(
+                    "tilauscope_review", "aim {0} % at this colour").format(f"{target.target:.1f}")
+            out.figures["weight_loss"] = Figure(f"{loss:.1f} %", band, sev)
         else:
             out.figures["weight_loss"] = Figure(
                 f"{loss:.1f} %", QApplication.translate("tilauscope_review", "of the green weight"),

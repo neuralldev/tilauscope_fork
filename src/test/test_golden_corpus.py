@@ -196,8 +196,15 @@ def test_back_to_back_lowers_the_charge_by_the_heat_soak_correction(
     assert soak is not None, 'no heat-soak block on a back-to-back plan'
     assert cold['Heat Soak'] is None, 'heat soak applied without a previous drop'
 
+    # `Charge Temp` is published as a whole degree, so a difference of two of
+    # them is quantised: each end can round half a degree away from the value
+    # the law produced, and their difference by a full one. A tighter bound
+    # than that does not test the wiring, it tests where the rounding landed —
+    # which is why this passed or failed on the plan's mood. A soak that were
+    # cut, halved or inverted still moves the difference by whole degrees and
+    # is still caught. The law itself is pinned unrounded just below.
     applied = float(hot['Charge Temp']) - float(cold['Charge Temp'])
-    assert applied == pytest.approx(soak['dcharge'], abs=0.15)
+    assert applied == pytest.approx(soak['dcharge'], abs=_CHARGE_ROUNDING_C)
     assert soak['dcharge'] < 0 and soak['dheater'] <= 0
 
     # And the value itself is the documented law, not a coincidence.
@@ -210,6 +217,11 @@ def test_back_to_back_lowers_the_charge_by_the_heat_soak_correction(
 
 
 _GR2_UUID = 'a82364a8-e9ad-447c-a3d8-5f49111dc3ee'
+
+#: The plan publishes its charge as a whole degree. Comparing the DIFFERENCE of
+#: two published charges against a continuous law therefore carries up to one
+#: full degree of quantisation — half from each end.
+_CHARGE_ROUNDING_C = 1.0
 
 
 def _charge_of(moisture_pct: float, minutes_since_drop: float | None) -> float:
@@ -250,8 +262,9 @@ def test_measuring_the_water_never_eats_the_heat_soak(
     expected, _, _ = heat_soak_correction(
         0.0, context.thermal_mass_index, context.heat_retention_index)
 
+    # Same quantisation as the test above: both charges are whole degrees.
     applied = _charge_of(moisture_pct, 0.0) - _charge_of(moisture_pct, None)
-    assert applied == pytest.approx(expected, abs=0.15)
+    assert applied == pytest.approx(expected, abs=_CHARGE_ROUNDING_C)
 
 
 def _plan(**bean_fields: Any) -> dict[str, Any]:
@@ -309,7 +322,7 @@ def test_ambient_humidity_no_longer_touches_the_plan() -> None:
 def test_the_water_term_alone_still_cannot_leave_the_process_band() -> None:
     """Water modulates INSIDE the band — only structure and the heat soak are
     allowed out of it. The driest bean there is must still land in the band."""
-    band_bottom, band_top = 170.0, 180.0  # _CHARGE_BAND_BY_PROCESS['natural']
+    band_bottom, band_top = 170.0, 180.0  # _CHARGE_CEILING_BY_PROCESS['natural']
     driest = _charge_of(5.5, None)
     assert band_bottom <= driest <= band_top
     assert _charge_of(9.5, None) > driest

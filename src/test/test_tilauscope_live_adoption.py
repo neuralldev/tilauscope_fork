@@ -144,6 +144,7 @@ def _live_scope(*, recording: bool) -> tuple[Any, list[Any]]:
         update_button_style=lambda *args: calls.append(('style', args)),
         _update_timer_style=lambda state: calls.append(('timer', state)),
         update_status_text=lambda: calls.append('status'),
+        _apply_controls_enabled=lambda enabled: calls.append(('controls', enabled)),
         _hide_artisan_standard_buttons=lambda: calls.append('hide-standard'),
         _refresh_level_lock=lambda: calls.append('level-lock'),
         handle_preheat=lambda visible: calls.append(('preheat', visible)),
@@ -182,6 +183,11 @@ def test_deferred_adoption_restores_monitoring_and_recording_states() -> None:
 
     monitoring, monitoring_calls = _live_scope(recording=False)
     adopt(monitoring)
+    # First, before any state assertion: adoption is wrapped in a broad except
+    # so a partial take-over can never block the window, which also means a
+    # double this test forgot to grow is swallowed and shows up as an opaque
+    # "expected call missing" further down. Read the cause here instead.
+    assert log_errors == []
     assert monitoring.btn_power.checked
     assert monitoring.btn_power.tooltip == 'Stop monitoring'
     assert monitoring.is_roasting is False
@@ -190,6 +196,7 @@ def test_deferred_adoption_restores_monitoring_and_recording_states() -> None:
 
     recording, recording_calls = _live_scope(recording=True)
     adopt(recording)
+    assert log_errors == []
     assert recording.btn_power.checked
     assert recording.is_roasting is True
     assert ('preheat', False) in recording_calls

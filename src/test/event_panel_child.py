@@ -42,6 +42,16 @@ import _guard  # noqa: E402  # before anything can touch Qt settings
 
 _SANDBOX = _guard.install(sys.argv[1] if len(sys.argv) > 1 else None)
 
+# A QApplication must exist before ANY QWidget, imports included: a module that
+# builds a widget at import time is enough. This child used to get one for free
+# because `tilauscope.window.parts` pulled in `artisanlib.main`, which builds one
+# as a side effect of being imported — so the bar under test was standing on the
+# contamination the import tripwire exists to forbid. Build it here, first and
+# explicitly, and the child no longer depends on what its imports drag along.
+from PyQt6.QtWidgets import QApplication  # noqa: E402
+
+_APP = QApplication.instance() or QApplication([])
+
 CHECKS: dict[str, object] = {}
 
 
@@ -52,12 +62,9 @@ def check(fn):  # noqa: ANN001, ANN201
 
 def _panel(per_row: int):
     """A bar built over the shared stubs, at the given buttons-per-row."""
-    from PyQt6.QtWidgets import QApplication
-
     import test_custom_buttons as stubs
     from tilauscope.window.parts import EventPanel
 
-    QApplication.instance() or QApplication([])
     aw = stubs._Aw()  # noqa: SLF001 - the stubs are this suite's own
     aw.buttonlistmaxlen = per_row
     return EventPanel(stubs._FakeManager(aw), theme=None, parent=None)  # noqa: SLF001

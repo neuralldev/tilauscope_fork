@@ -173,6 +173,7 @@ The assistant raises problems while they can still be fixed.
 | *⚠ Extended Maillard — baked risk, raise heat or anticipate FCs* | The same problem, one phase later. |
 | *⚠️ Premature browning detected!* | The opposite: the roast is developing colour too early. |
 | *Flash drying risk — check FIR power* | Surface drying ahead of the core. See [flash drying](glossary.md#flash-drying). |
+| *Hold the burner — a wet lot (12.4 %) turns high, then resists* | Not a fault, a reading. A wet coffee takes the heat quickly before its water starts to leave, so it turns at a higher temperature than the plan drew — and then resists once the water does start to leave. Cutting the burner on that high turning point is the classic way to run out of heat in the middle of the roast and end up [baked](glossary.md#baked). Shown once, only when the coffee's [moisture](glossary.md#moisture-content) was measured and the turning point really did land above the plan. |
 | *⚠ Critical Gap between ET/BT — dangerous thermic gradiant* | The two probes have diverged dangerously. |
 
 Alerts name the correction, not just the condition — *raise heater*, *reduce heater*, *DROP now

@@ -18,9 +18,10 @@
 import logging
 from typing import Final
 from PyQt6.QtGui import (QPainter, QFont, QPageLayout, QPageSize, QPixmap, QPainterPath,
-                          QPen, QBrush, QColor, QFontDatabase, QFontMetrics)
+                          QPainterPathStroker, QPen, QBrush, QColor, QFontDatabase,
+                          QFontMetrics)
 from PyQt6.QtPrintSupport import QPrinter
-from PyQt6.QtCore import QRectF, Qt, QMarginsF, QDate, QPointF, QSizeF
+from PyQt6.QtCore import QRect, QRectF, Qt, QMarginsF, QDate, QPointF, QSizeF
 from PyQt6.QtWidgets import QApplication
 
 from pathlib import Path
@@ -63,40 +64,43 @@ def get_downloads_dir() -> Path:
 # ---------------------------------------------------------------------------
 # Colour palette
 # ---------------------------------------------------------------------------
-C_ROAST_BG        = QColor("#1C1007")
-C_ROAST_ACCENT    = QColor("#C47C3A")
-C_ROAST_ACCENT_LT = QColor("#EFA96A")
-C_ROAST_BODY_BG   = QColor("#FAF7F3")
-C_ROAST_CARD_BG   = QColor("#EDE8E2")
-C_ROAST_HEAD_TXT  = QColor("#FFF8F0")
-C_ROAST_HEAD_SUB  = QColor(0xFF, 0xF8, 0xF0, 128)
-C_ROAST_PILL_BG   = QColor(196, 124, 58, 46)
-C_ROAST_PILL_BD   = QColor(196, 124, 58, 90)
-C_ROAST_SPEC_LBL  = QColor("#9E9189")
+# Labels print as type on paper: no solid ink block anywhere. The masthead is
+# separated by an accent rule, not by a filled band. Every text colour is
+# opaque — a translucent ink over paper prints as a wash, not as grey text.
+C_ROAST_BG        = QColor("#1C1007")   # deep ink: title, QR modules
+C_ROAST_ACCENT    = QColor("#9A5A22")   # eyebrow, masthead rule
+C_ROAST_ACCENT_LT = QColor("#7A3F12")   # chip and badge type
+C_ROAST_BODY_BG   = QColor("#FAF7F3")   # the paper
+C_ROAST_CARD_BG   = QColor("#EFE9E2")
+C_ROAST_HEAD_TXT  = QColor("#1C1007")
+C_ROAST_HEAD_SUB  = QColor("#6B4A33")
+C_ROAST_PILL_BG   = QColor(0, 0, 0, 0)  # outlined, never filled
+C_ROAST_PILL_BD   = QColor(28, 16, 7, 97)
+C_ROAST_SPEC_LBL  = QColor("#7A6659")
 C_ROAST_SPEC_VAL  = QColor("#1C1007")
 C_ROAST_SEP       = QColor("#E0D9D1")
-C_ROAST_LOSS      = QColor("#C47C3A")
+C_ROAST_LOSS      = QColor("#A85A1E")
 
-C_GREEN_BG        = QColor("#0F2918")
-C_GREEN_ACCENT    = QColor("#5DBF8A")
-C_GREEN_BODY_BG   = QColor("#F5FAF7")
-C_GREEN_NOTES_BG  = QColor("#E5F0EA")
-C_GREEN_HEAD_TXT  = QColor("#F0FFF6")
-C_GREEN_HEAD_SUB  = QColor(0xF0, 0xFF, 0xF6, 128)
-C_GREEN_SPEC_LBL  = QColor("#5A8A6D")
+C_GREEN_BG        = QColor("#0F2918")   # deep ink: title, QR modules
+C_GREEN_ACCENT    = QColor("#2C6046")   # eyebrow, masthead rule
+C_GREEN_BODY_BG   = QColor("#F5FAF7")   # the paper
+C_GREEN_NOTES_BG  = QColor("#E7F1EB")
+C_GREEN_HEAD_TXT  = QColor("#0F2918")
+C_GREEN_HEAD_SUB  = QColor("#3E6B52")
+C_GREEN_SPEC_LBL  = QColor("#46705A")
 C_GREEN_SPEC_VAL  = QColor("#0F2918")
 C_GREEN_SEP       = QColor("#CADFD2")
-C_GREEN_SCORE_BG  = QColor(93, 191, 138, 38)
-C_GREEN_SCORE_BD  = QColor(93, 191, 138, 90)
-C_GREEN_TAG_BG    = QColor(93, 191, 138, 31)
-C_GREEN_TAG_BD    = QColor(93, 191, 138, 64)
-C_BLEND_TAG_BG    = QColor(196, 124, 58, 31)
-C_BLEND_TAG_BD    = QColor(196, 124, 58, 64)
-C_BLEND_TAG_TXT   = QColor(255, 220, 170, 178)
-C_BLEND_RATIO_TXT = QColor(255, 200, 130, 115)
+C_GREEN_SCORE_BG  = QColor(0, 0, 0, 0)
+C_GREEN_SCORE_BD  = QColor(15, 41, 24, 110)
+C_GREEN_TAG_BG    = QColor(0, 0, 0, 0)
+C_GREEN_TAG_BD    = QColor(15, 41, 24, 110)
+C_GREEN_TAG_TXT   = QColor("#1B4B2F")
+C_BLEND_TAG_BG    = QColor(0, 0, 0, 0)
+C_BLEND_TAG_BD    = QColor(138, 90, 40, 120)
+C_BLEND_TAG_TXT   = QColor("#8A5A28")
 
-C_TILAU_MARK       = QColor(0xFF, 0xF8, 0xF0, 90)
-C_TILAU_MARK_GREEN = QColor(0xF0, 0xFF, 0xF6, 90)
+C_TILAU_MARK       = QColor(28, 16, 7, 140)
+C_TILAU_MARK_GREEN = QColor(15, 41, 24, 140)
 
 _PROCESS_MAP = {
     "fully washed":      "Washed",
@@ -147,18 +151,6 @@ def agtron_to_roast_name(value: int) -> str:
         return "Medium dark"
     return "Dark"
 
-def truncate_notes(text: str, max_chars: int = 80) -> str:
-    if not text:
-        return "-"
-    text = text.strip()
-    if len(text) <= max_chars:
-        return text
-    cut = text[:max_chars]
-    last_comma = cut.rfind(",")
-    if last_comma > max_chars // 2:
-        return cut[:last_comma] + "..."
-    return cut.rstrip() + "..."
-
 def qr_base_url() -> str:
     # phone-scannable deep-link base (spec wiki/QR-Scan-Spec.md §2.1):
     # the record web server registers tilauscope.local via Bonjour, so printed
@@ -195,17 +187,6 @@ def short_uuid(uuid: str) -> str:
     if len(clean) >= 12:
         return f"{clean[:4]}.{clean[4:8]}.{clean[8:12]}"
     return clean
-
-def blend_ratio_line(bean: GreenBean) -> str:
-    main_ratio = 100 - (bean.bean2_ratio or 0) - (bean.bean3_ratio or 0)
-    parts = [f"{bean.name} {main_ratio}%"]
-    if bean.bean2_ratio and bean.bean2_ratio > 0 and bean.bean2_name:
-        parts.append(f"{bean.bean2_name} {bean.bean2_ratio}%")
-    if bean.bean3_ratio and bean.bean3_ratio > 0 and bean.bean3_name:
-        parts.append(f"{bean.bean3_name} {bean.bean3_ratio}%")
-    line = " - ".join(parts)
-    return line[:42] + "..." if len(line) > 42 else line
-
 
 # ---------------------------------------------------------------------------
 # Shared Base Mixin
@@ -279,16 +260,47 @@ class _FontMixin:
         scale_mm = getattr(self, "_scale_mm", 1.0)
         return max(1, round(mm * scale_mm * self._FONT_SCALE * 72.0 / 25.4))
 
+    def _fit_line(self, painter, text, max_w, base_mm, min_mm=2.1,
+                  bold=True, family=None):
+        """One line that always fits: shrink the type first, elide only once
+        the floor is reached. The hand-rolled loops this replaces cut text by
+        the character, on screen metrics, so they cut what would have fitted."""
+        fam    = family or self.reg_family
+        weight = QFont.Weight.DemiBold if bold else QFont.Weight.Normal
+        mm     = base_mm
+        while mm >= min_mm:
+            f = QFont(fam, self.pt(mm), weight)
+            if self._fm(painter, f).horizontalAdvance(text) <= max_w:
+                return f, text
+            mm -= 0.2
+        f = QFont(fam, self.pt(min_mm), weight)
+        return f, self._fm(painter, f).elidedText(text, Qt.TextElideMode.ElideRight,
+                                                  int(max_w))
+
+    def _fit_block(self, painter, text, max_w, max_h, sizes, family=None,
+                   weight=QFont.Weight.DemiBold):
+        """Largest of `sizes` at which the wrapped text fits the box."""
+        fam = family or self.bold_family
+        f   = QFont(fam, self.pt(sizes[-1]), weight)
+        box = QRect(0, 0, int(max_w), 0)
+        for mm in sizes:
+            cand = QFont(fam, self.pt(mm), weight)
+            r = self._fm(painter, cand).boundingRect(box, Qt.TextFlag.TextWordWrap, text)
+            if r.height() <= max_h and r.width() <= max_w:
+                return cand
+            f = cand
+        return f
+
     def _micro_label(self, painter, text, x, y, color, scale):
         painter.setFont(QFont(self.reg_family, self.pt(2.2)))
         painter.setPen(color)
         painter.drawText(int(x), int(y), text.upper())
 
     def _spec_value(self, painter, text, rect, color, scale, bold=True):
-        w = QFont.Weight.DemiBold if bold else QFont.Weight.Normal
-        painter.setFont(QFont(self.reg_family, self.pt(2.8), w))
+        font, txt = self._fit_line(painter, text, rect.width(), 2.8, 2.1, bold)
+        painter.setFont(font)
         painter.setPen(color)
-        painter.drawText(rect, Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, text)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, txt)
 
     def _rounded_rect(self, painter, rect, radius, fill, border=None, bw=1.0):
         painter.setPen(Qt.PenStyle.NoPen if border is None else QPen(border, bw))
@@ -335,95 +347,126 @@ class _FontMixin:
         painter.setPen(QPen(color, width))
         painter.drawLine(QPointF(x1, y), QPointF(x2, y))
 
+    # Brand mark geometry, in the 512x512 viewBox of includes/Icons/tilauscope-mark.svg.
+    _MARK_BODY: Final = ((256.0, 51.0),
+                         (338.8, 51.0, 406.0, 142.8, 406.0, 256.0),
+                         (406.0, 369.2, 338.8, 461.0, 256.0, 461.0),
+                         (173.2, 461.0, 106.0, 369.2, 106.0, 256.0),
+                         (106.0, 142.8, 173.2, 51.0, 256.0, 51.0))
+    _MARK_CREASE: Final = ((256.0, 104.0),
+                           (294.0, 170.0, 218.0, 212.0, 256.0, 256.0),
+                           (294.0, 300.0, 218.0, 342.0, 256.0, 408.0))
+    _MARK_CREASE_W: Final = 36.0
+    _MARK_ROTATION: Final = -28.0
+
     def _draw_tilau_logo(self, painter, cx: float, cy: float,
                           mark_color: QColor, scale: float,
                           size_mm: float = 12.0):
+        """Draws the TilauScope brand mark: the coffee bean, with the crease
+        punched out of the body. The mark stands alone — no wordmark.
+
+        Geometry is the hand-authored one of includes/Icons/tilauscope-mark.svg,
+        replayed as a QPainterPath so the label needs no asset at print time.
+
+        cx, cy  — centre of the mark in painter coordinates
+        size_mm — overall box side in mm
+        Returns the mark side in px so callers can reserve space.
         """
-        Roast-dial logo for Tilau Roaster — speedometer open at bottom.
-
-        Geometry (Qt angle convention: 0°=right, positive=CCW, screen y-flipped
-                  so negative spanAngle = clockwise visual sweep):
-          - Ghost arc:  225° → 315° CW through top (270° CW sweep, gap at bottom)
-          - Amber arc:  225° → ~63° CW (162° CW, ≈60% of arc, bottom-left through top)
-          - Needle:     centre → tip at Qt 63° (upper-right quadrant visually)
-          - Centre dot: small filled circle at cx,cy
-          - Wordmark:   "TILAU" micro-caps, centred below
-
-        cx, cy  — centre of the dial in painter coordinates
-        size_mm — overall diameter in mm
-        Returns dial diameter in px so callers can reserve space.
-        """
-        import math
-
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        R      = self.p(scale, size_mm / 2.0)
-        # Stroke is proportionally thick — matches the bold mock style
-        stroke = max(2.0, self.p(scale, 1.1))
+        side = self.p(scale, size_mm)
 
-        arc_rect = QRectF(cx - R, cy - R, 2 * R, 2 * R)
+        body = QPainterPath()
+        body.moveTo(*self._MARK_BODY[0])
+        for c in self._MARK_BODY[1:]:
+            body.cubicTo(*c)
+        body.closeSubpath()
 
-        # ── Qt arc angle constants ────────────────────────────────────────
-        # start_qt = 225° → bottom-left visually (SW)
-        # span_ghost = -270 → CW sweep through top, ending at 315° (SE, bottom-right)
-        # span_amber = -162 → CW ~60% of arc, ending at 63° (NE, upper-right)
-        start_qt   = 225
-        span_ghost = -270
-        span_amber = -162
-        needle_qt  = (start_qt + span_amber) % 360   # = 63°
+        crease = QPainterPath()
+        crease.moveTo(*self._MARK_CREASE[0])
+        for c in self._MARK_CREASE[1:]:
+            crease.cubicTo(*c)
+        stroker = QPainterPathStroker()
+        stroker.setWidth(self._MARK_CREASE_W)
+        stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+        stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
 
-        # 1. Ghost ring (full horseshoe, mark_color @22%)
-        ghost = QColor(mark_color.red(), mark_color.green(),
-                       mark_color.blue(), int(mark_color.alpha() * 0.22))
-        painter.setPen(QPen(ghost, stroke, Qt.PenStyle.SolidLine,
-                            Qt.PenCapStyle.RoundCap))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawArc(arc_rect, start_qt * 16, span_ghost * 16)
-
-        # 2. Amber arc (roast level, C_ROAST_ACCENT @92%)
-        amber = QColor(C_ROAST_ACCENT)
-        amber.setAlpha(235)
-        painter.setPen(QPen(amber, stroke, Qt.PenStyle.SolidLine,
-                            Qt.PenCapStyle.RoundCap))
-        painter.drawArc(arc_rect, start_qt * 16, span_amber * 16)
-
-        # 3. Needle — from centre to 62% radius at needle_qt angle
-        # Qt angle → screen coords: x = cx + R*cos(-angle_rad), y = cy + R*sin(-angle_rad)
-        nx = cx + (R * 0.62) * math.cos(math.radians(-needle_qt))
-        ny = cy + (R * 0.62) * math.sin(math.radians(-needle_qt))
-        needle_c = QColor(mark_color.red(), mark_color.green(),
-                          mark_color.blue(), int(mark_color.alpha() * 0.92))
-        painter.setPen(QPen(needle_c, max(1.0, stroke * 0.55),
-                            Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-        painter.drawLine(QPointF(cx, cy), QPointF(nx, ny))
-
-        # 4. Centre dot (mark_color @92%)
-        dot_r = max(2.0, self.p(scale, 0.9))
+        painter.translate(cx, cy)
+        painter.scale(side / 512.0, side / 512.0)
+        painter.rotate(self._MARK_ROTATION)
+        painter.translate(-256.0, -256.0)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(needle_c))
-        painter.drawEllipse(QPointF(cx, cy), dot_r, dot_r)
-
-        # 5. "TILAU" wordmark — centred below the dial (mark_color @50%)
-        fs = self.pt(1.9)
-        word_c = QColor(mark_color.red(), mark_color.green(),
-                        mark_color.blue(), int(mark_color.alpha() * 0.50))
-        f_word = QFont(self.bold_family, fs, QFont.Weight.DemiBold)
-        painter.setFont(f_word)
-        painter.setPen(word_c)
-        # Use device-aware QFontMetrics so measurement matches 300 DPI painter output
-        fm = QFontMetrics(f_word, painter.device())
-        word_w = fm.horizontalAdvance("TILAU")
-        word_y = cy + R + self.p(scale, 2.2)
-        # Draw into a centred rect so Qt's own alignment handles sub-pixel centering
-        word_rect = QRectF(cx - word_w / 2 - self.p(scale, 2),
-                           word_y - fm.ascent(),
-                           word_w + self.p(scale, 4),
-                           fm.height())
-        painter.drawText(word_rect, Qt.AlignmentFlag.AlignHCenter, "TILAU")
-
+        painter.setBrush(QBrush(mark_color))
+        painter.drawPath(body.subtracted(stroker.createStroke(crease)))
         painter.restore()
-        return 2 * R
+        return side
+
+    def _fm(self, painter, font: QFont) -> QFontMetrics:
+        """Metrics for the page being painted. A device-less QFontMetrics
+        measures at the screen's 96 DPI while the page is 300 DPI, which
+        reports every string about three times narrower than it prints —
+        every fit-to-width decision on the label depends on this."""
+        return QFontMetrics(font, painter.device())
+
+    # ── Descriptor band under the masthead ───────────────────────────────
+    # Pills while they fit two rows, a wrapped line beyond. Both are measured
+    # here and only here, so the reserved header height and the drawing pass
+    # can never disagree — that disagreement is what dropped notes.
+    _NOTES_PILL_ROWS: Final  = 2
+    _NOTES_TEXT_MM: Final    = (2.4, 2.2, 2.0, 1.8)
+    _NOTES_TOP_MM: Final     = 39.0   # top pad + eyebrow + title + origin
+    _NOTES_MAX_MM: Final     = 15.0   # what the data grid below can spare
+
+    def _flavour_tokens(self, bean, profile) -> list[str]:
+        """Tasting descriptors: the bean's own notes first, then the profile's
+        cupping notes — never the operator's roasting notes."""
+        src = (bean.flavour_notes or "") if bean else ""
+        if not src and profile:
+            src = profile.get("cuppingnotes", "") or ""
+        return [t.strip().rstrip(".").title() for t in src.split(",") if t.strip()]
+
+    def _flavour_layout(self, painter, bean, profile, W, mg, scale) -> dict:
+        tokens = self._flavour_tokens(bean, profile)
+        if not tokens:
+            return {"mode": "none", "h": 0}
+
+        avail = W - 2 * mg
+        pill_f = QFont(self.reg_family, self.pt(2.2), QFont.Weight.DemiBold)
+        fm     = self._fm(painter, pill_f)
+        pad    = self.p(scale, 3.0)   # matches _pill
+        gap    = self.p(scale, 2.0)
+
+        rows: list[list[tuple[str, int]]] = []
+        cur: list[tuple[str, int]] = []
+        cur_w = 0
+        for t in tokens:
+            w = fm.horizontalAdvance(t) + 2 * pad
+            if cur and cur_w + gap + w > avail:
+                rows.append(cur)
+                cur, cur_w = [], 0
+            cur_w += w + (gap if cur else 0)
+            cur.append((t, w))
+        if cur:
+            rows.append(cur)
+
+        cap_h   = fm.height() + 2 * self.p(scale, 1.4)
+        row_gap = self.p(scale, 1.8)
+        if len(rows) <= self._NOTES_PILL_ROWS:
+            return {"mode": "pills", "rows": rows, "font": pill_f, "cap_h": cap_h,
+                    "gap": gap, "pad": pad, "row_gap": row_gap,
+                    "h": len(rows) * cap_h + (len(rows) - 1) * row_gap}
+
+        # Too many for pills: the same notes as one wrapped line. Four times
+        # denser, so a long list stays whole instead of being cut short.
+        text = ", ".join(tokens)
+        box  = QRect(0, 0, int(avail), 0)
+        for fs_mm in self._NOTES_TEXT_MM:
+            tf  = QFont(self.reg_family, self.pt(fs_mm), QFont.Weight.DemiBold)
+            r   = self._fm(painter, tf).boundingRect(box, Qt.TextFlag.TextWordWrap, text)
+            if r.height() <= self.p(scale, self._NOTES_MAX_MM):
+                return {"mode": "text", "text": text, "font": tf, "h": r.height()}
+        return {"mode": "text", "text": text, "font": tf, "h": r.height()}
 
     def _make_printer(self, output_path: str) -> QPrinter:
         # PDF page = native label size (100x150mm) so it prints at 100%
@@ -466,43 +509,32 @@ class RoastedBeanLabelPrinter(_FontMixin):
         mg = self.p(scale, 5.5)
         r  = self.p(scale, 4.0)
 
-        self._rounded_rect(painter, QRectF(0, 0, lbl_w, lbl_h), r, C_ROAST_BG)
         self._rounded_rect(painter, QRectF(0, 0, lbl_w, lbl_h), r, C_ROAST_BODY_BG)
 
-        header_h = self._header_height(bean, scale)
-        self._draw_header(painter, bean, profile, lbl_w, header_h, mg, scale)
+        notes    = self._flavour_layout(painter, bean, profile, lbl_w, mg, scale)
+        blend_h  = self.p(scale, 7.5) if bean and bean.is_blend else 0
+        header_h = self._header_height(scale, notes, blend_h)
+        self._draw_header(painter, bean, lbl_w, header_h, mg, scale, notes)
         self._draw_body(painter, profile, bean, lbl_w, lbl_h, header_h, mg, scale)
 
         painter.restore()
 
-    def _header_height(self, bean, scale) -> int:
-        h = self.p(scale, 48)
-        if bean and bean.is_blend:
-            h += self.p(scale, 7)
-        return h
+    def _header_height(self, scale, notes, blend_h) -> int:
+        # Grows with the blend row and the descriptor band instead of clipping
+        # them. The +5 mm keeps the accent rule, drawn 3 mm above the boundary,
+        # clear of the band's last line.
+        return max(self.p(scale, 48),
+                   int(self.p(scale, self._NOTES_TOP_MM) + blend_h
+                       + notes["h"] + self.p(scale, 5.0)))
 
-    def _draw_header(self, painter, bean, profile, W, header_h, mg, scale):
-        r = self.p(scale, 4.0)
+    def _draw_header(self, painter, bean, W, header_h, mg, scale, notes):
+        # Masthead sits on the paper: an accent rule separates it from the
+        # data grid, so nothing on the label is a solid ink block.
+        self._hline(painter, mg, W - mg, header_h - self.p(scale, 3),
+                    C_ROAST_ACCENT, width=self.p(scale, 0.6))
 
-        # Base header background card
-        self._rounded_rect(painter, QRectF(0, 0, W, header_h + r), r, C_ROAST_BG)
-
-        # Clip decorative background rings safely
-        painter.save()
-        clip_path = QPainterPath()
-        clip_path.addRoundedRect(QRectF(0, 0, W, header_h + r), r, r)
-        painter.setClipPath(clip_path)
-
-        cx, cy = float(W), 0.0
-        for size_mm, alpha in [(32, 10), (20, 10)]:
-            painter.setPen(QPen(QColor(0xFF, 0xF8, 0xF0, alpha), self.p(scale, 5.5)))
-            painter.drawEllipse(QPointF(cx, cy), self.p(scale, size_mm), self.p(scale, size_mm))
-        painter.restore()
-
-        # Branding & Typography Setup
         y = float(self.p(scale, 4.5))
-        # Logo: dial centred 14mm from right edge, vertically at y + half dial size
-        logo_size_mm = 9.0
+        logo_size_mm = 11.0
         logo_cx = float(W - mg - self.p(scale, logo_size_mm / 2))
         logo_cy = float(y + self.p(scale, logo_size_mm / 2 + 1.5))
         self._draw_tilau_logo(painter, logo_cx, logo_cy, C_TILAU_MARK, scale, logo_size_mm)
@@ -513,14 +545,15 @@ class RoastedBeanLabelPrinter(_FontMixin):
         y += self.p(scale, 8.0)
 
         # Title
-        name = bean.name if bean else "-"
-        fs_pt = self.pt(8.5) if len(name) <= 10 else self.pt(6.5)
-        painter.setFont(QFont(self.bold_family, fs_pt, QFont.Weight.Bold))
+        name   = bean.name if bean else "-"
+        name_w = W - 2 * mg - self.p(scale, 15)
+        name_h = self.p(scale, 17)
+        painter.setFont(self._fit_block(painter, name, name_w, name_h,
+                                        (8.5, 7.2, 6.0, 5.0, 4.2),
+                                        weight=QFont.Weight.Bold))
         painter.setPen(C_ROAST_HEAD_TXT)
-        name_w = W - 2 * mg - self.p(scale, 10)
-
-        name_rect = QRectF(mg, y, name_w, self.p(scale, 18))
-        painter.drawText(name_rect, Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, name)
+        painter.drawText(QRectF(mg, y, name_w, name_h),
+                         Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, name)
         y += self.p(scale, 18.0)
 
         # Origin
@@ -530,73 +563,35 @@ class RoastedBeanLabelPrinter(_FontMixin):
         if bean and bean.farm:
             parts.append(bean.farm)
         origin = " - ".join(parts)
-
-        fm_orig = QFontMetrics(QFont(self.reg_family, self.pt(2.5)))
-        max_orig_w = W - 2 * mg
-        if fm_orig.horizontalAdvance(origin) > max_orig_w:
-            while fm_orig.horizontalAdvance(origin + "...") > max_orig_w and len(origin) > 0:
-                origin = origin[:-1]
-            origin = origin.rstrip() + "..."
-
-        painter.setFont(QFont(self.reg_family, self.pt(2.6)))
+        font, origin = self._fit_line(painter, origin, W - 2 * mg, 2.6, 2.0, bold=False)
+        painter.setFont(font)
         painter.setPen(C_ROAST_HEAD_SUB)
         painter.drawText(QRectF(mg, y, W - 2 * mg, self.p(scale, 6)), Qt.AlignmentFlag.AlignLeft, origin)
         y += self.p(scale, 8.5)
 
         if bean and bean.is_blend:
-            tag_rect = QRectF(mg, y, W - 2 * mg, self.p(scale, 5.5))
-            self._rounded_rect(painter, tag_rect, self.p(scale, 1.5), C_BLEND_TAG_BG, C_BLEND_TAG_BD, 0.8)
-            # ... rest of blend logic ...
-            y += self.p(scale, 7)
+            self._pill(painter, QApplication.translate("tilauscope_label", "Blend").upper(),
+                       float(mg), float(y), C_BLEND_TAG_BG, C_BLEND_TAG_BD,
+                       C_BLEND_TAG_TXT, scale)
+            y += self.p(scale, 7.5)
 
-        # ---- FLAVOR NOTES WRAPPING LOGIC ----
-        # Pills show tasting descriptors: bean flavour notes first, then the
-        # profile cupping notes — never the operator roasting notes.
-        flavor_src = ""
-        if bean:
-            flavor_src = bean.flavour_notes or ""
-        if not flavor_src and profile:
-            flavor_src = profile.get("cuppingnotes", "") or ""
-
-        tokens = [t.strip().rstrip(".").title() for t in flavor_src.split(",") if t.strip()]
-
-        # Define an explicit, isolated tracking context
-        px = float(mg)
-
-        # Hard buffer line: give the right side a wider padding safety margin
-        # to force the break earlier if high-DPI calculations mismatch
-        right_boundary = float(W - mg - self.p(scale, 2.0))
-
-        current_y = float(y)
-
-        # Instantiate font context matching the internal _pill configuration precisely
-        pill_font = QFont(self.reg_family, self.pt(2.2), QFont.Weight.DemiBold)
-        fm_pill = QFontMetrics(pill_font)
-
-        # Row layout heights
-        capsule_h = fm_pill.height() + 2 * self.p(scale, 1.4)
-        row_gap = self.p(scale, 1.8)
-        max_allowed_y = float(header_h) - self.p(scale, 1.0)
-
-        for tok in tokens[:12]:
-            # Predictive wrap-check using string measurement rules
-            estimated_tw = fm_pill.horizontalAdvance(tok)
-            estimated_pw = estimated_tw + (2 * self.p(scale, 2.5))
-
-            # If the current tracking cursor + element width breaches the right wall, wrap downwards
-            if (px + estimated_pw) > right_boundary:
-                px = float(mg)  # Carriage return back to the margin side
-                current_y += capsule_h + row_gap
-
-            # Truncation fallback: prevent bleeding into the white body block area
-            if (current_y + capsule_h) > max_allowed_y:
-                break
-
-            # Execute the rendering operation onto our distinct tracking layout cursor
-            actual_w = self._pill(painter, tok, px, float(current_y), C_ROAST_PILL_BG, C_ROAST_PILL_BD, C_ROAST_ACCENT_LT, scale)
-
-            # Use the actual pixel footprint returned by the method to increment layout cursor
-            px += actual_w + self.p(scale, 2.0)
+        # Descriptor band, laid out by _flavour_layout so the header already
+        # reserved exactly this much room
+        if notes["mode"] == "pills":
+            ry = float(y)
+            for row in notes["rows"]:
+                px = float(mg)
+                for tok, _w in row:
+                    px += self._pill(painter, tok, px, ry, C_ROAST_PILL_BG,
+                                     C_ROAST_PILL_BD, C_ROAST_ACCENT_LT,
+                                     scale) + notes["gap"]
+                ry += notes["cap_h"] + notes["row_gap"]
+        elif notes["mode"] == "text":
+            painter.setFont(notes["font"])
+            painter.setPen(C_ROAST_ACCENT_LT)
+            painter.drawText(QRectF(mg, y, W - 2 * mg, notes["h"] + self.p(scale, 1)),
+                             Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft,
+                             notes["text"])
 
     def _draw_body(self, painter, profile, bean, W, H, header_h, mg, scale):
         r = self.p(scale, 4.0)
@@ -619,30 +614,24 @@ class RoastedBeanLabelPrinter(_FontMixin):
         sca_h   = self.p(scale, 11)
         sca_x   = W - mg - sca_w
         sca_rect = QRectF(sca_x, y, sca_w, sca_h)
-        self._rounded_rect(painter, sca_rect, self.p(scale, 2), C_ROAST_BG)
+        self._rounded_rect(painter, sca_rect, self.p(scale, 2), C_ROAST_PILL_BG, C_ROAST_PILL_BD, 0.9)
         painter.setFont(QFont(self.bold_family, self.pt(3.8), QFont.Weight.DemiBold))
         painter.setPen(C_ROAST_ACCENT_LT)
         painter.drawText(QRectF(sca_x, y, sca_w, sca_h * 0.7), Qt.AlignmentFlag.AlignCenter, sca_str)
         painter.setFont(QFont(self.reg_family, self.pt(1.8)))
-        painter.setPen(QColor(C_ROAST_ACCENT_LT.red(), C_ROAST_ACCENT_LT.green(), C_ROAST_ACCENT_LT.blue(), 140))
+        painter.setPen(C_ROAST_SPEC_LBL)
         painter.drawText(QRectF(sca_x, y + sca_h * 0.62, sca_w, sca_h * 0.38), Qt.AlignmentFlag.AlignCenter, "SCA")
 
-        y += self.p(scale, 13)
+        y += self.p(scale, 12)
         self._hline(painter, mg, W - mg, y, C_ROAST_SEP)
-        y += self.p(scale, 4)
+        y += self.p(scale, 3.5)
 
         col_w  = (W - 2 * mg) / 2
         col2_x = mg + col_w
-        row_h  = self.p(scale, 11)
+        row_h  = self.p(scale, 10)
 
         process = normalise_process(bean.process if bean else "")
         variety = bean.varieties if bean and bean.varieties else "-"
-        fm_v = QFontMetrics(QFont(self.reg_family, self.pt(2.8), QFont.Weight.DemiBold))
-        max_v_w = int(col_w - self.p(scale, 1))
-        while fm_v.horizontalAdvance(variety) > max_v_w and len(variety) > 3:
-            variety = variety[:-1]
-        if variety != (bean.varieties if bean and bean.varieties else "-"):
-            variety = variety.rstrip() + "..."
 
         altitude = f"{bean.altitude} m" if bean and bean.altitude and bean.altitude > 0 else "-"
 
@@ -651,11 +640,6 @@ class RoastedBeanLabelPrinter(_FontMixin):
             bean_color_raw = int(profile.get("ground_color") or profile.get("whole_color") or 0)
         roast_color = agtron_to_roast_name(bean_color_raw)
 
-        if profile and profile.get("density") and len(profile["density"]) >= 4 and profile["density"][2] > 0:
-            density = f"{int(profile['density'][0] / profile['density'][2])} {profile['density'][1]}/{profile['density'][3]}"
-        else:
-            density = f"{bean.density:.0f} g/L" if bean and bean.density else "-"
-
         crop = str(bean.crop) if bean and bean.crop and bean.crop > 0 else "-"
 
         specs = [
@@ -663,18 +647,17 @@ class RoastedBeanLabelPrinter(_FontMixin):
             (QApplication.translate("tilauscope_label", "Variety"),    variety,     col2_x, col_w),
             (QApplication.translate("tilauscope_label", "Altitude"),   altitude,    mg,     col_w),
             (QApplication.translate("tilauscope_label", "Roast color"),roast_color, col2_x, col_w),
-            (QApplication.translate("tilauscope_label", "Density"),    density,     mg,     col_w),
-            (QApplication.translate("tilauscope_label", "Crop"),       crop,        col2_x, col_w),
+            (QApplication.translate("tilauscope_label", "Crop"),       crop,        mg,     col_w),
         ]
 
         for i, (lbl, val, x, w) in enumerate(specs):
             ry = y + (i // 2) * row_h
             self._micro_label(painter, lbl, x, ry + self.p(scale, 3), C_ROAST_SPEC_LBL, scale)
-            self._spec_value(painter, val, QRectF(x, ry + self.p(scale, 4), w - self.p(scale, 1), self.p(scale, 7)), C_ROAST_SPEC_VAL, scale)
+            self._spec_value(painter, val, QRectF(x, ry + self.p(scale, 4), w - self.p(scale, 1), self.p(scale, 6)), C_ROAST_SPEC_VAL, scale)
 
-        y += (len(specs) // 2) * row_h + self.p(scale, 3)
+        y += ((len(specs) + 1) // 2) * row_h + self.p(scale, 2)
 
-        bar_h    = self.p(scale, 17)
+        bar_h    = self.p(scale, 14.5)
         bar_rect = QRectF(mg, y, W - 2 * mg, bar_h)
         self._rounded_rect(painter, bar_rect, self.p(scale, 2), C_ROAST_CARD_BG)
 
@@ -695,10 +678,10 @@ class RoastedBeanLabelPrinter(_FontMixin):
         ]
         for i, (lbl, val, vc) in enumerate(weight_rows):
             bx = mg + i * col_bar_w + self.p(scale, 2)
-            self._micro_label(painter, lbl, bx, y + self.p(scale, 5), C_ROAST_SPEC_LBL, scale)
+            self._micro_label(painter, lbl, bx, y + self.p(scale, 4.5), C_ROAST_SPEC_LBL, scale)
             painter.setFont(QFont(self.bold_family, self.pt(3.5), QFont.Weight.DemiBold))
             painter.setPen(vc)
-            painter.drawText(QRectF(bx, y + self.p(scale, 6.5), col_bar_w - self.p(scale, 2), self.p(scale, 9)), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, val)
+            painter.drawText(QRectF(bx, y + self.p(scale, 5.5), col_bar_w - self.p(scale, 2), self.p(scale, 8)), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, val)
 
         # traceability footer — QR encodes the Artisan roastUUID of this profile
         roast_uuid = str(profile.get("roastUUID") or "") if profile else ""
@@ -763,32 +746,23 @@ class GreenBeanLabelPrinter(_FontMixin):
 
         self._rounded_rect(painter, QRectF(0, 0, lbl_w, lbl_h), r, C_GREEN_BODY_BG)
 
-        header_h = self._header_height(bean, scale)
+        header_h = self._header_height(scale)
         self._draw_header(painter, bean, lbl_w, header_h, mg, scale)
         self._draw_body(painter, bean, lbl_w, lbl_h, header_h, mg, scale)
 
         painter.restore()
 
-    def _header_height(self, bean, scale) -> int:
-        h = self.p(scale, 54)
-        if bean and bean.is_blend:
-            h += self.p(scale, 7)
-        return h
+    def _header_height(self, scale) -> int:
+        return self.p(scale, 54)
 
     def _draw_header(self, painter, bean, W, header_h, mg, scale):
-        r = self.p(scale, 4.0)
-        self._rounded_rect(painter, QRectF(0, 0, W, header_h + r), r, C_GREEN_BG)
-
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        cx = float(W / 2)
-        cy = float(header_h + self.p(scale, 4))
-        for rx_mm, ry_mm, alpha in [(28, 12, 20), (38, 18, 16), (48, 24, 13), (58, 30, 9), (68, 36, 6)]:
-            painter.setPen(QPen(QColor(255, 255, 255, alpha), 0.9))
-            painter.drawEllipse(QPointF(cx, cy), self.p(scale, rx_mm), self.p(scale, ry_mm))
+        # Masthead sits on the paper: an accent rule separates it from the
+        # data grid, so nothing on the label is a solid ink block.
+        self._hline(painter, mg, W - mg, header_h - self.p(scale, 3),
+                    C_GREEN_ACCENT, width=self.p(scale, 0.6))
 
         y = float(self.p(scale, 4.5))
-        # Logo: dial centred 14mm from right edge
-        logo_size_mm = 9.0
+        logo_size_mm = 11.0
         logo_cx = float(W - mg - self.p(scale, logo_size_mm / 2))
         logo_cy = float(y + self.p(scale, logo_size_mm / 2 + 1.5))
         self._draw_tilau_logo(painter, logo_cx, logo_cy, C_TILAU_MARK_GREEN, scale, logo_size_mm)
@@ -798,18 +772,16 @@ class GreenBeanLabelPrinter(_FontMixin):
         painter.drawText(mg, int(y + self.p(scale, 4)), QApplication.translate("tilauscope_label", "Green bean").upper())
         y += self.p(scale, 8)
 
-        # title sized to match the roasted label's masthead (was 4.0/3.4/2.9mm,
-        # unreadable once printed) — shrink-to-fit still guards long names
-        name = bean.name if bean else "-"
+        # Title fits the masthead box at the largest size it can: a long name
+        # wraps and shrinks rather than running off the bottom of the block
+        name   = bean.name if bean else "-"
         name_w = W - 2 * mg - self.p(scale, 16)
-        for fs_mm in (7.5, 6.0, 4.8):
-            fs = self.pt(fs_mm)
-            fm_n = QFontMetrics(QFont(self.bold_family, fs, QFont.Weight.DemiBold))
-            if fm_n.horizontalAdvance(name) <= name_w or fs_mm <= 4.8:
-                break
-        painter.setFont(QFont(self.bold_family, fs, QFont.Weight.DemiBold))
+        name_h = self.p(scale, 17)
+        painter.setFont(self._fit_block(painter, name, name_w, name_h,
+                                        (7.5, 6.4, 5.4, 4.6, 3.9)))
         painter.setPen(C_GREEN_HEAD_TXT)
-        painter.drawText(QRectF(mg, y, name_w, self.p(scale, 20)), Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, name)
+        painter.drawText(QRectF(mg, y, name_w, name_h),
+                         Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, name)
         y += self.p(scale, 18)
 
         parts = []
@@ -818,13 +790,8 @@ class GreenBeanLabelPrinter(_FontMixin):
         if bean and bean.farm:
             parts.append(bean.farm)
         origin = " - ".join(parts)
-        fm_orig = QFontMetrics(QFont(self.reg_family, self.pt(2.5)))
-        max_orig_w = W - 2 * mg
-        while fm_orig.horizontalAdvance(origin) > max_orig_w and len(origin) > 4:
-            origin = origin[:-1]
-        if not origin.endswith(" - ".join(parts)):
-            origin = origin.rstrip() + "..."
-        painter.setFont(QFont(self.reg_family, self.pt(2.5)))
+        font, origin = self._fit_line(painter, origin, W - 2 * mg, 2.5, 2.0, bold=False)
+        painter.setFont(font)
         painter.setPen(C_GREEN_HEAD_SUB)
         painter.drawText(QRectF(mg, y, W - 2 * mg, self.p(scale, 6)), Qt.AlignmentFlag.AlignLeft, origin)
         y += self.p(scale, 8)
@@ -837,20 +804,11 @@ class GreenBeanLabelPrinter(_FontMixin):
         else:
             tag_bg, tag_bd  = C_GREEN_TAG_BG, C_GREEN_TAG_BD
             tag_txt         = QApplication.translate("tilauscope_label", "Single origin").upper()
-            tag_color       = QColor(C_GREEN_ACCENT.red(), C_GREEN_ACCENT.green(), C_GREEN_ACCENT.blue(), 165)
+            tag_color       = C_GREEN_TAG_TXT
 
         # Drop the broken hardcoded QRect drawing code completely!
         # Instead, utilize our self-adjusting _pill subsystem to draw without clipping boundaries:
-        actual_tag_w = self._pill(painter, tag_txt, float(mg), float(y), tag_bg, tag_bd, tag_color, scale)
-
-        if bean and bean.is_blend:
-            ratio_avail = W - mg - actual_tag_w - self.p(scale, 2) - self.p(scale, 18)
-            if ratio_avail > 0:
-                painter.setFont(QFont(self.reg_family, self.pt(1.8)))
-                painter.setPen(C_BLEND_RATIO_TXT)
-                # Compute starting coordinates natively relative to the real pixel output width
-                painter.drawText(QRectF(mg + actual_tag_w + self.p(scale, 2), y, ratio_avail, self.p(scale, 6)),
-                                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, blend_ratio_line(bean))
+        self._pill(painter, tag_txt, float(mg), float(y), tag_bg, tag_bd, tag_color, scale)
 
         # ---- SCA BADGE COMPONENT WITH SEPARATED METRIC BLOCKS ----
         if bean.sca and bean.sca > 0:
@@ -867,13 +825,13 @@ class GreenBeanLabelPrinter(_FontMixin):
             score_str = f"{bean.sca:.1f}"
             score_font = QFont(self.bold_family, self.pt(3.8), QFont.Weight.Bold)
             painter.setFont(score_font)
-            painter.setPen(C_GREEN_ACCENT)
+            painter.setPen(C_GREEN_SPEC_VAL)
             painter.drawText(QRectF(badge_x, badge_y, badge_w, badge_h * 0.7), Qt.AlignmentFlag.AlignCenter, score_str)
 
             # 2. Subtitle SCA Text Label Block (Matching roasted layout spec values)
             lbl_font = QFont(self.reg_family, self.pt(1.8), QFont.Weight.Normal)
             painter.setFont(lbl_font)
-            painter.setPen(QColor(C_GREEN_ACCENT.red(), C_GREEN_ACCENT.green(), C_GREEN_ACCENT.blue(), 140))
+            painter.setPen(C_GREEN_SPEC_LBL)
             painter.drawText(QRectF(badge_x, badge_y + badge_h * 0.62, badge_w, badge_h * 0.38), Qt.AlignmentFlag.AlignCenter, "SCA")
             painter.restore()
 
@@ -887,19 +845,13 @@ class GreenBeanLabelPrinter(_FontMixin):
         y = float(header_h + self.p(scale, 4))
 
         supplier = bean.supplier if bean and bean.supplier else "-"
-        fm_sup = QFontMetrics(QFont(self.reg_family, self.pt(2.8), QFont.Weight.DemiBold))
-        max_sup_w = int(W * 0.6 - mg)
-        while fm_sup.horizontalAdvance(supplier) > max_sup_w and len(supplier) > 3:
-            supplier = supplier[:-1]
-        if supplier != (bean.supplier if bean and bean.supplier else "-"):
-            supplier = supplier.rstrip() + "..."
 
         crop = str(bean.crop) if bean and bean.crop and bean.crop > 0 else "-"
 
         self._micro_label(painter, QApplication.translate("tilauscope_label", "Supplier"), mg, y + self.p(scale, 3.5), C_GREEN_SPEC_LBL, scale)
-        painter.setFont(QFont(self.reg_family, self.pt(2.8), QFont.Weight.DemiBold))
-        painter.setPen(C_GREEN_SPEC_VAL)
-        painter.drawText(QRectF(mg, y + self.p(scale, 5), W * 0.6 - mg, self.p(scale, 7)), Qt.AlignmentFlag.AlignLeft, supplier)
+        self._spec_value(painter, supplier,
+                         QRectF(mg, y + self.p(scale, 4.5), W * 0.6 - mg, self.p(scale, 7)),
+                         C_GREEN_SPEC_VAL, scale)
 
         crop_col_w = self.p(scale, 18)
         crop_x     = W - mg - crop_col_w
@@ -908,26 +860,18 @@ class GreenBeanLabelPrinter(_FontMixin):
         painter.setPen(C_GREEN_SPEC_VAL)
         painter.drawText(QRectF(crop_x, y + self.p(scale, 5), crop_col_w, self.p(scale, 7)), Qt.AlignmentFlag.AlignLeft, crop)
 
-        y += self.p(scale, 14)
+        y += self.p(scale, 13)
         self._hline(painter, mg, W - mg, y, C_GREEN_SEP)
         y += self.p(scale, 4)
 
         col_w  = (W - 2 * mg) / 2
         col2_x = mg + col_w
-        row_h  = self.p(scale, 11)
+        row_h  = self.p(scale, 10)
 
         process = normalise_process(bean.process if bean else "")
         variety = bean.varieties if bean and bean.varieties else "-"
-        fm_v    = QFontMetrics(QFont(self.reg_family, self.pt(2.8), QFont.Weight.DemiBold))
-        max_v_w = int(col_w - self.p(scale, 1))
-        orig_variety = variety
-        while fm_v.horizontalAdvance(variety) > max_v_w and len(variety) > 3:
-            variety = variety[:-1]
-        if variety != orig_variety:
-            variety = variety.rstrip() + "..."
 
         altitude  = f"{bean.altitude} masl" if bean and bean.altitude and bean.altitude > 0 else "-"
-        density   = f"{bean.density:.0f} g/L" if bean and bean.density and bean.density > 0 else "-"
         moisture  = f"{bean.last_humidity:.1f} %" if bean and bean.last_humidity and bean.last_humidity > 0 else "-"
         water_act = f"{bean.water_activity:.2f} aw" if bean and bean.water_activity and bean.water_activity > 0 else "-"
 
@@ -935,51 +879,59 @@ class GreenBeanLabelPrinter(_FontMixin):
             (QApplication.translate("tilauscope_label", "Process"),    process,   mg,     col_w),
             (QApplication.translate("tilauscope_label", "Variety"),    variety,   col2_x, col_w),
             (QApplication.translate("tilauscope_label", "Altitude"),   altitude,  mg,     col_w),
-            (QApplication.translate("tilauscope_label", "Density"),    density,   col2_x, col_w),
-            (QApplication.translate("tilauscope_label", "Moisture"),   moisture,  mg,     col_w),
-            (QApplication.translate("tilauscope_label", "Water act."), water_act, col2_x, col_w),
+            (QApplication.translate("tilauscope_label", "Moisture"),   moisture,  col2_x, col_w),
+            (QApplication.translate("tilauscope_label", "Water act."), water_act, mg,     col_w),
         ]
 
         for i, (lbl, val, x, w) in enumerate(specs):
             ry = y + (i // 2) * row_h
             self._micro_label(painter, lbl, x, ry + self.p(scale, 3), C_GREEN_SPEC_LBL, scale)
-            self._spec_value(painter, val, QRectF(x, ry + self.p(scale, 4), w - self.p(scale, 1), self.p(scale, 7)), C_GREEN_SPEC_VAL, scale)
+            self._spec_value(painter, val, QRectF(x, ry + self.p(scale, 4), w - self.p(scale, 1), self.p(scale, 6)), C_GREEN_SPEC_VAL, scale)
 
-        y += (len(specs) // 2) * row_h + self.p(scale, 2)
+        y += ((len(specs) + 1) // 2) * row_h + self.p(scale, 3)
 
-        raw_notes = truncate_notes(bean.flavour_notes if bean else "", max_chars=90)
-        notes_h = self.p(scale, 18)
+        # Footer is anchored to the bottom margin, like the roasted label: the
+        # notes block takes the room left above it instead of pushing it off page.
+        qr_size  = self.p(scale, 14)
+        qr_x     = W - mg - qr_size
+        footer_y = H - mg - qr_size
+        sep_y    = footer_y - self.p(scale, 3)
+
+        notes_h   = max(self.p(scale, 10), sep_y - self.p(scale, 3) - int(y))
+        raw_notes = (bean.flavour_notes or "").strip() if bean else ""
         self._rounded_rect(painter, QRectF(mg, y, W - 2 * mg, notes_h), self.p(scale, 2), C_GREEN_NOTES_BG)
         self._micro_label(painter, QApplication.translate("tilauscope_label", "Cupping notes"), mg + self.p(scale, 2.5), y + self.p(scale, 4), C_GREEN_SPEC_LBL, scale)
-        painter.setFont(QFont(self.reg_family, self.pt(2.5), QFont.Weight.DemiBold))
+        # The notes shrink into the box rather than being cut at a fixed
+        # character count, which dropped whole descriptors without saying so
+        txt_w = W - 2 * mg - self.p(scale, 5)
+        txt_h = notes_h - self.p(scale, 6.5)
+        painter.setFont(self._fit_block(painter, raw_notes, txt_w, txt_h,
+                                        (2.5, 2.3, 2.1, 1.9, 1.7, 1.5),
+                                        family=self.reg_family))
         painter.setPen(C_GREEN_SPEC_VAL)
-        painter.drawText(QRectF(mg + self.p(scale, 2.5), y + self.p(scale, 5.5), W - 2 * mg - self.p(scale, 5), self.p(scale, 12)), Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, raw_notes)
+        painter.drawText(QRectF(mg + self.p(scale, 2.5), y + self.p(scale, 5.5), txt_w, txt_h),
+                         Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft, raw_notes)
 
-        y += notes_h + self.p(scale, 3)
+        self._hline(painter, mg, W - mg, sep_y, C_GREEN_SEP)
 
-        self._hline(painter, mg, W - mg, y, C_GREEN_SEP)
-        y += self.p(scale, 3)
-
-        qr_size = self.p(scale, 15)
-        qr_x    = W - mg - qr_size
-        qimg    = self._generate_qr(bean)
+        qimg = self._generate_qr(bean)
         if qimg is not None:
             pixmap = QPixmap.fromImage(qimg)
-            painter.drawPixmap(int(qr_x), int(y), qr_size, qr_size, pixmap)
+            painter.drawPixmap(int(qr_x), int(footer_y), qr_size, qr_size, pixmap)
 
         painter.setFont(QFont(self.bold_family, self.pt(1.8), QFont.Weight.DemiBold))
         painter.setPen(C_GREEN_SPEC_LBL)
-        painter.drawText(int(mg), int(y + self.p(scale, 3.5)), "TILAUSCOPE RECORD")
+        painter.drawText(int(mg), int(footer_y + self.p(scale, 3.5)), "TILAUSCOPE RECORD")
 
         uuid_str = short_uuid(bean.uuid) if bean and bean.uuid else "-"
         painter.setFont(QFont(self.reg_family, self.pt(2.5)))
         painter.setPen(C_GREEN_SPEC_VAL)
-        painter.drawText(int(mg), int(y + self.p(scale, 7.5)), uuid_str)
+        painter.drawText(int(mg), int(footer_y + self.p(scale, 7.5)), uuid_str)
 
         today = QDate.currentDate().toString("d MMM yyyy")
         painter.setFont(QFont(self.reg_family, self.pt(1.8)))
         painter.setPen(C_GREEN_SPEC_LBL)
-        painter.drawText(int(mg), int(y + self.p(scale, 11)), QApplication.translate("tilauscope_label", "Stored") + f" {today}")
+        painter.drawText(int(mg), int(footer_y + self.p(scale, 11.5)), QApplication.translate("tilauscope_label", "Stored") + f" {today}")
 
     def _generate_qr(self, bean: GreenBean):
         # http URL payload (spec §2.1) — phone camera opens the bean page directly
@@ -1815,5 +1767,166 @@ def build_brew_recipe_label_image(
             dt, df = _brew_fonts(d, _brew_clean(desc), False, (17, 16, 15, 14), max(avail, 20))
             d.text((PAD + time_w, y), dt, font=df, fill=0)
             y += line_h
+
+    return img
+
+
+# ---------------------------------------------------------------------------
+# Free-entry coffee label — 50×30 mm Niimbot bitmap.
+# For a coffee the operator did not roast: every value is typed by hand and no
+# roast record stands behind it. An empty field collapses, its separator with
+# it, and the title grows into the space the missing lines leave.
+# ---------------------------------------------------------------------------
+
+# Type scale: the label is composed once per candidate scale and the largest
+# one that still fits the 30 mm height wins, so a two-field label prints large
+# and a full one stays inside the paper.
+_CUSTOM_BASE: dict[str, int] = {"title": 34, "sub": 20, "line": 19, "note": 17}
+_CUSTOM_SCALES: tuple[float, ...] = (2.4, 2.1, 1.85, 1.68, 1.55, 1.4, 1.28,
+                                     1.16, 1.06, 1.0, 0.93, 0.86, 0.79, 0.72, 0.65)
+
+
+def _custom_ellipsise(d, text: str, font, max_w: float) -> str:
+    """Trim `text` until it fits `max_w`, marking the cut with an ellipsis."""
+    if d.textlength(text, font=font) <= max_w:
+        return text
+    out = text
+    while out and d.textlength(out + "…", font=font) > max_w:
+        out = out[:-1]
+    return (out + "…") if out else text
+
+
+def _custom_wrap(d, text: str, font, max_w: float, max_lines: int) -> list[str]:
+    """Word-wrap `text` to at most `max_lines` lines of `max_w`, tail ellipsised."""
+    words = text.split()
+    if not words:
+        return []
+    lines: list[str] = []
+    cur = ""
+    for w in words:
+        trial = f"{cur} {w}".strip()
+        if not cur or d.textlength(trial, font=font) <= max_w:
+            cur = trial
+            continue
+        lines.append(cur)
+        cur = w
+        if len(lines) == max_lines:
+            cur = ""
+            break
+    if cur and len(lines) < max_lines:
+        lines.append(cur)
+    if len(" ".join(lines).split()) < len(words) and lines:
+        lines[-1] = _custom_ellipsise(d, lines[-1] + " …", font, max_w)
+    return [_custom_ellipsise(d, ln, font, max_w) for ln in lines]
+
+
+def _custom_compose(d, scale: float, name: str, sub: str, grain: str,
+                    batch: str, note_text: str, text_w: int) -> tuple[list, int]:
+    """Lay the label out at one type scale without drawing it.
+
+    Returns the ordered blocks — (lines, font, line_height, gap_after) — plus a
+    rule marker, and the total height they occupy."""
+    def _px(role: str) -> int:
+        return max(9, int(round(_CUSTOM_BASE[role] * scale)))
+
+    def _lh(font) -> int:
+        return d.textbbox((0, 0), "Agjy", font=font)[3]
+
+    blocks: list = []
+    total = 0
+
+    tf = text_shaping.pil_font(_px("title"), bold=True)
+    tlines = ([name] if d.textlength(name, font=tf) <= text_w
+              else _custom_wrap(d, name, tf, text_w, 2))
+    h = _lh(tf)
+    blocks.append((tlines, tf, h, int(4 * scale)))
+    total += len(tlines) * (h + 2) + int(4 * scale)
+
+    if sub:
+        sf = text_shaping.pil_font(_px("sub"), bold=False)
+        h = _lh(sf)
+        blocks.append(([_custom_ellipsise(d, sub, sf, text_w)], sf, h, int(5 * scale)))
+        total += h + int(5 * scale)
+
+    if grain or batch or note_text:
+        blocks.append(("rule", None, 1, int(8 * scale)))
+        total += 1 + int(8 * scale) + int(3 * scale)
+
+    lf = text_shaping.pil_font(_px("line"), bold=False)
+    for line in (grain, batch):
+        if not line:
+            continue
+        h = _lh(lf)
+        blocks.append(([_custom_ellipsise(d, line, lf, text_w)], lf, h, int(5 * scale)))
+        total += h + int(5 * scale)
+
+    if note_text:
+        nf = text_shaping.pil_font(_px("note"), bold=False)
+        h = _lh(nf)
+        nlines = _custom_wrap(d, note_text, nf, text_w, 2)
+        blocks.append((nlines, nf, h, 0))
+        total += len(nlines) * (h + 3)
+
+    return blocks, total
+
+
+def build_custom_label_image(
+    name: str,
+    *,
+    roaster: str = "",
+    origin: str = "",
+    process: str = "",
+    roast_level: str = "",
+    roast_date: str = "",
+    weight: str = "",
+    notes: str = "",
+    paper_height: int = 30,
+) -> Image.Image:
+    """Return a 384×240 1-bit hand-typed label for a bought roasted coffee.
+
+    Only ``name`` is required; every other argument is dropped when blank, its
+    separator with it. All strings arrive already localised and formatted by the
+    caller — the builder lays them out, it does not decide their wording."""
+    if paper_height != 30:
+        raise ValueError(
+            f"build_custom_label_image: {paper_height} mm paper not supported (50×30 only)"
+        )
+    W, H, PAD, _rot = _LAYOUT[30]
+    img = Image.new("1", (W, H), 1)
+    d = text_shaping.shaping_draw(img)
+    text_w = W - 2 * PAD
+    avail = H - 2 * PAD
+
+    sub = _brew_clean(roaster).strip()
+    grain = " · ".join(
+        p for p in (_brew_clean(origin).strip(), _brew_clean(process).strip(),
+                    _brew_clean(roast_level).strip()) if p)
+    batch = " · ".join(
+        p for p in (_brew_clean(weight).strip(), _brew_clean(roast_date).strip()) if p)
+    note_text = _brew_clean(notes).strip()
+    clean_name = _brew_clean(name).strip()
+
+    blocks: list = []
+    used = avail
+    for scale in _CUSTOM_SCALES:
+        blocks, used = _custom_compose(
+            d, scale, clean_name, sub, grain, batch, note_text, text_w)
+        if used <= avail:
+            break
+
+    # Centre the block: a sparse label reads as composed rather than as a full
+    # one whose bottom half failed to print.
+    y = PAD + max(0, (avail - used) // 2)
+    for lines, font, line_h, gap in blocks:
+        if lines == "rule":
+            d.line((PAD, y, W - PAD, y), fill=0, width=1)
+            y += 1 + gap
+            continue
+        for ln in lines:
+            if y + line_h > H - PAD + 2:
+                break
+            d.text((PAD, y), ln, font=font, fill=0)
+            y += line_h + 3
+        y += gap
 
     return img

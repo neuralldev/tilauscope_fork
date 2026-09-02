@@ -1,6 +1,6 @@
-__version__ = '4.2.19'
+__version__ = '4.2.20'
 __revision__ = ''
-__build__ = '2'
+__build__ = '1'
 __artisan_os__ = 'macOS'
 
 ## TILAU ##
@@ -10,4 +10,4 @@ __release_sponsor_name__ = 'powered by TilauScope'
 __release_sponsor_domain__ = 'tilauscope.org'
 __release_sponsor_url__ = 'https://github.com/neuralldev/tilauscope_fork/releases'
 
-__signature__ = '95cbaa0e2c98c533f706710b2025625999d7cc8741de2c67a6f9d957466620aa7f4de157b11c28e579b154ce141d2d87c252575f6146ed0f242d7ce47a32550f'
+__signature__ = '79dbaf6d08673d788f9b2593dbe1afe61124241ab879ee7395aadbbcad265aa7343bffa034bfff6d90dd08cc2fa9fc955f0d97088f4d7f52944fff9afc1c0d06'

@@ -13,10 +13,10 @@ from typing import TYPE_CHECKING
 from tilauscope.tilauscope_types import THEME
 
 if TYPE_CHECKING:
-    from PyQt6.QtWidgets import QWidget
+    from PyQt6.QtWidgets import QListView, QWidget
 
-__all__ = ['apply_tilau_theme', 'base_qss', 'mono_family', 'restyle', 'tint', 'tooltip_qss',
-           'with_tooltip']
+__all__ = ['apply_tilau_theme', 'base_qss', 'calendar_qss', 'mono_family', 'restyle',
+           'popup_view_qss', 'styled_popup_view', 'tint', 'tooltip_qss', 'with_tooltip']
 
 _log = logging.getLogger(__name__)
 
@@ -235,7 +235,8 @@ QPushButton[variant="ghost"]:disabled {{ color: {t['OVERLAY0']}; }}
 /* ---- text inputs ----
    QSS switches a widget off its native palette, so every state has to be
    written out or the widget goes unreadable in a state nobody tested. */
-QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox {{
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox,
+QDateEdit, QDateTimeEdit, QTimeEdit {{
     background-color: {t['SURFACE']};
     color: {t['TEXT']};
     border: 1px solid {t['BORDER']};
@@ -245,9 +246,11 @@ QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox {{
     selection-color: {t['BG']};
 }}
 QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus,
-QSpinBox:focus, QDoubleSpinBox:focus {{ border-color: {t['ACCENT']}; }}
+QSpinBox:focus, QDoubleSpinBox:focus,
+QDateEdit:focus, QDateTimeEdit:focus, QTimeEdit:focus {{ border-color: {t['ACCENT']}; }}
 QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled,
-QSpinBox:disabled, QDoubleSpinBox:disabled {{
+QSpinBox:disabled, QDoubleSpinBox:disabled,
+QDateEdit:disabled, QDateTimeEdit:disabled, QTimeEdit:disabled {{
     background-color: {t['BG']}; color: {t['OVERLAY0']};
 }}
 QLineEdit[readOnly="true"] {{
@@ -426,3 +429,90 @@ def restyle(widget: QWidget) -> None:
     if style is not None:
         style.unpolish(widget)
         style.polish(widget)
+
+
+def calendar_qss() -> str:
+    """Stylesheet for a QCalendarWidget, to set on the calendar widget itself.
+
+    A calendar popup is a separate top-level window on macOS and inherits none
+    of the dialog's descendant rules, so a `QDateEdit QCalendarWidget` selector
+    leaves it white there. Set this on ``dateEdit.calendarWidget()`` directly.
+    The month view is a QTableView and the navigation bar a QWidget of tool
+    buttons: both keep their native ground unless named here.
+    """
+    t = THEME
+    return f"""
+QCalendarWidget QWidget {{ alternate-background-color: {t['SURFACE']};
+                           background-color: {t['BG']}; color: {t['TEXT']}; }}
+QCalendarWidget QWidget#qt_calendar_navigationbar {{
+    background-color: {t['SURFACE']}; border-bottom: 1px solid {t['BORDER']};
+}}
+QCalendarWidget QToolButton {{
+    background-color: transparent; color: {t['TEXT']};
+    border: none; border-radius: 4px; padding: 3px 8px; font-weight: bold;
+}}
+QCalendarWidget QToolButton:hover {{ background-color: {t['SURFACE1']}; }}
+QCalendarWidget QToolButton::menu-indicator {{ image: none; }}
+QCalendarWidget QSpinBox {{
+    background-color: {t['SURFACE']}; color: {t['TEXT']};
+    border: 1px solid {t['BORDER']}; border-radius: 4px;
+}}
+QCalendarWidget QMenu {{
+    background-color: {t['SURFACE']}; color: {t['TEXT']};
+    border: 1px solid {t['BORDER']};
+}}
+QCalendarWidget QMenu::item:selected {{
+    background-color: {t['ACCENT']}; color: {t['BG']};
+}}
+QCalendarWidget QAbstractItemView {{
+    background-color: {t['BG']}; color: {t['TEXT']};
+    selection-background-color: {t['ACCENT']}; selection-color: {t['BG']};
+    outline: none;
+}}
+/* days spilling in from the neighbouring months */
+QCalendarWidget QAbstractItemView:disabled {{ color: {t['OVERLAY0']}; }}
+"""
+
+
+def popup_view_qss() -> str:
+    """Stylesheet for a combo popup view. Split from `styled_popup_view` so it
+    can be evaluated — and its palette tokens checked — without a QApplication."""
+    t = THEME
+    return f"""
+QListView {{
+    background-color: {t['BG']};
+    color: {t['TEXT']};
+    border: 1px solid {t['ACCENT']};
+    border-radius: 4px;
+    outline: none;
+    padding: 2px;
+}}
+QListView::item {{
+    background-color: {t['BG']};
+    color: {t['TEXT']};
+    padding: 4px 6px;
+}}
+QListView::item:selected {{
+    background-color: {t['ACCENT']};
+    color: {t['CRUST']};
+}}
+QListView::item:hover {{
+    background-color: {t['SURFACE1']};
+    color: {t['TEXT']};
+}}
+"""
+
+
+def styled_popup_view(min_width: int = 0) -> QListView:
+    """Return a themed QListView to set as a QComboBox popup view.
+
+    macOS shows a combo popup as a separate top-level window that inherits none
+    of the dialog's descendant QSS, so a combo whose popup must follow the theme
+    needs its own styled view rather than a `QComboBox QAbstractItemView` rule.
+    """
+    from PyQt6.QtWidgets import QListView  # noqa: PLC0415
+    view = QListView()
+    if min_width > 0:
+        view.setMinimumWidth(min_width)
+    view.setStyleSheet(popup_view_qss())
+    return view

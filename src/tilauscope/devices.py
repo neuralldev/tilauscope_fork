@@ -43,7 +43,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QCursor, QPalette, QColor
 from PyQt6 import sip
 
-from tilauscope.theme_qss import base_qss, tooltip_qss
+from tilauscope.theme_qss import base_qss, styled_popup_view, tooltip_qss
 from tilauscope.tilauscope_types import THEME, no_enter_default, show_styled_message, TilauProgress
 
 
@@ -146,35 +146,12 @@ _SCAN_BTN_H: Final[int] = 34   # fixed height — aligns with QComboBox / trash 
 
 
 def _styled_combo_view() -> QListView:
-    """Fresh Mocha-styled popup view for a sensor QComboBox. macOS shows the
-    popup as a separate top-level window that does not inherit the dialog's
-    descendant QSS, so each combo needs its own styled view. """
-    view = QListView()
-    # the combo can shrink (Ignored policy), but the popup must stay
-    # wide enough to show the full BLE UUID/MAC of each detected device.
-    view.setMinimumWidth(360)
-    view.setStyleSheet(
-        f"""
-        QListView {{
-            background-color: {THEME['BG']};
-            color: {THEME['TEXT']};
-            border: 1px solid {THEME['ACCENT']};
-            border-radius: 4px;
-            outline: none;
-            padding: 2px;
-        }}
-        QListView::item {{
-            background-color: {THEME['BG']};
-            color: {THEME['TEXT']};
-            padding: 4px 6px;
-        }}
-        QListView::item:selected {{
-            background-color: {THEME['ACCENT']};
-            color: {THEME['CRUST']};
-        }}
-        """
-    )
-    return view
+    """Fresh Mocha-styled popup view for a sensor QComboBox.
+
+    The combo can shrink (Ignored policy), but the popup must stay wide enough
+    to show the full BLE UUID/MAC of each detected device.
+    """
+    return styled_popup_view(min_width=360)
 
 
 def _btn_trash() -> str:

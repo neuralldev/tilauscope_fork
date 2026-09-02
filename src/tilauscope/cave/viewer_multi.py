@@ -32,7 +32,8 @@ from PyQt6.QtWidgets import (QApplication) # @UnusedImport @Reimport  @Unresolve
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.theme_qss import tint
-from tilauscope.tilauscope_types import (THEME, RoastingPhase, estimate_ror_dt, find_turning_point_index, find_flicks_crashes)
+from tilauscope.tilauscope_types import (THEME, RoastingPhase, estimate_ror_dt, find_turning_point_index, find_flicks_crashes,
+                                          WEIGHT_LOSS_TOLERANCE_PCT)
 from tilauscope.cave.common import (
     _logd, _PLOT_PALETTE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_LEGEND)
 
@@ -740,9 +741,6 @@ class ViewerMultiMixin:
         mode = data.get('mode', 'C')
         ground = data.get('ground_color', 0) or 0
         whole = data.get('whole_color', 0) or 0
-        level, lvl_th = self.roast_level_thresholds(ground if ground else whole)
-        dtr_target = sum(lvl_th['dtr']) / 2.0
-        wl_target = sum(lvl_th['wl']) / 2.0
         t_charge = 0
         t_dry    = c.get('DRY_time', 0) or 0
         t_fcs    = c.get('FCs_time', 0) or 0
@@ -750,6 +748,17 @@ class ViewerMultiMixin:
         drying      = t_dry - t_charge
         maillard    = t_fcs - t_dry
         development = t_drop - t_fcs
+        # Resolved after the phases: the weight-loss target needs this roast's
+        # own water and development, not the colour alone.
+        try:
+            _moist = float(data.get('moisture_greens') or 0.0)
+        except (TypeError, ValueError):
+            _moist = 0.0
+        level, lvl_th = self.roast_level_thresholds(
+            ground if ground else whole,
+            moisture_pct=_moist, dev_time_min=development / 60.0)
+        dtr_target = sum(lvl_th['dtr']) / 2.0
+        wl_target = lvl_th['wl_target']
         total       = t_drop - t_charge
         dtr  = round(100 * development / total, 1) if total > 0 else 0.0
         wl   = c.get('weight_loss', None)
@@ -1162,7 +1171,12 @@ class ViewerMultiMixin:
         rows+=hrow('Development',[m['dev_s']    for m in metrics], ideal=sum(m['dev_s']      for m in metrics)/n, fmt=lambda x: next(m['dev_fmt']      for m in metrics if m['dev_s']     ==x))
         rows+=sec('\U0001f4ca KEY RATIOS')
         rows+=hrow('DTR %',       [m['dtr'] for m in metrics], ideal=20.0, warn_fn=lambda v:v<15 or v>25, fmt=lambda x:f'{x:.1f}', unit=' %')
-        rows+=hrow('Weight loss', [m['wl']  for m in metrics], ideal=15.0, warn_fn=lambda v:v is not None and (v<12 or v>18), fmt=lambda x:f'{x:.1f}', unit=' %')
+        # Each roast carries its own target (water + colour + development); the
+        # row can only show one, so it shows their average and flags each roast
+        # against it by the same tolerance the debrief uses.
+        _wl_targets = [m['wl_target'] for m in metrics if m.get('wl_target')]
+        _wl_ideal = sum(_wl_targets) / len(_wl_targets) if _wl_targets else 0.0
+        rows+=hrow('Weight loss', [m['wl']  for m in metrics], ideal=_wl_ideal, warn_fn=lambda v:v is not None and abs(v - _wl_ideal) > WEIGHT_LOSS_TOLERANCE_PCT, fmt=lambda x:f'{x:.1f}', unit=' %')
         rows+=sec(f'\U0001f321 TEMPERATURES (\u00b0{mode})')
         cb_avg = sum(m['charge_bt'] for m in metrics if m['charge_bt'])/max(1,sum(1 for m in metrics if m['charge_bt']))
         db_avg = sum(m['drop_bt']   for m in metrics if m['drop_bt']  )/max(1,sum(1 for m in metrics if m['drop_bt']))

@@ -105,11 +105,43 @@ The weight of green coffee going into the drum. It sets the whole scale of the r
 durations, how much heat the batch can absorb, and what counts as a comparable previous roast
 when TilauScope looks at your history.
 
+#### Bean family
+
+A grouping of coffee varieties that behave alike in the drum, after the roasting research of Rob
+Hoos: **Typica** and **Ethiopian** varieties generally want a quicker roast, **Bourbon** ones a
+slower progression, and a **hybrid** is read through whichever parent is not the Timor Hybrid —
+a Catimor is paced like the Caturra in it. TilauScope reads the family from the variety on the
+coffee's record and uses it to nudge the charge temperature.
+
+It is a starting point, not a fact. Coffee cross-pollinates, nurseries mislabel, and varieties
+are often identified by eye, so a lot sold as one variety is rarely purely that one. TilauScope
+therefore keeps the nudge small, halves it for a blend, and drops it entirely for the many
+varieties it does not place — saying *not known* rather than guessing. It also stays silent when
+a record names varieties from two different families, such as a Bourbon and a Gesha: the two
+point opposite ways, and there is no honest way to pick one.
+
+#### Omni
+
+A roast meant to work both as filter and as espresso, given a development time between the two.
+Filter is given the shortest development, espresso the longest, and omni sits in the middle.
+
 #### Weight loss
 
 The weight the batch lost during roasting, as a percentage of its
-[charge weight](#charge-weight--green-weight). Mostly water early on, then organic matter as
-the roast develops, so it tracks how far the roast went.
+[charge weight](#charge-weight--green-weight). It is two losses in one: the water the green
+coffee carried, which leaves whatever you do, plus the matter burnt off once the roast
+develops.
+
+That is why the target TilauScope shows you is not a single figure per roast colour. It starts
+from the lot's own [moisture content](#moisture-content) — a drier coffee has less to lose, so
+it should end lighter on the scale — and adds what the colour and the
+[development](#dtr--development-time-ratio) burn off on top. Two roasts stopped at the same
+colour, one held forty seconds longer after first crack, do not lose the same weight; the
+longer one loses about a point and a half more.
+
+The target is a bearing, not a verdict. On a home-sized batch one point of weight loss is only
+a few grams — about what the chaff and the handling account for — so TilauScope only speaks up
+when the roast lands well clear of it.
 
 #### Moisture content
 
@@ -121,7 +153,11 @@ drying phase, more power, and a coffee that resists heat for longer at the start
 #### Density
 
 How much the beans weigh for a given volume. Dense beans conduct heat inward more slowly and
-need sustained heat; light, low-density beans take heat faster and are easier to scorch.
+need sustained heat; light, low-density beans take heat faster and are easier to scorch. The
+plan acts on it only when it is clearly one or the other — an ordinary reading in the middle
+of the range is treated as no information, because a supplier's figure cannot reliably separate
+two ordinary coffees. Measure it by water displacement rather than by filling a dry measure,
+which counts the air between the beans as if it were coffee.
 
 #### Agtron
 

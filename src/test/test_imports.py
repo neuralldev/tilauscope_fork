@@ -76,7 +76,8 @@ KNOWN_UNIMPORTABLE: Final[dict[str, str]] = {}
 ARTISAN_MAIN_IMPORTERS: Final[frozenset[str]] = frozenset({
     'difluid',
     'displayscope',
-    'pid_autotune',
+    # pid_autotune left this set on 2026-09-01: its ApplicationWindow import
+    # moved under TYPE_CHECKING. Locked in — it must not come back.
     'roast_asssistant',
     'tilau_intelligence',
     'tilauambient',
@@ -128,11 +129,33 @@ class ImportResult(NamedTuple):
     output: str
 
 
-def _module_names() -> list[str]:
+def _dotted(path: Path) -> str:
+    """`tilauscope/window/parts.py` -> `window.parts`, the importable suffix.
+
+    Modules live in subpackages too, and a bare stem cannot name them: two
+    packages may hold the same file name, and `tilauscope.parts` is not
+    importable. Everything that walks the package is keyed on this.
+    """
+    return '.'.join(path.relative_to(PKG_DIR).with_suffix('').parts)
+
+
+def _package_modules() -> list[Path]:
+    """Every importable module of the package, subpackages INCLUDED.
+
+    Recursive on purpose. A non-recursive glob left `cave/`, `window/`,
+    `graph/`, `widgets/` and `tools/` — 39 modules, better than a quarter of
+    the package — outside every check built on this list, which is where the
+    unguarded `artisanlib.main` imports of `window.parts`, `window.sidebar`
+    and `cave.printing` sat unnoticed.
+    """
     return sorted(
-        p.stem for p in PKG_DIR.glob('*.py')
+        p for p in PKG_DIR.rglob('*.py')
         if p.stem != '__init__' and not p.stem.startswith('.')
     )
+
+
+def _module_names() -> list[str]:
+    return [_dotted(p) for p in _package_modules()]
 
 
 def _import_one(module: str, sandbox: Path) -> ImportResult:
@@ -212,12 +235,12 @@ def test_no_new_artisanlib_main_contamination() -> None:
     should be updated to lock the improvement in.
     """
     found: set[str] = set()
-    for path in PKG_DIR.glob('*.py'):
+    for path in _package_modules():
         for line in path.read_text(encoding='utf-8').splitlines():
             # Column 0 == runtime scope. Indented imports are inside
             # `if TYPE_CHECKING:` or a function, and are harmless.
             if line.startswith(('from artisanlib.main ', 'import artisanlib.main')):
-                found.add(path.stem)
+                found.add(_dotted(path))
                 break
 
     new = found - ARTISAN_MAIN_IMPORTERS

@@ -495,6 +495,34 @@ def test_live_coordinator_ack_timeout_forces_zero_and_rollback() -> None:
     assert command.reason == "actuator_ack_timeout"
     assert requests[-1] == (3, 0, True)
     assert restores == [True]
+    assert coordinator.shutdown_command_dispatched is False
+    assert coordinator.pending is not None
+    assert coordinator.pending.power_pct == 0
+
+    assert coordinator.acknowledge(
+        heater_slider=3,
+        applied_power_pct=0,
+        action_fired=True,
+    )
+    assert coordinator.shutdown_command_dispatched is True
+    assert coordinator.pending is None
+
+
+def test_terminal_zero_dispatch_failure_is_not_reported_as_confirmed() -> None:
+    coordinator, _requests, _candidates, _restores = _live_coordinator()
+    coordinator.start(
+        CalibrationSample(0.0, 200.0, 0.0),
+        readiness=evaluate_calibration_readiness(_ready_facts()),
+    )
+    coordinator.poll(1.51)
+
+    assert not coordinator.acknowledge(
+        heater_slider=3,
+        applied_power_pct=0,
+        action_fired=False,
+    )
+    assert coordinator.shutdown_command_dispatched is False
+    assert coordinator.pending is None
 
 
 def test_fail_safe_audit_is_chained_and_detects_any_later_change() -> None:

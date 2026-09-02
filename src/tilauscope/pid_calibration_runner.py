@@ -211,15 +211,13 @@ class PIDCalibrationRunner(QObject):
     def _acknowledge(
         self, heater_slider: int, applied_power: int, action_fired: bool
     ) -> None:
-        if self.coordinator.phase != "running":
-            return
         self.coordinator.acknowledge(
             heater_slider=heater_slider,
             applied_power_pct=applied_power,
             action_fired=action_fired,
             now_sec=self._elapsed(),
         )
-        if self.coordinator.phase != "running":
+        if self.coordinator.phase != "running" and not self._finalized:
             self._finalize()
 
     def _manual_moved(self, _slider: int, _value: int) -> None:
@@ -231,11 +229,17 @@ class PIDCalibrationRunner(QObject):
     def _finalize(self) -> None:
         if self._finalized:
             return
+        # Terminal zero acknowledgements can be delivered synchronously while
+        # this method is dispatching them. Mark finalization first so that the
+        # nested signal cannot persist or emit `finished` a second time.
+        self._finalized = True
         self.timer.stop()
         if self.review_only and self.coordinator.phase == "complete":
             self.coordinator.abort(
                 "pilot_completed_pending_review", now_sec=self._elapsed()
             )
+        elif self.coordinator.phase == "complete":
+            self.coordinator.request_zero_after_complete(now_sec=self._elapsed())
         try:
             self.persist_journal(self.coordinator)
             self.journal_persisted = True
@@ -255,7 +259,6 @@ class PIDCalibrationRunner(QObject):
                     if self.coordinator.reason is None
                     else f"{self.coordinator.reason};journal_persistence_failed"
                 )
-        self._finalized = True
         self.finished.emit(
             self.coordinator.phase, self.coordinator.reason or ""
         )

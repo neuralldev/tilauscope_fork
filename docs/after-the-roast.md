@@ -43,7 +43,9 @@ early milestones and on temperature for the drop, because that is how each one i
 [development rise](glossary.md#development-rise), the peak
 [rate of rise](glossary.md#ror--rate-of-rise) and
 [weight loss](glossary.md#weight-loss). Each is shown with the plan's target or the usual range
-for that roast colour, so no figure has to be judged on its own.
+for that roast colour, so no figure has to be judged on its own. Weight loss is the exception
+to "for that roast colour": its target also follows the water this particular lot carried and
+the development the roast actually got, so the panel names the development it judged against.
 
 Below them sit the weights, the colour and the room conditions the roast was recorded in, and
 **Full roast card**, which opens the same reading with the curve on it.

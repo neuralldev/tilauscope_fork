@@ -63,12 +63,18 @@ class Scenario(NamedTuple):
     humidity_pct: float
     altitude_m: float
     minutes_since_drop: float | None = None
+    #: The lot's own physics. Defaulted to the harness bean so every scenario
+    #: written before the density dead band keeps its exact snapshot.
+    density_g_l: float = 700.0
+    moisture_pct: float = 10.5
 
 
 #: Bean identities present in the committed corpus.
 _GR2: Final[str] = 'a82364a8-e9ad-447c-a3d8-5f49111dc3ee'
 _CORTES: Final[str] = '330efff2-49f8-41c4-b1e7-e972a2d6a3a2'
 _MBINGA: Final[str] = '283ab376-9e0f-4e11-8b2b-080e9d5240ed'
+_CATURRA: Final[str] = '94ee0778-f239-4457-91d6-d33153c17e6f'
+_BARAZILIE: Final[str] = '2d1a0dd8-2f15-4cb5-a8c9-41cfb583bb49'
 
 SCENARIOS: Final[tuple[Scenario, ...]] = (
     Scenario(
@@ -123,6 +129,31 @@ SCENARIOS: Final[tuple[Scenario, ...]] = (
         'correction must lower the charge and the starting burner',
         _GR2, '74110 GR2', 'Natural', 'Medium', 400.0, 21.0, 55.0, 1800.0,
         minutes_since_drop=8.0,
+    ),
+    Scenario(
+        'caturra-300-medium-dense',
+        'a genuinely hard lot at 770 g/L: the only branch left above the '
+        'density dead band, where the structure term is allowed to carry the '
+        'charge past the ceiling its process alone would impose — and at half '
+        'slope, so a dense bean can no longer claim the +4.9 C it used to. No '
+        'roast of it in the corpus, so the schedule falls to the grid and the '
+        'density is the one thing moving the plan',
+        _CATURRA, 'Caturra', 'Natural', 'Medium', 300.0, 21.0, 52.0, 1850.0,
+        density_g_l=770.0, moisture_pct=12.9,
+    ),
+    Scenario(
+        'barazilie-250-medium-soft',
+        'a genuinely soft lot at 660 g/L: the branch below the dead band, the '
+        'one Hoos actually endorses — charged cooler and given less power '
+        'early, because it scorches where a harder bean would not. Asked at '
+        'Medium Light because that is the colour its one corpus roast '
+        'actually reached (68 whole), so the colour gate lets it through and '
+        'the learned path runs on a single sample beside the density branch. '
+        'A wet lot at 12.2 % on an anaerobic process stacks the moisture term '
+        'on top',
+        _BARAZILIE, 'Barazilie', 'Anaerobic Fermentation', 'Medium Light',
+        250.0, 22.0, 58.0, 800.0,
+        density_g_l=660.0, moisture_pct=12.2,
     ),
 )
 
@@ -206,6 +237,7 @@ def snapshot_history(model: Any, scenario: Scenario) -> dict[str, Any] | None:
     bean = H.make_bean(
         scenario.uuid, scenario.bean_name,
         process=scenario.process, altitude=int(scenario.altitude_m),
+        density=scenario.density_g_l, last_humidity=scenario.moisture_pct,
     )
     history = model._analyze_historical_roasts(
         bean, H.agtron(scenario.target), scenario.charge_g,
@@ -226,6 +258,7 @@ def snapshot_plan(model: Any, scenario: Scenario) -> dict[str, Any]:
     bean = H.make_bean(
         scenario.uuid, scenario.bean_name,
         process=scenario.process, altitude=int(scenario.altitude_m),
+        density=scenario.density_g_l, last_humidity=scenario.moisture_pct,
     )
     result = model.generate_roast_plan(
         bean, H.agtron(scenario.target),

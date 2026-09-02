@@ -1,0 +1,15 @@
+{
+  "include": [
+    "src/tilauscope/pid_autotune.py",
+    "src/tilauscope/pid_semantics.py",
+    "src/tilauscope/pid_calibration.py",
+    "src/tilauscope/pid_calibration_runner.py",
+    "src/tilauscope/pid_calibration_store.py"
+  ],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.14",
+  "pythonPlatform": "All",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false
+}

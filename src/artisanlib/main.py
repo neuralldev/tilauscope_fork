@@ -1426,6 +1426,7 @@ class ApplicationWindow(QMainWindow):
     setSVSignal = pyqtSignal(float)
     fireslideractionSignal = pyqtSignal(int)
     fireslideraction_rawSignal = pyqtSignal(int,float)
+    ## TILAU ## PID calibration actuator transaction and software-path result.
     tilaupidSliderCommandSignal = pyqtSignal(int,int,bool)
     # Acknowledges the value clamped and applied by the centralized GUI-thread
     # transaction. This is a software-path proof, not a device-level feedback.
@@ -4027,6 +4028,7 @@ class ApplicationWindow(QMainWindow):
         self.setSVSignal.connect(self.setPIDsv)
         self.fireslideractionSignal.connect(self.fireslideraction)
         self.fireslideraction_rawSignal.connect(self.fireslideraction_raw)
+        ## TILAU ## PID calibration commands use the centralized slider transaction.
         self.tilaupidSliderCommandSignal.connect(self.applyTilauPIDSliderCommand)
         self.tilauRoasterIdentifiedSignal.connect(self.applyTilauRoasterIdentification) ## TILAU ##
         self.moveButtonSignal.connect(self.moveKbutton)
@@ -8613,9 +8615,10 @@ class ApplicationWindow(QMainWindow):
         return False
 
     # n=0 : slider1; n=1 : slider2; n=2 : slider3; n=3 : slider4
+    ## TILAU ## Return whether the configured action was dispatched.
     @pyqtSlot(int)
-    def fireslideraction(self, n:int) -> None:
-        self.fireslideraction_internal(n)
+    def fireslideraction(self, n:int) -> bool:
+        return self.fireslideraction_internal(n)
 
     ## TILAU ##
     # Single actuator transaction for every TilauScope automation (preheat PID,
@@ -8629,7 +8632,7 @@ class ApplicationWindow(QMainWindow):
     # description_fmt is rendered with the value that was really applied and
     # names the driver, so an automated move is never read back afterwards as an
     # operator gesture.
-    def applyTilauSliderCommand(self, n:int, value:int, fire_action:bool, description_fmt:str) -> None:
+    def applyTilauSliderCommand(self, n:int, value:int, fire_action:bool, description_fmt:str) -> bool:
         self.block_quantification_sampling_ticks[n] = self.sampling_ticks_to_block_quantifiction
         self.moveslider(n, value)
         applied:int = self.eventslidervalues[n]  # moveslider() clamps to the slider limits
@@ -8640,17 +8643,19 @@ class ApplicationWindow(QMainWindow):
             except (IndexError, KeyError, ValueError):
                 description = description_fmt
             self.qmc.eventRecordActionSignal.emit(n, self.qmc.eventsExternal2InternalValue(applied), description, False)
-        if fire_action:
-            self.fireslideraction(n)
+        return not fire_action or self.fireslideraction(n)
 
+    ## TILAU ## Report whether Artisan successfully dispatched the PID action.
     @pyqtSlot(int,int,bool)
     def applyTilauPIDSliderCommand(self, n:int, power:int, fire_action:bool) -> None:
         """Apply one PID actuator transaction on ApplicationWindow's GUI thread."""
         # 'S<n>:<power>%' is the recorded shape the preheat controller is
         # recognised by; a gesture on the same channel writes value and unit.
-        self.applyTilauSliderCommand(n, power, fire_action, f'S{n}:{{0}}%')
+        action_dispatched = self.applyTilauSliderCommand(
+            n, power, fire_action, f'S{n}:{{0}}%'
+        )
         self.tilaupidSliderAppliedSignal.emit(
-            n, int(self.eventslidervalues[n]), fire_action
+            n, int(self.eventslidervalues[n]), action_dispatched
         )
 
     ## TILAU ##
@@ -8678,46 +8683,39 @@ class ApplicationWindow(QMainWindow):
 
     # if optional float value is given it is applied to the action instead of the less accurate integer slider value
     # (used by ramping event replay)
-    def fireslideraction_internal(self, n:int, v:float|None = None) -> None:
+    ## TILAU ## Dispatch status is required by guarded heater transactions.
+    def fireslideraction_internal(self, n:int, v:float|None = None) -> bool:
         action = self.eventslideractions[n]
-        if action:
-            try:
-            # before adaption:
-                # action =0 (None), =1 (Serial), =2 (Modbus), =3 (DTA Command), =4 (Call Program [with argument])
-                #  =5 (Hottop Heater), =6 (Hottop Fan), =7 (Hottop Command), =8 (Fuji Command), =9 (PWM Command), =10 (VOUT Command)
-                #  =11 (IO Command), =12 (S7 Command), =13 (Aillio R1 Heater Command), =14 (Aillio R1 Fan Command), =15 (Aillio R1 Drum Command)
-                #  =16 (Artisan Command), 17= (RC Command), 18= (WebSocket Command)
-                action = (action+2 if action > 1 else action) # skipping (2 Call Program and 3 Multiple Event)
-            # after adaption (before skipping):
-                # action =0 (None), =1 (Serial), =4 (Modbus), =5 (DTA Command), =6 (Call Program [with argument])
-                #  =7 (Hottop Heater), =8 (Hottop Fan), =9 (Hottop Command), =10 (Fuji Command), =11 (PWM Command), =12 (VOUT Command)
-                #  =13 (IO Command), =14 (S7 Command), =15 (Aillio R1 Heater Command), =16 (Aillio R1 Fan Command), =17 (Aillio R1 Drum Command)
-                #  =18 (Artisan Command), 19= (RC Command), 20= (WebSocket Command) 
-                # 24=(Difluid Airwave Command)
-                if action > 5:
-                    action = action + 1 # skip the 6:IO Command
-                    if 15 > action > 10:
-                        action = action + 1 # skip the 11 p-i-d action
-                        if action == 15:
-                            action = 6 # map IO Command back
-                    if action > 18:
-                        action = action + 1 # skip the 19: Aillio PRS
-            # after adaption: (see eventaction)
-                value = (self.calcSliderSendValue(n) if v is None else self.calcEventValue(n,v)) # preference for the more precise float value if given over the slider value
-                if action not in {4, 6, 13, 14, 15, 20, 21, 22}: # only for MODBUS, PWM, Artisan, WebSocket, 6:IO, 14:VOUT, 15:S7 and 16:RC Commands we keep the floats always
-                        # NOTE: avoid using 'write({})' in MODBUS commands as {} might be bound to a float and then writing to 2 registers instead of one
-                        #       use the more specific 'writeSingle({})' or 'writeWord({})' instead
-                    value = int(round(value))
-                if action in {8, 9, 16, 17, 18}: # for Hottop/R1 Heater or Fan, we just forward the value
-                    cmd = str(int(round(value)))
-                else:
-                    cmd = self.eventslidercommands[n]
-                    cmd = cmd.format(*(tuple([value]*cmd.count('{}'))))
-                self.eventaction(action,cmd) # cmd needs to be a string!
-            except Exception as e: # pylint: disable=broad-except
-                _log.exception(e)
-                _, _, exc_tb = sys.exc_info()
-                self.qmc.adderror((QApplication.translate('Error Message','Exception:') + ' fireslideraction() {0}').format(str(e)),getattr(exc_tb, 'tb_lineno', '?'))
+        if not action:
+            return False
+        try:
+            # Adapt the stored slider action index to eventaction's index list.
+            action = (action+2 if action > 1 else action) # skipping (2 Call Program and 3 Multiple Event)
+            if action > 5:
+                action = action + 1 # skip the 6:IO Command
+                if 15 > action > 10:
+                    action = action + 1 # skip the 11 p-i-d action
+                    if action == 15:
+                        action = 6 # map IO Command back
+                if action > 18:
+                    action = action + 1 # skip the 19: Aillio PRS
+            value = (self.calcSliderSendValue(n) if v is None else self.calcEventValue(n,v)) # preference for the more precise float value if given over the slider value
+            if action not in {4, 6, 13, 14, 15, 20, 21, 22}: # only for MODBUS, PWM, Artisan, WebSocket, 6:IO, 14:VOUT, 15:S7 and 16:RC Commands we keep the floats always
+                # NOTE: avoid using 'write({})' in MODBUS commands as {} might be bound to a float and then writing to 2 registers instead of one
+                #       use the more specific 'writeSingle({})' or 'writeWord({})' instead
+                value = int(round(value))
+            if action in {8, 9, 16, 17, 18}: # for Hottop/R1 Heater or Fan, we just forward the value
+                cmd = str(int(round(value)))
+            else:
+                cmd = self.eventslidercommands[n]
+                cmd = cmd.format(*(tuple([value]*cmd.count('{}'))))
+            self.eventaction(action,cmd) # cmd needs to be a string!
+            return True
+        except Exception as e: # pylint: disable=broad-except
+            _log.exception(e)
+            _, _, exc_tb = sys.exc_info()
+            self.qmc.adderror((QApplication.translate('Error Message','Exception:') + ' fireslideraction() {0}').format(str(e)),getattr(exc_tb, 'tb_lineno', '?'))
+            return False
 
     # from a given value and the event type number, calc the event value respecting the event types slider offset, factor and bernulli settings
     def calcEventValue(self, n:int, slider_value:float) -> float:

@@ -22,7 +22,7 @@ grip tab the operator can pull out from the right edge of the window.
 from __future__ import annotations
 
 import logging
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QSettings, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QPainter
@@ -38,13 +38,18 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from artisanlib.main import ApplicationWindow
 from tilauscope.artisan_message_ticker import ArtisanMessageTicker
 from tilauscope.theme_qss import with_tooltip
 from tilauscope.tilauscope_types import THEME
 from tilauscope.visualalarm import AlarmData
 from tilauscope.widgets.badges import EventFiredBadge
 
+
+if TYPE_CHECKING:
+    # Annotation only — importing artisanlib.main at runtime executes a
+    # settings migration against the real preferences and drags the whole
+    # application into any process that only wanted this widget.
+    from artisanlib.main import ApplicationWindow
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 

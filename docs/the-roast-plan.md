@@ -73,15 +73,53 @@ airflow. A coffee can hold plenty of water that leaves reluctantly, and both fac
 once: neither reading cancels or replaces the other, and one being absent never makes the plan
 guess it from the other.
 
+**The variety has a say in the charge.** A coffee's process decides how hot it can safely be
+charged — the sugars on the surface of a natural scorch where a washed coffee would not — but it
+is the [bean family](glossary.md#bean-family) that says what pace the coffee wants. Both are
+applied: the process sets the limit, the family moves the charge a few degrees inside it, and
+the limit always wins. A Typica charges hotter than a Bourbon of the same process, but a Typica
+that is also a natural still charges cooler than a washed one, because the risk of burning the
+surface outranks the preference for a quicker roast.
+
+The move is deliberately small — about four degrees, worth roughly fifteen seconds of drying —
+and it is weighted by how much the variety can be trusted: full weight for a single named
+variety, half for a blend, and none at all when the record names no variety or names one
+TilauScope does not place in a family. Around half of the varieties in the catalogue are in
+that last group on purpose. The charge then reads exactly as it did before, and the intent card
+says so rather than leaving you to wonder.
+
 **Density beats altitude**, on the other hand: altitude only tells you a coffee is *probably*
-hard, density tells you it is. A denser coffee is charged hotter — up to 7 °C above the
-reference for its process, and it is the one property allowed to take the charge past the usual
-range for that process, because a hard coffee genuinely takes what a soft one of the same
-process could not — and it is given more power early:
-its structure carries heat to the centre without marking the surface, where a softer coffee
-would scorch at the same setting. When density is on the record, altitude is ignored rather
-than added on top; when a property is missing, nothing is applied for it and the plan uses its
-grid.
+hard, density tells you it is. A clearly soft coffee is charged cooler and given less power
+early, because it scorches at a setting a harder one carries without marking; a clearly hard
+one is charged hotter, and density is the one property allowed to take the charge past the
+usual range for its process, because a hard coffee genuinely takes what a soft one of the same
+process could not. When density is on the record, altitude is ignored rather than added on top;
+when a property is missing, nothing is applied for it and the plan uses its grid.
+
+**Between those two ends the plan says nothing.** Most coffees sit in a broad middle — on a
+typical shelf, four roasts in five — where one record reads 710 g/L and the next 730, and there
+is no honest way to tell those two apart. The figure on a record is almost always the
+supplier's, not one you weighed by water displacement, and coffees of the same variety are
+found across the whole range, so a twenty-point difference between two ordinary coffees is as
+likely to be how the number was obtained as anything about the beans. The plan therefore treats
+that middle as *no information* rather than as a small instruction, and keeps its density
+adjustment for the coffees that are genuinely soft or genuinely hard. Where it used to move the
+charge by as much as seven degrees for a coffee in that middle, it now moves it not at all.
+
+The practical consequence: **weighing a coffee's density is worth more than reading it off a
+sack.** Fill a 50 ml cylinder to 40 ml with water, drop in beans until the level reaches 50 ml,
+and weigh them — a dry measure counts the air between beans as if it were coffee.
+
+When only the altitude is known it still stands in for the density, but it now carries far less
+weight than the measurement it replaces — a nudge of about a degree on the charge, where a real
+density can move it by seven. Altitude causes nothing on its own: the tree answers to light, to
+the average temperature, to the gap between day and night and to how fast the cherry ripens, and
+a coffee grown at two hundred metres in an ocean current can be as hard as one grown at fifteen
+hundred. Checked against the coffees whose record holds both figures, altitude points the right
+way only about a fifth of the time, and points the *wrong* way often enough — a soft coffee
+grown high reads as hard — that it must not be allowed to overturn what a weighed density would
+have said. Weighing the coffee's density on the record is therefore worth far more to the plan
+than filling in its altitude.
 
 *Ambient Humidity* is still recorded on every roast, but it no longer changes a plan. Its
 influence is on the coffee **between** roasts — a humid room pulls the water activity of stored
@@ -100,8 +138,16 @@ On a radiant electric roaster these durations are not read off a style table. Th
 the rate-of-rise plan costs: the curve leaves the turning point near 16°C/min, enters Maillard
 near 12, passes 8 a minute before first crack and arrives at the crack at 5 to 6, and drying
 and Maillard last exactly as long as that climb takes. A larger batch turns lower, so it has
-further to climb and takes longer — 250 g dries in under four minutes where 400 g needs closer
-to six. Nothing states that rule; it falls out of the slope and the temperature to cover.
+further to climb and takes longer — around 250 g dries in about four minutes where 400 g needs
+closer to six. Nothing states that rule; it falls out of the slope and the temperature to cover.
+
+**Drying does not climb at one speed for every batch.** The longer the climb, the higher the
+average rate the machine holds through it; a small batch turns high and starts already past the
+steep part of the curve, so it never reaches the rate a large batch does. Measured on the
+Skywalker, a 400 g batch averages about 13.5°C/min from the turning point to the dry end while
+a 250 g one averages barely over 10. The plan works its drying time out from the climb it
+actually has to make rather than assuming one speed, which is why a small batch is no longer
+promised a drying time it cannot hold.
 Bean moisture, room temperature and your own roast history still shift the result on top.
 
 Maillard is always planned shorter than drying, and shorter by a real margin — four minutes of
@@ -129,9 +175,19 @@ used to declare a plan impossible.
 placed from the batch size rather than from the charge temperature alone, because that is what
 the machine actually does: load half a drum and the temperature dives far less far. Expect a
 small batch to turn some 25°C higher than a full one charged identically, and expect the drying
-rate of rise to be correspondingly gentler — there is less climb left to make. The dip stops
-deepening below roughly 280 g: a 150 g and a 250 g batch turn at much the same temperature, so
-the plan does not keep raising the turning point as the batch gets smaller.
+rate of rise to be correspondingly gentler — there is less climb left to make.
+
+**The turning point is read from a table, not from a formula.** Like the deviation of a
+temperature probe, it is described by a set of measured values at fixed load steps rather than
+by one curve stretched across every batch size: a quarter drum, five eighths, seven eighths and
+a full load each carry their own figure, taken from the roasts actually recorded at that step,
+and anything between two steps is read across them. Outside the measured range the plan repeats
+the nearest known value rather than continuing a slope nothing supports — which is why the dip
+stops deepening below roughly a quarter drum, and a 150 g and a 250 g batch turn at much the
+same temperature. Each step is stated as a *proportion* of the load and of the charge
+temperature, not in grams and degrees, so the same table describes a roaster it was not measured
+on. Steps backed by few roasts are marked as such and are the first to be replaced as the
+history fills in.
 
 **RoR targets.** *Target ROR Maillard*, *Target ROR at FC*, *Target ROR Dev* and *Target ROR at
 Drop*: the slope to hold at each stage. The Maillard figure is an average, and an average says

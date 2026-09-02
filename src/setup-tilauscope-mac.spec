@@ -194,7 +194,33 @@ coll = COLLECT(
 with open('Info.plist', 'rb') as f:
     plist = plistlib.load(f)
 
+## TILAU ## The languages the bundle declares to macOS. AppKit localises the
+## panels it owns itself — the Save/Open dialogs, the application menu, the
+## print sheet — from this list intersected with the user's preferred
+## languages. With no list and no .lproj folders, macOS reads the bundle as
+## English-only and serves those panels in English even on a French system,
+## which is why "Enregistrer etiquette PDF" opened over an English Save panel.
+##
+## Derived from the .qm files actually shipped rather than restated by hand, so
+## adding a translation is enough. A .qm under 1 KB holds no translations (the
+## empty placeholders of the machine-translation pipeline) and is left out:
+## declaring a language the interface does not speak would give French menus to
+## an English window.
+##
+## Three codes are spelled differently by Qt and by macOS; AppKit ignores a
+## code it does not recognise, so these are mapped rather than passed through.
+APPLE_LOCALE = {'zh_CN': 'zh-Hans', 'zh_TW': 'zh-Hant', 'pt_BR': 'pt-BR',
+                'no': 'nb'}
+BUNDLE_LOCALIZATIONS = sorted({
+    APPLE_LOCALE.get(code, code)
+    for code in (f.stem.split('artisan_', 1)[1]
+                 for f in Path('translations').glob('artisan_*.qm')
+                 if f.stat().st_size > 1024)
+} | {'en'})
+
 plist.update({
+    'CFBundleLocalizations': BUNDLE_LOCALIZATIONS,
+    'CFBundleAllowMixedLocalizations': True,
     'CFBundleDisplayName': 'TilauScope',
     'CFBundleShortVersionString': VERSION,
     ## TILAU ## CFBundleVersion is the build version, distinct from the marketing

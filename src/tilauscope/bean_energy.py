@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import unicodedata
 from dataclasses import dataclass, field
+from typing import Final
 
 _log = logging.getLogger(__name__)
 
@@ -214,6 +215,90 @@ class FloorProfile:
 
 def _clamp(value: float, lo: float, hi: float) -> float:
     return lo if value < lo else (hi if value > hi else value)
+
+
+## ── Familles de conduite (Hoos 2026) ────────────────────────────────────────
+## ⚠ ORTHOGONAL à VARIETY_KEYWORDS ci-dessus : cette table-là lit la DEMANDE
+## ÉNERGÉTIQUE (paroi cellulaire, saccharose) et sert le plancher de Maillard ;
+## celle-ci lit la PRÉFÉRENCE DE RYTHME et sert la température de charge. Les
+## deux lisent la même chaîne de variété pour en tirer deux grandeurs distinctes,
+## et elles se contredisent légitimement : Bourbon et Typica sont ex aequo en
+## demande d'énergie (0.0 dans les deux cas) et opposés en rythme.
+##
+## Le vocabulaire est FERMÉ (combo alimenté par beancave_beans.json), donc les
+## libellés ci-dessous sont des noms de la liste, pas des motifs de saisie libre.
+##
+## PRIOR DÉCLARÉ, pas appris : le corpus n'a ni assez de cultivars distincts ni
+## de signal qualité pour valider un sens par famille. Amplitude tenue petite
+## exprès (±4 °C de charge ≈ ±15 s) pour rester récupérable au roast suivant.
+##
+## ⚠ Ordre significatif : premier mot-clé trouvé gagne. Les hybrides Timor
+## passent AVANT leurs parents (« castillo » avant « caturra »), sinon un
+## Castillo serait lu comme un Caturra par accident plutôt que par résolution.
+FAMILY_TYPICA: Final[str] = "Typica"
+FAMILY_BOURBON: Final[str] = "Bourbon"
+FAMILY_ETHIOPIAN: Final[str] = "Ethiopian"
+
+## (famille, mots-clés, delta de charge en °C)
+VARIETY_FAMILIES: tuple[tuple[str, tuple[str, ...], float], ...] = (
+    ## Hybrides à introgression Timor — conduits sur leur AUTRE parent, qui est
+    ## Caturra pour les Catimor et Villa Sarchi pour les Sarchimor : lignée
+    ## Bourbon dans les deux cas. En tête pour gagner sur le nom du parent.
+    (FAMILY_BOURBON, ("anacafe 14", "catimor", "catisic", "cauvery", "colombia",
+                      "costa rica 95", "fronton", "ihcafe 90", "lempira",
+                      "oro azteca", "t5175", "t8667", "castillo",
+                      "cuscatleco", "iapar 59", "limani", "marsellesa",
+                      "obata", "parainema", "t5296", "sarchimor"), -4.0),
+    ## Éthiopiens et apparentés. Le Pink Bourbon est ici malgré son nom : Hoos
+    ## le range explicitement avec les rapides (Gesha, Chiroso).
+    (FAMILY_ETHIOPIAN, ("pink bourbon", "ethiopian heirloom", "heirloom",
+                        "landrace", "jarc", "74110", "kurume", "harar",
+                        "harraghe", "geisha", "gesha"), +4.0),
+    ## Typica et ses mutations — dont le Maragogype, le cas qui a déclenché
+    ## toute la réflexion de Hoos (gros grain, et pourtant conduite rapide).
+    (FAMILY_TYPICA, ("maragogipe", "maragogype", "blue mountain", "ab3 java",
+                     "bpl10 java", "java", "kent", "s795", "pache",
+                     "typica"), +4.0),
+    ## Bourbon et ses mutations et sélections.
+    (FAMILY_BOURBON, ("yellow bourbon", "bourbon amarelo", "tekisic",
+                      "bourbon mayaguez", "bm139", "bm71", "caturra", "catuai",
+                      "mundo novo", "acaia", "pacas", "villa sarchi", "sl28",
+                      "sl 28", "sl34", "sl 34", "k7", "mibirizi", "jackson",
+                      "bourbon"), -4.0),
+)
+
+
+def match_variety_family(varieties: str | None) -> "tuple[str, float] | None":
+    """(nom de famille, delta de charge en °C), ou None si rien ne matche.
+
+    None n'est pas un échec : c'est le cas majoritaire et il est voulu. La moitié
+    du vocabulaire reste délibérément muette — Pacamara (moitié lignée Bourbon,
+    moitié lignée Typica gros grain), Centroamericano H1 (Hoos dit qu'il se
+    conduit autrement sans dire comment), Ruiru 11, Batian, Starmaya, Icatu,
+    Tabi, les F1 modernes, et tout le robusta et le liberica. Un prior qui se
+    tait sur ce qu'il ne sait pas vaut mieux qu'un prior qui devine — un libellé
+    qui nomme deux familles opposées rend donc None lui aussi.
+    """
+    text = normalise(varieties)
+    if not text:
+        return None
+    ## Un libellé peut nommer PLUSIEURS familles (« Bourbon, Gesha ») : on se
+    ## tait alors, au lieu de laisser l'ordre de la table trancher et de rendre
+    ## un prior à pleine confiance sur la moitié du lot. L'ambiguïté se juge sur
+    ## le NOM de famille, pas sur la ligne : les hybrides Timor et le Bourbon
+    ## sont deux lignes pour une seule famille, et « Castillo, Caturra » reste
+    ## une résolution, pas un conflit.
+    _hits: list[tuple[str, float]] = [
+        (family, d_charge) for family, words, d_charge in VARIETY_FAMILIES
+        if any(w in text for w in words)]
+    if not _hits:
+        return None
+    _families = {family for family, _ in _hits}
+    if len(_families) > 1:
+        _log.info("bean_energy: varieties %r match %s — family prior silent",
+                  varieties, sorted(_families))
+        return None
+    return _hits[0]
 
 
 def normalise(text: str | None) -> str:

@@ -31,8 +31,9 @@ from pathlib import Path
 
 from PIL.ImageQt import ImageQt # Import pour convertir l'image PIL en QImage
 
-from artisanlib.main import getAppPath
-from artisanlib.util import cast  # smooth_list moved from tgraphcanvas to util
+# getAppPath lives in artisanlib.util; artisanlib.main only re-exports it, and
+# importing it from there booted the whole application through cave/__init__.
+from artisanlib.util import cast, getAppPath  # smooth_list moved from tgraphcanvas to util
 
 
 from PyQt6.QtCore import (QMutexLocker,QStandardPaths, Qt, pyqtSlot, QThread, QTimer) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable

@@ -1067,6 +1067,15 @@ class _RoastInsightsPanel(QWidget):
             update_target = getattr(owner, "_on_plan_charge_temperature", None)
             if callable(update_target):
                 update_target(charge_temp)
+        if owner is not None and self._plan is not None:
+            # What the cultivar family did to the charge, stated on the intent card.
+            show_family = getattr(owner, "_set_family_readout", None)
+            if callable(show_family):
+                try:
+                    _delta = float(self._plan.get("Charge Family Delta") or 0.0)
+                except (TypeError, ValueError):
+                    _delta = 0.0
+                show_family(str(self._plan.get("Charge Family") or ""), _delta)
         try:
             mode = (self._last_setup or {}).get("mode", "C")
             targets = targets_from_plan(plan, mode)
@@ -1314,6 +1323,11 @@ class RoastSetupDialog(QDialog):
         self._bean       = bean
         self._aw         = parent.aw
         self._parent_widget = parent
+
+        # Preheat setpoint ownership: the plan fills the field until the operator
+        # types in it, then the field is theirs and the plan only advises.
+        self._plan_charge_temperature: float | None = None
+        self._pid_charge_temp_user_set: bool = False
 
         # scale management
         self._scale_window: _ScaleFloatWindow | None = None
@@ -1820,6 +1834,49 @@ class RoastSetupDialog(QDialog):
         except ValueError:
             self._ok_btn.setEnabled(False)
 
+    _DEST_KEYS: tuple[str, ...] = ("filter", "omni", "espresso")
+
+    def _restore_destination(self) -> None:
+        """Select the destination remembered from the last roast (default omni)."""
+        from PyQt6.QtCore import QSettings
+        key = str(QSettings().value("tilauscope/roast_destination", "omni", str) or "omni")
+        if key not in self._dest_buttons:
+            key = "omni"
+        self._dest_buttons[key].setChecked(True)
+
+    def _on_destination_changed(self, index: int) -> None:
+        """Persist the destination and recompute the plan with it.
+
+        The engine re-reads the setting at each run, so the refresh below is
+        enough — the cached engine object does not have to be rebuilt.
+        """
+        from PyQt6.QtCore import QSettings
+        if not 0 <= index < len(self._DEST_KEYS):
+            return
+        QSettings().setValue("tilauscope/roast_destination", self._DEST_KEYS[index])
+        self._refresh_insights()
+
+    def _set_family_readout(self, family: str, delta_c: float) -> None:
+        """State what the coffee's variety did to the charge, or that it did nothing.
+
+        A prior the operator cannot see is a prior they cannot argue with, and
+        half of the variety vocabulary is deliberately silent — saying so is what
+        keeps the silence readable instead of looking like a failure.
+        """
+        if not family:
+            self._family_lbl.setText(QApplication.translate(
+                "tilauscope_roast_setup", "Bean family: not known — using the standard pace"))
+            return
+        if delta_c > 0:
+            pace = QApplication.translate("tilauscope_roast_setup", "wants a faster roast")
+        elif delta_c < 0:
+            pace = QApplication.translate("tilauscope_roast_setup", "takes a slower roast")
+        else:
+            pace = QApplication.translate("tilauscope_roast_setup", "keeps the standard pace")
+        self._family_lbl.setText(QApplication.translate(
+            "tilauscope_roast_setup", "Bean family: {0} — {1} ({2} °{3} on the charge)").format(
+                family, pace, f"{delta_c:+.0f}", self._temp_unit()))
+
     @pyqtSlot()
     def _refresh_insights(self) -> None:
         panel = getattr(self, "_insights_panel", None)
@@ -1873,8 +1930,53 @@ class RoastSetupDialog(QDialog):
 
     @pyqtSlot(float)
     def _on_plan_charge_temperature(self, temperature: float) -> None:
-        if self._pid_enable_cb.isChecked():
+        """Offer the plan's charge temperature to the preheat PID.
+
+        Fills the field only while it still belongs to the plan. Once the
+        operator has typed their own setpoint the field is theirs, and the plan
+        states its figure beside it instead of replacing it.
+        """
+        self._plan_charge_temperature = temperature
+        if not self._pid_charge_temp_user_set:
             self._pid_value_edit.setText(f"{temperature:.0f}")
+            self._set_pid_recommendation_visible(False)
+            return
+        self._refresh_pid_recommendation()
+
+    def _on_pid_value_typed(self, _text: str) -> None:
+        """The field becomes the operator's the moment they type in it."""
+        self._pid_charge_temp_user_set = True
+        self._refresh_pid_recommendation()
+
+    def _adopt_plan_charge_temperature(self) -> None:
+        """`use`: hand the field back to the plan."""
+        if self._plan_charge_temperature is None:
+            return
+        self._pid_charge_temp_user_set = False
+        self._pid_value_edit.setText(f"{self._plan_charge_temperature:.0f}")
+        self._set_pid_recommendation_visible(False)
+
+    def _refresh_pid_recommendation(self) -> None:
+        """Show the plan's figure only when it differs from what is typed."""
+        planned = self._plan_charge_temperature
+        if planned is None:
+            self._set_pid_recommendation_visible(False)
+            return
+        try:
+            typed = float(self._pid_value_edit.text())
+        except (TypeError, ValueError):
+            typed = None
+        if typed is not None and abs(typed - planned) < 0.5:
+            self._set_pid_recommendation_visible(False)
+            return
+        self._pid_reco_lbl.setText(QApplication.translate(
+            "tilauscope_roast_setup", "Plan recommends {0} °{1}").format(
+                f"{planned:.0f}", self._temp_unit()))
+        self._set_pid_recommendation_visible(True)
+
+    def _set_pid_recommendation_visible(self, visible: bool) -> None:
+        self._pid_reco_lbl.setVisible(visible)
+        self._pid_reco_btn.setVisible(visible)
 
     # ── Optional settings tab ─────────────────────────────────────────────────
 
@@ -1883,6 +1985,68 @@ class RoastSetupDialog(QDialog):
         t = QVBoxLayout(tab)
         t.setContentsMargins(0, 16, 0, 0)
         t.setSpacing(20)
+
+        # ── 0. Roast intent ───────────────────────────────────────────────────
+        # Above the target profile because it decides what that profile serves.
+        t.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Roast intent")))
+        intent_card = QFrame()
+        intent_card.setStyleSheet(
+            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 10px;"
+            f"border: 1px solid {THEME['BORDER']}; }}"
+        )
+        ic = QVBoxLayout(intent_card)
+        ic.setContentsMargins(16, 14, 16, 14)
+        ic.setSpacing(10)
+
+        dest_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "What is this coffee for?"))
+        dest_lbl.setStyleSheet(
+            f"color: {THEME['SUBTEXT']}; font-size: 11px; font-style: italic; border: none;")
+        ic.addWidget(dest_lbl)
+
+        # Segmented control, not a toggle: three options that name themselves,
+        # so nothing has to be read as the inverse of a state.
+        _dest_seg = (
+            f"QPushButton:checked {{ color: {THEME['BG']}; background: {THEME['ACCENT']};"
+            f"border: 1px solid {THEME['ACCENT']}; }}"
+        )
+        dest_row = QHBoxLayout()
+        dest_row.setSpacing(0)
+        self._dest_group = QButtonGroup(self)
+        self._dest_group.setExclusive(True)
+        _dest_defs = (
+            ("filter",   QApplication.translate("tilauscope_roast_setup", "Filter")),
+            ("omni",     QApplication.translate("tilauscope_roast_setup", "Omni")),
+            ("espresso", QApplication.translate("tilauscope_roast_setup", "Espresso")),
+        )
+        self._dest_buttons: dict[str, QPushButton] = {}
+        for _i, (_key, _label) in enumerate(_dest_defs):
+            _b = QPushButton(_label)
+            _b.setCheckable(True)
+            _b.setCursor(Qt.CursorShape.PointingHandCursor)
+            _radius = ("border-top-left-radius: 6px; border-bottom-left-radius: 6px;" if _i == 0
+                       else "border-top-right-radius: 6px; border-bottom-right-radius: 6px;"
+                       if _i == len(_dest_defs) - 1 else "")
+            _b.setStyleSheet(
+                f"QPushButton {{ color: {THEME['SUBTEXT']}; background: {THEME['BG']};"
+                f"border: 1px solid {THEME['BORDER']};"
+                f"{'border-left: none;' if _i else ''} padding: 6px 18px;"
+                f"font-size: 13px; font-weight: bold; {_radius} }}" + _dest_seg)
+            self._dest_group.addButton(_b, _i)
+            self._dest_buttons[_key] = _b
+            dest_row.addWidget(_b)
+        dest_row.addStretch()
+        ic.addLayout(dest_row)
+
+        # Bean family — read, never asked: it comes from the coffee's record.
+        self._family_lbl = QLabel("")
+        self._family_lbl.setStyleSheet(
+            f"color: {THEME['TEXT']}; font-size: 12px; border: none;")
+        ic.addWidget(self._family_lbl)
+        t.addWidget(intent_card)
+
+        self._restore_destination()
+        self._set_family_readout("", 0.0)
+        self._dest_group.idClicked.connect(self._on_destination_changed)
 
         # ── 1. Target roast profile ───────────────────────────────────────────
         t.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Target roast profile")))
@@ -2069,7 +2233,33 @@ class RoastSetupDialog(QDialog):
 
         pid_val_row.addStretch()
         pid_c.addLayout(pid_val_row)
+
+        # Plan recommendation, shown only once it differs from what is typed.
+        # The plan used to overwrite the field on every recomputation, losing a
+        # manual entry without a word; it now states its figure and offers it.
+        reco_row = QHBoxLayout()
+        reco_row.setSpacing(8)
+        self._pid_reco_lbl = QLabel("")
+        self._pid_reco_lbl.setStyleSheet(
+            f"color: {THEME['SUBTEXT']}; font-size: 11px; font-style: italic; border: none;")
+        self._pid_reco_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "use"))
+        self._pid_reco_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pid_reco_btn.setStyleSheet(
+            f"QPushButton {{ color: {THEME['ACCENT']}; background: transparent;"
+            f"border: 1px solid {THEME['ACCENT']}; border-radius: 5px;"
+            f"padding: 2px 10px; font-size: 11px; font-weight: bold; }}")
+        self._pid_reco_btn.clicked.connect(self._adopt_plan_charge_temperature)
+        reco_row.addWidget(self._pid_reco_lbl)
+        reco_row.addWidget(self._pid_reco_btn)
+        reco_row.addStretch()
+        self._set_pid_recommendation_visible(False)
+        pid_c.addLayout(reco_row)
         t.addWidget(pid_card)
+
+        ## Une saisie de l'opérateur gèle le champ : `textEdited` ne part qu'à la
+        ## frappe, jamais sur `setText`, donc le plan peut continuer à remplir un
+        ## champ vierge sans jamais recouvrir une valeur voulue.
+        self._pid_value_edit.textEdited.connect(self._on_pid_value_typed)
 
         # Link enabled state
         def _sync_pid(checked: bool) -> None:
@@ -2244,6 +2434,12 @@ class RoastSetupDialog(QDialog):
         self._pid_enable_cb.setChecked(pid_active)
         self._pid_value_edit.setText(pid_value)
         self._pid_value_edit.setEnabled(pid_active)
+        ## Une valeur rechargée vient de la session précédente et rien ne dit si
+        ## elle a été choisie ou héritée du plan. On la traite comme choisie —
+        ## perdre un réglage voulu coûte plus cher qu'afficher une recommandation
+        ## d'un clic — et la ligne « Plan recommends » la met en regard.
+        self._pid_charge_temp_user_set = bool(str(pid_value).strip())
+        self._refresh_pid_recommendation()
         # Preselect PID input source from Artisan (pidSource: 2 = ET, else BT) + sync enabled state
         self._pid_input_bt_btn.setEnabled(pid_active)
         self._pid_input_et_btn.setEnabled(pid_active)
@@ -2532,9 +2728,10 @@ class RoastSetupDialog(QDialog):
             except ValueError:
                 pid_val = 0.0
 
-            # The generated plan owns the charge setpoint. Keep manual entry as
-            # a fallback when no target profile or plan is available.
-            if self._pid_enable_cb.isChecked():
+            # The plan owns the charge setpoint only while the operator has not
+            # claimed it. Overriding a typed value here discarded a deliberate
+            # entry at the last moment, after the field had shown it all along.
+            if self._pid_enable_cb.isChecked() and not self._pid_charge_temp_user_set:
                 plan_charge_temp = self._insights_panel.charge_temperature()
                 if plan_charge_temp is not None:
                     pid_val = plan_charge_temp

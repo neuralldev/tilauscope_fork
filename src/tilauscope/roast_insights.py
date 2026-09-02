@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 from PyQt6.QtWidgets import QApplication
 
 from tilauscope.tilauscope_types import (
-    get_ror_ideal_band, standardization_map,
+    get_ror_ideal_band, standardization_map, weight_loss_target_from_plan,
 )
 
 if TYPE_CHECKING:
@@ -384,28 +384,6 @@ def _strategy(density: float, moisture: float, process_cls: str,
 # Roast-plan integration — map the plan dict into the reserved Targets
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Conventional weight-loss bands (green → roasted, %) keyed by Agtron category.
-# The roast plan does not output weight loss, so it is estimated from the
-# target roast level. Keys match AGTRON_SCALES names (internal, not translated).
-_WEIGHT_LOSS_BY_CATEGORY: dict[str, tuple[float, float]] = {
-    "Very Light":      (11.0, 13.0),
-    "Light":           (12.0, 14.0),
-    "Medium Light":    (13.0, 15.0),
-    "Medium":          (14.0, 16.0),
-    "Medium Dark":     (15.0, 17.0),
-    "Dark":            (16.0, 18.0),
-    "Very Dark":       (18.0, 20.0),
-    "Extremely Dark":  (19.0, 22.0),
-}
-
-
-def weight_loss_band(category: str | None) -> tuple[float, float] | None:
-    """Estimated weight-loss band (%) for an Agtron category name."""
-    if not category:
-        return None
-    return _WEIGHT_LOSS_BY_CATEGORY.get(category)
-
-
 def targets_from_plan(plan: dict | None, mode: str = "C") -> list[Target] | None:
     """Map the plan dict into the four panel targets (temperatures already in
     native unit). Returns None when unavailable so the caller keeps heuristic targets."""
@@ -426,19 +404,27 @@ def targets_from_plan(plan: dict | None, mode: str = "C") -> list[Target] | None
         except (TypeError, ValueError):
             return None
 
+    chg = _num("Charge Temp")
     fc  = _num("First Crack Temp")
     dtr = _num("Target DTR")
     tot = _val("Total Time")
-    wl  = weight_loss_band(_val("Target Agtron"))
+    # Weight loss follows the water and the development, not the colour alone —
+    # both come from the plan itself, so the panel promises what it planned.
+    wl  = weight_loss_target_from_plan(plan)
     min_lbl = QApplication.translate("tilauscope_roast_review", "min")
 
     return [
+        # Charge leads: it is the first figure the operator acts on, and the one
+        # the preheat PID is set from. It was computed and silently pushed into
+        # the PID field, but never stated.
+        Target(QApplication.translate("tilauscope_roast_review", "Charge"),
+               f"{chg:.0f} {unit}" if chg is not None else "—", chg is not None),
         Target(QApplication.translate("tilauscope_roast_review", "FC BT"),
                f"{fc:.0f} {unit}" if fc is not None else "—", fc is not None),
         Target(QApplication.translate("tilauscope_roast_review", "DTR"),
                f"{dtr:.1f} %" if dtr is not None else "—", dtr is not None),
         Target(QApplication.translate("tilauscope_roast_review", "Weight loss"),
-               f"{wl[0]:.0f}–{wl[1]:.0f} %" if wl else "—", wl is not None),
+               f"{wl.target:.1f} %" if wl else "—", wl is not None),
         Target(QApplication.translate("tilauscope_roast_review", "Total time"),
                f"{tot} {min_lbl}" if tot else "—", tot is not None),
     ]

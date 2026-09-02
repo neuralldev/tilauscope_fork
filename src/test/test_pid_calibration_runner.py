@@ -203,6 +203,22 @@ def test_review_only_success_is_cut_to_zero_and_rolled_back(qapp: Any) -> None: 
     runner.close()
 
 
+def test_accepted_success_is_cut_to_zero_without_rolling_back(qapp: Any) -> None:  # noqa: ARG001
+    runner, coordinator, requests, restores, journals, applied, _manual, _clock = _runner()
+    coordinator.phase = "complete"
+
+    runner._finalize()
+
+    assert coordinator.phase == "complete"
+    assert requests == [(3, 0, True)]
+    assert restores == []
+    assert coordinator.shutdown_command_dispatched is False
+    applied.emit(3, 0, True)
+    assert coordinator.shutdown_command_dispatched is True
+    assert journals == ["complete"]
+    runner.close()
+
+
 def test_journal_failure_is_visible_after_safe_stop(qapp: Any) -> None:  # noqa: ARG001
     runner, coordinator, requests, restores, journals, _applied, _manual, _clock = (
         _runner(journal_raises=True)
