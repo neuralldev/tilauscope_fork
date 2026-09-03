@@ -168,6 +168,27 @@ _LANE_MODE_KEY: Final[str] = 'tilauscope/curve_lane_mode'
 _background_rise_cache: dict[str, Any] = {}
 
 
+def _background_origin(timex: Any, charge: Any) -> float | None:
+    """The instant the reference is anchored on, or None if it has no trace.
+
+    A reference marked at CHARGE is anchored there, which is the comparison
+    that means something. Not every reference carries one: a curve built by
+    the plotter, fitted by the analyzer, or recorded without the milestone has
+    no charge index at all, and dropping it would leave a loaded reference
+    drawn nowhere. Those are anchored on their own first sample, which is
+    where Artisan itself starts them.
+    """
+    try:
+        if len(timex) < 2:
+            return None
+        index = int(charge)
+    except (TypeError, ValueError):
+        return None
+    if 0 <= index < len(timex):
+        return float(timex[index])
+    return float(timex[0])
+
+
 def _lane_label_layout(
     markers: list[tuple[float, float]], left: float, right: float,
 ) -> list[tuple[float, int]]:
@@ -229,8 +250,14 @@ def _background_rise_series(qmc: Any, *, machine: bool = False) -> list[Any]:
         drop = int(timeindex[6])
     except (AttributeError, IndexError, TypeError, ValueError):
         return []
-    if not timex or not 0 <= charge < len(timex):
+    if not timex:
         return []
+    # An unmarked reference is still a rise worth computing: run it over the
+    # whole recording rather than returning nothing.
+    if not 0 <= charge < len(timex):
+        charge = 0
+    if not 0 < drop < len(timex):
+        drop = len(timex) - 1
 
     key = (id(qmc.backgroundprofile), id(timex), id(stemp1), id(stemp2),
            len(timex), float(timex[0]),
@@ -268,7 +295,7 @@ def _background_roast(qmc: Any, *, show_air: bool,
                       show_machine: bool) -> tuple[
                           list[float], list[Any], list[Any],
                           list[Any], list[Any], str] | None:
-    """A loaded reference in its own CHARGE-relative frame.
+    """A loaded reference, anchored on its own charge when it has one.
 
     Artisan mutates ``timeB`` when its background is aligned on DRY, FC or
     DROP, and mutates the temperatures when the background is nudged vertically.
@@ -279,23 +306,23 @@ def _background_roast(qmc: Any, *, show_air: bool,
     # ``background`` is only the visibility flag of Artisan's own canvas. It
     # is commonly reset to False when a foreground profile is opened, while
     # the reference itself remains fully loaded in the B arrays. DisplayScope
-    # owns its comparison visibility: only removing ``backgroundprofile``
-    # removes the reference here.
-    if getattr(qmc, 'backgroundprofile', None) is None:
-        return None
+    # owns its comparison visibility: only emptying the B arrays removes the
+    # reference here. A profile is not what makes one: the plotter, the
+    # analyzer's curve fit and a background equation all fill those arrays
+    # with no profile behind them, and each is a reference the operator asked
+    # for and expects to see.
     try:
         raw_time = list(qmc.timeB)
         raw_bt = list(qmc.temp2B)
         raw_air = list(qmc.temp1B) if show_air else []
         timeindex = list(qmc.timeindexB)
-        charge = int(timeindex[0])
         mode = str(qmc.mode)
     except (AttributeError, IndexError, TypeError, ValueError):
         return None
-    if len(raw_time) < 2 or not 0 <= charge < len(raw_time):
+    origin = _background_origin(raw_time, timeindex[0] if timeindex else -1)
+    if origin is None:
         return None
 
-    origin = float(raw_time[charge])
     timex = [float(t) - origin for t in raw_time]
     try:
         y_offset = float(getattr(qmc, 'backgroundprofile_moved_y', 0.0) or 0.0)
@@ -2362,7 +2389,10 @@ class RoastCurveWidget(QWidget):
 
     def _add_background_menu_action(self, menu: QMenu) -> QAction | None:
         qmc = getattr(self._aw, 'qmc', None)
-        if qmc is None or getattr(qmc, 'backgroundprofile', None) is None:
+        # Offered for whatever is actually drawn, profile-backed or not: a
+        # reference the operator can see is one they must be able to remove.
+        if qmc is None or _background_roast(
+                qmc, show_air=False, show_machine=False) is None:
             return None
         menu.addSeparator()
         action = QAction(

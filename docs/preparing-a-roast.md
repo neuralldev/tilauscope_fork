@@ -280,8 +280,12 @@ becomes invalid or changes in a way the machine cannot physically produce. A sin
 reading holds the burner at zero until three valid readings have followed it. Repeated bad
 readings, a frozen sensor while the machine should be heating, or several seconds without a
 reading stop preheating and show a message; press START again only after checking the probe
-and its connection. An interrupted or sensor-degraded preheat is never used to recalibrate
-the controller.
+and its connection. A probe that alternates between good and bad readings never settles into
+either state, so preheating also stops if the burner has been held at zero for twenty seconds
+without the reading recovering — rather than staying at zero, silently, for the whole
+preheat. All of these delays follow the sampling interval set in the device settings, so a
+slow sampling rate does not by itself trigger them. An interrupted or sensor-degraded preheat
+is never used to recalibrate the controller.
 
 In **Simulator**, replay can run faster than real time. TilauPID therefore does not apply its
 wall-clock jump, frozen-sensor or missing-update tests to replayed samples; a fast but valid

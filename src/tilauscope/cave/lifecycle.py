@@ -185,6 +185,11 @@ class LifecycleMixin:
         self.injectinartisan_btn: QPushButton|None = None
         self.lastprofiledata:ProfileData
         self._alog_cache: dict[str, tuple[float, ProfileData]] = {}  # LRU cap = 5
+        # Recomputed RoR series, kept beside the profile they came from. The
+        # entry holds the profile object itself, so identity stays valid for as
+        # long as the result is cached. Never stored inside the profile dict:
+        # a milestone edit writes that dict back to the .alog.
+        self._deltas_cache: list[tuple[object, tuple, list|None]] = []  # cap = 5
         self._event_vlines: dict[str, object] = {}   # label → axvline artist
         self._event_annots: dict[str, object] = {}   # label → annotation artist
         self._event_dots:   dict[str, object] = {}   # label → bt dot artist
@@ -602,6 +607,25 @@ class LifecycleMixin:
                 pass
             self._plan_roast_files_thread = None
             self._plan_roast_files_worker = None
+
+        # --- Bean AI parse (supplier page) ---
+        # Not parented to the dialog: closing BeanCave mid-call drops the last
+        # reference to a running QThread, and its result lands in a torn-down form.
+        if getattr(self, 'ai_thread', None) is not None:
+            try:
+                if self.ai_thread.isRunning():
+                    self.ai_worker.finished.disconnect(self._on_bean_ai_finished)
+                    self.ai_worker.error.disconnect(self._on_bean_ai_error)
+                    self.ai_thread.requestInterruption()
+                    self.ai_thread.quit()
+                    if not self.ai_thread.wait(2000):
+                        _log.warning("bean AI worker did not stop cooperatively — terminate()")
+                        self.ai_thread.terminate()
+                        self.ai_thread.wait()
+            except (RuntimeError, TypeError):
+                pass
+            self.ai_thread = None
+            self.ai_worker = None
 
         # --- TilauBLEScanner centralisé ---
         if hasattr(self, '_ble_scanner') and self._ble_scanner is not None:
@@ -1212,9 +1236,7 @@ class LifecycleMixin:
         else:
             super().keyPressEvent(event)
 
-    @pyqtSlot('QCloseEvent')
-    def closeEvent(self, event: QCloseEvent| None = None) -> None: # type: ignore
-        _log.info("beancave closing")
+    def _close_step_flag_shutdown(self) -> None:
         # Fermeture en cours : neutralise les slots BLE queued (gardes is_shutting_down).
         with QMutexLocker(self.shutdown_lock):
             self.is_shutting_down = True
@@ -1228,7 +1250,8 @@ class LifecycleMixin:
                 self._selection_debounce.timeout.disconnect()
             except (TypeError, RuntimeError):
                 pass
-        self._cancel_threads()
+
+    def _close_step_density_window(self) -> None:
         # tear down the density window (disconnect scale signals first)
         if self._density_window is not None:
             self._disconnect_density_scale()
@@ -1238,10 +1261,14 @@ class LifecycleMixin:
             except (RuntimeError, AttributeError):
                 pass
             self._density_window = None
+
+    def _close_step_table_signals(self) -> None:
         try:
             self.datatable.selectionModel().selectionChanged.disconnect()
         except TypeError:
             pass # Déjà déconnecté
+
+    def _close_step_geometry(self) -> None:
         settings = QSettings()
         settings.setValue('BeanCaveGeometry', self.saveGeometry())
         header:QHeaderView = self.datatable.horizontalHeader() #type:ignore
@@ -1252,12 +1279,18 @@ class LifecycleMixin:
             settings.setValue(f'BeanCaveColumnWidth/{i}', header.sectionSize(i))
         if self.aw.beanCaveMenuAction is not None:
             self.aw.beanCaveMenuAction.setChecked(False)
+
+    def _close_step_persist(self) -> None:
         self.save_green_beans()
         self.save_settings()
+
+    def _close_step_tooltip(self) -> None:
         if hasattr(self, '_hover_tooltip'):
             self._hover_tooltip.hide()
             self._hover_tooltip.close()   # force fermeture fenêtre top-level (parent=None)
             self._hover_tooltip.deleteLater()
+
+    def _close_step_ble_signals(self) -> None:
         # Teardown is unconditional: gating it on the adapter still being on left
         # the scanner running and the signals live when Bluetooth was switched off
         # during the session — exactly the state that aborts at shutdown.
@@ -1268,8 +1301,8 @@ class LifecycleMixin:
                     _sig.disconnect()
                 except (TypeError, RuntimeError):
                     pass
-        self.stopLebrewAGmanager()
-        self.stopTilauAmbientManager()
+
+    def _close_step_niimbot(self) -> None:
         if self.np is not None:
             try:
                 self.np.stop()
@@ -1278,6 +1311,32 @@ class LifecycleMixin:
                 _log.error(f"Error during Niimbot printer cleanup: {e}")
         else:
             _log.error("NiimbotPrinter object (self.np) is None.")
+
+    @pyqtSlot('QCloseEvent')
+    def closeEvent(self, event: QCloseEvent| None = None) -> None: # type: ignore
+        """Close BeanCave, running every teardown step even if one of them raises.
+
+        This is a Qt virtual: an exception escaping it reaches the application's
+        excepthook, which exits — so closing the catalogue would take the whole
+        app down, and the steps below the raise (the geometry and settings
+        writes, the printer teardown) would never run at all.
+        """
+        _log.info("beancave closing")
+        for step in (self._close_step_flag_shutdown,
+                     self._cancel_threads,
+                     self._close_step_density_window,
+                     self._close_step_table_signals,
+                     self._close_step_geometry,
+                     self._close_step_persist,
+                     self._close_step_tooltip,
+                     self._close_step_ble_signals,
+                     self.stopLebrewAGmanager,
+                     self.stopTilauAmbientManager,
+                     self._close_step_niimbot):
+            try:
+                step()
+            except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
+                _log.error(f"beancave close step {step.__name__} failed: {e}")
         # event may be None when close() is triggered programmatically without an event.
         if event is not None:
             event.accept()

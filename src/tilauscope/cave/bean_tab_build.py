@@ -102,7 +102,10 @@ class BeanTabBuildMixin:
         self.flavour_notes_input.setToolTip(QApplication.translate("tilauscope_beancave","Flavour notes as given by supplier or cupping session"))
 
         self.crop_input = TilauSpinBox()
-        self.crop_input.setRange(2020, 2999)
+        # 0 means "not stated" and must survive a round-trip through the form:
+        # a floor of 2020 silently stamped that year on every unset record.
+        self.crop_input.setRange(0, 2999)
+        self.crop_input.setSpecialValueText("—")
         self.crop_input.setDecimals(0)
         self.crop_input.setMinimumHeight(30)
         self.crop_input.setToolTip(QApplication.translate("tilauscope_beancave","Year of Harvesting."))
@@ -170,7 +173,7 @@ class BeanTabBuildMixin:
         self.altitude_input.setToolTip(QApplication.translate("tilauscope_beancave","Altitude of beans."))
 
         self.weight_left_input = TilauSpinBox()
-        self.weight_left_input.setRange(0.0, 9999.9)
+        self.weight_left_input.setRange(0.0, 100000.0)  # a sack is not capped at 10 kg
         self.weight_left_input.setSingleStep(1)
         self.weight_left_input.setSuffix("g")
         self.weight_left_input.setDecimals(1)
@@ -376,8 +379,7 @@ class BeanTabBuildMixin:
         ]
         for w in _db_widgets:
             if w:
-                w.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
-                w.installEventFilter(self.hover_filter)
+                self.hover_filter.install(w)
 
         # ══════════════════════════════════════════════════════════════════
         # Layout stacked in 5 semantic groups, each with its own accent colour:

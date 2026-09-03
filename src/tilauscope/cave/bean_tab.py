@@ -104,14 +104,11 @@ class BeanTabMixin:
         """
         if not hasattr(self, 'hover_filter'):
             return
-        # Remove any stale registration then re-add — avoids double-firing
-        widget.removeEventFilter(self.hover_filter)
-        widget.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
-        widget.setStyleSheet(
-            f"background-color: {THEME['SURFACE']};"
-            f"border: 1px solid {THEME['BORDER']};"
-        )
-        widget.installEventFilter(self.hover_filter)
+        # The widget's own sheet, as captured when hover was armed. The
+        # unscoped background/border pair written here before was inherited by
+        # the combo's children and lost everything else the widget had set.
+        widget.setStyleSheet(SmoothHoverFilter.base_qss(widget))
+        self.hover_filter.install(widget)   # re-arms WA_Hover, never double-registers
 
     def _install_hover_filter(self, combo: QComboBox) -> None:
         """Install (or reinstall) a SmoothHoverFilter on a combo."""
@@ -121,7 +118,7 @@ class BeanTabMixin:
         if old is not None:
             combo.removeEventFilter(old)
         f = SmoothHoverFilter(combo)
-        combo.installEventFilter(f)
+        f.install(combo)
         setattr(self, attr, f)   # keep reference alive on self
 
     @pyqtSlot()
@@ -306,6 +303,10 @@ class BeanTabMixin:
                 self.cave = BeanCaveContainer(green_beans=[], reference_profiles=[])
             if getattr(self.cave, 'green_beans', None) is None:
                 self.cave.green_beans = []
+            # Keep the alias on the live list: the sack resolver and the /sack
+            # web route read self.green_beans, which load_green_beans is
+            # otherwise the only place to re-point.
+            self.green_beans = self.cave.green_beans
             from tilauscope.beancave_zone_editors import ZoneEditorDialog
             bean = GreenBean()
             bean.uuid = str(uuid.uuid4())
@@ -331,12 +332,15 @@ class BeanTabMixin:
             return self.cave.green_beans[row]
         return None
 
-    def select_bean_by_uuid(self, uuid_str: str) -> None:
+    def select_bean_by_uuid(self, uuid_str: str, scroll: bool = False) -> None:
         """Select the catalogue row carrying this uuid (col 0 UserRole)."""
         try:
             for r in range(self.datatable.rowCount()):
                 it = self.datatable.item(r, 0)
                 if it is not None and it.data(Qt.ItemDataRole.UserRole) == uuid_str:
+                    if scroll:
+                        self.datatable.scrollToItem(
+                            it, QAbstractItemView.ScrollHint.PositionAtTop)
                     self.datatable.selectRow(r)
                     return
         except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
@@ -481,8 +485,9 @@ class BeanTabMixin:
                     value = value_fn(bean)
                 except Exception as e:
                     _log.error(f"Error processing bean {bean.name}: {e}")
-                    value = "Error"
-                    continue
+                    # No `continue`: skipping the item leaves the cell None, and
+                    # on column 0 that loses the uuid anchor the row is found by.
+                    value = QApplication.translate("tilauscope_beancave", "Error")
                 item = QTableWidgetItem(value)
                 if col in [6,7,8,9,10,11,14,16,17,18]: # Numeric fields to align right
                     item.setData(Qt.ItemDataRole.EditRole, safe_float(value))
@@ -830,12 +835,9 @@ class BeanTabMixin:
                 self._set_form_sacks(new_bean_data.sacks)
             self.populate_table()
 
-            # Find the updated item and scroll to it
-            updated_items = self.datatable.findItems(new_bean_data.name, Qt.MatchFlag.MatchExactly)
-            if updated_items:
-                updated_item = updated_items[0]
-                self.datatable.scrollToItem(updated_item, QAbstractItemView.ScrollHint.PositionAtTop)
-                self.datatable.selectRow(updated_item.row())
+            # By uuid, never by name: findItems scans every column, so a bean
+            # whose name is another's farm or supplier selected the wrong row.
+            self.select_bean_by_uuid(new_bean_data.uuid, scroll=True)
         else:
             _logd.warning(f"Invalid row selected for update: {selected_row_index}")
 
@@ -962,11 +964,7 @@ class BeanTabMixin:
 
         # Restore the previous selection by uuid (populate_table defaults to row 0).
         if selected_uuid:
-            for r in range(self.datatable.rowCount()):
-                anchor = self.datatable.item(r, 0)
-                if anchor is not None and anchor.data(Qt.ItemDataRole.UserRole) == selected_uuid:
-                    self.datatable.selectRow(r)
-                    break
+            self.select_bean_by_uuid(selected_uuid)
 
     def _is_readable_directory(self, directory:Path) -> bool:
         try:
@@ -1013,13 +1011,13 @@ class BeanTabMixin:
                     QApplication.translate("tilauscope_beancave","The file might be corrupted."), QMessageBox.Icon.Warning)
             except Exception as e:
                 _logd.error(QApplication.translate("tilauscope_beancave","Unexpected error while reading beancave.json")+f": {e}")
-                self._show_message(self, "Error", QApplication.translate("tilauscope_beancave","An unexpected error occurred")+f": {e}", QMessageBox.Icon.Warning)
+                self._show_message(self, QApplication.translate("tilauscope_beancave","Error"), QApplication.translate("tilauscope_beancave","An unexpected error occurred")+f": {e}", QMessageBox.Icon.Warning)
             if selection is not None:
                 self.green_beans.insert(0, GreenBean(name=selection))
         else:
             if beancave_file_path != "":
                 _logd.error(QApplication.translate("tilauscope_beancave","Directory or file access is not possible"))
-                self._show_message(self, "Error", QApplication.translate("tilauscope_beancave","Directory or file access is not possible"), QMessageBox.Icon.Warning)
+                self._show_message(self, QApplication.translate("tilauscope_beancave","Error"), QApplication.translate("tilauscope_beancave","Directory or file access is not possible"), QMessageBox.Icon.Warning)
             else:
                 # call first bean assist
                 _logd.debug("bean cave is empty, run first bean assistant")
@@ -1140,6 +1138,7 @@ class BeanTabMixin:
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return # User cancelled
         url_to_analyze = dlg.url_input.text().strip()
+        dlg.deleteLater()  # parented to BeanCave: exec() alone never frees it
         if not url_to_analyze:
             return
 
@@ -1201,7 +1200,7 @@ class BeanTabMixin:
             if value == '':
                 return
             index = combo.findText(value)
-            if index > 0:
+            if index >= 0:  # 0 is the first entry, not "not found"
                 combo.setCurrentIndex(index)
             else: # fallback to last value if not found "(usually 'Other')"
                 combo.setCurrentIndex(combo.count() - 1)

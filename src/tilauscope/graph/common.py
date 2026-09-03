@@ -31,7 +31,9 @@ from typing import Any, Final
 from PyQt6.QtGui import QColor
 
 from artisanlib.util import convertTemp
-from tilauscope.tilauscope_types import THEME
+from tilauscope.tilauscope_types import THEME, UNMARKED, marked, normalize_timeindex  # noqa: F401
+# marked/normalize_timeindex live with RoastingPhase and are re-exported here:
+# the graph package has read them under this name since it was written.
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -152,23 +154,6 @@ def ror_axis_c(mode: str) -> tuple[float, float]:
     _lo, top, step = ror_axis(mode)
     scale = delta_scale(mode)
     return top / scale, step / scale
-
-
-def marked(timeindex: Any, i: int) -> bool:
-    """True if milestone `i` has been placed.
-
-    The "unmarked" sentinel is PER INDEX, not per mode — the trap the whole
-    package walks past. `timeindex` resets to [-1,0,0,0,0,0,0,0] in every mode:
-    CHARGE reads -1 because 0 is a valid sample index, while 1..7 read 0 when
-    unmarked. Testing `> -1` on a milestone is therefore always true and
-    silently disables whatever it was guarding. One test, used everywhere.
-    """
-    try:
-        if i == 0:
-            return int(timeindex[0]) > -1
-        return int(timeindex[i]) > 0
-    except (TypeError, IndexError, ValueError):
-        return False
 
 
 def _is_alarm(text: str) -> bool:

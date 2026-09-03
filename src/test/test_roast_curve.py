@@ -294,8 +294,44 @@ def test_the_background_roast_is_aligned_on_its_own_charge() -> None:
     qmc.background = False
     assert _background_roast(qmc, show_air=True, show_machine=True) is not None
 
+    # The plotter, the analyzer's curve fit and a background equation all fill
+    # the B arrays with no profile behind them. Each is a reference the
+    # operator asked for, and each used to be drawn nowhere.
     qmc.backgroundprofile = None
+    assert _background_roast(qmc, show_air=True, show_machine=True) is not None
+
+    # Artisan's own removal empties the arrays, and that is what unloads it.
+    qmc.timeB, qmc.temp1B, qmc.temp2B = [], [], []
     assert _background_roast(qmc, show_air=True, show_machine=True) is None
+
+
+def test_an_unmarked_reference_is_still_drawn() -> None:
+    """A reference with no CHARGE anchors on its own first sample.
+
+    Nothing guarantees the milestone: a curve drawn in the plotter never had
+    one, and a recording can be saved without it. Dropping the whole reference
+    over a missing index left the operator staring at a comparison they had
+    just loaded and could not see.
+    """
+    from tilauscope.graph.curve import _background_roast
+
+    qmc = H.FakeQmc()
+    qmc.background = True
+    qmc.backgroundprofile = None
+    qmc.timeB = [500.0, 520.0, 540.0]
+    qmc.timeindexB = [-1, 0, 0, 0, 0, 0, 0, 0]
+    qmc.temp1B = [195.0, 205.0, 215.0]
+    qmc.temp2B = [115.0, 125.0, 135.0]
+    qmc.stemp1B = list(qmc.temp1B)
+    qmc.stemp2B = list(qmc.temp2B)
+    qmc.backgroundprofile_moved_y = 0
+
+    reference = _background_roast(qmc, show_air=True, show_machine=True)
+    assert reference is not None
+    timex, _air, bean, rise, _machine, _mode = reference
+    assert timex == [0.0, 20.0, 40.0]
+    assert bean == [115.0, 125.0, 135.0]
+    assert rise, 'an unmarked reference lost its rate of rise'
 
 
 def test_the_reference_keeps_the_live_hue_at_lower_strength() -> None:

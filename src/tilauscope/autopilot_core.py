@@ -79,6 +79,9 @@ class TrimParams:
     brake_ext_step_pct: float = 5.0
     brake_improve_ror: float = 0.3       # °C/min drop per tranche counted as "correcting"
     brake_heater_max_tranches: int = 3   # escalate to extraction after N uncorrected tranches
+    # the tranche counter resets as soon as the RoR responds, so it bounds an
+    # EPISODE, never the phase — these two bound the phase (see min_burner_pct).
+    heater_brake_bound_pct: float = 15.0  # cumulative heater brake below plan, per phase
     ext_bound_pct: float = 10.0          # cumulative extraction brake bound (to calibrate)
     # release (mandatory unwind once back in band; extraction first — stall risk)
     release_cadence_s: float = 10.0
@@ -95,6 +98,11 @@ class TrimParams:
     worsen_rel: float = 0.10             # fraction of target
     # absolute clamps
     max_burner_pct: float = 80.0
+    # below ~45% on a hot Skywalker the remaining power no longer sustains the
+    # RoR: a trim must never walk the burner through that cliff. The PLAN may
+    # sit lower (its own dev trajectory) — this only floors trim actions, and
+    # never raises a burner the operator already put below it.
+    min_burner_pct: float = 45.0
     airflow_min_pct: float = 20.0
     ext_max_pct: float = 100.0
 
@@ -128,7 +136,42 @@ class _PhaseState:
 class AutoPilotCore:
     """State-aware bounded trim engine. Feed it 1 Hz ticks; it emits at most
     one Action per tick. In shadow mode the caller never applies actions but
-    keeps calling observe_levers() with the real (human) values."""
+    keeps calling observe_levers() with the real (human) values.
+
+    CALLER CONTRACT — read this before wiring a new caller.
+
+    Every bound, cadence and attribution window in here describes what was
+    done TO THE MACHINE. The engine cannot see the machine: it only knows
+    what observe_levers() tells it and what it believes its own actions did.
+    Three obligations follow, and getting any of them wrong is silent — the
+    engine keeps emitting plausible actions on a false picture.
+
+    1. tick() COMMITS ON EMISSION, NOT ON ACTUATION. The moment an Action is
+       returned, its cost is already written to the phase ledger. This is
+       deliberate: the shadow sims (tools/autopilot/*) never apply anything
+       and must still see their bounds fill up, or they would emit an
+       unbounded stream and measure nothing.
+
+    2. SO A CALLER THAT ACTUATES MUST REPORT FAILURE. If you could not put the
+       Action on the machine — the device is gone, the write was refused, you
+       dropped it yourself — call discard(action) on that same object. It
+       rolls the tick back whole: ledger, tranche counter, brake cadence,
+       attribution window and persistence counters, so the deviation is seen
+       again on the very next tick. commit(action) is the explicit success
+       side; not calling it is equally fine, since emission already committed.
+       Only the most recently emitted Action can be discarded — a discard for
+       anything else is ignored, not an error.
+
+    3. A LEVER YOU CANNOT REACH IS NOT A LEVER AT ITS LAST VALUE. observe_levers()
+       reads None as "unchanged", so passing None for a device that just
+       disappeared leaves the engine building actions on a stale reading.
+       Say so with forget_lever(lever); actions on it stop until it is
+       observed again.
+
+    A caller that defers an action rather than dropping it — queueing a
+    burner cut through a rate limiter, say — keeps the commit: the move does
+    reach the machine, just later.
+    """
 
     def __init__(self, params: TrimParams | None = None) -> None:
         self.p = params or TrimParams()
@@ -142,6 +185,7 @@ class AutoPilotCore:
         self._last_brake_t = -1e9
         self._ror_at_brake = 0.0
         self._next_release_t = -1e9
+        self._pending: tuple[Action, tuple] | None = None  # last emitted action + its undo
         self.bound_hit: str | None = None  # set when a trim hits its ceiling (coach message)
 
     # ── lifecycle ─────────────────────────────────────────────────────────
@@ -157,12 +201,14 @@ class AutoPilotCore:
         self._window_until = 0.0
         self._last_brake_t = -1e9
         self._next_release_t = -1e9
+        self._pending = None
         self.bound_hit = None
 
     def disarm(self) -> None:
         """Drop the active phase — no action can be emitted until the next
         start_phase (belt-and-suspenders: callers also gate on their own state)."""
         self._ph = None
+        self._pending = None
 
     def observe_levers(self, air: float | None = None, heater: float | None = None,
                        ext: float | None = None) -> None:
@@ -173,6 +219,12 @@ class AutoPilotCore:
             self._levers[Lever.HEATER] = heater
         if ext is not None:
             self._levers[Lever.EXT] = ext
+
+    def forget_lever(self, lever: Lever) -> None:
+        """That lever is gone (AirWave unpaired mid-roast): no action may be
+        built on its last observed value, which is now stale. observe_levers()
+        cannot say this — None there means "unchanged"."""
+        self._levers[lever] = None
 
     # ── helpers ───────────────────────────────────────────────────────────
 
@@ -204,6 +256,7 @@ class AutoPilotCore:
         lo, hi = 0.0, 100.0
         if lever is Lever.HEATER:
             hi = self.p.max_burner_pct
+            lo = min(cur, self.p.min_burner_pct)
         elif lever is Lever.AIR:
             lo = self.p.airflow_min_pct
         elif lever is Lever.EXT:
@@ -214,9 +267,64 @@ class AutoPilotCore:
         return Action(t=t, lever=lever, delta_pct=target - cur, target_value=target,
                       kind=kind, reason=reason)
 
+    # ── actuation feedback ────────────────────────────────────────────────
+    # Bounds, cadences and attribution windows describe what was actually done
+    # TO THE MACHINE. An action the caller could not put on a slider (AirWave
+    # gone, a write that failed) must not eat the budget: left committed, the
+    # engine believes it braked and stops braking. Emitting still commits by
+    # default — the shadow sims never apply anything and must keep their bounds.
+
+    def _capture(self) -> tuple | None:
+        ph = self._ph
+        if ph is None:
+            return None
+        return (ph.air_steps, ph.heater_support_pct, ph.heater_brake_pct,
+                ph.ext_trim_pct, ph.brake_tranches,
+                self._persist_low, self._persist_high,
+                self._window_until, self._window_d0,
+                self._last_brake_t, self._ror_at_brake, self._next_release_t)
+
+    def _restore(self, snap: tuple) -> None:
+        ph = self._ph
+        if ph is None:
+            return
+        (ph.air_steps, ph.heater_support_pct, ph.heater_brake_pct,
+         ph.ext_trim_pct, ph.brake_tranches,
+         self._persist_low, self._persist_high,
+         self._window_until, self._window_d0,
+         self._last_brake_t, self._ror_at_brake, self._next_release_t) = snap
+
+    def commit(self, action: Action) -> None:
+        """The caller put `action` on the slider — bookkeeping stands."""
+        if self._pending is not None and self._pending[0] is action:
+            self._pending = None
+
+    def discard(self, action: Action) -> None:
+        """The caller could NOT apply `action` — undo its bookkeeping.
+
+        Restores the ledger, the cadences and the attribution window to their
+        values before the tick, so the deviation is seen again on the next one
+        (the persistence counters come back too, hence an immediate retry).
+        """
+        pending = self._pending
+        self._pending = None
+        if pending is None or pending[0] is not action:
+            return
+        self._restore(pending[1])
+
     # ── main entry ────────────────────────────────────────────────────────
 
-    def tick(self, t: float, ror: float) -> Action | None:  # noqa: PLR0911, PLR0912
+    def tick(self, t: float, ror: float) -> Action | None:
+        """One 1 Hz step. At most one Action; see discard() when it cannot be
+        applied."""
+        self._pending = None
+        snap = self._capture()
+        act = self._tick(t, ror)
+        if act is not None and snap is not None:
+            self._pending = (act, snap)
+        return act
+
+    def _tick(self, t: float, ror: float) -> Action | None:  # noqa: PLR0911, PLR0912
         ph = self._ph
         self._ror_hist.append((t, ror))
         if ph is None:
@@ -321,10 +429,15 @@ class AutoPilotCore:
         if improved:
             ph.brake_tranches = 0   # correcting — keep waiting on the same lever
         heater_val = self._levers.get(Lever.HEATER)
-        heater_exhausted = (heater_val is not None and heater_val <= 0.5) \
+        # budget returns as the release ladder restores the heater
+        brake_budget = max(0.0, p.heater_brake_bound_pct - ph.heater_brake_pct)
+        heater_exhausted = (heater_val is not None
+                            and heater_val <= p.min_burner_pct + 0.5) \
+            or brake_budget <= 0.5 \
             or ph.brake_tranches >= p.brake_heater_max_tranches
         # step modulated by the actual gap: 2-3% while moderate, 5% blocks when far out
         step_h = p.brake_heater_step_pct if abs(d_rel) >= p.warn_rel else p.small_step_pct
+        step_h = min(step_h, brake_budget)
         if not heater_exhausted:
             act = self._mk(t, Lever.HEATER, -step_h, 'brake', reason)
             if act is not None:

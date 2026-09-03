@@ -181,6 +181,8 @@ def _minimal_stop_pid(*, learning_allowed: bool = True) -> SimpleNamespace:
         learned=learned,
         safe=safe,
     )
+    pid._stop_watchdog = pid._safety_watchdog.stop
+    pid._clear_preheat_sv_marker = lambda: setattr(pid.aw.qmc, "tilau_preheat_sv_c", None)
     pid._deferred_preheat_complete = lambda: TilauPreheatPID._deferred_preheat_complete(pid)
     return pid
 
@@ -333,12 +335,17 @@ def test_latched_fault_cuts_heat_stops_watchdog_and_notifies_operator() -> None:
         _sensor_guard=SimpleNamespace(latch=latch),
         _force_safe_output=force_safe,
         _safety_watchdog=timer,
+        _stop_watchdog=timer.stop,
         _pending_start_sv_native=200.0,
         aw=SimpleNamespace(
-            qmc=SimpleNamespace(eventRecordActionSignal=safety_events),
+            qmc=SimpleNamespace(
+                eventRecordActionSignal=safety_events,
+                tilau_preheat_sv_c=200.0,
+            ),
             sendmessageSignal=messages,
         ),
     )
+    pid._clear_preheat_sv_marker = lambda: TilauPreheatPID._clear_preheat_sv_marker(pid)
 
     TilauPreheatPID._trip_fault(pid, "sensor_timeout")
 

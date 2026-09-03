@@ -67,6 +67,8 @@ class ThermalModelCandidate:
     control_channel: str
     heating_gain_c_per_sec: float
     cooling_coeff_per_sec: float
+    # Upper bound aligned with the calibration protocol's delay search
+    # (section 5.1: 0-20 s), so a valid run cannot yield a rejected model.
     response_lag_sec: float
     derivative_rmse_c_per_sec: float
     rollout_rmse_c: float
@@ -94,7 +96,7 @@ class ThermalModelCandidate:
             and all(math.isfinite(v) for v in numeric)
             and 0.05 <= self.heating_gain_c_per_sec <= 10.0
             and 0.00005 <= self.cooling_coeff_per_sec <= 0.05
-            and 0.0 <= self.response_lag_sec <= 15.0
+            and 0.0 <= self.response_lag_sec <= 20.0
             and math.isclose(self.heater_exponent, 2.0)
             and self.n_profiles >= 1
             and self.n_samples >= 1
@@ -279,7 +281,10 @@ def _rollout_errors(
     for i in range(1, len(trace.times_sec)):
         t0, t1 = trace.times_sec[i - 1], trace.times_sec[i]
         dt = t1 - t0
-        if not 0.0 < dt <= 5.0:
+        # Same upper bound as the identification window (_identification_rows):
+        # a corpus sampled at 6-12 s used to fit successfully and then produce
+        # no rollout error at all, leaving the RMSE division with an empty list.
+        if not 0.0 < dt <= 12.0:
             predicted = trace.temperatures_c[i]
             continue
         power = _power_at(trace, (t0 + t1) / 2.0 - lag_sec)
@@ -330,6 +335,8 @@ def identify_thermal_model(
         for trace in qualified
         for error in _rollout_errors(trace, gain, loss, lag)
     ]
+    if not rollout_errors:
+        raise ValueError("no usable rollout step: sampling intervals are out of range")
     rollout_rmse = math.sqrt(sum(e * e for e in rollout_errors) / len(rollout_errors))
 
     cross_errors: list[float] = []
@@ -337,6 +344,8 @@ def identify_thermal_model(
         training = [trace for i, trace in enumerate(qualified) if i != held_out_idx]
         cv_gain, cv_loss, _rmse, cv_lag, _n = _fit_best(training)
         cross_errors.extend(_rollout_errors(held_out, cv_gain, cv_loss, cv_lag))
+    if not cross_errors:
+        raise ValueError("no usable cross-validation step: sampling intervals are out of range")
     cross_rmse = math.sqrt(sum(e * e for e in cross_errors) / len(cross_errors))
 
     candidate = ThermalModelCandidate(

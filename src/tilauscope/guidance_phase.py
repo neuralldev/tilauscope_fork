@@ -5,8 +5,24 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, IntEnum
+
+
+def milestone_marked(timeindex: Sequence[int] | None, idx: int) -> bool:
+    """True when milestone `idx` of qmc.timeindex carries a real mark.
+
+    The unmarked sentinel differs by index, and by index only: CHARGE (0) uses
+    -1 because 0 is a valid sample index, every milestone after it uses 0.
+    Testing `> -1` on indices 1..7 is always true, which silently voids the
+    guard reading it. Single reader for everything outside the window class
+    (which compiles its own copy in isolation, hence the duplication).
+    """
+    try:
+        return timeindex[0] > -1 if idx == 0 else timeindex[idx] > 0  # type: ignore[index]
+    except (IndexError, TypeError):
+        return False
 
 
 class GuidancePhase(IntEnum):

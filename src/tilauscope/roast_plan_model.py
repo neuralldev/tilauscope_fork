@@ -25,7 +25,7 @@ from pathlib import Path, PosixPath
 import re
 import numpy as np
 
-from tilauscope.tilauscope_types import (AGTRON_SCALES, AgtronScale, ProbeDeviation, RoasterBasicPlan, RoasterBasicPlanPerPhase, GreenBean, RoastingPhase,
+from tilauscope.tilauscope_types import (AGTRON_SCALES, AgtronScale, ProbeDeviation, RoasterBasicPlan, RoasterBasicPlanPerPhase, GreenBean, RoastingPhase, marked, normalize_timeindex,
                                           get_ror_ideal_band, to_agtron, ROASTING_BASIC_BASE, clean_delta_bt, estimate_ror_dt, find_turning_point_index,
                                           which_roast_phase, find_flicks_crashes,
                                           GREEN_MOISTURE_NEUTRAL_PCT, weight_loss_target)
@@ -1039,10 +1039,10 @@ class TilauScopeRoastPlan:
         except (OSError, ValueError, SyntaxError) as exc:
             _logd.debug(f"_load_phase_times: unreadable {file_name} ({exc})")
             return None
-        ti = self.lastprofiledata.get("timeindex", [])
+        ti = normalize_timeindex(self.lastprofiledata.get("timeindex", []))
         tx = self.lastprofiledata.get("timex", [])
-        if (len(ti) == 0 or not tx or ti[RoastingPhase.CHARGE] == -1
-                or ti[RoastingPhase.DROP] == -1):
+        if (not tx or not marked(ti, RoastingPhase.CHARGE)
+                or not marked(ti, RoastingPhase.DROP)):
             return None
         if ti[RoastingPhase.DROP] <= ti[RoastingPhase.CHARGE]:
             return None  # zero-length roast — _get_delta_bt returns empty slices here too
@@ -1096,9 +1096,11 @@ class TilauScopeRoastPlan:
         with open(file=Path(self.alog_directory) / file_name, encoding="utf-8") as f:
             content = f.read()
         self.lastprofiledata = cast('ProfileData', ast.literal_eval(content))
-        ti = self.lastprofiledata.get("timeindex", [])
-        if len(ti) == 0 or ti[RoastingPhase.CHARGE] == -1 or ti[RoastingPhase.DROP] == -1:
+        ti = normalize_timeindex(self.lastprofiledata.get("timeindex", []))
+        if not marked(ti, RoastingPhase.CHARGE) or not marked(ti, RoastingPhase.DROP):
             return None, None, None, None, None
+        if ti[RoastingPhase.DROP] <= ti[RoastingPhase.CHARGE]:
+            return None, None, None, None, None  # zero-length roast: empty slices downstream
 
         start = ti[RoastingPhase.CHARGE]
         end   = ti[RoastingPhase.DROP]

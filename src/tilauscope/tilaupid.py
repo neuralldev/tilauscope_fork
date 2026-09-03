@@ -25,7 +25,7 @@ from dataclasses import dataclass, fields
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow
 
-from PyQt6.QtCore import QSettings, QTimer
+from PyQt6.QtCore import QMetaObject, QSettings, Qt, QThread, QTimer
 from PyQt6.QtWidgets import QApplication
 
 from artisanlib.util import fromFtoCstrict, fromCtoFstrict, convertRoRstrict
@@ -33,6 +33,13 @@ from tilauscope.tilaupid_adaptative import AdaptivePIDMixin, AmbientConditions, 
 from tilauscope.tilaupid_safety import PreheatSensorGuard, SensorSafetyLimits
 
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
+
+# Dispositions that end a preheat successfully: learning is kept and the preheat
+# setpoint marker stays. `handover` additionally leaves the burner at its hold
+# power, so the PID calibration inherits a settled machine (protocol 8.1).
+_BUMPLESS_STOP_REASONS: Final[frozenset[str]] = frozenset(
+    {"charge", "stable_complete", "handover"}
+)
 
 # depending on tilauscope settings selecting the roaster, it will adjust accordingly, if using Airwave % of fan is added
 # Roaster                   zone_fuzzy_start    coast_lookahead_sec fan_brake_power
@@ -47,7 +54,7 @@ _logd: Final[logging.Logger] = logging.getLogger("tilau")
 class PIDConfig:
     heater_slider: int = 3  # slider number in Artisan for the heater control (default 3, but can be changed in config)
     fan_slider: int = 2 # slider number for fan control, not used in this version but reserved for future use
-    polling_dt: float = 1.0 # interval in seconds for PID updates, ideally matching the Artisan timer delay (default 1s)
+    polling_dt: float = 1.0 # fallback only: the live value is read from qmc.delay by _apply_sampling_cadence()
     target_sv: float = 200.0 # target setpoint in °C (always stored internally in °C regardless of Artisan mode)
     # HARD ceiling on burner power, not a tuning hint: effective_max_burner() clamps the
     # learned adjustment DOWN to this value only, never above (radiant FIR drums trip their thermal cutoff above it).
@@ -65,7 +72,7 @@ class PIDConfig:
     # t_proj = t + ror_short·(lead_sec/60). SV is the stable attractor: burner saturates high
     # below SV, tapers to the steady hold P_ss near SV, and falls toward 0 once t_proj crosses SV.
     kp: float = 5.0                 # burner % per °C of projected error (saturates ~12°C out)
-    p_ss_default: float = 20.0      # initial steady hold % near SV (learned per-SV thereafter)
+    p_ss_default: float = 20.0      # fallback only: _precompute_targets()'s physical estimate wins
     lead_sec_default: float = 5.0   # initial projection lead = response_lag + FIR residual tail
     lead_sec_min: float = 2.3       # floor on lead (≈ pure actuator response lag)
     lead_sec_max: float = 12.0      # ceiling on lead (anti timid-approach)
@@ -75,9 +82,13 @@ class PIDConfig:
     hold_ki_pct_per_c_sec: float = 0.02
     hold_integral_limit_pct: float = 6.0
     hold_integral_band_c: float = 2.0
-    hold_integral_max_ror_c_per_min: float = 1.0
+    # 3°C/min over the 4s short window = 0.2°C of travel: reachable on a 0.1°C
+    # probe. At 1.0 the endpoints had to be bit-identical and the gate never armed.
+    hold_integral_max_ror_c_per_min: float = 3.0
     hold_integral_arm_sec: float = 10.0
-    hold_integral_unwind_pct_per_sec: float = 0.5
+    # Unwind stays faster than accumulation (~0.04%/s at the band edge) but no
+    # longer erases twelve seconds of integration per ineligible second.
+    hold_integral_unwind_pct_per_sec: float = 0.1
     fan_enabled: bool = False    # Set True to activate fan-assist inertia braking
     # DEPRECATED — retired with the relay control law. No longer read by
     # compute_fuzzy_power; kept only so legacy metric dataclasses populate without churn.
@@ -308,17 +319,20 @@ class TilauPreheatPID(AdaptivePIDMixin):
         self.cfg = PIDConfig.from_mapping(c, target_sv=self._to_c(_raw_sv))
         # Initialisation dynamique du RoR basée sur Artisan
 
-        self.ror_span_sec = getattr(self.aw.qmc, "deltaBTspan", 15.0)
-        self.window_size = max(2, int(self.ror_span_sec / self.cfg.polling_dt))
-        self.temp_history: deque = deque(maxlen=self.window_size)
-        self.time_history: deque = deque(maxlen=self.window_size)
-
+        # Every window below is a DURATION in seconds; the number of samples that
+        # spans it depends on the operator-settable sampling interval, so it is
+        # derived in _apply_sampling_cadence() at the end of __init__ and again at
+        # each start(). The declarations here only fix the attribute types.
+        self.ror_span_sec: float = getattr(self.aw.qmc, "deltaBTspan", 15.0)
+        self.window_size: int = 2
+        self.temp_history: deque = deque(maxlen=2)
+        self.time_history: deque = deque(maxlen=2)
         # Short RoR window (control): the 14s display window lags ~7s and
         # fires the cut too late on a fast radiant ramp. The control law projects
         # temperature with a fresh ~4s derivative instead.
-        self.short_window_size = max(2, int(self.cfg.ror_short_sec / self.cfg.polling_dt))
-        self.temp_history_short: deque = deque(maxlen=self.short_window_size)
-        self.time_history_short: deque = deque(maxlen=self.short_window_size)
+        self.short_window_size: int = 2
+        self.temp_history_short: deque = deque(maxlen=2)
+        self.time_history_short: deque = deque(maxlen=2)
 
         self.active = False
         self.prev_power = -1
@@ -337,13 +351,10 @@ class TilauPreheatPID(AdaptivePIDMixin):
         # Sensor guard + independent Qt watchdog. The guard is pure
         # Python; the timer catches the distinct failure mode where sample()
         # stops calling cycle() and the last physical burner command persists.
-        self._sensor_guard = PreheatSensorGuard(SensorSafetyLimits(
-            stale_after_sec=max(3.5, self.cfg.polling_dt * 3.5),
-        ))
+        self._sensor_guard = PreheatSensorGuard(SensorSafetyLimits())
         self._learning_allowed = True
         self._fault_reason: str | None = None
         self._safety_watchdog = QTimer()
-        self._safety_watchdog.setInterval(max(250, int(self.cfg.polling_dt * 500)))
         self._safety_watchdog.timeout.connect(self._watchdog_tick)
         # Native SV to stamp as the "Preheat started" marker, deferred to the
         # first cycle() — at START time qmc.timex is still empty (OnRecorder just called
@@ -373,8 +384,9 @@ class TilauPreheatPID(AdaptivePIDMixin):
             max_ror_c_per_min=self.cfg.hold_integral_max_ror_c_per_min,
             arm_sec=self.cfg.hold_integral_arm_sec,
             unwind_pct_per_sec=self.cfg.hold_integral_unwind_pct_per_sec,
-            max_dt_sec=max(2.5, self.cfg.polling_dt * 2.5),
         )
+        # Bind every cadence-dependent window to the real sampling interval.
+        self._apply_sampling_cadence()
 
         #le fallback sur cfg fonctionne donc correctement au premier appel. Mais le threshold calculé à l'init n'intègre pas encore les corrections adaptatives. Ce n'est pas un bug — il sera recalculé au prochain start()
         # Variables pré-calculées
@@ -459,18 +471,110 @@ class TilauPreheatPID(AdaptivePIDMixin):
         if _t_raw is not None and qmc.mode == 'F':
             _t_raw = (convertRoRstrict(_t_raw, 'F', 'C') if t in (3, 4)
                       else fromFtoCstrict(_t_raw))
+        # A failed ambient probe reports -1, which the plausibility band accepts as
+        # a real temperature: it would add ~6% burner to the hold for the whole
+        # preheat and poison the corpus weighting axis. Reject it explicitly, and
+        # do not let a truthiness test turn a genuine 0.0 into the default either.
         return AmbientConditions(
-            temp_ambient=_t_raw or 20.0,
-            humidity    =ms(h, qmc) or 50.0,
-            pressure    =ms(p, qmc) or 1013.25,
+            temp_ambient=self._ambient_or(_t_raw, 20.0),
+            humidity    =self._ambient_or(ms(h, qmc), 50.0),
+            pressure    =self._ambient_or(ms(p, qmc), 1013.25),
         )
+
+    @staticmethod
+    def _ambient_or(value: float | None, default: float) -> float:
+        """Ambient channel reading, or the default when absent or sentinel."""
+        if value is None:
+            return default
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return default
+        if not math.isfinite(v) or v == -1.0:
+            return default
+        return v
+
+    # ── Sampling cadence: measured, never assumed ────────────────────────
+    def _sampling_dt(self) -> float:
+        """Live sampling interval in seconds, read from Artisan.
+
+        qmc.delay is in milliseconds and operator-settable from 100 ms upward.
+        Every window, timeout and watchdog below is a duration, so all of them
+        must follow it instead of a hard-coded 1 Hz assumption.
+        """
+        try:
+            dt = float(getattr(self.aw.qmc, "delay", 1000.0)) / 1000.0
+        except (TypeError, ValueError):
+            return 1.0
+        if not math.isfinite(dt) or dt <= 0.0:
+            return 1.0
+        return min(30.0, max(0.1, dt))
+
+    def _apply_sampling_cadence(self) -> None:
+        """Re-derive every cadence-dependent window from the live interval.
+
+        Called at construction and at each start(): the operator can change the
+        sampling rate between two preheats.
+        """
+        self.cfg.polling_dt = self._sampling_dt()
+        dt = self.cfg.polling_dt
+        self.ror_span_sec = getattr(self.aw.qmc, "deltaBTspan", 15.0)
+        self.window_size = max(2, round(self.ror_span_sec / dt))
+        self.short_window_size = max(2, round(self.cfg.ror_short_sec / dt))
+        self.temp_history = deque(maxlen=self.window_size)
+        self.time_history = deque(maxlen=self.window_size)
+        self.temp_history_short = deque(maxlen=self.short_window_size)
+        self.time_history_short = deque(maxlen=self.short_window_size)
+        self._sensor_guard.limits = SensorSafetyLimits(
+            stale_after_sec=max(3.5, dt * 3.5),
+            min_ror_dt_sec=max(1.0, dt),
+        )
+        self._safety_watchdog.setInterval(max(250, int(dt * 500)))
+        self._hold_integrator.max_dt_sec = max(2.5, dt * 2.5)
+        detector = getattr(self, "_stabilisation_detector", None)
+        if detector is not None:
+            detector.polling_dt = dt
+
+    def _control_clock(self) -> float:
+        """Monotonic seconds on the same time base as the samples themselves.
+
+        Accelerated profile replay advances the recorded profile faster than wall
+        time. Dividing a replayed temperature delta by wall seconds returns N× the
+        real slope, so the projection would brake N× too early and the simulated
+        preheat would stall short of SV.
+        """
+        now = time.perf_counter()
+        if getattr(self.aw, 'simulator', None) is None:
+            return now
+        try:
+            speed = float(self.aw.qmc.timeclock.getBase()) / 1000.0
+        except (AttributeError, TypeError, ValueError):
+            return now
+        return now * speed if speed > 0.0 else now
+
+    def _stop_watchdog(self) -> None:
+        """Stop the timer on the thread that owns it.
+
+        cycle() — hence stop() and _trip_fault() — runs on Artisan's sampling
+        thread, while the timer lives on the GUI thread. A direct stop() there is
+        refused by Qt and leaves the timer armed for the life of the manager.
+        """
+        timer = self._safety_watchdog
+        try:
+            if timer.thread() is QThread.currentThread():
+                timer.stop()
+            else:
+                QMetaObject.invokeMethod(timer, "stop", Qt.ConnectionType.QueuedConnection)
+        except (RuntimeError, TypeError):
+            _logd.exception("TilauPID could not stop its safety watchdog")
 
     def _precompute_targets(self) -> None:
         # All maths here are in °C.  cfg.target_sv is always stored in °C.
         target = self.cfg.target_sv
 
-        # Hold power: keep it modest — just enough to fight heat loss.
-        # ~20% at 150 °C, ~28% at 230 °C.
+        # Hold power: physical first estimate, superseded by the learned per-SV
+        # P_ss as soon as the corpus has evidence. Yields ~33.8% at 150 °C and
+        # ~42.2% at 230 °C (cfg.p_ss_default is only the no-estimate fallback).
         self._base_hold_power = 18.0 + (target / 9.5)
         self._close_zone = target * 0.025   # ~5 °C at 200 °C
 
@@ -511,10 +615,9 @@ class TilauPreheatPID(AdaptivePIDMixin):
         # cycle(): at start() qmc.timex is still empty and EventRecordAction would drop the event.
         self._pending_start_sv_native = self.sv_native()
 
-        self.temp_history.clear()
-        self.time_history.clear()
-        self.temp_history_short.clear()
-        self.time_history_short.clear()
+        # Re-derive every window from the interval in force NOW: this also
+        # replaces the four sample deques, so no clear() is needed here.
+        self._apply_sampling_cadence()
         # Reset the smoother so a reused instance gets a fresh full-power ramp
         # on the next preheat instead of slew-limiting up from a stale previous value.
         self.prev_power = -1
@@ -744,25 +847,28 @@ class TilauPreheatPID(AdaptivePIDMixin):
     def stop(self, reason: str = "operator_abort") -> None:
         """Stop preheating with an explicit safety/learning disposition.
 
-        CHARGE is a bumpless hand-off to roast control and may learn. Every
-        other reason commands a safe burner zero; aborted or degraded sessions
-        never train the persistent law.
+        CHARGE is a bumpless hand-off to roast control and may learn, and so is
+        `handover`, which passes a settled machine to the PID calibration with
+        the burner left where it holds. Every other reason commands a safe
+        burner zero; aborted or degraded sessions never train the persistent law.
         """
         was_active = self.active
-        self._safety_watchdog.stop()
+        self._stop_watchdog()
         if was_active:
             # eventRecordActionSignal est en QueuedConnection — safe depuis le sémaphore ET hors sémaphore
             # signature : pyqtSignal(int, float, str, bool) → EventRecordActionSlot(eventtype, eventvalue, description, doupdategraphics)
             self.aw.qmc.eventRecordActionSignal.emit(
                 4, 0.0, f"TilauPID Preheat stopped ({reason})", False)
-            if reason in {"charge", "stable_complete"} and self._learning_allowed:
+            if reason in _BUMPLESS_STOP_REASONS and self._learning_allowed:
                 # CHARGE calls us with qmc.profileDataSemaphore held: learning ends in two
                 # full QSettings flushes, which would stall the sampling thread at the most
                 # timing-critical moment. Nothing it reads is protected by that semaphore
                 # (session state is PID-owned), so defer it one event-loop turn.
                 QTimer.singleShot(0, self._deferred_preheat_complete)
-        if reason != "charge":
+        if reason not in {"charge", "handover"}:
             self._force_safe_output(reason)
+        if reason not in _BUMPLESS_STOP_REASONS or not self._learning_allowed:
+            self._clear_preheat_sv_marker()
         self.active = False
         # Drop any start marker that never fired (preheat aborted before its
         # first cycle) so it can't stamp a later, unrelated recording.
@@ -784,6 +890,18 @@ class TilauPreheatPID(AdaptivePIDMixin):
         except Exception:  # noqa: BLE001 - an escaping exception would close the app
             _logd.exception("Deferred preheat learning failed")
 
+    def _clear_preheat_sv_marker(self) -> None:
+        """Drop the `tilau_preheat_sv_c` stamp from qmc.
+
+        The key survives until the next reset(), so an aborted preheat finished by
+        hand on the slider would still be saved as a guided one and mined as PID
+        evidence — undoing, through the corpus, the learning ban set here.
+        """
+        try:
+            self.aw.qmc.tilau_preheat_sv_c = None
+        except AttributeError:
+            pass
+
     def _force_safe_output(self, reason: str) -> None:
         """Command burner zero immediately, bypassing all output smoothing."""
         integrator = getattr(self, "_hold_integrator", None)
@@ -803,10 +921,11 @@ class TilauPreheatPID(AdaptivePIDMixin):
             return
         self._fault_reason = reason
         self._learning_allowed = False
+        self._clear_preheat_sv_marker()
         self._sensor_guard.latch(reason)
         self._force_safe_output(reason)
         self.active = False
-        self._safety_watchdog.stop()
+        self._stop_watchdog()
         self._pending_start_sv_native = None
         try:
             self.aw.qmc.eventRecordActionSignal.emit(
@@ -843,7 +962,7 @@ class TilauPreheatPID(AdaptivePIDMixin):
         current_t is expected in the current Artisan unit (°C or °F).
         The history and returned RoR are always in °C/min internally.
         """
-        now = time.perf_counter()
+        now = self._control_clock()
         t_c = self._to_c(current_t)               # store in °C
         self.temp_history.append(t_c)
         self.time_history.append(now)
@@ -928,7 +1047,7 @@ class TilauPreheatPID(AdaptivePIDMixin):
             ror_c_per_min=ror,
             base_output_pct=base_burner,
             output_max_pct=self.effective_max_burner(),
-            now=time.perf_counter() if now is None else now,
+            now=self._control_clock() if now is None else now,
         )
         burner = base_burner + integral
         burner = max(0.0, min(self.effective_max_burner(), burner))
@@ -1104,7 +1223,11 @@ class TilauPreheatPID(AdaptivePIDMixin):
                         # the previous SV's P_ss/lead until the next START would defeat the
                         # interpolation precisely when the operator adjusts the setpoint.
                         self.p_ss, self.lead_sec = self.load_law_params()
-                        self.aw.qmc.tilau_preheat_sv_c = float(self.cfg.target_sv)
+                        # Only a live preheat owns the marker: re-stamping it while
+                        # stopped or faulted would re-declare a hand-driven session
+                        # as guided in the saved profile.
+                        if self.active:
+                            self.aw.qmc.tilau_preheat_sv_c = float(self.cfg.target_sv)
                         # set artisan pid target in native unit
                         self.aw.pidcontrol.setSV(sv_native)
                         _logd.debug(f"SV mis à jour via Displayscope : {sv_native:.1f}°{self._unit()} ({self.cfg.target_sv:.1f}°C interne)")

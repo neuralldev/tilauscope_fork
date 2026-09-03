@@ -660,6 +660,45 @@ class RoastingPhase:
     COOLEND = 7
 
 
+UNMARKED: Final[tuple[int, ...]] = (-1, 0, 0, 0, 0, 0, 0, 0)
+
+
+def marked(timeindex: object, i: int) -> bool:
+    """True if milestone `i` has been placed.
+
+    The "unmarked" sentinel is PER INDEX, not per mode. `timeindex` resets to
+    [-1,0,0,0,0,0,0,0] in every mode: CHARGE reads -1 because 0 is a valid
+    sample index, while 1..7 read 0 when unmarked. Testing `> -1` on a milestone
+    is therefore always true and silently disables whatever it was guarding.
+    Lives here, beside RoastingPhase, so reading a timeindex never costs an
+    import of the graph package.
+    """
+    try:
+        if i == 0:
+            return int(timeindex[0]) > -1  # type: ignore[index]
+        return int(timeindex[i]) > 0  # type: ignore[index]
+    except (TypeError, IndexError, ValueError):
+        return False
+
+
+def normalize_timeindex(raw: object) -> list[int]:
+    """A short or absent `timeindex` padded to 8 slots, each with ITS sentinel.
+
+    Padding every missing slot with -1 would leave one variable carrying two
+    conventions at once — -1 for a slot the file never had, 0 for a milestone
+    the operator never marked — and a reader testing either one alone silently
+    misses the other half. Pad from Artisan's own reset row instead, so a
+    truncated file is indistinguishable from an unmarked one and `marked()`
+    is the only test any caller needs.
+    """
+    try:
+        vals = [int(v) for v in raw]  # type: ignore[union-attr]
+    except (TypeError, ValueError):
+        vals = []
+    vals = vals[:8]
+    return vals + list(UNMARKED[len(vals):])
+
+
 @dataclass
 class MQTTSensor(DataClassDictMixin):
     id: str = ""

@@ -48,7 +48,8 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.theme_qss import tint
-from tilauscope.tilauscope_types import (THEME, standardization_map, RoastingPhase, TilauProgressRow)
+from tilauscope.tilauscope_types import (THEME, standardization_map, RoastingPhase, TilauProgressRow,
+                                         marked, normalize_timeindex)
 from tilauscope.roast_timeline import RoastReadyDialog
 from tilauscope.cave.common import (
     _log, _logd, _PLOT_PALETTE, _SVG_CONSISTENCY, _SVG_ALIGN, _safe_filename, _svg_bytes_to_icon)
@@ -448,14 +449,23 @@ class ViewerMixin:
 
     @pyqtSlot()
     def _reconnect_hover(self) -> None:
-        """Reconnecte le bon handler hover selon le mode courant (mono/multi)."""
-        if hasattr(self, 'hover_cid'):
-            try:
-                self.canvas.mpl_disconnect(self.hover_cid)
-            except Exception:
-                pass
+        """Reconnecte le bon handler hover selon le mode courant (mono/multi).
+
+        Both hover connections are made here and nowhere else. The leave handler
+        used to be connected beside each plot call without ever being dropped,
+        so clicking through a session's roasts left one live callback per roast
+        and every mouse exit ran them all.
+        """
+        for cid_attr in ('hover_cid', 'hover_lid'):
+            cid = getattr(self, cid_attr, None)
+            if cid is not None:
+                try:
+                    self.canvas.mpl_disconnect(cid)
+                except Exception:
+                    pass
         handler = self._on_multi_hover if self._multi_mode else self.on_plot_hover
         self.hover_cid = self.canvas.mpl_connect('motion_notify_event', handler)
+        self.hover_lid = self.canvas.mpl_connect('figure_leave_event', self.on_plot_leave)
 
     @pyqtSlot(bool)
     def toggle_canvas_zoom(self, checked: bool = False) -> None:
@@ -480,7 +490,12 @@ class ViewerMixin:
                 self.zoom_dialog.finished.disconnect(self.restore_canvas_position)
                 self.zoom_dialog.close()
                 self.restore_canvas_position()
-        self.annotation.set_fontsize(12 if checked else 7)
+        # The button is enabled in multi mode before any single roast has plotted,
+        # so the hover annotation may not exist yet. This runs from a Qt slot: an
+        # AttributeError here reaches the excepthook and closes the application.
+        annotation = getattr(self, 'annotation', None)
+        if annotation is not None:
+            annotation.set_fontsize(12 if checked else 7)
         self._reconnect_hover()
         self.canvas.draw()
 
@@ -1195,8 +1210,10 @@ class ViewerMixin:
         ##   sitting in qmc (e.g. ground/whole colour) — the dialog must work from
         ##   the live qmc when the profile is already open.
         try:
-            m =  self.roast_list_widget.currentItem()
-            metadata = m.data(Qt.ItemDataRole.UserRole)
+            # The selected roast, not the current one: the current item is the
+            # keyboard cursor and is None right after the list is rebuilt, which
+            # made the button do nothing at all (the raise below is swallowed).
+            metadata = selected_items[0].data(Qt.ItemDataRole.UserRole)
             filepath = Path(self.alog_directory) / metadata["raw_fname"]
             filename = filepath.name
             cur_file = getattr(self.aw, 'curFile', None)
@@ -1381,10 +1398,26 @@ class ViewerMixin:
         self._alog_worker = None
 
     def evaldeltas(self, data: dict, deltaname:str):
+        """The recomputed RoR series for one channel of a loaded profile.
+
+        Smoothing the whole roast is the heaviest thing on this path and it runs
+        on the GUI thread, so the result is memoised: selecting a roast, editing
+        a milestone and drawing the stats all asked for the same series over and
+        over, once per repaint. The key carries every setting that changes the
+        outcome, so a unit or smoothing change recomputes rather than serving a
+        stale curve.
+        """
+        qmc = self.aw.qmc
+        cache_key = (deltaname, qmc.mode, qmc.curvefilter,
+                     bool(qmc.interpolateDropsflag), bool(qmc.optimalSmoothing))
+        for cached_data, key, cached_deltas in self._deltas_cache:
+            if cached_data is data and key == cache_key:
+                return cached_deltas
+
         tx = numpy.array(data.get("timex", []))
-        timeindex = data.get("timeindex", [])
-        rd = timeindex[RoastingPhase.CHARGE] if timeindex and timeindex[RoastingPhase.CHARGE] != -1 else 0
-        drop = timeindex[RoastingPhase.DROP] if timeindex  else 0
+        timeindex = normalize_timeindex(data.get("timeindex", []))
+        rd = timeindex[RoastingPhase.CHARGE] if marked(timeindex, RoastingPhase.CHARGE) else 0
+        drop = timeindex[RoastingPhase.DROP]
         unit = data.get("temp_unit", "C")
         temp = [convertTemp(t,unit,self.aw.qmc.mode) for t in data.get(deltaname, [])]
 
@@ -1394,5 +1427,8 @@ class ViewerMixin:
             # we start RoR computation 10 readings after CHARGE to avoid this initial peak
             RoR_start = min(rd+10,len(tx)-1)
             _, deltas = self.aw.qmc.recomputeDeltas(tx,RoR_start,drop,None,t1,optimalSmoothing=self.aw.qmc.optimalSmoothing)
-            return deltas
-        return None
+        else:
+            deltas = None
+        self._deltas_cache.append((data, cache_key, deltas))
+        del self._deltas_cache[:-5]
+        return deltas

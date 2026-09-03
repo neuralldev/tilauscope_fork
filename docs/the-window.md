@@ -160,6 +160,15 @@ gave it, exactly as it is filed. The bean temperature as a thick line, its
 [rate of rise](glossary.md#ror--rate-of-rise) as a thinner one on its own scale at the right, and
 the three phases as coloured grounds beneath both.
 
+**A loaded background curve is drawn with it**, in the same colours at a lower strength, so
+the roast running now stays the line you read. It is placed on its own charge, so the two
+roasts start together whatever alignment Artisan's own chart was using, and a reference
+recorded without a charge mark starts from its own first reading. A curve drawn in the
+plotter or produced by the analyser is shown the same way. It is on screen from the moment
+it is loaded and stays there for the whole roast; during the preheat the chart belongs to
+the drum climb, and the reference comes back at the charge. Right-clicking the curve offers
+**Remove reference curve**, which unloads it.
+
 **Beside the roast title sits a swap control.** It trades the roast on screen for its own
 background reference: the curve you were reading and the one drawn behind it change places, and
 so do their names above the plot. It is unavailable while monitoring or recording, since the

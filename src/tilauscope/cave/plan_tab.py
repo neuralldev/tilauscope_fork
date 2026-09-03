@@ -70,41 +70,59 @@ class PlanTabMixin:
         """Sync plan_bean_combo with the current cave contents. Preserves selection."""
         if not hasattr(self, 'plan_bean_combo'):
             return
-        prev = self.plan_bean_combo.currentIndex()
+        # Hold the selection by uuid: sorting, deleting or decreasing stock all
+        # rebuild this combo, and an index would silently point at another bean.
+        prev_data = self.plan_bean_combo.currentData()
+        prev_uuid = prev_data.get("uuid") if isinstance(prev_data, dict) else None
         self.plan_bean_combo.blockSignals(True)
-        self.plan_bean_combo.clear()
-        if self.cave and self.cave.green_beans:
-            for b in self.cave.green_beans:
-                crop = str(b.crop) if b.crop else "–"
-                self.plan_bean_combo.addItem(f"{b.name}  ({b.country} · {b.process} · {crop})", userData={"uuid":b.uuid, "name":b.name})
-        self.plan_bean_combo.blockSignals(False)
-        # restore index if still valid
-        target = prev if 0 <= prev < self.plan_bean_combo.count() else 0
-        self.plan_bean_combo.setCurrentIndex(target)
+        try:
+            self.plan_bean_combo.clear()
+            if self.cave and self.cave.green_beans:
+                for b in self.cave.green_beans:
+                    crop = str(b.crop) if b.crop else "–"
+                    self.plan_bean_combo.addItem(f"{b.name}  ({b.country} · {b.process} · {crop})", userData={"uuid":b.uuid, "name":b.name})
+        finally:
+            self.plan_bean_combo.blockSignals(False)
+        target = 0
+        if prev_uuid:
+            for i in range(self.plan_bean_combo.count()):
+                d = self.plan_bean_combo.itemData(i)
+                if isinstance(d, dict) and d.get("uuid") == prev_uuid:
+                    target = i
+                    break
+        self.plan_bean_combo.setCurrentIndex(target if self.plan_bean_combo.count() else -1)
         self._on_plan_bean_changed(self.plan_bean_combo.currentIndex())
 
     def _populate_plan_roast_combo(self) -> None:
         if not hasattr(self, 'plan_roast_combo'):
             return
         self.plan_roast_combo.blockSignals(True)
-        self.plan_roast_combo.clear()
+        try:
+            self.plan_roast_combo.clear()
 
-        search_for_item = self.plan_bean_combo.currentIndex()
-        data = self.plan_bean_combo.itemData(search_for_item)
-        current_uuid = data["uuid"]
-        #search for matching alogs
-        found = False
-        for record in self._metadata_cache.records.values():
-            if record.uuid==current_uuid:
-                found = True
+            # Reached with no selection at all: the bean combo is empty (the last
+            # bean was just deleted) or the pick is invalid, in which case
+            # _on_plan_bean_changed calls us precisely to say so.
+            data = self.plan_bean_combo.currentData()
+            current_uuid = data.get("uuid") if isinstance(data, dict) else None
+            if not current_uuid:
                 self.plan_roast_combo.addItem(
-                    self.formater_nom_fichier_cafe(record.filename),
-                    userData={"uuid" : record.uuid, "filename": record.filename})
+                    QApplication.translate("tilauscope_beancave", "— select a green bean first —"))
+                return
 
-        if not found:
-            self.plan_roast_combo.addItem(QApplication.translate("tilauscope_beancave", "— no roasts found for this bean —"))
+            #search for matching alogs
+            found = False
+            for record in self._metadata_cache.records.values():
+                if record.uuid==current_uuid:
+                    found = True
+                    self.plan_roast_combo.addItem(
+                        self.formater_nom_fichier_cafe(record.filename),
+                        userData={"uuid" : record.uuid, "filename": record.filename})
 
-        self.plan_roast_combo.blockSignals(False)
+            if not found:
+                self.plan_roast_combo.addItem(QApplication.translate("tilauscope_beancave", "— no roasts found for this bean —"))
+        finally:
+            self.plan_roast_combo.blockSignals(False)
 
     @pyqtSlot(int)
     def _on_plan_bean_changed(self, index: int) -> None:

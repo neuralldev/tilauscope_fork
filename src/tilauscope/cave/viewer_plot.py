@@ -38,7 +38,7 @@ from PyQt6.QtWidgets import (QApplication, QMessageBox, QMenu) # @UnusedImport @
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.tilauscope_types import (show_styled_message,
-                                         THEME, RoastingPhase)
+                                         THEME, RoastingPhase, marked, normalize_timeindex)
 from tilauscope.cave.common import (
     _log, _PLOT_PALETTE, _FS_TITLE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_HOVER, _FS_LEGEND)
 
@@ -72,24 +72,13 @@ class ViewerPlotMixin:
                 self.canvas.draw()
                 return
 
-            raw_timeindex: list[int] = list(data.get('timeindex', []))
-            # Pad to 8 slots — incomplete files may have fewer entries
-            timeindex: list[int] = (raw_timeindex + [-1] * 8)[:8]
-            computed = data.get('computed', {})
+            timeindex: list[int] = normalize_timeindex(data.get('timeindex', []))
 
             # Infer CHARGE / DROP from timex boundaries when not set
-            if timeindex[RoastingPhase.CHARGE] == -1 or timeindex[RoastingPhase.CHARGE] >= len(timex):
+            if not marked(timeindex, RoastingPhase.CHARGE) or timeindex[RoastingPhase.CHARGE] >= len(timex):
                 timeindex[RoastingPhase.CHARGE] = 0
-            if timeindex[RoastingPhase.DROP] == -1 or timeindex[RoastingPhase.DROP] >= len(timex):
+            if not marked(timeindex, RoastingPhase.DROP) or timeindex[RoastingPhase.DROP] >= len(timex):
                 timeindex[RoastingPhase.DROP] = len(timex) - 1
-
-            # event_indices for initial marker drawing (only set non-(-1) slots)
-            event_indices = {}
-            if len(raw_timeindex) >= 7 and computed:
-                event_indices['CHARGE'] = timeindex[RoastingPhase.CHARGE]
-                event_indices['DRY']    = timeindex[RoastingPhase.DRYEND]
-                event_indices['FCs']    = timeindex[RoastingPhase.FCSTART]
-                event_indices['DROP']   = timeindex[RoastingPhase.DROP]
 
             charge = timeindex[RoastingPhase.CHARGE]
             charge_start = charge - 10 if charge >= 10 else charge
@@ -387,8 +376,7 @@ class ViewerPlotMixin:
                 _PLOT_PALETTE["slider2"],
                 _PLOT_PALETTE["slider3"],
             ]
-            self._reconnect_hover()
-            self.hover_lid = self.canvas.mpl_connect("figure_leave_event", self.on_plot_leave)
+            self._reconnect_hover()  # connects hover AND leave, dropping the old pair
             # Hide save button — data just loaded, no pending edits
             self.canvas_container._save_btn.hide()
             self.canvas.draw_idle()
@@ -478,9 +466,7 @@ class ViewerPlotMixin:
         if not timex:
             return
 
-        # Pad timeindex to 8 slots — incomplete files may have fewer entries
-        raw_ti: list[int] = list(data.get('timeindex', []))
-        timeindex: list[int] = (raw_ti + [-1] * 8)[:8]
+        timeindex: list[int] = normalize_timeindex(data.get('timeindex', []))
 
         charge_idx = timeindex[RoastingPhase.CHARGE]
         # If CHARGE is unset, use timex[0] as time origin so click position is still meaningful
@@ -599,7 +585,7 @@ class ViewerPlotMixin:
         for slot in ordered:
             label   = self._TIMEINDEX_LABELS.get(slot, f'Event {slot}')
             old_idx = timeindex[slot]
-            if old_idx != -1 and old_idx < len(timex):
+            if marked(timeindex, slot) and old_idx < len(timex):
                 old_mm = self.format_seconds(timex[old_idx] - charge_t)
                 old_bt = temp2[old_idx] if old_idx < len(temp2) else 0.0
                 entry  = f"{label}   {old_mm} → {click_mm}   ({old_bt:.1f}→{click_bt:.1f}°{mode})"
@@ -617,7 +603,7 @@ class ViewerPlotMixin:
         # Work on pending copy — never mutate the cached lastprofiledata dict
         if self._pending_timeindex is None:
             raw = list(self.lastprofiledata.get('timeindex', []))  # type: ignore[arg-type]
-            self._pending_timeindex = (raw + [-1] * 8)[:8]  # always 8 slots
+            self._pending_timeindex = normalize_timeindex(raw)
         self._pending_timeindex[target_slot] = nearest_idx
         self._redraw_event_markers()
         # Build a view of lastprofiledata with pending timeindex for stats display
@@ -694,8 +680,7 @@ class ViewerPlotMixin:
         if self._pending_timeindex is not None:
             timeindex: list[int] = self._pending_timeindex
         else:
-            raw = list(data.get('timeindex', []))
-            timeindex = (raw + [-1] * 8)[:8]
+            timeindex = normalize_timeindex(data.get('timeindex', []))
         temp2     = data.get('temp2', [])
         temp1     = data.get('temp1', [])
         mode      = data.get('mode', 'C')
@@ -725,7 +710,9 @@ class ViewerPlotMixin:
 
         drop_idx   = timeindex[RoastingPhase.DROP]
         idx_min    = charge_idx - 10 if charge_idx >= 10 else charge_idx
-        idx_max    = (drop_idx + 10) if drop_idx != -1 and drop_idx + 10 <= len(timex) else drop_idx
+        if not marked(timeindex, RoastingPhase.DROP):
+            drop_idx = len(timex) - 1
+        idx_max    = (drop_idx + 10) if drop_idx + 10 <= len(timex) else drop_idx
 
         bbox_style = dict(boxstyle="round,pad=0.3", fc="black", alpha=0.8, ec="lightgray", lw=1)
         self._draw_event_markers(self.ax1, timex, timeindex, temp2, temp1, mode, charge_idx, bbox_style,
@@ -791,13 +778,16 @@ class ViewerPlotMixin:
         timex    = self.last_plot_data.get('timex', [])
         temp1    = self.last_plot_data.get('temp1', [])
         temp2    = self.last_plot_data.get('temp2', [])
-        timeindex = self.last_plot_data.get('timeindex', [])
+        timeindex = normalize_timeindex(self.last_plot_data.get('timeindex', []))
         mode     = self.last_plot_data.get('mode', 'C')
 
-        if not timex or len(timeindex) < 1:
+        if not timex:
             return
 
-        charge_time_s   = float(timex[timeindex[RoastingPhase.CHARGE]])
+        charge_idx      = timeindex[RoastingPhase.CHARGE] if marked(timeindex, RoastingPhase.CHARGE) else 0
+        if charge_idx >= len(timex):
+            return
+        charge_time_s   = float(timex[charge_idx])
         current_time_s  = charge_time_s + (float(x_data) * 60.0)
         time_str        = self.format_seconds(current_time_s - charge_time_s)
 
@@ -910,9 +900,16 @@ class ViewerPlotMixin:
             return
 
         """Opens a file dialog to save the Matplotlib figure as a PNG snapshot."""
-        m =  self.roast_list_widget.currentItem()
-        metadata = m.data(Qt.ItemDataRole.UserRole)
-        f= metadata["raw_fname"]
+        # Selected, not current: the current item is the keyboard cursor and is
+        # None right after the list is rebuilt — reading it raised inside a
+        # clicked slot, which the excepthook turns into closing the application.
+        selected_items = self.roast_list_widget.selectedItems()
+        if not selected_items:
+            return
+        metadata = selected_items[0].data(Qt.ItemDataRole.UserRole)
+        if not isinstance(metadata, dict) or not metadata.get("raw_fname"):
+            return
+        f = metadata["raw_fname"]
 
         from PyQt6.QtCore import QStandardPaths
 

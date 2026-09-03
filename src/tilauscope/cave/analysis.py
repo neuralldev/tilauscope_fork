@@ -33,7 +33,7 @@ from PyQt6.QtWidgets import (QApplication, QMessageBox) # @UnusedImport @Reimpor
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
-from tilauscope.tilauscope_types import (AGTRON_SCALES, THEME, RoastingPhase, ROASTING_BASIC_BASE, weight_loss_target,
+from tilauscope.tilauscope_types import (AGTRON_SCALES, THEME, RoastingPhase, normalize_timeindex, ROASTING_BASIC_BASE, weight_loss_target,
                                          get_ror_ideal_band, estimate_ror_dt, find_turning_point_index, find_flicks_crashes,
                                          resolve_color_system)
 from tilauscope.brew_advisor import BrewInput, WaterProfile
@@ -549,6 +549,7 @@ class AnalysisMixin:
         wl_lo_eff, wl_hi_eff = lvl_wl_min, lvl_wl_max
         wl_proc_hint = ""
         _bean_field = data.get("beans", "")
+        _linked = None
         _um = re.search(r'uuid:\s*([a-fA-F0-9-]{36})', _bean_field)
         if _um and hasattr(self, 'uuidmap'):
             _linked = self.uuidmap.get(_um.group(1))
@@ -758,7 +759,7 @@ class AnalysisMixin:
         #     detector the plan generator uses on historical logs — one algorithm,
         #     not a separate ratio heuristic in the coach.
         try:
-            ti = (list(data.get('timeindex', [])) + [-1] * 8)[:8]
+            ti = normalize_timeindex(data.get('timeindex', []))
             charge_idx, drop_idx = ti[RoastingPhase.CHARGE], ti[RoastingPhase.DROP]
             timex = data.get("timex", [])
             raw_delta_bt = self.evaldeltas(data, "temp2") if charge_idx >= 0 < drop_idx else None
@@ -799,9 +800,11 @@ class AnalysisMixin:
             pass
 
         # ── 6. Density context ────────────────────────────────────────────────────
-        selected_rows_chk = self.datatable.selectionModel().selectedRows()
-        if selected_rows_chk and self.cave and selected_rows_chk[0].row() < len(self.cave.green_beans):
-            chk_bean = self.cave.green_beans[selected_rows_chk[0].row()]
+        # The bean this roast is linked to, never the catalogue selection: the
+        # Green Beans tab keeps its own highlight, so the advice used to describe
+        # a coffee that is not in the log at all. No link, no density advice.
+        chk_bean = _linked
+        if chk_bean is not None:
             if chk_bean.density > 780:
                 advice_rows += advice_row("💎",
                     QApplication.translate("tilauscope_beancave",

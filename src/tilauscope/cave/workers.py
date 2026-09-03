@@ -40,7 +40,7 @@ from PyQt6.QtCore import (pyqtSlot, QThread, pyqtSignal, QObject) # @UnusedImpor
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.niimprint import NiimbotBLE, Niimprint_PaperType
-from tilauscope.tilauscope_types import (GreenBean, RoastingPhase)
+from tilauscope.tilauscope_types import (GreenBean, RoastingPhase, marked, normalize_timeindex)
 from tilauscope.ai_support import TilauAIConfig
 from tilauscope.roasters import RoasterManager
 from tilauscope.alogmanager import (AlogMetadata)
@@ -217,9 +217,9 @@ class _AlogLoadWorker(QObject):
 
     def _eval(self, data: dict, deltaname:str):
             tx = numpy.array(data.get("timex", []))
-            timeindex = data.get("timeindex", [])
-            rd = timeindex[RoastingPhase.CHARGE] if timeindex and timeindex[RoastingPhase.CHARGE] != -1 else 0
-            drop = timeindex[RoastingPhase.DROP] if timeindex  else 0
+            timeindex = normalize_timeindex(data.get("timeindex", []))
+            rd = timeindex[RoastingPhase.CHARGE] if marked(timeindex, RoastingPhase.CHARGE) else 0
+            drop = timeindex[RoastingPhase.DROP]
             unit = data.get("temp_unit", "C")
             temp = [convertTemp(t,unit,self.aw.qmc.mode) for t in data.get(deltaname, [])]
 

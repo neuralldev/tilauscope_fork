@@ -72,6 +72,7 @@ class _Control:
         self.pidKp2 = 6.0
         self.pidKi2 = 0.06
         self.pidKd2 = 40.0
+        self.svValue = 200.0
         self.pidGainScheduling = False
         self.pidGainSchedulingSV = True
         self.pidGainSchedulingQuadratic = False
@@ -114,6 +115,23 @@ class _Control:
         self.conf_calls += 1
 
 
+class _ProbeSeries:
+    """Sampled-series view over the engine value.
+
+    The readiness path reads the series that feeds the PID, not the engine
+    snapshot, so a test that moves ``lastInput`` must move both.
+    """
+
+    def __init__(self, engine: _Engine) -> None:
+        self._engine = engine
+
+    def __len__(self) -> int:
+        return 1
+
+    def __getitem__(self, index: int) -> float:  # noqa: ARG002
+        return self._engine.lastInput
+
+
 @pytest.fixture
 def semantic_window(qapp: Any) -> tuple[PIDAutotune, _Control, _Action]:  # noqa: ARG001
     engine = _Engine()
@@ -129,13 +147,18 @@ def semantic_window(qapp: Any) -> tuple[PIDAutotune, _Control, _Action]:  # noqa
             flagon=True,
             flagstart=False,
             on_timex=[1.0],
+            on_temp1=_ProbeSeries(engine),
+            on_temp2=_ProbeSeries(engine),
             timex=[],
+            temp1=_ProbeSeries(engine),
+            temp2=_ProbeSeries(engine),
         ),
         pidcontrol=control,
         PIDAutotuneMenuAction=action,
         tilau_roaster="ITOP Cyberroaster",
-        eventslideractions=[0, 0, 0, 5],
-        eventslidercommands=["", "", "", "HEAT:{}"],
+        # slider 0 = airflow, needed so the test can cool the machine at the end
+        eventslideractions=[7, 0, 0, 5],
+        eventslidercommands=["FAN:{}", "", "", "HEAT:{}"],
         eventsliderfactors=[1.0, 1.0, 1.0, 1.0],
         eventslideroffsets=[0.0, 0.0, 0.0, 0.0],
         eventslidervalues=[0, 0, 0, 30],
@@ -229,6 +252,7 @@ def test_live_readiness_reads_real_application_gates_without_commands(
 ) -> None:
     window, control, _ = semantic_window
     control.pidActive = False
+    window._measured_holding_point_c = 200.0
     window._readiness_history.extend(
         (float(second), 200.0, 0.1, 0.1) for second in range(30)
     )
@@ -278,6 +302,7 @@ def test_live_runner_is_built_without_command_and_only_starts_explicitly(
     window, control, _ = semantic_window
     control.pidActive = False
     window.aw.qmc.pid.lastInput = 200.0
+    window._measured_holding_point_c = 200.0
     window._readiness_history.extend(
         (float(second), 200.0, 0.1, 0.1) for second in range(30)
     )
@@ -304,7 +329,10 @@ def test_live_runner_is_built_without_command_and_only_starts_explicitly(
     assert window.aw.tilaupidSliderCommandSignal.events == [(3, 30, True)]
     runner.close()
 
-    assert window.aw.tilaupidSliderCommandSignal.events[-1] == (3, 0, True)
+    # The stop cuts the heat and then opens the airflow to cool the machine.
+    events = window.aw.tilaupidSliderCommandSignal.events
+    assert (3, 0, True) in events
+    assert events[-1] == (0, 80, True)
     assert journals == ["safe_stop"]
 
 
@@ -335,6 +363,7 @@ def test_exact_itop_path_can_only_offer_a_review_only_pilot(
 ) -> None:
     window, control, _ = semantic_window
     control.pidActive = False
+    window._measured_holding_point_c = 200.0
     window._readiness_history.extend(
         (float(second), 200.0, 0.1, 0.1) for second in range(30)
     )
@@ -390,22 +419,18 @@ def test_preparation_dialog_reveals_one_guided_action_at_a_time(
     window.update_logic()
     dialog.refresh()
     assert "between 13% and 67%" in dialog.next_steps.text()
-    assert "Temperature to reach: 200 °C" in dialog.next_steps.text()
-    assert "currently 0%" in dialog.next_steps.text()
+    assert "holding at 0%" in dialog.next_steps.text()
     assert dialog.machine_empty.isHidden()
 
+    # Nobody sets the heater any more: once the machine has room, the guidance
+    # is about TilauScope bringing it up, never about a gesture to make.
     window.aw.eventslidervalues[3] = 30
-    window.aw.qmc.pid.lastInput = 190.0
     window.update_logic()
     dialog.refresh()
-    assert "Increase the heater slightly" in dialog.next_steps.text()
-
-    window.aw.qmc.pid.lastInput = 210.0
-    window.update_logic()
-    dialog.refresh()
-    assert "Decrease the heater slightly" in dialog.next_steps.text()
+    assert "nothing to set" in dialog.next_steps.text().lower()
 
     window._readiness_history.clear()
+    window._measured_holding_point_c = 200.0
     window._readiness_history.extend(
         (float(second), 200.0, 0.1, 0.1) for second in range(30)
     )
@@ -426,6 +451,7 @@ def test_preparation_secures_controllers_before_requesting_manual_heat(
     control.pidActive = True
     window.aw.qmc.pid.lastInput = 200.0
     window.aw.eventslidervalues[3] = 30
+    window._measured_holding_point_c = 200.0
     window._readiness_history.extend(
         (float(second), 200.0, 0.1, 0.1) for second in range(30)
     )
@@ -463,6 +489,7 @@ def test_zero_shutdown_bench_only_sends_zero_and_never_restores_power(
 ) -> None:
     window, control, _ = semantic_window
     control.pidActive = False
+    window._measured_holding_point_c = 200.0
     window._readiness_history.extend(
         (float(second), 200.0, 0.1, 0.1) for second in range(30)
     )
@@ -500,6 +527,7 @@ def test_zero_shutdown_proof_is_invalidated_when_actuator_path_changes(
 ) -> None:
     window, control, _ = semantic_window
     control.pidActive = False
+    window._measured_holding_point_c = 200.0
     window._readiness_history.extend(
         (float(second), 200.0, 0.1, 0.1) for second in range(30)
     )
@@ -530,6 +558,7 @@ def test_zero_dispatch_failure_never_claims_physical_shutdown(
 ) -> None:
     window, control, _ = semantic_window
     control.pidActive = False
+    window._measured_holding_point_c = 200.0
     window._readiness_history.extend(
         (float(second), 200.0, 0.1, 0.1) for second in range(30)
     )

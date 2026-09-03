@@ -57,7 +57,7 @@ from tilauscope.guidance_replay import match_alarm_automation
 from tilauscope.guidance_risk import RiskKind
 from tilauscope.guidance_phase import (
     GuidancePhase, GuidancePhaseTracker, PendingMilestone, PhaseSource,
-    resolve_phase_from_plan_temperature,
+    milestone_marked, resolve_phase_from_plan_temperature,
 )
 from tilauscope.guidance_advice import (
     AdviceCandidate, AdviceCategory, AdviceSeverity,
@@ -88,6 +88,22 @@ _S_WARN = "warn"
 _S_CRIT = "crit"
 
 _STATUS_COLOR = {_S_OK: _OK, _S_WARN: _WARN, _S_CRIT: _CRIT}
+
+# Sévérité comparable des messages de la ligne coach. Un seul lecteur : la
+# règle s'était déjà dédoublée en quatre conditions écrites à la main, dont
+# une inversée (un warn écrasait un crit, un crit ne passait pas sur un warn).
+_S_RANK = {_S_OK: 0, _S_WARN: 1, _S_CRIT: 2}
+
+
+def _coach_accepts(coach, level: str) -> bool:
+    """Si `level` a le droit de prendre la ligne coach à ce qui s'y trouve.
+
+    Une règle et une seule : un message n'écrase jamais plus grave que lui, et
+    écrase toujours moins grave. Un message de même niveau passe (le plus
+    récent des deux est le bon).
+    """
+    cur = getattr(coach, "_level", _S_OK) or _S_OK
+    return _S_RANK.get(level, 0) >= _S_RANK.get(cur, 0)
 
 # Plages Agtron affichées dans le ComboBox (nom humain → objet AgtronScale)
 _AGTRON_CHOICES: list[AgtronScale] = [a for a in AGTRON_SCALES
@@ -458,6 +474,13 @@ def _plan_heater_pct(plan: "dict | None", phase: str) -> "float | None":
 # (le trim et le feedforward/rampe partagent le même plafond ; changer de torréfacteur
 # ne se règle qu'à un seul endroit). Partagé en esprit avec le PID de préchauffe.
 _AP_MAX_BURNER: Final = TrimParams().max_burner_pct
+# ticks AUTO consécutifs en échec tolérés avant de rendre la main (1 Hz) : un
+# raté isolé est rattrapable, trois d'affilée = le pilote ne pilote plus.
+_AP_TICK_FAIL_MAX: Final = 3
+# échantillons BT consécutifs au-dessus de la cible avant d'armer l'auto-DROP :
+# la BT est bruitée, et un pic isolé ne doit pas larguer un roast. À ~1 Hz et
+# 5-8 °C/min en dev, trois ticks coûtent moins d'un demi-degré.
+_AP_DROP_CONFIRM_TICKS: Final = 3
 
 # Fenêtre de grâce (s) après le CHARGE : le handoff PID préchauffe→roast bouge
 # transitoirement les sliders ; AUTO les suit sans se mettre en pause pendant cette fenêtre.
@@ -3121,7 +3144,8 @@ class _DevelopmentPage(QWidget):
         # cliquable une fois affiché (marquage manuel), comme les autres jalons.
         try:
             ti = self.aw.qmc.timeindex
-            fce_marked = (ti[2] > -1 and ti[3] > -1 and ti[3] > ti[2])
+            fce_marked = (milestone_marked(ti, 2) and milestone_marked(ti, 3)
+                          and ti[3] > ti[2])
         except (IndexError, AttributeError):
             fce_marked = False
         self.btn_scs.setVisible(fce_marked)
@@ -3487,7 +3511,7 @@ class _CoolingPage(QWidget):
         drop_bt = None
         try:
             ti = self.aw.qmc.timeindex
-            if ti[6] > -1:
+            if milestone_marked(ti, 6):
                 drop_bt = float(self.aw.qmc.temp2[ti[6]])
         except (IndexError, TypeError, AttributeError):
             drop_bt = None
@@ -3712,8 +3736,8 @@ class _CoolingPage(QWidget):
 
         # FC + Drop BT
         try:
-            bt_fc   = float(qmc.temp2[ti[2]]) if ti[2] > -1 else 0.0
-            bt_drop = float(qmc.temp2[ti[6]]) if ti[6] > -1 else 0.0
+            bt_fc   = float(qmc.temp2[ti[2]]) if milestone_marked(ti, 2) else 0.0
+            bt_drop = float(qmc.temp2[ti[6]]) if milestone_marked(ti, 6) else 0.0
             self._eor_fcdrop_val.setText(f"{bt_fc:.1f}° · {bt_drop:.1f}°")
         except (IndexError, TypeError):
             self._eor_fcdrop_val.setText("--")
@@ -4736,6 +4760,7 @@ class RoastAssistantPanel(QWidget):
         self._ap_notice: "tuple[str, str, float] | None" = None  # (texte, niveau, expiration monotonic)
         self._ap_bt_prev: "float | None" = None   # BT du tick précédent (franchissement montant de rampe)
         self._ap_settle_until: float = 0.0  # coutures de jalon (CHARGE/DE/FC) : fenêtre de grâce anti-pause
+        self._ap_tick_failures: int = 0     # ticks consécutifs en échec (pause au-delà de _AP_TICK_FAIL_MAX)
         self._tr_ap_blocked_lowconf = QApplication.translate(
             "tilauscope_roast_assistant", "AUTO unavailable — plan confidence is too low for this roast")
         self._tr_ap_blocked_noplan = QApplication.translate(
@@ -4775,6 +4800,7 @@ class RoastAssistantPanel(QWidget):
         }
         # jalons en cockpit : bouton contextuel + auto-DROP plan (10 s annulables)
         self._ap_drop_deadline: "float | None" = None   # t_mono du tir auto-DROP
+        self._ap_drop_confirm: int = 0   # ticks consécutifs BT ≥ cible (armement auto-DROP)
         self._ap_drop_cancelled: bool = False           # annulé = plus jamais re-armé (session)
         self._tr_cp_btn_de   = QApplication.translate("tilauscope_roast_assistant", "Mark DRY END")
         self._tr_cp_btn_fc   = QApplication.translate("tilauscope_roast_assistant", "Mark FC START")
@@ -4782,6 +4808,8 @@ class RoastAssistantPanel(QWidget):
         self._tr_cp_btn_cancel = QApplication.translate("tilauscope_roast_assistant", "✕ Cancel auto-DROP")
         self._tpl_ap_dropin  = QApplication.translate("tilauscope_roast_assistant", "⬇ DROP in {0}s — plan target reached")
         self._tr_ap_dropmark = QApplication.translate("tilauscope_roast_assistant", "⚙ DROP marked (auto)")
+        self._tr_ap_dropstand = QApplication.translate(
+            "tilauscope_roast_assistant", "⬇ auto-DROP stood down — back below target")
         # v1b — moteur de trim continu (autopilot_core, calé Sim-1/Sim-2)
         self._ap_core = AutoPilotCore(self._ap_trim_params())
         self._tpl_ap_trim = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · {0} → {1}% ({2})")
@@ -4802,6 +4830,10 @@ class RoastAssistantPanel(QWidget):
         self._tpl_ap_net = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · crash net — AIR {0}%")
         self._tr_ap_net_exhausted = QApplication.translate(
             "tilauscope_roast_assistant", "⚠ RoR crash — safety net exhausted, AUTO paused — take over")
+        self._tr_ap_tick_failed = QApplication.translate(
+            "tilauscope_roast_assistant", "⚠ AUTO paused — the pilot hit an internal error, take over")
+        self._tr_ap_data_stale = QApplication.translate(
+            "tilauscope_roast_assistant", "⚠ AUTO paused — no bean temperature coming in, take over")
         self._tr_ap_mode_ff = QApplication.translate("tilauscope_roast_assistant", "feedforward only")
         self._tr_ap_mode_trim = QApplication.translate("tilauscope_roast_assistant", "feedforward + trim")
 
@@ -5065,7 +5097,7 @@ class RoastAssistantPanel(QWidget):
         if not text:
             return
         if phase in ("first", "settling"):
-            if coach._level in (None, _S_OK):
+            if _coach_accepts(coach, _S_OK):
                 coach.set(text, _S_OK)
         elif not coach.text():
             coach.set(text, _S_OK)
@@ -5291,6 +5323,7 @@ class RoastAssistantPanel(QWidget):
         self._ap_lever_flash.clear()
         self._ap_automark_done.clear()
         self._ap_drop_deadline = None
+        self._ap_drop_confirm = 0
         self._ap_drop_cancelled = False
         # Nouveau roast → le veto d'apprentissage de la session précédente tombe
         # (il ne se reset PAS au stop : le toggle se pose au bilan EOR, après
@@ -5440,6 +5473,7 @@ class RoastAssistantPanel(QWidget):
         self._ap_lever_flash.clear()
         self._ap_automark_done.clear()
         self._ap_drop_deadline = None
+        self._ap_drop_confirm = 0
         self._ap_drop_cancelled = False
 
     # ── API publique appelée par TilauScope ────────────────────────────────────
@@ -5580,6 +5614,7 @@ class RoastAssistantPanel(QWidget):
         bridge.phase_changed.connect(self.set_phase)
         bridge.ambient_updated.connect(self._on_ambient_changed)
         bridge.roast_state_changed.connect(self._on_roast_state)
+        bridge.data_stale.connect(self._on_data_stale)
         _logd.debug("RoastAssistantPanel: connected to RoastDataBridge")
 
     def update_batch(self) -> None:
@@ -5815,8 +5850,8 @@ class RoastAssistantPanel(QWidget):
             try:
                 ti = ctx["ti"]
                 tx = ctx["tx"]
-                ref = tx[ti[0]] if ti[0] > -1 else 0.0
-                return tx[ti[idx]] - ref if ti[idx] > -1 else 0.0
+                ref = tx[ti[0]] if milestone_marked(ti, 0) else 0.0
+                return tx[ti[idx]] - ref if milestone_marked(ti, idx) else 0.0
             except (IndexError, TypeError):
                 return 0.0
 
@@ -5980,6 +6015,7 @@ class RoastAssistantPanel(QWidget):
     def _ap_set_state(self, state: str, lag_s: float | None = None) -> None:
         self._ap_state = state
         if state == "armed":
+            self._ap_tick_failures = 0   # tout armement repart d'une ardoise nette
             self.aw._tilau_guidance_decision = self._guidance_session.set_auto(True)
         elif state == "paused":
             self.aw._tilau_guidance_decision = self._guidance_session.operator_action(
@@ -6193,6 +6229,7 @@ class RoastAssistantPanel(QWidget):
         le DROP auto, pas le mode AUTO)."""
         if self._current_phase == self._PHASE_DEV and self._ap_drop_deadline is not None:
             self._ap_drop_deadline = None
+            self._ap_drop_confirm = 0
             self._ap_drop_cancelled = True
             self._ap_last_action = (self._tr_cp_btn_cancel, time.monotonic())
             _logd.info("AutoPilot: auto-DROP cancelled by operator")
@@ -6580,26 +6617,39 @@ class RoastAssistantPanel(QWidget):
                 and self._guidance_phases.confirmed_phase is GuidancePhase.DEVELOPMENT
                 and not self._ap_drop_cancelled):
             _now = time.monotonic()
+            try:
+                _drop_t = float((self._plan or {}).get("Drop Temp") or 0.0)
+            except (TypeError, ValueError):
+                _drop_t = 0.0
+            _at_target = _drop_t > 0 and bt >= _drop_t
             if self._ap_drop_deadline is None:
-                try:
-                    _drop_t = float((self._plan or {}).get("Drop Temp") or 0.0)
-                except (TypeError, ValueError):
-                    _drop_t = 0.0
-                if _drop_t > 0 and bt >= _drop_t:
+                # Un échantillon isolé ne largue pas un roast : la cible doit
+                # être TENUE _AP_DROP_CONFIRM_TICKS ticks d'affilée.
+                self._ap_drop_confirm = (self._ap_drop_confirm + 1) if _at_target else 0
+                if self._ap_drop_confirm >= _AP_DROP_CONFIRM_TICKS:
                     self._ap_drop_deadline = _now + 10.0
                     QApplication.beep()
-                    _logd.info(f"AutoPilot: plan drop target {_drop_t:.1f}° reached "
-                               f"— auto-DROP countdown")
+                    _logd.info(f"AutoPilot: plan drop target {_drop_t:.1f}° held "
+                               f"{self._ap_drop_confirm} ticks — auto-DROP countdown")
             if self._ap_drop_deadline is not None:
                 _left = self._ap_drop_deadline - _now
-                if _left <= 0:
+                if _left > 0:
+                    self._ap_last_action = (self._tpl_ap_dropin.format(int(_left) + 1), _now)
+                elif _at_target:
                     self._ap_drop_deadline = None
                     self._ap_drop_cancelled = True   # one-shot
                     self._ap_last_action = (self._tr_ap_dropmark, _now)
                     self.aw.qmc.markDropSignal.emit(False)
                     _logd.info("AutoPilot: DROP auto-marked")
                 else:
-                    self._ap_last_action = (self._tpl_ap_dropin.format(int(_left) + 1), _now)
+                    # BT redescendue pendant le compte à rebours : on ne largue
+                    # pas sur une cible qui n'est plus atteinte, et ce n'est pas
+                    # l'opérateur qui a annulé — le ré-armement reste possible.
+                    self._ap_drop_deadline = None
+                    self._ap_drop_confirm = 0
+                    self._ap_last_action = (self._tr_ap_dropstand, _now)
+                    _logd.info(f"AutoPilot: auto-DROP stood down — BT {bt:.1f}° "
+                               f"back below target {_drop_t:.1f}°")
         # ── rampe heater BT-keyed : palier appliqué au FRANCHISSEMENT MONTANT ──
         # du seuil uniquement (bt_prev < seuil <= bt). La descente pré-TP du
         # CHARGE ne déclenche donc jamais rien ; le heater de séchage vient du
@@ -6667,6 +6717,10 @@ class RoastAssistantPanel(QWidget):
                 air=_read_slider_pct(self.aw, 0),
                 heater=_read_slider_pct(self.aw, _b_idx),
                 ext=_read_slider_pct(self.aw, 2) if _aw_on else None)
+            if not _aw_on:
+                # AirWave parti en cours de roast : la dernière valeur observée
+                # est périmée — le moteur ne doit plus rien bâtir dessus.
+                self._ap_core.forget_lever(_APLever.EXT)
             _ror_c = (ror / 1.8) if mode == 'F' else ror
             _act = self._ap_core.tick(float(ctx["t_now_sec"]), _ror_c)
             # AirWave déconnecté en cours de roast : le core peut encore émettre
@@ -6674,8 +6728,21 @@ class RoastAssistantPanel(QWidget):
             # sur le slider 2 sans AirWave présent (les chemins feedforward sont
             # déjà gardés de la même façon).
             if _act is not None and _act.lever is _APLever.EXT and not _aw_on:
+                self._ap_core.discard(_act)   # jamais posée = jamais débitée
                 _act = None
-            if _act is not None:
+            # Frein FEU en DEV : jamais posé direct sur le slider. La coupe
+            # rapide post-FC crashe (41 % vs 16 %) — le trim rejoint la file
+            # monotone et sort par le rate-limiter exotherme, comme la rampe.
+            if (_act is not None and _act.lever is _APLever.HEATER
+                    and _act.delta_pct < 0
+                    and self._current_phase == self._PHASE_DEV):
+                _p = self._ap_dev_heater_pending
+                _tv = float(_act.target_value)
+                self._ap_dev_heater_pending = _tv if _p is None else min(_p, _tv)
+                self._ap_dev_heater_dispense(ctx)
+                _logd.info(f"AutoPilot trim: heater brake queued → {_tv:.0f}% "
+                           f"({_act.reason})")
+            elif _act is not None:
                 _idx = {_APLever.AIR: 0, _APLever.HEATER: _b_idx,
                         _APLever.EXT: 2}[_act.lever]
                 if _apply_slider_value(self.aw, _idx, _act.target_value):
@@ -6693,10 +6760,74 @@ class RoastAssistantPanel(QWidget):
                     self._ap_notice = (_txt, _S_OK, _now + 8)
                     _logd.info(f"AutoPilot trim: {_act.lever.value} "
                                f"{_act.delta_pct:+.1f}% ({_act.kind} · {_act.reason})")
+                else:
+                    self._ap_core.discard(_act)   # écriture slider refusée
+                    _logd.warning(f"AutoPilot trim: {_act.lever.value} "
+                                  f"{_act.delta_pct:+.1f}% not applied — trim rolled back")
             elif self._ap_core.bound_hit is not None:
                 # borne atteinte = le plan est probablement faux — le dire UNE fois
                 self._ap_core.bound_hit = None
                 self._ap_notice = (self._tr_ap_ceiling, _S_WARN, time.monotonic() + 8)
+
+    def _paint_ap_alert(self, text: str, level: str, hold_s: float = 20.0) -> None:
+        """Pose une alerte AUTO immédiatement, sans attendre la boucle.
+
+        La ligne coach n'est repeinte que par le refresh, lui-même nourri par
+        la BT : une alerte qui dit justement que la BT s'est tue ne peut pas
+        dépendre de lui. On peint donc directement, et on garde la notice pour
+        qu'elle tienne si la boucle repart.
+        """
+        self._ap_notice = (text, level, time.monotonic() + hold_s)
+        try:
+            _coach = getattr(self._stack.currentWidget(), "coach", None)
+            if _coach is not None:
+                _coach.set(text, level)
+        except (AttributeError, RuntimeError):
+            pass
+
+    @pyqtSlot(bool)
+    def _on_data_stale(self, stale: bool) -> None:
+        """Plus de BT fraîche : AUTO ne voit plus rien, il rend la main.
+
+        Toute la boucle de l'assistant est nourrie par bt_updated — sonde
+        muette, plus un seul tick : AUTO restait armé, le brûleur figé là où il
+        était, le crash-guard aveugle et le cockpit toujours à « on plan ». La
+        reprise est manuelle : on ne rend jamais l'actuation tout seul après une
+        coupure de mesure. Slot Qt : rien ne doit s'en échapper.
+        """
+        try:
+            if not (stale and self.is_active and self._ap_state == "armed"):
+                return
+            self._ap_set_state("paused")
+            self._paint_ap_alert(self._tr_ap_data_stale, _S_CRIT)
+            _logd.error("AutoPilot: BT went stale — paused")
+        except Exception:  # pylint: disable=broad-except
+            self._ap_state = "paused"   # dernier recours : plus aucune actuation
+            _logd.exception("RoastAssistant: _on_data_stale failed")
+
+    def _ap_tick_failed(self) -> None:
+        """Un tick AUTO a levé : le journaliser, et rendre la main s'il persiste.
+
+        Le silence d'origine laissait AUTO armé et le cockpit à « on plan »
+        alors que plus rien ne pilotait. Un échec isolé (lecture de slider en
+        course, périphérique retiré pendant l'appel) est rattrapable ; au-delà
+        de _AP_TICK_FAIL_MAX ticks consécutifs le pilote ne pilote plus et
+        l'opérateur doit le savoir. La pause elle-même est gardée : ce chemin
+        est appelé depuis un slot Qt, où une exception fermerait l'app.
+        """
+        self._ap_tick_failures += 1
+        _logd.exception(
+            f"AutoPilot: tick failed ({self._ap_tick_failures}"
+            f"/{_AP_TICK_FAIL_MAX})")
+        if self._ap_tick_failures < _AP_TICK_FAIL_MAX:
+            return
+        try:
+            self._ap_set_state("paused")
+            self._paint_ap_alert(self._tr_ap_tick_failed, _S_CRIT, hold_s=15.0)
+            _logd.error("AutoPilot: paused after repeated tick failures")
+        except Exception:  # pylint: disable=broad-except
+            self._ap_state = "paused"   # dernier recours : plus aucune actuation
+            _logd.exception("AutoPilot: could not pause cleanly after tick failures")
 
     def _refresh_current_page(self) -> None:
         """Garde du slot bridge : AUCUNE exception d'un refresh de page
@@ -7006,7 +7137,9 @@ class RoastAssistantPanel(QWidget):
                 self._ap_tick(ctx, bt, ror, mode,
                               dry_end_temp, fc_temp, drop_temp)
             except Exception:  # pylint: disable=broad-except
-                pass
+                self._ap_tick_failed()
+            else:
+                self._ap_tick_failures = 0
 
         if self._ap_cockpit_active():
             # AUTO pilote : la vue cockpit remplace la page de phase (v6) —
@@ -7118,8 +7251,7 @@ class RoastAssistantPanel(QWidget):
                 self._ap_notice = None
             else:
                 _coach = getattr(self._stack.currentWidget(), "coach", None)
-                if _coach is not None and (_level == _S_WARN
-                        or getattr(_coach, "_level", _S_OK) == _S_OK):
+                if _coach is not None and _coach_accepts(_coach, _level):
                     _coach.set(_text, _level)
                     _painted_ap = True
         if not _painted_ap and self._replan_notice is not None:
@@ -7128,7 +7260,7 @@ class RoastAssistantPanel(QWidget):
                 self._replan_notice = None
             else:
                 _coach = getattr(self._stack.currentWidget(), "coach", None)
-                if _coach is not None and getattr(_coach, "_level", _S_OK) == _S_OK:
+                if _coach is not None and _coach_accepts(_coach, _level):
                     _coach.set(_text, _level)
 
         # Recalcule la taille si nécessaire (contenu dynamique : banner, boutons)
@@ -7203,7 +7335,7 @@ class RoastAssistantPanel(QWidget):
                 self._last_milestone_beep_t = _t
             # Prompt coach prioritaire, sauf si la page a déjà posé un crit.
             coach = getattr(page, "coach", None)
-            if coach is not None and getattr(coach, "_level", _S_OK) != _S_CRIT:
+            if coach is not None and _coach_accepts(coach, _S_WARN):
                 coach.set(prompt, _S_WARN)
         except Exception as e:  # pylint: disable=broad-except
             _logd.debug(f"milestone suggestion handling failed: {e}")

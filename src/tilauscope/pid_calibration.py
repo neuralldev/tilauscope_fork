@@ -50,8 +50,12 @@ ReadinessCode = Literal[
     "artisan_pid_stopped",
     "sensor_valid",
     "sensor_stable",
+    "holding_point_confirmed",
     "heater_slider_configured",
     "heater_action_configured",
+    "airflow_path_configured",
+    "extractor_not_cooling",
+    "hot_time_budget",
     "normal_actuator_direction",
     "power_headroom",
     "no_simulator",
@@ -86,6 +90,7 @@ AuditEventKind = Literal[
     "power_acknowledged",
     "candidate_applied",
     "emergency_stop",
+    "cooling_requested",
     "config_restored",
     "config_restore_failed",
     "complete",
@@ -117,22 +122,75 @@ class CalibrationLimits:
     power_max_pct: float = 80.0
     absolute_temp_max_c: float = 250.0
     target_margin_c: float = 2.0
+    open_loop_margin_c: float = 10.0
     max_abs_ror_c_per_min: float = 30.0
     stale_after_sec: float = 3.5
-    requested_step_pct: float = 10.0
+    max_step_pct: float = 10.0
+    min_step_pct: float = 2.0
+    target_step_rise_c: float = 4.0
+    # Machine knowledge, when it exists: degC of equilibrium temperature per
+    # heater point, and the fraction of that equilibrium a 90-second phase
+    # actually covers.  Both absent on a machine whose inertia was never
+    # measured, which is exactly what the first run produces.
+    thermal_gain_c_per_pct: float | None = None
+    step_response_fraction: float | None = None
 
     @property
     def step_pct(self) -> float:
+        """Protocol section 4.1: the step is sized to raise the probe by about
+        `target_step_rise_c`, never a fixed fraction of the machine's range."""
+        desired = self.min_step_pct
+        gain = self.thermal_gain_c_per_pct
+        fraction = self.step_response_fraction
+        if (
+            gain is not None and gain > 0.0
+            and fraction is not None and fraction > 0.0
+        ):
+            desired = self.target_step_rise_c / (gain * fraction)
+        desired = max(self.min_step_pct, min(self.max_step_pct, desired))
         room = min(
             self.power_max_pct - self.baseline_power_pct,
             self.baseline_power_pct - self.power_min_pct,
         )
-        return min(self.requested_step_pct, max(0.0, room - 3.0))
+        return min(desired, max(0.0, room - 3.0))
 
     @property
     def validation_step_c(self) -> float:
-        desired = min(3.0, max(1.5, 0.015 * self.target_c))
-        return min(desired, max(0.0, self.target_margin_c - 0.5))
+        """Closed-loop bump, sized for the machine and independent of the
+        open-loop excursion allowance."""
+        return min(3.0, max(1.5, 0.015 * self.target_c))
+
+    @property
+    def validation_ceiling_c(self) -> float:
+        """Ceiling for the closed-loop phases.
+
+        Section 7 allows the validation bump up to 2 degC of overshoot, so the
+        stop of section 8 is counted from the raised setpoint, not from the
+        holding target.
+        """
+        return min(
+            self.absolute_temp_max_c,
+            self.target_c + self.validation_step_c + self.target_margin_c,
+        )
+
+    @property
+    def open_loop_ceiling_c(self) -> float:
+        """Protocol section 8: the open-loop steps move the holding point on
+        purpose, so they get their own margin, capped by the absolute limit."""
+        return min(
+            self.absolute_temp_max_c,
+            self.target_c + self.open_loop_margin_c,
+        )
+
+    @property
+    def validation_authority_pct(self) -> float:
+        """Power the validation PI may command, around the holding power.
+
+        The candidate was identified on a +/- `step_pct` envelope; twice that
+        gives the loop authority to track the bump without ever asking for the
+        raw duty limit of the machine.
+        """
+        return 2.0 * self.step_pct
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,6 +228,9 @@ class IdentifiedPlant:
     n_samples: int
     gain_up_c_per_pct: float
     gain_down_c_per_pct: float
+    # Protocol section 5.1: the baseline moves during an open-loop run, by an
+    # amount comparable to the step response.  Fitted, never ignored.
+    drift_c_per_min: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,6 +242,9 @@ class PIDCandidate:
     kd: float
     lambda_sec: float
     integral_time_sec: float
+    # True when the retained pair is the safety clamp, not the SIMC design: the
+    # run is a step towards the right gains, not the final answer.
+    clamped: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -218,6 +282,178 @@ class ValidationResult:
     longest_saturation_sec: float
 
 
+PreparationPhase = Literal[
+    "idle",
+    "approaching",
+    "confirming",
+    "adjusting",
+    "ready",
+    "failed",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class PreparationSample:
+    """One observation of the machine while it is being brought to its point."""
+
+    now_sec: float
+    temperature_c: float
+    heater_pct: float
+    preheat_active: bool
+    preheat_settled: bool
+    sensor_valid: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class PreparationCommand:
+    """Side-effect-free instruction for the Qt layer driving the preparation."""
+
+    phase: PreparationPhase
+    start_preheat: bool = False
+    hand_over: bool = False
+    set_heater_pct: int | None = None
+    seconds_observed: float = 0.0
+    drift_c_per_min: float = 0.0
+    span_c: float = 0.0
+    holding_point_c: float | None = None
+    holding_power_pct: float | None = None
+    reason: str | None = None
+
+
+class PreparationSequence:
+    """Protocol section 3.3: approach, hand-over, open-loop confirmation.
+
+    Nobody has to reach a temperature.  TilauPID parks the machine near its
+    setpoint and hands over with the burner left where it holds; this sequence
+    then proves, in open loop, that the burner really is the equilibrium power,
+    and the mean it measures becomes the calibration temperature.
+    """
+
+    WINDOW_SEC: float = 30.0
+    MAX_DRIFT_C_PER_MIN: float = 0.5
+    MAX_SPAN_C: float = 0.25
+    MAX_CORRECTIONS: int = 1
+
+    def __init__(self, *, heater_resolution_pct: float = 1.0) -> None:
+        self.phase: PreparationPhase = "idle"
+        self.reason: str | None = None
+        self.corrections_used = 0
+        self.holding_point_c: float | None = None
+        self.holding_power_pct: float | None = None
+        self._resolution = max(1.0, float(heater_resolution_pct))
+        self._window: deque[tuple[float, float]] = deque()
+        self._handover_power: float | None = None
+
+    def update(self, sample: PreparationSample) -> PreparationCommand:
+        if self.phase in {"ready", "failed"}:
+            return self._command()
+        if not sample.sensor_valid or not math.isfinite(sample.temperature_c):
+            return self._fail("sensor_invalid")
+
+        if self.phase == "idle":
+            # An already running preheat is adopted with its own setpoint.
+            self.phase = "approaching"
+            return self._command(start_preheat=not sample.preheat_active)
+
+        if self.phase == "approaching":
+            if not sample.preheat_active:
+                return self._fail("preheat_stopped")
+            if not sample.preheat_settled:
+                return self._command()
+            self._handover_power = sample.heater_pct
+            self._window.clear()
+            self.phase = "confirming"
+            return self._command(hand_over=True)
+
+        if self.phase == "adjusting":
+            self._window.clear()
+            self.phase = "confirming"
+            return self._command()
+
+        return self._confirm(sample)
+
+    def _confirm(self, sample: PreparationSample) -> PreparationCommand:
+        if sample.preheat_active:
+            return self._fail("preheat_resumed")
+        self._window.append((sample.now_sec, sample.temperature_c))
+        while (
+            len(self._window) > 1
+            and sample.now_sec - self._window[0][0] > self.WINDOW_SEC
+        ):
+            self._window.popleft()
+        observed = self._window[-1][0] - self._window[0][0]
+        drift = self._drift_c_per_min()
+        span = self._span_c()
+        if observed < self.WINDOW_SEC or len(self._window) < 10:
+            return self._command(
+                seconds_observed=observed, drift_c_per_min=drift, span_c=span
+            )
+        if abs(drift) <= self.MAX_DRIFT_C_PER_MIN and span <= self.MAX_SPAN_C:
+            self.phase = "ready"
+            self.holding_point_c = statistics.mean(
+                value for _time, value in self._window
+            )
+            self.holding_power_pct = sample.heater_pct
+            return self._command(
+                seconds_observed=observed, drift_c_per_min=drift, span_c=span
+            )
+        if self.corrections_used >= self.MAX_CORRECTIONS:
+            return self._fail(
+                "holding_point_not_reachable",
+                seconds_observed=observed,
+                drift_c_per_min=drift,
+                span_c=span,
+            )
+        # The sign of the drift says which way the notch is wrong, and the
+        # actuator is an integer: there is exactly one other candidate.
+        self.corrections_used += 1
+        step = -self._resolution if drift > 0.0 else self._resolution
+        proposed = int(round(sample.heater_pct + step))
+        self.phase = "adjusting"
+        return self._command(
+            set_heater_pct=proposed,
+            seconds_observed=observed,
+            drift_c_per_min=drift,
+            span_c=span,
+        )
+
+    def _drift_c_per_min(self) -> float:
+        if len(self._window) < 3:
+            return 0.0
+        times = [point[0] for point in self._window]
+        values = [point[1] for point in self._window]
+        mean_time = statistics.mean(times)
+        mean_value = statistics.mean(values)
+        denominator = sum((time - mean_time) ** 2 for time in times)
+        if denominator < 1e-9:
+            return 0.0
+        slope = sum(
+            (time - mean_time) * (value - mean_value)
+            for time, value in zip(times, values, strict=True)
+        ) / denominator
+        return slope * 60.0
+
+    def _span_c(self) -> float:
+        if not self._window:
+            return math.inf
+        values = [point[1] for point in self._window]
+        return max(values) - min(values)
+
+    def _fail(self, reason: str, **fields: object) -> PreparationCommand:
+        self.phase = "failed"
+        self.reason = reason
+        return self._command(**fields)
+
+    def _command(self, **fields: object) -> PreparationCommand:
+        return PreparationCommand(
+            phase=self.phase,
+            reason=self.reason,
+            holding_point_c=self.holding_point_c,
+            holding_power_pct=self.holding_power_pct,
+            **fields,  # type: ignore[arg-type]
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class CalibrationReadinessInputs:
     """Facts observed or explicitly confirmed before a live calibration."""
@@ -230,11 +466,16 @@ class CalibrationReadinessInputs:
     artisan_pid_active: bool
     sensor_valid: bool
     stable_sample_count: int
-    max_abs_error_c: float
     temperature_span_c: float
     max_abs_ror_c_per_min: float
     heater_slider: int | None
     heater_action_configured: bool
+    holding_point_confirmed: bool
+    airflow_path_configured: bool
+    extractor_not_cooling: bool
+    hot_minutes_used: float
+    hot_minutes_budget: float
+    hot_minutes_required: float
     actuator_direction_normal: bool
     current_power_pct: float | None
     power_min_pct: float
@@ -316,7 +557,6 @@ def evaluate_calibration_readiness(
     stable = (
         facts.sensor_valid
         and facts.stable_sample_count >= 30
-        and facts.max_abs_error_c <= 0.7
         and facts.temperature_span_c <= 0.20
         and facts.max_abs_ror_c_per_min <= 0.4
     )
@@ -338,11 +578,30 @@ def evaluate_calibration_readiness(
         ReadinessCheck("artisan_pid_stopped", not facts.artisan_pid_active),
         ReadinessCheck("sensor_valid", facts.sensor_valid),
         ReadinessCheck("sensor_stable", stable),
+        # Section 3.3: the machine was handed over and proved, in open loop,
+        # that its heat setting really is the equilibrium power.
+        ReadinessCheck(
+            "holding_point_confirmed", facts.holding_point_confirmed
+        ),
         ReadinessCheck(
             "heater_slider_configured", facts.heater_slider is not None
         ),
         ReadinessCheck(
             "heater_action_configured", facts.heater_action_configured
+        ),
+        # Section 3.1: without a commandable airflow the test cannot cool the
+        # machine when it ends, so it must not start.
+        ReadinessCheck(
+            "airflow_path_configured", facts.airflow_path_configured
+        ),
+        # Section 3.2: an extractor above its cooling threshold chills the drum
+        # for the whole run, moving the operating point away from a roast.
+        ReadinessCheck("extractor_not_cooling", facts.extractor_not_cooling),
+        # Section 3.4: the element only takes so many continuous minutes hot.
+        ReadinessCheck(
+            "hot_time_budget",
+            facts.hot_minutes_used + facts.hot_minutes_required
+            <= facts.hot_minutes_budget,
         ),
         ReadinessCheck(
             "normal_actuator_direction", facts.actuator_direction_normal
@@ -493,11 +752,33 @@ def _model_unit_response(
     return response
 
 
+def _fit_gain_and_drift(
+    unit: list[float], observed: list[float], elapsed: list[float]
+) -> tuple[float, float] | None:
+    """Least squares of ``observed = gain * unit + drift * elapsed``.
+
+    Section 5.1: at one point of heater resolution the hold drifts by degrees
+    over the measurement, which a gain-only fit would charge to the gain.
+    """
+    s_uu = sum(u * u for u in unit)
+    s_ut = sum(u * t for u, t in zip(unit, elapsed, strict=True))
+    s_tt = sum(t * t for t in elapsed)
+    s_uy = sum(u * y for u, y in zip(unit, observed, strict=True))
+    s_ty = sum(t * y for t, y in zip(elapsed, observed, strict=True))
+    determinant = s_uu * s_tt - s_ut * s_ut
+    if abs(determinant) < 1e-9:
+        return None
+    gain = (s_uy * s_tt - s_ty * s_ut) / determinant
+    drift = (s_uu * s_ty - s_ut * s_uy) / determinant
+    return gain, drift
+
+
 def identify_local_fopdt(
     points: list[CalibrationPoint],
     *,
     timing: CalibrationTiming,
     baseline_power_pct: float,
+    max_drift_c: float = 8.0,
 ) -> IdentifiedPlant:
     """Fit a bounded local FOPDT model to the open-loop part of one test."""
     qualified = [
@@ -534,6 +815,15 @@ def identify_local_fopdt(
     best_gain = 0.0
     best_tau = 0.0
     best_delay = 0.0
+    best_drift = 0.0
+    useful_observed = observed[fit_start:]
+    fit_origin_sec = (
+        qualified[fit_start].elapsed_sec if fit_start < len(qualified)
+        else timing.baseline_end
+    )
+    useful_elapsed = [
+        point.elapsed_sec - fit_origin_sec for point in qualified[fit_start:]
+    ]
     tau_candidates = tuple(float(value) for value in range(5, 601, 5))
     for delay in range(21):
         for tau in tau_candidates:
@@ -541,19 +831,19 @@ def identify_local_fopdt(
                 qualified, baseline_power_pct, tau, float(delay)
             )
             useful_unit = unit[fit_start:]
-            useful_observed = observed[fit_start:]
-            denominator = sum(value * value for value in useful_unit)
-            if denominator < 1e-9:
+            solution = _fit_gain_and_drift(
+                useful_unit, useful_observed, useful_elapsed
+            )
+            if solution is None:
                 continue
-            gain = sum(
-                model * actual
-                for model, actual in zip(useful_unit, useful_observed, strict=True)
-            ) / denominator
+            gain, drift = solution
             if gain <= 0.0:
                 continue
             squared_error = sum(
-                (actual - gain * model) ** 2
-                for model, actual in zip(useful_unit, useful_observed, strict=True)
+                (actual - gain * model - drift * moment) ** 2
+                for model, actual, moment in zip(
+                    useful_unit, useful_observed, useful_elapsed, strict=True
+                )
             )
             rmse = math.sqrt(squared_error / len(useful_observed))
             if rmse < best_rmse:
@@ -561,9 +851,13 @@ def identify_local_fopdt(
                 best_gain = gain
                 best_tau = tau
                 best_delay = float(delay)
+                best_drift = drift
 
     if not math.isfinite(best_rmse):
         raise IdentificationError("no_physical_model")
+    span_sec = useful_elapsed[-1] if useful_elapsed else 0.0
+    if abs(best_drift * span_sec) > max_drift_c:
+        raise IdentificationError("baseline_drifted_too_far")
     rmse = best_rmse
     gain = best_gain
     tau = best_tau
@@ -573,12 +867,18 @@ def identify_local_fopdt(
     best_unit = _model_unit_response(
         qualified, baseline_power_pct, tau, identified_delay
     )
+    # The up/down comparison must see the same drift-free signal as the main
+    # fit, otherwise a drifting baseline reads as a one-sided response.
+    detrended = [
+        value - best_drift * (point.elapsed_sec - fit_origin_sec)
+        for point, value in zip(qualified, observed, strict=True)
+    ]
 
     def interval_gain(start: float, end: float) -> float:
         pairs = [
             (model, actual)
             for point, model, actual in zip(
-                qualified, best_unit, observed, strict=True
+                qualified, best_unit, detrended, strict=True
             )
             if start <= point.elapsed_sec < end
         ]
@@ -606,6 +906,7 @@ def identify_local_fopdt(
         n_samples=len(qualified),
         gain_up_c_per_pct=gain_up,
         gain_down_c_per_pct=gain_down,
+        drift_c_per_min=best_drift * 60.0,
     )
 
 
@@ -629,12 +930,22 @@ def tune_simc_candidate(
     )
     integral_time = min(plant.tau_sec, 4.0 * (lambda_sec + plant.delay_sec))
     ki = kp / integral_time
+    bounded_kp = _bounded_gain(kp, current_kp, maximum=100.0)
+    bounded_ki = _bounded_gain(ki, current_ki, maximum=5.0)
     return PIDCandidate(
-        kp=_bounded_gain(kp, current_kp, maximum=100.0),
-        ki=_bounded_gain(ki, current_ki, maximum=5.0),
+        kp=bounded_kp,
+        ki=bounded_ki,
         kd=0.0,
         lambda_sec=lambda_sec,
-        integral_time_sec=integral_time,
+        # Report the integral time the retained pair implements, not the one the
+        # unclamped design asked for.
+        integral_time_sec=(
+            bounded_kp / bounded_ki if bounded_ki > 0.0 else integral_time
+        ),
+        clamped=(
+            not math.isclose(bounded_kp, kp, rel_tol=1e-9)
+            or not math.isclose(bounded_ki, ki, rel_tol=1e-9)
+        ),
     )
 
 
@@ -695,9 +1006,14 @@ class CalibrationProtocol:
     def start(self, sample: CalibrationSample) -> CalibrationCommand:
         if self.phase != "idle":
             raise RuntimeError("calibration already started")
-        if self.limits.step_pct < 6.0:
+        if self.limits.step_pct < self.limits.min_step_pct:
             return self._stop("refused", "insufficient_power_room")
-        if self.limits.validation_step_c < 1.5:
+        if (
+            self.limits.open_loop_ceiling_c
+            <= self.limits.target_c + 1.5
+            or self.limits.validation_ceiling_c
+            <= self.limits.target_c + self.limits.validation_step_c
+        ):
             return self._stop("refused", "insufficient_temperature_room")
         self._started_at = sample.now_sec
         self._last_sample_at = sample.now_sec
@@ -739,15 +1055,18 @@ class CalibrationProtocol:
             > self.limits.stale_after_sec
         ):
             return "sensor_timeout"
-        temperature_ceiling = min(
-            self.limits.absolute_temp_max_c,
-            self.limits.target_c + self.limits.target_margin_c,
-        )
-        if sample.temperature_c > temperature_ceiling:
+        if sample.temperature_c > self._temperature_ceiling():
             return "temperature_limit"
         if abs(sample.ror_c_per_min) > self.limits.max_abs_ror_c_per_min:
             return "ror_limit"
         return None
+
+    def _temperature_ceiling(self) -> float:
+        """Ceiling for the phase in progress: the open-loop steps are allowed to
+        move the holding point, the closed-loop phases are not."""
+        if self.phase in {"validating", "deciding", "complete"}:
+            return self.limits.validation_ceiling_c
+        return self.limits.open_loop_ceiling_c
 
     def _phase_for(self, elapsed: float) -> CalibrationPhase:
         boundaries: tuple[tuple[float, CalibrationPhase], ...] = (
@@ -775,13 +1094,13 @@ class CalibrationProtocol:
             point.temperature_c
             for point in points
             if point.elapsed_sec < self.timing.calculation_end + 10.0
-        ]
+        ] or [point.temperature_c for point in points[:15]]
         initial_temp = statistics.median(initial_values)
         bump_values = [
             point.temperature_c
             for point in points
             if point.elapsed_sec < self.timing.validation_bump_end
-        ]
+        ] or [point.temperature_c for point in points]
         bump_response = max(bump_values) - initial_temp
         final_values = [point.temperature_c for point in points[-15:]]
         final_error = self.limits.target_c - statistics.mean(final_values)
@@ -910,6 +1229,7 @@ class CalibrationProtocol:
                     self.points,
                     timing=self.timing,
                     baseline_power_pct=self.limits.baseline_power_pct,
+                    max_drift_c=self.limits.target_step_rise_c,
                 )
                 self.candidate = tune_simc_candidate(
                     self.plant,
@@ -954,8 +1274,16 @@ class CalibrationProtocol:
                         else sample.now_sec
                     ),
                 ),
-                power_min=self.limits.power_min_pct,
-                power_max=self.limits.power_max_pct,
+                power_min=max(
+                    self.limits.power_min_pct,
+                    self.limits.baseline_power_pct
+                    - self.limits.validation_authority_pct,
+                ),
+                power_max=min(
+                    self.limits.power_max_pct,
+                    self.limits.baseline_power_pct
+                    + self.limits.validation_authority_pct,
+                ),
             )
             self._validation_error = error
         else:
@@ -1090,6 +1418,7 @@ class LiveCalibrationCoordinator:
         request_power: Callable[[int, int, bool], None],
         apply_candidate: Callable[[PIDCandidate], None],
         restore_config: Callable[[], None],
+        cool_machine: Callable[[], None] | None = None,
         acknowledgement_timeout_sec: float = 1.5,
     ) -> None:
         self.protocol = protocol
@@ -1098,6 +1427,7 @@ class LiveCalibrationCoordinator:
         self.request_power = request_power
         self.apply_candidate = apply_candidate
         self.restore_config = restore_config
+        self.cool_machine = cool_machine
         self.acknowledgement_timeout_sec = acknowledgement_timeout_sec
         self.phase: LiveCoordinatorPhase = "idle"
         self.reason: str | None = None
@@ -1257,6 +1587,7 @@ class LiveCalibrationCoordinator:
             self.request_power(self.heater_slider, 0, True)
         except Exception:  # noqa: BLE001 - physical confirmation remains mandatory
             self.pending = None
+        self._cool_down(now_sec)
 
     def _execute(
         self, command: CalibrationCommand, now_sec: float
@@ -1367,6 +1698,7 @@ class LiveCalibrationCoordinator:
             self.request_power(self.heater_slider, 0, True)
         except Exception:  # noqa: BLE001 - restoration must still be attempted
             self.pending = None
+        self._cool_down(timestamp)
         self._restore_once(timestamp)
         command = CalibrationCommand(
             phase="refused" if refused else "safe_stop",
@@ -1378,6 +1710,20 @@ class LiveCalibrationCoordinator:
         )
         self.last_command = command
         return command
+
+    def _cool_down(self, timestamp: float) -> None:
+        """Protocol section 8.2: cutting the heat does not cool a hot drum.
+
+        Terminal only.  Opening the airflow mid-measurement would change the
+        very machine being identified, so this is never called while running.
+        """
+        if self.cool_machine is None:
+            return
+        try:
+            self.cool_machine()
+        except Exception:  # noqa: BLE001 - a failed cool-down must not mask the stop
+            return
+        self._record("cooling_requested", timestamp_sec=timestamp)
 
     @staticmethod
     def _finite_or_none(value: float | None) -> float | None:
@@ -1491,6 +1837,8 @@ def run_reference_simulation(
         CalibrationLimits(
             target_c=target,
             baseline_power_pct=baseline_power,
+            thermal_gain_c_per_pct=plant_gain,
+            step_response_fraction=1.0 - math.exp(-90.0 / plant_tau),
         ),
         current_kp=current_kp,
         current_ki=current_ki,

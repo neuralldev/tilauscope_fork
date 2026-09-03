@@ -354,6 +354,12 @@ class Roaster(DataClassDictMixin):
     # stable physical machine signature.
     maillard_ror_decay: float | None = None
 
+    ## Continuous hot time the element takes in one go, and the temperature
+    ## above which it counts. Protects the thermal cut-out during a bench
+    ## session; a plate value, not a measurement.
+    hot_above_c: float | None = None
+    max_continuous_hot_minutes: float | None = None
+
     # --------------------------------------------------------
     # Preheat PID Learning Model Kernel
     # --------------------------------------------------------
@@ -515,6 +521,8 @@ class RoasterContext:
     ## Maillard RoR decay exponent — see Roaster.maillard_ror_decay.
     ## 2.0 = default (low-inertia radiant electric machines).
     maillard_ror_decay: float = 2.0
+    hot_above_c: float = 150.0
+    max_continuous_hot_minutes: float = 30.0
 
     # see comment in the Drum block above — populated by from_roaster
     # from DrumControl.smooth_speed_transition (safe default: locked).
@@ -580,6 +588,10 @@ class RoasterContext:
             heater_caution_pct       = roaster.heater_caution_pct,
             maillard_ror_decay       = (roaster.maillard_ror_decay
                                         if roaster.maillard_ror_decay is not None else 2.0),
+            hot_above_c              = (roaster.hot_above_c
+                                        if roaster.hot_above_c is not None else 150.0),
+            max_continuous_hot_minutes = (roaster.max_continuous_hot_minutes
+                                        if roaster.max_continuous_hot_minutes is not None else 30.0),
             drum_variable_speed      = dc.variable_speed if dc else False,
             drum_min_rpm             = drum_min,
             drum_max_rpm             = drum_max,

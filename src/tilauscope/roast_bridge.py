@@ -17,6 +17,7 @@
 RoastAssistantPanel ; centralise les accès qmc et élimine le polling multi-appels."""
 
 import logging
+import time
 from typing import Final, TYPE_CHECKING
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
@@ -32,6 +33,14 @@ _logd: Final[logging.Logger] = logging.getLogger("tilau")
 _AMBIENT_TEMP_DELTA: float = 3.0   # °C — changement significatif (l'ambiant est normalisé en °C)
 _AMBIENT_HUM_DELTA:  float = 5.0   # % RH
 
+# ── Chien de garde de fraîcheur BT ──────────────────────────────────────────
+# La sonde peut se taire de deux façons : renvoyer la sentinelle -1 (rejetée
+# par `bt > 0`) ou se figer sur une valeur plausible (rejetée par `bt != last`).
+# Dans les deux cas bt_updated cesse d'être émis, et tout ce qu'il entraîne —
+# la boucle de l'assistant, donc l'AutoPilot — cesse d'être appelé sans que
+# rien ne le dise. Le tick 1 Hz, lui, continue : c'est lui qui surveille.
+_BT_STALE_AFTER_S: Final[float] = 10.0
+
 
 class RoastDataBridge(QObject):
     """
@@ -46,6 +55,7 @@ class RoastDataBridge(QObject):
     ambient_updated        = pyqtSignal(float, float)   # (temp °C, hum) — si Δ significatif
     phase_changed          = pyqtSignal(str)            # clé de phase
     roast_state_changed    = pyqtSignal(bool)           # True = roast ON
+    data_stale             = pyqtSignal(bool)           # True = plus de BT fraîche
 
     def __init__(self, aw: "ApplicationWindow", parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -57,6 +67,10 @@ class RoastDataBridge(QObject):
         self._last_ror: float = 0.0
         self._last_ambient_temp: float = 0.0
         self._last_ambient_hum:  float = 0.0
+
+        # Fraîcheur BT — monotonic de la dernière émission, et état publié
+        self._last_bt_at: float = 0.0
+        self._bt_stale: bool = False
 
         # Phase courante — pour limiter la régénération du plan aux phases utiles
         self._current_phase: str = "IDLE"
@@ -72,6 +86,7 @@ class RoastDataBridge(QObject):
         self._emit_et()
         self._emit_ror()
         self._check_ambient()
+        self._check_bt_freshness()
 
     @pyqtSlot(str)
     def notify_phase(self, phase_key: str) -> None:
@@ -89,6 +104,8 @@ class RoastDataBridge(QObject):
         """Appelé depuis toggle_start_stop()."""
         if not active:
             self._current_phase = "IDLE"
+        self._last_bt_at = 0.0        # le compte à rebours repart au roast suivant
+        self._bt_stale = False
         self.roast_state_changed.emit(active)
 
     # ── Émissions partielles ─────────────────────────────────────────────────
@@ -98,6 +115,7 @@ class RoastDataBridge(QObject):
             bt = float(self.aw.qmc.temp2[-1])
             if bt > 0 and bt != self._last_bt:   # -1 = Artisan sentinel, skip
                 self._last_bt = bt
+                self._last_bt_at = time.monotonic()
                 self.bt_updated.emit(bt)
         except (IndexError, TypeError, AttributeError):
             pass
@@ -120,6 +138,35 @@ class RoastDataBridge(QObject):
                 self.ror_updated.emit(ror)
         except (IndexError, TypeError, AttributeError):
             pass
+
+    def _check_bt_freshness(self) -> None:
+        """Publie les bascules fraîche ↔ périmée de la BT (jamais à chaque tick).
+
+        Ne surveille que pendant l'enregistrement : hors roast une BT immobile
+        est l'état normal. O(1), appelé depuis le tick 1 Hz.
+        """
+        try:
+            recording = bool(self.aw.qmc.flagstart)
+        except AttributeError:
+            recording = False
+        now = time.monotonic()
+        if not recording:
+            self._last_bt_at = 0.0
+            if self._bt_stale:
+                self._bt_stale = False
+                self.data_stale.emit(False)
+            return
+        if self._last_bt_at == 0.0:
+            self._last_bt_at = now   # première mesure attendue à partir d'ici
+            return
+        stale = (now - self._last_bt_at) >= _BT_STALE_AFTER_S
+        if stale == self._bt_stale:
+            return
+        self._bt_stale = stale
+        _logd.warning(
+            f"RoastDataBridge: BT {'stale' if stale else 'fresh again'} "
+            f"({now - self._last_bt_at:.0f}s without a new reading)")
+        self.data_stale.emit(stale)
 
     # ── Lecture ambiant live ─────────────────────────────────────────────────
 

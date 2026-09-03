@@ -22,11 +22,13 @@ import tempfile
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from tilauscope.pid_calibration import (
     CalibrationAuditEvent,
     verify_calibration_audit,
+    CalibrationPoint,
 )
 
 
@@ -243,6 +245,65 @@ def write_calibration_journal(
     }
     payload["journal_hash"] = _sha256(payload)
     return _atomic_json_write(path, payload)
+
+
+def write_thermal_trace(
+    directory: Path,
+    *,
+    identity: CalibrationMachineIdentity,
+    points: Sequence[CalibrationPoint],
+    ambient_c: float,
+    open_loop_end_sec: float,
+) -> Path:
+    """Persist one open-loop run as a thermal profile for TilauPID.
+
+    Protocol section 8 bis: the calibration is the only source of qualified
+    profiles, because an .alog holds no data from before the recording starts.
+    A trace is raw evidence — it is the existing offline fitter that turns three
+    of them into a model, never this writer.
+    """
+    usable = [
+        point for point in points
+        if 0.0 <= point.elapsed_sec <= open_loop_end_sec
+    ]
+    if len(usable) < 10:
+        raise ValueError("an open-loop trace needs at least ten samples")
+    payload = {
+        "schema": "tilauscope.pid-calibration.thermal-trace.v1",
+        "machine_fingerprint": identity.roaster_id,
+        "actuator_signature": identity.actuator_signature,
+        "control_channel": "BT" if identity.pid_source in (0, 1) else "ET",
+        "ambient_c": float(ambient_c),
+        "recorded_at": datetime.now(UTC).isoformat(),
+        "times_sec": [point.elapsed_sec for point in usable],
+        "temperatures_c": [point.temperature_c for point in usable],
+        "burner_pct": [point.power_pct for point in usable],
+    }
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%fZ")
+    path = directory / f"trace-{timestamp}-{identity.fingerprint[:12]}.json"
+    return _atomic_json_write(path, payload)
+
+
+def read_thermal_traces(
+    directory: Path, *, machine_fingerprint: str, control_channel: str
+) -> list[dict[str, Any]]:
+    """Every stored trace matching this machine and control channel."""
+    if not directory.is_dir():
+        return []
+    traces: list[dict[str, Any]] = []
+    for path in sorted(directory.glob("trace-*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        if payload.get("machine_fingerprint") != machine_fingerprint:
+            continue
+        if payload.get("control_channel") != control_channel:
+            continue
+        traces.append(payload)
+    return traces
 
 
 def verify_calibration_journal(path: Path) -> bool:

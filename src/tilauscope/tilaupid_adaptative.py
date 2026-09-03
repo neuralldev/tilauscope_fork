@@ -54,6 +54,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from statistics import mean, median, stdev
+from collections.abc import Sequence
 from typing import List, Optional, Callable, TYPE_CHECKING
 import ast  # Import de la bibliothèque ast
 from typing import cast, Final
@@ -96,6 +97,88 @@ def _normalise_identity(value: object) -> str:
     return "".join(ch for ch in str(value or "").casefold() if ch.isalnum())
 
 
+LAW_VERSION: int = 4  # v4 stores exact-SV nodes and interpolates continuously
+
+
+def law_context_prefix(aw: object, *, version: int = LAW_VERSION) -> str:
+    """Settings prefix isolating one machine/control-channel pair."""
+    qmc = getattr(aw, "qmc", None)
+    machine = _normalise_identity(
+        getattr(qmc, "roastertype_setup", "")
+        or getattr(qmc, "roastertype", "")
+        or getattr(qmc, "machinesetup", "")
+    )
+    source = getattr(getattr(aw, "pidcontrol", None), "pidSource", 1)
+    channel = AlogScanner._control_channel(source)  # noqa: SLF001
+    return f"tilaupid/v{version}/{machine or 'unknown'}/{channel}"
+
+
+def read_law_nodes(
+    settings: QSettings, prefix: str
+) -> list[tuple[float, float, float, str]]:
+    """Learned (SV, P_ss, lead, node prefix) tuples under ``prefix``, sorted by SV."""
+    root = f"{prefix}/nodes/sv_"
+    nodes: list[tuple[float, float, float, str]] = []
+    for key in settings.allKeys():
+        if not key.startswith(root) or not key.endswith("/p_ss"):
+            continue
+        node_prefix = key[:-len("/p_ss")]
+        try:
+            sv = int(node_prefix[len(root):]) / 10.0
+            p_ss = float(settings.value(key, 0.0, float))
+            lead = float(settings.value(f"{node_prefix}/lead", 0.0, float))
+        except (TypeError, ValueError):
+            continue
+        if (50.0 <= sv <= 350.0
+                and math.isfinite(p_ss)
+                and math.isfinite(lead)
+                and settings.contains(f"{node_prefix}/lead")):
+            nodes.append((sv, p_ss, lead, node_prefix))
+    return sorted(nodes, key=lambda node: node[0])
+
+
+def thermal_gain_c_per_pct(
+    nodes: Sequence[tuple[float, float, float, str]],
+    sv: float,
+    *,
+    min_span_c: float = 3.0,
+) -> float | None:
+    """Local thermal gain in degC of equilibrium temperature per heater point.
+
+    Read from the widest pair of learned hold nodes that brackets ``sv``, which
+    is the machine's own static gain: two nodes say how much more power a hotter
+    hold costs.  Nodes closer than ``min_span_c`` apart are skipped — their
+    power difference is dominated by learning noise, not by the machine.
+    """
+    usable = [node for node in nodes if node[1] > 0.0]
+    if len(usable) < 2:
+        return None
+    below = [node for node in usable if node[0] <= sv]
+    above = [node for node in usable if node[0] >= sv]
+    pairs: list[tuple[tuple[float, float, float, str], ...]] = []
+    if below and above and below[-1][0] != above[0][0]:
+        pairs.append((below[0], above[-1]))
+    pairs.append((usable[0], usable[-1]))
+    for low, high in pairs:
+        span = high[0] - low[0]
+        power_span = high[1] - low[1]
+        if span >= min_span_c and power_span > 0.0:
+            return span / power_span
+    return None
+
+
+def quadratic_thermal_gain_c_per_pct(
+    target_c: float, ambient_c: float, hold_power_pct: float
+) -> float | None:
+    """Fallback gain from the quadratic heater law, dT/dP = 2 (T - ambient) / P."""
+    if hold_power_pct <= 0.0 or not math.isfinite(hold_power_pct):
+        return None
+    rise = target_c - ambient_c
+    if rise <= 0.0 or not math.isfinite(rise):
+        return None
+    return 2.0 * rise / hold_power_pct
+
+
 def _robust_centre(values: list[float]) -> float:
     """Median for short series, 10% trimmed mean once the sample is long enough."""
     if not values:
@@ -128,8 +211,11 @@ class AmbientConditions:
     pressure: float = 1013.25       # hPa
 
     def is_valid(self) -> bool:
+        # -1 is the "no reading" sentinel of every ambient source and sits inside
+        # the plausible temperature band, unlike the humidity/pressure bands.
         return ( self.temp_ambient is not None and self.humidity is not None and self.pressure is not None and (
-            -10 < self.temp_ambient < 50
+            self.temp_ambient != -1.0
+            and -10 < self.temp_ambient < 50
             and 0 < self.humidity < 100
             and 800 < self.pressure < 1100
         ))
@@ -726,13 +812,24 @@ class AdaptiveMemory:
         for m in metrics:
             self._history.append(m)
 
+    def replace_all(self, metrics: List[RoastPreheatMetrics]) -> None:
+        """Swap the whole corpus in a single rebind.
+
+        The background loader and the sampling thread share this object: a
+        clear()+refill would raise "deque mutated during iteration" inside
+        compute(), and that exception reaches cycle()'s fail-safe handler, which
+        cuts the burner. Building aside and rebinding cannot be observed midway.
+        """
+        self._history = deque(metrics, maxlen=self.window)
+
     def compute(self, current_sv: float) -> LearnedParams:
         """
         Calcule les corrections basées sur les torréfactions passées dont la
         consigne était proche de current_sv (± 15°C).
         """
+        # Snapshot first: list(deque) is atomic, iterating the live deque is not.
         relevant = [
-            m for m in self._history
+            m for m in list(self._history)
             if abs(m.target_sv - current_sv) <= 15.0
         ]
         n = len(relevant)
@@ -1112,7 +1209,10 @@ class AdaptivePIDMixin:
     _MIN_LEARNING_SESSION_SEC: float = 60.0  # reject starts/stops too short to identify the response
     _MIN_POST_REACH_SEC: float = 15.0   # observe the coast before attributing overshoot to lead
     _MIN_HOLD_DWELL_SEC: float = 20.0   # continuous in-band hold required for measured P_ss
-    _MIN_HOLD_SAMPLES: int = 15
+    # Fraction of that dwell that must have produced samples. Expressed as a
+    # ratio, never a count: a count only agrees with the dwell at one sampling
+    # rate (see _min_hold_samples).
+    _MIN_HOLD_COVERAGE: float = 0.75
     _MAX_PSS_STEP: float = 2.0          # maximum persisted movement from one qualified session
     _MAX_LEAD_STEP: float = 0.8
     _LAW_EDGE_MAX_DISTANCE_C: float = 15.0  # bounded nearest-node use outside learned range
@@ -1190,6 +1290,7 @@ class AdaptivePIDMixin:
         # l'interface ~1,5 s avant que le monitoring ne démarre. Le préchauffage
         # se joint au worker au START, bien après le clic.
         self._history_ready = threading.Event()
+        self._history_lock = threading.Lock()
         self._history_thread: threading.Thread | None = None
         self._start_history_worker()
         # One-time migration: drop the pre-redesign relay-law persisted state.
@@ -1253,13 +1354,40 @@ class AdaptivePIDMixin:
         return alog_dir
 
     def _load_history(self) -> None:
-        """Charge les métriques historiques et calcule les corrections initiales."""
-        self._adaptive_memory._history.clear()   # ← évite les doublons
-        metrics = self._alog_scanner.load_window()
-        self._adaptive_memory.push_all(metrics)
-        self._refresh_learned()
+        """Charge les métriques historiques et calcule les corrections initiales.
+
+        Sérialisé : un changement de contexte au START relance un worker alors que
+        le précédent peut encore tourner, et deux scans concurrents publieraient
+        des corpus entrelacés.
+        """
+        with self._history_lock:
+            metrics = self._alog_scanner.load_window()
+            self._adaptive_memory.replace_all(metrics)   # rebind atomique
+            self._refresh_learned()
 
     # ── Offline model → shadow → bounded prior promotion ────────────
+
+    # ── Qualified hold: the only evidence that measures P_ss directly ────
+
+    def _min_hold_samples(self) -> int:
+        """Sample count that stands for _MIN_HOLD_DWELL_SEC at the live rate.
+
+        A fixed count paired with a duration agrees at exactly one sampling rate.
+        At 1 Hz this returns the historical 15; at a slower rate a real 20-second
+        hold produced fewer samples than that and never qualified, so P_ss could
+        only ever move through the slow droop nudge — four times slower than the
+        measured-hold path it was supposed to take.
+        """
+        dt = float(getattr(self.cfg, "polling_dt", 1.0) or 1.0)
+        return max(3, round(self._MIN_HOLD_DWELL_SEC * self._MIN_HOLD_COVERAGE / dt))
+
+    def _qualified_hold(self) -> bool:
+        """True when this session held at SV long enough to measure its steady power."""
+        if self._session_hold_started_at is None or self._session_hold_last_at is None:
+            return False
+        dwell = self._session_hold_last_at - self._session_hold_started_at
+        return (dwell >= self._MIN_HOLD_DWELL_SEC
+                and len(self._session_hold_samples) >= self._min_hold_samples())
 
     def _thermal_state_prefix(self, candidate: ThermalModelCandidate) -> str:
         machine, channel = self._law_context()
@@ -1452,25 +1580,7 @@ class AdaptivePIDMixin:
 
     def _law_nodes(self, settings: QSettings) -> list[tuple[float, float, float, str]]:
         """Return valid learned nodes as (SV, P_ss, lead, prefix), sorted by SV."""
-        root = f"{self._law_context_prefix()}/nodes/sv_"
-        nodes: list[tuple[float, float, float, str]] = []
-        for key in settings.allKeys():
-            if not key.startswith(root) or not key.endswith("/p_ss"):
-                continue
-            prefix = key[:-len("/p_ss")]
-            token_text = prefix[len(root):]
-            try:
-                sv = int(token_text) / 10.0
-                p_ss = float(settings.value(key, 0.0, float))
-                lead = float(settings.value(f"{prefix}/lead", 0.0, float))
-            except (TypeError, ValueError):
-                continue
-            if (50.0 <= sv <= 350.0
-                    and math.isfinite(p_ss)
-                    and math.isfinite(lead)
-                    and settings.contains(f"{prefix}/lead")):
-                nodes.append((sv, p_ss, lead, prefix))
-        return sorted(nodes, key=lambda node: node[0])
+        return read_law_nodes(settings, self._law_context_prefix())
 
     def _resolve_law_nodes(
         self,
@@ -1805,12 +1915,18 @@ class AdaptivePIDMixin:
         self._stabilisation_detector.reset()
         # Point de jointure unique : le worker lancé au ON a normalement fini
         # bien avant le START. Sinon on l'attend ici, pas au clic ON.
-        self._ensure_history_loaded()
+        # Borné à 2 s : au-delà, le préchauffage démarre sur les valeurs par
+        # défaut plutôt que de figer l'interface — bouton STOP compris — pendant
+        # que le brûleur monte en puissance.
+        self._ensure_history_loaded(timeout=2.0)
         context_changed = self._refresh_learning_context()
         # START is a real-time command: never rescan the archive when
         # the manager already loaded this exact machine/input context.
         if context_changed:
-            self._load_history()
+            # Un changement de machine/voie invalide le corpus chargé. Le rescan
+            # complet (jusqu'à `scan_budget` profils) part en tâche de fond ;
+            # la session adopte le résultat au prochain _refresh_learned().
+            self._start_history_worker()
         else:
             self._refresh_learned()
             _logd.debug("TilauPID: historique adaptatif réutilisé en mémoire au START")
@@ -1980,17 +2096,8 @@ class AdaptivePIDMixin:
         # ── P_ss (steady hold ↔ proportional droop) ───────────────────
         if settled:
             assert t_settle is not None  # narrowed by `settled`; keeps static analysis explicit
-            hold_dwell = (
-                self._session_hold_last_at - self._session_hold_started_at
-                if self._session_hold_started_at is not None
-                and self._session_hold_last_at is not None else 0.0
-            )
-            qualified_hold = (
-                hold_dwell >= self._MIN_HOLD_DWELL_SEC
-                and len(self._session_hold_samples) >= self._MIN_HOLD_SAMPLES
-            )
             if (abs(t_settle - sv) <= self._SETTLE_BAND_C
-                    and qualified_hold):
+                    and self._qualified_hold()):
                 # Held cleanly at SV → trust the measured steady power. Neutralise the
                 # ambient factor: the law commands P_ss·ambient_factor, so learning from
                 # the raw commanded burner would re-apply the factor a second time.
@@ -2069,12 +2176,7 @@ class AdaptivePIDMixin:
             stabilise_time_sec=self._stabilisation_detector.seconds_stable,
             hold_mean_power=(
                 float(median(self._session_hold_samples))
-                if (self._session_hold_started_at is not None
-                    and self._session_hold_last_at is not None
-                    and self._session_hold_last_at - self._session_hold_started_at
-                    >= self._MIN_HOLD_DWELL_SEC
-                    and len(self._session_hold_samples) >= self._MIN_HOLD_SAMPLES)
-                else 0.0
+                if self._qualified_hold() else 0.0
             ),
             was_stable=self._stabilisation_detector.is_stable(10.0),
             # The live PID knows its own SV, so this session's overshoot (max_bt − target_sv)

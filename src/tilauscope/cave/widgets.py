@@ -237,13 +237,41 @@ class SmoothHoverFilter(QObject):
         self.accent_border = QColor(THEME['ACCENT'])
 
     def eventFilter(self, obj, event):
+        # False, not True: the widget must still receive its own hover events.
+        # Swallowing them left it without WA_Hover state of its own, which is
+        # what _reattach_hover had to restore by hand after every clear().
         if event.type() == QEvent.Type.HoverEnter:
             self.animate(obj, self.base_border, self.accent_border)
-            return True   # ← keep returning True so Qt doesn't double-fire
         elif event.type() == QEvent.Type.HoverLeave:
             self.animate(obj, self.accent_border, self.base_border)
-            return True
         return super().eventFilter(obj, event)
+
+    def install(self, widget) -> None:
+        """Arm hover on a widget, capturing its own stylesheet first.
+
+        Capture must happen here, while the sheet is still the one the widget
+        set for itself — capturing lazily on the first hover risks recording
+        whatever a later rebuild left behind.
+        """
+        self.base_qss(widget)
+        widget.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+        widget.removeEventFilter(self)   # never register twice
+        widget.installEventFilter(self)
+
+    @staticmethod
+    def base_qss(widget) -> str:
+        """The widget's own stylesheet, captured before any hover touched it.
+
+        The animation appends to this instead of replacing it. Replacing wiped
+        whatever the widget had set for itself — on a TilauSpinBox that is the
+        padding reserving the arrow column, the focus border and the rules
+        suppressing the native spin buttons, none of which ever came back.
+        """
+        base = getattr(widget, '_hover_base_qss', None)
+        if base is None:
+            base = widget.styleSheet() or ''
+            widget._hover_base_qss = base
+        return base
 
     def animate(self, widget, start_brd, end_brd):
         anim = QVariantAnimation(widget)
@@ -255,6 +283,7 @@ class SmoothHoverFilter(QObject):
         # Determine the Qt widget class name for scoped CSS
         # This prevents the rule leaking into child widgets or tooltip scope
         class_name = widget.__class__.__name__
+        base = self.base_qss(widget)
 
         def update_style(value):
             brd_r = int(start_brd.red()   + (end_brd.red()   - start_brd.red())   * value)
@@ -262,13 +291,13 @@ class SmoothHoverFilter(QObject):
             brd_b = int(start_brd.blue()  + (end_brd.blue()  - start_brd.blue())  * value)
             color_brd = f"rgb({brd_r}, {brd_g}, {brd_b})"
 
-            widget.setStyleSheet(f"""
+            # Appended last: at equal specificity the later rule wins, so the
+            # border animates while everything the widget set for itself stands.
+            # Colour only — a radius here forced every field to the same corner
+            # on hover, and the padding it used to carry shrank the field.
+            widget.setStyleSheet(f"""{base}
                 {class_name} {{
                     border: 2px solid {color_brd};
-                    border-radius: 5px;
-                    padding: 3px;
-                    background-color: {THEME['SURFACE']};
-                    color: {THEME['TEXT']};
                     }}
                 {tooltip_qss()}
             """)
@@ -848,6 +877,10 @@ class AwReadingOverlay(QFrame):
         # Animation setup
         self.fade_anim = QPropertyAnimation(self, b"windowOpacity")
         self.fade_anim.setDuration(300)
+        # Connected once here, never per call: reconnecting inside hide_fancy
+        # stacked a hide on the shared animation, so the next fade-IN also
+        # ended by hiding the overlay it had just brought up.
+        self.fade_anim.finished.connect(self._on_fade_finished)
 
     def update_value(self, value):
         """Updates label and triggers a small 'pulse' animation."""
@@ -862,10 +895,14 @@ class AwReadingOverlay(QFrame):
             self.fade_anim.setEndValue(0.95) # Slightly transparent
             self.fade_anim.start()
 
+    def _on_fade_finished(self):
+        """Hide only when the fade that just ended was a fade-out."""
+        if self.windowOpacity() <= 0.01:
+            self.hide()
+
     def hide_fancy(self):
         self.fade_anim.setStartValue(self.windowOpacity())
         self.fade_anim.setEndValue(0.0)
-        self.fade_anim.finished.connect(self.hide)
         self.fade_anim.start()
 
 class URLInputDialog(QDialog):
@@ -947,7 +984,8 @@ class URLInputDialog(QDialog):
         self.btn_paste.setProperty('variant', 'outline')
         self.btn_paste.clicked.connect(self.paste_url)
 
-        # Connection for dynamic update when clipboard changes
+        # Connection for dynamic update when clipboard changes. It is the
+        # application-wide clipboard, so it outlives the dialog — see done().
         QGuiApplication.clipboard().dataChanged.connect(self.update_paste_button_state)
 
         # Set initial state
@@ -979,6 +1017,18 @@ class URLInputDialog(QDialog):
 
     def paste_url(self):
         self.url_input.setText(QGuiApplication.clipboard().text()) # type: ignore
+
+    def done(self, result: int) -> None:
+        """Drop the application clipboard subscription before the dialog closes.
+
+        Left connected, every AI-parse click adds one more dead listener that
+        the next copy anywhere in the application still fans out to.
+        """
+        try:
+            QGuiApplication.clipboard().dataChanged.disconnect(self.update_paste_button_state)
+        except (TypeError, RuntimeError):
+            pass
+        super().done(result)
 
     def get_url(self):
         return self.url_input.text()

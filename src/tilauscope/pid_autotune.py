@@ -23,8 +23,15 @@ from functools import partial
 from pathlib import Path
 from typing import Final, TYPE_CHECKING, TypedDict
 
-from PyQt6.QtCore import QPoint, QPropertyAnimation, QStandardPaths, Qt, QTimer
-from PyQt6.QtGui import QCloseEvent, QMouseEvent
+from PyQt6.QtCore import (
+    QPoint,
+    QPropertyAnimation,
+    QSettings,
+    QStandardPaths,
+    Qt,
+    QTimer,
+)
+from PyQt6.QtGui import QCloseEvent, QMouseEvent, QShowEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -56,6 +63,9 @@ from tilauscope.pid_calibration import (
     evaluate_calibration_readiness,
     runtime_interlock_reason,
     run_reference_simulation,
+    PreparationCommand,
+    PreparationSample,
+    PreparationSequence,
 )
 from tilauscope.pid_calibration_store import (
     CalibrationMachineIdentity,
@@ -63,6 +73,7 @@ from tilauscope.pid_calibration_store import (
     write_hardware_pilot_manifest,
     write_calibration_journal,
     write_zero_qualification_evidence,
+    write_thermal_trace,
 )
 from tilauscope.pid_calibration_runner import (
     LiveCalibrationSampleObserver,
@@ -77,6 +88,12 @@ from tilauscope.pid_semantics import (
     narrate_pid,
 )
 from tilauscope.roasters import RoasterManager
+from tilauscope.tilaupid_adaptative import (
+    law_context_prefix,
+    quadratic_thermal_gain_c_per_pct,
+    read_law_nodes,
+    thermal_gain_c_per_pct,
+)
 from tilauscope.tilauscope_types import THEME, show_styled_message
 from tilauscope.theme_qss import apply_tilau_theme
 
@@ -185,6 +202,9 @@ class PIDAutotune(QDialog):
         self._zero_output_qualified = False
         self._qualified_machine_fingerprint: str | None = None
         self._calibration_runner: PIDCalibrationRunner | None = None
+        self._readiness_dialog: CalibrationReadinessDialog | None = None
+        self._measured_holding_point_c: float | None = None
+        self._measured_holding_power_pct: float | None = None
         self._last_calibration_journal_path: Path | None = None
         self._current_narrative = PIDNarrative("stopped", "high")
         self._latest_schedule_value = 0.0
@@ -641,7 +661,6 @@ class PIDAutotune(QDialog):
 
         values = tuple(self._readiness_history)
         temperatures = [point[1] for point in values]
-        errors = [abs(point[2]) for point in values]
         rors = [abs(point[3]) for point in values]
         sensor_valid = bool(
             values
@@ -663,7 +682,7 @@ class PIDAutotune(QDialog):
             artisan_pid_active=bool(self.pid.pidActive),
             sensor_valid=sensor_valid,
             stable_sample_count=len(values),
-            max_abs_error_c=max(errors, default=math.inf),
+            holding_point_confirmed=self._measured_holding_point_c is not None,
             temperature_span_c=(
                 max(temperatures) - min(temperatures)
                 if temperatures else math.inf
@@ -671,6 +690,13 @@ class PIDAutotune(QDialog):
             max_abs_ror_c_per_min=max(rors, default=math.inf),
             heater_slider=heater_slider,
             heater_action_configured=bool(action_configured),
+            airflow_path_configured=self._slider_action_configured(
+                self._AIRFLOW_SLIDER
+            ),
+            extractor_not_cooling=self._extractor_not_cooling(),
+            hot_minutes_used=self._hot_minutes_used(),
+            hot_minutes_budget=self._hot_time_limits()[1],
+            hot_minutes_required=self._TEST_HOT_MINUTES,
             actuator_direction_normal=not bool(self.pid.invertControl),
             current_power_pct=current_power,
             power_min_pct=power_min,
@@ -803,8 +829,11 @@ class PIDAutotune(QDialog):
         baseline_power = float(values[slider])
         power_min = max(float(minimums[slider]), float(self.pid.dutyMin))
         power_max = min(float(maximums[slider]), float(self.pid.dutyMax))
-        engine = self._read_engine()
-        target_c = temperature_to_c(float(engine["target"]), identity.temperature_unit)
+        target_c = self._calibration_target_c()
+        if target_c is None:
+            raise RuntimeError("live calibration has no usable setpoint")
+        # Section 8 bis: a thermal trace is worthless without its ambient.
+        ambient_c = self._ambient_c()
         baseline_config = self._capture_config()
         protocol = CalibrationProtocol(
             CalibrationLimits(
@@ -812,6 +841,12 @@ class PIDAutotune(QDialog):
                 baseline_power_pct=baseline_power,
                 power_min_pct=power_min,
                 power_max_pct=power_max,
+                thermal_gain_c_per_pct=self._known_thermal_gain(
+                    target_c, baseline_power
+                ),
+                step_response_fraction=self._known_step_response_fraction(
+                    identity.fingerprint
+                ),
             ),
             current_kp=float(self.pid.pidKp),
             current_ki=float(self.pid.pidKi),
@@ -819,12 +854,10 @@ class PIDAutotune(QDialog):
         )
 
         def read_temperature() -> float | None:
-            return self._read_engine()["pv"]
+            return self._read_process_value()[0]
 
         def read_source_token() -> object | None:
-            qmc = self.aw.qmc
-            series = qmc.timex if qmc.flagstart else qmc.on_timex
-            return series[-1] if series else None
+            return self._read_process_value()[1]
 
         observer = LiveCalibrationSampleObserver(
             read_temperature=read_temperature,
@@ -834,11 +867,15 @@ class PIDAutotune(QDialog):
         )
 
         def apply_candidate(candidate: PIDCandidate) -> None:
+            # The candidate is identified in %/degC; Artisan's engine computes
+            # its error in the display unit, so a Fahrenheit install needs the
+            # gains divided by the degF/degC ratio.
+            scale = 1.8 if identity.temperature_unit == "F" else 1.0
             candidate_config = dict(baseline_config)
             candidate_config.update({
-                "pidKp": candidate.kp,
-                "pidKi": candidate.ki,
-                "pidKd": candidate.kd,
+                "pidKp": candidate.kp / scale,
+                "pidKi": candidate.ki / scale,
+                "pidKd": candidate.kd / scale,
             })
             self._apply_config(candidate_config)
 
@@ -871,6 +908,13 @@ class PIDAutotune(QDialog):
                 reason=coordinator.reason,
             )
             self._last_calibration_journal_path = journal_path
+            # The inertia is the one thing no other part of TilauScope measures.
+            # Keep it even when the candidate was refused: the identification
+            # succeeded, only the tuning verdict did not.
+            plant = coordinator.protocol.plant
+            if plant is not None:
+                self._remember_step_response(identity.fingerprint, plant.tau_sec)
+                self._store_thermal_trace(identity, coordinator.protocol, ambient_c)
 
         if self._calibration_runner is not None:
             self._calibration_runner.close()
@@ -882,6 +926,7 @@ class PIDAutotune(QDialog):
                 request_power=self.aw.tilaupidSliderCommandSignal.emit,
                 apply_candidate=apply_candidate,
                 restore_config=lambda: self._apply_config(baseline_config),
+                cool_machine=self._cool_machine,
             ),
             readiness_provider=lambda: self._live_calibration_readiness(
                 machine_empty=True,
@@ -938,7 +983,19 @@ class PIDAutotune(QDialog):
         ))
 
     def show_calibration_readiness(self) -> None:
-        CalibrationReadinessDialog(self).exec()
+        existing = self._readiness_dialog
+        if existing is not None and existing.isVisible():
+            existing.raise_()
+            existing.activateWindow()
+            return
+        dialog = CalibrationReadinessDialog(self)
+        dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self._readiness_dialog = dialog
+        dialog.finished.connect(self._readiness_dialog_closed)
+        dialog.show()
+
+    def _readiness_dialog_closed(self, _result: int) -> None:
+        self._readiness_dialog = None
 
     def _capture_config(self) -> dict[str, float | int | bool]:
         return {name: getattr(self.pid, name) for name in self._CONFIG_FIELDS}
@@ -1066,6 +1123,341 @@ class PIDAutotune(QDialog):
         finally:
             engine.pidSemaphore.release(1)
 
+    _TAU_SETTINGS_ROOT: Final[str] = "tilauscope/pid-calibration/tau_sec"
+
+    # Slider map of this rig, shared with the roast assistant:
+    # 0 = airflow, 1 = drum, 2 = damper (AirWave extraction), 3 = burner.
+    _AIRFLOW_SLIDER: Final[int] = 0
+    _EXTRACTOR_SLIDER: Final[int] = 2
+    _COOLING_PCT: Final[int] = 80
+    # Above this the extractor cools the drum interior on this rig.
+    _EXTRACTOR_COOLING_PCT: Final[int] = 30
+    # Fallbacks only: the machine profile declares both (protocol section 3.4).
+    _HOT_ABOVE_C: Final[float] = 150.0
+    _HOT_BUDGET_MIN: Final[float] = 30.0
+    _TEST_HOT_MINUTES: Final[float] = 10.5
+
+    def _hot_time_limits(self) -> tuple[float, float]:
+        """(threshold degC, budget minutes) declared by the machine profile."""
+        try:
+            roaster = RoasterManager().get_by_display_name(
+                str(getattr(self.aw, "tilau_roaster", "") or "")
+            )
+            if roaster is None:
+                return self._HOT_ABOVE_C, self._HOT_BUDGET_MIN
+            above = roaster.hot_above_c
+            budget = roaster.max_continuous_hot_minutes
+            return (
+                float(above) if above is not None else self._HOT_ABOVE_C,
+                float(budget) if budget is not None else self._HOT_BUDGET_MIN,
+            )
+        except (AttributeError, TypeError, ValueError):
+            return self._HOT_ABOVE_C, self._HOT_BUDGET_MIN
+
+    def preparation_sample(self) -> PreparationSample | None:
+        """One observation for the preparation sequence, or None if unreadable."""
+        measured, _ = self._read_process_value()
+        if measured is None:
+            return None
+        preheat = getattr(self.aw, "tilauPreheatingPid", None)
+        active = bool(preheat is not None and getattr(preheat, "active", False))
+        settled = False
+        if active:
+            detector = getattr(preheat, "_stabilisation_detector", None)
+            try:
+                settled = bool(
+                    detector is not None
+                    and detector.is_stable(min_duration_sec=30.0)
+                )
+            except (AttributeError, TypeError, ValueError):
+                settled = False
+        values = getattr(self.aw, "eventslidervalues", ())
+        slider = int(getattr(self.pid, "pidPositiveTarget", 0)) - 1
+        try:
+            heater = float(values[slider]) if 0 <= slider < len(values) else 0.0
+        except (TypeError, ValueError):
+            heater = 0.0
+        return PreparationSample(
+            now_sec=time.monotonic(),
+            temperature_c=temperature_to_c(measured, str(self.aw.qmc.mode)),
+            heater_pct=heater,
+            preheat_active=active,
+            preheat_settled=settled,
+        )
+
+    def apply_preparation_command(self, command: PreparationCommand) -> None:
+        """Carry out one preparation instruction. Never called while testing."""
+        preheat = getattr(self.aw, "tilauPreheatingPid", None)
+        try:
+            if command.start_preheat and preheat is not None:
+                preheat.start()
+            if command.hand_over and preheat is not None:
+                # Section 8.1: bumpless, the burner stays at its hold power.
+                preheat.stop(reason="handover")
+            if command.set_heater_pct is not None:
+                slider = int(getattr(self.pid, "pidPositiveTarget", 0)) - 1
+                if slider >= 0:
+                    self.aw.tilaupidSliderCommandSignal.emit(
+                        slider, int(command.set_heater_pct), True
+                    )
+        except Exception:  # noqa: BLE001 - a failed step must not abort the loop
+            _log.exception("PID calibration preparation step failed")
+            return
+        if command.phase == "ready":
+            self._measured_holding_point_c = command.holding_point_c
+            self._measured_holding_power_pct = command.holding_power_pct
+        elif command.phase in {"idle", "approaching"}:
+            self._measured_holding_point_c = None
+            self._measured_holding_power_pct = None
+
+    def _store_thermal_trace(
+        self,
+        identity: CalibrationMachineIdentity,
+        protocol: CalibrationProtocol,
+        ambient_c: float | None,
+    ) -> None:
+        """Keep the open-loop part of a run as a profile for TilauPID.
+
+        Section 8 bis: an .alog holds nothing from before the recording starts,
+        so a calibration is the only source of qualified thermal profiles.  The
+        trace is raw evidence; the existing offline fitter turns three of them
+        into a model.  Nothing here fits anything.
+        """
+        if ambient_c is None:
+            _log.info("PID calibration trace skipped: no ambient reading")
+            return
+        try:
+            root = QStandardPaths.writableLocation(
+                QStandardPaths.StandardLocation.AppDataLocation
+            )
+            if not root:
+                return
+            write_thermal_trace(
+                Path(root) / "tilauscope" / "pid-calibration" / "traces",
+                identity=identity,
+                points=protocol.points,
+                ambient_c=ambient_c,
+                open_loop_end_sec=protocol.timing.recover_down_end,
+            )
+        except (OSError, ValueError):
+            _log.exception("PID calibration thermal trace could not be stored")
+
+    def _calibration_display_limits(
+        self, target_c: float | None, hold_power_pct: float | None
+    ) -> dict[str, float]:
+        """Figures the preparation card shows, all derived, none commanded."""
+        slider = int(getattr(self.pid, "pidPositiveTarget", 0)) - 1
+        maximums = getattr(self.aw, "eventslidermax", ())
+        try:
+            slider_max = (
+                float(maximums[slider]) if 0 <= slider < len(maximums) else 100.0
+            )
+        except (TypeError, ValueError):
+            slider_max = 100.0
+        limits = CalibrationLimits(
+            target_c=target_c if target_c is not None else 0.0,
+            baseline_power_pct=hold_power_pct if hold_power_pct is not None else 0.0,
+            power_max_pct=min(slider_max, float(self.pid.dutyMax)),
+        )
+        return {
+            "maximum_power": limits.power_max_pct,
+            "stop_c": limits.open_loop_ceiling_c,
+            "hot_used": self._hot_minutes_used(),
+            "hot_budget": self._hot_time_limits()[1],
+        }
+
+    def _cool_machine(self) -> None:
+        """Protocol section 8.2: cutting the heat does not cool a hot drum.
+
+        Opens the airflow, and the extractor when one is paired, through the
+        same centralised slider transaction the heater uses.  Terminal only.
+        """
+        try:
+            self.aw.tilaupidSliderCommandSignal.emit(
+                self._AIRFLOW_SLIDER, self._COOLING_PCT, True
+            )
+        except Exception:  # noqa: BLE001 - never mask the stop that called us
+            _log.exception("PID calibration could not open the airflow")
+        if not self._extractor_is_paired():
+            return
+        try:
+            self.aw.tilaupidSliderCommandSignal.emit(
+                self._EXTRACTOR_SLIDER, self._COOLING_PCT, True
+            )
+        except Exception:  # noqa: BLE001
+            _log.exception("PID calibration could not open the extractor")
+
+    def _extractor_is_paired(self) -> bool:
+        return (
+            getattr(self.aw, "bleAirwaveDeviceName", None) is not None
+            and getattr(self.aw, "bleAirwaveDevice", None) is not None
+        )
+
+    def _slider_action_configured(self, slider: int) -> bool:
+        actions = getattr(self.aw, "eventslideractions", ())
+        try:
+            return 0 <= slider < len(actions) and int(actions[slider]) != 0
+        except (TypeError, ValueError):
+            return False
+
+    def _extractor_not_cooling(self) -> bool:
+        """True when the extractor is off, unpaired, or below its cooling step."""
+        if not self._extractor_is_paired():
+            return True
+        values = getattr(self.aw, "eventslidervalues", ())
+        try:
+            if not 0 <= self._EXTRACTOR_SLIDER < len(values):
+                return False
+            return float(values[self._EXTRACTOR_SLIDER]) <= self._EXTRACTOR_COOLING_PCT
+        except (TypeError, ValueError):
+            return False
+
+    def _hot_minutes_used(self) -> float:
+        """Minutes the machine has spent above the hot threshold, from the
+        sampled series — never from when this window was opened."""
+        qmc = self.aw.qmc
+        started = bool(getattr(qmc, "flagstart", False))
+        times = qmc.timex if started else qmc.on_timex
+        series = (qmc.temp2 if started else qmc.on_temp2)
+        try:
+            count = min(len(times), len(series))
+            if count < 2:
+                return 0.0
+            index = count
+            threshold = self._hot_time_limits()[0]
+            while index > 0 and float(series[index - 1]) > threshold:
+                index -= 1
+            if index >= count:
+                return 0.0
+            return max(0.0, (float(times[count - 1]) - float(times[index])) / 60.0)
+        except (TypeError, ValueError, IndexError):
+            return 0.0
+
+    def _known_step_response_fraction(self, fingerprint: str) -> float | None:
+        """Fraction of the equilibrium a 90-second step phase covers.
+
+        Derived from the inertia a previous run measured on this exact machine.
+        None until one has: the protocol then uses its smallest step, and that
+        first run is what produces the inertia.
+        """
+        try:
+            value = QSettings().value(
+                f"{self._TAU_SETTINGS_ROOT}/{fingerprint}", 0.0, float
+            )
+            tau = float(value)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(tau) or tau <= 0.0:
+            return None
+        return 1.0 - math.exp(-90.0 / tau)
+
+    def _remember_step_response(self, fingerprint: str, tau_sec: float) -> None:
+        if not math.isfinite(tau_sec) or not 5.0 <= tau_sec <= 600.0:
+            return
+        QSettings().setValue(f"{self._TAU_SETTINGS_ROOT}/{fingerprint}", tau_sec)
+
+    def _known_thermal_gain(
+        self, target_c: float, hold_power_pct: float
+    ) -> float | None:
+        """Protocol section 4.1: degC of hold temperature per heater point.
+
+        Read from the hold points TilauPID already learned, then from the
+        quadratic heater law.  None when neither is available: the protocol then
+        falls back to its smallest step.
+        """
+        try:
+            settings = QSettings()
+            nodes = read_law_nodes(settings, law_context_prefix(self.aw))
+            gain = thermal_gain_c_per_pct(nodes, target_c)
+            if gain is not None:
+                return gain
+            ambient = self._ambient_c()
+            if ambient is None:
+                return None
+            return quadratic_thermal_gain_c_per_pct(
+                target_c, ambient, hold_power_pct
+            )
+        except Exception:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+            _log.exception("PID calibration could not read the machine gain")
+            return None
+
+    def _ambient_c(self) -> float | None:
+        probe = getattr(self.aw, "bleTilauScopeDevice", None)
+        value = getattr(probe, "temperature", None) if probe is not None else None
+        try:
+            ambient = float(value)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(ambient) or not -10.0 < ambient < 50.0:
+            return None
+        return ambient
+
+    def _calibration_target_c(self) -> float | None:
+        """Calibration temperature, in degC: the point the machine actually holds.
+
+        Protocol section 3.3 — nobody reaches a temperature.  TilauPID parks the
+        machine near its setpoint and hands over; the mean measured in open loop
+        afterwards is the calibration temperature.  It can never be read from
+        the engine, which copies the process value into its own target while the
+        PID is stopped.
+        """
+        value = self._measured_holding_point_c
+        if value is None or not math.isfinite(value):
+            return None
+        return value
+
+    def _approach_setpoint_c(self) -> float | None:
+        """Setpoint TilauPID aims for during the approach, in degC.
+
+        This is TilauPID's own configuration, never Artisan's software-PID SV
+        box: they are different fields and can differ.
+        """
+        preheat = getattr(self.aw, "tilauPreheatingPid", None)
+        try:
+            value = float(preheat.cfg.target_sv)  # type: ignore[union-attr]
+        except (AttributeError, TypeError, ValueError):
+            return None
+        return value if math.isfinite(value) and value > 0.0 else None
+
+    def _read_process_value(self) -> tuple[float | None, object | None]:
+        """Read the PID process value from its own series, with a freshness token.
+
+        The engine snapshot cannot be used here: :meth:`PID.update` keeps its
+        last good ``lastInput`` when the probe answers -1, and it is not called
+        at all while Artisan's Control button is off.  A frozen probe would then
+        read as a perfectly stable machine.  Reading the sampled series that
+        feeds the engine makes an invalid or absent reading visible.
+        """
+        qmc = self.aw.qmc
+        started = bool(getattr(qmc, "flagstart", False))
+        times = qmc.timex if started else qmc.on_timex
+        if not times:
+            return None, None
+        token = (started, len(times), times[-1])
+        source = int(getattr(self.pid, "pidSource", 1))
+        try:
+            if source <= 1:
+                series = qmc.temp2 if started else qmc.on_temp2
+                value = series[-1] if series else None
+            elif source == 2:
+                series = qmc.temp1 if started else qmc.on_temp1
+                value = series[-1] if series else None
+            else:
+                extra = source - 3
+                index = extra // 2
+                lists = (
+                    (qmc.extratemp1 if started else qmc.on_extratemp1)
+                    if extra % 2 == 0
+                    else (qmc.extratemp2 if started else qmc.on_extratemp2)
+                )
+                channel = lists[index] if index < len(lists) else None
+                value = channel[-1] if channel else None
+        except (AttributeError, IndexError, TypeError):
+            return None, token
+        if value is None or not math.isfinite(float(value)) or float(value) == -1.0:
+            return None, token
+        return float(value), token
+
     def _ror(self, pv: float, now: float) -> float:
         self._pv_history.append((now, pv))
         if len(self._pv_history) < 2:
@@ -1087,7 +1479,10 @@ class PIDAutotune(QDialog):
         try:
             data = self._read_engine()
             pv_raw = data["pv"]
-            valid = pv_raw is not None and pv_raw != -1.0
+            # The engine value drives the narrative, but only a live reading of
+            # the sampled series proves the probe is still answering.
+            measured, _ = self._read_process_value()
+            valid = pv_raw is not None and pv_raw != -1.0 and measured is not None
             pv = pv_raw if pv_raw is not None and pv_raw != -1.0 else 0.0
             target = data["target"] if valid else 0.0
             scale = 1.8 if self.aw.qmc.mode == "F" else 1.0
@@ -1096,9 +1491,13 @@ class PIDAutotune(QDialog):
             ror_c = self._ror(pv, now) if valid else 0.0
             if valid:
                 self._error_history.append(error_c)
+                measured_c = temperature_to_c(
+                    measured if measured is not None else pv,
+                    self.aw.qmc.mode,
+                )
                 self._readiness_history.append((
                     now,
-                    temperature_to_c(pv, self.aw.qmc.mode),
+                    measured_c,
                     error_c,
                     ror_c,
                 ))
@@ -1345,6 +1744,8 @@ class CalibrationReadinessDialog(QDialog):
         self._guide_timer.setInterval(1000)
         self._guide_timer.timeout.connect(self.refresh)
         self._details_visible = False
+        self._preparation: PreparationSequence | None = None
+        self._preparation_command: PreparationCommand | None = None
         self._awaiting_final_shutdown_confirmation = False
         self._final_result_text = ""
         apply_tilau_theme(self, ground=False)
@@ -1361,7 +1762,10 @@ class CalibrationReadinessDialog(QDialog):
             f"QLabel, QCheckBox {{ color:{THEME['TEXT']}; }}"
         )
         self.setWindowTitle(QApplication.translate("tilauscope_pid", "PREPARE THE 10-MINUTE TEST"))
-        self.setModal(True)
+        # Never modal: the test's own safety rule is that moving Artisan's
+        # heater slider by hand stops it, and a modal window would put that
+        # slider out of reach for the whole ten minutes.
+        self.setModal(False)
         screen = assistant.screen() or QApplication.primaryScreen()
         if screen is None:
             dialog_width, dialog_height = 680, 520
@@ -1552,23 +1956,16 @@ class CalibrationReadinessDialog(QDialog):
         self.guide_title.setText(QApplication.translate("tilauscope_pid", "The test remains locked"))
         self.next_steps.setText(text)
 
-    def _displayed_test_point(self) -> tuple[float | None, float | None, str]:
-        """Return current BT and PID target in the unit shown by Artisan."""
+    def _displayed_temperature(self) -> tuple[float | None, str]:
+        """Measured temperature in the unit Artisan shows, or None."""
+        mode = str(getattr(self.assistant.aw.qmc, "mode", "C"))
         try:
-            engine = self.assistant._read_engine()
-            pv = engine["pv"]
-            target = float(engine["target"])
+            pv, _ = self.assistant._read_process_value()
             if pv is None or not math.isfinite(float(pv)):
-                pv = None
-            if not math.isfinite(target):
-                target = None
-            return (
-                None if pv is None else float(pv),
-                target,
-                str(self.assistant.aw.qmc.mode),
-            )
+                return None, mode
+            return float(pv), mode
         except (AttributeError, TypeError, ValueError):
-            return None, None, str(getattr(self.assistant.aw.qmc, "mode", "C"))
+            return None, mode
 
     def _current_heater_power(self) -> float | None:
         slider = int(getattr(self.assistant.pid, "pidPositiveTarget", 0)) - 1
@@ -1652,21 +2049,20 @@ class CalibrationReadinessDialog(QDialog):
             safe_min = max(slider_min, float(self.assistant.pid.dutyMin)) + 13.0
             safe_max = min(slider_max, float(self.assistant.pid.dutyMax)) - 13.0
             if safe_min <= safe_max:
-                pv, target, unit = self._displayed_test_point()
+                pv, unit = self._displayed_temperature()
                 current_text = (
                     QApplication.translate("tilauscope_pid", "unknown")
                     if current is None or not math.isfinite(current)
                     else f"{current:g}%"
                 )
-                pv_text = "—" if pv is None else f"{pv:g} °{unit}"
-                target_text = "—" if target is None else f"{target:g} °{unit}"
-                return QApplication.translate("tilauscope_pid", 
-                    "TilauScope is observing only; you control the heater.\n\n"
-                    "Temperature to reach: {target}   •   Current BT: {temperature}\n"
-                    "Set the heater between {minimum:g}% and {maximum:g}% "
-                    "(currently {current})."
+                pv_text = "—" if pv is None else f"{pv:.1f} °{unit}"
+                return QApplication.translate("tilauscope_pid",
+                    "The machine is holding at {current}, too close to the "
+                    "limits of its heat range for the test to move it both "
+                    "ways. It needs to settle between {minimum:g}% and "
+                    "{maximum:g}%.\n"
+                    "Current BT: {temperature}"
                 ).format(
-                    target=target_text,
                     temperature=pv_text,
                     minimum=safe_min,
                     maximum=safe_max,
@@ -1677,38 +2073,39 @@ class CalibrationReadinessDialog(QDialog):
                 "The automatic test remains locked."
             )
 
+        if "hot_time_budget" in blocked:
+            return QApplication.translate("tilauscope_pid",
+                "The machine has been hot for {used:.0f} min and the test needs "
+                "{needed:.0f} more, past what this machine takes in one go. Let "
+                "it cool, then start again — or test at a lower temperature, "
+                "where it can stay hot longer."
+            ).format(
+                used=self.assistant._hot_minutes_used(),
+                needed=self.assistant._TEST_HOT_MINUTES,
+            )
+
+        if "extractor_not_cooling" in blocked:
+            return QApplication.translate("tilauscope_pid",
+                "Turn the extractor down to {limit}% or less. Above that it "
+                "cools the drum, and the test would measure a machine that is "
+                "being chilled the whole time."
+            ).format(limit=self.assistant._EXTRACTOR_COOLING_PCT)
+
+        if "airflow_path_configured" in blocked:
+            return QApplication.translate("tilauscope_pid",
+                "TilauScope cannot command the fan on this machine, so it could "
+                "not cool it once the test is over. Configure the airflow slider "
+                "before running the test."
+            )
+
+        if "holding_point_confirmed" in blocked:
+            return self._preparation_guide_text()
+
         if "sensor_stable" in blocked:
-            collected = min(len(self.assistant._readiness_history), 30)
-            pv, target, unit = self._displayed_test_point()
-            power = self._current_heater_power()
-            if pv is not None and target is not None:
-                tolerance = 0.7 * (1.8 if unit == "F" else 1.0)
-                direction = "hold"
-                if pv < target - tolerance:
-                    direction = "increase"
-                elif pv > target + tolerance:
-                    direction = "decrease"
-                power_text = "—" if power is None else f"{power:g}%"
-                if direction == "increase":
-                    return QApplication.translate("tilauscope_pid", 
-                        "Increase the heater slightly.\n\n"
-                        "Current BT: {temperature:g} °{unit}   •   Target: "
-                        "{target:g} °{unit}   •   Heater: {power}"
-                    ).format(
-                        temperature=pv, target=target, unit=unit, power=power_text
-                    )
-                if direction == "decrease":
-                    return QApplication.translate("tilauscope_pid", 
-                        "Decrease the heater slightly.\n\n"
-                        "Current BT: {temperature:g} °{unit}   •   Target: "
-                        "{target:g} °{unit}   •   Heater: {power}"
-                    ).format(
-                        temperature=pv, target=target, unit=unit, power=power_text
-                    )
-            return QApplication.translate("tilauscope_pid", 
-                "Do not change anything. TilauScope is checking stability: "
-                "{collected}/30 seconds. It will advance automatically."
-            ).format(collected=collected)
+            return QApplication.translate("tilauscope_pid",
+                "Do not change anything. TilauScope is checking that the "
+                "temperature signal is steady: {collected}/30 seconds."
+            ).format(collected=min(len(self.assistant._readiness_history), 30))
 
         human_codes = {
             "machine_empty_confirmed",
@@ -1735,9 +2132,106 @@ class CalibrationReadinessDialog(QDialog):
                 "A machine setting still prevents the test. Open the technical "
                 "details below to see the single crossed setting."
             )
-        return QApplication.translate("tilauscope_pid", 
-            "Preparation is complete. The next button sends only 0% heat so you "
-            "can verify that the physical heater really stops."
+        if not self.assistant._zero_output_is_qualified_for_current_machine():
+            return QApplication.translate("tilauscope_pid",
+                "Preparation is complete. The next button sends only 0% heat so you "
+                "can verify that the physical heater really stops."
+            )
+        return self._ready_card_text()
+
+    def _ready_card_text(self) -> str:
+        """The card of protocol section 10, once the machine is holding.
+
+        The test temperature is measured, never chosen, so it and the automatic
+        stop that follows from it can only be shown after the hand-over.
+        """
+        unit = str(getattr(self.assistant.aw.qmc, "mode", "C"))
+        target_c = self.assistant._calibration_target_c()
+        power = self.assistant._measured_holding_power_pct
+        limits = self.assistant._calibration_display_limits(target_c, power)
+        used, budget = limits["hot_used"], limits["hot_budget"]
+        if target_c is None:
+            return QApplication.translate("tilauscope_pid",
+                "TilauScope will bring the machine to temperature itself, then "
+                "measure where it settles. You have nothing to set."
+            )
+        return QApplication.translate("tilauscope_pid",
+            "Ready — the machine is holding.\n\n"
+            "Test temperature   {target}   (measured, not chosen)\n"
+            "Heat setting       {power}\n"
+            "Maximum heat       {maximum:g}%\n"
+            "Automatic stop     {stop}\n\n"
+            "Hot for {used:.0f} min of about {budget:.0f}. The test adds "
+            "{needed:.0f} more. Stay beside the machine."
+        ).format(
+            target=self._temperature_text(target_c, unit),
+            power="—" if power is None else f"{power:g}%",
+            maximum=limits["maximum_power"],
+            stop=self._temperature_text(limits["stop_c"], unit),
+            used=used,
+            budget=budget,
+            needed=self.assistant._TEST_HOT_MINUTES,
+        )
+
+    @staticmethod
+    def _temperature_text(value_c: float | None, unit: str) -> str:
+        if value_c is None:
+            return "—"
+        shown = value_c * 1.8 + 32.0 if unit == "F" else value_c
+        return f"{shown:.1f} °{unit}"
+
+    def _preparation_guide_text(self) -> str:
+        command = self._preparation_command
+        sequence = self._preparation
+        pv, unit = self._displayed_temperature()
+        pv_text = "—" if pv is None else f"{pv:.1f} °{unit}"
+        power = self._current_heater_power()
+        power_text = "—" if power is None else f"{power:g}%"
+        if sequence is None:
+            return QApplication.translate("tilauscope_pid",
+                "TilauScope will bring the machine to temperature itself. You "
+                "have nothing to set. Stay beside the machine for the whole test."
+            )
+        if sequence.phase == "failed":
+            return QApplication.translate("tilauscope_pid",
+                "The machine would not hold a steady temperature at any heat "
+                "setting near {power}. Let it cool and start again."
+            ).format(power=power_text)
+        if sequence.phase == "approaching":
+            target = self.assistant._approach_setpoint_c()
+            target_text = "—" if target is None else (
+                f"{target:.0f} °C" if unit == "C" else f"{target * 1.8 + 32:.0f} °F"
+            )
+            return QApplication.translate("tilauscope_pid",
+                "Bringing the machine to {target}.\n\n"
+                "Nothing to do. Stay beside the machine — you can stop at any "
+                "moment with the button below or the machine's own cut-off.\n"
+                "Current BT: {temperature}   •   Heater: {power}"
+            ).format(target=target_text, temperature=pv_text, power=power_text)
+        if sequence.phase == "adjusting" and command is not None:
+            return QApplication.translate("tilauscope_pid",
+                "At {power} the temperature keeps moving, so that setting is "
+                "not the one that holds. TilauScope is trying {proposed}%. This "
+                "is the only adjustment it will make.\n"
+                "Current BT: {temperature}   •   Drifting {drift:+.1f} °C/min"
+            ).format(
+                power=power_text,
+                proposed=command.set_heater_pct,
+                temperature=pv_text,
+                drift=command.drift_c_per_min,
+            )
+        observed = 0.0 if command is None else command.seconds_observed
+        drift = 0.0 if command is None else command.drift_c_per_min
+        return QApplication.translate("tilauscope_pid",
+            "The heater is now fixed at {power}. TilauScope is checking that "
+            "the temperature stays put without help. Do not touch anything.\n\n"
+            "Current BT: {temperature}   •   Drifting {drift:+.1f} °C/min"
+            "   •   {remaining:.0f} s to go"
+        ).format(
+            power=power_text,
+            temperature=pv_text,
+            drift=drift,
+            remaining=max(0.0, PreparationSequence.WINDOW_SEC - observed),
         )
 
     def _guide_heading(
@@ -1782,6 +2276,36 @@ class CalibrationReadinessDialog(QDialog):
         )
 
     def refresh(self) -> None:
+        try:
+            self._refresh()
+        except Exception:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+            _log.exception("PID calibration readiness refresh failed")
+
+    def start_preparation(self) -> None:
+        """Begin the approach: TilauPID brings the machine, then hands over."""
+        if self._preparation is not None:
+            return
+        resolution = 1.0
+        try:
+            context = getattr(self.assistant.aw, "_tilau_roast_context", None)
+            resolution = float(getattr(context, "heater_resolution_pct", 1.0) or 1.0)
+        except (TypeError, ValueError):
+            resolution = 1.0
+        self._preparation = PreparationSequence(heater_resolution_pct=resolution)
+
+    def _tick_preparation(self) -> None:
+        sequence = self._preparation
+        if sequence is None or sequence.phase in {"ready", "failed"}:
+            return
+        sample = self.assistant.preparation_sample()
+        if sample is None:
+            return
+        command = sequence.update(sample)
+        self._preparation_command = command
+        self.assistant.apply_preparation_command(command)
+
+    def _refresh(self) -> None:
+        self._tick_preparation()
         report = self.assistant._live_calibration_readiness(
             machine_empty=self.machine_empty.isChecked(),
             airflow_safe=self.airflow_safe.isChecked(),
@@ -1809,6 +2333,18 @@ class CalibrationReadinessDialog(QDialog):
             ),
             "heater_slider_configured": QApplication.translate("tilauscope_pid", 
                 "A heater slider is assigned to the PID"
+            ),
+            "holding_point_confirmed": QApplication.translate("tilauscope_pid",
+                "The machine held its heat setting on its own"
+            ),
+            "airflow_path_configured": QApplication.translate("tilauscope_pid",
+                "TilauScope can open the fan to cool the machine afterwards"
+            ),
+            "extractor_not_cooling": QApplication.translate("tilauscope_pid",
+                "The extractor is low enough not to cool the drum during the test"
+            ),
+            "hot_time_budget": QApplication.translate("tilauscope_pid",
+                "The machine has not been hot for too long already"
             ),
             "heater_action_configured": QApplication.translate("tilauscope_pid", 
                 "The heater slider has a hardware action"
@@ -2179,6 +2715,8 @@ class CalibrationReadinessDialog(QDialog):
             self.assistant._calibration_runner = None
         if runner is not None:
             runner.close()
+        # The guidance stops during the test; bring it back once it is over.
+        self._guide_timer.start()
         if "journal_persistence_failed" in reason:
             result = QApplication.translate("tilauscope_pid",
                 "The previous PID settings were restored, but the report could not "
@@ -2190,10 +2728,22 @@ class CalibrationReadinessDialog(QDialog):
                 "restored and the report is ready for review."
             )
         elif phase == "complete":
-            result = QApplication.translate("tilauscope_pid",
-                "The response improved safely. The cautious setting was kept and "
-                "the complete report was saved."
+            candidate = (
+                runner.coordinator.protocol.candidate
+                if runner is not None else None
             )
+            if candidate is not None and candidate.clamped:
+                result = QApplication.translate("tilauscope_pid",
+                    "The response improved safely. A single test may only move "
+                    "the settings part of the way, so the safety limit capped "
+                    "this one: run the test again to go further. The complete "
+                    "report was saved."
+                )
+            else:
+                result = QApplication.translate("tilauscope_pid",
+                    "The response improved safely. The cautious setting was kept "
+                    "and the complete report was saved."
+                )
         else:
             result = QApplication.translate("tilauscope_pid",
                 "The test stopped and the previous PID settings were restored. "
@@ -2224,9 +2774,10 @@ class CalibrationReadinessDialog(QDialog):
             dispatch_text
             + "\n\n"
             + QApplication.translate("tilauscope_pid",
-                "Look at the machine. If necessary, use its physical heat cut-off. "
-                "Confirm below only when the heater is really off."
-            )
+                "The heater is off and the fan is now running at {cooling}% to cool "
+                "the machine. Look at the machine — if necessary, use its physical "
+                "heat cut-off. Confirm below only when the heater is really off."
+            ).format(cooling=self.assistant._COOLING_PCT)
             + "\n\n"
             + result
         )
@@ -2247,7 +2798,22 @@ class CalibrationReadinessDialog(QDialog):
         self.confirm_final_shutdown.hide()
         self.guide_progress.setText(QApplication.translate("tilauscope_pid", "TEST FINISHED"))
         self.guide_title.setText(QApplication.translate("tilauscope_pid", "Physical heater shutdown confirmed"))
-        self.next_steps.setText(self._final_result_text)
+        self.next_steps.setText(
+            self._final_result_text + "\n\n" + self._hot_time_after_test_text()
+        )
+
+    def _hot_time_after_test_text(self) -> str:
+        """How much of the machine's continuous hot time this session used.
+
+        It decides whether a second test, at another temperature, can follow now
+        or has to wait for the machine to cool (protocol section 3.4).
+        """
+        used = self.assistant._hot_minutes_used()
+        budget = self.assistant._hot_time_limits()[1]
+        return QApplication.translate("tilauscope_pid",
+            "Hot for {used:.0f} min of about {budget:.0f}. A second test at "
+            "another temperature needs a cool machine."
+        ).format(used=used, budget=budget)
 
     def _request_close(self) -> None:
         if self._runner is not None:
@@ -2261,7 +2827,30 @@ class CalibrationReadinessDialog(QDialog):
         if self._awaiting_final_shutdown_confirmation:
             self.guide_title.setText(QApplication.translate("tilauscope_pid", "Verify the physical heater before closing"))
             return
+        self._release()
         self.accept()
+
+    def _release(self) -> None:
+        """Drop the timer and the signal connection.
+
+        accept() never goes through closeEvent, so a dialog closed by its own
+        button would otherwise keep refreshing at 1 Hz and keep answering the
+        applied-power signal, voiding the next run's zero-output qualification.
+        """
+        self._timeout_timer.stop()
+        self._guide_timer.stop()
+        if self._applied_signal is not None:
+            try:
+                self._applied_signal.disconnect(self._zero_applied)
+            except (TypeError, RuntimeError):
+                pass
+            self._applied_signal = None
+
+    def showEvent(self, a0: QShowEvent | None) -> None:
+        # A frameless window that is not the key window gets no hover on macOS.
+        super().showEvent(a0)
+        self.raise_()
+        self.activateWindow()
 
     def mousePressEvent(self, a0: QMouseEvent | None) -> None:
         if a0 is not None and a0.button() == Qt.MouseButton.LeftButton:
@@ -2291,11 +2880,7 @@ class CalibrationReadinessDialog(QDialog):
             if a0 is not None:
                 a0.ignore()
             return
-        if self._applied_signal is not None:
-            try:
-                self._applied_signal.disconnect(self._zero_applied)
-            except (TypeError, RuntimeError):
-                pass
+        self._release()
         if a0 is not None:
             a0.accept()
 # pylint: enable=protected-access

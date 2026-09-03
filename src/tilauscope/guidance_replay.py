@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from tilauscope.guidance_observer import ActionSource
+from tilauscope.guidance_phase import milestone_marked
 
 _ALARM_SLIDER = re.compile(r'A(\d+) \(S(\d+)\)')
 
@@ -75,7 +76,10 @@ def recorded_actions(profile: dict[str, Any]) -> tuple[RecordedAction, ...]:
         return ()
     try:
         charge_idx = int(timeindex[0])
-        drop_idx = int(timeindex[6]) if len(timeindex) > 6 else len(timex) - 1
+        # DROP unmarked is 0, not -1: taking the sentinel for a real index makes
+        # the window below reject every action of the profile.
+        drop_idx = (int(timeindex[6]) if milestone_marked(timeindex, 6)
+                    else len(timex) - 1)
     except (TypeError, ValueError):
         return ()
     if not (0 <= charge_idx < len(timex)):

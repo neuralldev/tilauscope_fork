@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (QApplication) # @UnusedImport @Reimport  @Unresolve
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.theme_qss import tint
-from tilauscope.tilauscope_types import (THEME, RoastingPhase, estimate_ror_dt, find_turning_point_index, find_flicks_crashes,
+from tilauscope.tilauscope_types import (THEME, RoastingPhase, normalize_timeindex, estimate_ror_dt, find_turning_point_index, find_flicks_crashes,
                                           WEIGHT_LOSS_TOLERANCE_PCT)
 from tilauscope.cave.common import (
     _logd, _PLOT_PALETTE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_LEGEND)
@@ -88,7 +88,7 @@ class ViewerMultiMixin:
             return {}
         timex = data.get('timex', [])
         temp2 = data.get('temp2', [])
-        ti = (list(data.get('timeindex', [])) + [-1] * 8)[:8]
+        ti = normalize_timeindex(data.get('timeindex', []))
         charge = ti[RoastingPhase.CHARGE]
         if charge < 0 or charge >= len(timex):
             return {}
@@ -578,8 +578,7 @@ class ViewerMultiMixin:
         # alias pour compatibilité on_plot_leave
         self._multi_markers = self._multi_markers_bt + self._multi_markers_et + self._multi_markers_ror
 
-        self._reconnect_hover()
-        self.canvas.mpl_connect('figure_leave_event', self.on_plot_leave)
+        self._reconnect_hover()  # connects hover AND leave, dropping the old pair
         self.last_plot_data = self._multi_curves[0]['data'] if self._multi_curves else None
         self.canvas.draw_idle()
         # Onglet Advanced Stats : dot plot comparatif + mini-résumé (pas le tableau).
@@ -596,7 +595,7 @@ class ViewerMultiMixin:
                     "Comparing {n} roasts · {mode} view — select one to return to single view."
                 ).format(n=len(self._multi_curves), mode=_mode_label))
         except Exception as e:
-            _logd.error(f"_multi_stats_html error: {e}")
+            _logd.error(f"multi curve plot error: {e}")
 
     def _on_multi_hover(self, event) -> None:
         """Hover en mode multi : identifie la courbe BT la plus proche du curseur."""
@@ -872,7 +871,7 @@ class ViewerMultiMixin:
         None si le développement reste propre."""
         if not data or not deltabt:
             return None
-        ti = (list(data.get('timeindex', [])) + [-1] * 8)[:8]
+        ti = normalize_timeindex(data.get('timeindex', []))
         charge_idx, drop_idx = ti[RoastingPhase.CHARGE], ti[RoastingPhase.DROP]
         timex = data.get('timex', [])
         if (charge_idx < 0 or drop_idx <= charge_idx or not timex
@@ -1118,90 +1117,3 @@ class ViewerMultiMixin:
                      f'</b><ul style="margin:4px 0 0 0;padding-left:18px;">{items}</ul>')
         html += '</div>'
         self.stats_summary.setText(html if (analysis or advices) else "")
-
-    def _multi_stats_html(self) -> str:
-        if not self._multi_curves:
-            return ""
-        metrics = [self._extract_roast_metrics(c['data']) for c in self._multi_curves if c.get('data')]
-        if not metrics:
-            return ""
-        n = len(metrics)
-        mode = metrics[0]['mode']
-        palette = self._make_multi_palette(n)
-        TD=THEME['SURFACE']; TH=THEME['BG']; HDR=THEME['BORDER']
-        BEST_BG='rgba(166,227,161,0.18)'; WARN_BG=tint('CRITICAL', 0.15)
-        BEST=THEME['SUCCESS']; WARN=THEME['CRITICAL']; NEUT=THEME['TEXT']; MUTED=THEME['OVERLAY2']
-        F="font-family:'SF Pro Display','Segoe UI',sans-serif;"
-        def th(t, w=''):
-            ws=f'width:{w};' if w else ''
-            return f'<th style="background:{HDR};color:{NEUT};padding:7px 10px;text-align:left;font-size:11px;font-weight:600;border-bottom:1px solid {THEME["SURFACE1"]};{ws}{F}">{t}</th>'
-        def lc(t):
-            return f'<td style="background:{TH};color:{MUTED};padding:6px 10px;font-size:11px;white-space:nowrap;border-bottom:1px solid #2a2a3a;{F}">{t}</td>'
-        def vc(t, bg=None, color=None, bold=False):
-            bg=bg or TD; color=color or NEUT; fw='font-weight:700;' if bold else ''
-            return f'<td style="background:{bg};color:{color};padding:6px 10px;font-size:12px;text-align:right;border-bottom:1px solid #2a2a3a;{fw}{F}">{t}</td>'
-        def sec(t):
-            return f'<tr><td colspan="{n+1}" style="background:#252536;color:{THEME["ACCENT"]};padding:5px 10px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;border-top:1px solid {THEME["SURFACE1"]};{F}">{t}</td></tr>'
-        def hrow(label, vals, ideal=None, lower_better=False, fmt=str, warn_fn=None, unit=''):
-            nums=[v for v in vals if v is not None]
-            cells=[]
-            for v in vals:
-                if v is None: cells.append(vc('\u2014', color=MUTED)); continue
-                bg2=TD; col2=NEUT; bold=False
-                if ideal is not None and nums:
-                    bv=min(nums, key=lambda x:abs(x-ideal))
-                    if v==bv: bg2,col2,bold=BEST_BG,BEST,True
-                elif lower_better and nums:
-                    if v==min(nums): bg2,col2,bold=BEST_BG,BEST,True
-                if warn_fn and warn_fn(v): bg2,col2=WARN_BG,WARN
-                cells.append(vc(f'{fmt(v)}{unit}',bg=bg2,color=col2,bold=bold))
-            return '<tr>'+lc(label)+''.join(cells)+'</tr>'
-        # header
-        hdr='<tr>'+th('Metric','150px')
-        for i,m in enumerate(metrics):
-            bt_col=palette[i][0]
-            short=m['title'][:26]+'\u2026' if len(m['title'])>26 else m['title']
-            hdr+=f'<th style="background:{HDR};color:{bt_col};padding:7px 10px;font-size:11px;font-weight:700;border-bottom:1px solid {THEME["SURFACE1"]};text-align:right;{F}" title="{m["title"]}">{short}</th>'
-        hdr+='</tr>'
-        rows=hdr
-        rows+=sec('\u23f1 TIME')
-        rows+=hrow('Total',    [m['total_s']    for m in metrics], ideal=sum(m['total_s']    for m in metrics)/n, fmt=lambda x: next(m['total_fmt']    for m in metrics if m['total_s']   ==x))
-        rows+=hrow('Drying',   [m['drying_s']   for m in metrics], ideal=sum(m['drying_s']   for m in metrics)/n, fmt=lambda x: next(m['drying_fmt']   for m in metrics if m['drying_s']  ==x))
-        rows+=hrow('Maillard', [m['maillard_s'] for m in metrics], ideal=sum(m['maillard_s'] for m in metrics)/n, fmt=lambda x: next(m['maillard_fmt'] for m in metrics if m['maillard_s']==x))
-        rows+=hrow('Development',[m['dev_s']    for m in metrics], ideal=sum(m['dev_s']      for m in metrics)/n, fmt=lambda x: next(m['dev_fmt']      for m in metrics if m['dev_s']     ==x))
-        rows+=sec('\U0001f4ca KEY RATIOS')
-        rows+=hrow('DTR %',       [m['dtr'] for m in metrics], ideal=20.0, warn_fn=lambda v:v<15 or v>25, fmt=lambda x:f'{x:.1f}', unit=' %')
-        # Each roast carries its own target (water + colour + development); the
-        # row can only show one, so it shows their average and flags each roast
-        # against it by the same tolerance the debrief uses.
-        _wl_targets = [m['wl_target'] for m in metrics if m.get('wl_target')]
-        _wl_ideal = sum(_wl_targets) / len(_wl_targets) if _wl_targets else 0.0
-        rows+=hrow('Weight loss', [m['wl']  for m in metrics], ideal=_wl_ideal, warn_fn=lambda v:v is not None and abs(v - _wl_ideal) > WEIGHT_LOSS_TOLERANCE_PCT, fmt=lambda x:f'{x:.1f}', unit=' %')
-        rows+=sec(f'\U0001f321 TEMPERATURES (\u00b0{mode})')
-        cb_avg = sum(m['charge_bt'] for m in metrics if m['charge_bt'])/max(1,sum(1 for m in metrics if m['charge_bt']))
-        db_avg = sum(m['drop_bt']   for m in metrics if m['drop_bt']  )/max(1,sum(1 for m in metrics if m['drop_bt']))
-        rows+=hrow('Charge BT',  [m['charge_bt'] for m in metrics], ideal=cb_avg, fmt=lambda x:f'{x:.1f}')
-        rows+=hrow('Turn Point', [m['tp_bt']     for m in metrics], lower_better=True, fmt=lambda x:f'{x:.1f}')
-        rows+=hrow('Drop BT',    [m['drop_bt']   for m in metrics], ideal=db_avg, fmt=lambda x:f'{x:.1f}')
-        rows+=sec('\U0001f525 ROR (\u00b0/min)')
-        rows+=hrow('RoR Dry',      [m['ror_dry']   for m in metrics], ideal=12.0, fmt=lambda x:f'{x:.2f}')
-        rows+=hrow('RoR Maillard', [m['ror_mid']   for m in metrics], ideal=9.0,  fmt=lambda x:f'{x:.2f}')
-        rows+=hrow('RoR Finish',   [m['ror_fin']   for m in metrics], ideal=5.0,  fmt=lambda x:f'{x:.2f}')
-        rows+=hrow('RoR Total',    [m['ror_total'] for m in metrics], ideal=9.0,  fmt=lambda x:f'{x:.2f}')
-        rows+=sec('\u2696 WEIGHT')
-        wcells=[]
-        for m in metrics:
-            if m['w_in'] and m['w_out']: wcells.append(vc(f"{m['w_in']:.0f}\u2192{m['w_out']:.0f} {m['w_unit']}"))
-            else: wcells.append(vc('\u2014', color=MUTED))
-        rows+='<tr>'+lc('Green \u2192 Roasted')+''.join(wcells)+'</tr>'
-        table=f'<table style="width:100%;border-collapse:collapse;">{rows}</table>'
-        # coach advice
-        advices=self._generate_multi_coach_advice(metrics)
-        coach_html=''
-        if advices:
-            items=''.join(f'<li style="padding:4px 0;color:{NEUT};font-size:12px;border-bottom:1px solid #2a2a3a;{F}">{a}</li>' for a in advices)
-            coach_html=(f'<div style="margin-top:16px;">'
-                f'<div style="color:{THEME["ACCENT"]};font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 10px;background:#252536;border-radius:6px 6px 0 0;">'
-                f'\U0001f9d1\u200d\U0001f3eb COACH\'S COMPARATIVE ADVICE</div>'
-                f'<ul style="list-style:none;margin:0;padding:8px 12px;background:{TD};border-radius:0 0 6px 6px;">{items}</ul></div>')
-        return f'<div style="padding:8px;">{table}{coach_html}</div>'

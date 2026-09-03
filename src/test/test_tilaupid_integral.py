@@ -169,6 +169,7 @@ def test_sv_command_resets_integral_and_reloads_continuous_law() -> None:
     pid = cast(
         TilauPreheatPID,
         SimpleNamespace(
+            active=True,   # only a live preheat re-stamps the profile marker
             cfg=PIDConfig(),
             p_ss=20.0,
             lead_sec=5.0,

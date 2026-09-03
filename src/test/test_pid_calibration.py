@@ -38,11 +38,16 @@ def _ready_facts(**changes: object) -> CalibrationReadinessInputs:
         "artisan_pid_active": False,
         "sensor_valid": True,
         "stable_sample_count": 45,
-        "max_abs_error_c": 0.2,
+        "holding_point_confirmed": True,
         "temperature_span_c": 0.1,
         "max_abs_ror_c_per_min": 0.1,
         "heater_slider": 3,
         "heater_action_configured": True,
+        "airflow_path_configured": True,
+        "extractor_not_cooling": True,
+        "hot_minutes_used": 7.0,
+        "hot_minutes_budget": 30.0,
+        "hot_minutes_required": 10.5,
         "actuator_direction_normal": True,
         "current_power_pct": 30.0,
         "power_min_pct": 0.0,
@@ -76,7 +81,7 @@ def test_live_readiness_requires_every_automatic_and_human_gate() -> None:
         ("artisan_pid_active", True, "artisan_pid_stopped"),
         ("sensor_valid", False, "sensor_valid"),
         ("stable_sample_count", 29, "sensor_stable"),
-        ("max_abs_error_c", 0.71, "sensor_stable"),
+        ("holding_point_confirmed", False, "holding_point_confirmed"),
         ("temperature_span_c", 0.21, "sensor_stable"),
         ("max_abs_ror_c_per_min", 0.41, "sensor_stable"),
         ("heater_slider", None, "heater_slider_configured"),
@@ -229,6 +234,11 @@ def _run_virtual_plant(
             target_c=target,
             baseline_power_pct=baseline_power,
             target_margin_c=target_margin_c,
+            # What a real caller supplies: the machine's known gain magnitude
+            # and how much of it a 90-second phase covers.  The plant may still
+            # answer backwards; the sizing does not know that in advance.
+            thermal_gain_c_per_pct=abs(gain_c_per_pct),
+            step_response_fraction=1.0 - math.exp(-90.0 / tau_sec),
         ),
         current_kp=10.0,
         current_ki=0.15,
@@ -357,7 +367,7 @@ def test_identification_rejects_an_invisible_response() -> None:
         ({"communication_ok": False}, "communication_lost"),
         ({"roast_started": True}, "roast_started"),
         ({"manual_override": True}, "manual_override"),
-        ({"temperature_c": 202.1}, "temperature_limit"),
+        ({"temperature_c": 210.1}, "temperature_limit"),
         ({"ror_c_per_min": 30.1}, "ror_limit"),
         ({"now_sec": 4.0}, "sensor_timeout"),
     ],
@@ -402,7 +412,7 @@ def test_test_refuses_when_power_or_temperature_headroom_is_too_small() -> None:
         CalibrationLimits(
             target_c=200.0,
             baseline_power_pct=30.0,
-            target_margin_c=1.0,
+            absolute_temp_max_c=201.0,
         ),
         current_kp=10.0,
         current_ki=0.1,
@@ -428,7 +438,12 @@ def _live_coordinator(
     candidates: list[object] = []
     restores: list[bool] = []
     protocol = CalibrationProtocol(
-        CalibrationLimits(target_c=200.0, baseline_power_pct=30.0),
+        CalibrationLimits(
+            target_c=200.0,
+            baseline_power_pct=30.0,
+            thermal_gain_c_per_pct=0.15,
+            step_response_fraction=1.0 - math.exp(-90.0 / 55.0),
+        ),
         current_kp=10.0,
         current_ki=0.15,
         current_kd=0.0,

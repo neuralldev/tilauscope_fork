@@ -93,20 +93,26 @@
         <!-- 1 -->
         <div class="art-sec" id="a1">
           <h2><span class="num">01</span>Three ways to move heat</h2>
-          <p class="prose">Most roasting advice you will read online was written for a gas drum. On a gas drum, heat reaches the bean mostly by <b>conduction</b>—a hot steel wall the beans tumble against—with convection as a second channel. The Skywalker does something different: an infrared element sits <b>inside the drum</b>, and radiates. The beans are heated by light, not by the wall.</p>
+          <p class="prose">Most roasting advice you will read online was written for a gas drum. A classic gas drum uses all three channels: convection from hot gases, conduction where beans meet the drum, and radiation from hot metal. On many modern machines convection supplies the largest share, but the balance changes with the roaster, airflow, batch load and phase of the roast—there is no universal percentage (<cite><a href="https://doi.org/10.1016/j.jfoodeng.2011.02.030" target="_blank" rel="noopener noreferrer">Fabbri et al., 2011</a></cite>; <cite><a href="https://www.probat.com/newsroom/news/sustainability-meets-flexibility-the-new-p25e/" target="_blank" rel="noopener noreferrer">PROBAT, P25 heating system</a></cite>; <cite><a href="https://doi.org/10.1016/j.foodres.2022.112253" target="_blank" rel="noopener noreferrer">Al-Shemmeri et al., 2023</a></cite>). The Skywalker arranges those channels differently: an infrared element sits <b>inside its perforated drum</b>, making direct radiation a central heat source rather than relying on a massive heated wall. Airflow and contact still transfer heat; they do not disappear.</p>
           <div class="tw">
             <table>
-              <thead><tr><th>Dominant transfer</th><th>Typical machine</th><th>What the air control does</th><th>Burner behaviour</th></tr></thead>
+              <thead><tr><th>Heat-transfer character</th><th>Typical machine</th><th>What the air control does</th><th>Burner behaviour</th></tr></thead>
               <tbody>
-                <tr><td><b>Conduction</b></td><td>Classic gas drum</td><td><b>Cools</b>—forced convection strips heat from the bean surface</td><td>Slow, and the steel keeps radiating after you cut it</td></tr>
+                <tr><td><b>Mixed</b>—often convection-led</td><td>Classic gas drum</td><td><b>Transfers and exhausts</b>—it can add or remove heat, depending on gas temperature and flow</td><td>Slower response; the drum stores heat after a gas cut</td></tr>
                 <tr><td><b>Convection</b></td><td>Fluid bed</td><td><b>Is</b> the heat—air is the carrier</td><td>Very fast, almost no lag</td></tr>
-                <tr class="hi"><td><b>Radiation</b></td><td>Skywalker V2 · FIR/NIR, pull-type</td><td><b>Carries</b> the heat—see below; this one is the machine, not the physics</td><td>25–45 s to build, but cuts almost instantly</td></tr>
+                <tr class="hi"><td><b>Direct radiation</b></td><td>Skywalker V2 · FIR/NIR, pull-type</td><td><b>Carries</b> heat through the perforated bed—see below; this response belongs to the machine</td><td>25–45 s to build, but cuts almost instantly</td></tr>
               </tbody>
             </table>
           </div>
-          <p class="prose">Four consequences follow, and each one contradicts something you have probably read.</p>
+
+          <h3>How far does the light go?</h3>
+          <p class="prose">On this machine, most of the tumbling bean mass is roughly <b>20–25 cm from the 1000 W tube</b>. At charge I command no more than 80 %, the hardware-preservation ceiling I use throughout this article. Those numbers describe the geometry and the control setting, not the radiant power absorbed by the coffee: distance affects the incident flux and its spread over the bed, but says nothing by itself about penetration inside a bean. The heater command is non-linear, only a fraction of the emitted energy is intercepted and absorbed by the moving coffee, and 80 % on the control must not be read as 800 W in the beans.</p>
+          <p class="prose">Radiant does not mean that the bean roasts from the inside out. The element sends infrared radiation across the gap, and the bean absorbs different wavelengths at different depths. Shorter near-infrared wavelengths can deposit some energy below the immediate surface; longer infrared wavelengths are generally absorbed more superficially. Experiments on food materials find their greatest transmission around 1.0–1.2 µm and almost none above 2.5–3.0 µm, while measurements on intact green coffee show strong NIR responses to moisture, lipids and soluble constituents (<cite><a href="https://doi.org/10.1016/0260-8774(87)90022-7" target="_blank" rel="noopener noreferrer">Wade, 1987</a></cite>; <cite><a href="https://doi.org/10.1016/j.jfoodeng.2018.01.009" target="_blank" rel="noopener noreferrer">Caporaso et al., 2018a</a></cite>; <cite><a href="https://doi.org/10.1016/j.foodres.2017.12.031" target="_blank" rel="noopener noreferrer">Caporaso et al., 2018b</a></cite>). Their proportions and the bean's structure change during roasting, so its optical behaviour cannot be assumed to stay fixed. I have not measured the tube's emission spectrum or the bean's optical penetration depth on this machine, so I will not attach a millimetre value to it. <span class="badge b-open">open</span></p>
+          <p class="prose">Where radiation is absorbed, electromagnetic energy becomes heat. From there, most of the remaining journey toward the centre is ordinary thermal conduction through the bean—the same mechanism used by coffee-specific models of far-infrared heating (<cite><a href="https://doi.org/10.13031/aim.202300442" target="_blank" rel="noopener noreferrer">Karapitiya et al., 2023</a></cite>). The Skywalker therefore shortens the delivery chain for part of its energy; it is not a microwave and it does not erase the surface-to-core gradient. Drum rotation remains essential because it continually changes which surface faces the tube and spreads the radiant exposure around the bean.</p>
+
+          <p class="prose">A convection-led total does not make drum contact harmless: excessive local conductive flux can still scorch a bean without conduction having dominated the batch as a whole. Four practical consequences follow on the Skywalker.</p>
           <ul class="clean">
-            <li><b>ET below BT is normal here.</b> On a classic drum the environmental probe runs hotter than the beans. On this one the bean probe overtakes it right after the turning point, by around 26 °C. Nothing is broken.</li>
+            <li><b>ET below BT is normal here.</b> On many classic drums the environmental reading runs hotter than the beans. On this one the bean probe overtakes it right after the turning point, by around 26 °C. Nothing is broken.</li>
             <li><b>The ET/BT rate ratio will not find your dry end.</b> It is a machine-shaped number on a radiant roaster, not a phase indicator. Use temperature and colour.</li>
             <li><b>Soaking does nothing.</b> The classic opening move—charge, hold the burner low, let the drum's mass equalise—assumes there is a mass to equalise with. Here there is almost none. <span class="badge b-doctrine">doctrine</span></li>
             <li><b>Cutting the burner cuts the heat immediately.</b> There is no steel reservoir to coast on. This is what makes the baked roast so easy to produce on this machine, and section 5 is largely about avoiding it.</li>
@@ -268,7 +274,7 @@
           <ul class="clean">
             <li><b>BT is only as good as the bed covering it.</b> A small charge makes a shallower bed that presents itself to the probe less reliably, and the reading goes noisy. In my logs the spread of first-crack temperature is <b>17.9 °C below 270 g against 4.5 °C above 350 g</b>. <span class="badge b-measured">measured</span> Same machine, same probe—a different amount of coffee sitting on it.</li>
             <li><b>Which is exactly why the rear-feet trick works.</b> Raising the back feet about 1.5 cm tips the machine forward and the bed slides toward the front, which is to say toward the probe. It does not change the roast. It restores contact, and on small batches the improvement in the bean curve and its rate of rise is immediate. <span class="badge b-doctrine">doctrine</span></li>
-            <li><b>ET reads what leaves</b>, not the atmosphere the beans sit in. That is half of why ET runs below BT: the gas reaching it has already handed its heat to the beans, and there is no burner between them to put any back. The other half is the radiation. On a gas drum the environmental probe sits in the <em>incoming</em> stream, which is why it reads hot—the opposite arrangement, not a different calibration.</li>
+            <li><b>ET reads what leaves</b>, not the atmosphere the beans sit in. That helps explain why ET runs below BT: the gas reaching it has already passed through the roasting chamber, while the internal element can heat the beans directly by radiation. Environmental-probe placement varies across gas drums; many read the drum atmosphere or a hotter gas path, so their ET values are not directly comparable with this exhaust measurement.</li>
             <li><b>So stop comparing them.</b> The ET/BT rate ratio is a phase indicator on machines where both probes look at the same thing; here they are at opposite ends of the machine. And ET lifts on its own when you open the fan—more gas per second past the bead, no change in heating at all. <b>Judge an airflow move on the bean probe, or on nothing.</b></li>
           </ul>
 
@@ -553,18 +559,37 @@
         <!-- 8 -->
         <div class="art-sec" id="a8">
           <h2><span class="num">08</span>Matching the coffee</h2>
-          <p class="prose">The magnitudes above are the machine's. The bands are the coffee's, and the most useful way I have found to think about a green coffee is: <em>when does it start paying for itself?</em></p>
-          <p class="prose">Sucrose is a non-reducing sugar. It has to be inverted before it can enter Maillard at all. That single fact separates the two families you will roast most:</p>
+          <p class="prose">The magnitudes above are the machine's. Matching the coffee begins one level earlier: <b>what did you buy this lot to express?</b> A floral filter, a sweet omni roast and an espresso intended for milk do not ask for exactly the same arrival. TilauScope starts there. Filter is the baseline; omni adds about five seconds of development, espresso about ten. The adjustment is deliberately small—the destination gets a vote, not ownership of the whole roast.</p>
+
+          <h3>Cultivar and process choose the pace</h3>
+          <p class="prose">Cultivar and process are useful clues to the roast's calendar: total time, the position of first crack and how long the coffee should remain after it. They are not a chemical proof. The familiar explanations—more or less sucrose, easier access to reducing sugars, thicker or thinner cell walls—may describe part of what happens, but I do not have evidence that isolates one of them as the cause. TilauScope therefore treats the families below as <b>small starting priors</b>, not laws.</p>
+          <div class="tw">
+            <table>
+              <thead><tr><th>Cultivar clue</th><th>Working pace</th><th>TilauScope's first-roast prior</th></tr></thead>
+              <tbody>
+                <tr><td><b>Typica family</b><br>Typica, Maragogype, Java</td><td>Relatively fast</td><td>Charge about +4 °C</td></tr>
+                <tr><td><b>Ethiopian family</b><br>Landraces, Gesha, Pink Bourbon</td><td>Relatively fast</td><td>Charge about +4 °C</td></tr>
+                <tr><td><b>Bourbon family</b><br>Bourbon, Caturra, Catuai</td><td>A little slower</td><td>Charge about −4 °C</td></tr>
+                <tr><td><b>Timor hybrids</b><br>Catimor, Sarchimor, Castillo</td><td>Follow the other parent</td><td>Known Caturra or Villa Sarchi lines follow the Bourbon branch; otherwise no adjustment</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="prose">On this Skywalker those four degrees move the early calendar by only about fifteen seconds. That is enough to lean the first attempt and small enough to recover from. A blend receives half the adjustment; a mixed or uncertain family receives none. The genetic label on a sack is evidence, not certainty.</p>
+
+          <p class="prose">Process sits on top of that genetic preference without erasing it. TilauScope keeps a conservative Skywalker rule from roasting practice: coffees with extended fruit or mucilage contact—natural, honey and fermented processes—receive a lower charge target and ceiling than a washed coffee, because their surface is treated as less forgiving of an aggressive radiant start. This is a <b>surface-risk prior for this machine</b>, not a claim that every natural contains a known quantity of reducing sugar or must always be roasted slowly. The process ceiling wins over the cultivar nudge: a natural Typica is still not charged like a washed Typica. <span class="badge b-doctrine">doctrine</span></p>
+
+          <h3>Moisture and structure pay for that pace</h3>
+          <p class="prose">Once the calendar is chosen, the physical measurements decide how to reach it without marking or starving the coffee.</p>
           <ul class="clean">
-            <li><b>Washed</b>—the sucrose barrier is intact, the energy demand is high and sustained through Maillard. These take heat well and give a clean, sharp first crack. Charge them hot.</li>
-            <li><b>Natural and anaerobic</b>—fermentation has already left reducing sugars available, so browning starts earlier and the reaction becomes self-sustaining sooner. The surface is fragile: charge lower and gentler or you will tip and scorch it. And they smoke, so a plan for them without an extraction path is an incomplete plan.</li>
-            <li><b>Robusta-introgressed varieties</b> (Sarchimor, Catimor, Castillo)—lower sucrose and a thicker cell wall, so the demand arrives latest of all.</li>
+            <li><b>Moisture is the water mass and therefore part of the energy budget.</b> A wetter coffee can show a high turning point and still demand more support when evaporation takes hold. TilauScope gives it more drying time, a small amount of additional heat through drying and, when needed, more support approaching first crack. It does not answer moisture with time <em>instead of</em> fire; it divides the cost between them. A dry lot receives no imaginary crack support and may buy back a little body with Maillard time.</li>
+            <li><b>Density is useful mainly at the edges.</b> A frankly soft coffee is treated more gently. TilauScope deliberately says nothing across the broad 680–740 g/L middle, where supplier figures do not justify separating one lot from another, and gives a dense lot only a smaller correction in the opposite direction. Density changes the setup; it does not supply a flavour identity.</li>
+            <li><b>Altitude is a fallback, not a cause.</b> The tree responds to temperature, light, day–night range and maturation, not to the number printed in metres. When density is absent TilauScope lets altitude lean the structure estimate with only one fifth of a measured density's authority.</li>
+            <li><b>Water activity is not another moisture reading.</b> Moisture says how much water must be heated; aw says how readily it is available to move. TilauScope never converts one into the other. Water activity does not alter the energy or timing plan here; an above-neutral reading only opens the drying airflow slightly to help carry vapour away.</li>
           </ul>
-          <p class="prose">Density and altitude shift the same dial: a dense high-grown coffee absorbs more and cracks later and hotter; a low-grown or old-crop lot accelerates and everything arrives early. Moisture above 11 % lengthens drying—give it time rather than fire. Small screens react fast, so make smaller gestures.</p>
-          <p class="prose">Water activity deserves its own line, because it is not the same variable as moisture. <b>It does not change how much energy the coffee needs; it changes where that energy is paid.</b> Free water is paid during drying. Bound water—below about 0.50 aw—keeps coming out during Maillard, competing with the reaction you are trying to feed.</p>
+
           <div class="call open">
-            <p class="call-t">What I am not going to tell you</p>
-            <p>You will read that a denser coffee needs more heat. I cannot support it from my own data: the density on my records is a value from the supplier's sheet, and it is collinear with batch size in my logs, so the two cannot be separated. It may well be true. It is not measured here, and I would rather leave a gap than fill it with a plausible rule.</p>
+            <p class="call-t">What TilauScope actually knows</p>
+            <p>These rules only start the first roast. They are explicit, deliberately small and silent when the bean record is ambiguous. From the second comparable roast TilauScope begins blending in what happened on this coffee; with enough same-bean, same-colour history, the observed timings and heater profile replace the starting grid. Even then, the logs prove only what the operator did. The cup and the measured weight loss decide whether it was worth repeating.</p>
           </div>
         </div>
 
