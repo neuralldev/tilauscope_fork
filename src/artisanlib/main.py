@@ -4281,8 +4281,27 @@ class ApplicationWindow(QMainWindow):
 
     #
 
+    ## TILAU ## The menu bar must not belong to the main window on macOS. This
+    ## fork keeps that window hidden — TilauScope and BeanCave are the real
+    ## shells — and a QMenuBar owned by a hidden window is dropped from the
+    ## system bar the first time set_menu() rebuilds it: loading a theme or a
+    ## machine setup calls settingsLoad -> set_ui_mode -> set_menu, and the menus
+    ## vanished from the top of the screen for the rest of the session, with Qt
+    ## still reporting them as present. A parentless QMenuBar is macOS's
+    ## application-wide bar: it needs no visible window and survives the rebuild.
+    ## Everywhere else the menu bar is drawn inside the window, so it must stay
+    ## the window's own.
+    def tilau_menubar(self) -> 'QMenuBar|None':
+        if platform.system() != 'Darwin':
+            return self.menuBar()
+        bar:QMenuBar|None = getattr(self, '_tilau_app_menubar', None)
+        if bar is None:
+            bar = QMenuBar(None)
+            self._tilau_app_menubar = bar
+        return bar
+
     def set_menu(self, ui_mode:UI_MODE) -> None:
-        menuBar:QMenuBar|None = self.menuBar()
+        menuBar:QMenuBar|None = self.tilau_menubar()
         if menuBar is not None:
             menuBar.clear()
             # File menu
@@ -22331,6 +22350,16 @@ class ApplicationWindow(QMainWindow):
                 # BLE is not stopped in self.stopActivities() as that one is also called on settings load and we need to keep
                 # the same BLE thread/loop running over the whole runtime of the app to avoid ble._scan_and_connect_lock and ble._terminate_scan_event
                 # are running in the wrong thread
+                ## TILAU ## cancel any AI job still in flight. Those workers run
+                ## on QThreads parented to this window: left running, they are
+                ## destroyed with it while still inside a network call, which Qt
+                ## reports as fatal on the way out.
+                try:
+                    if getattr(self, 'tilau_ai_service', None) is not None:
+                        self.tilau_ai_service.cancel_all()
+                except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
+                    _log.debug(f"tilau_ai_service cancel_all: {e}")
+
                 ## TILAU ## last-resort stop of every live BLE scanner. Each owner
                 ## (BeanCave, the SENSORS tab) stops its own, but a scanner left
                 ## running keeps CoreBluetooth scanning into _Py_Finalize and its

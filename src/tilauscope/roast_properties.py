@@ -45,7 +45,7 @@ from PyQt6.QtGui import QColor, QKeyEvent, QFontMetrics
 from artisanlib.util import fromCtoFstrict
 from tilauscope.tilauscope_types import (
     GreenBean, THEME, show_styled_message, AGTRON_SCALES, format_batch_label,
-    open_in_os_viewer, ensure_color_system, resolve_color_system
+    open_in_os_viewer, ensure_color_system, resolve_color_system, call_later
 )
 
 # AI modules are optional — guard against ImportError if not yet deployed
@@ -2849,7 +2849,9 @@ class RoastSetupDialog(QDialog):
         else:
             self._parent_widget.close()
         self.accept()
-        QTimer.singleShot(500, lambda: show_styled_message(
+        # Owned by the main window, not by this dialog: the dialog has just
+        # closed, and the invitation has to outlive it.
+        call_later(self._aw, 500, lambda: show_styled_message(
             parent=self._aw.tilauscope_main,
             title=QApplication.translate("tilauscope_roast_setup", "Start a new roast"),
             text=lets_start_a_new_roast_message,

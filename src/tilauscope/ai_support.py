@@ -344,6 +344,14 @@ class _ModelFetcher(QObject):
             self.failed.emit(str(exc))
 
 
+# A model fetch outlives the dialog that asked for it. The call has a ten
+# second socket timeout, so joining it on close would freeze the window for as
+# long; and a QThread parented to the dialog is destroyed with it mid-call,
+# which Qt reports as fatal. Both threads and workers are held here instead,
+# until they announce they are done and delete themselves.
+_INFLIGHT_MODEL_FETCHES: set = set()
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Provider picker dialog
 # ─────────────────────────────────────────────────────────────────────────────
@@ -689,15 +697,41 @@ class AIProviderPickerDialog(QDialog):
         self._browse_btn.setText("…")
         self._browse_btn.setEnabled(False)
 
-        self._fetch_thread = QThread(self)
-        self._fetcher      = _ModelFetcher(provider, key)
-        self._fetcher.moveToThread(self._fetch_thread)
-        self._fetch_thread.started.connect(self._fetcher.run)
-        self._fetcher.models_ready.connect(self._on_models_ready)
-        self._fetcher.failed.connect(self._on_models_error)
-        self._fetcher.models_ready.connect(self._fetch_thread.quit)
-        self._fetcher.failed.connect(self._fetch_thread.quit)
-        self._fetch_thread.start()
+        thread  = QThread()          # no parent: it must survive this dialog
+        fetcher = _ModelFetcher(provider, key)
+        fetcher.moveToThread(thread)
+        self._fetch_thread = thread
+        self._fetcher      = fetcher
+        entry = (thread, fetcher)
+        _INFLIGHT_MODEL_FETCHES.add(entry)
+
+        thread.started.connect(fetcher.run)
+        fetcher.models_ready.connect(self._on_models_ready)
+        fetcher.failed.connect(self._on_models_error)
+        fetcher.models_ready.connect(thread.quit)
+        fetcher.failed.connect(thread.quit)
+        thread.finished.connect(lambda e=entry: _INFLIGHT_MODEL_FETCHES.discard(e))
+        thread.finished.connect(fetcher.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+
+    def done(self, result: int) -> None:  # noqa: N802 (Qt override)
+        """Let a fetch still in flight finish on its own, talking to nobody.
+
+        Only the result slots are cut: the thread keeps its own references and
+        deletes itself when the call returns.
+        """
+        fetcher = getattr(self, '_fetcher', None)
+        if fetcher is not None:
+            for sig, slot in ((fetcher.models_ready, self._on_models_ready),
+                              (fetcher.failed, self._on_models_error)):
+                try:
+                    sig.disconnect(slot)
+                except (TypeError, RuntimeError):
+                    pass
+        self._fetcher = None
+        self._fetch_thread = None
+        super().done(result)
 
     def _on_models_ready(self, models: list) -> None:
         self._browse_btn.setText(QApplication.translate("tilauscope_ai", "↗ Browse"))

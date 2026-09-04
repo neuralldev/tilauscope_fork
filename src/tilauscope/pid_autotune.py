@@ -21,6 +21,7 @@ from collections import deque
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
+from collections.abc import Sequence
 from typing import Final, TYPE_CHECKING, TypedDict
 
 from PyQt6.QtCore import (
@@ -87,7 +88,7 @@ from tilauscope.pid_semantics import (
     adjust_pid_behaviour,
     narrate_pid,
 )
-from tilauscope.roasters import RoasterManager
+from tilauscope.roasters import Roaster, RoasterManager
 from tilauscope.tilaupid_adaptative import (
     law_context_prefix,
     quadratic_thermal_gain_c_per_pct,
@@ -203,6 +204,8 @@ class PIDAutotune(QDialog):
         self._qualified_machine_fingerprint: str | None = None
         self._calibration_runner: PIDCalibrationRunner | None = None
         self._readiness_dialog: CalibrationReadinessDialog | None = None
+        self._hot_time_cache: tuple[str, float, float] | None = None
+        self._roaster_cache: tuple[str, Roaster | None] | None = None
         self._measured_holding_point_c: float | None = None
         self._measured_holding_power_pct: float | None = None
         self._last_calibration_journal_path: Path | None = None
@@ -657,8 +660,9 @@ class PIDAutotune(QDialog):
             else 100.0
         )
         power_min = max(slider_min, float(self.pid.dutyMin))
-        power_max = min(slider_max, float(self.pid.dutyMax))
+        power_max = self._calibration_power_max(slider_max)
 
+        hot_threshold_c, hot_budget = self._hot_time_limits()
         values = tuple(self._readiness_history)
         temperatures = [point[1] for point in values]
         rors = [abs(point[3]) for point in values]
@@ -694,8 +698,8 @@ class PIDAutotune(QDialog):
                 self._AIRFLOW_SLIDER
             ),
             extractor_not_cooling=self._extractor_not_cooling(),
-            hot_minutes_used=self._hot_minutes_used(),
-            hot_minutes_budget=self._hot_time_limits()[1],
+            hot_minutes_used=self._hot_minutes_used(hot_threshold_c),
+            hot_minutes_budget=hot_budget,
             hot_minutes_required=self._TEST_HOT_MINUTES,
             actuator_direction_normal=not bool(self.pid.invertControl),
             current_power_pct=current_power,
@@ -712,6 +716,43 @@ class PIDAutotune(QDialog):
             supervision_confirmed=supervised,
         ))
 
+    def _calibration_roaster(self, display_name: str) -> Roaster | None:
+        """The selected machine profile, cached per name.
+
+        Reached twice per tick from the 1 Hz refresh, and building a
+        RoasterManager re-parses the whole roaster catalogue every time.
+        """
+        cached = self._roaster_cache
+        if cached is not None and cached[0] == display_name:
+            return cached[1]
+        try:
+            roaster = RoasterManager().get_by_display_name(display_name)
+        except (AttributeError, TypeError, ValueError):
+            return None
+        self._roaster_cache = (display_name, roaster)
+        return roaster
+
+    def _calibration_power_max(self, slider_max: float) -> float:
+        """Highest power a calibration step may command.
+
+        The machine profile's declared ceiling is an operator-imposed hardware
+        limit: it wins over what the slider and the PID would otherwise allow.
+        """
+        try:
+            ceiling = min(float(slider_max), float(self.pid.dutyMax))
+        except (TypeError, ValueError):
+            ceiling = 100.0
+        roaster = self._calibration_roaster(
+            str(getattr(self.aw, "tilau_roaster", "") or "")
+        )
+        declared = getattr(roaster, "heater_max_pct", None)
+        if declared is not None:
+            try:
+                ceiling = min(ceiling, float(declared))
+            except (TypeError, ValueError):
+                pass
+        return ceiling
+
     def _calibration_machine_identity(
         self,
     ) -> CalibrationMachineIdentity | None:
@@ -720,7 +761,7 @@ class PIDAutotune(QDialog):
         slider_target = int(getattr(self.pid, "pidPositiveTarget", 0))
         heater_slider = slider_target - 1
         try:
-            roaster = RoasterManager().get_by_display_name(display_name)
+            roaster = self._calibration_roaster(display_name)
             if roaster is None:
                 return None
             actions = self.aw.eventslideractions
@@ -828,7 +869,7 @@ class PIDAutotune(QDialog):
         maximums = self.aw.eventslidermax
         baseline_power = float(values[slider])
         power_min = max(float(minimums[slider]), float(self.pid.dutyMin))
-        power_max = min(float(maximums[slider]), float(self.pid.dutyMax))
+        power_max = self._calibration_power_max(float(maximums[slider]))
         target_c = self._calibration_target_c()
         if target_c is None:
             raise RuntimeError("live calibration has no usable setpoint")
@@ -1138,11 +1179,22 @@ class PIDAutotune(QDialog):
     _TEST_HOT_MINUTES: Final[float] = 10.5
 
     def _hot_time_limits(self) -> tuple[float, float]:
-        """(threshold degC, budget minutes) declared by the machine profile."""
+        """(threshold degC, budget minutes) declared by the machine profile.
+
+        Cached per machine: this runs in the 1 Hz refresh, and building a
+        RoasterManager re-parses the whole roaster catalogue.
+        """
+        name = str(getattr(self.aw, "tilau_roaster", "") or "")
+        cached = self._hot_time_cache
+        if cached is not None and cached[0] == name:
+            return cached[1], cached[2]
+        limits = self._read_hot_time_limits(name)
+        self._hot_time_cache = (name, limits[0], limits[1])
+        return limits
+
+    def _read_hot_time_limits(self, display_name: str) -> tuple[float, float]:
         try:
-            roaster = RoasterManager().get_by_display_name(
-                str(getattr(self.aw, "tilau_roaster", "") or "")
-            )
+            roaster = self._calibration_roaster(display_name)
             if roaster is None:
                 return self._HOT_ABOVE_C, self._HOT_BUDGET_MIN
             above = roaster.hot_above_c
@@ -1202,13 +1254,39 @@ class PIDAutotune(QDialog):
                     )
         except Exception:  # noqa: BLE001 - a failed step must not abort the loop
             _log.exception("PID calibration preparation step failed")
-            return
+            if command.phase != "failed":
+                # A failed phase still owes the operator the heat cut below.
+                return
         if command.phase == "ready":
             self._measured_holding_point_c = command.holding_point_c
             self._measured_holding_power_pct = command.holding_power_pct
-        elif command.phase in {"idle", "approaching"}:
-            self._measured_holding_point_c = None
-            self._measured_holding_power_pct = None
+            return
+        self._measured_holding_point_c = None
+        self._measured_holding_power_pct = None
+        if command.phase == "failed":
+            # The hand-over left the burner at its hold power on purpose; a
+            # failure after that point must not leave it there.
+            self.stop_preparation_heat()
+
+    def stop_preparation_heat(self) -> None:
+        """Cut and cool after a hand-over that will not lead to a test."""
+        self._measured_holding_point_c = None
+        self._measured_holding_power_pct = None
+        # The preheat PID owns the slider until it is stopped: zeroing the
+        # slider alone leaves it free to command the burner back up.
+        preheat = getattr(self.aw, "tilauPreheatingPid", None)
+        if preheat is not None:
+            try:
+                preheat.stop(reason="calibration_abort")
+            except Exception:  # noqa: BLE001 - the cut must still be attempted
+                _log.exception("PID calibration could not stop the preheat PID")
+        try:
+            slider = int(getattr(self.pid, "pidPositiveTarget", 0)) - 1
+            if slider >= 0:
+                self.aw.tilaupidSliderCommandSignal.emit(slider, 0, True)
+        except Exception:  # noqa: BLE001 - the cool-down must still be attempted
+            _log.exception("PID calibration could not zero the heater")
+        self._cool_machine()
 
     def _store_thermal_trace(
         self,
@@ -1257,7 +1335,7 @@ class PIDAutotune(QDialog):
         limits = CalibrationLimits(
             target_c=target_c if target_c is not None else 0.0,
             baseline_power_pct=hold_power_pct if hold_power_pct is not None else 0.0,
-            power_max_pct=min(slider_max, float(self.pid.dutyMax)),
+            power_max_pct=self._calibration_power_max(slider_max),
         )
         return {
             "maximum_power": limits.power_max_pct,
@@ -1312,20 +1390,38 @@ class PIDAutotune(QDialog):
         except (TypeError, ValueError):
             return False
 
-    def _hot_minutes_used(self) -> float:
+    def _hot_minutes_used(self, threshold_c: float | None = None) -> float:
         """Minutes the machine has spent above the hot threshold, from the
         sampled series — never from when this window was opened."""
         qmc = self.aw.qmc
         started = bool(getattr(qmc, "flagstart", False))
         times = qmc.timex if started else qmc.on_timex
-        series = (qmc.temp2 if started else qmc.on_temp2)
+        series = self._process_value_series(started)
+        if series is None:
+            return 0.0
+        threshold = (
+            self._hot_time_limits()[0] if threshold_c is None else threshold_c
+        )
+        mode = str(getattr(qmc, "mode", "C"))
         try:
             count = min(len(times), len(series))
             if count < 2:
                 return 0.0
             index = count
-            threshold = self._hot_time_limits()[0]
-            while index > 0 and float(series[index - 1]) > threshold:
+            # A single dropout must not reset the count: the machine does not
+            # cool because one reading was lost.
+            dropouts = 0
+            while index > 0:
+                raw = float(series[index - 1])
+                if raw == -1.0 or not math.isfinite(raw):
+                    dropouts += 1
+                    if dropouts > 3:
+                        break
+                    index -= 1
+                    continue
+                if temperature_to_c(raw, mode) <= threshold:
+                    break
+                dropouts = 0
                 index -= 1
             if index >= count:
                 return 0.0
@@ -1434,29 +1530,38 @@ class PIDAutotune(QDialog):
         if not times:
             return None, None
         token = (started, len(times), times[-1])
-        source = int(getattr(self.pid, "pidSource", 1))
+        series = self._process_value_series(started)
         try:
-            if source <= 1:
-                series = qmc.temp2 if started else qmc.on_temp2
-                value = series[-1] if series else None
-            elif source == 2:
-                series = qmc.temp1 if started else qmc.on_temp1
-                value = series[-1] if series else None
-            else:
-                extra = source - 3
-                index = extra // 2
-                lists = (
-                    (qmc.extratemp1 if started else qmc.on_extratemp1)
-                    if extra % 2 == 0
-                    else (qmc.extratemp2 if started else qmc.on_extratemp2)
-                )
-                channel = lists[index] if index < len(lists) else None
-                value = channel[-1] if channel else None
-        except (AttributeError, IndexError, TypeError):
+            value = series[-1] if series else None
+        except (IndexError, TypeError):
             return None, token
         if value is None or not math.isfinite(float(value)) or float(value) == -1.0:
             return None, token
         return float(value), token
+
+    def _process_value_series(self, started: bool) -> Sequence[float] | None:
+        """The sampled series the PID reads, following `pidSource`.
+
+        Same mapping as Artisan's own sampling loop, so every consumer here
+        sees exactly what the engine sees.
+        """
+        qmc = self.aw.qmc
+        source = int(getattr(self.pid, "pidSource", 1))
+        try:
+            if source <= 1:
+                return qmc.temp2 if started else qmc.on_temp2
+            if source == 2:
+                return qmc.temp1 if started else qmc.on_temp1
+            extra = source - 3
+            index = extra // 2
+            lists = (
+                (qmc.extratemp1 if started else qmc.on_extratemp1)
+                if extra % 2 == 0
+                else (qmc.extratemp2 if started else qmc.on_extratemp2)
+            )
+            return lists[index] if index < len(lists) else None
+        except (AttributeError, IndexError, TypeError):
+            return None
 
     def _ror(self, pv: float, now: float) -> float:
         self._pv_history.append((now, pv))
@@ -2047,7 +2152,7 @@ class CalibrationReadinessDialog(QDialog):
                 if 0 <= heater_slider < len(maximums) else 100.0
             )
             safe_min = max(slider_min, float(self.assistant.pid.dutyMin)) + 13.0
-            safe_max = min(slider_max, float(self.assistant.pid.dutyMax)) - 13.0
+            safe_max = self.assistant._calibration_power_max(slider_max) - 13.0
             if safe_min <= safe_max:
                 pv, unit = self._displayed_temperature()
                 current_text = (
@@ -2294,12 +2399,30 @@ class CalibrationReadinessDialog(QDialog):
         self._preparation = PreparationSequence(heater_resolution_pct=resolution)
 
     def _tick_preparation(self) -> None:
+        # The approach only begins once the operator has proved the heater
+        # physically stops: nothing may command heat before that.
+        if (
+            self._preparation is None
+            and self.qualification.phase == "qualified"
+            and not self._awaiting_final_shutdown_confirmation
+            and self._runner is None
+        ):
+            self.start_preparation()
         sequence = self._preparation
         if sequence is None or sequence.phase in {"ready", "failed"}:
             return
         sample = self.assistant.preparation_sample()
         if sample is None:
-            return
+            # An unreadable probe is a fault, not a reason to sit still: the
+            # burner is at its hold power and nothing is regulating it.
+            sample = PreparationSample(
+                now_sec=time.monotonic(),
+                temperature_c=math.nan,
+                heater_pct=0.0,
+                preheat_active=False,
+                preheat_settled=False,
+                sensor_valid=False,
+            )
         command = sequence.update(sample)
         self._preparation_command = command
         self.assistant.apply_preparation_command(command)
@@ -2831,7 +2954,7 @@ class CalibrationReadinessDialog(QDialog):
         self.accept()
 
     def _release(self) -> None:
-        """Drop the timer and the signal connection.
+        """Cut any inherited heat, then drop the timer and the connection.
 
         accept() never goes through closeEvent, so a dialog closed by its own
         button would otherwise keep refreshing at 1 Hz and keep answering the
@@ -2839,6 +2962,12 @@ class CalibrationReadinessDialog(QDialog):
         """
         self._timeout_timer.stop()
         self._guide_timer.stop()
+        # After the hand-over the burner sits at its hold power with nothing
+        # regulating it: closing the window must not leave it there.
+        sequence = self._preparation
+        if sequence is not None and sequence.phase != "idle":
+            self._preparation = None
+            self.assistant.stop_preparation_heat()
         if self._applied_signal is not None:
             try:
                 self._applied_signal.disconnect(self._zero_applied)

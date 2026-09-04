@@ -679,9 +679,15 @@ class ViewerMixin:
                 thread.requestInterruption()   # the worker checks it as it walks
                 thread.quit()
                 if not thread.wait(2000):
-                    _log.warning('alog list scan did not stop cooperatively — terminate()')
-                    thread.terminate()
-                    thread.wait(2000)
+                    # No terminate(): it kills the thread at an arbitrary
+                    # instruction and can leave a Qt-internal mutex locked for
+                    # good — the next Bean Cave then freezes while it builds a
+                    # widget, with no crash and no log. The worker checks
+                    # isInterruptionRequested as it walks, so waiting once more
+                    # is the safe move.
+                    _log.warning('alog list scan did not stop cooperatively — waiting once more')
+                    if not thread.wait(2000):
+                        _log.error('alog list scan is still running and was left to finish on its own')
         except RuntimeError:
             pass  # Qt object already collected by deleteLater
 
@@ -992,7 +998,14 @@ class ViewerMixin:
         self._multi_alog_worker = None
 
     def _cancel_alog_thread(self) -> None:
-        """Cancel any in-flight load thread (mono or multi)."""
+        """Cancel any in-flight load thread (mono or multi).
+
+        The final wait() is unbounded on purpose: this runs on every selection
+        change, and returning while the load is still going lets the next one
+        start beside it. Threads then pile up reading profiles and connecting
+        signals, and Qt deadlocks the next widget construction against them —
+        measured at 4 hangs in 10 opens when this wait was bounded.
+        """
         # Chemin mono
         if hasattr(self, '_alog_thread') and self._alog_thread is not None:
             try:

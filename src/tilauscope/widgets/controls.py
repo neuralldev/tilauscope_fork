@@ -24,7 +24,7 @@ from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtWidgets import (QFrame, QLabel, QPushButton, QScrollArea,
                              QVBoxLayout, QWidget)
 
-from tilauscope.tilauscope_types import THEME
+from tilauscope.tilauscope_types import THEME, call_later
 
 
 class SmartRoller(QWidget):
@@ -186,7 +186,9 @@ class ClickableValue(QLabel):
             self.release_callback(self.index)
 
         self.update_style(True)
-        QTimer.singleShot(150, lambda: self.update_style(False))
+        # Tied to the label it repaints: closing the window inside the flash
+        # would otherwise leave this to fire on a deleted widget.
+        call_later(self, 150, lambda: self.update_style(False))
 
 
 class HoldToFireButton(QPushButton):

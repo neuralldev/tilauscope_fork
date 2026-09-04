@@ -191,7 +191,11 @@ def write_alog(data: dict, path: Path) -> None:
     that extra escape layer is never undone and **compounds on every save** —
     multi-line ``beans`` accumulated runs of backslashes (``\\\\\\\\n`` instead
     of one separator) and accents were mangled to ``\\xNN``. """
-    path.write_text(repr(data), encoding='utf-8')
+    ## Through the temporary file, never over the profile itself: a repair
+    ## rewrites the whole roast, and a write cut short would leave a truncated
+    ## file where the roast used to be.
+    from tilauscope.cave.common import _atomic_write_text  # noqa: PLC0415
+    _atomic_write_text(path, repr(data), 'utf-8')
     ## Single write funnel for every repair — including the rename path, where
     ## the scan prunes the old entry and indexes the new one. Without this the
     ## corpus index would keep serving the pre-repair reading of the profile.

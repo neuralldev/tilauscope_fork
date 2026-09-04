@@ -120,7 +120,7 @@ def apply_frameless_style(aw: QMainWindow) -> None:
 
     aw.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.CustomizeWindowHint)
 
-    menu_bar = aw.menuBar()
+    menu_bar = aw.tilau_menubar()
     if menu_bar is not None:
         menu_bar.setStyleSheet(_MENU_QSS)
 

@@ -35,7 +35,7 @@ from PyQt6.QtWidgets import (
 )
 
 from artisanlib.util import fromCtoFstrict
-from tilauscope.tilauscope_types import THEME, show_styled_message, print_progress_pill
+from tilauscope.tilauscope_types import THEME, show_styled_message, print_progress_pill, call_later
 from tilauscope.ai_support import normalize_engine, get_suppress_thinking_params, provider_base_url
 from tilauscope.tilau_privacy import prepare_ai_messages
 from tilauscope.brew_advisor import (
@@ -2357,7 +2357,7 @@ class BrewAdvisorDlg(QDialog):
             .format(g=f"{rec.water_g:.0f}", t=self._fmt_time(rec.total_time_s)))
         self.debrief.setVisible(False)
         self.manual_card.setVisible(True)
-        QTimer.singleShot(0, lambda: self._right_scroll.ensureWidgetVisible(self.manual_card))
+        call_later(self, 0, lambda: self._right_scroll.ensureWidgetVisible(self.manual_card))
 
     def _close_manual_entry(self) -> None:
         self.manual_card.setVisible(False)
@@ -3079,8 +3079,8 @@ class BrewAdvisorDlg(QDialog):
         self.lbl_debrief_coach.setVisible(False)
         # Reveal the answer: on a short window the verdict lands below the fold,
         # and an answer the operator has to go looking for is a wasted answer.
-        QTimer.singleShot(0, lambda: self._right_scroll.ensureWidgetVisible(self.debrief)
-                          if self.debrief.isVisible() else None)
+        call_later(self, 0, lambda: self._right_scroll.ensureWidgetVisible(self.debrief)
+                   if self.debrief.isVisible() else None)
         # BALANCED is worth saving even though it changes nothing.
         offer = dg.code == DiagnosisCode.BALANCED or (dg.actionable and not dg.correction.is_empty)
         self.btn_apply_fix.setVisible(offer and self._can_store_dialin())

@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (
 _log = logging.getLogger(__name__)
 
 from tilauscope.theme_qss import apply_tilau_theme, tint
-from tilauscope.tilauscope_types import THEME, no_enter_default
+from tilauscope.tilauscope_types import THEME, no_enter_default, call_later
 
 
 class PairingDialog(QDialog):
@@ -207,7 +207,10 @@ class PairingDialog(QDialog):
         if cb is not None:
             cb.setText(self._url)
         self._copy_btn.setText(QApplication.translate("tilauscope_devices", "✓ Copied"))
-        QTimer.singleShot(1400, lambda: self._copy_btn.setText(
+        # Through call_later, not QTimer.singleShot: closing this window
+        # inside the delay would otherwise leave the label restore to land on a
+        # deleted button, and that takes the application down with it.
+        call_later(self._copy_btn, 1400, lambda: self._copy_btn.setText(
             QApplication.translate("tilauscope_devices", "⧉ Copy link")))
 
     def _tick(self) -> None:

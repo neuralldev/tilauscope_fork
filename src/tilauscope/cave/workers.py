@@ -90,6 +90,55 @@ class BeanAIWorker(QObject):
         except Exception as e:
             self.error.emit(str(e))
 
+
+def stop_worker_thread(thread, worker=None, slots=(), timeout_ms: int = 2000,
+                       name: str = "worker") -> None:
+    """Detach a worker's result slots, then stop and join its thread.
+
+    The same three steps in the same order, for the jobs that had no teardown at
+    all: disconnect first so a result landing during the wait cannot reach a
+    half-destroyed dialog, then ask the worker to stop, then join.
+
+    Used only where nothing was joining the thread before. The teardowns that
+    already existed keep their own code: each is tuned to what its worker does,
+    and replacing them with this one caused hangs.
+
+    `slots` are (signal, slot) pairs to disconnect. Safe to call on a thread
+    that is already finished, already deleted, or was never started.
+    """
+    if thread is None:
+        return
+    try:
+        if not thread.isRunning():
+            return
+        for sig, slot in slots:
+            try:
+                sig.disconnect(slot)
+            except (TypeError, RuntimeError):
+                pass
+        cancel = getattr(worker, 'cancel', None)
+        if callable(cancel):
+            try:
+                cancel()
+            except Exception:  # noqa: BLE001  pylint: disable=broad-except
+                pass
+        thread.requestInterruption()
+        thread.quit()
+        if thread.wait(timeout_ms):
+            return
+        # Deliberately no terminate(). It kills the thread at an arbitrary
+        # instruction, which can leave a Qt-internal mutex locked forever: the
+        # symptom is the NEXT BeanCave freezing while it builds a widget, with
+        # no crash and no log. Measured at 6 hangs in 8 opens when the load
+        # cancellation used it. Waiting a second time is the safe move — these
+        # workers check isInterruptionRequested and return within a read.
+        _log.warning(f"{name} did not stop cooperatively — waiting once more")
+        if not thread.wait(timeout_ms):
+            _log.error(f"{name} is still running and was left to finish on its own")
+    except (RuntimeError, AttributeError):
+        pass  # C++ side already gone
+
+
 class _NiimbotPollWorker(QObject):
     """Worker off-thread : appelle np.poll_status() sans bloquer l'UI."""
     finished = pyqtSignal()

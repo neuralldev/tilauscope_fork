@@ -156,8 +156,11 @@ def thermal_gain_c_per_pct(
     below = [node for node in usable if node[0] <= sv]
     above = [node for node in usable if node[0] >= sv]
     pairs: list[tuple[tuple[float, float, float, str], ...]] = []
+    # The nodes that actually bracket sv: the gain is local, and the whole
+    # point of reading it here is that it changes with temperature.
     if below and above and below[-1][0] != above[0][0]:
-        pairs.append((below[0], above[-1]))
+        pairs.append((below[-1], above[0]))
+    # Widest available pair, as a fallback when the bracket is too narrow.
     pairs.append((usable[0], usable[-1]))
     for low, high in pairs:
         span = high[0] - low[0]
@@ -1292,6 +1295,9 @@ class AdaptivePIDMixin:
         self._history_ready = threading.Event()
         self._history_lock = threading.Lock()
         self._history_thread: threading.Thread | None = None
+        # Which scan the readiness flag belongs to. A context change at START
+        # begins a second one while the first may still be reading.
+        self._history_gen = 0
         self._start_history_worker()
         # One-time migration: drop the pre-redesign relay-law persisted state.
         self._migrate_persisted_law()
@@ -1307,7 +1313,14 @@ class AdaptivePIDMixin:
 
         Le worker n'accède ni à Qt ni à qmc : le scanner a figé la machine et la
         voie de contrôle à sa construction, sur le thread GUI.
+
+        Chaque scan porte son numéro. Un changement de contexte au START en
+        lance un second alors que le premier peut encore lire : sans ce numéro,
+        le premier posait le drapeau en sortant et l'attente se débloquait sur
+        un corpus que personne n'attendait plus.
         """
+        self._history_gen += 1
+        generation = self._history_gen
         self._history_ready.clear()
 
         def _work() -> None:
@@ -1316,7 +1329,9 @@ class AdaptivePIDMixin:
             except Exception as exc:  # noqa: BLE001
                 _logd.debug(f"Chargement de l'historique adaptatif abandonné : {exc}")
             finally:
-                self._history_ready.set()
+                # Seul le dernier scan demandé a le droit d'annoncer la fin.
+                if generation == self._history_gen:
+                    self._history_ready.set()
 
         self._history_thread = threading.Thread(
             target=_work, name="TilauPIDHistory", daemon=True)

@@ -45,7 +45,6 @@ from PyQt6.QtWidgets import (
 )
 from artisanlib.util import fromCtoFstrict
 from tilauscope.artisan_message_ticker import ArtisanMessageHook
-from tilauscope.axes_config import AxesConfigHook
 from tilauscope.canvas_style import CanvasStyleHook
 from tilauscope.graph.curve import RoastCurveWidget
 from tilauscope.header_icons import (
@@ -81,7 +80,7 @@ from tilauscope.header_icons import (
 )
 from tilauscope.roast_review_panel import RoastReviewPanel
 from tilauscope.theme_qss import apply_tilau_theme, tooltip_qss
-from tilauscope.tilauscope_types import THEME, _IS_MACOS
+from tilauscope.tilauscope_types import THEME, _IS_MACOS, call_later
 from tilauscope.whats_new import maybe_show_whats_new
 from tilauscope.widgets.controls import ClickableValue, HoldToFireButton
 from tilauscope.widgets.labels import ClickableLabel, TickerLabel
@@ -99,6 +98,7 @@ from tilauscope.window.layout import PARENT_TILAUSTYLE, _HDR2_BEANCAVE, _HDR2_DR
 
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
+_logd: Final[logging.Logger] = logging.getLogger("tilau")
 
 
 def _mono_font_family() -> str:
@@ -170,6 +170,11 @@ class BuildMixin:
         # and assigns it, so a default written below this call would overwrite
         # the widget with None and silence every tick without a word.
         self.curve: RoastCurveWidget | None = None
+        # Same rule, and the same failure: the extra-counters panel is read on
+        # the first line of every sample, and it is set back to None whenever
+        # the extra devices change and it has to be rebuilt. Undeclared, a
+        # construction that failed once left the tick raising for good.
+        self.extra_panel: ExtraCountersPanel | None = None
         # Same rule: init_ui() reads the emergency latch when it decides whether
         # the heat cut is visible.
         self._emergency_latched: bool = False
@@ -325,6 +330,10 @@ class BuildMixin:
             self.trc.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
             QTimer.singleShot(100, self.trc.show)
 
+        # Here, not inside check_daily_brew_status: that one only runs when the
+        # notification is enabled, so the line was missing from every other log
+        _logd.info("tilauscope init finished")
+
         # now build the collection of existing buttons in an array to be able to trigger them from the routine check
         self.artisan_buttons_collection: dict[str, QPushButton] = {
             "fcs": self.aw.buttonFCs,
@@ -350,13 +359,6 @@ class BuildMixin:
         )
         self._msg_hook.install()
 
-        # ── Réglages menu Axes Artisan (fenêtre temps, grille, légende, delta…) ─
-        # Appliqués une première fois ici, puis ré-appliqués à chaque chargement
-        # de profil (.alog) via patch de aw.loadFile. Aucune modification de main.py.
-        self._axes_hook = AxesConfigHook(self.aw)
-        self._axes_hook.install()
-        self._axes_hook.apply_now()
-
         # ── Typo du titre du roast sur le canvas Artisan (taille + JetBrains Mono) ─
         self._canvas_style_hook = CanvasStyleHook(self.aw)
         self._canvas_style_hook.install()
@@ -379,9 +381,12 @@ class BuildMixin:
         self.aw.loadBackgroundSignal.connect(self._on_background_changed)
         self.aw.clearBackgroundSignal.connect(self._on_background_changed)
         if message != "":
-            QTimer.singleShot(500, lambda: self.showMessage(message))
+            # Tied to this window: closing it inside the delay would otherwise
+            # leave the greeting — and what's new, a full second later — to open
+            # on a window that is gone.
+            call_later(self, 500, lambda: self.showMessage(message))
         else:
-            QTimer.singleShot(1200, lambda: maybe_show_whats_new(self, self))
+            call_later(self, 1200, lambda: maybe_show_whats_new(self, self))
 
     def init_ui(self):
 

@@ -380,6 +380,10 @@ def test_exact_itop_path_can_only_offer_a_review_only_pilot(
     dialog.supervised.setChecked(True)
     dialog.qualification.phase = "qualified"
     dialog._qualification_identity = identity
+    # The hand-over already happened in this scenario: hold the sequence at
+    # "ready" so the tick does not restart an approach.
+    dialog.start_preparation()
+    dialog._preparation.phase = "ready"
     window._zero_output_qualified = True
     window._qualified_machine_fingerprint = identity.fingerprint
 

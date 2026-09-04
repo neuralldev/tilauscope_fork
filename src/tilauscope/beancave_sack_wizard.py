@@ -1591,7 +1591,29 @@ class NewSackWizard(QDialog):
     def done(self, result: int) -> None:  # noqa: N802
         self._teardown_scale()
         self._teardown_aw()
+        self._teardown_ai()
         super().done(result)
+
+    def _teardown_ai(self) -> None:
+        """Join a supplier-page read still in flight.
+
+        The read takes about twenty seconds and the thread has no parent, so
+        closing this dialog during one destroyed a running QThread — the abort
+        signature this code base already knows — and delivered its result into
+        a form that no longer exists.
+        """
+        from tilauscope.cave.workers import stop_worker_thread  # noqa: PLC0415
+        thread = getattr(self, '_ai_thread', None)
+        worker = getattr(self, '_ai_worker', None)
+        if thread is None:
+            return
+        slots = ()
+        if worker is not None:
+            slots = ((worker.finished, self._on_ai_finished),
+                     (worker.error, self._on_ai_error))
+        stop_worker_thread(thread, worker, slots=slots, name="bean AI read")
+        self._ai_thread = None
+        self._ai_worker = None
 
     def _flow(self) -> list[int]:
         """Ordered steps for the current entry point and mode."""

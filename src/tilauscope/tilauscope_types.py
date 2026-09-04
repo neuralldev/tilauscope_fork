@@ -1112,6 +1112,36 @@ def no_enter_default(dialog) -> None:
         _log.warning("no_enter_default failed: %s", exc)
 
 
+def call_later(owner, ms: int, callback) -> None:
+    """Run `callback` after `ms`, unless `owner` has been destroyed by then.
+
+    The plain QTimer.singleShot(ms, lambda: ...) has no Qt receiver, so nothing
+    cancels it when the widget the lambda writes into is destroyed — a window
+    closed inside the delay leaves the call to land on a deleted object, which
+    raises, and an exception from a timer callback reaches the excepthook and
+    ends the application. A timer parented to `owner` is destroyed with it and
+    simply never fires.
+
+    A destroyed owner is only one of the ways such a call can raise, and the
+    others end the application just the same, so the callback runs contained:
+    the delayed touch-up this is meant for is never worth a session.
+
+    For anything that has to happen whether the widget survives or not, this is
+    the wrong tool: it is meant for the label a widget restores on itself.
+    """
+    def _run() -> None:
+        try:
+            callback()
+        except Exception as exc:  # noqa: BLE001  a delayed touch-up, never a crash
+            _log.warning("call_later callback failed: %s", exc)
+
+    timer = QTimer(owner)
+    timer.setSingleShot(True)
+    timer.timeout.connect(_run)
+    timer.timeout.connect(timer.deleteLater)
+    timer.start(ms)
+
+
 def drop_stay_on_top(window) -> None:
     """Let another application come in front of `window`.
 

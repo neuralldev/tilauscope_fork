@@ -16,8 +16,9 @@
 from PyQt6.QtWidgets import (QApplication, QWidget, QSizePolicy, QMenu,
                              QPushButton, QLayout)
 from PyQt6.QtCore import Qt, QTimer, QSize, pyqtSlot, QSettings
-from PyQt6.QtGui import QColor, QPalette, QCursor, QPixmap, QIcon, QImage, QKeySequence
+from PyQt6.QtGui import QColor, QPalette, QCursor, QPixmap, QIcon, QImage
 from PyQt6.QtCore import pyqtSignal
+from PyQt6 import sip
 
 # get settings
 import logging
@@ -27,7 +28,7 @@ from typing import Final
 from artisanlib.main import ApplicationWindow
 
 from tilauscope.beancave import BeancaveDlg
-from tilauscope.tilauscope_types import THEME, _IS_WINDOWS, _IS_MACOS, TilauMessageBox
+from tilauscope.tilauscope_types import THEME, _IS_MACOS, TilauMessageBox
 from tilauscope.header_icons import (
     SVG_POWER, SVG_PLAY, SVG_STOP,
     SVG_RESET, SVG_BEANCAVE, SVG_ASSISTANT, SVG_SWAP, COL_DISABLED,
@@ -119,7 +120,6 @@ _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
 # --- SURCHARGE DES MENUS ---
 
-ARROW = "url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNDREQ2RjQiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSI5IDE4IDE1IDEyIDkgNiI+PC9wb2x5bGluZT48L3N2Zz4=)"
 
 # Use Python 3.14 f-strings for cleaner theme integration
 MENU_STYLE = f"""
@@ -182,56 +182,6 @@ MENU_STYLE = f"""
 
 # --- APPLICATION PRINCIPALE ---
 
-# Catppuccin Mocha mapping for Artisan qmc.palette keys
-_CATPPUCCIN_QMC: dict[str, str] = {
-    'canvas':           THEME['BG'],  # Base
-    'background':       THEME['SURFACE'],  # Mantle
-    'grid':             THEME['BORDER'],  # Surface0
-    'et':               '#FAB387',  # Peach  — ET curve
-    'bt':               THEME['ACCENT'],  # Blue   — BT curve
-    'deltaet':          THEME['YELLOW'],  # Yellow — RoR ET
-    'deltabt':          '#A6E3A1',  # Green  — RoR BT
-    'title':            THEME['TEXT'],  # Text
-    'xlabel':           THEME['SUBTEXT'],
-    'ylabel':           THEME['SUBTEXT'],
-    'text':             THEME['TEXT'],
-    'messages':         THEME['TEXT'],
-    'markers':          THEME['TEXT'],
-    'timeguide':        THEME['SURFACE2'],  # Surface2
-    'aucguide':         THEME['SKY'],  # Sky
-    'aucarea':          THEME['BORDER'],  # Surface0
-    'watermarks':       THEME['SURFACE1'],  # Surface1
-    'legendbg':         THEME['SURFACE'],  # Mantle
-    'legendborder':     THEME['BORDER'],  # Surface0
-    'rect1':            THEME['SURFACE1'],  # CHARGE→DRY    Surface1
-    'rect2':            THEME['SURFACE2'],  # DRY→FCs       Surface2
-    'rect3':            THEME['OVERLAY0'],  # FCs→FCe       Overlay0
-    'rect4':            THEME['OVERLAY1'],  # FCe→SCs       Overlay1
-    'rect5':            THEME['OVERLAY2'],  # SCs→DROP      Overlay2
-    'mettext':          '#FAB387',  # Peach — MET annotation
-    'metbox':           THEME['SURFACE'],
-    'specialeventtext': THEME['TEXT'],
-    'specialeventbox':  THEME['BORDER'],
-    'bgeventtext':      THEME['SUBTEXT'],
-    'bgeventmarker':    THEME['SURFACE1'],
-    'xt':               THEME['MAUVE'],  # Mauve — extra curves bg tint
-    'yt':               THEME['PINK'],  # Pink
-}
-
-# Catppuccin Mocha LCD foreground per channel
-_CATPPUCCIN_LCD_FG: dict[str, str] = {
-    'timer':           THEME['TEXT'],  # Text
-    'et':              '#FAB387',  # Peach
-    'bt':              THEME['ACCENT'],  # Blue
-    'deltaet':         THEME['YELLOW'],  # Yellow
-    'deltabt':         '#A6E3A1',  # Green
-    'sv':              THEME['MAUVE'],  # Mauve
-    'rstimer':         THEME['SUBTEXT'],
-    'slowcoolingtimer':THEME['SUBTEXT'],
-}
-
-# All LCD backgrounds → Mantle
-_CATPPUCCIN_LCD_BG: dict[str, str] = {k: THEME['SURFACE'] for k in _CATPPUCCIN_LCD_FG}
 
 # QWidget comes last: each mixin inherits it, so listing it first would make
 # the method resolution order impossible to build.
@@ -266,11 +216,9 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
 
         if _IS_MACOS:
             self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
-        if _IS_WINDOWS:
-            # Empêche TilauScope de voler le focus au retour des dialogues
-            self.setWindowFlag(Qt.WindowType.WindowDoesNotAcceptFocus, False)
-            # Déclare TilauScope comme fenêtre "tool" pour Windows
-            self.setWindowFlag(Qt.WindowType.Tool, False)
+        # Focus stealing on Windows is handled by WA_ShowWithoutActivating above.
+        # Two setWindowFlag(..., False) calls used to sit here claiming to do it:
+        # setWindowFlags() never set those flags, so clearing them did nothing.
 
         self.setObjectName("TilauScopeWindow")
         self.setStyleSheet(f"#TilauScopeWindow {{ background-color: {THEME['BG']}; border-radius: 12px; }}")
@@ -291,12 +239,9 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
 
 
     def check_daily_brew_status(self):
-        alog_directory = "" # Pour stocker le chemin du répertoire ALog
-        beancave_directory = "" # Nouvelle variable pour le répertoire de beancave.json
         settings = QSettings()
         alog_directory = settings.value('alogDirectory', "", str)
-        beancave_directory = settings.value('beancaveDirectory', alog_directory, str)
-        if beancave_directory != "" and alog_directory != "":
+        if alog_directory != "":
             from tilauscope.roast_timeline import BrewReadyNotification
             # BrewReadyNotification wants the alog metadata cache
             # (dict[str, AlogMetadata]), not the TilauScope widget. Reuse BeanCave's
@@ -310,11 +255,9 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
                     alog_files = {}
             self._brew_notif = BrewReadyNotification(alog_directory, alog_files, self)
 
-        _logd.info("tilauscope init finished")
-
 
     # ─────────────────────────────────────────────────────────────────────────────
-    # Catppuccin Mocha palette helpers — apply on TilauScope open, restore on close
+    # Artisan UI handover — hide its panels on open, give them back on close
     # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -334,9 +277,13 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
         # 4. Application de la logique en boucle
         for attr, flag_name, hide_method in ui_elements:
             if store :
-                flags = getattr(aw, flag_name)
-                setattr(self, attr, flags)
-            hide_method()
+                # copy, never alias: the hide methods below write 0 into that very
+                # list, so a reference is already zeroed by the time closeEvent
+                # reads it back and Artisan never gets its layout returned
+                setattr(self, attr, list(getattr(aw, flag_name)))
+            # changeDefault=False: our hiding is temporary and belongs to the
+            # TilauScope session, it must not rewrite Artisan's saved preferences
+            hide_method(False)
 
         # Artisan calls this on ON, including when monitoring is switched on from
         # its own side rather than from our MONITOR button. The heat cut has to
@@ -418,6 +365,8 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
         Respects the panel's current size (user-resized or saved via QSettings)
         instead of forcing adjustSize(), which would break multi-line layouts.
         """
+        if self.extra_panel is None:
+            return
         geo = self.geometry()
         p_w = self.extra_panel.width()
         # Centre horizontally over TilauScope; 10 px below its top edge
@@ -427,13 +376,19 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
 
     @pyqtSlot(int)
     def handle_alarm_trigger(self, alarm_index):
-        """Méthode appelée quand Artisan détecte le déclenchement"""
-        # Récupérer l'objet AlarmData correspondant à l'index
-        # self.current_alarms est la liste chargée via _load_alarms[cite: 4]
-        target_alarm = self.collapsible_events.alarm_sidebar.get_alarm_info(alarm_index)
-        if target_alarm:
-            # On envoie les données et la couleur au widget de droite
-            self.collapsible_events.alarm_sidebar.add_triggered_alarm(target_alarm)
+        """An alarm fired in Artisan: show it in the sidebar.
+
+        Guarded like the sampling slot, and for the same reason: this is the
+        other slot Artisan's sampling thread emits into, and an exception
+        escaping a slot reaches the excepthook, which ends this application.
+        A card that cannot be built is a missing card, not a closed roast.
+        """
+        try:
+            target_alarm = self.collapsible_events.alarm_sidebar.get_alarm_info(alarm_index)
+            if target_alarm:
+                self.collapsible_events.alarm_sidebar.add_triggered_alarm(target_alarm)
+        except Exception as e:  # pylint: disable=broad-except
+            _log.exception('alarm %s could not be shown: %s', alarm_index, e)
 
     # ── Timer visual state machine ────────────────────────────────────────────
     # Visual states:
@@ -556,9 +511,15 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             f" border: 1px solid {THEME['BORDER']}; }}"
             + tooltip_qss()
         )
-        self._level_tooltip = (
-            QApplication.translate("tilauscope_window", "Operator level: {0} — click for {1}")
-            .format(_name, _next_name))
+        # Guarded: this runs on the construction path, and a translation shipped
+        # without both placeholders would raise out of init_ui() and leave the
+        # window unopenable in that language alone
+        try:
+            self._level_tooltip = (
+                QApplication.translate("tilauscope_window", "Operator level: {0} — click for {1}")
+                .format(_name, _next_name))
+        except Exception:  # pylint: disable=broad-except
+            self._level_tooltip = f"{_name} → {_next_name}"
         # Expert taken while recording stays Expert until the roast ends.
         self._refresh_level_lock()
 
@@ -762,10 +723,23 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             self.update_button_style(self.btn_beancave, True, False, False)
         else:
             self.update_button_style(self.btn_beancave, False, False, True)
-            self.aw.beancaveWindow = BeancaveDlg(self.aw)
-            self.aw.beancaveWindow.setWindowModality(Qt.WindowModality.NonModal)
-            self.aw.beancaveWindow.finished.connect(self._on_beancave_closed)
-            self.aw.beancaveWindow.show()
+            # Reuse the live instance: BeancaveDlg has no WA_DeleteOnClose and stays
+            # parented to aw, so recreating it on every open piled up dialogs, each
+            # keeping its indexer thread and BLE handles alive until quit.
+            bc = getattr(self.aw, 'beancaveWindow', None)
+            if bc is None or sip.isdeleted(bc):
+                bc = BeancaveDlg(self.aw)
+                bc.setWindowModality(Qt.WindowModality.NonModal)
+                self.aw.beancaveWindow = bc
+            elif hasattr(bc, 'refresh_home'):
+                # returning to an existing BeanCave: reload stock and roast history
+                QTimer.singleShot(0, bc.refresh_home)
+            # hooked once per instance — the dialog may also have been created by
+            # Artisan's own BeanCave path, which does not connect our handler
+            if not bc.property('_tilau_close_hooked'):
+                bc.finished.connect(self._on_beancave_closed)
+                bc.setProperty('_tilau_close_hooked', True)
+            bc.show()
 
     def _on_beancave_closed(self): # fix 2026/04/25: this is needed to uncheck the button if Beancave is closed by other means than the button (e.g. by Artisan or by the user with the window close button)
         """Called when BeancaveDlg is closed to unmark the button."""
@@ -843,7 +817,7 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
         # the native macOS menubar, so any later rebuild of root_menu loses
         # entries. Instead we create NEW QMenu containers and re-add the ORIGINAL
         # QActions (addAction shares the action → Artisan slot connections kept,
-        # aw.menuBar() left intact). Recurses to preserve nested submenus.
+        # the application menu bar left intact). Recurses to preserve nested submenus.
         def clone_into(dst: QMenu, src: QMenu) -> None:
             for sub_action in src.actions():
                 child = sub_action.menu()
@@ -857,22 +831,28 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
                 if sub_action.isSeparator():
                     dst.addSeparator()
                     continue
-                if not sub_action.icon().isNull():
+                # Icon inversion mutates the shared action, so do it at most once
+                # ever: re-inverting on every open would flip the icons back, and
+                # the text is left untouched — Qt already right-aligns the
+                # shortcut itself, and retitling a shared QAction is what trips
+                # the macOS menuRole hijack on Artisan's own menubar.
+                if not sub_action.icon().isNull() and not sub_action.property('_tilau_icon_inverted'):
                     sub_action.setIcon(get_inverted_icon(sub_action.icon()))
-                shortcut = sub_action.shortcut().toString(QKeySequence.SequenceFormat.NativeText)
-                if shortcut:
-                    original_text = sub_action.text()
-                    # On évite de doubler le raccourci si Artisan l'a déjà mis
-                    if "\t" not in original_text:
-                        # Le \t pousse tout ce qui suit à l'extrémité droite du menu
-                        sub_action.setText(f"{original_text}\t{shortcut}")
+                    sub_action.setProperty('_tilau_icon_inverted', True)
                 dst.addAction(sub_action)
 
+        # Rebuilt on every open: the clone re-hosts Artisan's own QAction objects,
+        # and Artisan clears and repopulates whole menus at runtime (themes, recent
+        # roasts). A cached tree would go stale and, once those actions are
+        # deleted, raise out of the click handler.
         if self.root_menu is not None:
-            self.root_menu.exec(QCursor.pos())
-            return
+            self.root_menu.deleteLater()
+            self.root_menu = None
 
-        artisan_menubar = self.aw.menuBar()
+        # tilau_menubar(), not menuBar(): on macOS the menus live on a
+        # parentless bar, and menuBar() would build an empty one on the
+        # hidden main window instead of returning them.
+        artisan_menubar = self.aw.tilau_menubar()
         self.root_menu = QMenu(self)
         self.root_menu.setStyleSheet(MENU_STYLE)
         for action in artisan_menubar.actions():
@@ -889,6 +869,17 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
     # ON / OFF BUTTON + Artisan instruction
     def toggle_power(self):
         if self.btn_power.isChecked():
+            # Ask Artisan first: ToggleMonitor returns without setting flagon when
+            # the unsaved-profile prompt is declined. Committing the UI before the
+            # call left the window lit with monitoring off, and inverted the
+            # button against the real state on the next click.
+            self.aw.qmc.ToggleMonitor()
+            if not self.aw.qmc.flagon:
+                self.update_button_style(self.btn_power, True, False, False)
+                self.update_status_text()
+                self._refresh_beancave_availability()
+                self._refresh_emergency_visibility()
+                return
             #power button
             self.update_button_style(self.btn_power, True, False, True)
             self.update_button_style(self. btn_start_stop, True)
@@ -901,17 +892,13 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
                 btn.setEnabled(True)
             self._apply_controls_enabled(True)
             self.event_panel.show()
-            self.aw.qmc.ToggleMonitor()
             self.update_status_text() # immediately update status to avoid waiting for first data from Artisan
             self._update_timer_style("engaged") # Update timer style based on power state
             self.update_button_style(self.swap_button, False)
+            # flagon is already settled here (ToggleMonitor ran above), so a single
+            # direct read is enough — no deferred re-read needed
             self._refresh_beancave_availability()
             self._refresh_emergency_visibility()
-            # ToggleMonitor can raise a reset prompt before it sets the flag, so
-            # the state read above may still be the old one. Re-read once the
-            # event loop has unwound.
-            QTimer.singleShot(0, self._refresh_beancave_availability)
-            QTimer.singleShot(0, self._refresh_emergency_visibility)
         else:
             if self.is_roasting: # if stop is pressed during a roast, we first stop recording.
                 self.toggle_start_stop(pressed=False, force=True)
@@ -933,7 +920,8 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             self.aw.qmc.ToggleMonitor()
             # reset roasting flag if OFF is called directly without STOP
             self.is_roasting = False
-            self.extra_panel.reset_counters() # reset extra counters on power off
+            if self.extra_panel is not None:
+                self.extra_panel.reset_counters() # reset extra counters on power off
             self._update_timer_style("idle") # Update timer style based on power state
             self.update_status_text() # immediately update status to avoid waiting for first data from Artisan
             self._clear_emergency_state()   # nothing is hot any more
@@ -1038,7 +1026,7 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
 
 
     def set_button_state(self, event:int, state:bool):
-        button_key,button_color = self.events[event]
+        button_key = self.events[event][0]
         btn = self.event_buttons[button_key]
         btn.setEnabled(state)
 
@@ -1181,11 +1169,11 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
                 settings = QSettings()
                 settings.setValue("interface/swap_events_control", self.is_swapped)
 
-            widgets = []
+            # Drain the layout before re-adding in the new order. The four widgets
+            # below are the whole content of this layout: anything else added here
+            # would be dropped, so add it to both branches too.
             while content_layout.count() > 0:
-                item = content_layout.takeAt(0)
-                if item.widget():
-                    widgets.append(item.widget())
+                content_layout.takeAt(0)
 
             if self.is_swapped:
                 content_layout.addWidget(self.collapsible_events.sidebar, stretch=0)

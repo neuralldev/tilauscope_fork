@@ -70,7 +70,8 @@ whether the printer is ready or how many labels are left on the roll.
 A run of several labels counts them — *3 of 12* — and offers **✕**, which stops the run
 **after the label currently coming out**: one already moving through the print head cannot be
 recalled. The pill then reports how many were actually printed, and only those count against
-the roll.
+the roll. Closing the window mid-run does the same thing: the run stops after that one label
+rather than carrying on for a window that is no longer there.
 
 A finished print says so in the pill and disappears on its own; nothing has to be clicked
 away. A failed one turns red, names what to do, and stays until it is dismissed. The one

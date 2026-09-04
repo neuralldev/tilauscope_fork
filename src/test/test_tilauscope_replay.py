@@ -341,15 +341,20 @@ def test_refresh_replay_capability_never_raises_into_its_caller() -> None:
 # ── Lifecycle: the aw-level signals must not outlive the window ────────────
 
 def test_background_signals_are_disconnected_on_close() -> None:
-    close_event = window_method_node('closeEvent')[1]
+    # The disconnects live in _detach_live_feed, which closeEvent calls first —
+    # before any teardown step that could fail and skip them. Both halves are
+    # asserted: a helper nobody calls disconnects nothing.
+    assert '_detach_live_feed' in window_source('closeEvent')
+    detach = window_method_node('_detach_live_feed')[1]
     disconnected = {
         ast.unparse(call.func.value)
-        for call in ast.walk(close_event)
+        for call in ast.walk(detach)
         if isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
         and call.func.attr == 'disconnect'
     }
     assert 'self.aw.loadBackgroundSignal' in disconnected
     assert 'self.aw.clearBackgroundSignal' in disconnected
+    assert 'self.aw.qmc.tilauUpdateSignal' in disconnected
     # A bare lambda cannot be disconnected — the slot has to be held. It is
     # bound where the window is wired up, which is not where closeEvent lives.
     assert 'self._on_background_changed = lambda' in window_source(

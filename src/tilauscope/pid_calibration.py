@@ -127,7 +127,7 @@ class CalibrationLimits:
     stale_after_sec: float = 3.5
     max_step_pct: float = 10.0
     min_step_pct: float = 2.0
-    target_step_rise_c: float = 4.0
+    target_step_rise_c: float = 8.0
     # Machine knowledge, when it exists: degC of equilibrium temperature per
     # heater point, and the fraction of that equilibrium a 90-second phase
     # actually covers.  Both absent on a machine whose inertia was never
@@ -333,6 +333,15 @@ class PreparationSequence:
     MAX_DRIFT_C_PER_MIN: float = 0.5
     MAX_SPAN_C: float = 0.25
     MAX_CORRECTIONS: int = 1
+    # A notch moves the equilibrium by several degrees; measuring the drift
+    # straight after the command would only measure the transient it started.
+    SETTLE_SEC: float = 120.0
+    # Section 3.4 budgets 6-7 minutes for the approach; 8 leaves margin without
+    # letting a machine that will never settle burn the whole hot-time budget.
+    APPROACH_TIMEOUT_SEC: float = 480.0
+    # A probe dropout is routine on a serial or MQTT link; only a run of them
+    # means the reading is really gone.
+    MAX_DROPOUTS: int = 3
 
     def __init__(self, *, heater_resolution_pct: float = 1.0) -> None:
         self.phase: PreparationPhase = "idle"
@@ -343,22 +352,38 @@ class PreparationSequence:
         self._resolution = max(1.0, float(heater_resolution_pct))
         self._window: deque[tuple[float, float]] = deque()
         self._handover_power: float | None = None
+        self._approach_started_at: float | None = None
+        self._adjusting_since: float | None = None
+        self._dropouts = 0
 
     def update(self, sample: PreparationSample) -> PreparationCommand:
         if self.phase in {"ready", "failed"}:
             return self._command()
         if not sample.sensor_valid or not math.isfinite(sample.temperature_c):
-            return self._fail("sensor_invalid")
+            self._dropouts += 1
+            if self._dropouts > self.MAX_DROPOUTS:
+                return self._fail("sensor_invalid")
+            # Hold the current instruction: one unreadable sample is not proof
+            # the probe is gone, and failing here cannot be undone.
+            return self._command()
+        self._dropouts = 0
 
         if self.phase == "idle":
             # An already running preheat is adopted with its own setpoint.
             self.phase = "approaching"
+            self._approach_started_at = sample.now_sec
             return self._command(start_preheat=not sample.preheat_active)
 
         if self.phase == "approaching":
             if not sample.preheat_active:
                 return self._fail("preheat_stopped")
             if not sample.preheat_settled:
+                started = self._approach_started_at
+                if (
+                    started is not None
+                    and sample.now_sec - started > self.APPROACH_TIMEOUT_SEC
+                ):
+                    return self._fail("approach_timeout")
                 return self._command()
             self._handover_power = sample.heater_pct
             self._window.clear()
@@ -366,7 +391,16 @@ class PreparationSequence:
             return self._command(hand_over=True)
 
         if self.phase == "adjusting":
+            since = self._adjusting_since
+            if (
+                since is not None
+                and sample.now_sec - since < self.SETTLE_SEC
+            ):
+                return self._command(
+                    seconds_observed=sample.now_sec - since,
+                )
             self._window.clear()
+            self._adjusting_since = None
             self.phase = "confirming"
             return self._command()
 
@@ -410,6 +444,7 @@ class PreparationSequence:
         step = -self._resolution if drift > 0.0 else self._resolution
         proposed = int(round(sample.heater_pct + step))
         self.phase = "adjusting"
+        self._adjusting_since = sample.now_sec
         return self._command(
             set_heater_pct=proposed,
             seconds_observed=observed,
@@ -729,27 +764,53 @@ def _power_at(
     return points[max(0, index)].power_pct
 
 
+def _delayed_deltas(
+    points: list[CalibrationPoint],
+    times: list[float],
+    baseline_power_pct: float,
+    delay_sec: float,
+) -> list[tuple[float, float]]:
+    """Per-interval (dt, power above baseline), independent of tau.
+
+    The delayed-power lookup is a bisect per sample and depends only on the
+    delay, so hoisting it out of the tau sweep removes it from the inner loop
+    of a 21 x 120 grid search that runs inside a 1 Hz tick.
+    """
+    deltas: list[tuple[float, float]] = []
+    for previous, current in zip(points, points[1:], strict=False):
+        dt = current.elapsed_sec - previous.elapsed_sec
+        if not 0.0 < dt <= 5.0:
+            deltas.append((0.0, 0.0))
+            continue
+        delayed_power = _power_at(
+            points, times, previous.elapsed_sec - delay_sec
+        )
+        deltas.append((dt, delayed_power - baseline_power_pct))
+    return deltas
+
+
+def _unit_response_from_deltas(
+    deltas: list[tuple[float, float]], tau_sec: float
+) -> list[float]:
+    response = [0.0]
+    state = 0.0
+    for dt, delta_power in deltas:
+        if dt > 0.0:
+            state += dt * (delta_power - state) / tau_sec
+        response.append(state)
+    return response
+
+
 def _model_unit_response(
     points: list[CalibrationPoint],
     baseline_power_pct: float,
     tau_sec: float,
     delay_sec: float,
 ) -> list[float]:
-    response = [0.0]
-    state = 0.0
     times = [point.elapsed_sec for point in points]
-    for previous, current in zip(points, points[1:], strict=False):
-        dt = current.elapsed_sec - previous.elapsed_sec
-        if not 0.0 < dt <= 5.0:
-            response.append(state)
-            continue
-        delayed_power = _power_at(
-            points, times, previous.elapsed_sec - delay_sec
-        )
-        delta_power = delayed_power - baseline_power_pct
-        state += dt * (delta_power - state) / tau_sec
-        response.append(state)
-    return response
+    return _unit_response_from_deltas(
+        _delayed_deltas(points, times, baseline_power_pct, delay_sec), tau_sec
+    )
 
 
 def _fit_gain_and_drift(
@@ -760,11 +821,14 @@ def _fit_gain_and_drift(
     Section 5.1: at one point of heater resolution the hold drifts by degrees
     over the measurement, which a gain-only fit would charge to the gain.
     """
-    s_uu = sum(u * u for u in unit)
-    s_ut = sum(u * t for u, t in zip(unit, elapsed, strict=True))
-    s_tt = sum(t * t for t in elapsed)
-    s_uy = sum(u * y for u, y in zip(unit, observed, strict=True))
-    s_ty = sum(t * y for t, y in zip(elapsed, observed, strict=True))
+    # One pass: this runs 21 x 120 times inside a 1 Hz tick.
+    s_uu = s_ut = s_tt = s_uy = s_ty = 0.0
+    for u, y, t in zip(unit, observed, elapsed, strict=True):
+        s_uu += u * u
+        s_ut += u * t
+        s_tt += t * t
+        s_uy += u * y
+        s_ty += t * y
     determinant = s_uu * s_tt - s_ut * s_ut
     if abs(determinant) < 1e-9:
         return None
@@ -825,11 +889,13 @@ def identify_local_fopdt(
         point.elapsed_sec - fit_origin_sec for point in qualified[fit_start:]
     ]
     tau_candidates = tuple(float(value) for value in range(5, 601, 5))
+    qualified_times = [point.elapsed_sec for point in qualified]
     for delay in range(21):
+        deltas = _delayed_deltas(
+            qualified, qualified_times, baseline_power_pct, float(delay)
+        )
         for tau in tau_candidates:
-            unit = _model_unit_response(
-                qualified, baseline_power_pct, tau, float(delay)
-            )
+            unit = _unit_response_from_deltas(deltas, tau)
             useful_unit = unit[fit_start:]
             solution = _fit_gain_and_drift(
                 useful_unit, useful_observed, useful_elapsed
@@ -839,12 +905,12 @@ def identify_local_fopdt(
             gain, drift = solution
             if gain <= 0.0:
                 continue
-            squared_error = sum(
-                (actual - gain * model - drift * moment) ** 2
-                for model, actual, moment in zip(
-                    useful_unit, useful_observed, useful_elapsed, strict=True
-                )
-            )
+            squared_error = 0.0
+            for model, actual, moment in zip(
+                useful_unit, useful_observed, useful_elapsed, strict=True
+            ):
+                residual = actual - gain * model - drift * moment
+                squared_error += residual * residual
             rmse = math.sqrt(squared_error / len(useful_observed))
             if rmse < best_rmse:
                 best_rmse = rmse
@@ -1459,7 +1525,7 @@ class LiveCalibrationCoordinator:
         self._record_sample(sample)
         if not readiness.ready:
             return self._refuse_without_side_effect(
-                "readiness_changed", sample.now_sec
+                "readiness_changed", sample.now_sec, cut_heat=True
             )
         if not self.zero_output_qualified:
             return self._refuse_without_side_effect(
@@ -1798,13 +1864,28 @@ class LiveCalibrationCoordinator:
         ))
 
     def _refuse_without_side_effect(
-        self, reason: str, now_sec: float
+        self, reason: str, now_sec: float, *, cut_heat: bool = False
     ) -> CalibrationCommand:
+        """Refuse to start.
+
+        ``cut_heat`` only when the preparation has already handed over a running
+        burner.  Before the zero-output qualification nothing has ever been
+        commanded, and sending anything then would break the very rule that
+        qualification exists to enforce.
+        """
         self.phase = "refused"
         self.reason = reason
         self._record(
             "start_refused", timestamp_sec=now_sec, reason=reason
         )
+        if cut_heat:
+            self._last_timestamp_sec = now_sec
+            self.last_requested_power = 0
+            try:
+                self.request_power(self.heater_slider, 0, True)
+            except Exception:  # noqa: BLE001 - still attempt the cool-down
+                self.pending = None
+            self._cool_down(now_sec)
         command = CalibrationCommand(
             phase="refused",
             power_pct=0.0,

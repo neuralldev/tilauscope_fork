@@ -1099,6 +1099,33 @@ class SackLabelsDialog(QDialog):
                     "{0} label(s) printed.").format(printed)
             pill.succeed("🖨  " + done)
 
+    def done(self, result: int) -> None:  # noqa: N802 (Qt override)
+        """Stop a batch still on the printer before this window goes.
+
+        The print thread has no parent, so closing mid-batch destroyed a
+        running QThread — and the worker went on talking to a printer for a
+        window that no longer existed. The worker stops after the label
+        already on its way, which is the only cancellation a Niimbot allows.
+
+        On done(), not closeEvent: Escape and the reject path never raise a
+        close event, and those close this window like any other.
+        """
+        try:
+            from tilauscope.cave.workers import stop_worker_thread  # noqa: PLC0415
+            thread, worker = self._thread, self._worker
+            slots = ()
+            if worker is not None:
+                slots = ((worker.progress, self._on_print_progress),
+                         (worker.finished, self._on_print_finished),
+                         (worker.error, self._on_print_error))
+            stop_worker_thread(thread, worker, slots=slots, timeout_ms=5000,
+                               name="sack batch print")
+        except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
+            _logd.debug("sack batch print teardown: %s", e)
+        self._thread = None
+        self._worker = None
+        super().done(result)
+
     def _on_print_error(self, message: str, printed: int) -> None:
         from PyQt6.QtWidgets import QMessageBox
         self._finish_run(printed)

@@ -343,6 +343,14 @@ class PrintingMixin:
         if self._niimbot_poll_thread is not None and self._niimbot_poll_thread.isRunning():
             _logd.debug("Niimbot poll: thread précédent encore actif, skip.")
             return
+        # NOTE — this worker is never actually reached: it has no parent and no
+        # stored reference, so it is collected as soon as this method returns and
+        # the thread's started signal fires into nothing. poll_status() has
+        # therefore never run. Giving it a reference is NOT the fix: the worker
+        # calls a method on `np`, a QObject that lives on the GUI thread, from a
+        # background thread — enabling it deadlocks Qt against widget creation
+        # (measured: 1 hang in 10 opens of BeanCave). The path needs a design
+        # that does the BLE read without touching a GUI-thread object.
         self._niimbot_poll_thread = QThread()
         worker = _NiimbotPollWorker(self.np)
         worker.moveToThread(self._niimbot_poll_thread)

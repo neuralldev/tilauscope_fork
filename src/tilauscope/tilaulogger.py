@@ -2103,30 +2103,6 @@ class TilauscopeLoggerWindow(QWidget):
             self.tcp_server = None
         _log.info("Tilauscope workers stopped.")
 
-    def oldcloseEvent(self, event):
-        if hasattr(self, 'aw') and hasattr(self.aw, 'qmc'):
-            if self.aw.qmc.flagstart or self.aw.qmc.flagon:
-                self.hide()
-                event.ignore()
-                return
-        try:
-            self.ser_worker.signal.disconnect()
-        except:
-            pass
-
-        self.ser_worker.stop()
-        self.ser_thread.quit()
-        if not self.ser_thread.wait(1000): # Attend 1 sec max
-            self.ser_thread.terminate() # Force l'arrêt si bloqué
-
-        if hasattr(self, 'tcp_server') and self.tcp_server:
-            self.tcp_server.shutdown() # Arrête le serve_forever()
-            self.tcp_server.server_close()
-
-        event.accept()
-        # Forces Qt to delete this object and release the 'aw' reference
-        self.deleteLater()
-
     def toggle_debug_level(self) -> None:
         debugLogLevelToggle()
         self._refresh_debug_ui()

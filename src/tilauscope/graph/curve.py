@@ -918,8 +918,15 @@ class RoastCurveWidget(QWidget):
         # axis at all.
         if self._preheat is not None and qmc is not None:
             try:
-                self._set_preheat_axes(list(qmc.timex), list(qmc.temp2),
-                                       qmc.mode, self._preheat)
+                # The ends, not the series: the axes are settled from the first
+                # and last instants and the last reading, and copying two whole
+                # sample runs once a second to read three numbers is the one
+                # thing this method promises not to do.
+                timex, temp2 = qmc.timex, qmc.temp2
+                ends = (list(timex[:1]) + list(timex[-1:])
+                        if len(timex) > 1 else list(timex[:1]))
+                self._set_preheat_axes(ends, list(temp2[-1:]), qmc.mode,
+                                       self._preheat)
             except Exception:
                 report_once('RoastCurveWidget: preheat axes')
         if [n for n, _r, _k in self._lane_rows] != self._visible_channels():

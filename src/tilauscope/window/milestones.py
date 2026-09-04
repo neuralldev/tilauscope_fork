@@ -27,11 +27,10 @@ import logging
 from typing import Final
 import time
 
-from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 from artisanlib.util import toDim
 from tilauscope.theme_qss import with_tooltip
-from tilauscope.tilauscope_types import THEME
+from tilauscope.tilauscope_types import THEME, call_later
 
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -139,7 +138,9 @@ class MilestonesMixin:
                  f" border: 2px solid {widget.phase_color}; }}")
         idle  = "PhaseWidget { background: transparent; border: none; }"
         widget.setStyleSheet(flash)
-        QTimer.singleShot(150, lambda w=widget, s=idle: w.setStyleSheet(s))
+        # Tied to the widget it repaints: a phase strip rebuilt inside the
+        # flash would otherwise leave this to fire on a widget that is gone.
+        call_later(widget, 150, lambda w=widget, s=idle: w.setStyleSheet(s))
 
     def _freeze_phases_at_drop(self) -> None:
         """Close the phase display at DROP: every block full, none of them running.

@@ -88,36 +88,82 @@ class ChromeMixin:
             a0.ignore()
             return
 
+        # The live feed goes first, before anything the rest of this teardown
+        # could trip over: while it is attached, every sample calls back into a
+        # window that is being taken apart. Handing the figure back comes with
+        # it — the figure stopped being drawn while our curve held the screen,
+        # and left suspended it stays frozen for the rest of the session. The
+        # deferred redraw below brings it back up to date.
+        self._detach_live_feed()
+        aw.tilau_suspend_render = False
+        # An exception escaping a Qt event handler reaches the excepthook, which
+        # ends the application — closing this window would take the whole session
+        # with it. Hence the outer guard. The steps inside are guarded one by one
+        # as well, for the other half of the problem: a single failure must not
+        # stop the teardown where it stands, or Artisan is left with its controls
+        # hidden and our hooks still in place, for the rest of the session.
+        try:
+            self._close_teardown(aw, qmc)
+        except Exception as e:  # pylint: disable=broad-except
+            _log.exception('TilauScope close: teardown failed: %s', e)
+        super().closeEvent(a0)
+
+    def _detach_live_feed(self) -> None:
+        """Stop the once-a-second callbacks from Artisan into this window."""
+        try:
+            self.aw.qmc.tilauUpdateSignal.disconnect(self.update_ui_from_artisan)
+        except (TypeError, RuntimeError, AttributeError):
+            pass
+        try:
+            self.aw.loadBackgroundSignal.disconnect(self._on_background_changed)
+        except (TypeError, RuntimeError, AttributeError):
+            pass
+        try:
+            self.aw.clearBackgroundSignal.disconnect(self._on_background_changed)
+        except (TypeError, RuntimeError, AttributeError):
+            pass
+
+    def _close_teardown(self, aw, qmc) -> None:
+        """Put back everything this window borrowed from Artisan.
+
+        Called from closeEvent alone, and only once the live feed is detached.
+        """
         # Monitoring is off, so this window no longer owns a wake lock. Also
         # detach the application-level fallback to avoid retaining a closed
         # DisplayScope instance.
-        self.tilau_ssbserver.finish()
-        app = QApplication.instance()
-        if app is not None:
-            try:
-                app.aboutToQuit.disconnect(self.tilau_ssbserver.finish)
-            except (TypeError, RuntimeError):
-                pass
+        try:
+            self.tilau_ssbserver.finish()
+            app = QApplication.instance()
+            if app is not None:
+                try:
+                    app.aboutToQuit.disconnect(self.tilau_ssbserver.finish)
+                except (TypeError, RuntimeError):
+                    pass
+        except Exception as e:  # pylint: disable=broad-except
+            _log.error('release wake lock: %s', e)
 
         # don't lose a slider change still inside its coalescing window
-        self.flush_pending_slider_commits()
+        try:
+            self.flush_pending_slider_commits()
+        except Exception as e:  # pylint: disable=broad-except
+            _log.error('flush pending slider commits: %s', e)
 
         # 1. Stopper les timers avant toute manipulation de widgets
-        if hasattr(self, 'p_timer') and self.p_timer.isActive():
-            self.p_timer.stop()
-
-        # 2. Rendre la figure à Artisan : elle a cessé d'être rendue pendant
-        #    que notre courbe tenait l'écran, donc elle est en retard de toute la
-        #    session. Le redraw complet du point 6 la remet d'aplomb.
-        aw.tilau_suspend_render = False
+        try:
+            if hasattr(self, 'p_timer') and self.p_timer.isActive():
+                self.p_timer.stop()
+        except Exception as e:  # pylint: disable=broad-except
+            _log.error('stop preheat timer: %s', e)
 
         # 3. Restaurer l'opacité
-        aw.setWindowOpacity(1.0)
-
         # 6. Kick Qt layout engine — deferred redraw ensures canvas has its final
         #    geometry before matplotlib tight_layout recalculates
-        aw.main_widget.updateGeometry()
-        aw.resize(aw.size())
+        try:
+            aw.setWindowOpacity(1.0)
+            aw.main_widget.updateGeometry()
+            aw.resize(aw.size())
+        except Exception as e:  # pylint: disable=broad-except
+            _log.error('restore Artisan window geometry: %s', e)
 
         def _deferred_restore() -> None:
             try:
@@ -134,78 +180,87 @@ class ChromeMixin:
         QTimer.singleShot(150, _deferred_restore)
 
         # 9. Restaurer la visibilité des éléments UI Artisan
-        idx = 2 if qmc.flagstart else (1 if qmc.flagon else 0)
         try:
-            if self.show_controls[idx] == 1:     aw.showControls()
-            if self.show_lcds[idx] == 1:         aw.showLCDs()
-            if self.show_minieventline[idx] == 1: aw.show_minieventline()
-            if self.show_extrabuttons[idx] == 1: aw.showExtraButtons()
-            if self.show_sliders[idx] == 1:      aw.showSliders()
-        except (IndexError, AttributeError) as e:
+            idx = 2 if qmc.flagstart else (1 if qmc.flagon else 0)
+            # changeDefault=False on the way back too: restoring visibility is
+            # undoing our own hiding, not a preference the user just expressed
+            if self.show_controls[idx] == 1:      aw.showControls(False)
+            if self.show_lcds[idx] == 1:          aw.showLCDs(False)
+            if self.show_minieventline[idx] == 1: aw.show_minieventline(False)
+            if self.show_extrabuttons[idx] == 1:  aw.showExtraButtons(False)
+            if self.show_sliders[idx] == 1:       aw.showSliders(False)
+        except Exception as e:  # pylint: disable=broad-except
             _log.error('restore UI elements: %s', e)
 
+        # 9bis. Rendre les alarmes à Artisan : la suppression d'actions est propre
+        #       au niveau Guided de TilauScope, elle ne doit pas survivre à la
+        #       fermeture (sinon plus aucune alarme n'agit du reste de la session)
+        try:
+            qmc.silent_alarms = False
+        except Exception as e:  # pylint: disable=broad-except
+            _log.error('restore silent_alarms: %s', e)
+
         # 10. Fermer le panel flottant
-        if hasattr(self, 'event_panel'):
-            self.event_panel.close()
         # 10bis. Fermer le panel flottant extradevices
-        if hasattr(self, 'extra_panel'):
-            self.extra_panel.close()
+        try:
+            if hasattr(self, 'event_panel'):
+                self.event_panel.close()
+            if self.extra_panel is not None:
+                self.extra_panel.close()
+        except Exception as e:  # pylint: disable=broad-except
+            _log.error('close floating panels: %s', e)
 
         # Close roast assistant panel if open (floating or anchored)
-        if hasattr(self, 'roast_assistant') and (
-                self.roast_assistant.isVisible() or getattr(self, '_assistant_anchored', False)):
-            if getattr(self, '_body_in_host', False):
-                # Return the body to the shell before closing to avoid orphaning it.
-                self._anchor_host.takeWidget()
-                self.roast_assistant.give_body()
-                self._body_in_host = False
-            self.roast_assistant.close()
+        try:
+            if hasattr(self, 'roast_assistant') and (
+                    self.roast_assistant.isVisible() or getattr(self, '_assistant_anchored', False)):
+                if getattr(self, '_body_in_host', False):
+                    # Return the body to the shell before closing to avoid orphaning it.
+                    self._anchor_host.takeWidget()
+                    self.roast_assistant.give_body()
+                    self._body_in_host = False
+                self.roast_assistant.close()
+        except Exception as e:  # pylint: disable=broad-except
+            _log.error('close roast assistant: %s', e)
 
         # 11. Remove event filter from main window
-        if self.aw:
-            self.aw.removeEventFilter(self)
-
         # 12. Restore focus to main window
-        aw.activateWindow()
-        aw.raise_()
+        try:
+            if self.aw:
+                self.aw.removeEventFilter(self)
+            aw.activateWindow()
+            aw.raise_()
+            self.aw.tilauscopeMain.setChecked(False)
+        except Exception as e:  # pylint: disable=broad-except
+            _log.error('hand focus back to Artisan: %s', e)
 
-        self.aw.tilauscopeMain.setChecked(False)
-
-        if hasattr(self,'_brew_notif'):
-            if self._brew_notif:
-                try:
-                    self._brew_notif.request_stop()
-                except RuntimeError:
-                    # underlying C++ widget already deleted (auto-closed) — nothing to stop
-                    pass
-                self._brew_notif = None
+        if getattr(self, '_brew_notif', None):
+            try:
+                self._brew_notif.request_stop()
+            except Exception:  # pylint: disable=broad-except
+                # underlying C++ widget already deleted (auto-closed) — nothing to stop
+                pass
+            self._brew_notif = None
 
         if _IS_WINDOWS:
-            self.clearFocus()
-
-        # Détacher le flux de données live qmc -> TilauScope
-        try:
-            self.aw.qmc.tilauUpdateSignal.disconnect(self.update_ui_from_artisan)
-        except (TypeError, RuntimeError):
-            pass
-        try:
-            self.aw.loadBackgroundSignal.disconnect(self._on_background_changed)
-        except (TypeError, RuntimeError):
-            pass
-        try:
-            self.aw.clearBackgroundSignal.disconnect(self._on_background_changed)
-        except (TypeError, RuntimeError):
-            pass
+            try:
+                self.clearFocus()
+            except RuntimeError:
+                pass
 
         # 13. Retirer le hook messages Artisan et restaurer messagelabel
-        if hasattr(self, '_msg_hook'):
-            self._msg_hook.remove()
-        if hasattr(self, '_axes_hook'):
-            self._axes_hook.remove()
-        if hasattr(self, '_canvas_style_hook'):
-            self._canvas_style_hook.remove()
-        self.aw.messagelabel.setVisible(True)
-        super().closeEvent(a0)
+        for hook_attr in ('_msg_hook', '_canvas_style_hook'):
+            hook = getattr(self, hook_attr, None)
+            if hook is None:
+                continue
+            try:
+                hook.remove()
+            except Exception as e:  # pylint: disable=broad-except
+                _log.error('remove %s: %s', hook_attr, e)
+        try:
+            self.aw.messagelabel.setVisible(True)
+        except Exception as e:  # pylint: disable=broad-except
+            _log.error('restore Artisan message label: %s', e)
 
     @override
     def eventFilter(self, obj, event):
@@ -274,7 +329,7 @@ class ChromeMixin:
             self.toggle_beancave()
         elif key == Qt.Key.Key_X and no_modifier:
             # Call the extra counters logic
-            if len(self.extra_panel.active_counters) > 0:
+            if self.extra_panel is not None and len(self.extra_panel.active_counters) > 0:
                 self.extra_panel.toggle_visibility()
             return
         elif key == Qt.Key.Key_B and no_modifier:

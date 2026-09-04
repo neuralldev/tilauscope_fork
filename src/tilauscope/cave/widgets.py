@@ -31,7 +31,7 @@ from artisanlib.widgets import MyQDoubleSpinBox
 
 
 from PyQt6.QtCore import (QRect, QStandardPaths, Qt, pyqtSlot, pyqtSignal, QObject,
-                          QEasingCurve,QPoint, QTimer, QPropertyAnimation, QEvent, QVariantAnimation, QSize) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
+                          QEasingCurve,QPoint, QPropertyAnimation, QEvent, QVariantAnimation, QSize) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
 from PyQt6.QtGui import ( QPixmap, QColor, QResizeEvent, QGuiApplication, QCursor, QPainter, QPainterPath, QBrush) # @UnusedImport @Reimport  @UnresolvedImport
 from PyQt6.QtWidgets import (QApplication, QComboBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QWidget, QFrame, QFileDialog, QMessageBox, QDialog, QSizePolicy) # @UnusedImport @Reimport  @UnresolvedImport
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
@@ -40,7 +40,7 @@ from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
 
 from tilauscope.theme_qss import apply_tilau_theme, tint, tooltip_qss
 from tilauscope.tilauscope_types import (show_styled_message,
-                                         THEME)
+                                         THEME, call_later)
 
 from tilauscope.cave.common import (  # noqa: F401
     _logd, _log, _PLOT_PALETTE, _FS_TITLE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_HOVER, _FS_LEGEND, C0_COLOR_KEY, C_BT_COLOR_KEY, C_DTR_COLOR_KEY, C_WL_COLOR_KEY, DEFAULT_C0, DEFAULT_C_BT, DEFAULT_C_DTR, DEFAULT_C_WL, greencave_headers, BEANCAVE_FILE_NAME, _SVG_EXPAND, _SVG_COLLAPSE, _SVG_CONSISTENCY, _SVG_ALIGN, _safe_filename, _svg_bytes_to_icon, _SVG_DENSITY, load_cave_beans, _atomic_write_text, apply_mica_acrylic_effect)
@@ -579,7 +579,10 @@ class QRCodeDialog(QDialog):
         self._btn_copy.setText(
             QApplication.translate("tilauscope_beancave", "Copied! ✓")
         )
-        QTimer.singleShot(1500, lambda: self._btn_copy.setText(
+        # Through call_later, not QTimer.singleShot: closing this window
+        # inside the delay would otherwise leave the label restore to land on a
+        # deleted button, and that takes the application down with it.
+        call_later(self._btn_copy, 1500, lambda: self._btn_copy.setText(
             QApplication.translate("tilauscope_beancave", "Copy to Clipboard")
         ))
 

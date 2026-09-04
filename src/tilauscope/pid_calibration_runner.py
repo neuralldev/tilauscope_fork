@@ -83,7 +83,9 @@ class LiveCalibrationSampleObserver:
         if sensor_valid:
             self._history.append((elapsed_sec, temperature_c))
         ror = 0.0
-        if len(self._history) >= 2:
+        # An invalid sample has no temperature, so it has no rate either: a NaN
+        # here would make every downstream `abs(ror) > limit` guard fail open.
+        if sensor_valid and len(self._history) >= 2:
             first_at, first_temperature = self._history[0]
             dt = elapsed_sec - first_at
             if dt > 0.1:

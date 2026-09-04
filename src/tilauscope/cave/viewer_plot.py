@@ -40,7 +40,8 @@ from PyQt6.QtWidgets import (QApplication, QMessageBox, QMenu) # @UnusedImport @
 from tilauscope.tilauscope_types import (show_styled_message,
                                          THEME, RoastingPhase, marked, normalize_timeindex)
 from tilauscope.cave.common import (
-    _log, _PLOT_PALETTE, _FS_TITLE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_HOVER, _FS_LEGEND)
+    _log, _PLOT_PALETTE, _FS_TITLE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_HOVER, _FS_LEGEND,
+    _atomic_write_text)
 
 
 class ViewerPlotMixin:
@@ -737,7 +738,11 @@ class ViewerPlotMixin:
             # (cf. artisanlib.util.serialize). Read back with ast.literal_eval.
             data_to_write = dict(self.lastprofiledata)
             data_to_write['timeindex'] = self._pending_timeindex
-            filepath.write_text(repr(data_to_write), encoding='utf-8')
+            # Through the temporary file, never over the profile itself: this
+            # rewrites a whole roast to change one number, and a write cut
+            # short — a full disk, an unplugged drive, a crash — would leave a
+            # truncated file where the roast used to be, with no copy of it.
+            _atomic_write_text(filepath, repr(data_to_write), 'utf-8')
             # Invalidate LRU cache so next load reads the updated file
             cache_key = str(filepath)
             if cache_key in self._alog_cache:

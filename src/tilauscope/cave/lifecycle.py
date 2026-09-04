@@ -44,7 +44,7 @@ from tilauscope.tilau_ble_scanner import TilauBLEScanner
 from tilauscope.theme_qss import base_qss
 from tilauscope.tilauscope_types import (BeanCaveContainer, show_styled_message,
                                          THEME, _IS_MACOS, _IS_WINDOWS,
-                                         open_in_os_viewer)
+                                         open_in_os_viewer, call_later)
 from tilauscope.lebrewroastsee import LebrewWaterActivityChecker
 from tilauscope.roasters import RoasterManager
 from tilauscope.alogmanager import (AlogCacheCollection, AlogIndex, _AlogCacheIndexingWorker, directory_changed)
@@ -55,6 +55,7 @@ from tilauscope.cave.common import (PKG_DIR,
 from tilauscope.cave.widgets import (
     _DensityFloatWindow)
 from tilauscope.cave.workers import (
+    stop_worker_thread,
     _RoasterLoadWorker)
 
 
@@ -546,9 +547,15 @@ class LifecycleMixin:
                     self._indexer_thread.requestInterruption()  # signal worker de s'arrêter
                     self._indexer_thread.quit()
                     if not self._indexer_thread.wait(2000):     # 2s — scan disque peut être lent
-                        _log.warning("indexer thread did not stop — terminate()")
-                        self._indexer_thread.terminate()
-                        self._indexer_thread.wait()             # bloquant mais nécessaire après terminate
+                        # No terminate(): it kills the thread at an arbitrary
+                        # instruction and can leave a Qt-internal mutex locked
+                        # for good — the next Bean Cave then freezes while it
+                        # builds a widget, with no crash and no log. These
+                        # workers check isInterruptionRequested and return
+                        # within a read, so waiting once more is the safe move.
+                        _log.warning("indexer thread did not stop cooperatively — waiting once more")
+                        if not self._indexer_thread.wait(2000):
+                            _log.error("indexer thread is still running and was left to finish on its own")
             except (TypeError, RuntimeError):
                 pass
             self._indexer_thread = None
@@ -563,9 +570,11 @@ class LifecycleMixin:
                     self._roaster_thread.requestInterruption()
                     self._roaster_thread.quit()
                     if not self._roaster_thread.wait(2000):
-                        _log.warning("roaster worker did not stop cooperatively — terminate()")
-                        self._roaster_thread.terminate()
-                        self._roaster_thread.wait()
+                        # See the indexer above: no terminate() — it can leave a
+                        # Qt-internal mutex locked and freeze the next Bean Cave.
+                        _log.warning("roaster worker did not stop cooperatively — waiting once more")
+                        if not self._roaster_thread.wait(2000):
+                            _log.error("roaster worker is still running and was left to finish on its own")
             except (TypeError, RuntimeError):
                 pass
             self._roaster_thread = None
@@ -584,9 +593,11 @@ class LifecycleMixin:
                     self._list_thread.requestInterruption()
                     self._list_thread.quit()
                     if not self._list_thread.wait(2000):
-                        _log.warning("alog list worker did not stop cooperatively — terminate()")
-                        self._list_thread.terminate()
-                        self._list_thread.wait()
+                        # See the indexer above: no terminate() — it can leave a
+                        # Qt-internal mutex locked and freeze the next Bean Cave.
+                        _log.warning("alog list worker did not stop cooperatively — waiting once more")
+                        if not self._list_thread.wait(2000):
+                            _log.error("alog list worker is still running and was left to finish on its own")
             except RuntimeError:
                 pass  # Qt object already deleted by deleteLater
             self._list_thread = None
@@ -600,32 +611,15 @@ class LifecycleMixin:
                     self._plan_roast_files_thread.requestInterruption()
                     self._plan_roast_files_thread.quit()
                     if not self._plan_roast_files_thread.wait(2000):
-                        _log.warning("plan worker did not stop cooperatively — terminate()")
-                        self._plan_roast_files_thread.terminate()
-                        self._plan_roast_files_thread.wait()
+                        # See the indexer above: no terminate() — it can leave a
+                        # Qt-internal mutex locked and freeze the next Bean Cave.
+                        _log.warning("plan worker did not stop cooperatively — waiting once more")
+                        if not self._plan_roast_files_thread.wait(2000):
+                            _log.error("plan worker is still running and was left to finish on its own")
             except (RuntimeError, TypeError):
                 pass
             self._plan_roast_files_thread = None
             self._plan_roast_files_worker = None
-
-        # --- Bean AI parse (supplier page) ---
-        # Not parented to the dialog: closing BeanCave mid-call drops the last
-        # reference to a running QThread, and its result lands in a torn-down form.
-        if getattr(self, 'ai_thread', None) is not None:
-            try:
-                if self.ai_thread.isRunning():
-                    self.ai_worker.finished.disconnect(self._on_bean_ai_finished)
-                    self.ai_worker.error.disconnect(self._on_bean_ai_error)
-                    self.ai_thread.requestInterruption()
-                    self.ai_thread.quit()
-                    if not self.ai_thread.wait(2000):
-                        _log.warning("bean AI worker did not stop cooperatively — terminate()")
-                        self.ai_thread.terminate()
-                        self.ai_thread.wait()
-            except (RuntimeError, TypeError):
-                pass
-            self.ai_thread = None
-            self.ai_worker = None
 
         # --- TilauBLEScanner centralisé ---
         if hasattr(self, '_ble_scanner') and self._ble_scanner is not None:
@@ -635,56 +629,23 @@ class LifecycleMixin:
                 pass
             self._ble_scanner = None
 
-        # --- Alog load thread (mono) ---
-        if hasattr(self, '_alog_thread') and self._alog_thread is not None:
-            try:
-                if self._alog_thread.isRunning():
-                    self._alog_worker.finished.disconnect(self._alog_worker_finished_on_plot_ok)
-                    self._alog_worker.error.disconnect(self._alog_worker_finished_on_plot_error)
-                    self._alog_thread.requestInterruption()
-                    self._alog_thread.quit()
-                    if not self._alog_thread.wait(2000):
-                        _log.warning("alog worker did not stop cooperatively — terminate()")
-                        self._alog_thread.terminate()
-                        self._alog_thread.wait()
-            except (TypeError, RuntimeError):
-                pass
-            self._alog_thread = None
-            self._alog_worker = None
-
-        # --- Alog load thread (multi) ---
-        if hasattr(self, '_multi_alog_thread') and self._multi_alog_thread is not None:
-            try:
-                if self._multi_alog_thread.isRunning():
-                    try:
-                        self._multi_alog_worker.finished.disconnect(self._on_multi_curve_loaded)
-                        self._multi_alog_worker.error.disconnect(self._on_multi_curve_error)
-                    except (TypeError, RuntimeError):
-                        pass
-                    self._multi_alog_thread.requestInterruption()
-                    self._multi_alog_thread.quit()
-                    if not self._multi_alog_thread.wait(1000):
-                        _log.warning("multi alog thread did not stop — terminate()")
-                        self._multi_alog_thread.terminate()
-                        self._multi_alog_thread.wait()
-            except RuntimeError:
-                pass
-            self._multi_alog_thread = None
-            self._multi_alog_worker = None
-
         # --- AI thread — attendre la fin propre avant destruction ──────────
         if hasattr(self, 'ai_thread') and self.ai_thread is not None:
             try:
                 if self.ai_thread.isRunning():
-                    try:
-                        self.ai_worker.finished.disconnect(self._on_bean_ai_finished)
-                    except (TypeError, RuntimeError):
-                        pass
+                    for _sig, _slot in ((self.ai_worker.finished, self._on_bean_ai_finished),
+                                        (self.ai_worker.error, self._on_bean_ai_error)):
+                        try:
+                            _sig.disconnect(_slot)
+                        except (TypeError, RuntimeError):
+                            pass
                     self.ai_thread.requestInterruption()
                     self.ai_thread.quit()
                     if not self.ai_thread.wait(2000):   # 2s timeout
-                        self.ai_thread.terminate()      # fallback hard-stop
-                        self.ai_thread.wait(500)
+                        # See the indexer above: no terminate().
+                        _log.warning("bean AI worker did not stop cooperatively — waiting once more")
+                        if not self.ai_thread.wait(2000):
+                            _log.error("bean AI worker is still running and was left to finish on its own")
             except (TypeError, RuntimeError):
                 pass
             self.ai_thread = None
@@ -694,6 +655,14 @@ class LifecycleMixin:
         if hasattr(self, 'niimbot_thread') and self.niimbot_thread is not None:
             try:
                 if self.niimbot_thread.isRunning():
+                    # Drop the result slots first: a label finishing during the
+                    # 5 s wait used to land in a dialog already tearing down.
+                    for _sig, _slot in ((self.niimbot_worker.print_finished, self._on_print_success),
+                                        (self.niimbot_worker.print_error, self._on_print_error)):
+                        try:
+                            _sig.disconnect(_slot)
+                        except (TypeError, RuntimeError):
+                            pass
                     self.niimbot_worker.cancel()
                     self.niimbot_thread.requestInterruption()
                     self.niimbot_thread.quit()
@@ -704,6 +673,16 @@ class LifecycleMixin:
                 pass
             self.niimbot_thread = None
             self.niimbot_worker = None
+
+        # --- Niimbot satellite print (sack sheets, brew labels) ---
+        # Its own thread, started outside the main print path and until now
+        # never joined: closing BeanCave mid-print destroyed it while running.
+        if getattr(self, '_sat_niimbot_thread', None) is not None:
+            stop_worker_thread(self._sat_niimbot_thread,
+                               getattr(self, '_sat_niimbot_worker', None),
+                               name="satellite print worker")
+            self._sat_niimbot_thread = None
+            self._sat_niimbot_worker = None
 
         # --- Niimbot heartbeat poll (timer + thread éphémère) ---
         # Stoppe le timer + déconnecte status_updated, puis joint un poll en vol
@@ -780,7 +759,9 @@ class LifecycleMixin:
             "\n".join(problems)
         )
         # Defer the message so the window is fully visible before the dialog appears
-        QTimer.singleShot(200, lambda: (
+        # Tied to this window: closed inside the delay, the warning would open
+        # on a catalogue that no longer exists.
+        call_later(self, 200, lambda: (
             self._show_message(
                 self,
                 QApplication.translate("tilauscope_beancave", "Directory Error"),

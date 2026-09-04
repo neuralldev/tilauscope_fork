@@ -432,7 +432,11 @@ class LiveMixin:
         # flagstart). So a time throttle, not a data==10 gate, caps the cost
         # without freezing the panel during monitoring. First call after the
         # panel is shown runs immediately (timestamp stays stale while hidden).
-        if self.extra_panel.isVisible():
+        # None is a real state, not a transient: the panel is dropped and
+        # rebuilt whenever the extra devices change, and a rebuild that failed
+        # would otherwise raise here on every single sample — the guard around
+        # this slot would swallow it and the whole live display would stop.
+        if self.extra_panel is not None and self.extra_panel.isVisible():
             _now = time.monotonic()
             if _now - self._last_extra_update >= 0.9:
                 self._last_extra_update = _now
