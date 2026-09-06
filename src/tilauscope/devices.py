@@ -571,7 +571,6 @@ class TilauscopeConfigDlg(QDialog):
             "bleNiimbotDeviceName":       aw.bleNiimbotDeviceName,
             "bleAirwaveDeviceName":       aw.bleAirwaveDeviceName,
             "bleSkywalkerDeviceName":     aw.bleSkywalkerDeviceName,
-            "bleAirwavepidOnET":          aw.bleAirwavepidOnET,
             "bleAirwavepidRamp":          aw.bleAirwavepidRamp,
             "bleAirwaveEmulateOmniflux":  aw.bleAirwaveEmulateOmniflux,
             "bleAirwavepidparms":         aw.bleAirwavepidparms.copy(),
@@ -943,16 +942,16 @@ class TilauscopeConfigDlg(QDialog):
             "bleAirwaveDeviceName", "bleAirwaveDeviceslist",
         )
 
-        self.AirwavePidOnETCheckVBox = QCheckBox(
-            QApplication.translate("tilauscope_devices", "PID target on ET (instead of BT)")
-        )
-        self.AirwavePidOnETCheckVBox.setChecked(self.aw.bleAirwavepidOnET)
-
         self.AirwavePidRampSpinBox = QSpinBox()
         self.AirwavePidRampSpinBox.setRange(1, 10)
         self.AirwavePidRampSpinBox.setValue(self.aw.bleAirwavepidRamp)
         self.AirwavePidRampSpinBox.setToolTip(
-            QApplication.translate("tilauscope_devices", "PID correction ramp speed (1=slow … 10=fast)")
+            QApplication.translate(
+                "tilauscope_devices",
+                "How fast the extractor is allowed to change speed, in fan points "
+                "per second (1 = gentle, 10 = fast). Also paces the duct overheat "
+                "protection.",
+            )
         )
 
         self.AirwaveEmulateOmnifluxCheckVBox = QCheckBox(
@@ -963,25 +962,27 @@ class TilauscopeConfigDlg(QDialog):
         aw_g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)
         aw_g.addWidget(self.AirwaveComboBox, 0, 1)
         aw_g.addWidget(airwave_cell, 0, 2)
-        aw_g.addWidget(self.AirwavePidOnETCheckVBox, 1, 0, 1, 3)
-        aw_g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Ramp speed:")), 2, 0)
-        aw_g.addWidget(self.AirwavePidRampSpinBox, 2, 1, alignment=Qt.AlignmentFlag.AlignLeft)
-        aw_g.addWidget(self.AirwaveEmulateOmnifluxCheckVBox, 3, 0, 1, 3)
+        aw_g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Ramp speed:")), 1, 0)
+        aw_g.addWidget(self.AirwavePidRampSpinBox, 1, 1, alignment=Qt.AlignmentFlag.AlignLeft)
+        aw_g.addWidget(self.AirwaveEmulateOmnifluxCheckVBox, 2, 0, 1, 3)
         layout.addWidget(airwave_group)
 
         # ── AirWave PID — collapsible ──────────────────────────────────────
         self._airwave_pid_section = QCollapsibleWidget(
-            QApplication.translate("tilauscope_devices", "AirWave PID parameters"),
+            QApplication.translate("tilauscope_devices", "AirWave extraction per phase"),
             collapsed=True,
         )
         self.pid_table = QTableWidget()
+        # Slots 0, 1 (the retired controller gains), 3 (an "inlet target" no code
+        # ever read) and 6 (the per-phase ramp, which paced the retired
+        # controller's approach to its setpoint) are carried through unchanged so
+        # an existing configuration still loads; they are no longer shown or
+        # interpreted. The speed the extractor is allowed to change at is the
+        # single "Ramp speed" above, which paces the duct guard.
         pid_headers = [
-            "Kp", "Ki",
-            QApplication.translate("tilauscope_devices", "Min fan %"),
-            QApplication.translate("tilauscope_devices", "Inlet target"),
-            QApplication.translate("tilauscope_devices", "Inlet limit"),
+            QApplication.translate("tilauscope_devices", "Fan %"),
+            QApplication.translate("tilauscope_devices", "Duct limit"),
             QApplication.translate("tilauscope_devices", "Mode"),
-            QApplication.translate("tilauscope_devices", "Ramp %/s"),
         ]
         self.pid_table.setColumnCount(len(pid_headers))
         self.pid_table.setHorizontalHeaderLabels(pid_headers)
@@ -1497,49 +1498,48 @@ class TilauscopeConfigDlg(QDialog):
         _css = _table_combobox_style()
         for row, key in enumerate(keys):
             params = self.aw.bleAirwavepidparms[key]
-            for col in range(5):
+            # colonne affichée -> emplacement stocké (0, 1, 3 et 6 sont retirés
+            # de l'affichage mais conservés dans le tuple)
+            for col, slot in enumerate((2, 4)):
                 sb = QDoubleSpinBox()
                 sb.setRange(0, 500)
-                sb.setDecimals(1 if col == 0 else (2 if col == 1 else 0))
-                sb.setValue(float(params[col]))
+                sb.setDecimals(0)
+                sb.setValue(float(params[slot]))
                 sb.setStyleSheet(_ss)
                 self.pid_table.setCellWidget(row, col, sb)
             cb = QComboBox()
             cb.addItems(mode_options)
             cb.setCurrentText(str(params[5]))
             cb.setStyleSheet(_css)
-            self.pid_table.setCellWidget(row, 5, cb)
-            ramp_sb = QDoubleSpinBox()
-            ramp_sb.setRange(0.05, 2.0)
-            ramp_sb.setDecimals(2)
-            ramp_sb.setSingleStep(0.05)
-            ramp_sb.setStyleSheet(_ss)
-            ramp_sb.setToolTip(
-                QApplication.translate(
-                    "tilauscope_devices",
-                    "Ramp speed toward target fan speed (% per cycle ~1 s). "
-                    "0.20 = gentle (~75 s for 15% change). "
-                    "0.50 = fast (~30 s for 15% change).",
-                )
-            )
-            ramp_val = float(params[6]) if len(params) > 6 else 0.25
-            ramp_sb.setValue(ramp_val)
-            self.pid_table.setCellWidget(row, 6, ramp_sb)
+            self.pid_table.setCellWidget(row, 2, cb)
+
+    @staticmethod
+    def _kept_pid_slot(previous: tuple | list, index: int, default: float) -> float:
+        """Emplacement conservé dans le tuple mais plus affiché ni interprété."""
+        try:
+            return float(previous[index])
+        except (IndexError, TypeError, ValueError):
+            return default
 
     def _get_airwave_pid_data(self) -> dict:
         new_params = {}
         keys = list(self.aw.bleAirwavepidparms.keys())
         for row, key in enumerate(keys):
-            widgets = [self.pid_table.cellWidget(row, c) for c in range(7)]
+            widgets = [self.pid_table.cellWidget(row, c) for c in range(3)]
             if all(w is not None for w in widgets):
+                previous = self.aw.bleAirwavepidparms[key]
+                # Emplacements masqués (gains du correcteur déposé, l'ancien
+                # « inlet target » et la rampe par phase) : reconduits tels
+                # quels, jamais interprétés.
+                keep = self._kept_pid_slot
                 new_params[key] = (
+                    keep(previous, 0, 0.0),
+                    keep(previous, 1, 0.0),
                     float(widgets[0].value()),   # type: ignore[union-attr]
-                    float(widgets[1].value()),   # type: ignore[union-attr]
-                    float(widgets[2].value()),   # type: ignore[union-attr]
-                    int(widgets[3].value()),     # type: ignore[union-attr]
-                    int(widgets[4].value()),     # type: ignore[union-attr]
-                    widgets[5].currentText(),    # type: ignore[union-attr]
-                    float(widgets[6].value()),   # type: ignore[union-attr]
+                    keep(previous, 3, 0.0),
+                    int(widgets[1].value()),     # type: ignore[union-attr]
+                    widgets[2].currentText(),    # type: ignore[union-attr]
+                    keep(previous, 6, 0.25),
                 )
         return new_params
 
@@ -2592,7 +2592,6 @@ class TilauscopeConfigDlg(QDialog):
             aw.bleAirwaveDeviceName = m.group(1) if m else t
         else:
             aw.bleAirwaveDeviceName = None  # unassigned via 🗑
-        aw.bleAirwavepidOnET         = self.AirwavePidOnETCheckVBox.isChecked()
         aw.bleAirwavepidRamp         = self.AirwavePidRampSpinBox.value()
         aw.bleAirwaveEmulateOmniflux = self.AirwaveEmulateOmnifluxCheckVBox.isChecked()
         aw.bleAirwavepidparms        = self._get_airwave_pid_data()

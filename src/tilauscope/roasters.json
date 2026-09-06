@@ -54,6 +54,7 @@
             0.0,
             0.0
         ],
+        "arrival_uncertainty_c": 3.0,
         "supports_preheat_profiles": false,
         "supports_auto_charge_temperature": false,
         "supports_auto_gas_events": false,
@@ -126,6 +127,7 @@
             0.0,
             0.0
         ],
+        "arrival_uncertainty_c": 3.0,
         "supports_preheat_profiles": false,
         "supports_auto_charge_temperature": false,
         "supports_auto_gas_events": false,
@@ -196,6 +198,7 @@
             0.0,
             0.0
         ],
+        "arrival_uncertainty_c": 1.5,
         "dev_thermal_inertia_factor": 0.6,
         "notes": "IBTS infrared sensor supported by Artisan.",
         "thermal_model_kernel": "gaussian",
@@ -573,6 +576,7 @@
             0.0,
             0.0
         ],
+        "arrival_uncertainty_c": 3.0,
         "dev_thermal_inertia_factor": 0.35,
         "notes": "Inertia graduated across the Kaleido family by drum/batch mass (M1 0.35, M2 0.4, M6 0.45, M10 0.55).",
         "thermal_model_kernel": "triangular",
@@ -661,6 +665,7 @@
             0.0,
             0.0
         ],
+        "arrival_uncertainty_c": 3.0,
         "notes": "Carbon fiber infrared direct fire + hot air perforated drum. Dual K-type probes with adjustable depth holders. USB connects to Kaleido's own touch-panel system; Bluetooth connects to Artisan on Windows/macOS. Dual-system variant ships with a bundled tablet running Kaleido software; Pro variant is Artisan-only. Independent cooling tray allows pre-heating next batch during cool-down. Built-in smoke extraction via Venturi-effect fan. Optimal batch 50\u2013300g; 400g is rated maximum. Inertia graduated across the family by mass (M1 0.35, M2 0.4, M6 0.45, M10 0.55).",
         "dev_thermal_inertia_factor": 0.4,
         "thermal_model_kernel": "triangular",
@@ -726,6 +731,7 @@
             0.0,
             0.0
         ],
+        "arrival_uncertainty_c": 3.0,
         "dev_thermal_inertia_factor": 0.45,
         "thermal_model_kernel": "triangular",
         "thermal_model_sigma": 1.0
@@ -790,6 +796,7 @@
             0.0,
             0.0
         ],
+        "arrival_uncertainty_c": 3.0,
         "dev_thermal_inertia_factor": 0.55,
         "notes": "Inertia 0.55: a 900 g IR drum carries real momentum \u2014 graduated with the family (M1 0.35, M2 0.4, M6 0.45, M10 0.55).",
         "thermal_model_kernel": "triangular",
@@ -851,6 +858,7 @@
             0.0,
             0.0
         ],
+        "arrival_uncertainty_c": 1.5,
         "dev_thermal_inertia_factor": 0.15,
         "notes": "Inertia 0.15: PID-driven air-only heat transfer, near-instant flux cut.",
         "thermal_model_kernel": "gaussian",
@@ -979,6 +987,7 @@
             0.0,
             0.0
         ],
+        "arrival_uncertainty_c": 3.0,
         "dev_thermal_inertia_factor": 0.7,
         "notes": "Inertia 0.7 is deliberately ABOVE what the mass indices suggest (~0.55): momentum is actuator-lag driven \u2014 sheathed element against the drum, enclosed chassis, slowest response of the fleet (0.45). Field practice on Hottop is cutting heat ~60 s before FC, which 0.7 reproduces.",
         "thermal_model_kernel": "gaussian",
@@ -1162,6 +1171,7 @@
             0.0,
             0.0
         ],
+        "arrival_uncertainty_c": 3.0,
         "supports_preheat_profiles": true,
         "supports_auto_charge_temperature": false,
         "supports_auto_gas_events": true,

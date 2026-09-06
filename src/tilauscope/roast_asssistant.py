@@ -4751,6 +4751,9 @@ class RoastAssistantPanel(QWidget):
         # (aw._tilau_burner_watch, lu par _ror_deviation_advice). Le lag est
         # dérivé de la réactivité thermique de la machine.
         self._burner_last_pct: "int | None" = None
+        # Une régénération de plan ambiante en vol suffit : le signal arrive du
+        # slot d'échantillon, la régénération est différée hors de lui.
+        self._ambient_replan_queued: bool = False
 
         # AutoPilot v1a (feedforward — AutoRoast-Spec §3 étage 1, §5) ──
         # 'off' | 'armed' | 'paused' ; armement = consentement, opt-in par session.
@@ -5662,11 +5665,42 @@ class RoastAssistantPanel(QWidget):
         if self._bean is None or self._agtron is None:
             return
 
+        if self._ambient_replan_queued:
+            return   # one regeneration in flight is enough
+
         _logd.debug(
             f"RoastAssistant: ambient change T={temp:.1f} H={hum:.1f} "
             f"→ regenerating plan (phase={self._current_phase})"
         )
-        self._regenerate_plan(ambient_temp=temp, ambient_hum=hum)
+        # Deferred out of the sample slot: this signal is emitted from
+        # RoastDataBridge.tick(), itself called from update_ui_from_artisan()
+        # on a direct connection, so the whole plan generation ran INSIDE the
+        # slot that also drives the readouts, the curve and the milestone
+        # marks — re-entrant, and everything after it in that slot waits.
+        # singleShot(0) is not a thread and is not meant to be one: the work
+        # stays on the GUI thread, but the sample slot returns first. A thread
+        # would be the wrong tool here anyway — the pipeline reads parent.qmc
+        # (_get_delta_bt, evaldeltas), which no background thread may touch.
+        # The cost is bounded: the corpus is read once at _start_assistant and
+        # served from _get_history_cached for the same bean/target/weight, so a
+        # regeneration is arithmetic, not disk.
+        self._ambient_replan_queued = True
+        QTimer.singleShot(0, lambda: self._run_queued_ambient_replan(temp, hum))
+
+    def _run_queued_ambient_replan(self, temp: float, hum: float) -> None:
+        """Deferred body of _on_ambient_changed. Re-checks the conditions: the
+        roast may have stopped or left DRY between the sample and this call."""
+        self._ambient_replan_queued = False
+        try:
+            if not self.is_active:
+                return
+            if self._current_phase not in (self._PHASE_PREHEAT, self._PHASE_DRY):
+                return
+            if self._bean is None or self._agtron is None:
+                return
+            self._regenerate_plan(ambient_temp=temp, ambient_hum=hum)
+        except Exception:  # pylint: disable=broad-except
+            _logd.exception("RoastAssistant: queued ambient replan failed")
 
     @pyqtSlot(bool)
     def _on_roast_state(self, active: bool) -> None:
@@ -6027,6 +6061,15 @@ class RoastAssistantPanel(QWidget):
             self._bean_header.set_auto_state(state)
         except (AttributeError, RuntimeError):
             pass
+        if state != "armed":
+            # Compte à rebours d'auto-DROP : c'est une échéance ABSOLUE. Une
+            # pause pendant le décompte (geste opérateur, filet épuisé, tick en
+            # échec) la laissait posée et déjà périmée — le réarmement suivant
+            # larguait le roast au tick d'après, sans décompte, sans bip et sans
+            # « Annuler ». On la retire : la cible doit être re-tenue et les
+            # 10 s annulables re-gagnées.
+            self._ap_drop_deadline = None
+            self._ap_drop_confirm = 0
         if state == "off":
             self._ap_expected.clear()
             self._ap_core.disarm()   # v1b : plus d'action moteur possible jusqu'au prochain armement

@@ -5377,9 +5377,11 @@ class tgraphcanvas(QObject):
                         if self.alarmSemaphore.available() < 1:
                             self.alarmSemaphore.release(1)
 
-                    ## TILAU ##
-                    if self.flagstart and self.timex and len(self.timex)>0 and self.aw.bleAirwavepidOnET and self.aw.bleAirwaveDevice is not None: # if Airwave pid is on, make calculation
-                        self.aw.bleAirwaveDevice.pidOnET(self.timeindex, self.timex, self.temp1, self.delta1, bool(self.aw.simulator), self.deltaETspan, self.deltaETsamples)
+                    ## TILAU ## duct overheat protection: a hardware limit, not a
+                    ## roast control — it runs whenever the extractor is connected,
+                    ## preheat and monitoring included, and only ever slows it down
+                    if self.aw.bleAirwaveDevice is not None:
+                        self.aw.bleAirwaveDevice.duct_overheat_guard(bool(self.aw.simulator))
                     # polling started, we are not in simulator also not FC already set, if crack counter is on, check if it has to be raised
                     # for testing purpose allow simulator FC marking
                     if self.flagstart and self.timex and len(self.timex)>0 and \
@@ -8215,6 +8217,13 @@ class tgraphcanvas(QObject):
             self.tilau_roast_plan_snapshot = _tilau_snapshot_keep  ## TILAU ## P2 prediction is per-roast
             self._tilau_coach_pub = None   ## TILAU ## clear graph-coach proximity
             self._tilau_milestone_suggest = None   ## TILAU ## clear milestone suggestion (#10)
+            ## TILAU ## the Airwave device object outlives a roast: its phase,
+            ## mode and duct-guard state are per-roast and must not be inherited
+            if self.aw.bleAirwaveDevice is not None:
+                try:
+                    self.aw.bleAirwaveDevice.reset_pid_state()
+                except Exception:  # noqa: BLE001
+                    pass
 
             self.aw.AUClcd.setNumDigits(3)
             self.aw.buttonFCs.setDisabled(False)
@@ -14519,9 +14528,6 @@ class tgraphcanvas(QObject):
         _logd.debug("airwave is connected")
         if self.aw.bleAirwaveDevice is not None :
             self.aw.bleAirwaveDevice.is_connected = True
-            if self.aw.bleAirwaveEmulateOmniflux: # if omniflux mode started, then disable pid and start
-                self.aw.bleAirwavepidOnET = False
-                _logd.info("Airwave omniflux mode set ON, disable our PID")
 
     @pyqtSlot()
     def slotStopAirWave(self):

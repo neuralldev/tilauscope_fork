@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (QApplication) # @UnusedImport @Reimport  @Unresolve
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.theme_qss import tint
-from tilauscope.tilauscope_types import (THEME, RoastingPhase, normalize_timeindex, estimate_ror_dt, find_turning_point_index, find_flicks_crashes,
+from tilauscope.tilauscope_types import (THEME, RoastingPhase, normalize_timeindex, estimate_ror_dt, find_turning_point_index, dominant_dev_ror_event,
                                           WEIGHT_LOSS_TOLERANCE_PCT)
 from tilauscope.cave.common import (
     _logd, _PLOT_PALETTE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_LEGEND)
@@ -738,8 +738,6 @@ class ViewerMultiMixin:
     def _extract_roast_metrics(self, data: dict) -> dict:
         c = data.get('computed', {})
         mode = data.get('mode', 'C')
-        ground = data.get('ground_color', 0) or 0
-        whole = data.get('whole_color', 0) or 0
         t_charge = 0
         t_dry    = c.get('DRY_time', 0) or 0
         t_fcs    = c.get('FCs_time', 0) or 0
@@ -753,9 +751,12 @@ class ViewerMultiMixin:
             _moist = float(data.get('moisture_greens') or 0.0)
         except (TypeError, ValueError):
             _moist = 0.0
+        # The level the roast ran, from its arrival pair — the colour is the
+        # result, never the reference the roast is judged against.
         level, lvl_th = self.roast_level_thresholds(
-            ground if ground else whole,
-            moisture_pct=_moist, dev_time_min=development / 60.0)
+            self.roast_level_measured(data, c, mode)[0],
+            moisture_pct=_moist, dev_time_min=development / 60.0,
+            drop_offset_c=self.roast_drop_offset_c(data))
         dtr_target = sum(lvl_th['dtr']) / 2.0
         wl_target = lvl_th['wl_target']
         total       = t_drop - t_charge
@@ -867,8 +868,8 @@ class ViewerMultiMixin:
     def _detect_crash_flick(self, data: dict, deltabt: list) -> "str | None":
         """Détecte un accident de RoR en développement (FCs→DROP) via le même
         détecteur à extrema locaux pondérés par proéminence que le plan de
-        torréfaction et le coach mono-roast — 'crash', 'flick', les deux, ou
-        None si le développement reste propre."""
+        torréfaction et le coach mono-roast — 'crash', 'flick', ou None si le
+        développement reste propre. Un seul verdict : le plus proéminent."""
         if not data or not deltabt:
             return None
         ti = normalize_timeindex(data.get('timeindex', []))
@@ -890,23 +891,14 @@ class ViewerMultiMixin:
             seg_slice = slice(charge_idx, drop_idx + 1)
             seg_dt = estimate_ror_dt(timex_shifted[seg_slice])
             tp_idx_local = find_turning_point_index(bt_raw[seg_slice], seg_dt)
-            # Seuil de proéminence en °/min → mis à l'échelle pour le Fahrenheit.
-            tscale = 1.8 if data.get('mode', 'C') == 'F' else 1.0
-            flicks, crashes = find_flicks_crashes(
-                deltabt[seg_slice], timex_shifted[seg_slice], phase_times, tp_idx_local,
-                prominence=1.0 * tscale,
-            )
+            # Série de RoR déjà convertie dans l'unité d'affichage par evaldeltas :
+            # le seuil se met à l'échelle sur celle-ci, pas sur l'unité du profil.
+            event = dominant_dev_ror_event(
+                deltabt[seg_slice], timex_shifted[seg_slice], phase_times,
+                tp_idx_local, str(self.aw.qmc.mode))
         except (TypeError, ValueError, IndexError):
             return None
-        dev_crash = any(e.get("phase") == 3 for e in crashes)
-        dev_flick = any(e.get("phase") == 3 for e in flicks)
-        if dev_crash and dev_flick:
-            return 'crash+flick'
-        if dev_crash:
-            return 'crash'
-        if dev_flick:
-            return 'flick'
-        return None
+        return None if event is None else str(event["kind"])
 
     def _generate_multi_analysis(self, metrics: list) -> str:
         """Analyse en clair (1 paragraphe) de la comparaison : verdict de régularité,

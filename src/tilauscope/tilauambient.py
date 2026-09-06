@@ -179,18 +179,19 @@ class TilauAudioProtocol(TilauBaseProtocol):
         return self.TPREAMBLE + payload + struct.pack('B', checksum) + self.TTRAILER
 
 # Commandes audio (miroir des #define C)
-COMMAND_RUNCALIBRATION  = 0x0000
+COMMAND_RUNCALIBRATION  = 0x0000   # phase 1 : machine a vide (avant charge)
 COMMAND_START_SAMPLING  = 0x0001
 COMMAND_STOP_SAMPLING   = 0x0002
 COMMAND_CALIBRATIONSTATE= 0x0003
 COMMAND_SAMPLINGSTATUS  = 0x0004
 COMMAND_GETCRACKCOUNTER = 0x0005
-COMMAND_RAISERATIO      = 0x0006
-COMMAND_DECREASERATIO   = 0x0007
-COMMAND_RAISERATIO5     = 0x0506
-COMMAND_DECREASERATIO5  = 0x0507
+COMMAND_RUN_MAILLARD_CALIBRATION = 0x0006  # phase 2 : grains dans le tambour, apres DE
+COMMAND_AUDIO_SELFTEST  = 0x0007
 COMMAND_DEBUG_ON        = 0x0010
 COMMAND_DEBUG_OFF       = 0x0011
+# Les anciennes COMMAND_RAISERATIO/DECREASERATIO (0x0006/0x0007, 0x0506/0x0507)
+# ont ete retirees du firmware : 0x0006 et 0x0007 y sont desormais la calibration
+# MAILLARD et l'auto-test d'acquisition. Ne pas les reintroduire.
         
 # Ambient class for BLE communication with the ESP32 + BME 280 probe
 class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # pyright: ignore [reportGeneralTypeIssues] # Argument to class must be a base class
@@ -286,13 +287,54 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
         return self.parse_full_message_audio(bytearray(payload))
 
     def startCalibration(self):
+        """Phase 1 : calibration EMPTY (machine a vide, moteur tournant, avant charge).
+
+        Remet aussi le compteur de cracks a zero cote sonde. Prerequis a la phase
+        MAILLARD : le firmware refuse la phase 2 tant que EMPTY n'est pas valide.
+        """
         if not self.isconnected():
             _logd.info("calibration aborted not connected")
             return False
         msg = self.build_full_message_audio(COMMAND_RUNCALIBRATION)
         try:
             self.send(msg, True, TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
-            _logd.info("CALIB_START ts=%s", __import__('datetime').datetime.now().isoformat(timespec='seconds'))
+            _logd.info("CALIB_START phase=EMPTY ts=%s", __import__('datetime').datetime.now().isoformat(timespec='seconds'))
+            return True
+        except Exception as e:
+            _logd.error(f"error occurred {e}")
+            return False
+
+    def startMaillardCalibration(self):
+        """Phase 2 : calibration MAILLARD (grains dans le tambour, apres DE).
+
+        A declencher une fois le bruit de charge retombe et avant la zone de FC.
+        Le firmware l'ignore si la phase EMPTY n'a pas ete faite (trace serie
+        "MAILLARD ... EMPTY manquante"), et la detection ne demarre qu'avec les
+        deux profils valides.
+        """
+        if not self.isconnected():
+            _logd.info("maillard calibration aborted not connected")
+            return False
+        msg = self.build_full_message_audio(COMMAND_RUN_MAILLARD_CALIBRATION)
+        try:
+            self.send(msg, True, TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
+            _logd.info("CALIB_START phase=MAILLARD ts=%s", __import__('datetime').datetime.now().isoformat(timespec='seconds'))
+            return True
+        except Exception as e:
+            _logd.error(f"error occurred {e}")
+            return False
+
+    def getCalibrationState(self):
+        """Demande l'etat des deux phases (reponse sur le port serie de la sonde).
+
+        Il n'y a pas de retour BLE : la sonde imprime EMPTY=.. MAILLARD=.. ready=..
+        """
+        if not self.isconnected():
+            _logd.info("calibration state aborted not connected")
+            return False
+        msg = self.build_full_message_audio(COMMAND_CALIBRATIONSTATE)
+        try:
+            self.send(msg, True, TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
             return True
         except Exception as e:
             _logd.error(f"error occurred {e}")
@@ -458,34 +500,43 @@ class TilauAmbient(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argum
     
         # sends a command to the probe
     def send_command(self, commands:str):
-        # commandes supportées :
-        #   CAL    → démarrer la calibration
-        #   START  → démarrer le comptage
-        #   STOP   → arrêter le comptage
-        #   DEBUG  → activer la verbosité série étendue sur la sonde
-        #   NODEBUG → désactiver la verbosité série étendue
+        # commandes supportees (separees par des virgules) :
+        #   CAL / CALEMPTY / CAL1 -> calibration phase 1 : machine a vide, avant charge
+        #   CALMAILLARD / CAL2    -> calibration phase 2 : grains dans le tambour, apres DE
+        #   CALSTATE              -> etat des deux phases (trace sur le port serie de la sonde)
+        #   START  -> demarrer le comptage (exige les DEUX phases valides)
+        #   STOP   -> arreter le comptage
+        #   DEBUG  -> activer la verbosite serie etendue sur la sonde
+        #   NODEBUG -> desactiver la verbosite serie etendue
+        #
+        # Correspondance exacte (pas de startswith) : "CAL" est un prefixe de
+        # "CALMAILLARD", un match par prefixe lancerait la phase 1 a la place de la 2.
+        verbs = {
+            "CAL":         (self.bme280.startCalibration,         "calibration EMPTY (phase 1) started"),
+            "CALEMPTY":    (self.bme280.startCalibration,         "calibration EMPTY (phase 1) started"),
+            "CAL1":        (self.bme280.startCalibration,         "calibration EMPTY (phase 1) started"),
+            "CALMAILLARD": (self.bme280.startMaillardCalibration, "calibration MAILLARD (phase 2) started"),
+            "CAL2":        (self.bme280.startMaillardCalibration, "calibration MAILLARD (phase 2) started"),
+            "CALSTATE":    (self.bme280.getCalibrationState,      "calibration state requested"),
+            "START":       (self.bme280.startCountingCracks,      "counting cracks started"),
+            "STOP":        (self.bme280.stopCountingCracks,       "counting cracks stopped"),
+            "DEBUG":       (self.bme280.startDebug,               "probe debug enabled"),
+            "NODEBUG":     (self.bme280.stopDebug,                "probe debug disabled"),
+        }
 
         messages = commands.split(',')
         results = []
         for c in messages:
             _logd.debug(f"tilauscope interpreter processing subcommand {c}")
             command = c.strip().upper()
+            if not command:
+                continue
             _logd.debug(f"tilauscope interpreter set process {command}")
-            if command.startswith("CAL"):
-                self.bme280.startCalibration()
-                results.append("calibration started")
-            elif command.startswith("START"):
-                self.bme280.startCountingCracks()
-                results.append("counting cracks started")
-            elif command.startswith("STOP"):
-                self.bme280.stopCountingCracks()
-                results.append("counting cracks stopped")
-            elif command.startswith("DEBUG"):
-                self.bme280.startDebug()
-                results.append("probe debug enabled")
-            elif command.startswith("NODEBUG"):
-                self.bme280.stopDebug()
-                results.append("probe debug disabled")
-            else:
-                results.append(f"unknown command '{c.strip()}' (valid: CAL, START, STOP, DEBUG, NODEBUG)")
+            entry = verbs.get(command)
+            if entry is None:
+                results.append(f"unknown command '{c.strip()}' (valid: {', '.join(verbs)})")
+                continue
+            action, label = entry
+            action()
+            results.append(label)
         return ', '.join(results) if results else "no command found"

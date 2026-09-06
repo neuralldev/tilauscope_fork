@@ -638,6 +638,30 @@ def find_flicks_crashes(
     return flicks, crashes
 
 
+# Below this prominence a dip or a bump is inside the smoothing noise of a stored
+# log: it does not show on the plotted RoR curve, so the coach must not name it.
+DEV_EVENT_PROMINENCE_C: float = 2.0
+
+
+def dominant_dev_ror_event(delta_bt: list, timex: list, phase_times: dict,
+                           tp_index: int, mode: str = "C") -> dict | None:
+    """The one significant RoR accident between first crack and drop, or None.
+
+    A crash and a flick announced together contradict each other: every dip sits
+    between two bumps, so the same wiggle yields both. Only the most prominent
+    event is kept, so the advice names a single gesture.
+    """
+    scale = 1.8 if mode == "F" else 1.0
+    flicks, crashes = find_flicks_crashes(
+        delta_bt, timex, phase_times, tp_index,
+        prominence=DEV_EVENT_PROMINENCE_C * scale)
+    events = ([dict(e, kind="crash") for e in crashes if e.get("phase") == 3]
+              + [dict(e, kind="flick") for e in flicks if e.get("phase") == 3])
+    if not events:
+        return None
+    return max(events, key=lambda e: float(e.get("severity", 0.0)))
+
+
 # dictionnaire de standardisation pour nettoyer les noms de processus courants
 standardization_map = {
     # Cible les termes sans les séparateurs pour les rendre plus flexibles
@@ -909,6 +933,87 @@ class WeightLossTarget(NamedTuple):
 
 
 _PLANS_BY_NAME: "dict[str, RoasterBasicPlanPerPhase]" = {}
+
+
+# On the arrival pair, one degree at drop is worth two seconds of development:
+# a hotter drop and a shorter development land on the same colour. That
+# equivalence is what lets the two be read on a single axis.
+ARRIVAL_SECONDS_PER_DEGREE: float = 2.0
+
+
+def arrival_index(drop_bt_c: float, dev_time_min: float) -> float:
+    """The arrival pair on one axis, in °C-equivalent."""
+    return drop_bt_c + (dev_time_min * 60.0) / ARRIVAL_SECONDS_PER_DEGREE
+
+
+# What a roast level read from the arrival is worth on a home machine, in °C.
+# These roasters are built from low-cost parts — a drop temperature is not a
+# laboratory measurement — so a level is only ever resolved to about this much,
+# and an arrival this close to a neighbouring level could be read either way.
+# A roaster record may carry its own figure (RoasterContext.arrival_uncertainty_c).
+ARRIVAL_UNCERTAINTY_DEFAULT_C: float = 3.0
+
+
+def roast_level_from_arrival_detail(drop_bt_c: "float | None", dev_time_min: "float | None",
+                                    drop_offset_c: float = 0.0,
+                                    uncertainty_c: float = ARRIVAL_UNCERTAINTY_DEFAULT_C
+                                    ) -> "tuple[str | None, str | None]":
+    """(level, neighbour) — the level the roast ran, and the level it could just
+    as well be read as when the arrival lands within `uncertainty_c` of it.
+
+    See `roast_level_from_arrival` for how the level itself is read. The
+    neighbour is None whenever the arrival sits clear inside one band.
+    """
+    if drop_bt_c is None or dev_time_min is None:
+        return None, None
+    try:
+        drop_v, dev_v = float(drop_bt_c), float(dev_time_min)
+    except (TypeError, ValueError):
+        return None, None
+    if drop_v <= 0 or dev_v <= 0:
+        return None, None
+    measured = arrival_index(drop_v, dev_v)
+    scored = []
+    for plan in ROASTING_BASIC_BASE.plans:
+        lo = arrival_index(plan.drop_temp[0] + drop_offset_c, plan.development_time[0])
+        hi = arrival_index(plan.drop_temp[1] + drop_offset_c, plan.development_time[1])
+        dist = 0.0 if lo <= measured <= hi else (lo - measured if measured < lo else measured - hi)
+        # Reference bands overlap at their edges; inside two of them the closer
+        # centre wins, so the verdict never depends on the table's order.
+        scored.append((dist, abs(measured - (lo + hi) / 2.0), plan.name))
+    scored.sort()
+    level = scored[0][2]
+    neighbour = (scored[1][2]
+                 if len(scored) > 1 and scored[1][0] <= uncertainty_c
+                 else None)
+    return level, neighbour
+
+
+def roast_level_from_arrival(drop_bt_c: "float | None", dev_time_min: "float | None",
+                             drop_offset_c: float = 0.0) -> "str | None":
+    """The roast level a roast actually ran, read from what it did.
+
+    The level is a property of the roast, not of the bean's colour: the colour
+    is the result and is expected to agree with it. So the category is read from
+    the arrival pair — how long the bean developed and how hot it left — against
+    the same per-level reference the plan generator prescribes
+    (ROASTING_BASIC_BASE), with the two traded off at ARRIVAL_SECONDS_PER_DEGREE.
+
+    `drop_offset_c` is the roaster's bean-probe deviation at drop
+    (RoasterContext.bt_offsets[3]), added to the reference the same way
+    the plan generator adds it, so the comparison happens in the temperature
+    the machine actually shows. Returns None when either half of the pair is
+    missing — half an arrival says nothing.
+    """
+    if drop_bt_c is None or dev_time_min is None:
+        return None
+    try:
+        drop_v, dev_v = float(drop_bt_c), float(dev_time_min)
+    except (TypeError, ValueError):
+        return None
+    if drop_v <= 0 or dev_v <= 0:
+        return None
+    return roast_level_from_arrival_detail(drop_v, dev_v, drop_offset_c)[0]
 
 
 def _plan_by_name(category: str) -> "RoasterBasicPlanPerPhase | None":

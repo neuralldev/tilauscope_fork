@@ -63,8 +63,21 @@ the moment it is paired, and stays available even on a read-only roaster, since 
 is a separate device from the roaster link itself. Every move it makes is recorded on the curve
 at the exact value sent, marked as the extractor's own rather than as a gesture of yours.
 
+**At a milestone.** The roast plan switches the extractor into the mode it has chosen for the
+phase ahead, and sets the output for that phase. Cooling at DROP is the same mechanism, with a
+much higher setting.
+
+**Protecting the duct.** Whenever the extractor is connected — during preheat and monitoring as
+well as during a roast — its inlet temperature is watched, and if the duct goes over its limit
+the fan is slowed until it comes back down, then returned to the setting it came from. It only
+ever slows the extractor, never speeds it up, and it does not wait for a roast to be recording.
+The limit is set per phase and the pace of that correction once for the extractor, both in
+[Configuration → SENSORS](configuration.md#-sensors--every-device-by-role).
+
 **Known limits.** Fan output below its practical minimum has little effect; the useful range
-starts around 30%.
+starts around 30%. Changing mode makes the extractor briefly adopt that mode's own default
+speed before the requested speed is applied — a short blip that comes from the device itself,
+and it is visible at every milestone where the plan changes mode.
 
 <!-- CAPTURE 9.3 — the damper slider labelled for AirWave once paired. -->
 

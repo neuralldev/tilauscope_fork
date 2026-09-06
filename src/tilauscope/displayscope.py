@@ -482,16 +482,25 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
         nxt = "expert" if getattr(self, "_operator_level", "guided") == "guided" else "guided"
         self._apply_operator_level(nxt)
 
-    def _apply_operator_level(self, level: str, from_init: bool = False) -> None:
+    def _apply_operator_level(self, level: str, from_init: bool = False,
+                              persist: bool = True) -> None:
         """Apply the operator level and update UI accordingly.
 
         At init (from_init=True) only updates button states and visibility —
         anchor state has already been restored from QSettings above.
         At runtime, also adjusts the assistant anchor to match the new level.
         Never called in the hot update path — zero performance impact.
+
+        persist=False applies the level for this session only. Roast Replay
+        forces Expert for the duration of one replay and puts the operator's
+        own level back afterwards; writing that forced value to QSettings
+        would turn a single replay into a permanent downgrade. It gates BOTH
+        stored keys: the anchor flag is restored on the next launch just like
+        the level, so persisting it alone left a Guided operator unanchored
+        for good — the same damage by the other key.
         """
         self._operator_level = level
-        if not from_init:
+        if persist and not from_init:
             QSettings().setValue("tilauscope/operator_level", level)
 
         # Reflect the level on the cycling button (letter + colour + tooltip).
@@ -572,14 +581,16 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             # Expert: detach the assistant, back to the main control panel.
             self._assistant_anchored = False
             self._assistant_open = False
-            QSettings().setValue("tilauscope/assistant_anchored", False)
+            if persist:
+                QSettings().setValue("tilauscope/assistant_anchored", False)
             self._place_assistant()
         elif is_guided and not self._assistant_anchored:
             # Guided: anchor the assistant in place of the main panel.
             self.roast_assistant.populate_bean_list()
             self._assistant_anchored = True
             self._assistant_open = True
-            QSettings().setValue("tilauscope/assistant_anchored", True)
+            if persist:
+                QSettings().setValue("tilauscope/assistant_anchored", True)
             self.update_button_style(self.btn_assistant, True, False, False, True)
             self._place_assistant()
 
@@ -609,6 +620,9 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
         """
         if getattr(self, '_operator_level', 'guided') == 'expert':
             return
+        # A new roast is being set up: the previous roast's review has to come
+        # down, or it would sit on top of the assistant just asked for.
+        self.hide_roast_review()
         self.roast_assistant.populate_bean_list()
         if not self._assistant_anchored:
             self.toggle_assistant_anchor()
@@ -645,15 +659,24 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             if not was_open:
                 self.roast_assistant.populate_bean_list()   # refresh bean identification
         QSettings().setValue("tilauscope/assistant_anchored", self._assistant_anchored)
+        if self._assistant_anchored:
+            # Asking for the assistant in the column is asking the review to
+            # give the column back. Lowered here, with the new state already
+            # settled: hide_roast_review() places the assistant itself, and
+            # from inside the branch above it would have placed a half-set state.
+            self.hide_roast_review()
         self._place_assistant()
 
     def _place_assistant(self) -> None:
         """Single source of truth for assistant placement.
 
-        Stack page 1 (anchored body) is shown iff the assistant is open AND
-        anchored. The body is one widget reparented between the floating shell
-        and the anchor host, so roast state and bridge signals survive every
-        transition. The hidden stack page is not painted (no extra CPU).
+        Stack page 1 (anchored body) is shown when the assistant is open AND
+        anchored AND the roast review is not up. The body is one widget
+        reparented between the floating shell and the anchor host, so roast
+        state and bridge signals survive every transition — the reparenting
+        follows open/anchored alone, so a review shown over an anchored
+        assistant costs nothing to come back from. The hidden stack page is
+        not painted (no extra CPU).
         """
         open_    = getattr(self, '_assistant_open', False)
         anchored = getattr(self, '_assistant_anchored', False)
@@ -667,11 +690,16 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             self.roast_assistant.give_body()
             self._body_in_host = False
 
-        # Page order of precedence: the anchored assistant wins (it is only
-        # anchored while the operator asked for it), then the roast review,
-        # then the controls.
+        # Page order of precedence: the roast review wins, then the anchored
+        # assistant, then the controls. The review is only ever raised on a
+        # recording that has ended (see show_roast_review), and at that point
+        # the assistant has nothing left to guide — in Guided, where it stays
+        # anchored across the whole session, letting it win meant the review
+        # was never seen at all. Every way back in — START, RESET, or asking
+        # for the assistant — lowers the review first, so this order never
+        # hides an assistant the operator just called up.
         self._panel_stack.setCurrentIndex(
-            1 if want_host else (2 if getattr(self, '_review_shown', False) else 0))
+            2 if getattr(self, '_review_shown', False) else (1 if want_host else 0))
 
         if open_ and not anchored:
             self.roast_assistant.show()

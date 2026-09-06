@@ -179,13 +179,18 @@ live during the roast: **Enable roast replay** turns it on, and **Burner reactio
 how far ahead the replay looks when following the curve — see
 [Roast Replay](glossary.md#roast-replay) in the glossary. The box stays unavailable, with a
 short explanation, until a background curve is loaded and the machine profile supports replay.
-Choosing replay disables the [Guided](getting-started.md#guided-or-expert) level for that roast:
-a replay follows a recorded curve, not the guided plan.
+Choosing replay switches the roast to the [Expert](getting-started.md#guided-or-expert) level
+for as long as the replay lasts: a replay follows a recorded curve, not the guided plan. This
+is borrowed, not kept — the level you normally roast at comes back when the replay ends, along
+with your docked-or-detached choice for the assistant, and the app opens that way next time.
 
 !!! note "Stopping a replay mid-roast"
     A header button next to the operator level control mirrors this setting once the roast is
     running, and turns replay off immediately — too much drift from the curve, or a change of
-    mind, does not need the roast to be interrupted. Changing the roasting machine in Settings
+    mind, does not need the roast to be interrupted. It stops **every** playback mode at once,
+    including the one that marks DROP from the recorded curve, so nothing is left able to end
+    the roast on its own. The same button lights up, and works the same way, for a playback you
+    armed yourself in Artisan's own Background dialog. Changing the roasting machine in Settings
     while the window is open disarms an already-running replay the same way, since a replay
     armed for one machine's profile no longer applies once the machine changes.
 

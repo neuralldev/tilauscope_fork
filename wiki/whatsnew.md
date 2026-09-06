@@ -102,7 +102,7 @@ A major update that makes TilauScope easier for beginners while providing more p
 * **Automatic heat reductions are now announced.** During Maillard, the assistant displays the next scheduled step (for example, *"Next 48% @170°C"*), so the power slider no longer moves unexpectedly. If drying is projected to take significantly longer than planned for that bean, the coach warns you before the profile becomes flat.
 * **You always know how you're tracking against the plan.** During Drying and Maillard, the assistant displays your lead or delay relative to the planned curve (for example, *"Plan +0:15"*) and evaluates your RoR against the expected slope **at that exact point on the curve**, eliminating misleading "above plan" messages early in Maillard.
 * **The roast plan continuously self-calibrates.** Expected Drying and Maillard durations are now based on your measured roasts of the same bean while remaining within professional roasting guidelines. If a bean consistently dries or browns too slowly or too quickly, TilauScope automatically adjusts the phase heat profile (within safe limits, from the third roast onward) and explains the reason in the action notes.
-* Three experience levels are available: **Guided**, **Standard**, and **Expert**. In Guided mode, the assistant automatically opens, starts, and closes with the START/STOP button, letting you focus on roasting instead of the interface.
+* Two experience levels are available: **Guided** and **Expert**. In Guided mode, the assistant automatically opens, starts, and closes with the START/STOP button, letting you focus on roasting instead of the interface.
 * The assistant can be **docked** in place of the main panel or **detached** into a floating window.
 * The bean list now displays only beans that are **actually in stock**.
 * **AirWave** airflow recommendations are adapted to each roast phase, with alerts when airflow begins cooling the drum.
@@ -183,4 +183,4 @@ Dialling in a coffee usually means changing the grind, tasting again, and *assum
 
 ---
 
-💡 **Tip:** You can switch between **Guided**, **Standard**, and **Expert** modes at any time from the assistant header.
+💡 **Tip:** You can switch between **Guided** and **Expert** modes at any time from the assistant header.

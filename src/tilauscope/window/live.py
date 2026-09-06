@@ -663,6 +663,13 @@ class LiveMixin:
             # button (Artisan, simulator, remote command, alarm) must still be picked
             # up, or the assistant stays on its idle page with no plan adopted.
             _prev_roasting = getattr(self, '_last_flagstart', None)
+            # Frozen BEFORE the body, not after: the body re-enters this method
+            # (the replay teardown below restores the operator level, and
+            # _apply_operator_level ends on update_status_text). Left until the
+            # end, the nested call still saw the old value and fired the whole
+            # edge a second time — a second roast-state notify and a second
+            # queued roast review. Same trap as ToggleRecorder's re-entry.
+            self._last_flagstart = self.is_roasting
             if _prev_roasting is not None and _prev_roasting != self.is_roasting:
                 try:
                     self.roast_bridge.notify_roast_state(self.is_roasting)
@@ -674,6 +681,19 @@ class LiveMixin:
                 # started the recording, not only our own button.
                 if self.is_roasting:
                     self._hide_artisan_standard_buttons()
+                else:
+                    # A replay never carries over to the next roast, and the
+                    # level it borrowed comes back — whatever ended the
+                    # recording. Our own STOP button does this too; a STOP from
+                    # Artisan, from an alarm action or from the phone reaches
+                    # only this edge, and used to leave replay_enabled set, the
+                    # level button locked and the operator stuck in Expert.
+                    try:
+                        if self.replay_enabled:
+                            self._disable_roast_replay()
+                        self._restore_replay_level()
+                    except Exception as e:  # pylint: disable=broad-except
+                        _log.debug("replay teardown at roast end: %s", e)
                 # START locks Expert in place, STOP releases it.
                 self._refresh_level_lock()
                 # A recording that just ended leaves the controls with nothing
@@ -683,7 +703,6 @@ class LiveMixin:
                     QTimer.singleShot(0, self.show_roast_review)
                 else:
                     self.hide_roast_review()
-            self._last_flagstart = self.is_roasting
             if self.is_roasting: # replace text with roast information
                 status_text = self.str_roastsession.upper()
             # now check for simulation mode

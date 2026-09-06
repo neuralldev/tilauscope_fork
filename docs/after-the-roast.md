@@ -26,6 +26,10 @@ The same thing happens when a past roast is opened from **File → Open**, wheth
 to replay it in the simulator. There is nothing to switch on or off — starting a recording, or a
 simulation, hands the column back to the live session, and RESET clears it.
 
+At the [Guided](getting-started.md#guided-or-expert) level the docked assistant steps aside for
+the review, since the roast it was guiding is over. Calling the assistant back — with the
+assistant button, or by setting up the next roast from BeanCave — hands it the column again.
+
 The review reads from the top down:
 
 **The verdict.** One sentence saying whether the roast ran to plan, the single deviation that
@@ -145,13 +149,33 @@ does not answer the question.
 
 ## Coach's Advice
 
-The **Advanced Stats** sub-tab reads the finished roast, not the plan for it. Weight loss and
-[DTR](glossary.md#dtr--development-time-ratio) are checked against sane ranges for the roast
-level and the coffee's process; each phase duration is checked against your own history of
+The **Advanced Stats** sub-tab reads the finished roast, not the plan for it. The roast level
+it judges against is read from what the roast did — how long the bean developed and how hot it
+left, the pair that sets the colour — corrected for your machine's own probe, never from the
+colour measured afterwards. The advice opens by naming that level and the pair it was read
+from; where the arrival lands closer to a neighbouring level than the roaster can resolve, both
+are named, because a home machine's drop temperature is not a laboratory measurement.
+
+The colour is the result of the roast, so a roast whose colour disagrees is a roast that cooked
+badly, not a roast that belongs to another level. It is shown for what it is, with a category
+name only when it was measured on ground beans, since that is the scale those names belong to.
+
+The four figures above the advice are **average rises**: the degrees gained across a phase
+divided by its length, from the turning point to the drop. They are not the rate of rise drawn
+on the curve, which moves throughout each phase — a drying phase averaging 12°/min contains
+readings well above and well below that.
+
+Weight loss and
+[DTR](glossary.md#dtr--development-time-ratio) are checked against sane ranges for that roast
+level and the coffee's process — each with the tolerance its own measurement deserves, so a
+ratio a tenth of a point over a limit, or a weight loss within a gram of the floor, is not
+reported as a fault; each phase duration is checked against your own history of
 this coffee where you have one, and against general guidance where you do not; drop
 temperature and DTR are cross-checked to catch an under- or over-developed roast even when
 either figure alone looks fine; and the rate of rise around
-[first crack](glossary.md#fc--first-crack) is read for a stall, a crash or a flick.
+[first crack](glossary.md#fc--first-crack) is read for a stall, a crash or a flick. Only an
+accident large enough to be visible on the curve is named, and only the most pronounced one,
+with the time it happened — so you can go and look at that spot yourself.
 
 !!! note
     This is a different reading from the **Judging the batch** insights shown before roasting

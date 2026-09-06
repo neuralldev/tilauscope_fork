@@ -130,6 +130,10 @@ happened in the drum.
 Each confirmed milestone re-plans the rest of the roast against reality, so targets and estimates
 after it are recomputed rather than left stale.
 
+This is the Guided behaviour. At [Expert](getting-started.md#guided-or-expert) level there is no
+prompt to answer: a detected milestone is marked straight away, since the assistant is not
+necessarily on screen to ask.
+
 ![the plan lead/lag and RoR band indicators](assets/the-guided-roast-7.8.png)
 
 **Charge** is marked from the panel too. If it was marked by mistake, **Cancel charge** appears

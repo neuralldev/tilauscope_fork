@@ -199,6 +199,20 @@ _CARD_META_KEYS: tuple[str, ...] = (
 )
 
 
+class _ClickableFrame(QFrame):
+    """A frame that reports a left click. Used for the card header, which opens
+    the roast rather than merely naming it."""
+
+    clicked = pyqtSignal()
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+
 class _TooltipWidget(QFrame):
     """
     Native Qt tooltip card rendered via QGraphicsProxyWidget.
@@ -222,6 +236,8 @@ class _TooltipWidget(QFrame):
 
     # Emitted when the "brew this coffee" CTA is clicked; carries the .alog path.
     prepare_requested = pyqtSignal(str)
+    # Emitted when the card title is clicked; carries the .alog path.
+    observe_requested = pyqtSignal(str)
     pointer_entered = pyqtSignal()
     pointer_left = pyqtSignal()
 
@@ -279,8 +295,13 @@ class _TooltipWidget(QFrame):
         outer.setSpacing(0)
 
         # ── header ────────────────────────────────────────────────────────────
-        self._header = QFrame()
+        self._header = _ClickableFrame()
         self._header.setObjectName("TtHeader")
+        self._header.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._header.setToolTip(QApplication.translate(
+            "tilauscope_roast_review", "Open this roast in TilauScope"))
+        self._header.clicked.connect(
+            lambda: self.observe_requested.emit(self._filepath))
         self._header_lbl = self._lbl("", self._C_TEXT, 12, bold=True)
         self._header_lbl.setWordWrap(True)
         hdr_layout = QVBoxLayout(self._header)
@@ -533,6 +554,9 @@ class RoastReadyDialog(QDialog):
     # Emitted when the user clicks "brew this coffee" on a roast bar; carries the
     # .alog filepath so BeanCave can select it and open the Brew Advisor.
     brew_requested = pyqtSignal(str)
+    # Emitted when the user clicks the card title; carries the .alog filepath so
+    # BeanCave can load the roast in TilauScope and show it in the Roast Viewer.
+    observe_requested = pyqtSignal(str)
 
     def __init__(
         self,
@@ -571,6 +595,7 @@ class RoastReadyDialog(QDialog):
         # tooltip — native QWidget via QGraphicsProxyWidget (added to scene after build)
         self._tooltip_widget = _TooltipWidget()
         self._tooltip_widget.prepare_requested.connect(self._on_prepare)
+        self._tooltip_widget.observe_requested.connect(self._on_observe)
         self._tooltip_widget.pointer_entered.connect(self._keep_tooltip_open)
         self._tooltip_widget.pointer_left.connect(self._schedule_tooltip_hide)
         self._tooltip_proxy: QGraphicsProxyWidget | None = None
@@ -645,6 +670,15 @@ class RoastReadyDialog(QDialog):
         if not filepath:
             return
         self.brew_requested.emit(filepath)
+        self.close()
+
+    def _on_observe(self, filepath: str) -> None:
+        """Card title clicked → ask BeanCave to load this roast in TilauScope and
+        show it in the Roast Viewer, then close the timeline so the profile is
+        visible behind our stays-on-top window."""
+        if not filepath:
+            return
+        self.observe_requested.emit(filepath)
         self.close()
 
     # ── UI construction ────────────────────────────────────────────────────────

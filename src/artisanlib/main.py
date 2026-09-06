@@ -1929,12 +1929,15 @@ class ApplicationWindow(QMainWindow):
         self.bleAirwaveDeviceName:str|None = 'none' # device UUID selected
         self.bleAirwaveDeviceslist:list[str] = ['please scan devices for list']
         self.bleAirwaveDevice:Difluid|None = None # object for communication
-        self.bleAirwavepidOnET:bool = False # if True the Airwave PID is operated on ET, otherwise on BT
+        ## TILAU ## retired: the DeltaET controller is gone (see wiki/AirWave-PID-Removal-Spec.md).
+        ## Kept so the 'difluidpid' key keeps being written as 0 and an older build still loads.
+        self.bleAirwavepidOnET:bool = False
         self.bleAirwaveEmulateOmniflux:bool = False # if True ask the system to emulate OmniFlux (ignores Airwave PID automatically)
-        self.bleAirwavepidRamp:int = 2 # number of °C to increase/decrease heater per cycle to target
+        self.bleAirwavepidRamp:int = 2 # fan percent points the Airwave may be moved per second ## TILAU ##
         self.bleAirwavepidparms: dict = {
-            # (Kp,  Ki,    base_air, fan_target, inlet_limit, fan_mode, ramp_rate)
-            # ramp_rate = °%/cycle — combien de % de fan max par cycle (1s)
+            # (Kp,  Ki,    base_air, <retired>, inlet_limit, fan_mode, ramp_rate)
+            # slot 3 is a retired parameter: kept so existing settings still load
+            # ramp_rate = points de % de ventilateur par seconde
             # 0.20 → ~75s pour un delta de 15%   (doux)
             # 0.33 → ~45s pour un delta de 15%   (modéré)
             # 0.50 → ~30s pour un delta de 15%   (rapide)
@@ -9632,16 +9635,12 @@ class ApplicationWindow(QMainWindow):
                                         c1:str = r[0].strip()
                                         c1 = c1.upper()
                                         _logd.info(f"command split in c1={c1}")
-                                        if len(c1) > 0  and c1=="CAL": 
-                                            self.tilauambientSendMessageSignal.emit(c1) # calibrate
-                                        if len(c1) > 0  and c1=="START": 
-                                            self.tilauambientSendMessageSignal.emit(c1) # start counting cracks
-                                        if len(c1) > 0  and c1=="STOP": 
-                                            self.tilauambientSendMessageSignal.emit(c1) # stop counting cracks and reset counter
-                                        if len(c1) > 0  and c1=="DEBUG": 
-                                            self.tilauambientSendMessageSignal.emit(c1) # stop counting cracks and reset counter
-                                        if len(c1) > 0  and c1=="NODEBUG": 
-                                            self.tilauambientSendMessageSignal.emit(c1) # stop counting cracks and reset counter
+                                        # CAL/CALEMPTY/CAL1 = calibration phase 1 (machine a vide),
+                                        # CALMAILLARD/CAL2 = calibration phase 2 (grains, apres DE),
+                                        # CALSTATE = etat des deux phases sur le port serie de la sonde
+                                        if c1 in ("CAL", "CALEMPTY", "CAL1", "CALMAILLARD", "CAL2",
+                                                  "CALSTATE", "START", "STOP", "DEBUG", "NODEBUG"):
+                                            self.tilauambientSendMessageSignal.emit(c1)
                                 ##  tilaumqtt(<topic>,<command>) : command is packed and reprocessed ## TILAU ##
                                 elif c.startswith('tilaumqtt'):
                                     if self.tilauscope_mqtt_client is not None:
@@ -18392,8 +18391,16 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot(str)
     def tilauambientSendMessage(self, target:str) -> None:
         if self.bleTilauScopeDevice is not None:
-            if target =="CAL":
+            if target in ("CAL", "CALEMPTY", "CAL1"):
+                # phase 1 : machine a vide, avant charge (remet aussi le compteur a zero)
                 self.bleTilauScopeDevice.bme280.startCalibration()
+                _logd.info(f"tilauscope emit send command c={target}")
+            elif target in ("CALMAILLARD", "CAL2"):
+                # phase 2 : grains dans le tambour, apres DE ; refusee si phase 1 absente
+                self.bleTilauScopeDevice.bme280.startMaillardCalibration()
+                _logd.info(f"tilauscope emit send command c={target}")
+            elif target == "CALSTATE":
+                self.bleTilauScopeDevice.bme280.getCalibrationState()
                 _logd.info(f"tilauscope emit send command c={target}")
             elif target =="START":
                 self.bleTilauScopeDevice.bme280.startCountingCracks()
@@ -18889,8 +18896,7 @@ class ApplicationWindow(QMainWindow):
                 self.bleNiimbotDeviceslist = [ble_nameni]
             else:
                 self.bleNiimbotDeviceslist = ['please scan devices for list']
-            self.bleAirwavepidOnET = toInt(settings.value('difluidpid',self.bleAirwavepidOnET))
-            self.bleAirwaveEmulateOmniflux = toInt(settings.value('difluidomniflux',self.bleAirwaveEmulateOmniflux))
+            self.bleAirwaveEmulateOmniflux = bool(toInt(settings.value('difluidomniflux',self.bleAirwaveEmulateOmniflux))) ## TILAU ##
             self.bleAirwavepidRamp = toInt(settings.value('difluidpidramp', self.bleAirwavepidRamp))
             keys = list(self.bleAirwavepidparms.keys())
             for key in keys:
@@ -21101,7 +21107,7 @@ class ApplicationWindow(QMainWindow):
             self.settingsSetValue(settings, default_settings, 'niimbot', ble_nameni, read_defaults)
             self.settingsSetValue(settings, default_settings, 'difluidpid', 1 if self.bleAirwavepidOnET else 0, read_defaults)
             self.settingsSetValue(settings, default_settings, 'difluidomniflux', 1 if self.bleAirwaveEmulateOmniflux else 0, read_defaults)
-            self.settingsSetValue(settings, default_settings, 'difluidpidramp', 1 if self.bleAirwavepidRamp else 2, read_defaults)
+            self.settingsSetValue(settings, default_settings, 'difluidpidramp', self.bleAirwavepidRamp, read_defaults) ## TILAU ##
 
             keys = list(self.bleAirwavepidparms.keys())
             for key in keys:    

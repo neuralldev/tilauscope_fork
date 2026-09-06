@@ -100,7 +100,7 @@ nothing in progress to watch.
 | Group | Device | What it configures |
 |---|---|---|
 | **Ambient** | TilauAmbient (BME280 / BLE) | Which probe to use, and the acoustic sensitivity for crack detection through its microphone. |
-| **Color & Airflow** | Difluid AirWave (BLE) | Which extractor to use, whether its PID targets ET instead of BT, correction ramp speed, and whether it should emulate an Omniflux colour channel. |
+| **Color & Airflow** | Difluid AirWave (BLE) | Which extractor to use, how fast it may change speed, the fan output, duct limit and mode for each phase, and whether it should emulate an Omniflux colour channel. |
 | **Roaster Link** | Skywalker v2 (TC4-BLE) | Which roaster link to use. |
 | **Color Meter** | Lebrew RoastSee C1 (BLE) | Which colour meter to use. |
 | **Water Quality** | Lebrew AquaGauge (BLE) | Which water probe to use. |
@@ -111,7 +111,9 @@ Devices detected nearby but not recognised are listed separately, for identifica
 
 !!! info "Hardware — AirWave PID parameters"
     A collapsible **AirWave PID parameters** section under the AirWave group exposes its full gain
-    table (Kp, Ki, minimum fan percentage, inlet target and limit, mode, ramp) per airflow mode.
+    table (Kp, Ki, minimum fan percentage, inlet limit, mode, ramp) per airflow mode.
+    The inlet limit is in degrees Celsius whatever unit the graph is set to, and the ramp is the
+    number of fan percentage points the extractor may move in one second.
     It is collapsed by default because the defaults suit the AirWave out of the box — open it only
     if airflow needs tuning to a specific room or drum.
 

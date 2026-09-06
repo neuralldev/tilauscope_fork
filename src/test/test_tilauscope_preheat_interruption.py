@@ -63,6 +63,8 @@ def _scope(tilauscope: Any, *, charged: bool) -> SimpleNamespace:
         is_roasting=True,
         preheating=not charged,
         replay_enabled=False,
+        _level_before_replay=None,
+        _anchor_before_replay=None,
         roast_bridge=SimpleNamespace(notify_roast_state=lambda _state: None),
         btn_reset=_WidgetDouble(),
         btn_start_stop=_WidgetDouble(),
@@ -78,6 +80,7 @@ def _scope(tilauscope: Any, *, charged: bool) -> SimpleNamespace:
         set_button_state=lambda *_args: None,
         _clear_cooling_face=lambda: None,
     )
+    scope._restore_replay_level = MethodType(tilauscope._restore_replay_level, scope)
     scope._milestone_marked = MethodType(tilauscope._milestone_marked, scope)
     scope._has_charged_roast = MethodType(tilauscope._has_charged_roast, scope)
     return scope

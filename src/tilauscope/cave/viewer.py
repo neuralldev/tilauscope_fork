@@ -49,7 +49,7 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 
 from tilauscope.theme_qss import tint
 from tilauscope.tilauscope_types import (THEME, standardization_map, RoastingPhase, TilauProgressRow,
-                                         marked, normalize_timeindex)
+                                         marked, normalize_timeindex, estimate_ror_dt)
 from tilauscope.roast_timeline import RoastReadyDialog
 from tilauscope.cave.common import (
     _log, _logd, _PLOT_PALETTE, _SVG_CONSISTENCY, _SVG_ALIGN, _safe_filename, _svg_bytes_to_icon)
@@ -514,18 +514,64 @@ class ViewerMixin:
             self._show_message(self, QApplication.translate("tilauscope_beancave","Error"), QApplication.translate("tilauscope_beancave","No file found."), QMessageBox.Icon.Warning)
             return
         self._pending_brew_filepath = None
+        self._pending_observe_filepath = None
         dlg = RoastReadyDialog(str(self.alog_directory), self._metadata_cache.records, None, aw=self.aw)
         dlg.brew_requested.connect(self._on_timeline_brew_requested)
+        dlg.observe_requested.connect(self._on_timeline_observe_requested)
         dlg.exec()
         # The timeline closes itself right after asking to brew; open the advisor
         # once exec() returns so we never stack a modal over the (stays-on-top) timeline.
         fp, self._pending_brew_filepath = self._pending_brew_filepath, None
         if fp:
             self.open_brew_advisor_for(fp)
+        # Same deferral for the "observe this roast" hand-off (card title clicked).
+        ofp, self._pending_observe_filepath = self._pending_observe_filepath, None
+        if ofp:
+            self.observe_roast_in_tilauscope(ofp)
 
     @pyqtSlot(str)
     def _on_timeline_brew_requested(self, filepath: str) -> None:
         self._pending_brew_filepath = filepath
+
+    @pyqtSlot(str)
+    def _on_timeline_observe_requested(self, filepath: str) -> None:
+        self._pending_observe_filepath = filepath
+
+    def observe_roast_in_tilauscope(self, filepath: str) -> None:
+        """Timeline hand-off: load the roast in the main TilauScope window and
+        mirror it in the Roast Viewer tab, so the profile is on screen in both
+        places at once."""
+        fp = Path(filepath)
+        if not filepath or not fp.exists():
+            self._show_message(self, QApplication.translate("tilauscope_beancave", "Error"),
+                               QApplication.translate("tilauscope_beancave", "Could not open this roast file."),
+                               QMessageBox.Icon.Warning)
+            return
+        try:
+            cur_file = getattr(self.aw, 'curFile', None)
+            already_open = bool(cur_file) and Path(cur_file).resolve() == fp.resolve()
+            if not already_open:
+                self.aw.loadFile(str(fp))
+        except Exception as e:
+            _logd.error(f"observe_roast_in_tilauscope: failed to load {fp}: {e}")
+            self._show_message(self, QApplication.translate("tilauscope_beancave", "Loading error"),
+                               QApplication.translate("tilauscope_beancave", "An error occurred while loading file") + f": {e}",
+                               QMessageBox.Icon.Critical)
+            return
+        # Mirror the selection in the Roast Viewer tab and bring it to the front.
+        try:
+            idx = self._find_item_by_metadata(self.roast_list_widget, "raw_fname", fp.name)
+            if isinstance(idx, int) and idx >= 0:
+                self.roast_list_widget.blockSignals(True)
+                self.roast_list_widget.setCurrentRow(idx, QItemSelectionModel.SelectionFlag.ClearAndSelect)
+                self.roast_list_widget.blockSignals(False)
+                self.load_roast_data_and_plot()
+            tabs = getattr(self, 'tab_widget', None)
+            viewer_tab = getattr(self, 'roast_viewer_tab', None)
+            if tabs is not None and viewer_tab is not None:
+                tabs.setCurrentWidget(viewer_tab)
+        except Exception as e:
+            _logd.warning(f"observe_roast_in_tilauscope: could not mirror {fp.name} in the viewer: {e}")
 
     def open_brew_advisor_for(self, filepath: str) -> None:
         """Timeline hand-off: pre-select the roast in the left list and open the
@@ -1421,8 +1467,17 @@ class ViewerMixin:
         stale curve.
         """
         qmc = self.aw.qmc
+        # RoR span in samples, derived from THIS log's own sampling interval. The
+        # live counter (qmc.deltaBTsamples) is sized for the recording session or
+        # for whatever profile the main window holds, so a stored log read here
+        # would otherwise be differentiated over the wrong time span: a 15 s span
+        # collapses to 5 s on a 1 Hz log when the app is set to 3 s sampling, and
+        # the resulting RoR carries noise the roast never had.
+        log_dt = estimate_ror_dt(data.get("timex", []))
+        span = qmc.deltaETspan if deltaname == "temp1" else qmc.deltaBTspan
+        ds = max(1, int(round(span / log_dt)))
         cache_key = (deltaname, qmc.mode, qmc.curvefilter,
-                     bool(qmc.interpolateDropsflag), bool(qmc.optimalSmoothing))
+                     bool(qmc.interpolateDropsflag), bool(qmc.optimalSmoothing), ds)
         for cached_data, key, cached_deltas in self._deltas_cache:
             if cached_data is data and key == cache_key:
                 return cached_deltas
@@ -1439,7 +1494,9 @@ class ViewerMixin:
         if len(t1)>10 and len(tx) > 10:
             # we start RoR computation 10 readings after CHARGE to avoid this initial peak
             RoR_start = min(rd+10,len(tx)-1)
-            _, deltas = self.aw.qmc.recomputeDeltas(tx,RoR_start,drop,None,t1,optimalSmoothing=self.aw.qmc.optimalSmoothing)
+            _, deltas = self.aw.qmc.recomputeDeltas(tx,RoR_start,drop,None,t1,
+                            optimalSmoothing=self.aw.qmc.optimalSmoothing,
+                            deltaBTsamples=ds)
         else:
             deltas = None
         self._deltas_cache.append((data, cache_key, deltas))

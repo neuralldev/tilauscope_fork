@@ -24,6 +24,7 @@ import time
 from collections import deque
 from typing import Final
 from artisanlib.ble_port import ClientBLE
+from artisanlib.util import fromFtoCstrict
 from artisanlib.main import ApplicationWindow # pylint: disable=unused-import
 import threading
 from dataclasses import dataclass, field
@@ -284,18 +285,11 @@ class AirwaveStateData:
     model: str = "unknown"
     last_inlet: float = 25.0
     last_catalyst: float = 25.0
-    int_error: float = 0.0
     last_phase: str = ""
     last_fanspeed: int = AirwaveSpeed.MINIMUM # minimum fanspeed for Airwave
     last_mode: str = ""
     holdon: bool = True
     state: int = AirwaveState.UNKNOWN
-    color_fcs: float = -1.0          # Agtron at FCS
-    roc_smoothed: float = 0.0        # smoothed RoC
-    color_prev: float = -1.0         # for spike filter
-    color_stale_count: int = 0       # consecutive stale readings
-    color_layer_enabled: bool = False
-    base_air_smooth: float = 0.0
 
 @dataclass(slots=True)
 class OmnifluxBinding:
@@ -368,6 +362,23 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
     # Settling time left to the device after a mode change before the next subcommand.
     MODE_SETTLE_DELAY: Final[float] = 0.3
 
+    # Garde thermique de la gaine. Limite materielle : rien a voir avec la
+    # conduite du roast, d'ou un garde qui tourne des que l'extracteur est
+    # connecte, enregistrement ou non.
+    DUCT_LIMIT_DEFAULT: Final[float] = 80.0   # degC
+    DUCT_MAX_CUT_PCT: Final[float] = 15.0     # retrait maximal, en points de ventilateur
+    DUCT_HYSTERESIS_C: Final[float] = 2.0     # marge de relache, evite le battement
+
+    # The three fan modes the settings table may hold. An unknown value falls back
+    # to STD: defaulting to EXTREME would put the extractor at maximum on nothing
+    # more than a legacy or corrupted setting.
+    FAN_MODES: Final[dict[str, int]] = {
+        "FAN": AirwaveFanMode.FAN,
+        "STD": AirwaveFanMode.STANDARD,
+        "EXT": AirwaveFanMode.EXTREME,
+    }
+    FAN_MODE_FALLBACK: Final[str] = "STD"
+
     # map event command to roasting stages
     AirwaveEventsMap = {
         "PREHEAT":  (AirwaveCommands.ROASTINGSTAGE, AirwaveEvents.ROASTING_STAGE_PREHEAT),
@@ -390,10 +401,27 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         self.airwave = AirwaveBLE(name)
         # check if airwave is used in extradevices to follow inlet and catalyst temps
         self.extradevicenumber:int = -1
+        self._inlet_binding_warned: bool = False
         # if detected that Damper is mapped to airwave, add the logic to move slider from pid as well
         self.pilotDamperSlider:bool = False
 
         self.omniflux: OmnifluxBinding
+
+        # Actuation asynchrone. Les appelants tournent sur le thread GUI
+        # (sample_processing, cf. canvas.py) : une écriture BLE y bloque jusqu'à
+        # 5 s (ble_port.write) et retient profileDataSemaphore pendant ce temps.
+        # La décision reste dans le tick, l'émission part sur ce worker.
+        self._pid_pending: list[str] = []
+        self._pid_cv = threading.Condition()
+        self._pid_stop = False
+        self._pid_worker: threading.Thread | None = None
+
+        # Garde thermique de la gaine : points de ventilateur actuellement
+        # retires, valeur a restituer, et derniere consigne envoyee par le garde.
+        self._duct_cut: float = 0.0
+        self._duct_base: int | None = None
+        self._duct_last_sent: int | None = None
+        self._duct_last_target: int | None = None
 
         self._setup_connections()
 
@@ -401,6 +429,68 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         self.airwave.connected_signal.connect(self._relay_connected)
         self.airwave.disconnected_signal.connect(self._relay_disconnected)
         self.airwave.unsolicited_event_signal.connect(self._handle_unsolicited_event)
+
+    # Nombre de commandes en attente au-delà duquel la plus ancienne est jetée :
+    # un actionneur n'a pas de mémoire, seule la dernière consigne compte.
+    PID_QUEUE_MAX: Final[int] = 8
+
+    def dispatch_async(self, commands: str) -> None:
+        """Queue an actuator command for the worker thread and return at once.
+
+        Consecutive pure ``FAN n`` commands coalesce — only the latest setpoint
+        is worth sending. A compound ``MODE x,FAN n`` never coalesces, so a mode
+        change is never swallowed by a later speed change.
+        """
+        if not commands:
+            return
+        with self._pid_cv:
+            if self._pid_stop:
+                return
+            is_fan_only = commands.strip().upper().startswith("FAN ") and "," not in commands
+            if is_fan_only and self._pid_pending and self._pid_pending[-1].strip().upper().startswith("FAN ") \
+                    and "," not in self._pid_pending[-1]:
+                self._pid_pending[-1] = commands
+            else:
+                self._pid_pending.append(commands)
+                if len(self._pid_pending) > self.PID_QUEUE_MAX:
+                    dropped = self._pid_pending.pop(0)
+                    _logd.warning(f"airwave dispatch: queue full, dropped {dropped!r}")
+            self._pid_cv.notify()
+        self._ensure_pid_worker()
+
+    def _ensure_pid_worker(self) -> None:
+        if self._pid_worker is not None and self._pid_worker.is_alive():
+            return
+        with QMutexLocker(self.shutdown_lock):
+            if self.is_shutting_down:
+                return
+        self._pid_worker = threading.Thread(
+            target=self._pid_worker_loop, name="airwave-actuator", daemon=True
+        )
+        self._pid_worker.start()
+
+    def _pid_worker_loop(self) -> None:
+        while True:
+            with self._pid_cv:
+                while not self._pid_pending and not self._pid_stop:
+                    self._pid_cv.wait(timeout=1.0)
+                if self._pid_stop:
+                    return
+                command = self._pid_pending.pop(0)
+            try:
+                self.send_command(command)
+            except Exception as e:  # noqa: BLE001
+                _logd.warning(f"airwave dispatch: {command!r} failed: {e}")
+
+    def _stop_pid_worker(self) -> None:
+        with self._pid_cv:
+            self._pid_stop = True
+            self._pid_pending.clear()
+            self._pid_cv.notify_all()
+        worker = self._pid_worker
+        if worker is not None and worker.is_alive():
+            worker.join(timeout=2.0)
+        self._pid_worker = None
 
     # Completes the hostname handshake: the AirWave only lifts its control lock
     # (state.holdon) once it knows the host name, normally by asking on connect — but a
@@ -438,6 +528,9 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
             self.is_shutting_down = True
         _logd.debug("start disconnecting difluid airwave..")
 
+        # Le worker écrit sur le lien BLE : il doit être arrêté avant bleStop().
+        self._stop_pid_worker()
+
         try:
             self.airwave.unsolicited_event_signal.disconnect()
             self.airwave.connected_signal.disconnect()
@@ -451,6 +544,46 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         # stop airwave ble engine
         self.airwave.bleStop()
 
+    def _airwave_inlet_series(self) -> list[float] | None:
+        """Return the extra-device series carrying the AirWave inlet, or None.
+
+        ``extradevicenumber`` is a position in Artisan's extra-device arrays,
+        captured once at identification. Loading a profile overwrites the device
+        configuration, so that position can fall out of range or come to name a
+        different device's channel. Both are checked before the series is used.
+        """
+        aw = self.aw
+        if aw is None or getattr(aw, 'qmc', None) is None:
+            return None
+        idx = self.extradevicenumber
+        qmc = aw.qmc
+        try:
+            # Artisan ne remplit extratemp1 qu'en enregistrement : hors roast il
+            # porte encore la courbe precedente, dont le dernier echantillon est
+            # le plus chaud et ne bouge plus. Meme convention que le coeur
+            # d'Artisan (eval_math_expression) : le tampon de monitoring en
+            # surveillance seule, et rien du tout hors acquisition — la garde
+            # retombe alors sur la lecture de l'appareil lui-meme.
+            if qmc.flagstart:
+                series = qmc.extratemp1
+            elif qmc.flagon:
+                series = qmc.on_extratemp1
+            else:
+                return None
+            if idx < 0 or idx >= len(qmc.extradevices) or idx >= len(series):
+                return None
+            if qmc.extradevices[idx] != qmc.tilau_devices["difluid"]["id"]:
+                if not self._inlet_binding_warned:
+                    self._inlet_binding_warned = True
+                    _logd.warning(
+                        f"airwave pid: extra device {idx} no longer maps to the AirWave "
+                        "— falling back to the reading from the device itself"
+                    )
+                return None
+            return series[idx]
+        except (AttributeError, IndexError, KeyError, TypeError):
+            return None
+
     def identify_extrade_devices(self, aw: ApplicationWindow) -> None:
         if aw is not None and aw.qmc is not None:
             for i in range(len(aw.qmc.extradevices)): # fix bug on device identification which is not fixed anymore
@@ -459,6 +592,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
                     self.extradevicenumber = i
                     break
             self.aw = aw
+            self._inlet_binding_warned = False
             self.pilotDamperSlider = aw.eventslidervisibilities[2]==1 and aw.eventslideractions[2]==20 # Damper is checked, verify that it is mapped to Diflui
             _logd.debug(f"airwave mapped to damper slider = {self.pilotDamperSlider}")
         self.omniflux = detect_omniflux_devices(aw)
@@ -846,7 +980,11 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         return r
 
     def update_artisan_slider(self, slider_idx: int, value: int):
-        """Move the lever without recording anything (simulator / display only)."""
+        """Move the lever and dispatch its slider action (simulator / display only).
+
+        Unlike updateArtisanDamperSlider this records no roast event; the action
+        is still fired, which is what actuates the device outside the simulator.
+        """
         if not self.aw: return
 
         # Mise à jour synchronisée avec l'historique Artisan
@@ -855,15 +993,25 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         self.aw.extraeventsactionslastvalue[slider_idx] = self.aw.eventslidervalues[slider_idx]
         self.aw.fireslideraction(slider_idx)
 
-    def updateArtisanDamperSlider(self, slidernr:int, slidervalue:int):
+    def updateArtisanDamperSlider(self, slidernr:int, slidervalue:int, fire_action:bool=True) -> int:
             # Named, not a bare value and unit: the plain shape is what a gesture on
             # a control writes, and a channel the extractor drove itself would
             # otherwise be read back afterwards as something the operator did.
             # The shared transaction owns the event codec, the quantifier block and
             # the clamp; it records through a queued signal, so the profile lock we
-            # are running under (pidOnET is called from sample_processing) is not an
+            # are running under (the guard is called from sample_processing) is not an
             # issue and no longer has to be bypassed.
-            self.aw.applyTilauSliderCommand(slidernr, slidervalue, True, f'Airwave S{slidernr}')
+            # fire_action=False moves and records the lever without dispatching the
+            # slider action, whose Airwave write would block the GUI thread; the
+            # caller then sends the value itself, asynchronously.
+            # '{0}' est la place de la valeur appliquée : sans elle l'événement
+            # enregistré ne portait que le nom du canal.
+            self.aw.applyTilauSliderCommand(slidernr, slidervalue, fire_action, f'Airwave S{slidernr}:{{0}}%')
+            # moveslider() clamps to the slider limits: send what was applied.
+            try:
+                return int(self.aw.eventslidervalues[slidernr])
+            except (AttributeError, IndexError, TypeError, ValueError):
+                return slidervalue
 
     def _get_omniflux_live(self)-> tuple[float, float]:
         # read registers from modbus if connected
@@ -886,329 +1034,121 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
             roc = -1.0
         return agtron, roc
 
-    def _get_current_phase_name(self) -> str:
-        """Helper rapide pour identifier la phase Artisan."""
-        if not self.aw or not self.aw.qmc.timeindex: return ""
-        idx = self.aw.qmc.timeindex
-        if idx[RoastingPhase.DROP] > 0: return "DROP"
-        if idx[RoastingPhase.SCSTART] > 0: return "SCS"
-        if idx[RoastingPhase.FCSTART] > 0: return "FCS"
-        if idx[RoastingPhase.DRYEND] > 0: return "DRY"
-        if idx[RoastingPhase.CHARGE] > -1: return "CHARGE" # charge can happen at 0
-        return "PREHEAT"
+    # ── Garde thermique de la gaine ──────────────────────────────────────────
 
-    def _compute_color_bias(
-        self,
-        agtron: float,
-        roc_live: float,
-        elapsed_time: float,
-        timeindex: list,
-        timex: list
-    ) -> float:
+    def _duct_limit(self) -> float:
+        """Limite de gaine retenue : la plus basse des valeurs enregistrees.
+
+        Le reglage est stocke par phase, mais la protection ne depend pas de la
+        phase — on prend donc la plus protectrice.
         """
-        Compute the fan speed bias (%) driven by color deviation and RoC deviation.
-        Positive bias = more fan = slower development (lighter roast direction).
-        Negative bias = less fan = faster development (darker roast direction).
+        limits: list[float] = []
+        params = getattr(self.aw, "bleAirwavepidparms", None) if self.aw is not None else None
+        if isinstance(params, dict):
+            for row in params.values():
+                try:
+                    v = float(row[4])
+                except (IndexError, TypeError, ValueError):
+                    continue
+                if 40.0 <= v <= 200.0:
+                    limits.append(v)
+        return min(limits) if limits else self.DUCT_LIMIT_DEFAULT
+
+    def duct_overheat_guard(self, simulator: bool = False) -> None:
+        """Ralentit l'extracteur quand la gaine chauffe. Ne l'accelere jamais.
+
+        Tourne dans le tick d'echantillonnage d'Artisan : aucune exception ne
+        doit s'en echapper, sinon le reste du tick est abandonne.
         """
-        if agtron < 0 or not self.state.color_layer_enabled:
-            return 0.0
+        try:
+            self._duct_overheat_guard(simulator)
+        except Exception as e:  # noqa: BLE001
+            _logd.warning(f"airwave duct guard: tick aborted: {e}")
 
-        params = getattr(self.aw, 'bleColorpidparms', {})
-        target_color    = params.get('target_color', 58.0)
-        Kp_color        = params.get('Kp_color', 0.8)
-        Kd_color        = params.get('Kd_color', 2.0)
-        gain            = params.get('color_to_fan_gain', 2.0)
-        MAX_BIAS        = params.get('MAX_COLOR_BIAS', 15.0)
-        roc_alpha       = params.get('roc_smoothing_alpha', 0.4)
-
-        # Smooth RoC
-        self.state.roc_smoothed = (
-            roc_alpha * roc_live + (1 - roc_alpha) * self.state.roc_smoothed
-        )
-
-        # Spike filter on color
-        if self.state.color_prev >= 0:
-            if abs(agtron - self.state.color_prev) > 5.0:
-                agtron = self.state.color_prev
-                self.state.color_stale_count += 1
-            else:
-                self.state.color_stale_count = 0
-        self.state.color_prev = agtron
-
-        if self.state.color_stale_count > 5:
-            _logd.warning("color_bias: stale/noisy color signal, bias = 0")
-            return 0.0
-
-        # Desired trajectory
-        t_fcs = timex[timeindex[RoastingPhase.FCSTART]] if timeindex[RoastingPhase.FCSTART] > 0 else elapsed_time
-        t_drop_planned = params.get('planned_drop_time', t_fcs + 90.0)  # fallback: 90s dev
-        t_now = elapsed_time
-
-        if t_drop_planned <= t_fcs:
-            return 0.0
-
-        c_fcs = self.state.color_fcs if self.state.color_fcs > 0 else agtron
-        progress = min(1.0, (t_now - t_fcs) / (t_drop_planned - t_fcs))
-        c_des = c_fcs + (target_color - c_fcs) * progress
-        roc_des = (target_color - c_fcs) / (t_drop_planned - t_fcs)
-
-        color_error = c_des - agtron
-        roc_error   = roc_des - self.state.roc_smoothed
-
-        correction = Kp_color * color_error + Kd_color * roc_error
-        fan_bias = -1.0 * correction * gain   # negative: more correction → more fan
-        fan_bias = max(-MAX_BIAS, min(MAX_BIAS, fan_bias))
-
-        _logd.debug(
-            f"color_bias: agtron={agtron:.1f} c_des={c_des:.1f} "
-            f"roc={self.state.roc_smoothed:.3f} roc_des={roc_des:.3f} "
-            f"bias={fan_bias:.1f}%"
-        )
-        return fan_bias
-
-    def pidOnET(self, timeindex:list[float], timex: list[float], temp1:list[float], delta1:list[float], simulator:bool=False, deltaspan:int=0, deltasamples:int=0) -> None:
-        # ===== AUTO AIRWAVE CONTROL — PID on DeltaET =====
-        # Contrôle automatique de l'extraction d'air selon DeltaET lissé + phase.
-        # Corrections 2026-05 :
-        #   - Reset partiel integral x0.5 au changement de phase
-        #   - base_air = setpoint initial de phase (rampe douce), plus plancher dur
-        #   - Soft-floor = base_air - 5% / plancher absolu = AirwaveSpeed.MINIMUM
-        #   - Suppression double lissage EMA contradictoire
-        #   - Protection thermique progressive (proportionnelle, pas binaire)
-        #   - Simulateur : update_artisan_slider pour déplacer le curseur visuellement
-
-        HIGHFANSPEED: int = 75          # vitesse DROP pour évacuer la chaleur résiduelle
-        SOFT_FLOOR_MARGIN: float = 5.0  # PID peut descendre jusqu'à base_air - 5%
-
-        # ── sanity check ────────────────────────────────────────────────────────
-        if len(timex) < 3 or not timeindex or len(temp1) < 3:
-            _logd.debug("airwave pid no data")
-            self.state.last_fanspeed = AirwaveSpeed.MINIMUM
+    def _duct_overheat_guard(self, simulator: bool) -> None:
+        if simulator or self.aw is None or not self.airwave.isconnected():
             return
 
-        phase = self._get_current_phase_name()
-        if not phase or phase == "PREHEAT":
+        # Lecture inlet — la serie extra passe par comm.AIRWAVE, qui la convertit
+        # en °F quand qmc.mode vaut 'F' ; state.last_inlet vient brut du device.
+        inlet = float(self.state.last_inlet)
+        series = self._airwave_inlet_series()
+        if series:
+            inlet = (fromFtoCstrict(series[-1])
+                     if self.aw.qmc.mode == 'F' else float(series[-1]))
+        if inlet <= 0.0:
             return
 
-        # ── plages DeltaET cibles par phase (degC/min) ──────────────────────────
-        PHASE_DELTAET_RANGES: dict[str, tuple[float, float]] = {
-            "CHARGE": (4.5, 7.0),
-            "DRY":    (3.0, 5.5),
-            "FCS":    (2.0, 4.0),
-            "SCS":    (1.5, 3.5),
-            "DROP":   (2.0, 4.0),  # non utilisé (bypass DROP), conservé pour cohérence
-        }
+        limit = self._duct_limit()
+        current = int(self.state.speed) or int(self.state.last_fanspeed)
+        if current <= 0:
+            return
 
-        # ── paramètres par défaut raisonnés Skywalker V2 ────────────────────────
-        # (Kp, Ki, base_air, fan_target, inlet_limit, fan_mode, ramp_rate)
-        DEFAULT_PARAMS: dict[str, tuple[float, float, int, float, float, str, float]] = {
-            "CHARGE": (1.5, 0.05, 35, 40.0, 80.0, "FAN", 0.25),
-            "DRY":    (1.5, 0.05, 30, 40.0, 80.0, "FAN", 0.25),
-            "FCS":    (1.5, 0.05, 45, 50.0, 80.0, "STD", 0.20),
-            "SCS":    (1.5, 0.05, 50, 55.0, 80.0, "STD", 0.20),
-            "DROP":   (0.0, 0.00, 75,  0.0, 80.0, "STD", 0.50),
-        }
+        # Le plan ou l'operateur a bouge le ventilateur : c'est la nouvelle valeur
+        # a restituer, et la coupe repart de la.
+        if self._duct_last_sent is None or current != self._duct_last_sent:
+            self._duct_base = current
 
-        # ── récupération des paramètres de phase ────────────────────────────────
-        # QSettings retourne les valeurs comme str — cast explicite requis.
-        try:
-            params = self.aw.bleAirwavepidparms[phase]  # type: ignore[union-attr]
-            if len(params) >= 7:
-                Kp, Ki, base_air, fan_target, airwave_duct_temp_limit, fan_mode, base_ramp_step = params[:7]
-            else:
-                Kp, Ki, base_air, fan_target, airwave_duct_temp_limit, fan_mode = params[:6]
-                base_ramp_step = 0.25
-        except (AttributeError, KeyError):
-            defaults = DEFAULT_PARAMS.get(phase, (1.5, 0.05, 35, 40.0, 80.0, "FAN", 0.25))
-            Kp, Ki, base_air, fan_target, airwave_duct_temp_limit, fan_mode, base_ramp_step = defaults
-
-        # Cast de sécurité — protège contre les valeurs str issues de QSettings
-        try:
-            Kp                      = float(Kp)
-            Ki                      = float(Ki)
-            base_air                = int(float(base_air))
-            fan_target              = float(fan_target)
-            airwave_duct_temp_limit = float(airwave_duct_temp_limit)
-            fan_mode                = str(fan_mode)
-            base_ramp_step          = float(base_ramp_step)
-        except (TypeError, ValueError) as _e:
-            _logd.warning(f"airwave pid: invalid param cast for phase {phase}: {_e} — using defaults")
-            Kp, Ki, base_air, fan_target, airwave_duct_temp_limit, fan_mode, base_ramp_step = \
-                DEFAULT_PARAMS.get(phase, (1.5, 0.05, 35, 40.0, 80.0, "FAN", 0.25))
-
-        integral_limit: float = 10.0
-        min_fanspeed: int = AirwaveSpeed.MINIMUM
-        max_fanspeed: int = AirwaveFanLimits.MAXIMUM
-        min_target_deltaET, max_target_deltaET = PHASE_DELTAET_RANGES.get(phase, (3.0, 5.0))
-
-        # ── lecture inlet ────────────────────────────────────────────────────────
-        inlet_temp: float = self.state.last_inlet if not simulator else 30.0
-        if not simulator and self.extradevicenumber >= 0 and self.aw is not None:
-            series = self.aw.qmc.extratemp1[self.extradevicenumber]
-            if series:
-                inlet_temp = series[-1]
-
-        airflow: int = int(self.state.last_fanspeed) if self.state.last_fanspeed else min_fanspeed
-
-        # ── COLOR LAYER (OmniFlux) ───────────────────────────────────────────────
-        fan_bias: float = 0.0
-        if self.omniflux.valid and phase in ("FCS", "SCS"):
-            agtron, roc_live = self._get_omniflux_live()
-            if agtron > 0:
-                fan_bias = self._compute_color_bias(
-                    agtron=agtron,
-                    roc_live=roc_live,
-                    elapsed_time=timex[-1] - timex[timeindex[RoastingPhase.CHARGE]],
-                    timeindex=timeindex,
-                    timex=timex,
-                )
-
-        # ── DeltaET lissé ────────────────────────────────────────────────────────
-        smoothed_deltaET: float = 0.0
-        if len(temp1) > deltaspan and delta1:
-            v = delta1[-1]
-            smoothed_deltaET = float(v) if v is not None else 0.0
-
-        # ── détection changement de phase ────────────────────────────────────────
-        phase_changed: bool = (self.state.last_phase != "" and self.state.last_phase != phase)
-        first_phase: bool   = (self.state.last_phase == "")
-
-        if phase_changed:
-            # Reset partiel intégrale x0.5 — conserve la tendance, évite le spike
-            self.state.int_error *= 0.5
-            # Réinitialise base_air_smooth sur last_fanspeed pour que la rampe
-            # parte du point réel et non d'un écart fictif avec le nouveau base_air
-            self.state.base_air_smooth = float(self.state.last_fanspeed)
-            _logd.debug(
-                f"airwave pid: phase {self.state.last_phase}→{phase} | "
-                f"int_error reset x0.5={self.state.int_error:.2f} | "
-                f"base_smooth init={self.state.base_air_smooth:.1f}"
-            )
-
-        # ── DROP : bypass PID ────────────────────────────────────────────────────
-        if phase == "DROP":
-            fanspeed: int = HIGHFANSPEED
+        # Retrait vise : 1 point par degre au-dessus de la limite, borne.
+        if inlet >= limit:
+            wanted = min(self.DUCT_MAX_CUT_PCT, inlet - limit)
+        elif inlet <= limit - self.DUCT_HYSTERESIS_C:
+            wanted = 0.0
         else:
-            # ── ERREUR intervalle ────────────────────────────────────────────────
-            if min_target_deltaET <= smoothed_deltaET <= max_target_deltaET:
-                error_deltaET = 0.0
-            elif smoothed_deltaET < min_target_deltaET:
-                error_deltaET = smoothed_deltaET - min_target_deltaET  # négatif → réduire fan
-            else:
-                error_deltaET = smoothed_deltaET - max_target_deltaET  # positif → augmenter fan
+            wanted = self._duct_cut          # zone morte : on ne bouge pas
 
-            # ── INTÉGRALE avec anti-windup ────────────────────────────────────────
-            # N'intègre que si Ki actif pour éviter d'accumuler une dette silencieuse
-            if Ki > 0.0:
-                self.state.int_error += error_deltaET
-                self.state.int_error = max(-integral_limit, min(integral_limit, self.state.int_error))
+        if wanted == 0.0 and self._duct_cut == 0.0:
+            self._duct_last_sent = None
+            self._duct_last_target = None
+            return
 
-            # ── RAMPE DU SETPOINT DE PHASE (base_air_smooth) ─────────────────────
-            if self.state.base_air_smooth == 0.0:
-                self.state.base_air_smooth = float(base_air)
-            diff_base = float(base_air) - self.state.base_air_smooth
-            if abs(diff_base) > 0.01:
-                step = min(abs(diff_base), float(base_ramp_step))
-                self.state.base_air_smooth += step * (1.0 if diff_base > 0 else -1.0)
-            else:
-                self.state.base_air_smooth = float(base_air)
-            current_base: float = self.state.base_air_smooth
+        step = float(getattr(self.aw, 'bleAirwavepidRamp', 2) or 2)
+        if wanted > self._duct_cut:
+            self._duct_cut = min(wanted, self._duct_cut + step)
+        elif wanted < self._duct_cut:
+            self._duct_cut = max(wanted, self._duct_cut - step)
 
-            # ── CORRECTION PID ────────────────────────────────────────────────────
-            correction: float = (Kp * error_deltaET) + (Ki * self.state.int_error)
+        base = self._duct_base if self._duct_base is not None else current
+        target = int(max(float(AirwaveSpeed.MINIMUM),
+                         min(float(AirwaveFanLimits.MAXIMUM), base - self._duct_cut)))
+        if target == self._duct_last_target:
+            return
 
-            # ── PROTECTION THERMIQUE PROGRESSIVE ─────────────────────────────────
-            # Uniquement si gaine dépasse la limite (défaut 80°C)
-            # Réduction proportionnelle : 1% par °C au-dessus, max -15%
-            if not simulator and inlet_temp >= airwave_duct_temp_limit:
-                overshoot = inlet_temp - airwave_duct_temp_limit
-                thermal_correction = max(-15.0, -overshoot * 1.0)
-                correction += thermal_correction
-                _logd.debug(
-                    f"airwave pid: inlet={inlet_temp:.1f}C >= limit={airwave_duct_temp_limit:.1f}C "
-                    f"thermal_corr={thermal_correction:.1f}%"
-                )
+        applied = target
+        if self.pilotDamperSlider:
+            applied = self.updateArtisanDamperSlider(2, target, fire_action=False)
+        self.dispatch_async(f"FAN {applied}")
+        # Ce qui est memorise est ce qui a ete ENVOYE, pas ce qui etait vise : le
+        # slider borne la valeur, et l'appareil renvoie son echo sur `applied`.
+        # Memoriser `target` ferait relire cet echo comme un geste operateur et
+        # rebaserait _duct_base sur la valeur deja coupee — le ventilateur ne
+        # remonterait jamais a sa consigne d'origine a la releve de la garde.
+        self.state.speed = applied
+        self.state.last_fanspeed = applied
+        self._duct_last_sent = applied
+        self._duct_last_target = target
+        _logd.info(
+            f"airwave duct guard: inlet={inlet:.1f}C limit={limit:.1f}C "
+            f"cut={self._duct_cut:.1f} base={base} => fan={applied}%"
+        )
+        if self._duct_cut == 0.0:
+            self._duct_last_sent = None
+            self._duct_last_target = None
 
-            # ── CALCUL RAW TARGET ─────────────────────────────────────────────────
-            # Soft-floor = base_air - SOFT_FLOOR_MARGIN (descente limitée sous le setpoint)
-            # Plancher absolu = AirwaveSpeed.MINIMUM (contrainte hardware)
-            soft_floor: float = max(float(min_fanspeed), current_base - SOFT_FLOOR_MARGIN)
-            raw_target: float = max(soft_floor, min(float(max_fanspeed), current_base + correction + fan_bias))
+    def reset_pid_state(self) -> None:
+        """Clear the per-roast extractor state (phase, mode, guard).
 
-            # ── SLEW RATE ─────────────────────────────────────────────────────────
-            # Un seul étage de limitation de vitesse, sans EMA contradictoire
-            if self.state.last_fanspeed == 0:
-                self.state.last_fanspeed = int(raw_target)
+        The device object outlives a roast: without this the next roast inherits
+        the previous phase and mode, and the phase-entry MODE command is never
+        sent — and a duct cut taken on one roast would carry into the next.
+        """
+        self.state.last_phase = ""
+        self.state.last_mode = ""
+        self.state.last_fanspeed = AirwaveSpeed.MINIMUM
+        self._duct_cut = 0.0
+        self._duct_base = None
+        self._duct_last_sent = None
+        self._duct_last_target = None
+        with self._pid_cv:
+            self._pid_pending.clear()
 
-            ramp_step: float = float(getattr(self.aw, 'bleAirwavepidRamp', 2) or 2)
-            diff: float = raw_target - float(self.state.last_fanspeed)
-            if abs(diff) > ramp_step:
-                ramped: float = float(self.state.last_fanspeed) + (ramp_step if diff > 0 else -ramp_step)
-            else:
-                ramped = raw_target
-
-            fanspeed = int(ramped)
-
-            _logd.debug(
-                f"airwave pid | phase={phase} dET={smoothed_deltaET:.2f} "
-                f"[{min_target_deltaET:.1f},{max_target_deltaET:.1f}] "
-                f"err={error_deltaET:.2f} int={self.state.int_error:.2f} "
-                f"corr={correction:.2f} bias={fan_bias:.1f} "
-                f"base={float(base_air):.0f} smooth={current_base:.1f} "
-                f"floor={soft_floor:.1f} ramp={base_ramp_step:.2f} "
-                f"raw={raw_target:.1f} => fan={fanspeed}% "
-                f"inlet={inlet_temp:.1f}C"
-            )
-
-        # ── ENVOI COMMANDES ───────────────────────────────────────────────────────
-        isconnected: bool = (not simulator) and self.airwave.isconnected()
-        DAMPER_SLIDER: int = 2
-
-        if first_phase or phase_changed:
-            # Changement de mode (FAN/STD/EXT) si nécessaire + envoi vitesse
-            if simulator:
-                _logd.debug(f"simulator phase→{phase} mode={fan_mode} fan={fanspeed}%")
-                self.state.speed = fanspeed
-                self.state.mode = (
-                    AirwaveFanMode.FAN if fan_mode == "FAN"
-                    else AirwaveFanMode.STANDARD if fan_mode == "STD"
-                    else AirwaveFanMode.EXTREME
-                )
-                # Déplacer le slider visuellement en simulateur
-                if self.pilotDamperSlider:
-                    self.update_artisan_slider(DAMPER_SLIDER, fanspeed)
-            elif isconnected:
-                prepare_command = f"MODE {fan_mode}," if self.state.last_mode != fan_mode else ""
-                if self.pilotDamperSlider:
-                    self.send_command(prepare_command)
-                    self.updateArtisanDamperSlider(DAMPER_SLIDER, fanspeed)
-                else:
-                    prepare_command += f"FAN {fanspeed}"
-                    self.send_command(prepare_command)
-                self.state.speed = fanspeed
-                self.state.mode = (
-                    AirwaveFanMode.FAN if fan_mode == "FAN"
-                    else AirwaveFanMode.STANDARD if fan_mode == "STD"
-                    else AirwaveFanMode.EXTREME
-                )
-            self.state.last_fanspeed = fanspeed
-            self.state.last_phase = phase
-            self.state.last_mode = fan_mode
-
-        elif fanspeed != airflow:
-            # Même phase, variation de vitesse
-            if not simulator and isconnected:
-                if self.state.last_fanspeed != fanspeed:
-                    if self.pilotDamperSlider:
-                        self.updateArtisanDamperSlider(DAMPER_SLIDER, fanspeed)
-                    else:
-                        self.send_command(f"FAN {fanspeed}")
-                self.state.speed = fanspeed
-            elif simulator:
-                _logd.debug(f"simulator SPEED {airflow}→{fanspeed}%")
-                self.state.speed = fanspeed
-                if self.pilotDamperSlider:
-                    self.update_artisan_slider(DAMPER_SLIDER, fanspeed)
-            self.state.last_fanspeed = fanspeed
-            self.state.last_phase = phase
-            self.state.last_mode = fan_mode

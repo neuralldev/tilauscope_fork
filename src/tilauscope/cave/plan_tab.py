@@ -30,7 +30,7 @@ from artisanlib.widgets import MyQDoubleSpinBox
 
 from PyQt6.QtCore import (Qt, pyqtSlot, QSettings) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
 from PyQt6.QtWidgets import (QApplication, QComboBox, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,  # @UnusedImport @Reimport  @UnresolvedImport
-                                QPushButton, QWidget, QGridLayout, QGroupBox, QStyledItemDelegate, QListView, QFrame, QCheckBox, QMessageBox, QDoubleSpinBox) # @UnusedImport @Reimport  @UnresolvedImport
+                                QPushButton, QWidget, QGridLayout, QGroupBox, QStyledItemDelegate, QListView, QFrame, QCheckBox, QMessageBox, QDoubleSpinBox, QButtonGroup) # @UnusedImport @Reimport  @UnresolvedImport
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
@@ -705,6 +705,11 @@ class PlanTabMixin:
             combo_row.addLayout(fld, 1)
         target_v.addLayout(combo_row)
 
+        # Destination: what the coffee is brewed as. Same setting, same wording
+        # and same segmented control as the roast setup dialog — the plan engine
+        # re-reads the setting at every run, so writing it here is enough.
+        target_v.addWidget(self._build_plan_destination_row())
+
         # Batch weight — deliberately separated from the ambient block (mauve accent).
         # Native spinbox styling so the value stays visible.
         batch = QFrame(); batch.setObjectName("planBatch")
@@ -814,6 +819,77 @@ class PlanTabMixin:
         self._populate_roaster_list()
         self._update_plan_stepper()
         self.roast_plan_tab.setLayout(main_layout)
+
+    # ── Roast destination (filter / omni / espresso) ─────────────────────────
+    # Single source of truth with the roast setup dialog: the same QSettings key
+    # feeds the plan engine, which re-reads it on every generation.
+    _PLAN_DEST_KEYS: tuple[str, ...] = ("filter", "omni", "espresso")
+    _PLAN_DEST_PREF: str = "tilauscope/roast_destination"
+
+    def _build_plan_destination_row(self) -> QWidget:
+        """Build the Filter / Omni / Espresso selector for the target card."""
+        host = QWidget()
+        v = QVBoxLayout(host)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(6)
+
+        lbl = QLabel(QApplication.translate("tilauscope_beancave", "What is this coffee for?"))
+        lbl.setStyleSheet(
+            f"font-size:12px;color:{THEME['SUBTEXT']};background:transparent;border:none;")
+        v.addWidget(lbl)
+
+        _seg_checked = (
+            f"QPushButton:checked {{ color:{THEME['BG']}; background:{THEME['ACCENT']};"
+            f"border:1px solid {THEME['ACCENT']}; }}")
+        row = QHBoxLayout()
+        row.setSpacing(0)
+        self._plan_dest_group = QButtonGroup(self)
+        self._plan_dest_group.setExclusive(True)
+        _defs = (
+            ("filter",   QApplication.translate("tilauscope_beancave", "Filter")),
+            ("omni",     QApplication.translate("tilauscope_beancave", "Omni")),
+            ("espresso", QApplication.translate("tilauscope_beancave", "Espresso")),
+        )
+        _tips = (
+            QApplication.translate("tilauscope_beancave", "Shortest development — brightest cup."),
+            QApplication.translate("tilauscope_beancave", "Development halfway between filter and espresso."),
+            QApplication.translate("tilauscope_beancave", "Longest development — rounder, less acidic under pressure."),
+        )
+        self._plan_dest_buttons: dict[str, QPushButton] = {}
+        for i, (key, text) in enumerate(_defs):
+            b = QPushButton(text)
+            b.setCheckable(True)
+            b.setMinimumHeight(32)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.setToolTip(_tips[i])
+            radius = ("border-top-left-radius:6px;border-bottom-left-radius:6px;" if i == 0
+                      else "border-top-right-radius:6px;border-bottom-right-radius:6px;"
+                      if i == len(_defs) - 1 else "")
+            b.setStyleSheet(
+                f"QPushButton {{ color:{THEME['SUBTEXT']}; background:{THEME['BG']};"
+                f"border:1px solid {THEME['BORDER']};"
+                f"{'border-left:none;' if i else ''} padding:6px 18px;"
+                f"font-size:13px;font-weight:bold;{radius} }}" + _seg_checked)
+            self._plan_dest_group.addButton(b, i)
+            self._plan_dest_buttons[key] = b
+            row.addWidget(b, 1)
+        v.addLayout(row)
+
+        self._restore_plan_destination()
+        self._plan_dest_group.idClicked.connect(self._on_plan_destination_changed)
+        return host
+
+    def _restore_plan_destination(self) -> None:
+        """Select the destination remembered from the last roast (default omni)."""
+        key = str(QSettings().value(self._PLAN_DEST_PREF, "omni", str) or "omni")
+        if key not in self._plan_dest_buttons:
+            key = "omni"
+        self._plan_dest_buttons[key].setChecked(True)
+
+    def _on_plan_destination_changed(self, index: int) -> None:
+        """Persist the destination so the next generation picks it up."""
+        if 0 <= index < len(self._PLAN_DEST_KEYS):
+            QSettings().setValue(self._PLAN_DEST_PREF, self._PLAN_DEST_KEYS[index])
 
     def _build_plan_stepper(self) -> QWidget:
         """Build the 3-step progress header (Bean → Conditions → Target)."""

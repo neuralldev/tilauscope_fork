@@ -34,12 +34,21 @@ from PyQt6.QtWidgets import (QApplication, QMessageBox) # @UnusedImport @Reimpor
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.tilauscope_types import (AGTRON_SCALES, THEME, RoastingPhase, normalize_timeindex, ROASTING_BASIC_BASE, weight_loss_target,
-                                         get_ror_ideal_band, estimate_ror_dt, find_turning_point_index, find_flicks_crashes,
+                                         get_ror_ideal_band, estimate_ror_dt, find_turning_point_index, dominant_dev_ror_event,
+                                         roast_level_from_arrival_detail, ARRIVAL_UNCERTAINTY_DEFAULT_C,
                                          resolve_color_system)
 from tilauscope.brew_advisor import BrewInput, WaterProfile
 from tilauscope.brew_advisor_dialog import BrewAdvisorDlg
 from tilauscope.cave.common import (
     _logd)
+
+
+# What the coach's inputs are actually worth. Nothing in a home roast is
+# measured finely enough to judge a batch on a tenth of a point, so every
+# band comparison below is widened by the uncertainty of its own measurement
+# rather than compared to a bare edge.
+_MILESTONE_MARK_TOLERANCE_S: float = 5.0   # when first crack was called, by ear
+_WEIGHT_READING_TOLERANCE_G: float = 1.0   # what a batch weight on file is worth
 
 
 def _safe_moisture(value) -> float:
@@ -72,41 +81,84 @@ class AnalysisMixin:
     # tilauscope_types.ROASTING_BASIC_BASE — the same table the roast plan
     # generator (roast_plan_model.py) builds its plan from — so the coach never
     # disagrees with the plan on what a given roast level requires.
-    @staticmethod
-    def roast_level_from_color(roast_color_val):
-        """Agtron whole-bean → one of AGTRON_SCALES' 8 category names, or None."""
-        if roast_color_val is None:
-            return None
+    #
+    # The level is read from what the roast DID — its arrival pair, development
+    # duration and drop temperature — never from the bean's colour. The colour is
+    # the result: it is expected to agree with the roast, and when it does not it
+    # is the roast that went wrong, so it cannot be the reference the roast is
+    # then judged against.
+    def _roast_machine_ctx(self, data):
+        """The roaster record of the machine that ran this roast, or None."""
         try:
-            v = float(roast_color_val)
-        except (TypeError, ValueError):
+            mgr = getattr(self, 'roaster_manager', None)
+            if mgr is None:
+                return None
+            return mgr.get_roast_context(str(data.get('roastertype', '') or ''))
+        except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
+            _logd.debug(f"coach: roaster context unavailable: {e}")
             return None
-        if v <= 0:
-            return None
-        for a in AGTRON_SCALES:
+
+    def roast_drop_offset_c(self, data) -> float:
+        """The bean probe's deviation at drop for the machine that ran this roast.
+
+        Same value and same sign the plan generator applies to the reference drop
+        window, so a level read here and a level prescribed there mean the same
+        temperature on the operator's own display.
+        """
+        ctx = self._roast_machine_ctx(data)
+        offsets = getattr(ctx, 'bt_offsets', None) if ctx is not None else None
+        if offsets and len(offsets) >= 4:
             try:
-                if a.agtron_range.min_value <= v <= a.agtron_range.max_value:
-                    return a.name
+                return float(offsets[3])
             except (TypeError, ValueError):
                 pass
-        return None
+        return 0.0
 
-    def roast_level_thresholds(self, roast_color_val, *,
+    def roast_arrival_uncertainty_c(self, data) -> float:
+        """What a level read from this machine's arrival is worth, in °C."""
+        ctx = self._roast_machine_ctx(data)
+        try:
+            return float(getattr(ctx, 'arrival_uncertainty_c', None)
+                         or ARRIVAL_UNCERTAINTY_DEFAULT_C)
+        except (TypeError, ValueError):
+            return ARRIVAL_UNCERTAINTY_DEFAULT_C
+
+    def roast_level_measured(self, data, computed, mode: str = 'C'):
+        """(level, neighbour) for this roast, from its arrival pair.
+
+        `neighbour` is the level the arrival could just as well be read as when
+        it lands on a band edge — None when the reading is clear-cut.
+        """
+        try:
+            drop_bt = float(computed.get('DROP_BT') or 0.0)
+            fcs_t   = float(computed.get('FCs_time') or 0.0)
+            drop_t  = float(computed.get('DROP_time') or 0.0)
+        except (TypeError, ValueError):
+            return None, None
+        if drop_bt <= 0 or fcs_t <= 0 or drop_t <= fcs_t:
+            return None, None
+        # The reference table is in °C — convert at the boundary, once.
+        drop_c = (drop_bt - 32.0) * 5.0 / 9.0 if mode == 'F' else drop_bt
+        return roast_level_from_arrival_detail(drop_c, (drop_t - fcs_t) / 60.0,
+                                               self.roast_drop_offset_c(data),
+                                               self.roast_arrival_uncertainty_c(data))
+
+    def roast_level_thresholds(self, level, *,
                                moisture_pct: float = 0.0,
-                               dev_time_min: float = 0.0):
-        """Return (level, thresholds) for the target roast color.
+                               dev_time_min: float = 0.0,
+                               drop_offset_c: float = 0.0):
+        """Return (level, thresholds) for a measured roast level.
 
         thresholds carries: dtr (min,max %), wl (min,max %), wl_target (%),
         drop_c (low,high bean-temp window in °C) and dev_time (low,high absolute
         minutes FCs→DROP). dtr/drop_c/dev_time come from ROASTING_BASIC_BASE
         (shared with the plan generator); wl comes from `weight_loss_target()`,
-        which needs the lot's water and the development on top of the colour —
+        which needs the lot's water and the development on top of the level —
         pass both when the roast has them, or the target falls back to a neutral
-        moisture and drops the development term. When the color is unknown we
+        moisture and drops the development term. When the level cannot be read we
         fall back to the Medium profile but keep level None so callers stay
         cautious.
         """
-        level = self.roast_level_from_color(roast_color_val)
         plan = next((p for p in ROASTING_BASIC_BASE.plans if p.name == level), None)
         if plan is None:
             plan = next(p for p in ROASTING_BASIC_BASE.plans if p.name == "Medium")
@@ -116,17 +168,19 @@ class AnalysisMixin:
             'dtr': (plan.dtr_pct[0] * 100.0, plan.dtr_pct[1] * 100.0),
             'wl': (wl.low, wl.high),
             'wl_target': wl.target,
-            'drop_c': (float(plan.drop_temp[0]), float(plan.drop_temp[1])),
+            # Shifted onto the machine's own display, like the plan generator
+            # does, so the window can be compared with the recorded drop.
+            'drop_c': (float(plan.drop_temp[0]) + drop_offset_c,
+                       float(plan.drop_temp[1]) + drop_offset_c),
             'dev_time': plan.development_time,
         }
         return level, thresholds
 
-    def phase_rules_for_color(self, roast_color_val):
+    def phase_rules_for_level(self, level):
         """Phase-duration ranges for the roast's level, falling back per-phase to
         the pooled rules when the level has too few samples to be reliable."""
         pooled = getattr(self, 'duration_rules', {}) or {}
         by_band = getattr(self, 'duration_rules_by_band', {}) or {}
-        level = self.roast_level_from_color(roast_color_val)
         band = by_band.get(level, {}) if level else {}
         out = {}
         for k in ('drying', 'maillard', 'development'):
@@ -253,12 +307,25 @@ class AnalysisMixin:
 
         computed: ComputedProfileInformation = data.get("computed", {})
 
-        def get_ror(key):
-            ror = computed.get(key, "N/A")
+        # The four phase figures are averages — degrees gained over the phase,
+        # divided by its length — not the rate of rise drawn on the curve, which
+        # moves within every one of them. They are recomputed here from the
+        # milestones rather than read from the file: the stored block anchors
+        # each phase differently (the drying one starts from the green bean's own
+        # temperature, not the turning point) and comes out as a plain 0 on
+        # profiles whose milestones were edited after the roast. Same anchors for
+        # all four, turning point to drop, so the four can be read together.
+        def phase_rise(t_from: str, t_to: str) -> str:
             try:
-                return f"{float(ror):.2f}" if ror != "N/A" else "N/A"
-            except ValueError:
-                return str(ror)
+                bt0 = float(computed.get(f'{t_from}_BT') or 0.0)
+                bt1 = float(computed.get(f'{t_to}_BT') or 0.0)
+                s0  = float(computed.get(f'{t_from}_time') or 0.0)
+                s1  = float(computed.get(f'{t_to}_time') or 0.0)
+            except (TypeError, ValueError):
+                return "N/A"
+            if bt0 <= 0 or bt1 <= 0 or s1 <= s0:
+                return "N/A"
+            return f"{(bt1 - bt0) / (s1 - s0) * 60.0:.2f}"
 
         # ── Extraction ────────────────────────────────────────────────────
         roasttime      = data.get("roasttime", "N/A")
@@ -316,19 +383,25 @@ class AnalysisMixin:
         except (ValueError, TypeError):
             wl_val = None
 
-        _rc_for_rules = roast_colour if roast_colour > 0 else None
-        rules = self.phase_rules_for_color(_rc_for_rules)
+        _measured_level, _level_neighbour = self.roast_level_measured(data, computed, mode)
+        rules = self.phase_rules_for_level(_measured_level)
 
         # ── Agtron label ──────────────────────────────────────────────────
+        # A category name is only put on a GROUND reading: the scale behind those
+        # names is a ground-bean scale, and a whole-bean number read on it lands a
+        # category too dark. A whole-bean reading is shown as the number it is.
         agtron_label = ""
-        if roast_colour > 0:
+        if ground_colour > 0:
             for a in AGTRON_SCALES:
                 try:
-                    if a.agtron_range.min_value <= roast_colour <= a.agtron_range.max_value:
+                    if a.agtron_range.min_value <= ground_colour <= a.agtron_range.max_value:
                         agtron_label = f"{a.name} · {a.description}"
                         break
                 except (TypeError, ValueError):
                     pass
+        elif whole_colour > 0:
+            agtron_label = QApplication.translate(
+                "tilauscope_beancave", "whole bean — not on the ground scale")
         else:
             agtron_label = QApplication.translate("tilauscope_beancave", "not present")
 
@@ -527,19 +600,63 @@ class AnalysisMixin:
         # Replace the advice_rows generation block with this:
 
         advice_rows = ""
-        roast_color_val = roast_colour if roast_colour > 0 else None
 
         # Single resolution of the roast-level thresholds, reused by every check.
+        # The level is the one the roast ran, read from its arrival pair.
         roast_level, lvl_th = self.roast_level_thresholds(
-            roast_color_val,
+            _measured_level,
             moisture_pct=_safe_moisture(data.get("moisture_greens")),
-            dev_time_min=development / 60.0)
+            dev_time_min=development / 60.0,
+            drop_offset_c=self.roast_drop_offset_c(data))
         lvl_dtr_min, lvl_dtr_max = lvl_th['dtr']
         lvl_wl_min,  lvl_wl_max  = lvl_th['wl']
+
+        # Widen both bands by what their own measurement is worth, once, so the
+        # advice and the badges inherit the same tolerant edges. A ratio built on
+        # a first crack called by ear is worth about the seconds of that call; a
+        # weight loss is worth what the two weights on file are worth.
+        if total > 0:
+            _dtr_tol = 100.0 * _MILESTONE_MARK_TOLERANCE_S / total
+            lvl_dtr_min -= _dtr_tol
+            lvl_dtr_max += _dtr_tol
+        try:
+            _w_in  = float(computed.get('weightin') or 0.0)
+            _w_out = float(computed.get('weightout') or 0.0)
+        except (TypeError, ValueError):
+            _w_in = _w_out = 0.0
+        if _w_in > 0 and _w_out > 0:
+            _wl_tol = 100.0 * _WEIGHT_READING_TOLERANCE_G * (1.0 / _w_in + _w_out / (_w_in ** 2))
+            lvl_wl_min -= _wl_tol
+            lvl_wl_max += _wl_tol
         lvl_label = (
             QApplication.translate("tilauscope_beancave", "({0} roast)").format(roast_level)
             if roast_level else ""
         )
+
+        # The level everything below is measured against, said out loud with the
+        # pair it was read from — a verdict the operator cannot see the basis of
+        # is a verdict they cannot argue with.
+        if roast_level:
+            try:
+                _drop_num = float(computed.get('DROP_BT') or 0.0)
+            except (TypeError, ValueError):
+                _drop_num = 0.0
+            _dev_txt = f"{int(development) // 60}:{int(development) % 60:02d}"
+            _drop_txt = f"{_drop_num:.0f}°{mode}"
+            if _level_neighbour:
+                advice_rows += advice_row("\U0001F3AF",
+                    QApplication.translate("tilauscope_beancave",
+                        "Read as a {0} roast — {1} development, dropped at {2} — but that is too "
+                        "close to {3} for this machine to tell the two apart, so it could be read "
+                        "either way. What follows is measured against {0}.").format(
+                            roast_level, _dev_txt, _drop_txt, _level_neighbour),
+                    "info")
+            else:
+                advice_rows += advice_row("\U0001F3AF",
+                    QApplication.translate("tilauscope_beancave",
+                        "Read as a {0} roast — {1} development, dropped at {2}. What follows is "
+                        "measured against that level.").format(roast_level, _dev_txt, _drop_txt),
+                    "info")
 
         # Effective weight-loss window, resolved once and shared by the coach
         # advice and the summary badge so they can never disagree. The floor
@@ -585,21 +702,21 @@ class AnalysisMixin:
                 if dev_time_adequate:
                     advice_rows += advice_row("ℹ",
                         QApplication.translate("tilauscope_beancave", "DTR low but development time is adequate")
-                        + f" ({dtr_pct_val:.1f}% &lt; {dtr_min_ctx:.0f}%, {development/60.0:.1f} min) {dtr_label} — "
+                        + f" ({dtr_pct_val:.1f}% &lt; {dtr_min_ctx:.1f}%, {development/60.0:.1f} min) {dtr_label} — "
                         + QApplication.translate("tilauscope_beancave",
                             "the ratio is low because the front (drying/Maillard) is long; shorten the front if you want a higher ratio, no need to extend development."),
                         "info")
                 else:
                     advice_rows += advice_row("⚡",
                         QApplication.translate("tilauscope_beancave", "Short development")
-                        + f" ({dtr_pct_val:.1f}% &lt; {dtr_min_ctx:.0f}%) {dtr_label} — "
+                        + f" ({dtr_pct_val:.1f}% &lt; {dtr_min_ctx:.1f}%) {dtr_label} — "
                         + QApplication.translate("tilauscope_beancave",
                             "Underdeveloped risk: baked/grassy notes. Extend dev phase or raise drop temp."),
                         "warn")
             elif dtr_pct_val > dtr_max_ctx:
                 advice_rows += advice_row("⚡",
                     QApplication.translate("tilauscope_beancave", "Long development")
-                    + f" ({dtr_pct_val:.1f}% &gt; {dtr_max_ctx:.0f}%) {dtr_label} — "
+                    + f" ({dtr_pct_val:.1f}% &gt; {dtr_max_ctx:.1f}%) {dtr_label} — "
                     + QApplication.translate("tilauscope_beancave",
                         "Over-development risk: flat, roasty notes dominate. Consider an earlier drop."),
                     "warn")
@@ -615,14 +732,14 @@ class AnalysisMixin:
             if wl_val < wl_min_ctx:
                 advice_rows += advice_row("⚠",
                     QApplication.translate("tilauscope_beancave", "Low weight loss")
-                    + f" ({wl_val:.1f}% &lt; {wl_min_ctx:.0f}%) {process_hint} — "
+                    + f" ({wl_val:.1f}% &lt; {wl_min_ctx:.1f}%) {process_hint} — "
                     + QApplication.translate("tilauscope_beancave",
                         "Bean may be under-roasted or the batch was unusually dense. Verify scale calibration."),
                     "warn")
             elif wl_val > wl_max_ctx:
                 advice_rows += advice_row("⚠",
                     QApplication.translate("tilauscope_beancave", "High weight loss")
-                    + f" ({wl_val:.1f}% &gt; {wl_max_ctx:.0f}%) {process_hint} — "
+                    + f" ({wl_val:.1f}% &gt; {wl_max_ctx:.1f}%) {process_hint} — "
                     + QApplication.translate("tilauscope_beancave",
                         "Roast may be over-developed or airflow too high. Watch for flat cup."),
                     "bad")
@@ -656,8 +773,10 @@ class AnalysisMixin:
                              else QApplication.translate('tilauscope_beancave', 'your usual range'))
                 # Drying/Maillard are learned, soft references: a minor drift past
                 # the band (< 30 s) is noise, not a fault — stay silent (on-target).
-                # Development keeps a hard floor (professional standard, no grace).
-                grace = 0.5 if phase_key in ('drying', 'maillard') else 0.0
+                # Development keeps the professional floor, but still cannot be
+                # judged finer than the seconds its milestones were called with.
+                grace = (0.5 if phase_key in ('drying', 'maillard')
+                         else _MILESTONE_MARK_TOLERANCE_S / 60.0)
                 if actual_min < mn - grace:
                     # Observational, not a verdict: the range is learned from the
                     # user's own roasts at this level, so a short phase may simply
@@ -777,25 +896,30 @@ class AnalysisMixin:
                 seg_slice = slice(charge_idx, drop_idx + 1)
                 seg_dt = estimate_ror_dt(timex_shifted[seg_slice])
                 tp_idx_local = find_turning_point_index(bt_raw[seg_slice], seg_dt)
-                flicks, crashes = find_flicks_crashes(
-                    raw_delta_bt[seg_slice], timex_shifted[seg_slice], phase_times, tp_idx_local,
-                    prominence=1.0 * (1.8 if mode == 'F' else 1.0),
-                )
-                dev_crashes = [e for e in crashes if e.get("phase") == 3]
-                dev_flicks  = [e for e in flicks  if e.get("phase") == 3]
-                if dev_crashes:
-                    advice_rows += advice_row("📉",
-                        QApplication.translate("tilauscope_beancave",
-                            "RoR crash detected in development: the rate dropped sharply before "
-                            "drop. This can cause baked character. Maintain at least {0:.0f}°/min "
-                            "through drop.").format(dev_ror_lo),
-                        "bad")
-                if dev_flicks:
-                    advice_rows += advice_row("📈",
-                        QApplication.translate("tilauscope_beancave",
-                            "RoR flick detected in development: the rate bumped up significantly. "
-                            "This may indicate a heat spike. Reduce burner earlier to avoid scorching."),
-                        "warn")
+                # The RoR series is in the DISPLAY unit (evaldeltas converts it),
+                # so the °C-based threshold scales on that, not on the unit the
+                # profile was recorded in.
+                event = dominant_dev_ror_event(
+                    raw_delta_bt[seg_slice], timex_shifted[seg_slice], phase_times,
+                    tp_idx_local, str(self.aw.qmc.mode))
+                if event is not None:
+                    # The time is spelled out so the operator can go and look at
+                    # the spot on the curve instead of taking the claim on trust.
+                    at_t = f"{int(event['time']) // 60}:{int(event['time']) % 60:02d}"
+                    if event["kind"] == "crash":
+                        advice_rows += advice_row("📉",
+                            QApplication.translate("tilauscope_beancave",
+                                "RoR crash at {0} in development: the rate dropped sharply before "
+                                "drop. This can cause baked character. Maintain at least {1:.0f}°/min "
+                                "through drop.").format(at_t, dev_ror_lo),
+                            "bad")
+                    else:
+                        advice_rows += advice_row("📈",
+                            QApplication.translate("tilauscope_beancave",
+                                "RoR flick at {0} in development: the rate bumped up significantly. "
+                                "This may indicate a heat spike. Reduce burner earlier to avoid "
+                                "scorching.").format(at_t),
+                            "warn")
         except (TypeError, ValueError, IndexError):
             pass
 
@@ -833,10 +957,10 @@ class AnalysisMixin:
         _de           = QApplication.translate("tilauscope_beancave", "Dry End BT")
         _fc           = QApplication.translate("tilauscope_beancave", "FCs BT")
         _drop         = QApplication.translate("tilauscope_beancave", "Drop BT")
-        _ror_dry      = QApplication.translate("tilauscope_beancave", "RoR Dry Phase")
-        _ror_mai      = QApplication.translate("tilauscope_beancave", "RoR Mid Phase")
-        _ror_dev      = QApplication.translate("tilauscope_beancave", "RoR Finish Phase")
-        _ror_total    = QApplication.translate("tilauscope_beancave", "RoR Total")
+        _ror_dry      = QApplication.translate("tilauscope_beancave", "Average rise · Drying")
+        _ror_mai      = QApplication.translate("tilauscope_beancave", "Average rise · Maillard")
+        _ror_dev      = QApplication.translate("tilauscope_beancave", "Average rise · Development")
+        _ror_total    = QApplication.translate("tilauscope_beancave", "Average rise · TP to drop")
         _auc_dry      = QApplication.translate("tilauscope_beancave", "AUC Dry Phase")
         _auc_middle   = QApplication.translate("tilauscope_beancave", "AUC Maillard Phase")
         _auc_fc       = QApplication.translate("tilauscope_beancave", "AUC Finish phase")
@@ -857,13 +981,13 @@ class AnalysisMixin:
         ror_cards = (
             '<tr>'
             + metric_card(_ror_dry,
-                        f"{get_ror('dry_phase_ror')} °/min")
+                        f"{phase_rise('TP', 'DRY')} °/min")
             + metric_card(_ror_mai,
-                        f"{get_ror('mid_phase_ror')} °/min")
+                        f"{phase_rise('DRY', 'FCs')} °/min")
             + metric_card(_ror_dev,
-                        f"{get_ror('finish_phase_ror')} °/min")
+                        f"{phase_rise('FCs', 'DROP')} °/min")
             + metric_card(_ror_total,
-                        f"{get_ror('total_ror')} °/min")
+                        f"{phase_rise('TP', 'DROP')} °/min")
             + '</tr>'
         )
 
@@ -936,7 +1060,7 @@ class AnalysisMixin:
     </tr>
 
     <!-- RoR PAR PHASE : 4 metric cards -->
-    {section_title(QApplication.translate("tilauscope_beancave","RoR Dry Phase").replace(" Dry Phase","") + " / phase")}
+    {section_title(QApplication.translate("tilauscope_beancave","Average rise per phase"))}
     {ror_cards}
 
     <!-- CONSEILS -->

@@ -269,9 +269,9 @@ The bar names one of four states:
 not on the bar. The bar reports; the assistant tells you the gesture. Nothing on screen speaks
 twice.
 
-At the Guided level the bar shows the state alone. At Standard it adds a meter and the number of
-pops heard over the last half-minute or so; at Expert it adds the running total the probe has
-counted since it started listening.
+At the Guided level the bar shows the state alone. At Expert it adds a meter, the number of pops
+heard over the last half-minute or so, and the running total the probe has counted since it
+started listening.
 
 **The state never overrules the milestone.** ROLLING appears once first crack is marked, however
 it was marked — by you or by [automatic detection](configuration.md). The bar is a reading, and
@@ -284,7 +284,7 @@ distance between that rule and the crack you actually heard is what tells you th
 or late, while there is still a drop to place.
 
 <!-- CAPTURE 2.8g — the curve during first crack, with the crack bar above the plot reading
-ROLLING and the tick band along the foot of the plot, at the Standard level. -->
+ROLLING and the tick band along the foot of the plot, at the Expert level. -->
 
 ### Choosing what is traced
 

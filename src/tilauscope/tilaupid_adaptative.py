@@ -145,9 +145,11 @@ def thermal_gain_c_per_pct(
 ) -> float | None:
     """Local thermal gain in degC of equilibrium temperature per heater point.
 
-    Read from the widest pair of learned hold nodes that brackets ``sv``, which
+    Read from the two learned hold nodes that bracket ``sv`` most closely, which
     is the machine's own static gain: two nodes say how much more power a hotter
-    hold costs.  Nodes closer than ``min_span_c`` apart are skipped — their
+    hold costs.  The gain is local — it changes with temperature — so the
+    closest bracket is tried first and the widest available pair only as a
+    fallback.  Nodes closer than ``min_span_c`` apart are skipped — their
     power difference is dominated by learning noise, not by the machine.
     """
     usable = [node for node in nodes if node[1] > 0.0]

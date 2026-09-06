@@ -193,6 +193,11 @@ class BuildMixin:
         # first refresh died on an AttributeError.
         self.replay_enabled: bool = False
         self.replay_reaction_time_s: float = 10.0
+        # Operator level and anchor a replay borrowed, put back when it ends.
+        # None when no replay holds them — the forced Expert is never written
+        # to QSettings, and neither is the un-anchoring that comes with it.
+        self._level_before_replay: str | None = None
+        self._anchor_before_replay: bool | None = None
         # static strings — same rule again: init_ui() ends on update_status_text(),
         # which reads str_roastsession. Declared after the build, that first call
         # died on an AttributeError swallowed by its own guard, leaving MONITOR and

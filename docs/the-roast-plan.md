@@ -17,7 +17,12 @@
 The plan is not a screen inside TilauScope. It is produced in **BeanCave → Roasting plan**, a
 short step-by-step form: pick the coffee, enter the parameters, adjust probe offsets if needed.
 The **batch weight** and **roast level** come back as you last left them, since a bag is usually
-worked through at one batch size and one roast level over several sessions. The ambient fields
+worked through at one batch size and one roast level over several sessions. Beside them sits
+**What is this coffee for?** — *Filter*, *[Omni](glossary.md#omni)* or *Espresso* — the same
+choice the roast setup sheet asks for, and the same setting: change it in either place and both
+follow. It sets the development time (filter the shortest, espresso the longest, omni between
+the two) and carries through to the drop temperature and the weight loss to aim for. It too is
+remembered for the next plan. The ambient fields
 do not: they describe the room as it is now, and are filled from the online weather or the
 ambient probe. The online weather has to work out where you are first, which means handing your
 internet address to a lookup service abroad, so it asks before doing so the first time — see
@@ -61,7 +66,8 @@ plan carries a full heater ramp and a development ramp.
 ## What the plan contains
 
 **The coffee and the batch.** *Bean Name*, *Weight to roast*, *Roaster*, *Target Agtron
-Profile*, plus the coffee's own properties — *Density*, *Bean Humidity*, *Water Activity*,
+Profile*, *Intended use* — the filter / omni / espresso choice, also printed beside the roast
+level in the page heading — plus the coffee's own properties — *Density*, *Bean Humidity*, *Water Activity*,
 *Process Type* — and, where an ambient probe is fitted, *Ambient Temp*. A plan is specific to
 a batch on a day, not to a coffee in the abstract.
 

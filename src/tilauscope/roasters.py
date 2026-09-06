@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from mashumaro.mixins.dict import DataClassDictMixin
 import json
 import math
-from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS
+from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS, ARRIVAL_UNCERTAINTY_DEFAULT_C
 from typing import Any, Final
 import logging
 _logd: Final[logging.Logger] = logging.getLogger('tilau')
@@ -34,13 +34,20 @@ LEGACY_ROASTER_NAMES: Final[dict[str, str]] = {
     'Cormorant': 'Cormorant CR600g',
     'Kaleido Serial': 'Kaleido M6 Pro',
     'Skywalker Series - Delta': 'ITOP Skywalker V1',
+    'Skywalker Delta': 'ITOP Cyberroaster',
 }
+
+# Matched on the lower-cased label: these names are typed by hand and arrive
+# from old profiles in whatever capitalisation they were saved with, and a
+# machine that fails to resolve loses its probe corrections in silence.
+_LEGACY_ROASTER_NAMES_CI: Final[dict[str, str]] = {
+    k.lower(): v for k, v in LEGACY_ROASTER_NAMES.items()}
 
 
 def canonical_roaster_name(name: str) -> str:
     """Normalize known legacy Artisan labels to a roasters.json display name."""
     stripped = name.strip()
-    return LEGACY_ROASTER_NAMES.get(stripped, stripped)
+    return _LEGACY_ROASTER_NAMES_CI.get(stripped.lower(), stripped)
 
 class HeatingType(StrEnum):
     GAS = auto()
@@ -437,6 +444,12 @@ class Roaster(DataClassDictMixin):
     # --------------------------------------------------------
     bean_temperature_offset_c: list[float] = field(default_factory=lambda: [0.0]*4)
     environmental_temperature_offset_c: list[float] = field(default_factory=lambda: [0.0]*4)
+    # What the arrival reading is worth on this machine (°C). Home roasters are
+    # built from low-cost parts, not laboratory instruments, so a roast level
+    # read from the drop temperature is only ever resolved to about this much;
+    # anything closer than that to a neighbouring level is a coin toss and the
+    # coach says so. None = the shared default.
+    arrival_uncertainty_c: float | None = None
     # Stable slug matched against the device's handshake ROASTER_ID field,
     # e.g. "itop-cyberroaster". Optional — falls back to manufacturer/model
     # matching (see RoasterManager.get_by_roaster_id).
@@ -497,6 +510,7 @@ class RoasterContext:
 
     # ── Probe offsets (indexed: 0=charge, 1=dry, 2=fc, 3=drop) ─
     bt_offsets: list[float]          # bean temperature offsets per phase
+    arrival_uncertainty_c: float     # what a level read from the arrival is worth (°C)
 
     # ── Capability flags ─────────────────────────────────────
     supports_preheat_profiles: bool
@@ -597,6 +611,9 @@ class RoasterContext:
             drum_max_rpm             = drum_max,
             drum_step_rpm            = drum_step,
             bt_offsets               = list(roaster.bean_temperature_offset_c),
+            arrival_uncertainty_c    = (roaster.arrival_uncertainty_c
+                                        if roaster.arrival_uncertainty_c is not None
+                                        else ARRIVAL_UNCERTAINTY_DEFAULT_C),
             supports_preheat_profiles= roaster.supports_preheat_profiles,
             supports_profile_replay  = roaster.supports_profile_replay,
             agitation_type           = roaster.agitation_type,

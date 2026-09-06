@@ -6184,6 +6184,7 @@ class BuildPRoastPlanPDF(FPDF):
         self.mode = temp_unit
         self._target = ""
         self._roaster = ""
+        self._destination = ""
         self._roaster_ctx: "RoasterContext | None" = roaster_ctx
         self._family: str = self._register_unicode_font()
 
@@ -6300,7 +6301,8 @@ class BuildPRoastPlanPDF(FPDF):
         self.cell(0, 10, QApplication.translate("tilauscope_roast_plan",'Automated Roast Profile Plan'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
         self.ln(2)
         self.set_font('helvetica', 'B', 12)
-        self.cell(0, 10, f"({self._target})", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
+        _sub = f"({self._target})" if not self._destination else f"({self._target} - {self._destination})"
+        self.cell(0, 10, _sub, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
         self.ln(3)
 
     def footer(self)->None:
@@ -7116,12 +7118,22 @@ class BuildPRoastPlanPDF(FPDF):
         if self.get_y() + needed_height > self.page_break_trigger:
             self.add_page()
 
+    @staticmethod
+    def _destination_label(key: Any) -> str:
+        """Human name of the brewing destination the plan was built for."""
+        return {
+            "filter":   QApplication.translate("tilauscope_roast_plan", "Filter"),
+            "omni":     QApplication.translate("tilauscope_roast_plan", "Omni"),
+            "espresso": QApplication.translate("tilauscope_roast_plan", "Espresso"),
+        }.get(str(key or "").lower(), "")
+
     def create_pdf_report(self, plan_data:dict, graph_data, crashes, flicks)->None:
         """Fills the PDF with the calculated roast plan data in a clear, structured format,
         including phase percentages."""
 
         self._target = plan_data["Target Roast Level"]
         self._roaster = plan_data["Roaster"]
+        self._destination = self._destination_label(plan_data.get("Roast Destination"))
 
         self.add_page()
         self.set_auto_page_break(auto=True, margin=15)
@@ -7153,6 +7165,7 @@ class BuildPRoastPlanPDF(FPDF):
             (QApplication.translate("tilauscope_roast_plan","Ambient Temp")+f" (°{self.mode})", plan_data.get("Ambient Temp")),
             (QApplication.translate("tilauscope_roast_plan","Ambient Humidity")+" (%)", plan_data.get("Ambient Humidity")),
             (QApplication.translate("tilauscope_roast_plan","Weight to roast")+" (g)", plan_data.get("Weight")),
+            (QApplication.translate("tilauscope_roast_plan","Intended use"), self._destination),
         ]
 
         self.set_font('helvetica', '', 10)

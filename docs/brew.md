@@ -29,6 +29,10 @@ window*, or *past its window, drink soon* — along with the coffee's own detail
 colour and is linked to its coffee. A roast missing either says so instead of offering to
 brew it.
 
+Clicking the roast's **name** at the top of that card does something else: it closes the
+calendar, opens that roast in the main window, and selects it in the Roast Viewer — a direct
+way to go and look at how a coffee was roasted while judging when to brew it.
+
 !!! note
     This calendar is about *when to brew*, not the roast's own timeline — it has nothing to
     do with how the roast itself was paced. See [After the roast](after-the-roast.md) for

@@ -179,10 +179,14 @@ try:
     blocked_scope = SimpleNamespace(
         aw=SimpleNamespace(qmc=blocked_qmc),
         replay_enabled=True,
+        _level_before_replay=None,
+        _anchor_before_replay=None,
         _roaster_supports_profile_replay=lambda: False,
         _refresh_level_lock=lambda: None,
         _refresh_replay_button=lambda: None,
     )
+    blocked_scope._restore_replay_level = lambda: TilauScope._restore_replay_level(
+        blocked_scope)
     blocked_scope._disable_roast_replay = lambda: TilauScope._disable_roast_replay(
         blocked_scope)
     TilauScope._engage_replay(blocked_scope)

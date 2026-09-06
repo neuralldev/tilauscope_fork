@@ -1524,11 +1524,11 @@ class LiveCalibrationCoordinator:
         self._last_timestamp_sec = sample.now_sec
         self._record_sample(sample)
         if not readiness.ready:
-            return self._refuse_without_side_effect(
+            return self._refuse_start(
                 "readiness_changed", sample.now_sec, cut_heat=True
             )
         if not self.zero_output_qualified:
-            return self._refuse_without_side_effect(
+            return self._refuse_start(
                 "zero_output_not_qualified", sample.now_sec
             )
         self.phase = "running"
@@ -1635,25 +1635,7 @@ class LiveCalibrationCoordinator:
         """Stop heat after an accepted run without rolling back its PID gains."""
         if self.phase != "complete":
             raise RuntimeError("calibration is not complete")
-        self._last_timestamp_sec = now_sec
-        self.pending = PendingPowerCommand(
-            heater_slider=self.heater_slider,
-            power_pct=0,
-            issued_at_sec=now_sec,
-        )
-        self.last_requested_power = 0
-        self.shutdown_command_dispatched = False
-        self._record(
-            "power_requested",
-            timestamp_sec=now_sec,
-            power_pct=0,
-            reason="test_complete",
-        )
-        try:
-            self.request_power(self.heater_slider, 0, True)
-        except Exception:  # noqa: BLE001 - physical confirmation remains mandatory
-            self.pending = None
-        self._cool_down(now_sec)
+        self._request_terminal_zero("test_complete", now_sec)
 
     def _execute(
         self, command: CalibrationCommand, now_sec: float
@@ -1740,31 +1722,14 @@ class LiveCalibrationCoordinator:
         self._last_timestamp_sec = timestamp
         self.phase = "refused" if refused else "safe_stop"
         self.reason = reason
-        self.pending = PendingPowerCommand(
-            heater_slider=self.heater_slider,
-            power_pct=0,
-            issued_at_sec=timestamp,
-        )
         self._complete_after_ack = False
-        self.last_requested_power = 0
-        self.shutdown_command_dispatched = False
         self._record(
             "emergency_stop",
             timestamp_sec=timestamp,
             power_pct=0,
             reason=reason,
         )
-        self._record(
-            "power_requested",
-            timestamp_sec=timestamp,
-            power_pct=0,
-            reason="emergency_stop",
-        )
-        try:
-            self.request_power(self.heater_slider, 0, True)
-        except Exception:  # noqa: BLE001 - restoration must still be attempted
-            self.pending = None
-        self._cool_down(timestamp)
+        self._request_terminal_zero("emergency_stop", timestamp)
         self._restore_once(timestamp)
         command = CalibrationCommand(
             phase="refused" if refused else "safe_stop",
@@ -1776,6 +1741,41 @@ class LiveCalibrationCoordinator:
         )
         self.last_command = command
         return command
+
+    def _request_terminal_zero(self, journal_reason: str, timestamp: float) -> None:
+        """Command 0% for good, and leave the trail that says so.
+
+        Every way this test can end goes through here — the accepted run, the
+        emergency stop, and a start refused after the burner was handed over.
+        The bookkeeping is the point, not the command: without the pending
+        entry the acknowledgement is dropped and shutdown_command_dispatched
+        never leaves None, so the operator is told the cut-off could not be
+        confirmed even once it has been, on the one screen that has to be
+        believed; and a heat cut absent from the journal is a heat cut the
+        authorization report cannot show ever happened.
+
+        Terminal only — it opens the airflow. The caller owns what is specific
+        to its own ending: the rollback, and the event that names it.
+        """
+        self._last_timestamp_sec = timestamp
+        self.pending = PendingPowerCommand(
+            heater_slider=self.heater_slider,
+            power_pct=0,
+            issued_at_sec=timestamp,
+        )
+        self.last_requested_power = 0
+        self.shutdown_command_dispatched = False
+        self._record(
+            "power_requested",
+            timestamp_sec=timestamp,
+            power_pct=0,
+            reason=journal_reason,
+        )
+        try:
+            self.request_power(self.heater_slider, 0, True)
+        except Exception:  # noqa: BLE001 - the cool-down and any rollback still run
+            self.pending = None
+        self._cool_down(timestamp)
 
     def _cool_down(self, timestamp: float) -> None:
         """Protocol section 8.2: cutting the heat does not cool a hot drum.
@@ -1863,15 +1863,16 @@ class LiveCalibrationCoordinator:
             event_hash=event_hash,
         ))
 
-    def _refuse_without_side_effect(
+    def _refuse_start(
         self, reason: str, now_sec: float, *, cut_heat: bool = False
     ) -> CalibrationCommand:
-        """Refuse to start.
+        """Refuse to start, cutting the heat only if any was handed over.
 
-        ``cut_heat`` only when the preparation has already handed over a running
-        burner.  Before the zero-output qualification nothing has ever been
-        commanded, and sending anything then would break the very rule that
-        qualification exists to enforce.
+        ``cut_heat`` belongs to the refusal that comes after the preparation
+        handed over a running burner.  Before the zero-output qualification
+        nothing has ever been commanded, and sending anything then would break
+        the very rule that qualification exists to enforce — so that refusal
+        leaves the machine untouched.
         """
         self.phase = "refused"
         self.reason = reason
@@ -1879,13 +1880,7 @@ class LiveCalibrationCoordinator:
             "start_refused", timestamp_sec=now_sec, reason=reason
         )
         if cut_heat:
-            self._last_timestamp_sec = now_sec
-            self.last_requested_power = 0
-            try:
-                self.request_power(self.heater_slider, 0, True)
-            except Exception:  # noqa: BLE001 - still attempt the cool-down
-                self.pending = None
-            self._cool_down(now_sec)
+            self._request_terminal_zero("start_refused", now_sec)
         command = CalibrationCommand(
             phase="refused",
             power_pct=0.0,

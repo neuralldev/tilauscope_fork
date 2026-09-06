@@ -223,7 +223,9 @@ class LifecycleMixin:
 
         A replay session has no plan of its own to guide — Guided is locked
         out immediately so launch_guided_assistant() (fired right after by
-        the same workflow) becomes a no-op.
+        the same workflow) becomes a no-op. Expert is forced for this session
+        only: the operator's own level is remembered here and put back when
+        the replay ends, so one replay never redefines how the app starts.
         """
         if not self._roaster_supports_profile_replay():
             self.replay_enabled = False
@@ -231,28 +233,81 @@ class LifecycleMixin:
             return
         self.replay_enabled = True
         self.replay_reaction_time_s = reaction_time_s
-        self._apply_operator_level("expert")
+        if self._level_before_replay is None:
+            self._level_before_replay = getattr(self, "_operator_level", "guided")
+            # The anchor is a separate operator choice — Guided with the
+            # assistant floated is a state of its own, and the restore must
+            # not hand back an anchored assistant the operator had detached.
+            self._anchor_before_replay = getattr(self, "_assistant_anchored", False)
+        self._apply_operator_level("expert", persist=False)
         self._refresh_replay_button()
 
     def _disable_roast_replay(self) -> None:
-        """Turns replay off immediately — the emergency-override path."""
+        """Turns replay off immediately — the emergency-override path.
+
+        Every playback flag goes down together, auto-DROP included: the button
+        says the replay is off, and an automation that can still end the roast
+        behind that claim is worse than no button at all.
+        """
         self.replay_enabled = False
+        # Each flag on its own: one that stayed set would keep
+        # _replay_externally_active() true and latch the header button back ON
+        # right after an OFF. Same rule as _stop_all_automation().
         try:
-            qmc = self.aw.qmc
-            qmc.backgroundReproduce = False
-            qmc.turn_playback_event_OFF()
+            self.aw.qmc.backgroundReproduce = False
         except Exception:  # pylint: disable=broad-except
-            pass
+            _log.exception("replay: clearing backgroundReproduce failed")
+        try:
+            self.aw.qmc.backgroundPlaybackDROP = False
+        except Exception:  # pylint: disable=broad-except
+            _log.exception("replay: clearing backgroundPlaybackDROP failed")
+        try:
+            self.aw.qmc.turn_playback_event_OFF()
+        except Exception:  # pylint: disable=broad-except
+            _log.exception("replay: turning playback events off failed")
+        self._restore_replay_level()
         self._refresh_level_lock()
         self._refresh_replay_button()
+
+    def _restore_replay_level(self) -> None:
+        """Give the operator back the level Roast Replay borrowed.
+
+        Held back while the recording runs: a roast started under replay has
+        no plan, and dropping it back into Guided mid-roast would anchor an
+        assistant with nothing to guide — the same case _level_switch_allowed()
+        refuses from the button. The roast end calls this again.
+        """
+        _prev = self._level_before_replay
+        if _prev is None:
+            return
+        try:
+            if self.aw.qmc.flagstart:
+                return
+        except Exception:  # pylint: disable=broad-except
+            pass
+        _anchor = self._anchor_before_replay
+        self._level_before_replay = None
+        self._anchor_before_replay = None
+        if _prev != getattr(self, "_operator_level", "guided"):
+            self._apply_operator_level(_prev, persist=False)
+        if _anchor is not None and _anchor != getattr(self, "_assistant_anchored", False):
+            # Session-only, like the level: never written to QSettings.
+            self._assistant_anchored = _anchor
+            self._assistant_open = _anchor or getattr(self, "_assistant_open", False)
+            self._place_assistant()
 
     def _replay_externally_active(self) -> bool:
         """True if Artisan's native Background dialog already has playback
         engaged — bypassing this button/RoastSetupDialog entirely is a valid,
-        pre-existing way to use it, and the icon must not lie about it."""
+        pre-existing way to use it, and the icon must not lie about it.
+
+        Playback DROP counts: it is the one playback mode that ends the roast
+        on its own, so the button must light for it and be able to stop it.
+        """
         try:
             qmc = self.aw.qmc
-            return bool(qmc.backgroundPlaybackEvents or qmc.backgroundReproduce)
+            return bool(qmc.backgroundPlaybackEvents or qmc.backgroundReproduce
+                        or qmc.backgroundPlaybackDROP)
         except Exception:  # pylint: disable=broad-except
             return False
 
@@ -348,10 +403,25 @@ class LifecycleMixin:
 
     def toggle_roast_assistant(self):
         """Toggle the roast assistant open/closed (placement is centralised)."""
-        self._assistant_open = not getattr(self, '_assistant_open', False)
+        # While the roast review holds the column, this button means "bring the
+        # anchored assistant back", not "toggle it": in Guided the assistant is
+        # still flagged open behind the review, so flipping the bool closed it
+        # instead and the first press changed nothing on screen. A FLOATING
+        # assistant is its own window and never wanted the column, so there the
+        # plain toggle is right and the review stays where it is.
+        _take_back = (getattr(self, '_review_shown', False)
+                      and getattr(self, '_assistant_anchored', False))
+        if _take_back:
+            self._assistant_open = True
+        else:
+            self._assistant_open = not getattr(self, '_assistant_open', False)
         self.update_button_style(self.btn_assistant, self._assistant_open, False, False, True)
         if self._assistant_open:
             self.roast_assistant.populate_bean_list()   # refresh bean identification on open
+        if _take_back:
+            # After the state is settled: hide_roast_review() places the
+            # assistant, and it must not place a half-set one.
+            self.hide_roast_review()
         self._place_assistant()
 
     def _has_charged_roast(self) -> bool:
@@ -714,6 +784,7 @@ class LifecycleMixin:
             self._hide_automation_banner()   # clear automation notice at roast end
             if self.replay_enabled:
                 self._disable_roast_replay()   # a replay session never carries over to the next roast
+            self._restore_replay_level()   # also after a replay stopped mid-roast
             if self.preheating:
                 self.handle_preheat(False)
                 self.preheating = False
