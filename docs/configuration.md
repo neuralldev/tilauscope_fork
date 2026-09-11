@@ -1,0 +1,320 @@
+# Configuration
+
+!!! abstract "Artisan does / TilauScope adds"
+    **Artisan does** — configures each device in its own dialog, spread across menus, with no
+    single place that says what a working setup looks like.
+
+    **TilauScope adds** — one dialog, five tabs, covering everything the fork needs to work: the
+    machine, the sensors, how milestones get detected, the outside services it can talk to, and
+    printing. This chapter exists because a wrong or missing setting here is the most common
+    reason a guided feature seems broken when it is simply unconfigured.
+
+Open it from **TilauScope → TilauScope Config...**. Nothing here is required to start
+TilauScope — the [first-time setup wizard](getting-started.md#first-time-setup) already covers
+the essentials — but this is where every one of those choices can be revisited, and where the
+finer settings live that the wizard does not ask about.
+
+![the config dialog with all five tabs visible in the tab strip](assets/configuration-4.1.png)
+
+---
+
+## ⚙ GENERAL — the machine, and how TilauScope behaves
+
+### Machine Profile
+
+**Model** selects the active roaster profile from sixteen predefined machines. This is the
+single most consequential setting in the whole dialog: it is what makes the
+[roast plan](the-roast-plan.md), the pre-roast [insights](preparing-a-roast.md#judging-the-batch-before-it-starts)
+and the guidance during roasting specific to your machine rather than generic. Leaving it unset
+does not stop TilauScope from working, but every recommendation it gives will be a guess rather
+than something tuned to your drum.
+
+**Read-only (monitoring only — Artisan does not control the machine)** is for a roaster adjusted
+entirely by hand. Ticking it hides every control slider, in Artisan and in the assistant, and
+TilauScope confines itself to recording [BT](glossary.md#bt--bean-temperature) and
+[ET](glossary.md#et--environmental-temperature). Unticking it restores your previous slider
+configuration exactly — nothing is lost by toggling it. An uncatalogued machine can be used this
+way with no model selected at all.
+
+![Machine Profile with a model selected and Read-only unticked](assets/configuration-4.2.png)
+
+![Read-only ticked, showing the assistant with sliders hidden](assets/configuration-4.3.png)
+
+### UI Features
+
+**Enable floating annotations** shows phase-event markers directly on the roast graph.
+
+**Enable BeanCave startup notifications** shows inventory alerts and reminders when BeanCave
+opens.
+
+**BeanCave home mode (hide the Artisan window)** starts TilauScope in the BeanCave shell with
+the Artisan window hidden.
+
+!!! info "Ongoing"
+    BeanCave home mode only takes effect **after a restart** — ticking it does not change
+    anything until TilauScope is closed and reopened. It also works today without covering
+    everything the fork does; see [Getting started](getting-started.md#settings).
+
+### Remote access
+
+**Record web server (phone QR scan)** runs the small web server a phone camera talks to when
+scanning a label — see [Labels and QR](labels-and-qr.md). It is off until you tick **Let a
+phone open records by scanning a label**: a fresh installation opens no network port, printed
+labels still print, and a phone scanning one reaches nothing until you switch it on. The
+**Port** beside it stays greyed out while the server is off. **Remote control (phone
+piloting)**, its own **Port**, and **Pair a phone…** set up controlling the roast from a
+phone — see [Piloting from a phone](phone-piloting.md). Both are off by default, take effect
+only after a restart, and are covered in their own chapters, since what they enable matters
+more than the toggle itself.
+
+![the UI Features and Remote access groups](assets/configuration-4.4.png)
+
+<!-- CAPTURE 4.4 — Configuration → GENERAL, the UI Features and Remote access groups, with
+the new record web server tick box unticked and its Port field greyed out. -->
+
+### Diagnostics
+
+**Check progress indicators…** opens a window showing every progress indicator the application
+uses — turning, filling, finished and failed — with a button for each place one can appear. It
+changes no setting and starts no work: it is there to confirm they draw and animate correctly on
+this particular computer and screen. See
+[While the app is working](the-window.md#while-the-app-is-working) for what each one means.
+
+<!-- CAPTURE 4.13 — Configuration → GENERAL, the Diagnostics group, with the progress
+indicator window open in front of it mid-run (rings turning, a count showing). -->
+
+---
+
+## 📡 SENSORS — every device, by role
+
+Each device gets its own group, always in the same shape: a **Device** dropdown listing what has
+been found nearby, a status cell, and whatever parameters belong to that device alone. Bluetooth
+scanning runs in the background for the whole time this tab is open — there is no separate Scan
+button to press.
+
+The status cell shows a turning ring for as long as a group is still searching and has found
+nothing, so a quiet group is visibly still looking rather than stalled. The ring stops as soon as
+something is found, and a device that is assigned but switched off shows no ring — there is
+nothing in progress to watch.
+
+| Group | Device | What it configures |
+|---|---|---|
+| **Ambient** | TilauAmbient (BME280 / BLE) | Which probe to use, and the acoustic sensitivity for crack detection through its microphone. |
+| **Color & Airflow** | Difluid AirWave (BLE) | Which extractor to use, how fast it may change speed, the fan output, duct limit and mode for each phase, and whether it should emulate an Omniflux colour channel. |
+| **Roaster Link** | Skywalker v2 (TC4-BLE) | Which roaster link to use. |
+| **Color Meter** | Lebrew RoastSee C1 (BLE) | Which colour meter to use. |
+| **Water Quality** | Lebrew AquaGauge (BLE) | Which water probe to use. |
+| **Label Printer** | Niimbot B21S (BLE) | Which printer to use. |
+
+Devices detected nearby but not recognised are listed separately, for identification only — see
+[Getting started](getting-started.md#first-time-setup).
+
+!!! info "Hardware — AirWave PID parameters"
+    A collapsible **AirWave PID parameters** section under the AirWave group exposes its full gain
+    table (Kp, Ki, minimum fan percentage, inlet limit, mode, ramp) per airflow mode.
+    The inlet limit is in degrees Celsius whatever unit the graph is set to, and the ramp is the
+    number of fan percentage points the extractor may move in one second.
+    It is collapsed by default because the defaults suit the AirWave out of the box — open it only
+    if airflow needs tuning to a specific room or drum.
+
+
+![the SENSORS tab with at least two devices detected and connected](assets/configuration-4.5.png)
+
+![the AirWave PID parameters section expanded](assets/configuration-4.6.png)
+
+---
+
+## 🔬 DETECTION — how milestones get marked automatically
+
+This tab tunes the algorithms behind
+[Auto First Crack and Auto Dry End](preparing-a-roast.md#automating-the-start): what counts as a
+crack, and what counts as the end of drying, in terms specific enough to matter for your machine
+and your microphone.
+
+### First Crack (FC)
+
+Detection fuses two signals — acoustic events from TilauAmbient, colour and rate-of-colour-change
+from Omniflux — into a single call.
+
+**Enable automatic FC detection & marking** turns the algorithm on. Two parameters shape it:
+
+- **Detection window** — the sliding time span, in seconds, over which crack density is measured.
+- **Global event threshold** — the minimum number of acoustic events inside that window needed to
+  confirm first crack.
+
+!!! note
+    This threshold is independent from the *Crack audio sensitivity* setting in the SENSORS tab.
+    That one controls how sensitive the microphone itself is; this one controls how many of its
+    events, within the window, are needed to call it a crack.
+
+### Dry End (DE)
+
+**Enable automatic Dry End detection & marking** turns on a different kind of detection: it
+watches the convergence of the [BT/ET RoR](glossary.md#ror--rate-of-rise) ratio, the slope of the
+gap between the two probes, and BT's progress toward the Dry End target — the same target that
+must be set in **Artisan → Phases** for [Auto Dry End](preparing-a-roast.md#automating-the-start)
+to do anything. Colour is used as a bonus signal where a colour device is configured.
+
+### Per-Phase Thresholds
+
+A small table sets the finer detection parameters for first crack and second crack separately:
+**Threshold**, **Agtron max**, **RoC min**, **BT margin**. These are the values the fused
+algorithm above actually reads; most setups will never need to touch them.
+
+![the DETECTION tab, First Crack and Dry End groups](assets/configuration-4.7.png)
+
+![the Per-Phase Thresholds table. ](assets/configuration-4.8.png)
+
+---
+
+## 🌐 INTEGRATIONS — outside services
+
+### MQTT Broker
+
+**Broker URL**, **Port**, **Topic**, **Username**, **Password**, and a **Test Connection** button
+that checks the connection before it is relied on. This is what the
+[ambient humidity tracking](beancave.md) and any [MQTT-fed device](the-window.md) depend on.
+
+**TLS** encrypts the link to a broker that asks for it — see [TLS](glossary.md#tls). Ticking it
+moves the port from 1883 to 8883, the usual pair, unless you have entered a port of your own, in
+which case yours is kept. The broker's certificate has to come from a recognised authority; a
+certificate the broker issued to itself is refused and the connection fails.
+
+**Protocol** is the version spoken to the broker: **MQTT v3.1**, **MQTT v3.1.1** or **MQTT v5**.
+Leave it on v3.1.1, which every broker accepts, unless yours states otherwise.
+
+**Timeout** is how long the broker is given to accept the connection before it is declared
+unreachable — a broker on the other side of the internet, or an encrypted one whose handshake
+takes a moment, needs more than the three seconds used by default. **Keepalive** is the idle time
+after which the connection is checked; see [keepalive](glossary.md#keepalive).
+
+Below the broker settings, **Sensors** lists the individual readings taken from that broker. Each
+line names one sensor: an **ID** to refer to it by, the **Topic** it is published on, the
+**Command** — the field to read inside the message when the message carries several values —
+a **Multiplier** and **Divider** to bring the raw figure into the unit you want, and the **Unit**
+that figure is then expressed in. Every cell is edited directly in the list.
+
+**Unit** is where you declare that a sensor publishes a temperature: **°C**, **°F**, or the dash
+for anything that is not one — humidity, fan speed, pressure. A temperature is converted on
+arrival into the unit the application is working in, so a probe publishing in Celsius reads
+correctly during a Fahrenheit session and the other way round. Multiplier and divider are applied
+first, the conversion second: a probe sending tenths of a degree needs a divider of 10 *and* its
+unit set. A sensor left on the dash is recorded exactly as published, whatever the session unit. **Add sensor** appends a line, **Delete** removes the selected one,
+and **Check sensor** reads the selected sensor once from the broker and reports the value it
+obtained. A sensor whose topic happens to be silent at that moment is still kept — the check is
+there to confirm a reading, not to grant permission.
+
+The list is saved along with the rest of the settings when the window is closed with OK, and
+discarded on Cancel. It can be edited whether or not the broker is reachable; only **Check
+sensor** needs a live connection.
+
+A sensor only ever shows what its publisher sends. Two settings on the publishing side decide
+whether a reading is there when a roast starts: messages have to be published as
+[retained readings](glossary.md#retained-reading), so the last known value is handed over the
+moment TilauScope subscribes, and the publication interval has to be short enough to be useful —
+thirty seconds or less. Without the retained flag a channel stays empty until the publisher
+speaks of its own accord, which on a home automation gateway can take several minutes. When that
+happens the channel reads nothing, and the topics still silent half a minute after connecting
+are named in the diagnostic log.
+
+**Poll request topic** and **Poll every** cover the other half of the problem, for a sensor that
+reports too slowly rather than not at all. Rather than wait,
+[polling](glossary.md#polling) asks the gateway for a reading. Fill in the topic the gateway
+accepts requests on — a Z-Wave gateway typically publishes it as
+`zwave/_CLIENTS/ZWAVE_GATEWAY-<name>/api/pollValue/set` — and choose how often, or leave the
+topic empty to never request anything. Below ten seconds the network cannot keep up, so ten
+seconds is used instead.
+
+What to ask for is worked out from each sensor's own topic, so there is nothing else to fill in.
+A sensor whose topic does not identify a device and a value that way is left alone, and so is
+one the gateway refuses or one that never answers — a battery sensor sleeps between its own
+reports and cannot be reached in between. Each of those cases is named once in the diagnostic
+log, and the sensor is dropped from the rotation rather than asked again every cycle.
+
+![the INTEGRATIONS tab, MQTT Broker group with TLS](assets/configuration-4.11.png)
+
+<!-- CAPTURE 4.11 — the INTEGRATIONS tab, MQTT Broker group with TLS ticked (port showing 8883),
+Protocol on MQTT v3.1.1, Timeout and Keepalive visible, the Poll request topic and Poll every
+fields filled in, two sensors in the list, one row selected, and the Unit column showing °C on
+one of them. -->
+
+
+### AI Provider
+
+A status line states whether a provider is configured, and **Configure AI Provider…** opens the
+picker. This is what
+[filling a bean record from a supplier's page](beancave.md#filling-a-record-from-the-suppliers-page)
+needs — nothing that reads or writes a bean record silently sends data anywhere without this
+being set up first.
+
+What is sent is the roast, brew or bean data the feature is about, and it is cleaned first:
+e-mail addresses, telephone numbers, bank details, file paths, network and device identifiers,
+and the operator and organisation names set in Artisan are removed from the request before it
+leaves — including from anything you typed yourself in a notes field. The provider is the one
+configured here, and TilauScope sends nothing to any AI provider until you configure it.
+
+
+Your key is not kept in TilauScope's settings. It is handed to the keychain your system already
+runs — Keychain Access on macOS, Credential Manager on Windows — and TilauScope asks for it when
+it needs it. This matters beyond your own machine: exporting your settings writes *every*
+setting into the file, which is how a machine setup is shared between roasters, and a key kept
+in the settings would leave with it. One key is remembered per provider, so switching provider
+and back does not mean typing it again. An installation that still had its key in the settings
+moves it across on the next launch, without asking.
+
+The same is true of the **broker password** above.
+
+
+### Privacy
+
+Before the very first request to a provider, TilauScope names it and says what the request
+carries, what is stripped out of it on the way, and what never leaves the machine at all — your
+provider key, your roast files and your bean library stay here. The provider may be outside the
+European Union and keeps requests for its own retention period. Answering **Not now** cancels
+that request and nothing is sent; answering **Send to …** lets it go and does not ask again for
+that provider. Changing the provider, or the model, brings the notice back: what it names is who
+receives your data, so a new recipient is announced rather than inheriting an answer given about
+someone else. The notice is never raised with a batch in the drum — a request made mid-roast is
+refused with an explanation instead, and works normally once the roast is over.
+
+**Location lookup** covers the one place TilauScope needs to know where you are: the online
+weather in the roasting plan. Finding your town means handing your internet address to a lookup
+service outside the European Union, so the first time you use it TilauScope says so and lets you
+choose between looking it up and typing the three values yourself — choosing to type them puts
+the cursor in the first of the three.
+
+Both answers are shown here with an **Ask me again** button, which forgets the answer so the
+notice appears once more the next time the feature is used. A line reading *not asked yet* means
+nothing has been granted, and there is nothing to forget.
+
+<!-- CAPTURE 4.13 — the INTEGRATIONS tab, Privacy group: AI provider disclosure showing
+"acknowledged for Gemini" with its Ask me again button enabled, and Location lookup showing
+"not asked yet" with its button greyed out. -->
+
+
+<!-- CAPTURE 4.9 — the INTEGRATIONS tab, MQTT Broker group filled in with TLS, Protocol, Timeout
+and Keepalive showing, Test Connection just clicked and the success message on screen.
+(Replaces assets/configuration-4.9.png, taken before those fields existed.) -->
+
+![the AI Provider status line, configured](assets/configuration-4.10.png)
+
+---
+
+## 🖨 PRINTING — label size
+
+**Label size** picks the physical size the [green bean and roasted bean labels](labels-and-qr.md)
+are generated at: **10 × 15 cm** (a standard pochette) or **7 × 9 cm** (a compact one). The PDF
+is built at exactly that size, so the printer should be set to print at 100% — no "fit to page" —
+for it to come out at the size chosen here.
+
+<!-- CAPTURE 4.12 — the PRINTING tab, Label size dropdown open showing both choices. -->
+
+---
+
+## Next
+
+- What each setting here changes on the ground: [BeanCave](beancave.md),
+  [Preparing a roast](preparing-a-roast.md), [The guided roast](the-guided-roast.md).
+- The one-time wizard that sets the essentials automatically: see
+  [Getting started](getting-started.md#first-time-setup).
+- Each device — pairing, limits: see [Hardware and peripherals](hardware.md).

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TilauScope brand mark — the coffee bean, alone.
+
+  Hand-authored geometry, NOT an autotrace: the body is a four-segment bezier
+  ellipse, the crease a single stroked S-curve punched out through a mask.
+  Everything is editable by hand or in any vector tool.
+
+  fill="#E6D3B5" — the mark inherits the colour of its context, so the same
+  file serves the dark UI, a light document and a monochrome icon mask without
+  a second copy existing.
+
+  To retune: ROTATION lives on the <g>, crease thickness is the stroke-width on
+  #crease-cut, crease travel is that path's control points.
+
+  Regenerate every derived asset (.icns, .ico, PWA tiles) with:
+      python tools/shell/gen_app_icons.py
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"
+     width="512" height="512" role="img" aria-label="TilauScope">
+  <title>TilauScope</title>
+  <rect x="0" y="0" width="512" height="512" fill="rgb(30,30,46)"/>
+  <defs>
+    <mask id="crease-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+      <!-- white keeps, black cuts -->
+      <rect x="0" y="0" width="512" height="512" fill="#fff"/>
+      <path d="M 256,104 C 294,170 218,212 256,256 C 294,300 218,342 256,408"
+            fill="none" stroke="#000" stroke-width="36" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <g transform="rotate(-28 256 256)">
+    <path mask="url(#crease-cut)" fill="#E6D3B5"
+          d="M 256,51
+             C 338.8,51 406,142.8 406,256
+             C 406,369.2 338.8,461 256,461
+             C 173.2,461 106,369.2 106,256
+             C 106,142.8 173.2,51 256,51 Z"/>
+  </g>
+</svg>

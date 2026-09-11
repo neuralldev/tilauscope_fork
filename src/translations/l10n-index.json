@@ -1,0 +1,495 @@
+{
+  "schema": 1,
+  "generated": "2026-09-11T11:46:45Z",
+  "app_version": "4.2.26",
+  "source_revision": "f5ea51bc4",
+  "string_count": 2969,
+  "sections": [
+    {
+      "context": "tilauscope_beancave",
+      "label": "Bean cave",
+      "order": 1,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_roast_assistant",
+      "label": "Roast assistant",
+      "order": 2,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_brew",
+      "label": "Brewing guide",
+      "order": 3,
+      "specialist": true
+    },
+    {
+      "context": "tilauscope_roast_setup",
+      "label": "Roast setup",
+      "order": 4,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_sacks",
+      "label": "Bags and stock",
+      "order": 5,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_devices",
+      "label": "Devices and sensors",
+      "order": 6,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_roast_review",
+      "label": "Roast review",
+      "order": 7,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_diagnostics",
+      "label": "Logs and diagnostics",
+      "order": 8,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_roast_plan",
+      "label": "Roast plan",
+      "order": 9,
+      "specialist": true
+    },
+    {
+      "context": "tilauscope_storage",
+      "label": "Storage and conservation",
+      "order": 10,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_window",
+      "label": "Roasting window",
+      "order": 11,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_webclient",
+      "label": "Phone remote control",
+      "order": 12,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_alarms",
+      "label": "Alarms",
+      "order": 13,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_repair",
+      "label": "File repair",
+      "order": 14,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_onboarding",
+      "label": "First setup",
+      "order": 15,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_label",
+      "label": "Label printing",
+      "order": 16,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_updates",
+      "label": "Updates and about",
+      "order": 17,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_pid",
+      "label": "PID tuning",
+      "order": 18,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_ai",
+      "label": "AI assistant",
+      "order": 19,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_graph",
+      "label": "Roast graph",
+      "order": 20,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope_ticker",
+      "label": "Message ticker",
+      "order": 21,
+      "specialist": false
+    },
+    {
+      "context": "tilauscope",
+      "label": "Startup",
+      "order": 22,
+      "specialist": false
+    }
+  ],
+  "languages": [
+    {
+      "code": "ar",
+      "name": "Arabic",
+      "native": "العربية",
+      "rtl": true,
+      "total": 2954,
+      "done": 6,
+      "draft": 234,
+      "empty": 2714,
+      "bytes": 1732316
+    },
+    {
+      "code": "bg",
+      "name": "Bulgarian",
+      "native": "Български",
+      "rtl": false,
+      "total": 2954,
+      "done": 0,
+      "draft": 0,
+      "empty": 2954,
+      "bytes": 1551768
+    },
+    {
+      "code": "zh_CN",
+      "name": "Chinese (Simplified)",
+      "native": "简体中文",
+      "rtl": false,
+      "total": 2954,
+      "done": 2642,
+      "draft": 270,
+      "empty": 42,
+      "bytes": 1769732
+    },
+    {
+      "code": "zh_TW",
+      "name": "Chinese (Traditional)",
+      "native": "繁體中文",
+      "rtl": false,
+      "total": 2954,
+      "done": 2642,
+      "draft": 270,
+      "empty": 42,
+      "bytes": 1768737
+    },
+    {
+      "code": "cs",
+      "name": "Czech",
+      "native": "Čeština",
+      "rtl": false,
+      "total": 2954,
+      "done": 5,
+      "draft": 209,
+      "empty": 2740,
+      "bytes": 1676567
+    },
+    {
+      "code": "da",
+      "name": "Danish",
+      "native": "Dansk",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 209,
+      "empty": 2739,
+      "bytes": 1666535
+    },
+    {
+      "code": "nl",
+      "name": "Dutch",
+      "native": "Nederlands",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 211,
+      "empty": 2737,
+      "bytes": 1681787
+    },
+    {
+      "code": "fi",
+      "name": "Finnish",
+      "native": "Suomi",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 219,
+      "empty": 2729,
+      "bytes": 1672141
+    },
+    {
+      "code": "fr",
+      "name": "French",
+      "native": "Français",
+      "rtl": false,
+      "total": 2969,
+      "done": 775,
+      "draft": 2194,
+      "empty": 0,
+      "bytes": 1970648
+    },
+    {
+      "code": "de",
+      "name": "German",
+      "native": "Deutsch",
+      "rtl": false,
+      "total": 2954,
+      "done": 2652,
+      "draft": 260,
+      "empty": 42,
+      "bytes": 1821602
+    },
+    {
+      "code": "el",
+      "name": "Greek",
+      "native": "Ελληνικά",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 236,
+      "empty": 2712,
+      "bytes": 1780554
+    },
+    {
+      "code": "he",
+      "name": "Hebrew",
+      "native": "עברית",
+      "rtl": true,
+      "total": 2954,
+      "done": 6,
+      "draft": 234,
+      "empty": 2714,
+      "bytes": 1715319
+    },
+    {
+      "code": "hu",
+      "name": "Hungarian",
+      "native": "Magyar",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 224,
+      "empty": 2724,
+      "bytes": 1690463
+    },
+    {
+      "code": "id",
+      "name": "Indonesian",
+      "native": "Bahasa Indonesia",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 231,
+      "empty": 2717,
+      "bytes": 1675284
+    },
+    {
+      "code": "it",
+      "name": "Italian",
+      "native": "Italiano",
+      "rtl": false,
+      "total": 2954,
+      "done": 2646,
+      "draft": 266,
+      "empty": 42,
+      "bytes": 1822507
+    },
+    {
+      "code": "ja",
+      "name": "Japanese",
+      "native": "日本語",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 234,
+      "empty": 2714,
+      "bytes": 1705822
+    },
+    {
+      "code": "ko",
+      "name": "Korean",
+      "native": "한국어",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 238,
+      "empty": 2710,
+      "bytes": 1695233
+    },
+    {
+      "code": "lv",
+      "name": "Latvian",
+      "native": "Latviešu",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 220,
+      "empty": 2728,
+      "bytes": 1683253
+    },
+    {
+      "code": "no",
+      "name": "Norwegian",
+      "native": "Norsk",
+      "rtl": false,
+      "total": 2954,
+      "done": 5,
+      "draft": 226,
+      "empty": 2723,
+      "bytes": 1674517
+    },
+    {
+      "code": "fa",
+      "name": "Persian",
+      "native": "فارسی",
+      "rtl": true,
+      "total": 2954,
+      "done": 6,
+      "draft": 237,
+      "empty": 2711,
+      "bytes": 1743646
+    },
+    {
+      "code": "pl",
+      "name": "Polish",
+      "native": "Polski",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 215,
+      "empty": 2733,
+      "bytes": 1672869
+    },
+    {
+      "code": "pt",
+      "name": "Portuguese",
+      "native": "Português",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 231,
+      "empty": 2717,
+      "bytes": 1690071
+    },
+    {
+      "code": "pt_BR",
+      "name": "Portuguese (Brazil)",
+      "native": "Português (Brasil)",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 235,
+      "empty": 2713,
+      "bytes": 1677295
+    },
+    {
+      "code": "ru",
+      "name": "Russian",
+      "native": "Русский",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 238,
+      "empty": 2710,
+      "bytes": 1789743
+    },
+    {
+      "code": "gd",
+      "name": "Scottish Gaelic",
+      "native": "Gàidhlig",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 218,
+      "empty": 2730,
+      "bytes": 1691118
+    },
+    {
+      "code": "sk",
+      "name": "Slovak",
+      "native": "Slovenčina",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 218,
+      "empty": 2730,
+      "bytes": 1678295
+    },
+    {
+      "code": "es",
+      "name": "Spanish",
+      "native": "Español",
+      "rtl": false,
+      "total": 2954,
+      "done": 2645,
+      "draft": 267,
+      "empty": 42,
+      "bytes": 1822783
+    },
+    {
+      "code": "sv",
+      "name": "Swedish",
+      "native": "Svenska",
+      "rtl": false,
+      "total": 2954,
+      "done": 5,
+      "draft": 208,
+      "empty": 2741,
+      "bytes": 1670452
+    },
+    {
+      "code": "th",
+      "name": "Thai",
+      "native": "ไทย",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 238,
+      "empty": 2710,
+      "bytes": 1834617
+    },
+    {
+      "code": "tr",
+      "name": "Turkish",
+      "native": "Türkçe",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 236,
+      "empty": 2712,
+      "bytes": 1676458
+    },
+    {
+      "code": "uk",
+      "name": "Ukrainian",
+      "native": "Українська",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 228,
+      "empty": 2720,
+      "bytes": 1766035
+    },
+    {
+      "code": "vi",
+      "name": "Vietnamese",
+      "native": "Tiếng Việt",
+      "rtl": false,
+      "total": 2954,
+      "done": 6,
+      "draft": 237,
+      "empty": 2711,
+      "bytes": 1692536
+    }
+  ]
+}

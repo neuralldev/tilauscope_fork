@@ -1,0 +1,119 @@
+---
+name: Bug Report
+description: Report a problem in TilauScope. For questions or ideas, please open a Discussion instead.
+labels: []
+body:
+  - type: markdown
+    attributes:
+      # yamllint disable rule:line-length
+      value: "
+        ### **Thanks for taking the time to report this.**
+
+        <img src='https://github.com/neuralldev/tilauscope_fork/raw/main/src/tilauscope.png' align='left' width='100' height='100'>
+        ***To solve your issue quickly we usually need the roast itself. Please attach the profile `*.alog`
+        and your settings `*.aset` (Help >> Save Settings). GitHub refuses these extensions, so rename them by
+        adding `.txt` at the end (`myroast.alog.txt`). Drag and drop them into the Problem Description field below.
+        Screenshots can be attached as-is and help a lot.***
+        <br clear='left'/>"
+      # yamllint enable rule:line-length
+
+  - type: dropdown
+    attributes:
+      label: Area
+      description: Which part of TilauScope is affected?
+      options:
+        -
+        - Tilauscope Guided roast assistant
+        - Tilauscope Roast plan / milestone detection
+        - BeanCave (bean database, storage, labels, features)
+        - Preheat PID
+        - Remote control from smartphone or tablet
+        - Bluetooth device (AirWave, Omniflux, scale, ambient probe, other)
+        - Roasting machine connection (serial / Modbus / USB / BLE / WiFi / other)
+        - Tilauscope core behaviour
+        - Other - include in Description
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Problem Description
+      description: A clear description of what went wrong and what you expected instead. Drag and drop your files and screenshots here.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Steps To Reproduce
+      description: Detailed steps, if they are not already in the description.
+      placeholder: |
+          Example:
+              1. Open BeanCave and select a bean
+              2. Click Roast, fill the setup dialog, click OK
+              3. The guided assistant opens but no roast plan is generated
+    validations:
+      required: false
+
+  - type: input
+    attributes:
+      label: TilauScope Version and Build
+      description: Shown in the window title bar, or in 'Help >> About'.
+      placeholder: "Example: 4.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    attributes:
+      label: Operating System
+      options:
+        -
+        - macOS
+        - Windows
+        - Other - include in Description
+      default: 0
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: OS Version
+      placeholder: "Example: macOS 15.5, or Windows 11 24H2"
+    validations:
+      required: false
+
+  - type: input
+    attributes:
+      label: Roasting machine
+      description: Which roaster were you using, and how is it connected?
+      placeholder: "Example: Skywalker V2, USB serial or Skywalker v1 throught ESP32 Skycommmand"
+    validations:
+      required: false
+
+  - type: input
+    attributes:
+      label: Connected devices
+      description: Anything else talking to TilauScope during the roast.
+      placeholder: "Example: DiFluid AirWave, Acaia scale, Ambient probe, Omniflux, other"
+    validations:
+      required: false
+
+  - type: checkboxes
+    attributes:
+      label: Files
+      description: Before you hit SUBMIT, please check the appropriate boxes.
+      options:
+        - label: >
+            A zip file from the Tilauscope log report (Help >> Export Logs...) is attached.
+        - label: >
+            A profile file *.alog, renamed to *.alog.txt, is attached.
+        - label: >
+            A settings file (Help >> Save Settings) *.aset, renamed to *.aset.txt, is attached.
+        - label: >
+            Screenshots are attached.
+        - label: >
+            No files are attached.
+
+  - type: markdown
+    attributes:
+      value: "Thanks for your support!"

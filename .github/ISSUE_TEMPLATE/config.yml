@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/neuralldev/tilauscope_fork/discussions
+    about: For questions, comments or anything else please create a Discussion item.
