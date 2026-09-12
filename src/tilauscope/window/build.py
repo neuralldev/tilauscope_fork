@@ -1067,7 +1067,9 @@ class BuildMixin:
         # Artisan's whole body into this pane and hide everything in it that was
         # not the graph; the window and the figure now stay where they belong.
         self.curve = RoastCurveWidget(self.aw, self.container)
-        self.curve.setStyleSheet("background: transparent; border-radius: 15px;")
+        # With a selector, so the tooltip rule appended to it still parses.
+        self.curve.setStyleSheet(
+            "QWidget { background: transparent; border-radius: 15px; }" + tooltip_qss())
         self.curve.tick()   # whatever is already loaded, before the first sample
         # The curve takes all remaining space (stretch=1)
 

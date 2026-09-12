@@ -86,6 +86,11 @@ How fast bean temperature is climbing, in degrees per minute. The slope of the c
 than its height. A roast is steered largely by keeping RoR inside a sensible band and
 falling smoothly.
 
+#### Projection
+
+The line Artisan draws ahead of the latest reading, showing where bean temperature is heading
+if it keeps its current trend. Artisan draws it only once the curve is long enough to extend.
+
 #### DTR — development time ratio
 
 The share of total roast time spent in [development](#development), as a percentage. A
@@ -343,6 +348,21 @@ already stalled. A smooth curve is not proof that the roast is being fed.
 
 Drying driven so hard that the bean surface dries far ahead of its core, leaving the roast
 unevenly developed.
+
+#### Tipping
+
+Burnt ends: the two tips of the bean turn dark, sometimes black, while the rest of the bean
+has the expected colour. The ends are the thinnest part of the bean, so they dry and brown
+first, and too much heat early in the roast carries them past the body. It gives burnt, ashy
+notes in the cup. It can be marked on the result form — see
+[After the roast](after-the-roast.md#weight-colour-and-notes).
+
+#### Scorching
+
+Dark, burnt patches on the flat side of the bean, where it lay against a surface that was too
+hot. Most often the charge was too hot for the batch, or the drum turned too slowly to keep the
+beans moving. Like [tipping](#tipping), it gives burnt, ashy notes, and it can be marked on the
+result form — see [After the roast](after-the-roast.md#weight-colour-and-notes).
 
 #### Heat cut
 

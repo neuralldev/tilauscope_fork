@@ -517,9 +517,15 @@ class LifecycleMixin:
         unchecked one on a live session reads as "start" at the first click: it
         paints the engaged look, then hands Artisan a ToggleMonitor that stops
         the running session — display and reality inverted from then on.
+
+        A finished roast already loaded gets its review here too: when the last
+        profile is reloaded at launch, the load hook that raises the review runs
+        before this window exists.
         """
         try:
             qmc = self.aw.qmc
+            # No-op while recording, or without both a CHARGE and a DROP.
+            self.show_roast_review()
             if not qmc.flagon:
                 return
 

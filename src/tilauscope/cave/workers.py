@@ -284,14 +284,17 @@ class _CallableWorker(QObject):
 
 class _AlogListWorker(QObject):
     """Scans the alog directory and formats display names off the main thread using cached metadata."""
-    finished = pyqtSignal(list)   # list of (raw_filename, display_name)
+    finished = pyqtSignal(int, list)   # scan generation, list of (raw_filename, display_name, roast_epoch)
     error    = pyqtSignal(str)
     cancelled = pyqtSignal()
 
-    def __init__(self, directory: Path, cache_records: dict[str, AlogMetadata]):
+    def __init__(self, directory: Path, cache_records: dict[str, AlogMetadata], generation: int = 0):
         super().__init__()
         self._directory = directory
         self._cache_records = cache_records
+        # Travels with the rows: this worker is deleted as soon as it emits, so
+        # the receiver cannot tell which scan they belong to from sender().
+        self._generation = generation
 
     @pyqtSlot()
     def run(self) -> None:
@@ -362,7 +365,7 @@ class _AlogListWorker(QObject):
                     new_display = display
                 rows.append((fname, new_display, epoch))
 
-            self.finished.emit(rows)
+            self.finished.emit(self._generation, rows)
         except Exception as e:
             self.error.emit(str(e))
 

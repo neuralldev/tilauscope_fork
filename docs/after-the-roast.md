@@ -23,8 +23,9 @@ all describe a live session, so the whole column is given over to the **roast re
 roast did, and how it compares to the plan.
 
 The same thing happens when a past roast is opened from **File → Open**, whether to look at it or
-to replay it in the simulator. There is nothing to switch on or off — starting a recording, or a
-simulation, hands the column back to the live session, and RESET clears it.
+to replay it in the simulator, and whenever the roasting window opens on a finished roast, such as
+the last one reopened when the application starts. There is nothing to switch on or off — starting
+a recording, or a simulation, hands the column back to the live session, and RESET clears it.
 
 At the [Guided](getting-started.md#guided-or-expert) level the docked assistant steps aside for
 the review, since the roast it was guiding is over. Calling the assistant back — with the
@@ -68,6 +69,10 @@ Below them sit the weights, the colour and the room conditions the roast was rec
 If the roasted weight has not been entered yet, the review offers to take it — the only missing
 value that can still be measured at that moment. Filling it in updates the review straight away.
 
+A milestone marked late, or forgotten, can be corrected on the curve beside the review — drag it
+sideways, or right-click where it happened. The review is recalculated as soon as the correction
+is made. See [Correcting a milestone](the-window.md#correcting-a-milestone).
+
 <!-- CAPTURE 8.0 — the roasting window just after STOP: the left column given over to the roast
      review of a roast that ran to plan — readouts and status line gone, verdict block at the top,
      phase ribbon, milestone table with the VS PLAN column, and the four figures. -->
@@ -95,7 +100,9 @@ fills the right side. The list is ordered by coffee, so it opens on the roast yo
 likely to want rather than on the top row: whichever roast is currently loaded in TilauScope,
 or failing that the one you had selected last time, or failing that your most recent roast.
 
-**Load in Artisan** opens the roast in Artisan's own view for full analysis. **Background**
+**Load in Artisan** opens the roast in Artisan's own view for full analysis, drawn with bean
+temperature, its [projection](glossary.md#projection) and its rate of rise — see
+[Configuration](configuration.md#artisan-settings-tilauscope-keeps-fixed). **Background**
 loads it as a comparison curve behind whatever is roasting or being reviewed next.
 
 !!! note
@@ -105,7 +112,9 @@ loads it as a comparison curve behind whatever is roasting or being reviewed nex
 ### Reading the curve
 
 The **Roasting Curve** sub-tab shows the recorded BT/ET curve with every marked milestone
-labelled directly on it.
+labelled directly on it. When a crack probe counted during the roast, one tick per pop runs
+along the foot of the plot, exactly as in the roasting window — see
+[Listening to the crack](the-window.md#listening-to-the-crack).
 
 Selecting **two or more roasts** turns on two extra views:
 
@@ -129,7 +138,8 @@ on the same set](assets/after-the-roast-8.4.png)
 Right-clicking anywhere on the curve offers the nearest milestone to move to that point —
 useful for a milestone marked a little late in the moment, or one filled in on a roast that
 never had it. Choosing one stages the change; a **💾 Save markers** button appears over the
-curve to confirm it.
+curve to confirm it. The roast on screen in the roasting window can also be corrected directly
+on its own curve — see [Correcting a milestone](the-window.md#correcting-a-milestone).
 
 ![The right-click marker menu, showing a milestone's current time and the
 proposed new one](assets/after-the-roast-8.5.png)
@@ -142,6 +152,10 @@ metric — with a navigator down the side that jumps straight to any milestone. 
 from when recording actually started, so the preheat before CHARGE can be read too. Nothing
 here can be changed; it exists for a real, unhurried read of the roast, when the curve alone
 does not answer the question.
+
+The view stays open while you work in the roast list: selecting another roast shows that
+roast in it, with the same filter and, where the roast has one, the same milestone selected —
+so one point of the roast can be read across several roasts in a row.
 
 ![The Data view, navigator open, a milestone selected](assets/after-the-roast-8.7.png)
 
@@ -191,8 +205,9 @@ flagging at least one phase](assets/after-the-roast-8.8.png)
 ## Weight, colour and notes
 
 The result form — whether filled at DROP or reopened later — records roasted weight and any
-defect weight, whole-bean and ground colour, and free notes. Colour can be typed, judged by
-eye against named roast levels, or read live from a colour meter where one is paired.
+defect weight, whole-bean and ground colour, free notes, and the burns visible on the beans.
+Colour can be typed, judged by eye against named roast levels, or read live from a colour
+meter where one is paired.
 
 Across the top the form recalls which roast this is — the coffee, its batch number, and the
 five figures the roast produced: total time, charge and drop temperature, development time
@@ -200,13 +215,21 @@ and DTR. Below that, the fields to fill sit on the left and the notes box on the
 screen too short for the whole form, this middle part scrolls while the title and **⬥ Save
 roast** stay in place.
 
+Under the notes box, **Seen on the beans** offers two marks: **Tipping**, when the ends of the
+beans are burnt dark, and **Scorching**, when their flat side carries dark patches — see
+[tipping](glossary.md#tipping) and [scorching](glossary.md#scorching). Click one to mark it; it
+lights up with a ✓, and a second click clears it. The marks are saved with the roast when the
+form is confirmed — they are the same ones Artisan's own roast properties show — and a roast
+reopened later comes back with its marks already set.
+
 **Recording a colour is what closes the loop.** A roast with a colour on file becomes part of
 what the next plan for that coffee learns from — see
 [The roast plan](the-roast-plan.md#what-the-plan-learns-and-when) for how. A roast left
 without one simply does not teach the plan anything about drop temperature.
 
 With an AI provider configured, **✦ AI Summary** writes a short account of the roast from its
-recorded figures — a starting point for notes, not a replacement for judging the cup.
+recorded figures, and from the colour, the marks and the notes entered in the form — a starting
+point for notes, not a replacement for judging the cup.
 **What is sent** in the same panel shows the exact text the request would carry, cleaned as it
 will be sent, along with a line naming what was taken out of it; reading it sends nothing.
 
@@ -215,7 +238,7 @@ just entered, so the bag can be labelled while the batch is still cooling. Savin
 without having printed one asks the question once. See
 [Labels and QR](labels-and-qr.md#what-each-label-carries).
 
-<!-- CAPTURE 8.8 — the result form, two columns: weight and colour filled in on the left, notes written on the right -->
+<!-- CAPTURE 8.8 — the result form, two columns: weight and colour filled in on the left, notes written on the right, and Tipping marked (lit, with its ✓) under the Seen on the beans caption, below the notes box -->
 
 <!-- CAPTURE 8.9 — the result form reopened from Roast finished! on an older roast, batch and metrics shown across the top -->
 
@@ -238,6 +261,7 @@ the printed label.
 **Card** exports the selected roast as a **2160 × 3240 portrait PNG** for social sharing.
 It includes the coffee's identity, total duration, measured colour (ground or whole bean),
 and separate temperature and [rate-of-rise](glossary.md#ror--rate-of-rise) graphs with the same time axis.
+When a crack probe counted during the roast, the rate-of-rise graph carries one tick per pop along its foot.
 Dry end, first crack and drop show elapsed time since charge and bean temperature.
 Below the graphs, drying, Maillard and development show their durations and shares of the roast;
 the phase bar is proportional to time. Charge and roasted weights and weight loss complete the card.
@@ -246,7 +270,7 @@ The phase bar remains neutral when its boundaries are incomplete. Missing RoR is
 when the turning point is available, RoR starts there. The export uses the profile's temperature unit.
 This is the roast's counterpart to the bean record's own card
 (see [BeanCave](beancave.md#sharing-and-printing)).
-**Snapshot** is simpler: a plain image of the curve exactly as it is displayed.
+**Snapshot** is simpler: a plain image of the curve exactly as it is displayed, crack ticks included.
 
 Scanning a roast's printed label or QR opens a different, read-only **roast card**: title,
 date, a small curve with its milestones, weight and loss, colour and

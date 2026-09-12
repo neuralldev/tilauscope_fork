@@ -19,7 +19,8 @@ import math
 import logging
 import platform
 from dataclasses import dataclass, field
-from typing import Final, NamedTuple
+from collections.abc import Mapping
+from typing import Any, Final, NamedTuple
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.dict import DataClassDictMixin
 from mashumaro.config import BaseConfig
@@ -2285,3 +2286,50 @@ def resolve_crack_channel(extraname1: "list[str]",
             if best is None or candidate[:2] > best[:2]:
                 best = candidate
     return None if best is None else (best[2], best[3])
+
+
+#: How dark one pop of the crack band is drawn — light enough that overlapping
+#: ticks build the density on their own. Every drawing of the band shares it.
+CRACK_TICK_ALPHA: Final[int] = 90
+#: A counter that overflows (65535 is on record) must not flood the band.
+_CRACK_POPS_PER_SAMPLE: Final[int] = 16
+
+
+def crack_pop_times(series: list | None, timex: list) -> list[float]:
+    """When each pop was heard: one `timex` value per unit the counter rose.
+
+    Read off the recorded counter rather than accumulated live, so a roast
+    reopened from a file draws exactly what the roast that ran drew. The probe
+    writes -1 on any tick it does not answer — most of them — and a saved
+    profile carries the series interpolated to floats, so only the integer
+    part is the count: 0.0, 0.33, 0.67, 1.0 is one pop, not three.
+    """
+    times: list[float] = []
+    previous: int | None = None
+    for i, value in enumerate(series or ()):
+        if (i >= len(timex) or not isinstance(value, (int, float))
+                or not math.isfinite(value) or value < 0):
+            continue
+        count = int(value)
+        if previous is not None and count > previous:
+            times.extend([float(timex[i])] * min(count - previous, _CRACK_POPS_PER_SAMPLE))
+        previous = count
+    return times
+
+
+def profile_crack_times(profile: Mapping[str, Any]) -> list[float]:
+    """Pop times of a saved roast, on its own `timex` — for the drawings that
+    read a profile rather than the live canvas (BeanCave viewer, roast card)."""
+    extratemp1 = profile.get("extratemp1")
+    extratemp2 = profile.get("extratemp2")
+    try:
+        channel = resolve_crack_channel(profile.get("extraname1") or [],
+                                        profile.get("extraname2") or [],
+                                        extratemp1, extratemp2)
+        if channel is None:
+            return []
+        idx, ch = channel
+        series = (extratemp1 if ch == 1 else extratemp2)[idx]
+    except (AttributeError, IndexError, TypeError):
+        return []   # a malformed profile has no band, but keeps its curve
+    return crack_pop_times(series, profile.get("timex") or [])

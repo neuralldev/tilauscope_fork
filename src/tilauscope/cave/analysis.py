@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass  # pylint: disable=unused-import
+import html
 import re # For sorting alog files
 from datetime import datetime
 
@@ -509,6 +510,9 @@ class AnalysisMixin:
                 "info": f"background-color:#0d2a3a; color:{THEME['ACCENT']};",
             }
             c = colors.get(kind, colors["info"])
+            # Advice is plain text: a raw "<650 g/l" in a translation would open a
+            # tag and swallow the rest of the row.
+            text = html.escape(text, quote=False)
             return (
                 f'<tr><td colspan="4" style="padding:2px 0;">'
                 f'<table width="100%" cellpadding="7" cellspacing="0" '
@@ -678,21 +682,21 @@ class AnalysisMixin:
                 if dev_time_adequate:
                     advice_rows += advice_row("ℹ",
                         QApplication.translate("tilauscope_beancave", "DTR low but development time is adequate")
-                        + f" ({dtr_pct_val:.1f}% &lt; {dtr_min_ctx:.1f}%, {development/60.0:.1f} min) {dtr_label} — "
+                        + f" ({dtr_pct_val:.1f}% < {dtr_min_ctx:.1f}%, {development/60.0:.1f} min) {dtr_label} — "
                         + QApplication.translate("tilauscope_beancave",
                             "the ratio is low because the front (drying/Maillard) is long; shorten the front if you want a higher ratio, no need to extend development."),
                         "info")
                 else:
                     advice_rows += advice_row("⚡",
                         QApplication.translate("tilauscope_beancave", "Short development")
-                        + f" ({dtr_pct_val:.1f}% &lt; {dtr_min_ctx:.1f}%) {dtr_label} — "
+                        + f" ({dtr_pct_val:.1f}% < {dtr_min_ctx:.1f}%) {dtr_label} — "
                         + QApplication.translate("tilauscope_beancave",
                             "Underdeveloped risk: baked/grassy notes. Extend dev phase or raise drop temp."),
                         "warn")
             elif dtr_pct_val > dtr_max_ctx:
                 advice_rows += advice_row("⚡",
                     QApplication.translate("tilauscope_beancave", "Long development")
-                    + f" ({dtr_pct_val:.1f}% &gt; {dtr_max_ctx:.1f}%) {dtr_label} — "
+                    + f" ({dtr_pct_val:.1f}% > {dtr_max_ctx:.1f}%) {dtr_label} — "
                     + QApplication.translate("tilauscope_beancave",
                         "Over-development risk: flat, roasty notes dominate. Consider an earlier drop."),
                     "warn")
@@ -708,14 +712,14 @@ class AnalysisMixin:
             if wl_val < wl_min_ctx:
                 advice_rows += advice_row("⚠",
                     QApplication.translate("tilauscope_beancave", "Low weight loss")
-                    + f" ({wl_val:.1f}% &lt; {wl_min_ctx:.1f}%) {process_hint} — "
+                    + f" ({wl_val:.1f}% < {wl_min_ctx:.1f}%) {process_hint} — "
                     + QApplication.translate("tilauscope_beancave",
                         "Bean may be under-roasted or the batch was unusually dense. Verify scale calibration."),
                     "warn")
             elif wl_val > wl_max_ctx:
                 advice_rows += advice_row("⚠",
                     QApplication.translate("tilauscope_beancave", "High weight loss")
-                    + f" ({wl_val:.1f}% &gt; {wl_max_ctx:.1f}%) {process_hint} — "
+                    + f" ({wl_val:.1f}% > {wl_max_ctx:.1f}%) {process_hint} — "
                     + QApplication.translate("tilauscope_beancave",
                         "Roast may be over-developed or airflow too high. Watch for flat cup."),
                     "bad")

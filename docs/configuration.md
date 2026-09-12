@@ -311,6 +311,30 @@ for it to come out at the size chosen here.
 
 ---
 
+## Artisan settings TilauScope keeps fixed
+
+Artisan's **View** menu and six entries of its **Config** menu — **Sampling...**, **Curves...**,
+**Phases...**, **Axes...**, **Autosave...** and **Batch...** — are not offered, and their keyboard
+shortcuts do not open them either.
+
+Two of them are set by TilauScope:
+
+- **Sampling** — one reading per second. Monitoring does not switch itself back on after it is
+  turned off, and a finished roast is not sent to a separate viewer.
+- **Curves** — Artisan's own graph shows bean temperature, its
+  [projection](glossary.md#projection) and its [rate of rise](glossary.md#ror--rate-of-rise).
+  Environmental temperature is still recorded and still available to the PID and to alarms; it is
+  simply not drawn there. The TilauScope roasting curve is not affected: air temperature can still
+  be traced from its right-click menu.
+
+The other four keep the values already in place: phases, axis limits, autosave, and the batch
+counter, which still advances at [DROP](glossary.md#drop).
+
+A settings or machine file loaded later is brought back to these values as it opens; the file
+itself is not modified.
+
+---
+
 ## Next
 
 - What each setting here changes on the ground: [BeanCave](beancave.md),

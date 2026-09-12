@@ -806,9 +806,11 @@ class ViewerMixin:
         # One scan at a time: a second one would leave the first running.
         self._stop_list_scan()
 
-        # Offload glob + regex formatting to a background thread
+        # Offload glob + regex formatting to a background thread. The generation
+        # names the scan its result belongs to.
+        self._list_scan_gen = getattr(self, '_list_scan_gen', 0) + 1
         self._list_thread, self._list_worker = self._launch_worker(
-            _AlogListWorker(directory, self._metadata_cache.records),
+            _AlogListWorker(directory, self._metadata_cache.records, self._list_scan_gen),
             on_ok=self._on_alog_list_ready,
             on_err=lambda e: _log.error(f"roast folder scan failed: {e}"),
             on_done=self._on_list_thread_done,
@@ -819,15 +821,16 @@ class ViewerMixin:
         self._list_thread = None
         self._list_worker = None
 
-    @pyqtSlot(list)
-    def _on_alog_list_ready(self, items: list) -> None:
+    @pyqtSlot(int, list)
+    def _on_alog_list_ready(self, generation: int, items: list) -> None:
         """Called on the main thread when the background file scan is done."""
         # Drop a result from a scan that has since been replaced. Disconnecting
         # the worker cannot do this on its own: by the time a scan is abandoned
         # its result may already be queued, and a queued emission is delivered
-        # whatever happens to the connection afterwards.
-        sender = self.sender()
-        if sender is not None and sender is not getattr(self, '_list_worker', None):
+        # whatever happens to the connection afterwards. Never sender(): the
+        # worker deletes itself as it emits, so by delivery sender() can name an
+        # unrelated object (the rows were dropped) or a deleted one (a crash).
+        if generation != getattr(self, '_list_scan_gen', 0):
             # Dropping a replaced scan is routine — two run on the way in, and
             # the first is meant to lose. Dropping one with an empty list and no
             # scan behind it is not: nothing will paint, and the operator is
@@ -1429,7 +1432,11 @@ class ViewerMixin:
                 QMessageBox.Icon.Warning)
 
     def show_data_reader_view(self) -> None:
-        """Open the readable, navigable data reader for the selected roast."""
+        """Open the data reader on the roast the canvas shows.
+
+        One reader at a time. It is not modal, so it follows the roast list:
+        each roast that loads while it is open is shown in it.
+        """
         if not self.roast_list_widget.selectedItems():
             self._show_message(
                 self,
@@ -1437,19 +1444,40 @@ class ViewerMixin:
                 QApplication.translate("tilauscope_beancave", "Please, select a roast session first."),
                 QMessageBox.Icon.Warning)
             return
-        data = getattr(self, 'lastprofiledata', None)
+        # Not `lastprofiledata`: the Roast Plan tab points it at its own reference roast.
+        data = self.displayed_profile()
         if not data:
             return
-        title = ""
+        title = self._displayed_roast_label()
+        if self._data_reader is None:
+            from tilauscope.roast_properties import RoastDataReaderDialog
+            self._data_reader = RoastDataReaderDialog(dict(data), title=title, parent=self)
+        else:
+            self._data_reader.set_profile(dict(data), title=title)
+        self._data_reader.show()
+        self._data_reader.raise_()
+
+    def _refresh_data_reader(self, profiledata) -> None:
+        """Show the roast that just loaded in the data reader, when it is open."""
+        reader = self._data_reader
+        if reader is None or not profiledata:
+            return
         try:
-            m = self.roast_list_widget.currentItem()
-            if m is not None:
-                title = m.text()
-        except Exception as e:  # noqa: BLE001
-            _logd.warning(f"show_data_reader_view: title resolve failed: {e}")
-        from tilauscope.roast_properties import RoastDataReaderDialog
-        dlg = RoastDataReaderDialog(dict(data), title=title, parent=self)
-        dlg.show()
+            if reader.isVisible():
+                reader.set_profile(dict(profiledata), title=self._displayed_roast_label())
+        except RuntimeError:
+            self._data_reader = None   # C++ side already collected
+        except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
+            # Called from a Qt slot: an escape would reach the excepthook and close the app.
+            _logd.warning(f"data reader refresh failed: {e}")
+
+    def _displayed_roast_label(self) -> str:
+        """List label of the roast on the canvas, or "" when it is not in the list."""
+        row = self._find_item_by_metadata(
+            self.roast_list_widget, "raw_fname", getattr(self, '_displayed_fname', ''))
+        item = (self.roast_list_widget.item(row)
+                if row is not None and row >= 0 else None)
+        return item.text() if item is not None else ""
 
     @pyqtSlot(str)
     def _alog_worker_finished_on_plot_error(self, filename:str):
@@ -1477,6 +1505,7 @@ class ViewerMixin:
         item = item_now
         if item is not None:
             self.roast_plot_label.setText(item.text())
+        self._refresh_data_reader(profiledata)
         # ── Timeline hand-off: profile now fully loaded → open the Brew Advisor ──
         pend = getattr(self, "_pending_brew_after_load", None)
         if pend:

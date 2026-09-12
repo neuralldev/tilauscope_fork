@@ -23,6 +23,7 @@ from typing import Any, override, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow  # noqa: F401
+    from tilauscope.roast_properties import RoastDataReaderDialog  # noqa: F401
     pass  # pylint: disable=unused-import
 import re # For sorting alog files
 from pathlib import Path
@@ -122,6 +123,9 @@ class LifecycleMixin:
         # scale-piloted density measurement window
         self._density_window: '_DensityFloatWindow | None' = None
         self._density_scale_was_connected: bool = False
+
+        # roast data reader — one instance, follows the roast list while open
+        self._data_reader: RoastDataReaderDialog | None = None
 
         self._roaster_thread: QThread | None = None
         self._ble_thread:     QThread | None = None   # obsolète — conservé pour _cancel_threads
@@ -1312,6 +1316,16 @@ class LifecycleMixin:
                 pass
             self._density_window = None
 
+    def _close_step_data_reader(self) -> None:
+        # the reader is a stay-on-top tool window: it would outlive the closed BeanCave
+        if self._data_reader is not None:
+            try:
+                self._data_reader.close()
+                self._data_reader.deleteLater()
+            except RuntimeError:
+                pass
+            self._data_reader = None
+
     def _close_step_table_signals(self) -> None:
         # itemSelectionChanged is what the bean tab actually connects; asking the
         # selection model for selectionChanged raised TypeError every time and
@@ -1378,6 +1392,7 @@ class LifecycleMixin:
         for step in (self._close_step_flag_shutdown,
                      self._cancel_threads,
                      self._close_step_density_window,
+                     self._close_step_data_reader,
                      self._close_step_table_signals,
                      self._close_step_geometry,
                      self._close_step_persist,

@@ -24,9 +24,11 @@ from typing import TYPE_CHECKING, Final
 from datetime import datetime
 
 from tilauscope.roast_insights import build_insights, targets_from_plan
-from tilauscope.theme_qss import base_qss, apply_tilau_theme, tooltip_qss
+from tilauscope.guidance_phase import milestone_marked
+from tilauscope.roast_debrief import roast_colour_agtron
+from tilauscope.theme_qss import base_qss, apply_tilau_theme, tooltip_qss, tint
 from tilauscope.roasters import RoasterManager
-from PyQt6.QtCore    import Qt, QPropertyAnimation, pyqtSlot, QTimer, QSettings
+from PyQt6.QtCore    import Qt, QPropertyAnimation, pyqtSlot, QTimer, QSettings, QSize
 from PyQt6.QtCore import QThread, QObject, pyqtSignal
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
@@ -40,9 +42,9 @@ from PyQt6.QtWidgets import (
     QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem,
     QHeaderView, QSizeGrip, QSplitter, QAbstractItemView, QFileDialog,
 )
-from PyQt6.QtGui import QColor, QKeyEvent, QFontMetrics
+from PyQt6.QtGui import QColor, QKeyEvent, QFontMetrics, QIcon
 
-from artisanlib.util import fromCtoFstrict
+from artisanlib.util import fromCtoFstrict, convertWeight, weight_units
 from tilauscope.tilauscope_types import (
     GreenBean, THEME, show_styled_message, AGTRON_SCALES, format_batch_label,
     open_in_os_viewer, ensure_color_system, resolve_color_system, call_later
@@ -66,6 +68,27 @@ if TYPE_CHECKING:
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
+
+
+def _weight_unit_index(unit: object) -> int:
+    """Artisan's index for a weight unit; an unknown unit reads as grams."""
+    try:
+        return weight_units.index(str(unit))
+    except ValueError:
+        return 0
+
+
+def _to_grams(value: object, unit: object) -> float:
+    """A weight Artisan keeps in `unit`, in grams (0.0 when unreadable)."""
+    try:
+        return convertWeight(float(value), _weight_unit_index(unit), 0)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _from_grams(grams: float, unit: object) -> float:
+    """Grams typed in a form, in the unit Artisan keeps the profile in."""
+    return convertWeight(float(grams), 0, _weight_unit_index(unit))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1002,7 +1025,7 @@ class _RoastInsightsPanel(QWidget):
         # Computed synchronously on the GUI thread: build_insights() and the
         # roast-plan engine call QApplication.translate() and reach into the
         # shared, live qmc, neither of which is safe off the main thread. The
-        # 250 ms debounce already absorbs keystroke thrash.
+        # 500 ms debounce already absorbs keystroke thrash.
         try:
             res = build_insights(**insight_params)
         except Exception:  # noqa: BLE001
@@ -1096,8 +1119,13 @@ class _RoastInsightsPanel(QWidget):
             return None
 
     def ensure_plan(self) -> None:
-        """Finish a queued computation before a setup dialog is accepted."""
-        if self._pending is not None and self.charge_temperature() is None:
+        """Finish a queued computation before a setup dialog is accepted.
+
+        A recompute still waiting on the debounce runs even when a plan exists:
+        that plan belongs to the setup before the last change.
+        """
+        if self._pending is not None and (
+                self._debounce.isActive() or self.charge_temperature() is None):
             self._debounce.stop()
             self._launch()
 
@@ -2546,8 +2574,10 @@ class RoastSetupDialog(QDialog):
         replay_wanted = self._replay_enable_cb.isEnabled() and self._replay_enable_cb.isChecked()
         replay_reaction_s = float(self._replay_reaction_spin.value())
 
-        # first reset artisan main before loading
-        self._aw.qmc.reset()
+        # Reset Artisan first. False means the save prompt for the roast on
+        # screen was cancelled: that roast stays, and nothing is written over it.
+        if not self._aw.qmc.reset():
+            return
         if not replay_wanted:
             self._aw.clearBackgroundSignal.emit()
 
@@ -2975,6 +3005,26 @@ _SVG_DEVELOPMENT = (
 )
 
 
+# Tipping: both ends of the bean burnt. Scorching: burnt patches on its face.
+_SVG_TIPPING = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+    '<ellipse cx="12" cy="12" rx="9" ry="6" fill="none" stroke="{color}" stroke-width="1.8"/>'
+    '<path d="M12 6 Q16 12 12 18" fill="none" stroke="{color}" stroke-width="1.4" stroke-linecap="round"/>'
+    '<path d="M7 17 C1.67 14.61 1.67 9.39 7 7 Z" fill="{color}"/>'
+    '<path d="M17 17 C22.33 14.61 22.33 9.39 17 7 Z" fill="{color}"/>'
+    '</svg>'
+)
+
+_SVG_SCORCHING = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+    '<ellipse cx="12" cy="12" rx="9" ry="6" fill="none" stroke="{color}" stroke-width="1.8"/>'
+    '<path d="M12 6 Q16 12 12 18" fill="none" stroke="{color}" stroke-width="1.4" stroke-linecap="round"/>'
+    '<path d="M6.2 10.2 Q7.8 8 10 9.4 Q11.2 11.8 9.6 14 Q7.4 15.2 6.3 13.2 Q5.4 11.6 6.2 10.2 Z" fill="{color}"/>'
+    '<circle cx="16.6" cy="11" r="1.3" fill="{color}"/>'
+    '</svg>'
+)
+
+
 def _svg_icon_label(svg_template: str, color: str, size: int = 22) -> QLabel:
     """Return a QLabel bearing a rendered SVG icon."""
     lbl = QLabel()
@@ -2982,6 +3032,39 @@ def _svg_icon_label(svg_template: str, color: str, size: int = 22) -> QLabel:
     lbl.setPixmap(_svg_pixmap(svg_template, color, size))
     lbl.setStyleSheet("background: transparent; border: none;")
     return lbl
+
+
+def _defect_mark_chip(svg_template: str, text: str, tooltip: str, marked: bool) -> QPushButton:
+    """Checkable chip marking a defect seen on the roasted beans; lit with ✓ when marked."""
+    chip = QPushButton()
+    chip.setCheckable(True)
+    chip.setCursor(Qt.CursorShape.PointingHandCursor)
+    chip.setToolTip(tooltip)
+    icon = QIcon()
+    for color, state in ((THEME['SUBTEXT'], QIcon.State.Off), (THEME['WARNING'], QIcon.State.On)):
+        pix = _svg_pixmap(svg_template, color, 32)
+        pix.setDevicePixelRatio(2.0)
+        icon.addPixmap(pix, QIcon.Mode.Normal, state)
+    chip.setIcon(icon)
+    chip.setIconSize(QSize(16, 16))
+    chip.setStyleSheet(
+        f"QPushButton {{ color: {THEME['SUBTEXT']}; background: transparent;"
+        f"border: 1px solid {THEME['BORDER']}; border-radius: 13px;"
+        f"padding: 4px 12px; font-size: 12px; }}"
+        f"QPushButton:hover {{ background: {THEME['BORDER']}; }}"
+        f"QPushButton:checked {{ color: {THEME['WARNING']};"
+        f"background: {tint('WARNING', 0.15)}; border-color: {THEME['WARNING']}; }}"
+        f"QPushButton:checked:hover {{ background: {tint('WARNING', 0.25)}; }}"
+    )
+    marked_text = f"{text}  ✓"
+    # Reserve the marked width so marking one chip never shifts its neighbour.
+    chip.setText(marked_text)
+    chip.ensurePolished()
+    chip.setMinimumWidth(chip.sizeHint().width())
+    chip.setText(marked_text if marked else text)
+    chip.setChecked(marked)
+    chip.toggled.connect(lambda on: chip.setText(marked_text if on else text))
+    return chip
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -3230,6 +3313,7 @@ class RoastResultDialog(QDialog):
         # helper windows
         self._scale_window: _ScaleFloatWindow | None = None
         self._color_window: _ColorFloatWindow | None = None
+        self._cleaned = False  # done() has unwired the form
 
         self._drag_pos: object = None
         # drives the "print the label before closing?" reminder on save
@@ -3329,6 +3413,17 @@ class RoastResultDialog(QDialog):
         except Exception as exc:  # noqa: BLE001
             _log.warning("RoastResultDialog: beans text parse failed: %s", exc)
         return None
+
+    def _green_grams(self) -> float:
+        """Green weight in grams: the profile's own, else the one handed in.
+
+        qmc.weight is in the profile's unit, and not every caller converts it.
+        """
+        try:
+            green = _to_grams(self._aw.qmc.weight[0], self._aw.qmc.weight[2])
+        except (AttributeError, IndexError, TypeError):
+            green = 0.0
+        return green if green > 0 else float(self._green_weight or 0.0)
 
     # An Acaia left alone for the length of a roast drops its BLE link
     # (or goes to sleep). A single connect request at dialog open then silently
@@ -3624,9 +3719,9 @@ class RoastResultDialog(QDialog):
             temp2     = qmc.temp2              # BT array
             stats     = qmc.statisticstimes    # [0, drying, maillard, finish, 0, ...]
 
-            charge_i = timeindex[0] if timeindex and timeindex[0] > 0 else -1
-            fc_i     = timeindex[2] if timeindex and len(timeindex) > 2 and timeindex[2] > 0 else -1
-            drop_i   = timeindex[6] if timeindex and len(timeindex) > 6 and timeindex[6] > 0 else -1
+            charge_i = timeindex[0] if milestone_marked(timeindex, 0) else -1
+            fc_i     = timeindex[2] if milestone_marked(timeindex, 2) else -1
+            drop_i   = timeindex[6] if milestone_marked(timeindex, 6) else -1
 
             total_s      = (timex[drop_i] - timex[charge_i]) if (charge_i >= 0 and drop_i >= 0) else None
             charge_bt    = temp2[charge_i] if charge_i >= 0 and charge_i < len(temp2) else None
@@ -3791,10 +3886,11 @@ class RoastResultDialog(QDialog):
         bc.addLayout(bean_text, 1)
 
         # Green weight badge
-        if self._green_weight:
+        green_g = self._green_grams()
+        if green_g:
             gw_col = QVBoxLayout()
             gw_col.setSpacing(0)
-            gw_val = QLabel(f"{self._green_weight:.0f}")
+            gw_val = QLabel(f"{green_g:.0f}")
             gw_val.setStyleSheet(
                 f"color: {THEME['ACCENT']}; font-size: 16px; font-weight: bold; border: none;"
             )
@@ -3850,7 +3946,8 @@ class RoastResultDialog(QDialog):
         weight_row.setSpacing(10)
 
         # Whole-bean weight (large field)
-        self._roasted_weight_edit = QLineEdit(str(qmc.weight[1])) # get weight from current loaded profile on Artisan
+        # the loaded profile's weight, in grams: qmc keeps the profile's own unit
+        self._roasted_weight_edit = QLineEdit(str(round(_to_grams(qmc.weight[1], qmc.weight[2]), 1)))
         self._roasted_weight_edit.setPlaceholderText("0")
         self._roasted_weight_edit.setMinimumHeight(48)
         self._roasted_weight_edit.setMaximumWidth(150)
@@ -3884,7 +3981,7 @@ class RoastResultDialog(QDialog):
         defect_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Defects"))
         defect_lbl.setProperty('variant', 'secondary')
         defect_row.addWidget(defect_lbl)
-        self._defects_edit = QLineEdit(str(qmc.roasted_defects_weight))
+        self._defects_edit = QLineEdit(str(round(_to_grams(qmc.roasted_defects_weight, qmc.weight[2]), 1)))
         self._defects_edit.setPlaceholderText("0")
         self._defects_edit.setMinimumHeight(32)
         self._defects_edit.setMaximumWidth(90)
@@ -3903,7 +4000,9 @@ class RoastResultDialog(QDialog):
         defect_row.addStretch()
         left_col.addLayout(defect_row)
         self._defects_edit.textChanged.connect(self._update_loss_label)
+        # the defect share divides by the roasted weight: it follows both fields
         self._defects_edit.textChanged.connect(self._update_defect_percentage)
+        self._roasted_weight_edit.textChanged.connect(self._update_defect_percentage)
 
         # ── SECTION 2 — Colour ────────────────────────────────────────────
         left_col.addWidget(_separator())
@@ -4041,6 +4140,35 @@ class RoastResultDialog(QDialog):
         )
         right_col.addWidget(self._notes_edit, 1)
 
+        # Burns seen on the beans — Artisan's own roast flags, written on Save.
+        # Caption above the chips: translated defect names outgrow a single row.
+        marks_col = QVBoxLayout()
+        marks_col.setSpacing(4)
+        marks_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Seen on the beans"))
+        marks_lbl.setProperty('variant', 'secondary')
+        marks_col.addWidget(marks_lbl)
+        marks_row = QHBoxLayout()
+        marks_row.setSpacing(8)
+        self._tipping_chip = _defect_mark_chip(
+            _SVG_TIPPING,
+            QApplication.translate("tilauscope_roast_setup", "Tipping"),
+            QApplication.translate("tilauscope_roast_setup",
+                "Tipping — the ends of the beans are burnt dark. "
+                "Usually too much heat early in the roast."),
+            bool(getattr(qmc, 'tipping_flag', False)))
+        marks_row.addWidget(self._tipping_chip)
+        self._scorching_chip = _defect_mark_chip(
+            _SVG_SCORCHING,
+            QApplication.translate("tilauscope_roast_setup", "Scorching"),
+            QApplication.translate("tilauscope_roast_setup",
+                "Scorching — dark burnt patches on the flat side of the beans. "
+                "Usually a charge that was too hot for this batch."),
+            bool(getattr(qmc, 'scorching_flag', False)))
+        marks_row.addWidget(self._scorching_chip)
+        marks_row.addStretch()
+        marks_col.addLayout(marks_row)
+        right_col.addLayout(marks_col)
+
         mood_hint = QLabel(QApplication.translate("tilauscope_roast_setup", "free notes → roast log"))
         mood_hint.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 10px; font-style: italic;")
         right_col.addWidget(mood_hint)
@@ -4112,6 +4240,7 @@ class RoastResultDialog(QDialog):
 
         # wen creation is finished, update computed fields
         self._update_loss_label()
+        self._update_defect_percentage()
         self._update_color_diff()
 
     # ── Live label updates ────────────────────────────────────────────────────
@@ -4144,7 +4273,8 @@ class RoastResultDialog(QDialog):
     @pyqtSlot()
     def _update_loss_label(self) -> None:
         """Recompute and display the weight-loss % whenever either weight/defect changes."""
-        if not self._green_weight:
+        green = self._green_grams()
+        if not green:
             self._loss_lbl.setText("")
             return
         try:
@@ -4156,17 +4286,16 @@ class RoastResultDialog(QDialog):
         except ValueError:
             defects = 0.0
 
-        if (roasted-defects) > 0 and self._green_weight > 0:
-            loss_pct = (1.0 - ((roasted - defects) / self._green_weight)) * 100.0
+        if (roasted-defects) > 0 and green > 0:
+            loss_pct = (1.0 - ((roasted - defects) / green)) * 100.0
             color = THEME['SUCCESS'] if 10 <= loss_pct <= 22 else THEME['WARNING']
             hint = QApplication.translate("tilauscope_roast_setup",
-                "{0:.1f} % loss  (green: {1:.0f} g)").format(loss_pct, self._green_weight)
+                "{0:.1f} % loss  (green: {1:.0f} g)").format(loss_pct, green)
             self._loss_lbl.setText(hint)
             self._loss_lbl.setStyleSheet(f"color: {color}; font-size: 11px; margin-left: 10px;")
         else:
             self._loss_lbl.setText(
-                QApplication.translate("tilauscope_roast_setup", "green: {0:.0f} g").format(
-                    self._green_weight)
+                QApplication.translate("tilauscope_roast_setup", "green: {0:.0f} g").format(green)
             )
 
     @pyqtSlot()
@@ -4197,13 +4326,10 @@ class RoastResultDialog(QDialog):
                 f"min-width: 60px;"
             )
 
-        # Update Agtron range hint using the whole-bean value if present
-        ref = w if w is not None else g
-        if ref is not None:
-            hint = self._agtron_range_label(ref)
-            self._agtron_hint_lbl.setText(hint)
-        else:
-            self._agtron_hint_lbl.setText("")
+        # The roast's colour: ground when measured, else whole — never whichever
+        # field merely holds a number.
+        ref = roast_colour_agtron({'ground_color': g or 0.0, 'whole_color': w or 0.0})
+        self._agtron_hint_lbl.setText(self._agtron_range_label(ref) if ref is not None else "")
 
     @staticmethod
     def _agtron_range_label(value: float) -> str:
@@ -4265,10 +4391,10 @@ class RoastResultDialog(QDialog):
             temp2 = qmc.temp2
             stats = qmc.statisticstimes
 
-            charge_i = ti[0] if ti and ti[0] > 0 else -1
-            dry_i    = ti[1] if ti and len(ti) > 1 and ti[1] > 0 else -1
-            fc_i     = ti[2] if ti and len(ti) > 2 and ti[2] > 0 else -1
-            drop_i   = ti[6] if ti and len(ti) > 6 and ti[6] > 0 else -1
+            charge_i = ti[0] if milestone_marked(ti, 0) else -1
+            dry_i    = ti[1] if milestone_marked(ti, 1) else -1
+            fc_i     = ti[2] if milestone_marked(ti, 2) else -1
+            drop_i   = ti[6] if milestone_marked(ti, 6) else -1
 
             total_s    = (timex[drop_i] - timex[charge_i]) if (charge_i >= 0 and drop_i >= 0) else None
             drying_s   = (timex[dry_i]  - timex[charge_i]) if (charge_i >= 0 and dry_i  >= 0) else None
@@ -4328,6 +4454,17 @@ class RoastResultDialog(QDialog):
                     f"- Ground: {gr or 'n/a'}",
                     "",
                 ]
+        except Exception:
+            pass
+
+        # ── Visible defects ───────────────────────────────────────────────────
+        try:
+            seen = [name for name, chip in (("tipping", self._tipping_chip),
+                                            ("scorching", self._scorching_chip))
+                    if chip.isChecked()]
+            if seen:
+                lines += ["## Visible Defects",
+                          f"- Seen on the roasted beans: {', '.join(seen)}", ""]
         except Exception:
             pass
 
@@ -4413,8 +4550,10 @@ class RoastResultDialog(QDialog):
             green = float(weight[0])
         except (TypeError, ValueError):
             green = 0.0
+        # The form's figures are grams; the profile keeps its own unit.
         if green <= 0:
-            green = float(self._green_weight or 0.0)
+            green = _from_grams(self._green_grams(), weight[2])
+        roasted = _from_grams(roasted, weight[2])
         profile['weight'] = [green, roasted, weight[2]]
 
         profile['whole_color']  = whole_color
@@ -4486,6 +4625,13 @@ class RoastResultDialog(QDialog):
 
     # ── OK / Cancel ──────────────────────────────────────────────────────────
 
+    #: What saving the form writes into qmc — put back when the save fails.
+    _QMC_FIELDS: Final[tuple[str, ...]] = (
+        'beans', 'weight', 'roasted_defects_weight', 'whole_color', 'ground_color',
+        'color_system_idx', 'tipping_flag', 'scorching_flag', 'roastingnotes',
+        'roastbatchprefix', 'roastbatchnr', 'roastbatchpos',
+    )
+
     @pyqtSlot()
     def _on_ok(self) -> None:
         # Last chance to print the label: once this dialog closes the
@@ -4527,23 +4673,33 @@ class RoastResultDialog(QDialog):
         except ValueError:
             ground_color = 0.0
 
-        # Inject into Artisan
+        # Inject into Artisan. A failed save puts qmc back as it was: the form
+        # keeps the values for a retry, and a later Cancel must change nothing.
+        qmc = self._aw.qmc
+        before = {name: getattr(qmc, name) for name in self._QMC_FIELDS if hasattr(qmc, name)}
+
+        def restore() -> None:
+            for name, value in before.items():
+                setattr(qmc, name, value)
+
         try:
-            qmc = self._aw.qmc
             # A review owns the identity frozen with the displayed roast.  Set
             # it only on Save so Cancel remains side-effect free, including for
             # legacy unlinked roasts whose correct description is empty.
             if self._bean_description is not None:
                 qmc.beans = self._bean_description
-            # qmc.weight is a typed tuple (in, out, unit) at runtime — rebuild as tuple
+            # qmc.weight is a typed tuple (in, out, unit) at runtime — rebuild as
+            # tuple; the form's grams go back in the profile's own unit.
             w0, _, w2 = qmc.weight
-            qmc.weight        = (w0, roasted_w, w2)
+            qmc.weight        = (w0, _from_grams(roasted_w, w2), w2)
             qmc.whole_color   = whole_color
             qmc.ground_color  = ground_color
             # These fields are Agtron — name the scale so the saved profile
             # does not read back as "no colour measured".
             ensure_color_system(qmc)
-            qmc.roasted_defects_weight = defects_w
+            qmc.roasted_defects_weight = _from_grams(defects_w, w2)
+            qmc.tipping_flag   = self._tipping_chip.isChecked()
+            qmc.scorching_flag = self._scorching_chip.isChecked()
 
             # Batch — persist a deliberate correction of the assigned identity
             try:
@@ -4561,6 +4717,7 @@ class RoastResultDialog(QDialog):
                 roasted_w, defects_w, whole_color, ground_color,
             )
         except Exception as exc:  # noqa: BLE001
+            restore()
             _log.error("RoastResultDialog injection error: %s", exc)
             show_styled_message(
                 self,
@@ -4583,6 +4740,7 @@ class RoastResultDialog(QDialog):
             _log.error("RoastResultDialog profile save failed: %s", exc)
             saved = False
         if not saved:
+            restore()
             show_styled_message(
                 self,
                 QApplication.translate("tilauscope_roast_setup", "Save Error"),
@@ -4593,12 +4751,11 @@ class RoastResultDialog(QDialog):
             )
             return
 
-        self._close_helpers()
-        self._disconnect_scale()
         self.accept()
 
     @pyqtSlot()
     def _on_cancel(self) -> None:
+        # Cards go now rather than after the fade; done() finds nothing left.
         self._close_helpers()
         self._disconnect_scale()
         self._start_fade_out()
@@ -4611,10 +4768,21 @@ class RoastResultDialog(QDialog):
         self._fade.finished.connect(self.reject)
         self._fade.start()
 
-    def closeEvent(self, event) -> None:  # noqa: ANN001
-        self._close_helpers()
-        self._disconnect_scale()
-        super().closeEvent(event)
+    def done(self, result: int) -> None:  # noqa: N802 (Qt override)
+        """Unwire the form on every way out: Save, Cancel, Escape, window close.
+
+        On done(), not closeEvent: Escape and accept()/reject() raise no close
+        event, and a window close falls back to reject(). Guarded, because an
+        exception escaping a Qt virtual aborts the application.
+        """
+        if not self._cleaned:
+            self._cleaned = True
+            try:
+                self._close_helpers()
+                self._disconnect_scale()
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("RoastResultDialog: cleanup on close failed: %s", exc)
+        super().done(result)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -4643,6 +4811,7 @@ _MILESTONE_SLOTS: Final = (
 
 _ROW_MILESTONE_BG: Final = QColor(THEME['BORDER'])   # overlay
 _ROW_EVENT_BG: Final     = QColor('#262637')
+_NAV_LABEL_ROLE: Final   = Qt.ItemDataRole.UserRole + 1   # journey entry label
 
 
 class RoastDataReaderDialog(QDialog):
@@ -4664,9 +4833,28 @@ class RoastDataReaderDialog(QDialog):
             | Qt.WindowType.Tool
             | Qt.WindowType.WindowStaysOnTopHint
         )
+        self._drag_pos: object = None
+        self._filter_kind: str = 'all'
+        self._load_profile(profile, title)
+
+        self.setStyleSheet(base_qss() + _local_style())
+        self._build_ui()
+        self.resize(940, 620)
+
+    def set_profile(self, profile: dict, title: str = "") -> None:
+        """Show another roast in the open reader.
+
+        The filter and the journey entry in focus carry over, so the same
+        milestone can be read across roasts.
+        """
+        focus = self._nav_focus_label()
+        self._load_profile(profile, title)
+        self._fill()
+        self._restore_nav_focus(focus)
+
+    def _load_profile(self, profile: dict, title: str) -> None:
         self._p = profile or {}
         self._roast_title = title or str(self._p.get('title', '') or '')
-        self._drag_pos: object = None
 
         # raw series (defensive copies, never mutated)
         self._timex: list[float] = list(self._p.get('timex', []) or [])
@@ -4686,16 +4874,13 @@ class RoastDataReaderDialog(QDialog):
 
         self._ndata: int = min(len(self._timex), len(self._t1), len(self._t2))
         self._origin: float = self._timex[0] if self._ndata else 0.0
-        # row -> kind for filtering ('milestone' | 'event' | None)
-        self._row_kind: list[str | None] = [None] * self._ndata
-        # quick lookup: row -> special-event position
-        self._sev_at: dict[int, int] = {
-            r: k for k, r in enumerate(self._sev) if 0 <= r < self._ndata
-        }
-
-        self.setStyleSheet(base_qss() + _local_style())
-        self._build_ui()
-        self.resize(940, 620)
+        # row -> kinds for filtering: one sample can carry a milestone and events
+        self._row_kinds: list[set[str]] = [set() for _ in range(self._ndata)]
+        # row -> every special-event position on that sample, in recorded order
+        self._sev_at: dict[int, list[int]] = {}
+        for k, r in enumerate(self._sev):
+            if 0 <= r < self._ndata:
+                self._sev_at.setdefault(r, []).append(k)
 
     # ── small helpers ────────────────────────────────────────────────────────
     @staticmethod
@@ -4812,8 +4997,20 @@ class RoastDataReaderDialog(QDialog):
         bottom.addWidget(grip, 0, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
         cl.addLayout(bottom)
 
-        self._populate_table()
+        self._fill()
+
+    def _fill(self) -> None:
+        """Write the loaded profile into the widgets, replacing what they showed."""
+        self._subtitle.setText(self._subtitle_text())
+        self._summary.setText(self._summary_line())
+        self._table.setUpdatesEnabled(False)
+        try:
+            self._populate_table()
+        finally:
+            self._table.setUpdatesEnabled(True)
+        self._nav.clear()
         self._populate_navigator()
+        self._apply_filter(self._filter_kind)
 
     def _build_header(self) -> QHBoxLayout:
         row = QHBoxLayout()
@@ -4823,19 +5020,9 @@ class RoastDataReaderDialog(QDialog):
             f"letter-spacing: 3px;")
         row.addWidget(title)
 
-        bits = []
-        if self._roast_title:
-            bits.append(self._roast_title)
-        rtype = str(self._p.get('roastertype', '') or '')
-        if rtype:
-            bits.append(rtype)
-        rdate = str(self._p.get('roastdate', '') or '')
-        if rdate:
-            bits.append(rdate)
-        if bits:
-            sub = QLabel("   " + "  ·  ".join(bits))
-            sub.setProperty('variant', 'caption')
-            row.addWidget(sub)
+        self._subtitle = QLabel()
+        self._subtitle.setProperty('variant', 'caption')
+        row.addWidget(self._subtitle)
         row.addStretch()
 
         close = QPushButton("✕")
@@ -4850,13 +5037,25 @@ class RoastDataReaderDialog(QDialog):
         row.addWidget(close, 0, Qt.AlignmentFlag.AlignTop)
         return row
 
+    def _subtitle_text(self) -> str:
+        bits = []
+        if self._roast_title:
+            bits.append(self._roast_title)
+        rtype = str(self._p.get('roastertype', '') or '')
+        if rtype:
+            bits.append(rtype)
+        rdate = str(self._p.get('roastdate', '') or '')
+        if rdate:
+            bits.append(rdate)
+        return "   " + "  ·  ".join(bits) if bits else ""
+
     def _build_toolbar(self) -> QHBoxLayout:
         row = QHBoxLayout()
         row.setSpacing(8)
-        summary = QLabel(self._summary_line())
-        summary.setStyleSheet(
+        self._summary = QLabel()
+        self._summary.setStyleSheet(
             f"color: {THEME['TEXT']}; font-size: 11px; ")
-        row.addWidget(summary)
+        row.addWidget(self._summary)
         row.addStretch()
 
         lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Show"))
@@ -4919,24 +5118,7 @@ class RoastDataReaderDialog(QDialog):
         return wrap
 
     def _build_table(self) -> QWidget:
-        cols = [QApplication.translate("tilauscope_roast_setup", "Time"),
-                "ET", "BT", "ΔET", "ΔBT",
-                QApplication.translate("tilauscope_roast_setup", "Marker")]
-        self._extra_cols: list[tuple[int, int]] = []   # (extra_device_k, 1 or 2)
-        for k in range(len(self._extratemp1)):
-            n1 = self._extraname1[k] if k < len(self._extraname1) else ""
-            n2 = self._extraname2[k] if k < len(self._extraname2) else ""
-            if k < len(self._extratemp1):
-                cols.insert(len(cols) - 1, n1 or f"x1-{k}")
-                self._extra_cols.append((k, 1))
-            if k < len(self._extratemp2):
-                cols.insert(len(cols) - 1, n2 or f"x2-{k}")
-                self._extra_cols.append((k, 2))
-
-        self._marker_col = len(cols) - 1
         self._table = QTableWidget()
-        self._table.setColumnCount(len(cols))
-        self._table.setHorizontalHeaderLabels(cols)
         self._table.setAlternatingRowColors(True)
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -4954,15 +5136,38 @@ class RoastDataReaderDialog(QDialog):
             vh.setVisible(False)
         return self._table
 
+    def _setup_columns(self) -> None:
+        """Columns follow the profile: each roast brings its own extra devices."""
+        cols = [QApplication.translate("tilauscope_roast_setup", "Time"),
+                "ET", "BT", "ΔET", "ΔBT",
+                QApplication.translate("tilauscope_roast_setup", "Marker")]
+        self._extra_cols: list[tuple[int, int]] = []   # (extra_device_k, 1 or 2)
+        for k in range(len(self._extratemp1)):
+            n1 = self._extraname1[k] if k < len(self._extraname1) else ""
+            n2 = self._extraname2[k] if k < len(self._extraname2) else ""
+            if k < len(self._extratemp1):
+                cols.insert(len(cols) - 1, n1 or f"x1-{k}")
+                self._extra_cols.append((k, 1))
+            if k < len(self._extratemp2):
+                cols.insert(len(cols) - 1, n2 or f"x2-{k}")
+                self._extra_cols.append((k, 2))
+
+        self._marker_col = len(cols) - 1
+        self._table.setColumnCount(len(cols))
+        self._table.setHorizontalHeaderLabels(cols)
+
     def _populate_table(self) -> None:
         n = self._ndata
+        # Emptied first so no item or hidden row of the previous roast survives.
+        self._table.setRowCount(0)
+        self._setup_columns()
         self._table.setRowCount(n)
-        # milestone row -> (label, colour)
-        ms_rows: dict[int, tuple[str, str]] = {}
+        # milestone row -> every (label, colour) marked on that sample
+        ms_rows: dict[int, list[tuple[str, str]]] = {}
         for slot, (label, _icon, color) in enumerate(_MILESTONE_SLOTS):
             idx = self._slot_idx(slot)
             if idx >= 0:
-                ms_rows[idx] = (label, color)
+                ms_rows.setdefault(idx, []).append((label, color))
 
         for i in range(n):
             rtime = QTableWidgetItem(self._mmss(self._timex[i] - self._origin))
@@ -4989,26 +5194,24 @@ class RoastDataReaderDialog(QDialog):
                 self._table.setItem(i, col, xi)
                 col += 1
 
-            marker = ""
+            # A sample can carry several milestones and events: name them all.
+            milestones = ms_rows.get(i, [])
+            events = self._sev_at.get(i, [])
+            parts = ["◆ " + label for label, _color in milestones]
+            parts += ["▣ " + self._event_text(k) for k in events]
+            mk = QTableWidgetItem("   ".join(parts))
             row_bg = None
-            if i in ms_rows:
-                label, color = ms_rows[i]
-                marker = label
-                self._row_kind[i] = 'milestone'
+            if milestones:
+                self._row_kinds[i].add('milestone')
                 row_bg = _ROW_MILESTONE_BG
-                mk = QTableWidgetItem("◆ " + label)
-                mk.setForeground(QColor(color))
+                mk.setForeground(QColor(milestones[0][1]))
                 font = mk.font(); font.setBold(True); mk.setFont(font)
-                self._table.setItem(i, self._marker_col, mk)
-            elif i in self._sev_at:
-                marker = "▣ " + self._event_text(self._sev_at[i])
-                self._row_kind[i] = 'event'
+            elif events:
                 row_bg = _ROW_EVENT_BG
-                mk = QTableWidgetItem(marker)
                 mk.setForeground(QColor(THEME['WARNING']))
-                self._table.setItem(i, self._marker_col, mk)
-            else:
-                self._table.setItem(i, self._marker_col, QTableWidgetItem(""))
+            if events:
+                self._row_kinds[i].add('event')
+            self._table.setItem(i, self._marker_col, mk)
 
             if row_bg is not None:
                 for c in range(self._table.columnCount()):
@@ -5068,8 +5271,7 @@ class RoastDataReaderDialog(QDialog):
             self._add_nav_item(row, icon, color, label, sub)
 
         # events section
-        evs = [(r, k) for r, k in self._sev_at.items()]
-        evs.sort()
+        evs = sorted((r, k) for r, ks in self._sev_at.items() for k in ks)
         if evs:
             sep = QListWidgetItem(QApplication.translate(
                 "tilauscope_roast_setup", "EVENTS ({0})").format(len(evs)))
@@ -5085,6 +5287,7 @@ class RoastDataReaderDialog(QDialog):
     def _add_nav_item(self, row: int, icon: str, color: str, label: str, sub: str) -> None:
         item = QListWidgetItem()
         item.setData(Qt.ItemDataRole.UserRole, row)
+        item.setData(_NAV_LABEL_ROLE, label)
         w = QWidget()
         lay = QHBoxLayout(w)
         lay.setContentsMargins(6, 3, 6, 3)
@@ -5119,10 +5322,23 @@ class RoastDataReaderDialog(QDialog):
         if it is not None:
             self._table.scrollToItem(it, QAbstractItemView.ScrollHint.PositionAtCenter)
 
+    def _nav_focus_label(self) -> str | None:
+        item = self._nav.currentItem()
+        return item.data(_NAV_LABEL_ROLE) if item is not None else None
+
+    def _restore_nav_focus(self, label: str | None) -> None:
+        if not label:
+            return
+        for i in range(self._nav.count()):
+            item = self._nav.item(i)
+            if item is not None and item.data(_NAV_LABEL_ROLE) == label:
+                self._nav.setCurrentItem(item)
+                return
+
     def _apply_filter(self, kind: str) -> None:
+        self._filter_kind = kind
         for r in range(self._ndata):
-            k = self._row_kind[r]
-            vis = (kind == 'all') or (k == kind)
+            vis = (kind == 'all') or (kind in self._row_kinds[r])
             self._table.setRowHidden(r, not vis)
 
     # ── frameless drag ───────────────────────────────────────────────────────

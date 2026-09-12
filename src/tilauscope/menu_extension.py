@@ -29,6 +29,8 @@ from PyQt6.QtWidgets import QApplication, QMenu, QMenuBar
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 
+from tilauscope.artisan_display_policy import ArtisanDisplayPolicy
+
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow, UI_MODE
 
@@ -44,6 +46,10 @@ class TilauMenuExtension:
         self.tilau_top_menu: QMenu | None = None
         self._help_menu_rewired = False
         self._build_actions()
+        # Installed at window construction: before the first settingsLoad() and
+        # before the roasting window hooks qmc.redraw() itself.
+        self.display_policy = ArtisanDisplayPolicy(aw)
+        self.display_policy.install()
 
     # ------------------------------------------------------------------
     # Public API
@@ -55,6 +61,7 @@ class TilauMenuExtension:
         self._patch_config_menu(ui_mode)
         self._insert_export_logs_action()
         self._insert_tilau_top_menu(menu_bar, ui_mode)
+        self.display_policy.enforce()
 
     def shortcut_actions(self) -> list[QAction | None]:
         """Actions with shortcuts managed by MenuShortCutsDisabled."""
@@ -235,11 +242,21 @@ class TilauMenuExtension:
 
     def _patch_config_menu(self, ui_mode: 'UI_MODE') -> None:
         """Hide Artisan menu items not used by TilauScope's guided workflow
-        (theme/colors/UI mode, wheel graph, cup profile, core debug tools).
+        (theme/colors/UI mode, wheel graph, cup profile, core debug tools, the View
+        menu, and the settings artisan_display_policy imposes or leaves as they are).
         Re-applied on every set_menu() call (mode switches rebuild the menus).
+        Hidden, never deleted: a hidden QAction also stays disabled whatever Artisan
+        sets later, so its shortcut (Ctrl+U, Ctrl+Shift+A) cannot open the dialog.
         """
         aw = self._aw
         for attr, hide in (
+            ('viewMenu', lambda m: m.menuAction().setVisible(False)),
+            ('calibrateDelayAction', lambda a: a.setVisible(False)),
+            ('curvesAction', lambda a: a.setVisible(False)),
+            ('phasesGraphAction', lambda a: a.setVisible(False)),
+            ('WindowconfigAction', lambda a: a.setVisible(False)),
+            ('autosaveAction', lambda a: a.setVisible(False)),
+            ('batchAction', lambda a: a.setVisible(False)),
             ('colorsAction', lambda a: a.setVisible(False)),
             ('themeMenu', lambda m: m.menuAction().setVisible(False)),
             ('UIModeMenu', lambda m: m.menuAction().setVisible(False)),
@@ -302,7 +319,7 @@ class TilauMenuExtension:
         QDesktopServices.openUrl(QUrl('https://tilauscope.org'))
 
     def _insert_tilau_top_menu(self, menu_bar: QMenuBar, ui_mode: 'UI_MODE') -> None:
-        """Insert TilauScope menu between Tools/View (or View/Help in PRODUCTION)."""
+        """Insert TilauScope menu just before View — hidden, so it shows before Help."""
         # Rebuild each time set_menu() is called (mode switches)
         self.tilau_top_menu = self._build_tilau_menu(ui_mode)
 

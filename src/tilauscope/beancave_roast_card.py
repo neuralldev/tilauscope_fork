@@ -26,6 +26,7 @@ from PyQt6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter, QPen
 from PyQt6.QtWidgets import QApplication
 
 from tilauscope.beancave_card_base import CardPainter
+from tilauscope.tilauscope_types import CRACK_TICK_ALPHA, profile_crack_times
 
 _logd = logging.getLogger('tilaudebug')
 _W, _H = 1080, 1620
@@ -34,6 +35,8 @@ _TEXT, _MUTED = '#CDD6F4', '#BAC2DE'
 _BLUE, _PEACH = '#89B4FA', '#FAB387'
 _PHASE_COLORS = ('#F9E2AF', _PEACH, '#A6E3A1')
 _LEFT, _RIGHT = 112, 998
+#: One crack tick at the foot of the rate-of-rise graph, scaled to the card's strokes.
+_CRACK_TICK_H, _CRACK_TICK_W = 14, 2.0
 
 
 def _number(value) -> float | None:
@@ -217,6 +220,15 @@ class RoastSocialCard(CardPainter):
             label = _mmss(elapsed)
             width = QFontMetrics(self._font(24)).horizontalAdvance(label)
             self._label(p, int(xx - width / 2), 1064, label, 24, width + 4, _MUTED)
+        # One tick per pop heard, as the roasting window draws it: overlapping
+        # ticks build the density, under the milestones and the curve.
+        tick = QColor(_PEACH)
+        tick.setAlpha(CRACK_TICK_ALPHA)
+        p.setPen(QPen(tick, _CRACK_TICK_W))
+        for t in profile_crack_times(profile):
+            if t0 <= t <= times[end]:
+                xx = X(t)
+                p.drawLine(QPointF(xx, 1038 - _CRACK_TICK_H), QPointF(xx, 1038))
         for key, color in zip(('dry', 'fc', 'drop'), _PHASE_COLORS, strict=True):
             if key not in marks:
                 continue

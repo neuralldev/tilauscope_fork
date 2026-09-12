@@ -1,4 +1,32 @@
+## [4.2.27] 2026-09-12
+build 1
 ## [4.2.26] 2026-09-10
+build 3
+* 🐛 [fix(beancave)] : the low-density bean advice in a roast's advanced statistics is shown in full — in French it stopped at "Grain de faible densité (" and the rest of the sentence was missing
+* 🐛 [fix(scale)] : an Acaia scale that goes to sleep during the roast is picked up again on the result form once it wakes — if the scale had already been connected and released earlier in the session (for example to weigh stock in BeanCave), its link was never restored and the form stayed on "–– g"
+* ⚡ [feat(l10n)] : German, Spanish, Italian, Simplified and Traditional Chinese are complete again — about seventy labels added since the last pass, in BeanCave, the roast review, the alarms and the roasting window, were showing in English inside an otherwise translated interface
+* ⚡ [feat(curve)] : once a roast is stopped or opened from a file, its milestones can be corrected on the roasting window's curve — drag a milestone sideways to move it, right-click where one was forgotten to add it, or right-click a milestone to type its time; neighbours are never passed, the readings never change, and the roast is saved as usual
+* ⚡ [feat(curve)] : a stopped or opened roast without a charge mark is now drawn from the start of its recording, even when no bean temperature was recorded, so its charge can be placed on it
+* 🐛 [fix(curve)] : in Fahrenheit, the milestone labels on the curve now show their temperature in °F — they showed the Celsius figure beside a Fahrenheit scale
+* 🐛 [fix(roast setup)] : cancelling Artisan's question about saving the roast on screen now leaves the roast setup open and unapplied — the new setup was written over that roast and the bean stock was decreased anyway
+* 🐛 [fix(roast setup)] : the preheat temperature sent to the PID now matches the weight and roast level just entered, even when OK is pressed right after changing them
+* 🐛 [fix(post-roast)] : a roast charged on its very first sample now shows its charge temperature and total time on the result form and in the AI Summary
+* 🐛 [fix(post-roast)] : on a profile kept in kilograms, pounds or ounces, the result form now shows and saves the roasted and defect weights in grams as labelled, and its weight loss and roast label use matching figures
+* 🐛 [fix(post-roast)] : a failed or cancelled save of the result form no longer leaves its values in the roast, and trying again no longer adds the notes twice
+* 🐛 [fix(beancave)] : the roast Data view now shows every event and milestone recorded on the same sample, and the Events filter keeps an event that falls on a milestone
+* 🐛 [fix(post-roast)] : the roast level named under the colour fields now follows the ground colour when one is measured, and the whole-bean colour only otherwise
+* 🐛 [fix(post-roast)] : pressing Escape on the result form now tidies up like Cancel — the scale and colour cards close, the scale is released from the form and a running AI Summary stops
+* 🐛 [fix(post-roast)] : the defect percentage on the result form now follows changes to the roasted weight, and is shown as soon as a roast with recorded defects is opened
+build 2
+* 🐛 [fix(beancave)] : the Roast Viewer no longer opens on an empty roast list and a blank curve — on a slow first opening its roast list could be thrown away as outdated and never shown, and the same mix-up could close the application
+* ⚡ [feat(post-roast)] : the post-roast form has two new marks under the notes, Tipping and Scorching, for burns seen on the beans — they are saved with the roast, come back when it is reopened, and are included in the AI Summary
+* 🐛 [fix(roast review)] : the roast review now fills the left of the roasting window when the application starts on the last roast it had open — it only appeared for a roast opened or stopped while the window was already up
+* ⚡ [feat(beancave)] : the crack probe's pops now appear as one tick per pop along the foot of the Roast Viewer curve, its PNG snapshot and the rate-of-rise graph of the roast card, as in the roasting window
+* ⚡ [feat(publish)] : the public repository can be rebuilt from a saved kit — settings, secrets checklist and releases with their installers, so updates keep reaching installed copies
+* 🐛 [fix(publish)] : the public source repository now carries only the application, its packaging and the user documentation — development files no longer reach it
+* 🐛 [fix(beancave)] : the roast Data view now follows the roast list — selecting another roast while it is open shows that roast, keeping the filter and the selected milestone, instead of leaving the first roast on screen; it also always opens on the roast shown in the viewer, never on the reference roast picked in Roast Plan
+* ⚡ [feat(interface)] : Artisan's View menu and its Sampling, Curves, Phases, Axes, Autosave and Batch entries are no longer offered; sampling is fixed at one second without Keep ON or viewer hand-off, Artisan's graph shows bean temperature, its projection and its rate of rise, and settings files loaded later are brought back to these values
+* 🐛 [fix(interface)] : the ☰ menu no longer shows Artisan submenus hidden from the menu bar, such as Themes and the interface mode
 build 1
 * ⚡ [feat(roast card)] : social exports are now sharp portrait PNGs with separate temperature and rate-of-rise graphs, readable milestones and phase durations
 * ⚡ [feat(label_printer)] : several copies of a roast label now print as one run — the label is sent to the Niimbot once and the printer repeats it, so three copies take about seven seconds instead of over sixteen

@@ -292,8 +292,8 @@ reading stop preheating and show a message; press START again only after checkin
 and its connection. A probe that alternates between good and bad readings never settles into
 either state, so preheating also stops if the burner has been held at zero for twenty seconds
 without the reading recovering — rather than staying at zero, silently, for the whole
-preheat. All of these delays follow the sampling interval set in the device settings, so a
-slow sampling rate does not by itself trigger them. An interrupted or sensor-degraded preheat
+preheat. All of these delays are counted on the sampling interval, which TilauScope fixes at one
+reading per second. An interrupted or sensor-degraded preheat
 is never used to recalibrate the controller.
 
 In **Simulator**, replay can run faster than real time. TilauPID therefore does not apply its
@@ -415,6 +415,10 @@ capture at 5.16 above. -->
 
 Confirming the sheet closes it with a **Start a new roast** message naming the coffee, and
 the guided assistant opens and docks itself, ready for the roast.
+
+If the roast still on screen has not been saved, Artisan first asks whether to save it.
+Cancelling that question leaves the sheet open with everything entered, and nothing is applied:
+the roast on screen stays as it was, and no stock is taken out of the bag.
 
 ![guiding assistant](assets/preparing-a-roast-5.16.png)
 

@@ -24,7 +24,7 @@ monitoring, recording, and timer controls together; the second row holds less fr
 
 | Control | What it does |
 |---|---|
-| **☰** | The main menu. |
+| **☰** | The main menu. Artisan's View menu and the settings TilauScope keeps fixed are left out — see [Configuration](configuration.md#artisan-settings-tilauscope-keeps-fixed). |
 | **Power** | Turns monitoring on and off. |
 | **START / STOP** | Starts and stops recording. |
 | **RESET** | Clears the current roast. It stays on the secondary row. |
@@ -293,7 +293,8 @@ ROLLING and the tick band along the foot of the plot, at the Expert level. -->
 
 **Right-click anywhere on the curve** to open its options. Display choices are remembered for
 future sessions, so the curve returns with the same traces and lever layout the next time you
-open TilauScope.
+open TilauScope. On a roast that is no longer running, the same menu starts with milestone
+corrections — see [Correcting a milestone](#correcting-a-milestone).
 
 | Option | What it adds |
 |---|---|
@@ -322,6 +323,68 @@ the clock with a modifier key held.
 <!-- CAPTURE 2.8d — the right-click menu open over the curve. CAPTURE 2.8e — a roast mid-Maillard
 showing the lever strips beneath the curve, in one-lane-per-channel mode, with at least two
 gestures already played on the burner. -->
+
+### Correcting a milestone
+
+A milestone marked a little late in the moment, or forgotten altogether, can be put right on the
+curve itself — once nothing is running any more: monitoring and recording both off, on a roast
+you have just stopped or one opened from a file. It works the same at the Guided and the Expert
+level, and only on the roast itself: the background curve and the lever strips are never
+changed. The [turning point](glossary.md#tp--turning-point) is always calculated, so it cannot be
+moved or added by hand, and a milestone cannot be removed from here.
+
+**Moving one.** Hover over a milestone's label, or over its dot on the bean curve: it is
+outlined, the pointer changes, and a hint says it can be dragged. Drag it sideways. A provisional
+mark follows the nearest recorded instant, with the milestone's name, the proposed time and the
+bean temperature at that moment — a dash when none was measured — while the original mark stays
+faintly in place. It keeps its distance from the pointer: taking a label by its middle does not
+make the milestone jump under the pointer. Moving up or
+down changes nothing — a correction changes when something happened, never what was measured.
+Release over the chart to apply it. Pressing Escape, releasing outside the chart or switching to
+another window cancels it.
+
+A milestone never passes its neighbours: dragged beyond one, the mark stops on the last reading
+before it and says **Limit:** with that neighbour's name. The neighbours themselves are never
+moved.
+
+**Adding one.** Right-click the curve at the moment it happened — there is no need to aim at the
+bean line. The menu opens with **Add a milestone at** and that time, followed by the milestones
+that can go there, in roast order, and a dashed line marks the moment while the menu is open.
+Choosing one adds it at once. Only milestones not yet on the roast are offered, and only those
+whose place in the roast falls at that moment: with a charge and a first crack but no dry end,
+right-clicking between the two offers **DRY END** and nothing else; between the first crack and
+the drop, with no crack end marked, it offers **FC END**, **SECOND CRACK** and **SC END**. The
+order is a placing rule, not a list of steps to fill in — a roast does not need a second crack.
+Where nothing fits, the menu says **No milestone to add here**. The lever strips, the margins and
+the legend offer no additions, and a click beyond either end of the recording is not moved onto
+it.
+
+**Typing a time.** Right-clicking a milestone's label or dot offers **Change the time of …**
+instead. A small window shows the current time, the range allowed and a field in minutes and
+seconds, counted from the charge — or from the start of the recording when there is no charge; a
+minus sign places the charge earlier. The time actually kept, the nearest recorded instant, is shown
+before anything is applied, and a time outside the range cannot be applied. Enter applies,
+Escape cancels.
+
+**What follows a correction.** Moving the charge moves the start of the roast clock: the charge
+reads 0:00 again, and every other time, the turning point, the rate of rise, the phases and the
+[roast review](after-the-roast.md#the-roast-review) are recalculated. The recorded readings never
+change. The roast is marked as modified, like any other change: the correction is written to the
+file when you save it, and reopening the roast shows it. Nothing is sent to the machine, no alarm
+fires, the assistant does not start, the batch number does not change and nothing is uploaded — a
+correction fixes a record, it does not replay a roast.
+
+A roast opened without any charge mark is drawn from the start of its recording — even when no
+bean temperature was recorded — so that its charge can be placed on it; the phases and the rate
+of rise appear once it has one. When the milestones already
+on a roast are out of order, the curve offers no correction and asks for them to be fixed in
+Roast Properties first.
+
+<!-- CAPTURE 2.8h — a stopped roast with DRY END being dragged: the provisional mark with its
+name, time and temperature, the original mark faded, and a "Limit: FIRST CRACK" line under it.
+CAPTURE 2.8i — the right-click menu between CHARGE and FIRST CRACK on a roast without a dry end:
+"Add a milestone at …" above DRY END, the display options below. -->
+
 
 ---
 

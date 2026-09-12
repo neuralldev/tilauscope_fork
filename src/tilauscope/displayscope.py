@@ -858,6 +858,9 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
         # the application menu bar left intact). Recurses to preserve nested submenus.
         def clone_into(dst: QMenu, src: QMenu) -> None:
             for sub_action in src.actions():
+                # A branch rebuilt here would not inherit the menu bar's hiding.
+                if not sub_action.isVisible():
+                    continue
                 child = sub_action.menu()
                 if child is not None:
                     branch = dst.addMenu(sub_action.text())
@@ -895,7 +898,7 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
         self.root_menu.setStyleSheet(MENU_STYLE)
         for action in artisan_menubar.actions():
             menu_artisan = action.menu()
-            if menu_artisan:
+            if menu_artisan and action.isVisible():
                 top = self.root_menu.addMenu(action.text())
                 top.setStyleSheet(MENU_STYLE)
                 if not action.icon().isNull():

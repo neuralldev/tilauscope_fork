@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from matplotlib.axes import Axes
 import numpy
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
     pass  # pylint: disable=unused-import
@@ -26,6 +26,7 @@ from pathlib import Path
 #import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.ticker import MultipleLocator
+from matplotlib.transforms import ScaledTranslation
 
 
 
@@ -37,11 +38,16 @@ from PyQt6.QtWidgets import (QApplication, QMessageBox, QMenu) # @UnusedImport @
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
-from tilauscope.tilauscope_types import (show_styled_message,
-                                         THEME, RoastingPhase, marked, normalize_timeindex)
+from tilauscope.tilauscope_types import (show_styled_message, CRACK_TICK_ALPHA,
+                                         THEME, RoastingPhase, marked, normalize_timeindex,
+                                         profile_crack_times)
 from tilauscope.cave.common import (
     _log, _PLOT_PALETTE, _FS_TITLE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_HOVER, _FS_LEGEND,
     _atomic_write_text)
+
+#: Height of one crack tick, in points — the band stays a thin strip whatever
+#: the size of the window or of the saved snapshot.
+_CRACK_BAND_PT: Final[float] = 7.0
 
 
 class ViewerPlotMixin:
@@ -208,6 +214,7 @@ class ViewerPlotMixin:
             y_labels = [f"{i}" for i in y_ticks]
             ax1.set_yticks(y_ticks)
             ax1.set_yticklabels(y_labels)
+            self._draw_crack_band(ax1, data, timex[charge], x_min_val, x_max_val)
 
             bbox_style_dark = dict(
                 boxstyle="round,pad=0.3",
@@ -397,6 +404,23 @@ class ViewerPlotMixin:
             self.canvas.draw()
 
             self.roast_info_text.setText(QApplication.translate("tilauscope_beancave","Error generating plot: ")+f"{e}")
+
+    def _draw_crack_band(self, ax: Axes, data: ProfileData, t_charge: float,
+                         x_lo: float, x_hi: float) -> None:
+        """One tick per pop heard, along the foot of the plot — the band the
+        roasting window draws, so the shape of the crack stays on the curve.
+
+        Overlapping ticks build the density on their own. Above the grid and
+        under every curve: a ground the roast is read against.
+        """
+        pops = [x for t in profile_crack_times(data)
+                if x_lo <= (x := (t - t_charge) / 60.0) <= x_hi]
+        if not pops:
+            return
+        lift = ScaledTranslation(0, (_CRACK_BAND_PT / 2 + 1.5) / 72, self.fig.dpi_scale_trans)
+        ax.scatter(pops, [0.0] * len(pops), marker='|', s=_CRACK_BAND_PT ** 2, linewidths=1.0,
+                   color=THEME['WARNING'], alpha=CRACK_TICK_ALPHA / 255, zorder=1.8,
+                   transform=ax.get_xaxis_transform() + lift)
 
     def resizeEvent(self, event: QResizeEvent) -> None: # type: ignore
         if event is None: # type: ignore

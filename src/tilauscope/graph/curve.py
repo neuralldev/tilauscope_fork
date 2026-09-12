@@ -27,19 +27,23 @@ from __future__ import annotations
 
 import bisect
 import math
+from dataclasses import dataclass
 from typing import Any, Final
 
-from PyQt6.QtCore import QPointF, QSettings, QRectF, Qt
+from PyQt6.QtCore import QEvent, QPointF, QSettings, QRectF, Qt
 from PyQt6.QtGui import QAction, QColor, QFont, QFontMetricsF, QPainter, QPen, QPixmap, QPolygonF
-from PyQt6.QtWidgets import QApplication, QHBoxLayout, QMenu, QPushButton, QToolButton, QWidget
+from PyQt6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QMenu, QPushButton, QToolButton,
+                             QToolTip, QWidget, QWidgetAction)
 
 from artisanlib.util import convertRoRstrict, convertTemp, findTPint
+from tilauscope.graph import milestone_edit as edit
 from tilauscope.graph import smoothing as smooth
 from tilauscope.graph.annotation import AnnotationLayer
 from tilauscope.graph.crackbar import CrackBar
 from tilauscope.graph.common import (
     COLOR_AIR as _COLOR_AIR,
     COLOR_GRAIN as _COLOR_GRAIN,
+    DASH,
     ROR_MIN as _ROR_MIN,
     channel_order,
     fmt_clock,
@@ -54,7 +58,8 @@ from tilauscope.graph.common import (
 )
 from tilauscope.graph.preheat import reading as preheat_reading
 from tilauscope.theme_qss import tooltip_qss
-from tilauscope.tilauscope_types import THEME, operator_level, resolve_crack_channel
+from tilauscope.tilauscope_types import (CRACK_TICK_ALPHA, THEME, crack_pop_times,
+                                         operator_level, resolve_crack_channel)
 
 # ── fixed axis extents — never autoscaled, never recomputed from data ──────
 _TIME_MAX: Final[float] = 840.0   # 14:00 in seconds — the FULL-SCALE window
@@ -109,10 +114,8 @@ _AXIS_FONT_PT: Final[int] = 11
 _TITLE_FONT_PT: Final[int] = 12
 #: Room the coach toggle takes in the top margin, so the title clears it.
 _TOGGLE_CLEARANCE: Final[float] = 36.0
-#: The crack band: a thin strip at the foot of the plot, and how dark one
-#: pop is drawn — light enough that density has somewhere to build.
+#: The crack band: a thin strip at the foot of the plot.
 _CRACK_BAND_HEIGHT: Final[float] = 9.0
-_CRACK_TICK_ALPHA: Final[int] = 90
 _MARK_FONT_PT: Final[int] = 11     # a milestone is read across the room, not squinted at
 
 # Phase grounds. Blue then yellow then red: peach and red sat one step apart on
@@ -125,6 +128,10 @@ _MARK_LABEL_ROWS: Final[int] = 3      # stagger depth before labels are allowed 
 _MARK_ROW_HEIGHT: Final[float] = 23.0
 _MARK_CHIP_PAD: Final[float] = 7.0
 _MARK_DOT_RADIUS: Final[float] = 4.0
+#: How far from a milestone dot a press still takes hold of it, in logical pixels.
+_GRIP_RADIUS: Final[float] = 8.0
+#: Room before the first sample of a profile drawn without a CHARGE.
+_UNCHARGED_LEAD: Final[float] = 15.0
 
 # The settings lanes: what was played on the machine, on the same time axis as
 # the roast above. Their whole point is reading a change against the curve it
@@ -389,6 +396,16 @@ def _readings(temp2: list[Any], wanted: int = 2) -> bool:
     return False
 
 
+def _uncharged(samples: int, timeindex: Any, monitoring: bool, recording: bool) -> bool:
+    """An idle profile with a time axis but no CHARGE, drawn from its first sample.
+
+    Decided on the samples alone: a milestone is dated on a sample, and a bean
+    probe that read nothing must not hide the profile it would be placed on.
+    """
+    return (not monitoring and not recording and samples > 1
+            and not marked(timeindex, 0))
+
+
 def _sample_ror_c(raw: Any, mode: str) -> float | None:
     """Convert one raw qmc.delta1/delta2 sample to °C/min, or None.
 
@@ -428,6 +445,24 @@ def readout_parts(t: float, temp_c: float | None, air_c: float | None,
     return parts
 
 
+@dataclass
+class _Drag:
+    """A milestone being dragged: the profile it was taken from, and where it would land."""
+
+    milestone: int
+    profile: edit.Profile
+    origin: float
+    #: Pixels from the milestone's rule to the point taken: a label sits beside its rule.
+    grab_dx: float = 0.0
+    proposal: edit.Proposal | None = None
+
+
+def _disorder_text() -> str:
+    """Why an idle profile offers no milestone correction on the curve."""
+    return QApplication.translate(
+        'tilauscope', 'Milestones out of order — correct them in Roast Properties first')
+
+
 class RoastCurveWidget(QWidget):
     """Fixed-axis strip chart: grain temperature plus rate-of-rise.
 
@@ -443,6 +478,21 @@ class RoastCurveWidget(QWidget):
     def __init__(self, aw: Any, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._aw = aw
+        # Milestone correction on an idle profile — see `graph.milestone_edit`.
+        # Set before anything else: the event overrides below read it, and Qt
+        # already sends change events while this constructor runs.
+        #: (milestone, chip, dot) as last painted, in paint order.
+        self._handles: list[tuple[int, QRectF, QPointF | None]] = []
+        #: Raw seconds the drawn idle foreground is measured from; None otherwise.
+        self._fg_origin: float | None = None
+        self._hover_mark: int | None = None
+        self._press: tuple[QPointF, int] | None = None
+        self._drag: _Drag | None = None
+        #: Charge-relative instant a right-click is offering to add a milestone at.
+        self._menu_t: float | None = None
+        self._frozen_window: tuple[float, float] | None = None
+        #: The milestone whose grip the pointer last entered, correctable or not.
+        self._hover_target: int | None = None
         # Created first: it owns child widgets, and the layout runs during
         # construction — a card that does not exist yet cannot be placed.
         self.annotations = AnnotationLayer(self, aw)
@@ -904,6 +954,8 @@ class RoastCurveWidget(QWidget):
     def tick(self) -> None:
         """Signal-driven refresh hook. Two O(1) reads and a repaint request —
         see class docstring. No curve data is touched here."""
+        if self._drag is not None and not edit.still_current(self._aw, self._drag.profile):
+            self._end_drag()
         self._reconcile_view()
         # Read here, not in the paint: the paint runs on Qt's schedule and must
         # not go asking the controller anything.
@@ -962,7 +1014,11 @@ class RoastCurveWidget(QWidget):
         except (AttributeError, IndexError, TypeError, ValueError):
             foreground = False
             readable = False
-        if not foreground and not getattr(qmc, 'flagstart', False):
+        # A stopped profile drawn without its CHARGE keeps its own frame.
+        uncharged = not foreground and _uncharged(
+            len(getattr(qmc, 'timex', ())), getattr(qmc, 'timeindex', ()),
+            bool(getattr(qmc, 'flagon', False)), bool(getattr(qmc, 'flagstart', False)))
+        if not foreground and not uncharged and not getattr(qmc, 'flagstart', False):
             try:
                 background_charge = int(qmc.timeindexB[0])
                 background_drop = int(qmc.timeindexB[6])
@@ -1111,6 +1167,14 @@ class RoastCurveWidget(QWidget):
         self._temp_step = step_n / scale
         self._temp_lo = convertTemp(lo_n, mode, 'C')
         self._temp_hi = convertTemp(hi_n, mode, 'C')
+
+    def _set_uncharged_axes(self, timex: list[Any], mode: str) -> None:
+        """The roast scales over a whole recording, measured from its first sample."""
+        elapsed = float(timex[-1]) - float(timex[0])
+        self._t_min = -_UNCHARGED_LEAD
+        self._t_max = max(_TIME_MAX, math.ceil(elapsed / _TIME_STEP) * _TIME_STEP)
+        self._temp_lo, self._temp_hi, self._temp_step = _temp_axis_c(mode)
+        self._time_step = _TIME_STEP if self._t_max <= _TIME_MAX else _TIME_STEP * 2
 
     def _draw_preheat(self, painter: QPainter, timex: list[Any], temp2: list[Any],
                       mode: str, preheat: Any | None) -> None:
@@ -1759,14 +1823,7 @@ class RoastCurveWidget(QWidget):
                              color)
 
     def _crack_times(self, timex: list[Any]) -> list[float]:
-        """When each pop was heard, in charge-relative seconds.
-
-        Read off the recorded counter rather than accumulated live, so a roast
-        reopened from a file draws exactly what the roast that ran drew. The
-        probe writes -1 on any tick it does not answer — most of them — and a
-        saved profile carries the series interpolated to floats, so only the
-        integer part is the count: 0.0, 0.33, 0.67, 1.0 is one pop, not three.
-        """
+        """When each pop was heard, in charge-relative seconds (see `crack_pop_times`)."""
         qmc = getattr(self._aw, 'qmc', None)
         if qmc is None:
             return []
@@ -1792,15 +1849,7 @@ class RoastCurveWidget(QWidget):
         key = (idx, ch, len(series), len(timex))
         if key == self._crack_key:
             return self._crack_cache
-        times: list[float] = []
-        previous: int | None = None
-        for i, value in enumerate(series):
-            if value is None or value < 0 or i >= len(timex):
-                continue
-            count = int(value)
-            if previous is not None and count > previous:
-                times.extend([float(timex[i])] * min(count - previous, 16))
-            previous = count
+        times = crack_pop_times(series, timex)
         self._crack_key = key
         self._crack_cache = times
         return times
@@ -1819,7 +1868,7 @@ class RoastCurveWidget(QWidget):
         r = self._plot_rect
         top = r.bottom() - _CRACK_BAND_HEIGHT - 2.0
         colour = QColor(THEME['WARNING'])
-        colour.setAlpha(_CRACK_TICK_ALPHA)
+        colour.setAlpha(CRACK_TICK_ALPHA)
         pen = QPen(colour)
         pen.setWidthF(1.0)
         painter.setPen(pen)
@@ -1854,17 +1903,21 @@ class RoastCurveWidget(QWidget):
                          QApplication.translate('tilauscope', 'FC planned'))
 
     def _draw_milestones(self, painter: QPainter, timex: list[Any], temp2: list[Any],
-                         mode: str, timeindex: list[Any], tp_index: int) -> None:
+                         mode: str, timeindex: list[Any], tp_index: int,
+                         *, editable: bool = False) -> None:
         """Vertical rules plus a chip naming each milestone and its bean reading.
 
         The turning point is drawn dotted rather than dashed: it is computed
         from the readings, not marked, and the difference should be visible.
+        With `editable`, the chips and dots as painted become the grips a
+        milestone correction takes hold of.
         """
         if not timex:
             return
         r = self._plot_rect
 
-        marks: list[tuple[float, str, float | None, bool]] = []
+        # (t, label, bean °C, milestone) — the turning point carries -1.
+        marks: list[tuple[float, str, float | None, int]] = []
         for i in range(8):
             if not marked(timeindex, i):
                 continue
@@ -1875,14 +1928,14 @@ class RoastCurveWidget(QWidget):
             if not self._t_min <= t <= self._t_max:
                 continue
             raw = temp2[idx] if idx < len(temp2) else None
-            marks.append((t, _milestone_label(i), _sample_temp_c(raw, mode), False))
+            marks.append((t, _milestone_label(i), _sample_temp_c(raw, mode), i))
 
         if 0 < tp_index < len(timex):
             t = float(timex[tp_index])
             if self._t_min <= t <= self._t_max:
                 raw = temp2[tp_index] if tp_index < len(temp2) else None
                 marks.append((t, QApplication.translate('tilauscope', 'TP'),
-                              _sample_temp_c(raw, mode), True))
+                              _sample_temp_c(raw, mode), -1))
 
         if not marks:
             return
@@ -1897,24 +1950,37 @@ class RoastCurveWidget(QWidget):
         tp_rule.setWidthF(1.4)
         tp_rule.setStyle(Qt.PenStyle.DotLine)
         full = self._full_rect()
-        for t, _label, _temp, is_tp in marks:
-            painter.setPen(tp_rule if is_tp else rule)
+        # A dragged milestone stays faintly where it was.
+        dragged = self._drag.milestone if self._drag is not None else None
+        accent = QColor(THEME['ACCENT'])
+        for t, _label, _temp, milestone in marks:
+            painter.setPen(tp_rule if milestone < 0 else rule)
+            painter.setOpacity(0.35 if milestone == dragged else 1.0)
             x = self._x(t)
             painter.drawLine(QPointF(x, full.top()), QPointF(x, full.bottom()))
+        painter.setOpacity(1.0)
 
         # The chip names the milestone, the dot says where it happened. Without
         # it the eye has to guess which point of the curve the label belongs to.
-        for t, _label, temp_c, is_tp in marks:
+        dots: dict[int, QPointF] = {}
+        for t, _label, temp_c, milestone in marks:
             # Same rule as the curve: a milestone off the axis gets no dot,
             # rather than one parked on the edge away from its own reading.
             if temp_c is None or not self._temp_lo <= temp_c <= self._temp_hi:
                 continue
             centre = QPointF(self._x(t), self._y_temp(temp_c))
+            dots[milestone] = centre
+            painter.setOpacity(0.35 if milestone == dragged else 1.0)
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QColor(THEME['BG']))
             painter.drawEllipse(centre, _MARK_DOT_RADIUS + 2.0, _MARK_DOT_RADIUS + 2.0)
-            painter.setBrush(QColor(THEME['SUBTEXT'] if is_tp else self._grain_colour()))
+            if milestone >= 0 and milestone == self._hover_mark:
+                ring = QPen(accent)
+                ring.setWidthF(2.0)
+                painter.setPen(ring)
+            painter.setBrush(QColor(THEME['SUBTEXT'] if milestone < 0 else self._grain_colour()))
             painter.drawEllipse(centre, _MARK_DOT_RADIUS, _MARK_DOT_RADIUS)
+        painter.setOpacity(1.0)
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
         font = QFont()
@@ -1927,13 +1993,15 @@ class RoastCurveWidget(QWidget):
         # readable without moving either away from the instant it marks.
         row_right = [r.left() - 1.0] * _MARK_LABEL_ROWS
 
-        for t, label, temp_c, is_tp in marks:
+        chips: list[tuple[int, QRectF]] = []
+        for t, label, temp_c, milestone in marks:
+            is_tp = milestone < 0
             # On a dark roast FC END, SECOND CRACK and SC END fall within a
             # minute of each other and eight chips do not fit three rows. So a
             # crowded chip gives up its reading and keeps its name: a milestone
             # nobody can name is worth less than one without its temperature.
             candidates = [label] if temp_c is None else [
-                f'{label}  {int(round(temp_c))}°', label]
+                f'{label}  {int(round(convertTemp(temp_c, "C", mode)))}°', label]
             placed: tuple[str, float, float, int] | None = None
             for text in candidates:
                 width = metrics.horizontalAdvance(text) + 2 * _MARK_CHIP_PAD
@@ -1962,12 +2030,23 @@ class RoastCurveWidget(QWidget):
             row_right[row] = max(row_right[row], x + width)
             top = r.top() + 4.0 + row * _MARK_ROW_HEIGHT
             chip = QRectF(x, top, width, _MARK_ROW_HEIGHT - 4.0)
-            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setOpacity(0.35 if milestone == dragged else 1.0)
+            if not is_tp and milestone == self._hover_mark:
+                outline = QPen(accent)
+                outline.setWidthF(1.5)
+                painter.setPen(outline)
+            else:
+                painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QColor(THEME['CRUST'] if is_tp else THEME['BORDER']))
             painter.drawRoundedRect(chip, 3.0, 3.0)
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(QPen(QColor(THEME['OVERLAY2'] if is_tp else THEME['SUBTEXT1'])))
             painter.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), text)
+            if not is_tp:
+                chips.append((milestone, chip))
+        painter.setOpacity(1.0)
+        if editable:
+            self._handles = [(milestone, chip, dots.get(milestone)) for milestone, chip in chips]
 
     # ── settings lanes: what was played on the machine ──────────────────
     def _channel_points(self, timex: list[Any], events: list[Any], types: list[Any],
@@ -2198,17 +2277,20 @@ class RoastCurveWidget(QWidget):
                              label)
             x += 15.0 + width + 13.0
 
-    def _draw_curve_legend(self, painter: QPainter, *, phases: bool = True) -> None:
-        """The trace legend, with phase grounds only when they were painted."""
+    def _draw_curve_legend(self, painter: QPainter, *, phases: bool = True,
+                           rise: bool = True) -> None:
+        """The trace legend, with phase grounds and rates only when they were painted."""
         painter.setClipping(False)
         legend: list[tuple[str, str, str]] = [
             (self._grain_colour(), QApplication.translate('tilauscope', 'Bean'), 'line'),
-            (self._rise_colour(), QApplication.translate('tilauscope', 'Rise'), 'line'),
         ]
+        if rise:
+            legend.append((self._rise_colour(),
+                           QApplication.translate('tilauscope', 'Rise'), 'line'))
         if self.show_air_temperature:
             legend.insert(1, (self._air_colour(),
                               QApplication.translate('tilauscope', 'Air'), 'line'))
-        if self.show_machine_response:
+        if rise and self.show_machine_response:
             legend.append((self._machine_rise_colour(),
                            QApplication.translate('tilauscope', 'Machine response'), 'dash'))
         if phases:
@@ -2231,6 +2313,12 @@ class RoastCurveWidget(QWidget):
 
     def mouseMoveEvent(self, event: Any) -> None:  # noqa: N802 (Qt override)
         pos = event.position()
+        try:
+            if self._follow_correction(event):
+                return
+        except Exception:
+            report_once('RoastCurveWidget: milestone drag')
+            self._end_drag()
         # The whole chart, not just the roast plot: the crosshair already spans
         # the lanes, so hovering one has to answer like anywhere else.
         if not self._full_rect().contains(pos):
@@ -2247,10 +2335,274 @@ class RoastCurveWidget(QWidget):
             self.update()
 
     def leaveEvent(self, event: Any) -> None:  # noqa: N802 (Qt override)
+        if self._drag is None:
+            self._hover_target = None
+            if self._hover_mark is not None:
+                self._hover_mark = None
+                self.unsetCursor()
+                self.update()
         if self._hover_t is not None:
             self._hover_t = None
             self.update()
         super().leaveEvent(event)
+
+    # ── milestone correction on an idle profile ─────────────────────────
+    def _handle_at(self, pos: QPointF) -> int | None:
+        """The milestone whose painted chip or dot is under `pos`.
+
+        The chip painted last sits on top and wins; failing a chip, the nearest
+        dot within reach. A rule alone is no grip: it crosses the lanes too.
+        """
+        for milestone, chip, _dot in reversed(self._handles):
+            if chip.contains(pos):
+                return milestone
+        found: int | None = None
+        reach = _GRIP_RADIUS
+        for milestone, _chip, dot in self._handles:
+            if dot is None:
+                continue
+            distance = math.hypot(dot.x() - pos.x(), dot.y() - pos.y())
+            if distance <= reach and (found is None or distance < reach):
+                found, reach = milestone, distance
+        return found
+
+    def _correction_profile(self) -> tuple[edit.Profile | None, bool]:
+        """The idle foreground on screen, read in full, and whether its milestones may be corrected.
+
+        Read afresh at the start of every gesture and never cached: Artisan
+        rewrites its time list in place, so neither the list's identity nor its
+        length says the instants are still the ones read before.
+        """
+        qmc = getattr(self._aw, 'qmc', None)
+        if qmc is None or self._fg_origin is None or not edit.idle(qmc):
+            return None, False
+        profile = edit.read_profile(self._aw)
+        return profile, profile is not None and edit.usable(profile)
+
+    def _follow_correction(self, event: Any) -> bool:
+        """Drive a milestone press or drag from the pointer; True while a drag owns it."""
+        pos = event.position()
+        if self._drag is None and self._press is not None:
+            start, _milestone = self._press
+            if not event.buttons() & Qt.MouseButton.LeftButton:
+                self._press = None
+            elif (pos - start).manhattanLength() >= QApplication.startDragDistance():
+                self._begin_drag()
+        if self._drag is not None:
+            self._drag_to(pos)
+            return True
+        self._hover_handle(pos)
+        return False
+
+    def _hover_handle(self, pos: QPointF) -> None:
+        """Highlight the milestone under the pointer and say what dragging it does."""
+        milestone = self._handle_at(pos) if self._handles else None
+        if milestone == self._hover_target:
+            return      # read once per grip entered, never once per pixel
+        self._hover_target = milestone
+        profile, usable = (self._correction_profile() if milestone is not None
+                           else (None, False))
+        tip = ''
+        if milestone is not None and profile is not None:
+            tip = (QApplication.translate(
+                'tilauscope', 'Drag sideways to move {0}. Right-click it to type its time.').format(
+                    _milestone_label(milestone)) if usable else _disorder_text())
+        if self.toolTip() != tip:
+            self.setToolTip(tip)
+        grip = milestone if usable else None
+        if grip != self._hover_mark:
+            self._hover_mark = grip
+            if grip is None:
+                self.unsetCursor()
+            else:
+                self.setCursor(Qt.CursorShape.SizeHorCursor)
+            self.update()
+
+    def _begin_drag(self) -> None:
+        if self._press is None:
+            return
+        start, milestone = self._press
+        self._press = None
+        profile, usable = self._correction_profile()
+        if profile is None or not usable or not marked(profile.timeindex, milestone):
+            return
+        origin = edit.origin(profile)
+        rule_x = self._x(profile.timex[profile.timeindex[milestone]] - origin)
+        self._drag = _Drag(milestone, profile, origin, start.x() - rule_x)
+        self._frozen_window = (self._t_min, self._t_max)
+        self._hover_t = None
+        QToolTip.hideText()
+        self.setCursor(Qt.CursorShape.SizeHorCursor)
+        if self.isVisible():
+            # Escape has to reach the curve, which never takes the focus.
+            self.grabKeyboard()
+
+    def _drag_to(self, pos: QPointF) -> None:
+        drag = self._drag
+        if drag is None:
+            return
+        # The rule keeps its distance from the pointer, so only horizontal travel moves it.
+        proposal = edit.propose_move(drag.profile, drag.milestone,
+                                     self._t_for_x(pos.x() - drag.grab_dx) + drag.origin)
+        if proposal != drag.proposal:
+            drag.proposal = proposal
+            self.update()
+
+    def _end_drag(self) -> _Drag | None:
+        """Finish any press or drag and hand the drag back; the profile is not touched."""
+        self._press = None
+        drag, self._drag = self._drag, None
+        if drag is None:
+            return None
+        self._frozen_window = None
+        self.releaseKeyboard()
+        self._hover_mark = None
+        self._hover_target = None
+        self.unsetCursor()
+        self.update()
+        return drag
+
+    def mousePressEvent(self, event: Any) -> None:  # noqa: N802 (Qt override)
+        try:
+            if event.button() == Qt.MouseButton.LeftButton and self._drag is None:
+                milestone = self._handle_at(event.position()) if self._handles else None
+                if milestone is not None and self._correction_profile()[1]:
+                    self._press = (QPointF(event.position()), milestone)
+                    event.accept()
+                    return
+        except Exception:
+            report_once('RoastCurveWidget: milestone press')
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: Any) -> None:  # noqa: N802 (Qt override)
+        try:
+            if (event.button() == Qt.MouseButton.LeftButton
+                    and (self._drag is not None or self._press is not None)):
+                inside = self._full_rect().contains(event.position())
+                drag = self._end_drag()
+                if drag is not None and inside and drag.proposal is not None:
+                    self._apply_correction(drag.profile, drag.milestone, drag.proposal.index)
+                event.accept()
+                return
+        except Exception:
+            report_once('RoastCurveWidget: milestone release')
+        super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event: Any) -> None:  # noqa: N802 (Qt override)
+        if self._drag is not None and event.key() == Qt.Key.Key_Escape:
+            self._end_drag()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def changeEvent(self, event: Any) -> None:  # noqa: N802 (Qt override)
+        # A drag does not survive its window losing activation.
+        if (getattr(self, '_drag', None) is not None
+                and event.type() == QEvent.Type.ActivationChange
+                and not self.isActiveWindow()):
+            self._end_drag()
+        super().changeEvent(event)
+
+    def hideEvent(self, event: Any) -> None:  # noqa: N802 (Qt override)
+        if getattr(self, '_drag', None) is not None or getattr(self, '_press', None) is not None:
+            self._end_drag()
+        super().hideEvent(event)
+
+    def _apply_correction(self, profile: edit.Profile, milestone: int, index: int) -> None:
+        """Commit one correction, then bring every view of the roast up to date."""
+        try:
+            if edit.commit(self._aw, profile, milestone, index):
+                self._after_correction()
+        except Exception:
+            report_once('RoastCurveWidget: milestone correction')
+        self.update()
+
+    def _after_correction(self) -> None:
+        self._hover_target = None
+        scope = getattr(self._aw, 'tilauscope_main', None)
+        if scope is not None:
+            # A roast that just gained its DROP becomes reviewable; one under review is re-read.
+            if getattr(scope, '_review_shown', False):
+                scope.roast_review.refresh()
+            else:
+                scope.show_roast_review()
+        self._reconcile_view()
+        self.annotations.tick()
+
+    def _type_milestone_time(self, profile: edit.Profile, milestone: int) -> None:
+        try:
+            # The menu may have stayed open while the roast changed under it.
+            if not edit.still_current(self._aw, profile):
+                return
+            dialog = edit.MilestoneTimeDialog(self, profile, milestone,
+                                              _milestone_label(milestone))
+            chosen = dialog.chosen_index() if dialog.exec() else None
+            if chosen is not None:
+                self._apply_correction(profile, milestone, chosen)
+        except Exception:
+            report_once('RoastCurveWidget: milestone time dialog')
+
+    def _draw_correction(self, painter: QPainter, temp2: list[Any], mode: str) -> None:
+        """The instant a correction would write: the right-clicked one, or the dragged milestone."""
+        accent = QColor(THEME['ACCENT'])
+        full = self._full_rect()
+        if self._menu_t is not None and self._t_min <= self._menu_t <= self._t_max:
+            pen = QPen(accent)
+            pen.setWidthF(1.2)
+            pen.setStyle(Qt.PenStyle.DashLine)
+            painter.setPen(pen)
+            x = _crisp(self._x(self._menu_t))
+            painter.drawLine(QPointF(x, full.top()), QPointF(x, full.bottom()))
+        drag = self._drag
+        if drag is None or drag.proposal is None:
+            return
+        index = drag.proposal.index
+        t = drag.profile.timex[index] - drag.origin
+        if not self._t_min <= t <= self._t_max:
+            return
+        r = self._plot_rect
+        x = _crisp(self._x(t))
+        pen = QPen(accent)
+        pen.setWidthF(1.6)
+        painter.setPen(pen)
+        painter.drawLine(QPointF(x, full.top()), QPointF(x, full.bottom()))
+        temp_c = _sample_temp_c(temp2[index] if index < len(temp2) else None, mode)
+        # No reading at that sample: the instant is still datable, but no dot is invented.
+        if temp_c is not None and self._temp_lo <= temp_c <= self._temp_hi:
+            centre = QPointF(x, self._y_temp(temp_c))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(THEME['BG']))
+            painter.drawEllipse(centre, _MARK_DOT_RADIUS + 2.0, _MARK_DOT_RADIUS + 2.0)
+            painter.setBrush(accent)
+            painter.drawEllipse(centre, _MARK_DOT_RADIUS, _MARK_DOT_RADIUS)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+
+        reading = DASH if temp_c is None else f'{int(round(convertTemp(temp_c, "C", mode)))}°'
+        lines = [f'{_milestone_label(drag.milestone)}  {fmt_clock(t)}  {reading}']
+        if drag.proposal.limit is not None:
+            lines.append(QApplication.translate('tilauscope', 'Limit: {0}').format(
+                _milestone_label(drag.proposal.limit)))
+        font = QFont()
+        font.setPointSize(_MARK_FONT_PT)
+        font.setBold(True)
+        painter.setFont(font)
+        metrics = QFontMetricsF(font)
+        line_h = _MARK_ROW_HEIGHT - 6.0
+        width = max(metrics.horizontalAdvance(line) for line in lines) + 2 * _MARK_CHIP_PAD
+        left = x + 6.0 if x + 6.0 + width <= r.right() else x - 6.0 - width
+        # Below the staggered milestone rows, so it never covers a chip.
+        top = r.top() + 4.0 + _MARK_LABEL_ROWS * _MARK_ROW_HEIGHT
+        chip = QRectF(left, top, width, len(lines) * line_h + 4.0)
+        outline = QPen(accent)
+        outline.setWidthF(1.5)
+        painter.setPen(outline)
+        painter.setBrush(QColor(THEME['CRUST']))
+        painter.drawRoundedRect(chip, 3.0, 3.0)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        for n, line in enumerate(lines):
+            painter.setPen(QPen(QColor(THEME['TEXT'] if n == 0 else THEME['YELLOW'])))
+            painter.drawText(QRectF(left, top + 2.0 + n * line_h, width, line_h),
+                             int(Qt.AlignmentFlag.AlignCenter), line)
 
     def _draw_hover(self, painter: QPainter, timex: list[Any], temp2: list[Any],
                     temp1: list[Any], delta2: list[Any], delta1: list[Any], mode: str,
@@ -2407,9 +2759,76 @@ class RoastCurveWidget(QWidget):
         menu.addAction(action)
         return action
 
+    def _add_correction_actions(self, menu: QMenu, pos: QPointF) -> None:
+        """Milestone corrections above the display options, on an idle foreground only.
+
+        On a milestone's chip or dot the menu offers to type its time; elsewhere
+        in the temperature plot it offers the milestones the rules allow at that
+        instant. The lanes and margins add nothing.
+        """
+        if self._drag is not None:
+            return
+        profile, usable = self._correction_profile()
+        if profile is None:
+            return
+        if not usable:
+            if self._plot_rect.contains(pos):
+                note = QAction(_disorder_text(), menu)
+                note.setEnabled(False)
+                menu.addAction(note)
+                menu.addSeparator()
+            return
+        milestone = self._handle_at(pos) if self._handles else None
+        if milestone is not None:
+            span = edit.interval(profile, milestone)
+            if span is not None and span[0] < span[1]:
+                change = QAction(QApplication.translate(
+                    'tilauscope', 'Change the time of {0}…').format(_milestone_label(milestone)), menu)
+                change.triggered.connect(
+                    lambda _checked=False, p=profile, m=milestone: self._type_milestone_time(p, m))
+                menu.addAction(change)
+                menu.addSeparator()
+            return
+        if not self._plot_rect.contains(pos):
+            return
+        start = edit.origin(profile)
+        found = edit.propose_add(profile, self._t_for_x(pos.x()) + start)
+        if found is None:
+            nothing = QAction(QApplication.translate('tilauscope', 'No milestone to add here'), menu)
+            nothing.setEnabled(False)
+            menu.addAction(nothing)
+        else:
+            index, milestones = found
+            self._menu_t = profile.timex[index] - start
+            menu.addAction(self._menu_heading(menu, QApplication.translate(
+                'tilauscope', 'Add a milestone at {0}').format(fmt_clock(self._menu_t))))
+            for candidate in milestones:
+                add = QAction(_milestone_label(candidate), menu)
+                add.triggered.connect(
+                    lambda _checked=False, p=profile, m=candidate, i=index:
+                    self._apply_correction(p, m, i))
+                menu.addAction(add)
+            self.update()
+        menu.addSeparator()
+
+    @staticmethod
+    def _menu_heading(menu: QMenu, text: str) -> QWidgetAction:
+        """A caption row: read, never clicked."""
+        label = QLabel(text)
+        label.setStyleSheet(
+            f"QLabel {{ color: {THEME['SUBTEXT']}; font-weight: 600;"
+            f" padding: 5px 22px 3px 10px; background: transparent; }}")
+        heading = QWidgetAction(menu)
+        heading.setDefaultWidget(label)
+        return heading
+
     def contextMenuEvent(self, event: Any) -> None:  # noqa: N802 (Qt override)
         menu = QMenu(self)
         menu.setStyleSheet(menu_qss())
+        try:
+            self._add_correction_actions(menu, QPointF(event.pos()))
+        except Exception:
+            report_once('RoastCurveWidget: milestone menu')
         air = QAction(QApplication.translate('tilauscope', 'Air temperature'), menu)
         air.setCheckable(True)
         air.setChecked(self.show_air_temperature)
@@ -2470,6 +2889,9 @@ class RoastCurveWidget(QWidget):
         self._add_background_menu_action(menu)
 
         menu.exec(event.globalPos())
+        if self._menu_t is not None:
+            self._menu_t = None
+            self.update()
 
     def _set_smoothing(self, key: str) -> None:
         qmc = getattr(self._aw, 'qmc', None)
@@ -2586,7 +3008,13 @@ class RoastCurveWidget(QWidget):
         # plunge inside the roast window. Before the foreground CHARGE is marked
         # (sentinel -1), only a loaded reference can define a roast frame.
         drawable = 0 <= charge < len(timex)
-        preheat = None if drawable else self._preheat
+        recording = bool(getattr(qmc, 'flagstart', False))
+        # A stopped or opened profile without CHARGE is drawn from its first
+        # sample, so the missing mark can be placed on it.
+        uncharged = not drawable and _uncharged(len(timex), timeindex, monitoring, recording)
+        self._fg_origin = None
+        self._handles = []
+        preheat = None if (drawable or uncharged) else self._preheat
         # The climb up to the charge owns a time frame of its own, and it owns
         # it whether or not a controller is driving it. A drum taken up by hand
         # is the same rise, played with the same levers, and it used to be given
@@ -2602,7 +3030,7 @@ class RoastCurveWidget(QWidget):
         reference = (None if climb_frame else _background_roast(
             qmc, show_air=self.show_air_temperature,
             show_machine=self.show_machine_response))
-        reference_only = not drawable and reference is not None
+        reference_only = not (drawable or uncharged) and reference is not None
         self._rate_axis = drawable or reference_only
         self._climb_frame = climb_frame
         # The unit the axes are labelled in, and the rise scale that goes with
@@ -2619,6 +3047,8 @@ class RoastCurveWidget(QWidget):
                 closeup=self._closeup and not getattr(qmc, 'flagstart', False))
             self._temp_lo, self._temp_hi, self._temp_step = _temp_axis_c(mode)
             self._time_step = _TIME_STEP
+        elif uncharged:
+            self._set_uncharged_axes(timex, mode)
         elif climb_frame:
             self._set_preheat_axes(timex, temp2, mode, preheat)
         elif reference is not None:
@@ -2637,6 +3067,9 @@ class RoastCurveWidget(QWidget):
             self._t_min, self._t_max = -_LEAD_IN, _TIME_MAX
             self._temp_lo, self._temp_hi, self._temp_step = _temp_axis_c(mode)
             self._time_step = _TIME_STEP
+        if self._frozen_window is not None and (drawable or uncharged):
+            # Held for a milestone drag, so its target never slides under the pointer.
+            self._t_min, self._t_max = self._frozen_window
 
         # The frame carries the time labels, so it must be current for this window
         # before it is blitted. _ensure_frame is a no-op unless the window moved.
@@ -2653,7 +3086,7 @@ class RoastCurveWidget(QWidget):
             self._draw_settings(painter, [float(t) - base for t in timex],
                                 events, ev_types, ev_pcts, ev_colors)
             return
-        if not drawable:
+        if not (drawable or uncharged):
             if reference is not None:
                 painter.setClipRect(self._plot_rect)
                 self._draw_reference(painter, *reference)
@@ -2712,7 +3145,7 @@ class RoastCurveWidget(QWidget):
         # it is only a turning point once the bean has been climbing away from it
         # for a few samples, which is what the tail margin below tests.
         tp_index = -1
-        if timeindex:
+        if drawable and timeindex:
             try:
                 found = findTPint(timeindex, timex, temp2)
                 if charge < found < len(timex) - 5:
@@ -2721,12 +3154,17 @@ class RoastCurveWidget(QWidget):
                 tp_index = -1
                 report_once('RoastCurveWidget: turning point search failed')
 
-        t_charge = timex[charge]
+        t_charge = timex[charge] if drawable else timex[0]
+        editable = not monitoring and not recording
+        if editable:
+            self._fg_origin = float(t_charge)
         timex = [t - t_charge for t in timex]
         painter.setClipRect(self._plot_rect)
 
-        # Phases sit under everything: they are a ground, not a mark.
-        self._draw_phase_bands(painter, timex, timeindex)
+        # Phases sit under everything: they are a ground, not a mark. Without a
+        # CHARGE there is no roast to divide into phases, nor a rate to draw.
+        if drawable:
+            self._draw_phase_bands(painter, timex, timeindex)
         self._draw_crack_band(painter, timex)
 
         # The reference lives in the same CHARGE-relative frame as this roast.
@@ -2739,7 +3177,7 @@ class RoastCurveWidget(QWidget):
         # with Artisan's ET rate switched off: tracing the fragment would show a
         # machine response that stops in the middle of the roast for no visible
         # reason. Better to draw none.
-        if self.show_machine_response and len(delta1) >= len(timex) - 2 and delta1:
+        if drawable and self.show_machine_response and len(delta1) >= len(timex) - 2 and delta1:
             pen = QPen(QColor(self._machine_rise_colour()))
             pen.setWidthF(_MACHINE_ROR_PEN_WIDTH)
             pen.setStyle(Qt.PenStyle.DashLine)
@@ -2750,7 +3188,7 @@ class RoastCurveWidget(QWidget):
             for poly in self._build_ror_segments(timex, delta1, mode):
                 painter.drawPolyline(poly)
 
-        if delta2:
+        if drawable and delta2:
             pen = QPen(QColor(self._rise_colour()))
             pen.setWidthF(_ROR_PEN_WIDTH)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
@@ -2789,11 +3227,14 @@ class RoastCurveWidget(QWidget):
         painter.setClipRect(self._full_rect())
         # Before the marked milestones, so the crack that was HEARD keeps the
         # stronger rule and the plan stays the fainter of the two.
-        self._draw_planned_fc(painter)
-        self._draw_milestones(painter, timex, temp2, mode, timeindex, tp_index)
+        if drawable:
+            self._draw_planned_fc(painter)
+        self._draw_milestones(painter, timex, temp2, mode, timeindex, tp_index,
+                              editable=editable)
         self._draw_hover(painter, timex, temp2, temp1, delta2, delta1, mode,
                          events, ev_types, ev_pcts, ev_colors)
+        self._draw_correction(painter, temp2, mode)
 
         # One legend for the whole chart, on its own row under the time axis.
         # Anywhere inside a plot it either covers a trace or gets covered by one.
-        self._draw_curve_legend(painter)
+        self._draw_curve_legend(painter, phases=drawable, rise=drawable)

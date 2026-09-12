@@ -96,3 +96,5 @@ tools/l10n/inbox/
 # Local audit reports (AUDIT_TILAUSCOPE_<date>.md and the like) — working
 # documents, never part of the published fork.
 AUDIT_*.md
+AGENTS.md
+

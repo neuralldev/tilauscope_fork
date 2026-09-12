@@ -607,6 +607,9 @@ class ClientBLE(QObject):
     # connect and re-connect while self._running to BLE
     async def _connect(self, case_sensitive:bool=True, scan_timeout:float=6, connect_timeout:float=6, address:str|None = None) -> None:
         blacklist:set[str] = set()
+        ## TILAU ## one disconnect event per session: asyncio binds an Event to the
+        ## first loop that waits on it, and each start() runs on a new loop.
+        self._disconnected_event = asyncio.Event()
         while self._running:
             # scan and connect
             # NOTE: re-connecting a bleak client by address on reconnect can lead to instabilities thus we re-scan always
