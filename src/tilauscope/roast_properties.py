@@ -28,6 +28,7 @@ from tilauscope.guidance_phase import milestone_marked
 from tilauscope.roast_debrief import roast_colour_agtron
 from tilauscope.theme_qss import base_qss, apply_tilau_theme, tooltip_qss, tint
 from tilauscope.roasters import RoasterManager
+from tilauscope.probe_visibility import et_available_for, et_available_in_profile
 from PyQt6.QtCore    import Qt, QPropertyAnimation, pyqtSlot, QTimer, QSettings, QSize
 from PyQt6.QtCore import QThread, QObject, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -2261,6 +2262,10 @@ class RoastSetupDialog(QDialog):
             seg_wrap.addWidget(_btn)
         self._pid_input_bt_btn.setChecked(True)   # default BT; overridden on load from pidSource
         pid_val_row.addLayout(seg_wrap)
+        # Without an ET probe there is nothing to choose: the PID follows BT.
+        if not et_available_for(self._aw):
+            for _w in (pid_input_lbl, self._pid_input_bt_btn, self._pid_input_et_btn):
+                _w.setVisible(False)
 
         pid_val_row.addStretch()
         pid_c.addLayout(pid_val_row)
@@ -2475,7 +2480,7 @@ class RoastSetupDialog(QDialog):
         self._pid_input_bt_btn.setEnabled(pid_active)
         self._pid_input_et_btn.setEnabled(pid_active)
         try:
-            is_et = (self._aw.pidcontrol.pidSource == 2)
+            is_et = self._aw.pidcontrol.pidSource == 2 and et_available_for(self._aw)
         except Exception:  # pylint: disable=broad-except
             is_et = False
         (self._pid_input_et_btn if is_et else self._pid_input_bt_btn).setChecked(True)
@@ -5162,6 +5167,9 @@ class RoastDataReaderDialog(QDialog):
         self._table.setRowCount(0)
         self._setup_columns()
         self._table.setRowCount(n)
+        has_et = et_available_in_profile(self._p)
+        self._table.setColumnHidden(1, not has_et)   # ET
+        self._table.setColumnHidden(3, not has_et)   # ΔET
         # milestone row -> every (label, colour) marked on that sample
         ms_rows: dict[int, list[tuple[str, str]]] = {}
         for slot, (label, _icon, color) in enumerate(_MILESTONE_SLOTS):

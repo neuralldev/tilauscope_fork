@@ -12,7 +12,8 @@
 Open it from **TilauScope → TilauScope Config...**. Nothing here is required to start
 TilauScope — the [first-time setup wizard](getting-started.md#first-time-setup) already covers
 the essentials — but this is where every one of those choices can be revisited, and where the
-finer settings live that the wizard does not ask about.
+finer settings live that the wizard does not ask about. What reads the roaster and which extra
+devices feed the counters are set in the separate [Devices](devices.md) window.
 
 ![the config dialog with all five tabs visible in the tab strip](assets/configuration-4.1.png)
 
@@ -104,6 +105,7 @@ nothing in progress to watch.
 | **Roaster Link** | Skywalker v2 (TC4-BLE) | Which roaster link to use. |
 | **Color Meter** | Lebrew RoastSee C1 (BLE) | Which colour meter to use. |
 | **Water Quality** | Lebrew AquaGauge (BLE) | Which water probe to use. |
+| **Scale** | Acaia (Bluetooth) | Which scale every weight capture reads. A new choice connects to it when you save. |
 | **Label Printer** | Niimbot B21S (BLE) | Which printer to use. |
 
 Devices detected nearby but not recognised are listed separately, for identification only — see
@@ -324,8 +326,8 @@ Two of them are set by TilauScope:
 - **Curves** — Artisan's own graph shows bean temperature, its
   [projection](glossary.md#projection) and its [rate of rise](glossary.md#ror--rate-of-rise).
   Environmental temperature is still recorded and still available to the PID and to alarms; it is
-  simply not drawn there. The TilauScope roasting curve is not affected: air temperature can still
-  be traced from its right-click menu.
+  simply not drawn there. The TilauScope roasting curve is not affected: on a machine with an air
+  probe, air temperature can still be traced from its right-click menu.
 
 The other four keep the values already in place: phases, axis limits, autosave, and the batch
 counter, which still advances at [DROP](glossary.md#drop).

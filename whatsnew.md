@@ -1,3 +1,17 @@
+# TilauScope 4.3
+
+A smaller release: TilauScope now adapts itself to machines that have no air probe, and translations catch up with the new Devices window.
+
+## 🔌 Devices
+
+* **On a machine with no air probe, such as the Skywalker V1, TilauScope no longer shows exhaust temperature.** Its readout, the air-temperature and machine-response curve options, the phone's ET and ΔT tiles, the roast miniatures, the PID input choice, and any advice that mentioned it are hidden or reworded around bean temperature — and preheating always follows bean temperature on that machine.
+
+## 🌍 Translations
+
+* German, Spanish, Italian, Simplified and Traditional Chinese are **complete again** — the new Devices window's labels were showing in English inside an otherwise translated interface.
+
+---
+
 # TilauScope 4.2
 
 This release turns the roasting window into the application itself — TilauScope now draws your roast with its own curve — and rewrites how the roast plan reasons about heat.
@@ -57,6 +71,13 @@ This release turns the roasting window into the application itself — TilauScop
 
 * **MQTT sensors are managed in Configuration ▸ INTEGRATIONS**, under the broker they belong to, edited in place. Each sensor declares the unit it publishes in, and temperatures are converted on arrival into the unit the session is working in.
 * TilauScope can now **ask a gateway for a reading** instead of waiting for one — a plug reporting once a minute no longer leaves its channel empty for most of the roast. Brokers can be reached over **TLS**, and sensors keep reporting after a connection drops and comes back.
+
+## 🔌 Devices
+
+* **A Devices window covers everyday device setup** without Artisan's full device dialog. Choose what reads the roaster — any Artisan meter, TilauScope's roaster links first, or a TC4 board — and its USB port from the ports found on the computer. Nothing changes until you save.
+* **Extra devices are edited like alarms**: a command bar adds a device, changes the device of the selected card or deletes it, and cards are dragged into order. Each reading has a name and a show-counter switch; a name that drives crack detection says so, and warns before an edit breaks it. Changing a card's device keeps what it recorded, which repairs an old roast whose devices open with the wrong type.
+* **Room conditions from TilauAmbient in one step**: temperature, humidity and pressure are pointed at the probe with a single button.
+* **The Acaia scale pairs from TilauScope Config › Sensors**, found by the same background scan as every other Bluetooth device.
 
 ## ⏰ Alarms and roast files
 

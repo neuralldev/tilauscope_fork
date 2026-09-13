@@ -48,6 +48,7 @@ chapter easier to place:
 | **The roasting window** | Two forms of machine control, colour-graded readouts, phase targets adjustable on the graph, a live column of alarms and Artisan messages. | [The TilauScope window](the-window.md) |
 | **Green coffee** | A database per coffee: stock, provenance, AI-assisted entry from a supplier page, a readable catalogue. | [BeanCave](beancave.md) |
 | **Configuration** | One dialog for the machine profile, sensors, milestone detection tuning, and outside services. | [Configuration](configuration.md) |
+| **Devices** | What reads the roaster, the extra devices behind the counters, and where room conditions come from — without Artisan's full device dialog. | [Devices](devices.md) |
 | **Preparing a roast** | A preparation sheet that already knows the coffee, reads the scale, judges the batch before it starts, and preheats on its own. | [Preparing a roast](preparing-a-roast.md) |
 | **The roast plan** | Targets and a heat profile computed for this coffee and this batch, with every value stating where it came from and what it has learned. | [The roast plan](the-roast-plan.md) |
 | **The guided roast** | Live recommendations, an advance/delay reading against the plan, milestone suggestions, a DROP countdown, crash and flick alerts, an end-of-roast summary. | [The guided roast](the-guided-roast.md) |

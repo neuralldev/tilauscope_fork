@@ -25,11 +25,13 @@ from __future__ import annotations
 
 from tilauscope.widgets.flow_layout import FlowLayout
 from tilauscope.widgets.labels import TickerLabel, ClickableLabel
-from tilauscope.widgets.controls import SmartRoller, ClickableValue, HoldToFireButton
+from tilauscope.widgets.controls import (SmartRoller, ClickableValue, HoldToFireButton,
+                                        SegmentedControl, GripHandle, ReorderDropBody)
 from tilauscope.widgets.readouts import ExtraCounterWidget, LCDReadout
 from tilauscope.widgets.phase import PhaseWidget
 from tilauscope.widgets.badges import EventFiredBadge
 from tilauscope.widgets.dialogs import PlaybackWarningDlg
+from tilauscope.widgets.config_parts import QCollapsibleWidget
 
 __all__ = [
     'ClickableLabel',
@@ -37,10 +39,14 @@ __all__ = [
     'EventFiredBadge',
     'ExtraCounterWidget',
     'FlowLayout',
+    'GripHandle',
     'HoldToFireButton',
     'LCDReadout',
     'PhaseWidget',
     'PlaybackWarningDlg',
+    'QCollapsibleWidget',
+    'ReorderDropBody',
+    'SegmentedControl',
     'SmartRoller',
     'TickerLabel',
 ]

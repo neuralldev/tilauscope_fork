@@ -170,7 +170,8 @@ phone. CAPTURE 10.12 — the plainer "view frozen" message on an observer phone.
 
 Turning the phone sideways moves the curve and the controls side by side instead of stacked.
 On a large-enough screen — a tablet, held in landscape — the same layout also shows an extra
-reading (the gap between BT and ET) that a phone screen leaves out for space.
+reading (the gap between BT and ET) that a phone screen leaves out for space. On a machine
+without an air probe, neither ET nor that gap is shown.
 
 <!-- CAPTURE 10.13 — the phone in landscape. CAPTURE 10.14 — the tablet layout, both zones
 visible. -->

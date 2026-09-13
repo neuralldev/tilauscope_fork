@@ -764,7 +764,7 @@ class ZoneEditorDialog(QDialog):
             if sm is None or not sm.is_scale1_configured():
                 show_styled_message(
                     self, QApplication.translate("tilauscope_beancave", "No scale configured"),
-                    QApplication.translate("tilauscope_beancave", "Configure scale 1 in Artisan to measure density."))
+                    QApplication.translate("tilauscope_beancave", "Pair your scale in TilauScope Config › Sensors to measure density."))
                 return
             if self._density_win is None:
                 from tilauscope.cave.widgets import _DensityFloatWindow

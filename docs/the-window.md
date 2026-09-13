@@ -107,8 +107,8 @@ orange, then deep red at the limit — and once the limit is passed, the backgro
 A temperature running away is visible peripherally, without reading the number.
 
 Below them, a row of **extra counters** shows the readings of whatever additional devices are
-configured, each with its name above its value — colour, humidity, crack count, whatever the
-setup provides.
+configured in [Devices](devices.md), each with its name above its value — colour, humidity,
+crack count, whatever the setup provides.
 
 <!-- CAPTURE 2.3 — the three readouts in neutral state. CAPTURE 2.4 — the same readouts with one
 in the red/approach state, ideally the BT readout near its limit. CAPTURE 2.5 — the extra
@@ -298,8 +298,8 @@ corrections — see [Correcting a milestone](#correcting-a-milestone).
 
 | Option | What it adds |
 |---|---|
-| **Air temperature** | Traces [ET](glossary.md#et--environmental-temperature) alongside the bean. Unavailable on a roast recorded without an air probe — there would be nothing to draw. |
-| **Machine response** | Traces the [machine response](glossary.md#machine-response) — the earliest sign that a burner change has landed. |
+| **Air temperature** | Traces [ET](glossary.md#et--environmental-temperature) alongside the bean. Not offered for a machine without an air probe, and unavailable on a roast recorded without one — there would be nothing to draw. |
+| **Machine response** | Traces the [machine response](glossary.md#machine-response) — the earliest sign that a burner change has landed. Not offered for a machine without an air probe. |
 | **One lane per channel** | Gives each machine lever its own strip beneath the curve. |
 | **Burner traced, others as gestures** | Traces only the burner, and reduces the others to marks at the moments they moved. |
 | **Rate of rise** | How much the rise is smoothed — three levels, from responsive to steady. |

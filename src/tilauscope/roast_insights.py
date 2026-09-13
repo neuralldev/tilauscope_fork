@@ -366,8 +366,12 @@ def _strategy(density: float, moisture: float, process_cls: str,
     parts = [f"{driver_txt} → {label}."]
 
     if ctx is not None and getattr(ctx, "is_radiant_electric", False):
-        parts.append(QApplication.translate("tilauscope_roast_review",
-            "Radiant: BT leads ET after TP — commit drying energy early, then manage power down."))
+        if getattr(ctx, "has_et_probe", None) is False:
+            parts.append(QApplication.translate("tilauscope_roast_review",
+                "Radiant: commit drying energy early, then manage power down."))
+        else:
+            parts.append(QApplication.translate("tilauscope_roast_review",
+                "Radiant: BT leads ET after TP — commit drying energy early, then manage power down."))
     if careful:
         parts.append(QApplication.translate("tilauscope_roast_review",
             "Back off through Maillard to protect sugars and avoid tipping."))

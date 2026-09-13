@@ -57,6 +57,7 @@ from tilauscope.graph.common import (
     temp_axis_c as _temp_axis_c,
 )
 from tilauscope.graph.preheat import reading as preheat_reading
+from tilauscope.probe_visibility import et_available_for
 from tilauscope.theme_qss import tooltip_qss
 from tilauscope.tilauscope_types import (CRACK_TICK_ALPHA, THEME, crack_pop_times,
                                          operator_level, resolve_crack_channel)
@@ -2842,7 +2843,8 @@ class RoastCurveWidget(QWidget):
         # Above the rate it belongs to, because that is the order they are read
         # in: what the air IS, then how fast it is moving.
         air.toggled.connect(self._set_air_temperature)
-        menu.addAction(air)
+        if et_available_for(self._aw):
+            menu.addAction(air)
 
         act = QAction(QApplication.translate('tilauscope', 'Machine response'), menu)
         act.setCheckable(True)
@@ -2853,7 +2855,8 @@ class RoastCurveWidget(QWidget):
             # (machine or global) is still open.
             # default, and restored from the user's curve display preferences.
         act.toggled.connect(self._set_machine_response)
-        menu.addAction(act)
+        if et_available_for(self._aw):
+            menu.addAction(act)
 
         menu.addSeparator()
         lanes = QAction(QApplication.translate('tilauscope', 'One lane per channel'), menu)
@@ -2914,6 +2917,22 @@ class RoastCurveWidget(QWidget):
         self.show_machine_response = on
         QSettings().setValue(_SHOW_MACHINE_RESPONSE_KEY, on)
         self.update()
+
+    @property
+    def show_air_temperature(self) -> bool:
+        return self._show_air_temperature and et_available_for(self._aw)
+
+    @show_air_temperature.setter
+    def show_air_temperature(self, on: bool) -> None:
+        self._show_air_temperature = on
+
+    @property
+    def show_machine_response(self) -> bool:
+        return self._show_machine_response and et_available_for(self._aw)
+
+    @show_machine_response.setter
+    def show_machine_response(self, on: bool) -> None:
+        self._show_machine_response = on
 
     def _has_air_readings(self) -> bool:
         """Whether the air probe answered anything on this roast.

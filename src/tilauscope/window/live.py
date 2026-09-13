@@ -499,6 +499,8 @@ class LiveMixin:
                         pass
 
         elif data == 11:  # ET event
+            if not self._sync_et_readout():
+                return
             if self.lcds.te_lcd.lbl_value.text() != val_str:
                 self.lcds.te_lcd.lbl_value.setText(val_str)
             fv = raw if isinstance(raw, (int, float)) else None

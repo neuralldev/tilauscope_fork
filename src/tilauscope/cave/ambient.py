@@ -280,7 +280,7 @@ class AmbientMixin:
                 self,
                 QApplication.translate("tilauscope_beancave", "No scale configured"),
                 QApplication.translate("tilauscope_beancave",
-                    "Configure scale 1 in Artisan to measure density."),
+                    "Pair your scale in TilauScope Config › Sensors to measure density."),
                 QMessageBox.Icon.Information,
             )
             return

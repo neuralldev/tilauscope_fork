@@ -30,150 +30,42 @@ if TYPE_CHECKING:
 _log:  Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
-from PyQt6.QtCore    import (Qt, pyqtSlot, QPropertyAnimation, QEasingCurve,
-                            QSettings, QStandardPaths)
+from PyQt6.QtCore    import Qt, pyqtSlot, QSettings, QStandardPaths
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QCheckBox, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QFormLayout, QPushButton, QSpinBox, QTabWidget,
     QComboBox, QGridLayout, QDialog, QGroupBox,
     QTableWidget, QTableWidgetItem, QMessageBox, QHeaderView, QDoubleSpinBox,
-    QFrame, QSizeGrip, QScrollArea, QListView, QSizePolicy, QStyledItemDelegate,
+    QFrame, QSizeGrip, QListView, QSizePolicy, QStyledItemDelegate,
     QFileDialog,
 )
 from PyQt6.QtGui import QCursor, QPalette, QColor
 from PyQt6 import sip
 
-from tilauscope.theme_qss import base_qss, styled_popup_view, tooltip_qss
+from tilauscope.theme_qss import base_qss, tooltip_qss
 from tilauscope.tilauscope_types import THEME, no_enter_default, show_styled_message, TilauProgress
+# Shared with the Devices window (device_setup/dialog.py): one look for both.
+from tilauscope.widgets.config_parts import (
+    QCollapsibleWidget,
+    close_button as _close_button,
+    config_card as _config_card,
+    config_dialog_qss as _local_style,
+    config_tabs_qss as _tabs_style,
+    dialog_title as _dialog_title,
+    field_label as _field_label,
+    scrollable as _scrollable,
+    section_label as _section_label,
+    separator as _separator,
+    styled_combo_view as _styled_combo_view,
+    trash_button_qss as _btn_trash,
+)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stylesheet helpers  (local — mirrors roast_properties pattern)
 # ─────────────────────────────────────────────────────────────────────────────
 
-# What this dialog needs on top of theme_qss.base_qss(): only rules that
-# differ from the base, each with its own reason. See wiki/Theme-QSS-Spec.md.
-def _local_style() -> str:
-    return f"""
-        /* combobox-popup is behaviour, not decoration: without it Qt shows a
-           native popup menu on macOS that no stylesheet can reach. */
-        QComboBox {{ combobox-popup: 1; }}
-        QComboBox::drop-down {{ border: none; }}
-
-        /* Inline cell editor: Qt paints it over the cell without clearing it,
-           so an unstyled (transparent) editor shows the old text underneath. */
-        QTableWidget QLineEdit, QTableWidget QAbstractItemView QLineEdit {{
-            background: {THEME['BG']};
-            color: {THEME['TEXT']};
-            border: 1px solid {THEME['ACCENT']};
-            border-radius: 3px;
-            padding: 1px 3px;
-            margin: 0px;
-            font-size: 12px;
-            selection-background-color: {THEME['ACCENT']};
-            selection-color: {THEME['BG']};
-        }}
-
-        /* Section headings are set as spaced small caps throughout this
-           dialog — the tab bar and the group boxes have to agree. */
-        QGroupBox {{
-            color: {THEME['SUBTEXT']};
-            font-size: 11px;
-            font-weight: bold;
-            letter-spacing: 1.5px;
-            padding-top: 6px;
-        }}
-        QGroupBox::title {{ subcontrol-position: top left; padding: 0 6px; }}
-
-        /* Save / Cancel close the window — deliberately larger than the
-           inline action buttons inside the tabs. */
-        QPushButton#footerBtn {{
-            border-radius: 8px;
-            font-size: 13px;
-            padding: 9px 24px;
-        }}
-
-        /* A dense settings window: the 12px base scrollbar eats the width the
-           sensor rows need. */
-        QScrollBar:vertical {{
-            background: {THEME['SURFACE']};
-            width: 6px;
-            border-radius: 3px;
-        }}
-        QScrollBar::handle:vertical {{
-            background: {THEME['BORDER']};
-            border-radius: 3px;
-        }}
-    """
-
-
-def _tabs_style() -> str:
-    return f"""
-        QTabWidget {{ background: transparent; }}
-        QTabWidget::pane {{
-            border: none;
-            background: transparent;
-            margin-top: 0px;
-        }}
-        QTabWidget > QWidget {{ background: transparent; }}
-        QTabBar {{ background: {THEME['BG']}; border: none; }}
-        QTabBar::tab {{
-            background: {THEME['BG']};
-            color: {THEME['SUBTEXT']};
-            font-size: 11px;
-            font-weight: bold;
-            letter-spacing: 1px;
-            padding: 8px 18px;
-            border: none;
-            border-bottom: 2px solid transparent;
-            margin-right: 2px;
-        }}
-        QTabBar::tab:selected {{
-            background: {THEME['BG']};
-            color: {THEME['ACCENT']};
-            border-bottom: 2px solid {THEME['ACCENT']};
-        }}
-        QTabBar::tab:hover:!selected {{
-            background: {THEME['BG']};
-            color: {THEME['TEXT']};
-            border-bottom: 2px solid {THEME['BORDER']};
-        }}
-    """
-
-
 _SCAN_BTN_W: Final[int] = 90   # fixed width — status pill column
-_SCAN_BTN_H: Final[int] = 34   # fixed height — aligns with QComboBox / trash button
-
-
-def _styled_combo_view() -> QListView:
-    """Fresh Mocha-styled popup view for a sensor QComboBox.
-
-    The combo can shrink (Ignored policy), but the popup must stay wide enough
-    to show the full BLE UUID/MAC of each detected device.
-    """
-    return styled_popup_view(min_width=360)
-
-
-def _btn_trash() -> str:
-    """Fixed square icon button — forgets (unassigns) the sensor. """
-    return f"""
-        QPushButton {{
-            background-color: transparent;
-            color: {THEME['SUBTEXT']};
-            border: 1px solid {THEME['BORDER']};
-            border-radius: 6px;
-            font-size: 13px;
-            padding: 0px;
-            min-width: {_SCAN_BTN_H}px;
-            max-width: {_SCAN_BTN_H}px;
-            min-height: {_SCAN_BTN_H}px;
-            max-height: {_SCAN_BTN_H}px;
-        }}
-        QPushButton:hover {{
-            border-color: {THEME['CRITICAL']};
-            color: {THEME['CRITICAL']};
-        }}
-    """ + tooltip_qss()
 
 
 def _table_spinbox_style() -> str:
@@ -299,136 +191,6 @@ def _table_combobox_style() -> str:
     """ + tooltip_qss()
 
 
-def _separator() -> QFrame:
-    sep = QFrame()
-    sep.setFrameShape(QFrame.Shape.HLine)
-    sep.setStyleSheet(
-        f"color: {THEME['BORDER']}; background: {THEME['BORDER']}; max-height:1px;"
-    )
-    return sep
-
-
-def _section_label(text: str) -> QLabel:
-    lbl = QLabel(text.upper())
-    lbl.setStyleSheet(
-        f"color: {THEME['ACCENT']}; font-size: 11px; font-weight: bold;"
-        f"letter-spacing: 2px; margin-top: 4px;"
-    )
-    return lbl
-
-
-def _field_label(text: str, width: int = 150) -> QLabel:
-    lbl = QLabel(text)
-    lbl.setProperty('variant', 'secondary')
-    lbl.setMinimumWidth(width)
-    return lbl
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# QCollapsibleWidget
-# ─────────────────────────────────────────────────────────────────────────────
-
-class QCollapsibleWidget(QWidget):
-    """
-    A titled section that can be collapsed/expanded via a toggle button.
-    Content is placed in self.content_widget (QWidget with a QVBoxLayout).
-
-    Usage:
-        section = QCollapsibleWidget("AirWave PID", collapsed=True)
-        section.content_layout.addWidget(some_table)
-        parent_layout.addWidget(section)
-    """
-
-    def __init__(self, title: str, collapsed: bool = False, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._collapsed = collapsed
-
-        root = QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(0)
-
-        # ── Toggle button ────────────────────────────────────────────────
-        self._toggle_btn = QPushButton()
-        self._toggle_btn.setCheckable(True)
-        self._toggle_btn.setChecked(not collapsed)
-        self._toggle_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self._toggle_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: {THEME['SURFACE']};
-                color: {THEME['SUBTEXT']};
-                border: 1px solid {THEME['BORDER']};
-                border-radius: 6px;
-                font-size: 11px;
-                font-weight: bold;
-                letter-spacing: 1px;
-                padding: 6px 12px;
-                text-align: left;
-            }}
-            QPushButton:hover {{
-                border-color: {THEME['ACCENT']};
-                color: {THEME['ACCENT']};
-            }}
-            QPushButton:checked {{
-                color: {THEME['ACCENT']};
-                border-color: {THEME['ACCENT']};
-            }}
-        """)
-        self._set_toggle_label(title)
-        self._title = title
-        self._toggle_btn.toggled.connect(self._on_toggle)
-        root.addWidget(self._toggle_btn)
-
-        # ── Content area ─────────────────────────────────────────────────
-        self.content_widget = QWidget()
-        self.content_layout = QVBoxLayout(self.content_widget)
-        self.content_layout.setContentsMargins(0, 8, 0, 4)
-        self.content_layout.setSpacing(8)
-
-        # Animated max-height
-        self._anim = QPropertyAnimation(self.content_widget, b"maximumHeight")
-        self._anim.setDuration(180)
-        self._anim.setEasingCurve(QEasingCurve.Type.InOutQuad)
-
-        self.content_widget.setMaximumHeight(0 if collapsed else 16_777_215)
-        self.content_widget.setVisible(not collapsed)
-        root.addWidget(self.content_widget)
-
-    def _set_toggle_label(self, title: str) -> None:
-        arrow = "▶" if self._collapsed else "▼"
-        self._toggle_btn.setText(f" {arrow}  {title.upper()}")
-
-    @pyqtSlot(bool)
-    def _on_toggle(self, checked: bool) -> None:
-        self._collapsed = not checked
-        self._set_toggle_label(self._title)
-
-        # Disconnect stale finished callbacks before configuring new ones
-        try:
-            self._anim.finished.disconnect()
-        except TypeError:
-            pass
-
-        if checked:
-            # Expand: make visible at height 0, animate to natural height
-            self.content_widget.setVisible(True)
-            self.content_widget.setMaximumHeight(0)
-            natural = self.content_widget.sizeHint().height()
-            self._anim.setStartValue(0)
-            self._anim.setEndValue(max(natural, 20))
-            self._anim.finished.connect(
-                lambda: self.content_widget.setMaximumHeight(16_777_215)
-            )
-        else:
-            # Collapse: animate to 0, then hide
-            current = self.content_widget.height()
-            self._anim.setStartValue(current)
-            self._anim.setEndValue(0)
-            self._anim.finished.connect(
-                lambda: self.content_widget.setVisible(False)
-            )
-        self._anim.start()
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Sensor group descriptor  (background-detection model)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -445,7 +207,7 @@ class _SensorGroup:
         "seen", "cleared", "user_touched", "auto_done", "was_assigned",
     )
 
-    def __init__(self, label: str, prefix: str, combo: QComboBox,
+    def __init__(self, label: str, prefix: "str | tuple[str, ...]", combo: QComboBox,
                  name_attr: str, list_attr: str) -> None:
         self.label        = label       # fixed combo/label display (e.g. "Skywalker v2")
         self.prefix       = prefix      # BLE advertised-name prefix to match
@@ -493,6 +255,7 @@ class TilauscopeConfigDlg(QDialog):
         # Background sensor detection, populated in _setup_sensors_tab and
         # driven by the central TilauBLEScanner while the SENSORS tab is active. See _hook_scanner().
         self._sensor_groups: list[_SensorGroup] = []
+        self._seen_names: dict[str, str] = {}   # BLE address -> advertised name
         self._scanner = None            # scanner we are currently listening to
         self._own_scanner = None        # private scanner (only when no BeanCave shell)
         self._scanner_hooked = False
@@ -569,6 +332,9 @@ class TilauscopeConfigDlg(QDialog):
             "bleRoastSeeDeviceName":      aw.bleRoastSeeDeviceName,
             "bleRoastSeeAGDeviceName":    aw.bleRoastSeeAGDeviceName,
             "bleNiimbotDeviceName":       aw.bleNiimbotDeviceName,
+            "scale1_model":               aw.scale1_model,
+            "scale1_id":                  aw.scale1_id,
+            "scale1_name":                aw.scale1_name,
             "bleAirwaveDeviceName":       aw.bleAirwaveDeviceName,
             "bleSkywalkerDeviceName":     aw.bleSkywalkerDeviceName,
             "bleAirwavepidRamp":          aw.bleAirwavepidRamp,
@@ -585,46 +351,15 @@ class TilauscopeConfigDlg(QDialog):
         outer.setContentsMargins(0, 0, 0, 0)
 
         # ── Card shell ────────────────────────────────────────────────────
-        card = QFrame()
-        card.setObjectName("configCard")
-        card.setStyleSheet(f"""
-            QFrame#configCard {{
-                background-color: {THEME['BG']};
-                border: 2px solid {THEME['ACCENT']};
-                border-radius: 20px;
-            }}
-        """)
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(28, 22, 28, 20)
-        card_layout.setSpacing(12)
+        card, card_layout = _config_card()
         outer.addWidget(card)
 
-        # ── Title bar ─────────────────────────────────────────────────────
+        # Title bar
         title_row = QHBoxLayout()
-        title_lbl = QLabel(
+        title_lbl = _dialog_title(
             QApplication.translate("tilauscope_devices", "TILAU CONFIGURATION")
         )
-        title_lbl.setStyleSheet(
-            f"color: {THEME['ACCENT']}; font-size: 15px; font-weight: 800;"
-            f"letter-spacing: 3px;"
-        )
-        close_btn = QPushButton("✕")
-        close_btn.setFixedSize(30, 30)
-        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
-        close_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: {THEME['BORDER']};
-                color: {THEME['CRITICAL']};
-                border-radius: 15px;
-                border: 1px solid {THEME['CRITICAL']};
-                font-weight: bold;
-                font-size: 13px;
-            }}
-            QPushButton:hover {{
-                background: {THEME['CRITICAL']};
-                color: {THEME['BG']};
-            }}
-        """)
+        close_btn = _close_button()
         close_btn.clicked.connect(self._on_cancel)
         title_row.addWidget(title_lbl)
         title_row.addStretch()
@@ -1054,6 +789,29 @@ class TilauscopeConfigDlg(QDialog):
         agg.addWidget(self.lebrewRoastSeeAGComboBox, 0, 1)
         agg.addWidget(ag_cell, 0, 2)
         layout.addWidget(ag_group)
+
+        # ── Scale — Acaia BLE ─────────────────────────────────────────────
+        # Scale 1: the one every weight capture in TilauScope reads.
+        layout.addWidget(_section_label(
+            QApplication.translate("tilauscope_devices", "Scale")
+        ))
+        scale_group = QGroupBox("Acaia  (Bluetooth)")
+        scale_group.setContentsMargins(12, 18, 12, 12)
+        sg = QGridLayout(scale_group)
+        sg.setVerticalSpacing(10)
+        sg.setHorizontalSpacing(10)
+
+        self.scaleComboBox = QComboBox()
+        self.scaleComboBox.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        scale_cell = self._sensor_cell(
+            "Acaia", self._prefixes["scale"], self.scaleComboBox,
+            "scale1_id", "bleScaleDeviceslist",
+        )
+
+        sg.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)
+        sg.addWidget(self.scaleComboBox, 0, 1)
+        sg.addWidget(scale_cell, 0, 2)
+        layout.addWidget(scale_group)
 
         # ── Printer — Niimbot B21S ─────────────────────────────────────────
         layout.addWidget(_section_label(
@@ -1553,7 +1311,7 @@ class TilauscopeConfigDlg(QDialog):
     # ─────────────────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _resolve_prefixes() -> "dict[str, str]":
+    def _resolve_prefixes() -> "dict[str, str | tuple[str, ...]]":
         """BLE advertised-name prefixes per sensor, with literal fallbacks."""
         prefixes = {
             "ambient":   "TLSCAM",
@@ -1562,6 +1320,8 @@ class TilauscopeConfigDlg(QDialog):
             "c1":        "RoastSee C1",
             "aquagauge": "RoastSee AquaGauge",
             "niimbot":   "B21",
+            "scale":     ("ACAIAS-P", "ACAIA", "LUNAR-", "PROCHBT", "PEARLS", "PEARL-",
+                          "CINCO", "PYXIS", "UMBRA", "COSMO-10", "COSMO-100"),
         }
         try:
             from tilauscope.tilauambient import TILAUAMBIENT_PREFIX
@@ -1587,6 +1347,11 @@ class TilauscopeConfigDlg(QDialog):
         try:
             from tilauscope.niimprint import NIIMBOT_PREFIX
             prefixes["niimbot"] = NIIMBOT_PREFIX
+        except Exception:  # pylint: disable=broad-except
+            pass
+        try:
+            from artisanlib.acaia import ACAIA_SCALE_NAMES
+            prefixes["scale"] = tuple(prefix for prefix, _product in ACAIA_SCALE_NAMES)
         except Exception:  # pylint: disable=broad-except
             pass
         return prefixes
@@ -1798,6 +1563,7 @@ class TilauscopeConfigDlg(QDialog):
                     addr = getattr(bd, "address", None)
                     if name and addr and g.prefix and name.startswith(g.prefix):
                         g.seen.add(addr)
+                        self._seen_names[addr] = name
                         self._add_detected(g, addr)
                 if g.seen:
                     # mirror the candidate id list for the picker widget
@@ -2641,6 +2407,23 @@ class TilauscopeConfigDlg(QDialog):
             if _bid is not None:
                 aw.bleRoastSeeAGDeviceName = _bid
 
+        # ── Sensors — Scale ───────────────────────────────────────────────
+        # Written only when the choice changed: setting the scale again drops the
+        # connection a weight capture may be using.
+        _scale_txt = self.scaleComboBox.currentText()
+        if _scale_txt == _no_dev:
+            if self._org["scale1_id"] is not None:
+                aw.scale1_model = aw.scale1_id = aw.scale1_name = None
+                aw.scale_manager.set_scale1_signal.emit(-1, '', '')
+        else:
+            _bid = _combo_ble_id(_scale_txt)
+            if _bid is not None and _bid != self._org["scale1_id"]:
+                aw.scale1_model = 0   # 'Acaia Bluetooth' in artisanlib.scale.SUPPORTED_SCALES
+                aw.scale1_id = _bid
+                aw.scale1_name = self._seen_names.get(_bid, "Acaia")
+                aw.scale_manager.set_scale1_signal.emit(0, _bid, aw.scale1_name)
+                aw.scale_manager.connect_scale1_signal.emit(aw.qmc.device_logging)
+
         # ── Sensors — Niimbot ─────────────────────────────────────────────
         t = self.niimbotComboBox.currentText()
         if t and t != _no_dev:
@@ -2740,28 +2523,3 @@ class TilauscopeConfigDlg(QDialog):
             else:
                 setattr(aw, key, val)
         self.reject()
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _scrollable(parent: QWidget) -> QScrollArea:
-    """Wrap a tab widget's root in a scrollable area with a QVBoxLayout content."""
-    scroll = QScrollArea(parent)
-    scroll.setWidgetResizable(True)
-    scroll.setFrameShape(QFrame.Shape.NoFrame)
-    # content only scrolls vertically — never show a horizontal bar
-    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-
-    content = QWidget()
-    lay = QVBoxLayout(content)
-    lay.setContentsMargins(0, 12, 0, 12)
-    lay.setSpacing(12)
-    scroll.setWidget(content)
-
-    tab_layout = QVBoxLayout(parent)
-    tab_layout.setContentsMargins(0, 0, 0, 0)
-    tab_layout.addWidget(scroll)
-
-    return scroll

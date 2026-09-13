@@ -146,7 +146,8 @@ The **⚙ MORE OPTIONS** tab decides what happens without being asked.
 **Enable TilauPID at start of roast**, with its **Target temp**, starts preheating the moment
 START is pressed — see [Preheating: TilauPID](#preheating-tilaupid) below for what it then
 does. **Input: BT / ET** chooses whether preheating aims at bean temperature or at air
-temperature. When a roast plan is selected, its charge temperature fills this setpoint
+temperature; it is not offered for a machine without an air probe, where preheating always aims
+at bean temperature. When a roast plan is selected, its charge temperature fills this setpoint
 automatically and is also applied to the SV slider — until you type a setpoint of your own.
 From then on the field is yours: the plan stops replacing it and states its own figure beside
 it instead, as *Plan recommends 186 °C*, with **use** to go back to it in one click. The

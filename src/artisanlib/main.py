@@ -2759,6 +2759,7 @@ class ApplicationWindow(QMainWindow):
         self.tilauscopeMain        = self.tilau_menu.act_main
         self.beanCaveMenuAction    = self.tilau_menu.act_beancave
         self.tilauscopeConfigAction = self.tilau_menu.act_config
+        self.tilauscopeDevicesAction = self.tilau_menu.act_devices
         self.tilaudebug            = self.tilau_menu.act_debug
         self.PIDAutotuneMenuAction  = self.tilau_menu.act_pid_autotune
 
@@ -12448,6 +12449,7 @@ class ApplicationWindow(QMainWindow):
         self.deviceAction.setEnabled(True)
         ## TILAU ##
         self.tilauscopeConfigAction.setEnabled(True)
+        self.tilauscopeDevicesAction.setEnabled(True)
         self.commportAction.setEnabled(True)
         self.curvesAction.setEnabled(True)
         self.analyzeMenu.setEnabled(True)
@@ -12532,6 +12534,7 @@ class ApplicationWindow(QMainWindow):
             self.deviceAction.setEnabled(False)
             ## TILAU ##
             self.tilauscopeConfigAction.setEnabled(False)
+            self.tilauscopeDevicesAction.setEnabled(False)
             self.commportAction.setEnabled(False)
         if designer or wheel:
             self.curvesAction.setEnabled(False) # Curves menu

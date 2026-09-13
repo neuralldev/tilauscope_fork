@@ -78,7 +78,9 @@ documentation is a bean temperature unless stated otherwise.**
 #### ET — environmental temperature
 
 The probe reading of the air or the drum environment. On some machines — radiant ones in
-particular — ET can sit *below* BT, which is normal for that machine type and not a fault.
+particular — ET can sit *below* BT, which is normal for that machine type and not a fault. A
+machine built without an air probe has no ET: once it is selected as your roaster, TilauScope
+stops showing ET and words its advice on bean temperature alone.
 
 #### RoR — rate of rise
 
@@ -90,6 +92,24 @@ falling smoothly.
 
 The line Artisan draws ahead of the latest reading, showing where bean temperature is heading
 if it keeps its current trend. Artisan draws it only once the curve is long enough to extend.
+
+#### Meter
+
+What Artisan reads bean and environment temperature from: a roaster's own link, a
+thermometer, a data logger. One meter is set at a time, in [Devices](devices.md).
+
+#### TC4 board
+
+An open thermocouple board, common on home roasters and conversions, that sends bean and
+environment temperature to Artisan over a USB cable. In [Devices](devices.md) it is chosen
+instead of a [meter](#meter), with the board channel each probe is wired to.
+
+#### Extra device
+
+A source of readings beyond bean and environment temperature — an airflow extractor, an
+ambient probe, a crack counter, a roaster's own burner and airflow levels. Each provides up to
+two readings, recorded with the roast and shown in the extra counters row when chosen. Set in
+[Devices](devices.md).
 
 #### DTR — development time ratio
 

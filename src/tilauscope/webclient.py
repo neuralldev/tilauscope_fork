@@ -81,6 +81,7 @@ canvas{width:100%;height:100%;display:block}
 .read .k{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.5px}
 .read.bt .v{color:var(--blue)}.read.et .v{color:var(--lav)}.read.ror .v{color:var(--green)}
 .read.dt{display:none}.read.dt .v{color:var(--yellow)}   /* tablet-only extra (4c) */
+body.noet .read.et,body.noet .read.dt{display:none}   /* machine without an ET probe */
 /* ---- controls ---- */
 /* min-height:0 lets this flex child actually shrink so its own scrollbar kicks
    in instead of overflowing (and being clipped by body overflow:hidden). */
@@ -690,7 +691,7 @@ function setSnapshot(d){
  // absolute charge time as clock - lastSeriesT so the roast timer matches telemetry.
  var lt=series.t.length?series.t[series.t.length-1]:0;
  chargeT=d.charge_marked?(clock-lt):null;
- recording=!!d.recording;
+ recording=!!d.recording;applyEt(d);
  // absent on older desktops -> assume live (the pre-existing behaviour)
  monitorOn=(d.monitoring!==false);setDot(monitorOn?'on':'grace');
  if(d.axes){axes=d.axes;applyUnit(axes.unit);}
@@ -711,7 +712,10 @@ function rebase(delta){
  for(var i=0;i<series.t.length;i++)series.t[i]+=delta;
  for(var j=0;j<markers.length;j++)if(markers[j].t!=null)markers[j].t+=delta;}
 function resetSeries(){series={t:[],bt:[],et:[],ror:[]};markers=[];}
+/* a machine without an ET probe hides its ET and ΔT tiles */
+function applyEt(d){if('has_et' in d)document.body.classList.toggle('noet',d.has_et===false);}
 function pushTele(d){
+ applyEt(d);
  // data flowing again is proof the desktop resumed, even if we missed the event
  if(!monitorOn){monitorOn=true;setDot('on');paintHint();}
  if(d.phase)phase=d.phase;if(d.clock!=null)clock=d.clock;

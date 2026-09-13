@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
 
 from tilauscope.tilauscope_types import THEME, format_batch_label
 from tilauscope.theme_qss import base_qss
+from tilauscope.probe_visibility import et_available_in_profile
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -265,7 +266,7 @@ class RoastCardDialog(QDialog):
             fig = Figure(figsize=(5.4, 2.4), facecolor=_C_PLOT_BG)
             ax = fig.add_subplot(111)
             ax.set_facecolor(_C_PLOT_BG)
-            if et and len(et) == len(timex):
+            if et and len(et) == len(timex) and et_available_in_profile(profile):
                 ax.plot(xs, et, color=_C_ET, linewidth=1.0, alpha=0.7, label="ET")
             ax.plot(xs, bt, color=_C_BT, linewidth=1.6, label="BT")
 

@@ -1,4 +1,11 @@
+## [4.3] 2026-09-13
+build 1
 ## [4.2.27] 2026-09-12
+build 2
+* ⚡ [feat(l10n)] : German, Spanish, Italian, Simplified and Traditional Chinese are complete again — the labels of the new Devices window were showing in English inside an otherwise translated interface
+* ⚡ [feat(devices)] : new Devices window in the TilauScope menu — choose what reads the roaster (any Artisan meter, or a TC4 board with its channels) and its USB port; manage extra devices the way alarms are edited, with a command bar to add a device, change the device of the selected card or delete it, cards dragged into order and a show-counter switch per reading; changing a card's device keeps what it recorded, which repairs an old roast whose devices open with the wrong type; pick the ambient sources, TilauAmbient temperature, humidity and pressure included in one step; nothing changes until Save
+* ⚡ [feat(config)] : the Acaia scale is paired from TilauScope Config › Sensors, found by the same Bluetooth scan as the other devices, instead of Artisan's device dialog
+* ⚡ [feat(roaster)] : on a machine without an air probe, such as the Skywalker V1, ET is no longer shown — its readout, the air temperature and machine response curve options, the phone ET and ΔT tiles, the roast miniatures, the PID input choice and the advice that mentioned it are hidden or worded on bean temperature, and preheating always follows bean temperature there
 build 1
 ## [4.2.26] 2026-09-10
 build 3

@@ -146,6 +146,7 @@ def render_curve_png(profile: dict) -> Optional[bytes]:
     try:
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_agg import FigureCanvasAgg
+        from tilauscope.probe_visibility import et_available_in_profile
 
         timex = profile.get('timex') or []
         bt = profile.get('temp2') or []
@@ -161,7 +162,7 @@ def render_curve_png(profile: dict) -> Optional[bytes]:
         fig = Figure(figsize=(6.0, 3.0), dpi=150, facecolor=_SURFACE)
         ax = fig.add_subplot(111)
         ax.set_facecolor(_SURFACE)
-        if et and len(et) == len(timex):
+        if et and len(et) == len(timex) and et_available_in_profile(profile):
             ax.plot(xs, et, color=_C_ET, linewidth=1.0, alpha=0.7, label='ET')
         ax.plot(xs, bt, color=_C_BT, linewidth=1.6, label='BT')
 

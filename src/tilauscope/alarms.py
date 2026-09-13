@@ -37,6 +37,8 @@ from PyQt6.QtWidgets import (
 )
 
 from tilauscope.tilauscope_types import THEME, no_enter_default, show_styled_message
+from tilauscope.widgets.config_parts import toolbar_button
+from tilauscope.widgets.controls import GripHandle, ReorderDropBody
 from tilauscope.ai_service import AITask
 from tilauscope.ai_float_panel import AIFloatPanel
 
@@ -747,77 +749,19 @@ _PHASE_REP: Final[dict[Phase, int]] = {
 }
 
 
-class _GripHandle(QLabel):
-    """Drag handle. Starts a row drag once the pointer moves past a small
-    threshold; never selects, never reflows."""
+class _GripHandle(GripHandle):
+    """The shared grip, with this editor's tooltip."""
 
     def __init__(self, on_drag_start, parent: QWidget | None = None) -> None:
-        super().__init__('\u283F', parent)  # braille 6-dot grip glyph
-        self._on_drag_start = on_drag_start
-        self._press: QPoint | None = None
-        self.setFixedWidth(16)
-        self.setCursor(Qt.CursorShape.OpenHandCursor)
-        self.setToolTip(QApplication.translate('tilauscope_alarms', 'Drag to reorder'))
-        self.setStyleSheet(
-            f"color: {_SURF1}; font-size: 14px; border: none; background: transparent;")
-
-    def mousePressEvent(self, ev) -> None:  # type: ignore[override]
-        if ev.button() == Qt.MouseButton.LeftButton:
-            self._press = ev.position().toPoint()
-        ev.accept()
-
-    def mouseMoveEvent(self, ev) -> None:  # type: ignore[override]
-        if (self._press is not None
-                and (ev.position().toPoint() - self._press).manhattanLength() > 6):
-            self._press = None
-            self._on_drag_start()
-        ev.accept()
-
-    def mouseReleaseEvent(self, ev) -> None:  # type: ignore[override]
-        self._press = None
-        ev.accept()
+        super().__init__(on_drag_start,
+                         QApplication.translate('tilauscope_alarms', 'Drag to reorder'), parent)
 
 
-class _AlarmListBody(QWidget):
-    """Scroll body that accepts alarm drops. Reports drops to the dialog via
-    the on_drop callback; draws a thin insertion indicator while dragging."""
+class _AlarmListBody(ReorderDropBody):
+    """Scroll body that accepts alarm drops (the shared drop body, alarm MIME type)."""
 
     def __init__(self, on_drop, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._on_drop = on_drop  # callable(src_aid: int, global_y: int)
-        self.setAcceptDrops(True)
-        self._indicator = QFrame(self)
-        self._indicator.setFixedHeight(2)
-        self._indicator.setStyleSheet(
-            f"background: {THEME['ACCENT']}; border: none;")
-        self._indicator.hide()
-
-    def dragEnterEvent(self, ev) -> None:  # type: ignore[override]
-        if ev.mimeData().hasFormat(_ALARM_MIME):
-            ev.acceptProposedAction()
-
-    def dragMoveEvent(self, ev) -> None:  # type: ignore[override]
-        if ev.mimeData().hasFormat(_ALARM_MIME):
-            y = ev.position().toPoint().y()
-            self._indicator.setGeometry(0, max(0, y - 1), self.width(), 2)
-            self._indicator.show()
-            self._indicator.raise_()
-            ev.acceptProposedAction()
-
-    def dragLeaveEvent(self, ev) -> None:  # type: ignore[override]
-        del ev
-        self._indicator.hide()
-
-    def dropEvent(self, ev) -> None:  # type: ignore[override]
-        self._indicator.hide()
-        if ev.mimeData().hasFormat(_ALARM_MIME):
-            try:
-                src_aid = int(bytes(ev.mimeData().data(_ALARM_MIME)).decode())
-            except (ValueError, TypeError):
-                return
-            gy = self.mapToGlobal(ev.position().toPoint()).y()
-            self._on_drop(src_aid, gy)
-            ev.acceptProposedAction()
+        super().__init__(_ALARM_MIME, on_drop, parent)
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -1782,15 +1726,8 @@ class TilauAlarmDlg(QDialog):
         return f
 
     def _tool_btn(self, text: str, slot, accent: str | None = None) -> QPushButton:
-        btn = QPushButton(text)
-        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        btn = toolbar_button(text, accent)
         btn.clicked.connect(slot)
-        col = accent or THEME['TEXT']
-        btn.setStyleSheet(
-            f"QPushButton {{ background: {THEME['SURFACE']}; color: {col};"
-            f"border: 1px solid {THEME['BORDER']}; border-radius: 7px;"
-            f"padding: 5px 11px; font-size: 11px; }}"
-            f"QPushButton:hover {{ border-color: {col}; }}")
         return btn
 
     def _caption(self, text: str) -> QLabel:

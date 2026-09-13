@@ -18,10 +18,11 @@
 from __future__ import annotations
 
 import time
+from typing import Callable   # this package imports nothing but Qt, the theme and typing
 
 from PyQt6.QtCore import QPoint, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QPainter
-from PyQt6.QtWidgets import (QFrame, QLabel, QPushButton, QScrollArea,
+from PyQt6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea,
                              QVBoxLayout, QWidget)
 
 from tilauscope.tilauscope_types import THEME, call_later
@@ -253,3 +254,132 @@ class HoldToFireButton(QPushButton):
         painter.setBrush(QColor(243, 139, 168, 120))   # CRITICAL, translucent
         painter.drawRoundedRect(rect, 6, 6)
         painter.end()
+
+
+class SegmentedControl(QWidget):
+    """Options side by side, the one in force lit.
+
+    A single button whose label names a state gets read backwards by half the
+    people who see it; a segment names every option and lights the current
+    one. ``current()`` is -1 while nothing is chosen — a state an exclusive
+    QButtonGroup cannot hold, and the one a setting outside the offered
+    options needs.
+    """
+
+    changed = pyqtSignal(int)
+
+    def __init__(self, labels: list[str], parent=None) -> None:
+        super().__init__(parent)
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(0)
+        self._current = -1
+        self._buttons: list[QPushButton] = []
+        last = len(labels) - 1
+        for i, label in enumerate(labels):
+            button = QPushButton(label)
+            button.setCheckable(True)
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            corners = (('border-top-left-radius: 6px; border-bottom-left-radius: 6px;' if i == 0 else '')
+                       + ('border-top-right-radius: 6px; border-bottom-right-radius: 6px;' if i == last else ''))
+            button.setStyleSheet(
+                f"QPushButton {{ color: {THEME['SUBTEXT']}; background: {THEME['BG']};"
+                f" border: 1px solid {THEME['BORDER']}; {'border-left: none;' if i else ''}"
+                f" border-radius: 0px; {corners} padding: 6px 18px;"
+                f" font-size: 13px; font-weight: bold; }}"
+                f"QPushButton:hover:!checked {{ color: {THEME['TEXT']}; }}"
+                f"QPushButton:checked {{ color: {THEME['BG']}; background: {THEME['ACCENT']};"
+                f" border: 1px solid {THEME['ACCENT']}; }}")
+            button.clicked.connect(lambda _checked=False, index=i: self._on_clicked(index))
+            self._buttons.append(button)
+            row.addWidget(button)
+        row.addStretch()
+
+    def current(self) -> int:
+        return self._current
+
+    def set_current(self, index: int) -> None:
+        """Light ``index`` (-1 lights none) without emitting ``changed``."""
+        self._current = index if 0 <= index < len(self._buttons) else -1
+        for i, button in enumerate(self._buttons):
+            button.setChecked(i == self._current)
+
+    def _on_clicked(self, index: int) -> None:
+        moved = index != self._current
+        self.set_current(index)   # clicking the lit segment keeps it lit
+        if moved:
+            self.changed.emit(index)
+
+
+class GripHandle(QLabel):
+    """Drag handle of a reorderable row. Starts a drag once the pointer has
+    moved a few pixels; never selects, never reflows."""
+
+    def __init__(self, on_drag_start: Callable[[], None], tooltip: str,
+                 parent: QWidget | None = None) -> None:
+        super().__init__('\u283F', parent)  # braille 6-dot grip glyph
+        self._on_drag_start = on_drag_start
+        self._press: QPoint | None = None
+        self.setFixedWidth(16)
+        self.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.setToolTip(tooltip)
+        self.setStyleSheet(
+            f"color: {THEME['SURFACE1']}; font-size: 14px; border: none; background: transparent;")
+
+    def mousePressEvent(self, ev) -> None:  # type: ignore[override]
+        if ev.button() == Qt.MouseButton.LeftButton:
+            self._press = ev.position().toPoint()
+        ev.accept()
+
+    def mouseMoveEvent(self, ev) -> None:  # type: ignore[override]
+        if (self._press is not None
+                and (ev.position().toPoint() - self._press).manhattanLength() > 6):
+            self._press = None
+            self._on_drag_start()
+        ev.accept()
+
+    def mouseReleaseEvent(self, ev) -> None:  # type: ignore[override]
+        self._press = None
+        ev.accept()
+
+
+class ReorderDropBody(QWidget):
+    """List body that accepts drops carrying ``mime`` and draws a thin insertion
+    line while one hovers. A drop is reported as (dragged id, global y)."""
+
+    def __init__(self, mime: str, on_drop: Callable[[int, int], None],
+                 parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._mime = mime
+        self._on_drop = on_drop
+        self.setAcceptDrops(True)
+        self._indicator = QFrame(self)
+        self._indicator.setFixedHeight(2)
+        self._indicator.setStyleSheet(f"background: {THEME['ACCENT']}; border: none;")
+        self._indicator.hide()
+
+    def dragEnterEvent(self, ev) -> None:  # type: ignore[override]
+        if ev.mimeData().hasFormat(self._mime):
+            ev.acceptProposedAction()
+
+    def dragMoveEvent(self, ev) -> None:  # type: ignore[override]
+        if ev.mimeData().hasFormat(self._mime):
+            y = ev.position().toPoint().y()
+            self._indicator.setGeometry(0, max(0, y - 1), self.width(), 2)
+            self._indicator.show()
+            self._indicator.raise_()
+            ev.acceptProposedAction()
+
+    def dragLeaveEvent(self, ev) -> None:  # type: ignore[override]
+        del ev
+        self._indicator.hide()
+
+    def dropEvent(self, ev) -> None:  # type: ignore[override]
+        self._indicator.hide()
+        if ev.mimeData().hasFormat(self._mime):
+            try:
+                dragged = int(bytes(ev.mimeData().data(self._mime)).decode())
+            except (ValueError, TypeError):
+                return
+            self._on_drop(dragged, self.mapToGlobal(ev.position().toPoint()).y())
+            ev.acceptProposedAction()

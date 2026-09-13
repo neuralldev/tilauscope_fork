@@ -34,6 +34,7 @@ from pathlib import Path
 from tilauscope.roasters import invalidate_roast_context, roast_context_for
 from tilauscope.theme_qss import tooltip_qss
 from tilauscope.tilauscope_types import THEME
+from tilauscope.probe_visibility import et_available_for
 from tilauscope.widgets.dialogs import PlaybackWarningDlg
 
 
@@ -203,10 +204,17 @@ class LifecycleMixin:
         """
         return bool(getattr(roast_context_for(self.aw), "supports_profile_replay", False))
 
+    def _sync_et_readout(self) -> bool:
+        """Show the ET readout only when the selected machine can fill it."""
+        available = et_available_for(self.aw)
+        self.lcds.te_lcd.setVisible(available)
+        return available
+
     def refresh_replay_capability(self) -> None:
         """Re-resolve the selected roaster and realign everything reasoning on
-        it — the header REPLAY button and the assistant's advisor. Called after
-        the roaster changes in Devices; never raises into its caller.
+        it — the header REPLAY button, the assistant's advisor and the ET
+        displays. Called after the roaster changes in Devices; never raises into
+        its caller.
         """
         try:
             invalidate_roast_context(self.aw)
@@ -216,6 +224,14 @@ class LifecycleMixin:
                 assistant.reload_roaster_context()
         except Exception:  # pylint: disable=broad-except
             _log.exception("TilauScope: refresh_replay_capability failed")
+        # Guarded apart: a failed replay step must not leave the previous
+        # machine's ET on screen.
+        try:
+            self._sync_et_readout()
+            if self.curve is not None:
+                self.curve.update()
+        except Exception:  # pylint: disable=broad-except
+            _log.exception("TilauScope: ET display refresh failed")
 
     def arm_roast_replay(self, reaction_time_s: float) -> None:
         """Arms replay for the upcoming CHARGE. Called by RoastSetupDialog._on_ok()

@@ -33,6 +33,7 @@ from PyQt6.QtWidgets import (QApplication) # @UnusedImport @Reimport  @Unresolve
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.theme_qss import tint
+from tilauscope.probe_visibility import et_available_in_profile
 from tilauscope.tilauscope_types import (THEME, RoastingPhase, normalize_timeindex, estimate_ror_dt, find_turning_point_index, dominant_dev_ror_event,
                                           WEIGHT_LOSS_TOLERANCE_PCT)
 from tilauscope.cave.common import (
@@ -380,7 +381,7 @@ class ViewerMultiMixin:
             bt_col, et_col, dbt_col, ror_col = palette[i]
             timex     = data.get('timex', [])
             temp2     = data.get('temp2', [])
-            temp1     = data.get('temp1', [])
+            temp1     = data.get('temp1', []) if et_available_in_profile(data) else []
             # normalize_timeindex, like everywhere else here: a truncated
             # timeindex (older file, repaired profile) used to drop the roast
             # from the comparison without a word.
@@ -559,6 +560,9 @@ class ViewerMultiMixin:
                 _L2D([0], [0], color=THEME['TEXT'], linewidth=0.9, linestyle=':',
                      label=QApplication.translate("Label", "ET")),
             ]
+        if not any(et_available_in_profile(curve['data']) for curve in self._multi_curves):
+            style_handles = [h for h in style_handles
+                             if h.get_label() != QApplication.translate('Label', 'ET')]
         ax_legend.legend(
             handles=style_handles,
             loc='center',

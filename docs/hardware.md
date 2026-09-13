@@ -6,7 +6,9 @@
 
     **TilauScope adds** — recognition of a set of specific devices by name, so pairing one
     is a search-and-confirm step rather than a manual device-dialog configuration, plus a
-    place in **Configuration → SENSORS** to see, add or remove every paired device at once.
+    place in **Configuration → SENSORS** to see, add or remove every paired device at once,
+    and a [Devices](devices.md) window for what reads the roaster and which extra devices
+    feed the counters.
 
 Every device fiche below follows the same shape: what it adds, how it pairs, what changes on
 screen once it is paired, and its known limits. Setup fields for a device live in
@@ -121,7 +123,9 @@ acoustic source for [automatic first-crack marking](preparing-a-roast.md#automat
 **Pairing.** Bluetooth, found and confirmed the same way as any other paired device.
 
 **What changes on screen.** The AMBIENT window appears during roast preparation; crack
-detection gains a second possible source alongside Omniflux.
+detection gains a second possible source alongside Omniflux. Its temperature, humidity and
+pressure become the room conditions recorded with each roast once chosen as ambient sources —
+one button in [Devices → AMBIENT](devices.md#ambient--where-room-conditions-come-from).
 
 **Known limits.** This is TiLau's own probe design — it needs its own firmware installed
 before it will be found at all, unlike the off-the-shelf devices in this chapter. Its
@@ -137,15 +141,15 @@ detection settings in [Configuration → DETECTION](configuration.md#-detection-
 **What it adds.** Live weight capture wherever a weight is entered — batch weight, stock,
 brew dosing — instead of a typed approximation.
 
-**Pairing.** Bluetooth. Unlike every other device in this chapter, a scale is not paired from
-SENSORS: it is set up the first time it is needed, from the first-time setup wizard's
-Hardware step, or directly where a weight is captured.
+**Pairing.** Bluetooth, found and confirmed the same way as any other paired device, in the
+**Scale** group of [Configuration → SENSORS](configuration.md#-sensors--every-device-by-role).
+The scale paired there is the one every weight capture reads.
 
 **What changes on screen.** A small floating scale reading appears next to any field that
 accepts a captured weight; clicking the value writes it in.
 
-**Known limits.** Two scales can be paired at once (for instance, one for green weight and
-one for a brew), never more.
+**Known limits.** TilauScope pairs one scale. A second scale, or an Acaia connected by cable,
+is set up in Artisan's own device settings.
 
 <!-- CAPTURE 9.6 — a floating scale reading beside a weight field. -->
 

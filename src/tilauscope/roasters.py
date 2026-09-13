@@ -394,6 +394,8 @@ class Roaster(DataClassDictMixin):
     # Sensors
     # --------------------------------------------------------
     temperature_probes: list[TemperatureProbe] = field(default_factory=list)
+    # None means undocumented, not absent. Optional probes can be declared here.
+    has_et_probe: bool | None = None
 
     optical_sensor: OpticalSensor | None = None
 
@@ -552,6 +554,8 @@ class RoasterContext:
     has_heater_control:  bool = True
     has_airflow_control: bool = True
 
+    has_et_probe: bool | None = None
+
     # None = no bench-measured value for this roaster (see Roaster.burner_reaction_time_s).
     burner_reaction_time_s: "float | None" = None
 
@@ -627,6 +631,12 @@ class RoasterContext:
                                                if roaster.peak_ror_ceiling_c is not None else 21.0)),
             has_heater_control       = has_heater_control,
             has_airflow_control      = has_airflow_control,
+            has_et_probe             = (roaster.has_et_probe if roaster.has_et_probe is not None
+                                        else (any(p.name.upper() == 'ET' or p.placement in {
+                                            ProbePlacement.ENVIRONMENT, ProbePlacement.EXHAUST,
+                                            ProbePlacement.INLET, ProbePlacement.DRUM_WALL,
+                                        } for p in roaster.temperature_probes)
+                                              if roaster.temperature_probes else None)),
             heater_physical          = hc.physical_range if hc else None,
             airflow_physical         = ac.physical_range if ac else None,
             drum_physical            = dc.physical_range if dc else None,
@@ -936,7 +946,8 @@ _NO_CACHED_NAME: Final[object] = object()
 def roast_context_for(aw: Any, name: str | None = None) -> RoasterContext | None:
     """Single resolver for the selected roaster's context, cached on *aw*.
 
-    Sole writer of ``aw._tilau_roast_context`` and ``aw._tilau_inlet_air_mode``:
+    Sole writer of ``aw._tilau_roast_context``, ``aw._tilau_inlet_air_mode`` and
+    ``aw._tilau_has_et``:
     every reader goes through here, so a roaster change in Devices can never
     leave two components reasoning on two different machines.
 
@@ -968,6 +979,8 @@ def roast_context_for(aw: Any, name: str | None = None) -> RoasterContext | None
     # Inlet air path (push/pull) for the pull-aware advice; no roaster = push.
     aw._tilau_inlet_air_mode = (
         getattr(context, 'inlet_air_mode', 'push') if context is not None else 'push')
+    # ET stays shown unless the machine is declared without the probe.
+    aw._tilau_has_et = getattr(context, 'has_et_probe', None) is not False
     return context
 
 

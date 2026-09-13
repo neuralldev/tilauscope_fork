@@ -736,6 +736,7 @@ class BuildMixin:
         self.ror_val_label = QLabel("0.0")
 
         self.lcds = TilauscopePanel(self.artisan_conf)
+        self._sync_et_readout()
         self._left_pane.addWidget(self.lcds)
 
         # ── Anchorable main-panel container ──────────────────────

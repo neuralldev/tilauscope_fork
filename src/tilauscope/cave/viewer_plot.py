@@ -31,6 +31,7 @@ from matplotlib.transforms import ScaledTranslation
 
 
 from artisanlib.atypes import ProfileData
+from tilauscope.probe_visibility import et_available_in_profile
 
 from PyQt6.QtCore import (Qt, QPoint) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
 from PyQt6.QtGui import ( QResizeEvent, QAction) # @UnusedImport @Reimport  @UnresolvedImport
@@ -67,11 +68,13 @@ class ViewerPlotMixin:
             self.temp_lines = []
             self.setting_lines = []
             self.deltabt = deltabt
+            has_et = et_available_in_profile(data)
+            deltaet = deltaet if has_et else []
             self.deltaet = deltaet
             mode = data.get('mode', 'C')
             timex = data.get('timex', [])
             temp2 = data.get('temp2', [])
-            temp1 = data.get('temp1', [])
+            temp1 = data.get('temp1', []) if has_et else []
 
             if not timex or not temp2:
                 self.roast_info_text.setText(QApplication.translate("tilauscope_beancave","Roast data (BT) is missing in the file."))
@@ -142,7 +145,8 @@ class ViewerPlotMixin:
             ax1.tick_params(axis='both', which='major', labelsize=_FS_TICK)
 
             ax1.plot(x_vals, y_bt, label=QApplication.translate("Label","BT")+f" (°{mode})", color=_PLOT_PALETTE["bt"], linewidth=1.3)
-            ax1.plot(x_vals, y_et, label=QApplication.translate("Label","ET")+f" (°{mode})", color=_PLOT_PALETTE["et"], linewidth=1.3)
+            if y_et:
+                ax1.plot(x_vals, y_et, label=QApplication.translate("Label","ET")+f" (°{mode})", color=_PLOT_PALETTE["et"], linewidth=1.3)
 
             ax_hoovers = ax1.twinx() # second axe
             self.ax_hoovers = ax_hoovers # used for plotted hoovers
@@ -185,7 +189,8 @@ class ViewerPlotMixin:
             ax_hoovers.set_ylabel(QApplication.translate("Label","RoR")+" (°/min)", fontsize=_FS_AXIS, color=ylabel_alpha_color)
 
             ax_hoovers.plot(x_vals, self.y_dbt, label=QApplication.translate("Label","RoR")+" "+QApplication.translate("Label","BT"), color=_PLOT_PALETTE["deltabt"], linestyle='--', linewidth=1.3, alpha=0.85)
-            ax_hoovers.plot(x_vals, y_det, label=QApplication.translate("Label","RoR")+" "+QApplication.translate("Label","ET"), color=_PLOT_PALETTE["deltaet"], linestyle='--', linewidth=1.3, alpha=0.85)
+            if y_det:
+                ax_hoovers.plot(x_vals, y_det, label=QApplication.translate("Label","RoR")+" "+QApplication.translate("Label","ET"), color=_PLOT_PALETTE["deltaet"], linestyle='--', linewidth=1.3, alpha=0.85)
 
             x_min_val = min(x_vals)
             x_max_val = max(x_vals)
@@ -717,7 +722,7 @@ class ViewerPlotMixin:
         else:
             timeindex = normalize_timeindex(data.get('timeindex', []))
         temp2     = data.get('temp2', [])
-        temp1     = data.get('temp1', [])
+        temp1     = data.get('temp1', []) if et_available_in_profile(data) else []
         mode      = data.get('mode', 'C')
 
         # Remove all tracked artists
@@ -819,7 +824,8 @@ class ViewerPlotMixin:
             return
 
         timex    = self.last_plot_data.get('timex', [])
-        temp1    = self.last_plot_data.get('temp1', [])
+        temp1    = (self.last_plot_data.get('temp1', [])
+                    if et_available_in_profile(self.last_plot_data) else [])
         temp2    = self.last_plot_data.get('temp2', [])
         timeindex = normalize_timeindex(self.last_plot_data.get('timeindex', []))
         mode     = self.last_plot_data.get('mode', 'C')

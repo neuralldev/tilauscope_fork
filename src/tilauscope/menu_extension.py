@@ -105,6 +105,10 @@ class TilauMenuExtension:
         self.act_config = QAction(QApplication.translate('Menu', 'TilauScope Config...'), aw)
         self.act_config.triggered.connect(aw.tilauscope_config)
 
+        # The part of Artisan's Config › Device a home roaster uses
+        self.act_devices = QAction(QApplication.translate('Menu', 'Devices...'), aw)
+        self.act_devices.triggered.connect(self._open_devices)
+
         # Replay the first-run configuration assistant on demand
         self.act_first_config = QAction(
             QApplication.translate('Menu', 'Redo First-Time Setup...'), aw)
@@ -136,7 +140,7 @@ class TilauMenuExtension:
         for _action in (self.act_main, self.act_beancave,
                         self.act_custom_label,
                         self.act_profile_maintenance, self.act_custom_buttons,
-                        self.act_config,
+                        self.act_devices, self.act_config,
                         self.act_first_config, self.act_debug,
                         self.act_pid_autotune, self.act_export_logs):
             _action.setMenuRole(QAction.MenuRole.NoRole)
@@ -171,6 +175,14 @@ class TilauMenuExtension:
             open_custom_button_manager(self._aw)
         except Exception:  # pylint: disable=broad-except
             _log.exception('opening custom button management failed')
+
+    def _open_devices(self, _checked: bool = False) -> None:
+        """Open the Devices window: meter, extra devices, ambient sources."""
+        try:
+            from tilauscope.device_setup import open_device_setup
+            open_device_setup(self._aw)
+        except Exception:  # pylint: disable=broad-except
+            _log.exception('opening the Devices window failed')
 
     def _export_logs(self, _checked: bool = False) -> None:
         from tilauscope.tilau_exceptions import report_a_bug
@@ -228,6 +240,7 @@ class TilauMenuExtension:
         menu.addAction(self.act_profile_maintenance)
         menu.addAction(self.act_custom_buttons)
         menu.addSeparator()
+        menu.addAction(self.act_devices)
         menu.addAction(self.act_config)
         menu.addAction(self.act_first_config)
         if ui_mode is _UI_MODE.EXPERT:

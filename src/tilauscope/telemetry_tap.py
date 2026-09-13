@@ -22,6 +22,7 @@ import math
 from typing import Optional
 
 from PyQt6.QtCore import QObject, pyqtSlot
+from tilauscope.probe_visibility import et_available_for
 
 # One source for the chart's scales and hues, shared with the desktop curve
 # engine — see `graph.common`. Qt-light: no widget is pulled in by this.
@@ -202,14 +203,15 @@ class TelemetryTap(QObject):
             charged = bool(ti and ti[0] > -1)
             charge_t = float(timex[ti[0]]) if charged else None
             bt = _num(qmc.temp2[-1]) if qmc.temp2 else None
-            et = _num(qmc.temp1[-1]) if qmc.temp1 else None
+            has_et = et_available_for(self._aw)
+            et = _num(qmc.temp1[-1]) if has_et and qmc.temp1 else None
             ror = _num(qmc.delta2[-1]) if getattr(qmc, 'delta2', None) else None
             phase = self._phase(qmc, ti, charged)
 
             ltime = _lcd_seconds(qmc, timex, ti)  # match the desktop LCD exactly
             # `recording` rides along on every tick so the client can reconcile
             # state each second instead of relying only on the edge event.
-            tele = {'bt': bt, 'et': et, 'ror': ror, 'phase': phase,
+            tele = {'bt': bt, 'et': et, 'has_et': has_et, 'ror': ror, 'phase': phase,
                     'clock': round(now, 1), 'ltime': ltime, 'recording': rec}
             if charge_t is not None:
                 tele['t'] = round(now - charge_t, 1)
@@ -329,7 +331,8 @@ class TelemetryTap(QObject):
         n = len(timex)
         step = max(1, n // _SERIES_MAX)
         t_ser, bt_ser, et_ser, ror_ser = [], [], [], []
-        temp1, temp2 = qmc.temp1 or [], qmc.temp2 or []
+        has_et = et_available_for(self._aw)
+        temp1, temp2 = (qmc.temp1 or []) if has_et else [], qmc.temp2 or []
         delta2 = getattr(qmc, 'delta2', None) or []
         for i in range(0, n, step):
             t_ser.append(round(float(timex[i]) - base, 1))
@@ -350,6 +353,7 @@ class TelemetryTap(QObject):
                 continue
 
         return {'phase': phase, 'charge_marked': charged, 'clock': round(now, 1),
+                'has_et': has_et,
                 'recording': bool(getattr(qmc, 'flagstart', False)), 'ltime': ltime,
                 'monitoring': bool(getattr(qmc, 'flagon', False)),
                 'axes': _axes(qmc), 'colors': _colors(qmc),

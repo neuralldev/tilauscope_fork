@@ -80,6 +80,7 @@
         "roaster_type": "drum",
         "heating_type": "electric",
         "is_radiant_electric": true,
+        "has_et_probe": false,
         "maillard_ror_decay": 2.0,
         "technology": [
             "radiation"
@@ -1124,6 +1125,7 @@
         "roaster_type": "drum",
         "heating_type": "electric",
         "is_radiant_electric": true,
+        "has_et_probe": false,
         "maillard_ror_decay": 2.0,
         "technology": [
             "radiation"

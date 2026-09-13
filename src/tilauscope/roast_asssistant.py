@@ -43,6 +43,7 @@ from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, 
     format_batch_label, to_agtron, weight_loss_target_from_plan)
 from tilauscope.theme_qss import tint, tooltip_qss
 from tilauscope.roasters import RoasterContext, roast_context_for
+from tilauscope.probe_visibility import et_available_for
 from tilauscope.roast_plan_model import TilauScopeRoastPlan, heat_soak_correction
 from tilauscope.roast_plan_snapshot import build_prediction_snapshot
 # moteur de trim pur (v1b) — calé hors-app sur le corpus de roasts
@@ -1981,6 +1982,7 @@ class _PreheatPage(QWidget):
         self._tr_coach_raise      = QApplication.translate("tilauscope_roast_assistant", "Raise heater — temperature is rising too slowly.")
         self._tr_coach_reduce     = QApplication.translate("tilauscope_roast_assistant", "Reduce heater — temperature is rising too fast.")
         self._tr_coach_normal     = QApplication.translate("tilauscope_roast_assistant", "Heat rate normal — wait for ET to stabilize, then charge.")
+        self._tr_coach_normal_bt = QApplication.translate("tilauscope_roast_assistant", "Heat rate normal — wait for BT to stabilize, then charge.")
         # chip labels
         self._cl_bt   = QApplication.translate("tilauscope_roast_assistant", "BT")
         self._cl_et   = QApplication.translate("tilauscope_roast_assistant", "ET")
@@ -2026,6 +2028,8 @@ class _PreheatPage(QWidget):
         """Refresh the preheat page (signature unchanged — driven by displayscope).
         soak_note : ligne heat-soak back-to-back (batch 2+), affichée sous le héros."""
         unit  = f"°{mode}"
+        has_et = et_available_for(self.aw)
+        normal_coach = self._tr_coach_normal if has_et else self._tr_coach_normal_bt
         trend = _ror_trend(ror_hist, 1.8 if mode == 'F' else 1.0)
         ror_chip = f"{ror:.1f}" if ror is not None else "--"
         # °F doctrine: deltas/RoR scale ×1.8, absolute temps convert via
@@ -2103,20 +2107,20 @@ class _PreheatPage(QWidget):
             self._set_progress(((bt - _room) / span * 100.0) if span > 0 else 0.0)
 
             self.chips.set_chips([
-                (self._cl_et,   f"{et:.0f}°",          "#F38BA8"),
+                *([(self._cl_et, f"{et:.0f}°", "#F38BA8")] if has_et else []),
                 (self._cl_ror,  f"{ror_chip} {trend}".strip(), "#CBA6F7"),
                 (self._cl_chrg, f"{charge_temp:.0f}°", "#FAB387"),
             ])
 
             self.banner.show_alert(self._tr_no_pid_state, _S_OK)
             if ror is None:
-                self.coach.set(self._tr_coach_normal, _S_OK)
+                self.coach.set(normal_coach, _S_OK)
             elif ror < 3 * s:
                 self.coach.set(self._tr_coach_raise, _S_WARN)
             elif ror > 16 * s:
                 self.coach.set(self._tr_coach_reduce, _S_WARN)
             else:
-                self.coach.set(self._tr_coach_normal, _S_OK)
+                self.coach.set(normal_coach, _S_OK)
 
             # Enable charge near the manual charge target
             near = bt >= charge_temp - 3.0 * s
@@ -2364,7 +2368,7 @@ class _DryingPage(QWidget):
         # ── Gap ET/BT (alert only) ──────────────────────────────────────────────
         gap_grace = (t_tp_sec < 0) or ((t_now_sec - t_tp_sec) < self._TP_GRACE_SEC)
         gap_status = _S_OK
-        if not gap_grace:
+        if not gap_grace and et_available_for(self.aw):
             gap = et - bt
             gap_status = (_S_OK if 20 * s <= gap <= 50 * s
                           else (_S_WARN if gap < 20 * s else _S_CRIT))
@@ -3457,6 +3461,7 @@ class _CoolingPage(QWidget):
         self._tpl_cool_ror    = QApplication.translate("tilauscope_roast_assistant", "RoR {0} °/min")
         self._tr_coach_shutdown   = QApplication.translate("tilauscope_roast_assistant", "Open drum door & cooling tray, keep drum spinning. Don't cut main power until BT < 50°.")
         self._tpl_coach_back2back = QApplication.translate("tilauscope_roast_assistant", "Keep airflow high until ET drops; at ~{0}° switch to preheat for the next batch.")
+        self._tpl_coach_back2back_bt = QApplication.translate("tilauscope_roast_assistant", "Keep airflow high; when BT reaches ~{0}°, switch to preheat for the next batch.")
         # _soak_hint() runs on every refresh() tick during COOLING — must not
         # re-translate per tick.
         self._tpl_soak_hint = QApplication.translate(
@@ -3537,7 +3542,7 @@ class _CoolingPage(QWidget):
         else:
             word, wcol, vcol = self._w_in_progress, _ACCENT, _ACCENT
         sub = "  ·  ".join([
-            self._tpl_et_deg.format(f"{et:.0f}"),
+            *([self._tpl_et_deg.format(f"{et:.0f}")] if et_available_for(self.aw) else []),
             self._tpl_cool_ror.format(f"{ror:.0f}"),
             self._safe_label(eta),
         ])
@@ -3563,7 +3568,8 @@ class _CoolingPage(QWidget):
             self.coach.set(self._tr_target_reached_proceed, _S_OK)
         elif next_batch_planned:
             self.coach.set(
-                self._tpl_coach_back2back.format(f"{bbp_temp:.0f}") + self._soak_hint(),
+                (self._tpl_coach_back2back if et_available_for(self.aw)
+                 else self._tpl_coach_back2back_bt).format(f"{bbp_temp:.0f}") + self._soak_hint(),
                 _S_OK)
         else:
             self.coach.set(self._tr_coach_shutdown, _S_OK)

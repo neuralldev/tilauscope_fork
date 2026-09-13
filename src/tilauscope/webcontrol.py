@@ -922,7 +922,7 @@ class TilauWebControl:
             "else if(m.type==='welcome'){buildSliders(d.channels);}"
             "else if(m.type==='telemetry'||m.type==='snapshot'){var s=m.type==='snapshot'?'(snap) ':'';"
             "if(d.sliders){for(var k in d.sliders)S[k]=d.sliders[k];refresh();}"
-            "V.textContent=s+'BT '+(d.bt!=null?d.bt:'-')+'  ET '+(d.et!=null?d.et:'-')+"
+            "V.textContent=s+'BT '+(d.bt!=null?d.bt:'-')+(d.has_et===false?'':'  ET '+(d.et!=null?d.et:'-'))+"
             "'  RoR '+(d.ror!=null?d.ror:'-')+'  · '+(d.phase||'');}"
             "else if(m.type==='error'){V.innerHTML='<span style=color:#F38BA8>'+(d.code||'error')+'</span>';"
             "if(d.code==='AUTH_FAILED'){localStorage.removeItem('tdt');stop=true;}}"

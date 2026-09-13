@@ -111,8 +111,8 @@ loads it as a comparison curve behind whatever is roasting or being reviewed nex
 
 ### Reading the curve
 
-The **Roasting Curve** sub-tab shows the recorded BT/ET curve with every marked milestone
-labelled directly on it. When a crack probe counted during the roast, one tick per pop runs
+The **Roasting Curve** sub-tab shows the recorded BT/ET curve — BT alone for a machine without
+an air probe — with every marked milestone labelled directly on it. When a crack probe counted during the roast, one tick per pop runs
 along the foot of the plot, exactly as in the roasting window — see
 [Listening to the crack](the-window.md#listening-to-the-crack).
 

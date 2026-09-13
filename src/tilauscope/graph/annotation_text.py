@@ -42,6 +42,7 @@ from PyQt6.QtWidgets import QApplication
 from artisanlib.util import stringfromseconds
 from tilauscope.tilauscope_types import get_agtron_color
 from tilauscope.graph.common import delta_scale, report_once, within_share
+from tilauscope.probe_visibility import et_available_for
 from tilauscope.tilauscope_types import get_roc_color as _omniflux_roc_color
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -316,6 +317,12 @@ def _get_pid_text(qmc: Any, pid, tx, et, bt):
             """
     t1, t2 = (bt, et) if qmc.swapETBT else (et, bt)
     l1, l2 = (L['BT'], L['ET']) if qmc.swapETBT else (L['ET'], L['BT'])
+    shown = ((l1, t1), (l2, t2)) if et_available_for(qmc.aw) else ((L['BT'], bt),)
+    temp_rows = "".join(f"""
+                <tr>
+                    <td style="color: {colors['label']}; font-size: 11px;">{label}</td>
+                    <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{value:.1f}°{mode}</td>
+                </tr>""" for label, value in shown)
     if pid.pidGainScheduling:
         to_follow = L['SV'] if pid.pidGainSchedulingSV else L['PV']
         if pid.pidGainSchedulingQuadratic:
@@ -329,14 +336,7 @@ def _get_pid_text(qmc: Any, pid, tx, et, bt):
                     <td style="color: {colors['label']}; font-size: 11px;">{to_follow} {sched_type}</td>
                     <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{sv_pv_val:.0f}°{mode}</td>
                 </tr>
-                <tr>
-                    <td style="color: {colors['label']}; font-size: 11px;">{l1}</td>
-                    <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{t1:.1f}°{mode}</td>
-                </tr>
-                <tr>
-                    <td style="color: {colors['label']}; font-size: 11px;">{l2}</td>
-                    <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{t2:.1f}°{mode}</td>
-                </tr>
+                {temp_rows}
                 </table>
                 """
         return html
@@ -410,14 +410,7 @@ def _get_pid_text(qmc: Any, pid, tx, et, bt):
                     <td style="color: {colors['label']}; font-size: 11px;">{L['Delta']} {L['Temp']}</td>
                     <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;"><span style="color: {mode_color}">{pid_input:.1f}</span>/{sv:.0f}°{mode}</td>
                 </tr>
-                <tr>
-                    <td style="color: {colors['label']}; font-size: 11px;">{l1}</td>
-                    <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{t1:.1f}°{mode}</td>
-                </tr>
-                <tr>
-                    <td style="color: {colors['label']}; font-size: 11px;">{l2}</td>
-                    <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{t2:.1f}°{mode}</td>
-                </tr>
+                {temp_rows}
                 </table>
                 """
 
@@ -426,14 +419,7 @@ def _get_pid_text(qmc: Any, pid, tx, et, bt):
     # Manual case
     sv = round(getattr(pid, 'svValue', 0.0), 1)
     html += f"""
-            <tr>
-                <td style="color: {colors['label']}; font-size: 11px;">{l1}</td>
-                <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{t1:.1f}°{mode}</td>
-            </tr>
-            <tr>
-                <td style="color: {colors['label']}; font-size: 11px;">{l2}</td>
-                <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{t2:.1f}°{mode}</td>
-            </tr>
+            {temp_rows}
             <tr>
                 <td style="color: {colors['label']}; font-size: 11px;">{L['SV']}</td>
                 <td align="right" style="color: {colors['value']}; font-weight: bold; font-size: 12px;">{sv:.0f}°{mode}</td>
@@ -609,7 +595,9 @@ def _coach_html(qmc: Any, idx, info, x_intersect, bt, et, mode, L, colors,
         hot_limit  = 200.0 if mode == "C" else 392.0
         warm_limit =  50.0 if mode == "C" else 122.0
         hero_color = RED if bt > hot_limit else (YELLOW if bt > warm_limit else GREEN)
-        compact = f"{L['BT']} {bt:.0f}°{mode} · {L['ET']} {et:.0f}°{mode}"
+        compact = f"{L['BT']} {bt:.0f}°{mode}"
+        if et_available_for(qmc.aw):
+            compact += f" · {L['ET']} {et:.0f}°{mode}"
 
     else:
         hero = f"{L['BT']} {bt:.0f}°{mode}"
@@ -827,17 +815,19 @@ def _format_annotation_text(qmc: Any, x_intersect, info, coach: bool = False)->s
         def _cool_color(t: float) -> str:
             return colors['manual'] if t > hot_limit else (colors['highlighted'] if t > warm_limit else colors['value'])
         bt_color = _cool_color(bt)
-        et_color = _cool_color(et)
+        et_row = ""
+        if et_available_for(qmc.aw):
+            et_row = f"""
+                <tr>
+                    <td style="color: {colors['label']}; font-size: 11px;">{L['ET']}</td>
+                    <td align="right" style="color: {_cool_color(et)}; font-weight: bold; font-size: 12px;">{et:.1f}°{mode}</td>
+                </tr>"""
 
         html += f"""
                 <tr>
                     <td style="color: {colors['label']}; font-size: 11px;">{L['BT']}</td>
                     <td align="right" style="color: {bt_color}; font-weight: bold; font-size: 12px;">{bt:.1f}°{mode}</td>
-                </tr>
-                <tr>
-                    <td style="color: {colors['label']}; font-size: 11px;">{L['ET']}</td>
-                    <td align="right" style="color: {et_color}; font-weight: bold; font-size: 12px;">{et:.1f}°{mode}</td>
-                </tr>
+                </tr>{et_row}
                 </table>
                 """
         return html

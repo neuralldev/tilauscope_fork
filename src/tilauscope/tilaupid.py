@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import QApplication
 from artisanlib.util import fromFtoCstrict, fromCtoFstrict, convertRoRstrict
 from tilauscope.tilaupid_adaptative import AdaptivePIDMixin, AmbientConditions, AmbientCorrector
 from tilauscope.tilaupid_safety import PreheatSensorGuard, SensorSafetyLimits
+from tilauscope.probe_visibility import et_available_for
 
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
@@ -600,6 +601,11 @@ class TilauPreheatPID(AdaptivePIDMixin):
         if self.active:
             _logd.info("TilauPID duplicate START ignored: preheat is already active")
             return
+
+        # Without an ET probe the only input is BT, whatever Artisan's settings,
+        # a loaded profile or a pidSource() command last set.
+        if not et_available_for(self.aw):
+            self.aw.pidcontrol.pidSource = 1
 
         if sv is not None:
             # sv is received in the current Artisan unit; store internally in °C

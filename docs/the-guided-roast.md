@@ -185,7 +185,7 @@ The assistant raises problems while they can still be fixed.
 | *⚠️ Premature browning detected!* | The opposite: the roast is developing colour too early. |
 | *Flash drying risk — check FIR power* | Surface drying ahead of the core. See [flash drying](glossary.md#flash-drying). |
 | *Hold the burner — a wet lot (12.4 %) turns high, then resists* | Not a fault, a reading. A wet coffee takes the heat quickly before its water starts to leave, so it turns at a higher temperature than the plan drew — and then resists once the water does start to leave. Cutting the burner on that high turning point is the classic way to run out of heat in the middle of the roast and end up [baked](glossary.md#baked). Shown once, only when the coffee's [moisture](glossary.md#moisture-content) was measured and the turning point really did land above the plan. |
-| *⚠ Critical Gap between ET/BT — dangerous thermic gradiant* | The two probes have diverged dangerously. |
+| *⚠ Critical Gap between ET/BT — dangerous thermic gradiant* | The two probes have diverged dangerously. Never raised on a machine without an air probe. |
 
 Alerts name the correction, not just the condition — *raise heater*, *reduce heater*, *DROP now
 or start heating again*. An alert you cannot act on is noise.
@@ -248,8 +248,9 @@ CAPTURE 7.16 — the colour entry and the Exclude from learning control. -->
 On a read-only roaster, the control sliders are absent and the assistant gives recommendations to
 act on by hand instead. Everything else in this chapter — plan tracking, milestone suggestions,
 alerts, the countdown, the end-of-roast summary — works exactly the same, because it all comes
-from reading [BT](glossary.md#bt--bean-temperature) and
-[ET](glossary.md#et--environmental-temperature), not from driving the machine.
+from reading [BT](glossary.md#bt--bean-temperature) — and
+[ET](glossary.md#et--environmental-temperature) on a machine with an air probe — not from
+driving the machine.
 
 ---
 

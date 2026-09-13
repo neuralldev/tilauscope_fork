@@ -173,6 +173,9 @@ def profile_from_qmc(aw) -> dict:
         "ambient_humidity": getattr(qmc, "ambient_humidity", 0) or 0,
         "ambient_pressure": getattr(qmc, "ambient_pressure", 0) or 0,
         "cuppingnotes": getattr(qmc, "cuppingnotes", "") or "",
+        # The machine as the .alog records it: the roast card asks it whether
+        # the ET series comes from a real probe.
+        "roastertype": getattr(qmc, "roastertype", "") or "",
         # By reference: the roast card reads these to draw its miniature, and a
         # copy of the whole curve would be pure waste.
         "timex": getattr(qmc, "timex", []),
