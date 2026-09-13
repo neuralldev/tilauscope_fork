@@ -1,7 +1,4 @@
 ## [4.3] 2026-09-13
-build 2
-* 🐛 [fix(updates)] : a new version whose number has two parts, such as 4.3, is offered again by Check for Updates and at startup — it was ignored and the installed version was reported as the latest
-* 🐛 [fix(build)] : the Windows installer is produced again for a two-part version number such as 4.3 — the build stopped with an invalid version error and no setup file was published
 build 1
 ## [4.2.27] 2026-09-12
 build 2

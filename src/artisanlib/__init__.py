@@ -1,6 +1,6 @@
 __version__ = '4.3'
 __revision__ = ''
-__build__ = '2'
+__build__ = '1'
 __artisan_os__ = 'macOS'
 
 ## TILAU ##

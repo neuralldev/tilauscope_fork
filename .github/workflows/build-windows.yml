@@ -48,8 +48,6 @@ jobs:
           
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
           echo "APP_BUILD=$BUILD" >> $GITHUB_ENV
-          # Asset names always carry X.Y.Z: installs up to 4.3 build 1 ignore any other form.
-          echo "ASSET_VERSION=$(echo "$VERSION" | awk -F. '{printf "%d.%d.%d", $1, $2, $3}')" >> $GITHUB_ENV
           echo "Version extraite : $VERSION (Build $BUILD)"
 
       - name: Create Version Info File
@@ -98,9 +96,8 @@ jobs:
         env:
           APP_VERSION: ${{ env.APP_VERSION }}
           APP_BUILD: ${{ env.APP_BUILD }}
-          ASSET_VERSION: ${{ env.ASSET_VERSION }}
         run: |
-          mv src\tilauscope-win-x64-${{ env.APP_VERSION }}-setup.exe src\tilauscope-${{ env.ASSET_VERSION }}-build${{ env.APP_BUILD }}-setup.exe
+          mv src\tilauscope-win-x64-${{ env.APP_VERSION }}-setup.exe src\tilauscope-${{ env.APP_VERSION }}-build${{ env.APP_BUILD }}-setup.exe
 
       - name: Publish GitHub release
         shell: bash
@@ -108,10 +105,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APP_VERSION: ${{ env.APP_VERSION }}
           APP_BUILD: ${{ env.APP_BUILD }}
-          ASSET_VERSION: ${{ env.ASSET_VERSION }}
         run: |
           TAG="v${APP_VERSION}"
-          EXE="src/tilauscope-${ASSET_VERSION}-build${APP_BUILD}-setup.exe"
+          EXE="src/tilauscope-${APP_VERSION}-build${APP_BUILD}-setup.exe"
 
           # One release per public version, carrying both platform installers.
           # The macOS and Windows jobs race to create it; whichever loses simply
