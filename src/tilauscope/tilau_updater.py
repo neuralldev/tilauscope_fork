@@ -87,9 +87,11 @@ def _parse_version(v: str):
             return pkg_version.parse(v)
         except Exception:
             pass
-    # Manual fallback: compare tuples of ints
-    parts = re.findall(r"\d+", v)
-    return tuple(int(p) for p in parts)
+    # Manual fallback: compare tuples of ints, trailing zeros dropped (4.3 == 4.3.0)
+    parts = [int(p) for p in re.findall(r"\d+", v)]
+    while len(parts) > 1 and parts[-1] == 0:
+        parts.pop()
+    return tuple(parts)
 
 
 def _is_newer(remote_v: str, remote_b: int, local_v: str, local_b: int) -> bool:
@@ -136,9 +138,11 @@ class _UpdateCheckWorker(QObject):
     # number stays in the asset name so support can trace an exact binary.
     #   macOS   : tilauscope-4.1.0-build41.dmg
     #   Windows : tilauscope-4.1.0-build41-setup.exe
+    # The build workflows pad the version to X.Y.Z ("4.3" → "4.3.0") because
+    # installs up to 4.3 build 1 match nothing else; two parts are accepted here.
     _ASSET_RE: Final = re.compile(
-        r"^tilauscope-(\d+\.\d+\.\d+)-build(\d+)-setup\.exe$" if _IS_WINDOWS
-        else r"^tilauscope-(\d+\.\d+\.\d+)-build(\d+)\.dmg$"
+        r"^tilauscope-(\d+(?:\.\d+)+)-build(\d+)-setup\.exe$" if _IS_WINDOWS
+        else r"^tilauscope-(\d+(?:\.\d+)+)-build(\d+)\.dmg$"
     )
 
     def _check_github(self) -> dict | None:

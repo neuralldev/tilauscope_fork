@@ -151,7 +151,12 @@ LangString DESC_OpenWithURL ${LANG_FRENCH} "Ouvrir avec URL"
 !define /date CUR_YEAR "%Y"
 Caption "${PRODUCT_NAME} Installer"
 
-VIProductVersion "${PRODUCT_VERSION}.${PRODUCT_BUILD}"
+; VIProductVersion accepts exactly four numeric components. PRODUCT_VERSION may
+; carry only two ("4.3"), so pad it to three before appending the build number.
+!searchparse /noerrors "${PRODUCT_VERSION}.0.0" "" _VER_MAJOR "." _VER_MINOR "." _VER_PATCH "." _VER_TAIL
+!define PRODUCT_VERSION_NUMERIC "${_VER_MAJOR}.${_VER_MINOR}.${_VER_PATCH}"
+
+VIProductVersion "${PRODUCT_VERSION_NUMERIC}.${PRODUCT_BUILD}"
 VIAddVersionKey ProductName "${PRODUCT_NAME}"
 VIAddVersionKey Comments "Installer for TilauScope"
 VIAddVersionKey CompanyName ""

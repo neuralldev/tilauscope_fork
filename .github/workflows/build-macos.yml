@@ -41,6 +41,8 @@ jobs:
           
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
           echo "APP_BUILD=$BUILD" >> $GITHUB_ENV
+          # Asset names always carry X.Y.Z: installs up to 4.3 build 1 ignore any other form.
+          echo "ASSET_VERSION=$(echo "$VERSION" | awk -F. '{printf "%d.%d.%d", $1, $2, $3}')" >> $GITHUB_ENV
     
           echo "Version: $VERSION"
           echo "Build: $BUILD"
@@ -122,6 +124,7 @@ jobs:
           APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
           APP_VERSION: ${{ env.APP_VERSION }}
           APP_BUILD: ${{ env.APP_BUILD }}
+          ASSET_VERSION: ${{ env.ASSET_VERSION }}
           # Best-effort notarization: if Apple rejects, times out or is down, the
           # signed DMG still ships (see the "not notarized" note appended to the
           # public release). Signing and DMG creation themselves remain fatal.
@@ -131,7 +134,7 @@ jobs:
           echo -n "$APPLE_API_KEY_P8_BASE64" | base64 --decode > "$APPLE_API_KEY_PATH"
           chmod 600 "$APPLE_API_KEY_PATH"
 
-          DMG="src/tilauscope-${APP_VERSION}-build${APP_BUILD}.dmg"
+          DMG="src/tilauscope-${ASSET_VERSION}-build${APP_BUILD}.dmg"
           chmod +x src/sign-notarize-macos.sh
           src/sign-notarize-macos.sh "src/dist/TilauScope.app" "$DMG"
 
@@ -158,10 +161,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APP_VERSION: ${{ env.APP_VERSION }}
           APP_BUILD: ${{ env.APP_BUILD }}
+          ASSET_VERSION: ${{ env.ASSET_VERSION }}
           NOTARIZED: ${{ env.NOTARIZED }}
         run: |
           TAG="v${APP_VERSION}"
-          DMG="src/tilauscope-${APP_VERSION}-build${APP_BUILD}.dmg"
+          DMG="src/tilauscope-${ASSET_VERSION}-build${APP_BUILD}.dmg"
 
           # One release per public version, carrying both platform installers.
           # The macOS and Windows jobs race to create it; whichever loses simply
