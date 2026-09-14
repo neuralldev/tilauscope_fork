@@ -92,7 +92,9 @@ class TilauController(QObject):
 
         thread.started.connect(worker.run)
         worker.finished.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
+        # the worker goes with its thread object, never by its own deleteLater
+        # (see LifecycleMixin._launch_worker)
+        thread._worker = worker
         # thread ref kept on self for .wait() in finish() — no deleteLater on thread
 
         self._thread = thread

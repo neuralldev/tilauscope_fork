@@ -224,8 +224,9 @@ same thing: the target as a line, dashed while the drum is still climbing and so
 there, and — as soon as the arrival is close enough to be in frame — a mark on the target line at
 the moment the climb is due to meet it.
 
-Once the drum reaches its target the card gives way: the chart says **CHARGE NOW** on the head of
-the climb, where you are already looking, and there is nothing left to count down.
+Once the drum is within 2 °C (3.6 °F) of its target, below or above it, the card gives way: the
+chart says **CHARGE NOW** on the head of the climb, where you are already looking, and there is
+nothing left to count down. The card comes back if the drum overshoots beyond that band.
 
 Once the roast is running, a **roast card** takes over. It leaves when you stop recording — a
 card that says what to do next has nothing to say about a roast that has ended. It names the phase, counts down to the

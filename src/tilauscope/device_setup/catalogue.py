@@ -49,9 +49,14 @@ PORT_DIALOG_METERS: Final[frozenset[str]] = frozenset({'MODBUS', 'S7', 'WebSocke
 
 @lru_cache(maxsize=1)
 def meter_names() -> tuple[str, ...]:
-    """Every name Artisan's meter chain acts on, sorted as Artisan lists them."""
-    tilau = {d['label'] for d in TILAU_DEVICES.values() if not d['label'].startswith('+')}
-    return tuple(sorted(set(METER_BRANCHES) | tilau))
+    """Every meter Artisan's own list shows and its meter chain acts on, sorted as Artisan lists them.
+
+    The chain keeps branches for retired meters, some writing an id Artisan now
+    gives another device; its list hides them, and so does this one.
+    """
+    listed = {name for name in DEVICES if not name.startswith(('+', '-'))}
+    tilau = {d['label'] for d in TILAU_DEVICES.values()}
+    return tuple(sorted((set(METER_BRANCHES) | tilau) & listed))
 
 
 def meter_name_of(device_id: int) -> str | None:

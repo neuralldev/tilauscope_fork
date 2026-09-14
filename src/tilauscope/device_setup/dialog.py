@@ -177,6 +177,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
         self._selected_uid: int | None = None
         self._cards_by_uid: dict[int, ExtraDeviceCard] = {}
         _frameless(self)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)   # each opening builds a new window
         self._build_ui()
         self.setMinimumSize(660, 540)
         self.resize(740, 640)
@@ -535,6 +536,9 @@ class DeviceSetupDialog(_DragToMove, QDialog):
         self._empty_extras.setVisible(count == 0)
 
     def _rebuild_cards(self) -> None:
+        # hiding a card hands a name field's focus to the next card, which would select itself
+        for card in self._cards_by_uid.values():
+            card.blockSignals(True)
         while self._cards.count():
             item = self._cards.takeAt(0)
             widget = item.widget() if item is not None else None

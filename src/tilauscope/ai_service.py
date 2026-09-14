@@ -182,8 +182,9 @@ class TilauAIService(QObject):
         worker.error.connect(
             lambda msg, tt=task_type, g=gen: self._on_worker_error(tt, g, msg)
         )
-        # Cleanup on thread finish
-        thread.finished.connect(worker.deleteLater)
+        # Cleanup on thread finish — the worker goes with its thread object, never by
+        # its own deleteLater (see LifecycleMixin._launch_worker)
+        thread._worker = worker
         thread.finished.connect(thread.deleteLater)
 
         self._active[task_type] = (gen, thread, worker, cancel_token)

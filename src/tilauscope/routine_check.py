@@ -439,10 +439,12 @@ class TilauRoutineCheck(QDialog):
 
         self._thread.started.connect(self._worker.run)
         self._worker.finished.connect(self._on_scan_finished)
-        # Worker and thread cleanup: quit the loop, delete both QObjects, and
-        # drop our references so closeEvent never touches a deleted QThread.
+        # Worker and thread cleanup: quit the loop, delete the thread object — the
+        # worker goes with it, never by its own deleteLater (see
+        # LifecycleMixin._launch_worker) — and drop our references so closeEvent
+        # never touches a deleted QThread.
         self._worker.finished.connect(self._thread.quit)
-        self._thread.finished.connect(self._worker.deleteLater)
+        self._thread._worker = self._worker
         self._thread.finished.connect(self._thread.deleteLater)
         self._thread.finished.connect(self._on_thread_finished)
         self._thread.start()

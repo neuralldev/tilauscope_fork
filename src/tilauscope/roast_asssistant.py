@@ -44,6 +44,7 @@ from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, 
 from tilauscope.theme_qss import tint, tooltip_qss
 from tilauscope.roasters import RoasterContext, roast_context_for
 from tilauscope.probe_visibility import et_available_for
+from tilauscope.graph.common import preheat_arrived
 from tilauscope.roast_plan_model import TilauScopeRoastPlan, heat_soak_correction
 from tilauscope.roast_plan_snapshot import build_prediction_snapshot
 # moteur de trim pur (v1b) — calé hors-app sur le corpus de roasts
@@ -2086,8 +2087,8 @@ class _PreheatPage(QWidget):
                 self.banner.show_alert(self._tr_heating_to_sv, _S_OK)
                 self.coach.set(self._tr_coach_ramping, _S_OK)
 
-            # Charge button latch on SV±2°
-            if abs(dist) <= 2.0 * s:
+            # Charge button latch on the preheat band (SV ± 2 °C)
+            if preheat_arrived(dist, mode):
                 self._charge_btn_latched = True
             self.btn_charge.set_active(
                 self._charge_btn_latched,

@@ -1,4 +1,15 @@
 ## [4.3] 2026-09-13
+build 3
+* 🐛 [fix(windows)] : with a two-part version such as 4.3, TilauScope.exe, its installer and Add/Remove Programs now report 4.3.0 followed by the build number, instead of a version such as 4.3.3 where the build took the place of the patch number
+* 🐛 [fix(devices)] : in the Devices window, the card left selected after Add, Delete or a drag is the one the next command acts on — while a reading's name was being edited, the selection jumped to the last card, so Change device or Delete acted on that card instead
+* 🐛 [fix(devices)] : the Meter list of the Devices window no longer offers three meters Artisan has retired — choosing Omega HH806W set the roaster to an unrelated Modbus channel, and Probat Middleware or Aillio Bullet R1 IBTS/DT left a connection the window could not show when opened again
+* 🐛 [fix(devices)] : a closed Devices window no longer stays in memory — every window opened during a session was kept, with its port list, until TilauScope was quit
+* 🐛 [fix(beancave)] : BeanCave no longer crashes or freezes now and then while its roast list refreshes, a curve loads, a supplier page is read or a label prints — a finished background job was cleaned up while the window was still using it
+* 🐛 [fix(tilauscope)] : the crash or freeze fixed in BeanCave could also happen when other background jobs ended — an answer in the AI panel or the brew advisor, checking for or downloading an update, fetching What's New, reading a supplier page from the bean editor or the sack wizard, listing AI models, printing sack labels, counting roasts for the cleaning reminder, and releasing the keep-awake lock when monitoring stops
+build 2
+* 🐛 [fix(preheat)] : the preheat card turns green and says Ready to charge only within 2 °C (3.6 °F) of the setpoint, below or above it — it turned green about 9 °C early, for example at 173 °C on a 182 °C setpoint; CHARGE NOW on the curve and the roasting window's status follow the same band
+* 🐛 [fix(updates)] : a new version whose number has two parts, such as 4.3, is offered again by Check for Updates and at startup — it was ignored and the installed version was reported as the latest
+* 🐛 [fix(build)] : the Windows installer is produced again for a two-part version number such as 4.3 — the build stopped with an invalid version error and no setup file was published
 build 1
 ## [4.2.27] 2026-09-12
 build 2

@@ -320,7 +320,9 @@ target [setpoint](glossary.md#sv--setpoint-value) and a bar tracking the climb t
 whichever temperature the **Input** setting steers on — bean or air. The header changes colour
 as the machine closes in. Early in the climb, while an arrival time would be pure guesswork, the
 panel simply reads *Heating*; it switches to *Stabilizing* when the power is easing off before
-the target, and to *Ready to charge* once the setpoint band is reached. Bean/air temperature,
+the target, and to *Ready to charge*, in green, once the temperature is within 2 °C (3.6 °F) of
+the setpoint, below or above it. A machine that overshoots beyond that band reads *Stabilizing*
+until it comes back into it. Bean/air temperature,
 RoR and burner power are not repeated here — they are already on the graph and its LCDs.
 
 Below the countdown, an [Experience](glossary.md#experience) reading states how much TilauPID

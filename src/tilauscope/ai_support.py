@@ -348,7 +348,7 @@ class _ModelFetcher(QObject):
 # second socket timeout, so joining it on close would freeze the window for as
 # long; and a QThread parented to the dialog is destroyed with it mid-call,
 # which Qt reports as fatal. Both threads and workers are held here instead,
-# until they announce they are done and delete themselves.
+# until the thread announces it is done and deletes itself, its worker with it.
 _INFLIGHT_MODEL_FETCHES: set = set()
 
 
@@ -711,7 +711,9 @@ class AIProviderPickerDialog(QDialog):
         fetcher.models_ready.connect(thread.quit)
         fetcher.failed.connect(thread.quit)
         thread.finished.connect(lambda e=entry: _INFLIGHT_MODEL_FETCHES.discard(e))
-        thread.finished.connect(fetcher.deleteLater)
+        # the fetcher goes with its thread object, never by its own deleteLater
+        # (see LifecycleMixin._launch_worker)
+        thread._worker = fetcher
         thread.finished.connect(thread.deleteLater)
         thread.start()
 

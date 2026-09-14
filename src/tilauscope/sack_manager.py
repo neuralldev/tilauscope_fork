@@ -1069,7 +1069,9 @@ class SackLabelsDialog(QDialog):
             sig.connect(self._thread.quit)
         self._worker.error.connect(self._thread.quit)
         self._worker.unconfirmed.connect(self._thread.quit)
-        self._thread.finished.connect(self._worker.deleteLater)
+        # the worker goes with its thread object, never by its own deleteLater
+        # (see LifecycleMixin._launch_worker)
+        self._thread._worker = self._worker
         self._thread.finished.connect(self._thread.deleteLater)
         self._thread.start()
 

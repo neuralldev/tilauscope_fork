@@ -590,7 +590,9 @@ class WhatsNewDlg(QDialog):
         self._worker.failed.connect(self._on_fetch_failed)
         self._worker.fetched.connect(self._thread.quit)
         self._worker.failed.connect(self._thread.quit)
-        self._thread.finished.connect(self._worker.deleteLater)
+        # the worker goes with its thread object, never by its own deleteLater
+        # (see LifecycleMixin._launch_worker)
+        self._thread._worker = self._worker
         # NOTE: do NOT connect finished→thread.deleteLater when thread has a parent;
         # the parent (self) owns the lifetime — deleteLater would double-free.
 

@@ -151,14 +151,19 @@ LangString DESC_OpenWithURL ${LANG_FRENCH} "Ouvrir avec URL"
 !define /date CUR_YEAR "%Y"
 Caption "${PRODUCT_NAME} Installer"
 
-VIProductVersion "${PRODUCT_VERSION}.${PRODUCT_BUILD}"
+; VIProductVersion accepts exactly four numeric components. PRODUCT_VERSION may
+; carry only two ("4.3"), so pad it to three before appending the build number.
+!searchparse /noerrors "${PRODUCT_VERSION}.0.0" "" _VER_MAJOR "." _VER_MINOR "." _VER_PATCH "." _VER_TAIL
+!define PRODUCT_VERSION_NUMERIC "${_VER_MAJOR}.${_VER_MINOR}.${_VER_PATCH}"
+
+VIProductVersion "${PRODUCT_VERSION_NUMERIC}.${PRODUCT_BUILD}"
 VIAddVersionKey ProductName "${PRODUCT_NAME}"
 VIAddVersionKey Comments "Installer for TilauScope"
 VIAddVersionKey CompanyName ""
 VIAddVersionKey LegalCopyright "Copyright 2025-${CUR_YEAR}, Tilau. GNU General Public License"
-VIAddVersionKey FileVersion "${PRODUCT_VERSION}.${PRODUCT_BUILD}"
+VIAddVersionKey FileVersion "${PRODUCT_VERSION_NUMERIC}.${PRODUCT_BUILD}"
 VIAddVersionKey FileDescription "${PRODUCT_NAME} Installer"
-VIAddVersionKey ProductVersion "${PRODUCT_VERSION}.${PRODUCT_BUILD}"
+VIAddVersionKey ProductVersion "${PRODUCT_VERSION_NUMERIC}.${PRODUCT_BUILD}"
 
 ; MUI Settings
 !define MUI_ABORTWARNING
@@ -257,7 +262,7 @@ Section -Post
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayName" "$(^Name)"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" "$INSTDIR\uninst.exe"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$INSTDIR\TilauScope.exe"
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}.${PRODUCT_BUILD}"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION_NUMERIC}.${PRODUCT_BUILD}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
 

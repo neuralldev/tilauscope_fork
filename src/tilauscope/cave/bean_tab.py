@@ -1233,13 +1233,12 @@ class BeanTabMixin:
         self.ai_worker.error.connect(self._on_bean_ai_error)
         self.ai_thread.started.connect(self.ai_worker.run)
 
-        # Cleanup
+        # Cleanup — the worker goes with its thread object, never by its own
+        # deleteLater (see LifecycleMixin._launch_worker)
+        self.ai_thread._worker = self.ai_worker
         self.ai_worker.finished.connect(self.ai_thread.quit)
-        self.ai_worker.finished.connect(self.ai_worker.deleteLater)
         self.ai_worker.error.connect(self.ai_thread.quit)        # error ne quittait pas le thread
-        self.ai_worker.error.connect(self.ai_worker.deleteLater)
         self.ai_worker.cancelled.connect(self.ai_thread.quit)
-        self.ai_worker.cancelled.connect(self.ai_worker.deleteLater)
         self.ai_thread.finished.connect(self.ai_thread.deleteLater)
 
         self.ai_thread.start()

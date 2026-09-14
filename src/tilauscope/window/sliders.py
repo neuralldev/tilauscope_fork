@@ -28,7 +28,7 @@ from typing import Final
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
-from tilauscope.graph.common import within_share
+from tilauscope.graph.common import preheat_arrived
 
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -102,9 +102,8 @@ class SlidersMixin:
         pid = self.aw.tilauPreheatingPid
         if pid and pid.active:
             sv = pid.sv_native()   # cfg.target_sv est °C interne ; bt est natif
-            delta = sv - float(bt)
             # Même bande que la courbe et l'annotation — jugée en °C.
-            return (delta <= 0) or within_share(delta, sv, 0.05, self.aw.qmc.mode)
+            return preheat_arrived(sv - float(bt), self.aw.qmc.mode)
         return False
 
     def _tilaupid_armed(self) -> bool:

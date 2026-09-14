@@ -1147,6 +1147,8 @@ class ViewerMixin:
         worker = _AlogLoadWorker(parent=self, filepath=filepath, aw=self.aw)
         thread = QThread(self)
         worker.moveToThread(thread)
+        # the worker goes with its thread object, never by its own deleteLater (see _launch_worker)
+        thread._worker = worker
         thread.started.connect(worker.run)
         worker.finished.connect(on_ok)
         worker.error.connect(on_err)
@@ -1157,13 +1159,8 @@ class ViewerMixin:
             worker.finished.connect(thread.quit)
             worker.error.connect(thread.quit)
             worker.cancelled.connect(thread.quit)
-            worker.finished.connect(worker.deleteLater)
-            worker.error.connect(worker.deleteLater)
-            worker.cancelled.connect(worker.deleteLater)
-            # Stocker les refs Python AVANT de connecter deleteLater
             self._multi_alog_thread = thread
             self._multi_alog_worker = worker
-            # null-ifie la ref Python EN PREMIER, puis deleteLater détruit le C++
             thread.finished.connect(self._on_multi_alog_thread_done)
             thread.finished.connect(thread.deleteLater)
         else:
@@ -1172,9 +1169,6 @@ class ViewerMixin:
             worker.error.connect(thread.quit)
             worker.cancelled.connect(thread.quit)
             worker.cancelled.connect(partial(self._alog_load_cancelled, filepath.name))
-            worker.finished.connect(worker.deleteLater)
-            worker.error.connect(worker.deleteLater)
-            worker.cancelled.connect(worker.deleteLater)
             thread.finished.connect(self._on_alog_thread_done)
             thread.finished.connect(thread.deleteLater)
             self._alog_thread = thread

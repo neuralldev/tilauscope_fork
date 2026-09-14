@@ -660,12 +660,11 @@ class PrintingMixin:
                 self.niimbot_worker.print_error.connect(self._on_print_error)
                 self.niimbot_worker.print_unconfirmed.connect(self._on_print_unconfirmed)
                 self.niimbot_thread.started.connect(self.niimbot_worker.run)
+                # the worker goes with its thread object, never by its own deleteLater
+                self.niimbot_thread._worker = self.niimbot_worker
                 self.niimbot_worker.print_finished.connect(self.niimbot_thread.quit)
-                self.niimbot_worker.print_finished.connect(self.niimbot_worker.deleteLater)
                 self.niimbot_worker.print_error.connect(self.niimbot_thread.quit)
-                self.niimbot_worker.print_error.connect(self.niimbot_worker.deleteLater)
                 self.niimbot_worker.print_unconfirmed.connect(self.niimbot_thread.quit)
-                self.niimbot_worker.print_unconfirmed.connect(self.niimbot_worker.deleteLater)
                 self.niimbot_thread.finished.connect(self.niimbot_thread.deleteLater)
                 self.niimbot_thread.start()
 
@@ -827,7 +826,8 @@ class PrintingMixin:
         for sig in (self._sat_niimbot_worker.print_finished, self._sat_niimbot_worker.print_error,
                     self._sat_niimbot_worker.print_unconfirmed):
             sig.connect(self._sat_niimbot_thread.quit)
-            sig.connect(self._sat_niimbot_worker.deleteLater)
+        # the worker goes with its thread object, never by its own deleteLater
+        self._sat_niimbot_thread._worker = self._sat_niimbot_worker
         self._sat_niimbot_thread.finished.connect(self._sat_niimbot_thread.deleteLater)
         self._sat_niimbot_thread.finished.connect(lambda: setattr(self, "_sat_niimbot_thread", None))
         self._sat_niimbot_thread.start()

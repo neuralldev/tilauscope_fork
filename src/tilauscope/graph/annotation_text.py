@@ -41,7 +41,7 @@ from PyQt6.QtWidgets import QApplication
 
 from artisanlib.util import stringfromseconds
 from tilauscope.tilauscope_types import get_agtron_color
-from tilauscope.graph.common import delta_scale, report_once, within_share
+from tilauscope.graph.common import delta_scale, preheat_arrived, report_once, within_share
 from tilauscope.probe_visibility import et_available_for
 from tilauscope.tilauscope_types import get_roc_color as _omniflux_roc_color
 
@@ -189,9 +189,9 @@ def _get_tilaupid_text(qmc: Any, pid, et: float, bt: float) -> str:
         pid_input = bt if on_bt else et
         delta = sv - pid_input
 
-        # proximity band: identical rule to the TilauScope SV mirror (5 % of SV,
-        # or past SV) — judged in °C so °F reads the same physical band
-        close = (delta <= 0) or within_share(delta, sv, 0.05, mode)
+        # arrival band: the same rule as the curve and the panel (SV ± 2 °C,
+        # judged in °C so °F reads the same physical band)
+        close = preheat_arrived(delta, mode)
         # Approach-state colour — drives the top rule, header, gauge fill and (except
         # STABILIZING, always yellow) the hero line: green in the close band, yellow
         # while approaching (<15° away), blue while still far.
@@ -237,12 +237,10 @@ def _get_tilaupid_text(qmc: Any, pid, et: float, bt: float) -> str:
             # calling that "stabilizing" contradicts what the operator sees.
             hero_text, hero_size, hero_color = L['Heating'], 13, state_color
             hero_caption = ''
-        elif delta > 0:
+        else:
+            # Easing off short of SV, or an overshoot settling back into the band.
             hero_text, hero_size, hero_color = L['Stabilizing'], 13, '#F9E2AF'
             hero_caption = ''
-        else:
-            hero_text, hero_size, hero_color = '--:--', 17, '#6C7086'
-            hero_caption = L['ReadyIn']
         caption_html = (
             f'<div style="margin-top:3px;"><span style="color:#6C7086;font-size:9px;">'
             f'{hero_caption}</span></div>' if hero_caption else ''

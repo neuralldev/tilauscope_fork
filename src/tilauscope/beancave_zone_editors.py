@@ -550,9 +550,10 @@ class ZoneEditorDialog(QDialog):
         self._ai_thread.started.connect(self._ai_worker.run)
 
         self._ai_worker.finished.connect(self._ai_thread.quit)
-        self._ai_worker.finished.connect(self._ai_worker.deleteLater)
         self._ai_worker.error.connect(self._ai_thread.quit)
-        self._ai_worker.error.connect(self._ai_worker.deleteLater)
+        # the worker goes with its thread object, never by its own deleteLater
+        # (see LifecycleMixin._launch_worker)
+        self._ai_thread._worker = self._ai_worker
         self._ai_thread.finished.connect(self._ai_thread.deleteLater)
 
         self._ai_thread.start()

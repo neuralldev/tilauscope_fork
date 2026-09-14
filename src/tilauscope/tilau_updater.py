@@ -87,9 +87,11 @@ def _parse_version(v: str):
             return pkg_version.parse(v)
         except Exception:
             pass
-    # Manual fallback: compare tuples of ints
-    parts = re.findall(r"\d+", v)
-    return tuple(int(p) for p in parts)
+    # Manual fallback: compare tuples of ints, trailing zeros dropped (4.3 == 4.3.0)
+    parts = [int(p) for p in re.findall(r"\d+", v)]
+    while len(parts) > 1 and parts[-1] == 0:
+        parts.pop()
+    return tuple(parts)
 
 
 def _is_newer(remote_v: str, remote_b: int, local_v: str, local_b: int) -> bool:
@@ -136,9 +138,11 @@ class _UpdateCheckWorker(QObject):
     # number stays in the asset name so support can trace an exact binary.
     #   macOS   : tilauscope-4.1.0-build41.dmg
     #   Windows : tilauscope-4.1.0-build41-setup.exe
+    # The build workflows pad the version to X.Y.Z ("4.3" → "4.3.0") because
+    # installs up to 4.3 build 1 match nothing else; two parts are accepted here.
     _ASSET_RE: Final = re.compile(
-        r"^tilauscope-(\d+\.\d+\.\d+)-build(\d+)-setup\.exe$" if _IS_WINDOWS
-        else r"^tilauscope-(\d+\.\d+\.\d+)-build(\d+)\.dmg$"
+        r"^tilauscope-(\d+(?:\.\d+)+)-build(\d+)-setup\.exe$" if _IS_WINDOWS
+        else r"^tilauscope-(\d+(?:\.\d+)+)-build(\d+)\.dmg$"
     )
 
     def _check_github(self) -> dict | None:
@@ -747,7 +751,9 @@ class TilauUpdater(QObject):
         self._check_worker.update_found.connect(lambda *_: self._check_thread.quit())
         self._check_worker.no_update.connect(self._check_thread.quit)
         self._check_worker.check_error.connect(lambda *_: self._check_thread.quit())
-        self._check_thread.finished.connect(self._check_worker.deleteLater)
+        # the worker goes with its thread object, never by its own deleteLater
+        # (see LifecycleMixin._launch_worker)
+        self._check_thread._worker = self._check_worker
 
         self._check_thread.start()
 
@@ -817,7 +823,9 @@ class TilauUpdater(QObject):
 
         self._dl_worker.finished.connect(self._dl_thread.quit)
         self._dl_worker.dl_error.connect(self._dl_thread.quit)
-        self._dl_thread.finished.connect(self._dl_worker.deleteLater)
+        # the worker goes with its thread object, never by its own deleteLater
+        # (see LifecycleMixin._launch_worker)
+        self._dl_thread._worker = self._dl_worker
 
         self._dl_thread.start()
 

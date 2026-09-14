@@ -37,7 +37,7 @@ from dataclasses import dataclass
 from typing import Any, Final
 
 from artisanlib.util import convertTemp
-from tilauscope.graph.common import delta_scale, within_share
+from tilauscope.graph.common import delta_scale, preheat_arrived
 from tilauscope.tilauscope_types import THEME
 
 #: Past this a projection has stopped meaning anything — the rate is near zero
@@ -47,11 +47,6 @@ from tilauscope.tilauscope_types import THEME
 #: The figure is honest about being drawn from the rate of the moment; early on
 #: that rate is still building, so the estimate starts long and comes in.
 _ETA_CAP_S: Final[float] = 45 * 60.0
-
-#: Inside this share of the target the drum counts as arrived. Every other
-#: approach band in TilauScope uses the same share, and the four must not
-#: disagree — hence the shared `within_share`, which judges it in °C.
-_CLOSE_SHARE: Final[float] = 0.05
 
 #: Below this the approach has started; above it the drum is still far out.
 #: A gap in °C, scaled to what the operator reads.
@@ -94,7 +89,7 @@ def reading(aw: Any) -> PreheatReading | None:
                               target_c=target_c)
 
     delta = target - actual
-    ready = delta <= 0 or within_share(delta, target, _CLOSE_SHARE, mode)
+    ready = preheat_arrived(delta, mode)
     if ready:
         colour = THEME['SUCCESS']
     elif abs(delta) < _NEAR_DEGREES_C * delta_scale(mode):

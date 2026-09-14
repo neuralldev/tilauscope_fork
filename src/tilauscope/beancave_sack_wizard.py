@@ -531,7 +531,9 @@ class NewSackWizard(QDialog):
         self._ai_worker.error.connect(self._on_ai_error)
         for sig in (self._ai_worker.finished, self._ai_worker.error):
             sig.connect(self._ai_thread.quit)
-            sig.connect(self._ai_worker.deleteLater)
+        # the worker goes with its thread object, never by its own deleteLater
+        # (see LifecycleMixin._launch_worker)
+        self._ai_thread._worker = self._ai_worker
         self._ai_thread.finished.connect(self._ai_thread.deleteLater)
         self._ai_thread.start()
 

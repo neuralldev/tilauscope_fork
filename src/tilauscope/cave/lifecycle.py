@@ -555,7 +555,8 @@ class LifecycleMixin:
         self._indexer_thread.started.connect(self._indexer_worker.run)
         self._indexer_worker.finished.connect(self._on_cache_indexing_complete)
         self._indexer_worker.finished.connect(self._indexer_thread.quit)
-        self._indexer_worker.finished.connect(self._indexer_worker.deleteLater)
+        # the worker goes with its thread object, never by its own deleteLater (see _launch_worker)
+        self._indexer_thread._worker = self._indexer_worker
         self._indexer_thread.finished.connect(self._indexer_thread.deleteLater)
         self._indexer_thread.start()
 
@@ -969,8 +970,8 @@ class LifecycleMixin:
         on_ok       : slot connected to worker.finished.
         on_err      : slot connected to worker.error (optional).
         on_done     : slot connected to thread.finished (optional).
-        auto_delete : if True, call deleteLater on worker and thread when done.
-                      Set False when _cancel_threads owns the lifetime.
+        auto_delete : if True, the thread deletes itself once finished and takes the
+                      worker with it. Set False when _cancel_threads owns the lifetime.
 
         Returns (thread, worker) so callers can store refs if needed.
         """
@@ -987,11 +988,9 @@ class LifecycleMixin:
         if cancelled is not None:
             cancelled.connect(thread.quit)
         if auto_delete:
-            worker.finished.connect(worker.deleteLater)
-            if on_err is not None:
-                worker.error.connect(worker.deleteLater)
-            if cancelled is not None:
-                cancelled.connect(worker.deleteLater)
+            # Never worker.deleteLater: run in the worker's own thread, it frees the
+            # worker under handles still held here, and deadlocks on the GIL.
+            thread._worker = worker
             thread.finished.connect(thread.deleteLater)
         if on_done is not None:
             thread.finished.connect(on_done)

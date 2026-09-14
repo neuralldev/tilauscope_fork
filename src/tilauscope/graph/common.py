@@ -79,7 +79,7 @@ DROP: Final[int] = 6
 
 #: A share of an ABSOLUTE reading is not a physical band unless it is judged in
 #: °C: the two scales share no origin, so 5 % of 392 °F is 10.9 °C where 5 % of
-#: 200 °C is 10. Every approach band in TilauScope goes through `within_share`.
+#: 200 °C is 10. Every roast approach band in TilauScope goes through `within_share`.
 def delta_scale(mode: str) -> float:
     """Factor turning a °C difference or rate into the display unit."""
     return 1.8 if mode == 'F' else 1.0
@@ -96,6 +96,21 @@ def within_share(delta: float, target: float, share: float, mode: str = 'C') -> 
             return False
         target_c = (target - 32.0) / 1.8 if mode == 'F' else target
         return abs(delta) / delta_scale(mode) <= share * target_c
+    except (TypeError, ValueError):
+        return False
+
+
+#: The preheat target counts as reached inside this band, below or above it —
+#: ready to charge, not merely close. A share of the target is far too wide for
+#: that decision. Every screen that says the drum has arrived reads it here.
+PREHEAT_BAND_C: Final[float] = 2.0
+
+
+def preheat_arrived(delta: float, mode: str = 'C') -> bool:
+    """True when `delta` (target minus reading, display unit) is inside the
+    preheat band, judged in °C so °F reads the same physical band."""
+    try:
+        return abs(delta) / delta_scale(mode) <= PREHEAT_BAND_C
     except (TypeError, ValueError):
         return False
 
