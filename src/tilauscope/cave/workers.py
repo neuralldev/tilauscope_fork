@@ -42,6 +42,7 @@ from tilauscope.tilauscope_types import GreenBean
 from tilauscope.ai_support import TilauAIConfig
 from tilauscope.roasters import RoasterManager
 from tilauscope.alogmanager import (AlogMetadata)
+from tilauscope.cave.roast_list import BeanFacts, RoastRow, make_row
 
 if TYPE_CHECKING:
     from tilauscope.beancave import BeancaveDlg
@@ -283,15 +284,18 @@ class _CallableWorker(QObject):
 
 
 class _AlogListWorker(QObject):
-    """Scans the alog directory and formats display names off the main thread using cached metadata."""
-    finished = pyqtSignal(int, list)   # scan generation, list of (raw_filename, display_name, roast_epoch)
+    """Scans the alog directory and builds the roast list rows off the main thread using cached metadata."""
+    finished = pyqtSignal(int, list)   # scan generation, list of RoastRow
     error    = pyqtSignal(str)
     cancelled = pyqtSignal()
 
-    def __init__(self, directory: Path, cache_records: dict[str, AlogMetadata], generation: int = 0):
+    def __init__(self, directory: Path, cache_records: dict[str, AlogMetadata],
+                 beans: dict[str, BeanFacts] | None = None, generation: int = 0):
         super().__init__()
         self._directory = directory
         self._cache_records = cache_records
+        # Plain values copied on the GUI thread, never the bean records it edits.
+        self._beans = dict(beans or {})
         # Travels with the rows: this worker is deleted as soon as it emits, so
         # the receiver cannot tell which scan they belong to from sender().
         self._generation = generation
@@ -312,14 +316,14 @@ class _AlogListWorker(QObject):
             fnames = [f.name for f in self._directory.glob('*.alog')
                       if f.suffix.lower() == '.alog']
 
-            # Build intermediate tuples: (fname, sort_epoch, display_name, base_name)
-            triples: list[tuple[str, int, str, str]] = []
+            # sort_epoch resolves a date from the filename when the index has none,
+            # so ordering and grouping by day work before the index is built.
+            rows: list[RoastRow] = []
             for f in fnames:
                 if thread.isInterruptionRequested():
                     self.cancelled.emit()
                     return
-                f_path_str = str(self._directory / f)
-                meta = self._cache_records.get(f_path_str)
+                meta = self._cache_records.get(str(self._directory / f))
                 display, base_name, sort_epoch = _AlogListWorker._build_display(
                     fname_stem=f[:-5],
                     meta_title=meta.title if meta else "",
@@ -330,41 +334,9 @@ class _AlogListWorker(QObject):
                     dt=_dt,
                     generic_titles=_GENERIC_TITLES,
                 )
-                triples.append((f, sort_epoch, display, base_name))
+                rows.append(make_row(f, sort_epoch, display, base_name, meta, self._beans))
 
-            # Sort: bean name ASC, then roast date DESC within a bean. sort_epoch
-            # resolves a date from the filename when roastepoch is missing, so the
-            # date tiebreak always has real values instead of falling back to 0.
-            triples.sort(key=lambda t: (t[3].lower(), -(t[1])))
-
-            # Deduplicate display names: two roasts of one bean sharing the same
-            # displayed date get the original filename stem appended, in parens —
-            # the brackets are taken by the date. An explicit "already suffixed"
-            # set tracks disambiguation, since every line ends with "[date]".
-            seen: dict[str, int] = {}        # display_name → first occurrence index
-            disambiguated: set[int] = set()  # indices already given a suffix
-            # The roast date travels with each row: the list is ordered by bean
-            # name, so nothing downstream could work out which roast is the most
-            # recent, and the metadata index is not necessarily built yet.
-            rows: list[tuple[str, str, int]] = []
-            for fname, epoch, display, _base in triples:
-                if thread.isInterruptionRequested():
-                    self.cancelled.emit()
-                    return
-                if display in seen:
-                    first_idx = seen[display]
-                    if first_idx not in disambiguated:
-                        first_fname, first_display, first_epoch = rows[first_idx]
-                        rows[first_idx] = (first_fname,
-                                           f"{first_display} ({first_fname[:-5]})",
-                                           first_epoch)
-                        disambiguated.add(first_idx)
-                    new_display = f"{display} ({fname[:-5]})"
-                else:
-                    seen[display] = len(rows)
-                    new_display = display
-                rows.append((fname, new_display, epoch))
-
+            # The list orders and groups the rows itself.
             self.finished.emit(self._generation, rows)
         except Exception as e:
             self.error.emit(str(e))

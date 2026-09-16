@@ -38,7 +38,7 @@ from tilauscope.header_icons import (
     COL_ASSISTANT_IDLE, COL_ASSISTANT_ACTIVE,
     COL_SWAP_IDLE, COL_SWAP_ACTIVE,
     COL_DOCK_IDLE, COL_DOCK_ACTIVE, apply_icon,
-    SVG_DOCK,
+    SVG_DOCK, make_letter_pill_style,
 )
 from tilauscope.window.build import BuildMixin
 from tilauscope.window.chrome import ChromeMixin
@@ -48,7 +48,6 @@ from tilauscope.window.milestones import MilestonesMixin
 from tilauscope.window.lifecycle import LifecycleMixin
 from tilauscope.window.emergency import EmergencyMixin
 from tilauscope.window.parts import ArtisanSettings
-from tilauscope.theme_qss import tooltip_qss
 from tilauscope.wake_classes import TilauController
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -511,15 +510,8 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
         _letter, _col, _name = _meta.get(level, _meta["guided"])
         _next_name = _meta["expert" if level == "guided" else "guided"][2]
         self.btn_level.setText(_letter)
-        self.btn_level.setStyleSheet(
-            f"QPushButton {{ background: {THEME['SURFACE']}; color: {_col};"
-            f" border: 1px solid {_col}; border-radius: 6px;"
-            f" font-size: 13px; font-weight: 800; }}"
-            f"QPushButton:hover {{ background: {THEME['BG']}; }}"
-            f"QPushButton:disabled {{ color: {THEME['SUBTEXT']};"
-            f" border: 1px solid {THEME['BORDER']}; }}"
-            + tooltip_qss()
-        )
+        self.btn_level.setStyleSheet(make_letter_pill_style(
+            _col, font_size=13, disabled_color=THEME['SUBTEXT']))
         # Guarded: this runs on the construction path, and a translation shipped
         # without both placeholders would raise out of init_ui() and leave the
         # window unopenable in that language alone
@@ -1029,7 +1021,7 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
         avec le même grain et un plan neuf incluant la correction heat-soak."""
         self._relaunch_pending = False
         qmc = self.aw.qmc
-        # capture AVANT le reset qui efface title/beans/weight
+        # capture AVANT le reset qui efface title/beans/weight et les mesures du vert
         title = getattr(self.aw, '_tilau_live_title', '') or (qmc.title or '')
         beans = getattr(self.aw, '_tilau_live_beans', '') or (getattr(qmc, 'beans', '') or '')
         try:
@@ -1037,20 +1029,13 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             green_w, w_unit = float(w[0]), w[2]
         except (TypeError, IndexError, ValueError):
             green_w, w_unit = 0.0, 'g'
+        greens = (qmc.density, qmc.moisture_greens, qmc.greens_temp)
         # sauvegarde silencieuse de l'alog courant (incomplet) — sans elle,
         # pas de relance : on ne reset jamais par-dessus un roast non sauvé
         if not self._save_current_roast_silently():
             return
-        if not qmc.reset():
+        if not self._reset_with_session(title, beans, green_w, w_unit, greens):
             return   # l'utilisateur a annulé l'invite résiduelle
-        if title:
-            qmc.title = title
-            qmc.title_show_always = True
-        if beans:
-            qmc.beans = beans
-        if green_w > 0:
-            # qmc.weight est un tuple au runtime : réassigner, jamais muter
-            qmc.weight = (green_w, 0.0, w_unit)
         self.toggle_start_stop(False)   # équivalent clic START (branche sur is_roasting)
 
     # ── Drag handle handlers ────────────────────────────────────────────────────

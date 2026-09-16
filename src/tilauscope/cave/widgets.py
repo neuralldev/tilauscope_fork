@@ -141,10 +141,11 @@ class CanvasContainer(QWidget):
     Conteneur Qt stable qui wrappe le FigureCanvas matplotlib.
 
     - Fournit un parent QWidget dans le layout (curve_layout).
-    - Porte le ZoomToggleButton en overlay haut-gauche via son propre resizeEvent.
     - Porte le SaveMarkerButton en overlay bas-droite (caché par défaut).
     - En mode zoom plein-écran, on transfère CE widget dans le QDialog :
-      les boutons suivent naturellement (ils sont enfants du conteneur).
+      les boutons enfants suivent naturellement.
+    - zoom_btn est optionnel : dans l'onglet Roasts le bouton plein écran vit
+      sur la ligne de la carte, un overlay couvrirait l'axe des températures.
     """
 
     _MARGIN = 8
@@ -152,7 +153,7 @@ class CanvasContainer(QWidget):
     def __init__(
         self,
         canvas: FigureCanvas,
-        zoom_btn: ZoomToggleButton,
+        zoom_btn: "ZoomToggleButton | None" = None,
         parent: QWidget | None = None,
         mode_btns: "list[QPushButton] | None" = None,
     ) -> None:
@@ -164,9 +165,10 @@ class CanvasContainer(QWidget):
         layout.setSpacing(0)
         layout.addWidget(canvas)
 
-        zoom_btn.setParent(self)
-        zoom_btn.raise_()
         self._zoom_btn = zoom_btn
+        if zoom_btn is not None:
+            zoom_btn.setParent(self)
+            zoom_btn.raise_()
 
         # Toggles optionnels (vues Consistance / Aligné) en overlay, à droite du zoom.
         self._mode_btns = list(mode_btns or [])
@@ -184,8 +186,10 @@ class CanvasContainer(QWidget):
         self._reposition_buttons()
 
     def _reposition_buttons(self) -> None:
-        self._zoom_btn.move(self._MARGIN, self._MARGIN)
-        x = self._MARGIN + self._zoom_btn.width() + 6
+        x = self._MARGIN
+        if self._zoom_btn is not None:
+            self._zoom_btn.move(self._MARGIN, self._MARGIN)
+            x += self._zoom_btn.width() + 6
         for b in self._mode_btns:
             b.move(x, self._MARGIN)
             x += b.width() + 6
@@ -790,9 +794,8 @@ class _DensityFloatWindow(QDialog):
 
 class NiimbotStatusOverlay(QWidget):
     """
-    Statut imprimante Niimbot — widget inline dans l'action_bar_layout du viewer.
-    Pas de fenêtre flottante, pas de z-order, pas d'overlay : juste un QWidget
-    avec icône + label, inséré directement dans le layout de la barre de boutons.
+    The label printer's state, at the foot of the Roasts tab's Export menu: a
+    plain QWidget — icon and label — that the menu carries as a widget action.
     """
     def __init__(self, parent=None):
         super().__init__(parent)

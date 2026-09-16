@@ -25,12 +25,14 @@ moves its readings; changing its device only changes what Artisan believes it
 is — the fix for a roast saved under an older device numbering, where every
 reading is right and only the device types are wrong. Ambient sources point at a
 row, not at an index, so moving or removing a device cannot make a source slide
-onto its neighbour.
+onto its neighbour; alarms and formulas, which Artisan keeps by number, are
+renumbered on Save.
 """
 
 from __future__ import annotations
 
 import itertools
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Final
 
@@ -55,6 +57,26 @@ _HARDWARE_ATTR: Final[dict[str, str]] = {
 }
 #: Artisan's ambient source index: 0 none, 1 ET, 2 BT, then two per extra device.
 FIRST_EXTRA_SOURCE: Final[int] = 3
+#: Artisan's alarm source index: below 0 none or a RoR, 0 ET, 1 BT, then two per extra device.
+FIRST_EXTRA_ALARM_SOURCE: Final[int] = 2
+#: BT, where Artisan's alarm table puts a source it cannot show.
+_ALARM_FALLBACK_SOURCE: Final[int] = 1
+#: Artisan's slider quantifier source index: 0 ET, 1 BT, then two per extra device.
+FIRST_EXTRA_QUANTIFIER_SOURCE: Final[int] = 2
+#: ET, Artisan's default quantifier source.
+_QUANTIFIER_FALLBACK_SOURCE: Final[int] = 0
+#: Where a button palette keeps the quantifier on flags and sources (main.py makePalette).
+PALETTE_QUANTIFIER_ACTIVE: Final[int] = 14
+PALETTE_QUANTIFIER_SOURCE: Final[int] = 15
+#: The software PID's input: 0 or 1 BT, 2 ET, then two per extra device.
+FIRST_EXTRA_PID_SOURCE: Final[int] = 3
+#: What pidcontrol.externalPIDControl() returns for the TC4 PID firmware, which the window can switch.
+_TC4_FIRMWARE_PID: Final[int] = 3
+#: A formula names readings Y1 ET, Y2 BT, then two per extra device.
+FIRST_EXTRA_READING: Final[int] = 3
+_READING: Final[re.Pattern[str]] = re.compile(r'(?<![\w.])Y(\d{1,2})(?!\d)')
+#: Artisan's own formulas, which name extra readings the same way.
+MAIN_FORMULAS: Final[tuple[str, ...]] = ('ETfunction', 'BTfunction', 'DeltaETfunction', 'DeltaBTfunction')
 #: The names Artisan gives a channel it knows nothing about.
 _PLACEHOLDER_NAMES: Final[frozenset[str]] = frozenset({'', 'Extra 1', 'Extra 2'})
 
@@ -69,6 +91,7 @@ class ExtraRow:
     device_id: int
     names: list[str]
     show: list[bool]
+    formulas: list[str] = field(default_factory=lambda: ['', ''])   # edited in Artisan, read here
     origin: int | None = None   # index in qmc.extradevices when the window opened
     uid: int = field(default_factory=lambda: next(_uids))
 
@@ -90,6 +113,9 @@ class DeviceDraft:
     rows: list[ExtraRow]
     ambient: dict[str, Source]
     ambient_hardware: dict[str, int]   # non-zero: Artisan's own sensor feeds it
+    main_formulas: dict[str, str]      # MAIN_FORMULAS, edited in Artisan, read here
+    pid_source: int                    # pidcontrol.pidSource
+    pid_external_elsewhere: bool       # a MODBUS, S7 or Kaleido PID reads pid_source as its own channel
 
 
 def snapshot(aw: 'ApplicationWindow') -> DeviceDraft:
@@ -97,6 +123,8 @@ def snapshot(aw: 'ApplicationWindow') -> DeviceDraft:
     rows = [ExtraRow(device_id=qmc.extradevices[i],
                      names=[qmc.extraname1[i], qmc.extraname2[i]],
                      show=[bool(aw.extraLCDvisibility1[i]), bool(aw.extraLCDvisibility2[i])],
+                     formulas=[str(expressions[i] or '') if i < len(expressions) else ''
+                               for expressions in (qmc.extramathexpression1, qmc.extramathexpression2)],
                      origin=i)
             for i in range(len(qmc.extradevices))]
     ambient: dict[str, Source] = {}
@@ -117,13 +145,28 @@ def snapshot(aw: 'ApplicationWindow') -> DeviceDraft:
         pid_firmware=bool(qmc.PIDbuttonflag),
         rows=rows, ambient=ambient,
         ambient_hardware={key: int(getattr(qmc, _HARDWARE_ATTR[key])) for key in AMBIENT_KEYS},
+        main_formulas={attr: str(getattr(qmc, attr) or '') for attr in MAIN_FORMULAS},
+        pid_source=int(aw.pidcontrol.pidSource),
+        pid_external_elsewhere=int(aw.pidcontrol.externalPIDControl()) not in (0, _TC4_FIRMWARE_PID),
     )
 
 
 def is_stale(aw: 'ApplicationWindow', original: DeviceDraft) -> bool:
-    """Artisan's devices changed under the open window — loading a roast file does that."""
-    return (aw.qmc.device != original.device
-            or list(aw.qmc.extradevices) != [row.device_id for row in original.rows])
+    """Artisan's devices changed under the open window — loading a roast file does that.
+
+    Everything the window reads is compared, not just the device ids: a roast
+    with the same devices still brings its own names, counters, sources and
+    formulas, which Save would otherwise overwrite.
+    """
+    current = snapshot(aw)
+    if len(current.rows) != len(original.rows):
+        return True
+    uid_of = {row.uid: kept.uid for row, kept in zip(current.rows, original.rows, strict=True)}
+    for row in current.rows:
+        row.uid = uid_of[row.uid]
+    current.ambient = {key: (uid_of[source[0]], source[1]) if isinstance(source, tuple) else source
+                       for key, source in current.ambient.items()}
+    return current != original
 
 
 def uses_usb_port(draft: DeviceDraft) -> bool:
@@ -228,6 +271,71 @@ def is_misordered(draft: DeviceDraft, row: ExtraRow) -> bool:
         return False
     index = row_index(draft, row.uid)
     return not any(other.kind_key == requires for other in draft.rows[:index])
+
+
+def _readings(expression: str) -> list[tuple[int, int, bool]]:
+    """(slot when the window opened, channel, current value) of each extra reading a formula names.
+
+    ``Y3[-1]`` and ``Y3{CHARGE}`` take recorded values, already calculated.
+    """
+    found = []
+    for match in _READING.finditer(expression):
+        number = int(match.group(1))
+        if number >= FIRST_EXTRA_READING:
+            slot, channel = divmod(number - FIRST_EXTRA_READING, 2)
+            found.append((slot, channel, expression[match.end():match.end() + 1] not in ('[', '{')))
+    return found
+
+
+def _deleted_with(draft: DeviceDraft, row: ExtraRow) -> tuple[set[int], set[int]]:
+    """Uids of ``row`` and of the rows Delete takes with it, and their slots when the window opened."""
+    gone = [row, *dependents(draft, row)]
+    return {other.uid for other in gone}, {other.origin for other in gone if other.origin is not None}
+
+
+def formula_readers(draft: DeviceDraft, row: ExtraRow) -> list[ExtraRow | str]:
+    """Rows, then MAIN_FORMULAS by name, whose formula uses ``row`` or a device deleted with it.
+
+    A deleted device's reading numbers pass to the next device, so such a formula
+    would read that one.
+    """
+    gone, slots = _deleted_with(draft, row)
+
+    def uses_gone(expression: str) -> bool:
+        return any(slot in slots for slot, _channel, _current in _readings(expression))
+
+    readers: list[ExtraRow | str] = [other for other in draft.rows
+                                     if other.uid not in gone and any(map(uses_gone, other.formulas))]
+    readers.extend(attr for attr, expression in draft.main_formulas.items() if uses_gone(expression))
+    return readers
+
+
+def is_pid_input(draft: DeviceDraft, row: ExtraRow) -> bool:
+    """``row``, or a device deleted with it, holds the reading the software PID regulates on.
+
+    An external PID reads its input as its own channel number, never an extra device.
+    """
+    if draft.pid_external_elsewhere or (draft.mode == 'tc4' and draft.pid_firmware):
+        return False
+    return (draft.pid_source >= FIRST_EXTRA_PID_SOURCE
+            and (draft.pid_source - FIRST_EXTRA_PID_SOURCE) // 2 in _deleted_with(draft, row)[1])
+
+
+def calculated_reading_below(draft: DeviceDraft, row: ExtraRow) -> ExtraRow | None:
+    """A row below ``row`` whose reading ``row``'s formula takes while it has its own formula.
+
+    Artisan calculates the rows from the top: that formula gets the reading
+    before the formula of its own row is applied.
+    """
+    by_origin = {other.origin: other for other in draft.rows if other.origin is not None}
+    index = row_index(draft, row.uid) or 0
+    for expression in row.formulas:
+        for slot, channel, current in _readings(expression):
+            other = by_origin.get(slot)
+            if (current and other is not None and other is not row and other.formulas[channel].strip()
+                    and (row_index(draft, other.uid) or 0) > index):
+                return other
+    return None
 
 
 # ── ambient ──────────────────────────────────────────────────────────────────
@@ -340,9 +448,112 @@ def apply_device(aw: 'ApplicationWindow', draft: DeviceDraft, parent: Any = None
     return message
 
 
+def _slots_after_save(original: DeviceDraft, index_of: dict[int, int]) -> dict[int, int | None]:
+    """Each device's slot when the window opened → its slot after Save, None when removed."""
+    return {row.origin: index_of.get(row.uid) for row in original.rows if row.origin is not None}
+
+
+def _moved_channel(index: int, first: int, slots: dict[int, int | None]) -> int | None:
+    """A channel index after Save, ``first`` being the first extra channel in its numbering.
+
+    An index below ``first`` names no extra device and stays. None when the
+    device it names is not saved.
+    """
+    if index < first:
+        return index
+    slot, channel = divmod(index - first, 2)
+    new_slot = slots.get(slot)
+    return None if new_slot is None else first + 2 * new_slot + channel
+
+
+def apply_alarms(aw: 'ApplicationWindow', original: DeviceDraft, index_of: dict[int, int]) -> None:
+    """Keep every alarm on the reading it watches; one whose device is not saved is switched off.
+
+    The alarm table and each stored alarm set name their reading by index, which
+    a move or a removal would otherwise hand to another device.
+    """
+    qmc = aw.qmc
+    _renumber_sources([(qmc.alarmsource, qmc.alarmflag),
+                       *((alarmset['sources'], alarmset['flags']) for alarmset in qmc.alarmsets)],
+                      FIRST_EXTRA_ALARM_SOURCE, _ALARM_FALLBACK_SOURCE, _slots_after_save(original, index_of))
+
+
+def apply_quantifiers(aw: 'ApplicationWindow', original: DeviceDraft, index_of: dict[int, int]) -> None:
+    """Keep every slider quantifier on the reading it follows; one whose device is not saved is switched off.
+
+    The quantifiers and each stored button palette name their reading by index,
+    as alarms do.
+    """
+    _renumber_sources([(aw.eventquantifiersource, aw.eventquantifieractive),
+                       *((palette[PALETTE_QUANTIFIER_SOURCE], palette[PALETTE_QUANTIFIER_ACTIVE])
+                         for palette in aw.buttonpalette if len(palette) > PALETTE_QUANTIFIER_SOURCE)],
+                      FIRST_EXTRA_QUANTIFIER_SOURCE, _QUANTIFIER_FALLBACK_SOURCE,
+                      _slots_after_save(original, index_of))
+
+
+def _renumber_sources(tables: list[tuple[list[int], list[int]]], first: int, fallback: int,
+                      slots: dict[int, int | None]) -> None:
+    """Renumber (sources, on flags) tables in place; an entry whose device is not saved goes off on ``fallback``."""
+    seen: set[int] = set()
+    for sources, flags in tables:
+        if id(sources) in seen:   # renumbered twice, a shared list would land on the wrong reading
+            continue
+        seen.add(id(sources))
+        for i, source in enumerate(sources):
+            moved = _moved_channel(int(source), first, slots)
+            if moved is None:
+                sources[i] = fallback
+                if i < len(flags):
+                    flags[i] = 0
+            else:
+                sources[i] = moved
+
+
+def _renumbered(expression: str, slots: dict[int, int | None]) -> str:
+    def renumber(match: re.Match[str]) -> str:
+        number = int(match.group(1))
+        moved = _moved_channel(number, FIRST_EXTRA_READING, slots)
+        return match.group(0) if moved is None or moved == number else f'Y{moved}'
+    return _READING.sub(renumber, expression)
+
+
+def apply_formulas(aw: 'ApplicationWindow', original: DeviceDraft, index_of: dict[int, int]) -> None:
+    """Keep every formula on the readings it names, which it names by number.
+
+    A reading of a removed device keeps its number: Delete refuses a device a
+    formula uses.
+    """
+    slots = _slots_after_save(original, index_of)
+    qmc = aw.qmc
+    for attr in ('extramathexpression1', 'extramathexpression2'):
+        setattr(qmc, attr, [_renumbered(expression, slots) if expression else expression
+                            for expression in getattr(qmc, attr)])
+    for attr in MAIN_FORMULAS:
+        if getattr(qmc, attr):
+            setattr(qmc, attr, _renumbered(getattr(qmc, attr), slots))
+
+
+def apply_pid_source(aw: 'ApplicationWindow', original: DeviceDraft, index_of: dict[int, int]) -> None:
+    """Keep the software PID on the reading it regulates on; runs once the device is set.
+
+    An external PID reads pidSource as its own channel number. A reading of a
+    removed device keeps its number: Delete refuses the device the PID reads.
+    """
+    pid = aw.pidcontrol
+    if pid.externalPIDControl():
+        return
+    moved = _moved_channel(int(pid.pidSource), FIRST_EXTRA_PID_SOURCE, _slots_after_save(original, index_of))
+    if moved is not None:
+        pid.pidSource = moved
+
+
 def apply(aw: 'ApplicationWindow', draft: DeviceDraft, original: DeviceDraft, parent: Any = None) -> None:
     index_of = apply_extras(aw, draft, original)
     apply_ambient(aw, draft, index_of)
+    apply_alarms(aw, original, index_of)
+    apply_quantifiers(aw, original, index_of)
+    apply_formulas(aw, original, index_of)
     mirror.hide_control_readouts(aw)
     message = apply_device(aw, draft, parent)
+    apply_pid_source(aw, original, index_of)
     mirror.refresh(aw, meter_mode=draft.mode == 'meter', message=message)

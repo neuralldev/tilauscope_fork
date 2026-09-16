@@ -7367,7 +7367,8 @@ class tgraphcanvas(QObject):
                         #direct index access: e.g. "Y2{CHARGE}" or "Y2{12}"
                         elif i+4+offset < mlen and mathexpression[i+offset+2] == '{' and mathexpression.find('}',i+offset+3) > -1:
                             end_idx = mathexpression.index('}',i+offset+3)
-                            body = mathexpression[i+3:end_idx]
+                            ## TILAU ## the index starts after a two-digit Y number too: Y11{CHARGE} evaluated to -1
+                            body = mathexpression[i+offset+3:end_idx]
                             val = -1
                             try:
                                 absolute_index = eval(body[:eval_limit],{'__builtins__':None},mathdictionary) # pylint: disable=eval-used
@@ -7389,7 +7390,8 @@ class tgraphcanvas(QObject):
                             literal_body = body
                             for kk, v in replacements.items():
                                 literal_body = literal_body.replace(kk,v)
-                            evaltimeexpression = f'Y{mathexpression[i+1]}u{literal_body}u' # curle brackets replaced by "u"
+                            ## TILAU ## both digits name the variable, or Y11{i} is stored as Y1{i}
+                            evaltimeexpression = f'Y{mathexpression[i+1:i+2+offset]}u{literal_body}u' # curle brackets replaced by "u"
                             timeshiftexpressions.append(evaltimeexpression)
                             timeshiftexpressionsvalues.append(val)
                             mathexpression = evaltimeexpression.join((mathexpression[:i],mathexpression[end_idx+1:]))

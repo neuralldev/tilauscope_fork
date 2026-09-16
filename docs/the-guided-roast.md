@@ -205,10 +205,14 @@ door & cooling tray, keep drum spinning. Don't cut main power until BT < 50°*, 
 RISK OF FIRE*.
 
 For a second batch on a hot machine, **Restart batch** handles the whole turnaround on the same
-coffee: it stops and saves the roast, resets, re-injects the same coffee and the same charge
-weight, and starts preheating. Below the cooling threshold it goes immediately; above it, the
+coffee: it stops and saves the roast, resets, re-injects the same coffee, the same charge
+weight and the coffee's density, moisture and green bean temperature, and starts preheating. Below the cooling threshold it goes immediately; above it, the
 click **arms** the sequence — cooling continues and the relaunch fires on its own when the
 threshold is crossed. A second click disarms it.
+
+A roast that is already over can be followed the same way from its review: **Next batch**, at the
+top of the review, prepares the same coffee, with its charge weight, density, moisture and green
+bean temperature, and that roast as the background curve, without heating or recording anything. See [After the roast](after-the-roast.md#the-roast-review).
 
 !!! note
     A batch relaunched this way is saved without its result form, so its finishing details —

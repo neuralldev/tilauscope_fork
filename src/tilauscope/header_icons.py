@@ -127,6 +127,15 @@ SVG_PLAY: Final[str] = (
     '</svg>'
 )
 
+# ── roast review — Next batch: a skip-next glyph cut out of a filled disc ────
+SVG_NEXT_BATCH: Final[str] = (
+    f'<svg {_SVG_ATTRS}>'
+    '<circle cx="12" cy="12" r="11" fill="{color}" stroke="none"/>'
+    f'<path d="M8.5 7.5 L14.5 12 L8.5 16.5 Z" fill="{COL_PRESSED}" stroke="{COL_PRESSED}" stroke-width="1"/>'
+    f'<line x1="16.8" y1="7.5" x2="16.8" y2="16.5" stroke="{COL_PRESSED}" stroke-width="2"/>'
+    '</svg>'
+)
+
 # ── btn_start_stop — STOP (enregistrement actif) ──────────────────────────────
 # Carré à coins légèrement arrondis (rx="2") — distingue du rectangle plein.
 SVG_STOP: Final[str] = (
@@ -465,3 +474,34 @@ QSS_COMPACT_SWAP: Final[str] = make_btn_style(
     color_hover="#CDD6F4", color_pressed=COL_SWAP_ACTIVE,
     bg="#29293D", bg_hover="#45475A",
 )
+
+
+def make_letter_pill_style(color: str, *, font_size: int, disabled_color: str) -> str:
+    """QSS for a square header toggle labelled by one glyph (level G/E, replay ↻).
+
+    Hover and pressed match the compact header buttons so the pill reads as
+    clickable beside them. The glyph keeps *color* on hover: the colour is the
+    state. ``:enabled`` keeps a locked pill from lighting up under the cursor.
+    """
+    return with_tooltip(f"""
+        QPushButton {{
+            background: #181825;
+            color: {color};
+            border: 1px solid {color};
+            border-radius: 6px;
+            font-size: {font_size}px;
+            font-weight: 800;
+        }}
+        QPushButton:hover:enabled {{
+            background: #45475A;
+            border: 2px solid #CDD6F4;
+        }}
+        QPushButton:pressed:enabled {{
+            background: {color};
+            color: #11111B;
+        }}
+        QPushButton:disabled {{
+            color: {disabled_color};
+            border: 1px solid #313244;
+        }}
+    """)

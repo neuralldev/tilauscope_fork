@@ -22,9 +22,9 @@ first time it opens it runs the
 | Tab | What it is for |
 |---|---|
 | **Green Beans** | The catalogue and the bean records. This chapter. |
-| **Roast Viewer** | Reading back a finished roast — curve, statistics, tasting. See [After the roast](after-the-roast.md). |
+| **Roasts** | Every roast, grouped by day and searchable, and reading one back — curve, statistics, tasting. See [After the roast](after-the-roast.md#the-roasts-tab). |
 | **Roasting plan** | Generating a [roast plan](the-roast-plan.md) and its PDF. |
-| **Stockage** | How your coffee is keeping: [water activity](glossary.md#aw--water-activity), conditioning, sack labels — see [Sacks, stock and conservation](sacks-and-storage.md). |
+| **Storage** | How your coffee is keeping: [water activity](glossary.md#aw--water-activity), conditioning, sack labels — see [Sacks, stock and conservation](sacks-and-storage.md). |
 
 ---
 
@@ -178,7 +178,7 @@ you. This is the same history the [roast plan](the-roast-plan.md#what-the-plan-l
 learns from, which is why keeping records attached to the right coffee matters: a roast filed
 against the wrong bag teaches the plan the wrong lesson.
 
-A roast opens into the **Roast Viewer** — curve, key events, statistics and tasting. See
+A roast opens in the **Roasts** tab — curve, key events, statistics and tasting. See
 [After the roast](after-the-roast.md) for what it shows and how to read it.
 
 ---

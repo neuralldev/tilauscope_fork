@@ -154,15 +154,11 @@ class PrintingMixin:
     @pyqtSlot()
     def load_roast_in_artisan_background(self) -> None:
 
-        selected_items = self.roast_list_widget.selectedItems()
-        if not selected_items:
+        full_path = self.selected_roast_path()
+        if full_path is None:
             self._show_message(self,
                                 QApplication.translate("tilauscope_beancave","TilauScope load"),
                                 QApplication.translate("tilauscope_beancave","Please, select a roast fist from the list."), QMessageBox.Icon.Warning)
-            return
-
-        full_path = self.selected_roast_path()
-        if full_path is None:
             return
         alog_filename = full_path.name
 
@@ -267,7 +263,7 @@ class PrintingMixin:
                 text, color = self._niimbot_ready_status()
                 self.niimbot_overlay.update_status(text, color)
                 self._niimbot_connected = True
-                self.print_label_button.setEnabled(True)
+                self.print_label_action.setEnabled(True)
                 _logd.debug("everything is ok")
                 return
             self.niimbot_overlay.update_status(QApplication.translate("tilauscope_beancave","Printer: Invalid paper"), THEME['CRITICAL'])
@@ -287,9 +283,7 @@ class PrintingMixin:
             QApplication.translate("tilauscope_beancave", "Printer: Disconnected"),
             THEME["CRITICAL"]
         )
-        self.print_label_button.setEnabled(False)
-        self.print_label_button.repaint()
-
+        self.print_label_action.setEnabled(False)
     # À ajouter dans la classe BeancaveDlg
     # À ajouter dans la classe BeancaveDlg
     # ── Polling heartbeat Niimbot (5 s) ──────────────────────────────────────
@@ -344,7 +338,7 @@ class PrintingMixin:
             QApplication.translate("tilauscope_beancave", "Printer: Not responding — check it is on"),
             THEME["WARNING"]
         )
-        self.print_label_button.setEnabled(False)
+        self.print_label_action.setEnabled(False)
 
     def _niimbot_ready_status(self) -> tuple[str, str]:
         """Texte + couleur du bandeau quand l'imprimante est prête à imprimer.
@@ -388,7 +382,7 @@ class PrintingMixin:
                 status_txt = QApplication.translate("tilauscope_beancave", "Printer: Cover open")
             self.niimbot_overlay.update_status(status_txt, THEME["WARNING"])
             self._niimbot_connected = False   # every print button reads this flag
-            self.print_label_button.setEnabled(False)
+            self.print_label_action.setEnabled(False)
             return
 
         # ── Mise à jour RFID si rouleau changé ───────────────────────────────
@@ -411,7 +405,7 @@ class PrintingMixin:
             text, color = self._niimbot_ready_status()
             self.niimbot_overlay.update_status(text, color)
             self._niimbot_connected = True
-            self.print_label_button.setEnabled(True)
+            self.print_label_action.setEnabled(True)
         else:
             self._niimbot_connected = False
             self.niimbot_overlay.update_status(
@@ -433,8 +427,7 @@ class PrintingMixin:
             bean = self.uuidmap.get(uuid_match.group(1))
 
         if bean is None:
-            selected_items = self.roast_list_widget.selectedItems()
-            if not selected_items:
+            if not self.selected_roast_fnames():
                 self.roast_plot_label.setText(
                     replace_accents(QApplication.translate("tilauscope_beancave",
                         "Select a roast file to see the curve preview."))
@@ -834,16 +827,12 @@ class PrintingMixin:
 
     def generate_and_print_pdf_label(self):
         # get roast selected file
-        selected_items = self.roast_list_widget.selectedItems()
-        if not selected_items:
+        alog_full_path = self.selected_roast_path()
+        if alog_full_path is None:
             self._show_message(self,
                                 QApplication.translate("tilauscope_beancave","TilauScope load"),
                                 QApplication.translate("tilauscope_beancave","Please, select a roast fist from the list."),
                                 QMessageBox.Icon.Warning)
-            return
-
-        alog_full_path = self.selected_roast_path()
-        if alog_full_path is None:
             return
         alog_filename = alog_full_path.name
 

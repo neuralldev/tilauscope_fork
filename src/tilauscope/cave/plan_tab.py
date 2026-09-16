@@ -489,7 +489,7 @@ class PlanTabMixin:
         self.plan_roast_combo.setToolTip(
             QApplication.translate("tilauscope_beancave",
                 "Optionally pick a past roast to pre-fill ambient conditions "
-                "(temperature, humidity, pressure). Independent from the Roast Viewer tab."))
+                "(temperature, humidity, pressure). Independent from the Roasts tab."))
         self.plan_roast_combo.currentIndexChanged.connect(self._on_plan_roast_changed)
 
         sel_layout.addWidget(bean_lbl)

@@ -25,9 +25,9 @@ deviations. It produces no HTML and touches no widget — every consumer (the
 Roast Review panel, the roast card) formats the same result its own way, so the
 two can never disagree about the same roast.
 
-Band tables are never redefined here: roast levels come from
-`tilauscope_types.ROASTING_BASIC_BASE` (the table the plan generator itself
-builds from) and weight loss from `tilauscope_types.weight_loss_target()`.
+Band tables are never redefined here: the development and weight-loss bands
+come from `roast_coach`, for the level the roast itself ran at — the reading
+BeanCave's coach and the Coach's advice dialog give of the same roast.
 """
 
 from dataclasses import dataclass, field
@@ -39,8 +39,8 @@ try:
 except ImportError:
     from PyQt5.QtWidgets import QApplication  # type: ignore # @UnusedImport @Reimport  @UnresolvedImport
 
-from tilauscope.tilauscope_types import (AGTRON_SCALES, ROASTING_BASIC_BASE,
-                                         to_agtron, weight_loss_target)
+from tilauscope import roast_coach as coach
+from tilauscope.tilauscope_types import to_agtron
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -53,9 +53,6 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 _DROP_BT_TELL_C: Final[float] = 3.0
 _DROP_TIME_TELL_S: Final[float] = 20.0
 _MILESTONE_TIME_TELL_S: Final[float] = 30.0
-
-# Fallback development band when no plan was recorded — the Medium roast level.
-_DEFAULT_DTR_BAND: Final[tuple[float, float]] = (15.0, 22.0)
 
 
 @dataclass
@@ -116,26 +113,6 @@ def _ror_c_to_mode(value: float, mode: str) -> float:
     return value * 9.0 / 5.0 if str(mode).upper() == "F" else value
 
 
-def _agtron_category(agtron: "float | None") -> "str | None":
-    """Agtron value → one of AGTRON_SCALES' category names."""
-    if agtron is None or agtron <= 0:
-        return None
-    for scale in AGTRON_SCALES:
-        try:
-            if scale.agtron_range.min_value <= agtron <= scale.agtron_range.max_value:
-                return scale.name
-        except (TypeError, ValueError):
-            continue
-    return None
-
-
-def _dtr_band(category: "str | None") -> tuple[float, float]:
-    """Development band (%) for a roast level, from the plan's own base table."""
-    plan = next((p for p in ROASTING_BASIC_BASE.plans if p.name == category), None)
-    if plan is None:
-        return _DEFAULT_DTR_BAND
-    return (plan.dtr_pct[0] * 100.0, plan.dtr_pct[1] * 100.0)
-
 
 
 
@@ -169,6 +146,9 @@ def profile_from_qmc(aw) -> dict:
         # The debrief's weight-loss target reads this: without it a live roast
         # and the same roast reloaded would not be judged against the same target.
         "moisture_greens": getattr(qmc, "moisture_greens", 0) or 0,
+        # With the moisture, the green measurements Next batch puts back after RESET.
+        "density": list(getattr(qmc, "density", None) or (0, "g", 1, "l")),
+        "greens_temp": getattr(qmc, "greens_temp", 0) or 0,
         "ambientTemp": getattr(qmc, "ambientTemp", 0) or 0,
         "ambient_humidity": getattr(qmc, "ambient_humidity", 0) or 0,
         "ambient_pressure": getattr(qmc, "ambient_pressure", 0) or 0,
@@ -232,15 +212,20 @@ def roast_colour_agtron(profile: dict) -> "float | None":
 
 def build_debrief(profile: dict, snapshot: "dict | None" = None,
                   mode: str = "C", peak_ror_reference_c: "float | None" = None,
-                  peak_ror_c: "float | None" = None) -> Debrief:
+                  peak_ror_c: "float | None" = None,
+                  roast_context: object = None, bean: object = None) -> Debrief:
     """Compare a finished roast to the plan frozen before it.
 
     profile              .alog-shaped dict (or `profile_from_qmc()` output)
     snapshot             qmc.tilau_roast_plan_snapshot, or None when the roast
-                         ran without the assistant — the verdict then says so
-                         instead of inventing a comparison
+                         ran without the assistant — no verdict is given then,
+                         rather than an invented comparison
     peak_ror_c           peak BT RoR in °C/min, recomputed by the caller (the
                          RoR is never stored in the .alog)
+    roast_context, bean  the roaster record and linked green bean
+                         (`roast_coach.roast_inputs()`): the development and
+                         weight-loss bands are the coach's, for the level the
+                         roast itself ran at
     """
     out = Debrief()
     profile = profile or {}
@@ -274,7 +259,9 @@ def build_debrief(profile: dict, snapshot: "dict | None" = None,
 
     # ── figures ────────────────────────────────────────────────────────────
     agtron = roast_colour_agtron(profile)
-    category = _agtron_category(agtron)
+    # Bands follow the level the roast ran at, read as the coach reads it —
+    # never the colour, which is the roast's result, not its reference.
+    bands = coach.roast_bands(profile, roast_context=roast_context, bean=bean)
 
     predicted = ((snapshot or {}).get("predicted") or {})
     planned_ms = predicted.get("milestones") or {}
@@ -308,7 +295,7 @@ def build_debrief(profile: dict, snapshot: "dict | None" = None,
             QApplication.translate("tilauscope_review", "planned {0} % · {1}").format(
                 f"{planned_dtr:.0f}", word), sev)
     else:
-        lo, hi = _dtr_band(category)
+        lo, hi = bands.thresholds['dtr']
         out.figures["dtr"] = Figure(
             f"{dtr:.1f} %",
             QApplication.translate("tilauscope_review", "typical range {0}–{1} %").format(
@@ -372,23 +359,17 @@ def build_debrief(profile: dict, snapshot: "dict | None" = None,
         out.figures["weight_loss"] = Figure(
             band=QApplication.translate("tilauscope_review", "roasted weight missing"))
     else:
-        # The target is the lot's water plus the dry matter the colour and the
-        # development burn off — it is stated as an aim, not as a fault: on a
-        # home batch one point of loss is a few grams, the order of the chaff.
-        _dev_min = (_pos(computed.get("finishphasetime")) or 0.0) / 60.0
-        target = weight_loss_target(
-            category,
-            moisture_pct=_pos(profile.get("moisture_greens")) or 0.0,
-            dev_time_min=_dev_min)
-        if target:
-            sev = "ok" if target.low <= loss <= target.high else "attention"
-            if _dev_min > 0.0:
-                band = QApplication.translate(
-                    "tilauscope_review", "aim {0} % at this colour and {1} of development").format(
-                        f"{target.target:.1f}", fmt_mmss(_dev_min * 60.0))
-            else:
-                band = QApplication.translate(
-                    "tilauscope_review", "aim {0} % at this colour").format(f"{target.target:.1f}")
+        # The target is the lot's water plus the dry matter the roast level and
+        # the development burn off, judged on the coach's own window. It is an
+        # aim, not a fault: on a home batch one point of loss is a few grams, the
+        # order of the chaff. Without a level read from the roast there is no aim.
+        if bands.level:
+            lo, hi = bands.wl_window
+            sev = "ok" if lo <= loss <= hi else "attention"
+            # The range is written out: a loss under the aim but inside it is
+            # judged fine, and naming the aim alone made that read as a fault.
+            band = QApplication.translate("tilauscope_review", "aim {0} % · range {1}–{2} %").format(
+                f"{bands.thresholds['wl_target']:.1f}", f"{lo:.1f}", f"{hi:.1f}")
             out.figures["weight_loss"] = Figure(f"{loss:.1f} %", band, sev)
         else:
             out.figures["weight_loss"] = Figure(
@@ -396,14 +377,10 @@ def build_debrief(profile: dict, snapshot: "dict | None" = None,
                 "neutral")
 
     # ── deviations from the plan ───────────────────────────────────────────
+    # Without a plan there is nothing to judge: no verdict, and each figure
+    # stands against its typical range.
     if not out.has_plan:
         out.severity = "none"
-        out.headline = QApplication.translate("tilauscope_review", "No plan was recorded for this batch,")
-        out.detail = QApplication.translate(
-            "tilauscope_review", "so there is nothing to compare against — the figures below are "
-                  "the roast as it happened.")
-        out.next_time = QApplication.translate(
-            "tilauscope_review", "Start the next one from the assistant to get a verdict.")
         return out
 
     for name, actual_t, actual_bt, plan_t, plan_bt in (

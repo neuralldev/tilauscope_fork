@@ -19,7 +19,7 @@ import json
 import time
 import os
 import threading
-from typing import Any, override, TYPE_CHECKING
+from typing import override, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow  # noqa: F401
@@ -37,7 +37,7 @@ from artisanlib.atypes import ProfileData
 from PyQt6.QtCore import (QMutex, QMutexLocker,QStandardPaths, Qt, pyqtSlot, QSettings, QThread, QPoint, QTimer, QEvent) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
 from PyQt6.QtGui import ( QCloseEvent, QGuiApplication, QCursor, QKeyEvent) # @UnusedImport @Reimport  @UnresolvedImport
 from PyQt6.QtWidgets import (QApplication, QComboBox, QSizeGrip, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QWidget, QTabWidget, # @UnusedImport @Reimport  @UnresolvedImport
-                                QGroupBox, QTableWidget, QHeaderView, QStyledItemDelegate, QListView, QFrame, QFileDialog, QMessageBox, QDialog, QListWidget, QDoubleSpinBox) # @UnusedImport @Reimport  @UnresolvedImport
+                                QGroupBox, QTableWidget, QHeaderView, QStyledItemDelegate, QListView, QFrame, QFileDialog, QMessageBox, QDialog, QDoubleSpinBox) # @UnusedImport @Reimport  @UnresolvedImport
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
@@ -316,21 +316,6 @@ class LifecycleMixin:
         except Exception:  # pylint: disable=broad-except
             _logd.exception("onboarding assistant failed to start")
 
-    def _find_item_by_metadata(self, list_widget: QListWidget, key: str, value: Any) :
-        """
-        Scans the QListWidget for an item containing a specific metadata key-value pair.
-        """
-        for row in range(list_widget.count()):
-            item = list_widget.item(row)
-            metadata = item.data(Qt.ItemDataRole.UserRole)
-
-            # Check if metadata exists, is a dictionary, and matches our criteria
-            if isinstance(metadata, dict) and metadata.get(key) == value:
-                return row
-
-        return None
-
-
     def bean_uuid_from_profile(self, profile) -> str:
         """The green-bean uuid stamped in a profile's ``beans`` field, or ''."""
         try:
@@ -425,7 +410,7 @@ class LifecycleMixin:
                 QApplication.translate("tilauscope_beancave", "Printer: Bluetooth N/A"),
                 THEME["SUBTEXT"]
             )
-            self.print_label_button.setEnabled(False)
+            self.print_label_action.setEnabled(False)
             return
 
         # Créer NiimbotBLE et brancher ses signaux.
@@ -520,13 +505,10 @@ class LifecycleMixin:
         never clobbers a previously captured one (e.g. a transient state during
         the startup refresh, when the list is momentarily empty)."""
         try:
-            cur_item = self.roast_list_widget.currentItem()
-            cur_fname = (
-                (cur_item.data(Qt.ItemDataRole.UserRole) or {}).get("raw_fname", "")
-                if cur_item else "")
+            cur_fname = self.current_roast_fname()
             if cur_fname:
                 self._pending_restore_fname = cur_fname
-                self._pending_restore_scroll = self.roast_list_widget.verticalScrollBar().value()
+                self._pending_restore_scroll = self.roast_list_view.verticalScrollBar().value()
         except (RuntimeError, AttributeError):
             pass
 
@@ -668,7 +650,7 @@ class LifecycleMixin:
             try:
                 if self._list_thread.isRunning():
                     # Same guard as every other worker: a queued result must not
-                    # land in roast_list_widget while the dialog is tearing down.
+                    # land in the roast list while the dialog is tearing down.
                     try:
                         self._list_worker.finished.disconnect(self._on_alog_list_ready)
                     except (TypeError, RuntimeError, AttributeError):
@@ -1130,9 +1112,9 @@ class LifecycleMixin:
         self.input_group = QGroupBox()
 
         self.tab_widget.addTab(self.main_tab, QApplication.translate("tilauscope_beancave","Green Beans"))
-        self.tab_widget.addTab(self.roast_viewer_tab, QApplication.translate("tilauscope_beancave","Roast Viewer"))
+        self.tab_widget.addTab(self.roast_viewer_tab, QApplication.translate("tilauscope_beancave","Roasts"))
         self.tab_widget.addTab(self.roast_plan_tab, QApplication.translate("tilauscope_beancave","Roasting plan"))
-        self.tab_widget.addTab(self.storage_tab, QApplication.translate("tilauscope_beancave","Stockage"))
+        self.tab_widget.addTab(self.storage_tab, QApplication.translate("tilauscope_beancave","Storage"))
         # refresh the TilauAmbient probe button state on entering the plan tab
         self.tab_widget.currentChanged.connect(self._on_beancave_tab_changed)
         self.setup_main_tab_ui()
@@ -1225,11 +1207,8 @@ class LifecycleMixin:
             self.C_BT_COLOR = float(settings.value(C_BT_COLOR_KEY, self.C_BT_COLOR))
             self.C_DTR_COLOR = float(settings.value(C_DTR_COLOR_KEY, self.C_DTR_COLOR))
             self.C_WL_COLOR = float(settings.value(C_WL_COLOR_KEY, self.C_WL_COLOR))
-            self.duration_rules = settings.value("duration_rules", {
-                "drying": (4.0, 8.0),
-                "maillard": (3.0, 5.0),
-                "development": (1.5, 4.0),
-                })
+            from tilauscope.roast_coach import DEFAULT_DURATION_RULES
+            self.duration_rules = settings.value("duration_rules", dict(DEFAULT_DURATION_RULES))
             self.current_roaster_model = settings.value("RoastPlan/RoasterModel", "", str)
         except Exception as e:
             _logd.warning(f"color prediction coefficients loading failed, falling back to defaults: {e}")
@@ -1414,7 +1393,7 @@ class LifecycleMixin:
     @override
     def showEvent(self, event):
         super().showEvent(event)
-        # niimbot_overlay est un widget inline dans action_bar_layout — pas besoin de show()/move().
+        # The printer's state lives in the Export menu of the Roasts tab: nothing to show or move.
 
     def directory_validity_check(self, directory: str) -> bool:
         path_obj = Path(directory)

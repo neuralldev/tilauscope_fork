@@ -267,8 +267,10 @@ class SegmentedControl(QWidget):
     """
 
     changed = pyqtSignal(int)
+    #: Every click, the lit segment included — for an option that asks something each time.
+    activated = pyqtSignal(int)
 
-    def __init__(self, labels: list[str], parent=None) -> None:
+    def __init__(self, labels: list[str], parent=None, *, compact: bool = False) -> None:
         super().__init__(parent)
         row = QHBoxLayout(self)
         row.setContentsMargins(0, 0, 0, 0)
@@ -276,6 +278,8 @@ class SegmentedControl(QWidget):
         self._current = -1
         self._buttons: list[QPushButton] = []
         last = len(labels) - 1
+        # Compact sits inside a panel among other controls; the default heads a page.
+        padding, font_size = ('4px 12px', '12px') if compact else ('6px 18px', '13px')
         for i, label in enumerate(labels):
             button = QPushButton(label)
             button.setCheckable(True)
@@ -285,8 +289,8 @@ class SegmentedControl(QWidget):
             button.setStyleSheet(
                 f"QPushButton {{ color: {THEME['SUBTEXT']}; background: {THEME['BG']};"
                 f" border: 1px solid {THEME['BORDER']}; {'border-left: none;' if i else ''}"
-                f" border-radius: 0px; {corners} padding: 6px 18px;"
-                f" font-size: 13px; font-weight: bold; }}"
+                f" border-radius: 0px; {corners} padding: {padding};"
+                f" font-size: {font_size}; font-weight: bold; }}"
                 f"QPushButton:hover:!checked {{ color: {THEME['TEXT']}; }}"
                 f"QPushButton:checked {{ color: {THEME['BG']}; background: {THEME['ACCENT']};"
                 f" border: 1px solid {THEME['ACCENT']}; }}")
@@ -304,11 +308,16 @@ class SegmentedControl(QWidget):
         for i, button in enumerate(self._buttons):
             button.setChecked(i == self._current)
 
+    def set_tooltip(self, index: int, text: str) -> None:
+        if 0 <= index < len(self._buttons):
+            self._buttons[index].setToolTip(text)
+
     def _on_clicked(self, index: int) -> None:
         moved = index != self._current
         self.set_current(index)   # clicking the lit segment keeps it lit
         if moved:
             self.changed.emit(index)
+        self.activated.emit(index)
 
 
 class GripHandle(QLabel):

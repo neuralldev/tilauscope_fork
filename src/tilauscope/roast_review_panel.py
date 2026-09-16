@@ -62,7 +62,8 @@ def _mono(size: int, weight: int = 400, color: str = "") -> str:
 class RoastReviewPanel(QWidget):
     """Read-only summary of the roast currently on screen."""
 
-    card_requested = pyqtSignal()
+    advice_requested = pyqtSignal()
+    next_batch_requested = pyqtSignal()
     weight_requested = pyqtSignal()
 
     def __init__(self, aw, parent=None):
@@ -80,6 +81,8 @@ class RoastReviewPanel(QWidget):
         # on the review must use this and not the live session, which may have
         # moved on since. None until a refresh succeeds.
         self._profile: dict[str, Any] | None = None
+        # The coach's reading of that roast, shared by its card and its dialog.
+        self._reading: Any = None
 
     # ── public API ────────────────────────────────────────────────────────
 
@@ -99,11 +102,16 @@ class RoastReviewPanel(QWidget):
             mode = str(getattr(self.aw.qmc, "mode", "C") or "C").upper()
             if mode not in {"C", "F"}:
                 mode = "C"
+            # The coach's bands need the machine and the bean behind this roast.
+            from tilauscope.roast_coach import roast_inputs
+            roast_context, bean = roast_inputs(profile)
             debrief = build_debrief(
                 profile, snapshot, mode,
                 peak_ror_reference_c=self._peak_ror_reference(),
-                peak_ror_c=self._peak_ror())
+                peak_ror_c=self._peak_ror(),
+                roast_context=roast_context, bean=bean)
             self._profile = profile
+            self._reading = self._coach_reading(profile, (roast_context, bean))
             self._build(profile, debrief, mode)
             self._empty = False
         except Exception as e:  # pylint: disable=broad-except
@@ -123,6 +131,19 @@ class RoastReviewPanel(QWidget):
         caller editing the roast must not be able to rewrite it.
         """
         return None if self._profile is None else dict(self._profile)
+
+    def reviewed_reading(self) -> Any:
+        """The coach's reading of the roast this page describes, or None."""
+        return self._reading
+
+    def _coach_reading(self, profile: dict, inputs: tuple[Any, Any]) -> Any:
+        """Read once per rebuild: the card and the dialog it opens must agree."""
+        try:
+            from tilauscope.coach_dialog import reading_for
+            return reading_for(self.aw, profile, inputs=inputs)
+        except Exception as e:  # pylint: disable=broad-except
+            _log.debug("coach reading: %s", e)
+            return None
 
     def has_roast(self) -> bool:
         """True when a roast with a CHARGE and a DROP is on screen."""
@@ -190,6 +211,7 @@ class RoastReviewPanel(QWidget):
         # The snapshot goes with the page it describes: a refresh that fails
         # must leave no roast behind, or the next caller acts on the previous one.
         self._profile = None
+        self._reading = None
         self._drop_children(self._lay)
 
     def _drop_children(self, layout) -> None:
@@ -209,7 +231,8 @@ class RoastReviewPanel(QWidget):
 
     def _build(self, profile: dict, debrief: Debrief, mode: str) -> None:
         self._lay.addWidget(self._header(profile, debrief))
-        self._lay.addWidget(self._verdict(debrief))
+        if debrief.headline:
+            self._lay.addWidget(self._verdict(debrief))
         bar = self._phase_bar(debrief)
         if bar is not None:
             self._lay.addWidget(bar)
@@ -219,10 +242,12 @@ class RoastReviewPanel(QWidget):
         self._lay.addWidget(self._figures(debrief))
         if debrief.figures.get("weight_loss") and debrief.figures["weight_loss"].value == "—":
             self._lay.addWidget(self._weight_prompt())
+        card = self._coach_card(self._reading)
+        if card is not None:
+            self._lay.addWidget(card)
         for strip in self._strips(profile, mode):
             self._lay.addWidget(strip)
         self._lay.addStretch(1)
-        self._lay.addWidget(self._card_button())
 
     def _header(self, profile: dict, debrief: Debrief) -> QWidget:
         box = QWidget()
@@ -263,20 +288,22 @@ class RoastReviewPanel(QWidget):
         top.addWidget(chip, 0, Qt.AlignmentFlag.AlignTop)
         lay.addLayout(top)
 
-        # The plan badge says outright whether a comparison is possible at all.
+        # The badge says what the figures are set against.
         if debrief.has_plan:
             badge_txt = QApplication.translate("tilauscope_review", "COMPARED TO THE ROAST PLAN")
             badge_col = THEME['MAUVE']
         else:
-            badge_txt = QApplication.translate("tilauscope_review", "NO PLAN RECORDED")
+            badge_txt = QApplication.translate("tilauscope_review", "COMPARED TO TYPICAL RANGES")
             badge_col = THEME['OVERLAY0']
         badge = QLabel(badge_txt)
         badge.setStyleSheet(_mono(9, 700, badge_col) + f"border: 1px solid {badge_col};"
                             f" border-radius: 8px; padding: 1px 7px;")
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
-        row.addWidget(badge)
+        # Centred, never stretched: the pill beside it is taller than the badge.
+        row.addWidget(badge, 0, Qt.AlignmentFlag.AlignVCenter)
         row.addStretch(1)
+        row.addWidget(self._next_batch_pill())
         lay.addLayout(row)
         return box
 
@@ -337,13 +364,14 @@ class RoastReviewPanel(QWidget):
         grid.setHorizontalSpacing(6)
         grid.setVerticalSpacing(1)
 
-        # Fourth column is the deviation from the plan when there is one, and
-        # the rate of rise at the milestone when there is not.
-        last_col = (QApplication.translate("tilauscope_review", "VS PLAN")
-                    if debrief.has_plan else "")
-        for col, text in enumerate((QApplication.translate("tilauscope_review", "MILESTONE"),
-                                    QApplication.translate("tilauscope_review", "TIME"),
-                                    f"BT °{mode}", last_col)):
+        # The fourth column is the deviation from the plan. Without a plan there
+        # is nothing to set a milestone against, so the table stops at BT.
+        heads = [QApplication.translate("tilauscope_review", "MILESTONE"),
+                 QApplication.translate("tilauscope_review", "TIME"),
+                 f"BT °{mode}"]
+        if debrief.has_plan:
+            heads.append(QApplication.translate("tilauscope_review", "VS PLAN"))
+        for col, text in enumerate(heads):
             head = QLabel(text)
             head.setStyleSheet(_mono(9, 700, THEME['OVERLAY0']))
             head.setAlignment(Qt.AlignmentFlag.AlignLeft if col == 0
@@ -354,8 +382,15 @@ class RoastReviewPanel(QWidget):
                    "DRY END": THEME['ACCENT'], "FC START": THEME['WARNING'],
                    "DROP": THEME['CRITICAL']}
         delta_key = {"DRY END": "dry_end", "FC START": "first_crack", "DROP": "drop"}
+        # The curve's own names for the same milestones — same context, same
+        # source — so the table and the chips on the curve share one word each.
+        names = {"CHARGE": QApplication.translate('tilauscope', 'CHARGE'),
+                 "TP": QApplication.translate('tilauscope', 'TP'),
+                 "DRY END": QApplication.translate('tilauscope', 'DRY END'),
+                 "FC START": QApplication.translate('tilauscope', 'FIRST CRACK'),
+                 "DROP": QApplication.translate('tilauscope', 'DROP')}
         for row, (key, seconds, bt) in enumerate(debrief.milestones, start=1):
-            name = QLabel(key)
+            name = QLabel(names.get(key, key))
             name.setStyleSheet(_mono(9, 700, colours.get(key, THEME['TEXT'])))
             grid.addWidget(name, row, 0)
             for col, text in ((1, fmt_mmss(seconds)), (2, f"{bt:.1f}")):
@@ -363,12 +398,14 @@ class RoastReviewPanel(QWidget):
                 val.setStyleSheet(_mono(10, 400, THEME['TEXT']))
                 val.setAlignment(Qt.AlignmentFlag.AlignRight)
                 grid.addWidget(val, row, col)
-            grid.addWidget(self._delta_label(debrief, delta_key.get(key), mode), row, 3)
+            # CHARGE and TP are not planned, so their deviation cell stays blank.
+            if debrief.has_plan and key in delta_key:
+                grid.addWidget(self._delta_label(debrief, delta_key[key], mode), row, 3)
         return frame
 
-    def _delta_label(self, debrief: Debrief, key: "str | None", mode: str) -> QLabel:
+    def _delta_label(self, debrief: Debrief, key: str, mode: str) -> QLabel:
         text, colour = "—", THEME['OVERLAY0']
-        delta = debrief.deltas.get(key) if key else None
+        delta = debrief.deltas.get(key)
         if delta is not None:
             # The drop is judged on temperature — that is how it is steered —
             # and the earlier milestones on the clock.
@@ -486,17 +523,150 @@ class RoastReviewPanel(QWidget):
             lay.addWidget(val)
         return frame
 
-    def _card_button(self) -> QPushButton:
-        """The only action here: the same reading with the curve on it."""
-        card = QPushButton(QApplication.translate("tilauscope_review", "Full roast card"))
-        card.setCursor(Qt.CursorShape.PointingHandCursor)
-        card.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {THEME['ACCENT']};"
-            f" border: 1px solid {THEME['ACCENT']}; border-radius: 13px;"
-            f" padding: 5px 10px; font-size: 11px; font-weight: 600; }}"
-            f"QPushButton:hover {{ background: {THEME['SURFACE']}; }}")
-        card.clicked.connect(self.card_requested.emit)
+    def _coach_card(self, reading: Any) -> "QWidget | None":
+        """The coach's reading in one line; the whole card opens it in full."""
+        if reading is None or not reading.rows:
+            return None
+        # The level sentence heads the rows; the card names the level on its own line.
+        rows = list(reading.rows[1:] if reading.level else reading.rows)
+        order = {"bad": 0, "warn": 1}
+        remarks = sorted((r for r in rows if r.kind in order), key=lambda r: order[r.kind])
+        if remarks:
+            icon, text, more = remarks[0].icon, remarks[0].text, len(remarks) - 1
+            accent = THEME['CRITICAL'] if remarks[0].kind == "bad" else THEME['WARNING']
+        else:
+            checks = [r for r in rows if r.kind == "ok"]
+            if len(checks) >= 2:
+                icon, more = "✓", sum(1 for r in rows if r.kind == "info")
+                text = QApplication.translate(
+                    "tilauscope_review", "All {0} checks within range").format(len(checks))
+            elif rows:
+                icon, text, more = rows[0].icon, rows[0].text, len(rows) - 1
+            else:
+                return None
+            accent = THEME['SUCCESS']
+
+        card = _CoachCard(accent)
+        card.setToolTip(QApplication.translate("tilauscope_review", "Opens the coach's full reading"))
+        card.clicked.connect(self.advice_requested.emit)
+        lay = QVBoxLayout(card)
+        lay.setContentsMargins(10, 5, 9, 6)
+        lay.setSpacing(1)
+
+        top = QHBoxLayout()
+        cap = QLabel("🎯 " + QApplication.translate("tilauscope_review", "COACH"))
+        cap.setStyleSheet(_mono(9, 700, THEME['OVERLAY0']))
+        top.addWidget(cap)
+        top.addStretch(1)
+        level = " · ".join(x for x in (reading.level, reading.neighbour) if x)
+        if level:
+            lvl = QLabel(level)
+            lvl.setStyleSheet(_mono(9, 700, THEME['SUBTEXT']))
+            top.addWidget(lvl)
+        lay.addLayout(top)
+
+        line = QHBoxLayout()
+        line.setSpacing(6)
+        ico = QLabel(icon)
+        ico.setFixedWidth(16)
+        ico.setStyleSheet("font-size: 12px;")
+        line.addWidget(ico)
+        msg = _ElidedLabel(text)
+        msg.setStyleSheet(f"font-size: 11px; color: {THEME['TEXT']};")
+        line.addWidget(msg, 1)
+        if more > 0:
+            extra = QLabel(f"+{more}")
+            extra.setStyleSheet(_mono(10, 700, THEME['OVERLAY1']))
+            line.addWidget(extra)
+        chevron = QLabel("›")
+        chevron.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {THEME['ACCENT']};")
+        line.addWidget(chevron)
+        lay.addLayout(line)
         return card
+
+    def _next_batch_pill(self) -> QPushButton:
+        """The same coffee again, set up with this roast as its guide curve."""
+        from PyQt6.QtCore import QSize
+        from tilauscope.header_icons import SVG_NEXT_BATCH, make_icon
+        pill = self._tonal_pill(QApplication.translate("tilauscope_review", "Next batch"), icon=True)
+        pill.setIcon(make_icon(SVG_NEXT_BATCH, THEME['ACCENT'], QSize(18, 18)))
+        pill.setIconSize(QSize(18, 18))
+        pill.setToolTip(QApplication.translate(
+            "tilauscope_review",
+            "Prepares a new batch of the same coffee and weight, with this roast as the background curve"))
+        pill.clicked.connect(self.next_batch_requested.emit)
+        return pill
+
+    @staticmethod
+    def _tonal_pill(text: str, *, icon: bool = False) -> QPushButton:
+        """A compact rounded action: accent-tinted ground, solid accent when pressed."""
+        accent, ground = QColor(THEME['ACCENT']), QColor(THEME['BG'])
+
+        def tint(share: float) -> str:
+            return QColor(round(ground.red() + (accent.red() - ground.red()) * share),
+                          round(ground.green() + (accent.green() - ground.green()) * share),
+                          round(ground.blue() + (accent.blue() - ground.blue()) * share)).name()
+
+        pill = QPushButton(text)
+        pill.setCursor(Qt.CursorShape.PointingHandCursor)
+        pill.setFixedHeight(26)
+        pill.setStyleSheet(
+            f"QPushButton {{ background: {tint(0.15)}; color: {THEME['ACCENT']};"
+            f" border: 1px solid transparent; border-radius: 13px;"
+            f" padding: 0 12px 0 {4 if icon else 12}px; font-size: 11px; font-weight: 700; }}"
+            f"QPushButton:hover {{ background: {tint(0.30)}; border: 1px solid {THEME['ACCENT']}; }}"
+            f"QPushButton:pressed {{ background: {THEME['ACCENT']}; color: {THEME['CRUST']}; }}"
+            + tooltip_qss())
+        return pill
+
+
+class _CoachCard(QFrame):
+    """A card that acts as one button: hover lights its border, a click opens the reading."""
+
+    clicked = pyqtSignal()
+
+    def __init__(self, accent: str, parent=None):
+        super().__init__(parent)
+        self.setObjectName("coachCard")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setStyleSheet(
+            f"QFrame#coachCard {{ background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']};"
+            f" border-left: 3px solid {accent}; border-radius: 8px; }}"
+            f"QFrame#coachCard:hover {{ border: 1px solid {THEME['ACCENT']};"
+            f" border-left: 3px solid {accent}; }}"
+            f"QLabel {{ border: none; background: transparent; }}" + tooltip_qss())
+
+    def mouseReleaseEvent(self, event) -> None:
+        # A Qt virtual: an exception escaping it closes the application.
+        try:
+            inside = (event.button() == Qt.MouseButton.LeftButton
+                      and self.rect().contains(event.position().toPoint()))
+        except Exception as e:  # pylint: disable=broad-except
+            _log.debug("coach card release: %s", e)
+            inside = False
+        super().mouseReleaseEvent(event)
+        if inside:
+            self.clicked.emit()
+
+
+class _ElidedLabel(QLabel):
+    """One line of text, cut with an ellipsis when the card is too narrow for it."""
+
+    def __init__(self, text: str, parent=None):
+        super().__init__(text, parent)
+        from PyQt6.QtWidgets import QSizePolicy
+        self._full = text
+        self.setTextFormat(Qt.TextFormat.PlainText)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        # A Qt virtual: an exception escaping it closes the application.
+        try:
+            self.setText(self.fontMetrics().elidedText(
+                self._full, Qt.TextElideMode.ElideRight, max(0, self.width())))
+        except Exception as e:  # pylint: disable=broad-except
+            _log.debug("elided label: %s", e)
 
 
 class _PhaseRibbon(QWidget):

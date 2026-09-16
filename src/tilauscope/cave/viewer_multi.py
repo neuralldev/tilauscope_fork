@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 
 
-from PyQt6.QtCore import (pyqtSlot, QPoint) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
+from PyQt6.QtCore import QPoint # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
 from PyQt6.QtWidgets import (QApplication) # @UnusedImport @Reimport  @UnresolvedImport
 
 # Import QWebEngineView for both PyQt6 and PyQt5
@@ -172,9 +172,12 @@ class ViewerMultiMixin:
     def _draw_phase_ribbon(self, ax, palette: list) -> None:
         """Ruban d'équilibre des phases : une barre horizontale empilée par roast
         (Séchage / Maillard / Développement en %), nom du roast coloré + durée à
-        gauche. Le % de développement EST le DTR."""
+        gauche. Le % de développement EST le DTR. Les valeurs se lisent au survol :
+        une barre trop basse ne porte aucun texte lisible."""
         bg_color = _PLOT_PALETTE["background"]
         ax.set_facecolor(bg_color)
+        self.ax_ribbon = ax            # cible du survol : le ruban dit ses valeurs
+        self._ribbon_rows: list[dict] = []
         rows = [(i, c, self._extract_roast_metrics(c['data']))
                 for i, c in enumerate(self._multi_curves) if c.get('data')]
         if not rows:
@@ -184,26 +187,10 @@ class ViewerMultiMixin:
         labels, label_colors = [], []
         dry_c, mai_c, dev_c = self._PHASE_COLORS
         _bar_h = 0.72
-        # Place utile du ruban en points, sur les deux axes : l'axe x couvre
-        # 0-100 %, une largeur de texte se convertit donc en % de ruban. La
-        # hauteur d'une barre borne la taille de police posable dessus.
-        try:
-            _fig = ax.figure
-            _pos = ax.get_position()
-            # 0.90 : la mise en page contrainte peut encore rétrécir l'axe pour
-            # loger les noms de roast à gauche — on sous-estime volontairement.
-            _ax_pts = _pos.width * _fig.get_figwidth() * 72.0 * 0.90
-            _bar_pts = (_pos.height * _fig.get_figheight() * 72.0
-                        / (nrows + 0.2) * _bar_h)
-        except Exception:
-            _ax_pts, _bar_pts = 430.0, 10.0
-        # Plus grande taille tenant dans la hauteur de barre ; None si aucune.
-        _fs = next((f for f in range(_FS_TICK - 1, 5, -1) if f * 1.15 <= _bar_pts), None)
-        def _fits(text: str, width_pct: float, fontsize: int) -> bool:
-            # 0.60 em par caractère : approximation large pour une police
-            # proportionnelle, plus 8 % de marge pour ne pas coller aux bords.
-            need_pts = len(text) * 0.60 * fontsize * 1.08
-            return _ax_pts > 0 and (need_pts / _ax_pts * 100.0) <= width_pct
+        # Rien n'est écrit sur les barres : la hauteur réelle d'une barre n'est
+        # connue qu'après la mise en page contrainte, et l'estimer avant écrasait
+        # le texte dans la barre. Les valeurs se lisent au survol et dans
+        # Statistics ; la légende sous le graphe nomme les trois couleurs.
         for row_idx, (i, curve, m) in enumerate(rows):
             y = nrows - 1 - row_idx  # première courbe (référence) en haut
             dry = m.get('drying_pct') or 0.0
@@ -212,33 +199,26 @@ class ViewerMultiMixin:
             s = dry + mai + dev
             if s > 0:
                 dry, mai, dev = dry * 100 / s, mai * 100 / s, dev * 100 / s
-            for val, left, lab, col in (
-                (dry, 0.0, QApplication.translate("tilauscope_beancave", "Drying"), dry_c),
-                (mai, dry, QApplication.translate("tilauscope_beancave", "Maillard"), mai_c),
-                (dev, dry + mai, QApplication.translate("tilauscope_beancave", "Dev"), dev_c),
-            ):
+            for val, left, col in ((dry, 0.0, dry_c), (mai, dry, mai_c), (dev, dry + mai, dev_c)):
                 ax.barh(y, val, left=left, height=_bar_h, color=col,
                         edgecolor=bg_color, linewidth=1.2, alpha=0.92)
-                # Une décimale : deux roasts proches (49,5 % vs 50,2 %) ne doivent
-                # pas s'afficher avec le même chiffre. Repli sur le seul
-                # pourcentage, puis rien du tout, si le segment est trop étroit.
-                if _fs is None:
-                    continue
-                for _txt, _size in ((f"{lab} {val:.1f}%", _fs),
-                                    (f"{val:.1f}%", _fs),
-                                    (f"{val:.1f}%", _fs - 1)):
-                    if _size >= 6 and _fits(_txt, val, _size):
-                        ax.text(left + val / 2, y, _txt, ha='center', va='center',
-                                fontsize=_size, color=THEME['BG'])
-                        break
-            short = (curve['title'][:16] + '…') if len(curve['title']) > 16 else curve['title']
-            labels.append(f"{short} · {m.get('total_fmt', '')}")
+            # Les trois parts vivent dans l'étiquette, pas sur les barres : c'est
+            # la seule place où elles survivent à l'image exportée. Le nom cède
+            # les caractères qu'il faut pour que la ligne entière tienne.
+            short = (curve['title'][:12] + '…') if len(curve['title']) > 12 else curve['title']
+            labels.append(f"{short} · {m.get('total_fmt', '')} · "
+                          f"{dry:.1f}/{mai:.1f}/{dev:.1f} %")
             label_colors.append(palette[i][0])
+            # Les parts telles que les barres ont été tracées, pas celles des
+            # métriques : l'étiquette et l'infobulle ne doivent pas arrondir la
+            # même phase différemment.
+            self._ribbon_rows.append({'y': y, 'title': curve['title'], 'color': palette[i][0],
+                                      'metrics': m, 'shares': (dry, mai, dev)})
         ax.set_xlim(0, 100)
         ax.set_ylim(-0.6, nrows - 0.4)
         ax.set_yticks(range(nrows))
         # y-ticks dans l'ordre d'affichage (haut → bas) : on inverse les labels
-        ax.set_yticklabels(list(reversed(labels)), fontsize=_FS_TICK)
+        ax.set_yticklabels(list(reversed(labels)), fontsize=_FS_TICK - 2)
         for tick, col in zip(ax.get_yticklabels(), reversed(label_colors)):
             tick.set_color(col)
         ax.set_xticks([0, 25, 50, 75, 100])
@@ -289,32 +269,6 @@ class ViewerMultiMixin:
         ax.set_xlabel(QApplication.translate("tilauscope_beancave", "Time (min)"),
                       fontsize=_FS_AXIS, color=_PLOT_PALETTE['xlabel'])
 
-    @pyqtSlot(bool)
-    def _on_consistency_toggled(self, checked: bool) -> None:
-        """Active la vue Consistance (exclusive avec Aligné) et redessine."""
-        if checked:
-            self.align_button.blockSignals(True)
-            self.align_button.setChecked(False)
-            self.align_button.blockSignals(False)
-            self._multi_view_mode = 'consistency'
-        else:
-            self._multi_view_mode = 'align' if self.align_button.isChecked() else 'overlay'
-        if self._multi_curves:
-            self._plot_multi_curves()
-
-    @pyqtSlot(bool)
-    def _on_align_toggled(self, checked: bool) -> None:
-        """Active la vue Aligné / time-warp (exclusive avec Consistance) et redessine."""
-        if checked:
-            self.consistency_button.blockSignals(True)
-            self.consistency_button.setChecked(False)
-            self.consistency_button.blockSignals(False)
-            self._multi_view_mode = 'align'
-        else:
-            self._multi_view_mode = 'consistency' if self.consistency_button.isChecked() else 'overlay'
-        if self._multi_curves:
-            self._plot_multi_curves()
-
     def _plot_multi_curves(self) -> None:
         """Trace la superposition de BT, ET et DeltaBT pour toutes les courbes multi."""
         if not self._multi_curves:
@@ -335,7 +289,7 @@ class ViewerMultiMixin:
         # s'écrasent et mordent la légende dès 4-5 courbes) : chaque ligne doit
         # rester plus haute que l'étiquette posée dessus.
         n_data = sum(1 for c in self._multi_curves if c.get('data')) or 1
-        ribbon_h = 0.75 + 0.62 * n_data
+        ribbon_h = 0.75 + 0.72 * n_data
         # 4 lignes : graphe / résiduel ΔBT / ruban / bande-légende. Le résiduel
         # partage l'axe x du graphe (l'axe temps vit donc sur le résiduel). La
         # légende a sa propre cellule réservée → pas de chevauchement.
@@ -563,6 +517,17 @@ class ViewerMultiMixin:
         if not any(et_available_in_profile(curve['data']) for curve in self._multi_curves):
             style_handles = [h for h in style_handles
                              if h.get_label() != QApplication.translate('Label', 'ET')]
+        # Les trois couleurs du ruban sont nommées ici : une barre trop basse pour
+        # porter son texte ne garde que sa couleur.
+        from matplotlib.patches import Patch as _Patch
+        style_handles += [
+            _Patch(facecolor=self._PHASE_COLORS[0], edgecolor='none',
+                   label=QApplication.translate("tilauscope_beancave", "Drying")),
+            _Patch(facecolor=self._PHASE_COLORS[1], edgecolor='none',
+                   label=QApplication.translate("tilauscope_beancave", "Maillard")),
+            _Patch(facecolor=self._PHASE_COLORS[2], edgecolor='none',
+                   label=QApplication.translate("Label", "Development")),
+        ]
         ax_legend.legend(
             handles=style_handles,
             loc='center',
@@ -595,26 +560,25 @@ class ViewerMultiMixin:
 
         self._reconnect_hover()  # connects hover AND leave, dropping the old pair
         self.last_plot_data = self._multi_curves[0]['data'] if self._multi_curves else None
+        self._auto_xlim = ax1.get_xlim()
+        self._apply_time_range()
         self.canvas.draw_idle()
         # Onglet Advanced Stats : dot plot comparatif + mini-résumé (pas le tableau).
         try:
             self._set_stats_view(True)
             self._render_multi_dotplot()
-            _mode_label = {
-                'overlay':     QApplication.translate("tilauscope_beancave", "Overlay"),
-                'consistency': QApplication.translate("tilauscope_beancave", "Consistency"),
-                'align':       QApplication.translate("tilauscope_beancave", "Aligned"),
-            }.get(view, QApplication.translate("tilauscope_beancave", "Overlay"))
-            self.roast_plot_label.setText(
-                QApplication.translate("tilauscope_beancave",
-                    "Comparing {n} roasts · {mode} view — select one to return to single view."
-                ).format(n=len(self._multi_curves), mode=_mode_label))
+            # The detail head says how many roasts are compared, the View switch how.
+            self.roast_plot_label.setText("")
         except Exception as e:
             _logd.error(f"multi curve plot error: {e}")
 
     def _on_multi_hover(self, event) -> None:
         """Hover en mode multi : identifie la courbe BT la plus proche du curseur."""
         if not hasattr(self, '_multi_series') or not self._multi_series:
+            return
+        if event.inaxes is getattr(self, 'ax_ribbon', None):
+            self._hide_curve_markers()   # le curseur a quitté les courbes
+            self._show_ribbon_tooltip(event)
             return
         if event.inaxes not in (self.ax1, self.ax_hoovers):
             self._hover_tooltip.hide()
@@ -712,20 +676,27 @@ class ViewerMultiMixin:
         et_val  = best_series['et'][best_t_idx]  if best_t_idx < len(best_series['et'])  else None
         dbt_val = best_series['ror'][best_t_idx] if best_t_idx < len(best_series['ror']) else None
 
-        def dot(c): return f'<span style="color:{c}; font-size:14px;">&#9632;</span> '
+        # Une teinte par roast : le trait ne dit donc pas BT / ET / RoR, son STYLE
+        # le dit (plein / pointillé / tiret, comme au tracé et dans la légende).
+        # Trois pastilles de la même couleur ne distinguaient rien.
+        def mark(c, glyph): return f'<span style="color:{c}; font-size:14px;">{glyph}</span> '
 
         _time_lbl = QApplication.translate("Label", "Time")
         if aligned:
             _time_lbl = QApplication.translate("tilauscope_beancave", "Aligned time")
         lines = [
-            f'<b style="color:{THEME["TEXT"]};">{best_series["title"]}</b>',
+            f'<b style="color:{best_series["bt_col"]};">{best_series["title"]}</b>',
             f'<b style="color:{THEME["TEXT"]};">{_time_lbl} : {time_str}</b>',
         ]
-        if bt_val is not None: lines.append(f'{dot(best_series["bt_col"])}BT : {bt_val:.1f}°{mode}')
+        if bt_val is not None:
+            lines.append(f'{mark(best_series["bt_col"], "&#9473;&#9473;")}BT : {bt_val:.1f}°{mode}')
         # ET / RoR seulement si réellement tracés (pas en Aligné).
         if not aligned:
-            if et_val  is not None: lines.append(f'{dot(best_series["et_col"])}ET : {et_val:.1f}°{mode}')
-            if dbt_val is not None: lines.append(f'{dot(best_series["ror_col"])}RoR : {dbt_val:.1f}°{mode}/min')
+            if et_val is not None:
+                lines.append(f'{mark(best_series["et_col"], "&#9480;&#9480;")}ET : {et_val:.1f}°{mode}')
+            if dbt_val is not None:
+                lines.append(f'{mark(best_series["ror_col"], "&#9549;&#9549;")}'
+                             f'RoR : {dbt_val:.1f}°{mode}/min')
         # En Consistance : étendue BT (min–max) de tous les roasts à cet instant.
         if consistency and len(self._multi_series) >= 2:
             bt_at = []
@@ -740,15 +711,63 @@ class ViewerMultiMixin:
                 lines.append(f'<span style="color:{THEME["OVERLAY2"]};">{_spread_lbl} : '
                              f'{min(bt_at):.1f}–{max(bt_at):.1f}°{mode}</span>')
 
-        html = '<br>'.join(lines)
+        self._hover_tooltip.show_at(self._hover_point(event), '<br>'.join(lines))
+
+    def _hover_point(self, event) -> QPoint:
+        """Position écran du curseur pour un événement matplotlib."""
         if event.guiEvent is not None:
-            global_point = event.guiEvent.globalPosition().toPoint()
-        else:
-            device_ratio = self.canvas.devicePixelRatioF()
-            x_canvas = int(event.x / device_ratio)
-            y_canvas = int((self.canvas.height() * device_ratio - event.y) / device_ratio)
-            global_point = self.canvas.mapToGlobal(QPoint(x_canvas, y_canvas))
-        self._hover_tooltip.show_at(global_point, html)
+            return event.guiEvent.globalPosition().toPoint()
+        device_ratio = self.canvas.devicePixelRatioF()
+        x_canvas = int(event.x / device_ratio)
+        y_canvas = int((self.canvas.height() * device_ratio - event.y) / device_ratio)
+        return self.canvas.mapToGlobal(QPoint(x_canvas, y_canvas))
+
+    def _hide_curve_markers(self) -> None:
+        """Retire les repères de survol posés sur les courbes.
+
+        Ne redessine que s'il y avait quelque chose à retirer : un survol émet
+        des dizaines d'événements, et un draw_idle par événement est du gâchis.
+        """
+        hidden = False
+        for markers in (getattr(self, '_multi_markers_bt', []),
+                        getattr(self, '_multi_markers_et', []),
+                        getattr(self, '_multi_markers_ror', [])):
+            for marker in markers:
+                if marker.get_visible():
+                    marker.set_visible(False)
+                    hidden = True
+        if hidden:
+            self.canvas.draw_idle()
+
+    def _show_ribbon_tooltip(self, event) -> None:
+        """Survol du ruban : la barre sous le curseur donne ses trois phases.
+        Les durées et parts vivent ici car une barre de ruban est trop basse pour
+        les porter en clair dès que plusieurs roasts sont comparés."""
+        rows = getattr(self, '_ribbon_rows', None)
+        y = event.ydata
+        if not rows or y is None:
+            self._hover_tooltip.hide()
+            return
+        row = min(rows, key=lambda r: abs(r['y'] - y))
+        if abs(row['y'] - y) > 0.5:      # entre deux barres : rien à dire
+            self._hover_tooltip.hide()
+            return
+        m = row['metrics']
+        def dot(c): return f'<span style="color:{c}; font-size:14px;">&#9632;</span> '
+        lines = [
+            f'<b style="color:{row["color"]};">{row["title"]}</b>',
+            f'<b style="color:{THEME["TEXT"]};">'
+            f'{QApplication.translate("tilauscope_beancave", "Total")} : {m.get("total_fmt", "")}</b>',
+        ]
+        shares = row.get('shares', (0.0, 0.0, 0.0))
+        for position, (label, fmt_key) in enumerate((
+            (QApplication.translate("tilauscope_beancave", "Drying"), 'drying_fmt'),
+            (QApplication.translate("tilauscope_beancave", "Maillard"), 'maillard_fmt'),
+            (QApplication.translate("Label", "Development"), 'dev_fmt'),
+        )):
+            lines.append(f'{dot(self._PHASE_COLORS[position])}{label} : '
+                         f'{m.get(fmt_key, "")} · {shares[position]:.1f}%')
+        self._hover_tooltip.show_at(self._hover_point(event), '<br>'.join(lines))
 
     def _extract_roast_metrics(self, data: dict) -> dict:
         c = data.get('computed', {})

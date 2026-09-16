@@ -1055,7 +1055,8 @@ class BuildMixin:
         self._review_host.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._review_host.setStyleSheet("background: transparent; border: none;")
         self.roast_review = RoastReviewPanel(self.aw, self)
-        self.roast_review.card_requested.connect(self._open_roast_card)
+        self.roast_review.advice_requested.connect(self._open_coach_advice)
+        self.roast_review.next_batch_requested.connect(self._prepare_next_batch)
         self.roast_review.weight_requested.connect(self._enter_roast_weights)
         self._review_host.setWidget(self.roast_review)
         self._panel_stack.addWidget(self._review_host)              # index 2

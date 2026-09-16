@@ -70,6 +70,18 @@ on its counter, and **Show counter** to put that reading in the
 Dragging a card moves its recorded readings with it. The order of the cards is the order of the
 counters.
 
+An alarm, or a slider set to follow a reading, keeps watching that reading when cards are dragged
+or deleted. One watching a reading of a deleted device is switched off when you save.
+
+Formulas, written in Artisan's device settings, keep using the same readings when cards are
+dragged or deleted. **Delete** refuses a device whose readings a formula still uses and names
+that formula: change the formula first. Artisan calculates the cards from the top, so a card
+whose formula uses a reading that has its own formula belongs below that reading's card — a card
+placed above it says so.
+
+When the PID regulates on a reading of an extra device, it keeps that reading when cards are
+dragged, and **Delete** refuses that device until another PID input is chosen.
+
 Some names do more than label a counter. A reading named for the crack count is the one
 automatic first-crack detection listens to: the card says **Used for first crack detection**
 under that name, and warns if an edit makes it lose that role.
@@ -84,6 +96,12 @@ them says it reads nothing.
     the readings are right, but a card carries another device's name. Select each such card,
     give it its real device with **Change device**, save, then save the roast itself so the
     file keeps the corrected devices.
+
+Settings — the ones TilauScope keeps between sessions, settings files (.aset) and machine presets —
+remember which TilauScope device the meter and each extra device are, so they open with the right
+devices after an update renumbers them. Settings saved by an older version cannot: if the meter or a
+card shows the wrong device after loading them, give it its real device, save, and save the settings
+once; they open correctly from then on.
 
 Removing a device that has readings in the roast currently open removes those readings as well;
 **Save** asks before doing it.

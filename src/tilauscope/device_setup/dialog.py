@@ -514,6 +514,12 @@ class DeviceSetupDialog(_DragToMove, QDialog):
         kind = catalogue.kind_of(row.device_id)
         return catalogue.kind_title(kind) if kind is not None else catalogue.device_title(row.device_id)
 
+    def _reader_title(self, reader: draft.ExtraRow | str) -> str:
+        """A card's title, or ET / BT for Artisan's own formulas, rate of rise included."""
+        if isinstance(reader, str):
+            return self.aw.qmc.device_name_subst(self.aw.BTname if 'BT' in reader else self.aw.ETname)
+        return self._row_title(reader)
+
     def _selected_row(self) -> draft.ExtraRow | None:
         return next((row for row in self._draft.rows if row.uid == self._selected_uid), None)
 
@@ -555,8 +561,14 @@ class DeviceSetupDialog(_DragToMove, QDialog):
         for row in self._draft.rows:
             kind = catalogue.kind_of(row.device_id)
             used = (bool(kind.names[0]), bool(kind.names[1])) if kind is not None else (True, True)
-            card = ExtraDeviceCard(row, self._row_title(row), used,
-                                   misordered if draft.is_misordered(self._draft, row) else '',
+            warning = misordered if draft.is_misordered(self._draft, row) else ''
+            below = draft.calculated_reading_below(self._draft, row)
+            if not warning and below is not None:
+                warning = QApplication.translate(
+                    'tilauscope_devices',
+                    'Reads {0} before its formula — {0} must come before it. Drag it below {0}.'
+                ).format(self._row_title(below))
+            card = ExtraDeviceCard(row, self._row_title(row), used, warning,
                                    self.aw.qmc.device_name_subst)
             card.set_selected(row.uid == self._selected_uid)
             card.clicked.connect(self._select)
@@ -614,6 +626,24 @@ class DeviceSetupDialog(_DragToMove, QDialog):
     def _on_delete(self) -> None:
         row = self._selected_row()
         if row is None:
+            return
+        readers = draft.formula_readers(self._draft, row)
+        if readers:
+            show_styled_message(
+                self, QApplication.translate('tilauscope_devices', 'Delete device'),
+                QApplication.translate('tilauscope_devices',
+                                       "Used in the formula of {0}. Change that formula in Artisan's "
+                                       'device settings first, then delete this device.'
+                                       ).format(', '.join(dict.fromkeys(self._reader_title(r) for r in readers))),
+                QMessageBox.Icon.Information)
+            return
+        if draft.is_pid_input(self._draft, row):
+            show_styled_message(
+                self, QApplication.translate('tilauscope_devices', 'Delete device'),
+                QApplication.translate('tilauscope_devices',
+                                       'Used as the PID input. Choose another PID input in the PID settings '
+                                       'first, then delete this device.'),
+                QMessageBox.Icon.Information)
             return
         dependents = draft.dependents(self._draft, row)
         if dependents:

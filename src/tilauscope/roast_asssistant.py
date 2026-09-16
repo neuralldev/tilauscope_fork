@@ -7694,6 +7694,10 @@ class RoastAssistantPanel(QWidget):
         self._bean_header.btn_toggle.setChecked(True)
         self._start_assistant()
 
+    def clear_target(self) -> None:
+        """Leave the roasting target empty: nothing starts until the operator picks one."""
+        self._setup_bar.combo_agtron.setCurrentIndex(-1)
+
     def reload_roaster_context(self) -> None:
         """Re-resolve the roaster context and rebuild the advisor on it.
 

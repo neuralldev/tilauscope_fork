@@ -19,8 +19,10 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass  # pylint: disable=unused-import
+from contextlib import contextmanager
 from functools import partial
 import ast  # Import de la bibliothèque ast
+import html
 import re # For sorting alog files
 from datetime import datetime
 from pathlib import Path
@@ -34,28 +36,36 @@ from artisanlib.util import cast  # smooth_list moved from tgraphcanvas to util
 
 from artisanlib.atypes import ProfileData
 
-from PyQt6.QtCore import (QItemSelectionModel, QStandardPaths, Qt, pyqtSlot, QSettings, QThread, QTimer, QByteArray, QSize,
+from PyQt6.QtCore import (QDate, QItemSelection, QItemSelectionModel, QLocale, QModelIndex, QPoint, QTime, QStandardPaths, Qt, pyqtSlot, QSettings, QThread, QTimer, QByteArray, QSize,
                           QT_TRANSLATE_NOOP) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
-from PyQt6.QtGui import ( QPixmap, QCursor, QPainter) # @UnusedImport @Reimport  @UnresolvedImport
+from PyQt6.QtGui import ( QAction, QPixmap, QCursor, QPainter, QKeySequence, QShortcut) # @UnusedImport @Reimport  @UnresolvedImport
 from PyQt6.QtWidgets import (QApplication, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,  # @UnusedImport @Reimport  @UnresolvedImport
-                                QPushButton, QWidget, QTabWidget, # @UnusedImport @Reimport  @UnresolvedImport
-                                QAbstractItemView,
-                                QFrame, QListWidgetItem,
-                                QMessageBox, QDialog, QListWidget, QSplitter, QSizePolicy) # @UnusedImport @Reimport  @UnresolvedImport
+                                QPushButton, QWidget, # @UnusedImport @Reimport  @UnresolvedImport
+                                QComboBox, QGridLayout, QLineEdit, QMenu, QStackedWidget, QTimeEdit, QWidgetAction,
+                                QFrame,
+                                QMessageBox, QDialog, QSplitter, QSizePolicy) # @UnusedImport @Reimport  @UnresolvedImport
 from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
-from tilauscope.theme_qss import tint
+from tilauscope.header_icons import make_icon
+from tilauscope.theme_qss import styled_popup_view, tint
 from tilauscope.tilauscope_types import (THEME, standardization_map, TilauProgressRow)
 from tilauscope.roast_timeline import RoastReadyDialog
 from tilauscope.cave.common import (
-    _log, _logd, _PLOT_PALETTE, _SVG_CONSISTENCY, _SVG_ALIGN, _safe_filename, _svg_bytes_to_icon,
+    _log, _logd, _PLOT_PALETTE, _safe_filename,
     ror_span_samples, recompute_profile_deltas, ALOG_CACHE_MAX)
 from tilauscope.cave.widgets import (
     ZoomToggleButton, CanvasContainer, HoverTooltip, NiimbotStatusOverlay)
 from tilauscope.cave.workers import (
     _AlogLoadWorker, _AlogListWorker)
+from tilauscope.cave.roast_list import (
+    SORT_COFFEE, SORT_OLDEST, SORT_RECENT, SVG_SEARCH, BeanFacts, RoastFilterProxy, RoastListModel,
+    RoastListView, RoastRow, RoastRowDelegate, RoastSearchField, fold, roast_count_text)
+from tilauscope.widgets.controls import SegmentedControl
+from tilauscope.cave.viewer_detail import (
+    CurveMessageLabel, KpiTile, ResultBanner, comparison_tiles, custom_range_error, menu_qss,
+    roast_facts, roast_tiles)
 
 
 class ViewerMixin:
@@ -70,8 +80,6 @@ class ViewerMixin:
 
     def setup_roast_viewer_tab_ui(self) -> None:
         self.roast_viewer_layout = QVBoxLayout()
-        self.action_bar_layout = QHBoxLayout()
-        self.action_bar_layout.setSpacing(5)
 
         # ── Helper SVG inline identique à l'onglet Green Beans ───────────────
         _FS2 = "12px"
@@ -105,14 +113,6 @@ class ViewerMixin:
                 b.setStyleSheet(style_extra)
             return b
 
-        def _vsep() -> QFrame:
-            """Séparateur vertical entre groupes."""
-            sep = QFrame()
-            sep.setFrameShape(QFrame.Shape.VLine)
-            sep.setFixedHeight(20)
-            sep.setStyleSheet(f"color:{THEME['BORDER']};max-width:1px;")
-            return sep
-
         _SS_ACCENT2 = f"""
             QPushButton {{
                 background-color : {tint('ACCENT', 40)};
@@ -132,27 +132,7 @@ class ViewerMixin:
                 background-color : {THEME['SURFACE']};
             }}
         """
-        _SS_GREEN2 = f"""
-            QPushButton {{
-                background-color : rgba(166,227,161,25);
-                color            : {THEME['SUCCESS']};
-                border           : 1px solid rgba(166,227,161,80);
-                border-radius    : {_R2};
-                padding          : 5px 12px;
-                font-size        : {_FS2};
-                font-weight      : bold;
-            }}
-            QPushButton:hover {{
-                background-color : rgba(166,227,161,55);
-            }}
-            QPushButton:disabled {{
-                color            : {THEME['SUBTEXT']};
-                border-color     : {THEME['BORDER']};
-                background-color : {THEME['SURFACE']};
-            }}
-        """
-
-        # ── Groupe 1 — Workflow Artisan ───────────────────────────────────────
+        # ── One roast's actions, beside its name ─────────────────────────────
         self.load_artisan_button_viewer = _vbtn(
             "M2 7h8M7 3l4 4-4 4M12 2v10", QT_TRANSLATE_NOOP("tilauscope_beancave", "Load in Artisan"),
             stroke=THEME["ACCENT"], style_extra=_SS_ACCENT2
@@ -169,143 +149,130 @@ class ViewerMixin:
         self.load_artisan_background_button_viewer.setToolTip(QApplication.translate("tilauscope_beancave","Load the selected ALog file into Artisan's background for comparison."))
         self.load_artisan_background_button_viewer.setEnabled(False)
 
-        self.roast_finished_button = _vbtn(
-            "M7 2c0 2-3 3-3 5.5a3 3 0 0 0 6 0C10 5 7 4 7 2zM5 11.5h4M7 9v3",
-            QT_TRANSLATE_NOOP("tilauscope_beancave", "Roast finished!"), stroke=THEME["SUCCESS"], style_extra=_SS_GREEN2
-        )
-        self.roast_finished_button.clicked.connect(self.on_roast_finished_clicked)
-        self.roast_finished_button.setToolTip(QApplication.translate("tilauscope_beancave","Load the roast in Artisan and record results."))
-        self.roast_finished_button.setEnabled(False)
+        # Export: the label, the card, the curve image — and the printer's state.
+        self.export_button = _vbtn("M7 2v7M4 6l3 3 3-3M2.5 11.5h9",
+                                   QT_TRANSLATE_NOOP("tilauscope_beancave", "Export"))
+        self.export_button.setStyleSheet(
+            "QPushButton { padding-right: 22px; }"
+            "QPushButton::menu-indicator { subcontrol-origin: padding;"
+            " subcontrol-position: center right; right: 8px; }")
+        self.export_button.setEnabled(False)
+        export_menu = QMenu(self.export_button)
+        export_menu.setStyleSheet(menu_qss())
+        self.print_pdf_label_action = export_menu.addAction(
+            QApplication.translate("tilauscope_beancave", "Label (PDF)"))
+        self.print_pdf_label_action.triggered.connect(self.generate_and_print_pdf_label)
+        self.print_label_action = export_menu.addAction(
+            QApplication.translate("tilauscope_beancave", "Print label"))
+        self.print_label_action.triggered.connect(self.generate_and_print_label)
+        self.print_label_action.changed.connect(self._sync_print_label_text)
+        self.roast_card_action = export_menu.addAction(
+            QApplication.translate("tilauscope_beancave", "Roast card (PNG)"))
+        self.roast_card_action.triggered.connect(self.on_export_roast_card)
+        self.curve_image_action = export_menu.addAction(
+            QApplication.translate("tilauscope_beancave", "Curve image (PNG)"))
+        export_menu.addSeparator()
+        self.niimbot_overlay = NiimbotStatusOverlay()
+        printer_state = QWidgetAction(export_menu)
+        printer_state.setDefaultWidget(self.niimbot_overlay)
+        export_menu.addAction(printer_state)
+        self.export_button.setMenu(export_menu)
 
-        # ── Groupe 2 — Export & Print ─────────────────────────────────────────
-        self.print_pdf_label_button = _vbtn(
-            "M3 2h6l3 3v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM9 2v3h3M5 7h4M5 9.5h3",
-            QT_TRANSLATE_NOOP("tilauscope_beancave", "PDF")
-        )
-        self.print_pdf_label_button.clicked.connect(self.generate_and_print_pdf_label)
-        self.print_pdf_label_button.setToolTip(QApplication.translate("tilauscope_beancave","Generate and print the label to PDF for the selected roast."))
-        self.print_pdf_label_button.setEnabled(False)
+        self.more_button = QPushButton("⋯")
+        self.more_button.setProperty('variant', 'icon')
+        self.more_button.setFixedSize(34, 30)
+        self.more_button.setToolTip(QApplication.translate("tilauscope_beancave", "More actions"))
+        self.more_button.setStyleSheet("QPushButton::menu-indicator { image: none; width: 0px; }")
+        more_menu = QMenu(self.more_button)
+        more_menu.setStyleSheet(menu_qss())
+        self.roast_finished_action = more_menu.addAction(
+            QApplication.translate("tilauscope_beancave", "Record result…"))
+        self.roast_finished_action.triggered.connect(self.on_roast_finished_clicked)
+        self.planning_action = more_menu.addAction(QApplication.translate("tilauscope_beancave", "Planning"))
+        self.planning_action.triggered.connect(self.show_roast_ready_view)
+        self.dial_in_action = more_menu.addAction(QApplication.translate("tilauscope_beancave", "Dial-in"))
+        self.dial_in_action.triggered.connect(self.show_barista_expert_view)
+        self.data_action = more_menu.addAction(QApplication.translate("tilauscope_beancave", "Data"))
+        self.data_action.triggered.connect(self.show_data_reader_view)
+        more_menu.addSeparator()
+        self.refresh_action = more_menu.addAction(QApplication.translate("tilauscope_beancave", "Refresh list"))
+        self.refresh_action.triggered.connect(self.list_alog_files)
+        self.more_button.setMenu(more_menu)
+        for menu in (export_menu, more_menu):
+            for action in menu.actions():
+                action.setMenuRole(QAction.MenuRole.NoRole)   # macOS moves look-alikes of Quit or About
+        for action in (self.print_pdf_label_action, self.print_label_action, self.roast_card_action,
+                       self.curve_image_action, self.roast_finished_action, self.planning_action,
+                       self.dial_in_action, self.data_action):
+            action.setEnabled(False)
+        self._sync_print_label_text()
 
-        self.print_label_button = _vbtn(
-            "M2 4h10v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4zM5 4V2h4v2M5 9h4",
-            QT_TRANSLATE_NOOP("tilauscope_beancave", "B21S")
-        )
-        self.print_label_button.clicked.connect(self.generate_and_print_label)
-        self.print_label_button.setToolTip(QApplication.translate("tilauscope_beancave","Generate and print the label for the selected roast (requires Niimbot B21S)."))
-        self.print_label_button.setEnabled(False)  # activé uniquement par niimbot_connected
+        # ── The detail head: the roast on screen, or the roasts compared ──────
+        self.roast_detail_title = QLabel("")
+        self.roast_detail_title.setStyleSheet("font-size: 18px; font-weight: 600;")
+        self.roast_detail_title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.roast_detail_title.setMinimumWidth(80)
+        self.roast_detail_meta = QLabel("")
+        self.roast_detail_meta.setProperty('variant', 'secondary')
+        self.roast_compare_chips = QLabel("")
+        self.roast_compare_chips.setTextFormat(Qt.TextFormat.RichText)
+        self.roast_compare_chips.setWordWrap(True)
+        self.roast_compare_clear = QPushButton(
+            QApplication.translate("tilauscope_beancave", "Clear") + " ✕")
+        self.roast_compare_clear.setProperty('variant', 'ghost')
+        self.roast_compare_clear.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.roast_compare_clear.clicked.connect(self._leave_comparison)
+        self.roast_compare_note = QLabel("")
+        self.roast_compare_note.setProperty('variant', 'caption')
 
-        self.btn_snapshot = _vbtn(
-            "M1 4h12v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4zM1 6h12M5 9.5h4",
-            QT_TRANSLATE_NOOP("tilauscope_beancave", "Snapshot")
-        )
-        self.btn_snapshot.setToolTip(QApplication.translate("tilauscope_beancave","Take a PNG snapshot of the current curve."))
-        self.btn_snapshot.setEnabled(False)
+        title_row = QHBoxLayout()
+        title_row.setSpacing(6)
+        title_row.addWidget(self.roast_detail_title, 1)
+        for widget in (self.load_artisan_button_viewer, self.load_artisan_background_button_viewer,
+                       self.export_button, self.more_button):
+            title_row.addWidget(widget)
+        meta_row = QHBoxLayout()
+        meta_row.addWidget(self.roast_detail_meta, 1)
+        meta_row.addWidget(self.roast_compare_chips, 1)
+        meta_row.addWidget(self.roast_compare_clear)
 
-        # Shareable roast card — high-resolution portrait PNG.
-        # Distinct from Snapshot: that one dumps the raw curve, this one composes
-        # the bean identity, the roast level and the curve into one image.
-        self.btn_roast_card = _vbtn(
-            "M1 3.5h12v9H1zM4 7a1 1 0 1 0 0-.01M1.6 11.4L5 8.4l2.4 2.2L10 8l3 2.8",
-            QT_TRANSLATE_NOOP("tilauscope_beancave", "Card"))
-        self.btn_roast_card.setToolTip(QApplication.translate("tilauscope_beancave","Export this roast as a high-resolution portrait image (PNG): temperature, rate of rise, milestones and phase durations."))
-        self.btn_roast_card.clicked.connect(self.on_export_roast_card)
-        self.btn_roast_card.setEnabled(False)
+        self.roast_result_banner = ResultBanner()
+        self.roast_result_banner.record_requested.connect(self.on_roast_finished_clicked)
 
-        # ── Groupe 3 — Analyse & Outils ───────────────────────────────────────
-        self.btn_roast_ready = _vbtn(
-            "M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 10h4M10 8v4",
-            QT_TRANSLATE_NOOP("tilauscope_beancave", "Planning")
-        )
-        self.btn_roast_ready.setToolTip(QApplication.translate("tilauscope_beancave","Open the roast planning view to get roasting time repartition based on the selected roast profile."))
-        self.btn_roast_ready.clicked.connect(self.show_roast_ready_view)
-        self.btn_roast_ready.setEnabled(False)
+        self.roast_tiles = [KpiTile() for _ in range(4)]
+        tiles_row = QHBoxLayout()
+        tiles_row.setSpacing(8)
+        for tile in self.roast_tiles:
+            tiles_row.addWidget(tile, 1)
 
-        self.btn_dial_in = _vbtn(
-            "M7 2a5 5 0 1 0 0 10A5 5 0 0 0 7 2zM7 4v3.5l2 1.2",
-            QT_TRANSLATE_NOOP("tilauscope_beancave", "Dial-in")
-        )
-        self.btn_dial_in.setToolTip(QApplication.translate("tilauscope_beancave","Show espresso/filter extraction parameters based on roast color."))
-        self.btn_dial_in.clicked.connect(self.show_barista_expert_view)
-        self.btn_dial_in.setEnabled(False)
-
-        self.btn_data_reader = _vbtn(
-            "M2 2h10v12H2zM4 5h6M4 8h6M4 11h4",
-            QT_TRANSLATE_NOOP("tilauscope_beancave", "Data")
-        )
-        self.btn_data_reader.setToolTip(QApplication.translate("tilauscope_beancave","Open a readable, navigable view of the recorded roast data (milestones, events, columns)."))
-        self.btn_data_reader.clicked.connect(self.show_data_reader_view)
-        self.btn_data_reader.setEnabled(False)
-
-        self.refresh_button = _vbtn(
-            "M2 7a5 5 0 1 0 1.2-3.2M2 3v4h4",
-            QT_TRANSLATE_NOOP("tilauscope_beancave", "Refresh")
-        )
-        self.refresh_button.clicked.connect(self.list_alog_files)
-        self.refresh_button.setToolTip(QApplication.translate("tilauscope_beancave","Refresh the roast list."))
-        self.refresh_button.setEnabled(True)
-
-        # ── Assemblage avec séparateurs de groupes ────────────────────────────
-        for _w in (
-            self.load_artisan_button_viewer,
-            self.load_artisan_background_button_viewer,
-            self.roast_finished_button,
-            _vsep(),
-            self.print_pdf_label_button,
-            self.print_label_button,
-            self.btn_snapshot,
-            self.btn_roast_card,
-            _vsep(),
-            self.btn_roast_ready,
-            self.btn_dial_in,
-            self.btn_data_reader,
-            self.refresh_button,
-        ):
-            self.action_bar_layout.addWidget(_w)
-
-        self.action_bar_layout.addStretch(1)
-
-        # Statut imprimante Niimbot — inline à droite de la barre de boutons.
-        # Toujours visible, pas de z-order ni d'overlay flottant.
-        self.niimbot_overlay = NiimbotStatusOverlay(self)
-        self.action_bar_layout.addWidget(self.niimbot_overlay)
-
-        self.roast_viewer_layout.addLayout(self.action_bar_layout)
+        self._roast_detail_head = QWidget()
+        head_layout = QVBoxLayout(self._roast_detail_head)
+        head_layout.setContentsMargins(0, 0, 0, 4)
+        head_layout.setSpacing(6)
+        head_layout.addLayout(title_row)
+        head_layout.addLayout(meta_row)
+        head_layout.addWidget(self.roast_compare_note)
+        head_layout.addWidget(self.roast_result_banner)
+        head_layout.addLayout(tiles_row)
+        self._show_detail_none()
 
         splitter = QSplitter(Qt.Orientation.Horizontal) # type: ignore
 
-        # LEFT SIDE: File list
-        list_widget_container = QWidget()
-        list_widget_layout = QVBoxLayout()
-        self.roast_list_widget = QListWidget()
-        self.roast_list_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        # Debounce : itemSelectionChanged se déclenche N fois pendant Shift+click
-        # On reporte le traitement à la fin de la rafale via QTimer
-        # itemSelectionChanged se déclenche N fois pendant Shift/Ctrl+click.
-        # Un timer single-shot repart à zéro à chaque appel → un seul dispatch
-        # 80ms après le dernier changement, quelle que soit la séquence d'events.
-        self._selection_debounce = QTimer(self)
-        self._selection_debounce.setSingleShot(True)
-        self._selection_debounce.setInterval(80)
-        self._selection_debounce.timeout.connect(self.load_roast_data_and_plot)
-        self.roast_list_widget.itemSelectionChanged.connect(self._on_selection_changed)
-        self.roast_list_widget.installEventFilter(self)
-        list_widget_layout.addWidget(QLabel(QApplication.translate("tilauscope_beancave","Roast Files (.alog)")))
-        list_widget_layout.addWidget(self.roast_list_widget)
-        self._multi_progress = TilauProgressRow()
-        self._multi_progress.hide()
-        list_widget_layout.addWidget(self._multi_progress)
-        list_widget_container.setLayout(list_widget_layout)
+        # LEFT SIDE: the roast list
+        list_widget_container = self._build_roast_list_ui()
 
-        # RIGHT SIDE: Plot, Info & Tabs
+        # RIGHT SIDE: the detail head, then Plot, Info & Tabs
         plot_info_container = QWidget()
         plot_info_layout = QVBoxLayout()
+        plot_info_layout.addWidget(self._roast_detail_head)
 
-        # sub tabs
-        self.viewer_tabs = QTabWidget()
+        # The two pages of the curve card: Curve and Statistics
+        self.viewer_pages = QStackedWidget()
 
-        # --- Curve Tab ---
+        # --- Curve page ---
         self.curve_tab = QWidget()
         self.curve_layout = QVBoxLayout(self.curve_tab)
+        self.curve_layout.setContentsMargins(0, 0, 0, 0)
 
         self.fig = Figure(figsize=(7, 4), dpi=100, layout="constrained")
         self.canvas = FigureCanvas(self.fig)
@@ -320,80 +287,28 @@ class ViewerMixin:
         self._hover_tooltip = HoverTooltip()
 
         # ── Bouton zoom : SVG inline, indépendant de la plateforme ──────────
-        self.zoom_button = ZoomToggleButton()  # parent adopté par CanvasContainer
+        self.zoom_button = ZoomToggleButton()  # posé sur la ligne de la carte
         self.zoom_button.toggled.connect(self.toggle_canvas_zoom)
 
-        # ── Toggles vue multi : Consistance / Aligné (icônes, visibles en multi) ─
-        # Mutuellement exclusifs ; aucun coché = Overlay.
+        # How several roasts are compared: overlay, consistency or aligned (the View switch).
         self._multi_view_mode = 'overlay'
-        _mode_btn_ss = f"""
-            QPushButton {{
-                background-color : {tint('BG', 160)};
-                border           : 1px solid rgba(255, 255, 255, 45);
-                border-radius    : 8px;
-            }}
-            QPushButton:hover  {{
-                background-color : rgba(60, 60, 90, 200);
-                border           : 1px solid rgba(255, 255, 255, 90);
-            }}
-            QPushButton:checked {{
-                background-color : rgba(89, 150, 246, 55);
-                border           : 1px solid rgba(89, 150, 246, 180);
-            }}
-        """
 
-        def _make_mode_btn(svg: bytes, tip: str, slot) -> QPushButton:
-            b = QPushButton()
-            b.setCheckable(True)
-            b.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-            b.setFixedSize(32, 32)
-            b.setIcon(_svg_bytes_to_icon(svg, 16))
-            b.setIconSize(QSize(16, 16))
-            b.setToolTip(QApplication.translate("tilauscope_beancave", tip))
-            b.setStyleSheet(_mode_btn_ss)
-            b.setVisible(False)
-            b.toggled.connect(slot)
-            return b
+        # ── Conteneur stable : canvas + overlays (zoom + save markers) ────────
+        self.canvas_container = CanvasContainer(self.canvas)
 
-        self.consistency_button = _make_mode_btn(
-            _SVG_CONSISTENCY,
-            QT_TRANSLATE_NOOP("tilauscope_beancave",
-            "<b>Consistency view</b><br>"
-            "The reference roast as a solid line, with a shaded "
-            "<b>min–max band</b> of all the selected roasts (bean temp &amp; RoR).<br>"
-            "A <span style='color:#A6E3A1'>tight band</span> means your roasts are "
-            "repeatable; a <span style='color:#F38BA8'>wide band</span> shows where "
-            "they drift apart."),
-            self._on_consistency_toggled)
-        self.align_button = _make_mode_btn(
-            _SVG_ALIGN,
-            QT_TRANSLATE_NOOP("tilauscope_beancave",
-            "<b>Aligned view (time-warp)</b><br>"
-            "Stretches each roast in time so its milestones (CHARGE, TP, DRY END, "
-            "FC start, DROP) line up with the reference.<br>"
-            "Lets you compare the <b>shape of the bean-temperature rise within each "
-            "phase</b>, regardless of how long that phase actually lasted.<br>"
-            "<i>BT only — RoR is hidden because warping time distorts its scale.</i>"),
-            self._on_align_toggled)
-
-        # ── Conteneur stable : canvas + overlays (zoom + consistance + aligné) ─
-        self.canvas_container = CanvasContainer(
-            self.canvas, self.zoom_button,
-            mode_btns=[self.consistency_button, self.align_button])
-
-        self.btn_snapshot.clicked.connect(partial(self.take_snapshot, self.fig))
+        self.curve_image_action.triggered.connect(lambda _checked=False: self.take_snapshot(self.fig))
 
         # Save-marker overlay button (ephemeral — visible only after a marker edit)
         self.canvas_container._save_btn.clicked.connect(self._save_timeindex_to_alog)
         # Route canvas right-click / two-finger-tap through eventFilter
         self.canvas.installEventFilter(self)
 
-        self.roast_plot_label = QLabel(
+        self.roast_plot_label = CurveMessageLabel(
             QApplication.translate("tilauscope_beancave", "Select a roast to display the graphs.")
         )
         self.curve_layout.addWidget(self.roast_plot_label)
         self.curve_layout.addWidget(self.canvas_container, 1)  # conteneur = unité de transfert
-        self.viewer_tabs.addTab(self.curve_tab, QApplication.translate("tilauscope_beancave","Roasting Curve"))
+        self.viewer_pages.addWidget(self.curve_tab)
 
         # --- Stats Tab ---
         self.stats_tab = QWidget()
@@ -428,15 +343,135 @@ class ViewerMixin:
         self.stats_layout.addWidget(QLabel(QApplication.translate("tilauscope_beancave","Roasting statistics and information")))
         self.stats_layout.addWidget(self.stats_scroll, 1)
         self.stats_layout.addWidget(self.stats_multi_widget, 1)
-        self.viewer_tabs.addTab(self.stats_tab, QApplication.translate("tilauscope_beancave","Advanced Stats"))
+        self.viewer_pages.addWidget(self.stats_tab)
 
-        # plot tab
-        plot_info_layout.addWidget(self.viewer_tabs)
+        # ── The curve card: Curve or Statistics, and the curve's own choices under it ──
+        self.detail_page_switch = SegmentedControl(
+            [QApplication.translate("tilauscope_beancave", "Curve"),
+             QApplication.translate("tilauscope_beancave", "Statistics")], compact=True)
+        self.detail_page_switch.set_current(0)
+        self.detail_page_switch.changed.connect(self._on_detail_page_changed)
+        curve_card = QFrame()
+        curve_card.setObjectName('roastCurveCard')
+        # The card takes the figure's ground, so the plot shows no seam.
+        curve_card.setStyleSheet(
+            f"QFrame#roastCurveCard {{ background-color: {_PLOT_PALETTE['background']};"
+            f" border: 1px solid {THEME['BORDER']}; border-radius: 8px; }}")
+        card_layout = QVBoxLayout(curve_card)
+        card_layout.setContentsMargins(8, 8, 8, 8)
+        card_layout.setSpacing(6)
+        # The card's own row: the two pages on the left, full screen on the right,
+        # clear of the plot — over the canvas the button covered the temperature axis.
+        self.curve_header_row = QHBoxLayout()
+        self.curve_header_row.setContentsMargins(0, 0, 0, 0)
+        self.curve_header_row.addWidget(self.detail_page_switch)
+        self.curve_header_row.addStretch(1)
+        self.curve_header_row.addWidget(self.zoom_button)
+        card_layout.addLayout(self.curve_header_row)
+        card_layout.addWidget(self.viewer_pages, 1)
+
+        settings = QSettings()
+        self._curve_view = settings.value(self._CURVE_VIEW_KEY, 'both', str)
+        if self._curve_view not in self._CURVE_VIEWS:
+            self._curve_view = 'both'
+        self._curve_range = settings.value(self._CURVE_RANGE_KEY, 'auto', str)
+        if self._curve_range not in self._CURVE_RANGES:
+            self._curve_range = 'auto'
+        self._curve_custom_range = self._parse_custom_range(settings.value(self._CURVE_CUSTOM_KEY, "", str))
+        self._curve_show_settings = settings.value(self._CURVE_SETTINGS_KEY, True, bool)
+
+        self.curve_view_switch = SegmentedControl(
+            [QApplication.translate("tilauscope_beancave", "Temperatures"),
+             QApplication.translate("tilauscope_beancave", "Rate of rise"),
+             QApplication.translate("tilauscope_beancave", "Both")], compact=True)
+        self.curve_view_switch.set_current(self._CURVE_VIEWS.index(self._curve_view))
+        self.curve_view_switch.changed.connect(self._on_curve_view_changed)
+
+        consistency_help = QT_TRANSLATE_NOOP("tilauscope_beancave",
+            "<b>Consistency view</b><br>"
+            "The reference roast as a solid line, with a shaded "
+            "<b>min–max band</b> of all the selected roasts (bean temp &amp; RoR).<br>"
+            "A <span style='color:#A6E3A1'>tight band</span> means your roasts are "
+            "repeatable; a <span style='color:#F38BA8'>wide band</span> shows where "
+            "they drift apart.")
+        aligned_help = QT_TRANSLATE_NOOP("tilauscope_beancave",
+            "<b>Aligned view (time-warp)</b><br>"
+            "Stretches each roast in time so its milestones (CHARGE, TP, DRY END, "
+            "FC start, DROP) line up with the reference.<br>"
+            "Lets you compare the <b>shape of the bean-temperature rise within each "
+            "phase</b>, regardless of how long that phase actually lasted.<br>"
+            "<i>BT only — RoR is hidden because warping time distorts its scale.</i>")
+        self.compare_view_switch = SegmentedControl(
+            [QApplication.translate("tilauscope_beancave", "Overlay"),
+             QApplication.translate("tilauscope_beancave", "Consistency"),
+             QApplication.translate("tilauscope_beancave", "Aligned")], compact=True)
+        self.compare_view_switch.set_current(0)
+        self.compare_view_switch.set_tooltip(1, QApplication.translate("tilauscope_beancave", consistency_help))
+        self.compare_view_switch.set_tooltip(2, QApplication.translate("tilauscope_beancave", aligned_help))
+        self.compare_view_switch.changed.connect(self._on_compare_view_changed)
+        self.compare_view_switch.hide()
+
+        self.curve_range_switch = SegmentedControl(
+            [QApplication.translate("tilauscope_beancave", "Auto"),
+             QApplication.translate("tilauscope_beancave", "0–12 min"),
+             QApplication.translate("tilauscope_beancave", "Custom…")], compact=True)
+        self.curve_range_switch.set_current(self._CURVE_RANGES.index(self._curve_range))
+        self.curve_range_switch.activated.connect(self._on_curve_range_activated)
+
+        self.burner_air_button = QPushButton()
+        self.burner_air_button.setObjectName('burnerAirPill')
+        self.burner_air_button.setCheckable(True)
+        self.burner_air_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.burner_air_button.setToolTip(QApplication.translate(
+            "tilauscope_beancave", "Show the burner, air and drum settings under the curve."))
+        self.burner_air_button.setStyleSheet(f"""
+            QPushButton#burnerAirPill {{
+                background: transparent; color: {THEME['SUBTEXT']};
+                border: 1px solid {THEME['BORDER']}; border-radius: 13px; padding: 4px 12px;
+            }}
+            QPushButton#burnerAirPill:hover {{ color: {THEME['TEXT']}; }}
+            QPushButton#burnerAirPill:checked {{
+                background-color: {tint('ACCENT', 40)}; color: {THEME['ACCENT']};
+                border-color: {tint('ACCENT', 110)};
+            }}
+        """)
+        self.burner_air_button.setChecked(self._curve_show_settings)
+        self._sync_burner_air_text()
+        self.burner_air_button.toggled.connect(self._on_burner_air_toggled)
+
+        view_caption = QLabel(QApplication.translate("tilauscope_beancave", "View"))
+        view_caption.setProperty('variant', 'caption')
+        view_switches = QHBoxLayout()
+        view_switches.setSpacing(0)
+        view_switches.addWidget(self.curve_view_switch)
+        view_switches.addWidget(self.compare_view_switch)
+        view_group = QVBoxLayout()
+        view_group.setSpacing(3)
+        view_group.addWidget(view_caption)
+        view_group.addLayout(view_switches)
+        range_caption = QLabel(QApplication.translate("tilauscope_beancave", "Time range"))
+        range_caption.setProperty('variant', 'caption')
+        range_group = QVBoxLayout()
+        range_group.setSpacing(3)
+        range_group.addWidget(range_caption)
+        range_group.addWidget(self.curve_range_switch)
+
+        self.curve_bar = QWidget()
+        bar = QHBoxLayout(self.curve_bar)
+        bar.setContentsMargins(2, 2, 2, 0)
+        bar.setSpacing(18)
+        bar.addLayout(view_group)
+        bar.addLayout(range_group)
+        bar.addStretch(1)
+        bar.addWidget(self.burner_air_button, 0, Qt.AlignmentFlag.AlignBottom)
+
+        plot_info_layout.addWidget(curve_card, 1)
+        plot_info_layout.addWidget(self.curve_bar)
         plot_info_container.setLayout(plot_info_layout)
 
         splitter.addWidget(list_widget_container)
         splitter.addWidget(plot_info_container)
-        splitter.setSizes([300, 900]) # Initial split
+        splitter.setSizes([340, 860]) # Initial split
 
         self.roast_viewer_layout.addWidget(splitter, 1)
 
@@ -444,7 +479,140 @@ class ViewerMixin:
 
         QTimer.singleShot(0, self.list_alog_files)
 
-        self.print_label_button.setEnabled(False)
+    #: The order the roast list was left in.
+    _ROAST_SORT_KEY: str = 'Beancave/RoastListSort'
+    #: What the curve shows, kept from one session to the next.
+    _CURVE_VIEW_KEY: str = 'Beancave/RoastCurveView'
+    _CURVE_RANGE_KEY: str = 'Beancave/RoastCurveRange'
+    _CURVE_CUSTOM_KEY: str = 'Beancave/RoastCurveCustomRange'
+    _CURVE_SETTINGS_KEY: str = 'Beancave/RoastCurveSettings'
+    _CURVE_VIEWS: tuple[str, ...] = ('temps', 'ror', 'both')
+    _CURVE_RANGES: tuple[str, ...] = ('auto', 'fixed', 'custom')
+
+    def _build_roast_list_ui(self) -> QWidget:
+        """The left side of the Roasts tab: search, coffee, order, the list and its count."""
+        # The selection is kept here, not read off the view: see selected_roast_fnames.
+        self._selected_fnames: list[str] = []
+        self._selection_silence = 0
+        self._list_scanning = False
+        self._roast_folder_missing = False
+        self._roast_empty_action = ""
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 6, 0)
+        layout.setSpacing(8)
+
+        head = QHBoxLayout()
+        title = QLabel(QApplication.translate("tilauscope_beancave", "Roasts"))
+        title.setProperty('variant', 'title')
+        self.roast_total_label = QLabel("")
+        self.roast_total_label.setProperty('variant', 'caption')
+        head.addWidget(title)
+        head.addStretch(1)
+        head.addWidget(self.roast_total_label)
+        layout.addLayout(head)
+
+        self.roast_search = RoastSearchField()
+        self.roast_search.setPlaceholderText(
+            QApplication.translate("tilauscope_beancave", "Search coffee, process, batch #"))
+        self.roast_search.setClearButtonEnabled(True)
+        self.roast_search.addAction(make_icon(SVG_SEARCH, THEME['SUBTEXT'], QSize(14, 14)),
+                                    QLineEdit.ActionPosition.LeadingPosition)
+        self._search_debounce = QTimer(self)
+        self._search_debounce.setSingleShot(True)
+        self._search_debounce.setInterval(120)
+        self._search_debounce.timeout.connect(self._on_roast_search_settled)
+        self.roast_search.textChanged.connect(self._on_roast_search_edited)
+        self.roast_search.move_to_list.connect(self._focus_roast_list)
+        layout.addWidget(self.roast_search)
+
+        filters = QHBoxLayout()
+        filters.setSpacing(6)
+        self.roast_coffee_combo = QComboBox()
+        self.roast_coffee_combo.setView(styled_popup_view(min_width=260))
+        self.roast_coffee_combo.addItem(QApplication.translate("tilauscope_beancave", "All coffees"), "")
+        self.roast_sort_combo = QComboBox()
+        self.roast_sort_combo.setView(styled_popup_view())
+        self.roast_sort_combo.addItem(QApplication.translate("tilauscope_beancave", "Most recent"), SORT_RECENT)
+        self.roast_sort_combo.addItem(QApplication.translate("tilauscope_beancave", "Oldest first"), SORT_OLDEST)
+        self.roast_sort_combo.addItem(QApplication.translate("tilauscope_beancave", "Coffee A–Z"), SORT_COFFEE)
+        saved_sort = QSettings().value(self._ROAST_SORT_KEY, SORT_RECENT, str)
+        self.roast_sort_combo.setCurrentIndex(max(self.roast_sort_combo.findData(saved_sort), 0))
+        for combo in (self.roast_coffee_combo, self.roast_sort_combo):
+            combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+            combo.setMinimumContentsLength(8)
+        filters.addWidget(self.roast_coffee_combo, 3)
+        filters.addWidget(self.roast_sort_combo, 2)
+        layout.addLayout(filters)
+
+        self._roast_model = RoastListModel(self)
+        self._roast_proxy = RoastFilterProxy(self)
+        self._roast_proxy.setSourceModel(self._roast_model)
+        self._roast_proxy.set_sort(self.roast_sort_combo.currentData() or SORT_RECENT)
+        locale_str = getattr(getattr(self.aw, 'qmc', None), 'locale_str', None)
+        if isinstance(locale_str, str) and locale_str:
+            self._roast_proxy.set_locale(QLocale(locale_str))
+        self.roast_list_view = RoastListView()
+        self.roast_list_view.setModel(self._roast_proxy)
+        self.roast_list_view.setItemDelegate(RoastRowDelegate(self._roast_proxy, self.roast_list_view))
+        # A Shift- or Ctrl-click changes the selection several times in a row.
+        # The single-shot timer restarts on each change, so the curve loads once,
+        # 80 ms after the last one.
+        self._selection_debounce = QTimer(self)
+        self._selection_debounce.setSingleShot(True)
+        self._selection_debounce.setInterval(80)
+        self._selection_debounce.timeout.connect(self.load_roast_data_and_plot)
+        self.roast_list_view.selectionModel().selectionChanged.connect(self._on_selection_changed)
+        self.roast_coffee_combo.currentIndexChanged.connect(self._on_roast_coffee_changed)
+        self.roast_sort_combo.currentIndexChanged.connect(self._on_roast_sort_changed)
+
+        empty = QFrame()
+        empty.setProperty('variant', 'card')
+        empty_layout = QVBoxLayout(empty)
+        empty_layout.addStretch(1)
+        self.roast_empty_title = QLabel("")
+        self.roast_empty_title.setProperty('variant', 'title')
+        self.roast_empty_text = QLabel("")
+        self.roast_empty_text.setProperty('variant', 'secondary')
+        self.roast_empty_text.setWordWrap(True)
+        for label in (self.roast_empty_title, self.roast_empty_text):
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_layout.addWidget(label)
+        self.roast_empty_button = QPushButton("")
+        self.roast_empty_button.setProperty('variant', 'outline')
+        self.roast_empty_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.roast_empty_button.clicked.connect(self._on_roast_empty_action)
+        empty_layout.addWidget(self.roast_empty_button, 0, Qt.AlignmentFlag.AlignHCenter)
+        empty_layout.addStretch(1)
+
+        self.roast_list_stack = QStackedWidget()
+        self.roast_list_stack.addWidget(self.roast_list_view)
+        self.roast_list_stack.addWidget(empty)
+        layout.addWidget(self.roast_list_stack, 1)
+
+        self._multi_progress = TilauProgressRow()
+        self._multi_progress.hide()
+        layout.addWidget(self._multi_progress)
+
+        footer = QHBoxLayout()
+        self.roast_count_label = QLabel("")
+        self.roast_count_label.setProperty('variant', 'caption')
+        self.roast_clear_filters_button = QPushButton(
+            QApplication.translate("tilauscope_beancave", "Clear filters"))
+        self.roast_clear_filters_button.setProperty('variant', 'ghost')
+        self.roast_clear_filters_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.roast_clear_filters_button.clicked.connect(self._clear_roast_filters)
+        self.roast_clear_filters_button.hide()
+        footer.addWidget(self.roast_count_label)
+        footer.addStretch(1)
+        footer.addWidget(self.roast_clear_filters_button)
+        layout.addLayout(footer)
+
+        find = QShortcut(QKeySequence(QKeySequence.StandardKey.Find), self.roast_viewer_tab)
+        find.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        find.activated.connect(self._focus_roast_search)
+        return container
 
     @pyqtSlot()
     def _reconnect_hover(self) -> None:
@@ -472,6 +640,10 @@ class ViewerMixin:
         if checked:
             # Transfert du conteneur entier (canvas + bouton) dans le dialog
             self.zoom_dialog = QDialog(self)
+            # Le fond du dialogue borde le canvas : sans règle il tombe sur le
+            # blanc système. Même teinte que la figure → aucune couture visible.
+            self.zoom_dialog.setStyleSheet(
+                f"QDialog {{ background-color: {_PLOT_PALETTE['background']}; }}")
             self.zoom_dialog.setWindowTitle(
                 QApplication.translate(
                     "tilauscope_beancave",
@@ -480,6 +652,12 @@ class ViewerMixin:
             )
             zoom_layout = QVBoxLayout(self.zoom_dialog)
             zoom_layout.setContentsMargins(0, 0, 0, 0)
+            # The button follows the curve into the dialog: it is the way back out.
+            zoom_head = QHBoxLayout()
+            zoom_head.setContentsMargins(8, 8, 8, 0)
+            zoom_head.addStretch(1)
+            zoom_head.addWidget(self.zoom_button)
+            zoom_layout.addLayout(zoom_head)
             zoom_layout.addWidget(self.canvas_container)   # conteneur, pas le canvas nu
             self.zoom_dialog.showMaximized()
             self.zoom_dialog.finished.connect(self.restore_canvas_position)
@@ -510,6 +688,7 @@ class ViewerMixin:
     def restore_canvas_position(self) -> None:
         """Restitue le canvas_container dans son layout d'origine."""
         self.curve_layout.insertWidget(1, self.canvas_container)
+        self.curve_header_row.addWidget(self.zoom_button)  # revient sur la ligne de la carte
         # Resynchroniser l'icône si le dialog a été fermé par ESC / bouton OS
         if self.zoom_button.isChecked():
             self.zoom_button.setChecked(False)  # déclenche _sync_icon via toggled
@@ -518,7 +697,7 @@ class ViewerMixin:
 
     def show_roast_ready_view(self):
         # Utilise la liste des fichiers .alog déjà chargés par list_alog_files()
-        if not self.roast_list_widget.count() > 0:
+        if not self.roast_count() > 0:
             self._show_message(self, QApplication.translate("tilauscope_beancave","Error"), QApplication.translate("tilauscope_beancave","No file found."), QMessageBox.Icon.Warning)
             return
         self._pending_brew_filepath = None
@@ -568,11 +747,7 @@ class ViewerMixin:
             return
         # Mirror the selection in the Roast Viewer tab and bring it to the front.
         try:
-            idx = self._find_item_by_metadata(self.roast_list_widget, "raw_fname", fp.name)
-            if isinstance(idx, int) and idx >= 0:
-                self.roast_list_widget.blockSignals(True)
-                self.roast_list_widget.setCurrentRow(idx, QItemSelectionModel.SelectionFlag.ClearAndSelect)
-                self.roast_list_widget.blockSignals(False)
+            if self.select_roast(fp.name):
                 self.load_roast_data_and_plot()
             tabs = getattr(self, 'tab_widget', None)
             viewer_tab = getattr(self, 'roast_viewer_tab', None)
@@ -592,16 +767,10 @@ class ViewerMixin:
                                QMessageBox.Icon.Warning)
             return
         # Already the loaded roast → advise straight away (full fidelity).
-        cur = self.roast_list_widget.currentItem()
-        cur_fn = (cur.data(Qt.ItemDataRole.UserRole) or {}).get("raw_fname") if cur else None
-        if cur_fn == fp.name and getattr(self, 'lastprofiledata', None):
+        if self.current_roast_fname() == fp.name and getattr(self, 'lastprofiledata', None):
             self.show_barista_expert_view(self.lastprofiledata)
             return
-        idx = self._find_item_by_metadata(self.roast_list_widget, "raw_fname", fp.name)
-        if isinstance(idx, int) and idx >= 0:
-            self.roast_list_widget.blockSignals(True)
-            self.roast_list_widget.setCurrentRow(idx, QItemSelectionModel.SelectionFlag.ClearAndSelect)
-            self.roast_list_widget.blockSignals(False)
+        if self.select_roast(fp.name):
             # _alog_worker_finished_on_plot_ok opens the advisor once loaded.
             self._pending_brew_after_load = fp.name
             self.load_roast_data_and_plot()
@@ -781,13 +950,16 @@ class ViewerMixin:
         raw_dir = str(self.alog_directory or "").strip()
         if not raw_dir or raw_dir == '.':
             _log.warning("no roast folder configured — the roast list stays empty")
+            self._show_missing_roast_folder()
             return
         directory = Path(raw_dir)
         if not directory.exists() or not directory.is_dir():
             self.roast_plot_label.setText(
                 QApplication.translate("tilauscope_beancave",
                     "The specified ALog directory does not exist or is not a directory."))
+            self._show_missing_roast_folder()
             return
+        self._roast_folder_missing = False
 
         # Capture the current selection + scroll BEFORE clearing so a
         # background refresh can restore the user's position (clear() wipes both,
@@ -797,20 +969,23 @@ class ViewerMixin:
         self._snapshot_list_selection()
 
         # Clear immediately so the UI doesn't show stale data during the scan.
-        # Clearing emits a selection change of its own, and the pending one it
-        # arms would fire on an empty list — painting "select a roast" over a
-        # rebuild the operator never asked for.
-        self.roast_list_widget.clear()
+        # Silently: the selection is kept, and a pending reload armed against an
+        # empty list would paint "select a roast" over a rebuild the operator
+        # never asked for.
+        with self._silently():
+            self._roast_model.set_rows([])
         self._selection_debounce.stop()
 
         # One scan at a time: a second one would leave the first running.
         self._stop_list_scan()
+        self._list_scanning = True
+        self._update_list_chrome()
 
         # Offload glob + regex formatting to a background thread. The generation
         # names the scan its result belongs to.
         self._list_scan_gen = getattr(self, '_list_scan_gen', 0) + 1
         self._list_thread, self._list_worker = self._launch_worker(
-            _AlogListWorker(directory, self._metadata_cache.records, self._list_scan_gen),
+            _AlogListWorker(directory, self._metadata_cache.records, self._bean_facts(), self._list_scan_gen),
             on_ok=self._on_alog_list_ready,
             on_err=lambda e: _log.error(f"roast folder scan failed: {e}"),
             on_done=self._on_list_thread_done,
@@ -820,6 +995,10 @@ class ViewerMixin:
     def _on_list_thread_done(self) -> None:
         self._list_thread = None
         self._list_worker = None
+        # A scan that failed painted nothing: stop waiting for it.
+        if self._list_scanning:
+            self._list_scanning = False
+            self._update_list_chrome()
 
     @pyqtSlot(int, list)
     def _on_alog_list_ready(self, generation: int, items: list) -> None:
@@ -835,7 +1014,7 @@ class ViewerMixin:
             # the first is meant to lose. Dropping one with an empty list and no
             # scan behind it is not: nothing will paint, and the operator is
             # left with a blank list the log never mentions. Say that one out loud.
-            if (self.roast_list_widget.count() == 0
+            if (self.roast_count() == 0
                     and getattr(self, '_list_worker', None) is None):
                 _log.warning(
                     "a roast scan finished after being replaced, with nothing "
@@ -844,85 +1023,55 @@ class ViewerMixin:
                 _logd.debug("dropping the result of a roast scan that was replaced")
             return
 
-        # This handler owns the painted list, so it starts from empty. Clearing
-        # only where the scan is launched leaves two results appending to each
-        # other, and every roast appears twice.
-        self.roast_list_widget.clear()
+        # This handler owns the painted list, so it replaces every row. Adding to
+        # what is there leaves two results appending to each other, and every
+        # roast appears twice. Silently: a rebuild is not a selection.
+        with self._silently():
+            self._roast_model.set_rows(items)
         self._selection_debounce.stop()
+        self._list_scanning = False
+        self._refresh_coffee_filter()
+        self._update_list_chrome()
 
         if not items:
             _log.warning(f"roast folder scan returned nothing: {self.alog_directory}")
-            self.roast_list_widget.addItem(
-                QApplication.translate("tilauscope_beancave",
-                    "No alog files found in the directory."))
             return
         _log.info(f"roast list painted: {len(items)} roasts")
 
-        # Batch-populate using blockSignals so itemSelectionChanged doesn't
-        # fire on every addItem, while keeping the widget's visual state intact.
-        self.roast_list_widget.blockSignals(True)
-        try:
-            for raw_fname, display_name, roast_epoch in items:
-                item = QListWidgetItem(display_name)
-                metadata ={"raw_fname": raw_fname, "roast_epoch": roast_epoch}
-                item.setData(Qt.ItemDataRole.UserRole, metadata)
-                self.roast_list_widget.addItem(item)
-        finally:
-            self.roast_list_widget.blockSignals(False)
-
-        if self.roast_list_widget.count() > 0:
+        if self.roast_count() > 0:
             if not self.hasfinished:
-                self.roast_list_widget.setCurrentRow(
-                    self._row_to_select_on_open(),
-                    QItemSelectionModel.SelectionFlag.ClearAndSelect)
+                self.select_roast(self._roast_to_select_on_open())
                 self.hasfinished = True
-                self.btn_snapshot.setEnabled(True)
-                self.btn_roast_card.setEnabled(True)
-                self.btn_dial_in.setEnabled(True)
-                self.btn_roast_ready.setEnabled(True)
-                self.btn_data_reader.setEnabled(True)
-                self.print_pdf_label_button.setEnabled(True)
-                self.load_artisan_background_button_viewer.setEnabled(True)
-                self.load_artisan_button_viewer.setEnabled(True)
-                self.roast_finished_button.setEnabled(True)
                 self.load_roast_data_and_plot()
                 self._populate_plan_roast_combo()
             else:
-                # Background refresh — restore the selection captured before clear()
-                # (currentItem() is None here because the widget was cleared).
-                target_row = -1
-                cur_fname = getattr(self, "_pending_restore_fname", "")
-                if cur_fname:
-                    idx = self._find_item_by_metadata(self.roast_list_widget, "raw_fname", cur_fname)
-                    if idx is not None and idx >= 0:
-                        target_row = idx
-                # No captured selection (e.g. a concurrent startup refresh): fall back
-                # to the profile currently loaded in Artisan, never blindly to row 0 —
-                # otherwise this path would clobber the initial curFile selection.
-                if target_row < 0:
+                # Background refresh — the selection outlives the rebuild. When none
+                # of it survives (its files are gone, or a concurrent startup refresh
+                # left none), fall back to the roast captured before the rescan, then
+                # the profile loaded in Artisan, then the order of a fresh open —
+                # never blindly to the top row, which would clobber the initial
+                # curFile selection.
+                listed = {fname for fname, _epoch in self.listed_roasts()}
+                kept = [fname for fname in self._selected_fnames if fname in listed]
+                if kept:
+                    changed = kept != self._selected_fnames
+                    self._selected_fnames = kept
+                    self._highlight_selected()
+                else:
                     cur_file = Path(self.aw.curFile).name if self.aw.curFile else ""
-                    if cur_file:
-                        idx = self._find_item_by_metadata(self.roast_list_widget, "raw_fname", cur_file)
-                        if idx is not None and idx >= 0:
-                            target_row = idx
-                if target_row < 0:
-                    # Same order as a fresh open rather than row 0, which is
-                    # alphabetical and means nothing to the operator.
-                    target_row = self._row_to_select_on_open()
-                self.roast_list_widget.blockSignals(True)
-                self.roast_list_widget.setCurrentRow(target_row, QItemSelectionModel.SelectionFlag.ClearAndSelect)
-                self.roast_list_widget.blockSignals(False)
+                    target = next((fname for fname in (getattr(self, "_pending_restore_fname", ""), cur_file)
+                                   if fname and fname in listed), "") or self._roast_to_select_on_open()
+                    changed = self.select_roast(target)
                 # Reselecting in silence is deliberate — a background refresh must
                 # not reload a curve that is already right. But silence also means
                 # nothing repaints, so the one case that must not be left alone is
                 # a curve showing something else, or nothing at all.
-                restored = self.roast_list_widget.currentItem()
-                restored_fname = ((restored.data(Qt.ItemDataRole.UserRole) or {}).get("raw_fname", "")
-                                  if restored else "")
-                if restored_fname and restored_fname != self._displayed_fname:
+                shown = self._selected_fnames
+                stale = (shown[0] != self._displayed_fname) if len(shown) == 1 else changed
+                if shown and stale:
                     self.load_roast_data_and_plot()
                 # Restore the scroll position so the list doesn't jump under the cursor.
-                self.roast_list_widget.verticalScrollBar().setValue(
+                self.roast_list_view.verticalScrollBar().setValue(
                     getattr(self, "_pending_restore_scroll", 0))
 
     @pyqtSlot(int)
@@ -934,11 +1083,16 @@ class ViewerMixin:
 
     @pyqtSlot()
     def _on_selection_changed(self) -> None:
-        """Redémarre le timer à chaque changement de sélection.
-        load_roast_data_and_plot n'est appelé qu'une seule fois,
-        80ms après le dernier itemSelectionChanged."""
+        """A selection the operator made: keep it, and reload once it settles.
+
+        Selections the code makes itself — a rebuild, a search — pass through
+        silently and reload nothing.
+        """
+        if self._selection_silence:
+            return
+        self._selected_fnames = self._view_selected_fnames()
         self._remember_selected_roast()
-        self._selection_debounce.start()  # .start() repart de zéro si déjà en cours
+        self._selection_debounce.start()  # restarts when already running
 
     def _roast_uuid_of(self, filename: str) -> str:
         """The roast's own identity, which a renamed file keeps and a name does not."""
@@ -955,76 +1109,538 @@ class ViewerMixin:
         carrying to the next session.
         """
         try:
-            item = self.roast_list_widget.currentItem()
-            fname = ((item.data(Qt.ItemDataRole.UserRole) or {}).get("raw_fname", "")
-                     if item else "")
+            fname = self.current_roast_fname()
             if fname:
                 self._last_roast_uuid = self._roast_uuid_of(fname)
         except (RuntimeError, AttributeError):
             pass
 
-    def _row_of_newest_roast(self) -> int:
-        """Row of the most recently roasted file, or -1.
+    def _newest_roast_fname(self) -> str:
+        """The most recently roasted file in the list, or "".
 
-        The list is ordered by bean name, so its first row is whichever bean
-        comes first in the alphabet — not the roast just done. Recency has to be
-        read from the roast date, which each row carries — the scan works it out
-        from the log, or failing that from the date in the filename.
+        The list's first row says nothing about recency: the order is the
+        operator's choice. Recency is read from the roast date each row carries —
+        the scan works it out from the log, or failing that from the filename.
         """
-        best_row, best_epoch = -1, None
-        for row in range(self.roast_list_widget.count()):
-            item = self.roast_list_widget.item(row)
-            epoch = (item.data(Qt.ItemDataRole.UserRole) or {}).get("roast_epoch", 0)
+        best, best_epoch = "", None
+        for fname, epoch in self.listed_roasts():
             if best_epoch is None or epoch > best_epoch:
-                best_row, best_epoch = row, epoch
-        return best_row
+                best, best_epoch = fname, epoch
+        return best
 
-    def _row_to_select_on_open(self) -> int:
+    def _roast_to_select_on_open(self) -> str:
         """Where the roast list should land when BeanCave opens.
 
         In order: the roast open in TilauScope, then the one left highlighted
-        last time if it is still there, then the most recent roast. Row 0 is the
-        last resort, and means nothing beyond "the list is not empty".
+        last time if it is still there, then the most recent roast.
         """
+        listed = {fname for fname, _epoch in self.listed_roasts()}
         cur_file = Path(self.aw.curFile).name if self.aw.curFile else ""
-        if cur_file:
-            row = self._find_item_by_metadata(self.roast_list_widget, "raw_fname", cur_file)
-            if row is not None and row >= 0:
-                return row
+        if cur_file in listed:
+            return cur_file
 
         last_uuid = getattr(self, "_last_roast_uuid", "")
         if last_uuid:
             for meta in self._metadata_cache.records.values():
                 if meta.roast_uuid and meta.roast_uuid == last_uuid:
-                    row = self._find_item_by_metadata(
-                        self.roast_list_widget, "raw_fname", meta.filename)
-                    if row is not None and row >= 0:
-                        return row
+                    if meta.filename in listed:
+                        return meta.filename
                     break   # known roast, no longer in this folder
 
-        newest = self._row_of_newest_roast()
-        return newest if newest >= 0 else 0
+        return self._newest_roast_fname()
+
+    # ── The roast list, read and driven by file name ─────────────────────────
+    # Nothing outside these helpers touches the list: printing, plotting and the
+    # lifecycle ask for file names. The selection is kept here rather than read
+    # off the view, so a search that hides the roast on screen leaves it selected.
+
+    @contextmanager
+    def _silently(self):  # noqa: ANN202
+        """Selection changes made inside are the code's own: nothing reloads."""
+        self._selection_silence += 1
+        try:
+            yield
+        finally:
+            self._selection_silence -= 1
+
+    def listed_roasts(self) -> list[tuple[str, int]]:
+        """(file name, roast date) of every roast in the folder, whatever the search hides."""
+        return [(row.fname, row.epoch) for row in self._roast_model.rows()]
+
+    def shown_roasts(self) -> list[str]:
+        """File names the list shows, top to bottom."""
+        return [self._roast_proxy.row_at(row).fname for row in range(self._roast_proxy.rowCount())]
+
+    def roast_count(self) -> int:
+        """How many roasts the folder holds."""
+        return self._roast_model.rowCount()
+
+    def selected_roast_fnames(self) -> list[str]:
+        """The roasts the operator selected, top to bottom — kept while a search hides them."""
+        return list(self._selected_fnames)
+
+    def current_roast_fname(self) -> str:
+        """The roast under the keyboard cursor, else the first one selected, or ""."""
+        index = self.roast_list_view.currentIndex()
+        if index.isValid():
+            return self._roast_proxy.row_at(index.row()).fname
+        return self._selected_fnames[0] if self._selected_fnames else ""
+
+    def select_roast(self, fname: str) -> bool:
+        """Select this roast alone and remember it, without reloading the curve.
+
+        Silent on purpose: the caller decides whether the curve follows. A roast
+        the search hides is selected all the same, only not highlighted. False
+        when the folder has no such roast.
+        """
+        if not fname or self._roast_model.row_of(fname) < 0:
+            return False
+        self._selected_fnames = [fname]
+        self._highlight_selected()
+        self._remember_selected_roast()
+        return True
+
+    def roast_label(self, fname: str) -> str:
+        """The name shown above the curve for this roast, or "" when it is not listed."""
+        row = self._roast_model.row_of(fname) if fname else -1
+        return self._roast_model.rows()[row].label if row >= 0 else ""
+
+    def _view_selected_fnames(self) -> list[str]:
+        rows = sorted(index.row() for index in self.roast_list_view.selectionModel().selectedRows())
+        return [self._roast_proxy.row_at(row).fname for row in rows]
+
+    def _highlight_selected(self) -> None:
+        """Show the kept selection in the list, as far as the search lets it."""
+        proxy, model = self._roast_proxy, self._roast_model
+        selection = QItemSelection()
+        first = QModelIndex()
+        for fname in self._selected_fnames:
+            source_row = model.row_of(fname)
+            index = proxy.mapFromSource(model.index(source_row, 0)) if source_row >= 0 else QModelIndex()
+            if index.isValid():
+                selection.select(index, index)
+                if not first.isValid():
+                    first = index
+        with self._silently():
+            selection_model = self.roast_list_view.selectionModel()
+            selection_model.select(selection, QItemSelectionModel.SelectionFlag.ClearAndSelect)
+            if first.isValid():
+                selection_model.setCurrentIndex(first, QItemSelectionModel.SelectionFlag.NoUpdate)
+                self.roast_list_view.scrollTo(first)
+            else:
+                selection_model.clearCurrentIndex()
+
+    def _bean_facts(self) -> dict[str, BeanFacts]:
+        """What the scan needs from each bean record, copied for its thread."""
+        facts: dict[str, BeanFacts] = {}
+        for uuid_str, bean in (getattr(self, 'uuidmap', None) or {}).items():
+            try:
+                facts[uuid_str] = BeanFacts(str(bean.name or ""), str(bean.process or ""),
+                                            int(bean.crop or 0), str(bean.farm or ""),
+                                            str(bean.country or ""))
+            except (AttributeError, TypeError, ValueError):
+                continue
+        return facts
+
+    def _refresh_coffee_filter(self) -> None:
+        """One entry per coffee in the folder, with its roast count; the choice survives a rescan."""
+        combo = self.roast_coffee_combo
+        chosen = combo.currentData() or ""
+        labels: dict[str, str] = {}
+        counts: dict[str, int] = {}
+        for row in self._roast_model.rows():
+            labels.setdefault(row.group, f"{row.title} · {row.crop}" if row.crop else row.title)
+            counts[row.group] = counts.get(row.group, 0) + 1
+        combo.blockSignals(True)
+        try:
+            combo.clear()
+            combo.addItem(QApplication.translate("tilauscope_beancave", "All coffees"), "")
+            for group in sorted(labels, key=lambda key: fold(labels[key])):
+                combo.addItem(f"{labels[group]} ({counts[group]})", group)
+            combo.setCurrentIndex(max(combo.findData(chosen), 0))
+        finally:
+            combo.blockSignals(False)
+        if (combo.currentData() or "") != chosen:
+            self._refilter_roasts(lambda: self._roast_proxy.set_group(""))
+
+    def _refilter_roasts(self, change) -> None:  # noqa: ANN001
+        """A search, coffee or order change: the list follows, the detail stays."""
+        with self._silently():
+            change()
+        self._highlight_selected()
+        self._update_list_chrome()
+
+    def _show_missing_roast_folder(self) -> None:
+        with self._silently():
+            self._roast_model.set_rows([])
+        self._roast_folder_missing = True
+        self._list_scanning = False
+        self._refresh_coffee_filter()
+        self._update_list_chrome()
+
+    def _update_list_chrome(self) -> None:
+        """The counts, Clear filters and the empty states, from what the list holds."""
+        try:
+            total = self._roast_model.rowCount()
+            shown = self._roast_proxy.rowCount()
+            filtered = self._roast_proxy.is_filtered()
+            self.roast_total_label.setText(str(total) if total else "")
+            if filtered:
+                self.roast_count_label.setText(QApplication.translate(
+                    "tilauscope_beancave", "{0} of {1} roasts").format(shown, total))
+            else:
+                self.roast_count_label.setText(roast_count_text(total))
+            self.roast_clear_filters_button.setVisible(filtered)
+
+            text, action = "", ""
+            if total == 0 and self._roast_folder_missing:
+                title = QApplication.translate("tilauscope_beancave", "Roast folder not found")
+                action = 'folder'
+            elif total == 0 and not self._list_scanning:
+                title = QApplication.translate("tilauscope_beancave", "No roasts yet")
+                text = QApplication.translate("tilauscope_beancave",
+                                              "Your roasts appear here once the first one is saved.")
+            elif total and not shown and self.roast_search.text().strip():
+                title = QApplication.translate("tilauscope_beancave", "No roast matches “{0}”").format(
+                    self.roast_search.text().strip())
+                action = 'search'
+            elif total and not shown:
+                title = QApplication.translate("tilauscope_beancave", "No roast matches the filters")
+                action = 'filters'
+            else:
+                self.roast_list_stack.setCurrentIndex(0)
+                return
+
+            self.roast_empty_title.setText(title)
+            self.roast_empty_text.setText(text)
+            self.roast_empty_text.setVisible(bool(text))
+            if action == 'folder':
+                self.roast_empty_button.setText(QApplication.translate("tilauscope_beancave", "Choose folder"))
+            elif action == 'search':
+                self.roast_empty_button.setText(QApplication.translate("tilauscope_beancave", "Clear search"))
+            elif action == 'filters':
+                self.roast_empty_button.setText(QApplication.translate("tilauscope_beancave", "Clear filters"))
+            self._roast_empty_action = action
+            self.roast_empty_button.setVisible(bool(action))
+            self.roast_list_stack.setCurrentIndex(1)
+        except RuntimeError:
+            pass   # the dialog is being torn down
+
+    @pyqtSlot(str)
+    def _on_roast_search_edited(self, _text: str) -> None:
+        self._search_debounce.start()
+
+    @pyqtSlot()
+    def _on_roast_search_settled(self) -> None:
+        self._refilter_roasts(lambda: self._roast_proxy.set_query(self.roast_search.text()))
+
+    @pyqtSlot(int)
+    def _on_roast_coffee_changed(self, _index: int) -> None:
+        group = self.roast_coffee_combo.currentData() or ""
+        self._refilter_roasts(lambda: self._roast_proxy.set_group(group))
+
+    @pyqtSlot(int)
+    def _on_roast_sort_changed(self, _index: int) -> None:
+        mode = self.roast_sort_combo.currentData() or SORT_RECENT
+        QSettings().setValue(self._ROAST_SORT_KEY, mode)
+        self._refilter_roasts(lambda: self._roast_proxy.set_sort(mode))
+
+    @pyqtSlot()
+    def _clear_roast_filters(self) -> None:
+        self._search_debounce.stop()
+        for widget in (self.roast_search, self.roast_coffee_combo):
+            widget.blockSignals(True)
+        try:
+            self.roast_search.clear()
+            self.roast_coffee_combo.setCurrentIndex(0)
+        finally:
+            for widget in (self.roast_search, self.roast_coffee_combo):
+                widget.blockSignals(False)
+
+        def clear() -> None:
+            self._roast_proxy.set_query("")
+            self._roast_proxy.set_group("")
+        self._refilter_roasts(clear)
+
+    @pyqtSlot()
+    def _on_roast_empty_action(self) -> None:
+        if self._roast_empty_action == 'folder':
+            self.select_alog_directory()
+        elif self._roast_empty_action in ('search', 'filters'):
+            self._clear_roast_filters()
+
+    @pyqtSlot()
+    def _focus_roast_list(self) -> None:
+        view = self.roast_list_view
+        view.setFocus()
+        if not view.currentIndex().isValid() and self._roast_proxy.rowCount():
+            view.selectionModel().setCurrentIndex(
+                self._roast_proxy.index(0, 0), QItemSelectionModel.SelectionFlag.NoUpdate)
+
+    @pyqtSlot()
+    def _focus_roast_search(self) -> None:
+        self.roast_search.setFocus()
+        self.roast_search.selectAll()
+
+    # ── The detail head ──────────────────────────────────────────────────────
+
+    def _row_for(self, fname: str) -> RoastRow | None:
+        index = self._roast_model.row_of(fname) if fname else -1
+        return self._roast_model.rows()[index] if index >= 0 else None
+
+    def _roast_meta_text(self, row: RoastRow) -> str:
+        """The day, time, process, crop and batch of a roast, on one line."""
+        parts: list[str] = []
+        if row.epoch > 0:
+            when = datetime.fromtimestamp(row.epoch)
+            day = self._roast_proxy.display_locale().toString(
+                QDate(when.year, when.month, when.day), 'dddd d MMMM yyyy')
+            parts += [day[:1].upper() + day[1:], when.strftime('%H:%M')]
+        if row.process:
+            parts.append(row.process)
+        if row.crop:
+            parts.append(QApplication.translate("tilauscope_beancave", "Crop {0}").format(row.crop))
+        if row.batch:
+            parts.append(QApplication.translate("tilauscope_beancave", "Batch {0}").format(row.batch))
+        return " · ".join(parts)
+
+    def _set_detail_mode(self, mode: str) -> None:
+        """Which parts of the head show: 'none', 'single' or 'compare'."""
+        single, compare = mode == 'single', mode == 'compare'
+        self.roast_detail_meta.setVisible(single)
+        self.roast_compare_chips.setVisible(compare)
+        self.roast_compare_clear.setVisible(compare)
+        self.roast_compare_note.setVisible(compare and bool(self.roast_compare_note.text()))
+        for tile in self.roast_tiles[:3]:
+            tile.setVisible(single or compare)
+        self.roast_tiles[3].setVisible(single)
+        if not single:
+            self.roast_result_banner.hide()
+
+    def _show_tiles(self, texts: list) -> None:
+        for tile, text in zip(self.roast_tiles, texts):
+            tile.show_text(text)
+
+    def _show_detail_none(self) -> None:
+        self.roast_detail_title.setText("")
+        self.roast_detail_title.setToolTip("")
+        self._set_detail_mode('none')
+
+    def _show_detail_single(self, fname: str) -> None:
+        """Name the roast at once, from the list; its figures follow once it has loaded."""
+        row = self._row_for(fname)
+        title = row.title if row is not None else Path(fname).stem
+        self.roast_detail_title.setText(title)
+        self.roast_detail_title.setToolTip(title)
+        self.roast_detail_meta.setText(self._roast_meta_text(row) if row is not None else "")
+        self._show_tiles(roast_tiles(None))
+        self.roast_result_banner.hide()
+        self._set_detail_mode('single')
+
+    def _fill_detail_single(self, profile) -> None:  # noqa: ANN001
+        """The figures of the roast just loaded, and the banner when its result is missing."""
+        # Reached from a load's completion slot: an escape here would close the application.
+        try:
+            facts = roast_facts(profile) if profile else None
+            self._show_tiles(roast_tiles(facts))
+            self.roast_result_banner.setVisible(facts is not None and not facts.has_result)
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the roast's figures could not be shown")
+
+    def _compare_chips_html(self, fnames: list[str]) -> str:
+        """Each compared roast, named in its curve's colour."""
+        chips = []
+        for position, fname in enumerate(fnames):
+            row = self._row_for(fname)
+            hue = self._MULTI_HUES[position % len(self._MULTI_HUES)]
+            name = html.escape(row.title if row is not None else Path(fname).stem)
+            when = (datetime.fromtimestamp(row.epoch).strftime('%H:%M')
+                    if row is not None and row.epoch > 0 else "")
+            chips.append(f'<span style="color:{hue};">●</span>&nbsp;{name}'
+                         f'&nbsp;<span style="color:{THEME["SUBTEXT"]};">{when}</span>')
+        return "&nbsp;&nbsp;&nbsp; ".join(chips)
+
+    def _show_detail_multi(self, fnames: list[str], selected_count: int) -> None:
+        """Name the compared roasts at once; their ranges follow once they have loaded."""
+        self.roast_detail_title.setText(
+            QApplication.translate("tilauscope_beancave", "{0} roasts compared").format(len(fnames)))
+        self.roast_detail_title.setToolTip("")
+        self.roast_compare_chips.setText(self._compare_chips_html(fnames))
+        self.roast_compare_note.setText(
+            QApplication.translate("tilauscope_beancave", "Only the first five selected roasts are drawn.")
+            if selected_count > len(fnames) else "")
+        self._show_tiles(comparison_tiles(None))
+        self._set_detail_mode('compare')
+
+    def _fill_detail_multi(self) -> None:
+        """The ranges across the roasts that loaded, named as the curves are drawn."""
+        # Reached from a load's completion slot: an escape here would close the application.
+        try:
+            if not self._multi_curves:
+                return
+            fnames = [Path(curve['filepath']).name for curve in self._multi_curves]
+            self.roast_detail_title.setText(
+                QApplication.translate("tilauscope_beancave", "{0} roasts compared").format(len(fnames)))
+            self.roast_compare_chips.setText(self._compare_chips_html(fnames))
+            facts = [roast_facts(curve['data']) for curve in self._multi_curves if curve.get('data')]
+            self._show_tiles(comparison_tiles(facts))
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the comparison figures could not be shown")
+
+    @pyqtSlot()
+    def _leave_comparison(self) -> None:
+        """Clear: the first roast of the comparison, on its own."""
+        if len(self._selected_fnames) > 1 and self.select_roast(self._selected_fnames[0]):
+            self.load_roast_data_and_plot()
+
+    @pyqtSlot()
+    def _sync_print_label_text(self) -> None:
+        """Say so when it is the printer, not the selection, that keeps a label from printing."""
+        if getattr(self, "_niimbot_connected", False):
+            text = QApplication.translate("tilauscope_beancave", "Print label")
+        else:
+            text = QApplication.translate("tilauscope_beancave", "Print label — printer not connected")
+        if self.print_label_action.text() != text:
+            self.print_label_action.setText(text)
+
+    # ── The curve card's choices ─────────────────────────────────────────────
+
+    @staticmethod
+    def _parse_custom_range(text: str) -> tuple[float, float]:
+        """A saved "start,end" in seconds, or 0–12 min when there is none to read."""
+        try:
+            start, end = (float(part) for part in text.split(','))
+            if 0 <= start < end:
+                return start, end
+        except ValueError:
+            pass
+        return 0.0, 720.0
+
+    @pyqtSlot(int)
+    def _on_detail_page_changed(self, index: int) -> None:
+        self.viewer_pages.setCurrentIndex(index)
+        # Full screen expands the curve, and Statistics holds none: left on that
+        # page the button opened a curve the card was not showing.
+        self.zoom_button.setVisible(index == 0)
+        self.curve_bar.setVisible(index == 0)
+
+    @pyqtSlot(int)
+    def _on_curve_view_changed(self, index: int) -> None:
+        self._curve_view = self._CURVE_VIEWS[index]
+        QSettings().setValue(self._CURVE_VIEW_KEY, self._curve_view)
+        # A slot: an escape here would close the application.
+        try:
+            self._apply_curve_view()
+            self.canvas.draw_idle()
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the curve view could not be changed")
+
+    @pyqtSlot(int)
+    def _on_compare_view_changed(self, index: int) -> None:
+        self._multi_view_mode = ('overlay', 'consistency', 'align')[index]
+        if self._multi_curves:
+            self._plot_multi_curves()
+
+    @pyqtSlot(int)
+    def _on_curve_range_activated(self, index: int) -> None:
+        mode = self._CURVE_RANGES[index]
+        if mode == 'custom' and not self._ask_custom_range():
+            # Dismissed: the range in force stays lit.
+            self.curve_range_switch.set_current(self._CURVE_RANGES.index(self._curve_range))
+            return
+        if mode == self._curve_range and mode != 'custom':
+            return
+        self._curve_range = mode
+        QSettings().setValue(self._CURVE_RANGE_KEY, mode)
+        try:
+            self._apply_time_range()
+            self.canvas.draw_idle()
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the curve's time range could not be changed")
+
+    def _ask_custom_range(self) -> bool:
+        """Custom…: a start and an end in m:ss, under the switch. False when dismissed."""
+        start_s, end_s = self._curve_custom_range
+        menu = QMenu(self.curve_range_switch)
+        menu.setStyleSheet(menu_qss())
+        panel = QWidget()
+        grid = QGridLayout(panel)
+        grid.setContentsMargins(10, 8, 10, 8)
+        start = QTimeEdit(QTime(0, 0).addSecs(int(start_s)))
+        end = QTimeEdit(QTime(0, 0).addSecs(int(end_s)))
+        for field in (start, end):
+            field.setDisplayFormat("m:ss")
+        grid.addWidget(QLabel(QApplication.translate("tilauscope_beancave", "From")), 0, 0)
+        grid.addWidget(start, 0, 1)
+        grid.addWidget(QLabel(QApplication.translate("tilauscope_beancave", "To")), 1, 0)
+        grid.addWidget(end, 1, 1)
+        apply_button = QPushButton(QApplication.translate("tilauscope_beancave", "Apply"))
+        apply_button.setProperty('variant', 'primary')
+        hint = QLabel("")
+        hint.setProperty('variant', 'caption')
+        hint.setWordWrap(True)
+        hint.setStyleSheet(f"color: {THEME['WARNING']};")
+        hint.hide()
+        applied: list[bool] = []
+
+        def apply() -> None:
+            # A range that cannot be read says so here, and the fields stay open:
+            # closing on it snapped the switch back with nothing to act on.
+            problem = custom_range_error(QTime(0, 0).secsTo(start.time()),
+                                         QTime(0, 0).secsTo(end.time()))
+            hint.setText(problem)
+            hint.setVisible(bool(problem))
+            if problem:
+                return
+            applied.append(True)
+            menu.close()
+
+        apply_button.clicked.connect(apply)
+        grid.addWidget(apply_button, 2, 0, 1, 2)
+        grid.addWidget(hint, 3, 0, 1, 2)
+        holder = QWidgetAction(menu)
+        holder.setDefaultWidget(panel)
+        menu.addAction(holder)
+        menu.exec(self.curve_range_switch.mapToGlobal(QPoint(0, self.curve_range_switch.height())))
+        if not applied:
+            return False
+        low = QTime(0, 0).secsTo(start.time())
+        high = QTime(0, 0).secsTo(end.time())
+        self._curve_custom_range = (float(low), float(high))
+        QSettings().setValue(self._CURVE_CUSTOM_KEY, f"{low},{high}")
+        return True
+
+    @pyqtSlot(bool)
+    def _on_burner_air_toggled(self, checked: bool) -> None:
+        self._curve_show_settings = checked
+        QSettings().setValue(self._CURVE_SETTINGS_KEY, checked)
+        self._sync_burner_air_text()
+        self._replot_single()
+
+    def _sync_burner_air_text(self) -> None:
+        label = QApplication.translate("tilauscope_beancave", "Burner & air")
+        self.burner_air_button.setText(f"✓  {label}" if self.burner_air_button.isChecked() else label)
 
 
 
     def load_roast_data_and_plot(self) -> None:
-        selected_items = self.roast_list_widget.selectedItems()
-        if not selected_items:
+        selected = self.selected_roast_fnames()
+        if not selected:
             self.roast_plot_label.setText(QApplication.translate("tilauscope_beancave","Select a roast file to see the curve preview."))
             self.roast_info_text.setText(QApplication.translate("tilauscope_beancave","Roast Information will appear here."))
             self._set_viewer_buttons_enabled(False, multi=False)
+            self._show_detail_none()
             return
 
         self.is_zoomed = False
 
-        if len(selected_items) == 1:
+        if len(selected) == 1:
             # ── MODE MONO — comportement original ────────────────────────────
             self._multi_mode = False
             self._multi_curves.clear()
             self._multi_progress.hide()
             self._set_viewer_buttons_enabled(True, multi=False)
-            # Réactiver le tab stats normal
-            self.viewer_tabs.setTabEnabled(self.viewer_tabs.indexOf(self.stats_tab), True)
+            self._show_detail_single(selected[0])
 
             # The roast to draw is the SELECTED one, not the current one. Qt
             # tracks the two apart: the current item is the keyboard cursor, and
@@ -1032,13 +1648,7 @@ class ViewerMixin:
             # ctrl-click that drops the row it still points at. Reading it here
             # drew another roast than the highlighted one, or raised on None and
             # left the canvas exactly as it was — a blank curve, no log line.
-            m = selected_items[0]
-            metadata = m.data(Qt.ItemDataRole.UserRole)
-            raw_fname = (metadata or {}).get("raw_fname", "")
-            if not raw_fname:
-                _log.warning("selected roast carries no file name — curve not redrawn")
-                return
-            filepath = Path(self.alog_directory) / raw_fname
+            filepath = Path(self.alog_directory) / selected[0]
             if not filepath.exists():
                 _log.error(f"File not found in beancave plot routine: {filepath}")
                 return
@@ -1057,18 +1667,13 @@ class ViewerMixin:
             self._multi_load_queue = []
             self._multi_load_idx = 0
 
-            filepaths = []
-            for item in selected_items:
-                md = item.data(Qt.ItemDataRole.UserRole)
-                if md is None:
-                    continue
-                fp = Path(self.alog_directory) / md["raw_fname"]
-                if fp.exists():
-                    filepaths.append(str(fp))
+            filepaths = [str(fp) for fp in (Path(self.alog_directory) / fname for fname in selected)
+                         if fp.exists()]
 
             filepaths = filepaths[:5]  # cap à 5 courbes
             if not filepaths:
                 return
+            self._show_detail_multi([Path(fp).name for fp in filepaths], len(selected))
             self._multi_load_queue = filepaths
             self._multi_progress.setMaximum(len(filepaths))
             self._multi_progress.setValue(0)
@@ -1198,33 +1803,26 @@ class ViewerMixin:
             "Loading was interrupted — select the roast again to see its curve."))
 
     def _set_viewer_buttons_enabled(self, enabled: bool, multi: bool) -> None:
-        """Enable/disable action bar buttons depending on selection mode."""
-        # Toujours dispo
-        self.refresh_button.setEnabled(True)
+        """Enable the actions for what is selected: one roast, several, or none."""
+        self.refresh_action.setEnabled(True)
         self.zoom_button.setEnabled(enabled or multi)
         # Toggles Consistance / Aligné : visibles uniquement en comparaison multi
-        self.consistency_button.setVisible(multi)
-        self.align_button.setVisible(multi)
-        # Mono uniquement — sans B21S (géré exclusivement par niimbot_connected/disconnected)
-        mono_only = [
-            self.load_artisan_button_viewer,
-            self.load_artisan_background_button_viewer,
-            self.roast_finished_button,
-            self.print_pdf_label_button,
-            self.btn_roast_ready,
-            self.btn_dial_in,
-            self.btn_snapshot,
-            self.btn_roast_card,
-            self.btn_data_reader,
-        ]
-        for btn in mono_only:
-            btn.setEnabled(enabled and not multi)
-        # B21S : activé uniquement si imprimante réellement connectée ET prête (heartbeat OK)
-        _niimbot_ok = getattr(self, "_niimbot_connected", False)
-        if _niimbot_ok:
-            self.print_label_button.setEnabled(enabled and not multi)
-        else:
-            self.print_label_button.setEnabled(False)
+        # The view choices follow what is drawn: one roast's curves, or a comparison.
+        self.curve_view_switch.setVisible(not multi)
+        self.compare_view_switch.setVisible(multi)
+        self.burner_air_button.setVisible(not multi)
+        # One roast's actions: greyed with none selected, out of the way while comparing.
+        mono = enabled and not multi
+        for button in (self.load_artisan_button_viewer, self.load_artisan_background_button_viewer,
+                       self.export_button):
+            button.setVisible(not multi)
+            button.setEnabled(mono)
+        for action in (self.roast_finished_action, self.print_pdf_label_action, self.planning_action,
+                       self.dial_in_action, self.curve_image_action, self.roast_card_action,
+                       self.data_action):
+            action.setEnabled(mono)
+        # The printed label also needs the printer ready (heartbeat answered).
+        self.print_label_action.setEnabled(mono and getattr(self, "_niimbot_connected", False))
 
     def _load_next_multi_curve(self) -> None:
         """Charge séquentiellement la prochaine courbe de la queue multi.
@@ -1234,6 +1832,7 @@ class ViewerMixin:
         if self._multi_load_idx >= len(self._multi_load_queue):
             self._multi_progress.hide()
             self._plot_multi_curves()
+            self._fill_detail_multi()
             return
 
         fp_str = self._multi_load_queue[self._multi_load_idx]
@@ -1292,8 +1891,8 @@ class ViewerMixin:
         # In comparison mode `lastprofiledata` holds a roast that is not on screen.
         if getattr(self, "_multi_mode", False):
             return
-        selected_items = self.roast_list_widget.selectedItems()
-        if not selected_items:
+        selected = self.selected_roast_fnames()
+        if not selected:
             self._show_message(self,
                                 QApplication.translate("tilauscope_beancave","Error"),
                                 QApplication.translate("tilauscope_beancave","Please, select a roast session first."), QMessageBox.Icon.Warning)
@@ -1312,8 +1911,7 @@ class ViewerMixin:
             # The selected roast, not the current one: the current item is the
             # keyboard cursor and is None right after the list is rebuilt, which
             # made the button do nothing at all (the raise below is swallowed).
-            metadata = selected_items[0].data(Qt.ItemDataRole.UserRole)
-            filepath = Path(self.alog_directory) / metadata["raw_fname"]
+            filepath = Path(self.alog_directory) / selected[0]
             filename = filepath.name
             cur_file = getattr(self.aw, 'curFile', None)
             already_open = bool(cur_file) and Path(cur_file).resolve() == filepath.resolve()
@@ -1369,7 +1967,7 @@ class ViewerMixin:
         # In comparison mode `lastprofiledata` holds a roast that is not on screen.
         if getattr(self, "_multi_mode", False):
             return
-        if not self.roast_list_widget.selectedItems():
+        if not self.selected_roast_fnames():
             self._show_message(
                 self,
                 QApplication.translate("tilauscope_beancave", "Error"),
@@ -1431,7 +2029,7 @@ class ViewerMixin:
         One reader at a time. It is not modal, so it follows the roast list:
         each roast that loads while it is open is shown in it.
         """
-        if not self.roast_list_widget.selectedItems():
+        if not self.selected_roast_fnames():
             self._show_message(
                 self,
                 QApplication.translate("tilauscope_beancave", "Error"),
@@ -1467,17 +2065,14 @@ class ViewerMixin:
 
     def _displayed_roast_label(self) -> str:
         """List label of the roast on the canvas, or "" when it is not in the list."""
-        row = self._find_item_by_metadata(
-            self.roast_list_widget, "raw_fname", getattr(self, '_displayed_fname', ''))
-        item = (self.roast_list_widget.item(row)
-                if row is not None and row >= 0 else None)
-        return item.text() if item is not None else ""
+        return self.roast_label(getattr(self, '_displayed_fname', ''))
 
     @pyqtSlot(str)
     def _alog_worker_finished_on_plot_error(self, filename:str):
         _logd.warning(f"Unable to read or decode alog file '{filename}'")
         self.roast_plot_label.setText(QApplication.translate("tilauscope_beancave","Error reading/parsing file"))
         self.roast_info_text.setText(QApplication.translate("tilauscope_beancave","Error reading/parsing file."))
+        self._fill_detail_single(None)
 
     @pyqtSlot(object, object, object)
     def _alog_worker_finished_on_plot_ok(self, profiledata, deltaet, deltabt):
@@ -1488,24 +2083,20 @@ class ViewerMixin:
         # meantime, and a blank booking makes the next refresh believe the
         # canvas shows another roast than it does.
         self._displayed_fname = getattr(self, '_loading_fname', '')
-        row_now = self._find_item_by_metadata(
-            self.roast_list_widget, "raw_fname", self._displayed_fname)
-        item_now = (self.roast_list_widget.item(row_now)
-                    if row_now is not None and row_now >= 0 else None)
+        label = self.roast_label(self._displayed_fname)
         self.display_roast_info(self.lastprofiledata)
         self.plot_bt_curve_preview(self.lastprofiledata, deltaet, deltabt)  # type: ignore
         self._update_roast_plan_values()
         # ── Update header label with roast display name ──────────────────────
-        item = item_now
-        if item is not None:
-            self.roast_plot_label.setText(item.text())
+        # The detail head names it: the line above the curve is for messages only.
+        self.roast_plot_label.setText("")
+        self._fill_detail_single(profiledata)
         self._refresh_data_reader(profiledata)
         # ── Timeline hand-off: profile now fully loaded → open the Brew Advisor ──
         pend = getattr(self, "_pending_brew_after_load", None)
         if pend:
             self._pending_brew_after_load = None
-            cur_fn = (item.data(Qt.ItemDataRole.UserRole) or {}).get("raw_fname") if item is not None else None
-            if cur_fn == pend:
+            if label and self._displayed_fname == pend:
                 self.show_barista_expert_view(self.lastprofiledata)
 
     @pyqtSlot()
@@ -1542,13 +2133,8 @@ class ViewerMixin:
         and both labels could be produced for a roast the operator had not
         picked. The placeholder row carries no filename and yields None.
         """
-        items = self.roast_list_widget.selectedItems()
-        if not items:
-            return None
-        meta = items[0].data(Qt.ItemDataRole.UserRole)
-        if not isinstance(meta, dict) or not meta.get('raw_fname'):
-            return None
-        return Path(self.alog_directory) / meta['raw_fname']
+        selected = self.selected_roast_fnames()
+        return Path(self.alog_directory) / selected[0] if selected else None
 
     def displayed_profile_path(self) -> Path | None:
         """Path of the roast on the canvas, or None when nothing is displayed."""

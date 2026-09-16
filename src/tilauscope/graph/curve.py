@@ -874,11 +874,11 @@ class RoastCurveWidget(QWidget):
             getattr(qmc, 'flagon', False)
             or getattr(qmc, 'flagstart', False)))
 
-    def _switch_has_profile(self) -> bool:
-        """Whether Artisan has a foreground or background profile to swap."""
+    def _switch_sides(self) -> tuple[bool, bool]:
+        """(foreground file, background curve): what Artisan's switch() will move."""
         qmc = getattr(self._aw, 'qmc', None)
         if qmc is None:
-            return False
+            return False, False
         foreground = bool(getattr(self._aw, 'curFile', None))
         background = (
             getattr(qmc, 'backgroundprofile', None) is not None
@@ -890,25 +890,47 @@ class RoastCurveWidget(QWidget):
                 background = (len(qmc.temp1B) > 2 or len(qmc.temp2B) > 2)
             except (AttributeError, TypeError):
                 pass
-        return foreground or background
+        return foreground, background
+
+    def _switch_has_profile(self) -> bool:
+        """Whether Artisan has a foreground or background profile to swap."""
+        return any(self._switch_sides())
 
     def _sync_switch_button(self) -> None:
         locked = self._switch_locked()
-        has_profile = self._switch_has_profile()
-        enabled = has_profile and not locked
+        foreground, background = self._switch_sides()
+        enabled = (foreground or background) and not locked
         if self._switch_btn.isEnabled() != enabled:
             self._switch_btn.setEnabled(enabled)
+        # switch() only swaps when both sides exist; with one side it moves that
+        # side across and empties the other, and the tooltip says which.
         if locked:
             tooltip = QApplication.translate(
                 'tilauscope', 'Profile swap is locked while monitoring or roasting')
-        elif not has_profile:
+        elif not (foreground or background):
             tooltip = QApplication.translate(
                 'tilauscope', 'Profile swap — load a roast profile first')
-        else:
+        elif foreground and background:
             tooltip = QApplication.translate(
                 'tilauscope', 'Swap the foreground roast and the background curve')
+        elif foreground:
+            tooltip = QApplication.translate(
+                'tilauscope', 'Send this roast to the background curve — the foreground is cleared')
+        else:
+            tooltip = QApplication.translate(
+                'tilauscope', 'Bring the background curve to the foreground')
         if self._switch_btn.toolTip() != tooltip:
             self._switch_btn.setToolTip(tooltip)
+        # The glyph shows the move before the tooltip names it: ⤓ into the
+        # background, ⤒ up to the foreground, ⇄ a true swap.
+        if foreground and not background:
+            glyph = '⤓'
+        elif background and not foreground:
+            glyph = '⤒'
+        else:
+            glyph = '⇄'
+        if self._switch_btn.text() != glyph:
+            self._switch_btn.setText(glyph)
 
     def _place_view_button(self) -> None:
         # Above the plot, never inside it. Floating over the tracing area put it
@@ -1319,12 +1341,8 @@ class RoastCurveWidget(QWidget):
         if title_raw:
             bnr = getattr(qmc, 'roastbatchnr', 0) or 0
             bprefix = str(getattr(qmc, 'roastbatchprefix', '') or '')
-            if bnr:
-                text = f'{bprefix}{bnr} {title_raw}'
-            elif bprefix:
-                text = f'{bprefix} {title_raw}'
-            else:
-                text = title_raw
+            # A prefix without its number is a bare "#" that reads as a missing value.
+            text = f'{bprefix}{bnr} {title_raw}' if bnr else title_raw
         else:
             text = ''
         # Parentheses always mean "background reference", whether it is the

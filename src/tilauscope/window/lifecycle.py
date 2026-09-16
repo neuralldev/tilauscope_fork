@@ -31,8 +31,8 @@ import os
 from PyQt6.QtCore import QSettings, QTime, QTimer
 from PyQt6.QtWidgets import QApplication
 from pathlib import Path
+from tilauscope.header_icons import make_letter_pill_style
 from tilauscope.roasters import invalidate_roast_context, roast_context_for
-from tilauscope.theme_qss import tooltip_qss
 from tilauscope.tilauscope_types import THEME
 from tilauscope.probe_visibility import et_available_for
 from tilauscope.widgets.dialogs import PlaybackWarningDlg
@@ -375,15 +375,8 @@ class LifecycleMixin:
         self.btn_replay.blockSignals(False)
         self.btn_replay.setEnabled(lit or can_arm)
         _col = "#89B4FA" if lit else THEME['SUBTEXT']
-        self.btn_replay.setStyleSheet(
-            f"QPushButton {{ background: {THEME['SURFACE']}; color: {_col};"
-            f" border: 1px solid {_col}; border-radius: 6px;"
-            f" font-size: 15px; font-weight: 800; }}"
-            f"QPushButton:hover {{ background: {THEME['BG']}; }}"
-            f"QPushButton:disabled {{ color: {THEME['BORDER']};"
-            f" border: 1px solid {THEME['BORDER']}; }}"
-            + tooltip_qss()
-        )
+        self.btn_replay.setStyleSheet(make_letter_pill_style(
+            _col, font_size=15, disabled_color=THEME['BORDER']))
         if lit:
             _tip = QApplication.translate("tilauscope_window", "Roast Replay: ON — click to stop")
         elif not supports_replay:
@@ -502,15 +495,108 @@ class LifecycleMixin:
         except Exception as e:  # pylint: disable=broad-except
             _log.warning("hide_roast_review: %s", e)
 
-    def _open_roast_card(self) -> None:
-        """The full card, over the panel: same figures, plus the curve."""
+    def _open_coach_advice(self) -> None:
+        """The coach's reading of the roast under review, over the panel."""
         try:
-            from tilauscope.roast_card import RoastCardDialog
-            from tilauscope.roast_debrief import profile_from_qmc, display_name
-            profile = profile_from_qmc(self.aw)
-            RoastCardDialog(profile, self, bean_name=display_name(profile)).exec()
+            from tilauscope.coach_dialog import CoachAdviceDialog, reading_for
+            profile = self.roast_review.reviewed_profile()
+            if profile is None:
+                return
+            # The card's own reading, so the dialog says exactly what it summed up.
+            reading = self.roast_review.reviewed_reading() or reading_for(self.aw, profile)
+            CoachAdviceDialog(profile, reading, self).exec()
         except Exception as e:  # pylint: disable=broad-except
-            _log.warning("_open_roast_card: %s", e)
+            _log.warning("_open_coach_advice: %s", e)
+
+    def _reset_with_session(self, title: str, beans: str, green_w: float, w_unit: str,
+                            greens: tuple[tuple[float, str, float, str], float, float] | None = None
+                            ) -> bool:
+        """RESET, then put the same coffee, charge weight and green measurements back.
+
+        `greens` is (density, moisture_greens, greens_temp) as Artisan holds them:
+        RESET clears the three with the roast properties, and the next roast is
+        saved with them and judged on that moisture.
+        False when the reset did not happen (a prompt was cancelled). Shared by
+        Restart batch and Next batch like this one.
+        """
+        qmc = self.aw.qmc
+        if not qmc.reset():
+            return False
+        if title:
+            qmc.title = title
+            qmc.title_show_always = True
+        if beans:
+            qmc.beans = beans
+        if green_w > 0:
+            # qmc.weight is a tuple at runtime: reassign, never mutate
+            qmc.weight = (green_w, 0.0, w_unit)
+        if greens is not None:
+            qmc.density, qmc.moisture_greens, qmc.greens_temp = greens
+        return True
+
+    def _prepare_next_batch(self) -> None:
+        """Next batch like this one: the reviewed roast's coffee and charge
+        weight on a clean session, with that roast as the background curve.
+
+        Prepares only — nothing heats and nothing records until the operator
+        presses MONITOR and START. The roast is saved first, so the RESET cannot
+        lose it and the background has a file to load from.
+        """
+        try:
+            from PyQt6.QtWidgets import QMessageBox
+            from tilauscope import roast_coach as coach
+            from tilauscope.tilauscope_types import show_styled_message
+            profile = self.roast_review.reviewed_profile()
+            qmc = self.aw.qmc
+            if profile is None or qmc.flagon or qmc.flagstart:
+                return
+            # The review's own identity, never the live-session stash: a roast
+            # opened from a file is a different coffee from the last one set up.
+            title = str(profile.get('title') or '')
+            beans = str(profile.get('beans') or '')
+            try:
+                w = profile.get('weight') or []
+                green_w, w_unit = float(w[0]), str(w[2])
+            except (TypeError, IndexError, ValueError):
+                green_w, w_unit = 0.0, 'g'
+            density = tuple(profile.get('density') or ())
+            greens = (density if len(density) == 4 else (0.0, 'g', 1.0, 'l'),
+                      float(profile.get('moisture_greens') or 0.0),
+                      float(profile.get('greens_temp') or 0.0))
+
+            if not self.aw.curFile:
+                saved = self._save_current_roast_silently()
+            elif qmc.safesaveflag:
+                saved = bool(self.aw.fileSave(self.aw.curFile))
+            else:
+                saved = True
+            path = self.aw.curFile
+            if not saved or not path:
+                show_styled_message(
+                    self, QApplication.translate('tilauscope_review', 'Next batch'),
+                    QApplication.translate('tilauscope_review',
+                                           'This roast could not be saved, so nothing was reset.'),
+                    QMessageBox.Icon.Warning)
+                return
+            if not self._reset_with_session(title, beans, green_w, w_unit, greens):
+                return
+            self.aw.loadAndRedrawBackgroundUUID(path)
+
+            # A target set up for another coffee must not start the plan for this
+            # one: neither the stashed target nor the one still selected in the
+            # assistant, which then waits for a pick. The same coffee keeps the
+            # target it was set up with.
+            if coach.bean_uuid(beans) != coach.bean_uuid(getattr(self.aw, '_tilau_live_beans', '')):
+                self.aw._tilau_live_target = None
+                self.roast_assistant.clear_target()
+            self.aw._tilau_live_title = title
+            self.aw._tilau_live_beans = beans
+
+            self.hide_roast_review()
+            self._refresh_replay_button()
+            self.launch_guided_assistant()   # Guided only: a no-op in Expert
+        except Exception as e:  # pylint: disable=broad-except
+            _log.warning("_prepare_next_batch: %s", e)
 
     def _enter_roast_weights(self) -> None:
         """Weight/colour entry from the review, then take the new values in."""

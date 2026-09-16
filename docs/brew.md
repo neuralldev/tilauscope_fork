@@ -8,14 +8,14 @@
     printed recipe card to work from at the machine.
 
 Brewing lives inside **BeanCave**, reached from a roast rather than from a separate menu:
-either the Roast Viewer's **Dial-in** button on a specific roast, or the **☕ Brew this
+either **⋯ → Dial-in** in the Roasts tab, on a specific roast, or the **☕ Brew this
 coffee** prompt offered by the rest calendar below.
 
 ---
 
 ## When a coffee is ready
 
-**Planning**, in the Roast Viewer, opens a calendar of every roast in the catalogue, each
+**⋯ → Planning**, in the Roasts tab, opens a calendar of every roast in the catalogue, each
 shown as a bar across the days since it was roasted: too soon to brew, in its best window, or
 past its peak and fading. A lighter roast needs longer to rest and holds its peak longer once
 it gets there; a darker roast is ready sooner but fades sooner too. Espresso and other
@@ -30,7 +30,7 @@ colour and is linked to its coffee. A roast missing either says so instead of of
 brew it.
 
 Clicking the roast's **name** at the top of that card does something else: it closes the
-calendar, opens that roast in the main window, and selects it in the Roast Viewer — a direct
+calendar, opens that roast in the main window, and selects it in the Roasts tab — a direct
 way to go and look at how a coffee was roasted while judging when to brew it.
 
 !!! note

@@ -158,8 +158,8 @@ The large area on the right is the roast itself, drawn by TilauScope. It is read
 at arm's length, so it carries what matters during a roast and leaves the rest for
 [after](after-the-roast.md).
 
-**What is on it.** The name of the roast above the plot — the batch number and the title you
-gave it, exactly as it is filed. The bean temperature as a thick line, its
+**What is on it.** The name of the roast above the plot — the batch number when the roast has
+one, and the title you gave it, exactly as it is filed. The bean temperature as a thick line, its
 [rate of rise](glossary.md#ror--rate-of-rise) as a thinner one on its own scale at the right, and
 the three phases as coloured grounds beneath both.
 
@@ -172,12 +172,19 @@ it is loaded and stays there for the whole roast; during the preheat the chart b
 the drum climb, and the reference comes back at the charge. Right-clicking the curve offers
 **Remove reference curve**, which unloads it.
 
-**Beside the roast title sits a swap control.** It trades the roast on screen for its own
-background reference: the curve you were reading and the one drawn behind it change places, and
-so do their names above the plot. It is unavailable while monitoring or recording, since the
-swap rewrites the roast being recorded, and unavailable when there is nothing to swap — neither
-a roast opened from a file nor a background curve loaded. Hovering it says which of the two
-applies.
+**Beside the roast title sits a swap control.** What a click does depends on what is loaded; its
+glyph shows the move that is coming, and hovering it says it in words:
+
+- **⇄** a roast opened from a file **and** a background curve — the two change places, and so do
+  their names above the plot;
+- **⤓** a roast opened from a file alone — it becomes the background curve and the foreground is
+  cleared;
+- **⤒** a background curve alone — it is brought to the foreground.
+
+A roast just finished and not saved yet is not a file: with a background curve loaded, the control
+brings that curve forward, after asking whether to save the roast. The control is unavailable
+while monitoring or recording, since it rewrites the roast being recorded, and when neither a
+roast opened from a file nor a background curve is loaded.
 
 <!-- CAPTURE 2.8f — the roast title area on the curve showing the swap glyph beside the title,
 both in its normal clickable state and greyed out while recording. -->

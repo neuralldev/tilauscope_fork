@@ -157,12 +157,12 @@ The weight the batch lost during roasting, as a percentage of its
 coffee carried, which leaves whatever you do, plus the matter burnt off once the roast
 develops.
 
-That is why the target TilauScope shows you is not a single figure per roast colour. It starts
+That is why the target TilauScope shows you is not a single figure per roast level. It starts
 from the lot's own [moisture content](#moisture-content) — a drier coffee has less to lose, so
-it should end lighter on the scale — and adds what the colour and the
-[development](#dtr--development-time-ratio) burn off on top. Two roasts stopped at the same
-colour, one held forty seconds longer after first crack, do not lose the same weight; the
-longer one loses about a point and a half more.
+it should end lighter on the scale — and adds what the roast level and the
+[development](#dtr--development-time-ratio) burn off on top. Two roasts at the same level, one
+held forty seconds longer after first crack, do not lose the same weight; the longer one loses
+about a point and a half more.
 
 The target is a bearing, not a verdict. On a home-sized batch one point of weight loss is only
 a few grams — about what the chaff and the handling account for — so TilauScope only speaks up

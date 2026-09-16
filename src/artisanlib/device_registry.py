@@ -504,6 +504,26 @@ NON_TEMP_DEVICES.update({d['id']: d['nonTemp'] for d in TILAU_DEVICES.values()})
 NON_SERIAL_DEVICES.update(d['id'] for d in TILAU_DEVICES.values() if d.get('nonserial'))
 
 
+def tilau_keys(device_ids: list[int]) -> str:
+    """The TilauScope key of each device id, comma-joined, empty where an Artisan device sits.
+
+    Settings store ids, which move whenever the registry above grows; the keys
+    saved beside them let tilau_ids read those ids back after such a move.
+    """
+    key_of = {d['id']: key for key, d in TILAU_DEVICES.items()}
+    return ','.join(key_of.get(device_id, '') for device_id in device_ids)
+
+
+def tilau_ids(device_ids: list[int], keys: object) -> list[int]:
+    """``device_ids`` with each TilauScope device ``keys`` names at its current id.
+
+    Settings saved before keys were written carry none: their ids come back as stored.
+    """
+    names = [str(name).strip() for name in (keys if isinstance(keys, (list, tuple)) else str(keys or '').split(','))]
+    return [int(TILAU_DEVICES[names[i]]['id']) if i < len(names) and names[i] in TILAU_DEVICES else device_id
+            for i, device_id in enumerate(device_ids)]
+
+
 # -- constants ---------------------------------------------------------
 
 

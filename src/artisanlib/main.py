@@ -230,6 +230,7 @@ from artisanlib.util import (appFrozen, uchr, decodeLocal, decodeLocalStrict, en
         convertWeight, convertVolume, rgba_colorname2argb_colorname, render_weight, serialize, deserialize, csv_load, exportProfile2CSV, findTPint,
         eventtime2string, toDim, signature_message, rec_int_to_float, smooth_list)
 from artisanlib.device_registry import DEVICE_ID_MIN, DEVICE_ID_MAX, DEVICE_ID_NONE, DEVICE_ID_VIRTUAL, get_device_name
+from artisanlib.device_registry import tilau_ids, tilau_keys  ## TILAU ## stable keys saved beside device ids
 from artisanlib.qtsingleapplication import QtSingleApplication
 from artisanlib.translation_paths import translation_search_paths
 
@@ -15811,6 +15812,8 @@ class ApplicationWindow(QMainWindow):
 
     def setExtraDeviceSettings(self, settings:QSettings, default_settings:dict[str, Any]|None = None, read_defaults:bool = False) -> None:
         self.settingsSetValue(settings, default_settings, 'extradevices',self.qmc.extradevices, read_defaults)
+        ## TILAU ## one stable key per slot, read back by getExtraDeviceSettings after the registry grows
+        self.settingsSetValue(settings, default_settings, 'tilau_extradevices', tilau_keys(self.qmc.extradevices), read_defaults)
         self.settingsSetValue(settings, default_settings, 'extraname1',self.qmc.extraname1, read_defaults)
         self.settingsSetValue(settings, default_settings, 'extraname2',self.qmc.extraname2, read_defaults)
         self.settingsSetValue(settings, default_settings, 'extramathexpression1',self.qmc.extramathexpression1, read_defaults)
@@ -15895,6 +15898,8 @@ class ApplicationWindow(QMainWindow):
 
     def getExtraDeviceSettings(self, settings:QSettings) -> None:
         self.qmc.extradevices = [toInt(x) for x in toList(settings.value('extradevices',self.qmc.extradevices))]
+        ## TILAU ## ids saved before the registry grew are read back through their stable keys
+        self.qmc.extradevices = tilau_ids(self.qmc.extradevices, settings.value('tilau_extradevices', ''))
         self.qmc.extradevices = [(x if (DEVICE_ID_MIN < x <= DEVICE_ID_MAX and x != DEVICE_ID_NONE) else DEVICE_ID_VIRTUAL) for x in self.qmc.extradevices] # if out of range (note index is shifted by 1) or NONE, set to VIRTUAL
         ## TILAU ## TilauScope device ids are appended to the registry at import time,
         ## so DEVICE_ID_MAX covers them and the upstream clamp above preserves them.
@@ -18773,6 +18778,8 @@ class ApplicationWindow(QMainWindow):
                 except Exception: # pylint: disable=broad-except
                     pass
             self.qmc.device = max(0, toInt(settings.value('id',self.qmc.device)))
+            ## TILAU ## an id saved before the registry grew is read back through its stable key
+            self.qmc.device = tilau_ids([self.qmc.device], settings.value('tilau_device', ''))[0]
             if not DEVICE_ID_MIN <= self.qmc.device <= DEVICE_ID_MAX:
                 self.qmc.device = DEVICE_ID_NONE
             # Phidget configurations
@@ -21006,6 +21013,8 @@ class ApplicationWindow(QMainWindow):
             settings.beginGroup('Device')
             self.settingsSetValue(settings, default_settings, 'device_logging',self.qmc.device_logging, read_defaults)
             self.settingsSetValue(settings, default_settings, 'id',self.qmc.device, read_defaults)
+            ## TILAU ## the meter's stable key, read back by settingsLoad after the registry grows
+            self.settingsSetValue(settings, default_settings, 'tilau_device', tilau_keys([self.qmc.device]), read_defaults)
             self.settingsSetValue(settings, default_settings, 'phidget1048_types',self.qmc.phidget1048_types, read_defaults)
             self.settingsSetValue(settings, default_settings, 'phidget1048_async',self.qmc.phidget1048_async, read_defaults)
             self.settingsSetValue(settings, default_settings, 'phidget1048_changeTriggers',self.qmc.phidget1048_changeTriggers, read_defaults)

@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 from matplotlib.axes import Axes
+import math
 import numpy
 from typing import TYPE_CHECKING, Final
 
@@ -33,7 +34,7 @@ from matplotlib.transforms import ScaledTranslation
 from artisanlib.atypes import ProfileData
 from tilauscope.probe_visibility import et_available_in_profile
 
-from PyQt6.QtCore import (Qt, QPoint) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
+from PyQt6.QtCore import QPoint # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
 from PyQt6.QtGui import ( QResizeEvent, QAction) # @UnusedImport @Reimport  @UnresolvedImport
 from PyQt6.QtWidgets import (QApplication, QMessageBox, QMenu) # @UnusedImport @Reimport  @UnresolvedImport
 
@@ -64,6 +65,9 @@ class ViewerPlotMixin:
 
     def plot_bt_curve_preview(self, data: ProfileData, deltaet: list, deltabt: list) -> None:
         try:
+            # What this roast was drawn from, to draw it again when the layout changes.
+            self._plot_cache = (data, deltaet, deltabt)
+            self._curve_legend = None
             # Create lists to hold the curve references
             self.temp_lines = []
             self.setting_lines = []
@@ -119,9 +123,13 @@ class ViewerPlotMixin:
             # Create two subplots: ax1 for temperatures, ax2 for machine settings
             # hspace=0 ensures they are close to each other
             ax1:Axes
-            ax2:Axes
+            ax2:Axes | None
             ax_hoovers:Axes
-            ax1, ax2 = self.fig.subplots(2, 1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
+            # The burner & air strip is a second row, drawn only while it is shown.
+            if getattr(self, '_curve_show_settings', True):
+                ax1, ax2 = self.fig.subplots(2, 1, sharex=True, gridspec_kw={'height_ratios': [3, 1]})
+            else:
+                ax1, ax2 = self.fig.subplots(1, 1), None
 
             #ax = self.fig.add_subplot(111)
             self.ax1 = ax1
@@ -144,9 +152,9 @@ class ViewerPlotMixin:
             # Adjust font size for the top plot (Temperatures)
             ax1.tick_params(axis='both', which='major', labelsize=_FS_TICK)
 
-            ax1.plot(x_vals, y_bt, label=QApplication.translate("Label","BT")+f" (°{mode})", color=_PLOT_PALETTE["bt"], linewidth=1.3)
+            temp_lines = [ax1.plot(x_vals, y_bt, label=QApplication.translate("Label","BT")+f" (°{mode})", color=_PLOT_PALETTE["bt"], linewidth=1.3)[0]]
             if y_et:
-                ax1.plot(x_vals, y_et, label=QApplication.translate("Label","ET")+f" (°{mode})", color=_PLOT_PALETTE["et"], linewidth=1.3)
+                temp_lines.append(ax1.plot(x_vals, y_et, label=QApplication.translate("Label","ET")+f" (°{mode})", color=_PLOT_PALETTE["et"], linewidth=1.3)[0])
 
             ax_hoovers = ax1.twinx() # second axe
             self.ax_hoovers = ax_hoovers # used for plotted hoovers
@@ -188,18 +196,13 @@ class ViewerPlotMixin:
             ax_hoovers.set_ylim(0, Y_MAX_ROR)
             ax_hoovers.set_ylabel(QApplication.translate("Label","RoR")+" (°/min)", fontsize=_FS_AXIS, color=ylabel_alpha_color)
 
-            ax_hoovers.plot(x_vals, self.y_dbt, label=QApplication.translate("Label","RoR")+" "+QApplication.translate("Label","BT"), color=_PLOT_PALETTE["deltabt"], linestyle='--', linewidth=1.3, alpha=0.85)
+            ror_lines = [ax_hoovers.plot(x_vals, self.y_dbt, label=QApplication.translate("Label","RoR")+" "+QApplication.translate("Label","BT"), color=_PLOT_PALETTE["deltabt"], linestyle='--', linewidth=1.3, alpha=0.85)[0]]
             if y_det:
-                ax_hoovers.plot(x_vals, y_det, label=QApplication.translate("Label","RoR")+" "+QApplication.translate("Label","ET"), color=_PLOT_PALETTE["deltaet"], linestyle='--', linewidth=1.3, alpha=0.85)
+                ror_lines.append(ax_hoovers.plot(x_vals, y_det, label=QApplication.translate("Label","RoR")+" "+QApplication.translate("Label","ET"), color=_PLOT_PALETTE["deltaet"], linestyle='--', linewidth=1.3, alpha=0.85)[0])
 
+            # The minute ticks are set by _apply_time_range, for the range shown.
             x_min_val = min(x_vals)
             x_max_val = max(x_vals)
-            x_start_tick = int(x_min_val) if x_min_val >= 0 or x_min_val.is_integer() else int(x_min_val) - 1
-            x_end_tick = int(x_max_val) + 1
-            x_ticks = list(range(x_start_tick, x_end_tick))
-            x_labels = [str(i) for i in x_ticks]
-            ax1.set_xticks(x_ticks)
-            ax1.set_xticklabels(x_labels)
 
             # Échelle Y adaptative : la courbe BT occupe la pleine hauteur au lieu
             # du tiers inférieur d'un 0–300 figé. On garde ~10–20° d'air au-dessus
@@ -239,9 +242,9 @@ class ViewerPlotMixin:
             self._draw_event_markers(ax1, timex, timeindex, temp2, temp1, mode, charge, bbox_style_dark,
                                      idx_min=charge_start, idx_max=drop_end)
             # titles and labels
-            ax1.set_title(QApplication.translate("tilauscope_beancave","Curve Preview")+f": {data.get('title', 'Roast')}", fontsize=_FS_TITLE, color=_PLOT_PALETTE["title"])
+            # No title: the detail head above the card names the roast.
             ax1.set_xlabel(QApplication.translate("tilauscope_beancave","Time (min)"), fontsize=_FS_AXIS, color=_PLOT_PALETTE['xlabel'])
-            ax1.set_ylabel(QApplication.translate("tilauscope_beancave","Time")+f" (°{mode})", fontsize=_FS_AXIS, color=_PLOT_PALETTE['ylabel'])
+            ax1.set_ylabel(QApplication.translate("Label", "Temp") + f" (°{mode})", fontsize=_FS_AXIS, color=_PLOT_PALETTE['ylabel'])
             ax1.grid(True, alpha=0.3, color=_PLOT_PALETTE['grid'])
             #self.fig.tight_layout()
             self.annotation = ax1.annotate(
@@ -304,10 +307,9 @@ class ViewerPlotMixin:
             self.ax1.add_line(self.et_marker)
             self.ax_hoovers.add_line(self.deltabt_marker) # RoR marker goes on ax2            # Create the BT marker (dot)
             self.ax_hoovers.add_line(self.deltaet_marker) # RoR marker goes on ax2            # Create the ET marker (dot)
-            self.ax2.add_line(self.slider_marker[0]) # RoR marker goes on ax2            # Create the ET marker (dot)
-            self.ax2.add_line(self.slider_marker[1]) # RoR marker goes on ax2            # Create the ET marker (dot)
-            self.ax2.add_line(self.slider_marker[2]) # RoR marker goes on ax2            # Create the ET marker (dot)
-            self.ax2.add_line(self.slider_marker[3]) # RoR marker goes on ax2            # Create the ET marker (dot)
+            if ax2 is not None:   # the settings markers live on the burner & air strip
+                for slider_marker in self.slider_marker:
+                    ax2.add_line(slider_marker)
 
             self.bt_marker.set_visible(False)
             self.et_marker.set_visible(False)
@@ -336,7 +338,8 @@ class ViewerPlotMixin:
             # draw steps for each machine setting
             charge_time_abs = timex[charge_start]
 
-            for etype, cfg in self.machine_config.items():
+            settings_lines: list = []
+            for etype, cfg in (self.machine_config.items() if ax2 is not None else ()):
                 y_stepped = []
 
                 # Each event of this channel paired with its own sample time.
@@ -369,31 +372,31 @@ class ViewerPlotMixin:
                         y_stepped.append(0.0) # Default to 0 if there's an error
                 # A channel held at 0 is a real setting (burner off, air shut), not
                 # an absent one: the channel had disappeared from the panel entirely.
-                ax2.step(x_vals, y_stepped, where='post', color=cfg['color'],
-                        label=cfg['label'], linewidth=1.2, alpha=0.9)
+                settings_lines += ax2.step(x_vals, y_stepped, where='post', color=cfg['color'],
+                                           label=cfg['label'], linewidth=1.2, alpha=0.9)
 
-            # Final Styling
-            ax2.set_facecolor(bg_color)
-            ax2.set_ylabel(QApplication.translate("tilauscope_beancave",'Settings %'), color=_PLOT_PALETTE['ylabel'], fontsize=_FS_AXIS)
-            ax2.tick_params(axis='y', labelcolor=ylabel_alpha_color)
-            ax2.yaxis.set_major_locator(MultipleLocator(10))
-            ax2.set_ylim(-5, 110)
-            ax2.set_yticks(list(range(0, 101, 50)))
-            ax2.grid(True, linestyle=':', alpha=0.3, color=_PLOT_PALETTE['grid'])
-            # Only show legend if at least one labelled artist was plotted
-            if ax2.get_legend_handles_labels()[0]:
-                ax2.legend(
-                    loc='upper center',
-                    bbox_to_anchor=(0.5, -0.4),
-                    fontsize=_FS_LEGEND,
-                    ncol=4,
-                    facecolor='#1e1e1e',
-                    edgecolor='gray',
-                    labelcolor='white'
-                )
-            ax2.tick_params(axis='both', which='major', labelsize=_FS_TICK)
+            # Final Styling — every curve's legend sits under the figure (_rebuild_curve_legend)
+            if ax2 is not None:
+                ax2.set_facecolor(bg_color)
+                ax2.set_ylabel(QApplication.translate("tilauscope_beancave",'Settings %'), color=_PLOT_PALETTE['ylabel'], fontsize=_FS_AXIS)
+                ax2.tick_params(axis='y', labelcolor=ylabel_alpha_color)
+                ax2.yaxis.set_major_locator(MultipleLocator(10))
+                ax2.set_ylim(-5, 110)
+                ax2.set_yticks(list(range(0, 101, 50)))
+                ax2.grid(True, linestyle=':', alpha=0.3, color=_PLOT_PALETTE['grid'])
+                ax2.tick_params(axis='both', which='major', labelsize=_FS_TICK)
+
+            # The rate of rise at DROP; then what the view and the range show.
+            self._temp_artists = list(temp_lines)
+            self._ror_artists = ror_lines + self._draw_ror_end_label(ax_hoovers, x_vals, self.y_dbt,
+                                                                     drop - charge_start, mode)
+            self._legend_candidates = temp_lines + ror_lines + settings_lines
+            # Room on the right for the rate of rise written at DROP.
+            self._auto_xlim = (x_min_val, x_max_val + max(1.2, (x_max_val - x_min_val) * 0.14))
+            self._apply_curve_view()
+            self._apply_time_range()
             # Marges gérées par layout="constrained" (cf. création de la figure) —
-            # plus de subplots_adjust codé en dur, la légende sous ax2 est prise en compte.
+            # plus de subplots_adjust codé en dur, la légende sous la figure est prise en compte.
             if hasattr(self, 'hover_cid'):
                 self.canvas.mpl_disconnect(self.hover_cid)
             self._reconnect_hover()  # connects hover AND leave, dropping the old pair
@@ -426,6 +429,91 @@ class ViewerPlotMixin:
         ax.scatter(pops, [0.0] * len(pops), marker='|', s=_CRACK_BAND_PT ** 2, linewidths=1.0,
                    color=THEME['WARNING'], alpha=CRACK_TICK_ALPHA / 255, zorder=1.8,
                    transform=ax.get_xaxis_transform() + lift)
+
+    def _draw_ror_end_label(self, ax_ror: Axes, x_vals: list, y_ror: list, at: int, mode: str) -> list:
+        """The rate of rise the roast ends on, written beside its line at DROP.
+
+        Temperatures need no such label: the DROP box already writes them.
+        """
+        if not x_vals or not y_ror:
+            return []
+        at = min(max(at, 0), len(x_vals) - 1, len(y_ror) - 1)
+        try:
+            ror = float(y_ror[at])
+        except (TypeError, ValueError):
+            return []
+        if math.isnan(ror):
+            return []
+        colour = _PLOT_PALETTE['deltabt']
+        anchor = (x_vals[at], max(ror, ax_ror.get_ylim()[0]))   # a crash below 0 still shows on the plot
+        return [ax_ror.plot(*anchor, marker='o', markersize=4, color=colour, zorder=8)[0],
+                ax_ror.annotate(f"{ror:.1f} °{mode}/min", anchor, textcoords="offset points",
+                                xytext=(7, 0), ha='left', va='center', fontsize=_FS_EVENT,
+                                fontweight='bold', color=colour, zorder=8, annotation_clip=False)]
+
+    def _apply_curve_view(self) -> None:
+        """Temperatures, rate of rise or both: curves shown or hidden, the file never read again."""
+        if getattr(self, '_multi_mode', False) or getattr(self, 'ax1', None) is None:
+            return
+        view = getattr(self, '_curve_view', 'both')
+        temps, ror = view in ('temps', 'both'), view in ('ror', 'both')
+        # The milestone dots sit on the temperature curves, and go with them.
+        dots = [*getattr(self, '_event_dots', {}).values(), *getattr(self, '_event_et_dots', {}).values()]
+        for artist in [*getattr(self, '_temp_artists', []), *dots]:
+            artist.set_visible(temps)
+        for artist in getattr(self, '_ror_artists', []):
+            artist.set_visible(ror)
+        self.ax1.yaxis.set_visible(temps)
+        self.ax_hoovers.yaxis.set_visible(ror)
+        self._rebuild_curve_legend()
+
+    def _rebuild_curve_legend(self) -> None:
+        """One legend under the figure, for the curves the view shows."""
+        legend = getattr(self, '_curve_legend', None)
+        self._curve_legend = None
+        if legend is not None:
+            try:
+                legend.remove()
+            except (ValueError, AttributeError, NotImplementedError):
+                pass   # the figure was cleared under it
+        handles = [line for line in getattr(self, '_legend_candidates', []) if line.get_visible()]
+        if handles:
+            self._curve_legend = self.fig.legend(
+                handles=handles, labels=[line.get_label() for line in handles],
+                loc='outside lower center', ncol=min(len(handles), 6), fontsize=_FS_LEGEND,
+                frameon=False, labelcolor=_PLOT_PALETTE['xlabel'])
+
+    def _apply_time_range(self) -> None:
+        """Auto, 0–12 min or a custom range, on the curve already drawn."""
+        ax = getattr(self, 'ax1', None)
+        bounds = getattr(self, '_auto_xlim', None)
+        if ax is None or bounds is None:
+            return
+        mode = getattr(self, '_curve_range', 'auto')
+        if mode == 'fixed':
+            low, high = 0.0, 12.0
+        elif mode == 'custom':
+            start_s, end_s = getattr(self, '_curve_custom_range', (0.0, 720.0))
+            low, high = start_s / 60.0, end_s / 60.0
+        else:
+            low, high = bounds
+        ax.set_xlim(low, high)
+        if not getattr(self, '_multi_mode', False):
+            ax.set_xticks(list(range(math.ceil(low), math.floor(high) + 1)))
+
+    def _replot_single(self) -> None:
+        """Draw the roast on screen again from what is loaded, for a change of layout."""
+        cache = getattr(self, '_plot_cache', None)
+        if getattr(self, '_multi_mode', False) or cache is None:
+            return
+        pending = getattr(self, '_pending_timeindex', None)
+        self.plot_bt_curve_preview(*cache)
+        if pending is not None:
+            # A milestone moved but not yet saved survives the redraw.
+            self._pending_timeindex = pending
+            self._redraw_event_markers()
+            self.canvas_container._save_btn.show()
+            self.canvas_container._reposition_buttons()
 
     def resizeEvent(self, event: QResizeEvent) -> None: # type: ignore
         if event is None: # type: ignore
@@ -757,6 +845,7 @@ class ViewerPlotMixin:
         bbox_style = dict(boxstyle="round,pad=0.3", fc="black", alpha=0.8, ec="lightgray", lw=1)
         self._draw_event_markers(self.ax1, timex, timeindex, temp2, temp1, mode, charge_idx, bbox_style,
                                  idx_min=idx_min, idx_max=idx_max)
+        self._apply_curve_view()   # the redrawn milestone dots follow the view in force
         self.canvas.draw_idle()
 
     def _save_timeindex_to_alog(self) -> None:
@@ -960,13 +1049,10 @@ class ViewerPlotMixin:
         # Selected, not current: the current item is the keyboard cursor and is
         # None right after the list is rebuilt — reading it raised inside a
         # clicked slot, which the excepthook turns into closing the application.
-        selected_items = self.roast_list_widget.selectedItems()
-        if not selected_items:
+        selected = self.selected_roast_fnames()
+        if not selected:
             return
-        metadata = selected_items[0].data(Qt.ItemDataRole.UserRole)
-        if not isinstance(metadata, dict) or not metadata.get("raw_fname"):
-            return
-        f = metadata["raw_fname"]
+        f = selected[0]
 
         from PyQt6.QtCore import QStandardPaths
 
@@ -984,9 +1070,14 @@ class ViewerPlotMixin:
 
         if file_path:
             try:
-                # Save the Matplotlib figure to the specified file
-                # The entire Figure (including axes, labels, etc.) is saved.
-                figure.savefig(file_path)
+                # The saved image names its roast, as the detail head does on screen.
+                title = figure.suptitle(self.roast_label(f) or Path(f).stem,
+                                        fontsize=_FS_TITLE, color=_PLOT_PALETTE["title"])
+                try:
+                    figure.savefig(file_path)
+                finally:
+                    title.remove()
+                    self.canvas.draw_idle()
                 self._show_message(self, QApplication.translate("tilauscope_beancave","Snapshot Successful"),
                                         QApplication.translate("tilauscope_beancave","The curve has been successfully saved to:")+f"\n{file_path}")
                 # show the snapshot straight away, like the roast card does

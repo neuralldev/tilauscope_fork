@@ -18,7 +18,7 @@ tracks — the pool of ids, assigning and releasing one — is covered in
 
 | Label | Printed from | What it shows | Its QR opens |
 |---|---|---|---|
-| **Roast label** | A roast's record → **Print label**, or the result form at the end of a roast → **🏷 Label PDF** | Bean, origin, roast date, key roast figures, flavour notes, a QR | The roast's record |
+| **Roast label** | The Roasts tab → **Export** → **Label (PDF)** or **Print label**, or the result form at the end of a roast → **🏷 Label PDF** | Bean, origin, roast date, key roast figures, flavour notes, a QR | The roast's record |
 | **Green bean label** | A coffee's record → **Print label** | Supplier, crop, process, variety, altitude, moisture, water activity, cupping notes, a QR | The coffee's record |
 | **Sack label** | The sack labels tool (see [Sacks, stock and conservation](sacks-and-storage.md)) | A label id and a QR — nothing else | Whichever coffee currently holds that id |
 | **Coffee label** | **TilauScope → Print a Coffee Label…** | Whatever is typed in: name, roaster, origin, process, roast level, roast date, weight, tasting notes | Nothing — it carries no QR |
