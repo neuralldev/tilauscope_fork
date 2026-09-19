@@ -47,7 +47,7 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 from artisanlib.util import fill_gaps, convertTemp, smooth_list
 from tilauscope.tilauscope_types import (BeanCaveContainer, THEME, _IS_WINDOWS,
                                          RoastingPhase, marked, normalize_timeindex,
-                                         estimate_ror_dt)
+                                         estimate_ror_dt, COLOR_AIR, COLOR_GRAIN, dimmed)
 
 #: The ``tilauscope`` package directory. The JSON and font resources ship beside
 #: it, one level ABOVE this package, so a module under ``cave/`` must never
@@ -60,22 +60,30 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 # ── Fixed Catppuccin-Mocha palette for curve preview plots ──────────────────
 # Never read from aw.qmc.palette so Artisan theme customisation cannot pollute
 # TilauScope preview rendering.
+#
+# The probe hues are NOT chosen here: they are the ones the roasting window
+# draws with, so a roast reviewed in BeanCave is the same picture as the roast
+# that was driven. One hue per PROBE — the bean and its rate are one family,
+# the air and its rate another — and within a family the temperature is the
+# full hue while the rate wears it one step back, never mistaken for the line
+# the roast is read from. Blue and peach therefore belong to the probes: the
+# machine channels take the remaining hues.
 _PLOT_PALETTE: Final[dict[str, str]] = {
     "background":  "#1E1E2E",   # Mocha Base
     "canvas":      "#1E1E2E",
-    "bt":          "#F38BA8",   # Mocha Red
-    "et":          "#A6E3A1",   # Mocha Green
-    "deltabt":     "#89B4FA",   # Mocha Blue  (RoR BT dashed)
-    "deltaet":     "#FAB387",   # Mocha Peach (RoR ET dashed)
+    "bt":          COLOR_GRAIN,                      # Mocha Blue  – bean
+    "et":          COLOR_AIR,                        # Mocha Peach – air
+    "deltabt":     dimmed(COLOR_GRAIN, COLOR_GRAIN), # bean hue, quieter (dashed)
+    "deltaet":     dimmed(COLOR_AIR, COLOR_AIR),     # air hue, quieter (dashed)
     "grid":        "#45475A",   # Mocha Surface 1
     "title":       "#CDD6F4",   # Mocha Text
     "xlabel":      "#CDD6F4",
     "ylabel":      "#CDD6F4",
     # machine sliders (Air / Drum / Airwave / Burner)
-    "slider0":     "#89B4FA",   # Blue  – Air
-    "slider1":     "#A6E3A1",   # Green – Drum
-    "slider2":     "#FAB387",   # Peach – Airwave
-    "slider3":     "#F38BA8",   # Red   – Burner
+    "slider0":     "#94E2D5",   # Teal   – Air
+    "slider1":     "#A6E3A1",   # Green  – Drum
+    "slider2":     "#CBA6F7",   # Mauve  – Airwave
+    "slider3":     "#F38BA8",   # Red    – Burner
 }
 
 # Tailles de police du Roast Viewer — centralisées pour un rendu lisible et cohérent

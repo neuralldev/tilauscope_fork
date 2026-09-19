@@ -37,16 +37,15 @@ from PyQt6.QtCore import Qt, QRectF, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath
 
 from artisanlib.util import convertRoRstrict
-from tilauscope.tilauscope_types import THEME
+from tilauscope.tilauscope_types import PHASE_COLORS, THEME
 from tilauscope.theme_qss import base_qss, tooltip_qss
 from tilauscope.roast_debrief import (build_debrief, profile_from_qmc, fmt_mmss,
                                       display_name, Debrief)
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
-# Phase colours, matching the phase blocks of the control panel.
-_PHASE_COLOR: Final[dict[str, str]] = {
-    "dry": THEME['ACCENT'], "mai": THEME['YELLOW'], "dev": THEME['WARNING']}
+# The application's phase triple, as every other phase ribbon draws it.
+_PHASE_COLOR: Final[dict[str, str]] = dict(zip(("dry", "mai", "dev"), PHASE_COLORS))
 
 _SEVERITY_COLOR: Final[dict[str, str]] = {
     "ok": THEME['SUCCESS'], "attention": THEME['YELLOW'],

@@ -28,7 +28,8 @@ from PyQt6.QtWidgets import (
     QFrame,
 )
 
-from tilauscope.tilauscope_types import THEME, format_batch_label
+from tilauscope.tilauscope_types import (COLOR_AIR, COLOR_GRAIN, THEME,
+                                         format_batch_label)
 from tilauscope.theme_qss import base_qss
 from tilauscope.probe_visibility import et_available_in_profile
 
@@ -42,9 +43,10 @@ except Exception as _e:  # pragma: no cover
     _log.warning(f"matplotlib unavailable for roast card: {_e}")
     _HAS_MPL = False
 
-# curve palette (Catppuccin, matches the app theme)
-_C_BT = "#89B4FA"      # blue — bean temperature
-_C_ET = "#F9E2AF"      # yellow — environment temperature
+# curve palette: the probe hues the roasting window draws with, so the card is
+# the same picture as the screen the roast was driven on.
+_C_BT = COLOR_GRAIN    # blue — bean temperature
+_C_ET = COLOR_AIR      # peach — environment temperature
 _C_MARK = "#6C7086"    # event marker lines
 _C_PLOT_BG = THEME['SURFACE']   # the plot ground is chrome, unlike the channels above
 

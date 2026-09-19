@@ -13,10 +13,12 @@ from typing import TYPE_CHECKING
 from tilauscope.tilauscope_types import THEME
 
 if TYPE_CHECKING:
-    from PyQt6.QtWidgets import QListView, QWidget
+    from PyQt6.QtWidgets import QComboBox, QListView, QWidget
 
 __all__ = ['apply_tilau_theme', 'base_qss', 'calendar_qss', 'mono_family', 'restyle',
-           'popup_view_qss', 'styled_popup_view', 'tint', 'tooltip_qss', 'with_tooltip']
+           'popup_container_qss', 'popup_view_qss', 'style_combo_popup',
+           'style_combo_popups', 'styled_popup_view', 'tint', 'tooltip_qss',
+           'with_tooltip']
 
 _log = logging.getLogger(__name__)
 
@@ -402,6 +404,22 @@ def apply_tilau_theme(root: QWidget, ground: bool = True) -> None:
     inside itself. See ``base_qss``.
     """
     root.setStyleSheet(base_qss(ground))
+    # Every combo under `root` also needs the frame its popup is shown in
+    # themed, and that frame is out of reach of any style sheet — see
+    # `style_combo_popup`. This call comes before the children exist (it is
+    # made at the top of a constructor, by convention), so the sweep waits one
+    # turn of the event loop. Combos built later than that carry their own
+    # call, at the point they are given their view.
+    from PyQt6.QtCore import QTimer  # noqa: PLC0415
+    QTimer.singleShot(0, lambda: _sweep_combo_popups(root))
+
+
+def _sweep_combo_popups(root: QWidget) -> None:
+    """Deferred body of the sweep above. The window may be gone by now."""
+    try:
+        style_combo_popups(root)
+    except RuntimeError:
+        pass
 
 
 def tint(token: str, alpha: float) -> str:
@@ -501,6 +519,38 @@ QListView::item:hover {{
     color: {t['TEXT']};
 }}
 """
+
+
+def popup_container_qss() -> str:
+    """Stylesheet for the frame a combo popup is shown in. Split from
+    `style_combo_popup` so it can be checked without a QApplication."""
+    return (f"QComboBoxPrivateContainer {{ background-color: {THEME['BG']};"
+            f" border: none; }}")
+
+
+def style_combo_popup(combo: QComboBox) -> None:
+    """Theme the frame the popup is shown in, not only the list inside it.
+
+    A combo popup is a top-level frame holding the view, and it keeps a few
+    pixels of its own above and below. The style sheet set on the combo never
+    reaches that frame, which therefore stayed at the platform palette: a white
+    rim above and below a dark list. Call it once the view is set.
+    """
+    container = combo.view().parentWidget()
+    if container is not None:
+        container.setStyleSheet(popup_container_qss())
+
+
+def style_combo_popups(root: QWidget) -> None:
+    """Theme the popup frame of every combo already built under `root`.
+
+    The per-combo call is the rule; this is how a whole window obeys it at once
+    without every dialog having to remember. A combo built after the sweep is
+    not covered and still needs its own call.
+    """
+    from PyQt6.QtWidgets import QComboBox  # noqa: PLC0415
+    for combo in root.findChildren(QComboBox):
+        style_combo_popup(combo)
 
 
 def styled_popup_view(min_width: int = 0) -> QListView:

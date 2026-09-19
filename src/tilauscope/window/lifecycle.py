@@ -775,6 +775,7 @@ class LifecycleMixin:
         self._clear_no_reading_face()
         # Nothing left on screen to review once the canvas is cleared.
         self.hide_roast_review()
+        self.clear_live_events()
         self.aw.qmc.resetButtonAction()
 
     def _save_current_roast_silently(self) -> bool:

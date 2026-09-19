@@ -42,7 +42,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QCursor, QPalette, QColor
 from PyQt6 import sip
 
-from tilauscope.theme_qss import base_qss, tooltip_qss
+from tilauscope.theme_qss import base_qss, style_combo_popup, tooltip_qss
 from tilauscope.tilauscope_types import THEME, no_enter_default, show_styled_message, TilauProgress
 # Shared with the Devices window (device_setup/dialog.py): one look for both.
 from tilauscope.widgets.config_parts import (
@@ -471,6 +471,7 @@ class TilauscopeConfigDlg(QDialog):
             """
         )
         self.tilauRoaster.setView(_roaster_view)
+        style_combo_popup(self.tilauRoaster)
         self.tilauRoaster.setToolTip(
             QApplication.translate("tilauscope_devices", "Select the active roaster machine profile")
         )
@@ -1024,6 +1025,7 @@ class TilauscopeConfigDlg(QDialog):
         )
         # macOS draws the popup as a top-level window that ignores the dialog QSS
         self.mqttProtocolCombo.setView(_styled_combo_view())
+        style_combo_popup(self.mqttProtocolCombo)
         self.mqttProtocolCombo.setToolTip(QApplication.translate(
             "tilauscope_devices",
             "Version spoken to the broker. Leave on v3.1.1 unless the broker "
@@ -1198,6 +1200,7 @@ class TilauscopeConfigDlg(QDialog):
             """
         )
         self.labelSizeCombo.setView(_label_size_view)
+        style_combo_popup(self.labelSizeCombo)
         self.labelSizeCombo.setToolTip(
             QApplication.translate("tilauscope_devices",
                 "Physical size the label PDF is generated at. Print at 100% (no "
@@ -1368,6 +1371,7 @@ class TilauscopeConfigDlg(QDialog):
 
         # Mocha-style the popup (macOS top-level popup ignores dialog QSS)
         combo.setView(_styled_combo_view())
+        style_combo_popup(combo)
         # let the combo shrink to the available width (the long UUID no
         # longer forces the row wider than the dialog → no horizontal scrollbar);
         # the current text elides and the full id stays visible in the popup.

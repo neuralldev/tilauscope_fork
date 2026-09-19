@@ -22,6 +22,7 @@ grip tab the operator can pull out from the right edge of the window.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import TYPE_CHECKING, Final
 
 from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QSettings, Qt, pyqtSignal
@@ -49,9 +50,26 @@ if TYPE_CHECKING:
     # Annotation only — importing artisanlib.main at runtime executes a
     # settings migration against the real preferences and drags the whole
     # application into any process that only wanted this widget.
+    from artisanlib.canvas import tgraphcanvas
     from artisanlib.main import ApplicationWindow
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
+
+
+def live_event_timestamp(qmc: tgraphcanvas) -> str:
+    """Stamp used by every card in the LIVE EVENTS column.
+
+    Roast time since CHARGE once the batch is on, wall clock otherwise. The
+    leading '+' is the only thing telling the two apart on a 200 px card, so
+    both card kinds have to go through here rather than format their own.
+    """
+    try:
+        if qmc.flagon and qmc.timeindex[0] > -1:
+            elapsed = qmc.timeclock.elapsed() / 1000.0 - qmc.timex[qmc.timeindex[0]]
+            return f"+{int(elapsed) // 60}:{int(elapsed) % 60:02d}"
+    except Exception:  # pylint: disable=broad-except - a card without a stamp beats no card
+        pass
+    return datetime.now().strftime("%H:%M:%S")
 
 
 SIDEBAR_W   = 220   # px — must match AlarmSidebar content needs
@@ -83,7 +101,8 @@ class TriggeredAlarmBadge(QFrame):
     }
     ALARM_CONDS: list[str] = ['<', '>', '=', '\u2260']
 
-    def __init__(self, alarm_data: AlarmData, aw: ApplicationWindow, action_list: dict, parent=None):
+    def __init__(self, alarm_data: AlarmData, aw: ApplicationWindow, action_list: dict,
+                 timestamp: str = '', parent=None):
         super().__init__(parent)
         self.data = alarm_data
         self.aw = aw
@@ -129,16 +148,23 @@ class TriggeredAlarmBadge(QFrame):
         layout.setContentsMargins(10, 5, 10, 5)
         layout.setSpacing(2)
 
-        # Header: ID et Source
+        # Header: ID et Source, horodatage à droite comme sur la carte EVT
         header = QLabel(QApplication.translate("Label","Alarm")+f" #{self.data.index + 1}")
         header.setStyleSheet(f"color: {self.color}; font-weight: 900; font-size: 9px; border: none;")
+        header_row = QHBoxLayout()
+        header_row.addWidget(header)
+        header_row.addStretch(1)
+        ts_lbl = QLabel(timestamp)
+        ts_lbl.setStyleSheet(f"color: {THEME['SURFACE2']}; font-size: 9px; border: none;")
+        ts_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        header_row.addWidget(ts_lbl)
 
         # Message / Action
         msg = QLabel(self.define_text(alarm_data))
         msg.setStyleSheet("color: white; font-weight: normal; font-size: 9px; border: none;")
         msg.setWordWrap(True)
 
-        layout.addWidget(header)
+        layout.addLayout(header_row)
         layout.addWidget(msg)
 
         # Animation d'entrée (Fade + Slide)
@@ -234,7 +260,7 @@ class AlarmSidebar(QWidget):
             QPushButton:hover {{ background: {THEME['SURFACE1']}; color: {THEME['CRITICAL']}; }}
             QPushButton:pressed {{ background: {THEME['CRITICAL']}; color: {THEME['BG']}; }}
         """))
-        clear_btn.clicked.connect(self._clear_all_badges)
+        clear_btn.clicked.connect(self.clear)
         title_row.addWidget(clear_btn)
 
         self.layout.addLayout(title_row)
@@ -301,41 +327,30 @@ class AlarmSidebar(QWidget):
             28: QApplication.translate('Combobox', 'TilauScope kernel'),
         }
 
-        # get alarms from artisan
-        raw_alarms = self.get_current_alarms_data()
-        self.current_alarms:list[AlarmData] = []
-        # convert alarms structure to class data object
-        self._load_alarms(raw_alarms)
+    def get_alarm_info(self, alarm_index:int) -> AlarmData | None:
+        """Build the fired alarm's description from qmc, at fire time.
 
-    def get_current_alarms_data(self):
-        alarms:dict[str, list[int]|list[float]|list[str]] = {}
-        alarms['alarmflags'] = self.aw.qmc.alarmflag
-        alarms['alarmguards'] = self.aw.qmc.alarmguard
-        alarms['alarmnegguards'] = self.aw.qmc.alarmnegguard
-        alarms['alarmtimes'] = self.aw.qmc.alarmtime
-        alarms['alarmoffsets'] = self.aw.qmc.alarmoffset
-        alarms['alarmconds'] = self.aw.qmc.alarmcond
-        alarms['alarmsources'] = self.aw.qmc.alarmsource
-        alarms['alarmtemperatures'] = self.aw.qmc.alarmtemperature
-        alarms['alarmactions'] = self.aw.qmc.alarmaction
-        alarms['alarmbeep'] = self.aw.qmc.alarmbeep
-        alarms['alarmstrings'] = self.aw.qmc.alarmstrings
-        return alarms
-
-    def _get_info(self, action_id):
-        mapping = {19: ("PID", -220), 20: ("PID", -220), 3: ("AIR", 100), 4: ("DRUM", 180), 6: ("BURNER", 260), 27: ("EXTERNAL", 340)}
-        return mapping.get(action_id, ("DEFAULT", -120))
-
-    def _load_alarms(self, data):
-        for i in range(len(data.get("alarmflags", []))):
-            if data["alarmflags"][i] == 1:
-                action = data["alarmactions"][i]
-                cat, _ = self._get_info(action)
-                alarm_raw = AlarmData(index=i, event_code=data["alarmtimes"][i], offset=data["alarmoffsets"][i], action=action, msg=data["alarmstrings"][i], previous_alarm=data["alarmguards"][i], not_alarm=data["alarmnegguards"][i], alarm_source=data["alarmsources"][i], alarm_cond=data["alarmconds"][i], alarm_temperature=data["alarmtemperatures"][i], is_active=True)
-                self.current_alarms.append(alarm_raw)
-
-    def get_alarm_info(self, alarm_index:int)->AlarmData:
-        return next((a for a in self.current_alarms if a.index == alarm_index), None)
+        Never from a snapshot: the alarm editor rewrites the whole qmc.alarm*
+        set on save, so every index shifts as soon as one alarm is added or
+        removed. A copy taken when this window opened described the wrong
+        alarm — or no alarm at all, and the card silently never appeared.
+        """
+        qmc = self.aw.qmc
+        if not 0 <= alarm_index < len(qmc.alarmtime):
+            return None
+        return AlarmData(
+            index=alarm_index,
+            event_code=qmc.alarmtime[alarm_index],
+            offset=qmc.alarmoffset[alarm_index],
+            action=qmc.alarmaction[alarm_index],
+            msg=qmc.alarmstrings[alarm_index],
+            previous_alarm=qmc.alarmguard[alarm_index],
+            not_alarm=qmc.alarmnegguard[alarm_index],
+            alarm_source=qmc.alarmsource[alarm_index],
+            alarm_cond=qmc.alarmcond[alarm_index],
+            alarm_temperature=qmc.alarmtemperature[alarm_index],
+            is_active=True,
+        )
 
     def _update_count(self) -> None:
         """Met à jour le label compteur."""
@@ -343,7 +358,7 @@ class AlarmSidebar(QWidget):
         self._count_lbl.setText(str(n))
         self._count_lbl.setVisible(n > 0)
 
-    def _clear_all_badges(self) -> None:
+    def clear(self) -> None:
         """Vide toutes les cartes de la sidebar."""
         for badge in self.badges:
             self._badges_layout.removeWidget(badge)
@@ -360,14 +375,16 @@ class AlarmSidebar(QWidget):
         self._update_count()
 
     def add_triggered_alarm(self, alarm_data: AlarmData) -> None:
-        badge = TriggeredAlarmBadge(alarm_data, self.aw, self._action_list)
+        badge = TriggeredAlarmBadge(alarm_data, self.aw, self._action_list,
+                                    live_event_timestamp(self.aw.qmc))
         self._badges_layout.insertWidget(0, badge)
         self.badges.insert(0, badge)
         self._trim_badges()
 
-    def add_event_badge(self, label: str, command: str, timestamp: str, color: str) -> None:
+    def add_event_badge(self, label: str, command: str, timestamp: str, color: str,
+                        recorded: bool = True) -> None:
         """Ajoute une carte EVT (bouton event panel) dans la sidebar."""
-        badge = EventFiredBadge(label, command, timestamp, color)
+        badge = EventFiredBadge(label, command, timestamp, color, recorded)
         self._badges_layout.insertWidget(0, badge)
         self.badges.insert(0, badge)
         self._trim_badges()

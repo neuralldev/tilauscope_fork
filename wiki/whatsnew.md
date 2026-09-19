@@ -8,6 +8,10 @@ A smaller release: TilauScope now adapts itself to machines that have no air pro
 * **Next batch.** From the top of the roast review, one click prepares the next roast of the same coffee: same charge weight, and the roast you just reviewed as the background curve. Nothing heats until you press MONITOR and START.
 * **The coach in the roast review.** A Coach card sums up the reading in one line — the level the roast ran at and the remark that matters most — and opens the full reading, the same one BeanCave shows.
 
+## ☕ During the roast
+
+* **What the coffee is for is now on the assistant.** *Filter*, *Omni* or *Espresso* sits under the coffee and the roasting target, so it can be set without going through the setup sheet — it is one setting shared with the setup sheet and the planning tab. Once the roast starts, the line under the coffee's name states which one the plan was built on.
+
 ## 🔌 Devices
 
 * **On a machine with no air probe, such as the Skywalker V1, TilauScope no longer shows exhaust temperature.** Its readout, the air-temperature and machine-response curve options, the phone's ET and ΔT tiles, the roast miniatures, the PID input choice, and any advice that mentioned it are hidden or reworded around bean temperature — and preheating always follows bean temperature on that machine.

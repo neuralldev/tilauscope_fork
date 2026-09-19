@@ -37,7 +37,7 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
 
 from tilauscope.device_setup import catalogue, draft
 from tilauscope.device_setup.extra_card import EXTRA_DEVICE_MIME, ExtraDeviceCard
-from tilauscope.theme_qss import base_qss, tooltip_qss
+from tilauscope.theme_qss import base_qss, style_combo_popup, tooltip_qss
 from tilauscope.tilauscope_types import THEME, no_enter_default, show_styled_message
 from tilauscope.widgets.config_parts import (QCollapsibleWidget, close_button, config_card,
                                              config_dialog_qss, config_tabs_qss, dialog_title,
@@ -286,6 +286,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
         self._port_label = field_label(QApplication.translate('tilauscope_devices', 'USB port'), _LABEL_W)
         self._port_combo = PortComboBox(selection=self._draft.comport or None)
         self._port_combo.setView(styled_combo_view())
+        style_combo_popup(self._port_combo)
         grid.addWidget(self._port_label, 3, 0)
         grid.addWidget(self._port_combo, 3, 1)
         layout.addLayout(grid)
@@ -345,6 +346,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
     def _channel_combo(values: tuple[str, ...], current: str) -> QComboBox:
         combo = QComboBox()
         combo.setView(styled_combo_view())
+        style_combo_popup(combo)
         for value in values:
             text = QApplication.translate('tilauscope_devices', 'None') if value == 'None' else value
             combo.addItem(text, value)
@@ -372,6 +374,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
             model.appendRow(QStandardItem(name))
         combo.setModel(model)
         combo.setView(styled_combo_view())
+        style_combo_popup(combo)
         combo.activated.connect(self._on_meter_activated)
         self._show_meter(combo, self._draft.meter)
         return combo
@@ -737,6 +740,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
             else:
                 combo = QComboBox()
                 combo.setView(styled_combo_view())
+                style_combo_popup(combo)
                 combo.currentIndexChanged.connect(self._ambient_slot(key))
                 widget = combo
             grid.addWidget(widget, r, 1)

@@ -15,6 +15,7 @@
 
 import re
 import uuid
+import codecs
 import math
 import logging
 import platform
@@ -225,56 +226,91 @@ GREEN_BEAN_COLUMNS = [
     lambda b: b.uuid if b.uuid!='' else str(uuid.uuid4()),
 ]
 
+# The roast-colour ramp of the whole application: roast planning, BeanCave,
+# roast viewer and graph annotations all read their colour from here through
+# get_agtron_color(), so one Agtron number is always the same colour. The
+# tones go light to dark without a step back, and are legible on the dark
+# theme background.
 AGTRON_SCALES: list[AgtronScale] = [
     AgtronScale(
         name="Extremely Dark",
         agtron_range=AgtronRange(0.0, 25.99),
         description="Italian",
-        color_map="#2f1202",
+        color_map="#2D1A0E",
     ),
     AgtronScale(
         name="Very Dark",
         agtron_range=AgtronRange(26.0, 34.99),
         description="French",
-        color_map="#431902",
+        color_map="#4C2B16",
     ),
     AgtronScale(
         name="Dark",
         agtron_range=AgtronRange(35.0, 40.99),
         description="Vienna",
-        color_map="#3c1601",
+        color_map="#6B3D1E",
     ),
     AgtronScale(
         name="Medium Dark",
         agtron_range=AgtronRange(41.0, 50.99),
         description="Full City",
-        color_map="#561f01",
+        color_map="#855734",
     ),
     AgtronScale(
         name="Medium",
         agtron_range=AgtronRange(51.0, 60.99),
         description="City",
-        color_map="#7b3916",
+        color_map="#A0704A",
     ),
     AgtronScale(
         name="Medium Light",
         agtron_range=AgtronRange(61.0, 70.99),
         description="American",
-        color_map="#863C14",
+        color_map="#B98B5E",
     ),
     AgtronScale(
         name="Light",
         agtron_range=AgtronRange(71.0, 100.99),
         description="New England",
-        color_map="#9d4515",
+        color_map="#D2A679",
     ),
     AgtronScale(
         name="Very Light",
         agtron_range=AgtronRange(101.0, 130.0),
         description="Cinnamon",
-        color_map="#a14513",
+        color_map="#E8CDA5",
     ),
 ]
+
+# ── .alog text helpers ───────────────────────────────────────────────────────
+
+# Escapes Artisan writes into a profile's text fields: \xNN, \uNNNN and the
+# usual whitespace escapes. Several plus signs because repeated Record passes of
+# an older build re-escaped what was already escaped.
+_ALOG_ESCAPE = re.compile(r'\\+(x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|[nrt])')
+
+
+def decode_alog_text(value: object, default: str = '') -> str:
+    """Return a text field of a roast file as the operator typed it.
+
+    Artisan writes every text field of a `.alog` escaped, so an event named
+    "Brûleur" is stored as "Br\\xfbleur". Artisan decodes it when it opens the
+    profile; anything reading the file directly has to decode it too, or the
+    escape reaches the screen.
+
+    Text that is already readable is returned untouched: decoding it a second
+    time would turn its accents into mojibake.
+    """
+    text = str(value) if value is not None else default
+    for _ in range(4):   # an over-escaped field needs more than one pass
+        if not (text.isascii() and _ALOG_ESCAPE.search(text)):
+            break
+        try:
+            text = codecs.unicode_escape_decode(text)[0]
+        except Exception:  # noqa: BLE001 - unreadable escape: keep what we have
+            break
+    return text
+
 
 # ── Colour helpers ────────────────────────────────────────────────────────────
 # These functions are pure (no Qt dependency) so they can be imported at module
@@ -1133,6 +1169,45 @@ THEME = {
     "DARK_ROAST": "#583121",
     "VERY_DARK_ROAST": "#35190E",
 }
+
+# ── the probe hues, one source for every screen that draws a roast ──────────
+#
+# One hue per PROBE, not per quantity: the bean and its rate are one family,
+# the air and its rate another. Within a family the temperature is the full
+# hue and the rate wears it a step back, so a rate is never mistaken for the
+# line the roast is read from. The roast window, BeanCave's viewer, the roast
+# cards and the phone all read these, because a roast reviewed afterwards must
+# be the same picture as the roast that was driven.
+COLOR_GRAIN: Final[str] = '#89B4FA'          # blue — grain temperature
+COLOR_AIR: Final[str] = '#FAB387'            # peach — air temperature
+
+
+def dimmed(colour: str, fallback: str) -> str:
+    """The same hue, one step back.
+
+    A rate belongs to the probe it is measured on, so it wears that probe's
+    colour rather than one of its own — but it must never be mistaken for the
+    temperature itself, which is the line the roast is read from. Darker and a
+    little less saturated does both: same family at a glance, clearly the
+    quieter member of it.
+    """
+    c = QColor(colour)
+    if not c.isValid():
+        c = QColor(fallback)
+    h, sat, light, alpha = c.getHsl()
+    return QColor.fromHsl(h, int(sat * 0.72), int(light * 0.74), alpha).name()
+
+
+#: The three roast phases, in the order they happen: drying, Maillard,
+#: development. Blue then yellow then red — peach and red sit one step apart on
+#: the wheel, and with peach in the middle the Maillard and development
+#: stretches read as one block. Every surface that shows a phase reads this
+#: triple: the grounds behind the curve, the ribbon of a roast review, the
+#: phase bar of a roast card, the chip on the phone. What varies is only the
+#: strength each surface needs — faint behind a curve, `dimmed` where the phase
+#: must not compete with the roast hues around it, full on a band of its own.
+PHASE_COLORS: Final[tuple[str, str, str]] = (THEME['SKY'], THEME['YELLOW'], THEME['CRITICAL'])
+
 
 def format_batch_label(prefix: str, nr: int, pos: int | None = None) -> str:
     """Render an Artisan batch identity as a display string.

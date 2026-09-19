@@ -107,6 +107,7 @@ class TileText:
     value: str = DASH
     sub: str = ''
     swatch: str = ''        # the colour of the dot beside the value, or none
+    swatch_filled: bool = True   # a hollow ring instead of a filled dot
 
 
 def _not_recorded(caption: str) -> TileText:
@@ -164,9 +165,13 @@ def roast_tiles(facts: RoastFacts | None) -> list[TileText]:
                else QApplication.translate('tilauscope_beancave', 'Ground'))
         colour = TileText(captions[3], f'{facts.ground:.0f}', sub, get_agtron_color(facts.ground))
     elif facts.whole > 0:
-        # A number and nothing more: the scale's names and colours belong to ground readings.
+        # The dot shows the reading on the same roast scale as everywhere else,
+        # hollow because a whole bean reads a shade darker than its ground
+        # equivalent. The category name stays out: naming a roast level is a
+        # claim, and the names belong to ground readings.
         colour = TileText(captions[3], f'{facts.whole:.0f}',
-                          QApplication.translate('tilauscope_beancave', 'Whole bean'))
+                          QApplication.translate('tilauscope_beancave', 'Whole bean'),
+                          get_agtron_color(facts.whole), swatch_filled=False)
     else:
         colour = _not_recorded(captions[3])
     return [weight, duration, drop, colour]
@@ -278,8 +283,10 @@ class KpiTile(QFrame):
         self._sub.setText(text.sub)
         self._sub.setToolTip(text.sub)
         if text.swatch:
-            self._swatch.setStyleSheet(f"background-color: {text.swatch}; border-radius: 5px;"
-                                       f" border: 1px solid {THEME['OVERLAY0']};")
+            fill = text.swatch if text.swatch_filled else 'transparent'
+            rim = THEME['OVERLAY0'] if text.swatch_filled else text.swatch
+            self._swatch.setStyleSheet(f"background-color: {fill}; border-radius: 5px;"
+                                       f" border: {1 if text.swatch_filled else 2}px solid {rim};")
             self._swatch.show()
         else:
             self._swatch.hide()

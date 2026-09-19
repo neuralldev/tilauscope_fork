@@ -45,7 +45,7 @@ from PyQt6 import sip
 
 from tilauscope.niimprint import NiimbotBLE
 from tilauscope.tilau_ble_scanner import TilauBLEScanner
-from tilauscope.theme_qss import base_qss
+from tilauscope.theme_qss import base_qss, style_combo_popup
 from tilauscope.tilauscope_types import (BeanCaveContainer, show_styled_message,
                                          THEME, _IS_MACOS, _IS_WINDOWS,
                                          open_in_os_viewer, call_later)
@@ -1146,6 +1146,7 @@ class LifecycleMixin:
 
         for combo in self.findChildren(QComboBox):
                 combo.setView(QListView())
+                style_combo_popup(combo)
                 combo.setItemDelegate(QStyledItemDelegate())
 
         for _cb in (

@@ -51,6 +51,7 @@ from tilauscope.button_layout import corner_radii, split_groups, tray_and_rows
 from tilauscope.graph.common import dimmed
 from tilauscope.theme_qss import tint, tooltip_qss, with_tooltip
 from tilauscope.tilauscope_types import THEME
+from tilauscope.window.sidebar import live_event_timestamp
 from tilauscope.widgets.flow_layout import FlowLayout
 from tilauscope.widgets.readouts import ExtraCounterWidget, LCDReadout
 
@@ -241,7 +242,7 @@ _STRIPE_W: Final[int] = 5
 class EventPanel(QWidget):
 
     # signal émis après chaque action : (label, commande, timestamp, couleur_hex)
-    event_fired = pyqtSignal(str, str, str, str)
+    event_fired = pyqtSignal(str, str, str, str, bool)
 
      # ── QSettings keys ────────────────────────────────────────────────────────
     _SETTINGS_W = "tilauscope/event_panel_width"
@@ -406,19 +407,16 @@ class EventPanel(QWidget):
         # 5. execute the Artisan action
         self.bm._onclick(btn_obj.index) # Use the button's index to trigger the correct Artisan event
 
-        # 6. Notifier la sidebar — timestamp relatif au CHARGE si flagon, sinon horloge
+        # 6. Notifier la sidebar. Artisan n'enregistre l'événement que sous
+        # flagstart, et jamais pour un bouton de type « » (extraeventstypes 4,
+        # recordextraevent) : la carte doit dire lequel des deux a eu lieu.
         try:
             aw = self.main_window.aw if hasattr(self.main_window, 'aw') else None
-            if aw and aw.qmc.flagon and aw.qmc.timeindex[0] > -1:
-                charge_t = aw.qmc.timex[aw.qmc.timeindex[0]]
-                elapsed  = aw.qmc.timeclock.elapsed() / 1000.0 - charge_t
-                mm, ss   = int(elapsed) // 60, int(elapsed) % 60
-                ts       = f"{mm}:{ss:02d}"
-            else:
-                from datetime import datetime as _dt
-                ts = _dt.now().strftime("%H:%M:%S")
+            qmc = aw.qmc if aw else None
+            ts = live_event_timestamp(qmc)
+            recorded = bool(qmc and qmc.flagstart and btn_obj.ui_type != 4)
             cmd = btn_obj.command if hasattr(btn_obj, 'command') and btn_obj.command else ""
-            self.event_fired.emit(btn_obj.label, cmd, ts, btn_obj.color)
+            self.event_fired.emit(btn_obj.label, cmd, ts, btn_obj.color, recorded)
         except Exception:
             pass
 

@@ -49,7 +49,7 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.header_icons import make_icon
-from tilauscope.theme_qss import styled_popup_view, tint
+from tilauscope.theme_qss import style_combo_popup, styled_popup_view, tint
 from tilauscope.tilauscope_types import (THEME, standardization_map, TilauProgressRow)
 from tilauscope.roast_timeline import RoastReadyDialog
 from tilauscope.cave.common import (
@@ -531,9 +531,11 @@ class ViewerMixin:
         filters.setSpacing(6)
         self.roast_coffee_combo = QComboBox()
         self.roast_coffee_combo.setView(styled_popup_view(min_width=260))
+        style_combo_popup(self.roast_coffee_combo)
         self.roast_coffee_combo.addItem(QApplication.translate("tilauscope_beancave", "All coffees"), "")
         self.roast_sort_combo = QComboBox()
         self.roast_sort_combo.setView(styled_popup_view())
+        style_combo_popup(self.roast_sort_combo)
         self.roast_sort_combo.addItem(QApplication.translate("tilauscope_beancave", "Most recent"), SORT_RECENT)
         self.roast_sort_combo.addItem(QApplication.translate("tilauscope_beancave", "Oldest first"), SORT_OLDEST)
         self.roast_sort_combo.addItem(QApplication.translate("tilauscope_beancave", "Coffee A–Z"), SORT_COFFEE)

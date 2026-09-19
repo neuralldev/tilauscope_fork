@@ -381,7 +381,7 @@ var tunit='C';          // temperature unit the desktop reads in ('C' | 'F')
 /* curve colours: these are only the fallback — the desktop sends its own palette
    so BT/ET/RoR are the SAME hue on both screens (a curve that changes colour
    between the two is read wrong mid-roast). */
-var COL={bt:'#89B4FA',et:'#B4BEFE',ror:'#A6E3A1'};
+var COL={bt:'#89B4FA',et:'#FAB387',ror:'#457ED9'};
 var ltime=null;         // Artisan's exact LCD timer seconds (matches the desktop)
 var wakeLock=null;      // Screen Wake Lock sentinel (keep the phone awake)
 
@@ -394,7 +394,9 @@ function toast(msg,kind){var t=$('toast');t.textContent=msg;t.className='show'+(
  clearTimeout(toastT);toastT=setTimeout(function(){t.className='';},2400);}
 
 /* ---------- header / phase ---------- */
-var PHASECOL={idle:'#6C7086',preheat:'#F9E2AF',drying:'#89B4FA',
+/* the application's phase triple for the three roast phases — the chip must
+   name the same phase in the same colour as the desktop's phase grounds. */
+var PHASECOL={idle:'#6C7086',preheat:'#F9E2AF',drying:'#89DCEB',
  maillard:'#F9E2AF',development:'#F38BA8',cooling:'#A6E3A1'};
 function fmtClock(){
  // ltime is Artisan's own LCD value (whole seconds, sent while recording) — show it

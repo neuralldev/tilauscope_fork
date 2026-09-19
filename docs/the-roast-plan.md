@@ -19,8 +19,8 @@ short step-by-step form: pick the coffee, enter the parameters, adjust probe off
 The **batch weight** and **roast level** come back as you last left them, since a bag is usually
 worked through at one batch size and one roast level over several sessions. Beside them sits
 **What is this coffee for?** — *Filter*, *[Omni](glossary.md#omni)* or *Espresso* — the same
-choice the roast setup sheet asks for, and the same setting: change it in either place and both
-follow. It sets the development time (filter the shortest, espresso the longest, omni between
+choice the roast setup sheet and the guided assistant ask for, and the same setting: change it
+in any of the three and all three follow. It sets the development time (filter the shortest, espresso the longest, omni between
 the two) and carries through to the drop temperature and the weight loss to aim for. It too is
 remembered for the next plan. The ambient fields
 do not: they describe the room as it is now, and are filled from the online weather or the

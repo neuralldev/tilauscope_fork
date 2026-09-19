@@ -113,6 +113,19 @@ class GuidancePhaseTracker:
             confirmed,
         )
 
+    def retract(self, phase: GuidancePhase) -> PhaseTransition:
+        """Give back every milestone above `phase`, after one was un-marked.
+
+        Authority is monotone on purpose: a phase does not un-happen on its
+        own, and a missing marker must never pull the roast backwards. An
+        operator cancelling the event in Artisan is the one thing that does,
+        so it gets this single door rather than a hole in `observe`.
+        """
+        self._observed = {p for p in self._observed if p <= phase}
+        self._observed.add(GuidancePhase.DRYING)
+        self.phase = phase
+        return PhaseTransition(self.phase, self.source, True, False)
+
 
 def resolve_phase_from_plan_temperature(
     current: GuidancePhase,

@@ -35,7 +35,7 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
-from tilauscope.theme_qss import tint, tooltip_qss
+from tilauscope.theme_qss import style_combo_popup, tint, tooltip_qss
 from tilauscope.tilauscope_types import (THEME)
 from tilauscope.sack_manager import SackChipsRow  # sack labels (Lot 1, §9.3)
 from tilauscope.beancave_catalogue import CatalogueListWidget  # rich catalogue list (Lot 5)
@@ -199,31 +199,37 @@ class BeanTabBuildMixin:
         self.country_combo = QComboBox()
         self.country_combo.setItemDelegate(QStyledItemDelegate())
         self.country_combo.setView(QListView())
+        style_combo_popup(self.country_combo)
         self.country_combo.addItems(self.coffee_producing_countries)
 
         self.category_process_combo = QComboBox()
         self.category_process_combo.setItemDelegate(QStyledItemDelegate())
         self.category_process_combo.setView(QListView())
+        style_combo_popup(self.category_process_combo)
         self.category_process_combo.addItems(self.coffee_beans_categories)
         self.category_process_combo.currentTextChanged.connect(self._update_methods)
 
         self.process_combo = QComboBox()
         self.process_combo.setItemDelegate(QStyledItemDelegate())
         self.process_combo.setView(QListView())
+        style_combo_popup(self.process_combo)
 
         self.species_combo = QComboBox()
         self.species_combo.setItemDelegate(QStyledItemDelegate())
         self.species_combo.setView(QListView())
+        style_combo_popup(self.species_combo)
         self.species_combo.addItems(self.coffee_beans_species)
         self.species_combo.currentTextChanged.connect(self._update_variety)
 
         self.varieties_combo = QComboBox()
         self.varieties_combo.setItemDelegate(QStyledItemDelegate())
         self.varieties_combo.setView(QListView())
+        style_combo_popup(self.varieties_combo)
 
         self.type_combo = QComboBox()
         self.type_combo.setItemDelegate(QStyledItemDelegate())
         self.type_combo.setView(QListView())
+        style_combo_popup(self.type_combo)
         self.type_combo.addItems(["Single Origin", "Blend"])
         self.type_combo.setToolTip(QApplication.translate("tilauscope_beancave","Select if this record is for a Single Origin green bean or a Blend."))
         self.type_combo.currentIndexChanged.connect(self._toggle_blend_fields)
@@ -335,6 +341,7 @@ class BeanTabBuildMixin:
         self.bean2_combo = QComboBox()
         self.bean2_combo.setItemDelegate(QStyledItemDelegate())
         self.bean2_combo.setView(QListView())
+        style_combo_popup(self.bean2_combo)
         self.bean2_combo.addItems(_initial_list)
         self.bean2_ratio_input = MyQDoubleSpinBox()
         self.bean2_ratio_input.setRange(0.0, 100.0)
@@ -345,6 +352,7 @@ class BeanTabBuildMixin:
         self.bean3_combo = QComboBox()
         self.bean3_combo.setItemDelegate(QStyledItemDelegate())
         self.bean3_combo.setView(QListView())
+        style_combo_popup(self.bean3_combo)
         self.bean3_combo.addItems(_initial_list)
         self.bean3_ratio_input = MyQDoubleSpinBox()
         self.bean3_ratio_input.setRange(0.0, 100.0)

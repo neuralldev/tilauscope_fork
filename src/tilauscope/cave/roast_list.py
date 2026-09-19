@@ -467,16 +467,20 @@ class RoastRowDelegate(QStyledItemDelegate):
         line1 = QRect(left, rect.top() + 7, right - left, 18)
         line2 = QRect(left, rect.top() + 26, right - left, 16)
 
-        # The roast colour, when one was measured; a ring when none was. The
-        # filled dot keeps a faint rim, or a dark roast vanishes into the ground.
+        # The roast colour, when one was measured; a ring when none was. Both
+        # readings take their colour from the one roast scale, so a number and
+        # its dot always say the same thing. A ground reading fills the dot; a
+        # whole-bean reading, which runs a shade darker on the same meter, is
+        # drawn as a ring of that colour.
         dot = QRectF(rect.left() + 14, line1.center().y() - 4, 8, 8)
-        if row.colour > 0 and row.colour_ground:
-            painter.setPen(QPen(self._colour('OVERLAY0', 150), 1))
-            painter.setBrush(QColor(get_agtron_color(row.colour)))
-        elif row.colour > 0:
-            # Measured on whole bean: the scale's colours belong to ground readings.
-            painter.setPen(QPen(self._colour('OVERLAY0', 150), 1))
-            painter.setBrush(self._colour('SUBTEXT'))
+        if row.colour > 0:
+            shade = QColor(get_agtron_color(row.colour))
+            if row.colour_ground:
+                painter.setPen(QPen(self._colour('OVERLAY0', 150), 1))
+                painter.setBrush(shade)
+            else:
+                painter.setPen(QPen(shade, 1.6))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
         else:
             painter.setPen(QPen(self._colour('OVERLAY0'), 1.2))
             painter.setBrush(Qt.BrushStyle.NoBrush)

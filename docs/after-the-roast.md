@@ -116,8 +116,10 @@ Such a roast is easy to find again: its row in the list carries a **No result** 
 
 **BeanCave → Roasts** lists every roast file on the left, on two lines each: the coffee and the
 time it was roasted, then its process, crop year and charge weight, with the batch number on
-the right. The dot in front of a roast is its measured ground colour; a grey dot is a whole-bean
-reading, which has no colour on that scale, and an empty ring means no colour was recorded, and a **No result** badge marks a roast whose weight and colour were never
+the right. The dot in front of a roast carries its measured colour, on the same roast scale as
+the rest of the application: filled for a ground reading, an outline of that colour for a
+whole-bean reading, which runs a shade darker on the same meter, and an empty grey ring when no
+colour was recorded. A **No result** badge marks a roast whose weight and colour were never
 filled in — see [Finishing a roast later](#finishing-a-roast-later).
 
 Roasts are grouped under a heading per day — **Today**, **Yesterday**, then the date — with the
@@ -238,6 +240,10 @@ on its own curve — see [Correcting a milestone](the-window.md#correcting-a-mil
 
 ![The right-click marker menu, showing a milestone's current time and the
 proposed new one](assets/after-the-roast-8.5.png)
+
+<!-- CAPTURE 8.5 — the Roasts tab on Curve, a milestone right-clicked so the marker menu shows
+its current time and the proposed new one; the curve must show the probe colours (bean blue,
+air peach, their rates in the same hues one step back) -->
 
 
 ### Reading back every sample

@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (
     QStackedWidget, QSizePolicy, QApplication,
     QGraphicsOpacityEffect,
 )
-from PyQt6.QtCore import Qt, QPoint, QTimer, pyqtSlot, pyqtSignal
+from PyQt6.QtCore import Qt, QPoint, QSettings, QTimer, pyqtSlot, pyqtSignal
 
 from artisanlib.main import ApplicationWindow
 
@@ -41,11 +41,14 @@ from artisanlib.util import fromCtoFstrict, fromFtoCstrict, weight_units, conver
 from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, THEME,
     get_ror_color_by_phase, get_ror_ideal_band,
     format_batch_label, to_agtron, weight_loss_target_from_plan)
-from tilauscope.theme_qss import tint, tooltip_qss
+from tilauscope.theme_qss import style_combo_popup, tint, tooltip_qss
 from tilauscope.roasters import RoasterContext, roast_context_for
 from tilauscope.probe_visibility import et_available_for
 from tilauscope.graph.common import preheat_arrived
-from tilauscope.roast_plan_model import TilauScopeRoastPlan, heat_soak_correction
+from tilauscope.roast_plan_model import (TilauScopeRoastPlan, heat_soak_correction,
+                                         destination_dev_bonus_sec,
+                                         ROAST_DESTINATION_KEYS,
+                                         ROAST_DESTINATION_SETTING)
 from tilauscope.roast_plan_snapshot import build_prediction_snapshot
 # moteur de trim pur (v1b) — calé hors-app sur le corpus de roasts
 from tilauscope.autopilot_core import (AutoPilotCore, TrimParams,
@@ -65,6 +68,7 @@ from tilauscope.guidance_advice import (
     AdviceCandidate, AdviceCategory, AdviceSeverity,
 )
 from tilauscope.guidance_session import GuidanceSample, GuidanceSession
+from tilauscope.widgets.controls import SegmentedControl
 
 
 if TYPE_CHECKING:
@@ -95,6 +99,19 @@ _STATUS_COLOR = {_S_OK: _OK, _S_WARN: _WARN, _S_CRIT: _CRIT}
 # règle s'était déjà dédoublée en quatre conditions écrites à la main, dont
 # une inversée (un warn écrasait un crit, un crit ne passait pas sur un warn).
 _S_RANK = {_S_OK: 0, _S_WARN: 1, _S_CRIT: 2}
+
+
+def _destination_label(key: str) -> str:
+    """The name of a roast destination as the operator reads it.
+
+    Translated on each call, never at import: the translator is installed after
+    this module is read.
+    """
+    return {
+        "filter":   QApplication.translate("tilauscope_roast_assistant", "Filter"),
+        "omni":     QApplication.translate("tilauscope_roast_assistant", "Omni"),
+        "espresso": QApplication.translate("tilauscope_roast_assistant", "Espresso"),
+    }.get(str(key or "").strip().lower(), str(key or ""))
 
 
 def _coach_accepts(coach, level: str) -> bool:
@@ -4112,6 +4129,7 @@ class _SetupBar(QFrame):
         bean_hdr.addWidget(self.btn_anchor)
         self.combo_bean = QComboBox()
         self.combo_bean.setView(QListView())
+        style_combo_popup(self.combo_bean)
         self.combo_bean.setItemDelegate(QStyledItemDelegate())
         self.combo_bean.setStyleSheet(self._COMBO_STYLE)
         self.combo_bean.setToolTip(QApplication.translate("tilauscope_roast_assistant","Green bean selected for this assistant"))
@@ -4133,6 +4151,7 @@ class _SetupBar(QFrame):
         self._lbl_agtron = QLabel(QApplication.translate("tilauscope_roast_assistant","ROASTING TARGET"))
         self.combo_agtron = QComboBox()
         self.combo_agtron.setView(QListView())
+        style_combo_popup(self.combo_agtron)
         self.combo_agtron.setItemDelegate(QStyledItemDelegate())
         self.combo_agtron.setStyleSheet(self._COMBO_STYLE)
         self.combo_agtron.setToolTip(QApplication.translate("tilauscope_roast_assistant","Target roasting level (Agtron scale)"))
@@ -4152,12 +4171,34 @@ class _SetupBar(QFrame):
         row2.addWidget(self._lbl_agtron)
         row2.addWidget(self.combo_agtron)
 
+        # ── Ligne 3 : destination ────────────────────────────────────────────
+        # Elle vaut des secondes de développement dans le plan, et se choisissait
+        # seulement dans le dialogue de préparation : qui ouvre TilauScope
+        # directement héritait de celle du roast précédent sans rien à l'écran
+        # pour le dire.
+        row3 = QVBoxLayout()
+        row3.setSpacing(4)
+        self._lbl_dest = QLabel(QApplication.translate(
+            "tilauscope_roast_assistant", "BREWED AS"))
+        self.seg_destination = SegmentedControl(
+            [_destination_label(k) for k in ROAST_DESTINATION_KEYS], compact=True)
+        self.seg_destination.setToolTip(QApplication.translate(
+            "tilauscope_roast_assistant",
+            "What this coffee is for — an espresso roast is given a few more "
+            "seconds of development than a filter one"))
+        self.refresh_destination()
+        self.seg_destination.changed.connect(self._on_destination_changed)
+        row3.addWidget(self._lbl_dest)
+        row3.addWidget(self.seg_destination)
+
         outer.addLayout(row1)
         outer.addLayout(row2)
+        outer.addLayout(row3)
 
     def set_active(self, active: bool) -> None:
         self.combo_bean.setEnabled(not active)
         self.combo_agtron.setEnabled(not active)
+        self.seg_destination.setEnabled(not active)
 
     def show_combos(self, visible: bool) -> None:
         """Show or hide both combo boxes and their labels (hidden during roast)."""
@@ -4165,7 +4206,35 @@ class _SetupBar(QFrame):
         self.combo_bean.setVisible(visible)
         self._lbl_agtron.setVisible(visible)
         self.combo_agtron.setVisible(visible)
+        self._lbl_dest.setVisible(visible)
+        self.seg_destination.setVisible(visible)
         self.setVisible(visible)
+
+    def refresh_destination(self) -> None:
+        """Light the destination in force, re-read from the setting.
+
+        The preparation dialog and the planning tab write the same setting, and
+        either can run while this panel is already built: without re-reading it
+        the segments would show one destination while the plan was built on
+        another.
+        """
+        key = str(QSettings().value(ROAST_DESTINATION_SETTING, "omni", str) or "omni")
+        key = key.strip().lower()
+        self.seg_destination.set_current(
+            ROAST_DESTINATION_KEYS.index(key) if key in ROAST_DESTINATION_KEYS
+            else ROAST_DESTINATION_KEYS.index("omni"))
+
+    def _on_destination_changed(self, index: int) -> None:
+        """Persist the choice. The engine re-reads it at each plan run."""
+        if 0 <= index < len(ROAST_DESTINATION_KEYS):
+            QSettings().setValue(ROAST_DESTINATION_SETTING,
+                                 ROAST_DESTINATION_KEYS[index])
+
+    def selected_destination(self) -> str:
+        """The destination key in force, as the plan engine will read it."""
+        index = self.seg_destination.current()
+        return (ROAST_DESTINATION_KEYS[index] if 0 <= index < len(ROAST_DESTINATION_KEYS)
+                else "omni")
 
     def populate_beans(self, beans: list[GreenBean], current_uuid: str|None = None, agtron_color:int|None = None) -> None:
         self.combo_bean.blockSignals(True)
@@ -4388,7 +4457,8 @@ class _BeanHeader(QFrame):
         self._lbl_batch.setVisible(bool(label))
 
     def update_bean(self, bean: GreenBean|None,
-                    agtron: AgtronScale|None) -> None:
+                    agtron: AgtronScale|None,
+                    destination: str = "") -> None:
         if bean is None:
             self._lbl_name.setText(QApplication.translate("tilauscope_roast_assistant","No green been has been selected"))
             self._lbl_details.setText("")
@@ -4408,6 +4478,17 @@ class _BeanHeader(QFrame):
             line2_parts.append(QApplication.translate("Label","Humidity")+f" {bean.last_humidity:.1f}%")
         if agtron:
             line2_parts.append("▶ "+QApplication.translate("Label","target")+f"  {agtron.name}  ({agtron.description})")
+        # The destination is a setup choice the roast cannot change, and the
+        # setup bar is hidden once it starts: this line is where it stays
+        # readable. The seconds it is worth come with it — a choice whose
+        # effect is invisible is a choice nobody can weigh.
+        if destination:
+            _dest_txt = "☕ " + _destination_label(destination)
+            _bonus = destination_dev_bonus_sec(destination)
+            if _bonus > 0:
+                _dest_txt += QApplication.translate(
+                    "tilauscope_roast_assistant", "  +{0}s dev").format(int(_bonus))
+            line2_parts.append(_dest_txt)
         lines = []
         if line1_parts:
             lines.append("  ·  ".join(line1_parts))
@@ -4788,6 +4869,12 @@ class RoastAssistantPanel(QWidget):
         self._tr_btn_confirm_fc = QApplication.translate(
             "tilauscope_roast_assistant", "Confirm\nFC START")
         self._relaunch_requested: bool = False  # relance back-to-back : forcer le redémarrage assistant
+        # Un démarrage refusé faute de grain/cible : à retenter dès que la
+        # sélection change (en Guidé, rien d'autre ne peut le relancer).
+        self._start_refused: bool = False
+        # Mesure périmée publiée par le bridge : tout le guidage s'y arrête,
+        # pas seulement l'AutoPilot.
+        self._bt_stale: bool = False
 
         # ── Fenêtre d'inertie burner (coach quantifié) ─────────────────────
         # Tout mouvement du slider burner (opérateur ou alarme de rampe) ouvre
@@ -4881,6 +4968,9 @@ class RoastAssistantPanel(QWidget):
             "tilauscope_roast_assistant", "⚠ AUTO paused — the pilot hit an internal error, take over")
         self._tr_ap_data_stale = QApplication.translate(
             "tilauscope_roast_assistant", "⚠ AUTO paused — no bean temperature coming in, take over")
+        self._tr_data_stale = QApplication.translate(
+            "tilauscope_roast_assistant",
+            "⚠ No bean temperature coming in — advice on hold until it returns")
         self._tr_ap_mode_ff = QApplication.translate("tilauscope_roast_assistant", "feedforward only")
         self._tr_ap_mode_trim = QApplication.translate("tilauscope_roast_assistant", "feedforward + trim")
 
@@ -5329,10 +5419,19 @@ class RoastAssistantPanel(QWidget):
         if self.is_active:
             return
         self._bean_header.update_bean(self._setup_bar.selected_bean(),
-                                      self._setup_bar.selected_agtron())
+                                      self._setup_bar.selected_agtron(),
+                                      self._setup_bar.selected_destination())
 
     def _on_setup_selection_changed(self, _idx: int) -> None:
         self._refresh_bean_header()
+        if self._start_refused and not self.is_active:
+            # The operator is completing the very selection the refused start
+            # was missing. In Guided the start button is hidden, so nothing
+            # else would ever retry it: the warning came down and the roast
+            # went on recording with no guidance behind it.
+            self._bean_header.btn_toggle.setChecked(True)
+            self._start_assistant()
+            return
         self._page_idle.set_notice(None)   # the operator is fixing it
 
     def _start_assistant(self) -> None:
@@ -5360,8 +5459,10 @@ class RoastAssistantPanel(QWidget):
                     "Pick your roasting target above — the assistant needs to know "
                     "the colour you are aiming for.")
             self._page_idle.set_notice(_notice)
+            self._start_refused = True
             return
         self._page_idle.set_notice(None)
+        self._start_refused = False
 
         self._bean   = bean
         self._agtron = agtron
@@ -5406,6 +5507,7 @@ class RoastAssistantPanel(QWidget):
         except (AttributeError, RuntimeError):
             pass
         self._ror_hist.clear()
+        self._bt_stale = False
         self._crash_detector.reset()
         self._page_dry.ao._color_hist.clear()
         self._page_dry.ao._roc_hist.clear()
@@ -5467,7 +5569,8 @@ class RoastAssistantPanel(QWidget):
         self._setup_bar.set_active(True)
         self._setup_bar.show_combos(False)
         self._bean_header.set_active(True)
-        self._bean_header.update_bean(bean, agtron)
+        self._bean_header.update_bean(bean, agtron,
+                                      self._setup_bar.selected_destination())
         if self.aw.qmc.flagon and self.aw.qmc.flagstart:
             # Sentinel convention: ti[0]==-1 means CHARGE unmarked;
             # milestones 1..7 use 0 as "unmarked", >0 as "marked".
@@ -5516,6 +5619,7 @@ class RoastAssistantPanel(QWidget):
         self._current_phase = self._PHASE_IDLE
         self._stack.setCurrentIndex(self._PHASE_IDLE)
         self._ror_hist.clear()
+        self._bt_stale = False
         self._bt_at_fcs = 0.0
         self._plan_initial = None
         self._replans_applied = []
@@ -5564,8 +5668,19 @@ class RoastAssistantPanel(QWidget):
         }.get(phase_key)
         transition = None
         if tracked_phase is not None:
-            transition = (self._guidance_phases.observe(tracked_phase) if observed
-                          else self._guidance_phases.infer(tracked_phase))
+            if observed and tracked_phase < self._guidance_phases.confirmed_phase:
+                # Artisan cancelled a milestone. Phase authority only ever moves
+                # forward, so without this door the assistant stayed in the phase
+                # the cancelled event had opened, kept counting that event as
+                # confirmed — no prompt to mark it again — and kept its re-anchor.
+                for _phase, _milestone in ((GuidancePhase.MAILLARD, "dry_end"),
+                                           (GuidancePhase.DEVELOPMENT, "fc_start")):
+                    if _phase > tracked_phase:
+                        self._forget_replan(_milestone)
+                transition = self._guidance_phases.retract(tracked_phase)
+            else:
+                transition = (self._guidance_phases.observe(tracked_phase) if observed
+                              else self._guidance_phases.infer(tracked_phase))
             new_phase = {
                 GuidancePhase.DRYING: self._PHASE_DRY,
                 GuidancePhase.MAILLARD: self._PHASE_MAI,
@@ -5839,11 +5954,20 @@ class RoastAssistantPanel(QWidget):
         return dev
 
     def _regenerate_plan(self, ambient_temp: float, ambient_hum: float) -> None:
-        """Régénère le plan prédictif avec des valeurs ambiantes mises à jour."""
+        """Régénère le plan prédictif avec des valeurs ambiantes mises à jour.
+
+        `ambient_temp` arrive en °C (le bridge normalise à la frontière d'entrée).
+        """
         try:
             dev = self._read_probe_deviation()
 
             qmc = self.aw.qmc
+            # generate_roast_plan reçoit l'ambiante dans l'unité d'AFFICHAGE
+            # d'Artisan et la normalise lui-même : lui passer les °C du bridge
+            # la convertissait deux fois en mode °F (68 °F → 20 °C → -6,7 °C),
+            # ce qui déplaçait la charge et la durée de séchage prévue.
+            ambient_native = (fromCtoFstrict(ambient_temp) if qmc.mode == 'F'
+                              else ambient_temp)
             # Réutilise le générateur de la session : même grain/cible/poids →
             # l'analyse historique sort du cache au lieu de relire les .alog.
             rp = self._rp
@@ -5855,7 +5979,7 @@ class RoastAssistantPanel(QWidget):
             plan_dict, *_ = rp.generate_roast_plan(
                 bean=self._bean,
                 agtron_target=self._agtron,
-                ambient_temp=ambient_temp,
+                ambient_temp=ambient_native,
                 ambient_humidity=ambient_hum,
                 charge_weight=charge_weight,
                 roast_altitude=float(
@@ -5916,6 +6040,16 @@ class RoastAssistantPanel(QWidget):
         elif note:
             self._replan_notice = (str(note), _S_OK, time.monotonic() + 15.0)
         _logd.info(f"RoastAssistant: plan re-anchored → {new_plan.get('Replan Source')}")
+
+    def _forget_replan(self, milestone: str) -> None:
+        """Let a milestone be re-anchored: its event has been un-marked.
+
+        Both guards are one-shot per session, so a milestone marked at the
+        wrong second stayed anchored there for the rest of the roast.
+        """
+        self._replan_attempted.discard(milestone)
+        self._replans_applied = [r for r in self._replans_applied
+                                 if r[0] != milestone]
 
     def _replan_at_milestone(self, milestone: str, ti_idx: int) -> None:
         """
@@ -6889,7 +7023,7 @@ class RoastAssistantPanel(QWidget):
                 self._ap_notice = (self._tr_ap_ceiling, _S_WARN, time.monotonic() + 8)
 
     def _paint_ap_alert(self, text: str, level: str, hold_s: float = 20.0) -> None:
-        """Pose une alerte AUTO immédiatement, sans attendre la boucle.
+        """Pose une alerte immédiatement, sans attendre la boucle.
 
         La ligne coach n'est repeinte que par le refresh, lui-même nourri par
         la BT : une alerte qui dit justement que la BT s'est tue ne peut pas
@@ -6906,20 +7040,29 @@ class RoastAssistantPanel(QWidget):
 
     @pyqtSlot(bool)
     def _on_data_stale(self, stale: bool) -> None:
-        """Plus de BT fraîche : AUTO ne voit plus rien, il rend la main.
+        """Plus de BT fraîche : plus personne ne conseille, ni AUTO ni le guidage.
 
         Toute la boucle de l'assistant est nourrie par bt_updated — sonde
         muette, plus un seul tick : AUTO restait armé, le brûleur figé là où il
         était, le crash-guard aveugle et le cockpit toujours à « on plan ». La
         reprise est manuelle : on ne rend jamais l'actuation tout seul après une
-        coupure de mesure. Slot Qt : rien ne doit s'en échapper.
+        coupure de mesure.
+
+        Le guidage manuel, lui, continuait : l'ET ou le RoR qui bougent suffisent
+        à relancer un échantillon, et la page recalculait ses conseils sur la
+        DERNIÈRE BT VALIDE — une température que le grain a quittée depuis. Il
+        s'arrête ici aussi, et le dit. Slot Qt : rien ne doit s'en échapper.
         """
         try:
-            if not (stale and self.is_active and self._ap_state == "armed"):
+            self._bt_stale = bool(stale)
+            if not (stale and self.is_active):
                 return
-            self._ap_set_state("paused")
-            self._paint_ap_alert(self._tr_ap_data_stale, _S_CRIT)
-            _logd.error("AutoPilot: BT went stale — paused")
+            if self._ap_state == "armed":
+                self._ap_set_state("paused")
+                _logd.error("AutoPilot: BT went stale — paused")
+                self._paint_ap_alert(self._tr_ap_data_stale, _S_CRIT)
+            else:
+                self._paint_ap_alert(self._tr_data_stale, _S_CRIT)
         except Exception:  # pylint: disable=broad-except
             self._ap_state = "paused"   # dernier recours : plus aucune actuation
             _logd.exception("RoastAssistant: _on_data_stale failed")
@@ -6964,6 +7107,13 @@ class RoastAssistantPanel(QWidget):
         Collecte le contexte qmc une seule fois, dispatche à la bonne page.
         """
         if not self.is_active or self._current_phase == self._PHASE_IDLE:
+            return
+        if self._bt_stale:
+            # Everything below computes on self._last_bt, and the probe stopped
+            # feeding it. Freezing the page is the honest answer: no advice, no
+            # projection, no milestone suggestion on a temperature the beans
+            # left. _on_data_stale has already painted why, and nothing past
+            # this point can repaint over it.
             return
 
         ctx = self._collect_qmc_context()
@@ -7552,6 +7702,13 @@ class RoastAssistantPanel(QWidget):
         L'UUID courant et la couleur cible sont extraits opportunistiquement
         depuis le profil de fond ou le simulateur si disponibles.
         """
+        # The destination may have been changed from the preparation dialog or
+        # the planning tab since this panel was built — they share the setting.
+        try:
+            self._setup_bar.refresh_destination()
+        except (AttributeError, RuntimeError) as e:
+            _logd.warning(f"RoastAssistant: cannot refresh destination ({e})")
+
         # ── 1. Load beans — mandatory, abort only here ─────────────────────────
         try:
             from tilauscope.cave.common import load_cave_beans

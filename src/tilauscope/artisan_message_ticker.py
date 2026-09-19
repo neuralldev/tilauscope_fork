@@ -99,6 +99,17 @@ _MIN_MSG_LEN: Final[int] = 4    # messages trop courts ignorés (clear résiduel
 _MAX_HISTORY: Final[int] = 40   # FIFO max messages conservés
 
 
+def _is_recording_end(msg: str) -> bool:
+    """Le message qui clôt l'enregistrement, quel qu'ait été le chemin.
+
+    OffRecorder met flagstart à False (canvas.py) *avant* de l'émettre, et
+    sendmessage le diffère d'un tour de boucle — à la livraison, ni flagstart
+    ni flagon ne sont fiables. Seule la comparaison au libellé traduit laisse
+    passer la fin de session, sinon absente de la colonne ARTISAN.
+    """
+    return msg.strip() == QApplication.translate('Message', 'Scope recording stopped')
+
+
 def _is_roast_noise(msg: str) -> bool:
     """Return True if the message is not worth displaying in the ticker."""
     if not msg:
@@ -417,8 +428,8 @@ class ArtisanMessageHook:
             # 2. Route to ticker — only during active recording and for meaningful messages
             try:
                 if (append
-                        and aw.qmc.flagstart
                         and message
+                        and (aw.qmc.flagstart or _is_recording_end(message))
                         and not _is_roast_noise(message)):
                     ticker.push(message)
             except Exception as exc:

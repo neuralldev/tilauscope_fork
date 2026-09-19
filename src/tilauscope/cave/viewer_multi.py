@@ -35,7 +35,7 @@ from PyQt6.QtWidgets import (QApplication) # @UnusedImport @Reimport  @Unresolve
 from tilauscope.theme_qss import tint
 from tilauscope.probe_visibility import et_available_in_profile
 from tilauscope.tilauscope_types import (THEME, RoastingPhase, normalize_timeindex, estimate_ror_dt, find_turning_point_index, dominant_dev_ror_event,
-                                          WEIGHT_LOSS_TOLERANCE_PCT)
+                                          WEIGHT_LOSS_TOLERANCE_PCT, PHASE_COLORS, dimmed)
 from tilauscope.cave.common import (
     _logd, _PLOT_PALETTE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_LEGEND)
 
@@ -166,8 +166,10 @@ class ViewerMultiMixin:
                          ha=ha, va='bottom', fontsize=_FS_EVENT, color='white',
                          bbox=bbox_style, zorder=9)
 
-    # Couleurs de phase désaturées (frais → chaud), indépendantes des teintes roast
-    _PHASE_COLORS: tuple = ("#6E94C2", "#C79356", "#B06E7E")  # Drying / Maillard / Dev
+    # The application's phase triple, one step back: this figure is already full
+    # of roast hues, and a phase band at full strength would be read as one of
+    # them. Same three colours as everywhere else, quieter.
+    _PHASE_COLORS: tuple = tuple(dimmed(c, c) for c in PHASE_COLORS)  # Drying / Maillard / Dev
 
     def _draw_phase_ribbon(self, ax, palette: list) -> None:
         """Ruban d'équilibre des phases : une barre horizontale empilée par roast

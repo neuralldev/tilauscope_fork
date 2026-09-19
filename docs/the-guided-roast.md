@@ -35,10 +35,19 @@ screen is what matters now.
 Before starting, two things are required: the coffee, from the **Green Bean** list, and the
 *Target roasting level (Agtron scale)*. Without them the assistant will not run, because a roast
 with no identity and no target teaches the plan nothing. If a roast starts anyway — in Guided the
-recording itself starts the assistant — the panel says which of the two is missing, and picking it
-puts the message away.
+recording itself starts the assistant — the panel says which of the two is missing, and completing
+the selection starts the assistant on the roast already under way.
 When the roast on screen already names a coffee — a record opened from the cellar, a replay — it
 is pre-selected in the list, and the line under it shows the coffee it resolved to.
+
+Under them, **Brewed as** — *Filter*, *[Omni](glossary.md#omni)* or *Espresso* — is the same
+choice, and the same setting, as the *What is this coffee for?* of the
+[roast setup sheet](preparing-a-roast.md#saying-what-the-coffee-is-for) and of the
+[planning tab](the-roast-plan.md): change it in any of the three and all three follow. It is
+here as well because the assistant can be opened without going through the setup sheet, and the
+choice is worth a few seconds of development, which carries through to the drop temperature and
+the weight loss to aim for. Once the roast starts it stops being a choice: the line under the
+coffee's name states which one the plan was built on.
 
 The list normally offers only coffees still in stock. The one being roasted is the exception:
 it stays in the list even once its remaining stock has reached zero — roasting the bottom of a
@@ -47,6 +56,10 @@ bag must not make the coffee disappear from its own roast — and is marked *(em
 In Guided level the assistant opens, starts and closes with the roast, whichever START you use:
 TilauScope's own, Artisan's, or the one on your phone. At Expert level it is started manually.
 
+<!-- CAPTURE 7.1 — the assistant docked mid-roast, Coach view: the line under the
+coffee's name must show the roasting target followed by the destination, e.g.
+"☕ Espresso  +10s dev". -->
+<!-- CAPTURE 7.2 — the same assistant in Expert view, same roast. -->
 ![the docked assistant mid-roast](assets/the-guided-roast-7.1.png)
 ![the expert view](assets/the-guided-roast-7.2.png)
 
@@ -137,6 +150,11 @@ happened in the drum.
 Each confirmed milestone re-plans the rest of the roast against reality, so targets and estimates
 after it are recomputed rather than left stale.
 
+A milestone marked at the wrong moment can be cancelled from Artisan's own event buttons, and the
+assistant follows: it goes back to the phase the roast is in again, offers that milestone for
+confirmation a second time, and lets go of the re-plan it had taken on it — so the corrected mark
+is the one the rest of the roast is measured against.
+
 This is the Guided behaviour. At [Expert](getting-started.md#guided-or-expert) level there is no
 prompt to answer: a detected milestone is marked straight away, since the assistant is not
 necessarily on screen to ask.
@@ -186,6 +204,7 @@ The assistant raises problems while they can still be fixed.
 | *Flash drying risk — check FIR power* | Surface drying ahead of the core. See [flash drying](glossary.md#flash-drying). |
 | *Hold the burner — a wet lot (12.4 %) turns high, then resists* | Not a fault, a reading. A wet coffee takes the heat quickly before its water starts to leave, so it turns at a higher temperature than the plan drew — and then resists once the water does start to leave. Cutting the burner on that high turning point is the classic way to run out of heat in the middle of the roast and end up [baked](glossary.md#baked). Shown once, only when the coffee's [moisture](glossary.md#moisture-content) was measured and the turning point really did land above the plan. |
 | *⚠ Critical Gap between ET/BT — dangerous thermic gradiant* | The two probes have diverged dangerously. Never raised on a machine without an air probe. |
+| *⚠ No bean temperature coming in — advice on hold until it returns* | The bean probe has stopped reporting. Rather than repeat advice built on a temperature the coffee has left behind, the assistant holds everything it says until a fresh reading arrives, and picks up on its own when it does. |
 
 Alerts name the correction, not just the condition — *raise heater*, *reduce heater*, *DROP now
 or start heating again*. An alert you cannot act on is noise.

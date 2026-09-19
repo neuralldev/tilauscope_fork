@@ -38,7 +38,7 @@ from PyQt6.QtWidgets import (
 from PIL.ImageQt import ImageQt
 
 from tilauscope.theme_qss import (apply_tilau_theme, calendar_qss,
-                                  styled_popup_view, tooltip_qss)
+                                  style_combo_popup, styled_popup_view, tooltip_qss)
 from tilauscope.tilauscope_types import THEME, show_styled_message, print_progress_pill
 from tilauscope.label_printer import build_custom_label_image, normalise_process
 from tilauscope.header_icons import SVG_CALENDAR, SVG_CALENDAR_OFF, apply_icon
@@ -181,10 +181,12 @@ class CustomLabelDlg(QDialog):
         self.cmb_process = QComboBox()
         self.cmb_process.setEditable(True)
         self.cmb_process.setView(styled_popup_view())
+        style_combo_popup(self.cmb_process)
         self.cmb_process.addItems(_PROCESS_CHOICES)
         self.cmb_level = QComboBox()
         self.cmb_level.setEditable(True)
         self.cmb_level.setView(styled_popup_view())
+        style_combo_popup(self.cmb_level)
         self.cmb_level.addItems(_LEVEL_CHOICES)
 
         self.dt_roasted = QDateEdit()

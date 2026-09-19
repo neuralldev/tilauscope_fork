@@ -48,7 +48,8 @@ from PyQt6.QtGui import QColor, QKeyEvent, QFontMetrics, QIcon
 from artisanlib.util import fromCtoFstrict, convertWeight, weight_units
 from tilauscope.tilauscope_types import (
     GreenBean, THEME, show_styled_message, AGTRON_SCALES, format_batch_label,
-    open_in_os_viewer, ensure_color_system, resolve_color_system, call_later
+    open_in_os_viewer, ensure_color_system, resolve_color_system, call_later,
+    get_agtron_color, decode_alog_text
 )
 
 # AI modules are optional — guard against ImportError if not yet deployed
@@ -3254,12 +3255,8 @@ class _ColorFloatWindow(QDialog):
 
     @staticmethod
     def _agtron_hue(agtron: float) -> str:
-        """Map an Agtron number to a warm coffee-tone colour."""
-        if agtron >= 85:   return "#f5deb3"   # very light – wheat
-        if agtron >= 70:   return "#d2a679"   # light – light tan
-        if agtron >= 55:   return "#a0704a"   # medium – medium brown
-        if agtron >= 40:   return "#6b3d1e"   # medium-dark
-        return "#2d1a0e"                        # dark – almost black
+        """The colour of that Agtron number, from the application's roast scale."""
+        return get_agtron_color(agtron)
 
     def _set_status(self, text: str, color: str) -> None:
         self._status_lbl.setText(text)
@@ -4859,7 +4856,7 @@ class RoastDataReaderDialog(QDialog):
 
     def _load_profile(self, profile: dict, title: str) -> None:
         self._p = profile or {}
-        self._roast_title = title or str(self._p.get('title', '') or '')
+        self._roast_title = decode_alog_text(title or self._p.get('title', ''))
 
         # raw series (defensive copies, never mutated)
         self._timex: list[float] = list(self._p.get('timex', []) or [])
@@ -4869,10 +4866,12 @@ class RoastDataReaderDialog(QDialog):
         self._sev: list[int]     = list(self._p.get('specialevents', []) or [])
         self._sevtype: list[int] = list(self._p.get('specialeventstype', []) or [])
         self._sevval: list[float]= list(self._p.get('specialeventsvalue', []) or [])
-        self._sevstr: list[str]  = list(self._p.get('specialeventsStrings', []) or [])
-        self._etypes: list[str]  = list(self._p.get('etypes', []) or [])
-        self._extraname1: list[str] = list(self._p.get('extraname1', []) or [])
-        self._extraname2: list[str] = list(self._p.get('extraname2', []) or [])
+        # Artisan escapes every text field when it saves a profile, so an event
+        # read straight from the file says "Br\\xfbleur" until it is decoded.
+        self._sevstr: list[str]  = [decode_alog_text(x) for x in (self._p.get('specialeventsStrings', []) or [])]
+        self._etypes: list[str]  = [decode_alog_text(x) for x in (self._p.get('etypes', []) or [])]
+        self._extraname1: list[str] = [decode_alog_text(x) for x in (self._p.get('extraname1', []) or [])]
+        self._extraname2: list[str] = [decode_alog_text(x) for x in (self._p.get('extraname2', []) or [])]
         self._extratemp1: list[list[float]] = list(self._p.get('extratemp1', []) or [])
         self._extratemp2: list[list[float]] = list(self._p.get('extratemp2', []) or [])
         self._unit: str = str(self._p.get('mode', 'C') or 'C')

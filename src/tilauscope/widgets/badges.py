@@ -18,7 +18,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import QPropertyAnimation, Qt
-from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout
+from PyQt6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QVBoxLayout
 
 from tilauscope.tilauscope_types import THEME
 
@@ -28,9 +28,14 @@ class EventFiredBadge(QFrame):
 
     Style : fond BG du thème, bordure gauche 4 px couleur Artisan, tag EVT,
     fade-in 400 ms identique à TriggeredAlarmBadge.
+
+    ``recorded`` distingue l'action partie vers la machine mais absente du
+    profil (avant START, ou bouton de type « ») de l'événement réellement
+    enregistré par Artisan : sans ce mot la carte laisse croire les deux.
     """
 
-    def __init__(self, label: str, command: str, timestamp: str, color: str, parent=None):
+    def __init__(self, label: str, command: str, timestamp: str, color: str,
+                 recorded: bool = True, parent=None):
         super().__init__(parent)
         self.setFixedWidth(200)
         self.setMinimumHeight(60)
@@ -70,6 +75,13 @@ class EventFiredBadge(QFrame):
             cmd_lbl.setStyleSheet(f"color: {THEME['OVERLAY0']}; font-size: 9px; border: none;")
             cmd_lbl.setWordWrap(True)
             layout.addWidget(cmd_lbl)
+
+        if not recorded:
+            state_lbl = QLabel(QApplication.translate(
+                'tilauscope_window', 'Sent to the roaster — not recorded before START'))
+            state_lbl.setStyleSheet(f"color: {THEME['SURFACE2']}; font-size: 9px; border: none;")
+            state_lbl.setWordWrap(True)
+            layout.addWidget(state_lbl)
 
         # Fade-in 400 ms
         self.setWindowOpacity(0.0)

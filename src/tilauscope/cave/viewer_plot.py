@@ -42,9 +42,9 @@ from PyQt6.QtWidgets import (QApplication, QMessageBox, QMenu) # @UnusedImport @
 
 from tilauscope.tilauscope_types import (show_styled_message, CRACK_TICK_ALPHA,
                                          THEME, RoastingPhase, marked, normalize_timeindex,
-                                         profile_crack_times)
+                                         profile_crack_times, decode_alog_text)
 from tilauscope.cave.common import (
-    _log, _PLOT_PALETTE, _FS_TITLE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_HOVER, _FS_LEGEND,
+    _log, _PLOT_PALETTE, _FS_TITLE, _FS_AXIS, _FS_TICK, _FS_EVENT, _FS_LEGEND,
     _atomic_write_text)
 
 #: Height of one crack tick, in points — the band stays a thin strip whatever
@@ -164,21 +164,6 @@ class ViewerPlotMixin:
             ax_hoovers.spines['right'].set_color(_PLOT_PALETTE['grid'])
             ax_hoovers.spines['left'].set_color(_PLOT_PALETTE['grid'])
 
-            #Time
-            self.annot_time = ax1.annotate("", xy=(0,0), xytext=(10, 20),
-                textcoords="offset points", fontweight='bold', fontsize=_FS_HOVER, color='black',
-                bbox=dict(boxstyle="square", fc="w", alpha=0.9))
-
-            # Second line (e.g., BT Temperature)
-            self.annot_bt = ax1.annotate("", xy=(0,0), xytext=(10, 10),
-                textcoords="offset points", fontweight='bold', fontsize=_FS_HOVER,color=_PLOT_PALETTE['bt'],
-                bbox=dict(boxstyle="square", fc="w", alpha=0.9))
-
-            # Third line (e.g., ET Temperature)
-            self.annot_et = ax1.annotate("", xy=(0,0), xytext=(10, 0),
-                textcoords="offset points", fontweight='bold', fontsize=_FS_HOVER,color=_PLOT_PALETTE['et'],
-                bbox=dict(boxstyle="square", fc="w",  alpha=0.9))
-
             #calc Y_MAX_ROR (multiple of 10)
             # None and NaN filtered first: smoothing leaves NaN in the series when
             # the RoR limit is off, and a single one made the ceiling NaN, which
@@ -247,45 +232,12 @@ class ViewerPlotMixin:
             ax1.set_ylabel(QApplication.translate("Label", "Temp") + f" (°{mode})", fontsize=_FS_AXIS, color=_PLOT_PALETTE['ylabel'])
             ax1.grid(True, alpha=0.3, color=_PLOT_PALETTE['grid'])
             #self.fig.tight_layout()
-            self.annotation = ax1.annotate(
-                '', xy=(0, 0), xytext=(20, 20), textcoords='offset points',
-                bbox=dict(boxstyle="round", fc="w", alpha=0.9, ec="lightgray"),
-                arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0.5",
-                                color="w", linewidth=0.8),
-                visible=False, fontsize=_FS_HOVER
-            )
-
-            if hasattr(self, 'annot_squares') and self.annot_squares:
-                for sq in self.annot_squares:
-                    try:
-                        if sq in self.ax1.texts:
-                            sq.remove()
-                    except Exception:
-                        pass
-                self.annot_squares.clear()
-            else:
-                self.annot_squares = []
-            self.curve_colors = [_PLOT_PALETTE["bt"], _PLOT_PALETTE["et"], _PLOT_PALETTE["deltabt"], _PLOT_PALETTE["deltaet"],
-                                 '#FAB387', '#F38BA8', '#A6E3A1', '#89DCEB']
-                                 #self.aw.qmc.EvalueColor[0], self.aw.qmc.EvalueColor[1], self.aw.qmc.EvalueColor[2], self.aw.qmc.EvalueColor[3]]
-            for i in range(8):
-                # Création d'une annotation par ligne de texte
-                self.annot_squares.append(self.ax1.annotate(
-                    "■",
-                    xy=(0,0),
-                    xytext=(20, 20), # Même base que self.annot
-                    textcoords="offset points",
-                    color=self.curve_colors[7-i],
-                    va="top",         # "top" facilite l'alignement depuis le haut du bloc
-                    ha="left",
-                    visible=False,
-                    zorder=10         # S'assure qu'ils sont au-dessus de la box
-                ))
-
             # Plotting on the bottom axis
 
             # extra information
-            names = data.get('etypes',[])
+            # Straight from the file, where Artisan escapes the text: an
+            # accented channel name needs decoding before it is drawn.
+            names = [decode_alog_text(n) for n in (data.get('etypes', []) or [])]
             event_types = data.get('specialeventstype', [])
             event_values = data.get('specialeventsvalue', [])
             event_times = data.get('specialevents', [])
@@ -679,14 +631,9 @@ class ViewerPlotMixin:
         click_bt  = temp2[nearest_idx] if nearest_idx < len(temp2) else 0.0
         click_mm  = self.format_seconds(click_t - charge_t)
 
-        # ── Hide hover tooltip + annotation before showing menu ────────────
+        # ── Hide the hover readout before showing the menu ─────────────────
         if hasattr(self, '_hover_tooltip'):
             self._hover_tooltip.hide()
-        if hasattr(self, 'annotation') and self.annotation is not None:
-            self.annotation.set_visible(False)
-        if hasattr(self, 'annot_squares'):
-            for sq in self.annot_squares:
-                sq.set_visible(False)
         for m in [getattr(self, 'bt_marker', None), getattr(self, 'et_marker', None),
                   getattr(self, 'deltabt_marker', None), getattr(self, 'deltaet_marker', None)]:
             if m is not None:
@@ -986,17 +933,15 @@ class ViewerPlotMixin:
         self.canvas.draw_idle()
 
         # ── Contenu du tooltip Qt ────────────────────────────────────────────────
-        names  = self.last_plot_data.get('etypes', self.aw.qmc.etypesdefault)
+        names  = [decode_alog_text(n)
+                  for n in (self.last_plot_data.get('etypes') or self.aw.qmc.etypesdefault)]
 
-        bt_col = '#04690E'
-        et_col = '#E0124C'
-        dbt_col = '#1E0AD9'
-        det_col = '#E6871B'
-        # Couleurs hex pour les pastilles HTML
-#        bt_col  = self.aw.qmc.palette.get('bt',       '#04690E')
-#        et_col  = self.aw.qmc.palette.get('et',       '#E0124C')
-#        dbt_col = self.aw.qmc.palette.get('deltabt',  '#1E0AD9')
-#        det_col = self.aw.qmc.palette.get('deltaet',  '#E6871B')
+        # The dot names the trace it stands for: read from the same palette the
+        # curve is drawn with, never a second set of hex values.
+        bt_col  = _PLOT_PALETTE['bt']
+        et_col  = _PLOT_PALETTE['et']
+        dbt_col = _PLOT_PALETTE['deltabt']
+        det_col = _PLOT_PALETTE['deltaet']
 
         def dot(color: str) -> str:
             return (f'<span style="color:{color}; '
@@ -1037,9 +982,8 @@ class ViewerPlotMixin:
         if event.inaxes:
             self._hover_tooltip.show_at(global_point, html)
         else:
-            # Hide if we are on the canvas but not on the axes
-            if hasattr(self, 'annotation'):
-                self.annotation.hide()
+            # On the canvas, but off the axes: there is nothing to read.
+            self._hover_tooltip.hide()
 
     def take_snapshot(self, figure, filename: str|None = None) -> None:
         if self.cave is None or not hasattr(self.cave, 'green_beans'):

@@ -683,6 +683,10 @@ class LiveMixin:
                 # started the recording, not only our own button.
                 if self.is_roasting:
                     self._hide_artisan_standard_buttons()
+                    # A new recording is a new session: the column starts empty
+                    # whatever pressed START, so two back-to-back roasts never
+                    # share cards.
+                    self.clear_live_events()
                 else:
                     # A replay never carries over to the next roast, and the
                     # level it borrowed comes back — whatever ended the

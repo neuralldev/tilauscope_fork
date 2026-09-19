@@ -59,8 +59,9 @@ from tilauscope.graph.common import (
 from tilauscope.graph.preheat import reading as preheat_reading
 from tilauscope.probe_visibility import et_available_for
 from tilauscope.theme_qss import tooltip_qss
-from tilauscope.tilauscope_types import (CRACK_TICK_ALPHA, THEME, crack_pop_times,
-                                         operator_level, resolve_crack_channel)
+from tilauscope.tilauscope_types import (CRACK_TICK_ALPHA, PHASE_COLORS, THEME,
+                                         crack_pop_times, operator_level,
+                                         resolve_crack_channel)
 
 # ── fixed axis extents — never autoscaled, never recomputed from data ──────
 _TIME_MAX: Final[float] = 840.0   # 14:00 in seconds — the FULL-SCALE window
@@ -119,12 +120,11 @@ _TOGGLE_CLEARANCE: Final[float] = 36.0
 _CRACK_BAND_HEIGHT: Final[float] = 9.0
 _MARK_FONT_PT: Final[int] = 11     # a milestone is read across the room, not squinted at
 
-# Phase grounds. Blue then yellow then red: peach and red sat one step apart on
-# the wheel and the Maillard and development stretches read as one block. The
-# alpha also climbs, so the roast visibly intensifies as it advances.
-_PHASE_DRYING: Final[tuple[str, int]] = ('SKY', 16)
-_PHASE_MAILLARD: Final[tuple[str, int]] = ('YELLOW', 22)
-_PHASE_DEVELOPMENT: Final[tuple[str, int]] = ('CRITICAL', 32)
+# Phase grounds: the application's phase triple, painted faint. The alpha
+# climbs across the three, so the roast visibly intensifies as it advances.
+_PHASE_DRYING: Final[tuple[str, int]] = (PHASE_COLORS[0], 16)
+_PHASE_MAILLARD: Final[tuple[str, int]] = (PHASE_COLORS[1], 22)
+_PHASE_DEVELOPMENT: Final[tuple[str, int]] = (PHASE_COLORS[2], 32)
 _MARK_LABEL_ROWS: Final[int] = 3      # stagger depth before labels are allowed to touch
 _MARK_ROW_HEIGHT: Final[float] = 23.0
 _MARK_CHIP_PAD: Final[float] = 7.0
@@ -1831,12 +1831,12 @@ class RoastCurveWidget(QWidget):
     def _draw_phase_bands(self, painter: QPainter, timex: list[Any],
                           timeindex: list[Any]) -> None:
         r = self._plot_rect
-        for start, end, (token, alpha) in self._phase_spans(timex, timeindex):
+        for start, end, (hue, alpha) in self._phase_spans(timex, timeindex):
             lo = max(start, self._t_min)
             hi = min(end, self._t_max)
             if hi <= lo:
                 continue
-            color = QColor(THEME[token])
+            color = QColor(hue)
             color.setAlpha(alpha)
             painter.fillRect(QRectF(self._x(lo), r.top(), self._x(hi) - self._x(lo), r.height()),
                              color)
@@ -2314,11 +2314,11 @@ class RoastCurveWidget(QWidget):
                            QApplication.translate('tilauscope', 'Machine response'), 'dash'))
         if phases:
             legend.extend((
-                (THEME[_PHASE_DRYING[0]],
+                (_PHASE_DRYING[0],
                  QApplication.translate('tilauscope', 'Drying'), 'block'),
-                (THEME[_PHASE_MAILLARD[0]],
+                (_PHASE_MAILLARD[0],
                  QApplication.translate('tilauscope', 'Maillard'), 'block'),
-                (THEME[_PHASE_DEVELOPMENT[0]],
+                (_PHASE_DEVELOPMENT[0],
                  QApplication.translate('tilauscope', 'Development'), 'block'),
             ))
         self._draw_legend(painter, legend, self._plot_rect.left(),

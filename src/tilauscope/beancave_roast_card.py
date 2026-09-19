@@ -26,14 +26,19 @@ from PyQt6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter, QPen
 from PyQt6.QtWidgets import QApplication
 
 from tilauscope.beancave_card_base import CardPainter
-from tilauscope.tilauscope_types import CRACK_TICK_ALPHA, profile_crack_times
+from tilauscope.tilauscope_types import (COLOR_AIR, COLOR_GRAIN, CRACK_TICK_ALPHA,
+                                         PHASE_COLORS, dimmed, profile_crack_times)
 
 _logd = logging.getLogger('tilaudebug')
 _W, _H = 1080, 1620
 _BG, _SURFACE, _BORDER = '#1E1E2E', '#181825', '#313244'
 _TEXT, _MUTED = '#CDD6F4', '#BAC2DE'
-_BLUE, _PEACH = '#89B4FA', '#FAB387'
-_PHASE_COLORS = ('#F9E2AF', _PEACH, '#A6E3A1')
+# The probe hues the roasting window draws with: the card is the same picture
+# as the screen the roast was driven on. The rate wears the bean's hue one step
+# back — it belongs to the bean, and is never the line the roast is read from.
+_BLUE, _PEACH = COLOR_GRAIN, COLOR_AIR
+_RISE = dimmed(_BLUE, _BLUE)
+_PHASE_COLORS = PHASE_COLORS   # drying, Maillard, development
 _LEFT, _RIGHT = 112, 998
 #: One crack tick at the foot of the rate-of-rise graph, scaled to the card's strokes.
 _CRACK_TICK_H, _CRACK_TICK_W = 14, 2.0
@@ -168,7 +173,7 @@ class RoastSocialCard(CardPainter):
         self._panel(p, 820, 294)
         unit = '°F' if profile.get('mode') == 'F' else '°C'
         self._label(p, 52, 407, QApplication.translate('tilauscope_roast_review', 'Bean temperature') + f' · {unit}', 31, bold=True)
-        self._label(p, 52, 839, QApplication.translate('tilauscope_roast_review', 'Rate of rise') + f' · {unit}/min', 30, color=_PEACH, bold=True)
+        self._label(p, 52, 839, QApplication.translate('tilauscope_roast_review', 'Rate of rise') + f' · {unit}/min', 30, color=_RISE, bold=True)
         times = profile.get('timex') or []
         bt = profile.get('temp2') or []
         if 'charge' not in marks or 'drop' not in marks:
@@ -244,7 +249,7 @@ class RoastSocialCard(CardPainter):
         if rvalues:
             p.save()
             p.setClipRect(QRectF(_LEFT - 3, 896, _RIGHT - _LEFT + 6, 148))
-            self._series(p, times, ror, tp, end, X, YR, _PEACH)
+            self._series(p, times, ror, tp, end, X, YR, _RISE)
             p.restore()
             for key in ('fc', 'drop'):
                 idx = marks.get(key)
@@ -252,11 +257,11 @@ class RoastSocialCard(CardPainter):
                 if value is not None:
                     xx, yy = X(times[idx]), YR(value)
                     p.setPen(Qt.PenStyle.NoPen)
-                    p.setBrush(QColor(_PEACH))
+                    p.setBrush(QColor(_RISE))
                     p.drawEllipse(QPointF(xx, yy), 5, 5)
                     p.setBrush(Qt.BrushStyle.NoBrush)
                     self._label(p, min(int(xx) - 18, _RIGHT - 48), int(yy) - 32,
-                                f'{value:.1f}', 23, 64, _PEACH, True)
+                                f'{value:.1f}', 23, 64, _RISE, True)
         else:
             self._label(p, 220, 954, QApplication.translate('tilauscope_roast_review', 'Rate of rise unavailable'), 28, 760, _MUTED)
         for key, color in zip(('dry', 'fc', 'drop'), _PHASE_COLORS, strict=True):

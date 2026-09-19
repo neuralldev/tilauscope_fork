@@ -153,7 +153,9 @@ one needing attention soonest is at the top.
 
 Each row shows stock remaining, attached sacks, current
 [water activity](glossary.md#aw--water-activity), [conditioning](glossary.md#conditioning),
-and a moisture trend indicator. Coffees are ordered by risk: mould risk first, then watch,
+and a moisture trend indicator. Stock reads in kilograms, or in grams once only a residue is
+left, so a coffee holding a few grams is never shown as empty. A coffee leaves the list only
+when its stock reaches 0 g. Coffees are ordered by risk: mould risk first, then watch,
 then too dry, then optimal, then unknown.
 
 ### Water activity zones

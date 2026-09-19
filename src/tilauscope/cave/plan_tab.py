@@ -34,7 +34,7 @@ from PyQt6.QtWidgets import (QApplication, QComboBox, QVBoxLayout, QHBoxLayout, 
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
-from tilauscope.theme_qss import tint
+from tilauscope.theme_qss import style_combo_popup, tint
 from tilauscope.tilauscope_types import (AGTRON_SCALES, AgtronScale, THEME, ProbeDeviation, ProbeDeviationInterval)
 from tilauscope.roasters import RoasterContext
 from tilauscope.cave.common import (
@@ -473,6 +473,7 @@ class PlanTabMixin:
         self.plan_bean_combo.setMinimumWidth(260)
         self.plan_bean_combo.setItemDelegate(QStyledItemDelegate())
         self.plan_bean_combo.setView(QListView())
+        style_combo_popup(self.plan_bean_combo)
         self.plan_bean_combo.setToolTip(
             QApplication.translate("tilauscope_beancave",
                 "Select the green bean you want to plan for. "
@@ -486,6 +487,7 @@ class PlanTabMixin:
         self.plan_roast_combo.setMinimumWidth(200)
         self.plan_roast_combo.setItemDelegate(QStyledItemDelegate())
         self.plan_roast_combo.setView(QListView())
+        style_combo_popup(self.plan_roast_combo)
         self.plan_roast_combo.setToolTip(
             QApplication.translate("tilauscope_beancave",
                 "Optionally pick a past roast to pre-fill ambient conditions "
@@ -548,12 +550,14 @@ class PlanTabMixin:
         self.roaster_combo.setMinimumWidth(150)
         self.roaster_combo.setItemDelegate(QStyledItemDelegate())
         self.roaster_combo.setView(QListView())
+        style_combo_popup(self.roaster_combo)
         self.roaster_combo.currentIndexChanged.connect(self._on_roaster_model_changed)
         self.roaster_combo.currentIndexChanged.connect(self._update_plan_stepper)
 
         self.roast_level_combo = QComboBox()
         self.roast_level_combo.setItemDelegate(QStyledItemDelegate())
         self.roast_level_combo.setView(QListView())
+        style_combo_popup(self.roast_level_combo)
         for a in reversed(AGTRON_SCALES):
             agtron = int((a.agtron_range.max_value + a.agtron_range.min_value) * 0.5)
             self.roast_level_combo.addItem(f"{a.name} ({agtron} Agtron - {a.description})")

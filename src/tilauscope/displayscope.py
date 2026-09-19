@@ -411,13 +411,28 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
 
 
 
-    @pyqtSlot(str, str, str, str)
-    def handle_event_fired(self, label: str, command: str, timestamp: str, color: str) -> None:
+    @pyqtSlot(str, str, str, str, bool)
+    def handle_event_fired(self, label: str, command: str, timestamp: str, color: str,
+                           recorded: bool) -> None:
         """Délègue l'event badge à la sidebar sans logique métier."""
         try:
-            self.collapsible_events.alarm_sidebar.add_event_badge(label, command, timestamp, color)
+            self.collapsible_events.alarm_sidebar.add_event_badge(
+                label, command, timestamp, color, recorded)
         except Exception:
             pass
+
+    def clear_live_events(self) -> None:
+        """Wipe the LIVE EVENTS cards and the ARTISAN messages.
+
+        Called on the recording-start edge and on RESET: without a boundary the
+        column carried one roast's cards into the next one, and nothing on a
+        card said which session it belonged to.
+        """
+        try:
+            self.collapsible_events.alarm_sidebar.clear()
+            self.collapsible_events.sidebar.msg_ticker.clear()
+        except Exception as e:  # pylint: disable=broad-except
+            _log.debug('live events could not be cleared: %s', e)
 
 
 

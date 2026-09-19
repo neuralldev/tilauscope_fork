@@ -452,9 +452,16 @@ Each entry arrives as a card:
   anchored to, colour-coded by what it acts on: PID, air, drum, burner, or an external command.
   Rather than discovering after the roast that an alarm fired, you see it land.
 - **Fired events** — each press of an event button, tagged **EVT** with its command and the time.
+  A press made before **START** reaches the roaster but is not written into the roast, and the
+  card says so — during preheating your burner and air settings act on the machine without
+  appearing in the profile.
 
-Cards fade in as they arrive and stack newest-first, so the column reads as a running account of
-the roast.
+Every card carries its time: **+3:14** counts from CHARGE once the batch is in, and a plain
+**14:32:05** before that. Cards fade in as they arrive and stack newest-first, so the column
+reads as a running account of the roast.
+
+The column empties itself at every **START** and at **RESET**, so two roasts in a row never share
+it. The **✕** clears it at any other moment.
 
 ### ARTISAN messages
 
@@ -464,11 +471,15 @@ newest highlighted and older ones dimmed, up to the last forty, with a button to
 
 **Routine noise is filtered out**, so the section holds what has operational meaning rather than
 every internal notice. When something unexpected happens mid-roast, the explanation is usually
-already sitting in this list — which is the whole point of keeping it.
+already sitting in this list — which is the whole point of keeping it. The section runs from the
+start of the recording to its end, and empties with the cards above it at the next **START** or
+**RESET**.
 
-<!-- CAPTURE 2.11 — the sidebar expanded, showing at least one triggered-alarm card and one fired
-event. CAPTURE 2.12 — the ARTISAN message section with several messages, newest highlighted.
-CAPTURE 2.13 — the grip strip in both states, collapsed and expanded. -->
+<!-- CAPTURE 2.11 — the sidebar expanded during a recording, showing a triggered-alarm card and a
+fired-event card, both stamped +m:ss, plus one event card pressed before START carrying its "not
+recorded before START" line. CAPTURE 2.12 — the ARTISAN message section with several messages,
+newest highlighted, ending on "Scope recording stopped". CAPTURE 2.13 — the grip strip in both
+states, collapsed and expanded. -->
 
 ---
 
@@ -477,7 +488,8 @@ CAPTURE 2.13 — the grip strip in both states, collapsed and expanded. -->
 Artisan's event buttons are also available as a **floating panel** that can be moved and resized
 freely, and that remembers its position and size between sessions. Pressing a button fires its
 command and posts a card in **LIVE EVENTS**, so a manual action leaves the same trace as an
-automatic one.
+automatic one. The card states whether the press was written into the roast: only a recording in
+progress records it, and a button set to no event type never does.
 
 Placing it where your hand naturally goes — beside the machine, not beside the curve — is the
 point of it floating.

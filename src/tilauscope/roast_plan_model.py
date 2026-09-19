@@ -101,6 +101,18 @@ _DEV_DESTINATION_BONUS_SEC: dict[str, float] = {
 }
 _DEV_DESTINATION_DEFAULT: str = "omni"
 
+## Ce que l'interface a besoin de savoir de la destination : où elle est rangée,
+## dans quel ordre l'offrir, et ce qu'elle coûte en développement. Exporté ici
+## parce que le barème est ici : un écran qui redéclare l'un des trois finit par
+## en afficher un que le moteur n'applique pas.
+ROAST_DESTINATION_SETTING: str = "tilauscope/roast_destination"
+ROAST_DESTINATION_KEYS: tuple[str, ...] = tuple(_DEV_DESTINATION_BONUS_SEC)
+
+
+def destination_dev_bonus_sec(key: str) -> float:
+    """Secondes de développement ajoutées par cette destination (0 si inconnue)."""
+    return _DEV_DESTINATION_BONUS_SEC.get(str(key or "").strip().lower(), 0.0)
+
 ## ── Les variables du grain vert ──────────────────────────────────────────────
 ## Arbitrage Tilau 2026-08-13 (spec §2.2). aw et humidité ne sont PAS une paire :
 ## ce sont deux grandeurs distinctes, aux consommateurs disjoints.
@@ -4440,7 +4452,7 @@ class TilauScopeRoastPlan:
     @staticmethod
     def _read_roast_destination() -> str:
         """Destination courante du café, normalisée sur la table des bonus."""
-        _dest = str(QSettings().value('tilauscope/roast_destination',
+        _dest = str(QSettings().value(ROAST_DESTINATION_SETTING,
                                       _DEV_DESTINATION_DEFAULT, str) or "").strip().lower()
         return _dest if _dest in _DEV_DESTINATION_BONUS_SEC else _DEV_DESTINATION_DEFAULT
 

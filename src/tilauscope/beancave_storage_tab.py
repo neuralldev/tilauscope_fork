@@ -119,6 +119,22 @@ def conditioning_label(key: str) -> str:
     return QApplication.translate("tilauscope_storage", "Not set")
 
 
+def stock_label(grams: float) -> str:
+    """Stock in kg, switching to grams below 100 g.
+
+    The kg format has one decimal, so a small residue left over by a roast
+    would read "0.0 kg" and look like an empty bean that refuses to leave the
+    list. Below 100 g the real gram figure is shown instead.
+    """
+    try:
+        g = float(grams or 0.0)
+    except (TypeError, ValueError):
+        return "—"
+    if g < 100.0:
+        return f"{g:.0f} g"
+    return f"{g / 1000:.1f} kg"
+
+
 # --- settings helpers ------------------------------------------------------- #
 def load_thresholds() -> StorageThresholds:
     s = QSettings()
@@ -629,7 +645,7 @@ class StorageTab(QWidget):
             crop = getattr(b, "crop", 0)
             sub = f" '{str(crop)[-2:]}" if crop else ""
             self._set_cell(r, 0, f"{name}{sub}")
-            self._set_cell(r, 1, f"{getattr(b, 'weight_left', 0.0) / 1000:.1f} kg", align_right=True)
+            self._set_cell(r, 1, stock_label(getattr(b, 'weight_left', 0.0)), align_right=True)
             sacks = getattr(b, "sacks", []) or []
             self._set_cell(r, 2, "  ".join(sacks) if sacks else "—")
             aw_txt = f"{aw:.2f}" if aw > 0 else "—"
@@ -716,7 +732,7 @@ class StorageTab(QWidget):
         self.f_meta.setText(" · ".join(meta_bits))
         nsacks = len(getattr(b, "sacks", []) or [])
         sack_txt = f"{nsacks} {QApplication.translate("tilauscope_storage", 'lot(s)')} · " if nsacks else ""
-        self.f_stock.setText(f"{sack_txt}{getattr(b, 'weight_left', 0.0) / 1000:.1f} kg")
+        self.f_stock.setText(f"{sack_txt}{stock_label(getattr(b, 'weight_left', 0.0))}")
 
         self.f_aw.setText(f"{aw:.2f}" if aw > 0 else "—")
         self.f_aw.setStyleSheet(f"font-size:30px; font-weight:700; color:{color};")

@@ -28,12 +28,14 @@ import logging
 import re
 from typing import Any, Final
 
-from PyQt6.QtGui import QColor
-
 from artisanlib.util import convertTemp
-from tilauscope.tilauscope_types import THEME, UNMARKED, marked, normalize_timeindex  # noqa: F401
+from tilauscope.tilauscope_types import (  # noqa: F401
+    COLOR_AIR, COLOR_GRAIN, THEME, UNMARKED, dimmed, marked, normalize_timeindex)
 # marked/normalize_timeindex live with RoastingPhase and are re-exported here:
-# the graph package has read them under this name since it was written.
+# the graph package has read them under this name since it was written. The
+# probe hues and `dimmed` sit there too, so the screens that draw a roast
+# without the curve engine — BeanCave's viewer, the roast cards — read the same
+# colours without importing this package.
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -139,11 +141,8 @@ _ROR_AXIS: Final[dict[str, tuple[float, float]]] = {
 }
 ROR_MIN: Final[float] = 0.0
 
-#: Fallback curve hues, for a palette that does not answer. One per PROBE, not
-#: per quantity: the bean and its rate are one family, the air and its rate
-#: another — see `dimmed` for what separates the two members of a family.
-COLOR_GRAIN: Final[str] = '#89B4FA'          # blue — grain temperature
-COLOR_AIR: Final[str] = '#FAB387'            # peach — air temperature
+# The fallback curve hues, for a palette that does not answer, are COLOR_GRAIN
+# and COLOR_AIR, re-exported above from where every screen reads them.
 
 
 def temp_axis(mode: str) -> tuple[float, float, float]:
@@ -330,18 +329,3 @@ def reset_rise_cache() -> None:
     """Forget the recomputed rise. For tests, and for a change of roast that
     somehow keeps the same shape."""
     _rise_cache.clear()
-
-def dimmed(colour: str, fallback: str) -> str:
-    """The same hue, one step back.
-
-    A rate belongs to the probe it is measured on, so it wears that probe's
-    colour rather than one of its own — but it must never be mistaken for the
-    temperature itself, which is the line the roast is read from. Darker and a
-    little less saturated does both: same family at a glance, clearly the
-    quieter member of it.
-    """
-    c = QColor(colour)
-    if not c.isValid():
-        c = QColor(fallback)
-    h, sat, light, alpha = c.getHsl()
-    return QColor.fromHsl(h, int(sat * 0.72), int(light * 0.74), alpha).name()
