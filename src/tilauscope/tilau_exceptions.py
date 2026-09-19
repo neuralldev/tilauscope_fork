@@ -134,7 +134,9 @@ class TilauCrashDialog(QDialog):
 
         # Buttons
         btn_layout = QHBoxLayout()
-        self.export_btn = QPushButton(QApplication.translate("tilauscope_diagnostics","Export Logs & Close"))
+        from tilauscope.tilauscope_types import literal_ampersand
+        self.export_btn = QPushButton(literal_ampersand(
+            QApplication.translate("tilauscope_diagnostics","Export Logs & Close")))
         self.export_btn.setDefault(True)
         self.close_btn = QPushButton(QApplication.translate("tilauscope_diagnostics","Just Close"))
 

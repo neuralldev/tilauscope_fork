@@ -220,7 +220,10 @@ class PlanTabMixin:
             return
         computed = self.lastprofiledata.get("computed", {})
         profile_roast_temperature = computed.get("ambient_temperature", 0.0)
-        profile_roast_pressure    = computed.get("ambient_pressure", get_theoretical_pressure(self.aw.qmc.elevation if not None else 0.0))
+        # `if not None` is always true, so the fallback below never ran and a
+        # missing elevation reached get_theoretical_pressure as None.
+        elevation = self.aw.qmc.elevation if self.aw.qmc.elevation is not None else 0.0
+        profile_roast_pressure    = computed.get("ambient_pressure", get_theoretical_pressure(elevation))
         profile_roast_altitude    = self.aw.qmc.elevation
         profile_roast_weight      = computed.get("weightin",0.0)
 

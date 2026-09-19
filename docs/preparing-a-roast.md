@@ -164,7 +164,7 @@ Under *Roast automation*, four milestones can be marked automatically:
 | **Auto Charge** | Marks [CHARGE](glossary.md#charge) on its own. |
 | **Auto Drop** | Marks [DROP](glossary.md#drop) on its own. |
 | **Auto Dry End** | Marks [dry end](glossary.md#de--dry-end) on its own. |
-| **Auto First Crack** | Marks [first crack](glossary.md#fc--first-crack) from the crack counter. |
+| **Auto First Crack** | Marks [first crack](glossary.md#fc--first-crack) when bean temperature reaches the first-crack target, sooner if a burst of cracks is heard. |
 
 !!! note "Auto Dry End has a prerequisite"
     It needs a Dry-phase BT target set in **Artisan → Phases**. Without one, the box can
@@ -173,8 +173,11 @@ Under *Roast automation*, four milestones can be marked automatically:
     not broken — it has nothing to aim at.
 
 !!! info "Hardware — Auto First Crack"
-    Automatic first-crack marking listens for cracks, so it needs an acoustic source: the
-    TilauAmbient probe or an Omniflux. See [Hardware and peripherals](hardware.md).
+    Automatic first-crack marking needs a crack counter among your devices — an acoustic source
+    such as the TilauAmbient probe. See [Hardware and peripherals](hardware.md). It also waits
+    for dry end to be marked before it starts looking. The DETECTION tab in
+    [Configuration](configuration.md#-detection--how-milestones-get-marked-automatically) says
+    which of the two is missing, and lets you set how much temperature tolerance the target gets.
 
 Under *Roast Replay*, a background curve loaded before the sheet was opened can be replayed
 live during the roast: **Enable roast replay** turns it on, and **Burner reaction time** sets

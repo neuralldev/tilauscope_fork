@@ -11,6 +11,7 @@ A smaller release: TilauScope now adapts itself to machines that have no air pro
 ## ☕ During the roast
 
 * **What the coffee is for is now on the assistant.** *Filter*, *Omni* or *Espresso* sits under the coffee and the roasting target, so it can be set without going through the setup sheet — it is one setting shared with the setup sheet and the planning tab. Once the roast starts, the line under the coffee's name states which one the plan was built on.
+* **Automatic first crack says what it needs and what it will do.** The DETECTION tab now warns when no crack counter is configured — the automation had nothing to bind to and simply stayed silent for the whole roast — and states that it waits for dry end to be marked first. A new **Temperature tolerance**, in the unit your graph uses, sets how much slack the first-crack target gets, with a line beneath it spelling out where TilauScope starts listening, where it marks, and the point past which it marks anyway. The settings that claimed to weigh colour and rate-of-colour against the cracks are gone: they were never read.
 
 ## 🔌 Devices
 

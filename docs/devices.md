@@ -17,8 +17,10 @@ What the window does not cover — the connection of a Modbus or network meter, 
 formulas and curve colours — stays in Artisan's own device settings, one button away from the
 tab that needs it.
 
-<!-- CAPTURE 14.1 — the Devices window, ROASTER tab, Meter selected with a USB meter and its
+<!-- CAPTURE 14.1 [scene:devices_roaster] — the Devices window, ROASTER tab, Meter selected with a USB meter and its
 port showing. -->
+
+![Devices window with a USB temperature meter and its port selected.](assets/devices-14.1.png)
 
 ---
 
@@ -106,8 +108,10 @@ once; they open correctly from then on.
 Removing a device that has readings in the roast currently open removes those readings as well;
 **Save** asks before doing it.
 
-<!-- CAPTURE 14.3 — EXTRA DEVICES tab: the command bar, a selected card, one card showing
+<!-- CAPTURE 14.3 [scene:devices_extras] — EXTRA DEVICES tab: the command bar, a selected card, one card showing
 "Used for first crack detection", and a card being dragged with the insertion line visible. -->
+
+![The EXTRA DEVICES tab with the command bar and device cards.](assets/devices-14.3.png)
 
 ---
 
@@ -122,8 +126,10 @@ three in one step and adds the devices it needs.
 A reading Artisan takes from a sensor of its own — a Phidget or Yocto humidity or pressure
 sensor — is shown as set in Artisan's device settings, and left as it is.
 
-<!-- CAPTURE 14.4 — AMBIENT tab with the TilauAmbient probe banner showing, then the same tab
+<!-- CAPTURE 14.4 [scene:devices_ambient] — AMBIENT tab with the TilauAmbient probe banner showing, then the same tab
 with the three sources set on TilauAmbient. -->
+
+![The AMBIENT tab with an ambient probe configured.](assets/devices-14.4.png)
 
 ---
 

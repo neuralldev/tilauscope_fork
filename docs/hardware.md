@@ -232,8 +232,10 @@ Devices seen nearby but not recognised, or recognised but not yet assigned to a 
 listed separately in the same screen, so a device that isn't working can be told apart from a
 device that was never found at all.
 
-<!-- CAPTURE 9.8 — the SENSORS tab, an assigned device and an "other hardware nearby" entry
+<!-- CAPTURE 9.8 [scene:config_sensors] — the SENSORS tab, an assigned device and an "other hardware nearby" entry
 both visible. -->
+
+![The SENSORS tab with an assigned device.](assets/hardware-9.8.png)
 
 ---
 

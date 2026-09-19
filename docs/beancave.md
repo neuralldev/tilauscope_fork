@@ -115,6 +115,7 @@ vocabulary consistent from one coffee to the next.
 <!-- CAPTURE 3.6 — the stock field with a live scale reading available. -->
 
 ![the flavour](assets/beancave-3.7.png)
+
 ![the flavour](assets/beancave-3.7.1.png)
 
 ---

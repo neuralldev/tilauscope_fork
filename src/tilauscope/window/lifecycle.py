@@ -469,7 +469,7 @@ class LifecycleMixin:
         A roast being consulted is not being steered: the machine controls, the
         readouts and the status line all describe a live session and say nothing
         about a finished one, so they go and the review takes the space. There
-        is no way in and no way out — START or RESET brings the column back.
+        is no way in; MONITOR, START or RESET brings the column back.
         """
         try:
             if (self.aw.qmc.flagstart or not self._has_charged_roast()

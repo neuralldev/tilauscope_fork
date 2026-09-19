@@ -1789,7 +1789,6 @@ class tgraphcanvas(QObject):
         ## Silent auto-marking is opt-in (QSettings tilauscope/milestone_automark,
         ## default False) — the safe default is suggest + operator confirmation.
         self._tilau_milestone_suggest: dict | None = None
-        self.aw.bleTilauScopeFCMarkdone = False
 ## TILAU ##
 
         self.legend:Legend|None = None
@@ -15294,9 +15293,7 @@ class tgraphcanvas(QObject):
                                 del self.l_annotations_dict[2]
                         ## TILAU ##
                         self.tilauUpdateSignal.emit(2, None, None, False) # update tilauscope UI
-                        # remove triggered automark from detector
-                        self.aw.bleTilauScopeFCMarkdone = False
-                   
+
                     elif not self.aw.buttonFCs.isFlat():
                         _log.debug('EVENT: FCs')
                         # record 1Cs only if Charge mark has been done
@@ -15332,9 +15329,6 @@ class tgraphcanvas(QObject):
                         self.phasesLCDmode = self.phasesLCDmode_l[2]
                         ## TILAU ##
                         self.tilauUpdateSignal.emit(2, None, None, True) # update tilauscope UI
-                    ## TILAU ##
-                    #if Ambient is used lock counter
-                    self.aw.bleTilauScopeFCMarkdone = True
                 else:
                     message = QApplication.translate('Message','FC START: Scope is not recording')
                     self.aw.sendmessage(message)

@@ -24,8 +24,9 @@ roast did, and how it compares to the plan.
 
 The same thing happens when a past roast is opened from **File → Open**, whether to look at it or
 to replay it in the simulator, and whenever the roasting window opens on a finished roast, such as
-the last one reopened when the application starts. There is nothing to switch on or off — starting
-a recording, or a simulation, hands the column back to the live session, and RESET clears it.
+the last one reopened when the application starts. There is nothing to switch on or off — switching
+monitoring on, starting a recording or a simulation hands the column back to the live session, and
+RESET clears it.
 
 At the [Guided](getting-started.md#guided-or-expert) level the docked assistant steps aside for
 the review, since the roast it was guiding is over. Calling the assistant back — with the
@@ -86,10 +87,12 @@ A milestone marked late, or forgotten, can be corrected on the curve beside the 
 sideways, or right-click where it happened. The review is recalculated as soon as the correction
 is made. See [Correcting a milestone](the-window.md#correcting-a-milestone).
 
-<!-- CAPTURE 8.0 — the roasting window just after STOP: the left column given over to the roast
+<!-- CAPTURE 8.0 [scene:review] — the roasting window just after STOP: the left column given over to the roast
      review of a roast that ran to plan — readouts and status line gone, verdict block at the top,
      phase ribbon, milestone table with the VS PLAN column, the four figures, the Next batch
      pill beside the plan badge and the Coach card under the figures. -->
+
+![The roast review in the left column just after a recording stops.](assets/after-the-roast-8.0.png)
 
 ---
 
@@ -217,17 +220,16 @@ bars themselves carry no figures, so the ribbon stays readable whatever the size
 
 ![The curve card, single roast, all milestones labelled](assets/after-the-roast-8.2.png)
 
-<!-- CAPTURE 8.2 — the Roasts tab, one roast selected in the list grouped by day: its name, date and four figures above the curve card on Curve, all milestones labelled, the rate of rise at drop written, View on Both and Burner & air on -->
-
+<!-- CAPTURE 8.2 [scene:cave_roast] — the Roasts tab, one roast selected in the list grouped by day: its name, date and four figures above the curve card on Curve, all milestones labelled, the rate of rise at drop written, View on Both and Burner & air on -->
 
 ![Consistency view on 3+ roasts of the same coffee](assets/after-the-roast-8.3.png)
 
-<!-- CAPTURE 8.3 — View on Consistency with 3+ roasts of the same coffee; the phase ribbon under the curve shows one bar per roast, the pointer off the ribbon -->
+<!-- CAPTURE 8.3 [scene:cave_consistency] — View on Consistency with 3+ roasts of the same coffee; the phase ribbon under the curve shows one bar per roast, the pointer off the ribbon -->
 
 ![Aligned view
 on the same set](assets/after-the-roast-8.4.png)
 
-<!-- CAPTURE 8.4 — View on Aligned with the same set, the list narrowed to that coffee with All coffees -->
+<!-- CAPTURE 8.4 [scene:cave_aligned] — View on Aligned with the same set, the list narrowed to that coffee with All coffees -->
 
 
 ### Correcting the timeline afterward
@@ -301,7 +303,7 @@ with the time it happened — so you can go and look at that spot yourself.
 ![Statistics with Coach's Advice fully populated, ideally
 flagging at least one phase](assets/after-the-roast-8.8.png)
 
-<!-- CAPTURE 8.8 (image) — Statistics chosen beside Curve in the Roasts tab, Coach's Advice fully populated, ideally flagging at least one phase -->
+<!-- CAPTURE 8.8 [scene:cave_stats] (image) — Statistics chosen beside Curve in the Roasts tab, Coach's Advice fully populated, ideally flagging at least one phase -->
 
 
 ---
@@ -342,7 +344,9 @@ just entered, so the bag can be labelled while the batch is still cooling. Savin
 without having printed one asks the question once. See
 [Labels and QR](labels-and-qr.md#what-each-label-carries).
 
-<!-- CAPTURE 8.8 — the result form, two columns: weight and colour filled in on the left, notes written on the right, and Tipping marked (lit, with its ✓) under the Seen on the beans caption, below the notes box -->
+<!-- CAPTURE 8.8b [scene:result] — the result form, two columns: weight and colour filled in on the left, notes written on the right, and Tipping marked (lit, with its ✓) under the Seen on the beans caption, below the notes box -->
+
+![Roast result with weight, colour, notes and Tipping marked.](assets/after-the-roast-8.8b.png)
 
 <!-- CAPTURE 8.9 — the result form reopened from ⋯ → Record result… on an older roast, batch and metrics shown across the top -->
 
@@ -382,7 +386,9 @@ date, a small curve with its milestones, weight and loss, colour and
 link back to the source coffee. See [Labels and QR](labels-and-qr.md) for printing and
 scanning; this is what scanning a roast actually shows.
 
-<!-- CAPTURE 8.11 — Export a completed roast as a portrait Card with temperature and RoR, all three milestones, phase durations and measured colour. -->
+<!-- CAPTURE 8.11 [scene:card] — Export a completed roast as a portrait Card with temperature and RoR, all three milestones, phase durations and measured colour. -->
+
+![A completed roast exported as a portrait card.](assets/after-the-roast-8.11.png)
 
 ---
 

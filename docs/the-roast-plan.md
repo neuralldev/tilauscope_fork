@@ -54,12 +54,14 @@ Greek, Cyrillic, Chinese, Japanese, Korean, and Arabic, Persian or Hebrew read r
 Coffee and farm names print in their own script too. Thai is the one exception — it has no
 letterforms available and prints blank.
 
-<!-- CAPTURE 6.1 — the BeanCave "Roasting plan" tab, form completed, with the ⚡ Generate Roast
-Plan button enabled. CAPTURE 6.2 — the injection confirmation message. CAPTURE 6.3 and 6.4 —
+<!-- CAPTURE 6.1 [scene:cave_plan] — the BeanCave "Roasting plan" tab, form completed, with the ⚡ Generate Roast
+Plan button enabled. CAPTURE 6.2 — the injection confirmation message. CAPTURE 6.3 and CAPTURE 6.4 —
 one or two pages of a generated PDF, on a coffee with enough history to show "learned" sources.
 CAPTURE 6.7 — the "Control Ramps (Heater & Airflow)" page of a generated PDF, on a coffee whose
 plan carries a full heater ramp and a development ramp.
 -->
+
+![The Roasting plan tab with its form and the Generate Roast Plan action.](assets/the-roast-plan-6.1.png)
 
 ---
 

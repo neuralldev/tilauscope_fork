@@ -60,8 +60,10 @@ TilauScope's own, Artisan's, or the one on your phone. At Expert level it is sta
 coffee's name must show the roasting target followed by the destination, e.g.
 "☕ Espresso  +10s dev". -->
 <!-- CAPTURE 7.2 — the same assistant in Expert view, same roast. -->
-![the docked assistant mid-roast](assets/the-guided-roast-7.1.png)
+
 ![the expert view](assets/the-guided-roast-7.2.png)
+
+![the docked assistant mid-roast](assets/the-guided-roast-7.1.png)
 
 ### Coach view and Expert view
 
@@ -308,7 +310,7 @@ line by line.
 
 ![the Expert view](assets/the-guided-roast-7.17.png)
 
-<!-- CAPTURE 7.17 — the alarm editor, grouped by phase, on a full programme. Every row now
+<!-- CAPTURE 7.17 [scene:alarms] — the alarm editor, grouped by phase, on a full programme. Every row now
 carries a + guard placeholder after its condition, so the previous capture is out of date. -->
 
 

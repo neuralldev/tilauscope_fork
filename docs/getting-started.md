@@ -32,6 +32,7 @@ Artisan's own menus.
 
 <!-- CAPTURE 1.1 — the TilauScope menu, fully open. The first entry is now
 BeanCave: the Switch to TilauScope / Switch to Artisan window entry is gone. -->
+
 ![the TilauScope menu, fully open](assets/getting-started-1.1.png)
 
 ### Version and bug reports

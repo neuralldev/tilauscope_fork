@@ -1260,6 +1260,17 @@ class _EnterGuard(QObject):
         return False
 
 
+def literal_ampersand(text: str) -> str:
+    """Keep an ``&`` in a widget label from being eaten as a keyboard shortcut.
+
+    Qt reads a single ampersand in a button, check box or group-box title as a
+    mnemonic and takes it out of what is shown, so "detection & marking" was
+    drawn as "detection marking". Doubling it after translation leaves the
+    source string — and every translation already made from it — untouched.
+    """
+    return text.replace('&', '&&')
+
+
 def no_enter_default(dialog) -> None:
     """Stop the Return key from throwing `dialog` away.
 
@@ -2201,12 +2212,12 @@ class TilauProgressDialog(QDialog):
 # (displayed = true + offset); offset 0 -> raw profession default.
 PROFESSION_DE_TRUE_C: tuple[float, float] = (158.0, 163.0)
 PROFESSION_FC_TRUE_C: tuple[float, float] = (195.0, 200.0)
-_MILESTONE_HALF_C: float = 5.0
+MILESTONE_HALF_C: float = 5.0
 
 
 def resolve_milestone_window(plan_target_c: float, true_band_c: tuple[float, float],
                              sensor_offset_c: float = 0.0,
-                             half_c: float = _MILESTONE_HALF_C
+                             half_c: float = MILESTONE_HALF_C
                              ) -> tuple[float, float, float, float]:
     """Returns (gate_lo, gate_hi, band_lo, band_hi) in the displayed BT frame."""
     if plan_target_c and plan_target_c > 0.0:
@@ -2218,12 +2229,12 @@ def resolve_milestone_window(plan_target_c: float, true_band_c: tuple[float, flo
 
 
 def resolve_de_window(plan_target_c: float, bt_dry_offset_c: float = 0.0,
-                      half_c: float = _MILESTONE_HALF_C) -> tuple[float, float, float, float]:
+                      half_c: float = MILESTONE_HALF_C) -> tuple[float, float, float, float]:
     return resolve_milestone_window(plan_target_c, PROFESSION_DE_TRUE_C, bt_dry_offset_c, half_c)
 
 
 def resolve_fc_window(plan_target_c: float, bt_fc_offset_c: float = 0.0,
-                      half_c: float = _MILESTONE_HALF_C) -> tuple[float, float, float, float]:
+                      half_c: float = MILESTONE_HALF_C) -> tuple[float, float, float, float]:
     return resolve_milestone_window(plan_target_c, PROFESSION_FC_TRUE_C, bt_fc_offset_c, half_c)
 
 

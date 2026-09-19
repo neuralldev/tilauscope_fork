@@ -43,7 +43,9 @@ from PyQt6.QtGui import QCursor, QPalette, QColor
 from PyQt6 import sip
 
 from tilauscope.theme_qss import base_qss, style_combo_popup, tooltip_qss
-from tilauscope.tilauscope_types import THEME, no_enter_default, show_styled_message, TilauProgress
+from tilauscope.tilauscope_types import (THEME, literal_ampersand, no_enter_default, resolve_crack_channel,
+                                         resolve_fc_window, show_styled_message,
+                                         TilauProgress)
 # Shared with the Devices window (device_setup/dialog.py): one look for both.
 from tilauscope.widgets.config_parts import (
     QCollapsibleWidget,
@@ -322,12 +324,10 @@ class TilauscopeConfigDlg(QDialog):
             "TilauScopeAnnotation":       aw.TilauScopeAnnotation,
             "TilauScopeNotification":     aw.TilauScopeNotification,
             "bleTilauScopeDeviceName":    aw.bleTilauScopeDeviceName,
-            "bleTilauScopeautomarkFC":    aw.bleTilauScopeautomarkFC,
-            "bleTilauScopeFCTreshold":    aw.bleTilauScopeFCTreshold,
             "TilauScopeFCMarkFlag":       aw.TilauScopeFCMarkFlag,
             "TilauScopeFCWindow":         aw.TilauScopeFCWindow,
             "TilauScopeFCTreshold":       aw.TilauScopeFCTreshold,
-            "TilauScopeCrackParams":      aw.TilauScopeCrackParams.copy(),
+            "TilauScopeFCHalfBand":       aw.TilauScopeFCHalfBand,
             "TilauScopeDEMarkFlag":       aw.TilauScopeDEMarkFlag,
             "bleRoastSeeDeviceName":      aw.bleRoastSeeDeviceName,
             "bleRoastSeeAGDeviceName":    aw.bleRoastSeeAGDeviceName,
@@ -504,7 +504,8 @@ class TilauscopeConfigDlg(QDialog):
 
         # UI features
         layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "UI Features")))
-        feat_group = QGroupBox(QApplication.translate("tilauscope_devices", "Overlay & Notifications"))
+        feat_group = QGroupBox(literal_ampersand(
+            QApplication.translate("tilauscope_devices", "Overlay & Notifications")))
         fg = QVBoxLayout(feat_group)
         fg.setContentsMargins(12, 14, 12, 14)
         fg.setSpacing(18)
@@ -640,25 +641,9 @@ class TilauscopeConfigDlg(QDialog):
             "bleTilauScopeDeviceName", "bleTilauAmbientDeviceslist",
         )
 
-        # Crack audio threshold — parameter of THIS device's microphone analysis
-        self.tilauAmbientCrackThresholdSpin = QSpinBox()
-        self.tilauAmbientCrackThresholdSpin.setRange(1, 10)
-        self.tilauAmbientCrackThresholdSpin.setValue(
-            self.aw.bleTilauScopeFCTreshold if self.aw.bleTilauScopeFCTreshold is not None else 3
-        )
-        self.tilauAmbientCrackThresholdSpin.setToolTip(
-            QApplication.translate(
-                "tilauscope_devices",
-                "Acoustic sensitivity threshold for crack detection via TilauAmbient microphone.\n"
-                "Lower = more sensitive. Independent from the global algorithm threshold."
-            )
-        )
-
         ag.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)
         ag.addWidget(self.tilauscopeProbeComboBoxcList, 0, 1)
         ag.addWidget(ambient_cell, 0, 2)
-        ag.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Crack audio sensitivity:")), 1, 0)
-        ag.addWidget(self.tilauAmbientCrackThresholdSpin, 1, 1, alignment=Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(ambient_group)
 
         # ── Color & Airflow — AirWave BLE ─────────────────────────────────
@@ -854,11 +839,14 @@ class TilauscopeConfigDlg(QDialog):
             QApplication.translate("tilauscope_devices", "First Crack (FC)")
         ))
 
-        # Source info
+        # What the algorithm actually does: position on the FC target first, a pop
+        # burst only as an advancer. Colour and RoC play no part at FC.
         src_lbl = QLabel(
             QApplication.translate(
                 "tilauscope_devices",
-                "Signal sources: TilauAmbient (acoustic) · Omniflux (color/RoC) — fused in tilau_intelligence"
+                "TilauScope calls first crack when bean temperature reaches the first-crack "
+                "target set in Artisan → Phases. A burst of cracks heard at or above that "
+                "target calls it sooner."
             )
         )
         src_lbl.setStyleSheet(
@@ -871,14 +859,59 @@ class TilauscopeConfigDlg(QDialog):
         fc_g = QGridLayout(fc_group)
 
         self.fcMarking = QCheckBox(
-            QApplication.translate("tilauscope_devices", "Enable automatic FC detection & marking")
+            literal_ampersand(
+                QApplication.translate("tilauscope_devices", "Enable automatic FC detection & marking"))
         )
         self.fcMarking.setChecked(self.aw.TilauScopeFCMarkFlag)
         self.fcMarking.setToolTip(
             QApplication.translate(
                 "tilauscope_devices",
-                "Activates the TilauScope multi-signal FC detection algorithm "
-                "(crack count density, color RoC, BT threshold)."
+                "Marks first crack on bean temperature reaching the target, with a burst "
+                "of cracks able to call it sooner."
+            )
+        )
+
+        # Tolerance is stored in °C and shown in the graph's own unit: an operator
+        # reading ±5 °C off a Fahrenheit graph is being asked to convert in their head.
+        self._fc_half_unit = 'F' if self.aw.qmc.mode == 'F' else 'C'
+        self.fcHalfBandSpin = QSpinBox()
+        if self._fc_half_unit == 'F':
+            self.fcHalfBandSpin.setRange(4, 22)
+            self.fcHalfBandSpin.setSuffix(" °F")
+            self.fcHalfBandSpin.setValue(int(round(self.aw.TilauScopeFCHalfBand * 1.8)))
+        else:
+            self.fcHalfBandSpin.setRange(2, 12)
+            self.fcHalfBandSpin.setSuffix(" °C")
+            self.fcHalfBandSpin.setValue(int(round(self.aw.TilauScopeFCHalfBand)))
+        # Written back only when the operator moved it, so a Fahrenheit round trip
+        # cannot erode the stored °C value.
+        self._fc_half_shown = self.fcHalfBandSpin.value()
+        self.fcHalfBandSpin.setToolTip(
+            QApplication.translate(
+                "tilauscope_devices",
+                "How far bean temperature may sit either side of the first-crack target. "
+                "Narrower trusts the target; wider gives a missed crack burst more room "
+                "before first crack is marked anyway."
+            )
+        )
+
+        # The band the tolerance produces, spelled out — a tolerance on its own says
+        # nothing about where the roast will be marked.
+        self.fcBandLbl = QLabel()
+        self.fcBandLbl.setStyleSheet(
+            f"color: {THEME['SUBTEXT']}; font-size: 11px;"
+        )
+        self.fcBandLbl.setWordWrap(True)
+        self.fcHalfBandSpin.valueChanged.connect(lambda _=0: self._refresh_fc_band_label())
+
+        self.fcThresholdSpin = QSpinBox()
+        self.fcThresholdSpin.setRange(1, 20)
+        self.fcThresholdSpin.setValue(self.aw.TilauScopeFCTreshold)
+        self.fcThresholdSpin.setToolTip(
+            QApplication.translate(
+                "tilauscope_devices",
+                "How many cracks must be heard inside the listening window to call first "
+                "crack early, once the target is in reach."
             )
         )
 
@@ -887,32 +920,36 @@ class TilauscopeConfigDlg(QDialog):
         self.fcWindowSpin.setSuffix(" s")
         self.fcWindowSpin.setValue(self.aw.TilauScopeFCWindow)
         self.fcWindowSpin.setToolTip(
-            QApplication.translate("tilauscope_devices", "Sliding time window for crack density analysis (seconds).")
-        )
-
-        self.fcThresholdSpin = QSpinBox()
-        self.fcThresholdSpin.setRange(1, 20)
-        self.fcThresholdSpin.setValue(self.aw.TilauScopeFCTreshold)
-        self.fcThresholdSpin.setToolTip(
             QApplication.translate(
-                "tilauscope_devices",
-                "Minimum number of acoustic events within the window to confirm FC. "
-                "Independent from the TilauAmbient device sensitivity setting."
-            )
+                "tilauscope_devices", "How long a crack keeps counting toward that total.")
         )
 
-        # Enable/disable window+threshold with the main toggle
-        self.fcMarking.toggled.connect(self.fcWindowSpin.setEnabled)
-        self.fcMarking.toggled.connect(self.fcThresholdSpin.setEnabled)
-        self.fcWindowSpin.setEnabled(self.fcMarking.isChecked())
-        self.fcThresholdSpin.setEnabled(self.fcMarking.isChecked())
+        # Prerequisites the operator cannot read off the controls: the crack channel
+        # the detector binds to, and the dry-end mark it waits for.
+        self.fcStatusLbl = QLabel()
+        self.fcStatusLbl.setWordWrap(True)
+
+        # Enable/disable the three settings with the main toggle
+        for _w in (self.fcHalfBandSpin, self.fcThresholdSpin, self.fcWindowSpin):
+            self.fcMarking.toggled.connect(_w.setEnabled)
+            _w.setEnabled(self.fcMarking.isChecked())
 
         fc_g.addWidget(self.fcMarking, 0, 0, 1, 2)
-        fc_g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Detection window:")), 1, 0)
-        fc_g.addWidget(self.fcWindowSpin, 1, 1, alignment=Qt.AlignmentFlag.AlignLeft)
-        fc_g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Global event threshold:")), 2, 0)
-        fc_g.addWidget(self.fcThresholdSpin, 2, 1, alignment=Qt.AlignmentFlag.AlignLeft)
+        fc_g.addWidget(_field_label(
+            QApplication.translate("tilauscope_devices", "Temperature tolerance:")), 1, 0)
+        fc_g.addWidget(self.fcHalfBandSpin, 1, 1, alignment=Qt.AlignmentFlag.AlignLeft)
+        fc_g.addWidget(self.fcBandLbl, 2, 0, 1, 2)
+        fc_g.addWidget(_field_label(
+            QApplication.translate("tilauscope_devices", "Cracks to confirm:")), 3, 0)
+        fc_g.addWidget(self.fcThresholdSpin, 3, 1, alignment=Qt.AlignmentFlag.AlignLeft)
+        fc_g.addWidget(_field_label(
+            QApplication.translate("tilauscope_devices", "Listening window:")), 4, 0)
+        fc_g.addWidget(self.fcWindowSpin, 4, 1, alignment=Qt.AlignmentFlag.AlignLeft)
+        fc_g.addWidget(self.fcStatusLbl, 5, 0, 1, 2)
         layout.addWidget(fc_group)
+
+        self._refresh_fc_band_label()
+        self._refresh_fc_status_label()
 
         # ── Dry End ───────────────────────────────────────────────────────
         layout.addWidget(_section_label(
@@ -922,7 +959,8 @@ class TilauscopeConfigDlg(QDialog):
         de_g = QGridLayout(de_group)
 
         self.deMarking = QCheckBox(
-            QApplication.translate("tilauscope_devices", "Enable automatic Dry End detection & marking")
+            literal_ampersand(
+                QApplication.translate("tilauscope_devices", "Enable automatic Dry End detection & marking"))
         )
         self.deMarking.setChecked(self.aw.TilauScopeDEMarkFlag)
         self.deMarking.setToolTip(
@@ -935,35 +973,6 @@ class TilauscopeConfigDlg(QDialog):
         )
         de_g.addWidget(self.deMarking, 0, 0, 1, 2)
         layout.addWidget(de_group)
-
-        # ── Per-phase thresholds ──────────────────────────────────────────
-        layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_devices", "Per-Phase Thresholds")
-        ))
-        param_group = QGroupBox(
-            QApplication.translate("tilauscope_devices", "Detection parameters by crack event")
-        )
-        param_layout = QVBoxLayout(param_group)
-
-        self.crack_table = QTableWidget()
-        crack_headers = [
-            QApplication.translate("tilauscope_devices", "Threshold"),
-            QApplication.translate("tilauscope_devices", "Agtron max"),
-            QApplication.translate("tilauscope_devices", "RoC min"),
-            QApplication.translate("tilauscope_devices", "BT margin"),
-        ]
-        self.crack_table.setColumnCount(len(crack_headers))
-        self.crack_table.setHorizontalHeaderLabels(crack_headers)
-        self.crack_table.setRowCount(2)
-        self.crack_table.setVerticalHeaderLabels([
-            QApplication.translate("tilauscope_devices", "First Crack"),
-            QApplication.translate("tilauscope_devices", "Second Crack"),
-        ])
-        self.crack_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.crack_table.setFixedHeight(100)
-        self._populate_crack_table()
-        param_layout.addWidget(self.crack_table)
-        layout.addWidget(param_group)
 
         layout.addStretch()
 
@@ -1173,7 +1182,8 @@ class TilauscopeConfigDlg(QDialog):
         layout = scroll.widget().layout()
 
         layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "Labels")))
-        label_group = QGroupBox(QApplication.translate("tilauscope_devices", "Green bean & roasted bean labels"))
+        label_group = QGroupBox(literal_ampersand(
+            QApplication.translate("tilauscope_devices", "Green bean & roasted bean labels")))
         lg = QFormLayout(label_group)
 
         self.labelSizeCombo = QComboBox()
@@ -1225,30 +1235,73 @@ class TilauscopeConfigDlg(QDialog):
         layout.addStretch()
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Table helpers
+    # FC detection labels
     # ─────────────────────────────────────────────────────────────────────────
 
-    def _populate_crack_table(self) -> None:
-        data = self.aw.TilauScopeCrackParams
-        _ss = _table_spinbox_style()
-        for row, key in enumerate(["FC", "SC"]):
-            params = data.get(key, [4, 90.0, 2.0, 25.0])
-            for col in range(4):
-                sb = QDoubleSpinBox()
-                sb.setRange(0, 300)
-                sb.setDecimals(1 if col > 0 else 0)
-                sb.setValue(float(params[col]))
-                sb.setStyleSheet(_ss)
-                self.crack_table.setCellWidget(row, col, sb)
+    def _fc_half_c(self) -> float:
+        """Spin value back to the stored °C frame."""
+        v = float(self.fcHalfBandSpin.value())
+        return v / 1.8 if self._fc_half_unit == 'F' else v
 
-    def _get_crack_table_data(self) -> dict:
-        data = {}
-        for row, key in enumerate(["FC", "SC"]):
-            data[key] = [
-                self.crack_table.cellWidget(row, col).value()  # type: ignore[union-attr]
-                for col in range(4)
-            ]
-        return data
+    def _refresh_fc_band_label(self) -> None:
+        """Spell out the band the tolerance produces. Uses the same resolver as the
+        detector, so the sentence cannot drift from what the roast will do."""
+        unit = self._fc_half_unit
+        half = float(self.fcHalfBandSpin.value())
+
+        def _t(value: float) -> str:
+            return f"{round(value)} °{unit}"
+
+        try:
+            target = float(self.aw.qmc.phases[2])
+        except (IndexError, TypeError, ValueError):
+            target = 0.0
+        if target > 0.0:
+            self.fcBandLbl.setText(QApplication.translate(
+                "tilauscope_devices",
+                "Target {0} — listens from {1}, marks from {2}, no later than {3}."
+            ).format(_t(target), _t(target - half), _t(target), _t(target + half)))
+            return
+        # No target set: the detector falls back to the profession band (°C frame).
+        fc_lo, fc_hi, band_lo, band_hi = resolve_fc_window(0.0, 0.0, self._fc_half_c())
+        if unit == 'F':
+            fc_lo, fc_hi, band_lo, band_hi = (
+                v * 9.0 / 5.0 + 32.0 for v in (fc_lo, fc_hi, band_lo, band_hi))
+        self.fcBandLbl.setText(QApplication.translate(
+            "tilauscope_devices",
+            "No target in Artisan → Phases — falling back to {0}–{1}: listens from {2}, "
+            "marks from {3}, no later than {4}."
+        ).format(_t(band_lo), _t(band_hi), _t(fc_lo), _t(band_lo), _t(fc_hi)))
+
+    def _refresh_fc_status_label(self) -> None:
+        """Name the two prerequisites the controls cannot show: a crack channel to
+        bind to, and the dry-end mark the detector waits for."""
+        qmc = self.aw.qmc
+        try:
+            bound = resolve_crack_channel(
+                qmc.extraname1, qmc.extraname2, qmc.extratemp1, qmc.extratemp2) is not None
+        except Exception:  # pylint: disable=broad-except
+            bound = False
+        if bound:
+            self.fcStatusLbl.setText(QApplication.translate(
+                "tilauscope_devices",
+                "Runs once dry end is marked, using the crack counter found in your devices."
+            ))
+            self.fcStatusLbl.setStyleSheet(
+                f"color: {THEME['SUBTEXT']}; font-size: 11px; font-style: italic;")
+        else:
+            self.fcStatusLbl.setText("⚠  " + QApplication.translate(
+                "tilauscope_devices",
+                "No crack counter among your devices — first crack will not be marked "
+                "automatically. Add an acoustic crack channel in Devices; until then, "
+                "mark first crack yourself."
+            ))
+            self.fcStatusLbl.setStyleSheet(
+                f"color: {THEME['WARNING']}; font-size: 11px;")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Table helpers
+    # ─────────────────────────────────────────────────────────────────────────
 
     def _populate_airwave_pid_table(self) -> None:
         keys = list(self.aw.bleAirwavepidparms.keys())
@@ -2352,8 +2405,6 @@ class TilauscopeConfigDlg(QDialog):
             aw.bleTilauScopeDeviceName = m.group(1) if m else t
         else:
             aw.bleTilauScopeDeviceName = None  # unassigned via 🗑
-        # Acoustic crack sensitivity (device-level)
-        aw.bleTilauScopeFCTreshold = self.tilauAmbientCrackThresholdSpin.value()
 
         # ── Sensors — AirWave ─────────────────────────────────────────────
         t = self.AirwaveComboBox.currentText()
@@ -2445,10 +2496,10 @@ class TilauscopeConfigDlg(QDialog):
         aw.TilauScopeFCWindow    = self.fcWindowSpin.value()
         aw.TilauScopeFCTreshold  = self.fcThresholdSpin.value()
         aw.TilauScopeDEMarkFlag  = self.deMarking.isChecked()
-        aw.TilauScopeCrackParams = self._get_crack_table_data()
-
-        # FC automark flag is kept in sync: algorithm is active ↔ FC marking on
-        aw.bleTilauScopeautomarkFC = self.fcMarking.isChecked()
+        # Only when the operator moved it: converting the shown value back every
+        # time would erode the stored °C figure on a Fahrenheit graph.
+        if self.fcHalfBandSpin.value() != self._fc_half_shown:
+            aw.TilauScopeFCHalfBand = self._fc_half_c()
 
         # ── Integrations — MQTT ───────────────────────────────────────────
         aw.mqttConfig.broker_url = self.mqttBrokerEdit.text()

@@ -70,7 +70,7 @@ more than the toggle itself.
 
 ![the UI Features and Remote access groups](assets/configuration-4.4.png)
 
-<!-- CAPTURE 4.4 — Configuration → GENERAL, the UI Features and Remote access groups, with
+<!-- CAPTURE 4.4 [scene:config_general] — Configuration → GENERAL, the UI Features and Remote access groups, with
 the new record web server tick box unticked and its Port field greyed out. -->
 
 ### Diagnostics
@@ -100,7 +100,7 @@ nothing in progress to watch.
 
 | Group | Device | What it configures |
 |---|---|---|
-| **Ambient** | TilauAmbient (BME280 / BLE) | Which probe to use, and the acoustic sensitivity for crack detection through its microphone. |
+| **Ambient** | TilauAmbient (BME280 / BLE) | Which probe to use. |
 | **Color & Airflow** | Difluid AirWave (BLE) | Which extractor to use, how fast it may change speed, the fan output, duct limit and mode for each phase, and whether it should emulate an Omniflux colour channel. |
 | **Roaster Link** | Skywalker v2 (TC4-BLE) | Which roaster link to use. |
 | **Color Meter** | Lebrew RoastSee C1 (BLE) | Which colour meter to use. |
@@ -135,19 +135,30 @@ and your microphone.
 
 ### First Crack (FC)
 
-Detection fuses two signals — acoustic events from TilauAmbient, colour and rate-of-colour-change
-from Omniflux — into a single call.
+First crack is called on **bean temperature**, not on sound: TilauScope waits for BT to reach the
+first-crack target set in **Artisan → Phases**. Cracks are a corroborating signal — a burst of them
+heard at or above that target calls first crack sooner than temperature alone would. Colour plays no
+part here.
 
-**Enable automatic FC detection & marking** turns the algorithm on. Two parameters shape it:
+**Enable automatic FC detection & marking** turns the algorithm on. Three parameters shape it:
 
-- **Detection window** — the sliding time span, in seconds, over which crack density is measured.
-- **Global event threshold** — the minimum number of acoustic events inside that window needed to
-  confirm first crack.
+- **Temperature tolerance** — how far BT may sit either side of the target. It sets where TilauScope
+  starts listening (target minus the tolerance) and the point past which first crack is marked
+  whatever happens (target plus the tolerance). Narrower trusts the target; wider gives a missed
+  crack burst more room. The line under the field spells the resulting band out in full, so there is
+  never a figure to work out by hand.
+- **Cracks to confirm** — how many cracks must be heard to call first crack early, once the target
+  is in reach.
+- **Listening window** — how long a crack keeps counting toward that total.
 
-!!! note
-    This threshold is independent from the *Crack audio sensitivity* setting in the SENSORS tab.
-    That one controls how sensitive the microphone itself is; this one controls how many of its
-    events, within the window, are needed to call it a crack.
+The tolerance is shown in the unit your graph uses. With no first-crack target set in Artisan, the
+band falls back to 195–200 °C and the line under the field says so.
+
+!!! note "Auto first crack has two prerequisites"
+    It needs a **crack counter** among your devices — an acoustic channel for TilauScope to bind
+    to. Without one the box can still be ticked, and the tab says so in place of the usual
+    explanation: *No crack counter among your devices*. It also only starts looking **once dry end
+    is marked**, by hand or by the Dry End automation below.
 
 ### Dry End (DE)
 
@@ -157,15 +168,12 @@ gap between the two probes, and BT's progress toward the Dry End target — the 
 must be set in **Artisan → Phases** for [Auto Dry End](preparing-a-roast.md#automating-the-start)
 to do anything. Colour is used as a bonus signal where a colour device is configured.
 
-### Per-Phase Thresholds
-
-A small table sets the finer detection parameters for first crack and second crack separately:
-**Threshold**, **Agtron max**, **RoC min**, **BT margin**. These are the values the fused
-algorithm above actually reads; most setups will never need to touch them.
-
 ![the DETECTION tab, First Crack and Dry End groups](assets/configuration-4.7.png)
 
-![the Per-Phase Thresholds table. ](assets/configuration-4.8.png)
+<!-- CAPTURE 4.7 [scene:config_detection] — Configuration → DETECTION, the whole tab: the First Crack group with
+Temperature tolerance at 5 °C and the band line reading a real target, Cracks to confirm at 4,
+Listening window at 35 s, and the Dry End group below. Capture on a machine that has a crack
+counter, so the status line is the grey one, not the peach warning. -->
 
 ---
 
@@ -235,7 +243,7 @@ log, and the sensor is dropped from the rotation rather than asked again every c
 
 ![the INTEGRATIONS tab, MQTT Broker group with TLS](assets/configuration-4.11.png)
 
-<!-- CAPTURE 4.11 — the INTEGRATIONS tab, MQTT Broker group with TLS ticked (port showing 8883),
+<!-- CAPTURE 4.11 [scene:config_integrations] — the INTEGRATIONS tab, MQTT Broker group with TLS ticked (port showing 8883),
 Protocol on MQTT v3.1.1, Timeout and Keepalive visible, the Poll request topic and Poll every
 fields filled in, two sensors in the list, one row selected, and the Unit column showing °C on
 one of them. -->
@@ -289,7 +297,7 @@ Both answers are shown here with an **Ask me again** button, which forgets the a
 notice appears once more the next time the feature is used. A line reading *not asked yet* means
 nothing has been granted, and there is nothing to forget.
 
-<!-- CAPTURE 4.13 — the INTEGRATIONS tab, Privacy group: AI provider disclosure showing
+<!-- CAPTURE 4.13b — the INTEGRATIONS tab, Privacy group: AI provider disclosure showing
 "acknowledged for Gemini" with its Ask me again button enabled, and Location lookup showing
 "not asked yet" with its button greyed out. -->
 
@@ -309,7 +317,9 @@ are generated at: **10 × 15 cm** (a standard pochette) or **7 × 9 cm** (a comp
 is built at exactly that size, so the printer should be set to print at 100% — no "fit to page" —
 for it to come out at the size chosen here.
 
-<!-- CAPTURE 4.12 — the PRINTING tab, Label size dropdown open showing both choices. -->
+<!-- CAPTURE 4.12 [scene:config_printing] — the PRINTING tab, Label size dropdown open showing both choices. -->
+
+![The PRINTING tab and its Label size choice.](assets/configuration-4.12.png)
 
 ---
 

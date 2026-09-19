@@ -12,8 +12,10 @@
 This chapter describes the window itself. What the assistant *says* inside it is
 [The guided roast](the-guided-roast.md); this is the furniture.
 
-<!-- CAPTURE 2.1 — the whole TilauScope window mid-roast, at a comfortable size, with the
+<!-- CAPTURE 2.1 [scene:window_maillard] — the whole TilauScope window mid-roast, at a comfortable size, with the
 sidebar expanded. This is the reference screenshot for the entire documentation. -->
+
+![The whole TilauScope window mid-roast, sidebar expanded.](assets/the-window-2.1.png)
 
 ---
 
@@ -43,10 +45,14 @@ without aiming.
     START/STOP will not start a recording if no meter is configured — there would be nothing to
     record. Configure a device, or run the simulator, first.
 
-<!-- CAPTURE 2.2 — the header, cropped, at full width and legible. -->
+<!-- CAPTURE 2.2 [scene:window_header] — the header, cropped, at full width and legible. -->
+
+![The window header at full width.](assets/the-window-2.2.png)
 
 <!-- CAPTURE 2.2c — the header replay control shown disabled and hovered, with its tooltip
 naming the reason: machine not supported, or before-CHARGE-only. -->
+
+![The header replay control shown disabled and hovered, with its tooltip naming the reason: machine not supported, or before-CHARGE-only.](assets/the-window-2.2c.png)
 
 ---
 
@@ -89,9 +95,11 @@ instead. The heat cut still stops every automation.
 **RESET**, or turning monitoring off, releases the red state and gives the panel its normal look
 back.
 
-<!-- CAPTURE 2.2b — the panel just after the heat cut fires: red border, "HEAT CUT" message, red
+<!-- CAPTURE 2.2b [scene:window_heatcut] — the panel just after the heat cut fires: red border, "HEAT CUT" message, red
      timer, and the flame button greyed out. Reproduce with the simulator running, then hold the
      crossed-out flame for one second. -->
+
+![The panel just after the heat cut fires: red border, HEAT CUT message, red timer.](assets/the-window-2.2b.png)
 
 ---
 
@@ -110,9 +118,11 @@ Below them, a row of **extra counters** shows the readings of whatever additiona
 configured in [Devices](devices.md), each with its name above its value — colour, humidity,
 crack count, whatever the setup provides.
 
-<!-- CAPTURE 2.3 — the three readouts in neutral state. CAPTURE 2.4 — the same readouts with one
+<!-- CAPTURE 2.3 [scene:window_readouts] — the three readouts in neutral state. CAPTURE 2.4 — the same readouts with one
 in the red/approach state, ideally the BT readout near its limit. CAPTURE 2.5 — the extra
 counters row on a setup with at least two extra devices. -->
+
+![The three readouts in their neutral state.](assets/the-window-2.3.png)
 
 ---
 
@@ -145,10 +155,14 @@ the drop, because the cooling is steered on the falling temperature and its auto
 watches the same probe. It clears by itself the moment a reading arrives, and the panel goes
 back to exactly what it was showing — the cooling message included.
 
-<!-- CAPTURE 2.6 — the three phase blocks mid-Maillard, with the active phase visibly current.
-CAPTURE 2.7 — the same area showing the drop/cooling message instead.
+<!-- CAPTURE 2.6 [scene:window_phases] — the three phase blocks mid-Maillard, with the active phase visibly current.
+CAPTURE 2.7 [scene:window_cooling_msg] — the same area showing the drop/cooling message instead.
 CAPTURE 2.7b — the same area showing the no-temperature warning. Reproduce by starting
 monitoring with the roaster's cable unplugged and waiting five seconds. -->
+
+![The three phase blocks mid-Maillard, the active phase current.](assets/the-window-2.6.png)
+
+![The same area showing the drop and cooling message.](assets/the-window-2.7.png)
 
 ---
 
@@ -252,9 +266,13 @@ curve switches between them:
 The button appears only at the Guided level. At Expert the full view is the only one, since an
 operator reading the whole table has already said which face they want.
 
-<!-- CAPTURE 2.8a — the curve mid-Maillard with the coach card showing and the 🎯 button visible.
-CAPTURE 2.8b — the same moment with the 📊 full data card. CAPTURE 2.8c — the preheat card and
+<!-- CAPTURE 2.8a [scene:coach] — the curve mid-Maillard with the coach card showing and the 🎯 button visible.
+CAPTURE 2.8b [scene:data] — the same moment with the 📊 full data card. CAPTURE 2.8c — the preheat card and
 the target line, with the arrival mark in frame. -->
+
+![Roast curve during Maillard with the coach card.](assets/the-window-2.8a.png)
+
+![The same Maillard roast with the full data card.](assets/the-window-2.8b.png)
 
 ### Listening to the crack
 
@@ -294,8 +312,10 @@ it, a faint dotted rule marks where the [roast plan](the-roast-plan.md) expected
 distance between that rule and the crack you actually heard is what tells you the batch ran early
 or late, while there is still a drop to place.
 
-<!-- CAPTURE 2.8g — the curve during first crack, with the crack bar above the plot reading
+<!-- CAPTURE 2.8g [scene:crackbar] — the curve during first crack, with the crack bar above the plot reading
 ROLLING and the tick band along the foot of the plot, at the Expert level. -->
+
+![The crack bar above the plot reading ROLLING during first crack.](assets/the-window-2.8g.png)
 
 ### Choosing what is traced
 
@@ -328,9 +348,13 @@ first move on a channel, the strip shows the level the lever is being held at.
 curve for as long as the simulation runs. It sets the replay speed directly, in place of clicking
 the clock with a modifier key held.
 
-<!-- CAPTURE 2.8d — the right-click menu open over the curve. CAPTURE 2.8e — a roast mid-Maillard
+<!-- CAPTURE 2.8d — the right-click menu open over the curve. CAPTURE 2.8e [scene:levers] — a roast mid-Maillard
 showing the lever strips beneath the curve, in one-lane-per-channel mode, with at least two
 gestures already played on the burner. -->
+
+![The right-click menu open over the curve.](assets/the-window-2.8d.png)
+
+![A finished roast with the lever strips beneath the curve, one lane per channel.](assets/the-window-2.8e.png)
 
 ### Correcting a milestone
 
@@ -389,9 +413,9 @@ on a roast are out of order, the curve offers no correction and asks for them to
 Roast Properties first.
 
 <!-- CAPTURE 2.8h — a stopped roast with DRY END being dragged: the provisional mark with its
-name, time and temperature, the original mark faded, and a "Limit: FIRST CRACK" line under it.
-CAPTURE 2.8i — the right-click menu between CHARGE and FIRST CRACK on a roast without a dry end:
-"Add a milestone at …" above DRY END, the display options below. -->
+name, time and temperature, and the original mark faded. -->
+
+![A stopped roast with DRY END being dragged: the provisional mark with its name, time and temperature, and the original mark faded.](assets/the-window-2.8h.png)
 
 
 ---
@@ -429,10 +453,15 @@ When there is nothing left to steer — the recording has been stopped, or a pas
 opened from a file — the entire left column is given over to the
 [roast review](after-the-roast.md#the-roast-review): the controls, the readouts above them and
 the status line all describe a live session and say nothing about a finished one, so they make
-way for it. Starting a recording or pressing RESET brings them back.
+way for it. Starting monitoring, starting a recording or pressing RESET brings them
+back.
 
-<!-- CAPTURE 2.8 — the segmented control zone, four levers plus the SV row.
+<!-- CAPTURE 2.8 [scene:window_controls] — the segmented control zone, four levers plus the SV row.
 CAPTURE 2.9 — the percentage roller open on one control. -->
+
+![The machine controls: four levers and the SV row.](assets/the-window-2.8.png)
+
+![The percentage roller open on one control.](assets/the-window-2.9.png)
 
 ---
 
@@ -477,9 +506,11 @@ start of the recording to its end, and empties with the cards above it at the ne
 
 <!-- CAPTURE 2.11 — the sidebar expanded during a recording, showing a triggered-alarm card and a
 fired-event card, both stamped +m:ss, plus one event card pressed before START carrying its "not
-recorded before START" line. CAPTURE 2.12 — the ARTISAN message section with several messages,
+recorded before START" line. CAPTURE 2.12 [scene:messages] — the ARTISAN message section with several messages,
 newest highlighted, ending on "Scope recording stopped". CAPTURE 2.13 — the grip strip in both
 states, collapsed and expanded. -->
+
+![The Artisan message section with several messages.](assets/the-window-2.12.png)
 
 ---
 
@@ -537,8 +568,10 @@ Nothing is written until you press **Apply**; **Cancel** leaves the buttons as t
     as a stripe down the left edge, which stays legible against the roast curve behind it.
     The rows, the blocks and the text are identical on both.
 
-<!-- CAPTURE 2.15 — the custom button editor with two rows, one gap splitting a row into two
+<!-- CAPTURE 2.15 [scene:buttons] — the custom button editor with two rows, one gap splitting a row into two
 groups, one button in the tray, and a button selected so the panel below is filled in. -->
+
+![The custom button editor with two rows split by a gap.](assets/the-window-2.15.png)
 
 ---
 

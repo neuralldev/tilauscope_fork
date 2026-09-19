@@ -40,10 +40,10 @@ one before closing.
      band, the coffee name in deep brown ink on the paper, an accent rule under the
      masthead, the bean mark alone in the top corner. Print a roast label for a blend
      so the MELANGE chip and its ratios show. -->
+
 ![a printed roast label PDF](assets/labels-and-qr-4.1.png)
 <!-- CAPTURE 4.1b — the same treatment on a green bean label: print one from a
      coffee's record, blend, with cupping notes filled in. -->
-![a printed green bean label PDF](assets/labels-and-qr-4.1.png)
 
 ---
 
@@ -127,9 +127,10 @@ forgotten.
 The **⚖** button beside the weight reads it straight off a paired scale, as every other weight
 field in TilauScope does.
 
-<!-- CAPTURE 4.6 — the Print a Coffee Label window, filled in with a full example
+<!-- CAPTURE 4.6 [scene:label] — the Print a Coffee Label window, filled in with a full example
      (name, roaster, origin, process, roast level, date, weight, tasting notes) so
      the preview shows a complete label, printer connected with the 50×30 roll. -->
+
 ![the coffee label window with its live preview](assets/labels-and-qr-4.6.png)
 
 ---

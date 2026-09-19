@@ -1909,10 +1909,10 @@ class ApplicationWindow(QMainWindow):
         self.TilauScopeFCMarkFlag:bool = False
         self.TilauScopeFCWindow:int = 35
         self.TilauScopeFCTreshold:int = 4
-        self.TilauScopeCrackParams:dict = {
-            "FC": [4, 90.0, 2.0, 25.0],
-            "SC": [4, 50.0, 1.0, 45.0]
-        }
+        # Half-width of the BT band around the first-crack target, in °C whatever
+        # the graph unit: the detector arms below target-half and cannot mark
+        # later than target+half.
+        self.TilauScopeFCHalfBand:float = 5.0
         # Dry End auto-marking
         self.TilauScopeDEMarkFlag:bool = False
         #TilauScope Ambient
@@ -1920,9 +1920,6 @@ class ApplicationWindow(QMainWindow):
         self.bleTilauScopeDevice:TilauAmbient|None = None # object for communication
         self.bleTilauScopeDeviceslist:list[str] = ['please scan devices for list']
         self.tilauScopeBlock:TilauAmbientData|None = None
-        self.bleTilauScopeautomarkFC:bool|None = False # automark FCs flag
-        self.bleTilauScopeFCMarkdone:bool|None = False  # set to true when monitoring and mark has been set, treshold is fixed to 3 cracks
-        self.bleTilauScopeFCTreshold:int|None = 3 # default number of cracks before marking
         # Niimbot B21S printer
         self.bleNiimbotDeviceName:str|None = None  # UUID mémorisé après première connexion
         self.bleNiimbotDeviceslist:list[str] = ['please scan devices for list']
@@ -18851,9 +18848,7 @@ class ApplicationWindow(QMainWindow):
             self.TilauScopeFCMarkFlag = toBool(settings.value('tilauscopefcmarking',self.TilauScopeFCMarkFlag))           
             self.TilauScopeFCWindow = toInt(settings.value('tilauscopefcwindow',self.TilauScopeFCWindow))
             self.TilauScopeFCTreshold = toInt(settings.value('tilauscopefctreshold',self.TilauScopeFCTreshold))
-            keys = list(self.TilauScopeCrackParams.keys())
-            for key in keys:
-                self.TilauScopeCrackParams[key] = toList(settings.value(f'tilauscopefcparams{key}',self.TilauScopeCrackParams[key]))
+            self.TilauScopeFCHalfBand = toFloat(settings.value('tilauscopefchalfband',self.TilauScopeFCHalfBand))
             self.TilauScopeDEMarkFlag = toBool(settings.value('tilauscopedemarkflag', self.TilauScopeDEMarkFlag))  ## TILAU
             self.tilau_roaster = toString(settings.value('tilauscoperoaster',self.tilau_roaster))
             self.tilau_roaster_readonly = toBool(settings.value('tilauscoperoasterreadonly',self.tilau_roaster_readonly)) ## TILAU ##
@@ -18870,8 +18865,6 @@ class ApplicationWindow(QMainWindow):
             else:
                 self.bleTilauAmbientDeviceslist = None
 
-            self.bleTilauScopeautomarkFC = toBool(settings.value('tilauscopefc',self.bleTilauScopeautomarkFC))
-            self.bleTilauScopeFCTreshold = toInt(settings.value('tilauscopetreshold', self.bleTilauScopeFCTreshold))
             self.TilauScopeAnnotation= toBool(settings.value('tilauscopeanno',self.TilauScopeAnnotation))
             self.TilauScopeNotification = toBool(settings.value('tilauscopenotification', self.TilauScopeNotification))
 
@@ -21089,9 +21082,7 @@ class ApplicationWindow(QMainWindow):
             self.settingsSetValue(settings, default_settings, 'tilauscopefcmarking', self.TilauScopeFCMarkFlag, read_defaults)
             self.settingsSetValue(settings, default_settings, 'tilauscopefcwindow', self.TilauScopeFCWindow, read_defaults)
             self.settingsSetValue(settings, default_settings, 'tilauscopefctreshold', self.TilauScopeFCTreshold, read_defaults)
-            keys = list(self.TilauScopeCrackParams.keys())
-            for key in keys:    
-                self.settingsSetValue(settings, default_settings,f'tilauscopefcparams{key}',[x for x in list(self.TilauScopeCrackParams[key])], read_defaults)
+            self.settingsSetValue(settings, default_settings, 'tilauscopefchalfband', self.TilauScopeFCHalfBand, read_defaults)
             self.settingsSetValue(settings, default_settings, 'tilauscopedemarkflag', self.TilauScopeDEMarkFlag, read_defaults)  ## TILAU
             # save BLE device name            
             self.settingsSetValue(settings, default_settings, 'tilauscoperoaster', self.tilau_roaster, read_defaults)
@@ -21105,8 +21096,6 @@ class ApplicationWindow(QMainWindow):
             ble_namesw = self.bleSkywalkerDeviceName if uuid_ble_pattern.match(str(self.bleSkywalkerDeviceName)) else ""
             self.settingsSetValue(settings, default_settings, 'skywalkertc4', ble_namesw, read_defaults)
             self.settingsSetValue(settings, default_settings, 'tilauscopeamb', ble_namet, read_defaults)
-            self.settingsSetValue(settings, default_settings, 'tilauscopefc', 1 if self.bleTilauScopeautomarkFC else 0, read_defaults)
-            self.settingsSetValue(settings, default_settings, 'tilauscopetreshold', self.bleTilauScopeFCTreshold, read_defaults)
             self.settingsSetValue(settings, default_settings, 'tilauscopeanno', 1 if self.TilauScopeAnnotation else 0, read_defaults)
             self.settingsSetValue(settings, default_settings, 'tilauscopenotification', 1 if self.TilauScopeNotification else 0, read_defaults)
             ble_name = self.bleRoastSeeDeviceName if uuid_ble_pattern.match(str(self.bleRoastSeeDeviceName)) else ""

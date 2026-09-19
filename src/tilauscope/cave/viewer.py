@@ -50,7 +50,8 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 
 from tilauscope.header_icons import make_icon
 from tilauscope.theme_qss import style_combo_popup, styled_popup_view, tint
-from tilauscope.tilauscope_types import (THEME, standardization_map, TilauProgressRow)
+from tilauscope.tilauscope_types import (THEME, literal_ampersand, standardization_map,
+                                         TilauProgressRow)
 from tilauscope.roast_timeline import RoastReadyDialog
 from tilauscope.cave.common import (
     _log, _logd, _PLOT_PALETTE, _safe_filename,
@@ -1620,7 +1621,8 @@ class ViewerMixin:
         self._replot_single()
 
     def _sync_burner_air_text(self) -> None:
-        label = QApplication.translate("tilauscope_beancave", "Burner & air")
+        label = literal_ampersand(
+            QApplication.translate("tilauscope_beancave", "Burner & air"))
         self.burner_air_button.setText(f"✓  {label}" if self.burner_air_button.isChecked() else label)
 
 

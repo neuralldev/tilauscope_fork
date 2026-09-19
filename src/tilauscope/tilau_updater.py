@@ -30,7 +30,8 @@ from pathlib import Path
 from typing import Final
 
 import requests
-from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS, TilauProgress
+from tilauscope.tilauscope_types import (_IS_MACOS, _IS_WINDOWS, literal_ampersand,
+                                         TilauProgress)
 
 from PyQt6.QtCore import (
     QObject,
@@ -490,7 +491,8 @@ class _UpdateAvailableDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
 
-        self.btn_download = QPushButton(QApplication.translate("tilauscope_updates","⬇  Download & Install"))
+        self.btn_download = QPushButton(literal_ampersand(
+            QApplication.translate("tilauscope_updates","⬇  Download & Install")))
         self.btn_download.setStyleSheet(
             f"background-color: {_THEME['ACCENT']}; color: {_THEME['BG']};"
             f"font-weight: bold; border: none; border-radius: 6px; padding: 10px 22px;"
@@ -662,7 +664,8 @@ class _InstallReadyDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
 
-        self.btn_install = QPushButton(QApplication.translate("tilauscope_updates","🛠  Install Now & Quit"))
+        self.btn_install = QPushButton(literal_ampersand(
+            QApplication.translate("tilauscope_updates","🛠  Install Now & Quit")))
         self.btn_install.setStyleSheet(
             f"background-color: {_THEME['SUCCESS']}; color: {_THEME['BG']};"
             f"font-weight: bold; border: none; border-radius: 6px; padding: 10px 22px;"

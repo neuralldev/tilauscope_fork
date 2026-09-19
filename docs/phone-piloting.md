@@ -45,8 +45,10 @@ below.
     is refused outright, whatever code or token it presents. Remote access through a VPN
     service is refused on the same grounds.
 
-<!-- CAPTURE 10.1 — the Pair a phone dialog, QR and countdown visible. CAPTURE 10.2 — the
+<!-- CAPTURE 10.1 [scene:pairing] — the Pair a phone dialog, QR and countdown visible. CAPTURE 10.2 — the
 paired-devices list with one phone paired. -->
+
+![The Pair a phone dialog with its QR code and countdown.](assets/phone-piloting-10.1.png)
 
 ### Installing it as an app
 
@@ -75,8 +77,10 @@ never handed to a phone silently.
 **Release control** hands it back to being an observer, so someone else can take it — or the
 computer can pilot the rest of the roast directly.
 
-<!-- CAPTURE 10.5 — the "Take control" request confirmation shown on the desktop.
+<!-- CAPTURE 10.5 [scene:control_request] — the "Take control" request confirmation shown on the desktop.
 CAPTURE 10.6 — a phone in control vs. an observer phone, side by side. -->
+
+![The Take control request shown on the desktop.](assets/phone-piloting-10.5.png)
 
 ---
 
@@ -160,9 +164,6 @@ regardless, since it was never the one steering it.
     A phone showing "view frozen" when monitoring has simply been turned off at the desktop
     is a different, unrelated message from the one above — that one means nothing is
     currently being measured, not that the connection was lost.
-
-<!-- CAPTURE 10.11 — the frozen/reconnecting screen with the countdown, on the controlling
-phone. CAPTURE 10.12 — the plainer "view frozen" message on an observer phone. -->
 
 ---
 

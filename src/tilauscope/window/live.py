@@ -613,7 +613,7 @@ class LiveMixin:
                 # mark is undone.
                 elif ti[1] == 0 and (qmc.autoDRYenabled or self.aw.TilauScopeDEMarkFlag):
                     status_parts.append(self.str_autodry)
-                elif ti[2] == 0 and (qmc.autoFCsenabled or self.aw.bleTilauScopeautomarkFC or self.aw.TilauScopeFCMarkFlag):
+                elif ti[2] == 0 and (qmc.autoFCsenabled or self.aw.TilauScopeFCMarkFlag):
                     status_parts.append(self.str_autofc)
                 elif ti[2] > 0 and ti[6] == 0 and qmc.autoDROPenabled:
                     status_parts.append(self.str_autodrop)

@@ -928,6 +928,10 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
                 self._refresh_beancave_availability()
                 self._refresh_emergency_visibility()
                 return
+            # Monitoring is steering: the readouts, the levers and the status
+            # line come back live, so the finished roast's review gives the
+            # column back instead of sitting on top of them.
+            self.hide_roast_review()
             #power button
             self.update_button_style(self.btn_power, True, False, True)
             self.update_button_style(self. btn_start_stop, True)

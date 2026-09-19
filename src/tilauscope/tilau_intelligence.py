@@ -22,7 +22,8 @@ from typing import Final, NamedTuple
 from typing import TYPE_CHECKING
 import logging
 from artisanlib.main import ApplicationWindow # pylint: disable=unused-import
-from tilauscope.tilauscope_types import (resolve_de_window, resolve_fc_window,
+from tilauscope.tilauscope_types import (MILESTONE_HALF_C, resolve_de_window,
+                                         resolve_fc_window,
                                          classify_extra_channel,
                                          resolve_crack_channel)
 
@@ -66,10 +67,9 @@ class FirstCrackDetector:
         self._sc_raw_at_fc: int | None = None        # SC raw snapshot at FC fire (offset)
         self._fc_tally: int = 0                      # our own FC pop tally beside raw counters
 
-        self.params: dict = {
-            "FC": [4, 90.0, 2.0, 25.0],
-            "SC": [4, 50.0, 1.0, 45.0]
-        }
+        # Half-width of the BT band around the FC target, in °C (converted to the
+        # roast's own unit frame at detection time).
+        self.half_band_c: float = MILESTONE_HALF_C
 
     def reset(self):
         self.crack_timestamps.clear()
@@ -90,7 +90,7 @@ class FirstCrackDetector:
         # Load configuration from Artisan AppWindow
         self.window_seconds = float(getattr(aw, "TilauScopeFCWindow", 35.0))
         self.threshold      = int(getattr(aw, "TilauScopeFCTreshold", 4))
-        self.params         = getattr(aw, "TilauScopeCrackParams", self.params)
+        self.half_band_c    = float(getattr(aw, "TilauScopeFCHalfBand", MILESTONE_HALF_C))
 
         qmc = aw.qmc
         found_crack_idx: int | None = None
@@ -152,12 +152,13 @@ class FirstCrackDetector:
             return False
 
         # --- resolve the FC window in the roast's own unit frame ---
-        half = 9.0 if mode == 'F' else 5.0
+        half = self.half_band_c * (1.8 if mode == 'F' else 1.0)
         if target_fcs and target_fcs > 0.0:
             band_lo = band_hi = float(target_fcs)
             fc_lo, fc_hi = band_lo - half, band_hi + half
         else:
-            fc_lo, fc_hi, band_lo, band_hi = resolve_fc_window(0.0, 0.0)   # profession (C)
+            # profession band is °C-frame -> resolve in °C with the °C half, then convert
+            fc_lo, fc_hi, band_lo, band_hi = resolve_fc_window(0.0, 0.0, self.half_band_c)
             if mode == 'F':
                 fc_lo, fc_hi, band_lo, band_hi = (v * 9.0 / 5.0 + 32.0
                                                   for v in (fc_lo, fc_hi, band_lo, band_hi))
