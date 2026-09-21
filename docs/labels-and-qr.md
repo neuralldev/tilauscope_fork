@@ -36,14 +36,20 @@ nothing in the record: the form can still be corrected and printed again, or aba
 the form is saved without a label having been printed, TilauScope asks once whether to print
 one before closing.
 
+When the coffee is a blend, both the roast label and the green bean label carry a blend
+chip followed by its composition: each component with its share, or its name alone when
+no share is recorded.
+
 <!-- CAPTURE 4.1 — a printed roast label PDF, new light treatment: no dark header
      band, the coffee name in deep brown ink on the paper, an accent rule under the
      masthead, the bean mark alone in the top corner. Print a roast label for a blend
      so the MELANGE chip and its ratios show. -->
 
-![a printed roast label PDF](assets/labels-and-qr-4.1.png)
+![A roast label in the light treatment: the blend chip with its composition, the flavour notes, and the green and roasted weights.](assets/labels-and-qr-4.1.png)
 <!-- CAPTURE 4.1b — the same treatment on a green bean label: print one from a
      coffee's record, blend, with cupping notes filled in. -->
+
+![A green bean label in the light treatment: the blend chip with its composition, and the cupping notes.](assets/labels-and-qr-4.1b.png)
 
 ---
 

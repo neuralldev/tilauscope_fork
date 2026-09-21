@@ -343,6 +343,31 @@ class _FontMixin:
 
         return pill_w
 
+    def _blend_caption(self, painter, bean, x, y, right, scale) -> None:
+        """What is in the blend, beside its chip. Same reading as the bean
+        sheet and the social card: component 1 is the record itself, and a
+        ratio of 0 means the share is unknown, not absent. The line shrinks
+        first and elides only at the floor, so a long composition stays on
+        the chip's row instead of running into what sits at its right."""
+        comps: list[tuple[str, float]] = []
+        for raw_name, raw_ratio in ((bean.varieties or bean.name, bean.bean1_ratio),
+                                    (bean.bean2_name, bean.bean2_ratio),
+                                    (bean.bean3_name, bean.bean3_ratio)):
+            name, ratio = str(raw_name or "").strip(), float(raw_ratio or 0)
+            if name or ratio > 0:
+                comps.append((name or "?", ratio))
+        line = " · ".join(f"{n} {r:g}%" if r > 0 else n for n, r in comps)
+        if not line:
+            return
+        font, line = self._fit_line(painter, line, right - x, 2.4, 2.0, bold=False)
+        row_h = (self._fm(painter, QFont(self.reg_family, self.pt(2.2),
+                                         QFont.Weight.DemiBold)).height()
+                 + 2 * self.p(scale, 1.4))   # the pill's own height, so both centre alike
+        painter.setFont(font)
+        painter.setPen(C_BLEND_TAG_TXT)
+        painter.drawText(QRectF(x, y, right - x, row_h),
+                         Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, line)
+
     def _hline(self, painter, x1, x2, y, color, width=0.8):
         painter.setPen(QPen(color, width))
         painter.drawLine(QPointF(x1, y), QPointF(x2, y))
@@ -570,9 +595,11 @@ class RoastedBeanLabelPrinter(_FontMixin):
         y += self.p(scale, 8.5)
 
         if bean and bean.is_blend:
-            self._pill(painter, QApplication.translate("tilauscope_label", "Blend").upper(),
-                       float(mg), float(y), C_BLEND_TAG_BG, C_BLEND_TAG_BD,
-                       C_BLEND_TAG_TXT, scale)
+            pill_w = self._pill(painter, QApplication.translate("tilauscope_label", "Blend").upper(),
+                                float(mg), float(y), C_BLEND_TAG_BG, C_BLEND_TAG_BD,
+                                C_BLEND_TAG_TXT, scale)
+            self._blend_caption(painter, bean, float(mg + pill_w + self.p(scale, 2.0)),
+                                float(y), float(W - mg), scale)
             y += self.p(scale, 7.5)
 
         # Descriptor band, laid out by _flavour_layout so the header already
@@ -808,7 +835,13 @@ class GreenBeanLabelPrinter(_FontMixin):
 
         # Drop the broken hardcoded QRect drawing code completely!
         # Instead, utilize our self-adjusting _pill subsystem to draw without clipping boundaries:
-        self._pill(painter, tag_txt, float(mg), float(y), tag_bg, tag_bd, tag_color, scale)
+        pill_w = self._pill(painter, tag_txt, float(mg), float(y), tag_bg, tag_bd, tag_color, scale)
+
+        if bean and bean.is_blend:
+            # the SCA badge below shares this row on the right (14 mm + clearance)
+            right = W - mg - (self.p(scale, 15.5) if bean.sca and bean.sca > 0 else 0)
+            self._blend_caption(painter, bean, float(mg + pill_w + self.p(scale, 2.0)),
+                                float(y), float(right), scale)
 
         # ---- SCA BADGE COMPONENT WITH SEPARATED METRIC BLOCKS ----
         if bean.sca and bean.sca > 0:

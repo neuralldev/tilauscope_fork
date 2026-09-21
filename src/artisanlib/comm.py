@@ -2074,9 +2074,6 @@ class serialport:
             d = self.aw.bleAirwaveDevice.ask_temperatures() # read probes temperature in celsius from airwave if connected
             t1 = d["inlet"] if self.aw.qmc.mode == 'C' else fromCtoFstrict(d["inlet"])             
             t2 = d["catalyst"] if self.aw.qmc.mode == 'C' else fromCtoFstrict(d["catalyst"])   
-            self.aw.qmc.AirwaveFan = self.aw.bleAirwaveDevice.state.speed# read last fan speed from airwave
-            self.aw.qmc.AirwaveMode = self.aw.bleAirwaveDevice.state.mode # read last mode from airwave
-#            _logd.debug(f"airwave debug read comm {t1} {t2} {s} {m}")
         else:
             t1 = t2 = -1
         return tx,t1,t2 # time, inlet temp, catalyst temp

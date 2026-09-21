@@ -42,8 +42,12 @@ way to go and look at how a coffee was roasted while judging when to brew it.
 at different stages: the legend must state the shifted days, and roasts whose windows do not
 overlap must share a line. -->
 
+![The rest calendar with the ⚙ Espresso target selected, several roasts at different stages: the legend must state the shifted days, and roasts whose windows do not overlap must share a line.](assets/brew-11.1.png)
+
 <!-- CAPTURE 11.2 — the same calendar with a roast's card open, showing its window and the
 ☕ Brew this coffee button; the card's window and the legend must agree. -->
+
+![The same calendar with a roast's card open, showing its window and the ☕ Brew this coffee button.](assets/brew-11.2.png)
 
 ---
 

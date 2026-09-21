@@ -1,5 +1,50 @@
 ## [4.3] 2026-09-13
+build 10
+build 9
+* ⚡ [feat(beancave)] : a milestone correction on a saved roast is named in a pill above the curve, with Undo beside Save, instead of a Save markers button floating over the end of the curve
+* 🐛 [fix(airwave)] : a semicolon sequence such as `FAN 30;POWER OFF` waiting for the extractor is no longer replaced by a later fan speed, so its stop is always sent
+* 🐛 [fix(airwave)] : when commands pile up faster than the extractor takes them, a waiting stop, start, control hand-over or Omniflux arming is kept and an older fan speed or mode is given up instead
+* 🐛 [fix(airwave)] : the duct protection leaves a stopped extractor alone instead of sending it fan speeds it cannot take, each reported as unconfirmed; a speed it had queued just as the stop ran is announced as not applied, and a restart still returns to the setting the cut was taken from
+* 🐛 [fix(beancave)] : comparing roasts, a roast dropped before the reference no longer counts its cooling-tray readings, which inflated the gap strip and the consistency band and flattened the real difference
+* 🐛 [fix(beancave)] : comparing roasts, a moment where the bean probe read nothing is skipped instead of being compared as a temperature two hundred degrees off
+* 🐛 [fix(beancave)] : comparing roasts, the gap strip is measured once per comparison instead of again at every movement of the pointer
+* 🐛 [fix(beancave)] : dragging a milestone on a saved roast now shows its provisional mark with the proposed time and temperature, and a right-click marks the moment a milestone would be added
+* 🐛 [fix(beancave)] : a milestone correction still open when another roast is drawn is abandoned instead of being written into the roast now on screen
+* 🐛 [fix(beancave)] : a milestone corrected on one roast and left unsaved no longer follows to the next roast selected, where saving would have written it into that roast's file
+* 🐛 [fix(beancave)] : a milestone let go where it was, or brought back to where the file has it, no longer offers to save a change that was never made
+* 🐛 [fix(beancave)] : comparing roasts after viewing one on rate of rise alone no longer hides the reference roast's bean curve
+* 🐛 [fix(beancave)] : the Time range choice, which a comparison never applied, is hidden while comparing roasts, like Burner & air
+* 🐛 [fix(beancave)] : a roast recorded without a bean probe, as on a roaster driven on its air probe alone, is drawn as it is instead of being refused for missing BT
+* 🐛 [fix(beancave)] : when the roast selected has nothing to draw, the roast left on screen can no longer be corrected, where saving would have written it into the other roast's file
+* 🐛 [fix(beancave)] : comparing roasts, a roast file carrying a temperature that is not a number no longer closes the application
+* 🐛 [fix(tilauscope)] : internal cleanup — the curve and the roast comparison share one test of whether a probe answered at a sample; no change to what the operator sees
+build 8
+* 🐛 [fix(alarms)] : AirWave alarms retain the requested fan speed instead of restoring the previous reading, and accept comma or semicolon separated commands.
+* 🐛 [fix(airwave)] : an extraction command is confirmed by the extractor before the slider shows it, and a command it does not confirm is announced in the message area — a speed the device never applied was being displayed, and written into the roast, as though it had taken
+* 🐛 [fix(airwave)] : a sequence from an alarm, a lever or the assistant now runs whole on its own worker, so nothing slips in between a mode change and the speed behind it, and the roasting window no longer stalls while the extractor is being written to
+* 🐛 [fix(airwave)] : when the extractor comes back with a speed other than the one asked for — its mode default landing behind the command — the value is re-applied once instead of being left wrong
+* 🐛 [fix(airwave)] : `FAN 30,POWER OFF` stops the extractor even when the speed before it went unconfirmed
+* 🐛 [fix(airwave)] : a command queued while the extractor was disconnected is dropped after thirty seconds instead of being replayed onto a roast that has moved on
+* 🐛 [fix(ble)] : a write the Bluetooth layer dropped is reported as a failure instead of passing for a delivered command
+* ⚡ [feat(airwave)] : a change made on the extractor's own controls now moves the extraction lever and is written into the roast, marked as coming from the device — and the mode's own wind percentage, which the extractor returns whenever the mode is set, is no longer mistaken for one of those changes
+* 🐛 [fix(airwave)] : internal cleanup — the two extractor readings nobody consumed, the notification branches the dispatcher could never reach, and four write-only fields are gone; no change to what the operator sees
+* ⚡ [feat(tilauscope)] : a roast looks like the same roast wherever it is shown — the roasting window, the roast viewer, the roast card and the phone now draw milestones with one set of marks: the same dashed rule, the same dot, and the same chip, with the turning point dotted apart from the milestones you mark yourself
+* ⚡ [feat(tilauscope)] : a milestone on the roasting window now reads its time since the charge beside its temperature, and drops the time, then the temperature, only where labels would otherwise collide
+* ⚡ [feat(tilauscope)] : a roast reviewed is now the same picture as the roast that was driven — the roast viewer draws with TilauScope's own curve engine instead of a second charting library, so the frame, the phase grounds, the milestone labels in rows above the curve and the lever strips are the ones from the roasting window
+* ⚡ [feat(tilauscope)] : a milestone is corrected in the roast viewer with the same gestures as on the roasting window — drag its label sideways, or right-click the curve to add a missing one; the change is still staged until Save markers is pressed
+* ⚡ [feat(tilauscope)] : comparing roasts is drawn by TilauScope's own curve engine instead of a second charting library — the same frame, the same phase grounds and the same milestone labels as the window the roast was driven on, with the first roast holding the frame and the others in their own colour
+* ⚡ [feat(tilauscope)] : a comparison now carries a gap strip under the curves, measured from charge to drop, where three degrees between two roasts is the whole strip instead of a hair's breadth on a two-hundred-degree scale
+* ⚡ [feat(tilauscope)] : each compared roast is named under the chart with how long it took and how its time split between drying, Maillard and development — the phase bars and their separate tooltip are gone, the figures now come from one place
+* ⚡ [feat(tilauscope)] : where the compared roasts reached each milestone is marked on the time axis, so a roast that dried later is seen rather than read off a number in a box
+* 🐛 [fix(tilauscope)] : the aligned comparison no longer draws a rate of rise — aligning the milestones stretches time, and a rate per stretched minute is a number about nothing
+* 🐛 [fix(tilauscope)] : a roast whose file carries an unreadable temperature keeps its chart — the milestone label refused to write the reading and the viewer answered by clearing the whole figure; the milestone now shows a dash where the number would be
+* 🐛 [fix(tilauscope)] : the roast viewer stops drawing its grid, its graduations and its milestone boxes in greys that belong to no palette, and the phone client draws the air probe in its own peach instead of yellow
+* 🐛 [fix(tilauscope)] : the scale comes back on the post-roast form when it dropped during the roast — a link the roast had left half-open swallowed every reconnect until the application was restarted, so the weight card sat on “no scale” and tapping it did nothing; the dead link is now released before reconnecting, and a tap always retries
+* ⚡ [feat(tools)] : the phone client’s screenshots are generated like the rest — the real page is rendered at phone and tablet sizes and fed the same two messages a desktop sends, so the manual’s remote-control chapter no longer needs a phone in hand to be kept up to date
+* 🐛 [fix(tilauscope)] : printed labels say what is in a blend again — each component with its share beside the BLEND chip, on both the roast and the green bean label
+* 🐛 [fix(docs)] : the Getting started chapter stops showing a broken image where the updater’s progress view belongs — the picture was never in the manual, only a link to it
 build 7
+* ⚡ [feat(android)] : an isolated Android prototype provides a simulated recording demo; hardware support is not yet available and the Mac/Windows edition is unchanged
 * 🐛 [fix(tilauscope)] : switching monitoring on with a finished roast open gives the left column back to the live session — the roast review stayed on top of the readouts, the levers and the status line, which had all been switched back on behind it, so the machine was being read with last roast’s summary covering the controls
 * 🐛 [fix(docs)] : nine chapters stop printing the same screenshot twice — the capture tool filed a second copy under the marker when the picture was already shown above it, which is where a marker flagging an out-of-date shot belongs; captures sharing one marker are also printed in the order the marker names them
 * ⚡ [feat(tools)] : the screenshots that can only be taken by hand — a menu, a tooltip, a gesture, a live reading, a PDF page, a phone — are filed from the clipboard under the name the documentation expects, with the chapter, the alt text and the link derived from the marker itself

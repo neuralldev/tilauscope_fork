@@ -56,12 +56,18 @@ letterforms available and prints blank.
 
 <!-- CAPTURE 6.1 [scene:cave_plan] — the BeanCave "Roasting plan" tab, form completed, with the ⚡ Generate Roast
 Plan button enabled. CAPTURE 6.2 — the injection confirmation message. CAPTURE 6.3 and CAPTURE 6.4 —
-one or two pages of a generated PDF, on a coffee with enough history to show "learned" sources.
+one or two pages of a generated PDF, on a coffee with enough history for the learned sources to show — the label reads "learned (n=…)", or "medoid (n=…)" once the coherent profile takes over.
 CAPTURE 6.7 — the "Control Ramps (Heater & Airflow)" page of a generated PDF, on a coffee whose
 plan carries a full heater ramp and a development ramp.
 -->
 
 ![The Roasting plan tab with its form and the Generate Roast Plan action.](assets/the-roast-plan-6.1.png)
+
+![The first page of a generated plan: bean and environment, thermal profile and timing, ratios, and the machine settings at each phase entry.](assets/the-roast-plan-6.3.png)
+
+![The Historical Feedback page of a generated plan: the crashes and flicks seen on past roasts, each with the action it calls for.](assets/the-roast-plan-6.4.png)
+
+![The Control Ramps page of a generated plan, with its heater and airflow steps.](assets/the-roast-plan-6.7.png)
 
 ---
 
@@ -338,8 +344,12 @@ coffee alone, because those follow the colour you are aiming for. When the wider
 the plan says so and prints the figure it holds — after any between-batch correction, not
 before.
 
-<!-- CAPTURE 6.5 — the source and History support lines of a PDF, cropped, on a coffee with
-"learned (n=…)" values. CAPTURE 6.6 — the historical profile vs calculated plan comparison. -->
+<!-- CAPTURE 6.5 — the source and History support lines of a PDF, cropped, on a coffee
+whose values come from history ("learned (n=…)" or "medoid (n=…)"). CAPTURE 6.6 — the historical profile vs calculated plan comparison. -->
+
+![The source and History support lines of a generated plan, cropped.](assets/the-roast-plan-6.5.png)
+
+![The historical profile drawn against the calculated plan, with the recorded spread behind it.](assets/the-roast-plan-6.6.png)
 
 ---
 

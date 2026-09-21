@@ -934,7 +934,7 @@ def _send_airwave_command(aw, cmd: str) -> bool:
     Returns True if dispatched. Parsed by Difluid.send_command()."""
     try:
         if getattr(aw, "bleAirwaveDeviceName", None) is not None and getattr(aw, "bleAirwaveDevice", None) is not None:
-            aw.bleAirwaveDevice.send_command(cmd)
+            aw.bleAirwaveDevice.dispatch_async(cmd, origin='assistant')
             return True
     except Exception as e:
         _logd.warning(f"AirWave command '{cmd}' failed: {e}")

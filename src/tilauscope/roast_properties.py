@@ -432,6 +432,9 @@ class _ScaleFloatWindow(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._parent_dialog = parent
         self._weight: float | None = None
+        # a reconnect releases the dead link first, and that release reports a
+        # disconnect: while we are connecting, it is not news to show
+        self._connecting = False
         self._build_ui()
 
     # ── UI ───────────────────────────────────────────────────────────────────
@@ -480,11 +483,14 @@ class _ScaleFloatWindow(QDialog):
 
     @pyqtSlot(int)
     def update_weight(self, weight: int) -> None:
+        self._connecting = False
         self._weight = weight
         self._weight_lbl.setText(f"{weight} g")
 
     @pyqtSlot()
     def scale_disconnected(self) -> None:
+        if self._connecting:
+            return
         self._weight = None
         self._weight_lbl.setText("–– g")
         self._hint_lbl.setText(QApplication.translate("tilauscope_roast_setup", "disconnected"))
@@ -495,11 +501,13 @@ class _ScaleFloatWindow(QDialog):
         self._hint_lbl.setText(text)
 
     def scale_connecting(self) -> None:
+        self._connecting = True
         self._weight = None
         self._weight_lbl.setText("–– g")
         self.set_status(QApplication.translate("tilauscope_roast_setup", "connecting…"))
 
     def scale_ready(self) -> None:
+        self._connecting = False
         self.set_status(QApplication.translate("tilauscope_roast_setup", "tap to use"))
 
     # ── Interaction ──────────────────────────────────────────────────────────
@@ -3457,15 +3465,28 @@ class RoastResultDialog(QDialog):
             _log.warning("RoastResultDialog: scale not available: %s", exc)
 
     def request_scale_connect(self) -> None:
-        """Ask the scale manager to (re)connect scale 1 and start the retry loop."""
+        """Ask the scale manager to (re)connect scale 1 and start the retry loop.
+
+        Reached on opening with the scale down, and on a tap on a card that is
+        showing no reading. A scale the manager still calls connected but that
+        sends nothing is exactly what the operator is tapping about, so the link
+        is recycled rather than the request refused.
+        """
         if self._scale_window is None:
             return
         try:
             sm = self._aw.scale_manager
-            if not sm.is_scale1_configured() or sm.is_scale1_connected():
+            if not sm.is_scale1_configured():
                 return
             self._scale_retries = 0
             self._scale_window.scale_connecting()
+            # The scale's BLE client refuses every start() while it still
+            # believes it is running, and only a disconnect clears that. A link
+            # the roast left half-open therefore swallowed every reconnect for
+            # the rest of the session. Release it first: it is already down, so
+            # nothing working is being cut. Both signals are queued, so the
+            # release is processed before the connect.
+            sm.disconnect_scale1_signal.emit()
             sm.connect_scale1_signal.emit(False)
             if self._scale_retry_timer is None:
                 self._scale_retry_timer = QTimer(self)

@@ -425,21 +425,28 @@ class BLE:
             return None, None, None
 
 ## TILAU ## add support for sending large packets, especially to BLE print which requires 220 bytes length
-    def write(self, client:BleakClient, write_uuid:str, message:bytes, response:bool = False, chunk=20) -> None:
+    ## TILAU ## returns whether every chunk reached the characteristic. A failing
+    ## write_gatt_char is caught per chunk, so the coroutine completes normally and
+    ## fut.result() raises nothing: without this return value the caller cannot tell
+    ## a delivered write from a dropped one. Callers that ignore it keep the previous
+    ## behaviour.
+    def write(self, client:BleakClient, write_uuid:str, message:bytes, response:bool = False, chunk=20) -> bool:
         if hasattr(self, '_asyncLoopThread') and self._asyncLoopThread is not None and client.is_connected:
             chunk_size = chunk
-            async def _do_chunked_write():
+            async def _do_chunked_write() -> bool:
                 for i in range(0, len(message), chunk_size):
                     try:
                         await client.write_gatt_char(write_uuid, message[i:i+chunk_size], response=response)
                     except Exception as e:
                         _log.error('chunk not written to airwave %d : %s', i, e)
-                        return # cancel
+                        return False # cancel
+
+                return True
 
             fut = asyncio.run_coroutine_threadsafe(_do_chunked_write(), self._asyncLoopThread.loop)
             try:
                 # Ajouter un timeout de 5 secondes pour éviter un blocage total en cas de défaillance matérielle.
-                fut.result(timeout=5.0) 
+                return bool(fut.result(timeout=5.0))
             except asyncio.TimeoutError:
                 _log.error('BLE timeout')
                 fut.cancel()
@@ -447,6 +454,7 @@ class BLE:
             except Exception as e:
                 _log.error('unhandled error on BLE : %s', e)
                 raise
+        return False
 
 
     def read(self, client:BleakClient, read_uuid:str) -> bytes|None:
@@ -686,7 +694,9 @@ class ClientBLE(QObject):
         if hasattr(self, '_async_loop_thread') and self._async_loop_thread is not None:
             asyncio.run_coroutine_threadsafe(self.set_event(), self._async_loop_thread.loop)
 
-    def send(self, message:bytes, response:bool = False, write_characteristic:str|None = None, chunk:int = 20) -> None:
+    ## TILAU ## returns whether the message was handed to a write characteristic and
+    ## delivered; every early exit below is a silent no-op otherwise.
+    def send(self, message:bytes, response:bool = False, write_characteristic:str|None = None, chunk:int = 20) -> bool:
         if self._ble_client is not None and self._connected_service_uuid is not None and self._connected_service_uuid in self._writers:
             if self._logging:
                 _log.debug('send to %s: %s', self._writers[self._connected_service_uuid], message)
@@ -704,7 +714,8 @@ class ClientBLE(QObject):
                 else:
                     _log.debug('send failed. Characteristic %s not registered for write for service %s', write_characteristic, self._connected_service_uuid)
             else:
-                ble.write(self._ble_client, wc, message, response, chunk)
+                return ble.write(self._ble_client, wc, message, response, chunk)
+        return False
 
     def read(self, read_characteristic:str|None = None) -> bytes|None:
         if self._ble_client is not None and self._connected_service_uuid is not None and self._connected_service_uuid in self._readers:

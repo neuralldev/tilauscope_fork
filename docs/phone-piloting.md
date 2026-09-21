@@ -45,10 +45,12 @@ below.
     is refused outright, whatever code or token it presents. Remote access through a VPN
     service is refused on the same grounds.
 
-<!-- CAPTURE 10.1 [scene:pairing] — the Pair a phone dialog, QR and countdown visible. CAPTURE 10.2 — the
+<!-- CAPTURE 10.1 [scene:pairing] — the Pair a phone dialog, QR and countdown visible. CAPTURE 10.2 [scene:pairing_paired] — the
 paired-devices list with one phone paired. -->
 
 ![The Pair a phone dialog with its QR code and countdown.](assets/phone-piloting-10.1.png)
+
+![The paired devices list with one phone on it.](assets/phone-piloting-10.2.png)
 
 ### Installing it as an app
 
@@ -59,8 +61,11 @@ first time — an installed home-screen app keeps its own separate pairing from 
 was installed from. Copying the link again from **Pair a phone…** and pasting it in settles
 it permanently.
 
-<!-- CAPTURE 10.3 — Add to Home Screen on a phone. CAPTURE 10.4 — the paste-a-link form,
-first launch from the home screen. -->
+<!-- CAPTURE 10.4 [scene:phone_pair] — the paste-a-link form, first launch from the
+home screen. (Add to Home Screen itself is the phone's own share sheet — nothing
+TilauScope draws, so nothing it can shoot.) -->
+
+![The pairing form on the phone, asking for the pairing link.](assets/phone-piloting-10.4.png)
 
 ---
 
@@ -78,9 +83,11 @@ never handed to a phone silently.
 computer can pilot the rest of the roast directly.
 
 <!-- CAPTURE 10.5 [scene:control_request] — the "Take control" request confirmation shown on the desktop.
-CAPTURE 10.6 — a phone in control vs. an observer phone, side by side. -->
+CAPTURE 10.6 [scene:phone_roles] — a phone in control vs. an observer phone, side by side. -->
 
 ![The Take control request shown on the desktop.](assets/phone-piloting-10.5.png)
+
+![A phone in control beside an observer phone: one offers Take control, the other pilots.](assets/phone-piloting-10.6.png)
 
 ---
 
@@ -110,8 +117,12 @@ If the machine clamps or rounds a value on its way through, the phone's bar snap
 was actually applied — unless a finger is still on it, so a correction never fights a live
 drag.
 
-<!-- CAPTURE 10.7 — the control grid, one bar mid-drag. CAPTURE 10.8 — the tap-to-enter
+<!-- CAPTURE 10.7 [scene:phone_controls] — the control grid, one bar mid-drag. CAPTURE 10.8 [scene:phone_wheel] — the tap-to-enter
 picker open on one channel. -->
+
+![The control grid on the phone, one lever being dragged.](assets/phone-piloting-10.7.png)
+
+![The value picker open on one channel, with Cancel and Confirm.](assets/phone-piloting-10.8.png)
 
 ---
 
@@ -123,7 +134,9 @@ marked. One big button always offers to mark whichever comes next; a smaller one
 last mark, if it was placed by mistake. Both stay disabled until recording has actually
 started — there is nothing yet to attach a milestone to before then.
 
-<!-- CAPTURE 10.9 — the milestone row mid-roast, two marked, one next. -->
+<!-- CAPTURE 10.9 [scene:phone_miles] — the milestone row mid-roast, two marked, one next. -->
+
+![The milestone row mid-roast: charge and dry end marked, first crack next.](assets/phone-piloting-10.9.png)
 
 ---
 
@@ -140,7 +153,9 @@ ending the roast outright:
 
 Neither choice discards anything. There is no way to discard a roast from the phone.
 
-<!-- CAPTURE 10.10 — the stop sheet, both choices visible, Save enabled. -->
+<!-- CAPTURE 10.10 [scene:phone_stop] — the stop sheet, both choices visible, Save enabled. -->
+
+![The stop sheet on the phone, with Save and Finish on Artisan.](assets/phone-piloting-10.10.png)
 
 ---
 
@@ -174,8 +189,12 @@ On a large-enough screen — a tablet, held in landscape — the same layout als
 reading (the gap between BT and ET) that a phone screen leaves out for space. On a machine
 without an air probe, neither ET nor that gap is shown.
 
-<!-- CAPTURE 10.13 — the phone in landscape. CAPTURE 10.14 — the tablet layout, both zones
+<!-- CAPTURE 10.13 [scene:phone_landscape] — the phone in landscape. CAPTURE 10.14 [scene:phone_tablet] — the tablet layout, both zones
 visible. -->
+
+![The phone client in landscape, curve and controls side by side.](assets/phone-piloting-10.13.png)
+
+![The tablet layout, with both zones visible at once.](assets/phone-piloting-10.14.png)
 
 ---
 

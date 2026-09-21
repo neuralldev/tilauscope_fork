@@ -47,8 +47,9 @@ sliders, guidance becomes advice rather than a control to move.
     described above. It is recognised, but its setup is closer to a generic Bluetooth device
     than to the guided pairing the current model gets.
 
-<!-- CAPTURE 9.1 — the roaster model picker, list open. CAPTURE 9.2 — sliders on a paired
-machine vs. the same panel in read-only mode. -->
+<!-- CAPTURE 9.1 — the roaster model picker, list open. -->
+
+![The roaster model picker, list open.](assets/hardware-9.1.png)
 
 ---
 
@@ -69,8 +70,8 @@ at the exact value sent, marked as the extractor's own rather than as a gesture 
 phase ahead, and sets the output for that phase. Cooling at DROP is the same mechanism, with a
 much higher setting.
 
-**Protecting the duct.** Whenever the extractor is connected — during preheat and monitoring as
-well as during a roast — its inlet temperature is watched, and if the duct goes over its limit
+**Protecting the duct.** Whenever the extractor is connected and running — during preheat and
+monitoring as well as during a roast — its inlet temperature is watched, and if the duct goes over its limit
 the fan is slowed until it comes back down, then returned to the setting it came from. It only
 ever slows the extractor, never speeds it up, and it does not wait for a roast to be recording.
 The limit is set per phase and the pace of that correction once for the extractor, both in
@@ -80,8 +81,6 @@ The limit is set per phase and the pace of that correction once for the extracto
 starts around 30%. Changing mode makes the extractor briefly adopt that mode's own default
 speed before the requested speed is applied — a short blip that comes from the device itself,
 and it is visible at every milestone where the plan changes mode.
-
-<!-- CAPTURE 9.3 — the damper slider labelled for AirWave once paired. -->
 
 ---
 
@@ -110,8 +109,6 @@ records as a real Omniflux, whichever path supplies them.
 Artisan's generic sensor configuration being entered correctly, with no on-screen confirmation
 if it is not.
 
-<!-- CAPTURE 9.4 — the AirWave's "emulate Omniflux" checkbox. -->
-
 ---
 
 ## TilauAmbient — ambient probe
@@ -132,8 +129,6 @@ before it will be found at all, unlike the off-the-shelf devices in this chapter
 crack-listening sensitivity is a setting of its own, independent of the general first-crack
 detection settings in [Configuration → DETECTION](configuration.md#-detection--how-milestones-get-marked-automatically).
 
-<!-- CAPTURE 9.5 — the AMBIENT window with a live reading. -->
-
 ---
 
 ## Acaia scale
@@ -150,8 +145,6 @@ accepts a captured weight; clicking the value writes it in.
 
 **Known limits.** TilauScope pairs one scale. A second scale, or an Acaia connected by cable,
 is set up in Artisan's own device settings.
-
-<!-- CAPTURE 9.6 — a floating scale reading beside a weight field. -->
 
 ---
 
@@ -215,8 +208,6 @@ sets or tests which topic and value feed it.
 
 **Known limits.** Read-only: TilauScope reads a value a sensor publishes, it does not
 configure or control the sensor itself.
-
-<!-- CAPTURE 9.7 — a network-sensor configure dialog with a live test reading. -->
 
 ---
 

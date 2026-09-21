@@ -25,6 +25,7 @@ by the chart, the cards and their text.
 from __future__ import annotations
 
 import logging
+import math
 import re
 from typing import Any, Final
 
@@ -233,8 +234,13 @@ def fmt_clock(seconds: float | None) -> str:
 
 
 def fmt_temp(temp: float | None) -> str:
-    """Whole degrees, no decimal — a tenth of a degree is noise at arm's length."""
-    if temp is None:
+    """Whole degrees, no decimal — a tenth of a degree is noise at arm's length.
+
+    A NaN reading dashes out like a missing one: `int(round(nan))` raises, and
+    the raise reaches the caller drawing the chip, which loses the whole figure
+    rather than one temperature.
+    """
+    if temp is None or not math.isfinite(temp):
         return DASH
     return f'{int(round(temp))}'
 

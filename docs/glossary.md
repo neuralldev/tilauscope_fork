@@ -82,6 +82,13 @@ particular — ET can sit *below* BT, which is normal for that machine type and 
 machine built without an air probe has no ET: once it is selected as your roaster, TilauScope
 stops showing ET and words its advice on bean temperature alone.
 
+#### Gap strip
+
+When several roasts are compared, the strip under the curves measuring each one against the
+roast holding the chart, from charge to each roast's own drop. The reference is the flat line through the
+middle; a roast running warmer is above it, cooler below. It has a scale of its own, so a
+difference of a few degrees is visible instead of being lost against the temperature axis.
+
 #### RoR — rate of rise
 
 How fast bean temperature is climbing, in degrees per minute. The slope of the curve rather

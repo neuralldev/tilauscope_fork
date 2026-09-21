@@ -18423,7 +18423,9 @@ class ApplicationWindow(QMainWindow):
     @pyqtSlot(str)
     def airwaveSendMessage(self, target:str) -> None:
         if self.bleAirwaveDevice is not None:
-            self.bleAirwaveDevice.send_command(target)
+            ## TILAU ## same serialised worker as the alarms: a lever gesture must
+            # not interleave its write with an alarm's mode/speed sequence.
+            self.bleAirwaveDevice.dispatch_async(target, origin='lever')
             _logd.info(f"main set {target}")
 
     @pyqtSlot(str)

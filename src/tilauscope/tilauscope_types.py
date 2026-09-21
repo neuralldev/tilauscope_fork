@@ -742,6 +742,15 @@ def marked(timeindex: object, i: int) -> bool:
         return False
 
 
+def is_reading(value: object) -> bool:
+    """False for None and for Artisan's -1: the probe answered nothing at that sample.
+
+    Lives beside `marked` for the same reason: reading a sample never costs an
+    import of the graph package.
+    """
+    return value is not None and value != -1
+
+
 def normalize_timeindex(raw: object) -> list[int]:
     """A short or absent `timeindex` padded to 8 slots, each with ITS sentinel.
 

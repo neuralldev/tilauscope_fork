@@ -192,7 +192,8 @@ a progress view while it downloads, and then **🛠 Install Now & Quit** once it
 progress.
 
 ![one per tab](assets/getting-started-1.17.png)
-![one per tab](assets/getting-started-1.18.png)
+<!-- CAPTURE 1.18 — the updater mid-download: the progress view between
+⬇ Download & Install and 🛠 Install Now & Quit. Needs a pending update. -->
 ![one per tab](assets/getting-started-1.19.png)
 
 If the installer cannot be launched automatically, TilauScope reports it and gives the path

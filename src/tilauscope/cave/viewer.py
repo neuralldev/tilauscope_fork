@@ -275,16 +275,6 @@ class ViewerMixin:
         self.curve_layout = QVBoxLayout(self.curve_tab)
         self.curve_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.fig = Figure(figsize=(7, 4), dpi=100, layout="constrained")
-        self.canvas = FigureCanvas(self.fig)
-        self.canvas.setMinimumSize(400, 300)
-        self.canvas.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Expanding
-        )
-        # Fond canvas aligné sur le fond figure (évite les bandes noires de marge)
-        self.canvas.setStyleSheet(f"background-color: {_PLOT_PALETTE['background']};")
-
         self._hover_tooltip = HoverTooltip()
 
         # ── Bouton zoom : SVG inline, indépendant de la plateforme ──────────
@@ -294,15 +284,27 @@ class ViewerMixin:
         # How several roasts are compared: overlay, consistency or aligned (the View switch).
         self._multi_view_mode = 'overlay'
 
-        # ── Conteneur stable : canvas + overlays (zoom + save markers) ────────
-        self.canvas_container = CanvasContainer(self.canvas)
+        # One roast or several, the curve card draws with TilauScope's own
+        # engine — the same drawing as the window the roast was driven on.
+        # Imported here rather than at module level: pulling the curve engine
+        # into this module's import graph creates its loggers before Artisan
+        # reconfigures logging, which silences guards that must be heard.
+        from tilauscope.graph.curve import RoastCurveWidget
+        self.roast_curve = RoastCurveWidget(self.aw)
+        self.roast_curve.setMinimumSize(400, 300)
+        self.roast_curve.setSizePolicy(QSizePolicy.Policy.Expanding,
+                                         QSizePolicy.Policy.Expanding)
+        self.canvas_stack = QStackedWidget()
+        self.canvas_stack.addWidget(self.roast_curve)
 
-        self.curve_image_action.triggered.connect(lambda _checked=False: self.take_snapshot(self.fig))
+        # ── Conteneur stable : canvas + overlays ──────────────────────────────
+        self.canvas_container = CanvasContainer(self.canvas_stack)
 
-        # Save-marker overlay button (ephemeral — visible only after a marker edit)
-        self.canvas_container._save_btn.clicked.connect(self._save_timeindex_to_alog)
-        # Route canvas right-click / two-finger-tap through eventFilter
-        self.canvas.installEventFilter(self)
+        self.curve_image_action.triggered.connect(lambda _checked=False: self.take_snapshot())
+
+        # The pill above the curve, shown while a milestone correction is staged.
+        self.roast_curve.corrections_save_requested.connect(self._save_timeindex_to_alog)
+        self.roast_curve.corrections_undo_requested.connect(self._undo_pending_markers)
 
         self.roast_plot_label = CurveMessageLabel(
             QApplication.translate("tilauscope_beancave", "Select a roast to display the graphs.")
@@ -450,11 +452,11 @@ class ViewerMixin:
         view_group.setSpacing(3)
         view_group.addWidget(view_caption)
         view_group.addLayout(view_switches)
-        range_caption = QLabel(QApplication.translate("tilauscope_beancave", "Time range"))
-        range_caption.setProperty('variant', 'caption')
+        self.curve_range_caption = QLabel(QApplication.translate("tilauscope_beancave", "Time range"))
+        self.curve_range_caption.setProperty('variant', 'caption')
         range_group = QVBoxLayout()
         range_group.setSpacing(3)
-        range_group.addWidget(range_caption)
+        range_group.addWidget(self.curve_range_caption)
         range_group.addWidget(self.curve_range_switch)
 
         self.curve_bar = QWidget()
@@ -618,25 +620,6 @@ class ViewerMixin:
         return container
 
     @pyqtSlot()
-    def _reconnect_hover(self) -> None:
-        """Reconnecte le bon handler hover selon le mode courant (mono/multi).
-
-        Both hover connections are made here and nowhere else. The leave handler
-        used to be connected beside each plot call without ever being dropped,
-        so clicking through a session's roasts left one live callback per roast
-        and every mouse exit ran them all.
-        """
-        for cid_attr in ('hover_cid', 'hover_lid'):
-            cid = getattr(self, cid_attr, None)
-            if cid is not None:
-                try:
-                    self.canvas.mpl_disconnect(cid)
-                except Exception:
-                    pass
-        handler = self._on_multi_hover if self._multi_mode else self.on_plot_hover
-        self.hover_cid = self.canvas.mpl_connect('motion_notify_event', handler)
-        self.hover_lid = self.canvas.mpl_connect('figure_leave_event', self.on_plot_leave)
-
     @pyqtSlot(bool)
     def toggle_canvas_zoom(self, checked: bool = False) -> None:
         self.is_zoomed = checked
@@ -679,14 +662,8 @@ class ViewerMixin:
                 # nothing now. Without this it stayed parented to the Bean Cave
                 # and one dead dialog piled up per full-screen cycle.
                 dlg.deleteLater()
-        # The button is enabled in multi mode before any single roast has plotted,
-        # so the hover annotation may not exist yet. This runs from a Qt slot: an
-        # AttributeError here reaches the excepthook and closes the application.
-        annotation = getattr(self, 'annotation', None)
-        if annotation is not None:
-            annotation.set_fontsize(12 if checked else 7)
-        self._reconnect_hover()
-        self.canvas.draw()
+        # The curve engine repaints itself where it now lives; nothing to
+        # reconnect, and no figure to redraw.
 
     def restore_canvas_position(self) -> None:
         """Restitue le canvas_container dans son layout d'origine."""
@@ -695,7 +672,6 @@ class ViewerMixin:
         # Resynchroniser l'icône si le dialog a été fermé par ESC / bouton OS
         if self.zoom_button.isChecked():
             self.zoom_button.setChecked(False)  # déclenche _sync_icon via toggled
-        self._reconnect_hover()
         self.is_zoomed = False
 
     def show_roast_ready_view(self):
@@ -1534,7 +1510,6 @@ class ViewerMixin:
         # A slot: an escape here would close the application.
         try:
             self._apply_curve_view()
-            self.canvas.draw_idle()
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
             _log.exception("the curve view could not be changed")
 
@@ -1557,7 +1532,6 @@ class ViewerMixin:
         QSettings().setValue(self._CURVE_RANGE_KEY, mode)
         try:
             self._apply_time_range()
-            self.canvas.draw_idle()
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
             _log.exception("the curve's time range could not be changed")
 
@@ -1814,6 +1788,9 @@ class ViewerMixin:
         # The view choices follow what is drawn: one roast's curves, or a comparison.
         self.curve_view_switch.setVisible(not multi)
         self.compare_view_switch.setVisible(multi)
+        # A comparison is framed on its roasts, never on a chosen window.
+        self.curve_range_caption.setVisible(not multi)
+        self.curve_range_switch.setVisible(not multi)
         self.burner_air_button.setVisible(not multi)
         # One roast's actions: greyed with none selected, out of the way while comparing.
         mono = enabled and not multi
@@ -2086,7 +2063,11 @@ class ViewerMixin:
         # answered "" whenever a background refresh had rebuilt it in the
         # meantime, and a blank booking makes the next refresh believe the
         # canvas shows another roast than it does.
-        self._displayed_fname = getattr(self, '_loading_fname', '')
+        fname = getattr(self, '_loading_fname', '')
+        if fname != self._displayed_fname:
+            # Staged on the roast leaving the canvas and never saved: it belongs to that roast only.
+            self._pending_timeindex = None
+        self._displayed_fname = fname
         label = self.roast_label(self._displayed_fname)
         self.display_roast_info(self.lastprofiledata)
         self.plot_bt_curve_preview(self.lastprofiledata, deltaet, deltabt)  # type: ignore

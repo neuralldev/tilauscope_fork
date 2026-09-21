@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
 
 from tilauscope.tilauscope_types import (COLOR_AIR, COLOR_GRAIN, THEME,
                                          format_batch_label)
+from tilauscope.graph import style
 from tilauscope.theme_qss import base_qss
 from tilauscope.probe_visibility import et_available_in_profile
 
@@ -47,7 +48,6 @@ except Exception as _e:  # pragma: no cover
 # the same picture as the screen the roast was driven on.
 _C_BT = COLOR_GRAIN    # blue — bean temperature
 _C_ET = COLOR_AIR      # peach — environment temperature
-_C_MARK = "#6C7086"    # event marker lines
 _C_PLOT_BG = THEME['SURFACE']   # the plot ground is chrome, unlike the channels above
 
 
@@ -284,16 +284,21 @@ class RoastCardDialog(QDialog):
             y_top = max(bt) if bt else 0
             for lbl, idx in marks:
                 if 0 <= idx < len(xs):
-                    ax.axvline(xs[idx], color=_C_MARK, linewidth=0.7,
-                               linestyle="--", alpha=0.8)
-                    ax.annotate(lbl, (xs[idx], y_top), fontsize=6.5,
-                                color=THEME['SUBTEXT'], ha="center",
-                                xytext=(0, 4), textcoords="offset points")
+                    # A thumbnail names its milestones and stops there, but it
+                    # names them in the same chip the two full screens draw.
+                    is_tp = lbl == "TP"
+                    ax.axvline(xs[idx],
+                               color=style.RULE_TP if is_tp else style.RULE,
+                               linewidth=style.RULE_TP_WIDTH if is_tp else style.RULE_WIDTH,
+                               linestyle=":" if is_tp else "--")
+                    ax.annotate(lbl, (xs[idx], y_top), fontsize=style.FS_CHIP_THUMB,
+                                color=style.CHIP_TEXT, ha="center", bbox=style.chip_bbox(),
+                                xytext=(0, 6), textcoords="offset points")
 
-            ax.tick_params(colors=THEME['SUBTEXT'], labelsize=7)
+            ax.tick_params(colors=style.TICK, labelsize=style.FS_TICK_THUMB)
             for spine in ax.spines.values():
-                spine.set_color(THEME['BORDER'])
-            ax.grid(True, color=THEME['BORDER'], linewidth=0.4, alpha=0.5)
+                spine.set_color(style.FRAME)
+            ax.grid(True, color=style.GRID, linewidth=style.GRID_WIDTH, alpha=0.5)
             ax.set_xlim(left=min(0.0, xs[0]))
             ax.margins(y=0.12)
             fig.tight_layout(pad=0.8)

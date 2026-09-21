@@ -51,7 +51,7 @@ _GREEN = '#A6E3A1'
 _RED = '#F38BA8'
 _BORDER = '#313244'
 _C_BT = '#89B4FA'
-_C_ET = '#F9E2AF'
+_C_ET = '#FAB387'  # peach — air temperature, as every other screen draws it
 
 
 def _fmt_mmss(seconds: float) -> str:
@@ -147,6 +147,7 @@ def render_curve_png(profile: dict) -> Optional[bytes]:
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_agg import FigureCanvasAgg
         from tilauscope.probe_visibility import et_available_in_profile
+        from tilauscope.graph import style  # noqa: PLC0415
 
         timex = profile.get('timex') or []
         bt = profile.get('temp2') or []
@@ -177,15 +178,19 @@ def render_curve_png(profile: dict) -> Optional[bytes]:
         y_top = max(bt) if bt else 0
         for lbl, idx in marks:
             if 0 <= idx < len(xs):
-                ax.axvline(xs[idx], color='#6C7086', linewidth=0.7,
-                           linestyle='--', alpha=0.8)
-                ax.annotate(lbl, (xs[idx], y_top), fontsize=6.5, color=_SUBTEXT,
-                            ha='center', xytext=(0, 4), textcoords='offset points')
+                is_tp = lbl == 'TP'
+                ax.axvline(xs[idx],
+                           color=style.RULE_TP if is_tp else style.RULE,
+                           linewidth=style.RULE_TP_WIDTH if is_tp else style.RULE_WIDTH,
+                           linestyle=':' if is_tp else '--')
+                ax.annotate(lbl, (xs[idx], y_top), fontsize=style.FS_CHIP_THUMB,
+                            color=style.CHIP_TEXT, ha='center', bbox=style.chip_bbox(),
+                            xytext=(0, 6), textcoords='offset points')
 
-        ax.tick_params(colors=_SUBTEXT, labelsize=7)
+        ax.tick_params(colors=style.TICK, labelsize=style.FS_TICK_THUMB)
         for spine in ax.spines.values():
-            spine.set_color(_BORDER)
-        ax.grid(True, color=_BORDER, linewidth=0.4, alpha=0.5)
+            spine.set_color(style.FRAME)
+        ax.grid(True, color=style.GRID, linewidth=style.GRID_WIDTH, alpha=0.5)
         ax.set_xlim(left=min(0.0, xs[0]))
         ax.margins(y=0.12)
         fig.tight_layout(pad=0.8)

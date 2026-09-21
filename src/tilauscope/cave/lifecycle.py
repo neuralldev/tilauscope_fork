@@ -35,7 +35,7 @@ from pathlib import Path
 from artisanlib.atypes import ProfileData
 
 from PyQt6.QtCore import (QMutex, QMutexLocker,QStandardPaths, Qt, pyqtSlot, QSettings, QThread, QPoint, QTimer, QEvent) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
-from PyQt6.QtGui import ( QCloseEvent, QGuiApplication, QCursor, QKeyEvent) # @UnusedImport @Reimport  @UnresolvedImport
+from PyQt6.QtGui import ( QCloseEvent, QGuiApplication, QKeyEvent) # @UnusedImport @Reimport  @UnresolvedImport
 from PyQt6.QtWidgets import (QApplication, QComboBox, QSizeGrip, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QWidget, QTabWidget, # @UnusedImport @Reimport  @UnresolvedImport
                                 QGroupBox, QTableWidget, QHeaderView, QStyledItemDelegate, QListView, QFrame, QFileDialog, QMessageBox, QDialog, QDoubleSpinBox) # @UnusedImport @Reimport  @UnresolvedImport
 
@@ -342,20 +342,6 @@ class LifecycleMixin:
             active = QApplication.activeWindow()
             if active is None or active is self.aw:
                 QTimer.singleShot(200, self._safe_raise)
-        # Canvas right-click / two-finger tap: intercept before Qt default context menu
-        if (obj is getattr(self, 'canvas', None)
-                and event.type() == QEvent.Type.ContextMenu):
-            if not self._multi_mode:
-                # Guarded: this is a Qt virtual, and the menu it builds ends in a
-                # full stats pass over values read from a file. An exception
-                # escaping here reaches the application's exception hook and
-                # closes the app over a right-click.
-                try:
-                    self._build_marker_menu(event.globalPos() if hasattr(event, 'globalPos') else QCursor.pos(),
-                                            event.pos()       if hasattr(event, 'pos')       else None)
-                except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
-                    _log.error(f"marker menu could not be built: {e}", exc_info=True)
-            return True  # always consume — prevent Qt's default empty menu
         return super().eventFilter(obj, event)
 
     def changeEvent(self, event) -> None:  # type: ignore[override]

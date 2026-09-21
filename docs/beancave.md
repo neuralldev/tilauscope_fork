@@ -112,8 +112,6 @@ vocabulary consistent from one coffee to the next.
     Live weighing needs an Acaia scale; density measurement needs a scale configured as scale 1 in
     Artisan; water activity needs an AquaGauge. Everything else on the record is typed.
 
-<!-- CAPTURE 3.6 — the stock field with a live scale reading available. -->
-
 ![the flavour](assets/beancave-3.7.png)
 
 ![the flavour](assets/beancave-3.7.1.png)

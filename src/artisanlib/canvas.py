@@ -403,8 +403,6 @@ class tgraphcanvas(QObject):
         ]
          
     ## TILAU ##
-    # extend slots to include TilauScope specific attributes
-    __slots__ += ['AirwaveFan','AirwaveMode']
     # TilauScope devices; registered in artisanlib.device_registry at import time.
     # Kept as a class attribute so existing self.tilau_devices[...] call sites keep working.
     tilau_devices = TILAU_DEVICES
@@ -2021,9 +2019,6 @@ class tgraphcanvas(QObject):
         self.R1_FAN_RPM:float = 0
         self.R1_STATE_STR:str = ''
 
-        ## TILAU ## temporary storage to pass additional information than temps
-        self.AirwaveFan:int  = 0
-        self.AirwaveMode:int = 0
         ## TILAU ## set by startTilauMqttManager once the broker is connected; the
         ## sampling thread reads it on every MQTT bridge channel, so it must exist
         ## even when no broker is configured at all
@@ -6520,11 +6515,12 @@ class tgraphcanvas(QObject):
                 elif action == 26: ## TILAU ## this is Difluid Airwave alarm processing command by string
                     _logd.info(f"difluid command sent by alarm {string}")
                     if self.aw.bleAirwaveDeviceName is not None and self.aw.bleAirwaveDevice is not None: # Difluid support  
-                        self.aw.bleAirwaveDevice.send_command(string)
-                        if self.aw.bleAirwaveDevice.pilotDamperSlider and self.aw.sliderpos(2) != self.AirwaveFan:
-                            # if slider is mapped to airwave, move slider accordingly
-                            self.aw.moveslider( 2, self.AirwaveFan)
-                            self.aw.recordsliderevent(2)
+                        ## TILAU ## Queued on the extractor's own worker. A compound
+                        # sequence has to run whole — nothing may slip between a mode
+                        # change and the speed behind it — and a BLE write blocks this
+                        # thread for up to five seconds. The lever follows the speed the
+                        # device confirms (slotAirwaveSpeedConfirmed), never the setpoint.
+                        self.aw.bleAirwaveDevice.dispatch_async(alarm_description[0], origin=f'alarm {number}')
                 elif action == 27: ## TILAU ## this is TilauAmbient processing command by string 
                     _logd.info(f"tilauscope ambient command by alarm {string}")
                     if self.aw.bleTilauScopeDeviceName is not None and self.aw.bleTilauScopeDevice is not None: # TilauScope support
@@ -13475,6 +13471,7 @@ class tgraphcanvas(QObject):
                 self.aw.bleAirwaveDevice.connected_signal.connect(self.slotStartAirWave)
                 self.aw.bleAirwaveDevice.disconnected_signal.connect(self.slotStopAirWave)
                 self.aw.bleAirwaveDevice.roastingstage_request_signal.connect(self.sendRoastingStage)
+                self.aw.bleAirwaveDevice.succionspeed_changed_signal.connect(self.slotAirwaveSpeedConfirmed)
                 self.aw.bleAirwaveDevice.identify_extrade_devices(self.aw)
 
     @pyqtSlot()
@@ -14563,6 +14560,21 @@ class tgraphcanvas(QObject):
     @pyqtSlot()
     def toggleMonitorTigger(self) -> None:
         self.ToggleMonitor()
+
+    ## TILAU ##
+    @pyqtSlot(int)
+    def slotAirwaveSpeedConfirmed(self, speed:int) -> None:
+        """Mirror the extraction lever on the speed the extractor confirmed.
+
+        Driven by the device reply, not by the setpoint: the lever used to be
+        moved the instant a command was issued, so it showed a speed the
+        extractor may never have applied.
+        """
+        dev = self.aw.bleAirwaveDevice
+        if dev is None or not dev.pilotDamperSlider or speed <= 0:
+            return
+        if self.aw.sliderpos(2) != speed:
+            dev.updateArtisanDamperSlider(2, speed, fire_action=False)
 
     ## TILAU ##
     @pyqtSlot()

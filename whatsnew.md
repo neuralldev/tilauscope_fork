@@ -6,6 +6,7 @@ A smaller release: TilauScope now adapts itself to machines that have no air pro
 
 * **Your roasts, at a glance.** BeanCave's roast list, now the **Roasts** tab, reads like a journal: two lines per roast grouped under Today, Yesterday or the date, its colour as a dot, and a badge on any roast whose result was never filled in. Search by coffee, process or batch number, narrow it to one coffee, or order it by coffee — the roast on screen stays put while you search. Open a roast and its key figures sit above the curve — weight loss, roast time and development, drop temperature and colour — with a banner when its result is still missing. Under the curve, show temperatures, rate of rise or both, and keep every roast on the same 0–12 min scale to read them alike.
 * **Next batch.** From the top of the roast review, one click prepares the next roast of the same coffee: same charge weight, and the roast you just reviewed as the background curve. Nothing heats until you press MONITOR and START.
+* **Correcting a milestone, with a way back.** Move or add a milestone on a saved roast and a pill above the curve says what changed — *DRY END 4:46 → 4:38* — with **Undo** beside **Save**. It no longer covers the curve, and it only appears when something actually moved.
 * **The coach in the roast review.** A Coach card sums up the reading in one line — the level the roast ran at and the remark that matters most — and opens the full reading, the same one BeanCave shows.
 
 ## ☕ During the roast

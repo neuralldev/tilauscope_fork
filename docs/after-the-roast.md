@@ -180,9 +180,12 @@ shows at the foot of the menu — the roast card and an image of the curve; see
 
 ### Reading the curve
 
-**Curve**, at the top of the card under the figures, shows the recorded curve — BT and ET, or
-BT alone for a machine without an air probe — with every marked milestone labelled directly on
-it and the rate of rise at drop written at the end of its line. When a crack probe counted during the
+**Curve**, at the top of the card under the figures, shows the recorded curve — BT and ET, BT
+alone for a machine without an air probe, or ET alone for one that roasts on its air probe —
+drawn exactly as the roasting window draws it:
+the same frame, the same phase grounds, the same milestone labels parked in rows above the
+curve rather than sitting on it, and the same lever strips underneath. A roast reviewed is the
+same picture as the roast that was driven. When a crack probe counted during the
 roast, one tick per pop runs along the foot of the plot, exactly as in the roasting window — see
 [Listening to the crack](the-window.md#listening-to-the-crack). **Statistics**, beside it, holds
 the reading described under [Coach's Advice](#coachs-advice). At the right of that row, on
@@ -199,53 +202,69 @@ Under the card, three choices change what the curve shows, and are kept for next
 - **Burner & air** — the strip of burner, air and drum settings under the curve: the settings
   that explain its shape.
 
-With **two or more roasts** selected, **View** offers three ways to compare them instead:
+With **two or more roasts** selected, **Time range** and **Burner & air** step aside — a
+comparison is framed on its roasts — and **View** offers three ways to compare them instead:
 
 - **Overlay** draws every roast on the same axes, each in its own colour.
 - **Consistency** overlays the selected roasts on one reference, with a shaded band showing
   how much they spread — a tight band means the same coffee roasted the same way twice; a
   wide one flags what actually varied.
 - **Aligned** stretches each roast so its milestones line up with the reference roast's, so
-  the *shape* of a phase can be compared independent of how long it happened to run.
+  the *shape* of a phase can be compared independent of how long it happened to run. No rate of
+  rise is drawn in this view: stretching time would make the rate a figure about nothing.
 
-Resting the pointer on the curves names the roast nearest to it, in its own colour, and reads its
-bean temperature, air temperature and rate of rise — each marked with the line style it is drawn
-in, since a comparison gives one colour to a whole roast rather than one colour per measurement.
+A comparison is drawn the way the roasting window draws a roast: the same frame, the same phase
+grounds, the same milestone labels parked above the curves. The first roast selected holds the
+chart — it keeps the bean colour, carries the phase grounds and the labelled milestones, and every
+other roast is drawn against it in a colour of its own. Where those roasts reached each milestone
+is marked on the time axis underneath, so a roast that dried later is seen rather than read.
 
-A comparison also draws a **phase ribbon**: one bar per roast, split into drying, Maillard and
-development as shares of that roast's own time, with the three colours named under the plot.
-Each row is labelled with its coffee, its roast time and the three shares in that order, so an
-exported image carries them too; resting the pointer on a bar adds each phase's duration. The
-bars themselves carry no figures, so the ribbon stays readable whatever the size of the window.
+Resting the pointer anywhere on the chart draws a crosshair, reads the bean temperature, air
+temperature and rate of rise of the roast holding the chart, and dots every other roast at the
+same instant in its own colour.
+
+Under the curves, a **[gap strip](glossary.md#gap-strip)** measures each roast against the one holding the chart, from
+charge to drop — each roast's own drop, so a roast dropped first ends there rather than trailing
+into its cooling tray: the reference is the flat line through the middle, and everything else is how far
+that roast ran from it, on a scale of its own so that a few degrees are visible rather than lost
+against the temperature axis. Its right-hand figure says how wide the strip is.
+
+Each roast is then named under the chart with the colour it is drawn in, how long it took, and how
+its time split between drying, Maillard and development. A name that will not fit gives up its
+split, then its time, so a roast is never drawn without being named.
 
 ![The curve card, single roast, all milestones labelled](assets/after-the-roast-8.2.png)
 
-<!-- CAPTURE 8.2 [scene:cave_roast] — the Roasts tab, one roast selected in the list grouped by day: its name, date and four figures above the curve card on Curve, all milestones labelled, the rate of rise at drop written, View on Both and Burner & air on -->
+<!-- CAPTURE 8.2 [scene:cave_roast] — the Roasts tab, one roast selected in the list grouped by day: its name, date and four figures above the curve card on Curve, the roast drawn by the curve engine with its milestone labels in rows above the curve and the lever strips under it, View on Both and Burner & air on -->
 
 ![Consistency view on 3+ roasts of the same coffee](assets/after-the-roast-8.3.png)
 
-<!-- CAPTURE 8.3 [scene:cave_consistency] — View on Consistency with 3+ roasts of the same coffee; the phase ribbon under the curve shows one bar per roast, the pointer off the ribbon -->
+<!-- CAPTURE 8.3 [scene:cave_consistency] — View on Consistency with 3+ roasts of the same coffee; the shaded spread band around the roast holding the chart, the gap strip under the curves, the roasts named below it, the pointer off the chart -->
 
 ![Aligned view
 on the same set](assets/after-the-roast-8.4.png)
 
-<!-- CAPTURE 8.4 [scene:cave_aligned] — View on Aligned with the same set, the list narrowed to that coffee with All coffees -->
+<!-- CAPTURE 8.4 [scene:cave_aligned] — View on Aligned with the same set, the list narrowed to that coffee with All coffees; the compared roasts' milestone marks sitting on the reference's rules, no rate of rise drawn -->
 
 
 ### Correcting the timeline afterward
 
-Right-clicking anywhere on the curve offers the nearest milestone to move to that point —
-useful for a milestone marked a little late in the moment, or one filled in on a roast that
-never had it. Choosing one stages the change; a **💾 Save markers** button appears over the
-curve to confirm it. The roast on screen in the roasting window can also be corrected directly
-on its own curve — see [Correcting a milestone](the-window.md#correcting-a-milestone).
+A milestone is corrected here with the same gestures as on the roasting window: drag its label
+sideways to move it, right-click the curve at a moment to add one that is missing — see
+[Correcting a milestone](the-window.md#correcting-a-milestone) for what a drag follows and
+where it is allowed to stop. One thing differs: this is a roast on file, so nothing is written
+as you go. The correction is staged, and a pill above the curve names it — the milestone with
+its time on file and its new time, or how many milestones were corrected — with **Save** to
+write it into the roast file and **Undo** to put the milestones back as the file has them. A
+milestone let go where it was, or brought back to its place, stages nothing, and a correction
+left unsaved is dropped when another roast is shown.
 
-![The right-click marker menu, showing a milestone's current time and the
-proposed new one](assets/after-the-roast-8.5.png)
+![DRY END just moved on the curve, with the pill above it naming the correction, Undo and
+Save](assets/after-the-roast-8.5.png)
 
-<!-- CAPTURE 8.5 — the Roasts tab on Curve, a milestone right-clicked so the marker menu shows
-its current time and the proposed new one; the curve must show the probe colours (bean blue,
-air peach, their rates in the same hues one step back) -->
+<!-- CAPTURE 8.5 — the Roasts tab on Curve, View on Both, DRY END just dragged to a new instant
+and released: the milestone at its new place, and above the plot the pill naming the correction
+(DRY END old time → new time) with Undo and Save -->
 
 
 ### Reading back every sample
@@ -350,7 +369,11 @@ without having printed one asks the question once. See
 
 <!-- CAPTURE 8.9 — the result form reopened from ⋯ → Record result… on an older roast, batch and metrics shown across the top -->
 
+![The result form reopened from ⋯ → Record result… on an older roast, batch and metrics shown across the top.](assets/after-the-roast-8.9.png)
+
 <!-- CAPTURE 8.10 — the AI Summary panel docked beside the result form -->
+
+![The AI Summary panel docked beside the result form.](assets/after-the-roast-8.10.png)
 
 
 ---

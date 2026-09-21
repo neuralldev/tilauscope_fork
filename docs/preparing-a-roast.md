@@ -206,6 +206,8 @@ would be a milestone the replay never had.
 <!-- CAPTURE 5.9 — the ⚙ MORE OPTIONS tab with the new Roast Replay card visible (a background
 curve loaded, box ticked, burner reaction time filled in) -->
 
+![The ⚙ MORE OPTIONS tab with the new Roast Replay card visible (a background curve loaded, box ticked, burner reaction time filled in).](assets/preparing-a-roast-5.9.png)
+
 ---
 
 ## Telling TilauScope which machine it is
@@ -415,6 +417,8 @@ take priority, and no Artisan profile structure is changed.
 <!-- CAPTURE 5.15 — the roast graph during preheating, showing the Preheat panel's Experience
 reading and its two capability lines in a Learning or Estimated state, contrasted with the
 capture at 5.16 above. -->
+
+![The roast graph during preheating, showing the Preheat panel's Experience reading and its two capability lines in a Learning or Estimated state, contrasted with the capture at 5.16 above.](assets/preparing-a-roast-5.15.png)
 
 ---
 

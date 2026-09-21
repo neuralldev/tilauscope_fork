@@ -105,43 +105,11 @@ class ZoomToggleButton(QPushButton):
         icon = ZoomToggleButton._icon_active if checked else ZoomToggleButton._icon_normal
         self.setIcon(icon)  # type: ignore[arg-type]
 
-class SaveMarkerButton(QPushButton):
-    """
-    Ephemeral overlay button shown when timeindex has been edited but not saved.
-    Positioned bottom-right of CanvasContainer, hidden by default.
-    """
-    _SS = f"""
-        QPushButton {{
-            background-color : rgba(166, 227, 161, 220);
-            color            : {THEME['BG']};
-            border           : 1px solid rgba(166, 227, 161, 255);
-            border-radius    : 6px;
-            padding          : 4px 14px;
-            font-size        : 11px;
-            font-weight      : bold;
-        }}
-        QPushButton:hover {{
-            background-color : rgba(166, 227, 161, 255);
-        }}
-        QPushButton:pressed {{
-            background-color : rgba(100, 180, 100, 255);
-        }}
-    """
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setText(QApplication.translate("tilauscope_beancave", "💾 Save markers"))
-        self.setStyleSheet(self._SS)
-        self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.adjustSize()
-        self.hide()
-
 class CanvasContainer(QWidget):
     """
     Conteneur Qt stable qui wrappe le FigureCanvas matplotlib.
 
     - Fournit un parent QWidget dans le layout (curve_layout).
-    - Porte le SaveMarkerButton en overlay bas-droite (caché par défaut).
     - En mode zoom plein-écran, on transfère CE widget dans le QDialog :
       les boutons enfants suivent naturellement.
     - zoom_btn est optionnel : dans l'onglet Roasts le bouton plein écran vit
@@ -176,9 +144,6 @@ class CanvasContainer(QWidget):
             b.setParent(self)
             b.raise_()
 
-        self._save_btn = SaveMarkerButton(self)
-        self._save_btn.raise_()
-
         self._reposition_buttons()
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # type: ignore[override]
@@ -193,11 +158,6 @@ class CanvasContainer(QWidget):
         for b in self._mode_btns:
             b.move(x, self._MARGIN)
             x += b.width() + 6
-        bw = self._save_btn.sizeHint().width()
-        bh = self._save_btn.sizeHint().height()
-        x = self.width()  - bw - self._MARGIN
-        y = self.height() - bh - self._MARGIN * 5
-        self._save_btn.move(max(0, x), max(0, y))
 
     # Alias for callers of _reposition_button
     def _reposition_button(self) -> None:

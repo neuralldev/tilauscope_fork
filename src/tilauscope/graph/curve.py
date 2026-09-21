@@ -28,9 +28,10 @@ from __future__ import annotations
 import bisect
 import math
 from dataclasses import dataclass
+from collections.abc import Sequence
 from typing import Any, Final
 
-from PyQt6.QtCore import QEvent, QPointF, QSettings, QRectF, Qt
+from PyQt6.QtCore import QEvent, QPointF, QSettings, QRectF, Qt, pyqtSignal
 from PyQt6.QtGui import QAction, QColor, QFont, QFontMetricsF, QPainter, QPen, QPixmap, QPolygonF
 from PyQt6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QMenu, QPushButton, QToolButton,
                              QToolTip, QWidget, QWidgetAction)
@@ -38,6 +39,9 @@ from PyQt6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QMenu, QPushButt
 from artisanlib.util import convertRoRstrict, convertTemp, findTPint
 from tilauscope.graph import milestone_edit as edit
 from tilauscope.graph import smoothing as smooth
+from tilauscope.graph import style
+from tilauscope.graph import comparison as compare
+from tilauscope.graph.comparison import ComparedRoast, residual
 from tilauscope.graph.annotation import AnnotationLayer
 from tilauscope.graph.crackbar import CrackBar
 from tilauscope.graph.common import (
@@ -58,9 +62,9 @@ from tilauscope.graph.common import (
 )
 from tilauscope.graph.preheat import reading as preheat_reading
 from tilauscope.probe_visibility import et_available_for
-from tilauscope.theme_qss import tooltip_qss
+from tilauscope.theme_qss import tint, tooltip_qss
 from tilauscope.tilauscope_types import (CRACK_TICK_ALPHA, PHASE_COLORS, THEME,
-                                         crack_pop_times, operator_level,
+                                         crack_pop_times, is_reading, operator_level,
                                          resolve_crack_channel)
 
 # ── fixed axis extents — never autoscaled, never recomputed from data ──────
@@ -109,16 +113,33 @@ _REFERENCE_ALPHA: Final[int] = 72
 #
 # The hues and their fallbacks live in `graph.common`, which the phone reads too.
 _AIR_PEN_WIDTH: Final[float] = 1.8
+#: Height of the tick marking where a COMPARED roast reached a milestone.
+_COMPARED_TICK: Final[float] = 6.0
+#: A compared roast is thinner than the one holding the frame, and that is
+#: the only difference: it keeps its own hue at full strength, because it is
+#: a subject of the comparison rather than a backdrop to it.
+_COMPARED_PEN_WIDTH: Final[float] = 1.8
+#: The dot marking a compared roast under the crosshair.
+_HOVER_DOT_RADIUS: Final[float] = 3.5
+#: Share of the chart the gap strip takes, and the floor under it.
+_RESIDUAL_SHARE: Final[float] = 0.16
+_RESIDUAL_MIN_HEIGHT: Final[float] = 52.0
+#: The gap strip never shows less than this, so a roast tracked within a degree
+#: does not get a wildly magnified scale that reads as a disaster.
+_RESIDUAL_MIN_SPAN: Final[float] = 5.0
+#: The consistency band is a ground, not a trace: it must never be mistaken
+#: for a roast that was actually run.
+_CONSISTENCY_ALPHA: Final[int] = 46
 
 # Axis figures and lane names are read at a glance from a step back, not
 # studied: both were a size that had to be squinted at.
-_AXIS_FONT_PT: Final[int] = 11
+_AXIS_FONT_PT: Final[int] = style.FS_TICK
 _TITLE_FONT_PT: Final[int] = 12
 #: Room the coach toggle takes in the top margin, so the title clears it.
 _TOGGLE_CLEARANCE: Final[float] = 36.0
 #: The crack band: a thin strip at the foot of the plot.
 _CRACK_BAND_HEIGHT: Final[float] = 9.0
-_MARK_FONT_PT: Final[int] = 11     # a milestone is read across the room, not squinted at
+_MARK_FONT_PT: Final[int] = style.FS_CHIP_LIVE  # read across the room, not squinted at
 
 # Phase grounds: the application's phase triple, painted faint. The alpha
 # climbs across the three, so the roast visibly intensifies as it advances.
@@ -128,7 +149,7 @@ _PHASE_DEVELOPMENT: Final[tuple[str, int]] = (PHASE_COLORS[2], 32)
 _MARK_LABEL_ROWS: Final[int] = 3      # stagger depth before labels are allowed to touch
 _MARK_ROW_HEIGHT: Final[float] = 23.0
 _MARK_CHIP_PAD: Final[float] = 7.0
-_MARK_DOT_RADIUS: Final[float] = 4.0
+_MARK_DOT_RADIUS: Final[float] = style.DOT_RADIUS
 #: How far from a milestone dot a press still takes hold of it, in logical pixels.
 _GRIP_RADIUS: Final[float] = 8.0
 #: Room before the first sample of a profile drawn without a CHARGE.
@@ -147,7 +168,7 @@ _LANE_ROW_HEIGHT: Final[float] = 26.0
 _LANE_ROW_GAP: Final[float] = 4.0
 _LANE_MAX_SHARE: Final[float] = 0.34
 _LANE_GAP: Final[float] = 12.0
-_LEGEND_FONT_PT: Final[int] = 10
+_LEGEND_FONT_PT: Final[int] = style.FS_LEGEND
 _LANE_MAX: Final[float] = 100.0
 _LANE_PEN_WIDTH: Final[float] = 1.6
 _LANE_FILL_ALPHA: Final[int] = 70
@@ -374,7 +395,7 @@ def _sample_temp_c(raw: Any, mode: str) -> float | None:
     None and the Artisan -1 sentinel both mean "no reading here" — the
     polyline must break, not interpolate through them.
     """
-    if raw is None or raw == -1:
+    if not is_reading(raw):
         return None
     return convertTemp(float(raw), mode, 'C')
 
@@ -389,7 +410,7 @@ def _readings(temp2: list[Any], wanted: int = 2) -> bool:
     """
     seen = 0
     for raw in temp2:
-        if raw is None or raw == -1:
+        if not is_reading(raw):
             continue
         seen += 1
         if seen >= wanted:
@@ -413,7 +434,7 @@ def _sample_ror_c(raw: Any, mode: str) -> float | None:
     Uses convertRoRstrict (scale-only) rather than convertTemp — a rate
     conversion must not carry the ±32 Fahrenheit offset.
     """
-    if raw is None or raw == -1:
+    if not is_reading(raw):
         return None
     return convertRoRstrict(float(raw), mode, 'C')
 
@@ -476,6 +497,10 @@ class RoastCurveWidget(QWidget):
     pays for chart cost.
     """
 
+    #: The operator keeps, or drops, the correction staged on a saved roast.
+    corrections_save_requested = pyqtSignal()
+    corrections_undo_requested = pyqtSignal()
+
     def __init__(self, aw: Any, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._aw = aw
@@ -507,6 +532,34 @@ class RoastCurveWidget(QWidget):
             _SHOW_AIR_KEY, False, type=bool)
 
         self._plot_rect = QRectF()
+        #: The strip under the plot carrying roast-to-reference gaps.
+        self._residual_rect: QRectF | None = None
+        #: Roasts drawn instead of the live session — BeanCave's comparison.
+        #: The first holds the frame; the others are measured against it.
+        self._comparison: list[ComparedRoast] = []
+        #: How the comparison is read: see `graph.comparison.MODES`.
+        self._comparison_mode: str = 'overlay'
+        #: The roasts as they will be PAINTED — the same list, unless a mode
+        #: transforms them. Computed when the comparison is set, never per frame.
+        self._comparison_drawn: list[ComparedRoast] = []
+        #: What a saved roast shows, as the card's own switches ask for it:
+        #: temperatures, rate, lever strips, and the window in force.
+        self._static_temps: bool = True
+        self._static_rate: bool = True
+        self._static_lanes: bool = True
+        #: Whether a saved roast shows its air probe. Shown by default, unlike
+        #: the live chart: a roast under review is read in full, and the
+        #: reading is already on file.
+        self._static_air: bool = True
+        self._static_window: tuple[float, float] | None = None
+        #: Who writes a milestone correction made on a SAVED roast. BeanCave
+        #: owns the file, so the engine proposes the move and never commits it.
+        self._static_editor: Any = None
+        #: (time, coldest, hottest) for the consistency band, when in that mode.
+        self._comparison_band: list[tuple[float, float, float]] = []
+        self._comparison_gaps: list[tuple[str | None, list[float | None]]] = []
+        # The milestones as the saved roast's file holds them, while a correction is staged.
+        self._saved_marks: list[int] | None = None
         # The axes are fixed for a roast and only for a roast. A preheat is a
         # different climb over a different span, and squeezing it into the
         # roast's box would draw a flat line along the bottom for twenty
@@ -647,6 +700,57 @@ class RoastCurveWidget(QWidget):
         self._crack_bar = CrackBar(aw, self)
         self._crack_bar.set_operator_level(operator_level(aw))
 
+        # A correction staged on a saved roast, named, with the two ways out of
+        # it. The middle of the same strip: a saved roast has no counter there.
+        self._unsaved_pill = QWidget(self)
+        self._unsaved_pill.setObjectName('unsavedPill')
+        self._unsaved_pill.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        _pill = QHBoxLayout(self._unsaved_pill)
+        _pill.setContentsMargins(10, 2, 3, 2)
+        _pill.setSpacing(6)
+        self._unsaved_label = QLabel()
+        self._unsaved_label.setObjectName('unsavedText')
+        _undo = QPushButton(QApplication.translate('tilauscope', 'Undo'))
+        _undo.setObjectName('unsavedUndo')
+        _undo.setToolTip(QApplication.translate(
+            'tilauscope', 'Put the milestones back as the file has them'))
+        _save = QPushButton(QApplication.translate('tilauscope', 'Save'))
+        _save.setObjectName('unsavedSave')
+        _save.setToolTip(QApplication.translate(
+            'tilauscope', 'Write the corrected milestones into the roast file'))
+        for _b in (_undo, _save):
+            _b.setCursor(Qt.CursorShape.PointingHandCursor)
+            _b.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        _undo.clicked.connect(lambda _checked=False: self.corrections_undo_requested.emit())
+        _save.clicked.connect(lambda _checked=False: self.corrections_save_requested.emit())
+        _pill.addWidget(self._unsaved_label)
+        _pill.addWidget(_undo)
+        _pill.addWidget(_save)
+        self._unsaved_pill.setStyleSheet(f"""
+            QWidget#unsavedPill {{
+                background-color: {THEME['SURFACE']};
+                border: 1px solid {tint('ACCENT', 110)};
+                border-radius: 10px;
+            }}
+            QLabel#unsavedText {{
+                background: transparent; color: {THEME['TEXT']};
+                font-size: 11px; font-weight: bold;
+            }}
+            QPushButton#unsavedUndo {{
+                background: transparent; color: {THEME['SUBTEXT']};
+                border: none; border-radius: 8px; padding: 2px 10px; font-size: 11px;
+            }}
+            QPushButton#unsavedUndo:hover {{ background-color: {THEME['BORDER']}; color: {THEME['TEXT']}; }}
+            QPushButton#unsavedSave {{
+                background-color: {THEME['ACCENT']}; color: {THEME['BG']};
+                border: none; border-radius: 8px; padding: 2px 12px;
+                font-size: 11px; font-weight: bold;
+            }}
+            QPushButton#unsavedSave:hover {{ background-color: {THEME['LAVENDER']}; }}
+            {tooltip_qss()}
+        """)
+        self._unsaved_pill.hide()
+
         self._sync_pid_button()
         self._sync_view_button()
         self._sync_switch_button()
@@ -667,6 +771,122 @@ class RoastCurveWidget(QWidget):
         self._layout()
 
     # ── public API ───────────────────────────────────────────────────────
+    def set_static_view(self, *, temps: bool = True, rate: bool = True,
+                        lanes: bool = True,
+                        window: tuple[float, float] | None = None) -> None:
+        """What a saved roast shows, as the review card's switches ask for it.
+
+        `window` is charge-relative seconds; None leaves the engine to frame the
+        roast as it frames a roast it has just recorded.
+        """
+        self._static_temps = temps
+        self._static_rate = rate
+        self._static_lanes = lanes
+        self._static_window = window
+        self._layout()
+        self.update()
+
+    def set_comparison(self, roasts: Sequence[ComparedRoast],
+                       mode: str = 'overlay', *, editor: Any = None,
+                       saved: Sequence[int] | None = None) -> None:
+        """Draw these saved roasts instead of the live session.
+
+        The first roast holds the frame: the window, the phases and the
+        milestone chips are its own, and the rest are drawn against it. An
+        empty list gives the widget back to the live session.
+
+        `saved` is the corrected roast's milestones as its file holds them:
+        where the roast drawn differs, the pill above the plot names the
+        correction and offers to undo or save it.
+
+        Whatever the mode asks of the data is done here and not at paint time:
+        a warp and an envelope are a sweep over every reading of every roast,
+        and the frame rate of a chart is no place to pay for one.
+        """
+        # A gesture belongs to the roast it was taken on, which is going away.
+        self._end_drag()
+        self._comparison = list(roasts)
+        # A single saved roast can be corrected; several cannot — a correction
+        # would have to pick one of them, and a comparison names no owner.
+        self._static_editor = editor if len(self._comparison) == 1 else None
+        self._comparison_mode = mode if mode in compare.MODES else 'overlay'
+        drawn = list(self._comparison)
+        band: list[tuple[float, float, float]] = []
+        gaps: list[tuple[str | None, list[float | None]]] = []
+        # Called from BeanCave's slots, where an escape closes the application:
+        # a reading that is not a number costs these measures, never the roasts.
+        try:
+            if len(drawn) > 1:
+                if self._comparison_mode == 'align':
+                    drawn = [drawn[0]] + [compare.aligned(r, drawn[0]) for r in drawn[1:]]
+                elif self._comparison_mode == 'consistency':
+                    band = compare.envelope(drawn)
+            # The gap strip too: it is repainted at every step of the pointer.
+            gaps = [(r.colour, residual(r, drawn[0])) for r in drawn[1:]]
+        except Exception:
+            report_once('RoastCurveWidget: comparison measures')
+            drawn, band, gaps = list(self._comparison), [], []
+        self._comparison_drawn = drawn
+        self._comparison_band = band
+        self._comparison_gaps = gaps
+        self._saved_marks = (list(saved) if saved is not None and self._static_editor is not None
+                             else None)
+        self._sync_unsaved_pill()
+        self._layout()
+        self.update()
+
+    def snapshot(self) -> QPixmap:
+        """The chart as a picture, without the pill: a control on screen, not part of the roast."""
+        staged = not self._unsaved_pill.isHidden()
+        self._unsaved_pill.hide()
+        try:
+            return self.grab()
+        finally:
+            self._unsaved_pill.setVisible(staged)
+
+    def release_editor(self) -> None:
+        """Keep what is drawn, out of reach of any correction and of its pill."""
+        self._end_drag()
+        self._static_editor = None
+        self._saved_marks = None
+        self._sync_unsaved_pill()
+        self.update()
+
+    def _sync_unsaved_pill(self) -> None:
+        text = self._unsaved_text()
+        if text:
+            self._unsaved_label.setText(text)
+            self._unsaved_pill.adjustSize()
+            self._unsaved_pill.raise_()
+        self._unsaved_pill.setVisible(bool(text))
+
+    def _unsaved_text(self) -> str:
+        """The staged correction in a few words, or '' when the roast is as its file holds it."""
+        saved = self._saved_marks
+        if saved is None or len(self._comparison) != 1:
+            return ''
+        roast = self._comparison[0]
+        now = roast.timeindex
+        changed = [i for i in range(min(len(now), len(saved))) if now[i] != saved[i]]
+        if not changed:
+            return ''
+        if len(changed) > 1:
+            return QApplication.translate('tilauscope', '{0} milestones corrected').format(len(changed))
+
+        # The file's own clock, from the CHARGE it holds: the clock drawn starts
+        # at the new one, and a CHARGE read there always lands on 0:00.
+        anchor = saved[0] if 0 <= saved[0] < len(roast.timex) else 0
+        origin = roast.timex[anchor] if roast.timex else 0.0
+
+        def clock(index: int) -> str:
+            return fmt_clock(roast.timex[index] - origin) if 0 <= index < len(roast.timex) else DASH
+
+        i = changed[0]
+        if not marked(saved, i):
+            return QApplication.translate('tilauscope', '{0} added at {1}').format(
+                _milestone_label(i), clock(now[i]))
+        return f'{_milestone_label(i)}  {clock(saved[i])} → {clock(now[i])}'
+
     def set_operator_level(self, level: str) -> None:
         """Propagate the level to the overlays that read it."""
         self._crack_bar.set_operator_level(level)
@@ -805,9 +1025,21 @@ class RoastCurveWidget(QWidget):
         # the bar gives way, because they can be clicked and it cannot.
         if not self._crack_bar.isVisible():
             return
-        r = self._plot_rect
-        if r.width() <= 1:
+        if self._plot_rect.width() <= 1:
             return
+        self._crack_bar.setVisible(self._centre_above_plot(self._crack_bar))
+
+    def _place_unsaved_pill(self) -> None:
+        # Centred like the counter, which a saved roast never shows; it stays
+        # whole on a narrow window, because it is the only way to save.
+        if self._unsaved_pill.isHidden() or self._plot_rect.width() <= 1:
+            return
+        self._centre_above_plot(self._unsaved_pill)
+
+    def _centre_above_plot(self, widget: QWidget) -> bool:
+        """Centre `widget` in what the controls at the two ends of the strip above
+        the plot leave free; True when it fits there whole."""
+        r = self._plot_rect
         left = int(r.left())
         if not self.annotations.view_toggle.isHidden():
             left += int(_TOGGLE_CLEARANCE)
@@ -817,11 +1049,10 @@ class RoastCurveWidget(QWidget):
         for btn in (self._pid_btn, self._speed_btn, self._view_btn):
             if btn.isVisible():
                 right = min(right, btn.x() - 8)
-        width = self._crack_bar.width()
-        x = left + max(0, (right - left - width) // 2)
-        self._crack_bar.move(
-            x, max(0, int(r.top()) - self._crack_bar.height() - 5))
-        self._crack_bar.setVisible(right - left >= width)
+        width = widget.width()
+        widget.move(left + max(0, (right - left - width) // 2),
+                    max(0, int(r.top()) - widget.height() - 5))
+        return right - left >= width
 
     def _place_switch_button(self) -> None:
         # Fallback position, used before the title has ever painted (or
@@ -977,7 +1208,8 @@ class RoastCurveWidget(QWidget):
     def tick(self) -> None:
         """Signal-driven refresh hook. Two O(1) reads and a repaint request —
         see class docstring. No curve data is touched here."""
-        if self._drag is not None and not edit.still_current(self._aw, self._drag.profile):
+        if (self._drag is not None and self._static_editor is None
+                and not edit.still_current(self._aw, self._drag.profile)):
             self._end_drag()
         self._reconcile_view()
         # Read here, not in the paint: the paint runs on Qt's schedule and must
@@ -1105,6 +1337,16 @@ class RoastCurveWidget(QWidget):
             block = 0.0
 
         main_h = max(1.0, available - block - (_LANE_GAP if block else 0.0))
+        # The gap between the roasts gets a strip of its own, taken from the
+        # plot exactly as a lane would be.
+        self._residual_rect = None
+        if self._comparison and len(self._comparison) > 1:
+            band = max(_RESIDUAL_MIN_HEIGHT, available * _RESIDUAL_SHARE)
+            band = min(band, main_h * 0.4)
+            main_h = max(1.0, main_h - band - _LANE_GAP)
+            self._residual_rect = QRectF(float(_MARGIN_LEFT),
+                                         float(_MARGIN_TOP) + main_h + _LANE_GAP,
+                                         width, band)
         self._plot_rect = QRectF(float(_MARGIN_LEFT), float(_MARGIN_TOP), width, main_h)
 
         self._lane_rows = []
@@ -1116,6 +1358,7 @@ class RoastCurveWidget(QWidget):
         self._place_view_button()
         self._place_switch_button()
         self._place_crack_bar()
+        self._place_unsaved_pill()
 
     def _ensure_frame(self, w: int, h: int) -> None:
         """Rebuild the cached frame only when something painted into it changed.
@@ -1128,7 +1371,7 @@ class RoastCurveWidget(QWidget):
         key = (w, h, self._t_min, self._t_max, self._lane_mode, self._mode,
                self._temp_lo, self._temp_hi, self._temp_step, self._time_step,
                self._ror_max, self._ror_step,
-               self._climb_frame, self._rate_axis,
+               self._climb_frame, self._rate_axis, self._static_lanes,
                tuple(n for n, _r, _k in self._lane_rows),
                self.devicePixelRatioF(), self._channel_labels())
         if key != self._frame_key:
@@ -1555,6 +1798,13 @@ class RoastCurveWidget(QWidget):
         showing less. Before the first gesture a lane still says something: the
         level the channel is being held at, which is where the roast started.
         """
+        if len(self._comparison) > 1:
+            # Several roasts are read against each other, not against their
+            # gestures: four strips of everybody's levers read as nobody's, and
+            # the strip below the plot carries the gap instead.
+            return []
+        if self._comparison and not self._static_lanes:
+            return []
         return channel_order(getattr(self._aw, 'eventslidervisibilities', None))
 
     @staticmethod
@@ -1570,7 +1820,11 @@ class RoastCurveWidget(QWidget):
         return _BURNER_INDEX if _BURNER_INDEX in channels else channels[-1]
 
     def _lanes_bottom(self) -> float:
-        return self._lane_rows[-1][1].bottom() if self._lane_rows else self._plot_rect.bottom()
+        if self._lane_rows:
+            return self._lane_rows[-1][1].bottom()
+        if self._residual_rect is not None:
+            return self._residual_rect.bottom()
+        return self._plot_rect.bottom()
 
     def _full_rect(self) -> QRectF:
         """Roast plot and every settings lane as one box — what a mark in time spans."""
@@ -1597,9 +1851,9 @@ class RoastCurveWidget(QWidget):
         font.setPointSize(_AXIS_FONT_PT)
         p.setFont(font)
 
-        grid_pen = QPen(QColor(THEME['BORDER']))
-        grid_pen.setWidthF(1.0)
-        text_pen = QPen(QColor(THEME['OVERLAY0']))
+        grid_pen = QPen(QColor(style.GRID))
+        grid_pen.setWidthF(style.GRID_WIDTH)
+        text_pen = QPen(QColor(style.TICK))
 
         # time grid + labels — ticks stay anchored on charge (0:00) whatever the
         # window, so the same gridline means the same moment in both views. They
@@ -1668,8 +1922,8 @@ class RoastCurveWidget(QWidget):
         p.setFont(font)
 
         # plot borders
-        border_pen = QPen(QColor(THEME['OVERLAY0']))
-        border_pen.setWidthF(1.0)
+        border_pen = QPen(QColor(style.FRAME))
+        border_pen.setWidthF(style.GRID_WIDTH)
         p.setPen(border_pen)
         p.drawRect(r)
         for _n, lane, _kind in self._lane_rows:
@@ -1753,10 +2007,20 @@ class RoastCurveWidget(QWidget):
 
     def _draw_reference(self, painter: QPainter, timex: list[Any], temp1: list[Any],
                         temp2: list[Any], delta2: list[Any], delta1: list[Any],
-                        mode: str) -> None:
-        """Paint the loaded roast with the exact live trace vocabulary, dimmed."""
+                        mode: str, *, hue: str | None = None, dim: bool = True,
+                        width: float | None = None) -> None:
+        """Paint the loaded roast with the exact live trace vocabulary, dimmed.
+
+        A comparison hands over `hue` — the colour that roast is known by on
+        this screen — and turns `dim` off for the roast holding the frame,
+        which is drawn at full strength like the roast being watched live.
+        """
+        def tint(colour: str) -> QColor:
+            return QColor(_reference_colour(colour) if dim else QColor(colour))
+
+        bean = hue or self._grain_colour()
         if self.show_machine_response and len(delta1) >= len(timex) - 2 and delta1:
-            pen = QPen(_reference_colour(self._machine_rise_colour()))
+            pen = QPen(tint(self._machine_rise_colour()))
             pen.setWidthF(_MACHINE_ROR_PEN_WIDTH)
             pen.setStyle(Qt.PenStyle.DashLine)
             painter.setPen(pen)
@@ -1764,7 +2028,7 @@ class RoastCurveWidget(QWidget):
                 painter.drawPolyline(poly)
 
         if len(delta2) >= len(timex) - 2 and delta2:
-            pen = QPen(_reference_colour(self._rise_colour()))
+            pen = QPen(tint(self._rise_colour()))
             pen.setWidthF(_ROR_PEN_WIDTH)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -1773,7 +2037,7 @@ class RoastCurveWidget(QWidget):
                 painter.drawPolyline(poly)
 
         if temp1:
-            pen = QPen(_reference_colour(self._air_colour()))
+            pen = QPen(tint(self._air_colour()))
             pen.setWidthF(_AIR_PEN_WIDTH)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -1782,8 +2046,8 @@ class RoastCurveWidget(QWidget):
                 painter.drawPolyline(poly)
 
         if temp2:
-            pen = QPen(_reference_colour(self._grain_colour()))
-            pen.setWidthF(_GRAIN_PEN_WIDTH)
+            pen = QPen(tint(bean))
+            pen.setWidthF(width or _GRAIN_PEN_WIDTH)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             painter.setPen(pen)
@@ -1881,7 +2145,10 @@ class RoastCurveWidget(QWidget):
         not a continuous quantity. Drawn under everything else, because it is a
         ground the roast is read against, not a mark on the roast.
         """
-        times = self._crack_times(timex)
+        self._draw_crack_ticks(painter, self._crack_times(timex))
+
+    def _draw_crack_ticks(self, painter: QPainter, times: list[float]) -> None:
+        """The ticks themselves, wherever the pop times were read from."""
         if not times:
             return
         r = self._plot_rect
@@ -1960,13 +2227,13 @@ class RoastCurveWidget(QWidget):
             return
         marks.sort(key=lambda m: m[0])
 
-        rule = QPen(QColor(THEME['OVERLAY1']))
-        rule.setWidthF(1.0)
+        rule = QPen(QColor(style.RULE))
+        rule.setWidthF(style.RULE_WIDTH)
         rule.setStyle(Qt.PenStyle.DashLine)
         # Bright enough to survive a phase ground behind it: at OVERLAY0 the
         # dotted rule simply disappeared into the drying band.
-        tp_rule = QPen(QColor(THEME['SUBTEXT']))
-        tp_rule.setWidthF(1.4)
+        tp_rule = QPen(QColor(style.RULE_TP))
+        tp_rule.setWidthF(style.RULE_TP_WIDTH)
         tp_rule.setStyle(Qt.PenStyle.DotLine)
         full = self._full_rect()
         # A dragged milestone stays faintly where it was.
@@ -2019,8 +2286,9 @@ class RoastCurveWidget(QWidget):
             # minute of each other and eight chips do not fit three rows. So a
             # crowded chip gives up its reading and keeps its name: a milestone
             # nobody can name is worth less than one without its temperature.
-            candidates = [label] if temp_c is None else [
-                f'{label}  {int(round(convertTemp(temp_c, "C", mode)))}°', label]
+            candidates = style.milestone_chip_ladder(
+                label, None if temp_c is None else convertTemp(temp_c, 'C', mode),
+                mode, t)
             placed: tuple[str, float, float, int] | None = None
             for text in candidates:
                 width = metrics.horizontalAdvance(text) + 2 * _MARK_CHIP_PAD
@@ -2053,11 +2321,14 @@ class RoastCurveWidget(QWidget):
             if not is_tp and milestone == self._hover_mark:
                 outline = QPen(accent)
                 outline.setWidthF(1.5)
-                painter.setPen(outline)
             else:
-                painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor(THEME['CRUST'] if is_tp else THEME['BORDER']))
-            painter.drawRoundedRect(chip, 3.0, 3.0)
+                outline = QPen(QColor(style.CHIP_OUTLINE))
+                outline.setWidthF(style.CHIP_OUTLINE_WIDTH)
+            painter.setPen(outline)
+            chip_fill = QColor(style.CHIP_FILL)
+            chip_fill.setAlphaF(style.CHIP_FILL_ALPHA)
+            painter.setBrush(chip_fill)
+            painter.drawRoundedRect(chip, style.CHIP_RADIUS, style.CHIP_RADIUS)
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.setPen(QPen(QColor(THEME['OVERLAY2'] if is_tp else THEME['SUBTEXT1'])))
             painter.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), text)
@@ -2392,6 +2663,13 @@ class RoastCurveWidget(QWidget):
         rewrites its time list in place, so neither the list's identity nor its
         length says the instants are still the ones read before.
         """
+        if self._static_editor is not None:
+            # A saved roast: its own arrays, and no question of the application
+            # being mid-roast — the file is not what is being recorded.
+            roast = self._comparison[0]
+            profile = edit.Profile(tuple(float(t) for t in roast.timex),
+                                   tuple(roast.timeindex), roast.timex, None)
+            return profile, edit.usable(profile)
         qmc = getattr(self._aw, 'qmc', None)
         if qmc is None or self._fg_origin is None or not edit.idle(qmc):
             return None, False
@@ -2529,6 +2807,23 @@ class RoastCurveWidget(QWidget):
 
     def _apply_correction(self, profile: edit.Profile, milestone: int, index: int) -> None:
         """Commit one correction, then bring every view of the roast up to date."""
+        if self._static_editor is not None:
+            # A menu or a dialog left open may close on another roast than the
+            # one it was opened on: its index belongs to that one only.
+            if profile.source is not self._comparison[0].timex:
+                return
+            # Let go where it was taken: nothing moved, as edit.commit rules too.
+            if index == profile.timeindex[milestone]:
+                return
+            # Not ours to commit: the correction belongs to the file BeanCave
+            # opened, and BeanCave is the one that can write it back.
+            try:
+                self._static_editor(milestone, index)
+            except Exception:
+                report_once('RoastCurveWidget: saved milestone correction')
+            self._hover_target = None
+            self.update()
+            return
         try:
             if edit.commit(self._aw, profile, milestone, index):
                 self._after_correction()
@@ -2551,7 +2846,7 @@ class RoastCurveWidget(QWidget):
     def _type_milestone_time(self, profile: edit.Profile, milestone: int) -> None:
         try:
             # The menu may have stayed open while the roast changed under it.
-            if not edit.still_current(self._aw, profile):
+            if self._static_editor is None and not edit.still_current(self._aw, profile):
                 return
             dialog = edit.MilestoneTimeDialog(self, profile, milestone,
                                               _milestone_label(milestone))
@@ -2850,7 +3145,7 @@ class RoastCurveWidget(QWidget):
             report_once('RoastCurveWidget: milestone menu')
         air = QAction(QApplication.translate('tilauscope', 'Air temperature'), menu)
         air.setCheckable(True)
-        air.setChecked(self.show_air_temperature)
+        air.setChecked(self._static_air if self._comparison else self.show_air_temperature)
         # A roast recorded with the air probe off has nothing to trace, and an
         # option that silently does nothing is worse than one that is not there:
         # the operator clicks it, sees no change, and doubts the whole menu.
@@ -2958,6 +3253,11 @@ class RoastCurveWidget(QWidget):
         Silence is only meaningful once there is something to be silent about:
         a roast that has not sampled yet gets the benefit of the doubt.
         """
+        if self._comparison:
+            # A saved roast answers for itself: the application's own readings
+            # belong to another roast entirely.
+            roast = self._comparison[0]
+            return any(_sample_temp_c(v, roast.mode) is not None for v in roast.temp1)
         qmc = getattr(self._aw, 'qmc', None)
         try:
             series = list(qmc.temp1)
@@ -2969,6 +3269,12 @@ class RoastCurveWidget(QWidget):
         return any(_sample_temp_c(v, mode) is not None for v in series)
 
     def _set_air_temperature(self, on: bool) -> None:
+        if self._comparison:
+            # A saved roast: the choice is about THIS roast on screen, and has
+            # no business rewriting what the live chart shows next time.
+            self._static_air = on
+            self.update()
+            return
         self.show_air_temperature = on
         QSettings().setValue(_SHOW_AIR_KEY, on)
         self.update()
@@ -2991,8 +3297,308 @@ class RoastCurveWidget(QWidget):
             if painter.isActive():
                 painter.end()
 
+    def _paint_comparison(self, painter: QPainter) -> None:
+        """Several saved roasts on one frame, the first of them holding it.
+
+        Nothing here is a new kind of drawing: the frame, the phase ground, the
+        traces and the chips are the ones the roast was watched on. What the
+        comparison adds is only an order — one roast holds the frame and keeps
+        the bean colour, the others are drawn against it in their own hue.
+        """
+        roasts = self._comparison_drawn or self._comparison
+        ref = roasts[0]
+        mode = ref.mode
+        self._mode = mode
+        self._ror_max, self._ror_step = _ror_axis_c(mode)
+        # The one-roast switches (traces, window, lanes) belong to a roast shown
+        # alone: several roasts are compared whole, and the card hides them.
+        alone = len(roasts) == 1
+        temps = self._static_temps or not alone
+        # A warped clock is not a clock the rate can be read on: aligning the
+        # milestones stretches time, and a rate per stretched minute is a
+        # number about nothing.
+        rate = self._comparison_mode != 'align' and (self._static_rate or not alone)
+        self._rate_axis = bool(ref.delta2) and rate
+        self._climb_frame = False
+        # A saved roast is correctable when its owner says so — BeanCave writes
+        # the correction back to the file itself. Its time list is already
+        # measured from the charge, so a gesture is read against an origin of 0.
+        self._fg_origin = 0.0 if self._static_editor is not None else None
+        self._handles = []
+
+        charge = ref.timeindex[0] if ref.timeindex else -1
+        drop = ref.timeindex[6] if len(ref.timeindex) > 6 else -1
+        if self._static_window is not None and len(roasts) == 1:
+            self._t_min, self._t_max = self._static_window
+        else:
+            self._t_min, self._t_max = self._window_for(ref.timex, charge, drop,
+                                                        closeup=self._closeup)
+        self._temp_lo, self._temp_hi, self._temp_step = _temp_axis_c(mode)
+        self._time_step = _TIME_STEP
+        self._ensure_frame(self.width(), self.height())
+        if self._frame is not None:
+            painter.drawPixmap(0, 0, self._frame)
+
+        painter.setClipRect(self._plot_rect)
+        # The ground belongs to the roast holding the frame. Phases are a
+        # property of one roast, and several sets of them striped over each
+        # other would read as none of them.
+        self._draw_phase_bands(painter, ref.timex, ref.timeindex)
+        self._draw_crack_ticks(painter, ref.cracks)
+        if self._comparison_mode == 'consistency':
+            # The batch, not its members: how far apart these roasts ran at
+            # each instant. Drawing every curve as well would put the answer
+            # behind the question.
+            self._draw_consistency_band(painter, mode)
+        else:
+            # Compared roasts first and in reverse order, so the reference ends
+            # up on top and the roast listed next to it sits just beneath.
+            for roast in reversed(roasts[1:]):
+                self._draw_reference(painter, roast.timex, [], roast.temp2, [], [],
+                                     roast.mode, hue=roast.colour, dim=False,
+                                     width=_COMPARED_PEN_WIDTH)
+        self._draw_reference(painter, ref.timex,
+                             ref.temp1 if (temps and self._static_air) else [],
+                             ref.temp2 if temps else [],
+                             ref.delta2 if rate else [], ref.delta1 if rate else [],
+                             mode, dim=False)
+
+        if len(roasts) == 1:
+            # On its own, a roast is read with its levers under it: they are
+            # what explains the shape above them.
+            colours = list(getattr(getattr(self._aw, 'qmc', None), 'EvalueColor', []) or [])
+            self._draw_settings(painter, ref.timex, ref.events, ref.ev_types,
+                                ref.ev_pcts, colours)
+
+        painter.setClipRect(self._full_rect())
+        self._draw_compared_milestones(painter, roasts[1:])
+        self._draw_milestones(painter, ref.timex, ref.temp2, mode, ref.timeindex,
+                              self._comparison_tp(ref),
+                              editable=self._static_editor is not None and len(roasts) == 1)
+        # The pointer answers here as it does on the roasting window: the
+        # crosshair reads the roast holding the frame, and every roast beside
+        # it is dotted at the same instant, in its own colour.
+        self._draw_hover(painter, ref.timex, ref.temp2, ref.temp1,
+                         ref.delta2 if rate else [], [], mode, [], [], [], [])
+        self._draw_compared_hover(painter, roasts[1:], mode)
+        # A saved roast is corrected here too: the drag shows where it would land.
+        self._draw_correction(painter, ref.temp2, mode)
+        self._draw_residual(painter)
+        if len(roasts) == 1:
+            # Alone, a roast needs its TRACES named, not itself: the detail head
+            # above the chart already says which roast this is.
+            self._draw_curve_legend(painter, phases=True, rise=bool(ref.delta2))
+        else:
+            self._draw_comparison_legend(painter)
+
+
+    def _draw_consistency_band(self, painter: QPainter, mode: str) -> None:
+        """The span every compared roast stayed inside, as one filled shape."""
+        band = self._comparison_band
+        if len(band) < 2:
+            return
+        top = QPolygonF()
+        bottom: list[QPointF] = []
+        for t, lo, hi in band:
+            x = self._x(t)
+            top.append(QPointF(x, self._y_temp(convertTemp(hi, mode, 'C'))))
+            bottom.append(QPointF(x, self._y_temp(convertTemp(lo, mode, 'C'))))
+        for point in reversed(bottom):
+            top.append(point)
+        fill = QColor(self._grain_colour())
+        fill.setAlpha(_CONSISTENCY_ALPHA)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(fill)
+        painter.drawPolygon(top)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
+    def _draw_residual(self, painter: QPainter) -> None:
+        """The gap between each compared roast and the reference, on its own scale.
+
+        On the plot above, three degrees between two roasts is a hair's breadth
+        against a two-hundred-degree axis. Here it is the whole strip: the line
+        the reference draws is flat by definition, and every departure from it
+        is one roast leaving the other.
+        """
+        band = self._residual_rect
+        # The roasts AS DRAWN: with the milestones aligned, the gap being read
+        # is the gap between the shapes, not between the schedules.
+        roasts = self._comparison_drawn or self._comparison
+        if band is None or len(roasts) < 2:
+            return
+        ref = roasts[0]
+        painter.setClipping(False)
+        painter.setPen(QPen(QColor(THEME['BORDER'])))
+        painter.setBrush(QColor(THEME['SURFACE']))
+        painter.drawRect(band)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
+        series: list[tuple[str, list[float | None]]] = []
+        span = _RESIDUAL_MIN_SPAN
+        for colour, values in self._comparison_gaps:
+            if not values:
+                continue
+            series.append((colour or self._grain_colour(), values))
+            span = max(span, max((abs(v) for v in values if v is not None), default=0.0))
+        span = math.ceil(span / 5.0) * 5.0
+
+        middle = band.center().y()
+        scale = (band.height() / 2.0 - 4.0) / span
+
+        pen = QPen(QColor(self._grain_colour()))
+        pen.setWidthF(1.3)
+        painter.setPen(pen)
+        painter.drawLine(QPointF(band.left() + 1.0, middle), QPointF(band.right() - 1.0, middle))
+
+        painter.setClipRect(band)
+        for colour, values in series:
+            pen = QPen(QColor(colour))
+            pen.setWidthF(1.4)
+            painter.setPen(pen)
+            poly = QPolygonF()
+            for t, value in zip(ref.timex, values, strict=False):
+                if value is None:
+                    if poly.count() > 1:
+                        painter.drawPolyline(poly)
+                    poly = QPolygonF()
+                    continue
+                poly.append(QPointF(self._x(float(t)), middle - value * scale))
+            if poly.count() > 1:
+                painter.drawPolyline(poly)
+        painter.setClipping(False)
+
+        font = QFont()
+        font.setPointSize(_AXIS_FONT_PT)
+        painter.setFont(font)
+        painter.setPen(QPen(QColor(THEME['OVERLAY1'])))
+        painter.drawText(QRectF(band.left() + 6.0, band.top() + 2.0, 160.0, 14.0),
+                         int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
+                         QApplication.translate('tilauscope', 'Gap to {0}').format(ref.title))
+        painter.drawText(QRectF(band.right() - 86.0, band.top() + 2.0, 80.0, 14.0),
+                         int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
+                         f'\u00b1{fmt_temp(span)} \u00b0{ref.mode}')
+
+    def _draw_comparison_legend(self, painter: QPainter) -> None:
+        """Who is who: one pill per roast, in the order they are drawn.
+
+        The pill carries what a comparison is made on — the roast's name, how
+        long it took, and how its time split between drying, Maillard and
+        development. A pill that will not fit gives up its split, then its
+        clock, then it is only a name and a colour, which is the least the
+        screen owes a curve it has drawn.
+        """
+        painter.setClipping(False)
+        font = QFont()
+        font.setPointSize(_LEGEND_FONT_PT)
+        painter.setFont(font)
+        metrics = QFontMetricsF(font)
+        left = self._plot_rect.left()
+        right = self._plot_rect.right()
+        x, y = left, self._lanes_bottom() + 26.0
+        for roast in self._comparison:
+            colour = QColor(roast.colour or self._grain_colour())
+            shares = roast.shares
+            total = roast.total
+            split = ('  '.join(f'{v:.0f}' for v in shares) + ' %') if shares else ''
+            candidates = [
+                f'{roast.title}  {fmt_clock(total)}  {split}' if total and split else '',
+                f'{roast.title}  {fmt_clock(total)}' if total else '',
+                roast.title,
+            ]
+            label = next(c for c in candidates if c)
+            for candidate in candidates:
+                if candidate and x + 15.0 + metrics.horizontalAdvance(candidate) <= right:
+                    label = candidate
+                    break
+            width = metrics.horizontalAdvance(label)
+            if x > left and x + 15.0 + width > right:
+                x, y = left, y + 15.0          # a second row rather than a clipped name
+            pen = QPen(colour)
+            pen.setWidthF(3.0 if roast is self._comparison[0] else 1.8)
+            painter.setPen(pen)
+            painter.drawLine(QPointF(x, y + 6.0), QPointF(x + 11.0, y + 6.0))
+            painter.setPen(QPen(QColor(THEME['OVERLAY1'])))
+            painter.drawText(QRectF(x + 15.0, y, width + 4.0, 13.0),
+                             int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
+                             label)
+            x += 15.0 + width + 16.0
+
+    def _draw_compared_hover(self, painter: QPainter,
+                             roasts: Sequence[ComparedRoast], mode: str) -> None:
+        """Each compared roast dotted at the hovered instant, in its own colour."""
+        if self._hover_t is None or not roasts:
+            return
+        t_hover = max(self._t_min, min(self._hover_t, self._t_max))
+        painter.setPen(Qt.PenStyle.NoPen)
+        for roast in roasts:
+            if not roast.timex or roast.mode != mode:
+                continue
+            idx = bisect.bisect_left(roast.timex, t_hover)
+            if idx >= len(roast.timex):
+                idx = len(roast.timex) - 1
+            elif idx > 0 and abs(roast.timex[idx - 1] - t_hover) < abs(roast.timex[idx] - t_hover):
+                idx -= 1
+            reading = (_sample_temp_c(roast.temp2[idx], roast.mode)
+                       if idx < len(roast.temp2) else None)
+            if reading is None or not self._temp_lo <= reading <= self._temp_hi:
+                continue
+            painter.setBrush(QColor(roast.colour or self._grain_colour()))
+            painter.drawEllipse(QPointF(self._x(float(roast.timex[idx])),
+                                        self._y_temp(reading)),
+                                _HOVER_DOT_RADIUS, _HOVER_DOT_RADIUS)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
+    def _comparison_tp(self, roast: ComparedRoast) -> int:
+        """The turning point of a compared roast — searched, never stored."""
+        if not roast.timeindex or not roast.timex:
+            return -1
+        try:
+            charge = roast.timeindex[0]
+            found = findTPint(roast.timeindex, roast.timex, roast.temp2)
+            return found if charge < found < len(roast.timex) - 5 else -1
+        except Exception:
+            report_once('RoastCurveWidget: comparison turning point search failed')
+            return -1
+
+    def _draw_compared_milestones(self, painter: QPainter,
+                                  roasts: Sequence[ComparedRoast]) -> None:
+        """Where the compared roasts reached each milestone, on the time axis.
+
+        Written as a number, "dried sixteen seconds later" is a fact to be
+        believed. Drawn as two ticks a few pixels apart under one shared axis,
+        it is a fact to be seen — which is why the comparison carries no deltas
+        in its labels.
+        """
+        r = self._plot_rect
+        base = r.bottom() - 1.0
+        painter.setPen(Qt.PenStyle.NoPen)
+        for roast in roasts:
+            painter.setBrush(QColor(roast.colour or self._grain_colour()))
+            for milestone in range(7):
+                index = (roast.timeindex[milestone]
+                         if milestone < len(roast.timeindex) else 0)
+                if not (marked(roast.timeindex, milestone)
+                        and 0 <= index < len(roast.timex)):
+                    continue
+                x = self._x(roast.timex[index])
+                if not (r.left() <= x <= r.right()):
+                    continue
+                painter.drawPolygon(QPolygonF([
+                    QPointF(x, base - _COMPARED_TICK),
+                    QPointF(x - _COMPARED_TICK * 0.62, base),
+                    QPointF(x + _COMPARED_TICK * 0.62, base),
+                ]))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
     def _paint(self, painter: QPainter) -> None:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # A comparison is drawn from saved roasts alone. Taken before the live
+        # read below, because the application may well have a roast of its own
+        # open, and it is not one of the roasts being compared.
+        if self._comparison:
+            self._paint_comparison(painter)
+            return
 
         qmc = getattr(self._aw, 'qmc', None)
         timex: list[Any] = []

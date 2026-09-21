@@ -210,9 +210,17 @@ for the line the roast is read from. Change a curve colour in Artisan's own sett
 curve and its readout follow — blue for
 [drying](glossary.md#drying--dry), yellow for [Maillard](glossary.md#maillard), red for
 [development](glossary.md#development), deepening as the roast advances. Each milestone is marked
-where it happened, with its name and the temperature it was marked at. The
+where it happened, with its name, the temperature it was marked at and the time since the charge.
+Where milestones crowd — on a dark roast the end of first crack, second crack and its end fall
+within a minute of each other — a label gives up its time, then its temperature, and keeps its
+name: a milestone you cannot name is worth less than one without its reading. The
 [turning point](glossary.md#tp--turning-point) is marked too, even though it is never something
-you mark yourself.
+you mark yourself, and its rule is dotted rather than dashed because it is read from the
+temperatures rather than marked.
+
+The same marks are drawn the same way wherever a roast is shown — on this curve, in the roast
+viewer, on a roast card and on the phone — so a roast read back afterwards is the picture you
+drove it on.
 
 The time axis names every minute and rules every second one, so a duration can be read off it
 without counting. The temperature scale on the left and the rate scale on the right are drawn in
@@ -437,6 +445,12 @@ roller is the same precise control used by the previous slider presentation. Whi
 value is chosen, it is aligned to the machine's step size before being sent, so the setting shown
 is always the one the machine received and the one recorded on the curve.
 
+The extraction lever also works the other way round. It follows what the extractor reports back,
+so a setting only takes effect on screen once the extractor confirms it, and a change made on the
+extractor's own controls moves the lever here and is written into the roast — marked as coming
+from the device rather than from your hand, and not sent back to it. A command the extractor does
+not confirm is announced in the message area instead of being shown as applied.
+
 Beneath both, and always visible, sits the **SV** row — the
 [setpoint](glossary.md#sv--setpoint-value) the PID is aiming for. It spans the full width and is
 never hidden by the toggle, because the setpoint is not a lever like the others: it is the target
@@ -484,6 +498,14 @@ Each entry arrives as a card:
   A press made before **START** reaches the roaster but is not written into the roast, and the
   card says so — during preheating your burner and air settings act on the machine without
   appearing in the profile.
+
+In Expert mode, AirWave alarms can combine commands with commas or semicolons, for example
+`MODE STD,FAN 30` or `FAN 30;POWER OFF`. Each sequence is sent whole, so nothing slips in
+between a mode change and the speed behind it, and a stop is attempted even when the speed
+before it went unconfirmed — see
+[Machine controls](#machine-controls) for how the lever reports back.
+A comment after `#` is displayed with the alarm and is not sent to the device.
+Guided mode suppresses alarm actions.
 
 Every card carries its time: **+3:14** counts from CHARGE once the batch is in, and a plain
 **14:32:05** before that. Cards fade in as they arrive and stack newest-first, so the column

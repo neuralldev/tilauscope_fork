@@ -302,10 +302,6 @@ nothing has been granted, and there is nothing to forget.
 "not asked yet" with its button greyed out. -->
 
 
-<!-- CAPTURE 4.9 — the INTEGRATIONS tab, MQTT Broker group filled in with TLS, Protocol, Timeout
-and Keepalive showing, Test Connection just clicked and the success message on screen.
-(Replaces assets/configuration-4.9.png, taken before those fields existed.) -->
-
 ![the AI Provider status line, configured](assets/configuration-4.10.png)
 
 ---
