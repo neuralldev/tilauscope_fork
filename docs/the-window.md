@@ -29,7 +29,7 @@ monitoring, recording, and timer controls together; the second row holds less fr
 | **☰** | The main menu. Artisan's View menu and the settings TilauScope keeps fixed are left out — see [Configuration](configuration.md#artisan-settings-tilauscope-keeps-fixed). |
 | **Power** | Turns monitoring on and off. |
 | **START / STOP** | Starts and stops recording. |
-| **RESET** | Clears the current roast. It stays on the secondary row. |
+| **RESET** | Clears the current roast. It stays on the secondary row, and is unavailable while a recording runs and for the whole of a [simulation](#when-a-simulation-is-running). |
 | **BeanCave** | Opens the green-bean database. It stays on the secondary row, and is locked while monitoring is on — the database is a between-roasts screen. |
 | **G / E pill** | The operator level — see [Getting started](getting-started.md#guided-or-expert). |
 | **↻** | [Roast Replay](glossary.md#roast-replay). Lit while a replay is running; click stops it immediately. Only clickable before CHARGE, only once a background curve is loaded, and only on a machine whose profile supports replay — hovering it while disabled says which of these is missing: not supported by this machine, or available only before CHARGE. See [Preparing a roast](preparing-a-roast.md#automating-the-start). |
@@ -197,8 +197,9 @@ glyph shows the move that is coming, and hovering it says it in words:
 
 A roast just finished and not saved yet is not a file: with a background curve loaded, the control
 brings that curve forward, after asking whether to save the roast. The control is unavailable
-while monitoring or recording, since it rewrites the roast being recorded, and when neither a
-roast opened from a file nor a background curve is loaded.
+while monitoring or recording, since it rewrites the roast being recorded, and it is not shown at
+all when neither a roast opened from a file nor a background curve is loaded — with nothing to
+move, there is nothing for it to do.
 
 <!-- CAPTURE 2.8f — the roast title area on the curve showing the swap glyph beside the title,
 both in its normal clickable state and greyed out while recording. -->
@@ -603,6 +604,33 @@ The window is frameless, with its own title bar, and can be resized from its cor
 assistant can be docked in place of the control panel or floated as a separate window, and the
 control zone keeps a fixed height so that switching control forms, or docking the assistant,
 never resizes the window underneath your hands.
+
+---
+
+## When a simulation is running
+
+Artisan can replay a past roast in place of the machine — to try the window out, to rehearse a
+profile, or to show someone what happens without heating anything.
+
+While a simulation is on, the window is **framed in mauve** and a band across the top of it reads
+**SIMULATION** and names the roast being replayed. The temperatures on screen then come from that
+recording rather than from the roaster, and a simulated roast never counts towards what
+TilauScope learns about your machine or your coffee.
+
+**Leave simulation**, at the right of the band, ends it and gives the readings back to the
+machine. It is offered with monitoring off only: once monitoring is on, a replay is running and
+is not something to end by mistake. **RESET** is unavailable for the whole simulation for the
+same reason — the replayed roast is the only thing on the chart, and turning monitoring on
+already clears the chart before each replay.
+
+Starting a simulation opens the roast it will replay on the chart, so there is something to
+follow from the start. Turning monitoring on clears it and the replay draws itself in its place;
+its speed is then set by the **x1 / x2 / x8** selector above the curve, and clicking the timer
+pauses and resumes it.
+
+<!-- CAPTURE 2.16 — the window with a simulation on, before monitoring: mauve frame, SIMULATION
+band naming the replayed roast with its Leave simulation control at the right, and the roast to
+be replayed on the chart. Reproduce by starting the simulator on a past roast. -->
 
 ---
 

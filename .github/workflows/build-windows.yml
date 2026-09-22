@@ -124,6 +124,20 @@ jobs:
 
           gh release upload "$TAG" "$EXE" --clobber
 
+          # One installer per platform: the page sorts assets as text (build10
+          # before build3), so older builds left beside the new one made the
+          # last one listed not the newest. Only this platform's older builds
+          # go — the macOS job prunes its own — and a re-run of an older
+          # build never removes a newer one.
+          gh release view "$TAG" --json assets -q '
+            .assets[].name
+            | select(test("^tilauscope-.*-build[0-9]+-setup\\.exe$"))
+            | select((capture("-build(?<b>[0-9]+)-setup\\.exe$").b | tonumber) < (env.APP_BUILD | tonumber))' \
+            | while read -r old; do
+                gh release delete-asset "$TAG" "$old" --yes
+              done \
+            || echo "::warning::Older installers could not all be removed from $TAG."
+
       - name: Notify on Discord
         if: always()
         shell: bash

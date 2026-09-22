@@ -31,8 +31,9 @@ import logging
 from typing import Final
 import time
 
-from PyQt6.QtCore import QRect, QTimer, pyqtSlot
+from PyQt6.QtCore import QRect, Qt, QTimer, pyqtSlot
 from PyQt6.QtWidgets import QApplication, QGraphicsOpacityEffect
+from tilauscope.graph.common import simulation_source
 from tilauscope.tilauscope_types import THEME
 from tilauscope.window.layout import _TIMER_FONT_PX
 from tilauscope.window.parts import ButtonManager, EventPanel, ExtraCountersPanel
@@ -402,7 +403,27 @@ class LiveMixin:
         try:
             self._apply_artisan_update(data, value, raw, buttonState)
         except Exception as e:  # pylint: disable=broad-except
-            _log.exception('tilau update failed (data=%s): %s', data, e)
+            self._log_update_failure(data, e)
+
+    def _log_update_failure(self, data, exc: Exception) -> None:
+        """Log a sampling-slot failure with its traceback once per raise site.
+
+        The slot runs up to four times a second: a fault that repeats would bury
+        its first traceback under its own copies. Repeats are counted and logged
+        on the 2nd, 4th, 8th… occurrence, so a persisting fault stays visible.
+        """
+        tb = exc.__traceback__
+        while tb.tb_next is not None:
+            tb = tb.tb_next
+        where = f'{tb.tb_frame.f_code.co_filename}:{tb.tb_lineno}'
+        site = (type(exc), where)
+        count = self._update_failures.get(site, 0) + 1
+        self._update_failures[site] = count
+        if count == 1:
+            _log.error('tilau update failed (data=%s): %s', data, exc, exc_info=exc)
+        elif count & (count - 1) == 0:   # a power of two
+            _log.error('tilau update failed %d times at %s (data=%s): %s',
+                       count, where, data, exc)
 
     def _apply_artisan_update(self, data, value=None, raw=None, buttonState=True):
         # buttonState is used to know if we need to update button style (on event trigger) or not (on event reset)
@@ -440,7 +461,12 @@ class LiveMixin:
             _now = time.monotonic()
             if _now - self._last_extra_update >= 0.9:
                 self._last_extra_update = _now
-                self.extra_panel.update_values()
+                # Its own guard: an auxiliary panel must not cost this sample
+                # its readouts, its timer path or the assistant tick.
+                try:
+                    self.extra_panel.update_values()
+                except Exception as e:  # pylint: disable=broad-except
+                    self._log_update_failure(data, e)
 
         # 2. Handle Events
         if data == 12:  # BT event
@@ -575,15 +601,6 @@ class LiveMixin:
             if qmc.flagstart:
                 status_parts.append(self.str_roastsession.upper())
 
-            if self._is_simulator:
-                sim_text = self.str_simulator
-                if not self.aw.sample_loop_running:
-                    sim_text += f" {self.str_paused}"
-                else:
-                    speed = int(qmc.timeclock.getBase() / 1000)
-                    if speed > 1: sim_text += f" x{speed}"
-                status_parts.append(sim_text)
-
             # Auto-flags
             self.check_pid_status()
             self._update_automation_banner()   # red-on-amber automation notice
@@ -642,7 +659,10 @@ class LiveMixin:
                 return
             self._sync_wake_lock()
             status_text = "ARTISAN "+(QApplication.translate("tilauscope_window","CONNECTED") if self.aw.qmc.flagon else QApplication.translate("tilauscope_window","OFFLINE"))
-            # if there is an alarm set selected
+            # if at least one alarm is enabled — never by name: TilauScope alarms
+            # carry none, and Artisan's alarmsetlabel is a leftover from its own
+            # dialog or a loaded profile.
+            has_alarms = any(self.aw.qmc.alarmflag)
 
             # Guided mode is the sole control authority: suppress all
             # alarm ACTIONS via the native lever (conditions still evaluated,
@@ -651,9 +671,9 @@ class LiveMixin:
             # alarm-suppression state and its banner display stay in sync.
             if getattr(self, "_operator_level", "guided") == "guided":
                 self.aw.qmc.silent_alarms = True
-                alarm_set = QApplication.translate("tilauscope_window", " 🔕 ALARM-SET='<b>{0}</b>' SUSPENDED").format(self.aw.qmc.alarmsetlabel.upper()) if self.aw.qmc.alarmsetlabel != "" else ""
+                alarm_set = QApplication.translate("tilauscope_window", " 🔕 ALARMS SUSPENDED") if has_alarms else ""
             else:
-                alarm_set = QApplication.translate("tilauscope_window", " ALARM-SET='<b>{0}</b>'").format(self.aw.qmc.alarmsetlabel.upper()) if self.aw.qmc.alarmsetlabel != "" else ""
+                alarm_set = QApplication.translate("tilauscope_window", " ALARMS ACTIVE") if has_alarms else ""
             status_text += alarm_set
             # if roast started
             # ground truth is Artisan's flagstart, NOT is_roasting: our own flag
@@ -711,26 +731,11 @@ class LiveMixin:
                     self.hide_roast_review()
             if self.is_roasting: # replace text with roast information
                 status_text = self.str_roastsession.upper()
-            # now check for simulation mode
-            simulator_text =""
+            # Simulation is carried by the window frame and its band, not by
+            # this line; pause and speed by the timer and the speed selector.
             self._is_simulator = bool(self.aw.simulator)
-            if self._is_simulator:
-                simulator_text = " - "+self.str_simulator if hasattr(self, "str_simulator") else "" # Fix 2026/04/15
-                # "paused" only means something while the scope is still ON: with
-                # monitoring off the loop is stopped, not paused, and the status
-                # already says OFFLINE — claiming a pause on top of it is wrong.
-                if not self.aw.sample_loop_running and self.aw.qmc.flagon:
-                    simulator_text += " "+ self.str_paused
-                else:
-                    b= self.aw.qmc.timeclock.elapsedMilli()
-                    try:
-                        b_val = float(b)
-                        if b_val > 1000.0:
-                            simulator_text += f" x{round(b_val * 0.001, 0)}"
-                    except (TypeError, ValueError):
-                        pass
-            # store concatened text
-            self.status_lbl.setText(f"{status_text}{simulator_text}")
+            self._sync_simulation_mark()
+            self.status_lbl.setText(status_text)
             self.status_lbl.setStyleSheet(f"color: {THEME['SUCCESS'] if self.aw.qmc.flagon else THEME['CRITICAL']}; border: none; background:transparent;")
             self.update_button_style(self.btn_power, self.aw.qmc.flagon, False, False, True)
             self.update_button_style(self.btn_start_stop, self.aw.qmc.flagstart, False, False, True)
@@ -746,6 +751,48 @@ class LiveMixin:
             except Exception as e:  # pylint: disable=broad-except
                 _log.debug("remote sync_state: %s", e)
         except Exception as e:
+            _log.error(e)
+
+    def _sync_simulation_mark(self) -> None:
+        """Mauve window frame and simulation band while the simulator is on."""
+        if self._simulation_framed != self._is_simulator:
+            self._simulation_framed = self._is_simulator
+            sheet = self._container_qss
+            if self._is_simulator:
+                # A selector-less sheet is Qt's "* { ... }": written out, it can
+                # take an id rule that recolours this frame and none of its children.
+                sheet = (f"* {{ {sheet} }}"
+                         f" QFrame#tilauScopeFrame {{ border: 2px solid {THEME['MAUVE']}; }}")
+            self.container.setStyleSheet(sheet)
+            self._sim_band.setVisible(self._is_simulator)
+            self._refresh_reset_button()
+            if self.curve is not None:
+                # The empty chart names the replay: it has to repaint even when
+                # nothing is sampling to repaint it.
+                self.curve.update()
+        if not self._is_simulator:
+            return
+        # Leaving is offered with monitoring off only; while it is on, the band
+        # states the fact and nothing else.
+        self._sim_band_leave.setVisible(not self.aw.qmc.flagon)
+        text = QApplication.translate(
+            "tilauscope_window", "Readings replayed from {0}").format(simulation_source(self.aw))
+        avail = max(60, self._sim_band.width() - self._sim_band_tag.sizeHint().width()
+                    - (self._sim_band_leave.sizeHint().width() if not self.aw.qmc.flagon else 0)
+                    - 46)   # band margins and the two gaps
+        self._sim_band_source.setText(
+            self._sim_band_source.fontMetrics().elidedText(text, Qt.TextElideMode.ElideRight, avail))
+
+    def _leave_simulation(self) -> None:
+        """Leave Artisan's simulator, from the band's own control."""
+        try:
+            # The control is hidden while monitoring; keep the same lock here,
+            # since a click can still be delivered as monitoring starts.
+            if self.aw.simulator is None or self.aw.qmc.flagon:
+                self._sync_simulation_mark()
+                return
+            self.aw.simulate()
+        except Exception as e:  # pylint: disable=broad-except
             _log.error(e)
 
     def timer_clicked(self):

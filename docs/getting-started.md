@@ -125,7 +125,8 @@ assistant steps aside entirely.
     In Guided, the alarm actions you configured in Artisan **do not fire**. This is
     deliberate — it stops two sources of instructions from contradicting each other while
     you roast — but it means an alarm you rely on will stay silent. The status line tells
-    you which regime is active: **🔕 …SUSPENDED** in Guided, plain **ALARM-SET** in Expert.
+    you which regime is active as soon as one alarm is enabled: **🔕 ALARMS SUSPENDED** in
+    Guided, **ALARMS ACTIVE** in Expert.
     Switch to Expert if you want your own alarms back.
 
 Once a roast is recording, the switch only works one way: you can leave Guided for Expert, but

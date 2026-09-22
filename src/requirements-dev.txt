@@ -8,7 +8,7 @@ types-pytz>=2026.3.1.20260727
 types-requests>=2.33.0.20260503
 types-setuptools>=84.0.0.20260812
 types-urllib3>=1.26.25.14
-types-docutils>=0.22.3.20260712
+types-docutils>=0.23.0.20260827
 types-jmespath>=1.1.0.20260724
 types-xlrd>=2.0.0.20260518
 types-qrcode>=8.2.0.20260518
@@ -16,7 +16,7 @@ lxml-stubs>=0.5.1
 mypy==2.3.1
 pyright==1.1.411
 ruff>=0.15.22
-pylint==4.0.7
+pylint==4.0.8
 pre-commit>=4.6.2
 pytest>=9.1.1
 pre-commit>=4.6.2
@@ -30,7 +30,7 @@ pytest-datadir==1.8.0
 #PyVirtualDisplay==3.0
 #pytest-bdd==6.1.1
 #pytest-benchmark==4.0.0
-hypothesis>=6.165.5
+hypothesis>=6.168.0
 coverage>=7.15.4
 coverage-badge==1.1.2
 codespell==2.4.3

@@ -574,8 +574,8 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             pass
 
         # Refresh the status line now — for the initial render as well
-        # as later toggles — so the alarm-set suffix (🔕 …SUSPENDED in Guided,
-        # plain ALARM-SET in Expert) matches the level from the very first paint;
+        # as later toggles — so the alarm suffix (🔕 ALARMS SUSPENDED in Guided,
+        # ALARMS ACTIVE in Expert) matches the level from the very first paint;
         # while OFFLINE nothing else repaints it.
         self.update_status_text()
 
@@ -937,7 +937,7 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             self.update_button_style(self. btn_start_stop, True)
             self.btn_power.setToolTip(QApplication.translate('Tooltip', 'Stop monitoring'))
             # reset button
-            self.update_button_style(self.btn_reset, True)
+            self._refresh_reset_button()
             self.update_button_style(self.btn_assistant, True)
             # event buttons
             for btn in self.event_buttons.values():
@@ -960,7 +960,7 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             self.update_button_style(self.btn_start_stop,False)
             self.btn_power.setToolTip(QApplication.translate('Tooltip', 'Start monitoring'))
             # reset button
-            self.update_button_style(self.btn_reset, True)
+            self._refresh_reset_button()
             # roast assistant button
             self.update_button_style(self.btn_assistant, False)
             # event buttons

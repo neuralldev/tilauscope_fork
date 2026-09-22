@@ -29,6 +29,8 @@ import math
 import re
 from typing import Any, Final
 
+from PyQt6.QtWidgets import QApplication
+
 from artisanlib.util import convertTemp
 from tilauscope.tilauscope_types import (  # noqa: F401
     COLOR_AIR, COLOR_GRAIN, THEME, UNMARKED, dimmed, marked, normalize_timeindex)
@@ -200,6 +202,21 @@ def report_once(where: str) -> None:
         return
     _reported.add(where)
     _log.exception('%s', where)
+
+
+def simulation_source(aw: Any) -> str:
+    """The name of the roast Artisan's simulator replays.
+
+    Read by the window's simulation band and by the empty chart, which both
+    name it; the file name stands in when the profile carries no title of
+    its own, or only Artisan's placeholder one.
+    """
+    profile = getattr(getattr(aw, 'simulator', None), 'profile', None) or {}
+    title = str(profile.get('title') or '').strip()
+    if title and title != QApplication.translate('Scope Title', 'TilauScope'):
+        return title
+    path = str(getattr(aw, 'simulatorpath', '') or '')
+    return path.replace('\\', '/').rsplit('/', 1)[-1].rsplit('.', 1)[0]
 
 
 def reset_reports() -> None:

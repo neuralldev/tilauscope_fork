@@ -29040,7 +29040,10 @@ class ApplicationWindow(QMainWindow):
 
 ## TILAU ##
 from tilauscope.tilau_exceptions import my_exception_hook
-sys.excepthook = my_exception_hook
+# The crash dialog is modal: under the test harness it waits forever for a
+# click. The harness installs its own hook, which fails the test instead.
+if not os.environ.get('TILAU_TEST_HARNESS'):
+    sys.excepthook = my_exception_hook
 
 # 2026 update: the cocoa lib loads slow and the issue seems not to occur any longer
 # the following avoids the "No document could be created" dialog and the Console message

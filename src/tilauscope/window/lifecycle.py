@@ -638,7 +638,7 @@ class LifecycleMixin:
             self.update_button_style(self.btn_start_stop, True)
             self.update_button_style(self.btn_assistant, True)
             self.update_button_style(self.swap_button, False)
-            self.update_button_style(self.btn_reset, not qmc.flagstart)
+            self._refresh_reset_button()
             for btn in self.event_buttons.values():
                 btn.setEnabled(True)
             self._apply_controls_enabled(True)
@@ -769,6 +769,24 @@ class LifecycleMixin:
         except Exception:  # pylint: disable=broad-except
             _log.exception('no-reading: stopping the recording failed')
         self._show_no_reading_face(stopped=True)
+
+    def _refresh_reset_button(self) -> None:
+        """RESET is off while a recording runs, and for the whole simulation.
+
+        In simulation the replayed roast is the only thing on the chart, and
+        clearing it leaves nothing to follow; monitoring already resets before
+        each replay, so the button has nothing left to do there.
+        """
+        try:
+            simulating = self.aw.simulator is not None
+            self.update_button_style(self.btn_reset,
+                                     not self.aw.qmc.flagstart and not simulating)
+            self.btn_reset.setToolTip(
+                QApplication.translate('tilauscope_window',
+                                       'Reset is off in simulation — MONITOR clears the chart before each replay')
+                if simulating else QApplication.translate('Tooltip', 'Reset'))
+        except Exception as e:  # pylint: disable=broad-except
+            _log.error(e)
 
     def handle_reset(self):
         self._clear_emergency_state()
@@ -906,7 +924,7 @@ class LifecycleMixin:
             # start preheating
             self.handle_preheat(True)
             #. disable reset button
-            self.update_button_style(self.btn_reset, False)
+            self._refresh_reset_button()
             self.btn_start_stop.setToolTip(QApplication.translate('Tooltip', 'Stop recording'))
             # Masquer messagelabel Artisan : le flux est redirigé vers le ticker
             self.aw.messagelabel.setVisible(False)
@@ -925,7 +943,7 @@ class LifecycleMixin:
                 self.preheating = False
             self.update_status_text()
             # at end of roast enable reset button to clear the screen
-            self.update_button_style(self.btn_reset, True)
+            self._refresh_reset_button()
             # only the TilauScope preheating PID is piloted here; Artisan's own PID is left untouched.
             if self.aw.tilauPreheatingPid is not None and self.aw.tilauPreheatingPid.active:
                 self.aw.tilauPreheatingPid.stop(reason="recording_stop")

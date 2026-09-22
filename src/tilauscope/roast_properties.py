@@ -1095,7 +1095,8 @@ class _RoastInsightsPanel(QWidget):
             return
         self._plan = plan if isinstance(plan, dict) else None
         charge_temp = self.charge_temperature()
-        owner = self.parentWidget()
+        # The INSIGHTS tab page is the parent once laid out; the dialog is the window.
+        owner = self.window()
         if charge_temp is not None and owner is not None:
             update_target = getattr(owner, "_on_plan_charge_temperature", None)
             if callable(update_target):
@@ -1393,7 +1394,8 @@ class RoastSetupDialog(QDialog):
         self._build_ui()
         self._populate_fields()
         self.setMinimumWidth(580)
-        self.setMinimumHeight(600)
+        # No explicit minimum height: the layout's own minimum keeps the tallest
+        # tab from being squeezed below its widgets' sizes.
         self.resize(630, 625)
         # drag support state
         self._drag_pos: object = None
@@ -2479,11 +2481,9 @@ class RoastSetupDialog(QDialog):
         self._pid_enable_cb.setChecked(pid_active)
         self._pid_value_edit.setText(pid_value)
         self._pid_value_edit.setEnabled(pid_active)
-        ## Une valeur rechargée vient de la session précédente et rien ne dit si
-        ## elle a été choisie ou héritée du plan. On la traite comme choisie —
-        ## perdre un réglage voulu coûte plus cher qu'afficher une recommandation
-        ## d'un clic — et la ligne « Plan recommends » la met en regard.
-        self._pid_charge_temp_user_set = bool(str(pid_value).strip())
+        # The reloaded value belongs to the previous roast (another coffee, another
+        # weight): the plan owns the field until the operator types in it.
+        self._pid_charge_temp_user_set = False
         self._refresh_pid_recommendation()
         # Preselect PID input source from Artisan (pidSource: 2 = ET, else BT) + sync enabled state
         self._pid_input_bt_btn.setEnabled(pid_active)

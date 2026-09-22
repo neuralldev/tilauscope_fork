@@ -1,4 +1,18 @@
 ## [4.3] 2026-09-13
+build 11
+* ⚡ [feat(l10n)] : German, Spanish, Italian, Simplified and Traditional Chinese are complete again — the labels of the reworked Roasts tab and of the Devices window were showing in English inside an otherwise translated interface
+* ⚡ [feat(tilauscope)] : a simulation can no longer be mistaken for a live roast — the window is framed in mauve and a band across its top says SIMULATION and names the roast being replayed, whether a curve is loaded or not; with monitoring off, Leave simulation at the right of the band ends it, and the status line no longer carries SIMULATOR, PAUSED or the replay speed
+* 🐛 [fix(tilauscope)] : RESET is unavailable for the whole of a simulation — it cleared the only roast there was to follow, while turning monitoring on already clears the chart before each replay
+* 🐛 [fix(tilauscope)] : the profile swap control above the curve is hidden when neither a roast nor a background curve is loaded — after a RESET it stayed greyed out in the middle of the strip, where the previous roast's title used to end
+* 🐛 [fix(tilauscope)] : the status line no longer shows an alarm set name left over from Artisan — it reads ALARMS SUSPENDED in Guided or ALARMS ACTIVE in Expert whenever an alarm is enabled, including when no name was ever set
+* 🐛 [fix(roast setup)] : the preheating setpoint follows the plan again when the batch weight, density, moisture, bean temperature or target changes — the plan's charge temperature never reached the field, which kept the setpoint left over from the previous roast; the bean family line on the OPTIONS tab now updates for the same reason
+* 🐛 [fix(roast setup)] : the OPTIONS tab no longer squeezes the Filter / Omni / Espresso buttons and the profile list until their text is cut — the sheet now opens tall enough for its fullest tab
+* 🐛 [fix(tilauscope)] : an extra-device counter that fails to refresh no longer takes a live reading down with it — the reading it happened to coincide with, possibly the timer and with it the guided assistant, was skipped every second
+* 🐛 [fix(tilauscope)] : a fault that repeats on every reading is written to the log once with its details, then counted, instead of filling the log up to four times a second
+* 🐛 [fix(tests)] : an exception escaping a Qt slot now fails the test that raised it, with its traceback — it used to open the crash dialog offscreen and leave the whole suite waiting for a click, or abort it
+* 🐛 [fix(tests)] : the packaging check no longer fails on httpx and openai, which are now pinned in the requirements
+* 🐛 [fix(ai)] : the floating AI panel and the brew advisor keep streaming their answers after the AI library update, which would have removed the network component they rely on from the installers
+* 🐛 [fix(release)] : a version's download page now offers only its latest installers — every build piled up there and sorted as text, so build 10 came before build 3 and the last one listed was not the newest
 build 10
 build 9
 * ⚡ [feat(beancave)] : a milestone correction on a saved roast is named in a pill above the curve, with Undo beside Save, instead of a Save markers button floating over the end of the curve

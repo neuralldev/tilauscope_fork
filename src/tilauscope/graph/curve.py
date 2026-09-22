@@ -57,6 +57,7 @@ from tilauscope.graph.common import (
     report_once,
     dimmed,
     rise_series,
+    simulation_source,
     ror_axis_c as _ror_axis_c,
     temp_axis_c as _temp_axis_c,
 )
@@ -1130,7 +1131,15 @@ class RoastCurveWidget(QWidget):
     def _sync_switch_button(self) -> None:
         locked = self._switch_locked()
         foreground, background = self._switch_sides()
-        enabled = (foreground or background) and not locked
+        # Nothing loaded, nothing to swap: no button, rather than one left
+        # standing where the last title ended.
+        loaded = foreground or background
+        if self._switch_btn.isHidden() == loaded:
+            self._switch_btn.setVisible(loaded)
+            self._place_switch_button()
+        if not loaded:
+            return
+        enabled = not locked
         if self._switch_btn.isEnabled() != enabled:
             self._switch_btn.setEnabled(enabled)
         # switch() only swaps when both sides exist; with one side it moves that
@@ -1138,9 +1147,6 @@ class RoastCurveWidget(QWidget):
         if locked:
             tooltip = QApplication.translate(
                 'tilauscope', 'Profile swap is locked while monitoring or roasting')
-        elif not (foreground or background):
-            tooltip = QApplication.translate(
-                'tilauscope', 'Profile swap — load a roast profile first')
         elif foreground and background:
             tooltip = QApplication.translate(
                 'tilauscope', 'Swap the foreground roast and the background curve')
@@ -3616,6 +3622,7 @@ class RoastCurveWidget(QWidget):
         drop = -1
         monitoring = False
         no_meter = False
+        simulating = False
         if qmc is not None:
             try:
                 timex = list(qmc.timex)
@@ -3633,11 +3640,11 @@ class RoastCurveWidget(QWidget):
                            for v in qmc.specialeventsvalue]
                 ev_colors = list(qmc.EvalueColor)
                 monitoring = bool(qmc.flagon)
+                simulating = getattr(self._aw, 'simulator', None) is not None
                 # Artisan's "NONE" device: no meter is configured at all, so no
                 # reading is coming until one is chosen. A different nothing from
                 # a cable out, and a different fix.
-                no_meter = (int(getattr(qmc, 'device', 0)) == 18
-                            and getattr(self._aw, 'simulator', None) is None)
+                no_meter = int(getattr(qmc, 'device', 0)) == 18 and not simulating
             except Exception:
                 # Live data can be mid-mutation on the sampling thread's cadence;
                 # skip this frame rather than risk a half-read list. Keeping the
@@ -3748,8 +3755,16 @@ class RoastCurveWidget(QWidget):
             # takes the frame a sample later, so this is genuinely the charge
             # being waited for. The fix for a silent machine is not repeated
             # here: the phase box beside this one carries it in full, and a
-            # warning said three ways is a warning read none.
-            if not monitoring:
+            # warning said three ways is a warning read none. A simulation is its
+            # own case: the replay is armed and waits for the operator.
+            if simulating and not recording:
+                headline = QApplication.translate('tilauscope', 'Simulation ready')
+                if monitoring:
+                    detail = QApplication.translate('tilauscope', 'Press START to replay {0}.')
+                else:
+                    detail = QApplication.translate('tilauscope', 'Turn monitoring on, then START to replay {0}.')
+                detail = detail.format(simulation_source(self._aw))
+            elif not monitoring:
                 headline = QApplication.translate('tilauscope', 'No roast recorded')
                 detail = QApplication.translate('tilauscope', 'The curve starts when the charge is marked.')
             elif no_meter:

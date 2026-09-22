@@ -79,7 +79,7 @@ from tilauscope.header_icons import (
     apply_icon,
 )
 from tilauscope.roast_review_panel import RoastReviewPanel
-from tilauscope.theme_qss import apply_tilau_theme, tooltip_qss
+from tilauscope.theme_qss import apply_tilau_theme, tint, tooltip_qss
 from tilauscope.tilauscope_types import THEME, _IS_MACOS, call_later
 from tilauscope.whats_new import maybe_show_whats_new
 from tilauscope.widgets.controls import ClickableValue, HoldToFireButton
@@ -159,6 +159,8 @@ class BuildMixin:
 
         self.last_update_second = -1
         self._last_extra_update = 0.0   # throttle horodaté du panneau extra (≤ 1 Hz)
+        # sampling-slot failures counted by raise site (see _log_update_failure)
+        self._update_failures: dict[tuple, int] = {}
 
         self.root_menu:QMenu|None = None
         self.init = True
@@ -232,8 +234,6 @@ class BuildMixin:
         self.str_autofc     =  QApplication.translate("tilauscope_window","AUTO-FC ENGAGED")
         self.str_autodrop   =  QApplication.translate("tilauscope_window","AUTO-DROP ENGAGED")
         self.str_roastsession =  QApplication.translate("tilauscope_window","roast session started")
-        self.str_simulator =  QApplication.translate("tilauscope_window","SIMULATOR")
-        self.str_paused =  QApplication.translate("tilauscope_window","PAUSED")
         self.str_nopid = QApplication.translate("tilauscope_window","with no PID")
         self.str_artisanpid = QApplication.translate("tilauscope_window","with ArtisanPID to")
         self.str_tilaupid= QApplication.translate("tilauscope_window","with Tilauscope PID to")
@@ -430,13 +430,25 @@ class BuildMixin:
                         """)
         # Main Styled Frame
         self.container = QFrame()
-        self.container.setStyleSheet(f"background-color: {bg_color}; border: 2px solid #2D2D35; border-radius: 8px;")
+        self.container.setObjectName("tilauScopeFrame")
+        self._container_qss = f"background-color: {bg_color}; border: 2px solid #2D2D35; border-radius: 8px;"
+        self.container.setStyleSheet(self._container_qss)
+        self._simulation_framed = False   # see _sync_simulation_mark
 
         # Horizontal Layout: Controls on Left, Graph on Right
-        self._content_layout = QHBoxLayout(self.container)
+        self._content_layout = QHBoxLayout()
         # Increase margins slightly so internal widgets don't "touch" the border
         self._content_layout.setContentsMargins(10,10,10,10)
         self._content_layout.setSpacing(10)
+
+        # The simulation band sits above that row, inside the frame, and takes
+        # its height from the whole window when the simulator is on.
+        self._build_simulation_band()
+        _frame_column = QVBoxLayout(self.container)
+        _frame_column.setContentsMargins(0, 0, 0, 0)
+        _frame_column.setSpacing(0)
+        _frame_column.addWidget(self._sim_band)
+        _frame_column.addLayout(self._content_layout)
 
         # --- LEFT PANE: ROASTER CONTROLS ---
         self._left_widget = QWidget()
@@ -478,6 +490,54 @@ class BuildMixin:
         self._refresh_replay_button()
 
         self.init = False
+
+    def _build_simulation_band(self) -> None:
+        """The strip that says the readings are replayed, not measured.
+
+        Hidden unless Artisan's simulator is on. The way out is offered only
+        with monitoring off, so a running replay cannot be ended from here by
+        mistake — see _sync_simulation_mark.
+        """
+        self._sim_band = QWidget()
+        self._sim_band.setObjectName("simBand")
+        self._sim_band.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self._sim_band.setFixedHeight(22)
+        self._sim_band.setStyleSheet(f"""
+            QWidget#simBand {{ background: {tint('MAUVE', 0.13)}; border: none;
+                border-bottom: 1px solid {tint('MAUVE', 0.4)};
+                border-top-left-radius: 6px; border-top-right-radius: 6px; }}
+            QLabel#simBandTag {{ color: {THEME['MAUVE']}; border: none; background: transparent;
+                font-size: 10px; font-weight: 800; letter-spacing: 2px; }}
+            QLabel#simBandSource {{ color: {THEME['SUBTEXT1']}; border: none;
+                background: transparent; font-size: 11px; }}
+            QPushButton#simBandLeave {{ color: {THEME['MAUVE']}; border: none;
+                background: transparent; font-size: 11px; font-weight: 700; padding: 0 2px; }}
+            QPushButton#simBandLeave:hover {{ color: {THEME['TEXT']}; }}
+            {tooltip_qss()}
+        """)
+        row = QHBoxLayout(self._sim_band)
+        row.setContentsMargins(12, 0, 12, 0)
+        row.setSpacing(10)
+        self._sim_band_tag = QLabel(QApplication.translate("tilauscope_window", "SIMULATION"))
+        self._sim_band_tag.setObjectName("simBandTag")
+        self._sim_band_source = QLabel("")
+        self._sim_band_source.setObjectName("simBandSource")
+        # The roast name is the one part that can outgrow the band: it gives way
+        # to the tag and to the way out, and is elided rather than pushing them off.
+        self._sim_band_source.setSizePolicy(QSizePolicy.Policy.Ignored,
+                                            QSizePolicy.Policy.Preferred)
+        self._sim_band_leave = QPushButton(
+            QApplication.translate("tilauscope_window", "Leave simulation") + "  ✕")
+        self._sim_band_leave.setObjectName("simBandLeave")
+        self._sim_band_leave.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._sim_band_leave.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._sim_band_leave.setToolTip(QApplication.translate(
+            "tilauscope_window", "Stop replaying and go back to the machine's own readings"))
+        self._sim_band_leave.clicked.connect(self._leave_simulation)
+        row.addWidget(self._sim_band_tag)
+        row.addWidget(self._sim_band_source, 1)
+        row.addWidget(self._sim_band_leave)
+        self._sim_band.hide()
 
     def _build_header(self) -> None:
         """Title bar: timer, milestone shortcuts, menu and the header buttons.
@@ -537,7 +597,7 @@ class BuildMixin:
         self.btn_reset.clicked.connect(self.handle_reset)
         self.btn_reset.setStyleSheet(QSS_COMPACT_RESET)
         apply_icon(self.btn_reset, SVG_RESET, COL_RESET_IDLE)
-        self.update_button_style(self.btn_reset, True)
+        self._refresh_reset_button()
 
         self.btn_beancave = QPushButton()
         self.btn_beancave.setFixedSize(*_HDR2_BEANCAVE)
