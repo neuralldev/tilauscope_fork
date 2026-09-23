@@ -3378,9 +3378,12 @@ class RoastCurveWidget(QWidget):
 
         painter.setClipRect(self._full_rect())
         self._draw_compared_milestones(painter, roasts[1:])
-        self._draw_milestones(painter, ref.timex, ref.temp2, mode, ref.timeindex,
-                              self._comparison_tp(ref),
-                              editable=self._static_editor is not None and len(roasts) == 1)
+        # The chips name bean readings on the temperature trace: with the rate
+        # alone they point at nothing, and no chip drawn means no grip either.
+        if temps:
+            self._draw_milestones(painter, ref.timex, ref.temp2, mode, ref.timeindex,
+                                  self._comparison_tp(ref),
+                                  editable=self._static_editor is not None and len(roasts) == 1)
         # The pointer answers here as it does on the roasting window: the
         # crosshair reads the roast holding the frame, and every roast beside
         # it is dotted at the same instant, in its own colour.

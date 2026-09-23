@@ -494,6 +494,9 @@ class StorageTab(QWidget):
             _logd.info("StorageTab: no MQTT broker credentials configured — "
                        "cannot read the storage sensor")
             return None
+        # A client left over from a lost link still owns a transport and its
+        # reconnect thread: stop it before starting another.
+        self._stop_dedicated()
         try:
             from tilauscope.mqttbridge import TilauscopeMQTTClient
             _logd.info("StorageTab: starting dedicated MQTT client (broker=%s:%s)",
@@ -504,11 +507,11 @@ class StorageTab(QWidget):
             if connected:
                 self._subscribe_storage(self._mqtt, topics)
                 return self._mqtt
-            self._mqtt = None
+            self._stop_dedicated()
             return None
         except Exception:
             _logd.exception("StorageTab: dedicated MQTT start failed")
-            self._mqtt = None
+            self._stop_dedicated()
             return None
 
     def _subscribe_storage(self, client, topics: list[str]) -> None:

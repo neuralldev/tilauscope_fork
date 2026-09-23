@@ -39,6 +39,8 @@ from __future__ import annotations
 
 from typing import Any, Final
 
+from tilauscope.tilauscope_types import is_reading
+
 #: Weight of the newest reading in the drawn marker's position.
 _EMA_ALPHA: Final[float] = 0.2
 #: The marker does not move until the smoothed forecast has drifted this far.
@@ -59,7 +61,7 @@ def milestone(qmc: Any, info: dict) -> float | None:
         rate = qmc.rateofchange2
     except (AttributeError, KeyError, IndexError, TypeError, ValueError):
         return None
-    if rate is None:
+    if rate is None or not is_reading(bt):   # -1: the probe answered nothing
         return None
     try:
         rate = float(rate)

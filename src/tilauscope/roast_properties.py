@@ -2367,7 +2367,7 @@ class RoastSetupDialog(QDialog):
         )
         self._auto_fc_cb = _make_auto_cb(
             QApplication.translate("tilauscope_roast_setup", "Auto First Crack"),
-            QApplication.translate("tilauscope_roast_setup", "Detect FIRST CRACK from the crack counter (TilauAmbient probe or Omniflux)"),
+            QApplication.translate("tilauscope_roast_setup", "Detect FIRST CRACK from the crack counter"),
             enabled=True,
         )
         detect_row = QHBoxLayout()
@@ -4038,7 +4038,7 @@ class RoastResultDialog(QDialog):
         # C1 device button: shown only when device is configured
         has_c1 = bool(getattr(self._aw, 'bleRoastSeeDeviceName', None))
         if has_c1:
-            c1_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "◉  C1"))
+            c1_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "◉  Colour meter"))
             c1_btn.setStyleSheet(
                 f"QPushButton {{ background: transparent; color: {THEME['ACCENT']};"
                 f"border: 1px solid {THEME['ACCENT']}; border-radius: 6px;"
@@ -4046,7 +4046,7 @@ class RoastResultDialog(QDialog):
                 f"QPushButton:hover {{ background: {THEME['ACCENT']}; color: {THEME['BG']}; }}"
             )
             c1_btn.setToolTip(QApplication.translate("tilauscope_roast_setup",
-                "Open the RoastSee C1 colour reader card"))
+                "Open the colour meter card"))
             c1_btn.clicked.connect(self._toggle_color_window)
             color_sec_row.addWidget(c1_btn)
             # Create the floating colour window
@@ -4080,7 +4080,7 @@ class RoastResultDialog(QDialog):
         self._colour_whole_edit.setToolTip(
             QApplication.translate("tilauscope_roast_setup",
                 "Agtron reading on whole roasted beans.\n"
-                "You can tap the RoastSee C1 card to populate this field automatically.")
+                "You can tap the colour meter card to populate this field automatically.")
         )
         self._colour_whole_edit.textChanged.connect(self._update_color_diff)
         whole_col.addWidget(self._colour_whole_edit)
@@ -4109,7 +4109,7 @@ class RoastResultDialog(QDialog):
         self._colour_ground_edit.setToolTip(
             QApplication.translate("tilauscope_roast_setup",
                 "Agtron reading on ground beans.\n"
-                "You can tap the RoastSee C1 card to populate this field automatically.")
+                "You can tap the colour meter card to populate this field automatically.")
         )
         self._colour_ground_edit.textChanged.connect(self._update_color_diff)
         ground_col.addWidget(self._colour_ground_edit)

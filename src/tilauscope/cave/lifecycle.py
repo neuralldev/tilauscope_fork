@@ -58,6 +58,7 @@ from tilauscope.cave.common import (PKG_DIR,
     greencave_headers, apply_mica_acrylic_effect)
 from tilauscope.cave.widgets import (
     _DensityFloatWindow)
+from tilauscope.tilauscope_types import park_until_finished
 from tilauscope.cave.workers import (
     stop_worker_thread,
     _RoasterLoadWorker)
@@ -607,6 +608,7 @@ class LifecycleMixin:
                         _log.warning("indexer thread did not stop cooperatively — waiting once more")
                         if not self._indexer_thread.wait(2000):
                             _log.error("indexer thread is still running and was left to finish on its own")
+                            park_until_finished(self._indexer_thread, self._indexer_worker)
             except (TypeError, RuntimeError):
                 pass
             self._indexer_thread = None
@@ -626,6 +628,7 @@ class LifecycleMixin:
                         _log.warning("roaster worker did not stop cooperatively — waiting once more")
                         if not self._roaster_thread.wait(2000):
                             _log.error("roaster worker is still running and was left to finish on its own")
+                            park_until_finished(self._roaster_thread, getattr(self, '_roaster_worker', None))
             except (TypeError, RuntimeError):
                 pass
             self._roaster_thread = None
@@ -649,6 +652,7 @@ class LifecycleMixin:
                         _log.warning("alog list worker did not stop cooperatively — waiting once more")
                         if not self._list_thread.wait(2000):
                             _log.error("alog list worker is still running and was left to finish on its own")
+                            park_until_finished(self._list_thread, getattr(self, '_list_worker', None))
             except RuntimeError:
                 pass  # Qt object already deleted by deleteLater
             self._list_thread = None
@@ -667,6 +671,7 @@ class LifecycleMixin:
                         _log.warning("plan worker did not stop cooperatively — waiting once more")
                         if not self._plan_roast_files_thread.wait(2000):
                             _log.error("plan worker is still running and was left to finish on its own")
+                            park_until_finished(self._plan_roast_files_thread, getattr(self, '_plan_roast_files_worker', None))
             except (RuntimeError, TypeError):
                 pass
             self._plan_roast_files_thread = None
@@ -697,6 +702,7 @@ class LifecycleMixin:
                         _log.warning("bean AI worker did not stop cooperatively — waiting once more")
                         if not self.ai_thread.wait(2000):
                             _log.error("bean AI worker is still running and was left to finish on its own")
+                            park_until_finished(self.ai_thread, self.ai_worker)
             except (TypeError, RuntimeError):
                 pass
             self.ai_thread = None
@@ -718,8 +724,9 @@ class LifecycleMixin:
                     self.niimbot_thread.requestInterruption()
                     self.niimbot_thread.quit()
                     if not self.niimbot_thread.wait(5000):
+                        # a silent printer can hold the label for long: never block the close
                         _log.warning("print worker is finishing the current label")
-                        self.niimbot_thread.wait()
+                        park_until_finished(self.niimbot_thread, self.niimbot_worker)
             except (RuntimeError, TypeError):
                 pass
             self.niimbot_thread = None

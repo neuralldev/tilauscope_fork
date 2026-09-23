@@ -39,6 +39,9 @@ with its stock, its origin and its freshness.
 coffee you have finished stays in the database, with its history intact, without cluttering the
 list.
 
+When BeanCave opens without a bean linked to the current roast, the record shows the first
+coffee matching the active filters. If none matches, the record is empty.
+
 Each entry carries badges that answer the questions asked when choosing what to roast: whether it
 is a **blend**, how old the harvest is — *Harvest is 2 years old* — and whether it is **out of
 stock**. Where sack labels are used, the labels attached to that coffee are shown too.
@@ -51,6 +54,11 @@ stock**. Where sack labels are used, the labels attached to that coffee are show
 
 ![A blend entry and an
 out-of-stock entry, cropped, so the badges are legible](assets/beancave-3.3.png)
+
+If the library's file cannot be read when BeanCave opens — damaged, or not readable on this
+computer — BeanCave says so and saves nothing over it until it is repaired or restored and
+BeanCave reopened. Adding a coffee to an empty catalogue at that moment would otherwise replace
+every coffee on file with that one.
 
 
 ---

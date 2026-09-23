@@ -334,7 +334,8 @@ class ChromeMixin:
             return
         elif key == Qt.Key.Key_B and no_modifier:
             # Call the extra counters logic
-            self.event_panel.toggle_visibility()
+            if self.event_panel is not None:
+                self.event_panel.toggle_visibility()
             return
         elif key == Qt.Key.Key_A and shift_modifier:
             self.toggle_roast_assistant()   # placement handled inside

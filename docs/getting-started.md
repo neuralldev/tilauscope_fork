@@ -197,6 +197,10 @@ progress.
 ⬇ Download & Install and 🛠 Install Now & Quit. Needs a pending update. -->
 ![one per tab](assets/getting-started-1.19.png)
 
+Before it is offered, the downloaded installer is checked against the checksum published with
+the release. A file that does not match is deleted and the download is reported as failed —
+try again later rather than installing it.
+
 If the installer cannot be launched automatically, TilauScope reports it and gives the path
 to the installer, rather than failing silently.
 

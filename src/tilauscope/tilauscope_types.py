@@ -2428,3 +2428,29 @@ def profile_crack_times(profile: Mapping[str, Any]) -> list[float]:
     except (AttributeError, IndexError, TypeError):
         return []   # a malformed profile has no band, but keeps its curve
     return crack_pop_times(series, profile.get("timex") or [])
+
+
+# Threads that outlived their owner's wait, held until they finish on their own:
+# a QThread destroyed while running aborts the application.
+_PARKED: set = set()
+
+
+def park_until_finished(thread, worker=None) -> None:
+    """Keep `thread` (and its worker) alive until it has finished.
+
+    Detached from its parent first: a dying parent deletes its children on the
+    C++ side, whatever Python still holds.
+    """
+    try:
+        if thread.parent() is not None:
+            thread.setParent(None)
+    except (RuntimeError, AttributeError):
+        return   # already gone
+    entry = (thread, worker)
+    _PARKED.add(entry)
+
+    def _release() -> None:
+        thread.wait(1000)   # finished fires just before the thread really exits
+        _PARKED.discard(entry)
+
+    thread.finished.connect(_release)

@@ -38,7 +38,7 @@ from PyQt6.QtCore import (pyqtSlot, QThread, pyqtSignal, QObject) # @UnusedImpor
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.niimprint import NiimbotBLE, NiimbotPrintOutcome, Niimprint_PaperType
-from tilauscope.tilauscope_types import GreenBean
+from tilauscope.tilauscope_types import GreenBean, park_until_finished
 from tilauscope.ai_support import TilauAIConfig
 from tilauscope.roasters import RoasterManager
 from tilauscope.alogmanager import (AlogMetadata)
@@ -135,6 +135,7 @@ def stop_worker_thread(thread, worker=None, slots=(), timeout_ms: int = 2000,
         _log.warning(f"{name} did not stop cooperatively — waiting once more")
         if not thread.wait(timeout_ms):
             _log.error(f"{name} is still running and was left to finish on its own")
+            park_until_finished(thread, worker)   # dropping it while it runs aborts Qt
     except (RuntimeError, AttributeError):
         pass  # C++ side already gone
 

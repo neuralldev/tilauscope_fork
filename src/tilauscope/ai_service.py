@@ -193,8 +193,12 @@ class TilauAIService(QObject):
         _log.info("TilauAIService: started task %s", task_type)
         return True
 
-    def cancel(self, task_type: str) -> None:
-        """Request cancellation of a running task. Non-blocking for the caller."""
+    def cancel(self, task_type: str, wait_ms: int = 0) -> None:
+        """Request cancellation of a running task. Non-blocking for the caller.
+
+        The thread is a child of the service and deletes itself when it ends,
+        so only the shutdown (`cancel_all`) needs to wait for it.
+        """
         entry = self._active.pop(task_type, None)
         if entry is None:
             return
@@ -202,17 +206,14 @@ class TilauAIService(QObject):
         _log.info("TilauAIService: cancelling task %s", task_type)
         cancel_token.cancel()
         thread.quit()
-        # Give the thread up to 3 seconds to finish cleanly before we
-        # let the QThread object be garbage-collected. Without this wait()
-        # Qt logs "QThread: Destroyed while thread is still running".
-        if not thread.wait(3000):
+        if wait_ms and not thread.wait(wait_ms):
             _log.warning("TilauAIService: thread for %s did not stop in time", task_type)
         self.task_cancelled.emit(task_type)
 
     def cancel_all(self) -> None:
         """Cancel all running tasks. Call on application shutdown."""
         for task_type in list(self._active):
-            self.cancel(task_type)
+            self.cancel(task_type, wait_ms=3000)   # the app is going: give it its time
 
     # ── Internal slots ────────────────────────────────────────────────────────
 

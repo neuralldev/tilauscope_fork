@@ -182,7 +182,9 @@ counter, so the status line is the grey one, not the peach warning. -->
 ### MQTT Broker
 
 **Broker URL**, **Port**, **Topic**, **Username**, **Password**, and a **Test Connection** button
-that checks the connection before it is relied on. This is what the
+that checks the connection before it is relied on. The test uses the password as typed; it is
+stored only when you press **OK**, and it follows the broker if you later change its address,
+port or user. This is what the
 [ambient humidity tracking](beancave.md) and any [MQTT-fed device](the-window.md) depend on.
 
 **TLS** encrypts the link to a broker that asks for it — see [TLS](glossary.md#tls). Ticking it

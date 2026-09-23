@@ -752,7 +752,7 @@ class LifecycleMixin:
             qmc.backgroundPlaybackEvents = False
             qmc.backgroundPlaybackDROP = False
             qmc.backgroundReproduce = False
-            qmc.alarmsflag = 0           # an alarm can fire a slider action
+            qmc.silent_alarms = True     # an alarm can fire a slider action; reset at next ON
         except Exception:  # pylint: disable=broad-except
             _log.exception('emergency: disabling playback/alarms failed')
         try:
@@ -833,19 +833,25 @@ class LifecycleMixin:
 
     #build end of roast message
     def build_end_of_roast(self)->str:
+        str_total_time = "--:--"
+        str_dtr = "--"
+        str_delta_t = "--.-"
         try:
-            # total time of roast from charge to drop
-            total_sec = self.aw.qmc.timex[self.aw.qmc.timeindex[6]]-self.aw.qmc.timex[self.aw.qmc.timeindex[0]]+1
-            m, s = divmod(int(total_sec), 60)
-            str_total_time = f"{m:02d}:{s:02d}"
-            # build DTR
-            dtr = (self.aw.qmc.timex[self.aw.qmc.timeindex[6]]-self.aw.qmc.timex[self.aw.qmc.timeindex[2]]) * 100.0/ total_sec
-            str_dtr = f"{dtr:.0f}%"
-            # delta T
-            temp_at_fc = self.aw.qmc.temp2[self.aw.qmc.timeindex[2]]
-            temp_at_drop = self.aw.qmc.temp2[self.aw.qmc.timeindex[6]]
-            delta_temp  = temp_at_drop - temp_at_fc
-            str_delta_t =  f"{delta_temp:.1f}°{self.aw.qmc.mode}"
+            # an unmarked milestone still indexes a real sample: ask first
+            if self._milestone_marked(0) and self._milestone_marked(6):
+                # total time of roast from charge to drop
+                total_sec = self.aw.qmc.timex[self.aw.qmc.timeindex[6]]-self.aw.qmc.timex[self.aw.qmc.timeindex[0]]+1
+                m, s = divmod(int(total_sec), 60)
+                str_total_time = f"{m:02d}:{s:02d}"
+                if self._milestone_marked(2):
+                    # build DTR
+                    dtr = (self.aw.qmc.timex[self.aw.qmc.timeindex[6]]-self.aw.qmc.timex[self.aw.qmc.timeindex[2]]) * 100.0/ total_sec
+                    str_dtr = f"{dtr:.0f}%"
+                    # delta T
+                    temp_at_fc = self.aw.qmc.temp2[self.aw.qmc.timeindex[2]]
+                    temp_at_drop = self.aw.qmc.temp2[self.aw.qmc.timeindex[6]]
+                    delta_temp  = temp_at_drop - temp_at_fc
+                    str_delta_t =  f"{delta_temp:.1f}°{self.aw.qmc.mode}"
         except Exception:
             str_total_time = "--:--"
             str_dtr = "--"
@@ -910,6 +916,10 @@ class LifecycleMixin:
         was_roasting = self.is_roasting
         had_charge = was_roasting and self._has_charged_roast()
         self.aw.qmc.ToggleRecorder(pressed)
+        if bool(self.aw.qmc.flagstart) == was_roasting:
+            # Artisan declined (Cancel on its save prompt): follow Artisan, not the press.
+            self.update_status_text()
+            return
         if not was_roasting :
             self.aw._tilaupid_user_disabled = False
             # update roasting flag

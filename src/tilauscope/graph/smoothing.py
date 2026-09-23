@@ -142,10 +142,20 @@ def apply_level(qmc: Any, key: str) -> bool:
     # A finished roast has to be recomputed to show the change; a running one
     # must not be touched — its rate is being measured sample by sample, and
     # clearing it would throw away the roast so far.
+    # Recomputed at once, with Artisan's own call (canvas smoothETBT), rather
+    # than emptied: Artisan reads the FC rate out of delta2 when it saves.
     if not getattr(qmc, 'flagstart', False):
         try:
+            charge = int(qmc.timeindex[0])
+            start = min(charge + 10, len(qmc.timex) - 1) if charge > -1 else -1
+            d1, d2 = qmc.recomputeDeltas(qmc.timex, start, qmc.timeindex[6],
+                                         qmc.stemp1, qmc.stemp2,
+                                         optimalSmoothing=getattr(qmc, 'optimalSmoothing', False))
+            if d1 is None or d2 is None:
+                raise ValueError('no deltas')
+            qmc.delta1, qmc.delta2 = d1, d2
+        except Exception:  # noqa: BLE001 - fall back on Artisan's next redraw
+            report_once('smoothing: could not recompute the rate arrays')
             qmc.delta1 = []
             qmc.delta2 = []
-        except AttributeError:
-            report_once('smoothing: could not clear the rate arrays')
     return True

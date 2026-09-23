@@ -4082,6 +4082,7 @@ class TilauScopeRoastPlan:
             drop_bt_temperature: float, to_native,
             heater_pre_fc: float, heater_dev: float,
             has_heater_control: bool, heater_resolution_pct: float,
+            heater_max_pct: float,
             dev_trajectory_learned: "dict | None", dev_traj_samples: int,
             airflow_dry_learned: "float | None" = None,
             airflow_mai_learned: "float | None" = None,
@@ -4308,6 +4309,7 @@ class TilauScopeRoastPlan:
         # aussi, pour ne pas annoncer un feu dev que cette rampe ne suivra pas.
         if 3 in _dev_end:
             _dev_end[3] = max(_dev_end[3], _dev_start[3] - _DEV_BURNER_DROP_CAP)
+            _dev_end[3] = min(_dev_end[3], heater_max_pct)   # machine ceiling, learned or not
         # ── Airflow SOUTIENT la réaction pendant que le FEU DESCEND en dev ──────
         # (doctrine Tilau). Une cible statique `air_dev` — souvent basse ou apprise
         # à plat — laissait le dev quasi plat alors que le brûleur chute franchement.
@@ -4322,7 +4324,7 @@ class TilauScopeRoastPlan:
             _air_support = _air_fc + min(_AIR_DEV_SUPPORT_K * _burner_drop, _AIR_DEV_SUPPORT_CAP)
             _dev_end[0] = _clamp(_air_support, _dev_end[0], 100.0)
         _dev_res = {3: max(1.0, heater_resolution_pct), 0: _airflow_step, 2: _airflow_step}
-        _dev_lohi = {3: (0.0, 100.0), 0: (AIRFLOW_MIN, 100.0), 2: (EXTRACTION_MIN, 100.0)}
+        _dev_lohi = {3: (0.0, heater_max_pct), 0: (AIRFLOW_MIN, 100.0), 2: (EXTRACTION_MIN, 100.0)}
         _dev_keys = {3: "heater", 0: "airflow", 2: "extraction"}
         # nb de paliers = plus grand mouvement / résolution (borné 3..8) → ~5 % / pas
         _max_move = max((abs(_dev_end[e] - _dev_start[e]) / _dev_res[e]
@@ -5195,6 +5197,7 @@ class TilauScopeRoastPlan:
             drop_bt_temperature=drop_bt_temperature, to_native=_to_native,
             heater_pre_fc=heater_pre_fc, heater_dev=heater_dev,
             has_heater_control=_has_heater, heater_resolution_pct=_heater_res,
+            heater_max_pct=_heater_max_pct,
             dev_trajectory_learned=(history.get("dev_trajectory_learned") if history else None),
             dev_traj_samples=(int(history.get("dev_traj_samples", 0) or 0) if history else 0),
             airflow_dry_learned=(history.get("airflow_dry_learned") if history else None),

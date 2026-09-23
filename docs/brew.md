@@ -125,6 +125,9 @@ after** card comparing the last two tries once a new correction is applied: what
 whether the result moved. It is a record kept for the moment a fuller history view is worth
 building, not yet a browsable log of its own.
 
+If the journal's file cannot be read, a new brew is not recorded over it: the file is left as
+it is, so it can be restored, rather than replaced by that single brew.
+
 ---
 
 ## The printed recipe

@@ -21,7 +21,6 @@ from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass  # pylint: disable=unused-import
-import ast  # Import de la bibliothèque ast
 import qrcode # Import de la bibliothèque qrcode
 import requests
 from pathlib import Path
@@ -32,7 +31,7 @@ from PIL.ImageQt import ImageQt # Import pour convertir l'image PIL en QImage
 
 # getAppPath lives in artisanlib.util; artisanlib.main only re-exports it, and
 # importing it from there booted the whole application through cave/__init__.
-from artisanlib.util import cast, getAppPath  # smooth_list moved from tgraphcanvas to util
+from artisanlib.util import getAppPath  # smooth_list moved from tgraphcanvas to util
 
 
 from PyQt6.QtCore import (QMutexLocker,QStandardPaths, Qt, pyqtSlot, QThread, QTimer) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
@@ -417,6 +416,14 @@ class PrintingMixin:
     def generate_and_print_label(self) -> None:
         from tilauscope.tilauscope_types import replace_accents  # noqa: F401
         if self.cave is None or not hasattr(self.cave, "green_beans"):
+            return
+        # A run can last minutes; replacing its thread would destroy it mid-print.
+        running = getattr(self, "niimbot_thread", None)
+        if running is not None and running.isRunning():
+            self._show_message(self,
+                QApplication.translate("tilauscope_beancave", "Print"),
+                QApplication.translate("tilauscope_beancave", "A print is already in progress"),
+                QMessageBox.Icon.Warning)
             return
 
         # ── Résoudre le GreenBean ────────────────────────────────────────────
@@ -842,9 +849,16 @@ class PrintingMixin:
                                  QMessageBox.Icon.Critical)
             _logd.error(f"aLog file not found for loading: {alog_full_path}")
             return
-        if alog_filename and self.last_plot_data is not None: # Fixe 2026/03/06 last plot data can be empty if alog file is malformed or corrupted
+        roast_properties = self.get_alog_data(alog_full_path)
+        if roast_properties is None:
+            self._show_message(self,
+                QApplication.translate("tilauscope_beancave", "Error"),
+                QApplication.translate("tilauscope_beancave", "PDF file was not generated."),
+                QMessageBox.Icon.Warning)
+            return
+        if alog_filename:
             # 'bean' field usually contains something like "Bean Name (uuid: xxxxxxxx-xxxx-...)"
-            bean_field = self.last_plot_data.get("beans", "")
+            bean_field = roast_properties.get("beans", "")
             target_bean = None
             # 2. Search for 'uuid: <uuid value>' in the bean field
             uuid_match = self.uuid_pattern.search(bean_field)
@@ -868,10 +882,6 @@ class PrintingMixin:
                 from tilauscope.label_printer import RoastedBeanLabelPrinter
                 printer = RoastedBeanLabelPrinter()
                 try:
-                    # Format natif Artisan : repr(dict) en UTF-8 — pas de unicode_escape
-                    # (sinon mojibake sur les accents). literal_eval gère les échappements.
-                    decoded_content = alog_full_path.read_text(encoding='utf-8')
-                    roast_properties = cast('ProfileData', ast.literal_eval(decoded_content))
                     success = printer.print_to_label(roast_properties, target_bean, file_path)
                     if success:
                         self._show_message(self,
@@ -885,6 +895,10 @@ class PrintingMixin:
                                 QMessageBox.Icon.Warning)
                 except Exception as e:
                     _logd.error(f"error printing to pdf: {e}")
+                    self._show_message(self,
+                        QApplication.translate("tilauscope_beancave", "Error"),
+                        QApplication.translate("tilauscope_beancave", "PDF file was not generated."),
+                        QMessageBox.Icon.Warning)
 
 
     @pyqtSlot()

@@ -361,9 +361,31 @@ class TilauTC4BLE(QObject):
                 self._restore_pending = False
         except Exception as e:  # noqa: BLE001
             _logd.exception(e)
+            if not self._connected:
+                await self._abandon_half_open_link()
             self.stateChanged.emit("error")
         finally:
             self._connect_task = None              # connect settled (ok/err/cancel)
+
+    async def _abandon_half_open_link(self) -> None:
+        """Burner off, then drop a link that failed before going live.
+
+        Connecting alone can leave the burner at its controller default. The
+        client is detached first so its drop callback is ignored rather than
+        read as a loss of the live link.
+        """
+        client = self._client
+        if client is None or not client.is_connected:
+            return
+        try:
+            await asyncio.wait_for(self._write(f"OT{OT_BURNER},0" + _CMD_TERM), 2.0)
+        except Exception:  # noqa: BLE001 - best effort, the disconnect follows
+            _logd.exception("TilauTC4BLE: burner OFF on a failed connect")
+        self._client = None
+        try:
+            await asyncio.wait_for(client.disconnect(), 3.0)
+        except Exception:  # noqa: BLE001
+            _logd.exception("TilauTC4BLE: dropping a half-open link failed")
 
     async def _verified_burner_off(self) -> bool:
         """Assert OT1,0 and confirm the field-3 echo reads 0; retry, else fail.

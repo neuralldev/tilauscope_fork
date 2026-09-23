@@ -355,6 +355,8 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
         """
 
     def align_panels(self):
+        if self.event_panel is None:   # a failed rebuild leaves no bar to place
+            return
         # Position the panel 10px below the main window
         self.event_panel.move(self.x(), self.y() + self.height() + 10)
 

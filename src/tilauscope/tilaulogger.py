@@ -22,6 +22,7 @@ import serial
 import serial.tools.list_ports # Pour la détection des portsimport socketserver
 import socket
 import socketserver
+import io
 import pickle
 import struct
 import threading
@@ -1039,6 +1040,18 @@ class ArtisanLogTailWorker(QObject):
             )
 
 
+class _RecordUnpickler(pickle.Unpickler):
+    """Plain values only: a log record from SocketHandler is a dict of them."""
+
+    def find_class(self, module, name):
+        raise pickle.UnpicklingError(f"refused {module}.{name} on the log port")
+
+
+def _load_log_record(data: bytes) -> dict:
+    """Decode one SocketHandler record without letting it name any code."""
+    return _RecordUnpickler(io.BytesIO(data)).load()
+
+
 class SerialWorker(QObject):
     """Reads a serial port in a background thread; connection is explicit (not automatic)."""
     message_received = pyqtSignal(str)
@@ -1116,6 +1129,9 @@ class SerialWorker(QObject):
                     self.message_received.emit(f"❌ Error opening {port_target}: {str(e)}")
                     with self._serial_lock:
                         self.ser = None
+                        # connection is explicit: report once, the operator connects again
+                        if self.port == port_target:
+                            self.port = None
 
             with self._serial_lock:
                 ser = self.ser
@@ -1165,7 +1181,7 @@ class TCPLogHandler(socketserver.StreamRequestHandler):
                         return
                     chunk += more
 
-                obj = pickle.loads(chunk)
+                obj = _load_log_record(chunk)   # any local program can write here
                 # — emit structured fields so the bus keeps level/module
                 self.server.ui_signal.emit(obj['name'], obj['levelname'], obj['msg'])
             except (socket.timeout, TimeoutError):
@@ -1816,6 +1832,13 @@ class TilauscopeLoggerWindow(QWidget):
         self._log_dir = log_dir  # — shared with tail worker
         ser_path = log_dir / f"tilau_serial_{datetime.now().strftime('%Y%m%d')}.log"
         tcp_path = log_dir / f"tilau_tcp_{datetime.now().strftime('%Y%m%d')}.log"
+
+        # The loggers outlive this window: drop what a previous opening attached.
+        for name in ("tilau_serial_file", "tilau_tcp_file"):
+            logger = logging.getLogger(name)
+            for handler in list(logger.handlers):
+                logger.removeHandler(handler)
+                handler.close()
 
         # 2. Setup Serial File Logger
         self.serial_logger = logging.getLogger("tilau_serial_file")

@@ -267,8 +267,10 @@ def _basis(data: dict, ctx: Any, bean: Any) -> _Basis:
     t_dry = computed.get("DRY_time", 0)
     t_fcs = computed.get("FCs_time", 0)
     t_drop = computed.get("DROP_time", 0)
-    maillard = t_fcs - t_dry
-    development = t_drop - t_fcs
+    # An unmarked milestone reads 0: a phase bounded by one is unknown (0),
+    # which every check below skips.
+    maillard = t_fcs - t_dry if 0 < t_dry < t_fcs else 0
+    development = t_drop - t_fcs if 0 < t_fcs < t_drop else 0
     dtr_pct = 100 * development / t_drop if t_drop > 0 else 0
 
     weight_loss = computed.get("weight_loss", 0.0)

@@ -279,6 +279,35 @@ class _Canvas(QWidget):
 # CustomButtonManager
 # ───────────────────────────────────────────────────────────────────────────
 
+_ALARM_EVENT_BUTTON: Final = 2   # qmc.alarmaction value: press event button(s)
+
+
+def remap_button_refs(text: str, moved: dict[int, int | None]) -> str | None:
+    """An Event Button alarm argument ("3", "2>50,4", optional "#comment"),
+    renumbered after the buttons were rearranged.
+
+    `moved` maps every button's old 0-based index to its new one, None for a
+    deleted button. None when the alarm names a deleted button. A reference
+    that was already out of range is left as it was.
+    """
+    spec, sep, comment = str(text).partition('#')
+    parts: list[str] = []
+    for item in spec.split(','):
+        number, gt, override = item.strip().partition('>')
+        try:
+            old = int(number.strip()) - 1
+        except ValueError:
+            parts.append(item.strip())
+            continue
+        if old not in moved:
+            parts.append(item.strip())
+        elif moved[old] is None:
+            return None
+        else:
+            parts.append(f"{moved[old] + 1}{gt}{override.strip()}")
+    return ','.join(parts) + sep + comment
+
+
 class CustomButtonManager(QDialog):
     """Canvas-and-inspector editor over Artisan's custom-button model."""
 
@@ -291,6 +320,8 @@ class CustomButtonManager(QDialog):
         self._tiles: dict[int, _ButtonTile] = {}
         self._preview_pressed = False
         self._rows = self._read_rows()
+        # where each button stood when the editor opened: alarms name it by position
+        self._origin = {id(row): i for i, row in enumerate(self._rows)}
         self.oldPos: QPoint | None = None
         self.setModal(True)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
@@ -1080,6 +1111,7 @@ class CustomButtonManager(QDialog):
         self.aw.extraeventbuttoncolor = [r.background for r in self._rows]
         self.aw.extraeventbuttontextcolor = [r.foreground for r in self._rows]
         self.aw.buttonlistmaxlen = self.max_per_row.value()
+        self._retarget_alarms()
         # realignbuttons rebuilds the bar from the arrays; settooltip must follow
         # it because it reads aw.buttonlist, which realignbuttons repopulates.
         self.aw.realignbuttons()
@@ -1098,6 +1130,32 @@ class CustomButtonManager(QDialog):
                 # a bar that failed to redraw must not take the dialog with it.
                 _log.exception('could not rebuild the TilauScope button bar')
         self.accept()
+
+    def _retarget_alarms(self) -> None:
+        """Keep every Event Button alarm on the button it was written for."""
+        qmc = self.aw.qmc
+        actions = getattr(qmc, 'alarmaction', [])
+        strings = getattr(qmc, 'alarmstrings', [])
+        moved: dict[int, int | None] = dict.fromkeys(self._origin.values())
+        moved.update({self._origin[id(row)]: i for i, row in enumerate(self._rows)
+                      if id(row) in self._origin})
+        switched_off: list[int] = []
+        for i, action in enumerate(actions):
+            if action != _ALARM_EVENT_BUTTON or i >= len(strings):
+                continue
+            renumbered = remap_button_refs(strings[i], moved)
+            if renumbered is None:
+                qmc.alarmflag[i] = 0      # never fire whatever took the deleted button's place
+                switched_off.append(i + 1)
+            else:
+                qmc.alarmstrings[i] = renumbered
+        if switched_off:
+            show_styled_message(
+                self, QApplication.translate('tilauscope_buttons', 'Buttons'),
+                QApplication.translate(
+                    'tilauscope_buttons',
+                    'These alarms pressed a button you deleted and have been switched off: {0}'
+                ).format(', '.join(f'#{n}' for n in switched_off)))
 
     # ── frameless window ──────────────────────────────────────────────────
 

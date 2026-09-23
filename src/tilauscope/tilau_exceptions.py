@@ -236,7 +236,7 @@ def report_a_bug(parent=None) -> bool:
 
 def my_exception_hook(exctype, value, tb):
     tb_text = "".join(traceback.format_exception(exctype, value, tb))
-    last_frame = traceback.extract_tb(tb)[-1]
+    frames = traceback.extract_tb(tb)   # empty for an exception raised without one
 
     # Not a discarded binding: a crash can land here before any QApplication
     # exists, and the dialog below needs one. Written as a statement so the
@@ -245,8 +245,8 @@ def my_exception_hook(exctype, value, tb):
         QApplication(sys.argv)
 
     dialog = TilauCrashDialog(
-        mod_name=Path(last_frame.filename).name,
-        line_no=last_frame.lineno,
+        mod_name=Path(frames[-1].filename).name if frames else "?",
+        line_no=frames[-1].lineno if frames else 0,
         error_val=value,
         tb_text=tb_text
     )

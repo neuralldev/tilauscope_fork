@@ -552,9 +552,17 @@ class BeanTabMixin:
 
         self.update_ui_visibility()
 
-        if len(beans) ==0:
-            # Nothing to show: the form kept the last bean's values, because the
-            # clear lived in an `else` that len()==0 and len()>0 already covered.
+        # Preserve an existing selection; otherwise start with the first bean
+        # matching the catalogue filters, which may exclude source row zero.
+        if previous_uuid:
+            self.select_bean_by_uuid(previous_uuid)
+        if beans and not self.datatable.selectionModel().selectedRows():  # type: ignore
+            first_row = self.catalogue_list.first_visible_index() if hasattr(self, 'catalogue_list') else 0
+            if first_row >= 0:
+                self.datatable.selectRow(first_row)
+
+        if not self.datatable.selectionModel().selectedRows():  # type: ignore
+            # No selected bean, including when the filters hide every row.
             self.clear_form()
             # by default disable all buttons
             self.add_button.setEnabled(True)
@@ -568,13 +576,7 @@ class BeanTabMixin:
             self.remove_button.setEnabled(False)
             self.new_crop_button.setEnabled(False)
 
-        elif len(beans) > 0:
-            # Back to the bean that was selected before the rebuild; row 0 only
-            # when it is gone. Either way this triggers load_selected_bean_into_form.
-            if previous_uuid:
-                self.select_bean_by_uuid(previous_uuid)
-            if not self.datatable.selectionModel().selectedRows():  # type: ignore
-                self.datatable.selectRow(0)
+        else:
             # Lot 5: datatable stays hidden — the rich list is the view
             self.add_button.setEnabled(True)
             self.clear_button.setEnabled(False)
@@ -1020,6 +1022,9 @@ class BeanTabMixin:
 
     def load_green_beans(self) -> None:
         beancave_file_path = Path(self.beancave_directory).expanduser() / BEANCAVE_FILE_NAME
+        # A file that exists but could not be read must never be saved over:
+        # the next Add would replace the whole library with one bean.
+        self._library_unreadable = False
 
         if str(self.beancave_directory) != '' and self._is_readable_directory(Path(self.beancave_directory)) and self._is_readable_file(beancave_file_path):
             try:
@@ -1041,6 +1046,7 @@ class BeanTabMixin:
                 if updated:
                     self.save_green_beans()
             except json.JSONDecodeError as e:
+                self._library_unreadable = True
                 _logd.error(f'Error reading beancave.json: {e}')
                 self._show_message(
                     self, QApplication.translate("tilauscope_beancave","Read Error"),
@@ -1048,10 +1054,12 @@ class BeanTabMixin:
                     f" '{beancave_file_path}'. " +
                     QApplication.translate("tilauscope_beancave","The file might be corrupted."), QMessageBox.Icon.Warning)
             except Exception as e:
+                self._library_unreadable = True
                 _logd.error(QApplication.translate("tilauscope_beancave","Unexpected error while reading beancave.json")+f": {e}")
                 self._show_message(self, QApplication.translate("tilauscope_beancave","Error"), QApplication.translate("tilauscope_beancave","An unexpected error occurred")+f": {e}", QMessageBox.Icon.Warning)
         else:
             if str(self.beancave_directory) != "":
+                self._library_unreadable = beancave_file_path.exists()
                 _logd.error(QApplication.translate("tilauscope_beancave","Directory or file access is not possible"))
                 self._show_message(self, QApplication.translate("tilauscope_beancave","Error"), QApplication.translate("tilauscope_beancave","Directory or file access is not possible"), QMessageBox.Icon.Warning)
             else:
@@ -1066,6 +1074,14 @@ class BeanTabMixin:
         Every failure below is reported to the operator and then swallowed, so
         callers that need to say "saved" have no other way to know.
         """
+        if getattr(self, '_library_unreadable', False):
+            self._show_message(self,
+                QApplication.translate("tilauscope_beancave", "Save Error"),
+                QApplication.translate("tilauscope_beancave",
+                    "The bean library file could not be read, so nothing is saved over it. "
+                    "Repair or restore beancave.json, then reopen BeanCave."),
+                QMessageBox.Icon.Warning)
+            return False
         if self.beancave_directory is not None:
             # check if cave is not none before trying to save
             if self.cave is None or self.cave.green_beans is None:

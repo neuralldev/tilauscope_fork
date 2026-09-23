@@ -346,10 +346,10 @@ class AlarmTimelineDialog(QDialog):
 
             # Timing
             if d.event_code == 10:
-                if d.previous_alarm > 0:
-                    timing = f"IF Alarm #{d.previous_alarm} triggered, at +{d.offset}s"
-                elif d.not_alarm > 0:
-                    timing = f"IF Alarm #{d.not_alarm} NOT triggered, at +{d.offset}s"
+                if d.previous_alarm >= 0:
+                    timing = f"IF Alarm #{d.previous_alarm + 1} triggered, at +{d.offset}s"
+                elif d.not_alarm >= 0:
+                    timing = f"IF Alarm #{d.not_alarm + 1} NOT triggered, at +{d.offset}s"
                 else:
                     timing = f"Conditional trigger at +{d.offset}s"
             else:
@@ -649,6 +649,24 @@ class AlarmTimelineWidget(QWidget):
         self.setCursor(Qt.CursorShape.ArrowCursor)
         self.update()
 
+    def _card_header(self, d: AlarmData) -> str:
+        # Guards are 0-based rows, -1 = none; the alarm table shows them 1-based.
+        if d.event_code == 10 and d.previous_alarm >= 0:
+            return (f"#{d.index+1} | "
+                    + QApplication.translate("tilauscope_alarms", "IF ALARM")
+                    + f" #{d.previous_alarm + 1}, "
+                    + QApplication.translate("tilauscope_alarms", "at")
+                    + f" +{d.offset}s "
+                    + QApplication.translate("tilauscope_alarms", "do"))
+        if d.event_code == 10 and d.not_alarm >= 0:
+            return (f"#{d.index+1} | "
+                    + QApplication.translate("tilauscope_alarms", "IF NOT ALARM")
+                    + f" #{d.not_alarm + 1}, "
+                    + QApplication.translate("tilauscope_alarms", "at")
+                    + f" +{d.offset}s "
+                    + QApplication.translate("tilauscope_alarms", "do"))
+        return f"#{d.index+1} | {self.EVENT_NAMES.get(d.event_code, 'ALARM')} +{d.offset}s"
+
     def paintEvent(self, event):
         with QPainter(self) as painter:
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -684,7 +702,7 @@ class AlarmTimelineWidget(QWidget):
                 if alarm.data.event_code == 10:
                     parent = alarm
                     visited = set()
-                    while (parent.data.previous_alarm > 0 or parent.data.not_alarm > 0) \
+                    while (parent.data.previous_alarm >= 0 or parent.data.not_alarm >= 0) \
                             and id(parent) not in visited:
                         visited.add(id(parent))
                         nxt = next(
@@ -729,23 +747,7 @@ class AlarmTimelineWidget(QWidget):
                     painter.setFont(scaled_font)
 
                 # Card text
-                if alarm.data.event_code == 10:
-                    if alarm.data.previous_alarm > 0:
-                        header = (f"#{alarm.data.index+1} | "
-                                  + QApplication.translate("tilauscope_alarms", "IF ALARM")
-                                  + f" #{alarm.data.previous_alarm}, "
-                                  + QApplication.translate("tilauscope_alarms", "at")
-                                  + f" +{alarm.data.offset}s "
-                                  + QApplication.translate("tilauscope_alarms", "do"))
-                    elif alarm.data.not_alarm > 0:
-                        header = (f"#{alarm.data.index+1} | "
-                                  + QApplication.translate("tilauscope_alarms", "IF NOT ALARM")
-                                  + f" #{alarm.data.not_alarm}, "
-                                  + QApplication.translate("tilauscope_alarms", "at")
-                                  + f" +{alarm.data.offset}s "
-                                  + QApplication.translate("tilauscope_alarms", "do"))
-                else:
-                    header = f"#{alarm.data.index+1} | {self.EVENT_NAMES.get(alarm.data.event_code, 'ALARM')} +{alarm.data.offset}s"
+                header = self._card_header(alarm.data)
 
                 if alarm.data.action == 25 or (8 <= alarm.data.action <= 25):
                     body = f"{self.ACTION_LIST.get(alarm.data.action, 'Action')}"
@@ -795,7 +797,7 @@ class AlarmTimelineWidget(QWidget):
             if alarm.data.event_code == 10:
                 parent = alarm
                 visited = set()
-                while (parent.data.previous_alarm > 0 or parent.data.not_alarm > 0) \
+                while (parent.data.previous_alarm >= 0 or parent.data.not_alarm >= 0) \
                         and id(parent) not in visited:
                     visited.add(id(parent))
                     nxt = next(

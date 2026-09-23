@@ -68,7 +68,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
 )
 
-from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS, THEME
+from tilauscope.tilauscope_types import _IS_MACOS, _IS_WINDOWS, THEME, park_until_finished
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -708,7 +708,9 @@ class WhatsNewDlg(QDialog):
         thread = getattr(self, "_thread", None)
         if thread is not None and thread.isRunning():
             thread.quit()
-            thread.wait(2000)
+            if not thread.wait(2000):
+                # still waiting on the network: it must not die with the dialog
+                park_until_finished(thread, worker)
 
     def _save_shown_flag(self) -> None:
         """Persist the highest version shown (so it — and every version below —

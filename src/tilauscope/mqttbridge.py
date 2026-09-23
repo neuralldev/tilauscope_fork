@@ -110,6 +110,9 @@ class MQTTConfig(DataClassDictMixin):
     # Session cache for the keychain value. Never serialised.
     _password: str = field(default="", repr=False,
                            metadata=field_options(serialize="omit"))
+    # The account the cached password belongs to: moving the broker invalidates it.
+    _password_account: str = field(default="", repr=False,
+                                   metadata=field_options(serialize="omit"))
     keepalive: int = 60
     qos: int = 1
     tls: bool = False  # encrypted broker; the CA bundle is the system one, self-signed certificates are rejected
@@ -142,12 +145,13 @@ class MQTTConfig(DataClassDictMixin):
         stored without re-entering the legacy adoption below — which calls the
         setter, and would not come back.
         """
-        if self._password:
-            return self._password
         from tilauscope.tilau_secrets import get_secret, mqtt_account  # noqa: PLC0415
-        stored = get_secret(mqtt_account(self.username, self.broker_url, self.port))
-        if stored:
-            self._password = stored
+        account = mqtt_account(self.username, self.broker_url, self.port)
+        if self._password and self._password_account == account:
+            return self._password
+        stored = get_secret(account)
+        self._password = stored or ""
+        self._password_account = account
         return stored
 
     @property
@@ -185,14 +189,21 @@ class MQTTConfig(DataClassDictMixin):
         from tilauscope.tilau_secrets import (  # noqa: PLC0415
             delete_secret, mqtt_account, set_secret,
         )
-        self._password = value
         account = mqtt_account(self.username, self.broker_url, self.port)
+        self._password = value
+        self._password_account = account
         if value:
             set_secret(account, value)
         else:
             delete_secret(account)
         # The settings copy is superseded the moment the keychain holds it.
         self.password_encoded = ""
+
+    def use_password_for_session(self, value: str) -> None:
+        """Use `value` for this object only — a connection test, never stored."""
+        from tilauscope.tilau_secrets import mqtt_account  # noqa: PLC0415
+        self._password = value or ""
+        self._password_account = mqtt_account(self.username, self.broker_url, self.port)
 
 
 # ---------------------------------------------------------------------------

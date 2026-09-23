@@ -29,7 +29,6 @@ from enum import IntEnum,StrEnum
 from typing import Final
 import queue
 import struct
-import time
 import re
 
 from bleak.backends.characteristic import BleakGATTCharacteristic  # pylint: disable=unused-import
@@ -121,8 +120,8 @@ class LebrewC1BLE(ClientBLE, C1Protocol): # pyright: ignore [reportGeneralTypeIs
     def bleStop(self):
         self.stop()
         # now wait for all the ble async queues to flush before killing the object
-        while self._ble_client is not None:
-            time.sleep(0.1)
+        from tilauscope.tilau_ble_scanner import wait_ble_client_released  # noqa: PLC0415
+        wait_ble_client_released(self)
 
     def isconnected(self) -> bool:
         c = self.connected() # just retrieve UUID is enough to check for connection
@@ -276,8 +275,8 @@ class LebrewAGBLE(ClientBLE, AGProtocol): # pyright: ignore [reportGeneralTypeIs
     def bleStop(self):
         self.stop()
         # now wait for all the ble async queues to flush before killing the object
-        while self._ble_client is not None:
-            time.sleep(0.1)
+        from tilauscope.tilau_ble_scanner import wait_ble_client_released  # noqa: PLC0415
+        wait_ble_client_released(self)
 
     def isconnected(self) -> bool:
         c = self.connected() # just retrieve UUID is enough to check for connection

@@ -108,12 +108,11 @@ def roast_summary(profile: dict) -> dict:
             pass
 
     stats = []
-    try:
-        agtron = int(float(profile.get('ground_color') or 0))
-        if agtron > 0:
-            stats.append(f"Agtron {agtron}")
-    except (TypeError, ValueError):
-        pass
+    # ground when measured, else whole (converted to Agtron) — the rule used everywhere
+    from tilauscope.roast_debrief import roast_colour_agtron  # noqa: PLC0415
+    agtron = roast_colour_agtron(profile)
+    if agtron is not None and agtron > 0:
+        stats.append(f"Agtron {agtron:.0f}")
     drop_t = float(computed.get('DROP_time') or 0)
     fcs_t = float(computed.get('FCs_time') or 0)
     if drop_t > 0 and 0 < fcs_t < drop_t:

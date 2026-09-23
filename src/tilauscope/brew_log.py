@@ -122,7 +122,16 @@ def record(directory, bean_uuid: str, sample: BrewSample) -> bool:
     """
     if not bean_uuid:
         return False
+    path = log_path(directory)
     log = load(directory)
+    if path is not None and path.exists() and not log.entries:
+        # load() answers an empty journal for an unreadable one; saving now would
+        # replace every sample on file with this single one.
+        try:
+            BrewLog.from_json(path.read_text(encoding=_ENCODING))
+        except Exception:  # noqa: BLE001
+            _log.error("Brew log: %s unreadable; sample not recorded over it", path)
+            return False
     if not append(log, bean_uuid, sample):
         return False
     return save(directory, log)

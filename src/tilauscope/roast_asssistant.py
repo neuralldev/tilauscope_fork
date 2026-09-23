@@ -335,7 +335,8 @@ def _dtr_realtime(t_now_sec: float, t_charge_sec: float, t_fcs_sec: float) -> fl
     """DTR temps réel en % : (temps depuis FC) / (temps depuis CHARGE) × 100."""
     total = t_now_sec - t_charge_sec
     dev   = t_now_sec - t_fcs_sec
-    if total <= 0 or dev < 0:
+    # an unmarked first crack reads 0 s: no development to measure yet
+    if total <= 0 or dev < 0 or t_fcs_sec <= t_charge_sec:
         return None
     return (dev / total) * 100.0
 

@@ -591,13 +591,13 @@ class AlogScanner(QObject):
                 # twice (a re-save, a copy) must count as one turn of the drum.
                 unique: dict[object, tuple[QDateTime, int, float]] = {}
                 for meta in records.values():
-                    dt = QDateTime.fromString(meta.roastisodate, Qt.DateFormat.ISODate)
-                    if not dt.isValid():
-                        # No usable roast date — fall back on the recorded epoch
-                        # rather than dropping the roast from the cleaning count.
-                        if meta.roastepoch > 0:
-                            dt = QDateTime.fromSecsSinceEpoch(meta.roastepoch)
-                        else:
+                    # The epoch carries the time of day; the ISO date alone reads
+                    # as midnight and drops every roast of the cleaning day.
+                    if meta.roastepoch > 0:
+                        dt = QDateTime.fromSecsSinceEpoch(meta.roastepoch)
+                    else:
+                        dt = QDateTime.fromString(meta.roastisodate, Qt.DateFormat.ISODate)
+                        if not dt.isValid():
                             continue
                     if dt <= self.last_clean:
                         continue  # older than last cleaning — skip

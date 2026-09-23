@@ -29,6 +29,9 @@ printer set to print at 100% (no "fit to page") puts it straight onto a sleeve o
 cutting needed. Sack labels print directly to a Niimbot thermal printer, sized for its 50×30 mm
 roll.
 
+In the Roasts tab, select a roast and choose **Export → Label (PDF)**, then choose where to
+save it. The label uses that roast's saved data and linked coffee, independently of the curve preview.
+
 A roast label can be printed the moment the roast ends, from the result form itself, without
 waiting for the roast to be filed — it uses the roasted weight and colour just entered, so
 the weight loss and colour on the label are the ones being recorded. Printing changes
@@ -63,8 +66,8 @@ bought coffee always use the 30 mm roll.
 **🖨 Print label** opens a preview with a copies count, then prints in the background. The label
 is sent to the printer once, whatever the count, and the printer puts the copies out one by one.
 Printing is refused, with a plain explanation rather than a silent failure, when the roll is
-out of labels, when the loaded paper isn't recognised, or when it doesn't match the size the
-label needs.
+out of labels, when the loaded paper isn't recognised, when it doesn't match the size the
+label needs, or while another label is still printing.
 
 While BeanCave is open, the printer's status keeps itself current: an open cover shows within a
 few seconds, and a printer that stops answering — switched off, or gone to sleep — shows

@@ -328,8 +328,8 @@ class AirwaveBLE(ClientBLE, DiFluidProtocol): # pyright: ignore [reportGeneralTy
             self._cmd_queue.clear()
         self.stop()
         # now wait for all the ble async queues to flush before killing the object
-        while self._ble_client is not None:
-            time.sleep(0.1)
+        from tilauscope.tilau_ble_scanner import wait_ble_client_released  # noqa: PLC0415
+        wait_ble_client_released(self)
 
     # ble_port.py implementation of connection rely on presence of both UUID and Name of device read from the Bluetooth layers
     def isconnected(self) -> bool:
@@ -1150,7 +1150,9 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
 
     # setters
     def set_state(self, subcommand:AirwaveCommands = AirwaveCommands.STATUS, value: int = 0, answer:bool = True):
-        if value is None or value not in AirwaveState:
+        allowed = {AirwaveCommands.ROASTINGSTAGE: AirwaveEvents,
+                   AirwaveCommands.AUTOMODE: AirwaveControlMode}.get(subcommand, AirwaveState)
+        if value is None or value not in allowed:
             return False
         self.command_running = True
         payload = struct.pack('B', value)

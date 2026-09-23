@@ -22,6 +22,7 @@ download/install dialog when found.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
@@ -123,7 +124,7 @@ def _get_local_version() -> tuple[str, int]:
 class _UpdateCheckWorker(QObject):
     """Runs in a QThread. Emits update_found or no_update when done."""
 
-    update_found = pyqtSignal(str, int, str, str)   # (remote_version, remote_build, download_url, filename)
+    update_found = pyqtSignal(str, int, str, str, str)   # (remote_version, remote_build, download_url, filename, sha256)
     no_update    = pyqtSignal()
     check_error  = pyqtSignal(str)
 
@@ -174,7 +175,8 @@ class _UpdateCheckWorker(QObject):
                     continue
                 v_str, b = m.group(1), int(m.group(2))
                 if best is None or _is_newer(v_str, b, best["version"], best["build"]):
-                    best = {"version": v_str, "build": b, "dl_url": url, "filename": name}
+                    best = {"version": v_str, "build": b, "dl_url": url, "filename": name,
+                            "digest": asset.get("digest") or ""}
 
         if best is None:
             _log.debug("[TilauUpdater] No matching installer asset on GitHub.")
@@ -199,7 +201,8 @@ class _UpdateCheckWorker(QObject):
             _log.info(
                 f"[TilauUpdater] Update found: {best['version']} build {best['build']}  →  {best['dl_url']}"
             )
-            self.update_found.emit(best["version"], best["build"], best["dl_url"], best["filename"])
+            self.update_found.emit(best["version"], best["build"], best["dl_url"], best["filename"],
+                                   best["digest"])
 
         except Exception as exc:
             _log.warning(f"[TilauUpdater] Check failed: {exc}")
@@ -226,10 +229,12 @@ class _DownloadWorker(QObject):
     finished   = pyqtSignal(str)          # local file path
     dl_error   = pyqtSignal(str)
 
-    def __init__(self, url: str, dest_path: str) -> None:
+    def __init__(self, url: str, dest_path: str, digest: str = "") -> None:
         super().__init__()
         self._url  = url
         self._dest = dest_path
+        # GitHub's "sha256:<hex>" for the asset; empty when the API gave none.
+        self._sha256 = digest[len("sha256:"):].lower() if digest.startswith("sha256:") else ""
 
     @pyqtSlot()
     def run(self) -> None:
@@ -257,6 +262,7 @@ class _DownloadWorker(QObject):
             total = int(resp.headers.get("content-length", 0) or 0)
             downloaded = 0
             interrupted = False
+            sha = hashlib.sha256()
             try:
                 with open(self._dest, "wb") as f:
                     for chunk in resp.iter_content(chunk_size=65536):
@@ -266,6 +272,7 @@ class _DownloadWorker(QObject):
                         if not chunk:
                             continue
                         f.write(chunk)
+                        sha.update(chunk)
                         downloaded += len(chunk)
                         if total:
                             self.progress.emit(min(100, int(downloaded * 100 / total)))
@@ -282,6 +289,13 @@ class _DownloadWorker(QObject):
 
             # Presence + integrity gate before declaring success.
             self._verify_download(downloaded, total)
+            if self._sha256 and sha.hexdigest() != self._sha256:
+                raise _DownloadError(QApplication.translate(
+                    "tilauscope_updates",
+                    "The downloaded installer does not match the checksum published "
+                    "with the release. It was deleted; try again later."))
+            if not self._sha256:
+                _log.warning("[TilauUpdater] No published checksum for this installer.")
 
             self.finished.emit(self._dest)
 
@@ -738,6 +752,14 @@ class TilauUpdater(QObject):
 
     @pyqtSlot()
     def _run_check(self) -> None:
+        # One check at a time: a second one orphaned the first thread. A manual
+        # request still gets its answer, from the check already under way.
+        try:
+            if self._check_thread is not None and self._check_thread.isRunning():
+                _log.info("[TilauUpdater] A check is already running.")
+                return
+        except RuntimeError:
+            pass
         local_v, local_b = _get_local_version()
         _log.info(f"[TilauUpdater] Local version: {local_v}  build: {local_b}")
 
@@ -792,8 +814,9 @@ class TilauUpdater(QObject):
 
     # ── step 2 : offer the update ─────────────────────────────────────────────
 
-    @pyqtSlot(str, int, str, str)
-    def _on_update_found(self, remote_v: str, remote_b: int, dl_url: str, filename: str) -> None:
+    @pyqtSlot(str, int, str, str, str)
+    def _on_update_found(self, remote_v: str, remote_b: int, dl_url: str, filename: str,
+                         digest: str = "") -> None:
         local_v, local_b = _get_local_version()
 
         dlg = _UpdateAvailableDialog(remote_v, remote_b, local_v, local_b, self._parent)
@@ -801,11 +824,13 @@ class TilauUpdater(QObject):
             _log.info("[TilauUpdater] User deferred update.")
             return
 
-        self._start_download(remote_v, remote_b, dl_url, filename)
+        self._start_download(remote_v, remote_b, dl_url, filename, digest)
 
     # ── step 3 : download ─────────────────────────────────────────────────────
 
-    def _start_download(self, remote_v: str, remote_b: int, dl_url: str, filename: str) -> None:
+    def _start_download(self, remote_v: str, remote_b: int, dl_url: str, filename: str,
+                        digest: str = "") -> None:
+        self._cancelled = False   # a previous cancel in this session is not this download's
         downloads_dir = QStandardPaths.writableLocation(
             QStandardPaths.StandardLocation.DownloadLocation
         )
@@ -815,7 +840,7 @@ class TilauUpdater(QObject):
         self._dl_dialog.cancelled.connect(self._on_download_cancelled)
         self._dl_dialog.show()
 
-        self._dl_worker = _DownloadWorker(dl_url, self._dest_path)
+        self._dl_worker = _DownloadWorker(dl_url, self._dest_path, digest)
         self._dl_thread = QThread(self)
         self._dl_worker.moveToThread(self._dl_thread)
 

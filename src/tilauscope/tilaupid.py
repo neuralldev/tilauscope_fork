@@ -1056,6 +1056,8 @@ class TilauPreheatPID(AdaptivePIDMixin):
             now=self._control_clock() if now is None else now,
         )
         burner = base_burner + integral
+        if not math.isfinite(burner):   # the clamp below would read NaN as the ceiling
+            return 0, 0
         burner = max(0.0, min(self.effective_max_burner(), burner))
 
         return int(round(burner)), 0

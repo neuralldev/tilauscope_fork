@@ -355,8 +355,10 @@ class CustomLabelDlg(QDialog):
         return host
 
     def _host(self):
+        from tilauscope.cave.lifecycle import live_beancave  # noqa: PLC0415
         host = self._host_ref
-        return None if host is None or _deleted(host) else host
+        # a closed BeanCave has stopped its printer but kept its "connected" flag
+        return None if host is None or _deleted(host) or not live_beancave(host) else host
 
     def _printer(self):
         host = self._host()
@@ -384,7 +386,7 @@ class CustomLabelDlg(QDialog):
             reason = QApplication.translate(
                 "tilauscope_label", "Type the coffee name to print.")
         else:
-            left = getattr(np_, "total_labels", 0) - getattr(np_, "used_labels", 0)
+            left = getattr(np_, "used_labels", 0)   # the RFID field counts labels REMAINING
             reason = QApplication.translate(
                 "tilauscope_label", "Roll: 50 × 30 mm · {0} labels left").format(max(left, 0))
         if self.lbl_status.text() != reason:

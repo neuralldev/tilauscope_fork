@@ -30,7 +30,6 @@ from enum import StrEnum
 from typing import Final, TYPE_CHECKING
 import queue
 import struct
-import time
 import threading  # à ajouter en tête de fichier avec les autres imports
 
 if TYPE_CHECKING:
@@ -235,8 +234,8 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
     def bleStop(self):
         self.stop()
         # now wait for all the ble async queues to flush before killing the object
-        while self._ble_client is not None:
-            time.sleep(0.1)
+        from tilauscope.tilau_ble_scanner import wait_ble_client_released  # noqa: PLC0415
+        wait_ble_client_released(self)
 
     def isconnected(self) -> bool:
         c = self.connected() # just retrieve UUID is enough to check for connection

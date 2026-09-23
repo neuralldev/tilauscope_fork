@@ -1,4 +1,38 @@
 ## [4.3] 2026-09-13
+build 12
+* 🐛 [fix(beancave)] : the Roasts tab no longer shows or lets you drag the temperature milestones when only the rate of rise is displayed
+* 🐛 [fix(beancave)] : Label PDF export works again for a single selected roast and uses its linked coffee independently of the curve preview.
+* 🐛 [fix(beancave)] : Opening without a linked roast now shows the first bean matching the catalogue filters instead of a hidden out-of-stock bean.
+* 🐛 [fix(tilauscope)] : the emergency heat cut now holds back every alarm action until monitoring is next turned on — alarms were left live, and one driving a slider or the PID could put the heat back on after the cut
+* 🐛 [fix(skywalker)] : a connection to the Skywalker that fails half-way now turns the burner off and closes the link — it was left open, at the controller's default heat, with nothing holding it
+* 🐛 [fix(roast plan)] : the development ramp no longer asks for more burner than the roaster's ceiling (80 % on the Skywalker) when the matched history ran hotter; the DEV column AutoPilot follows is held to it too
+* 🐛 [fix(airwave)] : the extractor receives the DRY END, first crack, second crack and DROP stages again — it stayed on CHARGE for the whole roast and each stage was reported as not confirmed
+* 🐛 [fix(tilauscope)] : pressing START when Artisan declines to record (Cancel on its "save changes?" question) leaves the window idle instead of showing a preheat that never started, after which START/STOP did the opposite of what it showed
+* 🐛 [fix(tilauscope)] : the figures shown at OFF read "--" for anything whose milestone was not marked — a preheat alone showed a negative total time, a roast dropped without first crack a DTR near 100 %
+* 🐛 [fix(coach)] : a roast dropped without a first crack mark is no longer judged as 100 % development with advice to drop earlier
+* 🐛 [fix(tilauscope)] : without a first crack mark, the development and DROP pages show "--" instead of a DTR and a predicted colour computed as if the whole roast were development
+* 🐛 [fix(tilauscope)] : the phone shows the rate of rise when it goes negative — during a crash and through the cooling it was blank
+* 🐛 [fix(alarms)] : the visual alarm timeline numbers IF ALARM references as the alarm table does — alarm #1 read as #0 and every other reference one too low — and no longer closes the application when an IF ALARM waits on alarm #1 or on nothing
+* 🐛 [fix(buttons)] : moving a custom button keeps the alarms that press it on that button; an alarm whose button is deleted is switched off, and named, instead of pressing whatever button took its place — possibly another machine command mid-roast
+* 🐛 [fix(routine)] : the cleaning counter counts the roasts made on the cleaning day after the cleaning — they were all taken as made before it
+* 🐛 [fix(beancave)] : closing BeanCave, the sack wizard or a coffee editor while a supplier page, an index or a print is still being processed no longer closes the application
+* 🐛 [fix(beancave)] : closing BeanCave while a label waits on a printer that stopped answering no longer freezes the application
+* 🐛 [fix(labels)] : printing a roast label while another is still printing now says a print is in progress, instead of closing the application
+* 🐛 [fix(beancave)] : a bean library file that cannot be read is never saved over — adding a coffee used to replace the whole library with that one bean; a message now asks to repair or restore the file first
+* 🐛 [fix(brew)] : a brew journal that cannot be read is no longer replaced by the next measured brew
+* 🐛 [fix(labels)] : Print a Coffee Label no longer keeps printing through a BeanCave that was closed, and counts the labels left on the roll as BeanCave does — it showed the labels already used
+* 🐛 [fix(beancave)] : the roast card and the phone's roast page show the whole-bean colour when no ground colour was measured, converted to Agtron like everywhere else
+* 🐛 [fix(roast setup)] : the colour and crack controls say what the device does — "Colour meter", "crack counter" — instead of naming one model
+* 🐛 [fix(pid)] : the preheat control cuts the burner if its computation ever yields an invalid value, instead of sending it to the ceiling
+* 🐛 [fix(tilauscope)] : the milestone forecast marker no longer jumps away on a sample where the bean probe answered nothing
+* 🐛 [fix(curve)] : changing the smoothing of a finished roast recomputes its rate of rise at once, so saving right after keeps the first-crack rate of rise
+* 🐛 [fix(devices)] : turning monitoring off or quitting no longer hangs on an AirWave, ambient probe or colour/water-activity device that does not let go of its Bluetooth link
+* 🐛 [fix(mqtt)] : the broker password follows a change of broker, port or user instead of being lost at the next launch, and Test Connection no longer stores a password typed only for the test
+* 🐛 [fix(beancave)] : the Stock tab no longer piles up broker connections every 30 s while the broker is down
+* 🐛 [fix(updates)] : the downloaded installer is checked against the checksum GitHub publishes for it and deleted if it does not match; a download started after a cancelled one offers its install again; a manual check while the startup check runs no longer starts a second one
+* 🐛 [fix(ai)] : cancelling an AI answer no longer freezes the window for up to three seconds
+* 🐛 [fix(tilauscope)] : closing What's New while offline, moving the window or pressing B after a failed button-bar rebuild, and a crash without a traceback no longer close the application or hide the crash report
+* 🐛 [fix(logger)] : reopening the Logger no longer writes every log line twice, a serial port that will not open is reported once instead of ten times a second, and the local log port accepts only plain log records
 build 11
 * ⚡ [feat(l10n)] : German, Spanish, Italian, Simplified and Traditional Chinese are complete again — the labels of the reworked Roasts tab and of the Devices window were showing in English inside an otherwise translated interface
 * ⚡ [feat(tilauscope)] : a simulation can no longer be mistaken for a live roast — the window is framed in mauve and a band across its top says SIMULATION and names the roast being replayed, whether a curve is loaded or not; with monitoring off, Leave simulation at the right of the band ends it, and the status line no longer carries SIMULATOR, PAUSED or the replay speed

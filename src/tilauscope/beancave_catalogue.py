@@ -257,6 +257,10 @@ class CatalogueListWidget(QWidget):
             self._rows[self._selected].set_selected(True)
         self._apply_filter()
 
+    def first_visible_index(self) -> int:
+        """Return the first matching bean's source index, even before showing."""
+        return next((row._index for row in self._rows if not row.isHidden()), -1)
+
     def select_index(self, index: int) -> None:
         """Mirror a programmatic datatable selection — never re-emits."""
         if index == self._selected:

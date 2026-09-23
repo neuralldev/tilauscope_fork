@@ -93,6 +93,18 @@ def _num(v) -> Optional[float]:
         return None
 
 
+def _ror(v) -> float | None:
+    # A rate of rise is legitimately negative (crash, cooling): only None and
+    # NaN mean "no reading" here, never the -1 temperature sentinel.
+    try:
+        if v is None:
+            return None
+        f = float(v)
+        return None if math.isnan(f) else round(f, 1)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _mode(qmc) -> str:
     """The operator's temperature unit, as the display side spells it."""
     return 'F' if str(getattr(qmc, 'mode', 'C')).upper() == 'F' else 'C'
@@ -205,7 +217,7 @@ class TelemetryTap(QObject):
             bt = _num(qmc.temp2[-1]) if qmc.temp2 else None
             has_et = et_available_for(self._aw)
             et = _num(qmc.temp1[-1]) if has_et and qmc.temp1 else None
-            ror = _num(qmc.delta2[-1]) if getattr(qmc, 'delta2', None) else None
+            ror = _ror(qmc.delta2[-1]) if getattr(qmc, 'delta2', None) else None
             phase = self._phase(qmc, ti, charged)
 
             ltime = _lcd_seconds(qmc, timex, ti)  # match the desktop LCD exactly
@@ -338,7 +350,7 @@ class TelemetryTap(QObject):
             t_ser.append(round(float(timex[i]) - base, 1))
             bt_ser.append(_num(temp2[i]) if i < len(temp2) else None)
             et_ser.append(_num(temp1[i]) if i < len(temp1) else None)
-            ror_ser.append(_num(delta2[i]) if i < len(delta2) else None)
+            ror_ser.append(_ror(delta2[i]) if i < len(delta2) else None)
 
         markers = []
         for idx, name in _MARKERS:

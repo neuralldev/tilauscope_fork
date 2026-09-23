@@ -2031,7 +2031,8 @@ class TilauscopeConfigDlg(QDialog):
             keepalive=self.mqttKeepaliveSpin.value(),
         )
         config.username = self.mqttUsernameEdit.text()
-        config.password = self.mqttPasswordEdit.text()
+        # a test is not a save: the keychain keeps what OK last stored
+        config.use_password_for_session(self.mqttPasswordEdit.text())
         return config
 
     def _mqtt_tls_toggled(self, checked: bool) -> None:

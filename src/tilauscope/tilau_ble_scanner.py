@@ -221,3 +221,20 @@ class TilauBLEScanner(QObject):
             return []
         finally:
             self._current_fut = None
+
+
+def wait_ble_client_released(device: object, timeout_s: float = 3.0) -> bool:
+    """Wait for a stopped BLE driver to drop its client, never past `timeout_s`.
+
+    Runs on the GUI thread at OFF and at quit: a connect still in flight can put
+    a client back after stop(), and an unbounded wait then hung the application.
+    """
+    import time  # noqa: PLC0415
+    deadline = time.monotonic() + timeout_s
+    while getattr(device, "_ble_client", None) is not None:
+        if time.monotonic() >= deadline:
+            _log.warning("BLE client of %s not released after %.1f s",
+                         type(device).__name__, timeout_s)
+            return False
+        time.sleep(0.1)
+    return True

@@ -72,8 +72,10 @@ sliding off the button, cancels it — a stray click cannot end a roast.
 When it fires, TilauScope:
 
 - stops anything that was driving the heat on your behalf — preheating control, PID, alarms and
-  profile playback — so nothing pushes the burner back up a second later. A roast replay running
-  at the time is ended with them, and the replay control in the header goes off to say so;
+  profile playback — so nothing pushes the burner back up a second later. Alarms still show when
+  their condition is met, but none acts on the machine until monitoring is next turned on. A
+  roast replay running at the time is ended with them, and the replay control in the header goes
+  off to say so;
 - drops any control change you made in the instant before pressing. A click on a lever is held
   briefly before it is sent, so that a burst of clicks travels as one command; a click still
   waiting when the heat cut fires is discarded rather than sent afterwards;
@@ -570,6 +572,10 @@ buttons from the next, so it is how you keep *Burner up / Burner down* together 
 The tray at the bottom, **Not on the roast screen**, holds buttons that exist but are never
 drawn: they are there to be fired by an alarm. Drag one into a row and it appears on the roast
 screen; drag a button down into the tray and it disappears from it, keeping its command.
+
+An alarm that presses a button follows that button: move it anywhere, and the alarm still
+presses it at its new place. An alarm whose button you delete is switched off when you press
+**Apply**, and a message lists it — it would otherwise press whichever button took that place.
 
 Selecting a button opens the panel below the rows:
 
