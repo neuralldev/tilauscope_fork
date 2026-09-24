@@ -45,6 +45,7 @@ class TilauMenuExtension:
         # Top-level menu kept as instance var — prevents GC on macOS
         self.tilau_top_menu: QMenu | None = None
         self._help_menu_rewired = False
+        self._events_action_rewired = False
         self._build_actions()
         # Installed at window construction: before the first settingsLoad() and
         # before the roasting window hooks qmc.redraw() itself.
@@ -256,8 +257,8 @@ class TilauMenuExtension:
     def _patch_config_menu(self, ui_mode: 'UI_MODE') -> None:
         """Hide Artisan menu items not used by TilauScope's guided workflow
         (theme/colors/UI mode, wheel graph, cup profile, core debug tools, the View
-        menu, the Analyzer that BeanCave's Analysis page replaces, Roast Properties
-        that the roast setup and result forms replace, and the settings
+        menu, the Analyzer that BeanCave's Analysis page replaces, the whole Roast
+        menu that the roast setup/result forms and TilauScope's background replace, and the settings
         artisan_display_policy imposes or leaves as they are).
         Re-applied on every set_menu() call (mode switches rebuild the menus).
         Hidden, never deleted: a hidden QAction also stays disabled whatever Artisan
@@ -267,6 +268,8 @@ class TilauMenuExtension:
         for attr, hide in (
             ('viewMenu', lambda m: m.menuAction().setVisible(False)),
             ('editGraphAction', lambda a: a.setVisible(False)),  # Roast > Properties…, Ctrl+T
+            # Background (Ctrl+B) and Switch (Ctrl+W) are covered by TilauScope's own background.
+            ('RoastMenu', lambda m: [a.setVisible(False) for a in (m.menuAction(), *m.actions())]),
             # Its actions carry Ctrl+K and Ctrl+Alt+K: hidden with the menu so the keys stay inert.
             ('analyzeMenu', lambda m: [a.setVisible(False) for a in (m.menuAction(), *m.actions())]),
             ('calibrateDelayAction', lambda a: a.setVisible(False)),
@@ -294,6 +297,7 @@ class TilauMenuExtension:
                 hide(obj)
 
         self._rewire_help_actions()
+        self._rewire_events_action()
 
     def _rewire_help_actions(self) -> None:
         """Point Help/Documentation and Help/Check for Updates at TilauScope's
@@ -317,6 +321,27 @@ class TilauMenuExtension:
 
         if doc_action is not None or update_action is not None:
             self._help_menu_rewired = True
+
+    def _rewire_events_action(self) -> None:
+        """Open Config/Events without its Config tab, which TilauScope Config's
+        CONTROLS tab replaces. Runs once, like _rewire_help_actions()."""
+        if self._events_action_rewired:
+            return
+        aw = self._aw
+        events_action = getattr(aw, 'eventsAction', None)
+        if events_action is None or not hasattr(aw, 'eventsconf'):
+            return
+        events_action.triggered.disconnect(aw.eventsconf)
+        events_action.triggered.connect(self._open_events_without_config)
+        self._events_action_rewired = True
+
+    def _open_events_without_config(self, _checked: bool = False) -> None:
+        from artisanlib.events import EventsDlg
+        aw = self._aw
+        # TilauScope runs Artisan in Expert mode: the Buttons tab (1) always exists
+        dialog = EventsDlg(aw, aw, max(1, aw.EventsDlg_activeTab))
+        dialog.TabWidget.setTabVisible(0, False)
+        dialog.show()
 
     def _insert_export_logs_action(self) -> None:
         """Add 'Export Logs...' to Artisan's general Help menu, right after the

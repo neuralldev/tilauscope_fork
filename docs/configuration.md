@@ -4,9 +4,9 @@
     **Artisan does** — configures each device in its own dialog, spread across menus, with no
     single place that says what a working setup looks like.
 
-    **TilauScope adds** — one dialog, five tabs, covering everything the fork needs to work: the
-    machine, the sensors, how milestones get detected, the outside services it can talk to, and
-    printing. This chapter exists because a wrong or missing setting here is the most common
+    **TilauScope adds** — one dialog, seven tabs, covering everything the fork needs to work: the
+    machine, the names of its controls and what each milestone sends to it, the sensors, how
+    milestones get detected, the outside services it can talk to, printing, and BeanCave's folders. This chapter exists because a wrong or missing setting here is the most common
     reason a guided feature seems broken when it is simply unconfigured.
 
 Open it from **TilauScope → TilauScope Config...**. Nothing here is required to start
@@ -15,7 +15,10 @@ the essentials — but this is where every one of those choices can be revisited
 finer settings live that the wizard does not ask about. What reads the roaster and which extra
 devices feed the counters are set in the separate [Devices](devices.md) window.
 
-![the config dialog with all five tabs visible in the tab strip](assets/configuration-4.1.png)
+![the config dialog with all seven tabs visible in the tab strip](assets/configuration-4.1.png)
+
+<!-- CAPTURE 4.1 — Configuration, GENERAL tab open, with the seven tabs visible in the tab strip:
+GENERAL, CONTROLS, SENSORS, DETECTION, INTEGRATIONS, PRINTING, BEANCAVE. -->
 
 ---
 
@@ -83,6 +86,40 @@ this particular computer and screen. See
 
 <!-- CAPTURE 4.13 — Configuration → GENERAL, the Diagnostics group, with the progress
 indicator window open in front of it mid-run (rings turning, a count showing). -->
+
+---
+
+## 🎚 CONTROLS — control names and milestone commands
+
+### Control names
+
+The four fields name the machine's four controls — on a Skywalker, typically *Air*, *Drum*,
+*Airwave* and *Burner*. The names appear on the sliders, the event buttons, the alarms and the
+phone. A new name takes effect everywhere on **Save**; a field left empty keeps the previous
+name. When an AirWave is first assigned in the SENSORS tab, the third control is named
+*Airwave* automatically; it can be renamed here afterwards.
+
+### Milestone commands
+
+A milestone command is what TilauScope sends to the roaster at the moment a
+[milestone](glossary.md#roast-phases-and-milestones) is marked — whether it is marked on the
+roasting window, in Artisan, from the phone or automatically. On a Skywalker, for example,
+[CHARGE](glossary.md#charge), [DROP](glossary.md#drop) and COOL END each send an *IO Command*
+to the machine.
+
+The line of milestones at the top shows which ones send something: a filled dot has a command,
+an empty dot has none. Only the milestones with a command show their card below. Click an empty
+milestone to add one: its card opens with the *IO Command* type selected. Each card holds the
+command type — the full list Artisan offers — and the command itself; **✕** removes it. A card
+saved without a command sends nothing.
+
+**Monitoring buttons**, folded by default, holds the commands sent by RESET, ON and OFF. START
+is shown there but cannot be changed: it carries the preheat temperature, which is set in the
+[roast setup](preparing-a-roast.md).
+
+<!-- CAPTURE 4.14 — Configuration → CONTROLS, a Skywalker setup: the four control names filled,
+CHARGE, DROP and COOL END dots filled with their three cards showing skywalker(EVT,…) commands,
+and Monitoring buttons unfolded with START reading "Preheat to 181 °C". -->
 
 ---
 
@@ -326,9 +363,12 @@ for it to come out at the size chosen here.
 
 ## Artisan settings TilauScope keeps fixed
 
-Artisan's **View** menu and six entries of its **Config** menu — **Sampling...**, **Curves...**,
-**Phases...**, **Axes...**, **Autosave...** and **Batch...** — are not offered, and their keyboard
-shortcuts do not open them either.
+Artisan's **View** and **Roast** menus and six entries of its **Config** menu — **Sampling...**,
+**Curves...**, **Phases...**, **Axes...**, **Autosave...** and **Batch...** — are not offered,
+and their keyboard shortcuts do not open them either. The roast menu's background and profile
+switch are covered by TilauScope's own background curve. **Config → Events...** opens without
+its **Config** tab: the [CONTROLS](#-controls--control-names-and-milestone-commands) tab replaces
+it.
 
 Two of them are set by TilauScope:
 
@@ -342,6 +382,9 @@ Two of them are set by TilauScope:
 
 The other four keep the values already in place: phases, axis limits, autosave, and the batch
 counter, which still advances at [DROP](glossary.md#drop).
+
+Artisan's DROP button is always kept shown. Artisan marks DROP by itself whenever that button
+is hidden, even with automatic DROP turned off in the roast setup.
 
 A settings or machine file loaded later is brought back to these values as it opens; the file
 itself is not modified.

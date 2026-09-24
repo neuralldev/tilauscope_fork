@@ -42,6 +42,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QCursor, QPalette, QColor
 from PyQt6 import sip
 
+from tilauscope.config_controls_tab import ControlsTab
 from tilauscope.theme_qss import base_qss, style_combo_popup, tooltip_qss
 from tilauscope.tilauscope_types import (THEME, literal_ampersand, no_enter_default, resolve_crack_channel,
                                          resolve_fc_window, show_styled_message,
@@ -238,6 +239,7 @@ class TilauscopeConfigDlg(QDialog):
     Tabs
     ────
     ⚙  GENERAL       Roaster model, UI features
+    🎚  CONTROLS      Control names, milestone and monitoring button commands
     📡  SENSORS       All coupled devices grouped by role (BLE scan per device)
     🔬  DETECTION     FC / DE algorithm parameters & per-phase thresholds
     🌐  INTEGRATIONS  MQTT broker + AI provider
@@ -380,6 +382,7 @@ class TilauscopeConfigDlg(QDialog):
         # which paints the tooltip transparent instead of styling it.
         _tab_qss = "QWidget { background: transparent; }" + tooltip_qss()
         self._general_tab    = QWidget(); self._general_tab.setStyleSheet(_tab_qss)
+        self._controls_tab   = QWidget(); self._controls_tab.setStyleSheet(_tab_qss)
         self._sensors_tab    = QWidget(); self._sensors_tab.setStyleSheet(_tab_qss)
         self._detection_tab  = QWidget(); self._detection_tab.setStyleSheet(_tab_qss)
         self._integrations_tab = QWidget(); self._integrations_tab.setStyleSheet(_tab_qss)
@@ -387,6 +390,7 @@ class TilauscopeConfigDlg(QDialog):
         self._beancave_tab   = QWidget(); self._beancave_tab.setStyleSheet(_tab_qss)
 
         self._tabs.addTab(self._general_tab,     QApplication.translate("tilauscope_devices", "⚙  GENERAL"))
+        self._tabs.addTab(self._controls_tab,    QApplication.translate("tilauscope_devices", "🎚  CONTROLS"))
         self._tabs.addTab(self._sensors_tab,     QApplication.translate("tilauscope_devices", "📡  SENSORS"))
         self._tabs.addTab(self._detection_tab,   QApplication.translate("tilauscope_devices", "🔬  DETECTION"))
         self._tabs.addTab(self._integrations_tab, QApplication.translate("tilauscope_devices", "🌐  INTEGRATIONS"))
@@ -394,6 +398,7 @@ class TilauscopeConfigDlg(QDialog):
         self._tabs.addTab(self._beancave_tab,    QApplication.translate("tilauscope_devices", "☕  BEANCAVE"))
 
         self._setup_general_tab()
+        self._controls = ControlsTab(self._controls_tab, self.aw)
         self._setup_sensors_tab()
         self._setup_detection_tab()
         self._setup_integrations_tab()
@@ -2561,6 +2566,11 @@ class TilauscopeConfigDlg(QDialog):
                 _log.warning("refresh_replay_capability failed: %s", e)
         aw.TilauScopeAnnotation  = self.tilauScopeAnnotationCheckBox.isChecked()
         aw.TilauScopeNotification = self.tilauScopeNotificationCheckBox.isChecked()
+
+        # ── Controls ──────────────────────────────────────────────────────
+        # before the AirWave mapping below, whose first-time renaming of the
+        # damper control must win over the name this tab loaded
+        self._controls.apply()
 
         # ── Sensors — Ambient ─────────────────────────────────────────────
         t = self.tilauscopeProbeComboBoxcList.currentText()

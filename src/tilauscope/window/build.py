@@ -920,6 +920,7 @@ class BuildMixin:
         slider_rows_layout.setSpacing(4)
 
         self._slider_row_widgets: list[QWidget] = []  # per-slider row widgets (idx 0-3), for visibility mirror
+        self._slider_name_labels: list[QLabel] = []   # idx 0-3, renamed by refresh_slider_names()
 
         for i, (name, color, min_val, max_val, unit, step) in enumerate(slider_defs):
             row = QHBoxLayout()
@@ -990,6 +991,7 @@ class BuildMixin:
                 # to fill the (taller) locked control zone.
                 row_w.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
                 self._slider_row_widgets.append(row_w)
+                self._slider_name_labels.append(lbl)
                 slider_rows_layout.addWidget(row_w)
             else:
                 # SV slider — always visible, not part of the toggle

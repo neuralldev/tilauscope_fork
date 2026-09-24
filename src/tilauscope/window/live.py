@@ -353,6 +353,12 @@ class LiveMixin:
         else:
             self.extra_panel.hide() # Caché
 
+    def refresh_slider_names(self) -> None:
+        """Re-read the control names (qmc.etypes) after a rename."""
+        self.artisan_conf.slider_names = [s.upper() for s in self.aw.qmc.etypes]
+        for lbl, name in zip(self._slider_name_labels, self.artisan_conf.slider_names):
+            lbl.setText(name)
+
     def update_events_from_artisan(self):
         # if buttons have changed, we must rebuild event buttons to update the button bar
         _logd.debug("Updating events display from Artisan changes...")

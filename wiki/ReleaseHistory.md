@@ -1,4 +1,9 @@
 ## [4.3] 2026-09-13
+build 15
+* ⚡ [feat(menu)] : the Roast menu is hidden, with its Ctrl+B and Ctrl+W shortcuts — TilauScope's own background and profile switch replace it
+* ⚡ [feat(config)] : TilauScope Config has a CONTROLS tab — rename the four controls (sliders, buttons, alarms and the phone follow at once) and set the command each milestone and monitoring button sends to the roaster; the preheat sent at START is shown, set by Roast Setup
+* ⚡ [feat(menu)] : Config → Events opens without its Config tab — the CONTROLS tab of TilauScope Config replaces it
+* 🐛 [fix(events)] : the DROP button is always kept shown, so Artisan no longer marks DROP by itself when auto-DROP is off
 build 14
 build 13
 * ⚡ [feat(energy)] : new Energy view — a pill in the header shows the roaster's power and the energy used since monitoring started; it opens a sheet with the energy of the preheat, the roast and the cooling, the power curve in W from CHARGE to DROP, kWh per kg of green coffee, and where each figure comes from (measured, estimated, incomplete)

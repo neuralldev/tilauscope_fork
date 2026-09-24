@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "generated": "2026-09-24T13:42:07Z",
+  "generated": "2026-09-24T16:19:21Z",
   "app_version": "4.3",
-  "source_revision": "339f10538",
-  "string_count": 3332,
+  "source_revision": "2bde5a5a8",
+  "string_count": 3344,
   "sections": [
     {
       "context": "tilauscope_beancave",
@@ -144,352 +144,352 @@
       "name": "Arabic",
       "native": "العربية",
       "rtl": true,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 261,
-      "empty": 3057,
-      "bytes": 1816035
+      "empty": 3069,
+      "bytes": 1821477
     },
     {
       "code": "bg",
       "name": "Bulgarian",
       "native": "Български",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 0,
       "draft": 0,
-      "empty": 3332,
-      "bytes": 1634153
+      "empty": 3344,
+      "bytes": 1639572
     },
     {
       "code": "zh_CN",
       "name": "Chinese (Simplified)",
       "native": "简体中文",
       "rtl": false,
-      "total": 3332,
-      "done": 2957,
+      "total": 3344,
+      "done": 2969,
       "draft": 319,
       "empty": 56,
-      "bytes": 1879049
+      "bytes": 1884746
     },
     {
       "code": "zh_TW",
       "name": "Chinese (Traditional)",
       "native": "繁體中文",
       "rtl": false,
-      "total": 3332,
-      "done": 2957,
+      "total": 3344,
+      "done": 2969,
       "draft": 319,
       "empty": 56,
-      "bytes": 1877810
+      "bytes": 1883504
     },
     {
       "code": "cs",
       "name": "Czech",
       "native": "Čeština",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 11,
       "draft": 236,
-      "empty": 3085,
-      "bytes": 1759808
+      "empty": 3097,
+      "bytes": 1765227
     },
     {
       "code": "da",
       "name": "Danish",
       "native": "Dansk",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 12,
       "draft": 236,
-      "empty": 3084,
-      "bytes": 1749864
+      "empty": 3096,
+      "bytes": 1755300
     },
     {
       "code": "nl",
       "name": "Dutch",
       "native": "Nederlands",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 12,
       "draft": 239,
-      "empty": 3081,
-      "bytes": 1765189
+      "empty": 3093,
+      "bytes": 1770624
     },
     {
       "code": "fi",
       "name": "Finnish",
       "native": "Suomi",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 12,
       "draft": 247,
-      "empty": 3073,
-      "bytes": 1755535
+      "empty": 3085,
+      "bytes": 1760977
     },
     {
       "code": "fr",
       "name": "French",
       "native": "Français",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 750,
-      "draft": 2582,
+      "draft": 2594,
       "empty": 0,
-      "bytes": 2079995
+      "bytes": 1931959
     },
     {
       "code": "de",
       "name": "German",
       "native": "Deutsch",
       "rtl": false,
-      "total": 3332,
-      "done": 2970,
+      "total": 3344,
+      "done": 2982,
       "draft": 306,
       "empty": 56,
-      "bytes": 1935720
+      "bytes": 1941588
     },
     {
       "code": "el",
       "name": "Greek",
       "native": "Ελληνικά",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 263,
-      "empty": 3055,
-      "bytes": 1864392
+      "empty": 3067,
+      "bytes": 1869835
     },
     {
       "code": "he",
       "name": "Hebrew",
       "native": "עברית",
       "rtl": true,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 262,
-      "empty": 3056,
-      "bytes": 1799102
+      "empty": 3068,
+      "bytes": 1804539
     },
     {
       "code": "hu",
       "name": "Hungarian",
       "native": "Magyar",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 12,
       "draft": 252,
-      "empty": 3068,
-      "bytes": 1773988
+      "empty": 3080,
+      "bytes": 1779424
     },
     {
       "code": "id",
       "name": "Indonesian",
       "native": "Bahasa Indonesia",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 261,
-      "empty": 3057,
-      "bytes": 1758966
+      "empty": 3069,
+      "bytes": 1764406
     },
     {
       "code": "it",
       "name": "Italian",
       "native": "Italiano",
       "rtl": false,
-      "total": 3332,
-      "done": 2965,
+      "total": 3344,
+      "done": 2977,
       "draft": 311,
       "empty": 56,
-      "bytes": 1936365
+      "bytes": 1942185
     },
     {
       "code": "ja",
       "name": "Japanese",
       "native": "日本語",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 263,
-      "empty": 3055,
-      "bytes": 1789487
+      "empty": 3067,
+      "bytes": 1794924
     },
     {
       "code": "ko",
       "name": "Korean",
       "native": "한국어",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 268,
-      "empty": 3050,
-      "bytes": 1778917
+      "empty": 3062,
+      "bytes": 1784354
     },
     {
       "code": "lv",
       "name": "Latvian",
       "native": "Latviešu",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 248,
-      "empty": 3070,
-      "bytes": 1766762
+      "empty": 3082,
+      "bytes": 1772196
     },
     {
       "code": "no",
       "name": "Norwegian",
       "native": "Norsk",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 13,
       "draft": 251,
-      "empty": 3068,
-      "bytes": 1758027
+      "empty": 3080,
+      "bytes": 1763463
     },
     {
       "code": "fa",
       "name": "Persian",
       "native": "فارسی",
       "rtl": true,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 265,
-      "empty": 3053,
-      "bytes": 1827431
+      "empty": 3065,
+      "bytes": 1832870
     },
     {
       "code": "pl",
       "name": "Polish",
       "native": "Polski",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 245,
-      "empty": 3073,
-      "bytes": 1756308
+      "empty": 3085,
+      "bytes": 1761742
     },
     {
       "code": "pt",
       "name": "Portuguese",
       "native": "Português",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 258,
-      "empty": 3060,
-      "bytes": 1773654
+      "empty": 3072,
+      "bytes": 1779091
     },
     {
       "code": "pt_BR",
       "name": "Portuguese (Brazil)",
       "native": "Português (Brasil)",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 262,
-      "empty": 3056,
-      "bytes": 1760892
+      "empty": 3068,
+      "bytes": 1766329
     },
     {
       "code": "ru",
       "name": "Russian",
       "native": "Русский",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 267,
-      "empty": 3051,
-      "bytes": 1873632
+      "empty": 3063,
+      "bytes": 1879073
     },
     {
       "code": "gd",
       "name": "Scottish Gaelic",
       "native": "Gàidhlig",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 12,
       "draft": 247,
-      "empty": 3073,
-      "bytes": 1774575
+      "empty": 3085,
+      "bytes": 1780018
     },
     {
       "code": "sk",
       "name": "Slovak",
       "native": "Slovenčina",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 11,
       "draft": 246,
-      "empty": 3075,
-      "bytes": 1761820
+      "empty": 3087,
+      "bytes": 1767258
     },
     {
       "code": "es",
       "name": "Spanish",
       "native": "Español",
       "rtl": false,
-      "total": 3332,
-      "done": 2963,
+      "total": 3344,
+      "done": 2975,
       "draft": 313,
       "empty": 56,
-      "bytes": 1936334
+      "bytes": 1942136
     },
     {
       "code": "sv",
       "name": "Swedish",
       "native": "Svenska",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 11,
       "draft": 234,
-      "empty": 3087,
-      "bytes": 1753771
+      "empty": 3099,
+      "bytes": 1759207
     },
     {
       "code": "th",
       "name": "Thai",
       "native": "ไทย",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 268,
-      "empty": 3050,
-      "bytes": 1918751
+      "empty": 3062,
+      "bytes": 1924197
     },
     {
       "code": "tr",
       "name": "Turkish",
       "native": "Türkçe",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 263,
-      "empty": 3055,
-      "bytes": 1760054
+      "empty": 3067,
+      "bytes": 1765489
     },
     {
       "code": "uk",
       "name": "Ukrainian",
       "native": "Українська",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 257,
-      "empty": 3061,
-      "bytes": 1849868
+      "empty": 3073,
+      "bytes": 1855313
     },
     {
       "code": "vi",
       "name": "Vietnamese",
       "native": "Tiếng Việt",
       "rtl": false,
-      "total": 3332,
+      "total": 3344,
       "done": 14,
       "draft": 264,
-      "empty": 3054,
-      "bytes": 1776182
+      "empty": 3066,
+      "bytes": 1781601
     }
   ]
 }

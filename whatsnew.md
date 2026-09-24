@@ -23,6 +23,7 @@ A smaller release: TilauScope now adapts itself to machines that have no air pro
 
 ## 🔌 Devices
 
+* **Your controls and milestones, set in one place.** A new **CONTROLS** tab in TilauScope Config names the machine's four controls — the sliders, buttons, alarms and phone follow as soon as you save — and sets what the roaster is sent at each milestone: a line of milestones shows at a glance which ones send a command, and a click on an empty one adds it. Artisan's crowded Events settings and Roast menu are no longer needed and are hidden.
 * **On a machine with no air probe, such as the Skywalker V1, TilauScope no longer shows exhaust temperature.** Its readout, the air-temperature and machine-response curve options, the phone's ET and ΔT tiles, the roast miniatures, the PID input choice, and any advice that mentioned it are hidden or reworded around bean temperature — and preheating always follows bean temperature on that machine.
 
 ## 🌍 Translations

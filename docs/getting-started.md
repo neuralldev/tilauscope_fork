@@ -153,12 +153,15 @@ detached, and gives you the control panel back.
 
 ## Settings
 
-**TilauScope → TilauScope Config...** groups every fork setting by intent, in four tabs.
+**TilauScope → TilauScope Config...** groups every fork setting by intent, in seven tabs. The main ones:
 
 **⚙ GENERAL** — your machine and the interface. *Roaster → Machine Profile → Model:*
 changes roaster without replaying the wizard. *UI Features* turns on floating annotations
 on the roast graph, and BeanCave startup notifications (stock alerts and reminders when
 BeanCave opens).
+
+**🎚 CONTROLS** — the names of the machine's controls, shown on the sliders, buttons, alarms
+and phone, and the command each milestone sends to the roaster when it is marked.
 
 **📡 SENSORS** — every coupled device, grouped by role, with Bluetooth scanning running in
 the background while the tab is open.

@@ -1,8 +1,8 @@
 #
 # ABOUT
 # Artisan settings TilauScope imposes: one-second sampling without Keep ON or
-# viewer hand-off, the BT / BT projection / ΔBT curve selection, and no Roast
-# Properties dialog opening by itself at CHARGE or DROP.
+# viewer hand-off, the BT / BT projection / ΔBT curve selection, no Roast
+# Properties dialog opening by itself at CHARGE or DROP, and the DROP button shown.
 
 # LICENSE
 # This file is part of TilauScope, a fork of Artisan Roaster Scope.
@@ -109,12 +109,24 @@ def enforce_properties_autoopen(aw: ApplicationWindow) -> bool:
     return True
 
 
+def enforce_drop_button(aw: ApplicationWindow) -> bool:
+    """Keep the DROP button shown: Artisan marks DROP by itself whenever it is
+    hidden, whatever the auto-DROP setting. True when something changed."""
+    qmc = aw.qmc
+    if qmc.buttonvisibility[6]:
+        return False
+    qmc.buttonvisibility[6] = True
+    aw.buttonDROP.setVisible(True)
+    return True
+
+
 def enforce(aw: ApplicationWindow) -> bool:
     """Impose every value. True when something changed."""
     sampling = enforce_sampling(aw)
     curves = enforce_curves(aw)
     autoopen = enforce_properties_autoopen(aw)
-    return sampling or curves or autoopen
+    drop = enforce_drop_button(aw)
+    return sampling or curves or autoopen or drop
 
 
 def _with_axis_renewal(args: tuple[Any, ...], kwargs: dict[str, Any]) -> tuple[tuple[Any, ...], dict[str, Any]]:
