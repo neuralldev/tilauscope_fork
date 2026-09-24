@@ -113,6 +113,9 @@ class MQTTConfig(DataClassDictMixin):
     # The account the cached password belongs to: moving the broker invalidates it.
     _password_account: str = field(default="", repr=False,
                                    metadata=field_options(serialize="omit"))
+    # Set by a connection test: the typed value answers, even an empty one.
+    _session_only: bool = field(default=False, repr=False,
+                                metadata=field_options(serialize="omit"))
     keepalive: int = 60
     qos: int = 1
     tls: bool = False  # encrypted broker; the CA bundle is the system one, self-signed certificates are rejected
@@ -161,6 +164,8 @@ class MQTTConfig(DataClassDictMixin):
         A password kept in the settings travels with an exported ``.aset``,
         which is how a machine setup is shared. This one does not.
         """
+        if self._session_only:
+            return self._password
         stored = self._stored_password()
         if stored:
             return stored
@@ -204,6 +209,7 @@ class MQTTConfig(DataClassDictMixin):
         from tilauscope.tilau_secrets import mqtt_account  # noqa: PLC0415
         self._password = value or ""
         self._password_account = mqtt_account(self.username, self.broker_url, self.port)
+        self._session_only = True
 
 
 # ---------------------------------------------------------------------------
@@ -598,6 +604,8 @@ def _scale_reading(data: Any, sensor: MQTTSensor, mode: str = "") -> float:
     multiplier = sensor.multiplier if sensor.multiplier else 1.0
     divider = sensor.divider if sensor.divider else 1.0
     value = (float(raw_val) * multiplier) / divider
+    if sensor.unit not in ("C", "F"):   # power (W) or unitless: never a temperature
+        return value
     return convertTemp(value, sensor.unit, mode)
 
 

@@ -31,7 +31,7 @@ from PIL.ImageQt import ImageQt # Import pour convertir l'image PIL en QImage
 
 # getAppPath lives in artisanlib.util; artisanlib.main only re-exports it, and
 # importing it from there booted the whole application through cave/__init__.
-from artisanlib.util import getAppPath  # smooth_list moved from tgraphcanvas to util
+from artisanlib.util import getAppPath
 
 
 from PyQt6.QtCore import (QMutexLocker,QStandardPaths, Qt, pyqtSlot, QThread, QTimer) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
@@ -228,7 +228,7 @@ class PrintingMixin:
             self.np.paperstyle = self.np.get_paper_type(rfid)
             if rfid is not None and rfid.valid:
                 _logd.debug(f"rfid detected, confirmed paper type={rfid.type} remaining labels={rfid.used_len}/{rfid.total_len}")
-                self.np.used_labels = rfid.used_len if rfid.used_len is not None else 0
+                self.np.remaining_labels = rfid.used_len if rfid.used_len is not None else 0
                 self.np.total_labels = rfid.total_len if rfid.total_len is not None else 0
                 t = self.get_cloud_template_info(str(rfid.barcode))
                 if t is not None:  #swap as we print vertical on B21
@@ -345,7 +345,7 @@ class PrintingMixin:
         Source unique partagée par le connect et le poll 5 s : garantit que le
         compteur d'étiquettes (« B21S 50×30mm · N labels left ») s'affiche dès
         la connexion et ne soit plus écrasé par un format court « B21S: 50x30 »."""
-        remaining = self.np.used_labels  if self.np else 0
+        remaining = self.np.remaining_labels  if self.np else 0
         total     = self.np.total_labels if self.np else 0
         w = self.np.paper_width  if self.np else 0
         h = self.np.paper_height if self.np else 0
@@ -387,7 +387,7 @@ class PrintingMixin:
         # ── Mise à jour RFID si rouleau changé ───────────────────────────────
         if rfid is not None and rfid.valid:
             prev_h = self.np.paper_height if self.np else 0
-            self.np.used_labels  = rfid.used_len  if rfid.used_len  is not None else 0
+            self.np.remaining_labels  = rfid.used_len  if rfid.used_len  is not None else 0
             self.np.total_labels = rfid.total_len if rfid.total_len is not None else 0
             t = self.get_cloud_template_info(str(rfid.barcode))
             if t is not None:
@@ -457,10 +457,7 @@ class PrintingMixin:
                 return
 
         # ── Vérifications imprimante ─────────────────────────────────────────
-        if self.np is not None and (
-            self.np.used_labels == 0 or
-            (self.np.total_labels > 0 and self.np.used_labels >= self.np.total_labels)
-        ):
+        if self.np is not None and self.np.remaining_labels == 0:
             self._show_message(self,
                 QApplication.translate("tilauscope_beancave", "Print"),
                 QApplication.translate("tilauscope_beancave",
@@ -712,13 +709,13 @@ class PrintingMixin:
                 float(getattr(self, "_roast_print_sent", 1.0)), out, n))
 
     def _on_print_success(self):
-        # Décrémenter used_labels localement du nombre d'exemplaires réellement
+        # Décrémenter remaining_labels localement du nombre d'exemplaires réellement
         # sortis (le prochain poll RFID confirmera le compteur du rouleau).
         copies  = int(getattr(self, "_roast_print_copies", 1))
         worker  = getattr(self, "niimbot_worker", None)
         printed = int(getattr(worker, "printed", copies) or 0)
-        if self.np is not None and self.np.used_labels > 0:
-            self.np.used_labels = max(0, self.np.used_labels - printed)
+        if self.np is not None and self.np.remaining_labels > 0:
+            self.np.remaining_labels = max(0, self.np.remaining_labels - printed)
         self._roast_print_copies = 1
         self._roast_print_out = 0
         # Remettre TOUT DE SUITE le statut imprimante (avec le compteur mis à
@@ -747,10 +744,10 @@ class PrintingMixin:
             pill.succeed("🖨  " + done)
 
         if (self.np is not None and self.np.total_labels > 0
-                and float(self.np.used_labels) <= float(self.np.total_labels) * 0.1):
+                and float(self.np.remaining_labels) <= float(self.np.total_labels) * 0.1):
             self._show_message(self,
                 QApplication.translate("tilauscope_beancave", "Niimbot B21S Print"),
-                f"{self.np.used_labels} " + QApplication.translate("tilauscope_beancave",
+                f"{self.np.remaining_labels} " + QApplication.translate("tilauscope_beancave",
                     "label(s) remaining on the roll, consider changing the roll."))
 
     def _on_print_error(self, message):
@@ -808,8 +805,8 @@ class PrintingMixin:
         self._sat_niimbot_thread.started.connect(self._sat_niimbot_worker.run)
 
         def _post_ok():
-            if self.np is not None and self.np.used_labels > 0:
-                self.np.used_labels -= 1
+            if self.np is not None and self.np.remaining_labels > 0:
+                self.np.remaining_labels -= 1
             if (hasattr(self, "niimbot_overlay") and self.niimbot_overlay
                     and self.np is not None and self.np.paper_height > 0):
                 text, color = self._niimbot_ready_status()

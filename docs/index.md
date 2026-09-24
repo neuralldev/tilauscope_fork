@@ -55,6 +55,7 @@ chapter easier to place:
 | **Sacks, stock and conservation** | A guided way to bring in a new bag, physical labels tracked as a reusable pool, and a water-activity dashboard flagging bags that need attention. | [Sacks, stock and conservation](sacks-and-storage.md) |
 | **Labels and QR** | Printed labels for coffee, roasts and sacks; scanning one opens its record from a webcam or a phone. | [Labels and QR](labels-and-qr.md) |
 | **After the roast** | Finishing a record later, reading a roast back against your own history, comparing several roasts, and correcting the timeline after the fact. | [After the roast](after-the-roast.md) |
+| **Energy** | The electricity a roast actually draws, read from a power meter: before charge, during the roast, after drop, per kg of green coffee — with where each figure comes from, and past roasts included. | [Energy](energy.md) |
 | **Hardware and peripherals** | Roaster link, airflow extractor, colour sensor, ambient probe, scale, label printer, water probe — each with what it adds and its limits. | [Hardware and peripherals](hardware.md) |
 | **Piloting from a phone** | Pairing a phone and driving a roast from it, with a deadman safeguard if the connection drops. | [Piloting from a phone](phone-piloting.md) |
 | **Brew** | Knowing when a roast is ready to brew, a recipe calculated from it, dialling in by taste, and a printed recipe card. | [Filter coffee and espresso (Brew)](brew.md) |

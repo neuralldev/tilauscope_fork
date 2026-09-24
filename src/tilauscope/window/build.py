@@ -725,6 +725,15 @@ class BuildMixin:
         self.drag_handle.setSizePolicy(QSizePolicy.Policy.Fixed,
                                        QSizePolicy.Policy.Fixed)
         secondary_header.addStretch(1)
+        # Energy pill: shown only while monitoring with a power source; a tap
+        # opens the energy sheet. The service itself lives on aw.
+        from tilauscope.energy_panel import EnergyPill, ensure_energy_tap
+        self._energy_panel = None
+        _energy_tap = ensure_energy_tap(self.aw)
+        if _energy_tap is not None:
+            self.energy_pill = EnergyPill(_energy_tap)
+            self.energy_pill.clicked.connect(self._open_energy_panel)
+            secondary_header.addWidget(self.energy_pill)
         # Far right of the secondary row, under the timer: reachable in
         # every panel mode (the header sits outside the panel stack).
         secondary_header.addWidget(self.btn_estop)
@@ -1116,6 +1125,7 @@ class BuildMixin:
         self._review_host.setStyleSheet("background: transparent; border: none;")
         self.roast_review = RoastReviewPanel(self.aw, self)
         self.roast_review.advice_requested.connect(self._open_coach_advice)
+        self.roast_review.energy_requested.connect(self._open_energy_panel)
         self.roast_review.next_batch_requested.connect(self._prepare_next_batch)
         self.roast_review.weight_requested.connect(self._enter_roast_weights)
         self._review_host.setWidget(self.roast_review)

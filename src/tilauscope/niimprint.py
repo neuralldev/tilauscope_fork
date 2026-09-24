@@ -266,7 +266,7 @@ class NiimbotBLE(ClientBLE):
         self.printerack: bool = False
         self.printer_ready_to_resume: bool = False
         self.paperstyle: Niimprint_PaperType
-        self.used_labels: int = 0
+        self.remaining_labels: int = 0
         self.total_labels: int = 0
         self.paper_height = 0
         self.paper_width = 0

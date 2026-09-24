@@ -62,6 +62,7 @@ class RoastReviewPanel(QWidget):
     """Read-only summary of the roast currently on screen."""
 
     advice_requested = pyqtSignal()
+    energy_requested = pyqtSignal()
     next_batch_requested = pyqtSignal()
     weight_requested = pyqtSignal()
 
@@ -244,6 +245,9 @@ class RoastReviewPanel(QWidget):
         card = self._coach_card(self._reading)
         if card is not None:
             self._lay.addWidget(card)
+        energy = self._energy_card()
+        if energy is not None:
+            self._lay.addWidget(energy)
         for strip in self._strips(profile, mode):
             self._lay.addWidget(strip)
         self._lay.addStretch(1)
@@ -581,6 +585,41 @@ class RoastReviewPanel(QWidget):
         chevron.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {THEME['ACCENT']};")
         line.addWidget(chevron)
         lay.addLayout(line)
+        return card
+
+    def _energy_card(self) -> "QWidget | None":
+        """One line of the roast's energy bill; the card opens the energy sheet."""
+        session = getattr(self.aw.qmc, "tilau_energy", None)
+        if session is None:
+            return None
+        from tilauscope.energy_model import NONE
+        from tilauscope.energy_panel import fmt_kwh, provenance, summarize_current
+        summary = summarize_current(self.aw, session, live=False)
+        if summary.roast is None:
+            return None
+        roast = summary.total(summary.roast.per_channel)
+        glyph, colour, words = provenance(roast if roast.span_s > 0 else None)
+        bits = [QApplication.translate("tilauscope_review", "{0} roast").format(fmt_kwh(roast.wh))
+                if roast.provenance != NONE else "—"]
+        if summary.wh_per_kg is not None:
+            bits.append(QApplication.translate("tilauscope_review", "{0} kWh/kg green").format(
+                f"{summary.wh_per_kg / 1000:.3f}"))
+        bits.append(f"{glyph} {words}")
+        if session.rebuilt:
+            bits.append(QApplication.translate("tilauscope_review", "rebuilt"))
+
+        card = _CoachCard(colour)
+        card.setToolTip(QApplication.translate("tilauscope_review", "Opens the energy details"))
+        card.clicked.connect(self.energy_requested.emit)
+        line = QHBoxLayout(card)
+        line.setContentsMargins(10, 5, 9, 6)
+        line.setSpacing(6)
+        msg = _ElidedLabel("⚡ " + " · ".join(bits))
+        msg.setStyleSheet(f"font-size: 11px; color: {THEME['TEXT']};")
+        line.addWidget(msg, 1)
+        chevron = QLabel("›")
+        chevron.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {THEME['ACCENT']};")
+        line.addWidget(chevron)
         return card
 
     def _next_batch_pill(self) -> QPushButton:

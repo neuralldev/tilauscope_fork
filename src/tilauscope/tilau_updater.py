@@ -816,7 +816,7 @@ class TilauUpdater(QObject):
 
     @pyqtSlot(str, int, str, str, str)
     def _on_update_found(self, remote_v: str, remote_b: int, dl_url: str, filename: str,
-                         digest: str = "") -> None:
+                         digest: str) -> None:
         local_v, local_b = _get_local_version()
 
         dlg = _UpdateAvailableDialog(remote_v, remote_b, local_v, local_b, self._parent)
@@ -829,7 +829,7 @@ class TilauUpdater(QObject):
     # ── step 3 : download ─────────────────────────────────────────────────────
 
     def _start_download(self, remote_v: str, remote_b: int, dl_url: str, filename: str,
-                        digest: str = "") -> None:
+                        digest: str) -> None:
         self._cancelled = False   # a previous cancel in this session is not this download's
         downloads_dir = QStandardPaths.writableLocation(
             QStandardPaths.StandardLocation.DownloadLocation

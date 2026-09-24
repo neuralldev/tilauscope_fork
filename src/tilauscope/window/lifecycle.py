@@ -495,6 +495,21 @@ class LifecycleMixin:
         except Exception as e:  # pylint: disable=broad-except
             _log.warning("hide_roast_review: %s", e)
 
+    def _open_energy_panel(self) -> None:
+        """The energy sheet, one at a time: live while monitoring, else the roast on screen."""
+        try:
+            if self._energy_panel is not None:
+                self._energy_panel.raise_()
+                self._energy_panel.activateWindow()
+                return
+            from tilauscope.energy_panel import EnergyPanel
+            panel = EnergyPanel(self.aw, self)
+            panel.destroyed.connect(lambda *_: setattr(self, "_energy_panel", None))
+            self._energy_panel = panel
+            panel.show()
+        except Exception as e:  # pylint: disable=broad-except
+            _log.warning("_open_energy_panel: %s", e)
+
     def _open_coach_advice(self) -> None:
         """The coach's reading of the roast under review, over the panel."""
         try:

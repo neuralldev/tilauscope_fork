@@ -256,7 +256,9 @@ class TilauMenuExtension:
     def _patch_config_menu(self, ui_mode: 'UI_MODE') -> None:
         """Hide Artisan menu items not used by TilauScope's guided workflow
         (theme/colors/UI mode, wheel graph, cup profile, core debug tools, the View
-        menu, and the settings artisan_display_policy imposes or leaves as they are).
+        menu, the Analyzer that BeanCave's Analysis page replaces, Roast Properties
+        that the roast setup and result forms replace, and the settings
+        artisan_display_policy imposes or leaves as they are).
         Re-applied on every set_menu() call (mode switches rebuild the menus).
         Hidden, never deleted: a hidden QAction also stays disabled whatever Artisan
         sets later, so its shortcut (Ctrl+U, Ctrl+Shift+A) cannot open the dialog.
@@ -264,6 +266,9 @@ class TilauMenuExtension:
         aw = self._aw
         for attr, hide in (
             ('viewMenu', lambda m: m.menuAction().setVisible(False)),
+            ('editGraphAction', lambda a: a.setVisible(False)),  # Roast > Properties…, Ctrl+T
+            # Its actions carry Ctrl+K and Ctrl+Alt+K: hidden with the menu so the keys stay inert.
+            ('analyzeMenu', lambda m: [a.setVisible(False) for a in (m.menuAction(), *m.actions())]),
             ('calibrateDelayAction', lambda a: a.setVisible(False)),
             ('curvesAction', lambda a: a.setVisible(False)),
             ('phasesGraphAction', lambda a: a.setVisible(False)),

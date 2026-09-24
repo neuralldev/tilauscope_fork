@@ -5,6 +5,10 @@
         "roaster_id": "itop-cyberroaster",
         "roaster_type": "drum",
         "heating_type": "electric",
+        "electrical_specification": {
+            "max_power_draw_kw": 1.0,
+            "heater_power_curve": [[0, 10], [45, 333], [50, 334], [55, 435], [60, 493], [65, 606], [70, 725], [75, 814], [80, 885]]
+        },
         "is_radiant_electric": true,
         "technology": [
             "radiation"
@@ -79,6 +83,10 @@
         "roaster_id": "itop-skywalker-v1",
         "roaster_type": "drum",
         "heating_type": "electric",
+        "electrical_specification": {
+            "max_power_draw_kw": 1.0,
+            "heater_power_exponent": 2.0
+        },
         "is_radiant_electric": true,
         "has_et_probe": false,
         "maillard_ror_decay": 2.0,

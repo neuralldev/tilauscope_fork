@@ -386,7 +386,7 @@ class CustomLabelDlg(QDialog):
             reason = QApplication.translate(
                 "tilauscope_label", "Type the coffee name to print.")
         else:
-            left = getattr(np_, "used_labels", 0)   # the RFID field counts labels REMAINING
+            left = getattr(np_, "remaining_labels", 0)
             reason = QApplication.translate(
                 "tilauscope_label", "Roll: 50 × 30 mm · {0} labels left").format(max(left, 0))
         if self.lbl_status.text() != reason:

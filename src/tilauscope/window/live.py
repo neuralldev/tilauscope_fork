@@ -750,6 +750,10 @@ class LiveMixin:
                     tap.sync_state()
             except Exception as e:  # pylint: disable=broad-except
                 _log.debug("remote sync_state: %s", e)
+            # the energy session closes on OFF, when no tick comes any more
+            _energy_tap = getattr(self.aw, 'tilau_energy_tap', None)
+            if _energy_tap is not None:
+                _energy_tap.sync_state()
         except Exception as e:
             _log.error(e)
 

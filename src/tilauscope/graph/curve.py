@@ -483,7 +483,7 @@ class _Drag:
 def _disorder_text() -> str:
     """Why an idle profile offers no milestone correction on the curve."""
     return QApplication.translate(
-        'tilauscope', 'Milestones out of order — correct them in Roast Properties first')
+        'tilauscope', 'Milestones out of order — right-click a ⚠ mark to remove it')
 
 
 class RoastCurveWidget(QWidget):
@@ -2207,6 +2207,8 @@ class RoastCurveWidget(QWidget):
         if not timex:
             return
         r = self._plot_rect
+        # Only a grip can repair: a roast shown for reading is not flagged.
+        flagged = edit.conflicts(timex, timeindex) if editable else {}
 
         # (t, label, bean °C, milestone) — the turning point carries -1.
         marks: list[tuple[float, str, float | None, int]] = []
@@ -2220,7 +2222,10 @@ class RoastCurveWidget(QWidget):
             if not self._t_min <= t <= self._t_max:
                 continue
             raw = temp2[idx] if idx < len(temp2) else None
-            marks.append((t, _milestone_label(i), _sample_temp_c(raw, mode), i))
+            label = _milestone_label(i)
+            if i in flagged:
+                label = '⚠ ' + label
+            marks.append((t, label, _sample_temp_c(raw, mode), i))
 
         if 0 < tp_index < len(timex):
             t = float(timex[tp_index])
@@ -2327,6 +2332,9 @@ class RoastCurveWidget(QWidget):
             if not is_tp and milestone == self._hover_mark:
                 outline = QPen(accent)
                 outline.setWidthF(1.5)
+            elif milestone in flagged:
+                outline = QPen(QColor(THEME['WARNING']))
+                outline.setWidthF(1.5)
             else:
                 outline = QPen(QColor(style.CHIP_OUTLINE))
                 outline.setWidthF(style.CHIP_OUTLINE_WIDTH)
@@ -2336,7 +2344,9 @@ class RoastCurveWidget(QWidget):
             painter.setBrush(chip_fill)
             painter.drawRoundedRect(chip, style.CHIP_RADIUS, style.CHIP_RADIUS)
             painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.setPen(QPen(QColor(THEME['OVERLAY2'] if is_tp else THEME['SUBTEXT1'])))
+            text_colour = (THEME['OVERLAY2'] if is_tp
+                           else THEME['WARNING'] if milestone in flagged else THEME['SUBTEXT1'])
+            painter.setPen(QPen(QColor(text_colour)))
             painter.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), text)
             if not is_tp:
                 chips.append((milestone, chip))
@@ -2707,9 +2717,16 @@ class RoastCurveWidget(QWidget):
                            else (None, False))
         tip = ''
         if milestone is not None and profile is not None:
-            tip = (QApplication.translate(
-                'tilauscope', 'Drag sideways to move {0}. Right-click it to type its time.').format(
-                    _milestone_label(milestone)) if usable else _disorder_text())
+            if usable:
+                tip = QApplication.translate(
+                    'tilauscope', 'Drag sideways to move {0}. Right-click it to type its time.').format(
+                        _milestone_label(milestone))
+            else:
+                partner = edit.conflicts(profile.timex, profile.timeindex).get(milestone, -1)
+                tip = (QApplication.translate(
+                    'tilauscope', 'Out of order with {0} — right-click to remove it, '
+                    'then add it back where it belongs.').format(_milestone_label(partner))
+                       if partner is not None and partner >= 0 else _disorder_text())
         if self.toolTip() != tip:
             self.setToolTip(tip)
         grip = milestone if usable else None
@@ -2836,6 +2853,33 @@ class RoastCurveWidget(QWidget):
         except Exception:
             report_once('RoastCurveWidget: milestone correction')
         self.update()
+
+    def _remove_milestone(self, profile: edit.Profile, milestone: int) -> None:
+        """Unmark one milestone, then bring every view of the roast up to date."""
+        if self._static_editor is not None:
+            # The file BeanCave opened owns the removal, as it owns any correction.
+            if profile.source is not self._comparison[0].timex:
+                return
+            try:
+                self._static_editor(milestone, 0)
+            except Exception:
+                report_once('RoastCurveWidget: saved milestone removal')
+            self._hover_target = None
+            self.update()
+            return
+        try:
+            if edit.commit_removal(self._aw, profile, milestone):
+                self._after_correction()
+        except Exception:
+            report_once('RoastCurveWidget: milestone removal')
+        self.update()
+
+    def _remove_action(self, menu: QMenu, profile: edit.Profile, milestone: int) -> QAction:
+        remove = QAction('✕  ' + QApplication.translate('tilauscope', 'Remove {0}').format(
+            _milestone_label(milestone)), menu)
+        remove.triggered.connect(
+            lambda _checked=False, p=profile, m=milestone: self._remove_milestone(p, m))
+        return remove
 
     def _after_correction(self) -> None:
         self._hover_target = None
@@ -3091,14 +3135,22 @@ class RoastCurveWidget(QWidget):
         profile, usable = self._correction_profile()
         if profile is None:
             return
+        milestone = self._handle_at(pos) if self._handles else None
         if not usable:
-            if self._plot_rect.contains(pos):
-                note = QAction(_disorder_text(), menu)
-                note.setEnabled(False)
-                menu.addAction(note)
+            flagged = edit.conflicts(profile.timex, profile.timeindex)
+            if milestone in flagged:
+                menu.addAction(self._menu_heading(menu, QApplication.translate(
+                    'tilauscope', '{0} is out of order').format(_milestone_label(milestone))))
+                menu.addAction(self._remove_action(menu, profile, milestone))
+                menu.addSeparator()
+            elif self._plot_rect.contains(pos):
+                menu.addAction(self._menu_heading(menu, _disorder_text()))
+                # A mark beyond the recording has no chip to right-click: offered here.
+                drawn = {m for m, _chip, _dot in self._handles}
+                for m in sorted(set(flagged) - drawn):
+                    menu.addAction(self._remove_action(menu, profile, m))
                 menu.addSeparator()
             return
-        milestone = self._handle_at(pos) if self._handles else None
         if milestone is not None:
             span = edit.interval(profile, milestone)
             if span is not None and span[0] < span[1]:
@@ -3107,7 +3159,9 @@ class RoastCurveWidget(QWidget):
                 change.triggered.connect(
                     lambda _checked=False, p=profile, m=milestone: self._type_milestone_time(p, m))
                 menu.addAction(change)
-                menu.addSeparator()
+            if edit.removable(profile, milestone):
+                menu.addAction(self._remove_action(menu, profile, milestone))
+            menu.addSeparator()
             return
         if not self._plot_rect.contains(pos):
             return

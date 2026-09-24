@@ -95,6 +95,13 @@ How fast bean temperature is climbing, in degrees per minute. The slope of the c
 than its height. A roast is steered largely by keeping RoR inside a sensible band and
 falling smoothly.
 
+#### Reference trend
+
+The smooth curve a roast's own bean temperature is fitted to — a parabola, a cubic or a
+logarithm — used as a yardstick by the profile analysis. Its slope is a rate of rise with every
+wobble removed, so the gap between it and the measured [RoR](#ror--rate-of-rise) shows where the
+roast sped up or slowed down. Being close to it describes an even curve, not a good cup.
+
 #### Projection
 
 The line Artisan draws ahead of the latest reading, showing where bean temperature is heading
@@ -233,6 +240,33 @@ Asking a network sensor for a reading instead of waiting for one. Some sensors r
 on their own schedule, far too slowly to follow a roast; polling requests a fresh value at
 a chosen interval. Only sensors on mains power can be polled — a battery sensor sleeps
 between its own reports and cannot be reached in between.
+
+#### Power (W) and energy (kWh)
+
+**Power**, in watts (W) or kilowatts (kW), is how much electricity a device draws at one
+instant. **Energy**, in kilowatt-hours (kWh), is power accumulated over time: 1 000 W for one
+hour is 1 kWh, 1 000 W for ten minutes about 0.167 kWh. A watt figure says how hard the machine
+is working now; a kWh figure says what a period cost. "W/h" is not a unit of either.
+
+#### Energy provenance
+
+Where an energy figure comes from, stated beside it:
+
+- **Measured** — read from a power meter over the whole period.
+- **Estimated** — worked out from the burner setting and the machine's known power, with no
+  meter reading; only ever between CHARGE and DROP.
+- **Mixed** — measured, with an estimate filling stretches where the meter was silent.
+- **Incomplete** — part of the period has no reading at all; that time is left out rather
+  than guessed, so the figure is lower than the real consumption.
+- **Rebuilt** — recalculated from the power curve saved in an older roast file, from START
+  onward.
+- **Not tracked** — no meter and no estimate: the figure is shown as a dash, never as zero.
+
+#### kWh per kg green
+
+The energy of the roast, CHARGE to DROP, divided by the weight of green coffee charged. It
+lets batches of different sizes be compared. It is only given when the roast is fully covered
+by every expected source and the green weight is known.
 
 ---
 

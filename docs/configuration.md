@@ -206,8 +206,11 @@ line names one sensor: an **ID** to refer to it by, the **Topic** it is publishe
 a **Multiplier** and **Divider** to bring the raw figure into the unit you want, and the **Unit**
 that figure is then expressed in. Every cell is edited directly in the list.
 
-**Unit** is where you declare that a sensor publishes a temperature: **°C**, **°F**, or the dash
-for anything that is not one — humidity, fan speed, pressure. A temperature is converted on
+**Unit** is where you declare that a sensor publishes a temperature: **°C**, **°F**, **W** for a
+power reading, or the dash for anything else — humidity, fan speed, pressure. A power sensor named
+**roaster** or **extractor** with the unit **W** feeds the [Energy](energy.md) view; for a line whose
+topic ends in *Power*, the buttons **⚡ Use as roaster** and **💨 Use as extractor** under the list
+set both at once. A temperature is converted on
 arrival into the unit the application is working in, so a probe publishing in Celsius reads
 correctly during a Fahrenheit session and the other way round. Multiplier and divider are applied
 first, the conversion second: a probe sending tenths of a degree needs a divider of 10 *and* its

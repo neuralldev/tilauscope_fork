@@ -15,7 +15,7 @@
 
 """Correcting a milestone on a roast that is no longer running.
 
-Where a milestone may go, the one transaction that writes it into Artisan's
+Where a milestone may go, the transactions that write or remove it in Artisan's
 profile, and the dialog for typing its instant. Nothing here acts while Artisan
 monitors or records: a correction rewrites a roast's history, it never marks a
 roast in progress — no machine command, alarm, assistant, batch number or
@@ -133,6 +133,35 @@ def usable(profile: Profile) -> bool:
             return False
         previous = t
     return True
+
+
+def conflicts(timex: Any, timeindex: Any) -> dict[int, int | None]:
+    """Milestones standing in the way of roast order, each with a milestone it
+    clashes with: None for one outside the recording, the other member of an
+    inverted pair otherwise. CHARGE is never listed — it anchors the time axis,
+    so its partner in a pair is the one to remove."""
+    flagged: dict[int, int | None] = {}
+    placed: list[tuple[int, float]] = []
+    for m in range(SLOTS):
+        if not marked(timeindex, m):
+            continue
+        index = int(timeindex[m])
+        if index >= len(timex):
+            flagged[m] = None
+        else:
+            placed.append((m, float(timex[index])))
+    for a, (ma, ta) in enumerate(placed):
+        for mb, tb in placed[a + 1:]:
+            if tb <= ta:
+                flagged.setdefault(ma, mb)
+                flagged.setdefault(mb, ma)
+    flagged.pop(CHARGE, None)
+    return flagged
+
+
+def removable(profile: Profile, milestone: int) -> bool:
+    """Whether `milestone` may be removed: any mark present but CHARGE."""
+    return CHARGE < milestone < SLOTS and marked(profile.timeindex, milestone)
 
 
 def origin(profile: Profile) -> float:
@@ -287,6 +316,37 @@ def commit(aw: Any, profile: Profile, milestone: int, index: int) -> bool:
         qmc.redraw_keep_view(recomputeAllDeltas=milestone in (CHARGE, DROP))
     except Exception:
         report_once('milestone_edit: Artisan redraw after a correction')
+    return True
+
+
+def commit_removal(aw: Any, profile: Profile, milestone: int) -> bool:
+    """Unmark one milestone in Artisan's profile; True when the profile changed.
+
+    Allowed on a profile out of order too: removing the misplaced mark is how
+    order comes back.
+    """
+    if not still_current(aw, profile) or not removable(profile, milestone):
+        return False
+    qmc = aw.qmc
+    try:
+        qmc.timeindex[milestone] = 0   # Artisan's "unmarked" for slots after CHARGE
+    except (IndexError, TypeError):
+        report_once('milestone_edit: timeindex refused the removal')
+        return False
+    _forget_label_positions(qmc, milestone)
+    if milestone == DROP:
+        try:
+            aw.autoAdjustAxis(deltas=False)
+        except Exception:
+            report_once('milestone_edit: Artisan realignment after a removal')
+    try:
+        qmc.fileDirtySignal.emit()
+    except AttributeError:
+        report_once('milestone_edit: the profile could not be marked modified')
+    try:
+        qmc.redraw_keep_view(recomputeAllDeltas=milestone == DROP)
+    except Exception:
+        report_once('milestone_edit: Artisan redraw after a removal')
     return True
 
 

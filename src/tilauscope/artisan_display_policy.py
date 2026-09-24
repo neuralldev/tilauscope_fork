@@ -1,7 +1,8 @@
 #
 # ABOUT
 # Artisan settings TilauScope imposes: one-second sampling without Keep ON or
-# viewer hand-off, and the BT / BT projection / ΔBT curve selection.
+# viewer hand-off, the BT / BT projection / ΔBT curve selection, and no Roast
+# Properties dialog opening by itself at CHARGE or DROP.
 
 # LICENSE
 # This file is part of TilauScope, a fork of Artisan Roaster Scope.
@@ -97,11 +98,23 @@ def enforce_curves(aw: ApplicationWindow) -> bool:
     return True
 
 
+def enforce_properties_autoopen(aw: ApplicationWindow) -> bool:
+    """Keep the hidden Roast Properties dialog from opening at CHARGE or DROP.
+    True when something changed."""
+    qmc = aw.qmc
+    if not (qmc.roastpropertiesAutoOpenFlag or qmc.roastpropertiesAutoOpenDropFlag):
+        return False
+    qmc.roastpropertiesAutoOpenFlag = 0
+    qmc.roastpropertiesAutoOpenDropFlag = 0
+    return True
+
+
 def enforce(aw: ApplicationWindow) -> bool:
     """Impose every value. True when something changed."""
     sampling = enforce_sampling(aw)
     curves = enforce_curves(aw)
-    return sampling or curves
+    autoopen = enforce_properties_autoopen(aw)
+    return sampling or curves or autoopen
 
 
 def _with_axis_renewal(args: tuple[Any, ...], kwargs: dict[str, Any]) -> tuple[tuple[Any, ...], dict[str, Any]]:

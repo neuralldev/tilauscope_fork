@@ -37,7 +37,7 @@ from PyQt6.QtWidgets import (
     QComboBox, QGridLayout, QDialog, QGroupBox,
     QTableWidget, QTableWidgetItem, QMessageBox, QHeaderView, QDoubleSpinBox,
     QFrame, QSizeGrip, QListView, QSizePolicy, QStyledItemDelegate,
-    QFileDialog,
+    QFileDialog, QStackedWidget,
 )
 from PyQt6.QtGui import QCursor, QPalette, QColor
 from PyQt6 import sip
@@ -114,11 +114,13 @@ _CHECKBOX_EXTRA_W: Final[int] = 34
 
 
 # MQTT sensor units: stored code -> label shown in the table. "" means the
-# reading is not a temperature and is recorded exactly as published.
+# reading is not a temperature and is recorded exactly as published; "W" is a
+# power reading, recorded as published and used by the energy view.
 _MQTT_SENSOR_UNITS: Final[tuple[tuple[str, str], ...]] = (
     ("",  "—"),
     ("C", "°C"),
     ("F", "°F"),
+    ("W", "W"),
 )
 
 
@@ -432,6 +434,103 @@ class TilauscopeConfigDlg(QDialog):
         grip_row.addWidget(grip, 0, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
         card_layout.addLayout(grip_row)
 
+    def _build_identity_card(self) -> QFrame:
+        """Operator's name as an identity card: initials, name, edit in place.
+        The name is committed on Save, like every other setting here."""
+        self._operator_name = str(getattr(self.aw.qmc, 'operator_setup', '') or '')
+        card = QFrame()
+        card.setObjectName("IdentityCard")
+        card.setStyleSheet(
+            f"#IdentityCard {{ background:{THEME['SURFACE']}; border:1px solid {THEME['BORDER']};"
+            f" border-radius:14px; }}")
+        row = QHBoxLayout(card)
+        row.setContentsMargins(14, 12, 12, 12)
+        row.setSpacing(14)
+
+        self._identity_avatar = QLabel()
+        self._identity_avatar.setFixedSize(44, 44)
+        self._identity_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._identity_avatar.setStyleSheet(
+            f"background:{THEME['BORDER']}; color:{THEME['ACCENT']}; border-radius:22px;"
+            f" font-size:15px; font-weight:700;")
+        row.addWidget(self._identity_avatar)
+
+        self._identity_stack = QStackedWidget()
+        # view page: name + what it is for, pencil to edit
+        view = QWidget()
+        vl = QHBoxLayout(view)
+        vl.setContentsMargins(0, 0, 0, 0)
+        text = QVBoxLayout()
+        text.setSpacing(2)
+        self._identity_name = QPushButton()
+        self._identity_name.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._identity_name.setStyleSheet(
+            f"QPushButton {{ background:transparent; border:none; text-align:left; padding:0;"
+            f" color:{THEME['TEXT']}; font-size:15px; font-weight:600; }}")
+        self._identity_name.clicked.connect(self._edit_identity)
+        hint = QLabel(QApplication.translate("tilauscope_devices", "Signs your roast reports and roast files"))
+        hint.setStyleSheet(f"color:{THEME['SUBTEXT']}; font-size:12px; background:transparent;")
+        text.addWidget(self._identity_name)
+        text.addWidget(hint)
+        vl.addLayout(text, 1)
+        pen = QPushButton("✎")
+        pen.setFixedSize(30, 30)
+        pen.setCursor(Qt.CursorShape.PointingHandCursor)
+        pen.setToolTip(QApplication.translate("tilauscope_devices", "Edit your name"))
+        pen.setStyleSheet(
+            f"QPushButton {{ background:transparent; color:{THEME['SUBTEXT']}; border:none;"
+            f" border-radius:15px; font-size:15px; }}"
+            f"QPushButton:hover {{ background:{THEME['BORDER']}; color:{THEME['ACCENT']}; }}")
+        pen.clicked.connect(self._edit_identity)
+        vl.addWidget(pen)
+        # edit page: field, confirm, cancel
+        edit = QWidget()
+        el = QHBoxLayout(edit)
+        el.setContentsMargins(0, 0, 0, 0)
+        el.setSpacing(6)
+        self._identity_edit = QLineEdit()
+        self._identity_edit.setMaxLength(64)
+        self._identity_edit.setPlaceholderText(QApplication.translate("tilauscope_devices", "Your name"))
+        self._identity_edit.returnPressed.connect(self._commit_identity)
+        el.addWidget(self._identity_edit, 1)
+        for glyph, slot, colour in (("✓", self._commit_identity, THEME['SUCCESS']),
+                                    ("✕", self._cancel_identity, THEME['SUBTEXT'])):
+            b = QPushButton(glyph)
+            b.setFixedSize(30, 30)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.setStyleSheet(
+                f"QPushButton {{ background:transparent; color:{colour}; border:none;"
+                f" border-radius:15px; font-size:15px; font-weight:700; }}"
+                f"QPushButton:hover {{ background:{THEME['BORDER']}; }}")
+            b.clicked.connect(slot)
+            el.addWidget(b)
+        self._identity_stack.addWidget(view)
+        self._identity_stack.addWidget(edit)
+        row.addWidget(self._identity_stack, 1)
+        self._refresh_identity()
+        return card
+
+    def _refresh_identity(self) -> None:
+        name = self._operator_name
+        initials = ''.join(w[0] for w in name.split()[:2]).upper()
+        self._identity_avatar.setText(initials or "?")
+        self._identity_name.setText(
+            name or QApplication.translate("tilauscope_devices", "Add your name"))
+        self._identity_stack.setCurrentIndex(0)
+
+    def _edit_identity(self) -> None:
+        self._identity_edit.setText(self._operator_name)
+        self._identity_stack.setCurrentIndex(1)
+        self._identity_edit.setFocus()
+        self._identity_edit.selectAll()
+
+    def _commit_identity(self) -> None:
+        self._operator_name = self._identity_edit.text().strip()
+        self._refresh_identity()
+
+    def _cancel_identity(self) -> None:
+        self._refresh_identity()
+
     # ─────────────────────────────────────────────────────────────────────────
     # TAB 1 — GENERAL
     # ─────────────────────────────────────────────────────────────────────────
@@ -439,6 +538,9 @@ class TilauscopeConfigDlg(QDialog):
     def _setup_general_tab(self) -> None:
         scroll = _scrollable(self._general_tab)
         layout = scroll.widget().layout()
+
+        # Who roasts: identity card, name edited in place
+        layout.addWidget(self._build_identity_card())
 
         # Roaster model
         layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "Roaster")))
@@ -1844,8 +1946,12 @@ class TilauscopeConfigDlg(QDialog):
         self.mqtt_sensor_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.mqtt_sensor_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.mqtt_sensor_table.setMinimumHeight(140)
+        self._mqtt_power_hint = self._build_mqtt_power_hint()
         self._populate_mqtt_sensor_table()
         form_layout.addRow(self.mqtt_sensor_table)
+        form_layout.addRow(self._mqtt_power_hint)
+        self.mqtt_sensor_table.currentCellChanged.connect(self._mqtt_refresh_power_hint)
+        self.mqtt_sensor_table.itemChanged.connect(self._mqtt_refresh_power_hint)
 
         buttons = QWidget()
         btn_layout = QHBoxLayout(buttons)
@@ -1889,15 +1995,69 @@ class TilauscopeConfigDlg(QDialog):
         cb = QComboBox()
         for code, label in _MQTT_SENSOR_UNITS:
             cb.addItem(label, code)
-        index = cb.findData(unit if unit in ("C", "F") else "")
+        index = cb.findData(unit if unit in ("C", "F", "W") else "")
         cb.setCurrentIndex(max(index, 0))
         cb.setStyleSheet(_table_combobox_style())
+        cb.currentIndexChanged.connect(self._mqtt_refresh_power_hint)
         cb.setToolTip(QApplication.translate(
             "tilauscope_devices",
             "Unit the sensor publishes in. A temperature is converted to the unit "
-            "the application works in; leave empty for anything that is not a temperature."
+            "the application works in; W marks a power reading for the energy view; "
+            "leave empty for anything else."
         ))
         self.mqtt_sensor_table.setCellWidget(row, 5, cb)
+
+    def _build_mqtt_power_hint(self) -> QWidget:
+        """Under the table: for a row that reads power, one tap names it with the
+        energy view's reserved id and sets its unit — nothing to type."""
+        hint = QWidget()
+        lay = QHBoxLayout(hint)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(8)
+        lbl = QLabel(QApplication.translate("tilauscope_devices", "Power reading detected."))
+        lbl.setStyleSheet(f"color: {THEME['SUBTEXT']};")
+        lay.addWidget(lbl)
+        lay.addStretch(1)
+        for reserved, text in (
+                ("roaster", QApplication.translate("tilauscope_devices", "⚡ Use as roaster")),
+                ("extractor", QApplication.translate("tilauscope_devices", "💨 Use as extractor"))):
+            pill = QPushButton(text)
+            pill.setProperty('variant', 'outline')
+            pill.setCursor(Qt.CursorShape.PointingHandCursor)
+            pill.setToolTip(QApplication.translate(
+                "tilauscope_devices",
+                "Names this sensor for the energy view and sets its unit to W"))
+            pill.clicked.connect(lambda _=False, r=reserved: self._mqtt_use_as_power(r))
+            lay.addWidget(pill)
+        hint.hide()
+        return hint
+
+    def _mqtt_row_reads_power(self, row: int) -> bool:
+        if row < 0:
+            return False
+        item = self.mqtt_sensor_table.item(row, 1)
+        topic = item.text().strip().lower() if item is not None else ""
+        cb = self.mqtt_sensor_table.cellWidget(row, 5)
+        unit = str(cb.currentData() or "") if isinstance(cb, QComboBox) else ""
+        return unit == "W" or topic.endswith("/power")
+
+    def _mqtt_refresh_power_hint(self, *_args: object) -> None:
+        hint = getattr(self, "_mqtt_power_hint", None)
+        if hint is not None:
+            hint.setVisible(self._mqtt_row_reads_power(self.mqtt_sensor_table.currentRow()))
+
+    def _mqtt_use_as_power(self, reserved: str) -> None:
+        row = self.mqtt_sensor_table.currentRow()
+        if row < 0:
+            return
+        item = self.mqtt_sensor_table.item(row, 0)
+        if item is None:
+            item = QTableWidgetItem("")
+            self.mqtt_sensor_table.setItem(row, 0, item)
+        item.setText(reserved)
+        cb = self.mqtt_sensor_table.cellWidget(row, 5)
+        if isinstance(cb, QComboBox):
+            cb.setCurrentIndex(max(cb.findData("W"), 0))
 
     def _populate_mqtt_sensor_table(self) -> None:
         sensors = self._mqtt_sensors.sensors
@@ -1998,7 +2158,7 @@ class TilauscopeConfigDlg(QDialog):
                 QApplication.translate("tilauscope_devices", "MQTT Sensor OK"),
                 QApplication.translate("tilauscope_devices", "Value read for {0}: {1} {2}").format(
                     sensor.id, result.value,
-                    f"°{self.aw.qmc.mode}" if sensor.unit else "").strip(),
+                    "W" if sensor.unit == "W" else f"°{self.aw.qmc.mode}" if sensor.unit else "").strip(),
             )
         else:
             detail = "" if result is None else f"{result.error.name} — {result.message or ''}"
@@ -2383,8 +2543,11 @@ class TilauscopeConfigDlg(QDialog):
             if self.tilauRoaster.currentIndex() > 0
             else "")
         aw.tilau_roaster_readonly = self.tilauRoasterReadonly.isChecked()
-        from tilauscope.roasters import sync_roaster_to_qmc
+        from tilauscope.roasters import sync_operator_to_qmc, sync_roaster_to_qmc
         sync_roaster_to_qmc(aw, aw.tilau_roaster) # mirror onto the canvas machine label
+        if self._identity_stack.currentIndex() == 1:
+            self._commit_identity()  # Save while still typing keeps the name
+        sync_operator_to_qmc(aw, self._operator_name)
         self._apply_roaster_slider_visibilities()
         # The Replay header and the assistant's advisor were both built for
         # the previously selected roaster. Realign them on the new one; guarded

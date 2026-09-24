@@ -177,6 +177,34 @@ def roast_tiles(facts: RoastFacts | None) -> list[TileText]:
     return [weight, duration, drop, colour]
 
 
+def energy_tile(profile: Mapping | None) -> TileText:
+    """Energy of the roast, CHARGE to DROP: kWh, then kWh/kg green and where it comes from.
+
+    From the profile's own energy bill, else rebuilt from its saved power curve.
+    """
+    caption = QApplication.translate('tilauscope_beancave', 'Energy')
+    if not profile:
+        return TileText(caption)
+    from tilauscope.energy_model import NONE, session_for_profile
+    from tilauscope.energy_panel import fmt_kwh, provenance, summarize_profile
+    session = session_for_profile(dict(profile))
+    summary = summarize_profile(dict(profile), session) if session is not None else None
+    if summary is None or summary.roast is None:
+        return _not_recorded(caption)
+    roast = summary.total(summary.roast.per_channel)
+    if roast.provenance == NONE:
+        return _not_recorded(caption)
+    glyph, _colour, words = provenance(roast)
+    bits = []
+    if summary.wh_per_kg is not None:
+        bits.append(QApplication.translate('tilauscope_beancave', '{0} kWh/kg').format(
+            f'{summary.wh_per_kg / 1000:.3f}'))
+    bits.append(f'{glyph} {words}')
+    if session is not None and session.rebuilt:
+        bits.append(QApplication.translate('tilauscope_beancave', 'rebuilt'))
+    return TileText(caption, fmt_kwh(roast.wh), ' · '.join(bits))
+
+
 def comparison_tiles(all_facts: Sequence[RoastFacts] | None) -> list[TileText]:
     """Roast time, drop temperature and colour across the compared roasts: a range and its spread."""
     captions = (QApplication.translate('tilauscope_beancave', 'Roast time'),
@@ -247,10 +275,16 @@ def menu_qss() -> str:
 
 
 class KpiTile(QFrame):
-    """One figure of a roast: what it is, its value, and what the value means."""
+    """One figure of a roast: what it is, its value, and what the value means.
+
+    A clickable tile shows a chevron and emits `clicked`; the others never do.
+    """
+
+    clicked = pyqtSignal()
 
     def __init__(self, parent=None) -> None:  # noqa: ANN001
         super().__init__(parent)
+        self._clickable = False
         self.setProperty('variant', 'card')
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 10)
@@ -267,6 +301,10 @@ class KpiTile(QFrame):
         value_row.addWidget(self._swatch, 0, Qt.AlignmentFlag.AlignVCenter)
         value_row.addWidget(self._value)
         value_row.addStretch(1)
+        self._chevron = QLabel('›')
+        self._chevron.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {THEME['ACCENT']};")
+        self._chevron.hide()
+        value_row.addWidget(self._chevron)
         self._sub = QLabel('')
         self._sub.setProperty('variant', 'caption')
         # One line high even when empty, so a figure arriving never moves the others.
@@ -276,6 +314,23 @@ class KpiTile(QFrame):
         layout.addWidget(self._caption)
         layout.addLayout(value_row)
         layout.addWidget(self._sub)
+
+    def set_clickable(self, on: bool, tip: str = '') -> None:
+        self._clickable = on
+        self._chevron.setVisible(on)
+        self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor if on else Qt.CursorShape.ArrowCursor))
+        self.setToolTip(tip if on else '')
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: ANN001, N802
+        # A Qt virtual: an exception escaping it closes the application.
+        try:
+            inside = (self._clickable and event.button() == Qt.MouseButton.LeftButton
+                      and self.rect().contains(event.position().toPoint()))
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            inside = False
+        super().mouseReleaseEvent(event)
+        if inside:
+            self.clicked.emit()
 
     def show_text(self, text: TileText) -> None:
         self._caption.setText(text.caption)

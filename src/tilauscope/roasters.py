@@ -295,6 +295,12 @@ class ElectricalSpecification(DataClassDictMixin):
     phase_type: VoltageType = VoltageType.SINGLE_PHASE
     frequency_hz: int| None = None
     max_power_draw_kw: float | None = None
+    # Shape of the heater command against power, P = rated × (u/100)^exponent,
+    # used only to ESTIMATE energy when no meter reads it. None = linear.
+    heater_power_exponent: float | None = None
+    # Measured mean power per heater command, [[%, W], ...] ascending, taken
+    # between CHARGE and DROP. Wins over the exponent when present.
+    heater_power_curve: list[list[float]] | None = None
 
 @dataclass(slots=True)
 class GasSpecification(DataClassDictMixin):
@@ -932,6 +938,18 @@ def sync_roaster_to_qmc(aw: object, name: str | None) -> bool:
         _logd.exception('TilauScope: sync_roaster_to_qmc redraw failed')
 
     return True
+
+
+def sync_operator_to_qmc(aw: object, name: str) -> None:
+    """Write the operator's name into Artisan's setup default (persisted with
+    the settings, copied into each new roast) and into the current roast,
+    unless one is recording."""
+    qmc = getattr(aw, 'qmc', None)
+    if qmc is None:
+        return
+    qmc.operator_setup = name.strip()
+    if not getattr(qmc, 'flagstart', False):
+        qmc.operator = qmc.operator_setup
 
 
 # ============================================================

@@ -16116,6 +16116,9 @@ class ApplicationWindow(QMainWindow):
             ## TILAU ## — round-trip the preheat SV so re-saving a loaded PID roast keeps it
             _tilau_psv_loaded = profile.get('tilau_preheat_sv_c') if profile else None
             self.qmc.tilau_preheat_sv_c = float(_tilau_psv_loaded) if _tilau_psv_loaded is not None else None
+            ## TILAU ## — energy bill of the roast (versioned block), else rebuilt from its saved power curve
+            from tilauscope.energy_model import session_for_profile
+            self.qmc.tilau_energy = session_for_profile(profile) if profile else None
             #extra devices load and check
             if profile and 'extratimex' in profile:
                 ## TILAU ## — remap TilauScope device indexes if Artisan device list shifted since save
@@ -17596,6 +17599,10 @@ class ApplicationWindow(QMainWindow):
             _tilau_psv = getattr(self.qmc, 'tilau_preheat_sv_c', None)
             if _tilau_psv is not None:
                 profile['tilau_preheat_sv_c'] = float(_tilau_psv)
+            ## TILAU ## — energy bill: power series, provenance and session limits, monitoring ON included
+            _tilau_energy = getattr(self.qmc, 'tilau_energy', None)
+            if _tilau_energy is not None:
+                profile['tilau_energy'] = _tilau_energy.to_dict()
             profile['extraname1'] = [encodeLocalStrict(n, 'Extra 1') for n in self.qmc.extraname1]
             profile['extraname2'] = [encodeLocalStrict(n, 'Extra 2') for n in self.qmc.extraname2]
             profile['extratimex'] = [[float2float(t,10) for t in x] for x in self.qmc.extratimex]
@@ -22379,6 +22386,14 @@ class ApplicationWindow(QMainWindow):
                     if 'tilauscope.tilau_ble_scanner' in sys.modules:
                         from tilauscope.tilau_ble_scanner import TilauBLEScanner
                         TilauBLEScanner.stop_all()
+                except Exception: # pylint: disable=broad-except
+                    pass
+
+                ## TILAU ## the Skywalker transport is only closed by the deferred
+                ## OffMonitorCloseDown, which never runs once QApplication.exit() is
+                ## reached: its private BLE loop kept scanning into _Py_Finalize → SIGABRT.
+                try:
+                    self.qmc.stopSkywalkerManager()
                 except Exception: # pylint: disable=broad-except
                     pass
 

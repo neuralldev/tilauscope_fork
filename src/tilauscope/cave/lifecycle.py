@@ -1016,16 +1016,12 @@ class LifecycleMixin:
 
         # All your existing UI content goes inside this layout
         self.layout = QVBoxLayout(self.container)
-        self.layout.setContentsMargins(20, 10, 20, 20)
+        self.layout.setContentsMargins(20, 6, 20, 4)
         self.main_window_layout.addWidget(self.container)
-
-        size_grip = QSizeGrip(self.container)
-        size_grip.setStyleSheet("width: 16px; height: 16px;")
-        self.layout.addWidget(size_grip, 0, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
 
         # --- MODERN HEADER ---
         header = QHBoxLayout()
-        header.setContentsMargins(5, 5, 5, 10)
+        header.setContentsMargins(5, 2, 5, 4)
 
         title_lbl = QLabel(QApplication.translate("tilauscope_beancave", "BEANCAVE"))
         title_lbl.setStyleSheet(f"color: {THEME['ACCENT']}; font-size: 18px; font-weight: 800; border: none; background: transparent;")

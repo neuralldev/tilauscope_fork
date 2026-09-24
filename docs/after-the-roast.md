@@ -5,8 +5,9 @@
     reading raw numbers.
 
     **TilauScope adds** — a record that can be reopened and completed later, a reading that
-    grades the roast against your own history, a way to compare several roasts side by side,
-    and correction to the timeline after the fact.
+    grades the roast against your own history, a profile analysis that points to where the rate
+    of rise left a reference and says what that may mean, a way to compare several roasts side
+    by side, and correction to the timeline after the fact.
 
 This chapter picks up where [The guided roast](the-guided-roast.md#after-the-drop) leaves
 off: **ROAST SUMMARY**, colour closing the loop into the next plan, and
@@ -59,6 +60,8 @@ is judged on, so a loss a little under the aim but inside that range reads as fi
 Under the figures, the **Coach** card sums up the coach's reading in one line: the level the roast
 was read at, and the remark that matters most — or that every check is within range. Tapping the
 card opens the full reading, the same one BeanCave shows under [Coach's Advice](#coachs-advice).
+When the roast has a power reading, a line under it gives its energy — **⚡ 0.105 kWh roast ·
+0.300 kWh/kg green · Measured** — and opens the energy detail; see [Energy](energy.md#after-the-roast).
 Below it sit the weights, the colour and the room conditions the roast was recorded in.
 
 **Next batch**, the blue pill at the top of the review, prepares the next roast of the same
@@ -90,7 +93,8 @@ is made. See [Correcting a milestone](the-window.md#correcting-a-milestone).
 <!-- CAPTURE 8.0 [scene:review] — the roasting window just after STOP: the left column given over to the roast
      review of a roast that ran to plan — readouts and status line gone, verdict block at the top,
      phase ribbon, milestone table with the VS PLAN column, the four figures, the Next batch
-     pill beside the plan badge and the Coach card under the figures. -->
+     pill beside the plan badge, the Coach card under the figures and, the roast having a power
+     reading, the ⚡ energy line under the Coach card. -->
 
 ![The roast review in the left column just after a recording stops.](assets/after-the-roast-8.0.png)
 
@@ -150,7 +154,7 @@ TilauScope, or failing that the one you had selected last time, or failing that 
 recent roast.
 
 A selected roast opens under its name and the day it was roasted, with its process, crop year
-and batch number, and four figures, each with what it means underneath:
+and batch number, and five figures, each with what it means underneath:
 
 | Figure | Underneath |
 |---|---|
@@ -158,6 +162,7 @@ and batch number, and four figures, each with what it means underneath:
 | **Roast time** | The [development](glossary.md#dtr--development-time-ratio) time, when first crack was marked |
 | **Drop temperature** | The bean temperature at first crack |
 | **Colour** | **Ground** and its colour category — or **Whole bean**, which is given no category |
+| **Energy** | The kWh per kg of green coffee and where the figure comes from — see [Energy](energy.md#after-the-roast); a **›** opens the roast's energy detail |
 
 A figure that was never recorded reads **Not recorded**. With several roasts selected, the head
 reads how many are compared, names each one in its curve's colour, and gives the roast time,
@@ -188,7 +193,8 @@ curve rather than sitting on it, and the same lever strips underneath. A roast r
 same picture as the roast that was driven. When a crack probe counted during the
 roast, one tick per pop runs along the foot of the plot, exactly as in the roasting window — see
 [Listening to the crack](the-window.md#listening-to-the-crack). **Statistics**, beside it, holds
-the reading described under [Coach's Advice](#coachs-advice). At the right of that row, on
+the reading described under [Coach's Advice](#coachs-advice), and **Analysis** the one described
+under [Profile analysis](#profile-analysis). At the right of that row, on
 **Curve**, the full-screen button opens the curve on the whole window; the same button, or ESC,
 closes it.
 
@@ -235,7 +241,7 @@ split, then its time, so a roast is never drawn without being named.
 
 ![The curve card, single roast, all milestones labelled](assets/after-the-roast-8.2.png)
 
-<!-- CAPTURE 8.2 [scene:cave_roast] — the Roasts tab, one roast selected in the list grouped by day: its name, date and four figures above the curve card on Curve, the roast drawn by the curve engine with its milestone labels in rows above the curve and the lever strips under it, View on Both and Burner & air on -->
+<!-- CAPTURE 8.2 [scene:cave_roast] — the Roasts tab, one roast selected in the list grouped by day: its name, date and five figures (Energy included) above the curve card on Curve, the roast drawn by the curve engine with its milestone labels in rows above the curve and the lever strips under it, View on Both and Burner & air on -->
 
 ![Consistency view on 3+ roasts of the same coffee](assets/after-the-roast-8.3.png)
 
@@ -324,6 +330,68 @@ flagging at least one phase](assets/after-the-roast-8.8.png)
 
 <!-- CAPTURE 8.8 [scene:cave_stats] (image) — Statistics chosen beside Curve in the Roasts tab, Coach's Advice fully populated, ideally flagging at least one phase -->
 
+
+---
+
+## Profile analysis
+
+Artisan's Analyzer fits a trend to the bean temperature and prints, in two text boxes over the
+curve, how far the rate of rise strayed from it. **Analysis**, beside **Statistics** in the
+Roasts tab, takes its place — the Analyzer is no longer offered in the **Tools** menu. It runs
+the same kind of reading on the roast selected, lays it out as a page, and names the passages
+worth a look. It is computed only while the page is
+open, one roast at a time — select a single roast; the page waits while you browse.
+
+The row at the top holds the choices:
+
+- **Reference** — what the measured [rate of rise](glossary.md#ror--rate-of-rise) is compared
+  with: a [reference trend](glossary.md#reference-trend) fitted to the roast itself
+  (quadratic, cubic or logarithmic), or **Previous roast**, the latest earlier roast of the same
+  coffee, aligned on CHARGE and read up to whichever roast dropped first. Its name shows when the
+  pointer rests on the choice.
+- **Period** — from **dry end** to DROP, or from **two minutes before first crack** to DROP.
+- **⚙ Settings** — where the trend is fitted from, if not from the start of the period, and
+  the two thresholds under which small wobbles are merged: a duration and a deviation. They
+  group noise; they are not quality limits. The rate of rise itself is smoothed as the curve
+  settings say.
+
+Beside **Summary**, a mark says whether CHARGE and DROP are both there; without them, or
+without the dry-end or first-crack mark the period needs, the page says which one is missing and
+offers to go back to the curve.
+
+**Summary** puts the chart on the left: the measured rate of rise, the reference dashed, dry
+end, first crack and DROP ruled across. On the right:
+
+- **Three figures** — how close the bean temperature stayed to the reference (its root mean
+  square deviation, in °C), the mean gap between the two rates of rise over the period, and the
+  gap at first crack, shown in yellow when it reaches 2 °C/min. Resting the pointer on a figure
+  says what it measures.
+- **Segment** — the stretch of the period where the rate of rise stayed on one side of the
+  reference: when it starts and ends, whether it ran above or below, its largest and mean
+  deviation, and its swing, the change of largest deviation from the segment before. Click
+  anywhere on the chart to read the segment under the pointer; it is shaded on the chart.
+- **To examine** — the passages worth a look, numbered as on the chart. A
+  [crash](glossary.md#crash) or a [flick](glossary.md#flick) is named only when the measured
+  rate of rise itself dips or rises by at least 2 °C/min, on the side of the reference that
+  confirms it; a passage that simply runs 2 °C/min slower or faster than the reference is
+  named as such, with its phase; and a rate of rise that does not decline over the period is
+  flagged. **Understand** opens what the passage usually indicates and what to check — the
+  heat and air changes just before it, the first-crack mark — and every reading ends the same
+  way: confirm it in the cup. Clicking a passage shades its segment on the chart.
+
+**Expert** sets every reference side by side — the gap in bean temperature, its square, the
+gap at first crack and the largest gaps each way — and gives the fitted equation, how well it
+fits, the rate of rise at first crack and the overall slope of both rates of rise.
+
+!!! note
+    Being close to a reference describes the shape of the curve. On its own it does not predict
+    the cup, and a passage named here is something to look at, not a fault. All the figures are
+    in Celsius. They can differ slightly from Artisan's Analyzer, which works on the smoothed
+    temperatures; this page fits the recorded ones.
+
+<!-- CAPTURE 8.8a [scene:cave_analysis] — the Roasts tab on Analysis, one roast selected: Summary with the rate of rise against the quadratic reference on the left, the three figures, the selected segment and To examine on the right -->
+
+![The Roasts tab on Analysis: the rate of rise against its reference, the three figures, the selected segment and the passages to examine.](assets/after-the-roast-8.8a.png)
 
 ---
 

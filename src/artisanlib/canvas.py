@@ -8252,6 +8252,7 @@ class tgraphcanvas(QObject):
             self.tilau_exclude_learning = False
             self.tilau_learning_admitted = False   ## TILAU ## reviewed-and-admitted marker (ALog repair window)
             self.tilau_preheat_sv_c = None   ## TILAU ## preheat SV (°C) used this roast; set by TilauPID.start
+            self.tilau_energy = None   ## TILAU ## energy session of this roast; EnergyTap re-attaches a live one
             self.tilau_roast_plan_snapshot = _tilau_snapshot_keep  ## TILAU ## P2 prediction is per-roast
             self._tilau_coach_pub = None   ## TILAU ## clear graph-coach proximity
             self._tilau_milestone_suggest = None   ## TILAU ## clear milestone suggestion (#10)

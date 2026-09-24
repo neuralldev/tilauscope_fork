@@ -22,7 +22,7 @@ import logging
 import os
 from typing import Final, TYPE_CHECKING
 
-from PyQt6.QtCore import QSettings, Qt, QTimer, pyqtSlot
+from PyQt6.QtCore import QT_TRANSLATE_NOOP, QSettings, Qt, QTimer, pyqtSlot
 from PyQt6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QRadioButton,
     QScrollArea,
@@ -143,8 +144,13 @@ def _ble_signature_match(bd, ad, prefix: str, service_uuid: str | None) -> bool:
 class OnboardingWizard(QDialog):
     """The 4-step first-run configuration dialog."""
 
+    # Translated where the stepper is built; declared here for the extractor.
     STEPS: Final[tuple[str, ...]] = (
-        "Unité", "Torréfacteur", "Matériel", "Dossiers", "Premier grain")
+        QT_TRANSLATE_NOOP("tilauscope_onboarding", "You"),
+        QT_TRANSLATE_NOOP("tilauscope_onboarding", "Roaster"),
+        QT_TRANSLATE_NOOP("tilauscope_onboarding", "Hardware"),
+        QT_TRANSLATE_NOOP("tilauscope_onboarding", "Folders"),
+        QT_TRANSLATE_NOOP("tilauscope_onboarding", "First bean"))
 
     def __init__(self, beancave: QWidget, aw: "ApplicationWindow") -> None:
         super().__init__(
@@ -166,6 +172,7 @@ class OnboardingWizard(QDialog):
 
         # collected choices
         self._unit: str = "C"
+        self._operator: str = getattr(getattr(aw, "qmc", None), "operator_setup", "") or ""
         self._roaster: str = ""
         self._skywalker_ready: bool = False  # set by detection → drives USB/BLE profile
         _s = QSettings()
@@ -250,7 +257,7 @@ class OnboardingWizard(QDialog):
             b = QLabel(str(i + 1))
             b.setAlignment(Qt.AlignmentFlag.AlignCenter)
             b.setFixedSize(32, 32)
-            lab = QLabel(name)
+            lab = QLabel(QApplication.translate("tilauscope_onboarding", name))
             lab.setAlignment(Qt.AlignmentFlag.AlignCenter)
             col.addWidget(b, 0, Qt.AlignmentFlag.AlignHCenter)
             col.addWidget(lab, 0, Qt.AlignmentFlag.AlignHCenter)
@@ -314,31 +321,72 @@ class OnboardingWizard(QDialog):
         row.addWidget(self._next_btn)
         return foot
 
-    # ── page 1: unit ──────────────────────────────────────────────────────
+    # ── page 1: you (name + unit) ─────────────────────────────────────────
     def _page_unit(self) -> QWidget:
         page = self._page_base(
-            QApplication.translate("tilauscope_onboarding","Which unit do you want to work in?"),
-            QApplication.translate("tilauscope_onboarding","All temperatures — curves, milestones, setpoints — will be shown in "
-                "this unit. You can change it later in the settings."),
+            QApplication.translate("tilauscope_onboarding","Who is roasting?"), "")
+        lay = page.layout()
+
+        # signature line: borderless field underlined, accent under focus
+        sig = QHBoxLayout()
+        sig.setSpacing(10)
+        pen = QLabel("✎")
+        pen.setStyleSheet(f"color:{_T['MUTED']}; font-size:20px; background:transparent;")
+        self._operator_edit = QLineEdit(self._operator)
+        self._operator_edit.setPlaceholderText(
+            QApplication.translate("tilauscope_onboarding","Your name"))
+        self._operator_edit.setMaxLength(64)
+        self._operator_edit.setStyleSheet(
+            f"QLineEdit {{ background:transparent; color:{_T['TEXT']}; border:none;"
+            f" border-bottom:2px solid {_T['OVERLAY']}; padding:6px 2px; font-size:22px;"
+            f" font-weight:600; }}"
+            f"QLineEdit:focus {{ border-bottom-color:{_T['ACCENT']}; }}"
         )
+        self._operator_edit.textChanged.connect(self._on_operator_changed)
+        sig.addWidget(pen)
+        sig.addWidget(self._operator_edit, 1)
+        lay.addLayout(sig)
+        lay.addSpacing(10)
+
+        # live preview of where the name appears
+        self._operator_preview = QLabel()
+        self._operator_preview.setStyleSheet(
+            f"color:{_T['SUBTEXT']}; font-size:13px; background:{_T['SURFACE']};"
+            f" border:1px solid {_T['OVERLAY']}; border-radius:14px; padding:8px 16px;"
+        )
+        lay.addWidget(self._operator_preview, 0, Qt.AlignmentFlag.AlignLeft)
+        self._on_operator_changed(self._operator)
+        lay.addSpacing(26)
+
+        # unit: compact pills on one line
         seg = QHBoxLayout()
-        seg.setSpacing(10)
-        seg.addStretch()
+        seg.setSpacing(8)
+        unit_lbl = QLabel(QApplication.translate("tilauscope_onboarding","Temperatures in"))
+        unit_lbl.setStyleSheet(f"color:{_T['SUBTEXT']}; font-size:14px; background:transparent;")
+        seg.addWidget(unit_lbl)
+        seg.addSpacing(8)
         self._unit_group = QButtonGroup(self)
         for code, big, small in (("C", "°C", "Celsius"), ("F", "°F", "Fahrenheit")):
-            b = QPushButton(f"{big}\n{small}")
+            b = QPushButton(f"{big}  {small}")
             b.setCheckable(True)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
-            b.setFixedSize(150, 74)
-            b.setStyleSheet(self._toggle_style())
+            b.setStyleSheet(self._pill_style())
             b.setChecked(code == "C")
             b.clicked.connect(lambda _=False, c=code: setattr(self, "_unit", c))
             self._unit_group.addButton(b)
             seg.addWidget(b)
         seg.addStretch()
-        page.layout().addLayout(seg)
-        page.layout().addStretch()
+        lay.addLayout(seg)
+        lay.addStretch()
         return page
+
+    def _on_operator_changed(self, text: str) -> None:
+        self._operator = text.strip()
+        sample = QApplication.translate("tilauscope_onboarding","Ethiopia Guji · #142")
+        if self._operator:
+            sample += " · " + QApplication.translate(
+                "tilauscope_onboarding","roasted by {0}").format(self._operator)
+        self._operator_preview.setText("📄  " + sample)
 
     # ── page 2: roaster ───────────────────────────────────────────────────
     def _page_roaster(self) -> QWidget:
@@ -590,6 +638,7 @@ class OnboardingWizard(QDialog):
             if w is not None:
                 w.deleteLater()
         rows = [
+            (QApplication.translate("tilauscope_onboarding","Roasted by"), self._operator or "—"),
             (QApplication.translate("tilauscope_onboarding","Unit"), "°C" if self._unit == "C" else "°F"),
             (QApplication.translate("tilauscope_onboarding","Roaster"), self._roaster or "—"),
         ]
@@ -868,6 +917,9 @@ class OnboardingWizard(QDialog):
 
     def _apply_settings(self) -> None:
         aw = self._aw
+        from tilauscope.roasters import sync_operator_to_qmc
+        sync_operator_to_qmc(aw, self._operator)
+
         # 1. unit (before theme so the °C custom axes survive)
         try:
             if self._unit == "C":
@@ -985,11 +1037,12 @@ class OnboardingWizard(QDialog):
             f"QPushButton:hover {{ background:{_T['SKY']}; }}"
         )
 
-    def _toggle_style(self) -> str:
+    def _pill_style(self) -> str:
         return (
             f"QPushButton {{ background:{_T['SURFACE']}; color:{_T['SUBTEXT']};"
-            f" border:1px solid {_T['OVERLAY']}; border-radius:12px; font-size:15px;"
-            f" font-weight:600; }}"
+            f" border:1px solid {_T['OVERLAY']}; border-radius:15px; padding:6px 16px;"
+            f" font-size:13px; font-weight:600; }}"
+            f"QPushButton:hover {{ border-color:{_T['OVER2']}; }}"
             f"QPushButton:checked {{ background:{_T['ACCENT']}; color:{_T['SURFACE']};"
             f" border-color:{_T['ACCENT']}; }}"
         )

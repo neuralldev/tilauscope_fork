@@ -4403,12 +4403,11 @@ class _BeanHeader(QFrame):
                 f"letter-spacing:.5px; padding:0 6px; {_FONT} }} "
                 f"QPushButton:hover {{ background:{THEME['BORDER']}; }}")
 
-    def set_coach_switch_available(self, auto_available: bool) -> None:
+    def set_coach_switch_available(self, auto_available: bool, reason: str = "") -> None:
+        """Enable AUTO, or disable it with `reason` as its tooltip."""
         self.coach_switch.setVisible(True)
         self.btn_auto.setEnabled(auto_available)
-        self.btn_auto.setToolTip(QApplication.translate(
-            "tilauscope_roast_assistant",
-            "Auto mode unavailable on a read-only roaster") if not auto_available else
+        self.btn_auto.setToolTip(reason if not auto_available else
             QApplication.translate(
                 "tilauscope_roast_assistant",
                 "Auto coach: the live plan drives the levers under safety limits."))
@@ -4897,9 +4896,13 @@ class RoastAssistantPanel(QWidget):
         self._ap_settle_until: float = 0.0  # coutures de jalon (CHARGE/DE/FC) : fenêtre de grâce anti-pause
         self._ap_tick_failures: int = 0     # ticks consécutifs en échec (pause au-delà de _AP_TICK_FAIL_MAX)
         self._tr_ap_blocked_lowconf = QApplication.translate(
-            "tilauscope_roast_assistant", "AUTO unavailable — plan confidence is too low for this roast")
+            "tilauscope_roast_assistant", "AUTO unavailable — not enough past roasts of this coffee to trust the plan.")
         self._tr_ap_blocked_noplan = QApplication.translate(
-            "tilauscope_roast_assistant", "AUTO unavailable — no roast plan for this session")
+            "tilauscope_roast_assistant", "AUTO unavailable — no roast plan for this session.")
+        self._tr_ap_blocked_inactive = QApplication.translate(
+            "tilauscope_roast_assistant", "AUTO becomes available once the roast plan is generated (START).")
+        self._tr_ap_blocked_readonly = QApplication.translate(
+            "tilauscope_roast_assistant", "Auto mode unavailable on a read-only roaster")
         self._tr_ap_armed_note = QApplication.translate(
             "tilauscope_roast_assistant", "⚙ AUTO armed — the plan drives the levers at each phase")
         self._tr_ap_paused_note = QApplication.translate(
@@ -5148,7 +5151,8 @@ class RoastAssistantPanel(QWidget):
         self._bean_header.btn_auto.clicked.connect(self._ap_toggle)
         self._bean_header.btn_manual.clicked.connect(self._coach_manual_selected)
         self._auto_user_available = _AP_USER_ENABLED and not _guidance_curve_only(self.aw)
-        self._bean_header.set_coach_switch_available(False)  # enabled with an active session
+        self._bean_header.set_coach_switch_available(  # enabled with an active session
+            False, self._tr_ap_blocked_inactive)
 
         # ── Pages de phases (QStackedWidget) ─────────────────────────────────
         self._stack = QStackedWidget()
@@ -5560,13 +5564,15 @@ class RoastAssistantPanel(QWidget):
         # configuration exposes none.
         _curve_only = _guidance_curve_only(self.aw)
         self._guidance_session.set_actions_observable(not _curve_only)
-        self._auto_user_available = _AP_USER_ENABLED and not _curve_only
+        _ap_reason = (self._tr_ap_blocked_readonly if _curve_only
+                      else self._ap_plan_block_reason())
+        self._auto_user_available = _AP_USER_ENABLED and _ap_reason is None
         for _page in (self._page_dry, self._page_mai, self._page_dev):
             _page._readonly = _curve_only
             _page.quick_adjust.setVisible(not _curve_only)
         self._page_preheat.quick_adjust.setVisible(not _curve_only)
         self.is_active = True
-        self._bean_header.set_coach_switch_available(self._auto_user_available)
+        self._bean_header.set_coach_switch_available(self._auto_user_available, _ap_reason or "")
         self._setup_bar.set_active(True)
         self._setup_bar.show_combos(False)
         self._bean_header.set_active(True)
@@ -5605,7 +5611,7 @@ class RoastAssistantPanel(QWidget):
 
     def _stop_assistant(self) -> None:
         self.is_active = False
-        self._bean_header.set_coach_switch_available(False)
+        self._bean_header.set_coach_switch_available(False, self._tr_ap_blocked_inactive)
         self._rp = None   # libère le générateur et son cache historique
         # Désarme la relance back-to-back : un armement ne doit jamais
         # survivre à la session (tir surprise au cooling du roast suivant).
@@ -6323,6 +6329,21 @@ class RoastAssistantPanel(QWidget):
         else:
             self._bean_header.set_auto_state("off")
 
+    def _ap_plan_block_reason(self) -> "str | None":
+        """Why the current plan cannot drive AUTO, or None when it can."""
+        if self._plan is None:
+            return self._tr_ap_blocked_noplan
+        # Read the machine key, never "History Support": that one is
+        # the TRANSLATED display string, so this gate matched only in English —
+        # in French it reads « grille du plan seulement » and the test below was
+        # silently false, arming the AutoPilot on a plan that knows nothing of
+        # the coffee. Same disease as the plan's own source labels.
+        support = str((self._plan.get("Source Keys") or {}).get(
+            "confidence", self._plan.get("Plan Confidence", "grid only")))
+        if support == "grid only":
+            return self._tr_ap_blocked_lowconf
+        return None
+
     @pyqtSlot()
     def _ap_toggle(self) -> None:
         """Select AUTO: off→armed or paused→armed, subject to safety gates."""
@@ -6347,20 +6368,10 @@ class RoastAssistantPanel(QWidget):
         # off → armement : gates (assistant actif, plan présent, confiance non-low)
         if not self.is_active:
             return
-        if self._plan is None:
+        _reason = self._ap_plan_block_reason()
+        if _reason is not None:
             self._bean_header.set_auto_state("blocked")
-            self._ap_notice = (self._tr_ap_blocked_noplan, _S_WARN, now + 8)
-            return
-        # Read the machine key, never "History Support": that one is
-        # the TRANSLATED display string, so this gate matched only in English —
-        # in French it reads « grille du plan seulement » and the test below was
-        # silently false, arming the AutoPilot on a plan that knows nothing of
-        # the coffee. Same disease as the plan's own source labels.
-        support = str((self._plan.get("Source Keys") or {}).get(
-            "confidence", self._plan.get("Plan Confidence", "grid only")))
-        if support == "grid only":
-            self._bean_header.set_auto_state("blocked")
-            self._ap_notice = (self._tr_ap_blocked_lowconf, _S_WARN, now + 8)
+            self._ap_notice = (_reason, _S_WARN, now + 8)
             return
         # ── Flag A/B (QSettings caché, lu à CHAQUE armement off→armé — jamais ──
         # au tick) : feedforward-seul + filet minimal vs feedforward + trim v1b.

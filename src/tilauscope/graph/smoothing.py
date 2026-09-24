@@ -146,11 +146,15 @@ def apply_level(qmc: Any, key: str) -> bool:
     # than emptied: Artisan reads the FC rate out of delta2 when it saves.
     if not getattr(qmc, 'flagstart', False):
         try:
+            # Artisan re-smooths stale traces first; that is its redraw's job
+            if not len(qmc.stemp1) == len(qmc.stemp2) == len(qmc.timex):
+                raise ValueError('smoothed traces out of date')
             charge = int(qmc.timeindex[0])
             start = min(charge + 10, len(qmc.timex) - 1) if charge > -1 else -1
             d1, d2 = qmc.recomputeDeltas(qmc.timex, start, qmc.timeindex[6],
                                          qmc.stemp1, qmc.stemp2,
-                                         optimalSmoothing=getattr(qmc, 'optimalSmoothing', False))
+                                         optimalSmoothing=(getattr(qmc, 'optimalSmoothing', False)
+                                                           and not getattr(qmc, 'flagon', False)))
             if d1 is None or d2 is None:
                 raise ValueError('no deltas')
             qmc.delta1, qmc.delta2 = d1, d2

@@ -65,8 +65,8 @@ from tilauscope.cave.roast_list import (
     RoastListView, RoastRow, RoastRowDelegate, RoastSearchField, fold, roast_count_text)
 from tilauscope.widgets.controls import SegmentedControl
 from tilauscope.cave.viewer_detail import (
-    CurveMessageLabel, KpiTile, ResultBanner, comparison_tiles, custom_range_error, menu_qss,
-    roast_facts, roast_tiles)
+    DASH, CurveMessageLabel, KpiTile, ResultBanner, comparison_tiles, custom_range_error, energy_tile,
+    menu_qss, roast_facts, roast_tiles)
 
 
 class ViewerMixin:
@@ -135,11 +135,11 @@ class ViewerMixin:
         """
         # ── One roast's actions, beside its name ─────────────────────────────
         self.load_artisan_button_viewer = _vbtn(
-            "M2 7h8M7 3l4 4-4 4M12 2v10", QT_TRANSLATE_NOOP("tilauscope_beancave", "Load in Artisan"),
+            "M2 7h8M7 3l4 4-4 4M12 2v10", QT_TRANSLATE_NOOP("tilauscope_beancave", "TilauScope"),
             stroke=THEME["ACCENT"], style_extra=_SS_ACCENT2
         )
         self.load_artisan_button_viewer.clicked.connect(self.load_roast_in_artisan)
-        self.load_artisan_button_viewer.setToolTip(QApplication.translate("tilauscope_beancave","Load the selected ALog file into Artisan for detailed analysis."))
+        self.load_artisan_button_viewer.setToolTip(QApplication.translate("tilauscope_beancave","Load the selected ALog file into TilauScope for detailed analysis."))
         self.load_artisan_button_viewer.setEnabled(False)
 
         self.load_artisan_background_button_viewer = _vbtn(
@@ -147,7 +147,7 @@ class ViewerMixin:
             QT_TRANSLATE_NOOP("tilauscope_beancave", "Background")
         )
         self.load_artisan_background_button_viewer.clicked.connect(self.load_roast_in_artisan_background)
-        self.load_artisan_background_button_viewer.setToolTip(QApplication.translate("tilauscope_beancave","Load the selected ALog file into Artisan's background for comparison."))
+        self.load_artisan_background_button_viewer.setToolTip(QApplication.translate("tilauscope_beancave","Load the selected ALog file into TilauScope's background for comparison."))
         self.load_artisan_background_button_viewer.setEnabled(False)
 
         # Export: the label, the card, the curve image — and the printer's state.
@@ -241,9 +241,12 @@ class ViewerMixin:
         self.roast_result_banner.record_requested.connect(self.on_roast_finished_clicked)
 
         self.roast_tiles = [KpiTile() for _ in range(4)]
+        # Energy of the roast shown; a click opens its energy sheet
+        self.roast_energy_tile = KpiTile()
+        self.roast_energy_tile.clicked.connect(self._open_roast_energy)
         tiles_row = QHBoxLayout()
         tiles_row.setSpacing(8)
-        for tile in self.roast_tiles:
+        for tile in (*self.roast_tiles, self.roast_energy_tile):
             tiles_row.addWidget(tile, 1)
 
         self._roast_detail_head = QWidget()
@@ -267,7 +270,7 @@ class ViewerMixin:
         plot_info_layout = QVBoxLayout()
         plot_info_layout.addWidget(self._roast_detail_head)
 
-        # The two pages of the curve card: Curve and Statistics
+        # Profile pages share the selected roast; analysis only runs while visible.
         self.viewer_pages = QStackedWidget()
 
         # --- Curve page ---
@@ -348,10 +351,19 @@ class ViewerMixin:
         self.stats_layout.addWidget(self.stats_multi_widget, 1)
         self.viewer_pages.addWidget(self.stats_tab)
 
+        from tilauscope.cave.analysis_view import RoastAnalysisView
+        # The reference roast is read off the GUI thread; its RoR is computed on it, like the curve's.
+        self.roast_analysis_view = RoastAnalysisView(
+            parse=lambda fname: self.get_alog_data(Path(self.alog_directory) / fname),
+            ror_of=lambda data: self.evaldeltas(data, "temp2"))
+        self.roast_analysis_view.curve_requested.connect(self._show_curve_page)
+        self.viewer_pages.addWidget(self.roast_analysis_view)
+
         # ── The curve card: Curve or Statistics, and the curve's own choices under it ──
         self.detail_page_switch = SegmentedControl(
             [QApplication.translate("tilauscope_beancave", "Curve"),
-             QApplication.translate("tilauscope_beancave", "Statistics")], compact=True)
+             QApplication.translate("tilauscope_beancave", "Statistics"),
+             QApplication.translate("tilauscope_beancave", "Analysis")], compact=True)
         self.detail_page_switch.set_current(0)
         self.detail_page_switch.changed.connect(self._on_detail_page_changed)
         curve_card = QFrame()
@@ -1070,6 +1082,8 @@ class ViewerMixin:
         if self._selection_silence:
             return
         self._selected_fnames = self._view_selected_fnames()
+        self.roast_analysis_view.clear_profile(QApplication.translate(
+            "tilauscope_beancave", "Select one roast to analyze; its readings will load first."))
         self._remember_selected_roast()
         self._selection_debounce.start()  # restarts when already running
 
@@ -1183,6 +1197,19 @@ class ViewerMixin:
         """The name shown above the curve for this roast, or "" when it is not listed."""
         row = self._roast_model.row_of(fname) if fname else -1
         return self._roast_model.rows()[row].label if row >= 0 else ""
+
+    def previous_roast(self, fname: str) -> tuple[str, str] | None:
+        """(file name, label) of the latest earlier roast of the same coffee, or None."""
+        rows = self._roast_model.rows()
+        row = self._roast_model.row_of(fname) if fname else -1
+        if row < 0 or not rows[row].group or rows[row].epoch <= 0:
+            return None
+        current = rows[row]
+        earlier = [r for r in rows if r.group == current.group and 0 < r.epoch < current.epoch]
+        if not earlier:
+            return None
+        previous = max(earlier, key=lambda r: r.epoch)
+        return previous.fname, ' · '.join(part for part in (previous.batch, previous.label) if part)
 
     def _view_selected_fnames(self) -> list[str]:
         rows = sorted(index.row() for index in self.roast_list_view.selectionModel().selectedRows())
@@ -1393,6 +1420,7 @@ class ViewerMixin:
         for tile in self.roast_tiles[:3]:
             tile.setVisible(single or compare)
         self.roast_tiles[3].setVisible(single)
+        self.roast_energy_tile.setVisible(single)
         if not single:
             self.roast_result_banner.hide()
 
@@ -1413,6 +1441,8 @@ class ViewerMixin:
         self.roast_detail_title.setToolTip(title)
         self.roast_detail_meta.setText(self._roast_meta_text(row) if row is not None else "")
         self._show_tiles(roast_tiles(None))
+        self.roast_energy_tile.show_text(energy_tile(None))
+        self.roast_energy_tile.set_clickable(False)
         self.roast_result_banner.hide()
         self._set_detail_mode('single')
 
@@ -1425,6 +1455,25 @@ class ViewerMixin:
             self.roast_result_banner.setVisible(facts is not None and not facts.has_result)
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
             _log.exception("the roast's figures could not be shown")
+        try:
+            energy = energy_tile(profile)
+            self.roast_energy_tile.show_text(energy)
+            self.roast_energy_tile.set_clickable(
+                energy.value != DASH,
+                QApplication.translate("tilauscope_beancave", "Opens the energy details of this roast"))
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the roast's energy could not be shown")
+
+    def _open_roast_energy(self) -> None:
+        """The energy sheet of the roast on screen, read from its own profile."""
+        try:
+            profile = getattr(self, 'lastprofiledata', None)
+            if not profile:
+                return
+            from tilauscope.energy_panel import EnergyPanel
+            EnergyPanel(self.aw, self, profile=profile).show()
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the roast's energy sheet could not be opened")
 
     def _compare_chips_html(self, fnames: list[str]) -> str:
         """Each compared roast, named in its curve's colour."""
@@ -1494,6 +1543,11 @@ class ViewerMixin:
         except ValueError:
             pass
         return 0.0, 720.0
+
+    @pyqtSlot()
+    def _show_curve_page(self) -> None:
+        self.detail_page_switch.set_current(0)
+        self._on_detail_page_changed(0)
 
     @pyqtSlot(int)
     def _on_detail_page_changed(self, index: int) -> None:
@@ -1603,6 +1657,8 @@ class ViewerMixin:
 
     def load_roast_data_and_plot(self) -> None:
         selected = self.selected_roast_fnames()
+        self.roast_analysis_view.clear_profile(QApplication.translate(
+            "tilauscope_beancave", "Select one roast to analyze; its readings will load first."))
         if not selected:
             self.roast_plot_label.setText(QApplication.translate("tilauscope_beancave","Select a roast file to see the curve preview."))
             self.roast_info_text.setText(QApplication.translate("tilauscope_beancave","Roast Information will appear here."))
@@ -2053,6 +2109,8 @@ class ViewerMixin:
         _logd.warning(f"Unable to read or decode alog file '{filename}'")
         self.roast_plot_label.setText(QApplication.translate("tilauscope_beancave","Error reading/parsing file"))
         self.roast_info_text.setText(QApplication.translate("tilauscope_beancave","Error reading/parsing file."))
+        self.roast_analysis_view.clear_profile(QApplication.translate(
+            "tilauscope_beancave", "The roast could not be read. Select it again to retry."))
         self._fill_detail_single(None)
 
     @pyqtSlot(object, object, object)

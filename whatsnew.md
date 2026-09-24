@@ -5,6 +5,7 @@ A smaller release: TilauScope now adapts itself to machines that have no air pro
 ## ☕ After the roast
 
 * **Your roasts, at a glance.** BeanCave's roast list, now the **Roasts** tab, reads like a journal: two lines per roast grouped under Today, Yesterday or the date, its colour as a dot, and a badge on any roast whose result was never filled in. Search by coffee, process or batch number, narrow it to one coffee, or order it by coffee — the roast on screen stays put while you search. Open a roast and its key figures sit above the curve — weight loss, roast time and development, drop temperature and colour — with a banner when its result is still missing. Under the curve, show temperatures, rate of rise or both, and keep every roast on the same 0–12 min scale to read them alike.
+* **What the curve says, in plain words.** A new **Analysis** page beside Curve and Statistics compares the rate of rise with a smooth trend of the roast — or with your previous roast of the same coffee — and points to the passages worth a look: a crash, a flick, a stretch running slower or faster, a rate of rise that stops declining. Each one opens what it usually means and what to check. Click the chart to read any segment. It describes the curve, not the cup: taste confirms.
 * **Next batch.** From the top of the roast review, one click prepares the next roast of the same coffee: same charge weight, and the roast you just reviewed as the background curve. Nothing heats until you press MONITOR and START.
 * **Correcting a milestone, with a way back.** Move or add a milestone on a saved roast and a pill above the curve says what changed — *DRY END 4:46 → 4:38* — with **Undo** beside **Save**. It no longer covers the curve, and it only appears when something actually moved.
 * **The coach in the roast review.** A Coach card sums up the reading in one line — the level the roast ran at and the remark that matters most — and opens the full reading, the same one BeanCave shows.
@@ -13,6 +14,12 @@ A smaller release: TilauScope now adapts itself to machines that have no air pro
 
 * **What the coffee is for is now on the assistant.** *Filter*, *Omni* or *Espresso* sits under the coffee and the roasting target, so it can be set without going through the setup sheet — it is one setting shared with the setup sheet and the planning tab. Once the roast starts, the line under the coffee's name states which one the plan was built on.
 * **Automatic first crack says what it needs and what it will do.** The DETECTION tab now warns when no crack counter is configured — the automation had nothing to bind to and simply stayed silent for the whole roast — and states that it waits for dry end to be marked first. A new **Temperature tolerance**, in the unit your graph uses, sets how much slack the first-crack target gets, with a line beneath it spelling out where TilauScope starts listening, where it marks, and the point past which it marks anyway. The settings that claimed to weigh colour and rate-of-colour against the cracks are gone: they were never read.
+
+## ⚡ Energy
+
+* **See what a roast costs in electricity.** Plug the roaster (and the extractor, if you like) into a power meter that reports over MQTT, name the sensors *roaster* and *extractor*, and a pill in the header shows the power and the energy used since monitoring started. Tap it for the detail: the preheat, the roast itself, the cooling, the power curve, and the energy per kg of green coffee. Every figure says whether it was measured, estimated or has a gap.
+* **Already in your past roasts.** Roasts recorded with a power channel show their energy too, rebuilt from the saved curve — in the roast review and in a new Energy tile in BeanCave's Roasts tab.
+* **No meter on a Skywalker V2?** The roast's energy is estimated from a curve measured on real roasts, and marked as an estimate.
 
 ## 🔌 Devices
 

@@ -85,6 +85,10 @@ class ViewerPlotMixin:
         self.canvas_stack.setCurrentWidget(self.roast_curve)
         self.roast_plot_label.setText("")
         self.display_roast_info(shown)  # type: ignore[arg-type]
+        analysis_view = getattr(self, 'roast_analysis_view', None)
+        if analysis_view is not None and self.selected_roast_fnames() == [self._displayed_fname]:
+            analysis_view.set_profile(shown, deltabt, self.aw.qmc.mode,
+                                      self.previous_roast(self._displayed_fname))
 
     def _engine_milestone_moved(self, milestone: int, index: int) -> None:
         """A milestone dragged on the engine, held until the operator saves it.

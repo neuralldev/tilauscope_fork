@@ -197,7 +197,8 @@ having one does not register the other.
 
 **What it adds.** A way to bring in a reading from any sensor able to publish to a shared
 network broker, rather than only Bluetooth devices TilauScope recognises by name — used today
-for [storage-room humidity tracking](sacks-and-storage.md#storage-room-humidity).
+for [storage-room humidity tracking](sacks-and-storage.md#storage-room-humidity), and for a power
+meter on the roaster or the extractor, which feeds the [Energy](energy.md) view.
 
 **Pairing.** Not Bluetooth: a broker address is set once in
 [Configuration → INTEGRATIONS](configuration.md#-integrations--outside-services), then each

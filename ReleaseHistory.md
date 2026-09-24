@@ -1,4 +1,23 @@
 ## [4.3] 2026-09-13
+build 14
+build 13
+* ⚡ [feat(energy)] : new Energy view — a pill in the header shows the roaster's power and the energy used since monitoring started; it opens a sheet with the energy of the preheat, the roast and the cooling, the power curve in W from CHARGE to DROP, kWh per kg of green coffee, and where each figure comes from (measured, estimated, incomplete)
+* ⚡ [feat(energy)] : power meters are MQTT sensors named "roaster" and "extractor" with the unit W; the MQTT sensor table offers the W unit and, for a power reading, one-tap "Use as roaster" / "Use as extractor"; "Set up meter" in the energy sheet opens that table
+* ⚡ [feat(energy)] : without a meter, the Skywalker V2's power is estimated between CHARGE and DROP from a curve measured on 41 roasts; the Skywalker V1 uses its 1 000 W rating, not yet calibrated
+* ⚡ [feat(energy)] : each roast saves its energy record, preheat before START included; roasts saved earlier with a "roaster" power channel have theirs rebuilt from the saved curve
+* ⚡ [feat(beancave)] : the Roasts tab shows an Energy tile — the roast's kWh, kWh per kg and source — that opens the energy sheet of that roast
+* ⚡ [feat(review)] : the roast review shows the roast's energy in one line that opens the energy sheet
+* 🐛 [fix(energy)] : turning monitoring off right after DROP, before the meter's next reading, no longer loses the roast's energy; the time left without a reading is marked incomplete
+* 🐛 [fix(energy)] : the energy rebuilt from an older roast's power curve keeps each power level until it changes, instead of spreading the change over the whole plateau and undercounting
+* 🐛 [fix(energy)] : the energy rebuilt from an older roast places the power readings on their own recording times, so they land in the right period
+* 🐛 [fix(skywalker)] : quitting the application after turning monitoring off and on again no longer crashes on the way out
+* 🐛 [fix(tilauscope)] : the AUTO button tells why it is unavailable (no roast plan yet, not enough past roasts of this coffee, read-only roaster) and is greyed as soon as the plan cannot drive it, instead of claiming a read-only roaster or ignoring the click
+* ⚡ [feat(beancave)] : the Roasts tab has an Analysis page — the rate of rise compared with a trend fitted to the roast or with the previous roast of the same coffee, three figures, the segment under a click on the chart, and the passages worth a look (crash, flick, slower or faster than the reference, a rate of rise that does not decline) with what they usually mean and what to check
+* ⚡ [feat(menu)] : Tools → Analyzer is hidden, with its Ctrl+K and Ctrl+Alt+K shortcuts — BeanCave's Analysis page replaces it
+* ⚡ [feat(beancave)] : the BeanCave window gives more height to its tabs — slimmer top and bottom margins, and no resize grip taking a row at the top
+* 🐛 [fix(curve)] : changing the smoothing of a finished roast while monitoring is on computes its rate of rise as Artisan does
+* 🐛 [fix(mqtt)] : Test Connection with an empty password field tests without a password instead of using the stored one
+* 🐛 [fix(labels)] : a new, full label roll is no longer refused as out of labels when printing a roast label
 build 12
 * 🐛 [fix(beancave)] : the Roasts tab no longer shows or lets you drag the temperature milestones when only the rate of rise is displayed
 * 🐛 [fix(beancave)] : Label PDF export works again for a single selected roast and uses its linked coffee independently of the curve preview.
