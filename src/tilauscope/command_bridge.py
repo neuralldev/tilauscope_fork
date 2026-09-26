@@ -256,7 +256,12 @@ class CommandBridge(QObject):
             pass
         if op == 'start':
             if not roasting:
+                # the phone shows no guidance: Guided would silence the alarms and
+                # wait for desktop confirmations — Expert for this roast only
+                tm._borrow_expert_level()
                 tm.toggle_start_stop(True)   # guards no-meter + sets state (§ reuse)
+                if not bool(getattr(self._aw.qmc, 'flagstart', False)):
+                    tm._restore_replay_level()   # START refused: nothing borrowed
             if bool(getattr(tm, 'is_roasting', False)):
                 self._broadcast_event({'kind': 'recorder', 'state': 'started'})
                 return {'status': 'ok'}

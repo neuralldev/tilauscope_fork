@@ -249,6 +249,16 @@ class LifecycleMixin:
             return
         self.replay_enabled = True
         self.replay_reaction_time_s = reaction_time_s
+        self._borrow_expert_level()
+        self._refresh_replay_button()
+
+    def _borrow_expert_level(self) -> None:
+        """Force Expert for one session, remembering the operator's own level.
+
+        Used by Roast Replay and by a roast started from the phone, which
+        shows no guidance. _restore_replay_level() hands the level back at the
+        roast end, whatever ended it.
+        """
         if self._level_before_replay is None:
             self._level_before_replay = getattr(self, "_operator_level", "guided")
             # The placement is a separate operator choice — Guided with the
@@ -260,7 +270,6 @@ class LifecycleMixin:
             self._anchor_before_replay = getattr(self, "_assistant_anchored", False)
             self._open_before_replay = getattr(self, "_assistant_open", False)
         self._apply_operator_level("expert", persist=False)
-        self._refresh_replay_button()
 
     def _disable_roast_replay(self) -> None:
         """Turns replay off immediately — the emergency-override path.

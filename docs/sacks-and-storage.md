@@ -77,8 +77,14 @@ at the top of the step so it can be checked at a glance. Its **name stays the sa
 harvest year is what tells the two records apart in the catalogue.
 
 **The new sack** asks only what belongs to the new bag: harvest year (proposed as the year after
-the previous crop), weight received, and the supplier, in case the same coffee came through a
-different one this time.
+the previous crop), weight received, the supplier, in case the same coffee came through a
+different one this time, and the [price](beancave.md#price-and-screen-size) and
+[screen size](glossary.md#screen-size) of this lot. Price and screen size are proposed from the
+previous crop — correct them if this harvest cost more or was graded differently.
+
+The first plans of the new crop are not built from scratch: they take the previous harvest's
+first crack, phase durations and drop temperature until the new crop has roasts of its own — see
+[The roast plan](the-roast-plan.md#which-previous-roasts-count).
 
 **Measured on this lot** asks for [density](glossary.md#density), humidity
 ([moisture content](glossary.md#moisture-content)) and
@@ -104,7 +110,8 @@ The two remaining steps are the usual ones — sack identification, still skippa
 
 <!-- CAPTURE 3.4 — the 🌱 New crop step, entered from the catalogue with a bean selected that
 has a density and humidity on its previous crop, so the reference lines are visible and the
-three measurement fields are empty. -->
+three measurement fields are empty; The new sack shows Price and Screen size proposed from the
+previous crop. -->
 
 ---
 

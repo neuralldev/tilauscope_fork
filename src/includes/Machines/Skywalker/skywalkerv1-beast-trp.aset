@@ -1,0 +1,67 @@
+[General]
+AmbientTempSource=0
+Delay=2000
+ExtraEventSamplingDelay=0
+KeepON=true
+curvefilter=3
+dropDuplicates=false
+dropDuplicatesLimit=0.3
+dropSpikes=false
+filterDropOuts=true
+optimalSmoothing=true
+
+[DefaultButtons]
+buttonactions=0, 0, 0, 0, 0, 0, 1, 1
+buttonactionstrings=, , , , , , trp(SET HEATER 0), trp(SET FAN 0)
+extrabuttonactions=1, 1, 0
+extrabuttonactionstrings=trp(SET DRUM 100), trp(SET DRUM 0), 
+xextrabuttonactions=0, 0
+xextrabuttonactionstrings=, 
+
+[Device]
+id=219
+tilau_device=trp_btet
+
+[ExtraDev]
+extradevices=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\x2\0\0\0\xdc)
+extramathexpression1=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\0)
+extramathexpression2=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\0)
+extraname1=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\x6\0\x46\0\x61\0n)
+extraname2=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\f\0H\0\x65\0\x61\0t\0\x65\0r)
+tilau_extradevices=trp_hf
+
+[RoC]
+DeltaBT=true
+DeltaBTlcd=true
+DeltaET=false
+DeltaETlcd=true
+DeltaETspan=18
+DeltaSpan=6
+LCDdecimalplaces=1
+deltaETfilter=25
+deltafilter=13
+percent_decimals=1
+statisticsmode=1
+swapdeltalcds=false
+
+[SerialPort]
+baudrate=115200
+bytesize=8
+parity=N
+stopbits=1
+timeout=0.8
+
+[Sliders]
+slideractions=1, 1, 0, 1
+slidercommands=trp(SET FAN {}), trp(SET DRUM {}), , trp(SET HEATER {})
+sliderfactors=1, 1, 1, 1
+slidermax=100, 100, 100, 100
+slidermin=0, 0, 0, 0
+slideroffsets=0, 0, 0, 0
+slidervisibilities=1, 1, 0, 1
+
+[Units]
+weight=g
+
+[events]
+etypes=Fan, Drum, , Heater, 

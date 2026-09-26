@@ -61,7 +61,7 @@ usually cannot be acted on.
 
 ## First-time setup
 
-The first time you open **BeanCave**, a five-step wizard runs. It asks the handful of
+The first time you open **BeanCave**, a six-step wizard runs. It asks the handful of
 questions that actually change how the app behaves, applies everything at the end, and
 leaves Artisan's remaining settings alone.
 
@@ -70,36 +70,66 @@ leaves Artisan's remaining settings alone.
     open BeanCave, you never see it — use **TilauScope → Redo First-Time Setup...** to run
     it on demand.
 
-**1. Temperature unit.** *Which unit do you want to work in?* Every temperature you will
-ever see — curves, milestones, setpoints — follows this choice. It is set once.
+**1. You.** *Who is roasting?* Your name, printed on your roasts, and the temperature unit.
+Every temperature you will ever see — curves, milestones, setpoints — follows this unit.
 
 **2. Your roaster.** *Which roaster do you use?* This is the most consequential answer in
 the wizard: the machine determines the roast plan, the slider labels, and the recommendations
 given during a roast. A recommendation that suits a high-[thermal-mass](glossary.md#thermal-mass)
 drum is wrong on a [radiant](glossary.md#radiant-heat--firnir) machine, so TilauScope needs
-to know which type it is.
+to know which type it is. Type in the search field to narrow the list. Each roaster shows how
+it can be connected: *USB cable*, *Bluetooth*, *Network*, *Probe kit* when its temperatures come from
+added probes, or *Manual setup* when TilauScope has no ready-made setup for it. Under the list,
+the capacity, the heating and the first batch size are read from the roaster itself; there is
+nothing to type.
 
-**3. Hardware.** *Connect your hardware* → **Search & auto-register**. TilauScope scans
+**3. Connection.** *How is your roaster connected?* Choose the link you use. The choice sets
+everything that makes the roaster measure and obey: the sliders and the commands they send,
+the command sent by each milestone button, the probes and how their readings are smoothed.
+None of it has to be entered by hand. Artisan's **Config → Machine** and **Config → Machine Name** menus are no longer offered:
+this step replaces it, and **TilauScope → Redo First-Time Setup...** is the way to change
+roaster later.
+
+- **USB cable** — when a single USB port is plugged in, or the port used last time is still
+  there, it is chosen for you. Otherwise pick it in the list; **Scan again** refreshes it
+  after plugging the cable back in.
+- **Bluetooth** — switch the roaster on: once it is found nearby, it is selected for you.
+  Keep it within a few metres of the computer.
+- **Network** — type the roaster's address (a name or an IP address), shown in its network
+  settings. The address you used before is offered again; otherwise the roaster's usual
+  address is filled in. The roaster and the computer must be on the same network.
+
+The step is skipped when there is nothing to ask, for example for a roaster with a single
+probe kit. A roaster that takes no command from TilauScope is set to
+[read-only](configuration.md#machine-profile): it records, and the assistant shows the settings
+to make by hand.
+
+**4. Hardware.** *Connect your hardware* → **Search & auto-register**. TilauScope scans
 for gear and registers what it recognises, so you don't have to configure Artisan's
 device slots by hand. Each device found is named by its *role* rather than by its
-Bluetooth identifier — roaster, smoke extractor, charge and output weighing, ambient
-probe, water activity, bean colour reader — so you can tell what you actually have.
+Bluetooth identifier — smoke extractor, charge and output weighing, ambient probe, water
+activity, bean colour reader — so you can tell what you actually have.
 
 Devices that are detected but not supported are listed separately, under
 *Other Artisan BLE devices detected*, and labelled *recognised · not configured*. Nothing is
 presented as working when it is not.
 
-**4. Folders.** *Where should your files live?* Choose where your BeanCave green-bean
+**5. Folders.** *Where should your files live?* Choose where your BeanCave green-bean
 database and your roast logs are stored.
 
-**5. Review.** *Ready to apply.* The wizard lists every choice — unit, roaster, device
-profile, theme, folders — and **nothing is written until it is confirmed**. The wizard can
-be left at any point with **Skip for now**, so roasting can begin immediately.
+**6. Review.** *Ready to set up.* The wizard lists what will be set — roaster and link, port or
+address, sliders, milestone buttons, capacity, first batch, theme, folders — and what is kept as it is:
+your alarms, sounds, batch counter and paired devices. **Nothing is written until Finish.**
+The wizard can be left at any point with **Skip for now**, so roasting can begin immediately.
 
 !!! warning
-    Finishing the wizard writes settings that Artisan also owns, including your device
-    profile and theme. If you have already tuned Artisan by hand, be aware that replaying
-    **Redo First-Time Setup...** will overwrite those choices again.
+    Finishing the wizard replaces the roaster's sliders, milestone commands and command
+    buttons, and the theme. If you have already tuned those by hand, replaying
+    **Redo First-Time Setup...** will overwrite them again.
+
+<!-- CAPTURE 1.2–1.7 — one per wizard step, Skywalker V2 selected: 1.2 You; 1.3 Roaster with
+the list and the capacity / heating / first batch tiles; 1.4 Connection with USB cable chosen
+and the port found; 1.5 Hardware; 1.6 Folders; 1.7 Review with both columns. -->
 
 ![one per wizard step](assets/getting-started-1.2.png)
 ![one per wizard step](assets/getting-started-1.3.png)
@@ -157,8 +187,7 @@ detached, and gives you the control panel back.
 
 **⚙ GENERAL** — your machine and the interface. *Roaster → Machine Profile → Model:*
 changes roaster without replaying the wizard. *UI Features* turns on floating annotations
-on the roast graph, and BeanCave startup notifications (stock alerts and reminders when
-BeanCave opens).
+on the roast graph, and the cleaning reminder shown when TilauScope starts.
 
 **🎚 CONTROLS** — the names of the machine's controls, shown on the sliders, buttons, alarms
 and phone, and the command each milestone sends to the roaster when it is marked.

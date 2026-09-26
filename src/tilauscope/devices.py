@@ -46,7 +46,7 @@ from tilauscope.config_controls_tab import ControlsTab
 from tilauscope.theme_qss import base_qss, style_combo_popup, tooltip_qss
 from tilauscope.tilauscope_types import (THEME, literal_ampersand, no_enter_default, resolve_crack_channel,
                                          resolve_fc_window, show_styled_message,
-                                         TilauProgress)
+                                         TilauProgress, CURRENCIES, currency_code)
 # Shared with the Devices window (device_setup/dialog.py): one look for both.
 from tilauscope.widgets.config_parts import (
     QCollapsibleWidget,
@@ -228,6 +228,45 @@ class _SensorGroup:
         self.was_assigned = False       # an id was persisted when the tab opened
 
 
+def apply_airwave_damper_mapping(aw: "ApplicationWindow") -> None:
+    """When an AirWave is configured, map the Damper slider
+    (idx 2) to the DiFluid AirWave: action 'Difluid Airwave Command'
+    (stored id 20), command 'FAN {}', range 30-100, step 1, renamed
+    'Airwave', and kept visible even on a read-only roaster (the AirWave is
+    a separate BLE extractor). POWER ON/OFF and MODE FAN/STD/EXT stay
+    alarm-driven (expert tool). Only (re)writes the mapping when it is not
+    already in place; always ensures the slider stays visible."""
+    DAMPER = 2
+    try:
+        if not getattr(aw, "bleAirwaveDeviceName", None):
+            return  # no AirWave configured → nothing to map
+        already = (aw.eventslideractions[DAMPER] == 20
+                   and aw.eventslidervisibilities[DAMPER] == 1)
+        if not already:
+            aw.eventslideractions[DAMPER]  = 20          # Difluid Airwave Command
+            aw.eventslidercommands[DAMPER] = "FAN {}"
+            aw.eventslidermin[DAMPER]      = 30
+            aw.eventslidermax[DAMPER]      = 100
+            aw.eventsliderfactors[DAMPER]  = 1.0
+            aw.eventslideroffsets[DAMPER]  = 0.0
+            aw.eventslidercoarse[DAMPER]   = 0           # step of 1
+            try:
+                aw.qmc.etypes[DAMPER] = "Airwave"
+            except Exception:
+                pass
+        # AirWave present → damper slider stays available even read-only
+        aw.eventslidervisibilities[DAMPER] = 1
+
+        # Apply per-slider visibility only; never force the Artisan dock
+        # open/closed (user's own choice).
+        aw.updateSlidersProperties()
+        tsm = getattr(aw, "tilauscope_main", None)
+        if tsm is not None and hasattr(tsm, "_apply_slider_visibility_mirror"):
+            tsm._apply_slider_visibility_mirror()
+    except Exception:
+        _logd.exception("TilauScope: _apply_airwave_damper_mapping failed")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # TilauscopeConfigDlg
 # ─────────────────────────────────────────────────────────────────────────────
@@ -294,8 +333,12 @@ class TilauscopeConfigDlg(QDialog):
         # release the BLE scanner on any close path (Esc/reject too)
         self.finished.connect(lambda _=0: self._unhook_scanner())
 
-        self.setMinimumSize(720, 560)
-        self.resize(780, 620)
+        # Wide enough for every tab title (translations included): card
+        # margins 2×28 + border 2×2 + slack.
+        self.ensurePolished()
+        tabs_w = self._tabs.tabBar().sizeHint().width() + 2 * 28 + 2 * 2 + 24
+        self.setMinimumSize(max(720, tabs_w), 560)
+        self.resize(max(780, tabs_w), 620)
 
         # Return must not reach the ✕ / Cancel this dialog builds first
         # (tilauscope_types.no_enter_default).
@@ -626,10 +669,10 @@ class TilauscopeConfigDlg(QDialog):
             self.tilauScopeAnnotationCheckBox.setChecked(self.aw.TilauScopeAnnotation)
 
         self.tilauScopeNotificationCheckBox = QCheckBox(
-            QApplication.translate("tilauscope_devices", "Enable BeanCave startup notifications")
+            QApplication.translate("tilauscope_devices", "Show the cleaning reminder at startup")
         )
         self.tilauScopeNotificationCheckBox.setToolTip(
-            QApplication.translate("tilauscope_devices", "Show inventory alerts and reminders when BeanCave opens")
+            QApplication.translate("tilauscope_devices", "Opens the routine check — cleaning cycle and recent roasts — when TilauScope starts.")
         )
         if self.aw.TilauScopeNotification is not None:
             self.tilauScopeNotificationCheckBox.setChecked(self.aw.TilauScopeNotification)
@@ -2391,43 +2434,7 @@ class TilauscopeConfigDlg(QDialog):
             _logd.exception("TilauScope: _apply_roaster_slider_visibilities failed")
 
     def _apply_airwave_damper_mapping(self) -> None:
-        """When an AirWave is configured, map the Damper slider
-        (idx 2) to the DiFluid AirWave: action 'Difluid Airwave Command'
-        (stored id 20), command 'FAN {}', range 30-100, step 1, renamed
-        'Airwave', and kept visible even on a read-only roaster (the AirWave is
-        a separate BLE extractor). POWER ON/OFF and MODE FAN/STD/EXT stay
-        alarm-driven (expert tool). Only (re)writes the mapping when it is not
-        already in place; always ensures the slider stays visible."""
-        aw = self.aw
-        DAMPER = 2
-        try:
-            if not getattr(aw, "bleAirwaveDeviceName", None):
-                return  # no AirWave configured → nothing to map
-            already = (aw.eventslideractions[DAMPER] == 20
-                       and aw.eventslidervisibilities[DAMPER] == 1)
-            if not already:
-                aw.eventslideractions[DAMPER]  = 20          # Difluid Airwave Command
-                aw.eventslidercommands[DAMPER] = "FAN {}"
-                aw.eventslidermin[DAMPER]      = 30
-                aw.eventslidermax[DAMPER]      = 100
-                aw.eventsliderfactors[DAMPER]  = 1.0
-                aw.eventslideroffsets[DAMPER]  = 0.0
-                aw.eventslidercoarse[DAMPER]   = 0           # step of 1
-                try:
-                    aw.qmc.etypes[DAMPER] = "Airwave"
-                except Exception:
-                    pass
-            # AirWave present → damper slider stays available even read-only
-            aw.eventslidervisibilities[DAMPER] = 1
-
-            # Apply per-slider visibility only; never force the Artisan dock
-            # open/closed (user's own choice).
-            aw.updateSlidersProperties()
-            tsm = getattr(aw, "tilauscope_main", None)
-            if tsm is not None and hasattr(tsm, "_apply_slider_visibility_mirror"):
-                tsm._apply_slider_visibility_mirror()
-        except Exception:
-            _logd.exception("TilauScope: _apply_airwave_damper_mapping failed")
+        apply_airwave_damper_mapping(self.aw)
 
     @pyqtSlot()
     def _pair_phone(self) -> None:
@@ -2481,6 +2488,27 @@ class TilauscopeConfigDlg(QDialog):
             "alog",
         )
         layout.addWidget(group)
+
+        layout.addWidget(_section_label(
+            QApplication.translate("tilauscope_devices", "Currency")
+        ))
+        money_group = QGroupBox(QApplication.translate("tilauscope_devices", "Purchase prices"))
+        money_form = QFormLayout(money_group)
+        self.currencyCombo = QComboBox()
+        codes = list(CURRENCIES)
+        current = currency_code()
+        if current not in codes:
+            codes.insert(0, current)
+        for code in codes:
+            self.currencyCombo.addItem(f"{code} — {CURRENCIES.get(code, code)}", code)
+        self.currencyCombo.setCurrentIndex(self.currencyCombo.findData(current))
+        style_combo_popup(self.currencyCombo)
+        self.currencyCombo.setToolTip(QApplication.translate(
+            "tilauscope_devices",
+            "Currency of the green-bean prices and of the roast and stock costs shown in BeanCave."))
+        money_form.addRow(_field_label(QApplication.translate("tilauscope_devices", "Currency:")),
+                          self.currencyCombo)
+        layout.addWidget(money_group)
         layout.addStretch()
 
     def _directory_row(self, form: QFormLayout, label: str, value: str,
@@ -2738,6 +2766,7 @@ class TilauscopeConfigDlg(QDialog):
 
         # label size — takes effect on the next print, no restart needed
         QSettings().setValue("tilauscope/label_size_mm", self.labelSizeCombo.currentData())
+        QSettings().setValue("tilauscope/currency", self.currencyCombo.currentData())
 
         # AI config saved immediately in _open_ai_provider_picker
         self.accept()

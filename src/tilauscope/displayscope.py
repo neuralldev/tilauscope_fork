@@ -237,24 +237,6 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
 
 
 
-    def check_daily_brew_status(self):
-        settings = QSettings()
-        alog_directory = settings.value('alogDirectory', "", str)
-        if alog_directory != "":
-            from tilauscope.roast_timeline import BrewReadyNotification
-            # BrewReadyNotification wants the alog metadata cache
-            # (dict[str, AlogMetadata]), not the TilauScope widget. Reuse BeanCave's
-            # already-indexed cache when available; empty dict → no toast, no crash.
-            alog_files = {}
-            bc = getattr(self.aw, 'beancaveWindow', None)
-            if bc is not None and hasattr(bc, '_metadata_cache'):
-                try:
-                    alog_files = dict(bc._metadata_cache.records)
-                except Exception:  # noqa: BLE001
-                    alog_files = {}
-            self._brew_notif = BrewReadyNotification(alog_directory, alog_files, self)
-
-
     # ─────────────────────────────────────────────────────────────────────────────
     # Artisan UI handover — hide its panels on open, give them back on close
     # ─────────────────────────────────────────────────────────────────────────────

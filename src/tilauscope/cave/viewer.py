@@ -24,7 +24,7 @@ from functools import partial
 import ast  # Import de la bibliothèque ast
 import html
 import re # For sorting alog files
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 #import matplotlib.pyplot as plt
@@ -51,7 +51,7 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 from tilauscope.header_icons import make_icon
 from tilauscope.theme_qss import style_combo_popup, styled_popup_view, tint
 from tilauscope.tilauscope_types import (THEME, literal_ampersand, standardization_map,
-                                         TilauProgressRow)
+                                         TilauProgressRow, to_agtron)
 from tilauscope.roast_timeline import RoastReadyDialog
 from tilauscope.cave.common import (
     _log, _logd, _PLOT_PALETTE, _safe_filename,
@@ -65,7 +65,7 @@ from tilauscope.cave.roast_list import (
     RoastListView, RoastRow, RoastRowDelegate, RoastSearchField, fold, roast_count_text)
 from tilauscope.widgets.controls import SegmentedControl
 from tilauscope.cave.viewer_detail import (
-    DASH, CurveMessageLabel, KpiTile, ResultBanner, comparison_tiles, custom_range_error, energy_tile,
+    DASH, CurveMessageLabel, KpiTile, ResultBanner, TastingBanner, comparison_tiles, custom_range_error, energy_tile,
     menu_qss, roast_facts, roast_tiles)
 
 
@@ -189,6 +189,8 @@ class ViewerMixin:
         self.roast_finished_action = more_menu.addAction(
             QApplication.translate("tilauscope_beancave", "Record result…"))
         self.roast_finished_action.triggered.connect(self.on_roast_finished_clicked)
+        self.taste_action = more_menu.addAction(QApplication.translate("tilauscope_beancave", "Taste…"))
+        self.taste_action.triggered.connect(self._open_tasting)
         self.planning_action = more_menu.addAction(QApplication.translate("tilauscope_beancave", "Planning"))
         self.planning_action.triggered.connect(self.show_roast_ready_view)
         self.dial_in_action = more_menu.addAction(QApplication.translate("tilauscope_beancave", "Dial-in"))
@@ -239,6 +241,8 @@ class ViewerMixin:
 
         self.roast_result_banner = ResultBanner()
         self.roast_result_banner.record_requested.connect(self.on_roast_finished_clicked)
+        self.roast_tasting_banner = TastingBanner()
+        self.roast_tasting_banner.taste_requested.connect(self._open_tasting)
 
         self.roast_tiles = [KpiTile() for _ in range(4)]
         # Energy of the roast shown; a click opens its energy sheet
@@ -258,6 +262,7 @@ class ViewerMixin:
         head_layout.addWidget(self.roast_compare_note)
         head_layout.addWidget(self.roast_result_banner)
         head_layout.addLayout(tiles_row)
+        head_layout.addWidget(self.roast_tasting_banner)
         self._show_detail_none()
 
         splitter = QSplitter(Qt.Orientation.Horizontal) # type: ignore
@@ -1423,6 +1428,7 @@ class ViewerMixin:
         self.roast_energy_tile.setVisible(single)
         if not single:
             self.roast_result_banner.hide()
+            self.roast_tasting_banner.hide()
 
     def _show_tiles(self, texts: list) -> None:
         for tile, text in zip(self.roast_tiles, texts):
@@ -1444,6 +1450,7 @@ class ViewerMixin:
         self.roast_energy_tile.show_text(energy_tile(None))
         self.roast_energy_tile.set_clickable(False)
         self.roast_result_banner.hide()
+        self.roast_tasting_banner.hide()
         self._set_detail_mode('single')
 
     def _fill_detail_single(self, profile) -> None:  # noqa: ANN001
@@ -1451,10 +1458,15 @@ class ViewerMixin:
         # Reached from a load's completion slot: an escape here would close the application.
         try:
             facts = roast_facts(profile) if profile else None
-            self._show_tiles(roast_tiles(facts))
+            bean = self.bean_from_profile(profile) if profile else None
+            self._show_tiles(roast_tiles(facts, float(getattr(bean, 'price_per_kg', 0.0) or 0.0)))
             self.roast_result_banner.setVisible(facts is not None and not facts.has_result)
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
             _log.exception("the roast's figures could not be shown")
+        try:
+            self._refresh_tasting_banner(profile)
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the roast's tasting could not be shown")
         try:
             energy = energy_tile(profile)
             self.roast_energy_tile.show_text(energy)
@@ -1463,6 +1475,61 @@ class ViewerMixin:
                 QApplication.translate("tilauscope_beancave", "Opens the energy details of this roast"))
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
             _log.exception("the roast's energy could not be shown")
+
+    @staticmethod
+    def _roast_epoch(profile) -> int:  # noqa: ANN001
+        epoch = int(profile.get('roastepoch') or 0)
+        if epoch <= 0 and profile.get('roastisodate'):
+            try:
+                epoch = int(datetime.fromisoformat(str(profile['roastisodate'])).timestamp())
+            except ValueError:
+                epoch = 0
+        return epoch
+
+    def _refresh_tasting_banner(self, profile) -> None:  # noqa: ANN001
+        """Recall the roast's tasting, or ask for one once it has rested; nothing before."""
+        from tilauscope import tasting_log  # noqa: PLC0415
+        from tilauscope.brew_advisor import RestStatus, rest_window  # noqa: PLC0415
+        from tilauscope.cave.tasting_dialog import defect_labels, verdict_labels  # noqa: PLC0415
+        banner = self.roast_tasting_banner
+        roast_uuid = str((profile or {}).get('roastUUID') or '')
+        if not roast_uuid:
+            banner.hide()
+            return
+        tasting = tasting_log.load(self.beancave_directory).entries.get(roast_uuid)
+        if tasting is not None:
+            labels = defect_labels()
+            parts = [verdict_labels().get(tasting.verdict, '')] + [labels[d] for d in tasting.defects if d in labels]
+            banner.show_state(QApplication.translate("tilauscope_beancave", "Tasted: {0}").format(
+                " · ".join(p for p in parts if p)), QApplication.translate("tilauscope_beancave", "Edit"))
+            return
+        epoch = self._roast_epoch(profile)
+        colour = to_agtron(float(profile.get('ground_color') or 0) or float(profile.get('whole_color') or 0),
+                           str(profile.get('color_system') or ''))
+        days = ((datetime.now().astimezone() - datetime.fromtimestamp(epoch, tz=UTC)).days
+                if epoch > 0 else -1)
+        if days >= 0 and rest_window(colour, days).status != RestStatus.FRESH:
+            banner.show_state(QApplication.translate("tilauscope_beancave", "Rested and ready — how did it taste?"),
+                              QApplication.translate("tilauscope_beancave", "Taste"))
+        else:
+            banner.hide()
+
+    def _open_tasting(self) -> None:
+        """The tasting form of the roast on screen."""
+        from tilauscope.cave.tasting_dialog import TastingDialog  # noqa: PLC0415
+        profile = getattr(self, 'lastprofiledata', None) or {}
+        roast_uuid = str(profile.get('roastUUID') or '')
+        if not roast_uuid:
+            self._show_message(self, QApplication.translate("tilauscope_beancave", "Tasting"),
+                               QApplication.translate("tilauscope_beancave", "Please select a roast file first."))
+            return
+        bean = self.bean_from_profile(profile)
+        coffee = (bean.name if bean is not None else '') or str(profile.get('title') or '')
+        dlg = TastingDialog(self, directory=str(self.beancave_directory), roast_uuid=roast_uuid,
+                            bean_uuid=(bean.uuid if bean is not None else ''), coffee=coffee,
+                            roast_epoch=self._roast_epoch(profile), mode=self.aw.qmc.mode)
+        if dlg.exec():
+            self._refresh_tasting_banner(profile)
 
     def _open_roast_energy(self) -> None:
         """The energy sheet of the roast on screen, read from its own profile."""

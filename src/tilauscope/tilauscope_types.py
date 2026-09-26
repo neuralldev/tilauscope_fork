@@ -26,9 +26,9 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.dict import DataClassDictMixin
 from mashumaro.config import BaseConfig
 from PyQt6.QtWidgets import (QApplication, QMessageBox, QDialog, QVBoxLayout, QHBoxLayout,
-                             QFrame, QLabel, QWidget, QPushButton, QSizePolicy)
+                             QFrame, QLabel, QWidget, QPushButton, QSizePolicy, QDoubleSpinBox)
 from PyQt6.QtCore import (Qt, QPropertyAnimation, QTimer, QElapsedTimer, QRectF, QSize,
-                          QEvent, QObject, pyqtSignal)
+                          QEvent, QObject, pyqtSignal, QLocale, QSettings)
 from PyQt6.QtGui import QPainter, QColor, QPen, QPainterPath, QIcon
 
 _IS_MACOS   = platform.system() == "Darwin"
@@ -136,6 +136,27 @@ class BrewLog(DataClassJSONMixin):
 
 
 @dataclass
+class RoastTasting(DataClassJSONMixin):
+    """What the operator thought of one roast once rested; keyed by its Artisan roastUUID."""
+    bean_uuid: str = ''
+    iso_date: str = ''
+    verdict: str = ''       # '' | 'yes' | 'almost' | 'no'
+    defects: list[str] = field(default_factory=list)   # keys of tasting_log.DEFECT_CHANGES
+    notes: str = ''
+    class Config(BaseConfig):
+        ignore_missing_keys = True
+
+
+@dataclass
+class TastingLog(DataClassJSONMixin):
+    """Tastings of roasts, in tastings.json beside beancave.json."""
+    version: int = 1
+    entries: dict[str, RoastTasting] = field(default_factory=dict)
+    class Config(BaseConfig):
+        ignore_missing_keys = True
+
+
+@dataclass
 class GreenBean(DataClassJSONMixin):
     name: str = ''
     farm: str = ''
@@ -175,6 +196,10 @@ class GreenBean(DataClassJSONMixin):
     # Accepted brew dial-ins, one per brew method (latest wins). Optional and
     # additive: an empty list is the normal state for a bean never brewed with taste feedback.
     dial_ins: list[BrewDialIn] = field(default_factory=list)
+    # Size class key of SCREEN_SIZE_RANGES; '' = unknown.
+    screen_size: str = ''
+    # Purchase price per kg of green, in the system currency; 0 = unknown.
+    price_per_kg: float = 0.0
     uuid:str = ''
     class Config(BaseConfig):
         ignore_missing_keys = True
@@ -195,6 +220,50 @@ class BeanCaveContainer(DataClassJSONMixin):
     reference_profiles: list[ReferenceProfile] = field(default_factory=list)
     class Config(BaseConfig):
         ignore_missing_keys = True
+
+# GreenBean.screen_size key → Artisan (beansize_min, beansize_max), in 1/64".
+# Unknown ('' or any other key) writes (0, 0), Artisan's own "not set".
+SCREEN_SIZE_RANGES: dict[str, tuple[int, int]] = {
+    'large':    (17, 18),
+    'medium':   (15, 16),
+    'small':    (13, 14),
+    'peaberry': (13, 14),
+}
+
+# ISO code → symbol of the currencies offered in Config › BeanCave.
+CURRENCIES: dict[str, str] = {
+    'EUR': '€', 'USD': '$', 'GBP': '£', 'CHF': 'CHF', 'CAD': 'CA$', 'AUD': 'A$',
+    'NZD': 'NZ$', 'JPY': '¥', 'CNY': 'CN¥', 'KRW': '₩', 'TWD': 'NT$', 'HKD': 'HK$',
+    'SGD': 'S$', 'INR': '₹', 'SEK': 'kr', 'NOK': 'kr', 'DKK': 'kr', 'PLN': 'zł',
+    'CZK': 'Kč', 'BRL': 'R$', 'MXN': 'MX$', 'ZAR': 'R',
+}
+
+
+def currency_code() -> str:
+    """The currency set in Config › BeanCave; the system one until the operator picks one."""
+    system = QLocale().currencySymbol(QLocale.CurrencySymbolFormat.CurrencyIsoCode) or 'EUR'
+    return str(QSettings().value('tilauscope/currency', system, type=str) or system)
+
+
+def currency_symbol() -> str:
+    code = currency_code()
+    return CURRENCIES.get(code, code)
+
+
+def price_per_kg_spin() -> QDoubleSpinBox:
+    """The green-coffee price field, in the configured currency per kg."""
+    spin = QDoubleSpinBox()
+    spin.setRange(0.0, 10_000_000.0)   # wide enough for JPY and KRW
+    spin.setDecimals(2)
+    spin.setSuffix(f" {currency_symbol()}/kg")
+    spin.setToolTip(QApplication.translate("tilauscope_beancave",
+        "Purchase price per kg of green beans. Leave 0 if unknown."))
+    return spin
+
+
+def format_money(value: float) -> str:
+    """An amount in the configured currency, with the system's own number format."""
+    return QLocale().toCurrencyString(float(value), currency_symbol())
 
 GREEN_BEAN_COLUMNS = [
     lambda b: b.name,

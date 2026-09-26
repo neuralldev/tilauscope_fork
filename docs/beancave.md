@@ -71,17 +71,18 @@ in it.
 
 | Zone | What it holds |
 |---|---|
-| **Essentials** | Name, origin, crop year, stock — as stat tiles. |
-| **Provenance** | Farm, supplier, altitude. |
-| **Characteristics** | Type, category, process, species, varieties, [density](glossary.md#density), [humidity](glossary.md#moisture-content). |
+| **Essentials** | Name, origin, crop year, stock — as stat tiles, with the stock's value once a price is entered. |
+| **Provenance** | Farm, supplier, altitude, purchase price. |
+| **Characteristics** | Type, category, process, species, varieties, [density](glossary.md#density), [humidity](glossary.md#moisture-content), [screen size](glossary.md#screen-size). |
 | **Sensory & notes** | [SCA](glossary.md#sca-score) score, flavour notes, roasting memo. |
 | **Sacks** | The physical bags of this coffee, and their labels — see [Sacks, stock and conservation](sacks-and-storage.md). |
 | **Roasts** | Every roast of this coffee. |
 
 Each zone's edit button states what it covers — *Edit name, origin, year and stock*, *Edit farm,
-supplier and altitude* — so there is no guessing which dialog holds which field. Editing a zone
+supplier, altitude and price* — so there is no guessing which dialog holds which field. Editing a zone
 changes **only** that zone: *Only this section is changed. Save writes the record immediately.*
 
+<!-- CAPTURE 3.4 — a complete bean record, all zones visible, on a coffee with a price and a screen size: the Stock value tile beside Stock in Essentials, Price in Provenance, Screen size in Characteristics -->
 ![a complete bean record, all zones visible](assets/beancave-3.4.png)
 
 ![One zone editor open,
@@ -116,6 +117,20 @@ nothing.
 **Flavour notes** are entered on the flavour wheel rather than typed as free text, which keeps the
 vocabulary consistent from one coffee to the next.
 
+### Price and screen size
+
+**Price** is what the green coffee cost per kg, in the currency chosen in
+[Configuration](configuration.md#-beancave--files-and-currency). Once it is entered, the record
+shows what the remaining stock is worth, and each roast of this coffee shows what its green cost
+— see [After the roast](after-the-roast.md). Leave it at 0 if you do not know it; nothing else
+depends on it.
+
+**Screen size** is picked from a short list — *Large — AA, Supremo, 17/18+*, *Medium — AB,
+Excelso, 15/16*, *Small — 14/15 and below*, *Peaberry — PB* — using whatever the supplier's
+sheet states. Leave it on *Unknown* when the sheet says nothing. When a roast of this coffee is
+prepared, the size is written into the roast's properties, so it stays with the roast file. It
+does not change the roast plan.
+
 !!! info "Hardware"
     Live weighing needs an Acaia scale; density measurement needs a scale configured as scale 1 in
     Artisan; water activity needs an AquaGauge. Everything else on the record is typed.
@@ -145,12 +160,14 @@ know — everything can be refined later from the sheet.*
 
     When the coffee is already in the catalogue and this is simply its next harvest, select it and
     use **🌱 New crop** instead: it inherits everything that does not change and asks only for the
-    new year, the weight and the measurements of the lot.
+    new year, the weight, the price and the measurements of the lot.
 
 ### Filling a record from the supplier's page
 
 Rather than copying a dozen fields by hand, paste the supplier's URL — *Enter URL of supplier
-here...* — and TilauScope fills the record from that page, blends and component ratios included.
+here...* — and TilauScope fills the record from that page, blends, component ratios and screen
+size included. The price is never filled in: a shop page often prices a 250 g bag, sometimes in
+another currency, so it is left for you to enter.
 The result is presented for review before anything is saved.
 
 !!! note

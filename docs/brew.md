@@ -58,6 +58,11 @@ weight loss, how it was developed, its origin and altitude, how many days it has
 the brewing method chosen: filter methods (V60, French press, AeroPress, Pulsar, Weber Bird,
 Moka) or espresso.
 
+A weight loss is called high or low against the loss this roast should have had — the lot's
+moisture, its colour and its development — not against one fixed range: a wet lot loses more
+without being over-developed. Without a colour measurement there is no aim, and weight loss is
+not flagged.
+
 The recipe covers dose, ratio, water temperature, grind, and a step-by-step timed pour or
 extraction sequence suited to the method — bloom and pulses for a pour-over, fill and press
 timing for an immersion brewer, the full lead-in sequence for espresso once a machine profile

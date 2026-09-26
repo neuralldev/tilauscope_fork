@@ -27,10 +27,14 @@ do not: they describe the room as it is now, and are filled from the online weat
 ambient probe. The online weather has to work out where you are first, which means handing your
 internet address to a lookup service abroad, so it asks before doing so the first time — see
 [Configuration](configuration.md#privacy). Typing the three values by hand is always an option:
-choosing it puts the cursor in the temperature field, ready to type over.
+choosing it puts the cursor in the temperature field, ready to type over. For a coffee not yet
+roasted, the empty ambient fields start from what Artisan already knows — its last ambient
+temperature, its altitude, and the pressure at that altitude — and the online weather brings
+them up to date.
 Two actions close it out:
 
-- **⚡ Generate Roast Plan** — becomes available only once every required field is filled, and
+- **⚡ Generate Roast Plan** — becomes available once the temperature, the pressure and the batch
+  weight are filled (an altitude of 0 is accepted: sea level is a real place), and
   produces **a PDF**. That document is the plan: everything described below is in it.
 - **Inject in Artisan** — writes the plan's phases and alarms into Artisan, so the roast is
   set up before it starts. TilauScope confirms with *The base of the roasting plan, phases and
@@ -326,7 +330,9 @@ available history; it is not a probability that the plan will be accurate:
 | **partial history** | Some history, not enough to support every value. |
 | **grid only** | Reference values; too few matching roasts exist. |
 
-A first roast of a new coffee is labelled grid only.
+A first roast of a new coffee is labelled grid only — unless it is a new harvest of a coffee you
+have already roasted, in which case the label names that harvest: *2024 harvest (4 roasts) ·
+partial history* (see below).
 
 ### Which previous roasts count
 
@@ -334,6 +340,24 @@ References are drawn only from roasts of the **same coffee** — matched on its 
 not on a similar-looking name — and at a **comparable batch size**. A 250 g roast is not used
 as a reference for a 450 g one, because it never was one. This is what stops a plan from being
 steered by a curve that had nothing to do with the batch in the drum.
+
+A **new harvest** of a coffee you already roast starts from the previous one. The previous
+harvest is the same coffee — same name, country and process — from an earlier crop year; a
+[🌱 New crop](sacks-and-storage.md) record keeps the name, so it is found without anything to set.
+What carries over is the coffee's **calendar**: its first crack temperature, how long drying and
+Maillard last, and the drop temperature for the colour you aim for. These follow the variety and
+the process, which do not change from one harvest to the next. The **burner** does not carry
+over: how much heat a lot needs depends on its moisture and density, and the plan reads those
+from the new lot's own measurements. Each part of the calendar comes from the previous harvest
+until the new one has two roasts of its own for it, then from the new harvest alone — the two
+lots are never mixed. The plan says so in *History support*, and prints the previous harvest's
+moisture beside this lot's under *Bean Humidity*, so a difference between the two lots is visible
+before you roast.
+
+Your **tasting** of the coffee's last roast adds one more change on top. If you ticked what was
+off — *Flat, papery*, *Burnt*, … — the plan makes the one change it asks for (a notch of burner, a
+few degrees at charge or drop, or 20 s of development), and the roast setup names it. See
+[Tasting](after-the-roast.md#tasting).
 
 One figure is learned from a wider set: the **burner you start on**. It comes from your roasts
 of the same process at the same batch size, whatever the coffee was — a washed coffee at 400 g

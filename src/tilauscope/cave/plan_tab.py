@@ -41,6 +41,17 @@ from tilauscope.cave.common import (
     _log, _logd)
 
 
+def _theoretical_pressure_hpa(altitude_m: float) -> float:
+    """ Calcule la pression atmosphérique standard en hPa pour une altitude donnée. """
+    P0 = 1013.25  # hPa au niveau de la mer
+    T0 = 288.15   # 15°C en Kelvin
+    L = 0.0065    # Taux de baisse de température par mètre
+    exponent = 5.255 # Résultat de (g*M)/(R*L)
+
+    pressure = P0 * (1 - (L * altitude_m) / T0) ** exponent
+    return round(pressure, 2)
+
+
 class PlanTabMixin:
     """The Roast plan tab: choosing a bean and a past roast, then producing a plan.
 
@@ -121,6 +132,7 @@ class PlanTabMixin:
 
             if not found:
                 self.plan_roast_combo.addItem(QApplication.translate("tilauscope_beancave", "— no roasts found for this bean —"))
+                self._prefill_conditions_from_artisan()
         finally:
             self.plan_roast_combo.blockSignals(False)
 
@@ -204,16 +216,7 @@ class PlanTabMixin:
         self._on_plan_bean_changed(row)
 
     def _update_roast_plan_values(self):
-        def get_theoretical_pressure(altitude_m: float) -> float:
-            """ Calcule la pression atmosphérique standard en hPa pour une altitude donnée. """
-            P0 = 1013.25  # hPa au niveau de la mer
-            T0 = 288.15   # 15°C en Kelvin
-            L = 0.0065    # Taux de baisse de température par mètre
-            exponent = 5.255 # Résultat de (g*M)/(R*L)
-
-            pressure = P0 * (1 - (L * altitude_m) / T0) ** exponent
-            return round(pressure, 2)
-
+        get_theoretical_pressure = _theoretical_pressure_hpa
         if not self.roast_plan_inputs :
             return
         if not self.lastprofiledata :
@@ -232,6 +235,22 @@ class PlanTabMixin:
         self.roast_plan_inputs["Altitude"].setValue(profile_roast_altitude)
         self.roast_plan_inputs["Batch Weight"].setValue(profile_roast_weight)
 
+    def _prefill_conditions_from_artisan(self) -> None:
+        """No reference roast: fill the still-empty conditions from what Artisan knows now."""
+        if not self.roast_plan_inputs:
+            return
+        qmc = self.aw.qmc
+        altitude = float(qmc.elevation or 0.0)
+        values = {
+            "Ambient Temperature": float(qmc.ambientTemp or 0.0),
+            "Altitude": altitude,
+            "Atmospheric Pressure": float(qmc.ambient_pressure or 0.0) or _theoretical_pressure_hpa(altitude),
+        }
+        for key, value in values.items():
+            spin = self.roast_plan_inputs.get(key)
+            if spin is not None and spin.value() == 0.0 and value > 0.0:
+                spin.setValue(value)
+
     @pyqtSlot()
     def _check_plan_inputs(self):
         """Checks if all required double spin boxes have non-zero values."""
@@ -247,11 +266,9 @@ class PlanTabMixin:
             self.injectinartisan_btn.setEnabled(False) #type:ignore
             return
 
-        all_filled = True
-        for input_box in self.roast_plan_inputs.values():
-            if input_box.value() == 0.0:
-                all_filled = False
-                break
+        # Altitude may be 0: sea level is a real place.
+        all_filled = all(self.roast_plan_inputs[k].value() > 0.0
+                         for k in ("Ambient Temperature", "Atmospheric Pressure", "Batch Weight"))
 
         self.generate_plan_btn.setEnabled(all_filled)
         self.injectinartisan_btn.setEnabled(False) #type:ignore
@@ -348,9 +365,13 @@ class PlanTabMixin:
             self.last_roast_plan_generated = data | precog
             if self.save_roast_pdf(self.last_roast_plan_generated, target_roast, graph_data, crashes, flicks, roaster_ctx=roast_context):
                 self.injectinartisan_btn.setEnabled(True) #type:ignore
+                ready = QApplication.translate("tilauscope_beancave", "Your roast plan is ready !")
+                prev = precog.get("Previous Harvest")
+                if prev:
+                    ready += "\n" + QApplication.translate("tilauscope_beancave",
+                        "Built on the {0} harvest ({1} roasts).").format(prev["crop"], prev["roasts"])
                 self._show_message(self,
-                    QApplication.translate("tilauscope_beancave", "Roast plan"),
-                    QApplication.translate("tilauscope_beancave", "Your roast plan is ready !"))
+                    QApplication.translate("tilauscope_beancave", "Roast plan"), ready)
         except Exception as e:
             self._show_message(self,
                 QApplication.translate("tilauscope_beancave", "Error"),

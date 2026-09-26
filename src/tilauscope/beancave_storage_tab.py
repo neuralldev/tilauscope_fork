@@ -201,6 +201,12 @@ class StorageTab(QWidget):
             f"color:{THEME['TEXT']}; font-size:16px; font-weight:700;"
         )
         bar.addWidget(title)
+        self.total_lbl = QLabel()
+        self.total_lbl.setStyleSheet(
+            f"color:{THEME['SUBTEXT']}; font-size:16px; font-weight:700;"
+        )
+        self.total_lbl.setVisible(False)
+        bar.addWidget(self.total_lbl)
         bar.addStretch()
         self.sack_tool_btn = QPushButton("🏷️  " + QApplication.translate("tilauscope_storage", "Manage sack labels"))
         self.sack_tool_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -657,6 +663,9 @@ class StorageTab(QWidget):
             self._set_cell(r, 5, trend_label(trend),
                            color=self._trend_color(trend))
         self.table.blockSignals(False)
+        total = sum(getattr(b, 'weight_left', 0.0) for b in self._rows)
+        self.total_lbl.setText(stock_label(total) if total > 0 else "")
+        self.total_lbl.setVisible(total > 0)
 
         # keep / restore selection
         if self._rows:

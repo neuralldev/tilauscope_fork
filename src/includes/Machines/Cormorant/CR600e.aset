@@ -1,0 +1,125 @@
+[General]
+AmbientTempSource=0
+Delay=1000
+KeepON=false
+ExtraEventSamplingDelay=0
+filterDropOuts=true
+dropSpikes=true
+dropDuplicates=true
+dropDuplicatesLimit=0.3
+optimalSmoothing=false
+curvefilter=3
+BTfunction=
+ETfunction=(Y3)
+DeltaBTfunction=
+DeltaETfunction=
+
+[Device]
+id=68
+phidget1048_types=1, 1, 1, 1
+phidget1048_async=false, false, false, false
+phidget1048_changeTriggers=0, 0, 0, 0
+phidget1048_dataRate=256
+phidget1046_async=false, false, false, false
+phidget1046_gain=2, 2, 2, 2
+phidget1046_formula=1, 1, 1, 1
+phidget1046_dataRate=256
+phidget1045_async=false
+phidget1045_changeTrigger=0
+phidget1045_emissivity=1
+phidget1045_dataRate=256
+phidget1200_formula=3
+phidget1200_wire=0
+phidget1200_async=false
+phidget1200_changeTrigger=0
+phidget1200_dataRate=250
+phidget1200_2_formula=1
+phidget1200_2_wire=0
+phidget1200_2_async=false
+phidget1200_2_changeTrigger=0
+phidget1200_2_dataRate=250
+phidgetDAQ1400_powerSupply=1
+phidgetDAQ1400_inputMode=0
+phidgetPort=5661
+phidget1018_async=false, false, false, false, false, false, false, false
+phidget1018_ratio=false, false, false, false, false, false, false, false
+phidget1018_dataRates=256, 256, 256, 256, 256, 256, 256, 256
+phidget1018_changeTriggers=10, 10, 10, 10, 10, 10, 10, 10
+phidgetVCP100x_voltageRanges=11, 11, 11, 11, 11, 11, 11, 11
+controlETpid=0, 1
+readBTpid=1, 2
+arduinoETChannel=1
+arduinoBTChannel=2
+arduinoATChannel=None
+ArduinoFILT=70, 70, 70, 70
+useModbusPort=false
+showFujiLCDs=true
+PIDbuttonflag=false
+Controlbuttonflag=true
+YOCTO_emissivity=1
+YOCTO_async=false, false
+YOCTO_dataRate=256
+ambient_temperature_device=0
+ambient_humidity_device=0
+ambient_pressure_device=0
+santokerHost=10.10.100.254
+santokerPort=20001
+santokerSerial=false
+santokerBLE=false
+santokerEventFlags=false, false, false, false, false, false, false
+kaleidoHost=127.0.0.1
+kaleidoPort=80
+kaleidoSerial=false
+kaleidoPID=true
+kaleidoEventFlags=false, false, false, false, false, false, false
+mugmaHost=127.0.0.1
+mugmaPort=1504
+ctMean=50
+ctMedian=50
+
+[SerialPort]
+baudrate=115200
+bytesize=8
+stopbits=1
+parity=N
+timeout=0.8
+
+[RoC]
+DeltaET=true
+DeltaBT=true
+DeltaETlcd=false
+DeltaBTlcd=true
+deltaETfilter=11
+deltafilter=11
+DeltaETspan=10
+DeltaSpan=15
+LCDdecimalplaces=1
+percent_decimals=1
+statisticsmode=1
+swapdeltalcds=false
+
+[ExtraDev]
+extradevices=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\x2\0\0\0r)
+extraname1=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\xe\0\x45\0x\0t\0r\0\x61\0 \0\x31)
+extraname2=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\xe\0\x45\0x\0t\0r\0\x61\0 \0\x32)
+extramathexpression1=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\0)
+extramathexpression2=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\0)
+extradevicecolor1=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\xe\0#\0\x30\0\x30\0\x30\0\x30\0\x30\0\x30)
+extradevicecolor2=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\xe\0#\0\x30\0\x30\0\x30\0\x30\0\x30\0\x30)
+extraLCDvisibility1=true, false, false, false, false, false, false, false, false, false
+extraLCDvisibility2=true, false, false, false, false, false, false, false, false, false
+extraCurveVisibility1=false, true, true, true, true, true, true, true, true, true
+extraCurveVisibility2=false, true, true, true, true, true, true, true, true, true
+extraDelta1=false, false, false, false, false, false, false, false, false, false
+extraDelta2=false, false, false, false, false, false, false, false, false, false
+extraFill1=0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+extraFill2=0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+devicetablecolumnwidths=195, 76, 76, 126, 126, 126, 126, 41, 41, 52, 52, 55, 55, 51, 51
+
+[ExtraComm]
+extracomport=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\b\0\x43\0O\0M\0\x31)
+extrabaudrate=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\x2\0\0K\0)
+extrabytesize=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\x2\0\0\0\b)
+extraparity=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\x2\0\x45)
+extrastopbits=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\x2\0\0\0\x1)
+extratimeout=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\x6?\xe0\0\0\0\0\0\0)

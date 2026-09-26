@@ -43,7 +43,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from tilauscope.tilauscope_types import THEME, TilauProgressDialog, show_styled_message
+from tilauscope.tilauscope_types import THEME, TilauProgressDialog, show_styled_message, price_per_kg_spin
+from tilauscope.bean_qualifiers import screen_size_options
 from tilauscope.header_icons import SVG_PROG_AI
 from tilauscope.sack_manager import prompt_release_if_emptied  # sack reclaim (§9.3)
 
@@ -344,6 +345,9 @@ class ZoneEditorDialog(QDialog):
         self.altitude_spin.setSuffix(" m")
         self.altitude_spin.setValue(int(getattr(b, 'altitude', 0) or 0))
         self._form.addRow(QApplication.translate("tilauscope_beancave", "Altitude:"), self.altitude_spin)
+        self.price_spin = price_per_kg_spin()
+        self.price_spin.setValue(float(getattr(b, 'price_per_kg', 0.0) or 0.0))
+        self._form.addRow(QApplication.translate("tilauscope_beancave", "Price:"), self.price_spin)
 
     def _build_characteristics(self) -> None:
         b = self._bean
@@ -458,7 +462,20 @@ class ZoneEditorDialog(QDialog):
         self.wa_spin.setValue(getattr(b, 'water_activity', 0.0) or 0.0)
         self._form.addRow(QApplication.translate("tilauscope_beancave", "Water activity:"), self.wa_spin)
 
+        self.screen_combo = QComboBox()
+        self.screen_combo.setMinimumWidth(260)
+        for key, label in screen_size_options():
+            self.screen_combo.addItem(label, key)
+        self._set_screen_size(getattr(b, 'screen_size', '') or '')
+        self.screen_combo.setToolTip(QApplication.translate("tilauscope_beancave",
+            "Use the size given on the supplier sheet (AA, Supremo, 17/18…). Leave Unknown if it is not stated."))
+        self._form.addRow(QApplication.translate("tilauscope_beancave", "Screen size:"), self.screen_combo)
+
         self._refresh_blend_visibility()
+
+    def _set_screen_size(self, key: str) -> None:
+        idx = self.screen_combo.findData(key)
+        self.screen_combo.setCurrentIndex(idx if idx >= 0 else 0)
 
     def _build_sensory(self) -> None:
         b = self._bean
@@ -584,6 +601,7 @@ class ZoneEditorDialog(QDialog):
         self.density_spin.setValue(float(bean.density or 0.0))
         self.humidity_spin.setValue(float(bean.last_humidity or 0.0))
         self.wa_spin.setValue(float(bean.water_activity or 0.0))
+        self._set_screen_size(bean.screen_size or '')
         self.sca_spin.setValue(float(bean.sca or 0.0))
         self.flavour_edit.setText(bean.flavour_notes)
 
@@ -861,6 +879,7 @@ class ZoneEditorDialog(QDialog):
         b.farm = self.farm_edit.text().strip()
         b.supplier = self.supplier_edit.text().strip()
         b.altitude = int(self.altitude_spin.value())
+        b.price_per_kg = float(self.price_spin.value())
         return True
 
     def _apply_characteristics(self) -> bool:
@@ -886,6 +905,7 @@ class ZoneEditorDialog(QDialog):
         b.density = float(self.density_spin.value())
         b.last_humidity = float(self.humidity_spin.value())
         b.water_activity = float(self.wa_spin.value())
+        b.screen_size = self.screen_combo.currentData() or ''
         return True
 
     def _apply_sensory(self) -> bool:

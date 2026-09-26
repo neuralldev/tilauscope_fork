@@ -862,6 +862,8 @@ class BeanTabMixin:
                 # performed from this form.
                 conditioning=existing_bean.conditioning,
                 dial_ins=list(existing_bean.dial_ins),
+                screen_size=existing_bean.screen_size,
+                price_per_kg=existing_bean.price_per_kg,
             )
             self.cave.green_beans[selected_row_index] = new_bean_data
             if existing_bean.uuid != new_bean_data.uuid:

@@ -98,3 +98,4 @@ tools/l10n/inbox/
 AUDIT_*.md
 AGENTS.md
 
+.testmondata*

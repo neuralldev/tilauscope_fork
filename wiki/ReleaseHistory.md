@@ -1,4 +1,29 @@
 ## [4.3] 2026-09-13
+build 17
+* ⚡ [feat(roast)] : weight loss is judged against this roast's own aim — the lot's moisture, the level it ran and its development — in the result form next to the roasted weight and in the Dial-in brewing advice, instead of a fixed range; the form shows the aim and its range
+* ⚡ [feat(beancave)] : taste a rested roast from the Roasts tab — would you roast it the same way again, what was off in plain words, a note — and the next plan of the same coffee makes one change for it (a burner notch, a few degrees, or 20 s of development), recalled in the roast setup
+* ⚡ [feat(beancave)] : the "Brewing Recommendations" pop-up at startup is removed; the startup option is renamed "Show the cleaning reminder at startup", which is what it now does — the rest calendar (⋯ → Planning) still shows when each roast is ready
+* ⚡ [feat(roast-plan)] : a new harvest of a coffee you already roast plans on the previous harvest's first crack, phase durations and drop temperature until it has two roasts of its own; the burner still follows the new lot's moisture and density; History support names the harvest and the PDF shows both lots' moisture
+* 🐛 [fix(beancave)] : the Roasting plan tab can generate a plan for a coffee with no roast yet — its ambient fields start from Artisan's known conditions, and an altitude of 0 no longer blocks the button
+* ⚡ [feat(beancave)] : a green coffee's record takes its purchase price per kg — the record shows the value of the remaining stock, and each roast in the Roasts tab shows what its green cost and the cost per roasted kg
+* ⚡ [feat(beancave)] : a green coffee's record takes its screen size from a short list (Large, Medium, Small, Peaberry); it is written into the roast's properties when a roast is prepared, and read from the supplier's page by Fill from URL
+* ⚡ [feat(beancave)] : the New crop step proposes the previous harvest's price and screen size, to correct for the new lot
+* ⚡ [feat(config)] : TilauScope Config › BEANCAVE sets the currency of prices and costs; the system's currency until one is chosen
+* 🐛 [fix(roast-plan)] : a "Flat, papery" tasting now raises the development burner the plan actually runs, also when it follows a burner learned from past roasts; the before and after shown in the roast setup match the plan
+* 🐛 [fix(roast-plan)] : the tasting of a roast excluded from learning no longer changes the next plan
+* 🐛 [fix(roast-plan)] : a development burner learned from past roasts no longer takes the plan under the machine's burner floor (45 % on the Skywalker V2)
+* 🐛 [fix(beancave)] : "Rested and ready — how did it taste?" reads Tonino and Colorette colours on their own scale, like the rest calendar
+* 🐛 [fix(beancave)] : the price per kg accepts amounts above 1 000, for currencies such as the yen or the won
+* ⚡ [feat(i18n)] : the latest strings are translated into German, Spanish, Italian and Chinese (Simplified and Traditional) by machine translation (59 phrases each)
+build 16
+* ⚡ [feat(onboarding)] : the first-time setup sets up the roaster itself — pick the machine and its link (USB cable, Bluetooth, probe kit) and its sliders, milestone commands, probes and smoothing are set with nothing to type; the USB port is chosen for you when there is no doubt; your alarms, sounds, batch counter and paired devices are kept
+* ⚡ [feat(onboarding)] : network roasters in the first-time setup — the Kaleido M1 to M10 Pro (USB or network) and the Santoker X3 (network or Bluetooth) ask only for the roaster's address, pre-filled with the one used before or the roaster's usual one
+* ⚡ [feat(menu)] : Config → Machine and Config → Machine Name are hidden — the first-time setup sets the roaster up instead
+* ⚡ [feat(roasters)] : ready-made setups for the Skywalker V1 (USB, and Bluetooth through Skycommand) and the Cormorant CR600e (two RTD probes, read-only)
+* ⚡ [feat(i18n)] : the new first-time setup screens and the latest strings are translated into German, Spanish, Italian and Chinese (Simplified and Traditional) by machine translation (109 phrases each)
+* 🐛 [fix(skywalker)] : the Skywalker V2 Bluetooth setup's burner −5 % button sends a well-formed command
+* 🐛 [fix(skywalker)] : with the Skywalker V2 USB machine setup, the burner, air and drum sliders drive the roaster again
+* 🐛 [fix(remote)] : a roast started from the phone runs in Expert for that roast — your alarms fire and milestones are marked automatically, since the phone shows no guidance; your level comes back when the roast ends
 build 15
 * ⚡ [feat(menu)] : the Roast menu is hidden, with its Ctrl+B and Ctrl+W shortcuts — TilauScope's own background and profile switch replace it
 * ⚡ [feat(config)] : TilauScope Config has a CONTROLS tab — rename the four controls (sliders, buttons, alarms and the phone follow at once) and set the command each milestone and monitoring button sends to the roaster; the preheat sent at START is shown, set by Roast Setup

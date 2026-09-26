@@ -46,6 +46,10 @@
             "serial"
         ],
         "artisan_compatible": true,
+        "artisan_setups": [
+            {"link": "usb", "preset": "Skywalker/skywalkerv2-usb.aset"},
+            {"link": "bluetooth", "preset": "Skywalker/skywalkerv2-ble.aset", "ble_prefix": "TD5325A"}
+        ],
         "bean_temperature_offset_c": [
             -13.0,
             -8.0,
@@ -124,6 +128,10 @@
             "serial"
         ],
         "artisan_compatible": true,
+        "artisan_setups": [
+            {"link": "usb", "preset": "Skywalker/skywalkerv1-usb.aset"},
+            {"link": "bluetooth", "preset": "Skywalker/skywalkerv1-skycommand.aset", "ble_prefix": "ESP32_Skycommand_BLE"}
+        ],
         "bean_temperature_offset_c": [
             -13.0,
             -8.0,
@@ -190,6 +198,9 @@
             "usb"
         ],
         "artisan_compatible": true,
+        "artisan_setups": [
+            {"link": "usb", "preset": "Aillio/Bullet_R1_IBTS.aset"}
+        ],
         "supports_preheat_profiles": true,
         "supports_auto_charge_temperature": false,
         "supports_auto_gas_events": false,
@@ -398,6 +409,9 @@
             "usb"
         ],
         "artisan_compatible": true,
+        "artisan_setups": [
+            {"link": "probes", "preset": "Cormorant/CR600e.aset", "read_only": true}
+        ],
         "electrical_specification": {
             "voltage": 230,
             "phase_type": "single_phase",
@@ -568,6 +582,10 @@
             "bluetooth"
         ],
         "artisan_compatible": true,
+        "artisan_setups": [
+            {"link": "usb", "preset": "Kaleido/Serial.aset"},
+            {"link": "network", "preset": "Kaleido/Network.aset"}
+        ],
         "supports_preheat_profiles": true,
         "supports_auto_charge_temperature": false,
         "supports_auto_gas_events": false,
@@ -648,6 +666,10 @@
             "bluetooth"
         ],
         "artisan_compatible": true,
+        "artisan_setups": [
+            {"link": "usb", "preset": "Kaleido/Serial.aset"},
+            {"link": "network", "preset": "Kaleido/Network.aset"}
+        ],
         "electrical_specification": {
             "voltage": 230,
             "phase_type": "single_phase",
@@ -723,6 +745,10 @@
             "bluetooth"
         ],
         "artisan_compatible": true,
+        "artisan_setups": [
+            {"link": "usb", "preset": "Kaleido/Serial.aset"},
+            {"link": "network", "preset": "Kaleido/Network.aset"}
+        ],
         "supports_preheat_profiles": true,
         "supports_auto_charge_temperature": false,
         "supports_auto_gas_events": false,
@@ -788,6 +814,10 @@
             "bluetooth"
         ],
         "artisan_compatible": true,
+        "artisan_setups": [
+            {"link": "usb", "preset": "Kaleido/Serial.aset"},
+            {"link": "network", "preset": "Kaleido/Network.aset"}
+        ],
         "supports_preheat_profiles": true,
         "supports_auto_charge_temperature": false,
         "supports_auto_gas_events": false,
@@ -916,6 +946,10 @@
             "modbus"
         ],
         "artisan_compatible": true,
+        "artisan_setups": [
+            {"link": "network", "preset": "Santoker/Q_+_X_Series_WiFi.aset"},
+            {"link": "bluetooth", "preset": "Santoker/Q_+_X_Series_Bluetooth.aset"}
+        ],
         "supports_preheat_profiles": false,
         "supports_auto_charge_temperature": false,
         "supports_auto_gas_events": false,
@@ -979,6 +1013,9 @@
             "usb"
         ],
         "artisan_compatible": true,
+        "artisan_setups": [
+            {"link": "usb", "preset": "Hottop/KN-8828B-2K+.aset"}
+        ],
         "supports_preheat_profiles": false,
         "supports_auto_charge_temperature": false,
         "supports_auto_gas_events": false,
@@ -1169,6 +1206,9 @@
             "serial"
         ],
         "artisan_compatible": true,
+        "artisan_setups": [
+            {"link": "usb", "preset": "Skywalker/skywalkerv1-beast-trp.aset"}
+        ],
         "bean_temperature_offset_c": [
             -13.0,
             -8.0,

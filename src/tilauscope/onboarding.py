@@ -13,10 +13,11 @@
 # AUTHOR
 # Tilau 2025-2026
 
-"""First-run configuration assistant for TilauScope: a 4-step wizard (unit,
-roaster model, hardware, hand-off to BeanCave) shown once and replayable from the menu.
-Settings apply atomically only when the user validates the last step; skipping never
-touches settings."""
+"""First-run configuration assistant for TilauScope: a 6-step wizard (you, roaster,
+connection, hardware, folders, hand-off to BeanCave) shown once and replayable from the
+menu. The roaster's machine setup comes from roasters.json (see machine_setup). Settings
+apply atomically only when the user validates the last step; skipping never touches
+settings."""
 
 import logging
 import os
@@ -41,7 +42,7 @@ from PyQt6.QtWidgets import (
 )
 
 from artisanlib.util import getResourcePath
-from tilauscope.tilauscope_types import _IS_MACOS, THEME
+from tilauscope.tilauscope_types import _IS_MACOS, THEME, show_styled_message
 
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow
@@ -72,38 +73,36 @@ _T: Final[dict] = {
 }
 
 
-# ── Roaster display-name → bundled machine .aset ───────────────────────────
-# (subdir, default_file, paired_file): default_file loads when not paired, paired_file
-# once paired (e.g. Skywalker switches USB→BLE profile). Matched by substring.
-_ROASTER_MACHINE_ASET: Final[list[tuple[str, tuple[str, str, str]]]] = [
-    ("Cyberroaster",  ("Skywalker", "skywalkerv2-usb.aset", "skywalkerv2-ble.aset")),
-    ("Skywalker V2",  ("Skywalker", "skywalkerv2-usb.aset", "skywalkerv2-ble.aset")),
-]
+# Link kinds of roasters.json artisan_setups, as the wizard names them.
+_LINK_LABELS: Final[dict[str, str]] = {
+    "usb":       QT_TRANSLATE_NOOP("tilauscope_onboarding", "USB cable"),
+    "bluetooth": QT_TRANSLATE_NOOP("tilauscope_onboarding", "Bluetooth"),
+    "network":   QT_TRANSLATE_NOOP("tilauscope_onboarding", "Network"),
+    "probes":    QT_TRANSLATE_NOOP("tilauscope_onboarding", "Probe kit"),
+}
+_HEATING_LABELS: Final[dict[str, str]] = {
+    "gas":       QT_TRANSLATE_NOOP("tilauscope_onboarding", "Gas"),
+    "electric":  QT_TRANSLATE_NOOP("tilauscope_onboarding", "Electric"),
+    "infrared":  QT_TRANSLATE_NOOP("tilauscope_onboarding", "Infrared"),
+    "induction": QT_TRANSLATE_NOOP("tilauscope_onboarding", "Induction"),
+    "hybrid":    QT_TRANSLATE_NOOP("tilauscope_onboarding", "Hybrid"),
+    "wood":      QT_TRANSLATE_NOOP("tilauscope_onboarding", "Wood"),
+    "coal":      QT_TRANSLATE_NOOP("tilauscope_onboarding", "Coal"),
+}
+# Artisan's order of the milestone buttons (qmc.buttonactions), as the recap abbreviates them.
+_MILESTONES: Final[tuple[str, ...]] = (
+    "CHARGE", "DRY", "FC", "FC END", "SC", "SC END", "DROP", "COOL")
 
 # Curated theme shipped in the repo (generated from the reference profile).
 _THEME_REL: Final[tuple[str, ...]] = ("Themes", "TilauScope", "Catppuccin.athm")
 
 
-from tilauscope.theme_qss import apply_tilau_theme
+from tilauscope import machine_setup
+from tilauscope.theme_qss import apply_tilau_theme, tint
 
 
 def _theme_path() -> str:
     return os.path.join(getResourcePath(), *_THEME_REL)
-
-
-def _machine_aset_for(roaster: str, paired: bool = False) -> str | None:
-    """Resolve the bundled machine .aset for *roaster*.
-
-    When *paired* is True and a paired-variant is defined, that one wins
-    (e.g. BLE once the Skywalker was manually paired), else the default.
-    """
-    for needle, rel in _ROASTER_MACHINE_ASET:
-        if needle.lower() in roaster.lower():
-            subdir, default_file, paired_file = rel
-            fname = paired_file if (paired and paired_file) else default_file
-            p = os.path.join(getResourcePath(), "Machines", subdir, fname)
-            return p if os.path.exists(p) else None
-    return None
 
 
 # ── Known Artisan BLE device signatures (identification only) ──────────────
@@ -142,12 +141,13 @@ def _ble_signature_match(bd, ad, prefix: str, service_uuid: str | None) -> bool:
 
 # ═══════════════════════════════════════════════════════════════════════════
 class OnboardingWizard(QDialog):
-    """The 4-step first-run configuration dialog."""
+    """The 6-step first-run configuration dialog."""
 
     # Translated where the stepper is built; declared here for the extractor.
     STEPS: Final[tuple[str, ...]] = (
         QT_TRANSLATE_NOOP("tilauscope_onboarding", "You"),
         QT_TRANSLATE_NOOP("tilauscope_onboarding", "Roaster"),
+        QT_TRANSLATE_NOOP("tilauscope_onboarding", "Connection"),
         QT_TRANSLATE_NOOP("tilauscope_onboarding", "Hardware"),
         QT_TRANSLATE_NOOP("tilauscope_onboarding", "Folders"),
         QT_TRANSLATE_NOOP("tilauscope_onboarding", "First bean"))
@@ -174,7 +174,12 @@ class OnboardingWizard(QDialog):
         self._unit: str = "C"
         self._operator: str = getattr(getattr(aw, "qmc", None), "operator_setup", "") or ""
         self._roaster: str = ""
-        self._skywalker_ready: bool = False  # set by detection → drives USB/BLE profile
+        self._setups: list = []              # roasters.json artisan_setups of self._roaster
+        self._setup_index: int = 0
+        self._setup_chosen: bool = False     # the operator picked the link: detection stops choosing
+        self._port: str | None = None
+        self._host: str = ""
+        self._ble_seen: set[str] = set()     # BLE name prefixes heard nearby
         _s = QSettings()
         self._alog_dir: str = _s.value("alogDirectory", "", str) or ""
         self._beancave_dir: str = _s.value("beancaveDirectory", self._alog_dir, str) or ""
@@ -275,10 +280,11 @@ class OnboardingWizard(QDialog):
         self._stack = QStackedWidget()
         self._stack.addWidget(self._page_unit())
         self._stack.addWidget(self._page_roaster())
+        self._stack.addWidget(self._page_connection())
         self._stack.addWidget(self._page_hardware())
         self._stack.addWidget(self._page_dirs())
         self._stack.addWidget(self._page_finish())
-        self._stack.setMinimumHeight(330)
+        self._stack.setMinimumHeight(420)
         return self._stack
 
     def _build_footer(self) -> QWidget:
@@ -306,7 +312,7 @@ class OnboardingWizard(QDialog):
         self._back_btn = QPushButton(QApplication.translate("tilauscope_onboarding","Back"))
         self._back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._back_btn.setStyleSheet(self._ghost_style())
-        self._back_btn.clicked.connect(lambda: self._show_step(self._index - 1))
+        self._back_btn.clicked.connect(lambda: self._go(-1))
 
         self._next_btn = QPushButton(QApplication.translate("tilauscope_onboarding","Next"))
         self._next_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -392,9 +398,19 @@ class OnboardingWizard(QDialog):
     def _page_roaster(self) -> QWidget:
         page = self._page_base(
             QApplication.translate("tilauscope_onboarding","Which roaster do you use?"),
-            QApplication.translate("tilauscope_onboarding","The machine sets the roast plan, slider labels and recommendations. "
-                "If a device profile is bundled, it is loaded when you finish."),
+            QApplication.translate("tilauscope_onboarding","It sets the roast plan, and how TilauScope reads and drives the machine."),
         )
+        lay = page.layout()
+        search = QLineEdit()
+        search.setPlaceholderText("⌕  " + QApplication.translate("tilauscope_onboarding","Search roasters"))
+        search.setClearButtonEnabled(True)
+        search.setStyleSheet(
+            f"QLineEdit {{ background:{_T['SURFACE']}; color:{_T['TEXT']}; border:1px solid {_T['OVERLAY']};"
+            f" border-radius:9px; padding:7px 10px; font-size:13px; }}"
+            f"QLineEdit:focus {{ border-color:{_T['ACCENT']}; }}"
+        )
+        lay.addWidget(search)
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet(
@@ -405,32 +421,356 @@ class OnboardingWizard(QDialog):
         holder = QWidget()
         col = QVBoxLayout(holder)
         col.setContentsMargins(0, 0, 6, 0)
-        col.setSpacing(8)
+        col.setSpacing(6)
 
+        from tilauscope.roasters import RoasterManager
+        manager = RoasterManager()
         self._roaster_group = QButtonGroup(self)
+        self._roaster_cards: list[tuple[str, QPushButton]] = []
         names = self._roaster_names()
-        current = QSettings().value("RoastPlan/RoasterModel", "", str) or ""
+        current = (getattr(self._aw, "tilau_roaster", "")
+                   or QSettings().value("RoastPlan/RoasterModel", "", str) or "")
         default_i = next(
             (i for i, n in enumerate(names) if n == current),
             next((i for i, n in enumerate(names)
                   if "cyberroaster" in n.lower() or "skywalker v2" in n.lower()), 0),
         )
         for i, name in enumerate(names):
-            rb = QRadioButton("  " + name)
-            rb.setCursor(Qt.CursorShape.PointingHandCursor)
-            rb.setStyleSheet(self._radio_style())
-            rb.setChecked(i == default_i)
-            rb.toggled.connect(lambda on, n=name: self._set_roaster(n) if on else None)
-            self._roaster_group.addButton(rb)
-            col.addWidget(rb)
+            card = self._roaster_card(name, manager.get_by_display_name(name))
+            card.setChecked(i == default_i)
+            card.toggled.connect(lambda on, n=name: self._set_roaster(n) if on else None)
+            self._roaster_group.addButton(card)
+            self._roaster_cards.append((name, card))
+            col.addWidget(card)
         col.addStretch()
-        if names:
-            self._roaster = names[default_i]
         scroll.setWidget(holder)
-        page.layout().addWidget(scroll, 1)
+        lay.addWidget(scroll, 1)
+        search.textChanged.connect(self._filter_roasters)
+
+        g = QLabel(QApplication.translate("tilauscope_onboarding","From this roaster").upper())
+        g.setStyleSheet(self._group_style())
+        lay.addWidget(g)
+        facts = QHBoxLayout()
+        facts.setSpacing(8)
+        self._fact_labels: list[tuple[QLabel, QLabel]] = []
+        for caption in (QApplication.translate("tilauscope_onboarding","Capacity"),
+                        QApplication.translate("tilauscope_onboarding","Heating"),
+                        QApplication.translate("tilauscope_onboarding","First batch")):
+            tile = QFrame()
+            tile.setObjectName("Fact")
+            tile.setStyleSheet(
+                f"#Fact {{ background:{_T['SURFACE']}; border:1px solid {_T['OVERLAY']}; border-radius:9px; }}")
+            tl = QVBoxLayout(tile)
+            tl.setContentsMargins(12, 7, 12, 7)
+            tl.setSpacing(0)
+            cap = QLabel(caption.upper())
+            cap.setStyleSheet(f"color:{_T['MUTED']}; font-size:10px; letter-spacing:1px; background:transparent;")
+            val = QLabel("—")
+            val.setStyleSheet(f"color:{_T['TEXT']}; font-size:14px; font-weight:600; background:transparent;")
+            hint = QLabel("")
+            hint.setStyleSheet(f"color:{_T['MUTED']}; font-size:11px; background:transparent;")
+            tl.addWidget(cap)
+            tl.addWidget(val)
+            tl.addWidget(hint)
+            self._fact_labels.append((val, hint))
+            facts.addWidget(tile, 1)
+        lay.addLayout(facts)
+        if names:
+            self._set_roaster(names[default_i])
         return page
 
-    # ── page 3: hardware ──────────────────────────────────────────────────
+    def _roaster_card(self, name: str, roaster) -> QPushButton:
+        card = QPushButton()
+        card.setCheckable(True)
+        card.setCursor(Qt.CursorShape.PointingHandCursor)
+        card.setFixedHeight(54)
+        card.setStyleSheet(
+            f"QPushButton {{ background:{_T['SURFACE']}; border:1px solid {_T['OVERLAY']};"
+            f" border-radius:10px; text-align:left; }}"
+            f"QPushButton:hover {{ border-color:{_T['OVER2']}; }}"
+            f"QPushButton:checked {{ border-color:{_T['ACCENT']}; background:{tint('ACCENT', 0.08)}; }}"
+        )
+        hl = QHBoxLayout(card)
+        hl.setContentsMargins(14, 6, 12, 6)
+        hl.setSpacing(8)
+        box = QVBoxLayout()
+        box.setSpacing(1)
+        maker = roaster.manufacturer if roaster is not None else ""
+        model = roaster.model if roaster is not None else name
+        title = QLabel(f"<span style='color:{_T['MUTED']}; font-weight:400;'>{maker}</span>&nbsp; {model}")
+        title.setTextFormat(Qt.TextFormat.RichText)
+        title.setStyleSheet(f"color:{_T['TEXT']}; font-size:14px; font-weight:600; background:transparent;")
+        meta = QLabel(self._roaster_meta(roaster))
+        meta.setStyleSheet(f"color:{_T['MUTED']}; font-size:11px; background:transparent;")
+        box.addWidget(title)
+        box.addWidget(meta)
+        hl.addLayout(box, 1)
+        setups = list(roaster.artisan_setups) if roaster is not None else []
+        if setups:
+            for setup in setups:
+                hl.addWidget(self._pill(QApplication.translate("tilauscope_onboarding", _LINK_LABELS.get(setup.link, setup.link)),
+                                        "ACCENT" if setup.link == "probes" else "SUCCESS"), 0, Qt.AlignmentFlag.AlignVCenter)
+        else:
+            hl.addWidget(self._pill(QApplication.translate("tilauscope_onboarding","Manual setup"), None),
+                         0, Qt.AlignmentFlag.AlignVCenter)
+        for w in card.findChildren(QLabel):
+            w.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        return card
+
+    def _roaster_meta(self, roaster) -> str:
+        if roaster is None:
+            return ""
+        heating = QApplication.translate("tilauscope_onboarding",
+                                         _HEATING_LABELS.get(str(roaster.heating_type), str(roaster.heating_type)))
+        lo, hi = roaster.batch_capacity_min_g, roaster.batch_capacity_max_g
+        size = (QApplication.translate("tilauscope_onboarding","{0}–{1} g").format(lo, hi) if lo
+                else QApplication.translate("tilauscope_onboarding","up to {0} g").format(hi))
+        return f"{heating} · {size}"
+
+    def _pill(self, text: str, token: str | None) -> QLabel:
+        pill = QLabel(text)
+        pill.setFixedHeight(22)
+        color = THEME[token] if token else _T["SUBTEXT"]
+        ground = tint(token, 0.14) if token else _T["OVERLAY"]
+        pill.setStyleSheet(
+            f"color:{color}; background:{ground}; border-radius:9px; padding:2px 9px;"
+            f" font-size:11px; font-weight:600;")
+        return pill
+
+    def _filter_roasters(self, text: str) -> None:
+        needle = text.strip().casefold()
+        for name, card in self._roaster_cards:
+            card.setVisible(not needle or needle in name.casefold())
+
+    def _refresh_facts(self) -> None:
+        from tilauscope.roasters import RoasterManager
+        roaster = RoasterManager().get_by_display_name(self._roaster)
+        if roaster is None or not getattr(self, "_fact_labels", None):
+            return
+        spec = roaster.electrical_specification
+        kw = getattr(spec, "max_power_draw_kw", None) if spec is not None else None
+        first = roaster.optimal_batch_capacity_g or roaster.batch_capacity_max_g
+        values = (
+            (f"{roaster.batch_capacity_max_g / 1000:g} kg", QApplication.translate("tilauscope_onboarding","nominal")),
+            (QApplication.translate("tilauscope_onboarding",
+                                    _HEATING_LABELS.get(str(roaster.heating_type), str(roaster.heating_type))),
+             f"{kw:g} kW" if kw else ""),
+            (f"{first} g", QApplication.translate("tilauscope_onboarding","sweet spot")),
+        )
+        for (val, hint), (v, h) in zip(self._fact_labels, values, strict=True):
+            val.setText(v)
+            hint.setText(h)
+
+    # ── page 3: connection ────────────────────────────────────────────────
+    def _page_connection(self) -> QWidget:
+        page = self._page_base("", QApplication.translate("tilauscope_onboarding",
+            "Plug the roaster in and switch it on. Nothing changes until you finish."))
+        lay = page.layout()
+        self._conn_title = lay.itemAt(0).widget()
+        self._link_bar = QHBoxLayout()
+        self._link_bar.setSpacing(6)
+        lay.addLayout(self._link_bar)
+        lay.addSpacing(6)
+        self._conn_body = QVBoxLayout()
+        self._conn_body.setSpacing(8)
+        lay.addLayout(self._conn_body)
+        lay.addStretch()
+        return page
+
+    def _current_setup(self):
+        if 0 <= self._setup_index < len(self._setups):
+            return self._setups[self._setup_index]
+        return None
+
+    def _connection_needed(self) -> bool:
+        """Whether the Connection step has a question: a link to pick, or a port to choose."""
+        if len(self._setups) > 1 or any(s.link == "network" for s in self._setups):
+            return True
+        setup = self._current_setup()
+        if setup is None or setup.link != "usb":
+            return False
+        path = machine_setup.preset_path(setup)
+        if path is None or machine_setup.port_target(path) is None:
+            return False
+        # only the saved port still plugged in goes unasked: an unknown lone port may be a probe
+        return machine_setup.saved_port(self._aw, path) not in {d for d, _ in machine_setup.usb_serial_ports()}
+
+    def _default_setup_index(self) -> int:
+        """The link in use now, else a detected Bluetooth one, else the first."""
+        for i, setup in enumerate(self._setups):
+            path = machine_setup.preset_path(setup)
+            if path is not None and machine_setup.link_in_use(self._aw, path):
+                return i
+        for i, setup in enumerate(self._setups):
+            if setup.ble_prefix and setup.ble_prefix in self._ble_seen:
+                return i
+        return 0
+
+    def _choose_setup(self, index: int) -> None:
+        if index != self._setup_index:
+            self._port = None
+            self._host = ""
+        self._setup_index = index
+        self._setup_chosen = True
+        self._fill_connection()
+
+    def _fill_connection(self) -> None:
+        self._clear_layout(self._link_bar)
+        self._clear_layout(self._conn_body)
+        from tilauscope.roasters import RoasterManager
+        roaster = RoasterManager().get_by_display_name(self._roaster)
+        model = roaster.model if roaster is not None else self._roaster
+        self._conn_title.setText(
+            QApplication.translate("tilauscope_onboarding","How is your {0} connected?").format(model))
+        if len(self._setups) > 1:
+            group = self._fresh_group("_link_group")
+            for i, setup in enumerate(self._setups):
+                b = QPushButton(QApplication.translate("tilauscope_onboarding", _LINK_LABELS.get(setup.link, setup.link)))
+                b.setCheckable(True)
+                b.setChecked(i == self._setup_index)
+                b.setCursor(Qt.CursorShape.PointingHandCursor)
+                b.setStyleSheet(self._pill_style())
+                b.clicked.connect(lambda _=False, k=i: self._choose_setup(k))
+                group.addButton(b)
+                self._link_bar.addWidget(b)
+            self._link_bar.addStretch()
+        setup = self._current_setup()
+        if setup is None:
+            return
+        if setup.link == "bluetooth":
+            self._fill_bluetooth(setup, model)
+        elif setup.link == "network":
+            self._fill_network(setup)
+        elif setup.link == "probes":
+            self._fill_probes(setup)
+        else:
+            self._fill_usb(setup)
+
+    def _fill_usb(self, setup) -> None:
+        path = machine_setup.preset_path(setup)
+        if path is None or machine_setup.port_target(path) is None:
+            self._conn_body.addWidget(self._hint("ACCENT", "ⓘ", QApplication.translate("tilauscope_onboarding",
+                "Plug the cable in. TilauScope finds the roaster by itself.")))
+            return
+        ports = machine_setup.usb_serial_ports()
+        if self._port not in {d for d, _ in ports}:
+            self._port = None   # unplugged since it was ticked: Finish must not apply it
+        saved = machine_setup.saved_port(self._aw, path)
+        auto = machine_setup.auto_port(saved, ports)
+        if self._port in {d for d, _ in ports} and self._port != auto:
+            auto = None   # the operator ticked another port: keep the list and their choice
+        if auto is not None:
+            self._port = auto
+            why = (QApplication.translate("tilauscope_onboarding","The port used last time. TilauScope keeps it.")
+                   if auto == saved else
+                   QApplication.translate("tilauscope_onboarding","The only USB serial port on this computer. TilauScope will use it."))
+            self._conn_body.addWidget(self._hint("SUCCESS", "✓", "<b>{}</b> · {}<br>{}".format(
+                QApplication.translate("tilauscope_onboarding","USB port found"), auto, why)))
+            return
+        if ports:
+            g = QLabel(QApplication.translate("tilauscope_onboarding","USB port").upper())
+            g.setStyleSheet(self._group_style())
+            self._conn_body.addWidget(g)
+            group = self._fresh_group("_port_group")
+            for device, desc in ports:
+                rb = QRadioButton(f"  {device}   {desc}")
+                rb.setCursor(Qt.CursorShape.PointingHandCursor)
+                rb.setStyleSheet(self._radio_style())
+                rb.setChecked(device == self._port)
+                rb.toggled.connect(lambda on, d=device: setattr(self, "_port", d) if on else None)
+                group.addButton(rb)
+                self._conn_body.addWidget(rb)
+            self._conn_body.addWidget(self._hint("ACCENT", "ⓘ", QApplication.translate("tilauscope_onboarding",
+                "Not listed? Unplug the cable, plug it back in, then scan again.")))
+        else:
+            self._conn_body.addWidget(self._hint("WARNING", "!", QApplication.translate("tilauscope_onboarding",
+                "No USB port found. Plug the cable in, switch the roaster on, then scan again.")))
+        rescan = QPushButton("↻  " + QApplication.translate("tilauscope_onboarding","Scan again"))
+        rescan.setCursor(Qt.CursorShape.PointingHandCursor)
+        rescan.setStyleSheet(self._pair_style())
+        rescan.clicked.connect(self._fill_connection)
+        self._conn_body.addWidget(rescan, 0, Qt.AlignmentFlag.AlignLeft)
+
+    def _fill_network(self, setup) -> None:
+        path = machine_setup.preset_path(setup)
+        if not self._host:
+            self._host = machine_setup.suggested_host(self._aw, path) if path is not None else ""
+        cap = QLabel(QApplication.translate("tilauscope_onboarding","Roaster address (name or IP)"))
+        cap.setStyleSheet(f"color:{_T['SUBTEXT']}; font-size:12px; background:transparent;")
+        field = QLineEdit(self._host)
+        field.setStyleSheet(
+            f"QLineEdit {{ background:{_T['SURFACE']}; color:{_T['TEXT']}; border:1px solid {_T['OVERLAY']};"
+            f" border-radius:9px; padding:8px 10px; font-size:13px; }}"
+            f"QLineEdit:focus {{ border-color:{_T['ACCENT']}; }}"
+        )
+        field.textChanged.connect(lambda text: setattr(self, "_host", text.strip()))
+        self._conn_body.addWidget(cap)
+        self._conn_body.addWidget(field)
+        self._conn_body.addWidget(self._hint("ACCENT", "ⓘ", QApplication.translate("tilauscope_onboarding",
+            "Your roaster and this computer must be on the same network. The address is shown in the roaster's network settings.")))
+
+    def _fill_bluetooth(self, setup, model: str) -> None:
+        if not setup.ble_prefix:
+            self._conn_body.addWidget(self._hint("ACCENT", "ⓘ", QApplication.translate("tilauscope_onboarding",
+                "Switch the roaster on. TilauScope connects to it when monitoring starts.")))
+        elif setup.ble_prefix in self._ble_seen:
+            self._conn_body.addWidget(self._hint("SUCCESS", "✓", "<b>{}</b><br>{}".format(
+                QApplication.translate("tilauscope_onboarding","{0} found nearby").format(model),
+                QApplication.translate("tilauscope_onboarding","TilauScope will read and drive it over Bluetooth. No cable needed."))))
+        else:
+            self._conn_body.addWidget(self._hint("ACCENT", "⌕", QApplication.translate("tilauscope_onboarding",
+                "Searching nearby… Switch the roaster on.")))
+        if any(s.link == "usb" for s in self._setups):
+            near = QApplication.translate("tilauscope_onboarding",
+                "Keep the roaster within a few metres of this computer. If the link drops mid-roast, switch to the USB cable.")
+        else:
+            near = QApplication.translate("tilauscope_onboarding",
+                "Keep the roaster within a few metres of this computer.")
+        self._conn_body.addWidget(self._hint("WARNING", "!", near))
+
+    def _fill_probes(self, setup) -> None:
+        self._conn_body.addWidget(self._hint("ACCENT", "ⓘ", QApplication.translate("tilauscope_onboarding",
+            "Temperatures come from the probes fitted to the roaster. Probe settings and formulas come with the kit.")))
+        if setup.read_only:
+            self._conn_body.addWidget(self._hint("ACCENT", "ⓘ", QApplication.translate("tilauscope_onboarding",
+                "This roaster takes no command from TilauScope. It records, and the assistant shows the settings to make by hand.")))
+
+    def _hint(self, token: str, glyph: str, html: str) -> QFrame:
+        box = QFrame()
+        box.setObjectName("Hint")
+        box.setStyleSheet(
+            f"#Hint {{ background:{tint(token, 0.08)}; border:1px solid {tint(token, 0.35)}; border-radius:9px; }}")
+        hl = QHBoxLayout(box)
+        hl.setContentsMargins(12, 9, 12, 9)
+        hl.setSpacing(10)
+        g = QLabel(glyph)
+        g.setStyleSheet(f"color:{THEME[token]}; font-size:14px; background:transparent;")
+        t = QLabel(html)
+        t.setTextFormat(Qt.TextFormat.RichText)
+        t.setWordWrap(True)
+        t.setStyleSheet(f"color:{_T['TEXT']}; font-size:12px; background:transparent;")
+        hl.addWidget(g, 0, Qt.AlignmentFlag.AlignTop)
+        hl.addWidget(t, 1)
+        return box
+
+    def _fresh_group(self, attr: str) -> QButtonGroup:
+        old = getattr(self, attr, None)
+        if old is not None:
+            old.deleteLater()
+        group = QButtonGroup(self)
+        setattr(self, attr, group)
+        return group
+
+    @staticmethod
+    def _clear_layout(layout) -> None:
+        while layout.count():
+            item = layout.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.hide()  # deleteLater waits for the event loop; the old row must not show meanwhile
+                w.deleteLater()
+
+    # ── page 4: hardware ──────────────────────────────────────────────────
     # Managed-instance attributes that count as "configured" when not None
     # (they are lazily created only once the device is set up).
     _OBJECT_OK: Final[tuple[str, ...]] = ("bleTilauAmbientDevice", "bleRoastSeeAGDevice")
@@ -456,10 +796,6 @@ class OnboardingWizard(QDialog):
         except Exception:  # pylint: disable=broad-except
             TILAUAMBIENT_PREFIX = "TLSCAM"
         try:
-            from tilauscope.tc4ble import SKYWALKER_PREFIX
-        except Exception:  # pylint: disable=broad-except
-            SKYWALKER_PREFIX = "TD5325A"
-        try:
             from tilauscope.lebrewroastsee import C1_PREFIX, AG_PREFIX
         except Exception:  # pylint: disable=broad-except
             C1_PREFIX, AG_PREFIX = "RoastSee C1", "RoastSee AquaGauge"
@@ -467,26 +803,23 @@ class OnboardingWizard(QDialog):
         # Each device: persisted attributes (checked on aw + BeanCave, so a
         # previously configured device shows "detected" on redo) AND a live BLE
         # name prefix (matched against the central scanner's stream, so a
-        # present-but-unconfigured device is detected on first run too). The
-        # Skywalker also drives the USB→BLE profile switch: detected ⇒ BLE.
-        self._periph: list[tuple[tuple[str, ...], QLabel, bool, str]] = []
-        for icon, name, desc, attrs, is_roaster, prefix in (
-            ("🔥", "Skywalker V2", QApplication.translate("tilauscope_onboarding","roaster · USB by default, BLE if detected"),
-             ("bleSkywalkerDeviceName", "bleSkywalkerDeviceslist"), True, SKYWALKER_PREFIX),
+        # present-but-unconfigured device is detected on first run too).
+        self._periph: list[tuple[tuple[str, ...], QLabel, str]] = []
+        for icon, name, desc, attrs, prefix in (
             ("🌫️", "DiFluid AirWave", QApplication.translate("tilauscope_onboarding","smoke extractor · PID"),
-             ("bleAirwaveDeviceName", "bleAirwaveDeviceslist"), False, AIRWAVE_PREFIX),
+             ("bleAirwaveDeviceName", "bleAirwaveDeviceslist"), AIRWAVE_PREFIX),
             ("⚖️", "Acaia scale", QApplication.translate("tilauscope_onboarding","charge & output weighing"),
-             ("scale1_name", "scale1_id", "scale2_name", "scale2_id"), False, ""),
+             ("scale1_name", "scale1_id", "scale2_name", "scale2_id"), ""),
             ("🌡️", "TilauAmbient", QApplication.translate("tilauscope_onboarding","ESP32 probe · BME280 / I²S mic"),
-             ("bleTilauAmbientDeviceslist", "bleTilauAmbientDevice"), False, TILAUAMBIENT_PREFIX),
+             ("bleTilauAmbientDeviceslist", "bleTilauAmbientDevice"), TILAUAMBIENT_PREFIX),
             ("💧", "Lebrew AquaGauge", QApplication.translate("tilauscope_onboarding","water activity (Aw)"),
              ("bleRoastSeeAGDeviceName", "bleRoastSeeAGDeviceslist", "bleRoastSeeAGDevice"),
-             False, AG_PREFIX),
+             AG_PREFIX),
             ("🎨", "Lebrew RoastSee C1", QApplication.translate("tilauscope_onboarding","bean colour reader"),
-             ("bleRoastSeeDeviceName", "bleRoastSeeDeviceslist"), False, C1_PREFIX),
+             ("bleRoastSeeDeviceName", "bleRoastSeeDeviceslist"), C1_PREFIX),
         ):
             row, status = self._device_row(icon, name, desc, action=False)
-            self._periph.append((attrs, status, is_roaster, prefix))
+            self._periph.append((attrs, status, prefix))
             page.layout().addWidget(row)
 
         # ── other known Artisan BLE devices (identification only) ──────────
@@ -514,7 +847,7 @@ class OnboardingWizard(QDialog):
         page.layout().addStretch()
         return page
 
-    # ── page 4: directories ───────────────────────────────────────────────
+    # ── page 5: directories ───────────────────────────────────────────────
     def _page_dirs(self) -> QWidget:
         page = self._page_base(
             QApplication.translate("tilauscope_onboarding","Where should your files live?"),
@@ -598,84 +931,103 @@ class OnboardingWizard(QDialog):
                     f" background:transparent;"
                 )
 
-    # ── page 5: finish ────────────────────────────────────────────────────
+    # ── page 6: finish ────────────────────────────────────────────────────
     def _page_finish(self) -> QWidget:
-        page = QWidget()
-        lay = QVBoxLayout(page)
-        lay.setContentsMargins(34, 20, 34, 10)
-        lay.setSpacing(4)
-
-        seal = QLabel("🌱")
-        seal.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        seal.setStyleSheet("font-size:44px; ")
-        h = QLabel(QApplication.translate("tilauscope_onboarding","Ready to apply."))
-        h.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        h.setStyleSheet(f"color:{_T['TEXT']}; font-size:22px; font-weight:700; background:transparent;")
-        sub = QLabel(QApplication.translate("tilauscope_onboarding","On finish, TilauScope applies these settings then takes you to "
-                         "create your first green bean. If you leave now, nothing changes."))
-        sub.setWordWrap(True)
-        sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        sub.setStyleSheet(f"color:{_T['SUBTEXT']}; font-size:13px; background:transparent;")
-
-        lay.addWidget(seal)
-        lay.addWidget(h)
-        lay.addWidget(sub)
-        lay.addSpacing(10)
-
-        self._recap = QVBoxLayout()
-        self._recap.setSpacing(7)
-        recap_host = QWidget()
-        recap_host.setMaximumWidth(430)
-        recap_host.setLayout(self._recap)
-        lay.addWidget(recap_host, 0, Qt.AlignmentFlag.AlignHCenter)
+        page = self._page_base(
+            QApplication.translate("tilauscope_onboarding","Ready to set up"),
+            QApplication.translate("tilauscope_onboarding","Here is what Finish changes. Anything under “Kept as it is” stays yours."),
+        )
+        lay = page.layout()
+        cols = QHBoxLayout()
+        cols.setSpacing(10)
+        self._recap_set = self._recap_card(QApplication.translate("tilauscope_onboarding","Will be set"))
+        self._recap_kept = self._recap_card(QApplication.translate("tilauscope_onboarding","Kept as it is"))
+        cols.addWidget(self._recap_set[0], 3)
+        cols.addWidget(self._recap_kept[0], 2)
+        lay.addLayout(cols)
+        lay.addSpacing(4)
+        lay.addWidget(self._hint("ACCENT", "→", QApplication.translate("tilauscope_onboarding",
+            "Next: add your first green coffee, then start a roast.")))
         lay.addStretch()
         return page
 
+    def _recap_card(self, title: str) -> tuple[QFrame, QVBoxLayout]:
+        card = QFrame()
+        card.setObjectName("Recap")
+        card.setStyleSheet(
+            f"#Recap {{ background:{_T['SURFACE']}; border:1px solid {_T['OVERLAY']}; border-radius:10px; }}")
+        col = QVBoxLayout(card)
+        col.setContentsMargins(14, 10, 14, 12)
+        col.setSpacing(5)
+        g = QLabel(title.upper())
+        g.setStyleSheet(self._group_style())
+        col.addWidget(g)
+        rows = QVBoxLayout()
+        rows.setSpacing(5)
+        col.addLayout(rows)
+        col.addStretch()
+        return card, rows
+
+    def _recap_row(self, rows: QVBoxLayout, key: str, value: str, muted: bool = False) -> None:
+        hl = QHBoxLayout()
+        hl.setSpacing(10)
+        kl = QLabel(key)
+        kl.setStyleSheet(f"color:{_T['MUTED']}; font-size:12px; background:transparent;")
+        vl = QLabel(value)
+        vl.setWordWrap(True)
+        vl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        vl.setStyleSheet(
+            f"color:{_T['MUTED'] if muted else _T['TEXT']}; font-size:12px;"
+            f" font-weight:{400 if muted else 600}; background:transparent;")
+        hl.addWidget(kl)
+        hl.addWidget(vl, 1)
+        holder = QWidget()
+        holder.setLayout(hl)
+        hl.setContentsMargins(0, 0, 0, 0)
+        rows.addWidget(holder)
+
     def _fill_recap(self) -> None:
-        while self._recap.count():
-            item = self._recap.takeAt(0)
-            w = item.widget()
-            if w is not None:
-                w.deleteLater()
-        rows = [
-            (QApplication.translate("tilauscope_onboarding","Roasted by"), self._operator or "—"),
-            (QApplication.translate("tilauscope_onboarding","Unit"), "°C" if self._unit == "C" else "°F"),
-            (QApplication.translate("tilauscope_onboarding","Roaster"), self._roaster or "—"),
-        ]
-        # show which device profile will load, when one is bundled
-        if _machine_aset_for(self._roaster, paired=self._skywalker_ready):
-            rows.append((QApplication.translate("tilauscope_onboarding","Device profile"),
-                         "BLE" if self._skywalker_ready else "USB"))
-        rows += [
-            (QApplication.translate("tilauscope_onboarding","Theme & curves"), "Catppuccin"),
-            (QApplication.translate("tilauscope_onboarding","Axes & smoothing"), QApplication.translate("tilauscope_onboarding","reference profile")),
-        ]
+        rows = self._recap_set[1]
+        self._clear_layout(rows)
+        if self._operator:
+            self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Roasted by"), self._operator)
+        self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Units"), "°C" if self._unit == "C" else "°F")
+        setup = self._current_setup()
+        link = (QApplication.translate("tilauscope_onboarding", _LINK_LABELS.get(setup.link, setup.link))
+                if setup is not None else QApplication.translate("tilauscope_onboarding","set up later in Devices…"))
+        self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Roaster"), f"{self._roaster or '—'} · {link}")
+        if self._port:
+            self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Port"), os.path.basename(self._port))
+        if setup is not None and setup.link == "network" and self._host:
+            self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Address"), self._host)
+        path = machine_setup.preset_path(setup) if setup is not None else None
+        if path is not None:
+            sliders, milestones, buttons = machine_setup.preset_controls(path, list(self._aw.qmc.etypesdefault))
+            if setup.read_only:
+                self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Sliders"), QApplication.translate("tilauscope_onboarding","none · read-only roaster"))
+            elif sliders:
+                self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Sliders"), " · ".join(sliders))
+            if milestones:
+                self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Milestone buttons"),
+                                QApplication.translate("tilauscope_onboarding","{0} send commands").format(" · ".join(_MILESTONES[i] for i in milestones if i < len(_MILESTONES))))
+            if buttons:
+                self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Command buttons"), str(buttons))
+        from tilauscope.roasters import RoasterManager
+        roaster = RoasterManager().get_by_display_name(self._roaster)
+        if roaster is not None:
+            heating = QApplication.translate("tilauscope_onboarding", _HEATING_LABELS.get(str(roaster.heating_type), str(roaster.heating_type))).lower()
+            self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Capacity"), f"{roaster.batch_capacity_max_g / 1000:g} kg · {heating}")
+            self._recap_row(rows, QApplication.translate("tilauscope_onboarding","First batch"), f"{roaster.optimal_batch_capacity_g or roaster.batch_capacity_max_g} g")
+        self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Theme and curves"), "Catppuccin")
         if self._beancave_dir:
-            rows.append((QApplication.translate("tilauscope_onboarding","BeanCave folder"), os.path.basename(self._beancave_dir.rstrip("/\\")) or self._beancave_dir))
+            self._recap_row(rows, QApplication.translate("tilauscope_onboarding","BeanCave folder"), os.path.basename(self._beancave_dir.rstrip("/\\")) or self._beancave_dir)
         if self._alog_dir:
-            rows.append((QApplication.translate("tilauscope_onboarding","Roast logs folder"), os.path.basename(self._alog_dir.rstrip("/\\")) or self._alog_dir))
-        for k, v in rows:
-            row = QFrame()
-            row.setStyleSheet(
-                f"background:{_T['SURFACE']}; border:1px solid {_T['OVERLAY']};"
-                f" border-radius:9px;"
-            )
-            hl = QHBoxLayout(row)
-            hl.setContentsMargins(14, 10, 14, 10)
-            arrow = QLabel("→")
-            arrow.setStyleSheet(f"color:{_T['GREEN']}; ")
-            kl = QLabel(k)
-            kl.setStyleSheet(f"color:{_T['SUBTEXT']}; font-size:13px; background:transparent;")
-            vl = QLabel(v)
-            vl.setStyleSheet(
-                f"color:{_T['TEXT']}; font-size:13px; font-weight:600;"
-                f" background:transparent;"
-            )
-            hl.addWidget(arrow)
-            hl.addWidget(kl)
-            hl.addStretch()
-            hl.addWidget(vl)
-            self._recap.addWidget(row)
+            self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Roast logs folder"), os.path.basename(self._alog_dir.rstrip("/\\")) or self._alog_dir)
+
+        kept = self._recap_kept[1]
+        self._clear_layout(kept)
+        for key in (QApplication.translate("tilauscope_onboarding","Your alarms"), QApplication.translate("tilauscope_onboarding","Sounds"), QApplication.translate("tilauscope_onboarding","Batch counter"), QApplication.translate("tilauscope_onboarding","Paired devices")):
+            self._recap_row(kept, key, QApplication.translate("tilauscope_onboarding","unchanged"), muted=True)
 
     # ── small builders ────────────────────────────────────────────────────
     def _page_base(self, title: str, subtitle: str) -> QWidget:
@@ -737,7 +1089,9 @@ class OnboardingWizard(QDialog):
         self._index = index
         self._stack.setCurrentIndex(index)
 
+        skipped = index != 2 and not self._connection_needed()
         for i, (b, lab) in enumerate(zip(self._bullets, self._steplabels)):
+            b.setText("–" if (i == 2 and skipped) else str(i + 1))
             if i == index:
                 b.setStyleSheet(
                     f"background:{_T['ACCENT']}; color:{_T['SURFACE']}; border-radius:16px;"
@@ -762,37 +1116,63 @@ class OnboardingWizard(QDialog):
         self._next_btn.setText(QApplication.translate("tilauscope_onboarding","Finish") if last else QApplication.translate("tilauscope_onboarding","Next"))
         self._count_lbl.setText(f"{index + 1} / {len(self.STEPS)}")
 
+        if index >= 1:
+            self._hook_scanner()      # live first-run detection, roaster link included
         if index == 2:
-            self._hook_scanner()      # live first-run detection
+            self._fill_connection()
+        if index == 3:
             self._refresh_detection()  # persisted (redo) detection
             self._detect_timer.start(1500)
         else:
             self._detect_timer.stop()
-        if index == 3:
+        if index == 4:
             self._refresh_dir_labels()
         if last:
             self._fill_recap()
 
+    def _go(self, step: int) -> None:
+        """Move by *step*, passing over the Connection step when it has nothing to ask."""
+        target = self._index + step
+        if target == 2 and not self._connection_needed():
+            target += step
+        self._show_step(target)
+
     @pyqtSlot()
     def _on_next(self) -> None:
         if self._index == len(self.STEPS) - 1:
+            qmc = self._aw.qmc
+            if qmc.flagon or qmc.flagstart:
+                show_styled_message(
+                    self,
+                    QApplication.translate("tilauscope_onboarding","Monitoring is on"),
+                    QApplication.translate("tilauscope_onboarding",
+                        "Turn monitoring off, then press Finish again. The roaster setup cannot change while it is being read."))
+                return
             self._apply_and_finish()
         else:
-            self._show_step(self._index + 1)
+            self._go(1)
 
     # ── hardware detection (best-effort, non-blocking) ────────────────────
-    def _mark_detected(self, status: QLabel, is_roaster: bool) -> None:
+    def _mark_detected(self, status: QLabel) -> None:
         status.setText(QApplication.translate("tilauscope_onboarding","detected ✓"))
         status.setStyleSheet(
             f"color:{_T['GREEN']}; font-size:12px;"
             f" background:transparent;"
         )
-        if is_roaster:
-            self._skywalker_ready = True
+
+    def _roaster_heard(self, prefix: str) -> None:
+        """A roaster link advertised nearby: select it unless the operator chose, then redraw."""
+        if prefix in self._ble_seen:
+            return
+        self._ble_seen.add(prefix)
+        if not self._setup_chosen:
+            self._setup_index = self._default_setup_index()
+        if self._index == 2:
+            self._fill_connection()
 
     def _refresh_detection(self) -> None:
         """Detect devices already configured (persisted names/ids) — redo path."""
-        for attrs, status, is_roaster, _prefix in self._periph:
+        for attrs, status, _prefix in self._periph:
             found = False
             for attr in attrs:
                 val = getattr(self._aw, attr, None)
@@ -808,7 +1188,7 @@ class OnboardingWizard(QDialog):
                 except Exception:  # pylint: disable=broad-except
                     continue
             if found:
-                self._mark_detected(status, is_roaster)
+                self._mark_detected(status)
 
     # ── live scan detection (first-run path) ──────────────────────────────
     def _hook_scanner(self) -> None:
@@ -838,15 +1218,21 @@ class OnboardingWizard(QDialog):
     def _on_devices_found(self, devices: list) -> None:
         """Slot on TilauBLEScanner.devices_found — match advertised names to rows."""
         try:
-            own_prefixes = tuple(p.casefold() for *_, p in self._periph if p)
+            roaster_prefixes = tuple(s.ble_prefix for s in self._setups if s.ble_prefix)
+            own_prefixes = tuple(p.casefold() for *_, p in self._periph if p) + tuple(
+                p.casefold() for p in roaster_prefixes)
             for bd, ad in devices:
                 name = getattr(bd, "name", None)
                 # 1. our own peripherals → flip their dedicated row to "detected"
                 matched_own = False
                 if name:
-                    for _attrs, status, is_roaster, prefix in self._periph:
+                    for prefix in roaster_prefixes:
+                        if name.startswith(prefix):
+                            self._roaster_heard(prefix)
+                            matched_own = True
+                    for _attrs, status, prefix in self._periph:
                         if prefix and name.startswith(prefix):
-                            self._mark_detected(status, is_roaster)
+                            self._mark_detected(status)
                             matched_own = True
                 if matched_own:
                     continue
@@ -929,15 +1315,19 @@ class OnboardingWizard(QDialog):
         except Exception as e:  # pylint: disable=broad-except
             _log.exception("unit apply failed: %s", e)
 
-        # 2. machine device config (only the machine subset — never the theme).
-        #    Paired → BLE profile, otherwise the default USB profile.
+        # 2. machine setup: the functional part of the chosen link's preset, then
+        #    the roaster's own figures (never the theme, alarms or paired devices).
         QSettings().setValue("RoastPlan/RoasterModel", self._roaster)
-        aset = _machine_aset_for(self._roaster, paired=self._skywalker_ready)
-        if aset:
-            try:
-                aw.loadSettings(fn=aset, remember=False, machine=True, reload=False)
-            except Exception as e:  # pylint: disable=broad-except
-                _log.exception("machine aset load failed: %s", e)
+        setup = self._current_setup()
+        try:
+            if setup is not None:
+                machine_setup.apply(aw, self._roaster, setup, self._port, self._host)
+            elif self._roaster:
+                from tilauscope.roasters import sync_roaster_to_qmc
+                aw.tilau_roaster = self._roaster
+                sync_roaster_to_qmc(aw, self._roaster)
+        except Exception as e:  # pylint: disable=broad-except
+            _log.exception("machine setup failed: %s", e)
 
         # 3. theme (visual sections only → safe with theme=True)
         theme = _theme_path()
@@ -1001,6 +1391,12 @@ class OnboardingWizard(QDialog):
 
     def _set_roaster(self, name: str) -> None:
         self._roaster = name
+        self._setups = machine_setup.setups_for(name)
+        self._setup_chosen = False
+        self._port = None
+        self._host = ""
+        self._setup_index = self._default_setup_index()
+        self._refresh_facts()
 
     # ── frameless drag ────────────────────────────────────────────────────
     def mousePressEvent(self, event) -> None:  # type: ignore[override]

@@ -187,6 +187,14 @@ class TemperatureProbe(DataClassDictMixin):
     isolated_ground: bool = False
 
 @dataclass(slots=True)
+class ArtisanSetup(DataClassDictMixin):
+    """One way to link the roaster: the bundled Artisan preset it loads."""
+    link: str                       # usb | bluetooth | network | probes
+    preset: str                     # path under includes/Machines
+    ble_prefix: str | None = None   # advertised name that selects this link
+    read_only: bool = False         # measurement only, the roaster takes no command
+
+@dataclass(slots=True)
 class OpticalSensor(DataClassDictMixin):
     supports_agtron: bool = False
     supports_rate_of_color: bool = False
@@ -411,6 +419,7 @@ class Roaster(DataClassDictMixin):
     supported_interfaces: list[DataInterfaceType] = field(default_factory=list)
 
     artisan_compatible: bool = False
+    artisan_setups: list[ArtisanSetup] = field(default_factory=list)
 
     # --------------------------------------------------------
     # Installation

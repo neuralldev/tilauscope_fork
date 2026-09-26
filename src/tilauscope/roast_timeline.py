@@ -23,13 +23,13 @@ import logging
 from PyQt6.QtGui import (QPainter, QColor, QPen, QBrush, QFont, QWheelEvent, QLinearGradient,
                          QPainterPath, QRegion)
 from PyQt6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QFrame, QTextEdit, QProgressBar,
+    QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QPushButton, QGraphicsView, QGraphicsScene, QGraphicsRectItem,
     QGraphicsTextItem, QGraphicsProxyWidget,
     QDialog, QApplication, QWidget, QSizePolicy,
 )
 from PyQt6.QtCore import (
-    Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint, QSettings,
+    Qt, QTimer, QPoint, QSettings,
     QRunnable, QThreadPool, QObject, pyqtSignal,
     QT_TRANSLATE_NOOP,   # declares strings the extractor must see when translate() is fed a variable
 )
@@ -37,8 +37,8 @@ from PyQt6.QtCore import (
 from tilauscope.tilauscope_types import THEME
 from tilauscope.alogmanager import AlogMetadata
 from tilauscope.brew_advisor import (DEGASSING_BANDS, degassing_band, rest_window,
-                                     RestStatus, BrewFamily, to_agtron)
-from tilauscope.theme_qss import apply_tilau_theme, base_qss
+                                     BrewFamily, to_agtron)
+from tilauscope.theme_qss import apply_tilau_theme
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -1191,239 +1191,3 @@ class RoastReadyDialog(QDialog):
                 geo.x() + (geo.width()  - self.width())  // 2,
                 geo.y() + (geo.height() - self.height()) // 2,
             )
-
-
-# ── startup toast (unchanged API) ─────────────────────────────────────────────
-class _BrewScanSignals(QObject):
-    results_ready = pyqtSignal(list)
-    error         = pyqtSignal(str)
-
-
-class _BrewToastWorker(QRunnable):
-    """Scans cache for roasts currently inside their degassing window."""
-
-    def __init__(self, cache: dict[str, AlogMetadata], stop_event: threading.Event) -> None:
-        super().__init__()
-        self.setAutoDelete(True)
-        self._cache  = cache
-        self._stop   = stop_event
-        self.signals = _BrewScanSignals()
-
-    def run(self) -> None:
-        try:
-            results = self._scan()
-            if not self._stop.is_set():
-                self.signals.results_ready.emit(results)
-        except Exception as exc:
-            if not self._stop.is_set():
-                self.signals.error.emit(str(exc))
-
-    def _scan(self) -> list[dict]:
-        today      = date.today()
-        peak       = QApplication.translate("tilauscope_roast_review", "PEAK")
-        drink_soon = QApplication.translate("tilauscope_roast_review", "DRINK SOON")
-        age_s      = QApplication.translate("tilauscope_roast_review", "Age")
-        days_s     = QApplication.translate("tilauscope_roast_review", "days")
-        ready: list[dict] = []
-
-        for meta in self._cache.values():
-            if self._stop.is_set():
-                break
-            try:
-                epoch      = meta.roastepoch if meta.roastepoch > 0 else meta.mtime
-                roast_date = datetime.fromtimestamp(epoch).date()
-                days_since = (today - roast_date).days
-                if days_since < 0:
-                    continue
-                agtron = _get_agtron(Path(meta.filepath_str))
-                # Method-agnostic (family=None) so the toast agrees with the Brew
-                # Advisor: OPTIMAL and near-peak are "recommendations", FRESH/STALE are not.
-                win = rest_window(agtron, days_since)
-                if win.status == RestStatus.OPTIMAL:
-                    status = peak
-                elif win.status == RestStatus.NEAR_PEAK:
-                    status = drink_soon
-                else:
-                    continue
-                name_part = (meta.title or meta.filename).split('(')[0].strip()
-                ready.append({
-                    "html": (
-                        f"<b>{name_part}</b><br>&nbsp;&nbsp;&nbsp;"
-                        f"{age_s}: {days_since} {days_s} ({status})"
-                    ),
-                    "name":       name_part,
-                    "agtron":     agtron,
-                    "date":       roast_date,
-                    "days_since": days_since,
-                    "status":     status,
-                })
-            except Exception:
-                continue
-        return ready
-
-
-class BrewReadyNotification(QDialog):
-    """
-    Compact startup toast listing roasts currently in their optimal window.
-    """
-
-    def __init__(
-        self,
-        alog_directory: str,               # compat — not used
-        alog_files: dict[str, AlogMetadata],
-        parent: QWidget | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self._parent_widget = parent
-        self._cache         = alog_files
-        self.remaining_ms   = 15_000
-        self._stop_event    = threading.Event()
-        self._start_scan()
-
-    def request_stop(self) -> None:
-        self._stop_event.set()
-        for attr in ('_tick_timer', '_auto_close_timer', '_animation'):
-            obj = getattr(self, attr, None)
-            if obj:
-                try:
-                    obj.stop()
-                except Exception:
-                    pass
-        self.close()
-
-    def _start_scan(self) -> None:
-        worker = _BrewToastWorker(self._cache, self._stop_event)
-        worker.signals.results_ready.connect(self._on_scan_complete)
-        worker.signals.error.connect(lambda m: _log.error("BrewToast: %s", m))
-        QThreadPool.globalInstance().start(worker)
-
-    def _on_scan_complete(self, results: list[dict]) -> None:
-        if self._stop_event.is_set():
-            return
-        self.ready_items = results
-        if self.ready_items:
-            self._setup_ui()
-            QTimer.singleShot(2000, self.show)
-        else:
-            self.deleteLater()
-
-    def _setup_ui(self) -> None:
-        self.setModal(False)
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool
-        )
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        self.setWindowOpacity(1.0)
-        # Overrides only what base_qss() does not already set.
-        self.setStyleSheet(base_qss() + f"""
-            QDialog       {{ border: 1px solid {THEME['BORDER']}; }}
-            QTextEdit     {{ border: none; background: transparent; font-size: 12px; }}
-            QLabel#Header {{ font-weight: bold; font-size: 13px; }}
-            QPushButton#CloseBtn {{
-                background: transparent; color: {THEME['SUBTEXT']};
-                border: none; font-size: 18px; font-weight: bold;
-            }}
-            QPushButton#CloseBtn:hover {{ color: {THEME['CRITICAL']}; }}
-            QProgressBar {{
-                border: none; background-color: {THEME['BORDER']};
-                height: 4px; text-align: center; border-radius: 2px;
-            }}
-            QProgressBar::chunk {{ background-color: {THEME['ACCENT']}; border-radius: 2px; }}
-        """)
-        self.resize(380, 220)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 10, 15, 15)
-
-        title_layout = QHBoxLayout()
-        header_lbl   = QLabel(QApplication.translate("tilauscope_roast_review", "☕ Brewing Recommendations"))
-        header_lbl.setObjectName("Header")
-        close_btn = QPushButton("✕")
-        close_btn.setObjectName("CloseBtn")
-        close_btn.setFixedSize(24, 24)
-        close_btn.setProperty('variant', 'icon')   # fixed size: no base padding
-        close_btn.clicked.connect(self._fade_out_and_close)
-        title_layout.addWidget(header_lbl)
-        title_layout.addStretch()
-        title_layout.addWidget(close_btn)
-        layout.addLayout(title_layout)
-
-        self.content_area = QTextEdit()
-        self.content_area.setReadOnly(True)
-        self.content_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.content_area.installEventFilter(self)
-        # #34495e here was a pre-fork light-theme slate, left behind on a card
-        # that is now dark — dark blue-grey text on a dark ground.
-        html = f"<ul style='margin-left:-15px; color:{THEME['TEXT']};'>"
-        for item in self.ready_items:
-            html += f"<li style='margin-bottom:6px;'>{item['html']}</li>"
-        html += "</ul>"
-        self.content_area.setHtml(html)
-        layout.addWidget(self.content_area)
-
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, self.remaining_ms)
-        self.progress_bar.setValue(self.remaining_ms)
-        self.progress_bar.setTextVisible(False)
-        layout.addWidget(self.progress_bar)
-
-        self._tick_timer = QTimer(self)
-        self._tick_timer.timeout.connect(self._on_tick)
-        self._tick_timer.start(100)
-
-        self._auto_close_timer = QTimer(self)
-        self._auto_close_timer.setSingleShot(True)
-        self._auto_close_timer.timeout.connect(self._fade_out_and_close)
-        self._auto_close_timer.start(self.remaining_ms)
-
-    def showEvent(self, event) -> None:
-        if self._parent_widget is not None:
-            geo = self._parent_widget.geometry()
-            self.move(geo.x() + geo.width() - self.width() - 15,
-                      geo.y() + geo.height() - self.height() - 15)
-        else:
-            screen = self.screen().availableGeometry()
-            self.move(screen.width() - self.width() - 20, 20)
-        super().showEvent(event)
-
-    def _on_tick(self) -> None:
-        self.remaining_ms -= 100
-        self.progress_bar.setValue(max(0, self.remaining_ms))
-        if self.remaining_ms <= 0:
-            self._tick_timer.stop()
-            self._fade_out_and_close()
-
-    def _fade_out_and_close(self) -> None:
-        if getattr(self, '_animation', None) and \
-                self._animation.state() == QPropertyAnimation.State.Running:
-            return
-        for attr in ('_tick_timer', '_auto_close_timer'):
-            obj = getattr(self, attr, None)
-            if obj:
-                obj.stop()
-        self._animation = QPropertyAnimation(self, b"windowOpacity")
-        self._animation.setDuration(1000)
-        self._animation.setStartValue(1.0)
-        self._animation.setEndValue(0.0)
-        self._animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-        self._animation.finished.connect(self.close)
-        self._animation.start()
-
-    def eventFilter(self, source, event) -> bool:
-        if event.type() == event.Type.MouseButtonPress:
-            self._stop_countdown()
-        return super().eventFilter(source, event)
-
-    def mousePressEvent(self, event) -> None:
-        self._stop_countdown()
-        super().mousePressEvent(event)
-
-    def _stop_countdown(self) -> None:
-        for attr in ('_tick_timer', '_auto_close_timer'):
-            obj = getattr(self, attr, None)
-            if obj:
-                obj.stop()
-        if hasattr(self, 'progress_bar'):
-            self.progress_bar.hide()
-        self.setWindowOpacity(1.0)

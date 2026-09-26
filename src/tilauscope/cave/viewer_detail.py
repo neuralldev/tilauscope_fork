@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel, QPushBut
 
 from tilauscope.alogmanager import _to_grams
 from tilauscope.theme_qss import tint
-from tilauscope.tilauscope_types import AGTRON_SCALES, THEME, get_agtron_color
+from tilauscope.tilauscope_types import AGTRON_SCALES, THEME, format_money, get_agtron_color
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -108,6 +108,7 @@ class TileText:
     sub: str = ''
     swatch: str = ''        # the colour of the dot beside the value, or none
     swatch_filled: bool = True   # a hollow ring instead of a filled dot
+    tip: str = ''           # the tooltip of the sub line; the sub itself when empty
 
 
 def _not_recorded(caption: str) -> TileText:
@@ -122,7 +123,7 @@ def _spread(text: str) -> str:
     return QApplication.translate('tilauscope_beancave', 'Spread {0}').format(text)
 
 
-def roast_tiles(facts: RoastFacts | None) -> list[TileText]:
+def roast_tiles(facts: RoastFacts | None, price_per_kg: float = 0.0) -> list[TileText]:
     """Roasted weight, roast time, drop temperature and colour — each with what it means.
 
     Without facts (the roast is still loading, or could not be read) every tile
@@ -136,12 +137,18 @@ def roast_tiles(facts: RoastFacts | None) -> list[TileText]:
         return [TileText(caption) for caption in captions]
 
     if facts.weight_out_g > 0:
-        sub = ''
+        sub = tip = ''
         if facts.weight_in_g > 0:
             loss = max(0.0, (facts.weight_in_g - facts.weight_out_g) / facts.weight_in_g * 100.0)
             sub = QApplication.translate('tilauscope_beancave', '−{0} % from {1} g').format(
                 f'{loss:.0f}', f'{facts.weight_in_g:.0f}')
-        weight = TileText(captions[0], f'{facts.weight_out_g:.0f} g', sub)
+            if price_per_kg > 0:
+                cost = facts.weight_in_g / 1000.0 * price_per_kg
+                sub += f' · {format_money(cost)}'
+                tip = QApplication.translate('tilauscope_beancave', 'Roast cost {0} · {1} per roasted kg').format(
+                    format_money(cost),
+                    format_money(cost / (facts.weight_out_g / 1000.0)))
+        weight = TileText(captions[0], f'{facts.weight_out_g:.0f} g', sub, tip=tip)
     else:
         weight = _not_recorded(captions[0])
 
@@ -336,7 +343,7 @@ class KpiTile(QFrame):
         self._caption.setText(text.caption)
         self._value.setText(text.value)
         self._sub.setText(text.sub)
-        self._sub.setToolTip(text.sub)
+        self._sub.setToolTip(text.tip or text.sub)
         if text.swatch:
             fill = text.swatch if text.swatch_filled else 'transparent'
             rim = THEME['OVERLAY0'] if text.swatch_filled else text.swatch
@@ -387,6 +394,45 @@ class ResultBanner(QFrame):
         layout.addWidget(text, 1)
         layout.addWidget(button)
         self.hide()
+
+
+class TastingBanner(QFrame):
+    """Under a rested roast: asks how it tasted, or recalls what was said."""
+
+    taste_requested = pyqtSignal()
+
+    def __init__(self, parent=None) -> None:  # noqa: ANN001
+        super().__init__(parent)
+        self.setObjectName('roastTastingBanner')
+        self.setStyleSheet(f"""
+            QFrame#roastTastingBanner {{
+                border: 1px solid {tint('MAUVE', 110)};
+                border-radius: 8px;
+            }}
+            QFrame#roastTastingBanner QLabel {{ background: transparent; border: none; }}
+            QFrame#roastTastingBanner QPushButton {{
+                background: transparent; color: {THEME['MAUVE']};
+                border: none; padding: 4px 8px; font-weight: 600;
+            }}
+        """)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 6, 8, 6)
+        layout.setSpacing(8)
+        glyph = QLabel('☕')
+        self._text = QLabel()
+        self._text.setWordWrap(True)
+        self._button = QPushButton()
+        self._button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self._button.clicked.connect(self.taste_requested)
+        layout.addWidget(glyph)
+        layout.addWidget(self._text, 1)
+        layout.addWidget(self._button)
+        self.hide()
+
+    def show_state(self, text: str, button: str) -> None:
+        self._text.setText(text)
+        self._button.setText(button + " ›")
+        self.show()
 
 
 class CurveMessageLabel(QLabel):

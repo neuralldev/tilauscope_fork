@@ -200,6 +200,33 @@ _DRY_MIN_PER_STRUCTURE_INDEX: Final[float] = 0.075
 ## Écart BT entre deux crans d'air dans l'approche du DRY END.
 _AIR_DE_STEP_LEAD_C: Final[float] = 6.0
 
+## Calendar a new crop inherits from its previous harvest: cultivar and process
+## set the calendar (FC, phase durations, drop), the lot's moisture and density
+## set the energy — already read from the new lot's own measurements. Each group
+## is (sample-count key, value keys); the burner profile is never inherited.
+_CALENDAR_GROUPS: Final[tuple[tuple[str, tuple[str, ...]], ...]] = (
+    ("fc_bt_samples", ("fc_bt_learned_c", "fc_regression_slope", "fc_regression_offset",
+                       "fc_regression", "fc_bt_mad_c")),
+    ("timing_samples", ("timing_dry_min_learned", "timing_fc_min_learned")),
+    ("drop_bt_samples", ("drop_bt_learned_c", "drop_color_basis", "drop_bt_mad_c")),
+)
+## Own roasts at the target colour from which a new crop stops inheriting.
+_OWN_CROP_MIN_SAMPLES: Final[int] = 2
+
+
+def previous_crop(bean: GreenBean, beans: list) -> GreenBean | None:
+    """The most recent earlier harvest of the same coffee — same name, country and process."""
+    crop = int(getattr(bean, 'crop', 0) or 0)
+    if crop <= 0 or not bean.name:
+        return None
+    def _key(b) -> tuple[str, str, str]:
+        return ((b.name or '').strip().casefold(), (b.country or '').strip().casefold(),
+                (b.process or '').strip().casefold())
+    key = _key(bean)
+    earlier = [b for b in beans
+               if b.uuid != bean.uuid and 0 < int(b.crop or 0) < crop and _key(b) == key]
+    return max(earlier, key=lambda b: int(b.crop), default=None)
+
 
 @dataclass(frozen=True)
 class _TechnologyProfile:
@@ -939,6 +966,10 @@ class TilauScopeRoastPlan:
         # instance's lifetime (a roast session): new alogs only appear after
         # DROP, when no regeneration can happen anymore.
         self._history_cache: dict[tuple, dict | None] = {}
+        # Previous harvest per bean uuid, resolved once: the catalogue is a file.
+        self._previous_crop_cache: dict[str, GreenBean | None] = {}
+        # Tasting change per bean uuid, resolved once: tastings.json is a file.
+        self._tasting_change_cache: dict[str, dict | None] = {}
 
         # Corpus index snapshot, resolved lazily and held for this instance's
         # lifetime. It is the pre-filter for every historical scan below.
@@ -1541,6 +1572,72 @@ class TilauScopeRoastPlan:
         out["notes"]   = list(cached.get("notes")   or [])
         out["actions"] = list(cached.get("actions") or [])
         return out
+
+    def _inherit_previous_crop(self, history: dict | None, bean: GreenBean,
+                               target_agtron: AgtronScale, charge_weight_g: float) -> dict | None:
+        """Fill the calendar groups a new crop has fewer than 2 roasts for from its previous harvest."""
+        uuid = getattr(bean, 'uuid', '') or ''
+        if not uuid:
+            return history
+        if uuid not in self._previous_crop_cache:
+            try:
+                from tilauscope.cave.common import load_cave_beans  # noqa: PLC0415
+                self._previous_crop_cache[uuid] = previous_crop(bean, load_cave_beans())
+            except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
+                _logd.warning(f"previous crop lookup skipped: {e}")
+                self._previous_crop_cache[uuid] = None
+        prev = self._previous_crop_cache[uuid]
+        if prev is None:
+            return history
+        prev_history = self._get_history_cached(prev, target_agtron, charge_weight_g)
+        if not prev_history:
+            return history
+        merged = dict(history) if history else {
+            "notes": [], "actions": [], "graph": None, "crashes": [], "flicks": []}
+        inherited_n = 0
+        for n_key, keys in _CALENDAR_GROUPS:
+            own_n = int(merged.get(n_key, 0) or 0)
+            prev_n = int(prev_history.get(n_key, 0) or 0)
+            if own_n < _OWN_CROP_MIN_SAMPLES and prev_n > own_n:
+                merged[n_key] = prev_n
+                for k in keys:
+                    merged[k] = prev_history.get(k)
+                inherited_n = max(inherited_n, prev_n)
+        if inherited_n:
+            merged["previous_harvest"] = {"crop": int(prev.crop), "roasts": inherited_n,
+                                          "humidity": float(prev.last_humidity or 0.0)}
+            _logd.info(f"RoastPlan: '{bean.name}' {bean.crop} inherits the {prev.crop} calendar "
+                       f"({inherited_n} roasts)")
+        return merged
+
+    def _tasting_change(self, bean: GreenBean) -> dict | None:
+        """The change the tasting of this coffee's most recent roast asks of the next one, or None.
+
+        Only the most recent roast counts: a tasting of an older roast was
+        already answered by the roasts that followed it.
+        """
+        uuid = (getattr(bean, 'uuid', '') or '').lower()
+        if not uuid:
+            return None
+        if uuid not in self._tasting_change_cache:
+            change = None
+            try:
+                roasts = [m for m in self._index_records().values()
+                          if m.uuid.lower() == uuid and not m.simulated]
+                last = max(roasts, key=lambda m: m.roastepoch or m.mtime, default=None)
+                # An excluded roast still answered the older tastings.
+                if last is not None and last.roast_uuid and not last.exclude_learning:
+                    from tilauscope import tasting_log  # noqa: PLC0415
+                    tasting = tasting_log.load(QSettings().value('beancaveDirectory', '', str)
+                                               ).entries.get(last.roast_uuid)
+                    found = tasting_log.next_change(tasting)
+                    if found is not None:
+                        change = {"defect": found[0], "lever": found[1], "delta": found[2],
+                                  "roast_epoch": int(last.roastepoch or last.mtime)}
+            except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
+                _logd.warning(f"tasting lookup skipped: {e}")
+            self._tasting_change_cache[uuid] = change
+        return self._tasting_change_cache[uuid]
 
     def _cohort_charge_burner(self, *, process_type: str, charge_weight_g: float
                               ) -> "tuple[float | None, int]":
@@ -4310,6 +4407,9 @@ class TilauScopeRoastPlan:
         if 3 in _dev_end:
             _dev_end[3] = max(_dev_end[3], _dev_start[3] - _DEV_BURNER_DROP_CAP)
             _dev_end[3] = min(_dev_end[3], heater_max_pct)   # machine ceiling, learned or not
+            # burner floor, learned or not — never above the ramp's own start
+            _dev_end[3] = max(_dev_end[3], min(tech.burner_floor_pct, heater_max_pct, _dev_start[3]))
+            _dev_end[3] = min(_dev_end[3], _dev_start[3])   # the burner never rises after FC
         # ── Airflow SOUTIENT la réaction pendant que le FEU DESCEND en dev ──────
         # (doctrine Tilau). Une cible statique `air_dev` — souvent basse ou apprise
         # à plat — laissait le dev quasi plat alors que le brûleur chute franchement.
@@ -4591,6 +4691,10 @@ class TilauScopeRoastPlan:
         # in the output section below. Memoised: ambient-triggered plan
         # regenerations reuse the cached analysis (same bean/target/weight).
         history = self._get_history_cached(bean, agtron_target, charge_weight)
+        history = self._inherit_previous_crop(history, bean, agtron_target, charge_weight)
+        _tasting = self._tasting_change(bean)
+        _tasting_lever = _tasting["lever"] if _tasting else ""
+        _tasting_before_after: tuple[float, float] | None = None
 
         # DETERMINE TARGET ROAST CATEGORY
         target_roast_category = agtron_target.name
@@ -4728,6 +4832,10 @@ class TilauScopeRoastPlan:
         ma_bt_temperature = fc_bt - dry_bt_temperature
 
         charge_bt_temperature: float = _charge.temperature_c
+        if _tasting_lever == "charge_c":
+            _before = charge_bt_temperature
+            charge_bt_temperature += _tasting["delta"]
+            _tasting_before_after = (_to_native(_before), _to_native(charge_bt_temperature))
         _soak_dcharge_c: float = _charge.soak_dcharge_c
         _soak_dheater: int = _charge.soak_dheater_pct
 
@@ -4762,6 +4870,11 @@ class TilauScopeRoastPlan:
             total_time_min += _dest_bonus_min
             _logd.info(f"RoastPlan: destination {self.roast_destination} "
                        f"+{_dest_bonus_min * 60.0:.0f}s of development")
+        if _tasting_lever == "development_s":
+            _before = dev_time_min * 60.0
+            dev_time_min += _tasting["delta"] / 60.0
+            total_time_min += _tasting["delta"] / 60.0
+            _tasting_before_after = (_before, dev_time_min * 60.0)
         _grid_dry_time_min: float = dry_time_min
 
         heater_dry_base:float = roast_constraints.heater_cmfc[0]*100
@@ -5051,6 +5164,12 @@ class TilauScopeRoastPlan:
         drop_bt_temperature = _drop.drop_bt_temperature
         drop_source = _drop.drop_source
         dev_ror = _drop.dev_ror
+        if _tasting_lever == "drop_c":
+            _before = drop_bt_temperature
+            drop_bt_temperature += _tasting["delta"]
+            if dev_time_min > 0:
+                dev_ror += _tasting["delta"] / dev_time_min
+            _tasting_before_after = (_to_native(_before), _to_native(drop_bt_temperature))
         drop_ror = _drop.drop_ror
         drop_ror_source = _drop.drop_ror_source
         if _drop.notes:
@@ -5115,6 +5234,17 @@ class TilauScopeRoastPlan:
         heater_maillard = _burner.heater_maillard
         heater_dev = _burner.heater_dev
         heater_pre_fc = _burner.heater_pre_fc
+        if _tasting_lever.startswith("burner_"):
+            _lo = min(_tech.burner_floor_pct, _burner.heater_max_pct)
+            def _notch(value: float) -> float:
+                return _clamp(value + _tasting["delta"], _lo, _burner.heater_max_pct)
+            if _tasting_lever == "burner_start_pct":
+                _tasting_before_after = (heater_dry, _notch(heater_dry))
+                heater_dry = _tasting_before_after[1]
+            elif _tasting_lever == "burner_before_fc_pct":
+                _tasting_before_after = (heater_pre_fc, _notch(heater_pre_fc))
+                heater_maillard = _notch(heater_maillard)
+                heater_pre_fc = _tasting_before_after[1]
         heater_tp = _burner.heater_tp
         heater_source = _burner.heater_source
         heater_fc_source = _burner.heater_fc_source
@@ -5347,7 +5477,14 @@ class TilauScopeRoastPlan:
                 "history_profile": (_coherent_source.key if _coherent_source else _SRC_GRID),
                 "confidence": _conf_level,
             },
-            "History Support": _conf_display,
+            "History Support": (QApplication.translate("tilauscope_roast_plan", "{0} harvest ({1} roasts) · {2}").format(
+                history["previous_harvest"]["crop"], history["previous_harvest"]["roasts"], _conf_display)
+                if history and history.get("previous_harvest") else _conf_display),
+            # The change the last roast's tasting made to this plan, or None.
+            "Tasting Change": (dict(_tasting, before=_tasting_before_after[0], after=_tasting_before_after[1])
+                               if _tasting and _tasting_before_after else None),
+            # {crop, roasts, humidity} of the harvest whose calendar this plan inherits, or None.
+            "Previous Harvest": (history.get("previous_harvest") if history else None),
             "History Profile Source": (_coherent_source.label if _coherent_source else "grid"),
             "History Reference Roast": ((history.get("coherent_profile") or {}).get("id")
                                          if history else None),
@@ -7142,6 +7279,15 @@ class BuildPRoastPlanPDF(FPDF):
             "espresso": QApplication.translate("tilauscope_roast_plan", "Espresso"),
         }.get(str(key or "").lower(), "")
 
+    @staticmethod
+    def _humidity_text(plan_data: dict) -> str:
+        """This lot's humidity, followed by the inherited harvest's when both are measured."""
+        text = str(plan_data.get("Bean Humidity"))
+        prev = plan_data.get("Previous Harvest") or {}
+        if prev.get("humidity") and float(plan_data.get("Bean Humidity") or 0) > 0:
+            text += f"   ({prev['crop']}: {prev['humidity']:.1f})"
+        return text
+
     def create_pdf_report(self, plan_data:dict, graph_data, crashes, flicks)->None:
         """Fills the PDF with the calculated roast plan data in a clear, structured format,
         including phase percentages."""
@@ -7176,7 +7322,7 @@ class BuildPRoastPlanPDF(FPDF):
             (QApplication.translate("tilauscope_roast_plan","Bean Name"), plan_data.get("Bean Name")),
             (QApplication.translate("tilauscope_roast_plan","Process Type"), plan_data.get("Process Type")),
             (QApplication.translate("tilauscope_roast_plan","Density")+" (g/L)", plan_data.get("Density")),
-            (QApplication.translate("tilauscope_roast_plan","Bean Humidity")+" (%)", plan_data.get("Bean Humidity")),
+            (QApplication.translate("tilauscope_roast_plan","Bean Humidity")+" (%)", self._humidity_text(plan_data)),
             (QApplication.translate("tilauscope_roast_plan","Ambient Temp")+f" (°{self.mode})", plan_data.get("Ambient Temp")),
             (QApplication.translate("tilauscope_roast_plan","Ambient Humidity")+" (%)", plan_data.get("Ambient Humidity")),
             (QApplication.translate("tilauscope_roast_plan","Weight to roast")+" (g)", plan_data.get("Weight")),

@@ -280,6 +280,9 @@ class TilauMenuExtension:
             ('batchAction', lambda a: a.setVisible(False)),
             ('colorsAction', lambda a: a.setVisible(False)),
             ('themeMenu', lambda m: m.menuAction().setVisible(False)),
+            # Config › Machine and Machine Name: the first-time setup sets the roaster up from roasters.json.
+            ('machineMenu', lambda m: m.menuAction().setVisible(False)),
+            ('machineNameAction', lambda a: a.setVisible(False)),
             ('UIModeMenu', lambda m: m.menuAction().setVisible(False)),
             ('wheeleditorAction', lambda a: a.setVisible(False)),
             ('calculatorAction', lambda a: a.setVisible(False)),

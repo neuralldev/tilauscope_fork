@@ -48,8 +48,8 @@ way with no model selected at all.
 
 **Enable floating annotations** shows phase-event markers directly on the roast graph.
 
-**Enable BeanCave startup notifications** shows inventory alerts and reminders when BeanCave
-opens.
+**Show the cleaning reminder at startup** opens the routine check when TilauScope starts: where
+the roaster stands in its cleaning cycle, and your recent roasts.
 
 **BeanCave home mode (hide the Artisan window)** starts TilauScope in the BeanCave shell with
 the Artisan window hidden.
@@ -358,6 +358,20 @@ for it to come out at the size chosen here.
 <!-- CAPTURE 4.12 [scene:config_printing] — the PRINTING tab, Label size dropdown open showing both choices. -->
 
 ![The PRINTING tab and its Label size choice.](assets/configuration-4.12.png)
+
+---
+
+## ☕ BEANCAVE — files and currency
+
+**Directories** sets where the green-bean database and the roast files are kept. **Choose…**
+accepts only an existing folder TilauScope can write to.
+
+**Currency** sets the currency of green-coffee prices in [BeanCave](beancave.md#price-and-screen-size),
+and of the stock values and roast costs worked out from them. Until one is chosen, the system's
+currency is used. Amounts follow the system's number format, so the symbol may sit before or
+after the figure.
+
+<!-- CAPTURE 4.13 — the BEANCAVE tab: the Directories group, then the Currency section with its dropdown open. -->
 
 ---
 

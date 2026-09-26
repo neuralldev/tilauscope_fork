@@ -198,6 +198,13 @@ of the range is treated as no information, because a supplier's figure cannot re
 two ordinary coffees. Measure it by water displacement rather than by filling a dry measure,
 which counts the air between the beans as if it were coffee.
 
+#### Screen size
+
+The size of the green beans, given by the sieve they are graded on — a screen number in 64ths of
+an inch (17/18 = large, 15/16 = medium) or a grade name such as AA, Supremo, AB or Excelso.
+**Peaberry** (PB) is a single round bean where the cherry usually holds two flat ones. Smaller
+beans respond faster to each change of heat; size alone does not make a roast slower or faster.
+
 #### Agtron
 
 A numeric scale for roast colour: the lower the number, the darker the roast. TilauScope

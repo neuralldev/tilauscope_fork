@@ -37,9 +37,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from tilauscope.bean_qualifiers import physical_qualifier
+from tilauscope.bean_qualifiers import physical_qualifier, screen_size_label
 from tilauscope.sack_manager import SackChipsRow
-from tilauscope.tilauscope_types import THEME
+from tilauscope.tilauscope_types import THEME, format_money
 
 _logd = logging.getLogger('tilaudebug')
 
@@ -171,6 +171,11 @@ class BeanSheetWidget(QWidget):
         tiles.addWidget(self._tile(
             f"{stock:.0f} g", QApplication.translate("tilauscope_beancave", "Stock"),
             THEME['SUCCESS'] if stock > 0 else _DIM))
+        price = float(getattr(bean, 'price_per_kg', 0.0) or 0.0)
+        if price > 0:
+            tiles.addWidget(self._tile(
+                format_money(stock / 1000.0 * price),
+                QApplication.translate("tilauscope_beancave", "Stock value"), THEME['TEXT']))
         crop = int(getattr(bean, 'crop', 0) or 0)
         crop_col = THEME['TEXT']
         crop_tip = ""
@@ -234,13 +239,16 @@ class BeanSheetWidget(QWidget):
 
     def _build_provenance(self, bean) -> None:
         z = _Zone(QApplication.translate("tilauscope_beancave", "Provenance"))
-        z.edit_btn.setToolTip(QApplication.translate("tilauscope_beancave", "Edit farm, supplier and altitude"))
+        z.edit_btn.setToolTip(QApplication.translate("tilauscope_beancave", "Edit farm, supplier, altitude and price"))
         z.edit_btn.clicked.connect(lambda: self.editRequested.emit('provenance'))
         alt = int(getattr(bean, 'altitude', 0) or 0)
+        price = float(getattr(bean, 'price_per_kg', 0.0) or 0.0)
         self._kv_grid(z, [
             (QApplication.translate("tilauscope_beancave", "Farm"), bean.farm or "—"),
             (QApplication.translate("tilauscope_beancave", "Supplier"), bean.supplier or "—"),
             (QApplication.translate("tilauscope_beancave", "Altitude"), f"{alt} m" if alt > 0 else "—"),
+            (QApplication.translate("tilauscope_beancave", "Price"),
+             f"{format_money(price)}/kg" if price > 0 else "—"),
         ])
         self._add(z)
 
@@ -277,6 +285,8 @@ class BeanSheetWidget(QWidget):
              _with_qualifier(f"{hum:.1f} %", 'humidity', hum) if hum > 0 else "—"),
             (QApplication.translate("tilauscope_beancave", "Water activity"),
              _with_qualifier(f"{wa:.2f}", 'aw', wa) if wa > 0 else "—"),
+            (QApplication.translate("tilauscope_beancave", "Screen size"),
+             screen_size_label(getattr(bean, 'screen_size', '') or '') or "—"),
         ]
         self._kv_grid(z, pairs)
         self._add(z)

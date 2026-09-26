@@ -158,7 +158,7 @@ and batch number, and five figures, each with what it means underneath:
 
 | Figure | Underneath |
 |---|---|
-| **Roasted weight** | The weight loss, and the charge weight it came from |
+| **Roasted weight** | The weight loss, the charge weight it came from and, when the coffee has a [price](beancave.md#price-and-screen-size), what that green cost — hover it for the cost per roasted kg |
 | **Roast time** | The [development](glossary.md#dtr--development-time-ratio) time, when first crack was marked |
 | **Drop temperature** | The bean temperature at first crack |
 | **Colour** | **Ground** and its colour category — or **Whole bean**, which is given no category |
@@ -177,7 +177,7 @@ rise — see [Configuration](configuration.md#artisan-settings-tilauscope-keeps-
 **Export** holds the roast's label — as a PDF, or printed on the paired label printer, whose state
 shows at the foot of the menu — the roast card and an image of the curve; see
 [Sharing a roast](#sharing-a-roast). The **⋯** menu holds the rest: **Record result…**,
-**Planning**, **Dial-in**, **Data** and **Refresh list**.
+**Taste…** (see [Tasting](#tasting)), **Planning**, **Dial-in**, **Data** and **Refresh list**.
 
 !!! note
     **Planning** and **Dial-in**, in the **⋯** menu, are about brewing the roast rather
@@ -402,6 +402,12 @@ defect weight, whole-bean and ground colour, free notes, and the burns visible o
 Colour can be typed, judged by eye against named roast levels, or read live from a colour
 meter where one is paired.
 
+Next to the roasted weight, the form shows the [weight loss](glossary.md#weight-loss) as soon as
+the weight is typed, beside the loss to aim for and its range — the same aim the review uses,
+built from this lot's moisture, the level the roast ran and its development. It turns green
+inside the range and orange outside. A roast without first crack and drop marked has no level
+to read, so only the loss itself is shown.
+
 Across the top the form recalls which roast this is — the coffee, its batch number, and the
 five figures the roast produced: total time, charge and drop temperature, development time
 and DTR. Below that, the fields to fill sit on the left and the notes box on the right. On a
@@ -448,10 +454,36 @@ without having printed one asks the question once. See
 
 ## Tasting
 
-Cupping notes are entered through Artisan's own cupping tools, reached from **Load in
-Artisan**. TilauScope does not add a separate tasting form — it reads what is already there
-and shows it wherever the roast is presented: the Roasts tab, the scanned roast card, and
-the printed label.
+A roast is judged in the cup, once it has rested. When a roast in the Roasts tab has rested
+long enough, a line under its figures asks *Rested and ready — how did it taste?* with
+**Taste**; **⋯ → Taste…** opens the same form at any time.
+
+The form asks three things: *Would you roast it the same way again?* — **👍 Yes**, **🤏 Almost**
+or **👎 No** — then what was off, if anything, among six tastes in plain words, and a free note.
+As you tick, a **Next time** card names the one change it asks of the next roast of the same
+coffee:
+
+| What was off | Next time |
+|---|---|
+| **Burnt** | Charge 3 °C cooler |
+| **Bitter, smoky** | Burner one notch lower before first crack |
+| **Flat, papery** | Keep the burner one notch higher after first crack |
+| **Bready, dull** | Start with the burner one notch higher |
+| **Grassy, raw** | Let it develop 20 s longer after first crack |
+| **Sour, thin** | Drop 2 °C later |
+
+A notch is 5 % of burner. With several tastes ticked, the first in this list decides: one change
+at a time, judged on the next roast. Once saved, the line under the roast recalls what you said —
+*Tasted: 🤏 Almost · Flat, papery* — with **Edit** to change it.
+
+The next plan of that coffee makes the change; see
+[The roast plan](the-roast-plan.md#which-previous-roasts-count). Only the tasting of the coffee's
+**most recent** roast counts: once you have roasted it again, the older tasting has done its job.
+When that roast is [excluded from learning](#repairing-incomplete-roast-files), its tasting changes nothing.
+
+Cupping scores and Artisan's own cupping tools, reached from **Load in Artisan**, are untouched.
+
+<!-- CAPTURE 8.16 — the tasting form on a rested roast: Almost chosen, Flat, papery ticked, the Next time card showing "Keep the burner one notch higher after first crack". -->
 
 ---
 

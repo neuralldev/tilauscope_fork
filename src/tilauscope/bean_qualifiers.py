@@ -71,3 +71,21 @@ def physical_qualifier(kind: str, value: float) -> tuple[str, str | None]:
             return QApplication.translate("tilauscope_beancave", "free water"), THEME['WARNING']
         return QApplication.translate("tilauscope_beancave", "typical"), None
     return "", None
+
+
+def screen_size_options() -> list[tuple[str, str]]:
+    """(key, label) of every size class, Unknown first — keys of SCREEN_SIZE_RANGES."""
+    return [
+        ('', QApplication.translate("tilauscope_beancave", "Unknown")),
+        ('large', QApplication.translate("tilauscope_beancave", "Large — AA, Supremo, 17/18+")),
+        ('medium', QApplication.translate("tilauscope_beancave", "Medium — AB, Excelso, 15/16")),
+        ('small', QApplication.translate("tilauscope_beancave", "Small — 14/15 and below")),
+        ('peaberry', QApplication.translate("tilauscope_beancave", "Peaberry — PB")),
+    ]
+
+
+def screen_size_label(key: str) -> str:
+    """Label of a size class, or '' when unknown."""
+    if not key:
+        return ''
+    return dict(screen_size_options()).get(key, '')

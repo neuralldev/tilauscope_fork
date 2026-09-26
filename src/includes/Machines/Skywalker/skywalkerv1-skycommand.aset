@@ -99,7 +99,7 @@ sv_filter=0
 
 [DefaultButtons]
 buttonactions=5, 0, 0, 0, 0, 0, 5, 5
-buttonactionstrings="skywalker(EVT,1)", , , , , , "skywalker(EVT,8)", "skywalker(EVT,9)"
+buttonactionstrings="skycommand(EVT,1)", , , , , , "skycommand(EVT,8)", "skycommand(EVT,9)"
 buttons_undo=true
 buttonvisibility=true, false, false, false, false, false, true, true
 extrabuttonactions=0, 0, 0
@@ -123,7 +123,7 @@ arduinoETChannel=1
 controlETpid=0, 1
 ctMean=50
 ctMedian=50
-id=217
+id=221
 kaleidoEventFlags=false, false, false, false, false, false, false
 kaleidoHost=127.0.0.1
 kaleidoPID=true
@@ -168,7 +168,7 @@ santokerHost=10.10.100.254
 santokerPort=20001
 santokerSerial=false
 showFujiLCDs=true
-tilau_device=skywalker
+tilau_device=skycommand
 useModbusPort=false
 
 [EnergyUse]
@@ -216,12 +216,12 @@ extraLCDvisibility1=true, false, false, false, false, false, false, false, false
 extraLCDvisibility2=true, false, false, false, false, false, false, false, false, false
 extradevicecolor1=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\xe\0#\0\x61\0\x64\0\x30\0\x34\0\x32\0\x37)
 extradevicecolor2=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\x12\0#\0\x34\0\x38\0\x61\0\x62\0\x66\0\x66\0\x66\0\x66)
-extradevices=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\x2\0\0\0\xda)
+extradevices=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\x2\0\0\0\xde)
 extramathexpression1=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\0)
 extramathexpression2=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\0)
 extraname1=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\x6\0{\0\x33\0})
 extraname2=@Variant(\0\0\0\t\0\0\0\x1\0\0\0\n\0\0\0\x6\0{\0\x30\0})
-tilau_extradevices=skywalker_pf
+tilau_extradevices=skycommand_pf
 
 [ExtraEventButtons]
 buttonlistmaxlen=14
@@ -235,16 +235,16 @@ buttonpalette_tooltips=false, false, false, false, false, false, false, false, f
 buttonpalettemaxlen=15, 14, 14, 14, 14, 14, 14, 14, 14, 14
 buttonsize=2
 eventbuttontablecolumnwidths=@Invalid()
-extraeventbuttoncolor=#ff2600, #ff2600, #4d9eed, #4d9eed, #ffffff, #ffffff, #5db35b, #5db35b, #5db35b, #5db35b, #5db35b, #5db35b, #5db35b, #4d9eed, #ff2600
-extraeventbuttontextcolor=#000000, #000000, #000000, #000000, #000000, #262626, #000000, #000000, #000000, #000000, #000000, #262626, #262626, #262626, #262626
-extraeventsactions=6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6
-extraeventsactionstrings="skywalker(OT1,{})", "skywalker(OT1,{})", "skywalker(OT2,{})", "skywalker(OT2,{})", "skywalker(CLDN,ON)", "skywalker(CLDN,OF)", "skywalker(OT3,{})", "skywalker(OT3,{})", "skywalker(OT3,{})", "skywalker(OT3,{})", "skywalker(OT3,{})", "skywalker(OT3,{})", "skywalker(OT3,{})", "skywalker(OT2,{})", "skywalker(OT1,{})"
+extraeventbuttoncolor=#ff2600, #ff2600, #4d9eed, #4d9eed, #ffffff, #ffffff, #4d9eed, #ff2600
+extraeventbuttontextcolor=#000000, #000000, #000000, #000000, #000000, #262626, #262626, #262626
+extraeventsactions=6, 6, 6, 6, 6, 6, 6, 6
+extraeventsactionstrings="skycommand(OT1,{})", "skycommand(OT1,{})", "skycommand(OT2,{})", "skycommand(OT2,{})", "skycommand(CLDN,ON)", "skycommand(CLDN,OF)", "skycommand(OT2,{})", "skycommand(OT1,{})"
 extraeventsbuttonsflags=1, 0, 0
-extraeventsdescriptions=Baisser le bruleur de 5%, Monter le brûleur de 5%, Baisser le ventilateur de 5%, Monter le ventilateur de 5%, Refroidir en fin de torréfaction, Stop cooling, Full speed drum, , , , Drum at 80%, , , , 
-extraeventslabels=-5%\n\\t, +5%\n\\t, -5%\n\\t, +5%\n\\t, \\1\nCOOLING, \\0\nCOOLING, 100%\n\\t, 95%\n\\t, 90%\n\\t, 85%\n\\t, 80%\n\\t, 0%\n\\t, \\0\n\\t, \\0\n\\t, \\0\n\\t
-extraeventstypes=8, 8, 5, 5, 4, 4, 1, 1, 1, 1, 1, 1, 1, 0, 3
-extraeventsvalues=-1.5, 1.5, -1.5, 1.5, 1, 1, 11, 10.5, 10, 9.5, 9, 1, 1, 1, 1
-extraeventsvisibility=0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1
+extraeventsdescriptions=Baisser le bruleur de 5%, Monter le brûleur de 5%, Baisser le ventilateur de 5%, Monter le ventilateur de 5%, Refroidir en fin de torréfaction, Stop cooling, , 
+extraeventslabels=-5%\n\\t, +5%\n\\t, -5%\n\\t, +5%\n\\t, \\1\nCOOLING, \\0\nCOOLING, \\0\n\\t, \\0\n\\t
+extraeventstypes=8, 8, 5, 5, 4, 4, 0, 3
+extraeventsvalues=-1.5, 1.5, -1.5, 1.5, 1, 1, 1, 1
+extraeventsvisibility=0, 0, 0, 0, 1, 1, 1, 1
 marklastbuttonpressed=false
 showextrabuttontooltips=true
 
@@ -592,13 +592,13 @@ eventslidercoarse=2, 2, 0, 0
 eventslidersflags=1, 0, 0
 eventslidertemp=0, 0, 0, 0
 eventsliderunits=%, %, %, %
-slideractions=11, 11, 11, 11
-slidercommands="skywalker(OT2,{})", "skywalker(OT3,{})", "skywalker(OT4,{})", "skywalker(OT1,{})"
+slideractions=11, 0, 0, 11
+slidercommands="skycommand(OT2,{})", , , "skycommand(OT1,{})"
 sliderfactors=1, 1, 1, 1
 slidermax=100, 100, 4, 100
 slidermin=0, 60, 1, 0
 slideroffsets=0, 0, 0, 0
-slidervisibilities=1, 1, 1, 1
+slidervisibilities=1, 0, 0, 1
 
 [Units]
 weight=g
@@ -624,5 +624,5 @@ autoDropMode=0
 chargeTimer=false
 chargeTimerPeriod=0
 default_etypes_set=0, 0, 0, 0, 0
-etypes=, , Extractor, , 
+etypes=, , , , 
 markTP=true

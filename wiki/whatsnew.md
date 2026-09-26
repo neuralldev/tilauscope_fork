@@ -21,8 +21,16 @@ A smaller release: TilauScope now adapts itself to machines that have no air pro
 * **Already in your past roasts.** Roasts recorded with a power channel show their energy too, rebuilt from the saved curve — in the roast review and in a new Energy tile in BeanCave's Roasts tab.
 * **No meter on a Skywalker V2?** The roast's energy is estimated from a curve measured on real roasts, and marked as an estimate.
 
+## 📊 BeanCave
+
+* **What your coffee costs.** Enter a green coffee's price per kg in its record and BeanCave shows what the remaining stock is worth, and each roast shows what its green cost — hover it for the cost per roasted kg. Pick your currency in TilauScope Config › BEANCAVE.
+* **Taste it, and the next roast listens.** Once a roast has rested, BeanCave asks how it tasted: would you roast it the same way again, and what was off — burnt, bitter, flat, bready, grassy or sour. Each answer gives one clear change for next time, and the next plan of that coffee makes it for you.
+* **A new harvest does not start from zero.** When the next crop of a coffee you already roast arrives, its first roast plans are built on what the previous harvest taught — first crack, phase durations, drop temperature — while the heat follows the new lot's own moisture and density. The plan names the harvest it relies on, until the new crop has roasts of its own.
+* **Screen size, without the jargon.** Choose the bean size from a short list — Large (AA, Supremo), Medium (AB, Excelso), Small or Peaberry — as the supplier's sheet states it. It is written into each roast of that coffee, and filled in for you when you read the record from the supplier's page.
+
 ## 🔌 Devices
 
+* **The first-time setup sets up your roaster for you.** Pick your machine and how it is connected — USB cable, Bluetooth or a probe kit — and its sliders, milestone commands, probes and smoothing are in place when you press Finish, with nothing to type. The USB port is found for you when there is only one. A new review page shows what will be set and what stays yours: your alarms, sounds, batch counter and paired devices are left alone. The Skywalker V1 (USB, or Bluetooth through Skycommand), the Cormorant CR600e (read-only, two probes), the Kaleido M1 to M10 Pro (USB or network) and the Santoker X3 (network or Bluetooth) join the Skywalker V2; on a network, only the roaster's address is asked, already filled in.
 * **Your controls and milestones, set in one place.** A new **CONTROLS** tab in TilauScope Config names the machine's four controls — the sliders, buttons, alarms and phone follow as soon as you save — and sets what the roaster is sent at each milestone: a line of milestones shows at a glance which ones send a command, and a click on an empty one adds it. Artisan's crowded Events settings and Roast menu are no longer needed and are hidden.
 * **On a machine with no air probe, such as the Skywalker V1, TilauScope no longer shows exhaust temperature.** Its readout, the air-temperature and machine-response curve options, the phone's ET and ΔT tiles, the roast miniatures, the PID input choice, and any advice that mentioned it are hidden or reworded around bean temperature — and preheating always follows bean temperature on that machine.
 

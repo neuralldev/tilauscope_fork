@@ -67,7 +67,9 @@ after the sheet is confirmed, so it is still live at the end of the roast.
 The **⚙ OPTIONS** tab holds *Physical properties*: [density](glossary.md#density),
 [moisture](glossary.md#moisture-content) and green bean temperature, pre-filled from the
 BeanCave record where they are known. These three feed the roast plan directly and shape the
-projected drying time — a humid, dense coffee does not dry like a dry, light one.
+projected drying time — a humid, dense coffee does not dry like a dry, light one. The coffee's
+[screen size](glossary.md#screen-size), when the record has one, is written into the roast's
+properties at the same time; it is kept with the roast and does not change the plan.
 
 With an ambient probe configured, a **🌡 AMBIENT** window floats beside the sheet with live
 room temperature, humidity and pressure, and those readings are stored in the roast file
@@ -105,6 +107,10 @@ for example *Bourbon — takes a slower roast (−4 °C on the charge)*. When th
 variety, or names one that is not placed in a [family](glossary.md#bean-family), it says *not
 known — using the standard pace* and the charge is exactly what it would have been before. The
 line is there so the adjustment is visible rather than silently applied.
+
+When you tasted the last roast of this coffee and something was off, a second line recalls it
+with the change the plan made — for example *💡 Last time: Flat, papery — Keep the burner one
+notch higher after first crack (70 → 75 %)*. See [Tasting](after-the-roast.md#tasting).
 
 ## Judging the batch before it starts
 

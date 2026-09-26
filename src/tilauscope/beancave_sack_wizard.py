@@ -55,7 +55,8 @@ from PyQt6.QtWidgets import (
 )
 
 from tilauscope.sack_manager import SackLabelsDialog, SackPool
-from tilauscope.tilauscope_types import THEME, GreenBean, no_enter_default, show_styled_message
+from tilauscope.tilauscope_types import THEME, GreenBean, format_money, price_per_kg_spin, no_enter_default, show_styled_message
+from tilauscope.bean_qualifiers import screen_size_options
 
 _logd = logging.getLogger('tilaudebug')
 
@@ -756,6 +757,14 @@ class NewSackWizard(QDialog):
         nf.addRow(QApplication.translate("tilauscope_sacks", "Harvest year:"), self.newcrop_crop_spin)
         nf.addRow(QApplication.translate("tilauscope_sacks", "Weight received:"), self.newcrop_weight_spin)
         nf.addRow(QApplication.translate("tilauscope_sacks", "Supplier:"), self.nc_supplier_edit)
+        self.nc_price_spin = price_per_kg_spin()
+        nf.addRow(QApplication.translate("tilauscope_beancave", "Price:"), self.nc_price_spin)
+        self.nc_screen_combo = QComboBox()
+        for key, label in screen_size_options():
+            self.nc_screen_combo.addItem(label, key)
+        self.nc_screen_combo.setToolTip(QApplication.translate("tilauscope_beancave",
+            "Use the size given on the supplier sheet (AA, Supremo, 17/18…). Leave Unknown if it is not stated."))
+        nf.addRow(QApplication.translate("tilauscope_beancave", "Screen size:"), self.nc_screen_combo)
         nzl.addLayout(nf)
         v.addWidget(nz)
 
@@ -906,6 +915,9 @@ class NewSackWizard(QDialog):
             self._prefill_from_source()
             self.newcrop_crop_spin.setValue(
                 (src.crop + 1) if src.crop else datetime.now().astimezone().year)
+            self.nc_price_spin.setValue(float(src.price_per_kg or 0.0))
+            idx = self.nc_screen_combo.findData(src.screen_size or '')
+            self.nc_screen_combo.setCurrentIndex(idx if idx >= 0 else 0)
         # the Characteristics page can be reached from Review — take back what
         # was edited there so both views show the same measurements
         for nc_spin, main_spin in ((self.nc_density_spin, self.density_spin),
@@ -1346,7 +1358,9 @@ class NewSackWizard(QDialog):
         if detailed:
             self._review_cards[self._PAGE_PROVENANCE][1].setText(self._join([
                 self.farm_edit.text().strip(), self.supplier_edit.text().strip(),
-                f"{self.altitude_spin.value()} m" if self.altitude_spin.value() else ""]))
+                f"{self.altitude_spin.value()} m" if self.altitude_spin.value() else "",
+                f"{format_money(self.nc_price_spin.value())}/kg"
+                if mode == "newcrop" and self.nc_price_spin.value() else ""]))
             facts_parts = []
             if self.pill_blend.isChecked():
                 ratios = [self.bean1_ratio_spin.value(), self.bean2_ratio_spin.value(),
@@ -1360,7 +1374,9 @@ class NewSackWizard(QDialog):
                 self.varieties_combo.currentText(),
                 f"{self.density_spin.value():.0f} g/L" if self.density_spin.value() else "",
                 f"{self.humidity_spin.value():.1f} %" if self.humidity_spin.value() else "",
-                f"{self.wa_spin.value():.2f} aw" if self.wa_spin.value() else ""]
+                f"{self.wa_spin.value():.2f} aw" if self.wa_spin.value() else "",
+                self.nc_screen_combo.currentText()
+                if mode == "newcrop" and self.nc_screen_combo.currentData() else ""]
             facts = self._join(facts_parts)
             if self.pill_blend.isChecked():
                 comps = []
@@ -1797,6 +1813,8 @@ class NewSackWizard(QDialog):
                 sacks=[],
                 dial_ins=[],
                 uuid=str(_uuid.uuid4()),
+                price_per_kg=self.nc_price_spin.value(),
+                screen_size=self.nc_screen_combo.currentData() or '',
             )
         else:
             base = GreenBean(

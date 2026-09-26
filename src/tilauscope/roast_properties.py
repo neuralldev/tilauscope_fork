@@ -49,7 +49,7 @@ from artisanlib.util import fromCtoFstrict, convertWeight, weight_units
 from tilauscope.tilauscope_types import (
     GreenBean, THEME, show_styled_message, AGTRON_SCALES, format_batch_label,
     open_in_os_viewer, ensure_color_system, resolve_color_system, call_later,
-    get_agtron_color, decode_alog_text
+    get_agtron_color, decode_alog_text, SCREEN_SIZE_RANGES
 )
 
 # AI modules are optional — guard against ImportError if not yet deployed
@@ -1110,6 +1110,9 @@ class _RoastInsightsPanel(QWidget):
                 except (TypeError, ValueError):
                     _delta = 0.0
                 show_family(str(self._plan.get("Charge Family") or ""), _delta)
+            show_tasting = getattr(owner, "_set_tasting_readout", None)
+            if callable(show_tasting):
+                show_tasting(self._plan.get("Tasting Change"))
         try:
             mode = (self._last_setup or {}).get("mode", "C")
             targets = targets_from_plan(plan, mode)
@@ -1920,6 +1923,26 @@ class RoastSetupDialog(QDialog):
             "tilauscope_roast_setup", "Bean family: {0} — {1} ({2} °{3} on the charge)").format(
                 family, pace, f"{delta_c:+.0f}", self._temp_unit()))
 
+    def _set_tasting_readout(self, change: dict | None) -> None:
+        """Recall what the last tasting of this coffee changed in this plan, with the numbers."""
+        if not change:
+            self._tasting_lbl.hide()
+            return
+        from tilauscope.cave.tasting_dialog import change_text, defect_labels  # noqa: PLC0415
+        mode = 'F' if self._temp_unit() == 'F' else 'C'
+        before, after = float(change["before"]), float(change["after"])
+        lever = change["lever"]
+        if lever.startswith("burner_"):
+            values = f"{before:.0f} → {after:.0f} %"
+        elif lever == "development_s":
+            values = f"{int(before) // 60}:{int(before) % 60:02d} → {int(after) // 60}:{int(after) % 60:02d}"
+        else:
+            values = f"{before:.0f} → {after:.0f} °{mode}"
+        self._tasting_lbl.setText(QApplication.translate(
+            "tilauscope_roast_setup", "💡 Last time: {0} — {1} ({2})").format(
+                defect_labels().get(change["defect"], ""), change_text(change["defect"], mode)[0], values))
+        self._tasting_lbl.show()
+
     @pyqtSlot()
     def _refresh_insights(self) -> None:
         panel = getattr(self, "_insights_panel", None)
@@ -2085,6 +2108,13 @@ class RoastSetupDialog(QDialog):
         self._family_lbl.setStyleSheet(
             f"color: {THEME['TEXT']}; font-size: 12px; border: none;")
         ic.addWidget(self._family_lbl)
+        # What the last tasting of this coffee changed in the plan — hidden when nothing.
+        self._tasting_lbl = QLabel("")
+        self._tasting_lbl.setWordWrap(True)
+        self._tasting_lbl.setStyleSheet(
+            f"color: {THEME['TODAY']}; font-size: 12px; border: none;")
+        self._tasting_lbl.hide()
+        ic.addWidget(self._tasting_lbl)
         t.addWidget(intent_card)
 
         self._restore_destination()
@@ -2691,6 +2721,10 @@ class RoastSetupDialog(QDialog):
 
             # Moisture
             qmc.moisture_greens  = moisture
+
+            # Screen size — always written, so a previous bean's size never carries over
+            qmc.beansize_min, qmc.beansize_max = SCREEN_SIZE_RANGES.get(
+                getattr(self._bean, 'screen_size', '') or '', (0, 0))
 
             # Bean temperature
             qmc.greens_temp      = bean_temp
@@ -4293,6 +4327,23 @@ class RoastResultDialog(QDialog):
         self.defects_percentage.setText(hint)
         self.defects_percentage.setStyleSheet(f"color: {color}; font-size: 11px; margin-left: 10px;")
 
+    def _loss_aim(self) -> tuple[float, float, float] | None:
+        """(aim, low, high) weight loss of this roast, as the debrief judges it;
+        None without a level read from the roast. Resolved once: it reads files."""
+        if not hasattr(self, '_loss_aim_cache'):
+            self._loss_aim_cache = None
+            try:
+                from tilauscope import roast_coach  # noqa: PLC0415
+                from tilauscope.roast_debrief import profile_from_qmc  # noqa: PLC0415
+                profile = profile_from_qmc(self._aw)
+                ctx, bean = roast_coach.roast_inputs(profile)
+                bands = roast_coach.roast_bands(profile, roast_context=ctx, bean=bean)
+                if bands.level:
+                    self._loss_aim_cache = (bands.thresholds['wl_target'], *bands.wl_window)
+            except Exception as exc:  # noqa: BLE001  pylint: disable=broad-except
+                _log.debug("weight-loss aim unavailable: %s", exc)
+        return self._loss_aim_cache
+
     @pyqtSlot()
     def _update_loss_label(self) -> None:
         """Recompute and display the weight-loss % whenever either weight/defect changes."""
@@ -4311,9 +4362,17 @@ class RoastResultDialog(QDialog):
 
         if (roasted-defects) > 0 and green > 0:
             loss_pct = (1.0 - ((roasted - defects) / green)) * 100.0
-            color = THEME['SUCCESS'] if 10 <= loss_pct <= 22 else THEME['WARNING']
-            hint = QApplication.translate("tilauscope_roast_setup",
-                "{0:.1f} % loss  (green: {1:.0f} g)").format(loss_pct, green)
+            aim = self._loss_aim()
+            if aim is None:
+                color = THEME['SUBTEXT']
+                hint = QApplication.translate("tilauscope_roast_setup",
+                    "{0:.1f} % loss  (green: {1:.0f} g)").format(loss_pct, green)
+            else:
+                target, lo, hi = aim
+                color = THEME['SUCCESS'] if lo <= loss_pct <= hi else THEME['WARNING']
+                hint = QApplication.translate("tilauscope_roast_setup",
+                    "{0:.1f} % loss · aim {1:.1f} % ({2:.1f}–{3:.1f} %)  (green: {4:.0f} g)").format(
+                    loss_pct, target, lo, hi, green)
             self._loss_lbl.setText(hint)
             self._loss_lbl.setStyleSheet(f"color: {color}; font-size: 11px; margin-left: 10px;")
         else:

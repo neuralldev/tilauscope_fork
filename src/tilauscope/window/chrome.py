@@ -234,14 +234,6 @@ class ChromeMixin:
         except Exception as e:  # pylint: disable=broad-except
             _log.error('hand focus back to Artisan: %s', e)
 
-        if getattr(self, '_brew_notif', None):
-            try:
-                self._brew_notif.request_stop()
-            except Exception:  # pylint: disable=broad-except
-                # underlying C++ widget already deleted (auto-closed) — nothing to stop
-                pass
-            self._brew_notif = None
-
         if _IS_WINDOWS:
             try:
                 self.clearFocus()

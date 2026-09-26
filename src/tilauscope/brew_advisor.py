@@ -49,7 +49,7 @@ from typing import Optional
 
 # Single shared roast-colour → Agtron converter, re-exported for callers that
 # import it from here (e.g. roast_timeline).
-from tilauscope.tilauscope_types import to_agtron  # noqa: F401
+from tilauscope.tilauscope_types import AGTRON_SCALES, to_agtron, weight_loss_target  # noqa: F401
 # Water activity is judged in one place: the Storage tab owns the aw doctrine,
 # so the brew advisor reads the same zones instead of a second hardcoded opinion.
 from tilauscope.storage_advisor import (
@@ -689,15 +689,25 @@ def _mod_density(inp: BrewInput) -> RecipeDelta:
 
 
 def _mod_weight_loss(inp: BrewInput) -> RecipeDelta:
-    # Roast/organic loss correlates with development but is confounded with
-    # bean moisture, and per [S1] brew temperature is a weak lever at fixed EY.
-    # We therefore only FLAG weight-loss extremes; no °C tweak is applied.
+    # Per [S1] brew temperature is a weak lever at fixed EY, so weight-loss
+    # extremes are only FLAGGED; no °C tweak is applied. Judged against the
+    # roast's own target (the lot's water + the colour's dry matter + the
+    # development), the one the roast debrief uses: a fixed band flags a wet
+    # lot as over-developed. No colour, no target, no flag.
     wl = inp.weight_loss
     if wl <= 0:
         return RecipeDelta()
-    if wl > 16.0:
+    agt_g = round(to_agtron(inp.ground_color, inp.color_system), 1)
+    agtron = agt_g if agt_g > 0 else round(to_agtron(inp.whole_color, inp.color_system), 1)
+    category = next((s.name for s in AGTRON_SCALES
+                     if s.agtron_range.min_value <= agtron <= s.agtron_range.max_value), None)
+    target = weight_loss_target(category, moisture_pct=inp.green_moisture,
+                                dev_time_min=inp.dev_time_s / 60.0) if agtron > 0 else None
+    if target is None:
+        return RecipeDelta()
+    if wl > target.high:
         return RecipeDelta(notes=[(Severity.WARN, NoteCode.WL_HIGH, {})])
-    if wl < 12.0:
+    if wl < target.low:
         return RecipeDelta(notes=[(Severity.WARN, NoteCode.WL_LOW, {})])
     return RecipeDelta()
 

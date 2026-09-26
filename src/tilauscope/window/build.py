@@ -351,7 +351,6 @@ class BuildMixin:
         self.aw.pidcontrol.activateSVSlider(True)
 
         if self.artisan_conf.aw.TilauScopeNotification:
-            self.check_daily_brew_status()
             from tilauscope.routine_check import TilauRoutineCheck
             self.trc = TilauRoutineCheck(self, self)
             self.trc.setWindowModality(Qt.WindowModality.NonModal)
@@ -359,8 +358,6 @@ class BuildMixin:
             self.trc.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
             QTimer.singleShot(100, self.trc.show)
 
-        # Here, not inside check_daily_brew_status: that one only runs when the
-        # notification is enabled, so the line was missing from every other log
         _logd.info("tilauscope init finished")
 
         # now build the collection of existing buttons in an array to be able to trigger them from the routine check

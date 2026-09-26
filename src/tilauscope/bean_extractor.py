@@ -87,6 +87,10 @@ class GreenBeanSchema(BaseModel):
     bean3_name:    str   = Field("", description="Name of third bean in blend")
     bean3_ratio:   float = Field(0.0, description="Ratio of third bean")
     tips:          str   = Field("", description="Roasting tips from supplier")
+    screen_size:   str   = Field("", description=(
+        "Bean size class, exactly one of: 'large' (AA, Supremo, screen 17/18 or above), "
+        "'medium' (AB, Excelso, screen 15/16), 'small' (screen 14/15 or below), "
+        "'peaberry' (PB, caracolillo); '' if the page states no size"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
