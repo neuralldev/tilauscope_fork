@@ -39,7 +39,7 @@ from PyQt6.QtWidgets import (
 
 from tilauscope.tilauscope_types import THEME
 
-_logd = logging.getLogger('tilaudebug')
+_logd = logging.getLogger('tilau')
 
 _MONO = "'JetBrains Mono', monospace"
 _DIM = THEME['OVERLAY0']

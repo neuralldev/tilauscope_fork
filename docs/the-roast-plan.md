@@ -36,9 +36,10 @@ Two actions close it out:
 - **⚡ Generate Roast Plan** — becomes available once the temperature, the pressure and the batch
   weight are filled (an altitude of 0 is accepted: sea level is a real place), and
   produces **a PDF**. That document is the plan: everything described below is in it.
-- **Inject in Artisan** — writes the plan's phases and alarms into Artisan, so the roast is
-  set up before it starts. TilauScope confirms with *The base of the roasting plan, phases and
-  alarms have been injected into Artisan. Get ready to roast!*
+- **Inject Alarms into TilauScope** — loads the plan's alarm set in place of the current alarms,
+  so the roast is set up before it starts. TilauScope confirms with *The roast plan alarms have
+  been loaded into TilauScope. Get ready to roast!* The same alarm set is also saved as an alarm
+  file next to the PDF, to reload later from the alarm editor.
 
 !!! note
     All three control ramps are armed, not just the burner: the heat ladder through Maillard,

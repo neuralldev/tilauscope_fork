@@ -48,7 +48,7 @@ from tilauscope.bean_qualifiers import screen_size_options
 from tilauscope.header_icons import SVG_PROG_AI
 from tilauscope.sack_manager import prompt_release_if_emptied  # sack reclaim (§9.3)
 
-_logd = logging.getLogger('tilaudebug')
+_logd = logging.getLogger('tilau')
 
 _MONO = "'JetBrains Mono', monospace"
 _DIM = THEME['OVERLAY0']

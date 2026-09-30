@@ -2194,7 +2194,7 @@ class BrewAdvisorDlg(QDialog):
                 QApplication.translate("tilauscope_brew", "No scale configured"))
             self.lbl_scale_status.setToolTip(QApplication.translate(
                 "tilauscope_brew",
-                "Configure an Acaia scale in the settings to enable live brewing."))
+                "Configure a Bluetooth scale in the settings to enable live brewing."))
 
     def _connect_scale_state(self) -> None:
         """Track the scale for the whole dialog lifetime, not just during a brew,

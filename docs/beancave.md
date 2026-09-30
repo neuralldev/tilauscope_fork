@@ -132,7 +132,7 @@ prepared, the size is written into the roast's properties, so it stays with the 
 does not change the roast plan.
 
 !!! info "Hardware"
-    Live weighing needs an Acaia scale; density measurement needs a scale configured as scale 1 in
+    Live weighing needs a [Bluetooth scale](hardware.md#bluetooth-scale); density measurement needs a scale configured as scale 1 in
     Artisan; water activity needs an AquaGauge. Everything else on the record is typed.
 
 ![the flavour](assets/beancave-3.7.png)

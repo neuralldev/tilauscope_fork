@@ -38,7 +38,7 @@ from PyQt6.QtGui import (
 
 from tilauscope.tilauscope_types import THEME
 
-_logd = logging.getLogger('tilaudebug')
+_logd = logging.getLogger('tilau')
 
 # ── Export geometry, shared by every card ────────────────────────────────────
 CARD_W = 1200

@@ -41,7 +41,7 @@ from tilauscope.bean_qualifiers import physical_qualifier, screen_size_label
 from tilauscope.sack_manager import SackChipsRow
 from tilauscope.tilauscope_types import THEME, format_money
 
-_logd = logging.getLogger('tilaudebug')
+_logd = logging.getLogger('tilau')
 
 _MONO = "'JetBrains Mono', monospace"
 _DIM = THEME['OVERLAY0']

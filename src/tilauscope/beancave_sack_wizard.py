@@ -58,7 +58,7 @@ from tilauscope.sack_manager import SackLabelsDialog, SackPool
 from tilauscope.tilauscope_types import THEME, GreenBean, format_money, price_per_kg_spin, no_enter_default, show_styled_message
 from tilauscope.bean_qualifiers import screen_size_options
 
-_logd = logging.getLogger('tilaudebug')
+_logd = logging.getLogger('tilau')
 
 _MONO: Final[str] = "'JetBrains Mono', monospace"
 _DIM: Final[str] = THEME['OVERLAY0']

@@ -131,14 +131,27 @@ detection settings in [Configuration → DETECTION](configuration.md#-detection-
 
 ---
 
-## Acaia scale
+## Bluetooth scale
 
 **What it adds.** Live weight capture wherever a weight is entered — batch weight, stock,
 brew dosing — instead of a typed approximation.
 
+**Supported scales.** Acaia scales, the Decent Scale (and Half Decent Scale) and the Bookoo
+Themis Mini. Acaia is the scale TilauScope is developed and tested with. Decent and Bookoo
+support is built from each manufacturer's published Bluetooth protocol and has not yet been
+confirmed on the scales themselves.
+
 **Pairing.** Bluetooth, found and confirmed the same way as any other paired device, in the
 **Scale** group of [Configuration → SENSORS](configuration.md#-sensors--every-device-by-role).
-The scale paired there is the one every weight capture reads.
+The list shows every supported scale found nearby, without naming its brand; when several are
+in range, each is told apart by its identifier. The scale paired there is the one every weight
+capture reads.
+
+**If a Decent or Bookoo scale misbehaves.** Open **TilauScope → TilauScope Debug** (shown in
+Expert mode) before anything else, then repeat the steps — open the SENSORS tab, then capture a
+weight — and choose **Save snapshot to file**: the snapshot records whether the scale was seen,
+recognised and connected, and what it sent. Anything that happened before the window was opened
+is not in it.
 
 **What changes on screen.** A small floating scale reading appears next to any field that
 accepts a captured weight; clicking the value writes it in.
@@ -183,13 +196,34 @@ whenever it is being edited.
 **What it adds.** A direct roast-colour reading, feeding the same colour fields as a typed or
 judged value in the [after-the-roast record](after-the-roast.md#weight-colour-and-notes).
 
-**Pairing.** Bluetooth, found and confirmed the same way as any other paired device.
+**Supported colour meters.** The Lebrew RoastSee C1 and the DiFluid Omni. The RoastSee C1 is
+the meter TilauScope is developed and tested with. Omni support is built from DiFluid's
+published Bluetooth protocol, needs Omni firmware V016 or later, and has not yet been confirmed
+on the meter itself.
+
+**Pairing.** Bluetooth, found and confirmed the same way as any other paired device, in the
+**Color Meter** group of [Configuration → SENSORS](configuration.md#-sensors--every-device-by-role).
+The list shows every supported colour meter found nearby, without naming its brand.
 
 **What changes on screen.** A live reading button appears next to the colour fields in the
-roast result form once paired.
+roast result form once paired. Take the measurement on the meter itself, as usual: the reading
+appears on the card, and clicking it writes it in. An Omni states whether the sample was whole
+bean or ground, so its reading goes straight to the matching field; with a RoastSee C1,
+TilauScope asks which one it is.
 
-**Known limits.** This is a different product from Omniflux above, and a different pairing —
-having one does not register the other.
+**The Omni's scale.** Each time it connects, TilauScope sets the Omni to the SCA Agtron
+standard, the scale of TilauScope's colour fields. The setting stays on the meter, so the
+DiFluid app shows SCA values afterwards as well.
+
+**If an Omni misbehaves.** Open **TilauScope → TilauScope Debug** (shown in Expert mode) before
+anything else, then repeat the steps — open the SENSORS tab, open the roast result form, take a
+measurement — and choose **Save snapshot to file**: the snapshot records whether the meter was
+seen, recognised and connected, and what it sent. Anything that happened before the window was
+opened is not in it.
+
+**Known limits.** Only the Omni's roast colour is read: its colour distribution and its
+particle-size analysis are not. The Omni is a bench colour meter, a different product from
+Omniflux above, and a different pairing — having one does not register the other.
 
 ---
 

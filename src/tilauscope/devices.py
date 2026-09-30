@@ -301,6 +301,10 @@ class TilauscopeConfigDlg(QDialog):
         # driven by the central TilauBLEScanner while the SENSORS tab is active. See _hook_scanner().
         self._sensor_groups: list[_SensorGroup] = []
         self._seen_names: dict[str, str] = {}   # BLE address -> advertised name
+        self._seen_scale_models: dict[str, int] = {}   # BLE address -> scale model id
+        self._scale_logged: set[str] = set()   # addresses already logged (detection diagnostics)
+        self._seen_color_models: dict[str, str] = {}   # BLE address -> colour meter model key
+        self._color_logged: set[str] = set()   # addresses already logged (detection diagnostics)
         self._scanner = None            # scanner we are currently listening to
         self._own_scanner = None        # private scanner (only when no BeanCave shell)
         self._scanner_hooked = False
@@ -882,11 +886,11 @@ class TilauscopeConfigDlg(QDialog):
         sw_g.addWidget(skywalker_cell, 0, 2)
         layout.addWidget(skywalker_group)
 
-        # ── Color Meter — Lebrew C1 ───────────────────────────────────────
+        # ── Color Meter ───────────────────────────────────────────────────
         layout.addWidget(_section_label(
             QApplication.translate("tilauscope_devices", "Color Meter")
         ))
-        c1_group = QGroupBox("Lebrew RoastSee C1  (BLE)")
+        c1_group = QGroupBox(QApplication.translate("tilauscope_devices", "Roast colour  (Bluetooth)"))
         c1_group.setContentsMargins(12, 18, 12, 12)
         c1g = QGridLayout(c1_group)
         c1g.setVerticalSpacing(10)
@@ -895,9 +899,11 @@ class TilauscopeConfigDlg(QDialog):
         self.lebrewRoastSeeC1ComboBox = QComboBox()
         self.lebrewRoastSeeC1ComboBox.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         c1_cell = self._sensor_cell(
-            "C1", self._prefixes["c1"], self.lebrewRoastSeeC1ComboBox,
+            QApplication.translate("tilauscope_devices", "Colour"),
+            self._prefixes["c1"], self.lebrewRoastSeeC1ComboBox,
             "bleRoastSeeDeviceName", "bleRoastSeeDeviceslist",
         )
+        self._color_group = self._sensor_groups[-1]
 
         c1g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)
         c1g.addWidget(self.lebrewRoastSeeC1ComboBox, 0, 1)
@@ -926,12 +932,12 @@ class TilauscopeConfigDlg(QDialog):
         agg.addWidget(ag_cell, 0, 2)
         layout.addWidget(ag_group)
 
-        # ── Scale — Acaia BLE ─────────────────────────────────────────────
+        # ── Scale — Bluetooth, any registered brand ────────────────────────
         # Scale 1: the one every weight capture in TilauScope reads.
         layout.addWidget(_section_label(
             QApplication.translate("tilauscope_devices", "Scale")
         ))
-        scale_group = QGroupBox("Acaia  (Bluetooth)")
+        scale_group = QGroupBox(QApplication.translate("tilauscope_devices", "Scale  (Bluetooth)"))
         scale_group.setContentsMargins(12, 18, 12, 12)
         sg = QGridLayout(scale_group)
         sg.setVerticalSpacing(10)
@@ -940,9 +946,11 @@ class TilauscopeConfigDlg(QDialog):
         self.scaleComboBox = QComboBox()
         self.scaleComboBox.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         scale_cell = self._sensor_cell(
-            "Acaia", self._prefixes["scale"], self.scaleComboBox,
+            QApplication.translate("tilauscope_devices", "Scale"),
+            self._prefixes["scale"], self.scaleComboBox,
             "scale1_id", "bleScaleDeviceslist",
         )
+        self._scale_group = self._sensor_groups[-1]
 
         sg.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)
         sg.addWidget(self.scaleComboBox, 0, 1)
@@ -1545,9 +1553,13 @@ class TilauscopeConfigDlg(QDialog):
         except Exception:  # pylint: disable=broad-except
             pass
         try:
-            from tilauscope.lebrewroastsee import C1_PREFIX, AG_PREFIX
-            prefixes["c1"] = C1_PREFIX
+            from tilauscope.lebrewroastsee import AG_PREFIX
             prefixes["aquagauge"] = AG_PREFIX
+        except Exception:  # pylint: disable=broad-except
+            pass
+        try:
+            from tilauscope import colormeters
+            prefixes["c1"] = colormeters.all_prefixes()
         except Exception:  # pylint: disable=broad-except
             pass
         try:
@@ -1556,8 +1568,8 @@ class TilauscopeConfigDlg(QDialog):
         except Exception:  # pylint: disable=broad-except
             pass
         try:
-            from artisanlib.acaia import ACAIA_SCALE_NAMES
-            prefixes["scale"] = tuple(prefix for prefix, _product in ACAIA_SCALE_NAMES)
+            from tilauscope.scales import all_prefixes
+            prefixes["scale"] = all_prefixes()
         except Exception:  # pylint: disable=broad-except
             pass
         return prefixes
@@ -1764,10 +1776,50 @@ class TilauscopeConfigDlg(QDialog):
         """Slot on TilauBLEScanner.devices_found — match advertisements to rows
         by BLE name prefix and update each combo + status pill live."""
         try:
+            from tilauscope.scales import model_for_advertisement, match_rule, is_scale_candidate
+            from tilauscope import colormeters
             for g in self._sensor_groups:
                 for bd, _ad in devices:
                     name = getattr(bd, "name", None)
                     addr = getattr(bd, "address", None)
+                    if g is self._scale_group:
+                        name = name or getattr(_ad, "local_name", None)
+                        uuids = getattr(_ad, "service_uuids", None)
+                        model = model_for_advertisement(name, uuids)
+                        if addr and model is not None:
+                            g.seen.add(addr)
+                            self._seen_names[addr] = name or ""
+                            self._seen_scale_models[addr] = model.model_id
+                            self._add_detected(g, addr)
+                            if addr not in self._scale_logged:
+                                self._scale_logged.add(addr)
+                                _logd.debug("[%s] detected name=%s address=%s services=%s rule=%s",
+                                            model.key, name, addr, uuids, match_rule(model, name))
+                        elif addr and is_scale_candidate(name) and addr not in self._scale_logged:
+                            self._scale_logged.add(addr)
+                            _logd.debug("[scales] unrecognised candidate name=%s address=%s services=%s",
+                                        name, addr, uuids)
+                        continue
+                    if g is self._color_group:
+                        name = name or getattr(_ad, "local_name", None)
+                        uuids = getattr(_ad, "service_uuids", None)
+                        cmodel = colormeters.model_for_advertisement(name, uuids)
+                        if addr and cmodel is not None:
+                            g.seen.add(addr)
+                            self._seen_names[addr] = name or ""
+                            self._seen_color_models[addr] = cmodel.key
+                            self._add_detected(g, addr)
+                            if addr not in self._color_logged:
+                                self._color_logged.add(addr)
+                                _logd.debug("[%s] detected name=%s address=%s services=%s rule=%s",
+                                            cmodel.key, name, addr, uuids,
+                                            colormeters.match_rule(cmodel, name))
+                        elif (addr and colormeters.is_color_meter_candidate(name)
+                              and addr not in self._color_logged):
+                            self._color_logged.add(addr)
+                            _logd.debug("[colormeters] unrecognised candidate name=%s address=%s services=%s",
+                                        name, addr, uuids)
+                        continue
                     if name and addr and g.prefix and name.startswith(g.prefix):
                         g.seen.add(addr)
                         self._seen_names[addr] = name
@@ -2646,14 +2698,22 @@ class TilauscopeConfigDlg(QDialog):
             if _bid is not None:
                 aw.bleSkywalkerDeviceName = _bid
 
-        # ── Sensors — Lebrew C1 ───────────────────────────────────────────
+        # ── Sensors — colour meter ────────────────────────────────────────
         _c1_txt = self.lebrewRoastSeeC1ComboBox.currentText()
         if _c1_txt == _no_dev:
             aw.bleRoastSeeDeviceName = None
         else:
             _bid = _combo_ble_id(_c1_txt)
             if _bid is not None:
+                # bleRoastSeeDeviceName holds the address of the colour meter, whatever its model
                 aw.bleRoastSeeDeviceName = _bid
+                _color_key = self._seen_color_models.get(_bid)
+                if _color_key is not None:   # not seen this session: the stored model stands
+                    from tilauscope import colormeters
+                    if (_color_key != colormeters.configured_model_key()
+                            or _bid != self._org["bleRoastSeeDeviceName"]):
+                        colormeters.store_model_key(_color_key)
+                        _log.info("colormeters: colour meter set to %s address=%s", _color_key, _bid)
 
         # ── Sensors — AquaGauge ───────────────────────────────────────────
         _ag_txt = self.lebrewRoastSeeAGComboBox.currentText()
@@ -2675,11 +2735,19 @@ class TilauscopeConfigDlg(QDialog):
         else:
             _bid = _combo_ble_id(_scale_txt)
             if _bid is not None and _bid != self._org["scale1_id"]:
-                aw.scale1_model = 0   # 'Acaia Bluetooth' in artisanlib.scale.SUPPORTED_SCALES
-                aw.scale1_id = _bid
-                aw.scale1_name = self._seen_names.get(_bid, "Acaia")
-                aw.scale_manager.set_scale1_signal.emit(0, _bid, aw.scale1_name)
-                aw.scale_manager.connect_scale1_signal.emit(aw.qmc.device_logging)
+                _scale_model_id = self._seen_scale_models.get(_bid)
+                if _scale_model_id is None:
+                    _log.warning("scales: no detected model for address %s, scale config unchanged", _bid)
+                else:
+                    from tilauscope.scales import model_by_id
+                    aw.scale1_model = _scale_model_id   # id from the tilauscope.scales registry
+                    aw.scale1_id = _bid
+                    aw.scale1_name = self._seen_names.get(_bid) or "Scale"
+                    _m = model_by_id(_scale_model_id)
+                    _log.info("scales: scale 1 set to %s (id %s) address=%s name=%s",
+                              _m.key if _m else "?", _scale_model_id, _bid, aw.scale1_name)
+                    aw.scale_manager.set_scale1_signal.emit(_scale_model_id, _bid, aw.scale1_name)
+                    aw.scale_manager.connect_scale1_signal.emit(aw.qmc.device_logging)
 
         # ── Sensors — Niimbot ─────────────────────────────────────────────
         t = self.niimbotComboBox.currentText()

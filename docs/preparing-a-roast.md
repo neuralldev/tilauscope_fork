@@ -45,7 +45,7 @@ roast file, straight from the BeanCave record.
 
 ### Weighing from the scale
 
-With an Acaia scale paired, a **⚖ SCALE** window floats beside the sheet showing live weight.
+With a [Bluetooth scale](hardware.md#bluetooth-scale) paired, a **⚖ SCALE** window floats beside the sheet showing live weight.
 Clicking the value writes it into **Green weight**; double-clicking it tares the scale. No
 retyping, and no leaving the sheet.
 

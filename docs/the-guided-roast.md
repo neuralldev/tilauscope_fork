@@ -306,7 +306,10 @@ fires while the window is open stays fired when you close it.
 
 A whole alarm programme can be saved under a name from the **Presets** menu and reloaded later —
 for a different bean, a different machine, or a different roast style — without rebuilding it
-line by line.
+line by line. The same menu reads and writes alarm files (.alrm): **Import alarm file…** replaces
+the programme on screen with the one in the file — for example the alarm set saved next to a
+roast plan's PDF — and **Export to file…** writes the programme on screen to a file, to share it
+or keep it outside TilauScope.
 
 ![the Expert view](assets/the-guided-roast-7.17.png)
 

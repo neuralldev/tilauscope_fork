@@ -39,6 +39,9 @@ from PyQt6.QtCore import pyqtSlot
 
 from artisanlib.ble_port import ClientBLE
 
+from tilauscope.colormeters import ColorReading
+from tilauscope.colormeters.base import ColorMeter
+
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
@@ -155,9 +158,7 @@ class LebrewC1BLE(ClientBLE, C1Protocol): # pyright: ignore [reportGeneralTypeIs
             _log.error(f"error occurred {e}")
             return False
 
-class LebrewColorChecker(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument to class must be a base class
-    connected_signal = pyqtSignal()
-    disconnected_signal = pyqtSignal()
+class LebrewColorChecker(ColorMeter):
     color_changed_signal = pyqtSignal(float) # Transmet la valeur de la couleur
 
     def __init__(self,  name:str):
@@ -176,9 +177,11 @@ class LebrewColorChecker(QObject): # pyright: ignore [reportGeneralTypeIssues] #
     @pyqtSlot(float)
     def _on_color_changed(self, color: float):
         self.color_changed_signal.emit(color)
+        self.reading_signal.emit(ColorReading(color, None))  # the C1 does not tell whole from ground
 
     def stop(self):
         _drop(self.color_changed_signal)
+        _drop(self.reading_signal)
         _drop(self.connected_signal)
         _drop(self.disconnected_signal)
         self.c1.stop()

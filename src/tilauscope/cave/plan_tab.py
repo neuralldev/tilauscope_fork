@@ -275,12 +275,11 @@ class PlanTabMixin:
 
     @pyqtSlot()
     def _inject_roast_plan(self):
-        if not hasattr(self, "last_roast_plan_generated"):
+        aset_filename = getattr(self, "last_aset_filename", None)
+        if not aset_filename:
             return
-        from tilauscope.roast_plan_model import InjectRoastPlanToArtisan
-        plan = InjectRoastPlanToArtisan(self.last_roast_plan_generated, mode=self.aw.qmc.mode)
-        plan.inject()
-        self._show_message(self, QApplication.translate("tilauscope_beancave","Injection in Artisan"), QApplication.translate("tilauscope_beancave","The base of the roasting plan, phases and alarms have been injected into Artisan. Get ready to roast!"), QMessageBox.Icon.Information)
+        self.aw.loadAlarms(aset_filename)
+        self._show_message(self, QApplication.translate("tilauscope_beancave","Injection in TilauScope"), QApplication.translate("tilauscope_beancave","The roast plan alarms have been loaded into TilauScope. Get ready to roast!"), QMessageBox.Icon.Information)
         return
 
     @pyqtSlot()
@@ -407,6 +406,7 @@ class PlanTabMixin:
                 # replace .pdf by .alrm in filename
                 aset_filename = re.sub(r'\.pdf$', '.alrm', fileName, flags=re.IGNORECASE)
                 alarm_factory.export(aset_filename)
+                self.last_aset_filename = aset_filename
                 self.try_to_open_file(fileName)
                 return True
             except Exception as e:
@@ -840,8 +840,8 @@ class PlanTabMixin:
         # Inject button (unlocks once a plan is generated). The plan itself is
         # delivered as a PDF + alarm set + background curve, so no on-screen text
         # dump is needed here.
-        self.injectinartisan_btn = QPushButton(QApplication.translate("tilauscope_beancave","Inject in Artisan"))
-        self.injectinartisan_btn.setToolTip(QApplication.translate("tilauscope_beancave","Inject all the suggestions in various artisan parameters including background curve."))
+        self.injectinartisan_btn = QPushButton(QApplication.translate("tilauscope_beancave","Inject Alarms into TilauScope"))
+        self.injectinartisan_btn.setToolTip(QApplication.translate("tilauscope_beancave","Load the alarm set of this roast plan."))
         self.injectinartisan_btn.setEnabled(False)
         self.injectinartisan_btn.clicked.connect(self._inject_roast_plan)
         inject_row = QHBoxLayout()

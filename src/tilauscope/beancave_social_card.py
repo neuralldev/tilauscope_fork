@@ -30,7 +30,7 @@ from PyQt6.QtWidgets import QApplication
 from tilauscope.beancave_card_base import CARD_H, CARD_W, CardPainter
 from tilauscope.tilauscope_types import THEME
 
-_logd = logging.getLogger('tilaudebug')
+_logd = logging.getLogger('tilau')
 
 _LEFT_W = 462          # surface column width
 _PAD_L = 40            # left column horizontal padding

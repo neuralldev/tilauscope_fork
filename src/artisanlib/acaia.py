@@ -835,7 +835,10 @@ class AcaiaProtocol:
             if msg_type == CMD.INFO_A:
                 self.parse_info(data)
                 self.info_msg_received = True
-                if not self.id_sent:
+                ## TILAU ## the scale repeats INFO_A until it has taken the ID: a lost
+                ## ID write is sent again, otherwise the link stays mute until the
+                ## scale drops it. A received STATUS (battery set) ends the handshake.
+                if not self.id_sent or self.battery is None:
                     self.send_ID() # send after every INFO_A as handshake confirmation
             elif msg_type == CMD.STATUS_A and self.info_msg_received:
                 self.parse_status(data)

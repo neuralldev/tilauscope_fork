@@ -266,6 +266,12 @@ class ScaleManager(QObject):
             from artisanlib.acaia import AcaiaSerial
             return AcaiaSerial(model, ident, name, lambda : self.connected_handler(ident, name), lambda : self.disconnected_handler(ident, name),
                 stable_only=False, decimals=0)
+        ## TILAU ## models >= 100 come from the TilauScope scale registry
+        if model >= 100:
+            from tilauscope.scales import create_scale
+            return create_scale(model, ident, name,
+                                lambda : self.connected_handler(ident, name),
+                                lambda : self.disconnected_handler(ident, name))
         return None
 
     # returns readability of the connected scale_nr (0 or 1) if connected and otherwise 0

@@ -796,9 +796,9 @@ class OnboardingWizard(QDialog):
         except Exception:  # pylint: disable=broad-except
             TILAUAMBIENT_PREFIX = "TLSCAM"
         try:
-            from tilauscope.lebrewroastsee import C1_PREFIX, AG_PREFIX
+            from tilauscope.lebrewroastsee import AG_PREFIX
         except Exception:  # pylint: disable=broad-except
-            C1_PREFIX, AG_PREFIX = "RoastSee C1", "RoastSee AquaGauge"
+            AG_PREFIX = "RoastSee AquaGauge"
 
         # Each device: persisted attributes (checked on aw + BeanCave, so a
         # previously configured device shows "detected" on redo) AND a live BLE
@@ -808,19 +808,21 @@ class OnboardingWizard(QDialog):
         for icon, name, desc, attrs, prefix in (
             ("🌫️", "DiFluid AirWave", QApplication.translate("tilauscope_onboarding","smoke extractor · PID"),
              ("bleAirwaveDeviceName", "bleAirwaveDeviceslist"), AIRWAVE_PREFIX),
-            ("⚖️", "Acaia scale", QApplication.translate("tilauscope_onboarding","charge & output weighing"),
+            ("⚖️", QApplication.translate("tilauscope_onboarding","Bluetooth scale"), QApplication.translate("tilauscope_onboarding","charge & output weighing"),
              ("scale1_name", "scale1_id", "scale2_name", "scale2_id"), ""),
             ("🌡️", "TilauAmbient", QApplication.translate("tilauscope_onboarding","ESP32 probe · BME280 / I²S mic"),
              ("bleTilauAmbientDeviceslist", "bleTilauAmbientDevice"), TILAUAMBIENT_PREFIX),
             ("💧", "Lebrew AquaGauge", QApplication.translate("tilauscope_onboarding","water activity (Aw)"),
              ("bleRoastSeeAGDeviceName", "bleRoastSeeAGDeviceslist", "bleRoastSeeAGDevice"),
              AG_PREFIX),
-            ("🎨", "Lebrew RoastSee C1", QApplication.translate("tilauscope_onboarding","bean colour reader"),
-             ("bleRoastSeeDeviceName", "bleRoastSeeDeviceslist"), C1_PREFIX),
+            ("🎨", QApplication.translate("tilauscope_onboarding","Bluetooth colour meter"), QApplication.translate("tilauscope_onboarding","bean colour reader"),
+             ("bleRoastSeeDeviceName", "bleRoastSeeDeviceslist"), ""),
         ):
             row, status = self._device_row(icon, name, desc, action=False)
             self._periph.append((attrs, status, prefix))
             page.layout().addWidget(row)
+        # the colour meter row has no prefix: it is matched through the colormeters registry
+        self._color_status: QLabel = status
 
         # ── other known Artisan BLE devices (identification only) ──────────
         # Live-only: whatever advertises nearby and matches an Artisan signature
@@ -1221,10 +1223,16 @@ class OnboardingWizard(QDialog):
             roaster_prefixes = tuple(s.ble_prefix for s in self._setups if s.ble_prefix)
             own_prefixes = tuple(p.casefold() for *_, p in self._periph if p) + tuple(
                 p.casefold() for p in roaster_prefixes)
+            from tilauscope import colormeters
             for bd, ad in devices:
                 name = getattr(bd, "name", None)
                 # 1. our own peripherals → flip their dedicated row to "detected"
                 matched_own = False
+                if colormeters.model_for_advertisement(
+                        name or getattr(ad, "local_name", None),
+                        getattr(ad, "service_uuids", None)) is not None:
+                    self._mark_detected(self._color_status)
+                    matched_own = True
                 if name:
                     for prefix in roaster_prefixes:
                         if name.startswith(prefix):

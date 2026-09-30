@@ -1,4 +1,12 @@
 ## [4.3] 2026-09-13
+build 19
+* ⚡ [feat(colour)] : the DiFluid Omni joins the Lebrew RoastSee C1 as a Bluetooth colour meter — the SENSORS tab lists every supported colour meter found nearby without naming a brand; an Omni reading goes straight to the whole-bean or ground field it was measured as, and the meter is set to the SCA Agtron standard on each connection; the Omni follows DiFluid's published protocol (firmware V016 or later) and is not yet confirmed on the hardware — a TilauScope Debug snapshot records what the meter sends
+* 🐛 [fix(scale)] : an Acaia scale that connected but showed no weight, then dropped the link after about ten seconds, now starts weighing within a couple of seconds — the connection handshake is repeated when the scale misses it
+* ⚡ [feat(scale)] : the Decent Scale and the Bookoo Themis Mini join Acaia as Bluetooth scales — the SENSORS tab lists every supported scale found nearby without naming a brand, and the chosen one serves every weight capture; Decent and Bookoo follow their published protocols and are not yet confirmed on the hardware — a TilauScope Debug snapshot records what the scale sends
+build 18
+* 🐛 [fix(beancave)] : the Roasting plan's "Inject in Artisan" button, renamed "Inject Alarms into TilauScope", now loads the plan's alarm set — it used to change nothing
+* ⚡ [feat(alarms)] : the alarm editor's Presets menu imports an alarm file (.alrm) — such as the one saved next to a roast plan's PDF — and exports the programme on screen to a file
+* ⚡ [feat(i18n)] : the new strings are translated into French, German, Spanish, Italian and Chinese (Simplified and Traditional)
 build 17
 * ⚡ [feat(roast)] : weight loss is judged against this roast's own aim — the lot's moisture, the level it ran and its development — in the result form next to the roasted weight and in the Dial-in brewing advice, instead of a fixed range; the form shows the aim and its range
 * ⚡ [feat(beancave)] : taste a rested roast from the Roasts tab — would you roast it the same way again, what was off in plain words, a note — and the next plan of the same coffee makes one change for it (a burner notch, a few degrees, or 20 s of development), recalled in the roast setup

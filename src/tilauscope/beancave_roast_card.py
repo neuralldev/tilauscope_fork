@@ -29,7 +29,7 @@ from tilauscope.beancave_card_base import CardPainter
 from tilauscope.tilauscope_types import (COLOR_AIR, COLOR_GRAIN, CRACK_TICK_ALPHA,
                                          PHASE_COLORS, dimmed, profile_crack_times)
 
-_logd = logging.getLogger('tilaudebug')
+_logd = logging.getLogger('tilau')
 _W, _H = 1080, 1620
 _BG, _SURFACE, _BORDER = '#1E1E2E', '#181825', '#313244'
 _TEXT, _MUTED = '#CDD6F4', '#BAC2DE'

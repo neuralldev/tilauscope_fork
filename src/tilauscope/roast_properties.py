@@ -3116,18 +3116,18 @@ def _defect_mark_chip(svg_template: str, text: str, tooltip: str, marked: bool) 
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# _ColorFloatWindow – floating RoastSee C1 colour card for RoastResultDialog
+# _ColorFloatWindow – floating colour meter card for RoastResultDialog
 # ─────────────────────────────────────────────────────────────────────────────
 
 class _ColorFloatWindow(QDialog):
     """
     Small always-on-top card that shows the live Agtron reading from the
-    Lebrew RoastSee C1 colorimeter.
+    paired colour meter.
 
-    When the user clicks the live value the parent dialog is asked which
-    field to fill (whole / ground) through a small friendly popup.
+    When the user clicks the live value the parent dialog fills the whole or
+    ground field: the one the meter names, else the one picked in a small popup.
 
-    The LebrewColorChecker is created here and torn down on close, mirroring
+    The colour meter is created here and torn down on close, mirroring
     how _AmbientFloatWindow manages TilauAmbient.
     """
 
@@ -3145,7 +3145,8 @@ class _ColorFloatWindow(QDialog):
         self._parent_dialog = parent
         self._aw            = parent._aw
         self._color_value: float | None = None
-        self._device: object | None = None   # LebrewColorChecker instance
+        self._color_basis: str | None = None   # 'whole' / 'ground' when the meter tells, else None
+        self._device: object | None = None   # ColorMeter of the configured model
 
         self._build_ui()
         self._attach_device()
@@ -3153,7 +3154,7 @@ class _ColorFloatWindow(QDialog):
     # ── Device wiring ─────────────────────────────────────────────────────────
 
     def _attach_device(self) -> None:
-        """Create a LebrewColorChecker if a device name is configured."""
+        """Create the configured colour meter, if any."""
         device_name = getattr(self._aw, 'bleRoastSeeDeviceName', None) or ""
         if not device_name:
             self._set_status(
@@ -3162,14 +3163,17 @@ class _ColorFloatWindow(QDialog):
             )
             return
         try:
-            from tilauscope.lebrewroastsee import LebrewColorChecker  # type: ignore[import]
-            self._device = LebrewColorChecker(device_name)
+            from tilauscope.colormeters import configured_model_key, create_color_meter
+            model_key = configured_model_key()
+            self._device = create_color_meter(model_key, device_name)
+            if self._device is None:
+                raise RuntimeError(f"unknown colour meter model {model_key}")
             self._device.connected_signal.connect(self._on_connected)
             self._device.disconnected_signal.connect(self._on_disconnected)
-            self._device.color_changed_signal.connect(self._on_color_changed)
-            _logd.debug("ColorCard: attached to RoastSee C1 device %s", device_name)
+            self._device.reading_signal.connect(self._on_reading)
+            _logd.debug("ColorCard: attached to %s device %s", model_key, device_name)
         except Exception as exc:
-            _log.warning("ColorCard: could not attach C1 device: %s", exc)
+            _log.warning("ColorCard: could not attach colour meter: %s", exc)
             self._set_status(
                 QApplication.translate("tilauscope_roast_setup", "device error"),
                 THEME['WARNING'],
@@ -3179,7 +3183,7 @@ class _ColorFloatWindow(QDialog):
         if self._device is None:
             return
         try:
-            self._device.color_changed_signal.disconnect(self._on_color_changed)
+            self._device.reading_signal.disconnect(self._on_reading)
             self._device.connected_signal.disconnect(self._on_connected)
             self._device.disconnected_signal.disconnect(self._on_disconnected)
             self._device.stop()
@@ -3276,7 +3280,11 @@ class _ColorFloatWindow(QDialog):
             THEME['SUBTEXT'],
         )
 
-    @pyqtSlot(float)
+    @pyqtSlot(object)
+    def _on_reading(self, reading) -> None:  # noqa: ANN001
+        self._color_basis = reading.basis
+        self._on_color_changed(reading.value)
+
     def _on_color_changed(self, value: float) -> None:
         self._color_value = value
         # Colour the number to reflect Agtron range
@@ -3291,7 +3299,7 @@ class _ColorFloatWindow(QDialog):
     def _on_value_clicked(self, _event) -> None:  # noqa: ANN001
         if self._color_value is None:
             return
-        self._parent_dialog.receive_color_reading(self._color_value)
+        self._parent_dialog.receive_color_reading(self._color_value, self._color_basis)
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -3318,8 +3326,8 @@ class _ColorFloatWindow(QDialog):
 class RoastResultDialog(QDialog):
     """
     Post-roast dialog – records roasted weight, defects, colour (Agtron),
-    and roasting notes.  Supports live scale readout and optional RoastSee C1
-    colorimeter, both as floating helper windows that move with the dialog.
+    and roasting notes.  Supports live scale readout and optional colour
+    meter, both as floating helper windows that move with the dialog.
     """
 
     def __init__(
@@ -3609,12 +3617,17 @@ class RoastResultDialog(QDialog):
                 self._roasted_weight_edit.setText(f"{weight:.0f}")
                 self._update_loss_label()
 
-    def receive_color_reading(self, value: float) -> None:
+    def receive_color_reading(self, value: float, basis: str | None = None) -> None:
         """
         Called when the user taps the floating colour card.
-        Shows a small context dialog asking whether this is a whole-bean
-        or ground reading, then populates the appropriate field.
+        Populates the whole-bean or ground field: the one the meter names in
+        *basis*, else the one picked in a small context dialog.
         """
+        if basis in ("whole", "ground"):
+            edit = self._colour_whole_edit if basis == "whole" else self._colour_ground_edit
+            edit.setText(f"{value:.1f}")
+            self._update_color_diff()
+            return
         reply = show_styled_message(
             self,
             QApplication.translate("tilauscope_roast_setup", "Which sample?"),

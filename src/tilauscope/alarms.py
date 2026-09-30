@@ -27,13 +27,14 @@ from typing import Final, TYPE_CHECKING
 
 from PyQt6.QtCore import (
     QObject, pyqtSignal, pyqtSlot, Qt, QPoint, QSettings, QMimeData, QTimer,
+    QStandardPaths,
 )
 from PyQt6.QtGui import QColor, QCloseEvent, QDrag, QStandardItemModel
 from tilauscope.theme_qss import apply_tilau_theme, base_qss
 from PyQt6.QtWidgets import (
     QApplication, QDialog, QWidget, QFrame, QLabel, QPushButton, QScrollArea,
     QComboBox, QLineEdit, QTimeEdit, QAbstractSpinBox, QSpinBox, QMenu,
-    QVBoxLayout, QHBoxLayout, QGraphicsOpacityEffect,
+    QVBoxLayout, QHBoxLayout, QGraphicsOpacityEffect, QFileDialog, QMessageBox,
 )
 
 from tilauscope.tilauscope_types import THEME, no_enter_default, show_styled_message
@@ -464,8 +465,8 @@ class AlarmSet(QObject):
 class QmcAlarmAdapter:
     """The only component that touches qmc.alarm* lists and Artisan-specific
     codecs (alarmtime menu mapping, source list, etypesf). Keeps AlarmSet and
-    the UI fully device-agnostic. A future FileAlarmAdapter would implement the
-    same load()/save()/source_labels() surface against an .alrm/.alog file."""
+    the UI fully device-agnostic. load_file()/save_file() read and write the
+    same records as an Artisan .alrm file."""
 
     # qmc.alarmtime carries Artisan's internal event codes; the dialog maps
     # them through these two qmc dicts. We round-trip via the menu index.
@@ -478,29 +479,59 @@ class QmcAlarmAdapter:
 
     # ── load: qmc -> records ──────────────────────────────────────────────
 
+    # .alrm file key -> qmc attribute; the file format is Artisan's own.
+    _FILE_KEYS: Final[tuple[tuple[str, str], ...]] = (
+        ('alarmflags', 'alarmflag'), ('alarmguards', 'alarmguard'),
+        ('alarmnegguards', 'alarmnegguard'), ('alarmtimes', 'alarmtime'),
+        ('alarmoffsets', 'alarmoffset'), ('alarmconds', 'alarmcond'),
+        ('alarmsources', 'alarmsource'), ('alarmtemperatures', 'alarmtemperature'),
+        ('alarmactions', 'alarmaction'), ('alarmbeep', 'alarmbeep'),
+        ('alarmstrings', 'alarmstrings'),
+    )
+
     def load(self) -> list[Alarm]:
         qmc = self.qmc
-        n = len(qmc.alarmtemperature)
+        arrays = {key: getattr(qmc, attr) for key, attr in self._FILE_KEYS}
+        return self._records(arrays, qmc.alarmstate)
+
+    def load_file(self, filename: str) -> list[Alarm]:
+        """Read an Artisan .alrm file. Raises on an unreadable or foreign file."""
+        with open(filename, encoding='utf-8') as infile:
+            data = json.load(infile)
+        if not isinstance(data, dict) or 'alarmflags' not in data:
+            raise ValueError('not an alarm file')
+        records = self._records({key: data.get(key, []) for key, _ in self._FILE_KEYS}, [])
+        # A file from another setup may name probes this one lacks: fall back
+        # to BT, as Artisan's own import does.
+        n_sources = len(self.source_labels())
+        for rec in records:
+            if not 0 <= rec.source + 3 < n_sources:
+                rec.source = 1
+        return records
+
+    def _records(self, arrays: dict[str, list], states: list) -> list[Alarm]:
+        qmc = self.qmc
+        n = len(arrays['alarmtemperatures'])
         # First pass: build records with positional aids = index + 1.
         records: list[Alarm] = []
         for i in range(n):
             records.append(Alarm(
                 aid=i + 1,
-                enabled=bool(self._get(qmc.alarmflag, i, 1)),
-                from_event=int(qmc.alarmtime2menuidx[self._get(qmc.alarmtime, i, -1)]),
-                offset=max(0, int(self._get(qmc.alarmoffset, i, 0))),
-                source=int(self._get(qmc.alarmsource, i, 1)),
-                cond=int(self._get(qmc.alarmcond, i, 1)),
-                value=float(self._get(qmc.alarmtemperature, i, 0.0)),
-                action=int(self._get(qmc.alarmaction, i, Action.NONE)),
-                arg=str(self._get(qmc.alarmstrings, i, '')),
-                beep=bool(self._get(qmc.alarmbeep, i, 0)),
-                fired_idx=int(self._get(qmc.alarmstate, i, -1)),
+                enabled=bool(self._get(arrays['alarmflags'], i, 1)),
+                from_event=int(qmc.alarmtime2menuidx[self._get(arrays['alarmtimes'], i, -1)]),
+                offset=max(0, int(self._get(arrays['alarmoffsets'], i, 0))),
+                source=int(self._get(arrays['alarmsources'], i, 1)),
+                cond=int(self._get(arrays['alarmconds'], i, 1)),
+                value=float(self._get(arrays['alarmtemperatures'], i, 0.0)),
+                action=int(self._get(arrays['alarmactions'], i, Action.NONE)),
+                arg=str(self._get(arrays['alarmstrings'], i, '')),
+                beep=bool(self._get(arrays['alarmbeep'], i, 0)),
+                fired_idx=int(self._get(states, i, -1)),
             ))
         # Second pass: convert guard/negguard indices -> aids.
         for i, rec in enumerate(records):
-            g = int(self._get(qmc.alarmguard, i, -1))
-            ng = int(self._get(qmc.alarmnegguard, i, -1))
+            g = int(self._get(arrays['alarmguards'], i, -1))
+            ng = int(self._get(arrays['alarmnegguards'], i, -1))
             rec.guard_aid = records[g].aid if 0 <= g < n else None
             rec.negguard_aid = records[ng].aid if 0 <= ng < n else None
         return records
@@ -510,24 +541,38 @@ class QmcAlarmAdapter:
     def save(self, alarms: AlarmSet) -> None:
         qmc = self.qmc
         rows = alarms.rows
-        aid_to_index = {a.aid: i for i, a in enumerate(rows)}
-
-        qmc.alarmflag        = [1 if a.enabled else 0 for a in rows]
-        qmc.alarmguard       = [aid_to_index.get(a.guard_aid, -1) for a in rows]
-        qmc.alarmnegguard    = [aid_to_index.get(a.negguard_aid, -1) for a in rows]
-        qmc.alarmtime        = [int(qmc.menuidx2alarmtime[int(a.from_event)]) for a in rows]
-        qmc.alarmoffset      = [max(0, int(a.offset)) for a in rows]
-        qmc.alarmcond        = [int(a.cond) for a in rows]
-        qmc.alarmsource      = [int(a.source) for a in rows]
-        qmc.alarmtemperature = [float(a.value) for a in rows]
-        qmc.alarmaction      = [int(a.action) for a in rows]
-        qmc.alarmbeep        = [1 if a.beep else 0 for a in rows]
-        qmc.alarmstrings     = [a.arg for a in rows]
+        arrays = self._arrays(rows)
+        for key, attr in self._FILE_KEYS:
+            setattr(qmc, attr, arrays[key])
         # Fired state travels with the row (by aid), same convention as qmc:
         # -1 = not fired, else index into qmc.timex. A freshly added/duplicated
         # row defaults to -1 (never inherited from a template), so only rows
         # that were actually live when the dialog opened can carry a fired mark.
         qmc.alarmstate       = [int(a.fired_idx) for a in rows]
+
+    def save_file(self, filename: str, alarms: AlarmSet) -> None:
+        """Write the set as an Artisan .alrm file."""
+        with open(filename, 'w', encoding='utf-8') as outfile:
+            json.dump(self._arrays(alarms.rows), outfile, separators=(',', ':'), ensure_ascii=False)
+            outfile.write('\n')
+
+    def _arrays(self, rows: list[Alarm]) -> dict[str, list]:
+        """Rows -> Artisan's parallel alarm lists, keyed as in an .alrm file."""
+        qmc = self.qmc
+        aid_to_index = {a.aid: i for i, a in enumerate(rows)}
+        return {
+            'alarmflags':        [1 if a.enabled else 0 for a in rows],
+            'alarmguards':       [aid_to_index.get(a.guard_aid, -1) for a in rows],
+            'alarmnegguards':    [aid_to_index.get(a.negguard_aid, -1) for a in rows],
+            'alarmtimes':        [int(qmc.menuidx2alarmtime[int(a.from_event)]) for a in rows],
+            'alarmoffsets':      [max(0, int(a.offset)) for a in rows],
+            'alarmconds':        [int(a.cond) for a in rows],
+            'alarmsources':      [int(a.source) for a in rows],
+            'alarmtemperatures': [float(a.value) for a in rows],
+            'alarmactions':      [int(a.action) for a in rows],
+            'alarmbeep':         [1 if a.beep else 0 for a in rows],
+            'alarmstrings':      [a.arg for a in rows],
+        }
 
     @staticmethod
     def _get(lst: list, i: int, default: object) -> object:
@@ -1943,6 +1988,13 @@ class TilauAlarmDlg(QDialog):
             manage_act = menu.addAction(
                 QApplication.translate('tilauscope_alarms', 'Manage presets…'))
             manage_act.triggered.connect(self._open_manage_presets)
+        menu.addSeparator()
+        import_act = menu.addAction(
+            QApplication.translate('tilauscope_alarms', 'Import alarm file…'))
+        import_act.triggered.connect(self._import_alarm_file)
+        export_act = menu.addAction(
+            QApplication.translate('tilauscope_alarms', 'Export to file…'))
+        export_act.triggered.connect(self._export_alarm_file)
         menu.exec(self._btn_presets.mapToGlobal(QPoint(0, self._btn_presets.height())))
 
     def _open_save_preset_popup(self) -> None:
@@ -1977,11 +2029,55 @@ class TilauAlarmDlg(QDialog):
         rows = self._preset_store.load(name)
         if rows is None:
             return
-        # A preset is a programme, not a live roast state: it no longer
+        self._replace_rows(rows)
+
+    def _replace_rows(self, rows: list[Alarm]) -> None:
+        # A preset or a file is a programme, not a live roast state: it no longer
         # corresponds to any position in the currently loaded qmc arrays.
         self._aid_to_qmc_index = {}
         self.alarms.load(rows)
         self._clear_selection()
+
+    @staticmethod
+    def _downloads_dir() -> str:
+        # Roast plans write their alarm file next to the PDF, in Downloads.
+        return QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
+
+    def _import_alarm_file(self) -> None:
+        filename, _ = QFileDialog.getOpenFileName(
+            self, QApplication.translate('tilauscope_alarms', 'Import alarm file'),
+            self._downloads_dir(),
+            QApplication.translate('tilauscope_alarms', 'Alarm files (*.alrm)'))
+        if not filename:
+            return
+        try:
+            rows = self.adapter.load_file(filename)
+        except (OSError, ValueError, KeyError, TypeError, IndexError):
+            _log.exception('alarm file import')
+            show_styled_message(
+                self, QApplication.translate('tilauscope_alarms', 'Import alarm file'),
+                QApplication.translate('tilauscope_alarms', 'This file could not be read as an alarm set.'),
+                QMessageBox.Icon.Warning)
+            return
+        self._replace_rows(rows)
+
+    def _export_alarm_file(self) -> None:
+        filename, _ = QFileDialog.getSaveFileName(
+            self, QApplication.translate('tilauscope_alarms', 'Export to file'),
+            self._downloads_dir(),
+            QApplication.translate('tilauscope_alarms', 'Alarm files (*.alrm)'))
+        if not filename:
+            return
+        if not filename.lower().endswith('.alrm'):
+            filename += '.alrm'
+        try:
+            self.adapter.save_file(filename, self.alarms)
+        except OSError:
+            _log.exception('alarm file export')
+            show_styled_message(
+                self, QApplication.translate('tilauscope_alarms', 'Export to file'),
+                QApplication.translate('tilauscope_alarms', 'The alarm file could not be written.'),
+                QMessageBox.Icon.Warning)
 
     def _open_manage_presets(self) -> None:
         dlg = _PresetManagerDlg(self._preset_store, self)
