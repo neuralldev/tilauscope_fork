@@ -233,6 +233,8 @@ class _DownloadWorker(QObject):
         super().__init__()
         self._url  = url
         self._dest = dest_path
+        # Streamed here, renamed to _dest only once verified.
+        self._part = dest_path + ".part"
         # GitHub's "sha256:<hex>" for the asset; empty when the API gave none.
         self._sha256 = digest[len("sha256:"):].lower() if digest.startswith("sha256:") else ""
 
@@ -240,6 +242,11 @@ class _DownloadWorker(QObject):
     def run(self) -> None:
         thread = QThread.currentThread()
         try:
+            if not self._sha256:
+                raise _DownloadError(QApplication.translate(
+                    "tilauscope_updates",
+                    "No checksum is published with this installer, so its "
+                    "integrity cannot be verified."))
             session = requests.Session()
             headers = {"User-Agent": "Mozilla/5.0 (TilauScope updater)"}
 
@@ -264,7 +271,7 @@ class _DownloadWorker(QObject):
             interrupted = False
             sha = hashlib.sha256()
             try:
-                with open(self._dest, "wb") as f:
+                with open(self._part, "wb") as f:
                     for chunk in resp.iter_content(chunk_size=65536):
                         if thread is not None and thread.isInterruptionRequested():
                             interrupted = True
@@ -289,14 +296,19 @@ class _DownloadWorker(QObject):
 
             # Presence + integrity gate before declaring success.
             self._verify_download(downloaded, total)
-            if self._sha256 and sha.hexdigest() != self._sha256:
+            if sha.hexdigest() != self._sha256:
                 raise _DownloadError(QApplication.translate(
                     "tilauscope_updates",
                     "The downloaded installer does not match the checksum published "
                     "with the release. It was deleted; try again later."))
-            if not self._sha256:
-                _log.warning("[TilauUpdater] No published checksum for this installer.")
 
+            try:
+                os.replace(self._part, self._dest)
+            except OSError as exc:
+                raise _DownloadError(QApplication.translate(
+                    "tilauscope_updates",
+                    "Could not write the update to disk (disk full or permission "
+                    "denied):\n{0}").format(exc)) from exc
             self.finished.emit(self._dest)
 
         except _DownloadError as exc:
@@ -327,9 +339,9 @@ class _DownloadWorker(QObject):
     # ── integrity helpers ─────────────────────────────────────────────────────
 
     def _safe_unlink(self) -> None:
-        """Remove the (possibly partial) destination file, ignoring errors."""
+        """Remove the partial download, ignoring errors."""
         try:
-            p = Path(self._dest)
+            p = Path(self._part)
             if p.exists():
                 p.unlink()
         except OSError:
@@ -338,7 +350,7 @@ class _DownloadWorker(QObject):
     def _verify_download(self, downloaded: int, total: int) -> None:
         """Raise _DownloadError if the file is absent, empty, truncated, an HTML
         error page, implausibly small, or not a valid Windows installer."""
-        p = Path(self._dest)
+        p = Path(self._part)
         if not p.exists():
             raise _DownloadError(QApplication.translate(
                 "tilauscope_updates",

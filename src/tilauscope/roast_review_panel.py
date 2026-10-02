@@ -40,7 +40,7 @@ from artisanlib.util import convertRoRstrict
 from tilauscope.tilauscope_types import PHASE_COLORS, THEME
 from tilauscope.theme_qss import base_qss, tooltip_qss
 from tilauscope.roast_debrief import (build_debrief, profile_from_qmc, fmt_mmss,
-                                      display_name, Debrief)
+                                      display_name, Debrief, delta_c_to_mode)
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -413,7 +413,7 @@ class RoastReviewPanel(QWidget):
             # The drop is judged on temperature — that is how it is steered —
             # and the earlier milestones on the clock.
             if key == "drop" and delta.bt_c is not None:
-                text = f"{delta.bt_c:+.0f} °{mode}"
+                text = f"{delta_c_to_mode(delta.bt_c, mode):+.0f} °{mode}"
                 colour = THEME['SUCCESS'] if abs(delta.bt_c) < 3.0 else THEME['YELLOW']
             elif delta.time_s is not None:
                 text = f"{delta.time_s:+.0f} s"

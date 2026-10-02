@@ -437,11 +437,13 @@ class AmbientMixin:
         """
         # Update the text with the current value
         self.aw_overlay.update_value(wa)
-        self.water_activity_input.setValue(wa) # inject the value directly without triggering the button click event again
         # Lot 5: forward the reading to an open Characteristics
         # editor (💧 annex window) — registered/cleared by ZoneEditorDialog.
+        # That reading is for the editor's bean, not the one in the main form.
         _aw_cb = getattr(self, '_aw_capture_cb', None)
-        if _aw_cb is not None:
+        if _aw_cb is None:
+            self.water_activity_input.setValue(wa) # inject the value directly without triggering the button click event again
+        else:
             try:
                 _aw_cb(wa)
             except Exception as e:  # noqa: BLE001  pylint: disable=broad-except

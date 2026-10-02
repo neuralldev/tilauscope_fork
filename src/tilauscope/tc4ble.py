@@ -167,6 +167,7 @@ class TilauTC4BLE(QObject):
         self._cmd_airflow = _CONNECT_AIRFLOW       # airflow commanded; restored after a drop
         self._cmd_burner = 0                       # last commanded OT1 duty
         self._mismatch = 0                         # consecutive burner overshoot count
+        self._verifying = False                    # connect check in progress: it owns the alert
         self._closing = False                      # True during an intentional disconnect
         self._connect_task: Optional[asyncio.Future] = None   # in-flight connect, for clean cancel
         # ── link-recovery guard state ( ) ──────────────────────────
@@ -338,8 +339,8 @@ class TilauTC4BLE(QObject):
             if not await self._verified_burner_off():
                 _logd.error("TilauTC4BLE: burner OFF unconfirmed — fail-safe disconnect")
                 self.safetyAlert.emit("burner_off_unconfirmed")
-                self._closing = True
-                await self._client.disconnect()
+                # Not an intentional close: a reconnect driver must keep trying.
+                await self._abandon_half_open_link()
                 self.stateChanged.emit("error")
                 return
             # STATE: burner is now 0. Assert a sane airflow; drum keeps the
@@ -404,17 +405,24 @@ class TilauTC4BLE(QObject):
         self._burner_echo = None
         self._burner_echo_at = 0.0
         self._buf.clear()                          # no bytes from the dead link
-        for attempt in range(_VERIFY_TRIES):
-            sent_at = time.monotonic()
-            await self._write(f"OT{OT_BURNER},0" + _CMD_TERM)
-            await self._write(_READ_CMD + _CMD_TERM)
-            await asyncio.sleep(_VERIFY_WAIT_S)
-            if self._burner_echo == 0 and self._burner_echo_at > sent_at:
-                _logd.info("TilauTC4BLE: burner verified off (attempt %d)", attempt + 1)
-                return True
-        _logd.error("TilauTC4BLE: no fresh zero echo after %d attempts "
-                    "(last echo=%s)", _VERIFY_TRIES, self._burner_echo)
-        return False
+        # The controller's default burner (observed 100 %) is what this check
+        # removes; the overshoot monitor must not report it meanwhile.
+        self._verifying = True
+        try:
+            for attempt in range(_VERIFY_TRIES):
+                sent_at = time.monotonic()
+                await self._write(f"OT{OT_BURNER},0" + _CMD_TERM)
+                await self._write(_READ_CMD + _CMD_TERM)
+                await asyncio.sleep(_VERIFY_WAIT_S)
+                if self._burner_echo == 0 and self._burner_echo_at > sent_at:
+                    _logd.info("TilauTC4BLE: burner verified off (attempt %d)", attempt + 1)
+                    return True
+            _logd.error("TilauTC4BLE: no fresh zero echo after %d attempts "
+                        "(last echo=%s)", _VERIFY_TRIES, self._burner_echo)
+            return False
+        finally:
+            self._verifying = False
+            self._mismatch = 0
 
     # ── link-recovery protocol ( ) ────────────────────────────────
     async def _restore_after_drop(self) -> None:
@@ -445,6 +453,7 @@ class TilauTC4BLE(QObject):
         driver; telemetry reconnection runs even when the guard is disarmed.
         """
         self._connected = False
+        self._invalidate_rx()                      # the last frame is no reading any more
         if self._closing or self._recovering:
             return
         self._recovering = True
@@ -549,9 +558,16 @@ class TilauTC4BLE(QObject):
 
     # ── notify handling ─────────────────────────────────────────────────────
     def _invalidate_rx(self) -> int:
-        """Open a new RX generation: empty the buffer, orphan older callbacks."""
+        """Open a new RX generation: empty the buffer, orphan older callbacks.
+
+        The readings go with it, so Artisan records -1 rather than a frozen value.
+        """
         self._link_gen += 1
         self._buf.clear()
+        with self._lock:
+            self._latest = None
+        self._burner_echo = None
+        self._airflow_echo = None
         return self._link_gen
 
     def _on_notify(self, _ch, data: bytearray, gen: Optional[int] = None) -> None:
@@ -611,7 +627,8 @@ class TilauTC4BLE(QObject):
         self._mismatch += 1
         _logd.warning("TilauTC4BLE: burner echo=%d > commanded=%d, re-asserting",
                      echo, self._cmd_burner)
-        if self._mismatch >= 2:
+        # Once per episode, and not over the connect check that owns this case.
+        if self._mismatch == 2 and not self._verifying:
             self.safetyAlert.emit("burner_overshoot")
 
     def _on_disconnect(self, client) -> None:

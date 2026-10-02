@@ -251,11 +251,16 @@ class CatalogueListWidget(QWidget):
             # keep the stretch + empty label at the end
             self._rows_lay.insertWidget(len(self._rows), row)
             self._rows.append(row)
-        if not 0 <= self._selected < len(self._rows):
+        row = self._row_for(self._selected)
+        if row is None:
             self._selected = -1
-        if self._selected >= 0:
-            self._rows[self._selected].set_selected(True)
+        else:
+            row.set_selected(True)
         self._apply_filter()
+
+    def _row_for(self, index: int):  # noqa: ANN202
+        """The row of bean `index`: a skipped row shifts positions, not bean indices."""
+        return next((row for row in self._rows if row._index == index), None)
 
     def first_visible_index(self) -> int:
         """Return the first matching bean's source index, even before showing."""
@@ -265,11 +270,12 @@ class CatalogueListWidget(QWidget):
         """Mirror a programmatic datatable selection — never re-emits."""
         if index == self._selected:
             return
-        if 0 <= self._selected < len(self._rows):
-            self._rows[self._selected].set_selected(False)
-        self._selected = index if 0 <= index < len(self._rows) else -1
-        if self._selected >= 0:
-            row = self._rows[self._selected]
+        previous = self._row_for(self._selected)
+        if previous is not None:
+            previous.set_selected(False)
+        row = self._row_for(index)
+        self._selected = index if row is not None else -1
+        if row is not None:
             row.set_selected(True)
             self._scroll.ensureWidgetVisible(row, 0, 40)
 

@@ -23,7 +23,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from PyQt6.QtCore import Qt, QThread
+from PyQt6.QtCore import Qt, QThread, pyqtSlot
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -309,7 +309,6 @@ class ZoneEditorDialog(QDialog):
         self._form.addRow(self._req(QApplication.translate("tilauscope_beancave", "Bean name:")), self.name_edit)
 
         self.country_combo = QComboBox()
-        self.country_combo.setEditable(True)
         self.country_combo.setMinimumWidth(260)
         self.country_combo.addItems([""] + list(getattr(self._host, 'coffee_producing_countries', []) or []))
         self.country_combo.setCurrentText(b.country or "")
@@ -341,7 +340,7 @@ class ZoneEditorDialog(QDialog):
         self.supplier_edit.setMinimumWidth(300)
         self._form.addRow(QApplication.translate("tilauscope_beancave", "Supplier:"), self.supplier_edit)
         self.altitude_spin = QSpinBox()
-        self.altitude_spin.setRange(0, 5000)
+        self.altitude_spin.setRange(0, 3000)
         self.altitude_spin.setSuffix(" m")
         self.altitude_spin.setValue(int(getattr(b, 'altitude', 0) or 0))
         self._form.addRow(QApplication.translate("tilauscope_beancave", "Altitude:"), self.altitude_spin)
@@ -375,7 +374,6 @@ class ZoneEditorDialog(QDialog):
         self.bean1_ratio_spin.setValue(getattr(b, 'bean1_ratio', 0.0) or 0.0)
         bl.addRow(QApplication.translate("tilauscope_beancave", "This bean:"), self.bean1_ratio_spin)
         self.bean2_combo = QComboBox()
-        self.bean2_combo.setEditable(True)
         self.bean2_combo.addItems([""] + varieties_all)
         self.bean2_combo.setCurrentText(getattr(b, 'bean2_name', '') or "")
         self.bean2_ratio_spin = QDoubleSpinBox()
@@ -388,7 +386,6 @@ class ZoneEditorDialog(QDialog):
         r2.addWidget(self.bean2_ratio_spin)
         bl.addRow(QApplication.translate("tilauscope_beancave", "Component 2:"), r2)
         self.bean3_combo = QComboBox()
-        self.bean3_combo.setEditable(True)
         self.bean3_combo.addItems([""] + varieties_all)
         self.bean3_combo.setCurrentText(getattr(b, 'bean3_name', '') or "")
         self.bean3_ratio_spin = QDoubleSpinBox()
@@ -423,15 +420,14 @@ class ZoneEditorDialog(QDialog):
         self._form.addRow(self._req(QApplication.translate("tilauscope_beancave", "Species:")), self.species_combo)
 
         self.varieties_combo = QComboBox()
-        self.varieties_combo.setEditable(True)
         self.varieties_combo.setMinimumWidth(320)
         self._refresh_varieties(b.species or "")
         self.varieties_combo.setCurrentText(b.varieties or "")
         self._form.addRow(self._req(QApplication.translate("tilauscope_beancave", "Varieties:")), self.varieties_combo)
 
         self.density_spin = QDoubleSpinBox()
-        self.density_spin.setRange(0.0, 2000.0)
-        self.density_spin.setDecimals(1)
+        self.density_spin.setRange(0.0, 800.0)
+        self.density_spin.setDecimals(0)
         self.density_spin.setSuffix(" g/l")
         self.density_spin.setValue(getattr(b, 'density', 0.0) or 0.0)
         if self._zone == 'characteristics':
@@ -449,7 +445,7 @@ class ZoneEditorDialog(QDialog):
             self._form.addRow(QApplication.translate("tilauscope_beancave", "Density:"), self.density_spin)
 
         self.humidity_spin = QDoubleSpinBox()
-        self.humidity_spin.setRange(0.0, 100.0)
+        self.humidity_spin.setRange(0.0, 15.0)
         self.humidity_spin.setDecimals(1)
         self.humidity_spin.setSuffix(" %")
         self.humidity_spin.setValue(getattr(b, 'last_humidity', 0.0) or 0.0)
@@ -518,7 +514,8 @@ class ZoneEditorDialog(QDialog):
         current = self.varieties_combo.currentText()
         self.varieties_combo.blockSignals(True)
         self.varieties_combo.clear()
-        self.varieties_combo.addItems([""] + list(types.get(species, []) or []))
+        self.varieties_combo.addItems([""] + list(types.get(species, []) or [])
+                                      + [QApplication.translate("tilauscope_beancave", "Other")])
         self.varieties_combo.setCurrentText(current)
         self.varieties_combo.blockSignals(False)
 
@@ -677,7 +674,10 @@ class ZoneEditorDialog(QDialog):
                 sm.scale1_weight_changed_signal.connect(self._scale_window.update_weight)
                 sm.scale1_stable_weight_changed_signal.connect(self._scale_window.update_weight)
                 sm.scale1_disconnected_signal.connect(self._scale_window.scale_disconnected)
+                sm.scale1_connected_signal.connect(self._on_scale_connected)
                 if not self._scale_was_connected:
+                    # a scale that is off must not read "tap to use"
+                    self._scale_window.scale_connecting()
                     sm.connect_scale1_signal.emit(False)
                 else:
                     last = sm.get_scale1_last_weight()
@@ -689,6 +689,16 @@ class ZoneEditorDialog(QDialog):
             self._scale_window.raise_()
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
             _logd.exception("zone editor scale window unavailable")
+
+    @pyqtSlot()
+    def _on_scale_connected(self) -> None:
+        if self._scale_window is None:
+            return
+        self._scale_window.scale_ready()
+        sm = getattr(self._aw, 'scale_manager', None)
+        last = sm.get_scale1_last_weight() if sm is not None else None
+        if last is not None:
+            self._scale_window.update_weight(last)
 
     def receive_scale_weight(self, weight: float) -> None:
         # _ScaleFloatWindow contract: click on the live reading lands here.
@@ -703,6 +713,7 @@ class ZoneEditorDialog(QDialog):
                 (sm.scale1_weight_changed_signal, self._scale_window.update_weight),
                 (sm.scale1_stable_weight_changed_signal, self._scale_window.update_weight),
                 (sm.scale1_disconnected_signal, self._scale_window.scale_disconnected),
+                (sm.scale1_connected_signal, self._on_scale_connected),
             ):
                 try:
                     _sig.disconnect(_slot)
@@ -942,7 +953,9 @@ class ZoneEditorDialog(QDialog):
                     self._host.uuidmap = {}
                 self._host.uuidmap[b.uuid] = b
 
-            self._host.save_green_beans()
+            # A failed save has told the operator why; stay open with the entry.
+            if not self._host.save_green_beans():
+                return
             # stock just hit 0 g: offer to reclaim this bean's labels
             # (design v4 §9.3, shared helper — never duplicate this check).
             prompt_release_if_emptied(self, b, prev_weight, self._host.save_green_beans)

@@ -1164,31 +1164,36 @@ class TCPLogHandler(socketserver.StreamRequestHandler):
         # Set a timeout so recv() doesn't block forever
         self.request.settimeout(1.0)
 
-        # Check the server's running flag
-        while getattr(self.server, 'running', True):
+        while True:
             try:
-                chunk = self.request.recv(4)
-                if not chunk: # Connection closed by client
+                header = self._recv_exact(4)
+                if header is None:
                     break
-                if len(chunk) < 4:
-                    continue
-
-                slen = struct.unpack('>L', chunk)[0]
-                chunk = self.request.recv(slen)
-                while len(chunk) < slen:
-                    more = self.request.recv(slen - len(chunk))
-                    if not more:  # EOF → connexion fermée proprement
-                        return
-                    chunk += more
+                chunk = self._recv_exact(struct.unpack('>L', header)[0])
+                if chunk is None:
+                    break
 
                 obj = _load_log_record(chunk)   # any local program can write here
                 # — emit structured fields so the bus keeps level/module
                 self.server.ui_signal.emit(obj['name'], obj['levelname'], obj['msg'])
-            except (socket.timeout, TimeoutError):
-                # This allows the loop to check 'self.server.running'
-                continue
             except Exception:
                 break
+
+    def _recv_exact(self, n: int) -> bytes | None:
+        """Exactly n bytes, or None on EOF or server stop; a timeout only
+        re-checks the server's running flag and the read resumes in place."""
+        data = b''
+        while len(data) < n:
+            if not getattr(self.server, 'running', True):
+                return None
+            try:
+                more = self.request.recv(n - len(data))
+            except (socket.timeout, TimeoutError):
+                continue
+            if not more:  # connection closed by client
+                return None
+            data += more
+        return data
 
 class TCPWorker(socketserver.TCPServer):
     allow_reuse_address = True

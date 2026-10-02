@@ -158,12 +158,18 @@ class OmniBLE(ClientBLE):  # pyright: ignore [reportGeneralTypeIssues] # Argumen
         service_uuid, device_name = self.connected()
         self.diag.connected(service_uuid, device_name)
         self._protocol.reset()
+        self.connected_signal.emit()
+
+    @override
+    def start_notifications(self) -> None:
+        # Artisan's BLE layer turns notifications on after on_connect: the
+        # commands go out once their replies can be heard.
+        super().start_notifications()
         # the colour fields are Agtron SCA: the device scale is set on every connection
         for label, payload in (("get model", GET_MODEL), ("get firmware", GET_FIRMWARE),
                                ("set agtron SCA", SET_AGTRON_SCA)):
             self.send_command(label, payload)
             time.sleep(COMMAND_SPACING_S)
-        self.connected_signal.emit()
 
     @override
     def on_disconnect(self) -> None:

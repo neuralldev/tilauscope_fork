@@ -113,6 +113,21 @@ def _ror_c_to_mode(value: float, mode: str) -> float:
     return value * 9.0 / 5.0 if str(mode).upper() == "F" else value
 
 
+def delta_c_to_mode(value: float, mode: str) -> float:
+    """A temperature difference in °C, in the display unit (scale only, no offset)."""
+    return _ror_c_to_mode(value, mode)
+
+
+def _temp_c_to_mode(value: float, mode: str) -> float:
+    return value * 9.0 / 5.0 + 32.0 if str(mode).upper() == "F" else value
+
+
+def _temp_to_c(value: float | None, mode: str) -> float | None:
+    if value is None:
+        return None
+    return (value - 32.0) / 1.8 if str(mode).upper() == "F" else value
+
+
 
 
 
@@ -331,14 +346,18 @@ def build_debrief(profile: dict, snapshot: "dict | None" = None,
 
     # colour — stated, never turned into advice: no DROP↔Agtron slope is
     # validated, so an écart here cannot prescribe a temperature change.
+    # Named after the reading roast_colour_agtron took: ground, else whole.
+    ground = _pos(profile.get("ground_color")) is not None
     if agtron is not None and planned_colour is not None:
+        band = (QApplication.translate("tilauscope_review", "Agtron ground · planned {0}") if ground
+                else QApplication.translate("tilauscope_review", "Agtron whole · planned {0}"))
         out.figures["colour"] = Figure(
-            f"{agtron:.0f}",
-            QApplication.translate("tilauscope_review", "Agtron ground · planned {0}").format(
-                f"{planned_colour:.0f}"), "neutral")
+            f"{agtron:.0f}", band.format(f"{planned_colour:.0f}"), "neutral")
     elif agtron is not None:
         out.figures["colour"] = Figure(
-            f"{agtron:.0f}", QApplication.translate("tilauscope_review", "Agtron ground"), "neutral")
+            f"{agtron:.0f}",
+            QApplication.translate("tilauscope_review", "Agtron ground") if ground
+            else QApplication.translate("tilauscope_review", "Agtron whole"), "neutral")
     elif planned_colour is not None:
         out.figures["colour"] = Figure(
             band=QApplication.translate("tilauscope_review", "not measured · planned {0}").format(
@@ -383,6 +402,8 @@ def build_debrief(profile: dict, snapshot: "dict | None" = None,
         out.severity = "none"
         return out
 
+    # the plan is frozen in °C; the profile's computed block is in its own unit
+    profile_mode = str(profile.get("mode") or "C")
     for name, actual_t, actual_bt, plan_t, plan_bt in (
             ("dry_end", dry_t, _pos(computed.get("DRY_BT")), planned_dry_t,
              _pos((planned_ms.get("dry_end") or {}).get("bt_c"))),
@@ -393,7 +414,7 @@ def build_debrief(profile: dict, snapshot: "dict | None" = None,
         if actual_t is not None and plan_t is not None:
             delta.time_s = actual_t - plan_t
         if actual_bt is not None and plan_bt is not None:
-            delta.bt_c = actual_bt - plan_bt
+            delta.bt_c = _temp_to_c(actual_bt, profile_mode) - plan_bt
         if delta.time_s is not None or delta.bt_c is not None:
             out.deltas[name] = delta
 
@@ -431,7 +452,8 @@ def _verdict(out: Debrief, mode: str) -> None:
         bits.append((QApplication.translate("tilauscope_review", "you dropped {0} °{1} above the planned {2} °{1}")
                      if drop.bt_c > 0 else
                      QApplication.translate("tilauscope_review", "you dropped {0} °{1} below the planned {2} °{1}"))
-                    .format(f"{abs(drop.bt_c):.0f}", mode, f"{drop.planned_bt_c:.0f}"))
+                    .format(f"{abs(delta_c_to_mode(drop.bt_c, mode)):.0f}", mode,
+                            f"{_temp_c_to_mode(drop.planned_bt_c, mode):.0f}"))
     detail = QApplication.translate("tilauscope_review", " and ").join(bits)
     out.detail = (detail[0].upper() + detail[1:] + ".") if detail else ""
 
@@ -451,7 +473,7 @@ def _verdict(out: Debrief, mode: str) -> None:
         out.headline = (QApplication.translate("tilauscope_review", "Dropped {0} °{1} above plan.")
                         if drop.bt_c > 0 else
                         QApplication.translate("tilauscope_review", "Dropped {0} °{1} below plan.")
-                        ).format(f"{abs(drop.bt_c):.0f}", mode)
+                        ).format(f"{abs(delta_c_to_mode(drop.bt_c, mode)):.0f}", mode)
     elif fc_off and fc is not None and fc.time_s is not None:
         out.headline = (QApplication.translate("tilauscope_review", "First crack came {0} s late.")
                         if fc.time_s > 0 else
@@ -467,7 +489,7 @@ def _verdict(out: Debrief, mode: str) -> None:
     if (drop_t_off or drop_bt_off) and drop is not None and drop.planned_bt_c is not None:
         out.next_time = QApplication.translate(
             "tilauscope_review", "Next time: hold the drop to {0} °{1}, whatever the clock says."
-        ).format(f"{drop.planned_bt_c:.0f}", mode)
+        ).format(f"{_temp_c_to_mode(drop.planned_bt_c, mode):.0f}", mode)
     elif fc_off and fc is not None and fc.time_s is not None:
         out.next_time = (
             QApplication.translate("tilauscope_review", "Next time: more heat through drying to reach first crack on time.")

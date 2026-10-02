@@ -41,6 +41,21 @@ from tilauscope.cave.common import (
     _logd)
 
 
+def _phase_split(computed: dict) -> tuple[float, float, float, float] | None:
+    """(drying, maillard, development, total) in seconds from CHARGE, or None.
+
+    None unless DRY END, first crack and DROP are all present and in order: a
+    missing first crack otherwise reads as a negative Maillard and a 100 % DTR.
+    """
+    t_charge = 0
+    t_dry    = computed.get("DRY_time", 0) or 0
+    t_fcs    = computed.get("FCs_time", 0) or 0
+    t_drop   = computed.get("DROP_time", 0) or 0
+    if not t_charge < t_dry < t_fcs < t_drop:
+        return None
+    return t_dry - t_charge, t_fcs - t_dry, t_drop - t_fcs, t_drop - t_charge
+
+
 class AnalysisMixin:
     """Reading a single roast: colour level, phase rules, and the written report.
 
@@ -253,11 +268,6 @@ class AnalysisMixin:
         charge_unit    = data.get("weight", ["N/A", None, ""])[2]
         mode           = data.get("mode", "C")
 
-        t_charge = 0
-        t_dry    = computed.get("DRY_time", 0)
-        t_fcs    = computed.get("FCs_time", 0)
-        t_drop   = computed.get("DROP_time", 0)
-
         drying_auc  = computed.get("dry_phase_AUC", "N/A")
         middle_auc  = computed.get("mid_phase_AUC", "N/A")
         fcs_drop    = computed.get("finish_phase_AUC", "N/A")
@@ -265,12 +275,9 @@ class AnalysisMixin:
         auc_start   = computed.get("AUCbegin")
         auc_start_str = QApplication.translate("Label", auc_start) if auc_start else ""
 
-        drying      = t_dry - t_charge
-        maillard    = t_fcs - t_dry
-        development = t_drop - t_fcs
-        total       = t_drop - t_charge
-
-        if total > 0:
+        split = _phase_split(computed)
+        drying, maillard, development, total = split or (0, 0, 0, 0)
+        if split is not None:
             drying_pct      = 100 * drying / total
             maillard_pct    = 100 * maillard / total
             development_pct = 100 * development / total
@@ -279,7 +286,7 @@ class AnalysisMixin:
 
         weight_loss = computed.get("weight_loss", 0.0)
         defect_weight = computed.get("roast_defects_loss", 0.0)
-        dtr_pct_val = development_pct
+        dtr_pct_val = development_pct if split is not None else None
 
         try:
             wl_val = float(weight_loss) if weight_loss not in {0.0, "N/A"} else None
@@ -433,7 +440,7 @@ class AnalysisMixin:
         _mail_label = QApplication.translate("tilauscope_beancave", "Maillard (Dry -> FCs)").split("(")[0].strip()
         _dev_label  = QApplication.translate("tilauscope_beancave", "Development (FCs -> Drop)").split("(")[0].strip()
 
-        if total > 0:
+        if split is not None:
             dry_w  = max(2, int(drying_pct))
             mail_w = max(2, int(maillard_pct))
             dev_w  = max(2, int(development_pct))

@@ -967,7 +967,8 @@ class RoastReadyDialog(QDialog):
             days_from_today = (curr - today).days
             show_label = (curr.day == 1) or (abs(days_from_today) <= 60 and curr.weekday() == 0)
             if show_label or curr == today:
-                label_txt = curr.strftime("%-d %b") if curr.day != 1 else curr.strftime("1 %b '%y")
+                # day without leading zero: "%-d" raises on Windows
+                label_txt = f"{curr.day} {curr.strftime('%b')}" if curr.day != 1 else curr.strftime("1 %b '%y")
                 txt = self._scene.addText(label_txt, QFont("JetBrains Mono", 8))
                 txt.setDefaultTextColor(
                     QColor(THEME["TODAY"]) if curr == today else QColor(THEME["SUBTEXT"])

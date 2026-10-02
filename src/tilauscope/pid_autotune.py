@@ -1815,6 +1815,12 @@ class PIDAutotune(QDialog):
 
     def closeEvent(self, a0: QCloseEvent | None) -> None:
         self.stop_monitoring()
+        # Qt destroys the readiness window with this one, without its own close
+        # event: release it here, or hand-over heat stays on with no controller.
+        readiness = self._readiness_dialog
+        if readiness is not None:
+            self._readiness_dialog = None
+            readiness._release()
         if self._calibration_runner is not None:
             self._calibration_runner.close()
             self._calibration_runner = None

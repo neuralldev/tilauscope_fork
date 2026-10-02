@@ -285,23 +285,35 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
             return TilauAudioData(0,False)
         return self.parse_full_message_audio(bytearray(payload))
 
+    def _send_audio(self, command: object, label: str) -> bool:
+        """Send one audio command; True only when the write was delivered.
+
+        ClientBLE.send() reports a failed write by returning False, never by
+        raising: a command that did not leave must not be announced as started.
+        """
+        if not self.isconnected():
+            _logd.info(f"{label} aborted not connected")
+            return False
+        try:
+            delivered = self.send(self.build_full_message_audio(command), True,
+                                  TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
+        except Exception as e:  # noqa: BLE001
+            _logd.error(f"{label} error: {e}")
+            return False
+        if not delivered:
+            _logd.error(f"{label}: write not delivered")
+        return bool(delivered)
+
     def startCalibration(self):
         """Phase 1 : calibration EMPTY (machine a vide, moteur tournant, avant charge).
 
         Remet aussi le compteur de cracks a zero cote sonde. Prerequis a la phase
         MAILLARD : le firmware refuse la phase 2 tant que EMPTY n'est pas valide.
         """
-        if not self.isconnected():
-            _logd.info("calibration aborted not connected")
+        if not self._send_audio(COMMAND_RUNCALIBRATION, "calibration"):
             return False
-        msg = self.build_full_message_audio(COMMAND_RUNCALIBRATION)
-        try:
-            self.send(msg, True, TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
-            _logd.info("CALIB_START phase=EMPTY ts=%s", __import__('datetime').datetime.now().isoformat(timespec='seconds'))
-            return True
-        except Exception as e:
-            _logd.error(f"error occurred {e}")
-            return False
+        _logd.info("CALIB_START phase=EMPTY ts=%s", __import__('datetime').datetime.now().isoformat(timespec='seconds'))
+        return True
 
     def startMaillardCalibration(self):
         """Phase 2 : calibration MAILLARD (grains dans le tambour, apres DE).
@@ -311,89 +323,45 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
         "MAILLARD ... EMPTY manquante"), et la detection ne demarre qu'avec les
         deux profils valides.
         """
-        if not self.isconnected():
-            _logd.info("maillard calibration aborted not connected")
+        if not self._send_audio(COMMAND_RUN_MAILLARD_CALIBRATION, "maillard calibration"):
             return False
-        msg = self.build_full_message_audio(COMMAND_RUN_MAILLARD_CALIBRATION)
-        try:
-            self.send(msg, True, TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
-            _logd.info("CALIB_START phase=MAILLARD ts=%s", __import__('datetime').datetime.now().isoformat(timespec='seconds'))
-            return True
-        except Exception as e:
-            _logd.error(f"error occurred {e}")
-            return False
+        _logd.info("CALIB_START phase=MAILLARD ts=%s", __import__('datetime').datetime.now().isoformat(timespec='seconds'))
+        return True
 
     def getCalibrationState(self):
         """Demande l'etat des deux phases (reponse sur le port serie de la sonde).
 
         Il n'y a pas de retour BLE : la sonde imprime EMPTY=.. MAILLARD=.. ready=..
         """
-        if not self.isconnected():
-            _logd.info("calibration state aborted not connected")
-            return False
-        msg = self.build_full_message_audio(COMMAND_CALIBRATIONSTATE)
-        try:
-            self.send(msg, True, TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
-            return True
-        except Exception as e:
-            _logd.error(f"error occurred {e}")
-            return False
+        return self._send_audio(COMMAND_CALIBRATIONSTATE, "calibration state")
 
     def startCountingCracks(self):
-        if not self.isconnected():
-            _logd.info("crack count start aborted not connected")
+        if not self._send_audio(COMMAND_START_SAMPLING, "crack count start"):
             return False
-        msg = self.build_full_message_audio(COMMAND_START_SAMPLING)
-        try:
-            self.send(msg, True, TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
-            self.crackcounterstarted = True
-            _logd.info("DETECT_START ts=%s", __import__('datetime').datetime.now().isoformat(timespec='seconds'))
-            return True
-        except Exception as e:
-            _logd.error(f"error occurred {e}")
-            return False
+        self.crackcounterstarted = True
+        _logd.info("DETECT_START ts=%s", __import__('datetime').datetime.now().isoformat(timespec='seconds'))
+        return True
 
     def stopCountingCracks(self):
-        if not self.isconnected():
-            _logd.info("crack count stop aborted not connected")
+        if not self._send_audio(COMMAND_STOP_SAMPLING, "crack count stop"):
             return False
-        msg = self.build_full_message_audio(COMMAND_STOP_SAMPLING)
-        try:
-            self.send(msg, True, TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
-            self.crackcounterstarted = False
-            _logd.info("DETECT_STOP ts=%s", __import__('datetime').datetime.now().isoformat(timespec='seconds'))
-            return True
-        except Exception as e:
-            _logd.error(f"error occurred {e}")
-            return False
+        self.crackcounterstarted = False
+        _logd.info("DETECT_STOP ts=%s", __import__('datetime').datetime.now().isoformat(timespec='seconds'))
+        return True
 
     def startDebug(self) -> bool:
         """Active la verbosité série étendue sur la sonde (COMMAND_DEBUG_ON)."""
-        if not self.isconnected():
-            _logd.info("startDebug aborted not connected")
+        if not self._send_audio(COMMAND_DEBUG_ON, "startDebug"):
             return False
-        msg = self.build_full_message_audio(COMMAND_DEBUG_ON)
-        try:
-            self.send(msg, True, TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
-            _logd.info("probe serial debug enabled")
-            return True
-        except Exception as e:
-            _logd.error(f"startDebug error: {e}")
-            return False
+        _logd.info("probe serial debug enabled")
+        return True
 
     def stopDebug(self) -> bool:
         """Désactive la verbosité série étendue sur la sonde (COMMAND_DEBUG_OFF)."""
-        if not self.isconnected():
-            _logd.info("stopDebug aborted not connected")
+        if not self._send_audio(COMMAND_DEBUG_OFF, "stopDebug"):
             return False
-        msg = self.build_full_message_audio(COMMAND_DEBUG_OFF)
-        try:
-            self.send(msg, True, TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
-            _logd.info("probe serial debug disabled")
-            return True
-        except Exception as e:
-            _logd.error(f"stopDebug error: {e}")
-            return False
+        _logd.info("probe serial debug disabled")
+        return True
 
 class TilauAmbient(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument to class must be a base class
     connected_signal = pyqtSignal()

@@ -168,9 +168,9 @@ class AlogStructure:
                 "FCs_time": 588.0, # if datalist records have an "event" value =4, the take record "duration"
                 "FCs_ET": 150.7, # if datalist records have an "event" value =4, the take record "et"
                 "FCs_BT": 187.0, # if datalist records have an "event" value =4, the take record "bt"
-                "DROP_time": 668.0, # if datalist records have an "event" value =6, the take record "duration"
-                "DROP_ET": 155.6, # if datalist records have an "event" value =6, the take record "et"
-                "DROP_BT": 197.1, # if datalist records have an "event" value =6, the take record "bt"
+                "DROP_time": 668.0, # if datalist records have an "event" value =8, the take record "duration"
+                "DROP_ET": 155.6, # if datalist records have an "event" value =8, the take record "et"
+                "DROP_BT": 197.1, # if datalist records have an "event" value =8, the take record "bt"
                 "totaltime": 668.0, # import from roastContext["duration"]
                 "dryphasetime": 368.0, # import from phaselist[0]["duration"] 
                 "midphasetime": 220.0, # import from phaselist[1]["duration"] 
@@ -423,7 +423,7 @@ def extractProfileHibeanJson(file:str, etypesdefault, altetypesdefault, artisanf
         alog_data["roasttime"] = roast_time
         alog_data["roastepoch"] = roast_epoch
         alog_data["roastUUID"] = hibean_data.get("id","")
-        alog_data["beans"] = roast_context.get("greenBeanWeight", {}).get("value", 0.0) if roast_context.get("greenBeanWeight") is not None else 0.0
+        alog_data["beans"] = (roast_context.get("bean") or {}).get("name") or ""
         alog_data["weight"][0] = roast_context.get("greenBeanWeight", {}).get("value", 0.0) if roast_context.get("greenBeanWeight") is not None else 0.0
         alog_data["weight"][1] = roast_context.get("roastedBeanWeight", {}).get("value", 0.0) if roast_context.get("roastedBeanWeight") is not None else 0.0
         alog_data["ambientTemp"] = roast_context.get("envTemp", {}).get("value", 0.0) if roast_context.get("envTemp") is not None else 0.0
@@ -436,6 +436,9 @@ def extractProfileHibeanJson(file:str, etypesdefault, altetypesdefault, artisanf
         for idx, record in enumerate(data_list):   
             ev = record.get("event")
             if ev is not None :
+                if not 0 <= ev < len(hibean_time_indices):
+                    _log.info("HiBean import: unknown event %s at record %d skipped", ev, idx)
+                    continue
                 hibean_time_indices[ev] = idx
         time_indices[0] = hibean_time_indices[1] #CHARGE
         time_indices[1] = hibean_time_indices[3] #DE
@@ -526,7 +529,7 @@ def extractProfileHibeanJson(file:str, etypesdefault, altetypesdefault, artisanf
 
         # Trouver les temps de charge et de drop
         charge_time = next((event['time'] for event in event_list if event['event'] == 1), 0.0)
-        drop_time = next((event['time'] for event in event_list if event['event'] == 6), 
+        drop_time = next((event['time'] for event in event_list if event['event'] == 8), 
                 max(event['duration'] for event in data_list) if data_list else 0.0)
         # Calculer xmin
         xmin = max(0, charge_time - 10)
@@ -596,7 +599,7 @@ def extractProfileHibeanJson(file:str, etypesdefault, altetypesdefault, artisanf
         'tp': _get_time_for_event(event_list, 2),
         'dry': _get_time_for_event(event_list, 3),
         'fcs': _get_time_for_event(event_list, 4),
-        'drop': _get_time_for_event(event_list, 6)
+        'drop': _get_time_for_event(event_list, 8)   # HiBean DROP is event 8
         }
 
         durations = [d.get("duration", 0.0) for d in data_list]

@@ -190,6 +190,12 @@ class CrackBar(QFrame):
         window = float(getattr(self._aw, 'TilauScopeFCWindow', 35.0)) or 35.0
         threshold = int(getattr(self._aw, 'TilauScopeFCTreshold', 4)) or 4
         t_now = self._roast_seconds(qmc)
+        # The clock went back (CHARGE re-zeroes it, a new recording restarts
+        # it): what was timed on the old clock is not this roast's crack.
+        if self._pops and t_now < self._pops[-1]:
+            self._pops.clear()
+        if self._lull_since is not None and t_now < self._lull_since:
+            self._lull_since = None
 
         # A counter that went backwards is a probe that restarted; re-baseline
         # rather than bank a negative delta as pops. Where each pop LANDED is

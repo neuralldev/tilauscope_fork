@@ -586,7 +586,7 @@ class RoastCurveWidget(QWidget):
             else _LANE_MODE_LANES)
         self._lane_rows: list[tuple[int, QRectF, str]] = []
         #: Pop times, rebuilt only when the recorded counter grows.
-        self._crack_key: tuple[int, ...] | None = None
+        self._crack_key: tuple[Any, ...] | None = None
         self._crack_cache: list[float] = []
         self._frame: QPixmap | None = None
         self._frame_key: tuple[Any, ...] | None = None
@@ -2135,7 +2135,9 @@ class RoastCurveWidget(QWidget):
             return []
         if not series:
             return []
-        key = (idx, ch, len(series), len(timex))
+        # The frame origin (CHARGE) and the series itself: lengths alone survive
+        # a moved CHARGE and another roast of the same length.
+        key = (idx, ch, id(series), len(series), len(timex), timex[0] if timex else None)
         if key == self._crack_key:
             return self._crack_cache
         times = crack_pop_times(series, timex)
@@ -3250,17 +3252,20 @@ class RoastCurveWidget(QWidget):
         # option: it decides what the rate IS, on this roast and on every one
         # reopened afterwards. Three levels rather than the four numbers
         # Artisan exposes — see `smoothing` for what bounds them.
-        smoothing = menu.addMenu(QApplication.translate('tilauscope', 'Rate of rise'))
-        smoothing.setStyleSheet(menu_qss())
-        qmc = getattr(self._aw, 'qmc', None)
-        chosen = smooth.current(qmc) if qmc is not None else ''
-        for level in smooth.LEVELS:
-            act_level = QAction(smooth.label(level), smoothing)
-            act_level.setCheckable(True)
-            act_level.setChecked(level.key == chosen)
-            act_level.triggered.connect(
-                lambda _c, key=level.key: self._set_smoothing(key))
-            smoothing.addAction(act_level)
+        # A saved roast draws the rate its file holds: the level would only
+        # change the live session's, out of sight.
+        if not self._comparison:
+            smoothing = menu.addMenu(QApplication.translate('tilauscope', 'Rate of rise'))
+            smoothing.setStyleSheet(menu_qss())
+            qmc = getattr(self._aw, 'qmc', None)
+            chosen = smooth.current(qmc) if qmc is not None else ''
+            for level in smooth.LEVELS:
+                act_level = QAction(smooth.label(level), smoothing)
+                act_level.setCheckable(True)
+                act_level.setChecked(level.key == chosen)
+                act_level.triggered.connect(
+                    lambda _c, key=level.key: self._set_smoothing(key))
+                smoothing.addAction(act_level)
 
         self._add_background_menu_action(menu)
 

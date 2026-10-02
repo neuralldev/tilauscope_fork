@@ -31,7 +31,7 @@ from PyQt6.QtWidgets import (QApplication, QMessageBox) # @UnusedImport @Reimpor
 
 from tilauscope.tilauscope_types import (show_styled_message, RoastingPhase,
                                          normalize_timeindex)
-from tilauscope.cave.common import (_log, _atomic_write_text)
+from tilauscope.cave.common import (_log, _atomic_write_text, recompute_milestone_fields)
 
 
 class ViewerPlotMixin:
@@ -84,7 +84,8 @@ class ViewerPlotMixin:
         self._apply_engine_view()
         self.canvas_stack.setCurrentWidget(self.roast_curve)
         self.roast_plot_label.setText("")
-        self.display_roast_info(shown)  # type: ignore[arg-type]
+        # The profile itself when nothing is staged: evaldeltas knows its series.
+        self.display_roast_info(shown if saved is not None else data)  # type: ignore[arg-type]
         analysis_view = getattr(self, 'roast_analysis_view', None)
         if analysis_view is not None and self.selected_roast_fnames() == [self._displayed_fname]:
             analysis_view.set_profile(shown, deltabt, self.aw.qmc.mode,
@@ -185,6 +186,8 @@ class ViewerPlotMixin:
             # (cf. artisanlib.util.serialize). Read back with ast.literal_eval.
             data_to_write = dict(source)
             data_to_write['timeindex'] = self._pending_timeindex
+            # the figures read from the milestones follow them
+            data_to_write['computed'] = recompute_milestone_fields(source, self._pending_timeindex)
             # Through the temporary file, never over the profile itself: this
             # rewrites a whole roast to change one number, and a write cut
             # short — a full disk, an unplugged drive, a crash — would leave a
@@ -198,6 +201,7 @@ class ViewerPlotMixin:
             # without it a second correction rebuilt its pending list from the
             # pre-save values and silently reverted the first one.
             source['timeindex'] = list(self._pending_timeindex)
+            source['computed'] = data_to_write['computed']
             self._pending_timeindex = None
             _log.info(f"Saved updated timeindex to {filepath.name}")
         except Exception as e:

@@ -151,13 +151,13 @@ the roast to one recommendation plus a phase verdict.
 **Expert** returns the interface to its full form: the control panel comes back, and the
 assistant steps aside entirely.
 
-!!! warning "Alarms are suspended in Guided"
-    In Guided, the alarm actions you configured in Artisan **do not fire**. This is
-    deliberate — it stops two sources of instructions from contradicting each other while
-    you roast — but it means an alarm you rely on will stay silent. The status line tells
-    you which regime is active as soon as one alarm is enabled: **🔕 ALARMS SUSPENDED** in
-    Guided, **ALARMS ACTIVE** in Expert.
-    Switch to Expert if you want your own alarms back.
+!!! warning "Alarms are suspended in Guided, and while the assistant guides"
+    In Guided — and in Expert while the roast assistant is running — the alarm actions you
+    configured in Artisan **do not fire**. This is deliberate — it stops two sources of
+    instructions from contradicting each other while you roast — but it means an alarm you
+    rely on will stay silent. The status line tells you which regime is active as soon as one
+    alarm is enabled: **🔕 ALARMS SUSPENDED** or **ALARMS ACTIVE**.
+    Switch to Expert and leave the assistant off if you want your own alarms back.
 
 Once a roast is recording, the switch only works one way: you can leave Guided for Expert, but
 Expert stays Expert until the roast ends — the pill is greyed out. A roast started without
@@ -232,6 +232,9 @@ progress.
 Before it is offered, the downloaded installer is checked against the checksum published with
 the release. A file that does not match is deleted and the download is reported as failed —
 try again later rather than installing it.
+An installer published without a checksum is not offered: download it from the releases page
+instead. The download is written under a temporary `.part` name and takes its real name only once
+verified, so an interrupted download never leaves a truncated installer in your Downloads folder.
 
 If the installer cannot be launched automatically, TilauScope reports it and gives the path
 to the installer, rather than failing silently.

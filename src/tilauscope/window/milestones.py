@@ -352,6 +352,7 @@ class MilestonesMixin:
                 # _clear_cooling_face() disarms and puts the phase blocks back:
                 # the DROPPING / COOLING message was painted over them.
                 self._clear_cooling_face()   # DROP undone
+                self.msg_lbl.hide()          # "DROPPING…" sat raised over them
                 self.set_phase("DEV", self.phase_starts.get("DEV") or 0)
                 self.mark_button_active(6, state=True)
                 self.roast_bridge.notify_phase("DEV")

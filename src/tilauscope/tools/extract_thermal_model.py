@@ -197,6 +197,9 @@ def extract_trace(path: Path) -> tuple[str, str, ThermalTrace] | None:
     ambient_raw = data.get("ambientTemp", 20.0)
     try:
         ambient = float(ambient_raw)
+        # Artisan's 0 means not measured, a failed probe writes -1: no ambient to fit.
+        if ambient in (0.0, -1.0):
+            return None
         if mode == "F":
             ambient = _fahrenheit_to_celsius(ambient)
     except (TypeError, ValueError):

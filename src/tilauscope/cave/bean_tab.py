@@ -1272,10 +1272,12 @@ class BeanTabMixin:
             if value == '':
                 return
             index = combo.findText(value)
-            if index >= 0:  # 0 is the first entry, not "not found"
+            if index < 0:  # 0 is the first entry, not "not found"
+                # "Other" when the list has one; otherwise no guess — the last
+                # entry is a real value (Liberica, a blend component…).
+                index = combo.findText(QApplication.translate("tilauscope_beancave", "Other"))
+            if index >= 0:
                 combo.setCurrentIndex(index)
-            else: # fallback to last value if not found "(usually 'Other')"
-                combo.setCurrentIndex(combo.count() - 1)
         self.name_input.setText(bean.name)
         self.farm_input.setText(bean.farm)
         self.supplier_input.setText(bean.supplier)

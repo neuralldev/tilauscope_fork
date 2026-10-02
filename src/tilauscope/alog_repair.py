@@ -29,6 +29,7 @@ from __future__ import annotations
 
 from tilauscope.theme_qss import apply_tilau_theme, tint
 
+import os
 import re
 import ast
 import time
@@ -48,6 +49,7 @@ from PyQt6.QtWidgets import (
 
 from tilauscope.tilauscope_types import (
     THEME, AGTRON_SCALES, GreenBean, no_enter_default, show_styled_message, TilauProgress,
+    RoastingPhase, marked, normalize_timeindex,
 )
 from tilauscope.roasters import RoasterManager, canonical_roaster_name
 
@@ -60,6 +62,7 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 _UUID_RE: Final = re.compile(r'uuid:\s*([a-fA-F0-9-]{36})')
 # Artisan removeDisallowedFilenameChars: strips [<>:"/\|?*]
 _INVALID_FN: Final = re.compile(r'[<>:"/\\|?*]')
+_NAME_STAMP: Final = re.compile(r'(\d{2}-\d{2}-\d{2}_\d{4})\.alog$')
 
 
 # Default ALog roast-data unit is grams; quantities are stored in weight[2].
@@ -172,13 +175,20 @@ def build_beans_field(bean: GreenBean) -> str:
     return "\n".join(parts)
 
 
-def build_alog_filename(data: dict) -> str:
+def build_alog_filename(data: dict, current_name: str = '') -> str:
     """Reconstruct the Artisan auto-filename: <title>_<yy-MM-dd_hhmm>.alog,
     cleaned of disallowed characters. The roast timestamp is taken from the
-    locale-independent roastisodate + roasttime (falls back to roastepoch)."""
+    locale-independent roastisodate + roasttime (falls back to roastepoch).
+    Without a readable date, the timestamp of ``current_name`` is kept — or the
+    whole name when it has none."""
     title = (data.get('title') or '').strip()
     suffix = _roast_suffix(data)
-    base = f"{title}_{suffix}" if title else suffix
+    if not suffix:
+        stamp = _NAME_STAMP.search(current_name)
+        if stamp is None and current_name:
+            return current_name
+        suffix = stamp.group(1) if stamp else ''
+    base = f"{title}_{suffix}" if title and suffix else (title or suffix)
     base = _INVALID_FN.sub('', base).strip()
     return base + '.alog'
 
@@ -206,6 +216,27 @@ def write_alog(data: dict, path: Path) -> None:
     except Exception as exc:  # noqa: BLE001 — a repair must never fail on its cache
         _log.debug("alog index refresh skipped after repair: %s", exc)
 
+
+
+def _record_alog(data: dict, current: Path, new: Path) -> tuple[Path, OSError | None]:
+    """Write the repair over ``current``, then rename it to ``new`` in one move.
+
+    Returns the path that now holds the roast, and the rename error if the file
+    had to keep its previous name. A write failure is raised.
+    """
+    write_alog(data, current)
+    if new.resolve() == current.resolve():
+        return current, None
+    try:
+        os.replace(current, new)
+    except OSError as exc:
+        return current, exc
+    try:
+        from tilauscope.alogmanager import note_profile_saved  # noqa: PLC0415
+        note_profile_saved(new)
+    except Exception as exc:  # noqa: BLE001 — a repair must never fail on its cache
+        _log.debug("alog index refresh skipped after rename: %s", exc)
+    return new, None
 
 ## ── Learning state of a roast: admitted / not reviewed / excluded ──────────
 ## The admit key is a positive marker, written only when the roast is vouched for.
@@ -248,73 +279,62 @@ def apply_learning_state(data: dict, state: str) -> dict:
     return out
 
 
-# ── fast metadata read (list audit only) ─────────────────────────────────────
-# A .alog is a repr(dict) dominated by curve data; auditing needs only a dozen
-# scalar fields, so the targeted read below is ~100x cheaper than a full parse
-# (~35ms/file). Full parse still happens when a file is SELECTED.
+# ── structural audit (list audit) ────────────────────────────────────────────
+# The roast plan parses every log of a bean in full, and one file it cannot use
+# makes the whole plan fail. The list therefore parses each file the same way
+# (~30 ms/file, once per session thanks to _scan_cache) and flags those defects.
 
-_META_KEYS: Final[tuple[str, ...]] = (
-    'title', 'beans', 'weight', 'density', 'moisture_greens', 'greens_temp',
-    'whole_color', 'ambientTemp', 'ambient_humidity',
-    LEARNING_EXCLUDE_KEY, LEARNING_ADMIT_KEY,
-)
+DEFECT_UNREADABLE: Final[str] = 'unreadable'
+DEFECT_TIMEINDEX:  Final[str] = 'timeindex_range'
+DEFECT_TOO_SHORT:  Final[str] = 'too_short'
 
-
-def _literal_end(text: str, start: int) -> int:
-    """Index just past the Python literal beginning at `start`.
-
-    Walks quotes (with escapes) and bracket depth, and stops on the comma that
-    closes the value at depth 0 — the same rule repr() wrote it with."""
-    i, depth, quote = start, 0, ''
-    while i < len(text):
-        c = text[i]
-        if quote:
-            if c == '\\':
-                i += 2
-                continue
-            if c == quote:
-                quote = ''
-        elif c in "'\"":
-            quote = c
-        elif c in '([{':
-            depth += 1
-        elif c in ')]}':
-            if depth == 0:
-                return i
-            depth -= 1
-        elif c == ',' and depth == 0:
-            return i
-        i += 1
-    return len(text)
+# The plan computes no RoR from 10 samples or fewer between CHARGE and DROP.
+_MIN_ROAST_SAMPLES: Final[int] = 10
 
 
-def read_alog_meta(path: Path) -> dict | None:
-    """Read just the fields the list audit needs, without parsing the curves.
-
-    Returns a dict usable by audit_alog/learning_state, or None if the file
-    cannot be read — the caller then falls back to a full parse."""
+def parse_alog(path: Path) -> dict | None:
+    """Full parse of a .alog, exactly as the roast plan reads it; None if unreadable."""
     try:
-        text = path.read_text(encoding='utf-8')
-    except (OSError, UnicodeDecodeError):
+        data = ast.literal_eval(path.read_text(encoding='utf-8'))
+    except (OSError, UnicodeDecodeError, ValueError, SyntaxError, MemoryError, RecursionError):
         return None
-    meta: dict = {}
-    for key in _META_KEYS:
-        needle = f"'{key}': "
-        pos = text.find(needle)
-        # Only accept the key where a dict entry can actually start, so the same
-        # text appearing inside a value (a bean note, a comment) is not read as
-        # a field. Artisan writes the profile as one flat dict.
-        while pos > 0 and not (text[pos - 1] == '{'
-                               or text[pos - 2:pos] == ', '):
-            pos = text.find(needle, pos + 1)
-        if pos < 0:
-            continue
-        start = pos + len(needle)
-        try:
-            meta[key] = ast.literal_eval(text[start:_literal_end(text, start)])
-        except (ValueError, SyntaxError, MemoryError, RecursionError):
-            return None
-    return meta
+    return data if isinstance(data, dict) else None
+
+
+def audit_structure(data: dict) -> list[str]:
+    """Return the structural defects of a parsed .alog that the roast plan cannot read."""
+    defects: list[str] = []
+    tx = data.get('timex') or []
+    ti = normalize_timeindex(data.get('timeindex', []))
+    if any(marked(ti, i) and ti[i] >= len(tx) for i in range(len(ti))):
+        defects.append(DEFECT_TIMEINDEX)
+    charge, drop = ti[RoastingPhase.CHARGE], ti[RoastingPhase.DROP]
+    if (marked(ti, RoastingPhase.CHARGE) and marked(ti, RoastingPhase.DROP)
+            and 0 < drop - charge <= _MIN_ROAST_SAMPLES):
+        defects.append(DEFECT_TOO_SHORT)
+    return defects
+
+
+def defect_text(defects: list[str]) -> str:
+    """Operator-facing banner for the given structural defects ('' when none)."""
+    if not defects:
+        return ''
+    if DEFECT_UNREADABLE in defects:
+        return QApplication.translate(
+            "tilauscope_repair",
+            "\u26d4 This file is damaged and cannot be read. The roast plan for its "
+            "bean cannot be built while it is in the ALog folder \u2014 move it out.")
+    labels = {
+        DEFECT_TIMEINDEX: QApplication.translate(
+            "tilauscope_repair", "a milestone points past the recorded samples"),
+        DEFECT_TOO_SHORT: QApplication.translate(
+            "tilauscope_repair", "fewer than 11 samples between CHARGE and DROP"),
+    }
+    return QApplication.translate(
+        "tilauscope_repair",
+        "\u26d4 Damaged: {0}. The roast plan for this bean cannot be built while "
+        "this file is in the ALog folder \u2014 move it out.").format(
+            '; '.join(labels[d] for d in defects))
 
 
 def match_bean(data: dict, beans: list[GreenBean]) -> GreenBean | None:
@@ -374,7 +394,7 @@ def _roast_suffix(data: dict) -> str:
             return datetime.fromtimestamp(int(ep)).strftime('%y-%m-%d_%H%M')
         except (TypeError, ValueError, OSError):
             pass
-    return datetime.now().strftime('%y-%m-%d_%H%M')
+    return ''
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -491,6 +511,12 @@ def stamp_device_map(data: dict, tilau_devices: dict) -> bool:
 # Main dialog
 # ─────────────────────────────────────────────────────────────────────────────
 
+# List-row audit cache: path -> (mtime, size, missing, learning state, defects).
+# Module-level so the full parse of each file is paid once per session, not at
+# every opening of the window. Keyed on mtime+size, so an edited file refreshes.
+_scan_cache: dict[str, tuple[float, int, list[str], str, list[str]]] = {}
+
+
 class AlogRepairDialog(QDialog):
     """Master/detail window to complete incomplete .alog files."""
 
@@ -514,15 +540,11 @@ class AlogRepairDialog(QDialog):
         self._dirty = False            # unsaved edits on the current file
         self._suppress_select = False  # guards programmatic selection changes
         self._drag_pos: QPoint | None = None
-        # List-row metadata cache: path -> (mtime, size, missing, learning state).
-        # BeanCave's own alog cache is capped at 5 entries, so without this every
-        # Record re-read and literal_eval'd the WHOLE directory just to redraw the
-        # list. Keyed on mtime+size, so an externally edited file still refreshes.
-        self._meta_cache: dict[str, tuple[float, int, list[str], str]] = {}
         # Incremental directory scan state — see _reload_file_list / _scan_step.
         self._scan_files: list[Path] = []
         self._scan_idx = 0
         self._scan_incomplete = 0
+        self._scan_damaged = 0
         self._scan_shown = 0
         self._scan_seen: set[str] = set()
         self._scan_dir: Path | None = None
@@ -706,6 +728,15 @@ class AlogRepairDialog(QDialog):
         # right: editor
         right = QWidget()
         form = QVBoxLayout(right)
+        # structural damage banner — the plan cannot read this file
+        self._damage_lbl = QLabel("")
+        self._damage_lbl.setWordWrap(True)
+        self._damage_lbl.setStyleSheet(
+            f"color:{THEME['CRITICAL']}; font-size:12px; font-weight:bold;"
+            f" border:1.5px solid {THEME['CRITICAL']}; border-radius:8px; padding:8px 10px;"
+            f" background-color:{tint('CRITICAL', 0.08)};")
+        self._damage_lbl.setVisible(False)
+        form.addWidget(self._damage_lbl)
         form.setSpacing(7)
 
         # ── Learning state of the selected roast ─────────────────────────────
@@ -965,6 +996,7 @@ class AlogRepairDialog(QDialog):
         self._scan_files = sorted(directory.glob("*.alog"), key=lambda p: p.name.lower())
         self._scan_idx = 0
         self._scan_incomplete = 0
+        self._scan_damaged = 0
         self._scan_shown = 0
         self._scan_seen = set()
         self._scan_active = True
@@ -972,10 +1004,10 @@ class AlogRepairDialog(QDialog):
         self._scan_btn.setText(QApplication.translate("tilauscope_repair", "Cancel"))
         self._scan_btn.setToolTip(QApplication.translate(
             "tilauscope_repair", "Stop reading the roast files. Those already read stay listed."))
-        # The progress row is a safety net, not the normal experience: a folder
-        # is read in a few tens of milliseconds, and a bar that flashes for that
-        # long is worse than no bar. It only appears if the reading is still
-        # going after a moment — a huge folder, or a slow network volume.
+        # The progress row only appears if the reading is still going after a
+        # moment — the first opening of a session (every file is parsed), a
+        # huge folder, or a slow network volume. A bar that flashes is worse
+        # than no bar.
         self._scan_row.setVisible(False)
         QTimer.singleShot(400, self._show_progress_if_still_scanning)
         self._scan_step()
@@ -1016,27 +1048,32 @@ class AlogRepairDialog(QDialog):
             stamp = (st.st_mtime, st.st_size)
         except OSError:
             return
-        cached = self._meta_cache.get(key)
+        cached = _scan_cache.get(key)
         if cached is not None and (cached[0], cached[1]) == stamp:
-            missing, _state = list(cached[2]), cached[3]
+            missing, _state, defects = list(cached[2]), cached[3], list(cached[4])
         else:
-            # Targeted read: the audit needs a dozen fields, not the curves.
-            # Falls back to the full parse if the file will not give them up.
-            data = read_alog_meta(fp) or self._bc.get_alog_data(fp)
+            data = parse_alog(fp)
             if data is None:
-                return
-            missing = audit_alog(data)
-            _state = learning_state(data)
-            self._meta_cache[key] = (stamp[0], stamp[1], list(missing), _state)
-        is_incomplete = bool(missing)
+                missing, _state, defects = [], LEARNING_UNREVIEWED, [DEFECT_UNREADABLE]
+            else:
+                missing, _state = audit_alog(data), learning_state(data)
+                defects = audit_structure(data)
+            _scan_cache[key] = (stamp[0], stamp[1], list(missing), _state, list(defects))
+        is_incomplete = bool(missing or defects)
         if is_incomplete:
             self._scan_incomplete += 1
+        if defects:
+            self._scan_damaged += 1
         if self._incomplete_only.isChecked() and not is_incomplete:
             return
         item = QListWidgetItem(fp.name)
         item.setData(self._ROLE_PATH, str(fp))
         item.setData(self._ROLE_INCOMPLETE, is_incomplete)
-        if 'beans_uuid' in missing:
+        if defects:
+            item.setForeground(QColor(THEME['CRITICAL']))
+            item.setText(f"\u26d4  {fp.name}  " + QApplication.translate(
+                "tilauscope_repair", "damaged"))
+        elif 'beans_uuid' in missing:
             item.setForeground(QColor(THEME['CRITICAL']))
             item.setText(f"\u2716  {fp.name}")
         elif missing:
@@ -1072,13 +1109,15 @@ class AlogRepairDialog(QDialog):
             # folder it just walked: pruning after a partial pass, or across
             # folders, would drop metadata that is still valid.
             scanned = self._scan_dir
-            for stale in [k for k in self._meta_cache
+            for stale in [k for k in _scan_cache
                           if k not in self._scan_seen
                           and scanned is not None and Path(k).parent == scanned]:
-                del self._meta_cache[stale]
+                del _scan_cache[stale]
             self._summary_lbl.setText(QApplication.translate(
-                "tilauscope_repair", "{0} files \u00b7 {1} incomplete \u00b7 {2} shown").format(
-                    len(self._scan_files), self._scan_incomplete, self._scan_shown))
+                "tilauscope_repair",
+                "{0} files \u00b7 {1} incomplete \u00b7 {2} damaged \u00b7 {3} shown").format(
+                    len(self._scan_files), self._scan_incomplete, self._scan_damaged,
+                    self._scan_shown))
         if self._pending_select is not None:
             target, prev_row = self._pending_select, self._pending_prev_row
             self._pending_select = None
@@ -1186,6 +1225,7 @@ class AlogRepairDialog(QDialog):
         item = self._list.currentItem()
         if item is None:
             self._set_editor_enabled(False)
+            self._show_damage([])
             return
         path = Path(item.data(self._ROLE_PATH))
 
@@ -1201,7 +1241,9 @@ class AlogRepairDialog(QDialog):
         data = self._bc.get_alog_data(path)
         if data is None:
             self._set_editor_enabled(False)
+            self._show_damage([DEFECT_UNREADABLE])
             return
+        self._show_damage(audit_structure(data))
         self._current_path = path
         self._current_data = dict(data)  # copy; not committed until Record
         self._populate_editor(self._current_data)
@@ -1437,7 +1479,7 @@ class AlogRepairDialog(QDialog):
         data['roastertype'] = roaster_name
         data['machinesetup'] = roaster_name
 
-        new_name = build_alog_filename(data)
+        new_name = build_alog_filename(data, self._current_path.name)
         new_path = self._current_path.with_name(new_name)
 
         # collision guard: never silently clobber a different existing file
@@ -1449,9 +1491,7 @@ class AlogRepairDialog(QDialog):
                 return
 
         try:
-            write_alog(data, new_path)
-            if new_path.resolve() != self._current_path.resolve() and self._current_path.exists():
-                self._current_path.unlink()
+            new_path, rename_error = _record_alog(data, self._current_path, new_path)
         except Exception as exc:  # noqa: BLE001
             _log.error("ALog repair write failed: %s", exc)
             show_styled_message(
@@ -1462,6 +1502,16 @@ class AlogRepairDialog(QDialog):
                 QMessageBox.Icon.Warning, rich=True)
             return
 
+        if rename_error is not None:
+            _log.warning("ALog repair rename failed: %s", rename_error)
+            show_styled_message(
+                self,
+                QApplication.translate("tilauscope_repair", "Rename Error"),
+                QApplication.translate("tilauscope_repair",
+                    "The repair was recorded, but the file could not be renamed to "
+                    "<b>{0}</b>:<br>{1}<br>It keeps its previous name.").format(
+                        new_name, rename_error),
+                QMessageBox.Icon.Warning, rich=True)
         _log.info("ALog repaired: %s -> %s", self._current_path.name, new_path.name)
         self._dirty = False
         self.repaired.emit(str(new_path))
@@ -1617,6 +1667,11 @@ class AlogRepairDialog(QDialog):
             self._check_lbl.setText("")
             self._check_lbl.setVisible(False)
 
+    def _show_damage(self, defects: list[str]) -> None:
+        text = defect_text(defects)
+        self._damage_lbl.setText(text)
+        self._damage_lbl.setVisible(bool(text))
+
     # ── helpers ────────────────────────────────────────────────────────────
     def _green_beans(self) -> list[GreenBean]:
         cave = getattr(self._bc, 'cave', None)
@@ -1638,7 +1693,8 @@ class AlogRepairDialog(QDialog):
             return
         preview = dict(self._current_data)
         preview['title'] = self._title_edit.text().strip()
-        self._fname_lbl.setText(build_alog_filename(preview))
+        current = self._current_path.name if self._current_path is not None else ''
+        self._fname_lbl.setText(build_alog_filename(preview, current))
 
     def _confirm(self, title: str, text: str) -> bool:
         return show_styled_message(

@@ -28,6 +28,19 @@ if TYPE_CHECKING:
     from tilauscope.mqttbridge import MQTTConfig  # noqa: F401
 
 _log:  Final[logging.Logger] = logging.getLogger(__name__)
+
+
+# A real BLE identifier — macOS: Core Bluetooth UUID; Windows: MAC address.
+_BLE_ID_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
+    r'|([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2})$')
+
+
+def _niimbot_id(text: str) -> str | None:
+    """The printer address held by the Niimbot combo text, or None."""
+    m = re.search(r'\(([^)]+)\)', text)
+    candidate = m.group(1) if m else text
+    return candidate if _BLE_ID_PATTERN.match(candidate) else None
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
 from PyQt6.QtCore    import Qt, pyqtSlot, QSettings, QStandardPaths
@@ -2676,10 +2689,7 @@ class TilauscopeConfigDlg(QDialog):
 
         # Only accept a real BLE identifier from the combos: an empty scan leaves
         # "No X found" as the combo text, which must not overwrite the stored UUID.
-        # macOS: Core Bluetooth UUID — Windows: MAC address
-        _ble_uuid_pat = re.compile(
-            r'^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
-            r'|([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2})$')
+        _ble_uuid_pat = _BLE_ID_PATTERN
 
         def _combo_ble_id(text: str) -> str | None:
             m = re.search(r'\(([^)]+)\)', text) if text else None
@@ -2752,12 +2762,7 @@ class TilauscopeConfigDlg(QDialog):
         # ── Sensors — Niimbot ─────────────────────────────────────────────
         t = self.niimbotComboBox.currentText()
         if t and t != _no_dev:
-            m = re.search(r'\(([^)]+)\)', t)
-            uuid_candidate = m.group(1) if m else t
-            _uuid_pat = re.compile(
-                r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
-            )
-            aw.bleNiimbotDeviceName = uuid_candidate if _uuid_pat.match(uuid_candidate) else None
+            aw.bleNiimbotDeviceName = _niimbot_id(t)
         else:
             aw.bleNiimbotDeviceName = None
 

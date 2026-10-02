@@ -362,7 +362,7 @@ class ChromeMixin:
             if self._milestone_key_allowed(5, 4):
                 self.aw.qmc.markSCeSignal.emit(False)
                 return
-        elif key==Qt.Key.Key_F7 and no_modifier and self.current_event in [5,6]: # drop can be marked any time after CHARGE is marked, but not after cool end is marked (except if it's a mispress before charge)
+        elif key==Qt.Key.Key_F7 and no_modifier and self.current_event in [0,1,2,3,4,5,6]: # drop can be marked any time after CHARGE is marked, but not after cool end is marked (except if it's a mispress before charge)
             if self._milestone_key_allowed(6, 0):   # CHARGE, not the crack before it
                 self.handle_drop()
                 return

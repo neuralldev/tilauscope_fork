@@ -577,8 +577,10 @@ class LiveMixin:
             self.last_update_second = total_secs
 
             # SV sync — checked once per second max (SV changes rarely)
-            sv = int(self.aw.pidcontrol.sv if self.aw.pidcontrol.sv is not None else 0)
-            if sv != int(self.aw.sliderSV.value()):
+            # A slider-driven roaster leaves Artisan's setpoint None: nothing to mirror.
+            _pid_sv = self.aw.pidcontrol.sv
+            sv = int(_pid_sv) if _pid_sv is not None else None
+            if sv is not None and sv != int(self.aw.sliderSV.value()):
                 # reflect the PID setpoint on Artisan's SV slider without
                 # re-triggering Artisan's own slider action (programmatic mirror).
                 self.aw.sliderSV.blockSignals(True)
@@ -659,6 +661,13 @@ class LiveMixin:
                 self.curve.tick()
             self._handle_milestone_events(data, buttonState)
 
+    def alarm_actions_suppressed(self) -> bool:
+        """Alarm actions are held back at Guided and while the assistant guides."""
+        if getattr(self, "_operator_level", "guided") == "guided":
+            return True
+        assistant = getattr(self, "roast_assistant", None)
+        return bool(assistant is not None and assistant.is_active)
+
     def update_status_text(self):
         try:
             if not hasattr(self, 'aw') or not self.aw or not hasattr(self.aw, 'qmc') or not self.aw.qmc: # artisan is not correctly initialized yet
@@ -675,8 +684,11 @@ class LiveMixin:
             # nothing fired). Re-asserted here so it survives the reset that clears
             # silent_alarms (canvas ~15151); this method is the single point where
             # alarm-suppression state and its banner display stay in sync.
+            # An Expert's active assistant holds them back at firing only: the
+            # flag would outlive the assistant and mute the Expert's alarms.
             if getattr(self, "_operator_level", "guided") == "guided":
                 self.aw.qmc.silent_alarms = True
+            if self.alarm_actions_suppressed():
                 alarm_set = QApplication.translate("tilauscope_window", " 🔕 ALARMS SUSPENDED") if has_alarms else ""
             else:
                 alarm_set = QApplication.translate("tilauscope_window", " ALARMS ACTIVE") if has_alarms else ""
@@ -708,6 +720,12 @@ class LiveMixin:
                 # own milestone row, so that bar must go back down whatever
                 # started the recording, not only our own button.
                 if self.is_roasting:
+                    # a new roast starts with no mark, no drop and no phase,
+                    # however the previous recording ended
+                    self.current_event = None
+                    self._disarm_cooling_detection()
+                    self.phase_starts = {"DRY": None, "MAI": None, "DEV": None}
+                    self.current_phase = None
                     self._hide_artisan_standard_buttons()
                     # A new recording is a new session: the column starts empty
                     # whatever pressed START, so two back-to-back roasts never

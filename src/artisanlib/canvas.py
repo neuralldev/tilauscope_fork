@@ -4404,9 +4404,9 @@ class tgraphcanvas(QObject):
         """## TILAU ## — whether the alarm about to fire must be held back.
 
         True at the Guided level, where TilauScope is the sole control
-        authority: conditions still evaluate and the alarm is still shown in
-        the panel, but nothing it commands is allowed to act behind the
-        assistant. Asked here, at the instant of firing, rather than trusted
+        authority, and at Expert while the assistant guides: conditions still
+        evaluate and the alarm is still shown in the panel, but nothing it
+        commands is allowed to act behind the assistant. Asked here, at the instant of firing, rather than trusted
         to the silent_alarms flag alone — Artisan resets that flag on its own
         (every monitoring start, a custom button action), and the Guided
         operator had live alarms until the next status refresh.
@@ -4414,7 +4414,7 @@ class tgraphcanvas(QObject):
         try:
             tilauscope = self.aw.tilauscope_main
             return (tilauscope is not None
-                    and tilauscope._operator_level == 'guided')  # noqa: SLF001
+                    and tilauscope.alarm_actions_suppressed())
         except Exception:  # pylint: disable=broad-except
             return False  # TilauScope out of reach: Artisan keeps its alarms
 
@@ -5483,7 +5483,8 @@ class tgraphcanvas(QObject):
                                 "reason": _de_result.reason}
                             if self._tilau_milestone_automark():
                                 self.markDRYSignal.emit(False)
-                    if self.flagstart and self.timex and len(self.timex)>0:
+                    ## TILAU ## fed while monitoring: the PID calibration preheats with no roast recording
+                    if self.flagon:
                         try:
                             if self.aw.tilauPreheatingPid is not None and self.aw.tilauPreheatingPid.active:
                                 self.aw.tilauPreheatingPid.cycle(st2 if self.aw.pidcontrol.pidSource in [0,1] else st1) # send BT or ET depending on what is set on PID control settings
@@ -6531,9 +6532,7 @@ class tgraphcanvas(QObject):
                             if self.aw.tilauPreheatingPid is not None:
                                 r = c.replace("tilaupid(", "").replace(")", "").split(',')
                                 c1:str = r[0].strip()
-                                c2:str = r[1].strip()
-                                if c2 is None:
-                                    c2 =""
+                                c2:str = r[1].strip() if len(r) > 1 else "" ## TILAU ## tilaupid(STOP) takes no argument
                                 _logd.info(f"command split in c1={c1} c2={c2}")
                                 self.aw.tilaupidSendMessageSignal.emit(str(c1),str(c2))
                 alarm_comment:str = ''
@@ -13543,8 +13542,8 @@ class tgraphcanvas(QObject):
                 self.aw.bleSkywalkerDevice = TilauTC4BLE(
                     self.aw.bleSkywalkerDeviceName,
                     is_live=lambda: self.flagon or self.flagstart)
-                self.aw.bleSkywalkerDevice.safetyAlert.connect(
-                    lambda code: _log.warning("Skywalker safety: %s", code))
+                self.aw.bleSkywalkerDevice.safetyAlert.connect(   ## TILAU ##
+                    self._on_skywalker_safety)
                 self.aw.bleSkywalkerDevice.roastInterrupted.connect(   ## TILAU ##
                     self._on_skywalker_interrupted)
                 self.aw.bleSkywalkerDevice.stateChanged.connect(   ## TILAU ##
@@ -13573,6 +13572,23 @@ class tgraphcanvas(QObject):
         _log.warning("Skywalker roast interrupted (%s) at BT=%.1f — burner held at %d",
                      reason, last_bt, burner_echo)
         self.aw.moveslider(_SKYWALKER_BURNER_SLIDER, burner_echo, forceLCDupdate=True)
+
+    @pyqtSlot(str)
+    def _on_skywalker_safety(self, code: str) -> None:   ## TILAU ##
+        # GUI thread (queued): the operator must see a lost link, not only the log.
+        _log.warning("Skywalker safety: %s", code)
+        if code == "link_lost":
+            message = QApplication.translate("Message",
+                "Roaster link lost: temperatures are not recorded until it reconnects.")
+        elif code == "burner_off_unconfirmed":
+            message = QApplication.translate("Message",
+                "Roaster did not confirm the burner is off: link dropped.")
+        elif code == "burner_overshoot":
+            message = QApplication.translate("Message",
+                "Roaster burner above the commanded level: command sent again.")
+        else:
+            return
+        self.aw.sendmessageSignal.emit(message, True, None)
 
     @pyqtSlot(str)
     def _on_skywalker_state(self, state: str) -> None:   ## TILAU ##

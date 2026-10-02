@@ -145,6 +145,10 @@ def apply_level(qmc: Any, key: str) -> bool:
     # Recomputed at once, with Artisan's own call (canvas smoothETBT), rather
     # than emptied: Artisan reads the FC rate out of delta2 when it saves.
     if not getattr(qmc, 'flagstart', False):
+        # Monitoring still samples into these arrays: swap them under its lock.
+        lock = getattr(qmc, 'profileDataSemaphore', None)
+        if lock is not None:
+            lock.acquire(1)
         try:
             # Artisan re-smooths stale traces first; that is its redraw's job
             if not len(qmc.stemp1) == len(qmc.stemp2) == len(qmc.timex):
@@ -162,4 +166,7 @@ def apply_level(qmc: Any, key: str) -> bool:
             report_once('smoothing: could not recompute the rate arrays')
             qmc.delta1 = []
             qmc.delta2 = []
+        finally:
+            if lock is not None:
+                lock.release(1)
     return True

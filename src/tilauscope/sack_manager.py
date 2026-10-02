@@ -20,8 +20,8 @@ import json
 import logging
 from datetime import datetime
 
-from PyQt6.QtCore import Qt, QObject, QSettings, pyqtSignal
-from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt, QObject, QRegularExpression, QSettings, pyqtSignal
+from PyQt6.QtGui import QColor, QRegularExpressionValidator
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QDialog, QFrame,
                              QHBoxLayout, QLabel, QPushButton, QVBoxLayout,
                              QWidget)
@@ -29,6 +29,11 @@ from PyQt6.QtWidgets import (QApplication, QCheckBox, QDialog, QFrame,
 from tilauscope.tilauscope_types import THEME, no_enter_default, show_styled_message, print_progress_pill
 
 _logd = logging.getLogger(__name__)
+
+
+def _sack_id_validator(parent: QObject | None) -> QRegularExpressionValidator:
+    """No whitespace in a sack ID: it is read back as one token and sits in the /sack URL."""
+    return QRegularExpressionValidator(QRegularExpression(r"\S*"), parent)
 
 _KEY_NEXT    = "tilauscope/next_sack_id"
 _KEY_FREE    = "tilauscope/free_sack_ids"
@@ -811,6 +816,7 @@ class SackLabelsDialog(QDialog):
         self.count_spin.setRange(1, 100)
         self.count_spin.setValue(10)
         self.prefix_edit = QLineEdit("TS-")
+        self.prefix_edit.setValidator(_sack_id_validator(self.prefix_edit))
         self.start_spin = QSpinBox()
         self.start_spin.setRange(1, 99999)
         self.start_spin.setValue(SackPool.next_number())
@@ -870,6 +876,7 @@ class SackLabelsDialog(QDialog):
         add_row = QHBoxLayout()
         add_row.setSpacing(8)
         self.add_label_edit = QLineEdit()
+        self.add_label_edit.setValidator(_sack_id_validator(self.add_label_edit))
         self.add_label_edit.setPlaceholderText(QApplication.translate(
             "tilauscope_sacks", "e.g. GV-0001"))
         self.add_label_edit.setMaximumWidth(160)
@@ -944,13 +951,18 @@ class SackLabelsDialog(QDialog):
     def _refresh_free_list(self) -> None:
         self.free_list.clear()
         released = SackPool.free_entries()
+        def _add(sid: str, text: str) -> None:
+            self.free_list.addItem(text)
+            # the exact ID, never re-read from the row text
+            self.free_list.item(self.free_list.count() - 1).setData(Qt.ItemDataRole.UserRole, sid)
+
         for sid, d in released:
-            self.free_list.addItem(f"{sid}   —   " + QApplication.translate(
+            _add(sid, f"{sid}   —   " + QApplication.translate(
                 "tilauscope_sacks", "released on") + f" {d}")
         released_ids = {sid for sid, _d in released}
         for sid in SackPool.printed_ids():
             if sid not in released_ids:
-                self.free_list.addItem(f"{sid}   —   " + QApplication.translate(
+                _add(sid, f"{sid}   —   " + QApplication.translate(
                     "tilauscope_sacks", "printed, not assigned yet"))
         has_free = self.free_list.count() > 0
         self.remove_free_btn.setEnabled(has_free)
@@ -1004,7 +1016,7 @@ class SackLabelsDialog(QDialog):
     def _remove_free(self) -> None:
         item = self.free_list.currentItem()
         if item is not None:
-            SackPool.forget(item.text().split()[0])
+            SackPool.forget(item.data(Qt.ItemDataRole.UserRole))
             self._refresh_free_list()
 
     # ── printing ─────────────────────────────────────────────────────────────

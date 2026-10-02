@@ -79,7 +79,7 @@ class PairingManager:
 
     def _consume_pt_locked(self, token: str) -> bool:
         """Consume a pairing token while the caller holds ``_lock``."""
-        if not self._pt or not token:
+        if not self._pt or not isinstance(token, str) or not token:
             return False
         tok, exp = self._pt
         if time.time() > exp:

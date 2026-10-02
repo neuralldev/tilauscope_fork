@@ -1,4 +1,77 @@
 ## [4.3] 2026-09-13
+build 20
+* 🐛 [fix(roast)] : after stopping a recording and starting a new one, CHARGE and the other milestone buttons can be pressed again — they stayed greyed out until monitoring was switched off and on
+* 🐛 [fix(roast)] : F1 marks CHARGE on every roast, not only the first one of the session, and F7 marks DROP at any point of the roast instead of only after second crack ends; the milestone keys also follow a roast TilauScope joins after it started
+* 🐛 [fix(roast)] : a new roast starts with a clean screen — no "COOLING IN PROGRESS" in the middle of drying, no phase bars already full, no phases or milestones carried over from the previous roast; DROP and COOL END pressed before START are ignored, as Artisan does
+* 🐛 [fix(beancave)] : decreasing the stock when a roast starts from BeanCave changes only the remaining weight — it used to rewrite the whole green coffee record from the form and could erase its varieties or clip its density
+* 🐛 [fix(beancave)] : the zone editor and the new-sack wizard offer the same lists and limits as the green coffee form (origins, varieties with "Other", blend components, density in g/l from 0 to 800, altitude up to 3 000 m, moisture up to 15 %), so a record saved later with Update keeps every value
+* 🐛 [fix(preheat)] : stopping the preheat now always has the last word — a burner command already on its way can no longer arrive after the stop and leave the burner on without control
+* 🐛 [fix(roast-plan)] : the plan's timed alarms (pop-ups and air at ON, air at START, burner at CHARGE, TP, DRY END and DROP) now fire — they were silent; the plan no longer starts the preheat by itself at START, which stays the operator's gesture
+* 🐛 [fix(roast)] : the debrief and Roast Review compare temperatures in the profile's own unit — a roast recorded in °F no longer shows a drop "200 °F above the plan"
+* 🐛 [fix(beancave)] : the Brew planning view no longer stays stuck on "Scanning…" on Windows
+* 🐛 [fix(assistant)] : when DRY END is not marked, the assistant times Maillard from the dry end it detected — no more false "Extended Maillard — raise heat" alert halfway through the roast
+* 🐛 [fix(auto)] : AUTO moves the sliders by whole steps of their configured resolution — a correction smaller than one step no longer counts as done while nothing moved, and the development burner no longer repeats its notice every second
+* 🐛 [fix(routine-check)] : closing the routine check while it scans the roast logs no longer closes TilauScope
+* 🐛 [fix(roast)] : the crack bar forgets the pops heard before CHARGE — no more "FIRST POPS" during drying and Maillard
+* 🐛 [fix(beancave)] : tasting, energy sheet, roast result and roast card in the Roasts tab act on the roast on screen — after a reference was picked in the Roast Plan tab, a tasting was filed under that reference roast and changed the wrong coffee's next plan
+* 🐛 [fix(beancave)] : moving a milestone in the roast viewer also updates the figures read from it — milestone times and temperatures, phase lengths, development ratio, tiles and debrief
+* 🐛 [fix(pid)] : closing the PID assistant while it prepares a calibration cuts the burner it had handed over — it used to stay at its hold power without control
+* 🐛 [fix(pid)] : the PID calibration preparation can heat the empty machine — the preheat stopped after a few seconds with a false "no valid temperature reading" and the preparation always failed
+* 🐛 [fix(pid)] : a preheat stopped by the operator or by a safety stop no longer feeds the PID's learning (hold power, anticipation, experience badge)
+* 🐛 [fix(airwave)] : the assistant's AirWave tile shows the inlet temperature instead of the catalyst's (~260 °C); recorded curves were already right and are unchanged
+* 🐛 [fix(skywalker)] : when the Skywalker's Bluetooth link drops, temperatures and burner and air readings are recorded as missing instead of frozen at their last value, the link keeps trying to reconnect, and a message tells the operator; a burner that does not confirm it is off or runs above its command is also reported on screen
+* 🐛 [fix(repair)] : Repair ALogs marks damaged roast files ⛔ — unreadable, a milestone past the recorded curve, or too few samples — and says to move them out of the roast folder; such a file made its coffee's roast plan unavailable without saying why
+* 🐛 [fix(assistant)] : when first crack is not marked, or the assistant starts during development, development is timed from the first crack actually detected or marked
+* 🐛 [fix(assistant)] : a roast that comes back on plan after a risk warning gets plan advice again instead of staying on the warning
+* 🐛 [fix(alarms)] : in Expert, the operator's own alarms stay silent while the guided assistant is active, as in Guided
+* 🐛 [fix(assistant)] : starting the assistant after first crack reads the first-crack temperature from the roast and resets the crash detector for the current roast
+* 🐛 [fix(assistant)] : a roast whose CHARGE falls on the very first sample gets its end-of-roast summary and drying adherence
+* 🐛 [fix(assistant)] : a profile's target colour is read in the colour scale it was recorded in
+* 🐛 [fix(roast-plan)] : feedback from past roasts names the phase in plain words, translated
+* 🐛 [fix(roast-plan)] : the anti-flick note announces the lead the burner ramp actually uses
+* 🐛 [fix(roast-plan)] : a variety whose name contains another (e.g. "Pink Bourbon") is matched to its own family, not to the shorter name
+* 🐛 [fix(roast-plan)] : the plan curve places the turning point at the plan's own TP time
+* 🐛 [fix(review)] : the debrief labels the colour "Agtron whole" or "Agtron ground" according to the measurement used
+* 🐛 [fix(pid)] : the SV slider is no longer reset to 0 when Artisan reports no setpoint
+* 🐛 [fix(roast)] : undoing DROP clears the cooling message
+* 🐛 [fix(roast)] : the LIVE EVENTS panel no longer hides itself when reopened right after being closed
+* 🐛 [fix(roast)] : crack ticks follow CHARGE when it is moved or another roast of the same length is shown
+* 🐛 [fix(roast-properties)] : the event list shows burner and air values the way Artisan does
+* 🐛 [fix(roast-properties)] : the default autosave name includes the batch number when the batch counter is on
+* 🐛 [fix(roast)] : the Rate of rise menu is hidden on a recorded roast, where it did nothing, and recomputing the rate after STOP no longer collides with sampling
+* 🐛 [fix(beancave)] : a roast card thumbnail no longer plunges to the bottom where a reading is missing
+* 🐛 [fix(preheat)] : the preheat card on the curve shows the last real reading — no more "+201 °C" from a missing one
+* 🐛 [fix(pid)] : ambient sources 3 and 4 of the preheat PID read the first extra device's temperatures, as Artisan does
+* 🐛 [fix(pid)] : a new machine or batch context no longer starts its PID learning from the previous context's history
+* 🐛 [fix(alarms)] : a "tilaupid" alarm action without an argument no longer fails
+* 🐛 [fix(pid)] : a malformed thermal model file is ignored instead of breaking the preheat model
+* 🐛 [fix(tools)] : the thermal model extraction leaves out roasts recorded without a measured ambient temperature
+* 🐛 [fix(labels)] : the Niimbot printer is recognised by its Bluetooth address on Windows
+* 🐛 [fix(airwave)] : replying to the AirWave no longer freezes the window while the Bluetooth write waits
+* 🐛 [fix(ambient)] : TilauAmbient calibration and crack-counter start are reported as done only when the probe received them
+* 🐛 [fix(colour)] : the DiFluid Omni's model, firmware and SCA-standard commands are sent once its replies can be heard
+* 🐛 [fix(import)] : a HiBean import places DROP at the right moment and brings the bean name
+* 🐛 [fix(labels)] : the label prints the ground colour when measured, otherwise the whole-bean colour
+* 🐛 [fix(skywalker)] : no false "burner above command" alert while TilauScope is checking that the burner is off
+* 🐛 [fix(beancave)] : the first coffee added from the new-sack wizard to an empty library appears in the catalogue
+* 🐛 [fix(beancave)] : when saving the library fails, the new-sack wizard and the zone editor stay open and the sack label stays free
+* 🐛 [fix(beancave)] : retiring the previous harvest in the new-crop step offers to free its sack labels
+* 🐛 [fix(beancave)] : Fill from URL selects "Other" for a value missing from a list, or leaves the field unchanged — never a precise wrong value
+* 🐛 [fix(beancave)] : the analysis of an incomplete roast says so instead of showing wrong phase lengths and development ratio
+* 🐛 [fix(beancave)] : the roast viewer counts rest in calendar days, as the rest calendar does
+* 🐛 [fix(sacks)] : a free sack label with a space in its ID is removed exactly; new IDs refuse spaces, which break the QR address
+* 🐛 [fix(beancave)] : the catalogue highlights the selected coffee even after a row that could not be shown
+* 🐛 [fix(beancave)] : a water activity reading taken in a coffee's characteristics editor or the new-sack wizard no longer lands in the main form of the selected coffee
+* 🐛 [fix(remote)] : phone control refuses malformed messages cleanly instead of dropping the connection
+* 🐛 [fix(diagnostics)] : the diagnostic archive keeps anonymised names for two logs with the same name
+* 🐛 [fix(updates)] : an installer published without a checksum is not offered for installation; download it from the releases page
+* 🐛 [fix(updates)] : the installer only appears in Downloads under its real name once complete and verified — an interrupted download leaves only a .part file
+* 🐛 [fix(repair)] : renaming a roast file in Repair ALogs never leaves two copies of the roast; if the rename is refused, the repair is kept under the previous name and a message says so
+* 🐛 [fix(repair)] : a roast file without a readable date keeps the timestamp of its current name instead of taking today's date at each Record
+* 🐛 [fix(logger)] : the Logger console keeps showing TCP logs when a record arrives in pieces
+* 🐛 [fix(beancave)] : selecting a roast in the Roasts tab no longer freezes the window while its rate of rise is computed a second and third time
+* 🐛 [fix(beancave)] : moving from one roast to the next in the Roasts tab swaps the details in one step — the tiles no longer blank out and the curve no longer jumps
+* ⚡ [feat(i18n)] : the new strings are translated into French, German, Spanish, Italian and Chinese (Simplified and Traditional)
 build 19
 * ⚡ [feat(colour)] : the DiFluid Omni joins the Lebrew RoastSee C1 as a Bluetooth colour meter — the SENSORS tab lists every supported colour meter found nearby without naming a brand; an Omni reading goes straight to the whole-bean or ground field it was measured as, and the meter is set to the SCA Agtron standard on each connection; the Omni follows DiFluid's published protocol (firmware V016 or later) and is not yet confirmed on the hardware — a TilauScope Debug snapshot records what the meter sends
 * 🐛 [fix(scale)] : an Acaia scale that connected but showed no weight, then dropped the link after about ten seconds, now starts weighing within a couple of seconds — the connection handshake is repeated when the scale misses it

@@ -212,8 +212,8 @@ Alerts name the correction, not just the condition — *raise heater*, *reduce h
 or start heating again*. An alert you cannot act on is noise.
 
 !!! warning "Alarms behave differently in Guided"
-    At Guided level, the alarm actions configured in Artisan do not fire, so that two sources of
-    instructions cannot contradict each other. See
+    At Guided level, and in Expert while the assistant is running, the alarm actions configured
+    in Artisan do not fire, so that two sources of instructions cannot contradict each other. See
     [Getting started](getting-started.md#guided-or-expert).
 
 ---

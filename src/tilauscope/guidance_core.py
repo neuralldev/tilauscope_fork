@@ -137,7 +137,10 @@ class GuidanceArbiter:
                     self._mode = GuidanceMode.ADAPTIVE
                     self._safety_origin = None
                     self._reason = "physical risk cleared; operator trajectory restored"
-                return self.decision()
+                    return self.decision()
+                # Not restored yet: a durable return to the plan band still counts.
+                self._safety_origin = None
+                self._reason = "physical risk cleared; operator trajectory not yet reliable"
 
         if self._mode is GuidanceMode.OBSERVE_ACTION:
             if now_s < self._observing_until:

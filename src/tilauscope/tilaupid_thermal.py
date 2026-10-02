@@ -124,9 +124,11 @@ class ThermalModelCandidate:
             raise ValueError("thermal candidate must be a JSON object")
         try:
             candidate = cls(**value)
+            # Inside the guard: a mistyped field fails the check with a TypeError.
+            valid = candidate.is_valid()
         except (TypeError, ValueError) as exc:
             raise ValueError(f"invalid thermal candidate: {exc}") from exc
-        if not candidate.is_valid():
+        if not valid:
             raise ValueError("thermal candidate values are outside safe bounds")
         return candidate
 

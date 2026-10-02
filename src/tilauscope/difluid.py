@@ -26,6 +26,8 @@ from artisanlib.ble_port import ClientBLE
 from artisanlib.util import fromFtoCstrict
 from artisanlib.main import ApplicationWindow # pylint: disable=unused-import
 import threading
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from bleak.backends.characteristic import BleakGATTCharacteristic  # pylint: disable=unused-import
@@ -518,6 +520,10 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         self._pid_cv = threading.Condition()
         self._pid_stop = False
         self._pid_worker: threading.Thread | None = None
+        # Answers to a roaster's requests, written off the GUI thread for the
+        # same reason; one phase answer in flight at most (asked ~10×/s).
+        self._answer_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="airwave-answer")
+        self._phase_answer_pending = False
 
         # Garde thermique de la gaine : points de ventilateur actuellement
         # retires, valeur a restituer, et derniere consigne envoyee par le garde.
@@ -688,6 +694,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
 
         # Le worker écrit sur le lien BLE : il doit être arrêté avant bleStop().
         self._stop_pid_worker()
+        self._answer_pool.shutdown(wait=False, cancel_futures=True)
 
         try:
             self.airwave.unsolicited_event_signal.disconnect()
@@ -767,7 +774,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         data = parsed_msg.get('data')
         if function == AirwaveFunctions.DEVICEACTIONS:
             if command == AirwaveCommands.ROASTINGSTAGE:
-                self.answerToOmniflux()
+                self._answer_off_gui(self.answerToOmniflux, coalesce=True)
             elif data:
                 self._adopt_device_change(command, data)
         elif function == AirwaveFunctions.DEVICESETTING and command == AirwaveCommands.HOSTNAME:
@@ -776,8 +783,10 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
                     self.armOmniflux()
                     self.state.holdon = False
                 else:
-                    self.SendHostName()
-                    self.state.holdon = False
+                    def _host_name() -> None:
+                        self.SendHostName()
+                        self.state.holdon = False   # nothing goes out before the name
+                    self._answer_off_gui(_host_name, coalesce=False)
         self.command_running =False
 
     def _adopt_device_change(self, command: int, data: bytes) -> None:
@@ -832,6 +841,32 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
             return -1 # preheating
 
         return i # return 0 to 6 index
+
+    def _answer_off_gui(self, send: Callable[[], object], *, coalesce: bool) -> None:
+        """Write an answer from the answer thread; a stalled link must not freeze the window.
+
+        A coalesced answer is dropped while the previous one is still going out:
+        the roaster asks again a tenth of a second later.
+        """
+        if coalesce:
+            if self._phase_answer_pending:
+                return
+            self._phase_answer_pending = True
+
+        def _run() -> None:
+            try:
+                send()
+            except Exception:  # noqa: BLE001 - a worker exception would vanish silently
+                _logd.exception("AirWave: answer to the roaster failed")
+            finally:
+                if coalesce:
+                    self._phase_answer_pending = False
+
+        try:
+            self._answer_pool.submit(_run)
+        except RuntimeError:   # pool shut down by disconnect()
+            if coalesce:
+                self._phase_answer_pending = False
 
     # answer to omniflux sending the actual roasting phase from Artisan
     # as device is asking for status 10 times per second or so lets use the shortest code to anwser
@@ -1113,7 +1148,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         #_logd.debug(f"ask_temperatures response={response['valid']} data={response['data']}")
         if response and response["valid"] and response['data']:
             try:
-                catalyst, inlet = struct.unpack('<ff', response['data'])
+                inlet, catalyst = struct.unpack('<ff', response['data'])
                 self.command_running = False
                 res = {
                     'inlet': round(inlet,1),

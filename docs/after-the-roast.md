@@ -522,6 +522,12 @@ file with a completeness mark — missing its coffee link, or missing a field th
 record relies on (weights, density, moisture, colour, ambient conditions). Selecting one opens
 it for editing directly.
 
+A file marked **⛔ damaged** cannot serve the roast plan: it cannot be read, a milestone points
+past the recorded curve, or fewer than 11 samples lie between CHARGE and DROP. While it stays in
+the roast folder, the plan for its coffee cannot be built. Selecting it shows a red banner naming
+the defect; move the file out of the roast folder. The summary above the list counts damaged files
+alongside incomplete ones.
+
 The window opens on its full list straight away. Should the reading take longer — a very
 large folder, or one on a slow network drive — the list fills in as it goes and a progress
 bar appears with a **Cancel** button: the files already listed stay usable, and **Scan
@@ -533,7 +539,11 @@ roasts and how much weight each green coffee has behind it — the figures shown
 
 **Complete from bean** fills only the fields still empty, from the linked coffee's own
 record — nothing already filled is touched. **Record** validates and writes the file, and
-keeps the same roast selected so you can check what was saved. **Next incomplete ▸** moves on
+keeps the same roast selected so you can check what was saved. The file takes the name Artisan
+would give it — the title followed by the roast date and time, previewed under **→ NEW FILENAME**.
+A roast without a readable date keeps the date and time already in its name. If the system refuses
+the rename (file locked, cloud sync in progress), the repair is still saved under the previous name
+and a message says so. **Next incomplete ▸** moves on
 to the following file needing attention, so a backlog of half-finished roasts can be cleared
 in one pass rather than one file open at a time.
 

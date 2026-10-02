@@ -15,6 +15,7 @@
 
 import logging
 import math
+import threading
 import time
 import types
 from collections.abc import Mapping
@@ -28,19 +29,14 @@ if TYPE_CHECKING:
 from PyQt6.QtCore import QMetaObject, QSettings, Qt, QThread, QTimer
 from PyQt6.QtWidgets import QApplication
 
-from artisanlib.util import fromFtoCstrict, fromCtoFstrict, convertRoRstrict
-from tilauscope.tilaupid_adaptative import AdaptivePIDMixin, AmbientConditions, AmbientCorrector
+from artisanlib.util import fromFtoCstrict, fromCtoFstrict
+from tilauscope.tilaupid_adaptative import (
+    _BUMPLESS_STOP_REASONS, AdaptivePIDMixin, AmbientConditions, AmbientCorrector)
 from tilauscope.tilaupid_safety import PreheatSensorGuard, SensorSafetyLimits
 from tilauscope.probe_visibility import et_available_for
 
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
-# Dispositions that end a preheat successfully: learning is kept and the preheat
-# setpoint marker stays. `handover` additionally leaves the burner at its hold
-# power, so the PID calibration inherits a settled machine (protocol 8.1).
-_BUMPLESS_STOP_REASONS: Final[frozenset[str]] = frozenset(
-    {"charge", "stable_complete", "handover"}
-)
 
 # depending on tilauscope settings selecting the roaster, it will adjust accordingly, if using Airwave % of fan is added
 # Roaster                   zone_fuzzy_start    coast_lookahead_sec fan_brake_power
@@ -289,6 +285,8 @@ class TilauPreheatPID(AdaptivePIDMixin):
 
     def __init__(self, aw: 'ApplicationWindow', config: dict | None= None):
         self.aw = aw
+        # Held by cycle(), stop() and _trip_fault(): no burner command can follow a safe zero.
+        self._output_lock = threading.RLock()
 
         # ── Temperature unit helpers ──────────────────────────────────────────
         # All internal PID maths are in °C; _to_c()/_to_native() convert at the boundary.
@@ -430,11 +428,9 @@ class TilauPreheatPID(AdaptivePIDMixin):
             return qmc.on_temp1[-1] if qmc.on_temp1 else None
         elif src == 2:
             return qmc.on_temp2[-1] if qmc.on_temp2 else None
-        elif src == 3:
-            return qmc.on_delta1[-1] if qmc.on_delta1 else None
-        elif src == 4:
-            return qmc.on_delta2[-1] if qmc.on_delta2 else None
-        elif src > 4:
+        elif src > 2:
+            # Extra-device channels from 3, as Artisan numbers them (canvas.py
+            # ambient source): 3/4 = first device, 5/6 = second, …
             # Extra channels : après un run simulateur, RTextratemp1/2[idx] peut
             # être un float scalaire (dernière valeur RT) plutôt qu'une liste.
             # On vérifie explicitement le type avant tout accès par index.
@@ -466,12 +462,10 @@ class TilauPreheatPID(AdaptivePIDMixin):
         if not (t or h or p):
             return None
         ms = self._map_ambient_source
-        # AmbientConditions is a °C frame; the mapped channels carry the DISPLAY
-        # unit. Sources 3/4 are RoR channels — a rate converts by scale only.
+        # AmbientConditions is a °C frame; the mapped channels carry the DISPLAY unit.
         _t_raw = ms(t, qmc)
         if _t_raw is not None and qmc.mode == 'F':
-            _t_raw = (convertRoRstrict(_t_raw, 'F', 'C') if t in (3, 4)
-                      else fromFtoCstrict(_t_raw))
+            _t_raw = fromFtoCstrict(_t_raw)
         # A failed ambient probe reports -1, which the plausibility band accepts as
         # a real temperature: it would add ~6% burner to the hold for the whole
         # preheat and poison the corpus weighting axis. Reject it explicitly, and
@@ -858,28 +852,30 @@ class TilauPreheatPID(AdaptivePIDMixin):
         the burner left where it holds. Every other reason commands a safe
         burner zero; aborted or degraded sessions never train the persistent law.
         """
-        was_active = self.active
-        self._stop_watchdog()
-        if was_active:
-            # eventRecordActionSignal est en QueuedConnection — safe depuis le sémaphore ET hors sémaphore
-            # signature : pyqtSignal(int, float, str, bool) → EventRecordActionSlot(eventtype, eventvalue, description, doupdategraphics)
-            self.aw.qmc.eventRecordActionSignal.emit(
-                4, 0.0, f"TilauPID Preheat stopped ({reason})", False)
-            if reason in _BUMPLESS_STOP_REASONS and self._learning_allowed:
-                # CHARGE calls us with qmc.profileDataSemaphore held: learning ends in two
-                # full QSettings flushes, which would stall the sampling thread at the most
-                # timing-critical moment. Nothing it reads is protected by that semaphore
-                # (session state is PID-owned), so defer it one event-loop turn.
-                QTimer.singleShot(0, self._deferred_preheat_complete)
-        if reason not in {"charge", "handover"}:
-            self._force_safe_output(reason)
-        if reason not in _BUMPLESS_STOP_REASONS or not self._learning_allowed:
-            self._clear_preheat_sv_marker()
-        self.active = False
-        # Drop any start marker that never fired (preheat aborted before its
-        # first cycle) so it can't stamp a later, unrelated recording.
-        self._pending_start_sv_native = None
-        _logd.debug(f"Preheat PID stopped ({reason}).")
+        with self._output_lock:
+            was_active = self.active
+            self._stop_watchdog()
+            if was_active:
+                # eventRecordActionSignal est en QueuedConnection — safe depuis le sémaphore ET hors sémaphore
+                # signature : pyqtSignal(int, float, str, bool) → EventRecordActionSlot(eventtype, eventvalue, description, doupdategraphics)
+                self.aw.qmc.eventRecordActionSignal.emit(
+                    4, 0.0, f"TilauPID Preheat stopped ({reason})", False)
+                if reason in _BUMPLESS_STOP_REASONS and self._learning_allowed:
+                    # CHARGE calls us with qmc.profileDataSemaphore held: learning ends in two
+                    # full QSettings flushes, which would stall the sampling thread at the most
+                    # timing-critical moment. Nothing it reads is protected by that semaphore
+                    # (session state is PID-owned), so defer it one event-loop turn.
+                    QTimer.singleShot(0, self._deferred_preheat_complete)
+            if reason not in {"charge", "handover"}:
+                self._force_safe_output(reason)
+                self._zero_behind_queued_commands()
+            if reason not in _BUMPLESS_STOP_REASONS or not self._learning_allowed:
+                self._clear_preheat_sv_marker()
+            self.active = False
+            # Drop any start marker that never fired (preheat aborted before its
+            # first cycle) so it can't stamp a later, unrelated recording.
+            self._pending_start_sv_native = None
+            _logd.debug(f"Preheat PID stopped ({reason}).")
 
     def _deferred_preheat_complete(self) -> None:
         """Run the session's learning and persistence outside any caller's lock.
@@ -921,37 +917,57 @@ class TilauPreheatPID(AdaptivePIDMixin):
             self.prev_power = -1
             _logd.exception(f"TilauPID safe-off command failed ({reason})")
 
+    def _zero_behind_queued_commands(self) -> None:
+        """Send the zero again behind any command a cycle already queued to the GUI thread.
+
+        From the GUI thread the safe zero is applied at once, ahead of those
+        commands; from the sampling thread it is queued after them already.
+        """
+        app = QApplication.instance()
+        if app is not None and app.thread() is QThread.currentThread():
+            QTimer.singleShot(0, self._resend_safe_zero)
+
+    def _resend_safe_zero(self) -> None:
+        if self.active:   # a preheat started since owns the burner
+            return
+        try:
+            self._update_artisan_slider(self.cfg.heater_slider, 0)
+        except Exception:  # noqa: BLE001 - an exception escaping a timer callback closes the app
+            _logd.exception("TilauPID could not resend its safe zero")
+
     def _trip_fault(self, reason: str) -> None:
         """Latch a fault, cut heat and suppress all learning for the session."""
-        if self._fault_reason is not None:
-            return
-        self._fault_reason = reason
-        self._learning_allowed = False
-        self._clear_preheat_sv_marker()
-        self._sensor_guard.latch(reason)
-        self._force_safe_output(reason)
-        self.active = False
-        self._stop_watchdog()
-        self._pending_start_sv_native = None
-        try:
-            self.aw.qmc.eventRecordActionSignal.emit(
-                4, 0.0, f"TilauPID SAFETY STOP: {reason}", False)
-        except Exception:  # noqa: BLE001 - logging must not interfere with the safe state
-            _logd.exception("TilauPID could not record its safety-stop event")
-        try:
-            if reason.startswith("control_exception"):
-                message = QApplication.translate(
-                    "Message", "Preheat stopped because its controller encountered an error.")
-            elif reason == "sensor_timeout":
-                message = QApplication.translate(
-                    "Message", "Preheat stopped: no valid temperature reading was received.")
-            else:
-                message = QApplication.translate(
-                    "Message", "Preheat stopped: the temperature reading is invalid.")
-            self.aw.sendmessageSignal.emit(message, True, None)
-        except Exception:  # noqa: BLE001 - operator notification is secondary to safe-off
-            _logd.exception("TilauPID could not display its safety-stop message")
-        _logd.error(f"TilauPID safety fault latched: {reason}")
+        with self._output_lock:
+            if self._fault_reason is not None:
+                return
+            self._fault_reason = reason
+            self._learning_allowed = False
+            self._clear_preheat_sv_marker()
+            self._sensor_guard.latch(reason)
+            self._force_safe_output(reason)
+            self._zero_behind_queued_commands()
+            self.active = False
+            self._stop_watchdog()
+            self._pending_start_sv_native = None
+            try:
+                self.aw.qmc.eventRecordActionSignal.emit(
+                    4, 0.0, f"TilauPID SAFETY STOP: {reason}", False)
+            except Exception:  # noqa: BLE001 - logging must not interfere with the safe state
+                _logd.exception("TilauPID could not record its safety-stop event")
+            try:
+                if reason.startswith("control_exception"):
+                    message = QApplication.translate(
+                        "Message", "Preheat stopped because its controller encountered an error.")
+                elif reason == "sensor_timeout":
+                    message = QApplication.translate(
+                        "Message", "Preheat stopped: no valid temperature reading was received.")
+                else:
+                    message = QApplication.translate(
+                        "Message", "Preheat stopped: the temperature reading is invalid.")
+                self.aw.sendmessageSignal.emit(message, True, None)
+            except Exception:  # noqa: BLE001 - operator notification is secondary to safe-off
+                _logd.exception("TilauPID could not display its safety-stop message")
+            _logd.error(f"TilauPID safety fault latched: {reason}")
 
     def _watchdog_tick(self) -> None:
         """Trip when the sampling loop no longer supplies valid measurements."""
@@ -1122,6 +1138,10 @@ class TilauPreheatPID(AdaptivePIDMixin):
 
     def cycle(self, t: float) -> None:
         """Main PID cycle.  t is in the current Artisan unit (°C or °F)."""
+        with self._output_lock:
+            self._cycle(t)
+
+    def _cycle(self, t: float) -> None:
         if not self.active:
             return
 

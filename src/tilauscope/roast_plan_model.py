@@ -1256,6 +1256,35 @@ class TilauScopeRoastPlan:
                 continue
         return matches
 
+    def _crash_flick_feedback(self, crashes_detected: list, flicks_detected: list
+                              ) -> tuple[list[str], list[str]]:
+        """History notes and advice for the crashes and flicks of past roasts."""
+        feedback_notes: list[str] = []
+        adjustments: list[str] = []
+        phase_words = {"DRY": QApplication.translate("Label", "Dry"),
+                       "MAILLARD": QApplication.translate("Label", "Maillard"),
+                       "DEVELOPMENT": QApplication.translate("Label", "Development")}
+        for crash in crashes_detected:
+            phase = crash.get("phase", QApplication.translate("tilauscope_roast_plan","OUT OF SCOPE"))
+            phase = phase_words.get(phase, phase)
+            occurrences = crash.get("occurrence_count", 1)
+            time_str = self.format_time((crash["time"])/60.0)
+
+            msg = QApplication.translate("tilauscope_roast_plan","CRASH")+f" ({occurrences}x) "+QApplication.translate("tilauscope_roast_plan","at")+f" {time_str} "+QApplication.translate("tilauscope_roast_plan","during")+f" {phase}. "+QApplication.translate("tilauscope_roast_plan","Severity")+f": {crash['severity']}"
+            feedback_notes.append(msg)
+            adjustments.append(QApplication.translate("tilauscope_roast_plan","Action: Monitor momentum; consider reducing airflow."))
+
+        for flick in flicks_detected:
+            phase = flick.get("phase", QApplication.translate("tilauscope_roast_plan","OUT OF SCOPE"))
+            phase = phase_words.get(phase, phase)
+            occurrences = flick.get("occurrence_count", 1)
+            time_str = self.format_time(flick["time"]/60.0)
+
+            msg = QApplication.translate("tilauscope_roast_plan","FLICK")+f" ({occurrences}x) "+QApplication.translate("tilauscope_roast_plan","at")+f" {time_str} "+QApplication.translate("tilauscope_roast_plan","during")+f" {phase}. "+QApplication.translate("tilauscope_roast_plan","Severity")+f": {flick['severity']}"
+            feedback_notes.append(msg)
+            adjustments.append(QApplication.translate("tilauscope_roast_plan","Action: Increase extraction/airflow to shed thermal energy."))
+        return feedback_notes, adjustments
+
     def _average_event_group(self, group):
         """
         Helper to average time and values for a cluster of detections
@@ -2280,32 +2309,9 @@ class TilauScopeRoastPlan:
         #time_index = self.lastprofiledata.get("timeindex",[])
         #charge_in_sec = time_index[0] if len(time_index) > 0 and time_index[0] > -1 else 0
 
-        for crash in crashes_detected:
-            phase = crash.get("phase", QApplication.translate("tilauscope_roast_plan","OUT OF SCOPE"))
-            occurrences = crash.get("occurrence_count", 1)
-            time_str = self.format_time((crash["time"])/60.0)
-
-            msg = QApplication.translate("tilauscope_roast_plan","CRASH")+f" ({occurrences}x) "+QApplication.translate("tilauscope_roast_plan","at")+f" {time_str} "+QApplication.translate("tilauscope_roast_plan","during")+f" {phase}. "+QApplication.translate("tilauscope_roast_plan","Severity")+f": {crash['severity']}"
-            feedback_notes.append(msg)
-
-            # Specific advice based on phase
-            if "Maillard" in phase or "Development" in phase:
-                adjustments.append(QApplication.translate("tilauscope_roast_plan","Action: Boost heater")+" 5% "+QApplication.translate("tilauscope_roast_plan","at")+f" {self.format_time((crash['time']-30)/60.0)} "+QApplication.translate("tilauscope_roast_plan","to prevent crash."))
-            else:
-                adjustments.append(QApplication.translate("tilauscope_roast_plan","Action: Monitor momentum; consider reducing airflow."))
-
-        for flick in flicks_detected:
-            phase = flick.get("phase", QApplication.translate("tilauscope_roast_plan","OUT OF SCOPE"))
-            occurrences = flick.get("occurrence_count", 1)
-            time_str = self.format_time(flick["time"]/60.0)
-
-            msg = QApplication.translate("tilauscope_roast_plan","FLICK")+f" ({occurrences}x) "+QApplication.translate("tilauscope_roast_plan","at")+f" {time_str} "+QApplication.translate("tilauscope_roast_plan","during")+f" {phase}. "+QApplication.translate("tilauscope_roast_plan","Severity")+f": {flick['severity']}"
-            feedback_notes.append(msg)
-
-            if "Development" in phase:
-                adjustments.append(QApplication.translate("tilauscope_roast_plan","Action: Reduce burner 10% 45s before")+f" {time_str} "+QApplication.translate("tilauscope_roast_plan","to smooth RoR."))
-            else:
-                adjustments.append(QApplication.translate("tilauscope_roast_plan","Action: Increase extraction/airflow to shed thermal energy."))
+        _notes, _actions = self._crash_flick_feedback(crashes_detected, flicks_detected)
+        feedback_notes += _notes
+        adjustments += _actions
 
         master_graph_data = self._prepare_historical_graph_data(relevant_logs_data)
         return {
@@ -4099,7 +4105,7 @@ class TilauScopeRoastPlan:
             _notes.append(QApplication.translate(
                 "tilauscope_roast_plan",
                 "On your last roasts of this coffee you brought the burner down to {0}% before dry end rather than waiting — the plan schedules that same reduction {1}s ahead of dry end. It heads off the rate-of-rise bump this bean shows there.").format(
-                f"{heater_pre_de:.0f}", f"{_HOLD_LEAD_SEC:.0f}"))
+                f"{heater_pre_de:.0f}", f"{_de_lead_sec:.0f}"))
 
         # ── Rampe heater — ESCALIER PROGRESSIF DÈS LE TP (fondamental Tilau) ────
         # Les valeurs de jalon sont des CIBLES atteintes PROGRESSIVEMENT, À PARTIR
@@ -4488,6 +4494,7 @@ class TilauScopeRoastPlan:
             ror_maillard:  float,
             ror_dev_avg:   float,
             drop_ror:   float,
+            tp_time_min: float | None = None,
         ) -> dict:
             """
             Generates a smooth planned BT curve using piecewise Monotone Cubic (PCHIP)
@@ -4521,8 +4528,9 @@ class TilauScopeRoastPlan:
             # TP time: heavier loads take longer to recover; light roast charge temps
             # are lower so thermal exchange is slower → TP arrives later.
             # Model: tp_temperature ≈ 0.9 + charge_weight / 1500  (minutes), bounded [0.75, 1.5]
-            tp_time = 0.9 + charge_weight / 1500.0
-            tp_time = _clamp(tp_time, 0.75, 1.5)
+            # — unless the plan passes the TP time its drying starts from.
+            tp_time = (tp_time_min if tp_time_min is not None
+                       else _clamp(0.9 + charge_weight / 1500.0, 0.75, 1.5))
 
             # --- 2. Pre-Drop anchor ---
             # ROR during development decelerates from ror_dev_avg to drop_ror.
@@ -5362,6 +5370,7 @@ class TilauScopeRoastPlan:
             ror_maillard            = ror_maillard,
             ror_dev_avg             = dev_ror,
             drop_ror                = drop_ror,
+            tp_time_min             = _tp_time_min,
         )
 
         # ── Vérification RoR du Maillard (banc 2026-08-05) ────────────────────
@@ -6154,14 +6163,15 @@ class TilauscopeAlarmFactory:
 
         # 1. ON/START EVENT
         #             alarms, 1, 0, 0, EVENT                    , Time (s), Source  , =, 0.0, Action                   , Beep, Comment
-        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("ON")   , 0.      , -3       , 2, 0.0, self.ACTION_LIST.get("PopUp"), 0,    "Starting PLAN"   )
-        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("ON")   , 0.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"), 0,    "0"   )
-        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("START"), 0.      , -3       , 2, 0.0, self.ACTION_LIST.get("TilauScope command"), 0,    f"tilaupid(sv,{round(float(self.plan["Charge Temp"]),0)});tilaupid(start,)"   )
-        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("START"), 0.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"), 0,    "20"   )
+        # Time rows wait 1 s: Artisan skips the time check of a 0 s offset, so the row never fires.
+        # The preheat is not started here: it stays the operator's gesture.
+        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("ON")   , 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("PopUp"), 0,    "Starting PLAN"   )
+        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("ON")   , 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"), 0,    "0"   )
+        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("START"), 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"), 0,    "20"   )
 
         # 2. ÉVÉNEMENTS DE SÉCURITÉ & POPUPS
         # Alerte à CHARGE
-        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("CHARGE"), 0.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Burner"), 0,    f"{heaters[0]}"   )
+        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("CHARGE"), 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Burner"), 0,    f"{heaters[0]}"   )
         self._add_row(alarms, 1, -1,-1, self.EVENTS.get("CHARGE"), 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"),    0,    f"{airflows[0]}"   )
         if drums[0] is not None:   # tambour fixe → pas de ligne Slider Drum
             self._add_row(alarms, 1, -1,-1, self.EVENTS.get("CHARGE"), 2.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Drum"),   0,    f"{drums[0]}"   )
@@ -6170,7 +6180,7 @@ class TilauscopeAlarmFactory:
             self._add_row(alarms, 1, -1,-1, self.EVENTS.get("CHARGE"), 4., -3, 2, 0.0, self.ACTION_LIST.get("Difluid Airwave command"), 0, "MODE FAN")
 
         # At TP
-        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("TP"),     0.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Burner"), 0,    f"{self.plan["Heater at TP"]}"   )
+        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("TP"),     1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Burner"), 0,    f"{self.plan["Heater at TP"]}"   )
 
         # Alerte fin de Séchage (DRY END)
         # Valeur d'ENTRÉE, pas la colonne Maillard : celle-ci est la MOYENNE
@@ -6184,7 +6194,7 @@ class TilauscopeAlarmFactory:
                     if float(s["bt"]) <= _de_bt]
         _de_burner = ((_de_held[-1] if _de_held else heaters[0])
                       if self.plan.get("Heater Ramp") else heaters[1])
-        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DRY END"), 0.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Burner"), 0,    f"{_de_burner}"   )
+        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DRY END"), 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Burner"), 0,    f"{_de_burner}"   )
         self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DRY END"), 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"),    0,    f"{airflows[1]}"   )
         # Doctrine tambour : aucune ligne tambour in-roast — posé une fois à la
         # CHARGE (setup), ne bouge qu'au DROP (refroidissement).
@@ -6280,7 +6290,7 @@ class TilauscopeAlarmFactory:
             self._add_row(alarms, 1, -1,-1, self.EVENTS.get("FC START"), 0.      , 1        , 1, round(drop_temp - bt_margin, 1), self.ACTION_LIST.get("PopUp"), 1,    "PREPARE TO DROP (~20 s)"   )
 
         # 4. DROP
-        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DROP"), 0.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Burner"),       0, "0")
+        self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DROP"), 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Burner"),       0, "0")
         self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DROP"), 1.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Air"),      0, "50" )
         if drums[0] is not None:   # même gating tambour fixe qu'aux autres phases
             self._add_row(alarms, 1, -1,-1, self.EVENTS.get("DROP"), 2.      , -3       , 2, 0.0, self.ACTION_LIST.get("Slider Drum"),     0, "80" )

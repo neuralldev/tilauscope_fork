@@ -503,6 +503,8 @@ class _SidebarWrapper(QWidget):
         self._fade_anim = QPropertyAnimation(self._opacity_fx, b"opacity")
         self._fade_anim.setDuration(150)
         self._fade_anim.setEasingCurve(QEasingCurve.Type.InOutSine)
+        # Connected once: a reopen during the closing fade must not inherit its hide.
+        self._fade_anim.finished.connect(self._hide_after_fade)
 
     def fade_in(self):
         self._fade_anim.stop()
@@ -515,12 +517,11 @@ class _SidebarWrapper(QWidget):
         self._fade_anim.stop()
         self._fade_anim.setStartValue(1.0)
         self._fade_anim.setEndValue(0.0)
-        self._fade_anim.finished.connect(self._hide_after_fade)
         self._fade_anim.start()
 
     def _hide_after_fade(self):
-        self._fade_anim.finished.disconnect(self._hide_after_fade)
-        self.setVisible(False)
+        if self._fade_anim.endValue() == 0.0:
+            self.setVisible(False)
 
 
 class CollapsibleLiveEvents:

@@ -54,7 +54,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from tilauscope.sack_manager import SackLabelsDialog, SackPool
+from tilauscope.sack_manager import SackLabelsDialog, SackPool, prompt_release_if_emptied
 from tilauscope.tilauscope_types import THEME, GreenBean, format_money, price_per_kg_spin, no_enter_default, show_styled_message
 from tilauscope.bean_qualifiers import screen_size_options
 
@@ -788,11 +788,11 @@ class NewSackWizard(QDialog):
         mf.setHorizontalSpacing(14)
         mf.setVerticalSpacing(10)
         self.nc_density_spin = QDoubleSpinBox()
-        self.nc_density_spin.setRange(0.0, 1000.0)
-        self.nc_density_spin.setDecimals(1)
+        self.nc_density_spin.setRange(0.0, 800.0)
+        self.nc_density_spin.setDecimals(0)
         self.nc_density_spin.setSuffix(" g/L")
         self.nc_humidity_spin = QDoubleSpinBox()
-        self.nc_humidity_spin.setRange(0.0, 30.0)
+        self.nc_humidity_spin.setRange(0.0, 15.0)
         self.nc_humidity_spin.setDecimals(1)
         self.nc_humidity_spin.setSuffix(" %")
         self.nc_wa_spin = QDoubleSpinBox()
@@ -1052,7 +1052,7 @@ class NewSackWizard(QDialog):
         self.supplier_edit = QLineEdit()
         self.supplier_edit.setMinimumWidth(340)
         self.altitude_spin = QSpinBox()
-        self.altitude_spin.setRange(0, 5000)
+        self.altitude_spin.setRange(0, 3000)
         self.altitude_spin.setSuffix(" m")
         f.addRow(QApplication.translate("tilauscope_sacks", "Farm:"), self.farm_edit)
         f.addRow(QApplication.translate("tilauscope_sacks", "Supplier:"), self.supplier_edit)
@@ -1095,18 +1095,14 @@ class NewSackWizard(QDialog):
         self.bean1_ratio_spin.setValue(50.0)
         blend_names = (getattr(self._host, 'coffee_bean_types', {}) or {}).get('Arabica', [])
         self.bean2_combo = QComboBox()
-        self.bean2_combo.setEditable(True)
-        self.bean2_combo.addItems(blend_names)
-        self.bean2_combo.setEditText("")
+        self.bean2_combo.addItems([""] + blend_names)
         self.bean2_ratio_spin = QDoubleSpinBox()
         self.bean2_ratio_spin.setRange(0.0, 100.0)
         self.bean2_ratio_spin.setDecimals(0)
         self.bean2_ratio_spin.setSuffix(" %")
         self.bean2_ratio_spin.setValue(50.0)
         self.bean3_combo = QComboBox()
-        self.bean3_combo.setEditable(True)
-        self.bean3_combo.addItems(blend_names)
-        self.bean3_combo.setEditText("")
+        self.bean3_combo.addItems([""] + blend_names)
         self.bean3_ratio_spin = QDoubleSpinBox()
         self.bean3_ratio_spin.setRange(0.0, 100.0)
         self.bean3_ratio_spin.setDecimals(0)
@@ -1146,13 +1142,12 @@ class NewSackWizard(QDialog):
         self.species_combo = QComboBox()
         self.species_combo.addItems(getattr(self._host, 'coffee_beans_species', []) or [])
         self.varieties_combo = QComboBox()
-        self.varieties_combo.setEditable(True)
         self.density_spin = QDoubleSpinBox()
-        self.density_spin.setRange(0.0, 1000.0)
-        self.density_spin.setDecimals(1)
+        self.density_spin.setRange(0.0, 800.0)
+        self.density_spin.setDecimals(0)
         self.density_spin.setSuffix(" g/L")
         self.humidity_spin = QDoubleSpinBox()
-        self.humidity_spin.setRange(0.0, 30.0)
+        self.humidity_spin.setRange(0.0, 15.0)
         self.humidity_spin.setDecimals(1)
         self.humidity_spin.setSuffix(" %")
         self.wa_spin = QDoubleSpinBox()
@@ -1186,9 +1181,12 @@ class NewSackWizard(QDialog):
         current = self.varieties_combo.currentText()
         self.varieties_combo.clear()
         items = (getattr(self._host, 'coffee_bean_types', {}) or {}).get(species, [])
-        self.varieties_combo.addItems(items)
-        if current:
-            self.varieties_combo.setEditText(current)
+        # same entries as the BeanCave form, "Other" included, so a saved variety reloads there
+        self.varieties_combo.addItems([""] + list(items)
+                                      + [QApplication.translate("tilauscope_beancave", "Other")])
+        idx = self.varieties_combo.findText(current) if current else -1
+        if idx >= 0:
+            self.varieties_combo.setCurrentIndex(idx)
 
     def _refresh_processes(self, category: str) -> None:
         current = self.process_combo.currentText()
@@ -1757,10 +1755,13 @@ class NewSackWizard(QDialog):
             from tilauscope.tilauscope_types import BeanCaveContainer  # noqa: PLC0415
             if host.cave is None:
                 host.cave = BeanCaveContainer(green_beans=[], reference_profiles=[])
+                # BeanCave reads host.green_beans as the cave's own list (Storage, sack lookup)
+                host.green_beans = host.cave.green_beans
 
             mode = self._mode()
             sack_id = self.sack_combo.currentText().strip()
             target_uuid = ""
+            retired: tuple[object, float] | None = None   # (bean, weight before)
 
             if mode == "restock":
                 src = self._selected_source_bean()
@@ -1783,13 +1784,18 @@ class NewSackWizard(QDialog):
                 if mode == "newcrop" and self.nc_retire_chk.isChecked():
                     src = self._selected_source_bean()
                     if src is not None:
+                        retired = (src, float(src.weight_left or 0.0))
                         src.weight_left = 0.0
 
+            # A failed save has told the operator why; stay open, label still free.
+            if not host.save_green_beans():
+                return
             if sack_id:
                 # drop the label from both available stores (free + printed)
                 SackPool.mark_assigned(sack_id)
-
-            host.save_green_beans()
+            if retired is not None:
+                # the old harvest just hit 0 g: offer its labels back (shared helper)
+                prompt_release_if_emptied(self, retired[0], retired[1], host.save_green_beans)
             host.populate_table()
             self._select_row_by_uuid(target_uuid)
             _logd.debug(f"new sack wizard: {mode} saved (sack={sack_id or 'none'})")

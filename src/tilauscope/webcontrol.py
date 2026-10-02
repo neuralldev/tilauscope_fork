@@ -309,8 +309,8 @@ class TilauWebControl:
                                            "message": "hello expected"})
             await ws.close()
             return ws
-        p = hello.get('payload', {})
-        if not (p.get('proto_min', 1) <= PROTO_VERSION <= p.get('proto_max', 1)):
+        p = self._payload(hello)
+        if not self._proto_supported(p):
             await self._send(ws, 'error', {"code": "UNSUPPORTED_VERSION",
                                            "message": "proto v1 only"})
             await ws.close()
@@ -325,7 +325,7 @@ class TilauWebControl:
                 await ws.close()
                 return ws
             auth = self._parse(amsg)
-            ap = auth.get('payload', {}) if auth and auth.get('type') == 'auth' else None
+            ap = self._payload(auth) if auth and auth.get('type') == 'auth' else None
             if ap is None:
                 await self._send(ws, 'error', {"code": "AUTH_REQUIRED", "message": "auth expected"})
                 await ws.close()
@@ -427,7 +427,7 @@ class TilauWebControl:
     # ---- command routing / controller lock ----------------------------------
 
     async def _handle_command(self, ws: web.WebSocketResponse, data: dict) -> None:
-        p = data.get('payload', {}) if isinstance(data.get('payload'), dict) else {}
+        p = self._payload(data)
         action = p.get('action')
         ref = data.get('seq')
         did = getattr(ws, '_tilau_device_id', None)
@@ -717,9 +717,22 @@ class TilauWebControl:
         try:
             if msg is None or msg.type != web.WSMsgType.TEXT:
                 return None
-            return json.loads(msg.data)
+            data = json.loads(msg.data)
         except Exception:  # noqa: BLE001
             return None
+        return data if isinstance(data, dict) else None
+
+    @staticmethod
+    def _payload(data: dict) -> dict:
+        p = data.get('payload')
+        return p if isinstance(p, dict) else {}
+
+    @staticmethod
+    def _proto_supported(p: dict) -> bool:
+        lo, hi = p.get('proto_min', 1), p.get('proto_max', 1)
+        if not all(isinstance(v, int) and not isinstance(v, bool) for v in (lo, hi)):
+            return False
+        return lo <= PROTO_VERSION <= hi
 
     async def _heartbeat_loop(self) -> None:
         while True:

@@ -455,6 +455,14 @@ def _dtr_projected(
 _HEATER_COL_BY_PHASE: Final = {"drying": 0, "maillard": 1, "development": 2}
 
 
+def _slider_step(aw, idx: int) -> int:
+    """Resolution of an event slider, in % per notch (1, 5 or 10)."""
+    try:
+        return int(aw.eventSliderStepSize(idx)) or 1
+    except Exception:  # pylint: disable=broad-except
+        return 1
+
+
 def _apply_slider_value(aw, idx: int, value: float) -> bool:
     """Pose une valeur ABSOLUE sur un levier machine en un geste — même chemin
     que _QuickAdjustButton : la fenêtre TilauScope borne au range du levier puis
@@ -466,10 +474,7 @@ def _apply_slider_value(aw, idx: int, value: float) -> bool:
     try:
         if not bool(aw.eventslidervisibilities[idx]):
             return False
-        try:
-            step = int(aw.eventSliderStepSize(idx)) or 1
-        except Exception:  # pylint: disable=broad-except
-            step = 1
+        step = _slider_step(aw, idx)
         # Rounding to the event step is this caller's business; the range and
         # the trip out to the machine belong to the window.
         return bool(aw.tilauscope_main.set_slider_value(
@@ -3696,7 +3701,9 @@ class _CoolingPage(QWidget):
         def _abs(idx: int) -> float:
             try:
                 i = ti[idx]
-                return float(tx[i]) if i > 0 and i < len(tx) else -1.0
+                # CHARGE (-1 unmarked) may sit on sample 0; the others use 0.
+                first = 0 if idx == 0 else 1
+                return float(tx[i]) if first <= i < len(tx) else -1.0
             except (IndexError, TypeError):
                 return -1.0
 
@@ -3717,7 +3724,7 @@ class _CoolingPage(QWidget):
         # t_total : DROP si disponible, sinon dernière valeur enregistrée
         if t_drop > 0:
             t_total = t_drop
-        elif tx and abs_charge > 0:
+        elif tx and abs_charge >= 0:
             t_total = float(tx[-1]) - abs_charge
         else:
             t_total = 0.0
@@ -3933,9 +3940,10 @@ class _CoolingPage(QWidget):
             any_ok = False
             dbg: list[str] = []  # per-phase trace for log-based testing
 
-            for ia, ib, pa, pb, dot, val, name in phases:
-                # indices 1–7 use 0 as the "unmarked" sentinel (mirror _abs convention)
-                if not (ia is not None and ib is not None and 0 < ia < ib < n and pb > pa):
+            for k, (ia, ib, pa, pb, dot, val, name) in enumerate(phases):
+                # indices 1–7 use 0 as the "unmarked" sentinel; CHARGE uses -1
+                first = 0 if k == 0 else 1
+                if not (ia is not None and ib is not None and first <= ia < ib < n and pb > pa):
                     dot.setStyleSheet(neutral); val.setText("--")
                     dbg.append(f"{name}=skip(idx ia={ia} ib={ib} plan={pa:.2f}->{pb:.2f})")
                     continue
@@ -4845,6 +4853,8 @@ class RoastAssistantPanel(QWidget):
         # évite de relire tous les .alog sur le thread UI à chaque régen.
         self._rp: "TilauScopeRoastPlan | None" = None
         self._bt_at_fcs: float = 0.0
+        self._mai_inferred_start_sec: float | None = None   # see _anchor_inferred_phase_starts
+        self._dev_inferred_start_sec: float | None = None
 
         # ── Plan vivant (recalage aux jalons) ──────────────────────────────
         # _plan est le plan VIVANT (re-ancré à chaque jalon réel TP/DRYe/FCs) ;
@@ -5513,7 +5523,7 @@ class RoastAssistantPanel(QWidget):
             pass
         self._ror_hist.clear()
         self._bt_stale = False
-        self._crash_detector.reset()
+        self._crash_detector.reset(mode=self.aw.qmc.mode)
         self._page_dry.ao._color_hist.clear()
         self._page_dry.ao._roc_hist.clear()
         self._page_preheat._charge_btn_latched = False   # reset latch pour cette session
@@ -5572,6 +5582,7 @@ class RoastAssistantPanel(QWidget):
             _page.quick_adjust.setVisible(not _curve_only)
         self._page_preheat.quick_adjust.setVisible(not _curve_only)
         self.is_active = True
+        self._refresh_alarm_banner()
         self._bean_header.set_coach_switch_available(self._auto_user_available, _ap_reason or "")
         self._setup_bar.set_active(True)
         self._setup_bar.show_combos(False)
@@ -5599,6 +5610,11 @@ class RoastAssistantPanel(QWidget):
                 self._guidance_phases.observe(GuidancePhase.MAILLARD)
             if ti[2] > 0:
                 self._guidance_phases.observe(GuidancePhase.DEVELOPMENT)
+                # Late start: the phase change that captures it never ran.
+                try:
+                    self._bt_at_fcs = float(self.aw.qmc.temp2[ti[2]])
+                except (IndexError, TypeError, ValueError):
+                    self._bt_at_fcs = 0.0
             # Démarrage tardif : recale immédiatement le plan vivant sur les
             # jalons déjà marqués (le TP est repris au prochain tick refresh).
             if ti[1] > 0:
@@ -5609,8 +5625,16 @@ class RoastAssistantPanel(QWidget):
             self._current_phase = self._PHASE_IDLE
             self._stack.setCurrentIndex(self._PHASE_IDLE)
 
+    def _refresh_alarm_banner(self) -> None:
+        """An active assistant holds alarm actions back: the status bar says so."""
+        try:
+            self.aw.tilauscope_main.update_status_text()
+        except Exception:  # pylint: disable=broad-except
+            _logd.exception("RoastAssistant: status refresh failed")
+
     def _stop_assistant(self) -> None:
         self.is_active = False
+        self._refresh_alarm_banner()
         self._bean_header.set_coach_switch_available(False, self._tr_ap_blocked_inactive)
         self._rp = None   # libère le générateur et son cache historique
         # Désarme la relance back-to-back : un armement ne doit jamais
@@ -5628,6 +5652,8 @@ class RoastAssistantPanel(QWidget):
         self._ror_hist.clear()
         self._bt_stale = False
         self._bt_at_fcs = 0.0
+        self._mai_inferred_start_sec = None
+        self._dev_inferred_start_sec = None
         self._plan_initial = None
         self._replans_applied = []
         self._replan_attempted = set()
@@ -5663,6 +5689,30 @@ class RoastAssistantPanel(QWidget):
         phase_key : "DRY" | "MAI" | "DEV" | "COOL" | "PREHEAT" | "DROP"
         """
         self._set_phase(phase_key, observed=True, refresh=True)
+
+    def _anchor_inferred_phase_starts(self, ctx: dict) -> None:
+        """Start an unmarked Maillard or development where it was entered, not at CHARGE.
+
+        Without a DRY END or FC START mark its timestamp reads 0 s, and every
+        duration counted the roast since CHARGE — a false "extended Maillard"
+        alert, a projected DTR of 100 %.
+        """
+        order = (self._PHASE_IDLE, self._PHASE_DRY, self._PHASE_MAI, self._PHASE_DEV,
+                 self._PHASE_DROP)
+        if self._current_phase not in order:
+            return
+        rank = order.index(self._current_phase)
+        for phase, key, attr in ((self._PHASE_MAI, "t_dryend_sec", "_mai_inferred_start_sec"),
+                                 (self._PHASE_DEV, "t_fcs_sec", "_dev_inferred_start_sec")):
+            if rank < order.index(phase):
+                setattr(self, attr, None)
+                continue
+            if ctx[key] > 0.0:
+                continue
+            if getattr(self, attr) is None and self._current_phase == phase:
+                setattr(self, attr, float(ctx["t_now_sec"]))
+            if getattr(self, attr) is not None:
+                ctx[key] = getattr(self, attr)
 
     def _set_phase(self, phase_key: str, *, observed: bool, refresh: bool) -> None:
         """Activate an observed or plan-temperature-inferred phase."""
@@ -6683,6 +6733,12 @@ class RoastAssistantPanel(QWidget):
         # sauf pour le dernier pas qui atteint exactement la cible (≥ 1 %).
         if (_cur - _tgt) < (1.0 if _full else 2.0):
             return False
+        _step = _slider_step(self.aw, _b_idx)
+        if round(_tgt / _step) * _step >= _cur:
+            # the slider's notch would hold the burner, or step it up: wait
+            if _full:
+                self._ap_dev_heater_pending = None   # nearest notch already held
+            return False
         if not _apply_slider_value(self.aw, _b_idx, _tgt):
             return False
         _rb = _read_slider_pct(self.aw, _b_idx)
@@ -6982,6 +7038,9 @@ class RoastAssistantPanel(QWidget):
                 air=_read_slider_pct(self.aw, 0),
                 heater=_read_slider_pct(self.aw, _b_idx),
                 ext=_read_slider_pct(self.aw, 2) if _aw_on else None)
+            self._ap_core.set_lever_steps(
+                air=_slider_step(self.aw, 0), heater=_slider_step(self.aw, _b_idx),
+                ext=_slider_step(self.aw, 2))
             if not _aw_on:
                 # AirWave parti en cours de roast : la dernière valeur observée
                 # est périmée — le moteur ne doit plus rien bâtir dessus.
@@ -7010,8 +7069,12 @@ class RoastAssistantPanel(QWidget):
             elif _act is not None:
                 _idx = {_APLever.AIR: 0, _APLever.HEATER: _b_idx,
                         _APLever.EXT: 2}[_act.lever]
-                if _apply_slider_value(self.aw, _idx, _act.target_value):
-                    _rb = _read_slider_pct(self.aw, _idx)
+                _before = _read_slider_pct(self.aw, _idx)
+                _applied = _apply_slider_value(self.aw, _idx, _act.target_value)
+                _rb = _read_slider_pct(self.aw, _idx)
+                if _applied and _rb is not None and _before is not None and abs(_rb - _before) < 0.5:
+                    _applied = False   # the slider took nothing: not a gesture, not a debit
+                if _applied:
                     self._ap_expected[_idx] = _rb if _rb is not None else _act.target_value
                     _now = time.monotonic()
                     try:
@@ -7297,6 +7360,7 @@ class RoastAssistantPanel(QWidget):
                 }.get(_resolved.phase)
                 if _phase_key is not None:
                     self._set_phase(_phase_key, observed=False, refresh=False)
+        self._anchor_inferred_phase_starts(ctx)
 
         # An inferred phase advances analysis only. Physical-risk thresholds
         # remain attached to the latest phase confirmed by an actual event.
@@ -7797,14 +7861,13 @@ class RoastAssistantPanel(QWidget):
             try:
                 ground       = profile_path.get("ground_color", 0) or 0
                 whole        = profile_path.get("whole_color",  0) or 0
-                color_system = profile_path.get("color_system", "Agtron") or "Agtron"
+                # Read on the scale it was recorded in; a profile naming none
+                # is taken to be on the operator's current scale.
+                color_system = (profile_path.get("color_system")
+                                or self.aw.qmc.color_systems[self.aw.qmc.color_system_idx])
                 raw_color    = ground if ground > 0 else (whole if whole > 0 else 0)
                 if raw_color > 0:
-                    ag_color = self._average_color_in_agtron(
-                        float(raw_color),
-                        self.aw.qmc.color_systems[self.aw.qmc.color_system_idx]
-                        if color_system == "Agtron" else color_system,
-                    )
+                    ag_color = self._average_color_in_agtron(float(raw_color), color_system)
             except Exception as e:
                 _logd.debug(f"RoastAssistant: erreur lecture couleur profil ({e})")
         else:

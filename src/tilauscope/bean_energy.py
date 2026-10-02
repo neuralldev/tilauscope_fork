@@ -288,9 +288,16 @@ def match_variety_family(varieties: str | None) -> "tuple[str, float] | None":
     ## le NOM de famille, pas sur la ligne : les hybrides Timor et le Bourbon
     ## sont deux lignes pour une seule famille, et « Castillo, Caturra » reste
     ## une résolution, pas un conflit.
-    _hits: list[tuple[str, float]] = [
-        (family, d_charge) for family, words, d_charge in VARIETY_FAMILIES
-        if any(w in text for w in words)]
+    ## Longest names first, each blanked once found: the "bourbon" inside
+    ## "pink bourbon" is not a second, opposite family.
+    _hits: list[tuple[str, float]] = []
+    for word, family, d_charge in sorted(
+            ((w, family, d) for family, words, d in VARIETY_FAMILIES for w in words),
+            key=lambda entry: len(entry[0]), reverse=True):
+        if word in text:
+            text = text.replace(word, " ")
+            if (family, d_charge) not in _hits:
+                _hits.append((family, d_charge))
     if not _hits:
         return None
     _families = {family for family, _ in _hits}

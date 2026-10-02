@@ -59,6 +59,19 @@ def _sanitized_archive_filename(name: str,
     return safe_name or "diagnostic.log"
 
 
+def _unique_archive_name(name: str, sensitive_values: Iterable[str],
+                         used_names: set[str]) -> str:
+    """Scrubbed archive name, suffixed from the scrubbed name when already taken."""
+    archive_name = _sanitized_archive_filename(name, sensitive_values)
+    base = Path(archive_name)
+    suffix = 2
+    while archive_name in used_names:
+        archive_name = f"{base.stem}_{suffix}{base.suffix}"
+        suffix += 1
+    used_names.add(archive_name)
+    return archive_name
+
+
 class TilauCrashDialog(QDialog):
 
     mod_name_map = {
@@ -188,14 +201,9 @@ def export_logs_to_zip():
                             if resolved in seen_logs or not log.is_file():
                                 continue
                             seen_logs.add(resolved)
-                            archive_name = _sanitized_archive_filename(
-                                log.name, sensitive_values
+                            archive_name = _unique_archive_name(
+                                log.name, sensitive_values, used_names
                             )
-                            suffix = 2
-                            while archive_name in used_names:
-                                archive_name = f"{log.stem}_{suffix}{log.suffix}"
-                                suffix += 1
-                            used_names.add(archive_name)
                             _write_sanitized_log(
                                 zipf, log, f"logs/{archive_name}", sensitive_values
                             )

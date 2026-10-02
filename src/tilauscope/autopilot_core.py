@@ -34,6 +34,7 @@ All temperatures/RoR are °C / °C-per-minute (unit doctrine: °C internal).
 from __future__ import annotations
 
 import logging
+import math
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
@@ -178,6 +179,7 @@ class AutoPilotCore:
         self._ph: _PhaseState | None = None
         self._ror_hist: deque[tuple[float, float]] = deque(maxlen=64)
         self._levers: dict[Lever, float | None] = {lv: None for lv in Lever}
+        self._steps: dict[Lever, int] = dict.fromkeys(Lever, 1)   # % per slider notch
         self._persist_low = 0
         self._persist_high = 0
         self._window_until = 0.0
@@ -220,6 +222,13 @@ class AutoPilotCore:
         if ext is not None:
             self._levers[Lever.EXT] = ext
 
+    def set_lever_steps(self, air: int | None = None, heater: int | None = None,
+                        ext: int | None = None) -> None:
+        """Slider resolution (% per notch, default 1); trims are snapped to it."""
+        for lever, step in ((Lever.AIR, air), (Lever.HEATER, heater), (Lever.EXT, ext)):
+            if step is not None:
+                self._steps[lever] = max(1, int(step))
+
     def forget_lever(self, lever: Lever) -> None:
         """That lever is gone (AirWave unpaired mid-roast): no action may be
         built on its last observed value, which is now stale. observe_levers()
@@ -261,7 +270,18 @@ class AutoPilotCore:
             lo = self.p.airflow_min_pct
         elif lever is Lever.EXT:
             hi = self.p.ext_max_pct
-        target = min(hi, max(lo, cur + delta))
+        target = cur + delta
+        step = self._steps[lever]
+        if step > 1:
+            # A coarse slider rounds a 2.5 % trim to nothing or to a full notch:
+            # move at least one notch the asked way, so the ledger books the real move.
+            snapped = step * math.floor(target / step + 0.5)
+            if delta < 0 and snapped >= cur:
+                snapped = step * math.ceil(cur / step) - step
+            elif delta > 0 and snapped <= cur:
+                snapped = step * math.floor(cur / step) + step
+            target = snapped
+        target = min(hi, max(lo, target))
         if abs(target - cur) < 0.5:
             return None
         return Action(t=t, lever=lever, delta_pct=target - cur, target_value=target,

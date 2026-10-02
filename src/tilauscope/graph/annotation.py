@@ -66,6 +66,14 @@ def _card_qss() -> str:
             f" padding: 6px; border-radius: 4px; font-size: 11px; }}")
 
 
+def _last_reading(series: Any) -> float | None:
+    """The most recent real value of a temperature series, or None."""
+    for value in reversed(series or ()):
+        if value is not None and value not in (-1, 0):
+            return float(value)
+    return None
+
+
 class FloatingAnnotation(QLabel):
     """A card anchored to one reading on the curve."""
 
@@ -404,9 +412,12 @@ class AnnotationLayer:
 
     def _preheat_html(self, qmc: Any) -> str | None:
         tx = float(qmc.timex[-1])
-        temp1 = getattr(qmc, 'temp1', None) or [0.0]
-        temp2 = getattr(qmc, 'temp2', None) or [0.0]
-        et, bt = float(temp1[-1] or 0.0), float(temp2[-1] or 0.0)
+        # The last real reading: Artisan stores -1 for a sample the probe missed.
+        et_read = _last_reading(getattr(qmc, 'temp1', None))
+        bt_read = _last_reading(getattr(qmc, 'temp2', None))
+        if et_read is None and bt_read is None:
+            return None
+        et, bt = et_read or 0.0, bt_read or 0.0
         preheat = getattr(self._aw, 'tilauPreheatingPid', None)
         if preheat is not None and getattr(preheat, 'active', False):
             return text.preheat_card(qmc, preheat, et, bt)

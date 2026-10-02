@@ -1133,6 +1133,10 @@ class NiimbotLabelBuilder:
         weightout = computed.get("weightout", "N/A")
         wloss     = computed.get("weight_loss","N/A")
 
+        # Ground when measured, else whole — never the lighter of the two.
+        colour = next((c for c in (data.get('ground_color'), data.get('whole_color'))
+                       if isinstance(c, (int, float)) and c > 0), 'N/A')
+
         roast_data: dict[str, str] = {
             "Bean":        (bean.name[:27] + "…") if len(bean.name) > 30 else bean.name,
             "Origin":      bean.country,
@@ -1148,7 +1152,7 @@ class NiimbotLabelBuilder:
             "Weight In":   f"{weightin} g",
             "Weight Out":  f"{weightout} g",
             "Weight Loss": f"{wloss} %",
-            "Agtron Color":f"{data.get('whole_color','N/A')} {data.get('color_system','')}".strip(),
+            "Agtron Color":f"{colour} {data.get('color_system','')}".strip(),
             "Total Time":  self._fmt_seconds(int(computed.get("totaltime", 0))),
             "DTR":         f"{round(computed.get('finishphasetime',0) / computed.get('totaltime',1) * 100, 1)}%",
             "Drop BT":     f"{computed.get('DROP_BT','N/A')}°{mode}",

@@ -51,7 +51,8 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 from tilauscope.header_icons import make_icon
 from tilauscope.theme_qss import style_combo_popup, styled_popup_view, tint
 from tilauscope.tilauscope_types import (THEME, literal_ampersand, standardization_map,
-                                         TilauProgressRow, to_agtron)
+                                         TilauProgressRow, to_agtron, normalize_timeindex,
+                                         RoastingPhase)
 from tilauscope.roast_timeline import RoastReadyDialog
 from tilauscope.cave.common import (
     _log, _logd, _PLOT_PALETTE, _safe_filename,
@@ -1417,6 +1418,7 @@ class ViewerMixin:
 
     def _set_detail_mode(self, mode: str) -> None:
         """Which parts of the head show: 'none', 'single' or 'compare'."""
+        self._detail_mode = mode
         single, compare = mode == 'single', mode == 'compare'
         self.roast_detail_meta.setVisible(single)
         self.roast_compare_chips.setVisible(compare)
@@ -1440,12 +1442,15 @@ class ViewerMixin:
         self._set_detail_mode('none')
 
     def _show_detail_single(self, fname: str) -> None:
-        """Name the roast at once, from the list; its figures follow once it has loaded."""
-        row = self._row_for(fname)
-        title = row.title if row is not None else Path(fname).stem
-        self.roast_detail_title.setText(title)
-        self.roast_detail_title.setToolTip(title)
-        self.roast_detail_meta.setText(self._roast_meta_text(row) if row is not None else "")
+        """Open the head on one roast; its figures follow once it has loaded.
+
+        From one roast to the next the head is left as it is and swapped in one
+        step by `_fill_detail_single`: blanking it in between made it empty and
+        refill, the curve jumping by a banner's height, on every click.
+        """
+        if getattr(self, '_detail_mode', 'none') == 'single':
+            return
+        self._name_detail(fname)
         self._show_tiles(roast_tiles(None))
         self.roast_energy_tile.show_text(energy_tile(None))
         self.roast_energy_tile.set_clickable(False)
@@ -1453,10 +1458,18 @@ class ViewerMixin:
         self.roast_tasting_banner.hide()
         self._set_detail_mode('single')
 
+    def _name_detail(self, fname: str) -> None:
+        row = self._row_for(fname)
+        title = row.title if row is not None else Path(fname).stem
+        self.roast_detail_title.setText(title)
+        self.roast_detail_title.setToolTip(title)
+        self.roast_detail_meta.setText(self._roast_meta_text(row) if row is not None else "")
+
     def _fill_detail_single(self, profile) -> None:  # noqa: ANN001
-        """The figures of the roast just loaded, and the banner when its result is missing."""
+        """The name and figures of the roast just loaded, and the banner when its result is missing."""
         # Reached from a load's completion slot: an escape here would close the application.
         try:
+            self._name_detail(getattr(self, '_loading_fname', ''))
             facts = roast_facts(profile) if profile else None
             bean = self.bean_from_profile(profile) if profile else None
             self._show_tiles(roast_tiles(facts, float(getattr(bean, 'price_per_kg', 0.0) or 0.0)))
@@ -1506,7 +1519,9 @@ class ViewerMixin:
         epoch = self._roast_epoch(profile)
         colour = to_agtron(float(profile.get('ground_color') or 0) or float(profile.get('whole_color') or 0),
                            str(profile.get('color_system') or ''))
-        days = ((datetime.now().astimezone() - datetime.fromtimestamp(epoch, tz=UTC)).days
+        # Calendar days, as the rest calendar counts them — not 24-hour slices.
+        days = ((datetime.now().astimezone().date()
+                 - datetime.fromtimestamp(epoch, tz=UTC).astimezone().date()).days
                 if epoch > 0 else -1)
         if days >= 0 and rest_window(colour, days).status != RestStatus.FRESH:
             banner.show_state(QApplication.translate("tilauscope_beancave", "Rested and ready — how did it taste?"),
@@ -1517,7 +1532,8 @@ class ViewerMixin:
     def _open_tasting(self) -> None:
         """The tasting form of the roast on screen."""
         from tilauscope.cave.tasting_dialog import TastingDialog  # noqa: PLC0415
-        profile = getattr(self, 'lastprofiledata', None) or {}
+        # Not `lastprofiledata`: the Roast Plan tab points it at its own reference roast.
+        profile = self.displayed_profile() or {}
         roast_uuid = str(profile.get('roastUUID') or '')
         if not roast_uuid:
             self._show_message(self, QApplication.translate("tilauscope_beancave", "Tasting"),
@@ -1534,7 +1550,7 @@ class ViewerMixin:
     def _open_roast_energy(self) -> None:
         """The energy sheet of the roast on screen, read from its own profile."""
         try:
-            profile = getattr(self, 'lastprofiledata', None)
+            profile = self.displayed_profile()   # not the Roast Plan tab's reference roast
             if not profile:
                 return
             from tilauscope.energy_panel import EnergyPanel
@@ -2002,8 +2018,9 @@ class ViewerMixin:
                                 QApplication.translate("tilauscope_beancave","Please, select a roast session first."), QMessageBox.Icon.Warning)
             return
 
-         # 1. Use the data already in memory
-        data = self.lastprofiledata
+        # 1. The roast on screen — not `lastprofiledata`, which the Roast Plan
+        #    tab points at its own reference roast
+        data = self.displayed_profile()
         if not data:
             return
 
@@ -2078,7 +2095,7 @@ class ViewerMixin:
                 QApplication.translate("tilauscope_beancave", "Please, select a roast session first."),
                 QMessageBox.Icon.Warning)
             return
-        data = getattr(self, 'lastprofiledata', None)
+        data = self.displayed_profile()   # not the Roast Plan tab's reference roast
         if not data:
             return
 
@@ -2194,7 +2211,9 @@ class ViewerMixin:
             self._pending_timeindex = None
         self._displayed_fname = fname
         label = self.roast_label(self._displayed_fname)
-        self.display_roast_info(self.lastprofiledata)
+        self.remember_deltas(profiledata, 'temp1', deltaet)
+        self.remember_deltas(profiledata, 'temp2', deltabt)
+        # Draws the roast and fills its sheet (display_roast_info) in one pass.
         self.plot_bt_curve_preview(self.lastprofiledata, deltaet, deltabt)  # type: ignore
         self._update_roast_plan_values()
         # ── Update header label with roast display name ──────────────────────
@@ -2263,13 +2282,26 @@ class ViewerMixin:
         """
         qmc = self.aw.qmc
         ds = ror_span_samples(qmc, data, deltaname)
-        cache_key = (deltaname, qmc.mode, qmc.curvefilter,
-                     bool(qmc.interpolateDropsflag), bool(qmc.optimalSmoothing), ds)
+        cache_key = self._deltas_key(data, deltaname, ds)
         for cached_data, key, cached_deltas in self._deltas_cache:
             if cached_data is data and key == cache_key:
                 return cached_deltas
 
         deltas = recompute_profile_deltas(qmc, data, deltaname, ds)
-        self._deltas_cache.append((data, cache_key, deltas))
-        del self._deltas_cache[:-5]
+        self.remember_deltas(data, deltaname, deltas)
         return deltas
+
+    def _deltas_key(self, data: dict, deltaname: str, ds: int) -> tuple:
+        qmc = self.aw.qmc
+        # CHARGE and DROP bound the series; a saved milestone edit moves them in place.
+        ti = normalize_timeindex(list(data.get('timeindex') or []))
+        return (deltaname, qmc.mode, qmc.curvefilter,
+                bool(qmc.interpolateDropsflag), bool(qmc.optimalSmoothing), ds,
+                ti[RoastingPhase.CHARGE], ti[RoastingPhase.DROP])
+
+    def remember_deltas(self, data: dict, deltaname: str, deltas) -> None:
+        """Hand evaldeltas a series already computed for ``data`` the same way —
+        the load worker's — so the sheet does not smooth the roast a second time."""
+        ds = ror_span_samples(self.aw.qmc, data, deltaname)
+        self._deltas_cache.append((data, self._deltas_key(data, deltaname, ds), deltas))
+        del self._deltas_cache[:-5]

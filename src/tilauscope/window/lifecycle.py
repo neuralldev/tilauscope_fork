@@ -122,6 +122,8 @@ class LifecycleMixin:
 
     # update display on DROP, then inform artisan
     def handle_drop(self):
+        if not self.aw.qmc.flagstart:
+            return   # Artisan ignores DROP outside a recording
         for i in range(self.phase_box.count()):
             widget = self.phase_box.itemAt(i).widget()
             if widget:
@@ -190,6 +192,8 @@ class LifecycleMixin:
         self.handle_cool_end()
 
     def handle_cool_end(self):
+        if not self.aw.qmc.flagstart:
+            return   # Artisan ignores COOL END outside a recording
         self._show_cooled_face()
         self.aw.qmc.markCoolSignal.emit(False)
         # Réinitialiser les flags de refroidissement
@@ -684,6 +688,7 @@ class LifecycleMixin:
             timex = qmc.timex
             if ti[0] <= -1 or len(timex) <= ti[0]:
                 # recording, drum not charged yet: the roast is still preheating
+                self.current_event = None
                 self.handle_preheat(True)
                 self.roast_bridge.notify_roast_state(True)
                 self.roast_bridge.notify_phase("PREHEAT")
@@ -692,6 +697,8 @@ class LifecycleMixin:
 
             charge_t = timex[ti[0]]
             now_secs = max(int(round(timex[-1] - charge_t)), 1)
+            # the F-keys gate on the last mark: take it from Artisan's own record
+            self.current_event = max([0] + [i for i in range(1, 8) if self._milestone_marked(i)])
 
             def _secs(idx: int) -> int:
                 return int(round(timex[idx] - charge_t))
@@ -952,6 +959,9 @@ class LifecycleMixin:
             self.last_update_second = -1
             self.phase_starts = {"DRY": None, "MAI": None, "DEV": None}
             self.current_phase = None
+            # A previous STOP disabled the milestone buttons; CHARGE must be clickable again.
+            for btn in self.event_buttons.values():
+                btn.setEnabled(True)
             # Recording is active while waiting for CHARGE: clear and steady.
             self._update_timer_style("preheat")
             self._hide_artisan_standard_buttons()

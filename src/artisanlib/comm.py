@@ -2076,7 +2076,8 @@ class serialport:
             t2 = d["catalyst"] if self.aw.qmc.mode == 'C' else fromCtoFstrict(d["catalyst"])   
         else:
             t1 = t2 = -1
-        return tx,t1,t2 # time, inlet temp, catalyst temp
+        ## TILAU ## extra devices read (tx, t2, t1): t1 = inlet lands on channel 1
+        return tx,t2,t1 # time, catalyst temp, inlet temp
 
     def TILAUSCOPE12(self) -> tuple[float,float,float]:
         tx = self.aw.qmc.timeclock.elapsedMilli()

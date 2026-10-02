@@ -20,6 +20,7 @@
 # happens on user action — nothing here touches the 1 Hz sampling path.
 
 import logging
+import math
 from typing import Final, Optional, Callable
 
 from PyQt6.QtCore import Qt, QPoint
@@ -260,6 +261,9 @@ class RoastCardDialog(QDialog):
             timeindex = profile.get("timeindex") or []
             if len(timex) < 2 or len(bt) != len(timex):
                 return None
+            # Artisan's -1 (no reading) is a gap, not a temperature.
+            bt = [v if v != -1 else float("nan") for v in bt]
+            et = [v if v != -1 else float("nan") for v in et]
             charge_idx = timeindex[0] if timeindex and timeindex[0] > -1 else 0
             t0 = timex[charge_idx]
             xs = [(t - t0) / 60.0 for t in timex]
@@ -280,7 +284,7 @@ class RoastCardDialog(QDialog):
             for lbl, ti in (("DRYe", 1), ("FC", 2), ("DROP", 6)):
                 if len(timeindex) > ti and timeindex[ti] > 0:
                     marks.append((lbl, timeindex[ti]))
-            y_top = max(bt) if bt else 0
+            y_top = max((v for v in bt if not math.isnan(v)), default=0)
             for lbl, idx in marks:
                 if 0 <= idx < len(xs):
                     # A thumbnail names its milestones and stops there, but it

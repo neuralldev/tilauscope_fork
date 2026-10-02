@@ -42,6 +42,13 @@ and the guided assistant's recommendations name gestures that machine actually h
 [read-only mode](preparing-a-roast.md#machines-tilauscope-cannot-drive): readings only, no
 sliders, guidance becomes advice rather than a control to move.
 
+**If the Bluetooth link drops.** The roaster cuts its own burner when it loses the link.
+TilauScope records the missing readings as gaps in the curve rather than repeating the last
+value, keeps reconnecting on its own, and says so on screen. Once the link is back, heat is not
+re-applied: the burner slider shows the roaster's actual output, and resuming heat or pressing
+STOP is your decision. A burner that does not confirm it is off when the link opens, or that runs
+above its command, is also reported on screen.
+
 !!! note "Older Skywalker models"
     An earlier Skywalker generation connects over a different Bluetooth link than the one
     described above. It is recognised, but its setup is closer to a generic Bluetooth device

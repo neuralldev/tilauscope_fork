@@ -20,7 +20,7 @@ GreenBean) and RoastResultDialog (shown after a roast to record weight/colour/no
 from __future__ import annotations
 import logging
 import re
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final
 from datetime import datetime
 
 from tilauscope.roast_insights import build_insights, targets_from_plan
@@ -29,6 +29,7 @@ from tilauscope.roast_debrief import roast_colour_agtron
 from tilauscope.theme_qss import base_qss, apply_tilau_theme, tooltip_qss, tint
 from tilauscope.roasters import RoasterManager
 from tilauscope.probe_visibility import et_available_for, et_available_in_profile
+from tilauscope.sack_manager import prompt_release_if_emptied
 from PyQt6.QtCore    import Qt, QPropertyAnimation, pyqtSlot, QTimer, QSettings, QSize
 from PyQt6.QtCore import QThread, QObject, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -45,7 +46,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QColor, QKeyEvent, QFontMetrics, QIcon
 
-from artisanlib.util import fromCtoFstrict, convertWeight, weight_units
+from artisanlib.util import fromCtoFstrict, convertWeight, weight_units, events_internal_to_external_value
 from tilauscope.tilauscope_types import (
     GreenBean, THEME, show_styled_message, AGTRON_SCALES, format_batch_label,
     open_in_os_viewer, ensure_color_system, resolve_color_system, call_later,
@@ -1334,6 +1335,31 @@ class _RoastInsightsPanel(QWidget):
         self._scroll.setWidget(host)   # takes ownership; old host is destroyed
 
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _default_autosave_prefix(qmc: Any) -> str:
+    """The save-filename template, set to batch + title + date/time when empty.
+
+    A template the user configured is kept. A malformed one that wraps tokens in
+    a TRAILING '~' too (e.g. '~title~_~yy~-~mm~-~dd~_~hour~~minute~') is
+    replaced: Artisan tokens use a single LEADING '~' only, and the trailing
+    ones leave stray '~' in the filename. Signature: a double tilde '~~' (never
+    present in a valid template — adjacent tokens like '~hour~minute' have a
+    single '~').
+    """
+    _bad_exact = (
+        '~title~_~yy~-~mm~-~dd~_~hour~~minute~',
+        '~batch~_~title~_~yy~-~mm~-~dd~_~hour~~minute~',
+    )
+    prefix = qmc.autosaveprefix
+    if prefix != '' and '~~' not in prefix and prefix not in _bad_exact:
+        return prefix
+    ## Valid, clean template: ~date = yy-MM-dd, ~time = hhmm.
+    ## See generateFilename/parseAutosaveprefix (fields list) in main.py.
+    ## Artisan's batch counter, -1 when off; the number itself lands at DROP.
+    if qmc.batchcounter > -1:
+        return '~batch_~title_~date_~time'
+    return '~title_~date_~time'
+
 
 class RoastSetupDialog(QDialog):
     """
@@ -2660,25 +2686,7 @@ class RoastSetupDialog(QDialog):
             # Title
             qmc.title            = title
             qmc.title_show_always = True
-            # Set a default save-filename template (batch + title + date/time)
-            # if the user hasn't configured a custom autosaveprefix in Artisan preferences.
-            # Migrate a malformed prefix that wraps tokens in a TRAILING '~' too
-            # (e.g. '~title~_~yy~-~mm~-~dd~_~hour~~minute~'). Artisan tokens use a
-            # single LEADING '~' only; the trailing ones leave stray '~' in the
-            # filename. Signature: a double tilde '~~' (never present in a valid
-            # template — adjacent tokens like '~hour~minute' have a single '~').
-            _bad_exact = (
-                '~title~_~yy~-~mm~-~dd~_~hour~~minute~',
-                '~batch~_~title~_~yy~-~mm~-~dd~_~hour~~minute~',
-            )
-            _prefix_broken = '~~' in qmc.autosaveprefix or qmc.autosaveprefix in _bad_exact
-            if qmc.autosaveprefix == '' or _prefix_broken:
-                ## Valid, clean template: ~date = yy-MM-dd, ~time = hhmm.
-                ## See generateFilename/parseAutosaveprefix (fields list) in main.py.
-                if self._aw.qmc.roastbatchnrB == 0:
-                    qmc.autosaveprefix = '~title_~date_~time'
-                else:
-                    qmc.autosaveprefix = '~batch_~title_~date_~time'
+            qmc.autosaveprefix = _default_autosave_prefix(qmc)
 
             # Beans text
             qmc.beans            = beans
@@ -2885,17 +2893,7 @@ class RoastSetupDialog(QDialog):
         # ── Decrease stock ─────────────────────────────────────────────────
         if self._decrease_stock_cb.isChecked() and green_weight > 0 and self._bean.uuid:
             try:
-                actual_weight_left = self._parent_widget.weight_left_input.value()
-                if actual_weight_left < green_weight:
-                    actual_weight_left = 0.0
-                else:
-                    actual_weight_left -= green_weight
-                # update field as it was set manually and update button pressed before closing
-                self._parent_widget.weight_left_input.setValue(actual_weight_left)
-                self._parent_widget.update_selected_bean()
-                # After updating the stock in the model, refresh the parent dialog's table
-                # to reflect the change in the UI.
-
+                self._decrease_bean_stock(green_weight)
                 _log.info(
                     "RoastSetupDialog: stock decreased by %.1f g for %s",
                     green_weight, self._bean.name,
@@ -2943,6 +2941,22 @@ class RoastSetupDialog(QDialog):
     def _on_cancel(self) -> None:
         self._close_helpers()
         self._start_fade_out()
+
+    def _decrease_bean_stock(self, green_weight: float) -> None:
+        """Take the roast's green weight off the stored record's stock, and nothing else.
+
+        Saving the BeanCave form back instead rewrote every field the form
+        cannot show (free-text variety, density above its range).
+        """
+        host = self._parent_widget
+        bean = getattr(host, 'uuidmap', {}).get(self._bean.uuid)
+        if bean is None:
+            return
+        previous = float(bean.weight_left or 0.0)
+        bean.weight_left = max(0.0, previous - green_weight)
+        host.save_green_beans()
+        prompt_release_if_emptied(host, bean, previous, host.save_green_beans)
+        host.populate_table()   # reselects the row, so the form reloads the new stock
 
     def _close_helpers(self) -> None:
         # unwire first — the scale manager outlives this dialog.
@@ -5032,7 +5046,7 @@ class RoastDataReaderDialog(QDialog):
             etype = self._sevtype[k] if k < len(self._sevtype) else -1
             name = self._etypes[etype] if 0 <= etype < len(self._etypes) else ""
             val = self._sevval[k] if k < len(self._sevval) else 0.0
-            valstr = str(int(round((val - 1) * 10)))   # Artisan internal→display
+            valstr = str(events_internal_to_external_value(val))
             label = (name + " " + valstr).strip()
             sstr = self._sevstr[k].strip() if k < len(self._sevstr) else ""
             if sstr and sstr not in ("0", ""):

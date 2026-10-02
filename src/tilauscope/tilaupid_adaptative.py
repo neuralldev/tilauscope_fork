@@ -91,6 +91,13 @@ from PyQt6.QtCore import QSettings
 
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
+# Dispositions that end a preheat successfully: learning is kept and the preheat
+# setpoint marker stays. `handover` additionally leaves the burner at its hold
+# power, so the PID calibration inherits a settled machine (protocol 8.1).
+_BUMPLESS_STOP_REASONS: Final[frozenset[str]] = frozenset(
+    {"charge", "stable_complete", "handover"}
+)
+
 
 def _normalise_identity(value: object) -> str:
     """Stable comparison/key form for machine labels stored by Artisan."""
@@ -534,6 +541,15 @@ class AlogScanner:
 
         if key_sv_c is None and not found_in_events:
             return None
+
+        # An aborted or safety-stopped session leaves its start event behind.
+        for k, ev in enumerate(events_type):
+            label = events_strings[k] if k < len(events_strings) else ""
+            if ev == 4 and isinstance(label, str) and (
+                    label.startswith("TilauPID SAFETY STOP")
+                    or (label.startswith("TilauPID Preheat stopped (")
+                        and label[len("TilauPID Preheat stopped ("):-1] not in _BUMPLESS_STOP_REASONS)):
+                return None
 
         # Key-only file (no event): the preheat is the whole pre-CHARGE window.
         if not found_in_events:
@@ -1943,6 +1959,10 @@ class AdaptivePIDMixin:
             # Un changement de machine/voie invalide le corpus chargé. Le rescan
             # complet (jusqu'à `scan_budget` profils) part en tâche de fond ;
             # la session adopte le résultat au prochain _refresh_learned().
+            # D'ici là, rien de l'ancien corpus : il décrit une autre machine/voie.
+            with self._history_lock:
+                self._adaptive_memory.replace_all([])
+            self._refresh_learned()
             self._start_history_worker()
         else:
             self._refresh_learned()

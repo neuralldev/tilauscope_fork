@@ -44,7 +44,7 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
-from artisanlib.util import fill_gaps, convertTemp, smooth_list
+from artisanlib.util import fill_gaps, convertTemp, smooth_list, float2float
 from tilauscope.tilauscope_types import (BeanCaveContainer, THEME, _IS_WINDOWS,
                                          RoastingPhase, marked, normalize_timeindex,
                                          estimate_ror_dt, COLOR_AIR, COLOR_GRAIN, dimmed)
@@ -284,6 +284,76 @@ ALOG_CACHE_MAX: Final[int] = 8
 #: Indices follow GREEN_BEAN_COLUMNS: crop, density, humidity, water activity,
 #: altitude, stock left, SCA score, roast count, roasted weight.
 NUMERIC_COLUMNS: Final[tuple[int, ...]] = (6, 7, 8, 9, 10, 13, 15, 16, 17)
+
+
+#: (timeindex slot, key prefix) of the milestones Artisan stamps into `computed`.
+_COMPUTED_MILESTONES: Final = ((1, 'DRY'), (2, 'FCs'), (3, 'FCe'), (4, 'SCs'),
+                               (5, 'SCe'), (6, 'DROP'), (7, 'COOL'))
+_PHASE_TIME_KEYS: Final = ('totaltime', 'dryphasetime', 'midphasetime',
+                           'finishphasetime', 'coolphasetime')
+
+
+def recompute_milestone_fields(profile: dict, timeindex: list) -> dict:
+    """The profile's `computed` block, its milestone fields matching `timeindex`.
+
+    Same fields and rules as Artisan's computedProfileInformation for what
+    follows from the marks alone: time, ET and BT at each mark, phase lengths.
+    What needs Artisan's engine (AUC, RoR, weight loss) is kept as stored. An
+    unmarked milestone has no key, as in Artisan.
+    """
+    computed = dict(profile.get('computed') or {})
+    timex = profile.get('timex') or []
+    temp1 = profile.get('temp1') or []
+    temp2 = profile.get('temp2') or []
+
+    def recorded(idx: int) -> bool:
+        return 0 <= idx < min(len(timex), len(temp1), len(temp2))
+
+    def stamp(key: str, idx: int, start: float) -> None:
+        computed[f'{key}_time'] = float2float(timex[idx] - start)
+        computed[f'{key}_ET'] = float2float(temp1[idx])
+        computed[f'{key}_BT'] = float2float(temp2[idx])
+
+    def drop_keys(*keys: str) -> None:
+        for k in keys:
+            computed.pop(k, None)
+
+    # Artisan locates an unmarked dry end itself; keep the one it found,
+    # placed on the clock from the CHARGE it was measured against.
+    old_ti = profile.get('timeindex') or [-1]
+    old_start = timex[old_ti[0]] if old_ti[0] > -1 and recorded(old_ti[0]) else 0.0
+    old_dry = computed.get('dryphasetime')
+    dry_end = old_start + float(old_dry) if old_dry else None
+
+    start = 0.0
+    if timeindex[0] > -1 and recorded(timeindex[0]):
+        start = timex[timeindex[0]]
+        if 'CHARGE_time' in computed:   # a saved profile usually carries none
+            stamp('CHARGE', timeindex[0], 0.0)
+    else:
+        drop_keys('CHARGE_time', 'CHARGE_ET', 'CHARGE_BT')
+    tp = int(computed.get('TP_idx') or 0)
+    if tp > 0 and recorded(tp):
+        computed['TP_time'] = float2float(timex[tp] - start)
+    for slot, key in _COMPUTED_MILESTONES:
+        if timeindex[slot] > 0 and recorded(timeindex[slot]):
+            stamp(key, timeindex[slot], start)
+        else:
+            drop_keys(f'{key}_time', f'{key}_ET', f'{key}_BT')
+
+    dry, fcs, drop, cool = timeindex[1], timeindex[2], timeindex[6], timeindex[7]
+    drop_keys(*_PHASE_TIME_KEYS)
+    if fcs > 0 and drop > 0 and recorded(fcs) and recorded(drop) and timex[drop] != start:
+        if dry > 0 and recorded(dry):
+            dry_end = timex[dry]
+        computed['totaltime'] = float2float(timex[drop] - start, 3)
+        computed['finishphasetime'] = float2float(timex[drop] - timex[fcs], 3)
+        if dry_end is not None:
+            computed['dryphasetime'] = float2float(dry_end - start, 3)
+            computed['midphasetime'] = float2float(timex[fcs] - dry_end, 3)
+        if cool > 0 and recorded(cool):
+            computed['coolphasetime'] = float2float(timex[cool] - timex[drop], 3)
+    return computed
 
 
 def set_combo_value(combo, value: object) -> None:

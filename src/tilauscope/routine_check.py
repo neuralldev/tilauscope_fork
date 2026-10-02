@@ -21,7 +21,7 @@ from typing import Final
 from PyQt6.QtCore import (
     Qt, QDateTime, QObject, pyqtSignal, QThread,
     pyqtSlot, QSettings, QTimer, QPropertyAnimation,
-    QEasingCurve, QEvent,
+    QEasingCurve, QEvent, QCoreApplication,
 )
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QGridLayout,
@@ -433,7 +433,9 @@ class TilauRoutineCheck(QDialog):
         self._countdown_bar.setVisible(False)
 
     def _start_async_scan(self) -> None:
-        self._thread = QThread(self)
+        # Owned by the application, not this delete-on-close dialog: closing it
+        # mid-scan must not destroy a running thread (Qt aborts the process).
+        self._thread = QThread(QCoreApplication.instance())
         self._worker = AlogScanner(self.alog_directory, self.last_clean)
         self._worker.moveToThread(self._thread)
 
@@ -541,8 +543,8 @@ class TilauRoutineCheck(QDialog):
                 self._worker.finished.disconnect(self._on_scan_finished)  # type: ignore[union-attr]
             except (TypeError, RuntimeError):
                 pass
+            self._thread.requestInterruption()   # the scan stops at its next file
             self._thread.quit()
-            self._thread.wait(500)
         super().closeEvent(event)
 
 
