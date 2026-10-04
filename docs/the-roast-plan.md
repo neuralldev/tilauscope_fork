@@ -14,32 +14,30 @@
 
 ## Where the plan lives
 
-The plan is not a screen inside TilauScope. It is produced in **BeanCave → Roasting plan**, a
-short step-by-step form: pick the coffee, enter the parameters, adjust probe offsets if needed.
-The **batch weight** and **roast level** come back as you last left them, since a bag is usually
-worked through at one batch size and one roast level over several sessions. Beside them sits
-**What is this coffee for?** — *Filter*, *[Omni](glossary.md#omni)* or *Espresso* — the same
-choice the roast setup sheet and the guided assistant ask for, and the same setting: change it
-in any of the three and all three follow. It sets the development time (filter the shortest, espresso the longest, omni between
-the two) and carries through to the drop temperature and the weight loss to aim for. It too is
-remembered for the next plan. The ambient fields
-do not: they describe the room as it is now, and are filled from the online weather or the
-ambient probe. The online weather has to work out where you are first, which means handing your
-internet address to a lookup service abroad, so it asks before doing so the first time — see
-[Configuration](configuration.md#privacy). Typing the three values by hand is always an option:
-choosing it puts the cursor in the temperature field, ready to type over. For a coffee not yet
-roasted, the empty ambient fields start from what Artisan already knows — its last ambient
-temperature, its altitude, and the pressure at that altitude — and the online weather brings
-them up to date.
-Two actions close it out:
+The plan lives on the **ⓘ PLAN** tab of the roast setup sheet, which **Plan** on a BeanCave
+bean record opens directly — see
+[Preparing a roast](preparing-a-roast.md#judging-the-batch-before-it-starts). The tab shows it as
+a roadmap: the four milestones with their temperatures, times and machine settings, and the
+weight to expect after cooling. Opening the sheet commits to nothing, so the tab is also where a
+batch is tried out before it is roasted.
 
-- **⚡ Generate Roast Plan** — becomes available once the temperature, the pressure and the batch
-  weight are filled (an altitude of 0 is accepted: sea level is a real place), and
-  produces **a PDF**. That document is the plan: everything described below is in it.
-- **Inject Alarms into TilauScope** — loads the plan's alarm set in place of the current alarms,
-  so the roast is set up before it starts. TilauScope confirms with *The roast plan alarms have
-  been loaded into TilauScope. Get ready to roast!* The same alarm set is also saved as an alarm
-  file next to the PDF, to reload later from the alarm editor.
+The plan is built from three choices kept at the top of the tab — the **batch weight**, **What is
+this coffee for?** (*Filter*, *[Omni](glossary.md#omni)* or *Espresso*) and the **roast level** —
+and from the room. The use is the same setting as in the guided assistant: change it in either
+place and both follow. It sets the development time (filter the shortest, espresso the longest,
+omni between the two) and carries through to the drop temperature and the weight loss to aim
+for. The room comes from the ambient probe, or, without one, from the online weather or values
+typed in; its temperature moves the charge, and its altitude moves first crack — see
+[What the coffee and the room are doing](preparing-a-roast.md#what-the-coffee-and-the-room-are-doing).
+
+Two things take the plan off the screen:
+
+- **📄 PDF** — saves the plan as **a PDF**: everything described below is in it. With a plan
+  pinned for comparison, the document opens with a page setting the two plans side by side. The
+  plan's alarm set is saved as an alarm file next to the PDF, to reload later from the alarm
+  editor.
+- **Load the plan's alarms at start** — at the Expert level, loads the plan's alarm set in place
+  of the current alarms when the roast starts, so the roast is set up before it begins.
 
 !!! note
     All three control ramps are armed, not just the burner: the heat ladder through Maillard,
@@ -51,22 +49,22 @@ Two actions close it out:
     milestone is crossed — the same figures as the phase-entry table — so a milestone never
     jumps a lever to where the ramp is only due to arrive later.
 
-The same engine also feeds the *Predicted targets* and *STRATEGY* blocks on the ROAST SETUP
-sheet, which is why those predictions and this PDF agree with each other.
+The PDF and the roadmap are the same plan. The guided assistant builds its own when the roast
+starts, from the same coffee, the same room and the same machine.
 
 The plan prints in the language TilauScope is set to, whichever alphabet that language uses:
 Greek, Cyrillic, Chinese, Japanese, Korean, and Arabic, Persian or Hebrew read right to left.
 Coffee and farm names print in their own script too. Thai is the one exception — it has no
 letterforms available and prints blank.
 
-<!-- CAPTURE 6.1 [scene:cave_plan] — the BeanCave "Roasting plan" tab, form completed, with the ⚡ Generate Roast
-Plan button enabled. CAPTURE 6.2 — the injection confirmation message. CAPTURE 6.3 and CAPTURE 6.4 —
+<!-- CAPTURE 6.1 [scene:plan_pdf_compare] — the first page of a generated PDF with a pinned plan: the comparison page
+of two plans of the same coffee, Filter against Espresso. CAPTURE 6.3 and CAPTURE 6.4 —
 one or two pages of a generated PDF, on a coffee with enough history for the learned sources to show — the label reads "learned (n=…)", or "medoid (n=…)" once the coherent profile takes over.
 CAPTURE 6.7 — the "Control Ramps (Heater & Airflow)" page of a generated PDF, on a coffee whose
 plan carries a full heater ramp and a development ramp.
 -->
 
-![The Roasting plan tab with its form and the Generate Roast Plan action.](assets/the-roast-plan-6.1.png)
+![The comparison page of a generated plan, two plans of the same coffee side by side.](assets/the-roast-plan-6.1.png)
 
 ![The first page of a generated plan: bean and environment, thermal profile and timing, ratios, and the machine settings at each phase entry.](assets/the-roast-plan-6.3.png)
 
@@ -86,11 +84,13 @@ a batch on a day, not to a coffee in the abstract.
 
 **Bean humidity and water activity are not the same measurement, and the plan uses both.**
 Humidity is *how much* water the coffee holds — the mass to heat and evaporate, so it sets the
-drying time, the burner, the charge temperature, the push through first crack and how long the
+burner, the charge temperature, the push through first crack and how long the
 coffee coasts at the end. Water activity is *how freely* that water leaves, so it sets the
 airflow. A coffee can hold plenty of water that leaves reluctantly, and both facts are true at
 once: neither reading cancels or replaces the other, and one being absent never makes the plan
-guess it from the other.
+guess it from the other. Humidity hardly changes how long drying lasts: on this machine
+the drying time follows the batch weight, the variety and the process, and a wetter coffee
+is met with more energy at the start, not a longer wait.
 
 **The variety has a say in the charge.** A coffee's process decides how hot it can safely be
 charged — the sugars on the surface of a natural scorch where a washed coffee would not — but it

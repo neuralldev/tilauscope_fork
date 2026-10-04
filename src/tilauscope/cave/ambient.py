@@ -19,14 +19,13 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass  # pylint: disable=unused-import
-import requests
 
 #import matplotlib.pyplot as plt
 
 
 
 
-from PyQt6.QtCore import (pyqtSlot, QT_TRANSLATE_NOOP) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
+from PyQt6.QtCore import pyqtSlot # @UnusedImport @Reimport  @UnresolvedImport
 from PyQt6.QtWidgets import (QApplication, QVBoxLayout, QMessageBox) # @UnusedImport @Reimport  @UnresolvedImport
 
 # Import QWebEngineView for both PyQt6 and PyQt5
@@ -35,55 +34,17 @@ from tilauscope.tilauscope_types import (show_styled_message,
                                          THEME)
 from tilauscope.cave.common import (
     _log, _logd)
-from tilauscope.cave.workers import _CallableWorker
 from tilauscope.cave.widgets import (
     _DensityFloatWindow)
 
 
-def _fetch_online_weather() -> dict:
-    """Location and current weather, as plain data. Worker thread.
-
-    Touches no widget and no ``qmc``: only the returned dict crosses back.
-    """
-    geo_res = requests.get("http://ip-api.com/json/", timeout=5)
-    geo_res.raise_for_status()
-    geo_data = geo_res.json()
-
-    lat = geo_data.get("lat")
-    lon = geo_data.get("lon")
-    if lat is None or lon is None:
-        # Declared here, translated at display: this runs off the GUI thread
-        # and returns data only, so the catalogue is read by the slot.
-        raise ValueError(QT_TRANSLATE_NOOP(
-            "tilauscope_beancave", "Could not detect location."))
-
-    w_res = requests.get(
-        "https://api.open-meteo.com/v1/forecast",
-        params={
-            "latitude": lat,
-            "longitude": lon,
-            "current": "temperature_2m,relative_humidity_2m,surface_pressure",
-            "elevation": "nan",
-        },
-        timeout=5)
-    w_res.raise_for_status()
-    w_data = w_res.json()
-    current = w_data.get("current", {})
-    return {
-        "city": geo_data.get("city", "Unknown"),
-        "temperature": current.get("temperature_2m"),
-        "humidity": current.get("relative_humidity_2m"),
-        "pressure": current.get("surface_pressure"),
-        "elevation": w_data.get("elevation"),
-    }
-
-
 class AmbientMixin:
-    """The measured surroundings: the ambient probe, the weather fallback, the
-    water-activity gauge and the density scale.
+    """The measured surroundings: the ambient probe, the water-activity gauge
+    and the density scale.
 
-    Four separate instruments, grouped because each is a reading that arrives
-    from outside and lands in the bean record.
+    Separate instruments, grouped because each is a reading that arrives from
+    outside. The ambient probe is held here for the roast setup sheet, which
+    reads it.
 
     A plain mixin, deliberately not a QDialog subclass. Qt registers the slots a
     class declares in that class's own metaobject, and a dialog built from
@@ -102,170 +63,22 @@ class AmbientMixin:
 
     @pyqtSlot(int)
     def _on_beancave_tab_changed(self, index: int) -> None:
-        """Keep the probe button state fresh when the plan tab opens."""
+        """Start/stop the Storage tab's ambient polling with its visibility; the Roasts
+        tab follows the selected coffee."""
         if getattr(self, 'tab_widget', None) is None:
             return
         current = self.tab_widget.widget(index)
-        if current is getattr(self, 'roast_plan_tab', None):
-            self._refresh_tilauambient_btn()
-        # start/stop the Stockage tab's ambient polling with visibility
+        # The Roasts tab follows the coffee selected in Green Beans.
+        if current is getattr(self, 'roast_viewer_tab', None):
+            bean = self._current_selected_bean()
+            if bean is not None:
+                self.follow_bean(bean)
         st = getattr(self, 'storage_tab_widget', None)
         if st is not None:
             if current is getattr(self, 'storage_tab', None):
                 st.on_shown()
             else:
                 st.on_hidden()
-
-    def _refresh_tilauambient_btn(self) -> None:
-        """Couple the two ambient sources to probe detection:
-        probe connected → probe button ON / weather button OFF; no probe → the
-        opposite. Both react together because every connect/disconnect/tab-open
-        path funnels through here."""
-        btn = getattr(self, 'tilauambient_btn', None)
-        if btn is None:
-            return
-        dev = getattr(self, 'bleTilauAmbientDevice', None)
-        active = dev is not None and getattr(dev, 'is_connected', False)
-
-        # Probe button — enabled only when the probe is connected.
-        btn.setEnabled(active)
-        btn.setToolTip(
-            QApplication.translate("tilauscope_beancave",
-                "Read temperature, humidity and pressure from the connected TilauAmbient probe.")
-            if active else
-            QApplication.translate("tilauscope_beancave",
-                "TilauAmbient probe not detected. Connect it in the device settings first."))
-
-        # Weather button — the mutually-exclusive fallback: disabled while the
-        # probe is the live source, enabled when no probe is detected.
-        wbtn = getattr(self, 'weather_btn', None)
-        if wbtn is not None:
-            wbtn.setEnabled(not active)
-            wbtn.setToolTip(
-                QApplication.translate("tilauscope_beancave",
-                    "The TilauAmbient probe is connected and used as the ambient source.")
-                if active else
-                QApplication.translate("tilauscope_beancave",
-                    "Fill temperature, humidity, pressure and altitude from the online weather for your location."))
-
-    @pyqtSlot()
-    def _get_tilauambient_conditions(self) -> None:
-        """Fill the ambient fields from the live TilauAmbient probe."""
-        dev = getattr(self, 'bleTilauAmbientDevice', None)
-        if dev is None or not getattr(dev, 'is_connected', False):
-            self._refresh_tilauambient_btn()
-            return
-        if self._ambient_busy():
-            return
-        # The GATT read blocks until the probe answers or the BLE stack times
-        # out; a paired probe out of range froze the window for that whole time.
-        self._ambient_thread, self._ambient_worker = self._launch_worker(
-            _CallableWorker(lambda d=dev: d.get_ambient("AMBIENT")),
-            on_ok=self._on_tilauambient_reading,
-            on_err=self._on_tilauambient_error,
-            on_done=self._on_ambient_thread_done,
-            auto_delete=False)  # _cancel_threads owns lifetime
-
-    @pyqtSlot(str)
-    def _on_tilauambient_error(self, message: str) -> None:
-        _logd.warning(f"_get_tilauambient_conditions: read failed: {message}")
-        self._on_tilauambient_reading(None)
-
-    @pyqtSlot(object)
-    def _on_tilauambient_reading(self, data) -> None:
-        """Inject one probe reading. GUI thread."""
-        if data is None or not getattr(data, 'valid', False):
-            self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "TilauAmbient probe"),
-                QApplication.translate("tilauscope_beancave", "No valid reading from the TilauAmbient probe. Please try again."),
-                QMessageBox.Icon.Warning)
-            return
-        # Temperature honours the display unit (probe reports °C).
-        if "Ambient Temperature" in self.roast_plan_inputs:
-            val = data.temperature if self.aw.qmc.mode == "C" else (data.temperature * 9 / 5) + 32
-            self.roast_plan_inputs["Ambient Temperature"].setValue(float(val))
-        if "Atmospheric Pressure" in self.roast_plan_inputs:
-            self.roast_plan_inputs["Atmospheric Pressure"].setValue(float(data.pressure))
-        self._check_plan_inputs()
-
-    @pyqtSlot()
-    def _get_weather_conditions(self):
-        """
-        Gathers current location weather conditions and injects them into
-        the roast plan input fields. Works on Windows and Mac.
-
-        The two lookups run on a worker thread: at five seconds each they froze
-        the window for up to ten on a slow or captive network.
-        """
-        # The lookup turns the operator's IP address into a town, which means
-        # handing that address to a third party. Asked once, remembered on yes.
-        from tilauscope.tilau_privacy_ui import (  # noqa: PLC0415
-            ensure_geo_consent, hand_over_to_manual_entry,
-        )
-        if not ensure_geo_consent(self):
-            # "I'll type it" is the other way of filling the same three fields.
-            hand_over_to_manual_entry(
-                self.roast_plan_inputs.get("Ambient Temperature"))
-            return
-
-        if self._ambient_busy():
-            return
-        self._ambient_thread, self._ambient_worker = self._launch_worker(
-            _CallableWorker(_fetch_online_weather),
-            on_ok=self._on_weather_conditions_ready,
-            on_err=self._on_ambient_fetch_error,
-            on_done=self._on_ambient_thread_done,
-            auto_delete=False)  # _cancel_threads owns lifetime
-
-    @pyqtSlot(object)
-    def _on_weather_conditions_ready(self, payload) -> None:
-        """Inject what the lookup brought back. GUI thread."""
-        if not isinstance(payload, dict):
-            return
-        temp_c   = payload.get("temperature")
-        humidity = payload.get("humidity")
-        pressure = payload.get("pressure")
-        elevation = payload.get("elevation")
-
-        # Temp Handling (Convert to F if Artisan is in Fahrenheit)
-        if "Ambient Temperature" in self.roast_plan_inputs and temp_c is not None:
-            val = temp_c if self.aw.qmc.mode == "C" else (temp_c * 9/5) + 32
-            self.roast_plan_inputs["Ambient Temperature"].setValue(val)
-
-        if "Atmospheric Pressure" in self.roast_plan_inputs and pressure is not None:
-            self.roast_plan_inputs["Atmospheric Pressure"].setValue(float(pressure))
-
-        if "Altitude" in self.roast_plan_inputs and elevation is not None:
-            self.roast_plan_inputs["Altitude"].setValue(float(elevation))
-
-        _logd.debug(f"Weather updated for {payload.get('city')}: {temp_c}°C, {humidity}%, {pressure}hPa")
-
-    @pyqtSlot(str)
-    def _on_ambient_fetch_error(self, message: str) -> None:
-        _logd.error(f"Ambient fetch error: {message}")
-        # What the worker raises is declared with QT_TRANSLATE_NOOP; anything
-        # coming from the network carries no translation and passes through.
-        self._show_message(self, QApplication.translate("tilauscope_beancave", "Weather Error"),
-                           QApplication.translate("tilauscope_beancave", "Failed to retrieve weather data: ")
-                           + QApplication.translate("tilauscope_beancave", message),
-                           QMessageBox.Icon.Warning)
-
-    @pyqtSlot()
-    def _on_ambient_thread_done(self) -> None:
-        self._ambient_thread = None
-        self._ambient_worker = None
-
-    def _ambient_busy(self) -> bool:
-        """True while an ambient lookup is already in flight.
-
-        Without this a second press replaced the handles of the first, whose
-        thread then ran unowned and unjoinable.
-        """
-        thread = getattr(self, '_ambient_thread', None)
-        try:
-            return thread is not None and thread.isRunning()
-        except RuntimeError:
-            return False
 
     # ── Density measurement window ─────────────────────────────────────────
     @pyqtSlot()
@@ -409,14 +222,12 @@ class AmbientMixin:
         if self.bleTilauAmbientDevice is not None:
             _logd.debug("TilauAmbient probe connected")
             self.bleTilauAmbientDevice.is_connected = True
-            self._refresh_tilauambient_btn()
 
     @pyqtSlot()
     def slotStopTilauAmbient(self) -> None:
         if self.bleTilauAmbientDevice is not None:
             _logd.debug("TilauAmbient probe disconnected")
             self.bleTilauAmbientDevice.is_connected = False
-            self._refresh_tilauambient_btn()
 
     @pyqtSlot()
     def stopTilauAmbientManager(self) -> None:

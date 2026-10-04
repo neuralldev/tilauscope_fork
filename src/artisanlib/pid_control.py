@@ -1819,9 +1819,9 @@ class PIDcontrol:
             self.aw.qmc.pid.setTarget(sv,init=init)
             self.sv = sv # remember last sv
             self.svValue = sv
-        ## TILAU ## 
+        ## TILAU ## signal, not a call: setSV() also runs on event-action threads
         if self.aw.tilauscope_main is not None: # tilauscope started
-            self.aw.tilauscope_main.update_pid_from_artisan(sv, move,init)
+            self.aw.tilauscope_main.pid_sv_from_artisan_signal.emit(float(sv), bool(move), bool(init))
 
     # set RS patterns from one of the RS sets
     def setRSpattern(self, n:int) -> None:

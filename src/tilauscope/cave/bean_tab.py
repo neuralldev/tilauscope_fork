@@ -39,7 +39,7 @@ from PyQt6.QtWidgets import (QApplication, QComboBox, QWidget, QHeaderView, QTab
 
 from tilauscope.theme_qss import tint
 from tilauscope.tilauscope_types import (GreenBean, BeanCaveContainer, GREEN_BEAN_COLUMNS, show_styled_message,
-                                         THEME, TilauProgressDialog, _IS_WINDOWS)
+                                         THEME, TilauProgressDialog, _IS_WINDOWS, select_listed_or_other)
 from tilauscope.header_icons import SVG_PROG_AI
 from tilauscope.sack_manager import SackPool, confirm_release, prompt_release_if_emptied  # sack labels (Lot 1, §9.3)
 from tilauscope.bean_qualifiers import physical_qualifier  # plain-language reading of density/humidity/aw
@@ -186,6 +186,8 @@ class BeanTabMixin:
         # whichever variety happened to sort first — indistinguishable from a
         # deliberate choice. The rest of this class already assumes it is there.
         single_origin_names.insert(0, BLEND_COMPONENT_PLACEHOLDER())
+        # an unlisted component is filed here, as in every other closed list
+        single_origin_names.append(QApplication.translate("tilauscope_beancave", "Other"))
 
         # Store the currently selected items to restore them after updating the list
         current_bean2 = self.bean2_combo.currentText()
@@ -235,7 +237,7 @@ class BeanTabMixin:
         self.catalogue_list.setVisible(show_form)
         self.empty_state_label.setVisible(not show_form)
         if hasattr(self, '_notice_bar'):
-            self._notice_bar.setVisible(show_form)
+            self._notice_bar.setVisible(show_form and self._right_stack.currentIndex() == 1)
 
 
     @pyqtSlot()
@@ -274,6 +276,71 @@ class BeanTabMixin:
             wiz.exec()
         except Exception:  # noqa: BLE001
             _logd.exception("new crop wizard failed")
+
+    def _show_bean_sheet(self, bean) -> None:
+        """The read sheet of this coffee, with the memory of its last roast."""
+        memory = None
+        try:
+            from tilauscope import tasting_log  # noqa: PLC0415
+            from tilauscope.roast_memory import last_roast  # noqa: PLC0415
+            memory = last_roast(
+                getattr(bean, 'uuid', '') or '', list(self._metadata_cache.records.values()),
+                tasting_log.load(self.beancave_directory).entries, self.aw.qmc.mode,
+                lambda roastertype: self._roast_machine_ctx({'roastertype': roastertype}))
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _logd.exception("roast memory unavailable")
+        self.bean_sheet.set_bean(bean, memory, self.aw.qmc.mode)
+
+    def _catalogue_memories(self) -> dict:
+        """bean uuid → the memory of its last roast, for the catalogue rows."""
+        from tilauscope import tasting_log  # noqa: PLC0415
+        from tilauscope.roast_memory import last_roast  # noqa: PLC0415
+        if self.cave is None:
+            return {}
+        by_uuid: dict[str, list] = {}   # one pass over the roasts, not one per bean
+        for record in self._metadata_cache.records.values():
+            by_uuid.setdefault((record.uuid or '').lower(), []).append(record)
+        tastings = tasting_log.load(self.beancave_directory).entries
+        found = {}
+        for bean in self.cave.green_beans:
+            uuid = getattr(bean, 'uuid', '') or ''
+            memory = (last_roast(uuid, by_uuid.get(uuid.lower(), []), tastings, self.aw.qmc.mode)
+                      if uuid else None)
+            if memory is not None:
+                found[uuid] = memory
+        return found
+
+    def _refresh_bean_sheet(self) -> None:
+        """Redraw the sheet of the selected coffee — the roast index or a tasting changed."""
+        if not hasattr(self, 'bean_sheet'):
+            return
+        bean = self._current_selected_bean()
+        if bean is not None:
+            self._show_bean_sheet(bean)
+
+    @pyqtSlot(str)
+    def _taste_from_sheet(self, roast_uuid: str) -> None:
+        """The tasting form of the coffee's last roast, opened from its sheet."""
+        from tilauscope.cave.tasting_dialog import TastingDialog  # noqa: PLC0415
+        bean = self._current_selected_bean()
+        meta = next((m for m in self._metadata_cache.records.values()
+                     if m.roast_uuid == roast_uuid), None)
+        if bean is None or meta is None:
+            return
+        dlg = TastingDialog(self, directory=str(self.beancave_directory), roast_uuid=roast_uuid,
+                            bean_uuid=bean.uuid, coffee=bean.name or '',
+                            roast_epoch=int(meta.roastepoch or meta.mtime), mode=self.aw.qmc.mode)
+        if dlg.exec():
+            self._refresh_bean_sheet()
+            self.catalogue_list.set_beans(self.cave.green_beans)
+
+    @pyqtSlot()
+    def _show_bean_roasts(self) -> None:
+        """The Roasts tab, narrowed to the selected coffee — even after a ✕."""
+        bean = self._current_selected_bean()
+        self.tab_widget.setCurrentWidget(self.roast_viewer_tab)
+        if bean is not None:
+            self.follow_bean(bean, again=True)
 
     # Syncs the catalogue rich list selection to the hidden datatable
     @pyqtSlot(int)
@@ -573,6 +640,7 @@ class BeanTabMixin:
             self.generate_qr_button.setEnabled(False)
             self.generate_card_button.setEnabled(False)
             self.roast.setEnabled(False)
+            self.plan_button.setEnabled(False)
             self.remove_button.setEnabled(False)
             self.new_crop_button.setEnabled(False)
 
@@ -586,10 +654,9 @@ class BeanTabMixin:
             self.generate_qr_button.setEnabled(True)
             self.generate_card_button.setEnabled(True)
             self.roast.setEnabled(True)
+            self.plan_button.setEnabled(True)
             self.remove_button.setEnabled(True)
             self.new_crop_button.setEnabled(True)
-        # Keep the Roast Plan tab selectors in sync
-        self._populate_plan_bean_combo()
 
     @pyqtSlot()
     def load_selected_bean_into_form(self) -> None:
@@ -603,6 +670,7 @@ class BeanTabMixin:
             self.generate_qr_button.setEnabled(False)
             self.generate_card_button.setEnabled(False)
             self.roast.setEnabled(False)
+            self.plan_button.setEnabled(False)
             self.remove_button.setEnabled(False)
             self.new_crop_button.setEnabled(False)
             return
@@ -630,7 +698,7 @@ class BeanTabMixin:
 
             set_combo_value(self.species_combo, bean.species)
             self._update_variety(bean.species)
-            set_combo_value(self.varieties_combo, bean.varieties)
+            select_listed_or_other(self.varieties_combo, bean.varieties)
 
             self.weight_left_input.setValue(bean.weight_left)
             self.flavour_notes_input.setText(bean.flavour_notes)
@@ -646,19 +714,10 @@ class BeanTabMixin:
             self._update_blend_component_list() # Met à jour la liste des grains disponibles
 
             self.bean1_ratio_input.setValue(bean.bean1_ratio)
-            # Assurez-vous que le texte est dans la liste avant de définir
-            bean2_text = bean.bean2_name if bean.bean2_name else BLEND_COMPONENT_PLACEHOLDER()
-            if bean2_text in [self.bean2_combo.itemText(i) for i in range(self.bean2_combo.count())]:
-                self.bean2_combo.setCurrentText(bean2_text)
-            else:
-                self.bean2_combo.setCurrentIndex(0) # Sinon, sélectionnez le défaut
+            select_listed_or_other(self.bean2_combo, bean.bean2_name or BLEND_COMPONENT_PLACEHOLDER())
             self.bean2_ratio_input.setValue(bean.bean2_ratio)
 
-            bean3_text = bean.bean3_name if bean.bean3_name else BLEND_COMPONENT_PLACEHOLDER()
-            if bean3_text in [self.bean3_combo.itemText(i) for i in range(self.bean3_combo.count())]:
-                self.bean3_combo.setCurrentText(bean3_text)
-            else:
-                self.bean3_combo.setCurrentIndex(0) # Sinon, sélectionnez le défaut
+            select_listed_or_other(self.bean3_combo, bean.bean3_name or BLEND_COMPONENT_PLACEHOLDER())
             self.bean3_ratio_input.setValue(bean.bean3_ratio)
 
             self.blend_notes_input.setText(bean.blend_notes)
@@ -681,14 +740,13 @@ class BeanTabMixin:
                         f"background:{tint('ACCENT', 25)};border:1px solid {tint('ACCENT', 60)};"
                         f"border-radius:4px;color:{THEME['ACCENT']};font-size:10px;padding:1px 6px;"
                     )
-            # now update roast plan accordingly
-            self._update_roast_plan_ui_state()
             self.update_button.setEnabled(True)
             self.generate_qr_button.setEnabled(True)
             self.generate_card_button.setEnabled(True)
             # Only allow roasting a bean that is actually in stock.
             in_stock = (getattr(bean, "weight_left", 0.0) or 0.0) > 0
             self.roast.setEnabled(in_stock)
+            self.plan_button.setEnabled(in_stock)
             self.roast.setToolTip(
                 QApplication.translate("tilauscope_beancave", "Start a roast with this bean")
                 if in_stock else
@@ -698,7 +756,7 @@ class BeanTabMixin:
 
             # Lot 5: refresh the read sheet and return to it
             if hasattr(self, 'bean_sheet'):
-                self.bean_sheet.set_bean(bean)
+                self._show_bean_sheet(bean)
                 self._right_stack.setCurrentIndex(0)
 
         else:
@@ -783,7 +841,7 @@ class BeanTabMixin:
                 self._set_form_sacks(bean.sacks)
                 # Lot 5: reflect the release on the sheet and the list
                 if hasattr(self, 'bean_sheet'):
-                    self.bean_sheet.set_bean(bean)
+                    self._show_bean_sheet(bean)
                 if hasattr(self, 'catalogue_list') and self.cave is not None:
                     self.catalogue_list.set_beans(self.cave.green_beans)
                 _logd.debug(f"Sack {sack_id} released from '{bean.name}' back to the free pool")

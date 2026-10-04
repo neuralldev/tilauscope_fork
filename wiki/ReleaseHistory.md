@@ -1,4 +1,59 @@
 ## [4.3] 2026-09-13
+build 24
+* 🐛 [fix(roast_plan)] : a wetter coffee no longer gets a longer drying phase — your own roasts show moisture barely changes drying time, so a 12.8 % coffee plans about 5:50 of drying instead of 6:45, and the calendar follows weight, variety and process
+* 🐛 [fix(roast_setup)] : a remembered ambient probe reading, shown greyed as the last reading, is no longer saved into the roast file as that roast's room conditions
+* 🐛 [fix(roast_setup)] : the weight suggested from a coffee's last batch ignores simulated roasts and matches the coffee whatever the letter case of its identifier
+* 🐛 [fix(roast_assistant)] : a roast started without the setup sheet no longer re-plans with the altitude of the previous roast; it uses Artisan's own altitude setting
+* 🐛 [fix(roast_plan)] : the plan and the assistant no longer advise a longer drying for a humid coffee or a shorter one for a dry coffee — they now say a humid coffee needs more energy at the start and that a high turning point is the water, not a runaway
+* ⚡ [feat(beancave)] : the Roasts tab follows the coffee selected in Green Beans, named in a chip whose ✕ shows every coffee again; a coffee never roasted says so, with Show all coffees
+* ⚡ [feat(beancave)] : the bean record fits on one screen in two columns, and spreads out on a taller window: Essentials with flavour notes, a new Roast memory, Characteristics with measure tiles, blend bar and bean family, Provenance on one line, and the sacks line with New crop
+* ⚡ [feat(beancave)] : Roast memory recalls the coffee's last roast — level, development, weight loss, colour — what was tasted and the change the next roast makes, with Taste… once a roast has rested
+* ⚡ [feat(beancave)] : the catalogue shows each coffee's batches left, last roast and water activity, with a TO TASTE badge; Sort: To roast first or Name; out-of-stock coffees sit at the bottom and fold away behind one line
+* ⚡ [feat(beancave)] : Roast this coffee leads the record's actions; label, QR code and card share one Share & print button; delete becomes an icon
+* ⚡ [feat(beancave)] : + New sack sits at the top of the catalogue beside the search, its menu holding the expert form; the stock filter reads Show: in stock / all coffees
+* ⚡ [feat(beancave)] : the window title, the tabs, SCAN and close share one line
+* ⚡ [feat(beancave)] : All N roasts on a record opens the Roasts tab narrowed to that coffee
+* 🐛 [fix(beancave)] : choosing a lane layout in the curve menu now turns Burner & air on, instead of doing nothing while the settings strips are hidden
+* ⚡ [feat(roast_setup)] : the INSIGHTS tab becomes PLAN — a roadmap of charge, dry end, first crack and drop with their temperatures, times and burner, air and drum settings, the weight to expect after cooling, and a line saying what the plan rests on
+* ⚡ [feat(roast_setup)] : pin a plan on the PLAN tab, then change the weight, the use or the level to compare the two side by side; the PDF opens with a comparison page when a plan is pinned
+* ⚡ [feat(roast_setup)] : at the Expert level, the PLAN tab can load the plan's alarms when the roast starts
+* ⚡ [feat(roast_setup)] : the green weight starts from the last batch of the coffee, and Start Roast waits until the batch is weighed or the weight typed
+* ⚡ [feat(beancave)] : Plan on the bean record opens the roast setup sheet on its PLAN tab; the Roasting plan tab is removed
+* ⚡ [feat(roast_setup)] : without an ambient probe, a WEATHER window reads the local weather on a tap, after asking, or takes typed values; a typed altitude is remembered
+* ⚡ [feat(roast_setup)] : the AMBIENT window keeps the probe's last reading, greyed with its age, and the plan uses it while the probe does not answer
+* 🐛 [fix(roast_plan)] : the plan and the assistant account for the altitude — from the probe, the weather, a typed value or Artisan's own setting — instead of always assuming sea level
+* 🐛 [fix(roast_setup)] : in Fahrenheit, the room temperature no longer reaches the plan as if it were in Celsius
+* 🐛 [fix(roast_assistant)] : the assistant plans with the roaster's own probe offsets, like the PLAN tab; manual offsets left by the removed Roasting plan tab no longer apply unseen
+* 🐛 [fix(roast_setup)] : the plan is redrawn when the ambient probe's reading arrives or changes
+* 🐛 [fix(roast_setup)] : the AMBIENT window shows even when no scale is configured
+* 🐛 [fix(privacy)] : the location notice names altitude, the value now read, instead of pressure
+build 23
+* 🐛 [fix(pid)] : the preheat hold power learned from past roasts counts the moments TilauPID cut the burner, instead of reading too high
+* 🐛 [fix(pid)] : the preheat hold power learned from past roasts reads the heater slider each roast was recorded on, even after the heater slider setting changes
+* 🐛 [fix(mqtt)] : with monitoring kept on after STOP, MQTT sensors added or changed in TilauScope Config are used from the next roast
+* ⚡ [feat(mqtt)] : the MQTT sensor list shows ⚡ and 💨 in place of the line number of the sensors the energy view uses as roaster and extractor
+* 🐛 [fix(mqtt)] : two MQTT sensors can no longer share a name — the second one's curve showed the first one's value, and the energy view ignored both; the name turns red and OK refuses to save until one is renamed
+* 🐛 [fix(mqtt)] : "Use as roaster" and "Use as extractor" move the name from the line that held it, which is left to be named again
+* 🐛 [fix(mqtt)] : OK refuses a sensor with a topic but no name instead of silently dropping it
+* 🐛 [fix(devices)] : two extra-device readings can no longer share a name — the card names the other card that has it, and Save refuses to save until one is renamed
+build 22
+* 🐛 [fix(app)] : cancelling Quit keeps BeanCave and the web server (Records, phone control) running
+* 🐛 [fix(settings)] : loading a theme or a machine preset keeps the MQTT and AI settings instead of resetting them
+* 🐛 [fix(monitor)] : START with monitoring off starts the TilauScope devices too — a Skywalker roast no longer records without BT and ET — and a cancelled ON leaves no Bluetooth link open
+* 🐛 [fix(cooling)] : cooling after DROP is detected on a 10 °C fall in Fahrenheit mode too, not on 10 °F
+* 🐛 [fix(ambient)] : a failed ambient-probe read is recorded as no reading instead of 0, so the roast's ambient averages are no longer pulled down
+* 🐛 [fix(profile)] : opening a saved roast keeps all its TilauScope data (energy, device names, learning flags, preheat set point)
+* 🐛 [fix(pid)] : a PID set point sent by an Artisan command, button or alarm no longer risks a crash when it reaches the TilauScope set-point slider
+* 🐛 [fix(mqtt)] : turning monitoring off while an MQTT channel is being read no longer raises an error
+* ⚡ [feat(energy)] : a roast's energy is read in BeanCave, from its Energy tile — the ⚡ header pill, the live energy sheet and the energy line of the roast review are gone, and the sheet of a saved roast no longer shows the live sensor status
+* ⚡ [feat(energy)] : "Extractor is plugged into the roaster meter" moves to TilauScope Config → Integrations, under the MQTT sensor list
+* 🐛 [fix(mqtt)] : broker settings changed in TilauScope Config apply at the next monitoring ON — a connection left open after STOP kept talking to the old broker
+* 🐛 [fix(monitor)] : a device that fails to start (AirWave, ambient probe, MQTT, Skywalker, preheat PID) no longer keeps the devices after it from starting
+* 🐛 [fix(pid)] : the preheat hold power learned from past roasts reads the burner commands TilauPID recorded, including your own heater moves during the hold
+build 21
+* 🐛 [fix(beancave)] : retrying after a failed save in the new-sack wizard or the zone editor no longer duplicates the green coffee or counts its stock twice
+* 🐛 [fix(beancave)] : blend components, and processes in the zone editor and the new-sack wizard, offer "Other" like the varieties; a variety, process or component missing from the list now opens as "Other" in every editor instead of a blank field that was saved empty
+* 🐛 [fix(beancave)] : when the stock decrease at roast start cannot be saved, the remaining stock shown stays the one on disk
 build 20
 * 🐛 [fix(roast)] : after stopping a recording and starting a new one, CHARGE and the other milestone buttons can be pressed again — they stayed greyed out until monitoring was switched off and on
 * 🐛 [fix(roast)] : F1 marks CHARGE on every roast, not only the first one of the session, and F7 marks DROP at any point of the roast instead of only after second crack ends; the milestone keys also follow a roast TilauScope joins after it started

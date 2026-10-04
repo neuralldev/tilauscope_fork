@@ -185,8 +185,8 @@ when the roast lands well clear of it.
 #### Moisture content
 
 The water still held in green coffee, as a percentage of its weight — *how much* water there
-is. It is the mass the roast has to heat and evaporate, so higher moisture means a longer
-drying phase, more power, and a coffee that resists heat for longer at the start. Distinct from
+is. It is the mass the roast has to heat and evaporate, so higher moisture means more power
+at the start and a coffee that resists heat for longer; it barely changes how long drying lasts. Distinct from
 [water activity](#aw--water-activity), which says how freely that water leaves.
 
 #### Density

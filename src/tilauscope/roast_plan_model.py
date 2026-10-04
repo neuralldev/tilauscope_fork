@@ -2898,10 +2898,12 @@ class TilauScopeRoastPlan:
         return _PlanConfidence(level=_conf_level, tol_factor=_tol_factor,
                                 display=_conf_display, soak_note=_soak_note)
 
-    ## Loi de l'humidité du grain : répartition 75/25 des 11 kJ que coûte 1 point
-    ## d'eau sur 400 g — l'essentiel passe par le TEMPS, le reste par le feu.
-    ## Doctrine machine : « > 11 % = séchage plus long, ne pas forcer au feu ».
-    _MOISTURE_DRY_TIME_MIN_PER_POINT: Final[float] = 0.40
+    ## Loi de l'humidité du grain. Le TEMPS de séchage n'en dépend presque pas :
+    ## à grain constant le corpus SW (47 roasts, 9 grains, 350-450 g) donne
+    ## -0,20 min/pt, IC95 % [-0,58 ; +0,07]. On retient la borne haute — un effet
+    ## marginal, jamais la droite physique de 0,40 min/pt (hors de l'intervalle).
+    ## Le calendrier vient du cultivar et du process, l'humidité règle l'énergie.
+    _MOISTURE_DRY_TIME_MIN_PER_POINT: Final[float] = 0.07
     _MOISTURE_DRY_HEATER_PCT_PER_POINT: Final[float] = 0.9
     _MOISTURE_FC_HEATER_PCT_PER_POINT: Final[float] = 1.0
     _MOISTURE_MAILLARD_TIME_MIN_PER_POINT: Final[float] = 0.2
@@ -5495,6 +5497,8 @@ class TilauScopeRoastPlan:
             # {crop, roasts, humidity} of the harvest whose calendar this plan inherits, or None.
             "Previous Harvest": (history.get("previous_harvest") if history else None),
             "History Profile Source": (_coherent_source.label if _coherent_source else "grid"),
+            # How many roasts of this coffee the representative profile rests on — 0 when none.
+            "History Roasts": _coherent_n if _coherent_source else 0,
             "History Reference Roast": ((history.get("coherent_profile") or {}).get("id")
                                          if history else None),
             "Prediction Error Summary": (history.get("prediction_error_summary") or {}
@@ -6319,6 +6323,90 @@ class TilauscopeAlarmFactory:
         with open(filename, 'w') as f:
             json.dump(self.alarms, f, separators=(',', ':'))
 
+def _plan_secs(text: Any) -> "int | None":
+    """'MM:SS' → seconds; None when the text is not a time."""
+    try:
+        minutes, seconds = str(text).strip().split(':')
+        return int(minutes) * 60 + int(seconds)
+    except (ValueError, AttributeError):
+        return None
+
+
+def _plan_num(text: Any) -> "float | None":
+    try:
+        return float(str(text).strip().rstrip('%'))
+    except (ValueError, AttributeError):
+        return None
+
+
+def plan_cooled_weight(plan: dict) -> "float | None":
+    """Grams the plan expects on the scale after cooling: batch minus target loss."""
+    weight, loss = _plan_num(plan.get("Weight")), _plan_num(plan.get("Target Weight Loss"))
+    if weight is None or loss is None:
+        return None
+    return weight * (1.0 - loss / 100.0)
+
+
+def plan_comparison_rows(plan_a: dict, plan_b: dict, unit: str) -> "list[tuple[str, str, str, str]]":
+    """(label, A, B, B − A) for the milestones two plans of one coffee are compared on.
+
+    The delta is empty when the two values agree, so a reader sees at once what moved.
+    Shared by the PLAN tab and the comparison page of the PDF, which must not disagree.
+    """
+    def _signed(value: float, fmt: str) -> str:
+        return ("+" if value > 0 else "−") + fmt.format(abs(value))
+
+    def _time_delta(key: str) -> str:
+        ta, tb = _plan_secs(plan_a.get(key)), _plan_secs(plan_b.get(key))
+        if ta is None or tb is None or ta == tb:
+            return ""
+        d = tb - ta
+        return ("+" if d > 0 else "−") + f"{abs(d) // 60}:{abs(d) % 60:02d}"
+
+    def _num_delta(key: str, fmt: str) -> str:
+        va, vb = _plan_num(plan_a.get(key)), _plan_num(plan_b.get(key))
+        return _signed(vb - va, fmt) if va is not None and vb is not None and abs(vb - va) >= 0.05 else ""
+
+    def _joined(*parts: str) -> str:
+        return " · ".join(p for p in parts if p)
+
+    def _temp_time(plan: dict, temp_key: str, time_key: str) -> str:
+        return f"{plan.get(temp_key, 'N/A')} · {plan.get(time_key, 'N/A')}"
+
+    def _dev(plan: dict) -> str:
+        return f"{plan.get('Development Phase', 'N/A')} · {plan.get('Development Phase %', 'N/A')} %"
+
+    def _weight(plan: dict) -> str:
+        w = _plan_num(plan.get("Weight"))
+        return f"{w:.0f}" if w is not None else "N/A"
+
+    time_lbl = QApplication.translate("tilauscope_roast_plan", "time")
+    ca, cb = plan_cooled_weight(plan_a), plan_cooled_weight(plan_b)
+    return [
+        (QApplication.translate("tilauscope_roast_plan", "Weight to roast") + " (g)",
+         _weight(plan_a), _weight(plan_b), _num_delta("Weight", "{:.0f}")),
+        (QApplication.translate("tilauscope_roast_plan", "Charge Temp") + f" ({unit})",
+         str(plan_a.get("Charge Temp")), str(plan_b.get("Charge Temp")), _num_delta("Charge Temp", "{:.0f}")),
+        (QApplication.translate("tilauscope_roast_plan", "End of Dry") + f" ({unit} · {time_lbl})",
+         _temp_time(plan_a, "End of Dry Temp", "Dry Phase"), _temp_time(plan_b, "End of Dry Temp", "Dry Phase"),
+         _joined(_num_delta("End of Dry Temp", "{:.0f}"), _time_delta("Dry Phase"))),
+        (QApplication.translate("tilauscope_roast_plan", "First Crack") + f" ({unit} · {time_lbl})",
+         _temp_time(plan_a, "First Crack Temp", "FC Time"), _temp_time(plan_b, "First Crack Temp", "FC Time"),
+         _joined(_num_delta("First Crack Temp", "{:.0f}"), _time_delta("FC Time"))),
+        (QApplication.translate("tilauscope_roast_plan", "Drop") + f" ({unit} · {time_lbl})",
+         _temp_time(plan_a, "Drop Temp", "Total Time"), _temp_time(plan_b, "Drop Temp", "Total Time"),
+         _joined(_num_delta("Drop Temp", "{:.0f}"), _time_delta("Total Time"))),
+        (QApplication.translate("tilauscope_roast_plan", "Development") + f" ({time_lbl} · DTR)",
+         _dev(plan_a), _dev(plan_b), _time_delta("Development Phase")),
+        (QApplication.translate("tilauscope_roast_plan", "Target weight loss (%)"),
+         str(plan_a.get("Target Weight Loss")), str(plan_b.get("Target Weight Loss")),
+         _num_delta("Target Weight Loss", "{:.1f}")),
+        (QApplication.translate("tilauscope_roast_plan", "Weight after cooling") + " (g)",
+         f"≈ {ca:.0f}" if ca is not None else "N/A", f"≈ {cb:.0f}" if cb is not None else "N/A",
+         _signed(cb - ca, "{:.0f}") if ca is not None and cb is not None and round(cb) != round(ca) else ""),
+    ]
+
+
 class BuildPRoastPlanPDF(FPDF):
     """Custom FPDF class for the roast plan report."""
 
@@ -6855,7 +6943,34 @@ class BuildPRoastPlanPDF(FPDF):
         except (ValueError, IndexError, AttributeError):
             return None
 
-    def _control_trajectories(self, plan_data: dict) -> "tuple[list, list, dict]":
+    @classmethod
+    def entry_levels(cls, plan_data: dict) -> "dict[str, list[float | None]]":
+        """Heater, airflow and drum as each reads when CHARGE, DRY END and FIRST
+        CRACK are crossed — the section 4 values, for any screen that shows them.
+
+        A lever the plan does not drive maps to an empty list.
+        """
+        heater, airflow, ms = cls._control_trajectories(plan_data)
+        marks = [0.0, float(ms.get("dry_end") or 0.0), float(ms.get("fc_start") or 0.0)]
+
+        def _held(points: list, t: float) -> "float | None":
+            held = None
+            for pt, pv in points:
+                if pt <= t + 1e-9:
+                    held = pv
+                else:
+                    break
+            return held
+
+        drum = [cls._phase_pct(plan_data.get("Drum Speed (%) (Dry|Mai|Dev)", ""), c) for c in (0, 1, 2)]
+        return {
+            "heater": [_held(heater, t) for t in marks] if heater else [],
+            "airflow": [_held(airflow, t) for t in marks] if airflow else [],
+            "drum": drum if any(v is not None for v in drum) else [],
+        }
+
+    @classmethod
+    def _control_trajectories(cls, plan_data: dict) -> "tuple[list, list, dict]":
         """Heater and airflow as (time_min, percent) points, plus milestones.
 
         Both are STAIRCASES: a setting is posted once and held until the next
@@ -6916,17 +7031,17 @@ class BuildPRoastPlanPDF(FPDF):
                     continue
 
         heater: list = []
-        h_dry = self._phase_pct(plan_data.get("Heater (%) (Dry|Mai|Dev)", ""), 0)
+        h_dry = cls._phase_pct(plan_data.get("Heater (%) (Dry|Mai|Dev)", ""), 0)
         if h_dry is not None:
             heater.append((0.0, h_dry))
         _collect("Heater Ramp", "heater", heater)
         _collect("Dev Ramp", "heater", heater)
 
         airflow: list = []
-        a_dry = self._phase_pct(plan_data.get("Airflow (%) (Dry|Mai|Dev)", ""), 0)
+        a_dry = cls._phase_pct(plan_data.get("Airflow (%) (Dry|Mai|Dev)", ""), 0)
         if a_dry is not None:
             airflow.append((0.0, a_dry))
-        a_mai = self._phase_pct(plan_data.get("Airflow (%) (Dry|Mai|Dev)", ""), 1)
+        a_mai = cls._phase_pct(plan_data.get("Airflow (%) (Dry|Mai|Dev)", ""), 1)
         if a_mai is not None and milestones["dry_end"] > 0.0:
             airflow.append((milestones["dry_end"], a_mai))
         _collect("Air Ramp", "airflow", airflow)
@@ -6962,18 +7077,8 @@ class BuildPRoastPlanPDF(FPDF):
         That is the doctrine made visible: the drying fire is held through dry
         end, and the descent starts just after it.
         """
-        heater, airflow, ms = self._control_trajectories(plan_data)
-        marks = [0.0, float(ms.get("dry_end") or 0.0), float(ms.get("fc_start") or 0.0)]
+        levels = self.entry_levels(plan_data)
         ctx = self._roaster_ctx
-
-        def _held(points: list, t: float) -> "float | None":
-            held = None
-            for pt, pv in points:
-                if pt <= t + 1e-9:
-                    held = pv
-                else:
-                    break
-            return held
 
         def _fmt(values: list, label_fn) -> list:
             out = []
@@ -6996,20 +7101,17 @@ class BuildPRoastPlanPDF(FPDF):
             return out
 
         rows: "list[tuple[str, list[str]]]" = []
-        if heater:
+        if levels["heater"]:
             rows.append((QApplication.translate("tilauscope_roast_plan", "Heater") + " (%)",
-                         _fmt([_held(heater, t) for t in marks],
-                              ctx.pct_to_heater_label if ctx else None)))
-        if airflow:
+                         _fmt(levels["heater"], ctx.pct_to_heater_label if ctx else None)))
+        if levels["airflow"]:
             rows.append((QApplication.translate("tilauscope_roast_plan", "Airflow") + " (%)",
-                         _fmt([_held(airflow, t) for t in marks],
-                              ctx.pct_to_airflow_label if ctx else None)))
+                         _fmt(levels["airflow"], ctx.pct_to_airflow_label if ctx else None)))
         # Drum is a SETUP value: one setting for the whole roast, so its three
         # columns are the same figure by construction, not by accident.
-        _drum = _phase("Drum Speed (%) (Dry|Mai|Dev)", (0, 1, 2))
-        if any(v is not None for v in _drum):
+        if levels["drum"]:
             rows.append((QApplication.translate("tilauscope_roast_plan", "Drum Speed") + " (%)",
-                         _fmt(_drum, ctx.pct_to_drum_label if ctx else None)))
+                         _fmt(levels["drum"], ctx.pct_to_drum_label if ctx else None)))
         # AirWave: posted at CHARGE and at DRY END, then carried by the Dev Ramp
         # — so the value at FC entry is still the Maillard one, as for airflow.
         if str(plan_data.get("Extraction (%) (Dry|Mai|Dev)", "")).strip():
@@ -7297,6 +7399,161 @@ class BuildPRoastPlanPDF(FPDF):
         if prev.get("humidity") and float(plan_data.get("Bean Humidity") or 0) > 0:
             text += f"   ({prev['crop']}: {prev['humidity']:.1f})"
         return text
+
+    def create_comparison_page(self, plan_a: dict, label_a: str, plan_b: dict, label_b: str) -> None:
+        """One page setting two plans of the same coffee side by side: A is the
+        pinned plan, B the current one, whose full report follows. Rows that
+        differ are bold, with B − A in the last column."""
+        self._target = str(plan_b.get("Target Roast Level", ""))
+        self._roaster = str(plan_b.get("Roaster", ""))
+        self._destination = ""
+        self.add_page()
+        self.set_auto_page_break(auto=True, margin=15)
+        unit = f"°{self.mode}"
+
+        self.set_font('helvetica', 'B', 13)
+        self.cell(0, 7, QApplication.translate("tilauscope_roast_plan", "Plan comparison")
+                  + f" — {plan_b.get('Bean Name', '')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
+        self.ln(3)
+
+        # A and B, named once; every column below refers to them.
+        box_w = 93
+        y0 = self.get_y()
+        for i, (tag, label) in enumerate((
+                (QApplication.translate("tilauscope_roast_plan", "A — pinned"), label_a),
+                (QApplication.translate("tilauscope_roast_plan", "B — current"), label_b))):
+            x0 = self.l_margin + i * (box_w + 4)
+            if i:
+                self.set_fill_color(242, 242, 242)
+            else:
+                self.set_fill_color(255, 255, 255)
+            self.rect(x0, y0, box_w, 15, style="DF")
+            self.set_xy(x0 + 3, y0 + 2)
+            self.set_font('helvetica', 'B', 8)
+            self.cell(box_w - 6, 4, tag)
+            self.set_xy(x0 + 3, y0 + 7)
+            self.set_font('helvetica', 'B', 11)
+            self.cell(box_w - 6, 6, label)
+        self.set_xy(self.l_margin, y0 + 19)
+
+        rows = plan_comparison_rows(plan_a, plan_b, unit)
+
+        widths = (64, 42, 42, 42)
+        _row_h = 6.5
+
+        def _section(title: str) -> None:
+            self.ln(2)
+            self.set_fill_color(220, 220, 220)
+            self.set_font('helvetica', 'B', 12)
+            self.cell(0, 7, title, new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+            self.ln(1)
+
+        def _head(cols: "tuple[str, ...]") -> None:
+            self.set_fill_color(238, 238, 238)
+            self.set_font('helvetica', 'B', 10)
+            for i, col in enumerate(cols):
+                last = i == len(cols) - 1
+                self.cell(widths[i], 7, col, 1, align='L' if i == 0 else 'C', fill=True,
+                          new_x=XPos.LMARGIN if last else XPos.RIGHT, new_y=YPos.NEXT if last else YPos.TOP)
+
+        _section(QApplication.translate("tilauscope_roast_plan", "1. What changes between A and B"))
+        _head((QApplication.translate("tilauscope_roast_plan", "Milestone"), "A", "B", "B − A"))
+        for label, a, b, delta in rows:
+            self.set_font('helvetica', 'B' if a != b else '', 10)
+            self.cell(widths[0], _row_h, label, 1)
+            self.cell(widths[1], _row_h, a, 1, align='C')
+            self.cell(widths[2], _row_h, b, 1, align='C')
+            self.cell(widths[3], _row_h, delta or "—", 1, align='C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.set_font('helvetica', 'I', 8.5)
+        self.multi_cell(0, 4.5, QApplication.translate("tilauscope_roast_plan",
+            "Rows in bold differ between A and B. All temperatures are in BT (Bean Temperature) "
+            "and times in Minutes:Seconds."), border=0)
+
+        _section(QApplication.translate("tilauscope_roast_plan", "2. Machine settings at phase entry"))
+        _head((QApplication.translate("tilauscope_roast_plan", "Control"),
+               QApplication.translate("tilauscope_roast_plan", "At CHARGE"),
+               QApplication.translate("Button", "DRY END"), QApplication.translate("Button", "FC START")))
+        la, lb = self.entry_levels(plan_a), self.entry_levels(plan_b)
+        for key, name in (("heater", QApplication.translate("tilauscope_roast_plan", "Heater")),
+                          ("airflow", QApplication.translate("tilauscope_roast_plan", "Airflow")),
+                          ("drum", QApplication.translate("tilauscope_roast_plan", "Drum Speed"))):
+            va, vb = la.get(key) or [], lb.get(key) or []
+            if not va and not vb:
+                continue
+            cells = []
+            for i in range(3):
+                a = va[i] if i < len(va) else None
+                b = vb[i] if i < len(vb) else None
+                fa = "N/A" if a is None else f"{a:.0f}%"
+                fb = "N/A" if b is None else f"{b:.0f}%"
+                cells.append(fb if fa == fb else f"{fa} → {fb}")
+            self.set_font('helvetica', 'B' if any("→" in c for c in cells) else '', 10)
+            self.cell(widths[0], _row_h, name + " (%)", 1)
+            for i, c in enumerate(cells):
+                last = i == 2
+                self.cell(widths[i + 1], _row_h, c, 1, align='C',
+                          new_x=XPos.LMARGIN if last else XPos.RIGHT, new_y=YPos.NEXT if last else YPos.TOP)
+        self.set_font('helvetica', 'I', 8.5)
+        self.multi_cell(0, 4.5, QApplication.translate("tilauscope_roast_plan",
+            "A setting that differs reads “A → B”."), border=0)
+
+        _section(QApplication.translate("tilauscope_roast_plan", "3. Planned bean temperature"))
+        self._draw_comparison_curves(plan_a, plan_b, self.l_margin, self.get_y() + 2,
+                                     self.w - self.l_margin - self.r_margin,
+                                     max(60.0, self.page_break_trigger - self.get_y() - 14))
+
+    def _draw_comparison_curves(self, plan_a: dict, plan_b: dict, x: float, y: float,
+                                width: float, height: float) -> None:
+        """Both planned BT curves on one chart: A dashed grey, B solid."""
+        curves = []
+        for plan in (plan_a, plan_b):
+            curve = plan.get("bt_plan_curve") or {}
+            t, bt = list(curve.get("time_min") or []), list(curve.get("bt_plan") or [])
+            curves.append(list(zip(t, bt)) if len(t) >= 2 and len(t) == len(bt) else [])
+        points = [p for c in curves for p in c]
+        if not points:
+            return
+        t_max = max(p[0] for p in points)
+        lo = min(p[1] for p in points)
+        hi = max(p[1] for p in points)
+        lo = math.floor(lo / 25.0) * 25.0
+        hi = math.ceil(hi / 25.0) * 25.0
+        if t_max <= 0 or hi <= lo:
+            return
+
+        def sx(t: float) -> float:
+            return x + 12 + (t / t_max) * (width - 14)
+
+        def sy(v: float) -> float:
+            return y + height - 8 - (v - lo) / (hi - lo) * (height - 10)
+
+        self.set_draw_color(200, 200, 200)
+        self.set_line_width(0.1)
+        self.set_font('helvetica', '', 7)
+        for minute in range(0, int(t_max) + 1, 2):
+            self.line(sx(minute), sy(lo), sx(minute), sy(hi))
+            self.text(sx(minute) - 1, sy(lo) + 4, f"{minute}")
+        v = lo
+        while v <= hi + 1e-6:
+            self.line(sx(0), sy(v), sx(t_max), sy(v))
+            self.text(x, sy(v) + 1, f"{v:.0f}")
+            v += 25.0
+
+        for i, (curve, rgb) in enumerate(zip(curves, ((140, 140, 140), (30, 30, 30)))):
+            if not curve:
+                continue
+            self.set_draw_color(*rgb)
+            self.set_line_width(0.6 if i else 0.4)
+            for (t0, v0), (t1, v1) in zip(curve, curve[1:]):
+                # A is drawn dashed by skipping every other segment.
+                if i == 0 and int(t0 * 6) % 2:
+                    continue
+                self.line(sx(t0), sy(v0), sx(t1), sy(v1))
+
+        self.set_line_width(0.2)
+        self.set_draw_color(0, 0, 0)
+        self.set_font('helvetica', '', 8)
+        self.text(x + 12, y + height, "- - -  A        ——  B        " + QApplication.translate("tilauscope_roast_plan", "minutes"))
 
     def create_pdf_report(self, plan_data:dict, graph_data, crashes, flicks)->None:
         """Fills the PDF with the calculated roast plan data in a clear, structured format,

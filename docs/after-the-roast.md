@@ -60,8 +60,6 @@ is judged on, so a loss a little under the aim but inside that range reads as fi
 Under the figures, the **Coach** card sums up the coach's reading in one line: the level the roast
 was read at, and the remark that matters most — or that every check is within range. Tapping the
 card opens the full reading, the same one BeanCave shows under [Coach's Advice](#coachs-advice).
-When the roast has a power reading, a line under it gives its energy — **⚡ 0.105 kWh roast ·
-0.300 kWh/kg green · Measured** — and opens the energy detail; see [Energy](energy.md#after-the-roast).
 Below it sit the weights, the colour and the room conditions the roast was recorded in.
 
 **Next batch**, the blue pill at the top of the review, prepares the next roast of the same
@@ -93,8 +91,7 @@ is made. See [Correcting a milestone](the-window.md#correcting-a-milestone).
 <!-- CAPTURE 8.0 [scene:review] — the roasting window just after STOP: the left column given over to the roast
      review of a roast that ran to plan — readouts and status line gone, verdict block at the top,
      phase ribbon, milestone table with the VS PLAN column, the four figures, the Next batch
-     pill beside the plan badge, the Coach card under the figures and, the roast having a power
-     reading, the ⚡ energy line under the Coach card. -->
+     pill beside the plan badge and the Coach card under the figures. -->
 
 ![The roast review in the left column just after a recording stops.](assets/after-the-roast-8.0.png)
 
@@ -136,7 +133,13 @@ you scroll.
 - **Search** matches the coffee, its process, crop year, farm and country, and the batch
   number (type `#44`). Accents and capitals do not matter, and every word typed must match.
   **Ctrl+F** (**⌘F** on macOS) moves to the search box; **Esc** empties it.
-- **All coffees** narrows the list to one coffee, each shown with its number of roasts.
+- **All coffees** narrows the list to one coffee, each shown with its number of roasts. The
+  list also follows the coffee selected in BeanCave's Green Beans tab: opening the Roasts tab
+  shows that coffee's roasts only. While the list follows one coffee, a chip names it — *☕
+  Caturra · 2025 · 4 roasts* — in place of the menu, and its **✕** shows every coffee again.
+  The list then stays on every coffee until another one is selected in Green Beans; **All 4
+  roasts →** on a coffee's record narrows it again in any case. A coffee never roasted says so —
+  *Guji 74110 has no roast yet* — with **Show all coffees** to leave it.
 - The order menu offers **Most recent**, **Oldest first** and **Coffee A–Z**. In coffee order
   the headings name the coffee instead of the day, and each roast shows its charge weight and
   its roasted weight. The order is kept for next time; the search and the coffee filter are
@@ -321,7 +324,7 @@ accident large enough to be visible on the curve is named, and only the most pro
 with the time it happened — so you can go and look at that spot yourself.
 
 !!! note
-    This is a different reading from the **Judging the batch** insights shown before roasting
+    This is a different reading from the **Judging the batch** plan shown before roasting
     (see [Preparing a roast](preparing-a-roast.md#judging-the-batch-before-it-starts)). That
     one works from the coffee and the plan; this one works from what was actually measured.
 

@@ -2,6 +2,13 @@
 
 A smaller release: TilauScope now adapts itself to machines that have no air probe, and translations catch up with the new Devices window.
 
+## ☕ Before the roast
+
+* **The roast plan, on the setup sheet.** The INSIGHTS tab becomes **PLAN**: the roast in four lines — charge, dry end, first crack, drop — each with its temperature, the time it should arrive and the burner, air and drum settings to have in place, then the weight loss to aim for and what the batch should weigh after cooling. A line says what the plan rests on: your previous roasts of this coffee, or only its characteristics. **Plan** on a BeanCave record opens it directly, and since opening the sheet commits to nothing, it is where a batch is tried out before it is roasted. The separate Roasting plan tab is gone.
+* **Compare two plans.** Pin a plan, then change the weight, the use or the roast level: the two sit side by side with what moved. **PDF** saves the plan to keep at hand, with a comparison page when a plan is pinned.
+* **The weight you actually roast.** The green weight starts from the last batch of the coffee, but **Start Roast** waits until the batch has been weighed or the weight typed.
+* **The room, with or without a probe.** The plan now accounts for the altitude — first crack comes earlier up a mountain — along with the room temperature. The ambient probe provides both, and keeps its last reading for a plan prepared away from the roaster. Without a probe, a **WEATHER** window reads your town's weather on a tap, after asking, or takes the values typed in; a typed altitude is remembered.
+
 ## ☕ After the roast
 
 * **Your roasts, at a glance.** BeanCave's roast list, now the **Roasts** tab, reads like a journal: two lines per roast grouped under Today, Yesterday or the date, its colour as a dot, and a badge on any roast whose result was never filled in. Search by coffee, process or batch number, narrow it to one coffee, or order it by coffee — the roast on screen stays put while you search. Open a roast and its key figures sit above the curve — weight loss, roast time and development, drop temperature and colour — with a banner when its result is still missing. Under the curve, show temperatures, rate of rise or both, and keep every roast on the same 0–12 min scale to read them alike.
@@ -12,22 +19,24 @@ A smaller release: TilauScope now adapts itself to machines that have no air pro
 
 ## ☕ During the roast
 
-* **What the coffee is for is now on the assistant.** *Filter*, *Omni* or *Espresso* sits under the coffee and the roasting target, so it can be set without going through the setup sheet — it is one setting shared with the setup sheet and the planning tab. Once the roast starts, the line under the coffee's name states which one the plan was built on.
+* **What the coffee is for is now on the assistant.** *Filter*, *Omni* or *Espresso* sits under the coffee and the roasting target, so it can be set without going through the setup sheet — it is one setting shared with the setup sheet. Once the roast starts, the line under the coffee's name states which one the plan was built on.
 * **Automatic first crack says what it needs and what it will do.** The DETECTION tab now warns when no crack counter is configured — the automation had nothing to bind to and simply stayed silent for the whole roast — and states that it waits for dry end to be marked first. A new **Temperature tolerance**, in the unit your graph uses, sets how much slack the first-crack target gets, with a line beneath it spelling out where TilauScope starts listening, where it marks, and the point past which it marks anyway. The settings that claimed to weigh colour and rate-of-colour against the cracks are gone: they were never read.
 
 ## ⚡ Energy
 
-* **See what a roast costs in electricity.** Plug the roaster (and the extractor, if you like) into a power meter that reports over MQTT, name the sensors *roaster* and *extractor*, and a pill in the header shows the power and the energy used since monitoring started. Tap it for the detail: the preheat, the roast itself, the cooling, the power curve, and the energy per kg of green coffee. Every figure says whether it was measured, estimated or has a gap.
-* **Already in your past roasts.** Roasts recorded with a power channel show their energy too, rebuilt from the saved curve — in the roast review and in a new Energy tile in BeanCave's Roasts tab.
+* **See what a roast costs in electricity.** Plug the roaster (and the extractor, if you like) into a power meter that reports over MQTT, name the sensors *roaster* and *extractor*, and every roast carries the energy it used from the moment monitoring started. Open it from the roast's Energy tile in BeanCave's Roasts tab: the preheat, the roast itself, the cooling, the power curve, and the energy per kg of green coffee. Every figure says whether it was measured, estimated or has a gap.
+* **Already in your past roasts.** Roasts recorded with a power channel show their energy too, rebuilt from the saved curve, in the same Energy tile.
 * **No meter on a Skywalker V2?** The roast's energy is estimated from a curve measured on real roasts, and marked as an estimate.
 
 ## 📊 BeanCave
 
+* **Choose what to roast at a glance.** Each coffee in the catalogue now says how many batches its stock still makes, when it was last roasted and how its water activity reads, with a **TO TASTE** badge once its last roast has rested and still waits for a tasting. **Sort: To roast first** puts on top the coffee that keeps worst — storage risk, then the oldest harvest, then the longest since its last roast — and coffees out of stock fold away at the bottom.
+* **A bean record you can read in one look.** The record now fits on one screen in two columns. A new **Roast memory** recalls the coffee's last roast — its level, development, weight loss and colour — what you tasted, and the one change the next roast makes, with **Taste…** when a roast is ready to be tasted. The **Roasts** tab follows the coffee you selected, named in a chip you can clear. Characteristics show density, humidity and water activity as tiles with what they mean, a blend as one bar, and the bean family's pace. **Roast this coffee** leads the actions; label, QR code and card share one **Share & print** button.
 * **What your coffee costs.** Enter a green coffee's price per kg in its record and BeanCave shows what the remaining stock is worth, and each roast shows what its green cost — hover it for the cost per roasted kg. Pick your currency in TilauScope Config › BEANCAVE.
 * **Taste it, and the next roast listens.** Once a roast has rested, BeanCave asks how it tasted: would you roast it the same way again, and what was off — burnt, bitter, flat, bready, grassy or sour. Each answer gives one clear change for next time, and the next plan of that coffee makes it for you.
 * **A new harvest does not start from zero.** When the next crop of a coffee you already roast arrives, its first roast plans are built on what the previous harvest taught — first crack, phase durations, drop temperature — while the heat follows the new lot's own moisture and density. The plan names the harvest it relies on, until the new crop has roasts of its own.
 * **Screen size, without the jargon.** Choose the bean size from a short list — Large (AA, Supremo), Medium (AB, Excelso), Small or Peaberry — as the supplier's sheet states it. It is written into each roast of that coffee, and filled in for you when you read the record from the supplier's page.
-* **The roast plan's alarms, in one click.** Once a plan is generated, **Inject Alarms into TilauScope** loads its alarm set, ready for the roast. The alarm editor's Presets menu can also import an alarm file — such as the one saved next to each plan's PDF — and export yours to share it.
+* **The roast plan's alarms, in one click.** At the Expert level, the PLAN tab can load the plan's alarm set when the roast starts. The alarm editor's Presets menu can also import an alarm file — such as the one saved next to each plan's PDF — and export yours to share it.
 
 ## 🔌 Devices
 

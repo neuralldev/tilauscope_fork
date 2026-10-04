@@ -9,8 +9,11 @@
     starts preheating on its own. Nothing is written to the roast until the sheet is
     confirmed.
 
-Selecting a bean in **BeanCave** and choosing to roast it opens **ROAST SETUP**, a sheet in
-four tabs. Everything below lives there, unless stated otherwise.
+Selecting a bean in **BeanCave** and choosing **Roast** opens **ROAST SETUP**, a sheet in
+four tabs. **Plan**, beside it on the bean record, opens the same sheet straight on its
+**ⓘ PLAN** tab — to see what a batch would look like without roasting it, since opening the
+sheet commits to nothing: preheating only starts with the roast. Everything below lives there,
+unless stated otherwise.
 
 ---
 
@@ -31,8 +34,11 @@ numbering on without opening Artisan's own batch dialog.
     so opening and closing the sheet, or abandoning a roast, never burns a number.
 
 **Green weight** drives everything downstream — the roast plan, the stock count, the
-[weight loss](glossary.md#weight-loss) figure. The start button stays disabled until a weight
-is entered, because a roast without a weight produces a wrong plan and a meaningless yield.
+[weight loss](glossary.md#weight-loss) figure. It opens on the weight of the last batch of this
+coffee, marked *last batch*, since a bag is usually worked through at one batch size. That
+figure is a proposal: **Start Roast** stays disabled until the batch has been weighed on the
+scale or the weight typed in, because a roast planned on last week's weight produces a wrong
+plan and a meaningless yield.
 
 Ticking **Decrease bean stock by this weight after OK** takes the batch out of the bag's
 stock in BeanCave, with no second entry.
@@ -74,7 +80,36 @@ properties at the same time; it is kept with the roast and does not change the p
 With an ambient probe configured, a **🌡 AMBIENT** window floats beside the sheet with live
 room temperature, humidity and pressure, and those readings are stored in the roast file
 when the sheet is confirmed. The day's conditions are recorded and accounted for without
-being typed in.
+being typed in, and the plan is redrawn when the room changes.
+
+The window remembers the probe's last reading. When the probe does not answer — a plan
+prepared on a laptop away from the roaster, or a probe switched off — the window shows that
+reading greyed out, with its age (*last reading · 3 days ago*), and the plan is built on it
+until the probe answers again. A probe that has never been read says *waiting for probe* and
+names what the plan uses meanwhile, for example *Plan now uses 20 °C, sea level*.
+
+Without an ambient probe, a **☂ WEATHER** window takes its place. It does nothing until it is
+tapped: **Tap for local weather** reads the temperature, humidity, pressure and altitude of your town
+online — after asking, the first time, since finding your town means handing your internet
+address to a lookup service abroad (see [Configuration](configuration.md#privacy)). **I'll type
+it** offers the three values to fill in by hand instead; a typed altitude is remembered for the
+next roasts. Online weather reads the temperature **outside**, which in winter can be far from
+the room's — type the room's own figure when the two differ.
+
+The **altitude** matters for the plan: water boils at a lower temperature up a mountain, and
+the plan expects first crack about 1 °C lower for every 300 m — some 8 °C lower at 2,500 m than
+at sea level. The plan takes the altitude from the probe, otherwise from the weather or the
+typed value, otherwise from Artisan's own altitude setting, and assumes sea level when none of
+them has one.
+
+<!-- CAPTURE 5.17 [scene:setup_weather] — the ☂ WEATHER window beside the sheet (no ambient probe configured): once
+before the tap (*Tap for local weather*), once with a reading (temperature, humidity, altitude,
+town and time). CAPTURE 5.18 [scene:setup_ambient_last] — the 🌡 AMBIENT window with the probe switched off, showing its
+last reading greyed with its age. -->
+
+![The WEATHER window before a tap, and with a reading.](assets/preparing-a-roast-5.17.png)
+
+![The AMBIENT window with the probe off, on its last reading.](assets/preparing-a-roast-5.18.png)
 
 Room **temperature** matters more here than it looks: the beans start at it, and ten degrees
 between a winter morning and a summer afternoon is worth roughly twenty seconds of drying on a
@@ -82,7 +117,7 @@ between a winter morning and a summer afternoon is worth roughly twenty seconds 
 plan — it acts on green coffee in storage, not on the roast in progress.
 
 **Target roast profile** sets the [Agtron](glossary.md#agtron) level being aimed for. It
-drives the roast plan and the predictions on the INSIGHTS tab.
+drives the roast plan and the roadmap on the PLAN tab, where the same choice can be made.
 
 ![the ⚖ SCALE window beside the sheet, showing a live value](assets/preparing-a-roast-5.5.png)
 ![AMBIENT window showing live readings](assets/preparing-a-roast-5.6.png)
@@ -99,7 +134,7 @@ one thing here you choose; everything else on the card is read for you. The choi
 development time: filter the shortest, espresso the longest, omni between the two. The gap is a
 handful of seconds, which is enough to be tasted, and it carries through to the drop temperature
 and to the [weight loss](glossary.md#weight-loss) to aim for. Your choice is remembered for the
-next roast, and the same choice sits in the [planning tab](the-roast-plan.md) and in the
+next roast, and the same choice sits on the PLAN tab and in the
 [guided assistant](the-guided-roast.md#the-panel) — one setting, three places to set it.
 
 **Bean family** states what TilauScope read from the coffee's variety and what it did with it —
@@ -114,7 +149,40 @@ notch higher after first crack (70 → 75 %)*. See [Tasting](after-the-roast.md#
 
 ## Judging the batch before it starts
 
-The **ⓘ INSIGHTS** tab reads the batch and says what it expects — before the drum turns.
+The **ⓘ PLAN** tab shows the roast before it happens. Three choices stay at the top while the
+rest scrolls: the **green weight** — tap it to take the scale's reading; it says whether the
+weight was *weighed on the scale*, *entered by hand* or is still the *last batch* proposal —,
+**What is this coffee for?**, and the **roast level**. They are the same settings as on the other
+tabs: changing one here changes it there.
+
+**Roadmap** is the plan in four lines — CHARGE, DRY END, FC START and DROP — each with its bean
+temperature, the time it should arrive and the burner, air and drum settings to have in place
+as the roast reaches it. A last line gives the [weight loss](glossary.md#weight-loss) to aim for
+after cooling and what the batch should then weigh on the scale. The charge line comes first
+because it is the first figure you act on: it is the temperature to preheat to, whether you let
+TilauPID do it or heat by hand.
+
+Under the roadmap, one line says what the plan rests on — *Based on 4 roasts of this coffee*,
+or, for a coffee never roasted, that the plan starts from its characteristics and is worth
+adjusting after tasting. A single earlier roast is too few to learn from: the plan then also
+starts from the coffee's characteristics, and the line says so. When you tasted the last roast and something was off, the change the
+plan made for it is recalled there too.
+
+**📌 Pin** sets the current plan aside so it can be compared with another: pin it, then change
+the weight, the use or the level, and the roadmap becomes a table of both plans side by side with
+what moved — later first crack, longer development, a lighter batch after cooling. **Unpin**
+returns to the single roadmap.
+
+**📄 PDF** saves the plan as a document to keep at hand during the roast, with the full detail
+described in [The roast plan](the-roast-plan.md). With a plan pinned, the PDF opens with a
+comparison page of the two. The plan's alarm set is saved beside it, to load later from the
+alarm editor.
+
+At the [Expert](getting-started.md#guided-or-expert) level, **Load the plan's alarms at start**
+replaces your current alarms with the plan's when the roast starts. It is off by default,
+because it overwrites alarms you may have written yourself.
+
+Below the plan:
 
 **Green signals** flags whatever is outside the norm in this coffee or this batch size, and
 what it implies for the roast.
@@ -125,24 +193,16 @@ overloading.
 **Phase cheat-sheet (RoR)** gives the [RoR](glossary.md#ror--rate-of-rise) bands worth
 holding in each phase, available before the roast rather than discovered during it.
 
-**Predicted targets** projects the charge temperature, total time,
-[DTR](glossary.md#dtr--development-time-ratio) and [weight loss](glossary.md#weight-loss).
-**Charge** comes first because it is the first figure you act on: it is the temperature to
-preheat to, whether you let TilauPID do it or heat by hand. It was previously only visible in
-the preheating setpoint, and only when TilauPID was switched on. The weight-loss figure is the one to aim for on the
-scale after cooling, worked out from this lot's moisture and the development the plan holds —
-so entering the coffee's moisture before roasting makes it worth reading.
-
 **STRATEGY** condenses the whole thing into one sentence for this coffee, on this machine, at
 this target.
 
-!!! note
-    *Predicted targets* stays empty until a target roast profile is chosen in **⚙ OPTIONS** —
-    the message *Select a roast plan in OPTIONS to predict DTR, weight loss and time.* is a
-    prerequisite, not a failure.
+<!-- CAPTURE 5.7 [scene:setup_plan] — the ⓘ PLAN tab: weight weighed on the scale,
+Omni, Medium; the roadmap and the confidence line visible. CAPTURE 5.8 [scene:setup_compare] — the same tab with a
+plan pinned (Filter) and Espresso chosen, showing the comparison table. -->
 
-![AMBIENT window showing live readings](assets/preparing-a-roast-5.7.png)
-![AMBIENT window showing live readings](assets/preparing-a-roast-5.8.png)
+![The PLAN tab with its roadmap](assets/preparing-a-roast-5.7.png)
+
+![The PLAN tab comparing a pinned plan with the current one](assets/preparing-a-roast-5.8.png)
 
 ---
 

@@ -55,7 +55,8 @@ from PyQt6.QtWidgets import (
 )
 
 from tilauscope.sack_manager import SackLabelsDialog, SackPool, prompt_release_if_emptied
-from tilauscope.tilauscope_types import THEME, GreenBean, format_money, price_per_kg_spin, no_enter_default, show_styled_message
+from tilauscope.tilauscope_types import (THEME, GreenBean, format_money, price_per_kg_spin, no_enter_default,
+                                         show_styled_message, select_listed_or_other)
 from tilauscope.bean_qualifiers import screen_size_options
 
 _logd = logging.getLogger('tilau')
@@ -1093,7 +1094,8 @@ class NewSackWizard(QDialog):
         self.bean1_ratio_spin.setDecimals(0)
         self.bean1_ratio_spin.setSuffix(" %")
         self.bean1_ratio_spin.setValue(50.0)
-        blend_names = (getattr(self._host, 'coffee_bean_types', {}) or {}).get('Arabica', [])
+        blend_names = list((getattr(self._host, 'coffee_bean_types', {}) or {}).get('Arabica', []))
+        blend_names.append(QApplication.translate("tilauscope_beancave", "Other"))
         self.bean2_combo = QComboBox()
         self.bean2_combo.addItems([""] + blend_names)
         self.bean2_ratio_spin = QDoubleSpinBox()
@@ -1192,7 +1194,9 @@ class NewSackWizard(QDialog):
         current = self.process_combo.currentText()
         self.process_combo.clear()
         items = (getattr(self._host, 'coffee_processing_methods', {}) or {}).get(category, [])
-        self.process_combo.addItems(items)
+        # same entries as the BeanCave form, "Other" included, so a saved process reloads there
+        self.process_combo.addItems(list(items)
+                                    + [QApplication.translate("tilauscope_beancave", "Other")])
         if current:
             idx = self.process_combo.findText(current)
             if idx >= 0:
@@ -1695,13 +1699,8 @@ class NewSackWizard(QDialog):
     def _apply_bean_to_widgets(self, bean: GreenBean) -> None:
         """Prefill all wizard fields from *bean* (AI result or copied record)."""
         def set_combo(combo: QComboBox, value: str) -> None:
-            if not value:
-                return
-            idx = combo.findText(value)
-            if idx >= 0:
-                combo.setCurrentIndex(idx)
-            elif combo.isEditable():
-                combo.setEditText(value)
+            if value:
+                select_listed_or_other(combo, value)
 
         self.name_edit.setText(bean.name)
         set_combo(self.country_combo, bean.country)
@@ -1767,6 +1766,7 @@ class NewSackWizard(QDialog):
                 src = self._selected_source_bean()
                 if src is None:
                     return
+                previous = (src.weight_left, src.sacks)
                 src.weight_left += self.restock_weight_spin.value()
                 if sack_id and sack_id not in (src.sacks or []):
                     src.sacks = list(src.sacks or []) + [sack_id]
@@ -1787,8 +1787,16 @@ class NewSackWizard(QDialog):
                         retired = (src, float(src.weight_left or 0.0))
                         src.weight_left = 0.0
 
-            # A failed save has told the operator why; stay open, label still free.
+            # A failed save has told the operator why; stay open, label still free,
+            # and the records as they were — a retry must not apply this twice.
             if not host.save_green_beans():
+                if mode == "restock":
+                    src.weight_left, src.sacks = previous
+                else:
+                    host.cave.green_beans.remove(bean)
+                    host.uuidmap.pop(bean.uuid, None)
+                    if retired is not None:
+                        retired[0].weight_left = retired[1]
                 return
             if sack_id:
                 # drop the label from both available stores (free + printed)

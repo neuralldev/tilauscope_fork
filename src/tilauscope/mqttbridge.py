@@ -357,6 +357,19 @@ class TilauscopeMQTTClient(QObject):
         self._port.user = config.username
         self._port.password = config.password
         self._port.topic = config.topic if config.topic else "/#"
+        self._opened = self._broker_settings(config)
+
+    @staticmethod
+    def _broker_settings(config: MQTTConfig) -> tuple:
+        return (config.broker_url, config.port, config.keepalive, config.tls,
+                config.protocol_version, config.username, config.password, config.topic)
+
+    def opened_with(self, config: MQTTConfig) -> bool:
+        """Whether `config` still names the broker and account this client connects to.
+
+        Devices edits the settings object in place: the transport keeps the old ones.
+        """
+        return self._opened == self._broker_settings(config)
 
     @property
     def poll_response_topic(self) -> str:

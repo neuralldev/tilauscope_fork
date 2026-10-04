@@ -18,15 +18,17 @@
 GreenBean) and RoastResultDialog (shown after a roast to record weight/colour/notes)."""
 
 from __future__ import annotations
+import json
 import logging
 import re
+import time
 from typing import TYPE_CHECKING, Any, Final
 from datetime import datetime
 
-from tilauscope.roast_insights import build_insights, targets_from_plan
+from tilauscope.roast_insights import build_insights
 from tilauscope.guidance_phase import milestone_marked
 from tilauscope.roast_debrief import roast_colour_agtron
-from tilauscope.theme_qss import base_qss, apply_tilau_theme, tooltip_qss, tint
+from tilauscope.theme_qss import base_qss, apply_tilau_theme, tooltip_qss, tint, mono_family
 from tilauscope.roasters import RoasterManager
 from tilauscope.probe_visibility import et_available_for, et_available_in_profile
 from tilauscope.sack_manager import prompt_release_if_emptied
@@ -50,7 +52,8 @@ from artisanlib.util import fromCtoFstrict, convertWeight, weight_units, events_
 from tilauscope.tilauscope_types import (
     GreenBean, THEME, show_styled_message, AGTRON_SCALES, format_batch_label,
     open_in_os_viewer, ensure_color_system, resolve_color_system, call_later,
-    get_agtron_color, decode_alog_text, SCREEN_SIZE_RANGES
+    get_agtron_color, decode_alog_text, SCREEN_SIZE_RANGES, operator_level,
+    park_until_finished,
 )
 
 # AI modules are optional — guard against ImportError if not yet deployed
@@ -588,6 +591,33 @@ def _hum_color(hum: float) -> str:
     return THEME['ACCENT']                   # humid – blue
 
 
+def _plan_uses_text(card) -> str:  # noqa: ANN001
+    """What the plan is built on while a room card has no reading of its own."""
+    unit = "°F" if card._aw.qmc.mode == "F" else "°C"
+    reading = card.temperature
+    default = 20.0 if unit == "°C" else 68.0
+    temp = f"{reading if reading is not None else default:.0f}\u00a0{unit}"
+    alt = card.altitude
+    if alt is None:
+        alt = card._parent_dialog._artisan_elevation()
+    if alt > 0:
+        return QApplication.translate("tilauscope_roast_setup", "Plan now uses {0}, {1} m").format(
+            temp, f"{alt:.0f}")
+    return QApplication.translate("tilauscope_roast_setup", "Plan now uses {0}, sea level").format(temp)
+
+
+def _age_text(epoch: float) -> str:
+    """How long ago a reading was taken, in words."""
+    secs = max(0.0, time.time() - epoch)
+    if secs < 120:
+        return QApplication.translate("tilauscope_roast_setup", "just now")
+    if secs < 3600:
+        return QApplication.translate("tilauscope_roast_setup", "{0} min ago").format(int(secs // 60))
+    if secs < 2 * 86400:
+        return QApplication.translate("tilauscope_roast_setup", "{0} h ago").format(int(secs // 3600))
+    return QApplication.translate("tilauscope_roast_setup", "{0} days ago").format(int(secs // 86400))
+
+
 class _AmbientFloatWindow(QDialog):
     """
     Small always-on-top card displaying live ambient temperature, humidity
@@ -606,9 +636,13 @@ class _AmbientFloatWindow(QDialog):
     · If no device is available when the card opens it waits, showing
       "waiting for probe", and wires up as soon as one appears (checked on
       each timer tick).
+    · Every valid reading is remembered. While the probe is silent (a plan
+      prepared away from the roaster) the card shows the last one, greyed and
+      dated, and the plan is built on it.
     """
 
     POLL_INTERVAL_MS: Final[int] = 4_000
+    LAST_READING_KEY: Final[str] = "tilauscope/ambient_last_reading"
     CARD_WIDTH:       Final[int] = 140   # same width as scale card
 
     def __init__(self, parent: 'RoastSetupDialog') -> None:
@@ -629,8 +663,12 @@ class _AmbientFloatWindow(QDialog):
         self._temperature:float|None = None
         self._humidity:float|None = None
         self._pressure:float|None = None
+        self._altitude:float|None = None
+        self._reading_time: float | None = None   # epoch of the values above
+        self._showing_last = False                # values on screen are a past reading
 
         self._build_ui()
+        self._load_last_reading()
 
         # ── Polling timer (main-thread, safe to update widgets directly) ──────
         self._timer = QTimer(self)
@@ -663,6 +701,11 @@ class _AmbientFloatWindow(QDialog):
     @property
     def pressure(self) -> float | None:
         return self._pressure
+
+    @property
+    def altitude(self) -> float | None:
+        """Altitude the probe derives from its pressure reading (m), None until one arrives."""
+        return self._altitude
 
     # ── Device wiring ─────────────────────────────────────────────────────────
 
@@ -745,6 +788,14 @@ class _AmbientFloatWindow(QDialog):
         self._status_lbl.setProperty('variant', 'caption')
         cl.addWidget(self._status_lbl)
 
+        # What the plan is built on while the probe is silent
+        self._note_lbl = QLabel()
+        self._note_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._note_lbl.setWordWrap(True)
+        self._note_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 9px;")
+        self._note_lbl.setVisible(False)
+        cl.addWidget(self._note_lbl)
+
         outer.addWidget(self._card)
         self.adjustSize()
 
@@ -774,17 +825,9 @@ class _AmbientFloatWindow(QDialog):
     @pyqtSlot()
     def _on_probe_connected(self) -> None:
         self._probe_live = True
-        self._card.setStyleSheet(f"""
-            QFrame#ambientCard {{
-                background-color: {THEME['SURFACE']};
-                border: 2px solid {THEME['ACCENT']};
-                border-radius: 16px;
-            }}
-        """)
-        self._status_lbl.setText(QApplication.translate("tilauscope_roast_setup", "live"))
-        self._status_lbl.setStyleSheet(
-            f"color: {THEME['SUCCESS']}; font-size: 9px; "
-        )
+        # A remembered reading stays on screen, dated, until the first live one.
+        if not self._showing_last:
+            self._show_live_frame()
         self._timer.start()
         _logd.debug("AmbientCard: probe connected – polling started")
 
@@ -792,19 +835,92 @@ class _AmbientFloatWindow(QDialog):
     def _on_probe_disconnected(self) -> None:
         # The timer keeps running: it is also the re-attach watchdog.
         self._probe_live = False
+        if self._reading_time is not None:
+            self._show_last_reading()
+        else:
+            self._set_border(THEME['BORDER'])
+            self._status_lbl.setText(QApplication.translate("tilauscope_roast_setup", "offline"))
+            self._status_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 9px;")
+            self._note_lbl.setText(_plan_uses_text(self))
+            self._note_lbl.setVisible(True)
+            self._temp_val.setText("––")
+            self._hum_val.setText("––")
+            self._press_val.setText("––")
+            self.adjustSize()
+        _logd.debug("AmbientCard: probe disconnected")
+
+    # ── Card states ───────────────────────────────────────────────────────────
+
+    def _set_border(self, colour: str) -> None:
         self._card.setStyleSheet(f"""
             QFrame#ambientCard {{
                 background-color: {THEME['SURFACE']};
-                border: 2px solid {THEME['BORDER']};
+                border: 2px solid {colour};
                 border-radius: 16px;
             }}
         """)
-        self._status_lbl.setText(QApplication.translate("tilauscope_roast_setup", "offline"))
-        self._status_lbl.setProperty('variant', 'caption')
-        self._temp_val.setText("––")
-        self._hum_val.setText("––")
-        self._press_val.setText("––")
-        _logd.debug("AmbientCard: probe disconnected")
+
+    def _show_live_frame(self) -> None:
+        self._showing_last = False
+        self._set_border(THEME['ACCENT'])
+        self._status_lbl.setText(QApplication.translate("tilauscope_roast_setup", "live"))
+        self._status_lbl.setStyleSheet(
+            f"color: {THEME['SUCCESS']}; font-size: 9px; "
+        )
+        self._note_lbl.setVisible(False)
+        self._press_val.setStyleSheet(f"color: {THEME['TEXT']}; font-size: 12px; font-weight: bold;")
+        self.adjustSize()
+
+    def _show_last_reading(self) -> None:
+        """The remembered reading, greyed and dated so it never reads as live."""
+        if self._temperature is None or self._reading_time is None:
+            return
+        self._showing_last = True
+        dim = THEME['SUBTEXT']
+        self._set_border(THEME['BORDER'])
+        temp = self._temperature if self._aw.qmc.mode == "C" else fromCtoFstrict(self._temperature)
+        unit = "°F" if self._aw.qmc.mode == "F" else "°C"
+        self._temp_row.itemAt(0).widget().setPixmap(_svg_pixmap(_SVG_TEMP, dim, 18))
+        self._hum_row.itemAt(0).widget().setPixmap(_svg_pixmap(_SVG_HUM, dim, 18))
+        self._temp_val.setText(f"{temp:.1f} {unit}")
+        self._hum_val.setText(f"{self._humidity:.0f} %" if self._humidity is not None else "––")
+        self._press_val.setText(f"{self._pressure:.0f} hPa" if self._pressure is not None else "––")
+        for val in (self._temp_val, self._hum_val, self._press_val):
+            val.setStyleSheet(f"color: {dim}; font-size: 12px; font-weight: bold;")
+        self._status_lbl.setText(
+            QApplication.translate("tilauscope_roast_setup", "last reading") + "\n" + _age_text(self._reading_time))
+        self._status_lbl.setStyleSheet(f"color: {THEME['WARNING']}; font-size: 9px;")
+        self._note_lbl.setText(QApplication.translate("tilauscope_roast_setup", "Plan uses it until the probe answers"))
+        self._note_lbl.setVisible(True)
+        self.adjustSize()
+
+    def _load_last_reading(self) -> None:
+        """Start from the remembered reading, or say what the plan uses without one."""
+        try:
+            last = json.loads(str(QSettings().value(self.LAST_READING_KEY, "") or ""))
+            self._temperature = float(last["t"])
+            self._humidity = float(last["h"]) if last.get("h") is not None else None
+            self._pressure = float(last["p"]) if last.get("p") is not None else None
+            self._altitude = float(last["a"]) if last.get("a") is not None else None
+            self._reading_time = float(last["at"])
+        except (ValueError, TypeError, KeyError, AttributeError):
+            self._temperature = self._humidity = self._pressure = self._altitude = None
+            self._reading_time = None
+        if self._reading_time is not None:
+            self._show_last_reading()
+        else:
+            self._set_border(THEME['BORDER'])
+            self._status_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 9px;")
+            self._note_lbl.setText(_plan_uses_text(self))
+            self._note_lbl.setVisible(True)
+            self.adjustSize()
+
+    def _remember_reading(self) -> None:
+        if self._temperature is None or self._reading_time is None:
+            return
+        QSettings().setValue(self.LAST_READING_KEY, json.dumps({
+            "t": self._temperature, "h": self._humidity, "p": self._pressure,
+            "a": self._altitude, "at": self._reading_time}))
 
     # ── Polling tick ──────────────────────────────────────────────────────────
 
@@ -842,6 +958,11 @@ class _AmbientFloatWindow(QDialog):
         self._temperature = data.temperature
         self._humidity    = hum
         self._pressure    = press
+        alt = getattr(data, 'altitude', None)
+        self._altitude    = float(alt) if alt is not None and -500.0 <= float(alt) <= 6000.0 else None
+        self._reading_time = time.time()   # persisted once, on close
+        if self._showing_last or not self._note_lbl.isHidden():
+            self._show_live_frame()
         tc    = _temp_color(temp)
         hc    = _hum_color(hum)
 
@@ -859,13 +980,360 @@ class _AmbientFloatWindow(QDialog):
             f"color: {hc}; font-size: 12px; font-weight: bold; "
         )
         self._press_val.setText(f"{press:.0f} hPa")
+        on_reading = getattr(self._parent_dialog, "_on_ambient_reading", None)
+        if callable(on_reading):
+            on_reading()
 
     # ── Cleanup ───────────────────────────────────────────────────────────────
 
     def closeEvent(self, event) -> None:  # noqa: ANN001
         self._timer.stop()
         self._detach_device()
+        self._remember_reading()
         super().closeEvent(event)
+
+_SVG_ALTITUDE = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">'
+    '<path d="M2 16 L7.5 7 L11 12 L13 9 L18 16 Z" fill="none" stroke="{color}" stroke-width="1.8"'
+    ' stroke-linejoin="round"/>'
+    '</svg>'
+)
+
+
+class _WeatherWorker(QObject):
+    """Runs the online weather lookup off the GUI thread; only its dict crosses back."""
+    finished = pyqtSignal(object)
+    error = pyqtSignal(str)
+
+    @pyqtSlot()
+    def run(self) -> None:
+        from tilauscope.online_weather import fetch_online_weather  # noqa: PLC0415
+        try:
+            self.finished.emit(fetch_online_weather())
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("Weather lookup failed: %s", exc)
+            self.error.emit(str(exc))
+
+
+class _WeatherFloatWindow(QDialog):
+    """
+    The room, for a setup with no ambient probe: the online weather on a tap,
+    or values typed by hand. It stands where the AMBIENT card would.
+
+    Nothing leaves the computer before a tap, and the first tap asks for
+    consent (tilau_privacy_ui). A typed altitude is remembered — it does not
+    change between roasts; the temperature and humidity do.
+
+    Exposes the same readings as _AmbientFloatWindow (temperature in the
+    display unit, temperature_c, humidity, pressure, altitude), so the dialog
+    reads either card the same way.
+    """
+
+    CARD_WIDTH: Final[int] = 180
+    ALTITUDE_KEY: Final[str] = "tilauscope/room_altitude_m"
+
+    def __init__(self, parent: 'RoastSetupDialog') -> None:
+        super().__init__(
+            parent,
+            Qt.WindowType.Tool
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.FramelessWindowHint,
+        )
+        apply_tilau_theme(self, ground=False)  # frameless translucent: no ground rule
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self._parent_dialog = parent
+        self._aw = parent._aw
+        self._temperature: float | None = None   # °C
+        self._humidity: float | None = None
+        self._pressure: float | None = None
+        self._altitude: float | None = None
+        self._thread: QThread | None = None
+        self._worker: _WeatherWorker | None = None
+        try:
+            stored = QSettings().value(self.ALTITUDE_KEY, None)
+            self._remembered_altitude: float | None = float(stored) if stored not in (None, "") else None
+        except (TypeError, ValueError):
+            self._remembered_altitude = None
+        self._build_ui()
+        self._show_idle()
+
+    # ── readings, same contract as the AMBIENT card ─────────────────────────────
+
+    @property
+    def temperature(self) -> float | None:
+        if self._temperature is None:
+            return None
+        return self._temperature if self._aw.qmc.mode == "C" else fromCtoFstrict(self._temperature)
+
+    @property
+    def temperature_c(self) -> float | None:
+        return self._temperature
+
+    @property
+    def humidity(self) -> float | None:
+        return self._humidity
+
+    @property
+    def pressure(self) -> float | None:
+        return self._pressure
+
+    @property
+    def altitude(self) -> float | None:
+        return self._altitude if self._altitude is not None else self._remembered_altitude
+
+    # ── UI ──────────────────────────────────────────────────────────────────────
+
+    def _build_ui(self) -> None:
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        self._card = QFrame()
+        self._card.setObjectName("weatherCard")
+        self._card.setFixedWidth(self.CARD_WIDTH)
+        cl = QVBoxLayout(self._card)
+        cl.setContentsMargins(14, 12, 14, 12)
+        cl.setSpacing(7)
+        header = QLabel("☂  " + QApplication.translate("tilauscope_roast_setup", "WEATHER"))
+        header.setProperty('variant', 'eyebrow')
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        cl.addWidget(header)
+
+        link_css = self._link_css = (f"QPushButton {{ border: none; background: transparent; color: {THEME['ACCENT']};"
+                    f"font-size: 12px; font-weight: bold; padding: 2px; }}"
+                    f"QPushButton:disabled {{ color: {THEME['SUBTEXT']}; }}")
+        caption_css = f"color: {THEME['SUBTEXT']}; font-size: 10px;"
+
+        # Idle / locating / unavailable
+        self._idle = QWidget()
+        il = QVBoxLayout(self._idle)
+        il.setContentsMargins(0, 0, 0, 0)
+        il.setSpacing(4)
+        self._idle_btn = QPushButton()
+        self._idle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._idle_btn.setStyleSheet(link_css)
+        self._idle_btn.clicked.connect(self._request_weather)
+        self._idle_note = QLabel()
+        self._idle_note.setWordWrap(True)
+        self._idle_note.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._idle_note.setStyleSheet(caption_css)
+        il.addWidget(self._idle_btn)
+        il.addWidget(self._idle_note)
+        cl.addWidget(self._idle)
+
+        # Reading from the weather service
+        self._reading = QWidget()
+        rl = QVBoxLayout(self._reading)
+        rl.setContentsMargins(0, 0, 0, 0)
+        rl.setSpacing(6)
+        self._temp_row, self._temp_val = _AmbientFloatWindow._make_row(_SVG_TEMP, THEME['ACCENT'])
+        self._hum_row, self._hum_val = _AmbientFloatWindow._make_row(_SVG_HUM, THEME['ACCENT'])
+        self._alt_row, self._alt_val = _AmbientFloatWindow._make_row(_SVG_ALTITUDE, THEME['SUBTEXT'])
+        for row in (self._temp_row, self._hum_row, self._alt_row):
+            rl.addLayout(row)
+        self._place_lbl = QLabel()
+        self._place_lbl.setWordWrap(True)
+        self._place_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._place_lbl.setStyleSheet(caption_css)
+        rl.addWidget(self._place_lbl)
+        self._reading_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "Refresh"))
+        self._reading_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._reading_btn.setStyleSheet(link_css.replace("font-size: 12px", "font-size: 10px"))
+        self._reading_btn.clicked.connect(self._request_weather)
+        rl.addWidget(self._reading_btn)
+        cl.addWidget(self._reading)
+
+        # Typed by hand
+        self._typed = QWidget()
+        tl = QVBoxLayout(self._typed)
+        tl.setContentsMargins(0, 0, 0, 0)
+        tl.setSpacing(5)
+        unit = "°F" if self._aw.qmc.mode == "F" else "°C"
+        self._t_edit = self._typed_row(tl, _SVG_TEMP, unit,
+                                       QApplication.translate("tilauscope_roast_setup", "Room temperature"))
+        self._h_edit = self._typed_row(tl, _SVG_HUM, "%",
+                                       QApplication.translate("tilauscope_roast_setup", "Room humidity"))
+        self._a_edit = self._typed_row(tl, _SVG_ALTITUDE, "m",
+                                       QApplication.translate("tilauscope_roast_setup", "Altitude"))
+        typed_note = QLabel(QApplication.translate("tilauscope_roast_setup", "typed · altitude remembered"))
+        typed_note.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        typed_note.setStyleSheet(caption_css)
+        tl.addWidget(typed_note)
+        online_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "Use online weather"))
+        online_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        online_btn.setStyleSheet(link_css.replace("font-size: 12px", "font-size: 10px"))
+        online_btn.clicked.connect(self._request_weather)
+        tl.addWidget(online_btn)
+        cl.addWidget(self._typed)
+
+        outer.addWidget(self._card)
+
+    def _typed_row(self, layout: QVBoxLayout, svg: str, unit: str, name: str) -> QLineEdit:
+        row = QHBoxLayout()
+        row.setSpacing(5)
+        icon = QLabel()
+        icon.setFixedSize(16, 16)
+        icon.setPixmap(_svg_pixmap(svg, THEME['SUBTEXT'], 16))
+        edit = QLineEdit()
+        edit.setAccessibleName(name)
+        edit.setToolTip(name)
+        edit.setFixedWidth(58)
+        edit.setAlignment(Qt.AlignmentFlag.AlignRight)
+        edit.textEdited.connect(self._on_typed)
+        unit_lbl = QLabel(unit)
+        unit_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 10px;")
+        unit_lbl.setFixedWidth(18)
+        row.addWidget(icon)
+        row.addStretch()
+        row.addWidget(edit)
+        row.addWidget(unit_lbl)
+        layout.addLayout(row)
+        return edit
+
+    def _set_border(self, live: bool) -> None:
+        self._card.setStyleSheet(
+            f"QFrame#weatherCard {{ background-color: {THEME['SURFACE']};"
+            f"border: 2px solid {THEME['ACCENT'] if live else THEME['BORDER']}; border-radius: 16px; }}")
+
+    def _show_page(self, page: QWidget) -> None:
+        for p in (self._idle, self._reading, self._typed):
+            p.setVisible(p is page)
+        self._set_border(page is not self._idle)
+        self._card.adjustSize()
+        self.adjustSize()
+
+    def _plan_uses(self) -> str:
+        """What the plan is built on while the card has no reading."""
+        return _plan_uses_text(self)
+
+    def _show_idle(self, note: str | None = None) -> None:
+        self._idle_btn.setEnabled(True)
+        self._idle_btn.setText(QApplication.translate("tilauscope_roast_setup", "Tap for local weather"))
+        self._idle_btn.setStyleSheet(self._link_css)
+        self._idle_btn.setToolTip("")
+        self._idle_note.setText(note or self._plan_uses())
+        self._show_page(self._idle)
+
+    # ── actions ─────────────────────────────────────────────────────────────────
+
+    @pyqtSlot()
+    def _request_weather(self) -> None:
+        """A tap: ask once, then look the weather up off the GUI thread."""
+        if self._thread is not None:
+            return
+        from tilauscope.tilau_privacy_ui import ensure_geo_consent, hand_over_to_manual_entry  # noqa: PLC0415
+        if not ensure_geo_consent(self._parent_dialog):
+            # "I'll type it" — the other way of giving the same values.
+            self._fill_typed()
+            self._show_page(self._typed)
+            hand_over_to_manual_entry(self._t_edit)
+            return
+        self._idle_btn.setEnabled(False)
+        self._idle_btn.setText(QApplication.translate("tilauscope_roast_setup", "locating…"))
+        self._idle_note.setText(self._plan_uses())
+        self._show_page(self._idle)
+        # Unparented thread: a card closed mid-lookup parks it until it ends.
+        self._thread = QThread()
+        self._worker = _WeatherWorker()
+        self._worker.moveToThread(self._thread)
+        self._thread.started.connect(self._worker.run)
+        self._worker.finished.connect(self._on_weather)
+        self._worker.error.connect(self._on_weather_error)
+        self._worker.finished.connect(self._thread.quit)
+        self._worker.error.connect(self._thread.quit)
+        self._thread.finished.connect(self._on_thread_done)
+        self._thread.start()
+
+    @pyqtSlot()
+    def _on_thread_done(self) -> None:
+        if self._thread is not None:
+            self._thread.wait(1000)   # finished fires just before the thread really exits
+        self._thread = None
+        self._worker = None
+
+    @pyqtSlot(object)
+    def _on_weather(self, payload: object) -> None:
+        if not isinstance(payload, dict) or payload.get("temperature") is None:
+            self._on_weather_error("")
+            return
+        from datetime import datetime  # noqa: PLC0415
+        self._temperature = float(payload["temperature"])
+        self._humidity = float(payload["humidity"]) if payload.get("humidity") is not None else None
+        self._pressure = float(payload["pressure"]) if payload.get("pressure") is not None else None
+        try:
+            elevation = float(payload.get("elevation"))
+            self._altitude = elevation if -500.0 <= elevation <= 6000.0 else None
+        except (TypeError, ValueError):
+            self._altitude = None
+        unit = "°F" if self._aw.qmc.mode == "F" else "°C"
+        temp = self.temperature or 0.0
+        self._temp_val.setText(f"{temp:.1f} {unit}")
+        self._temp_val.setStyleSheet(f"color: {_temp_color(temp, unit == '°F')}; font-size: 12px; font-weight: bold;")
+        self._hum_val.setText(f"{self._humidity:.0f} %" if self._humidity is not None else "––")
+        self._alt_val.setText(f"{self._altitude:.0f} m" if self._altitude is not None else "––")
+        place = str(payload.get("city") or "")
+        self._place_lbl.setText(" · ".join(p for p in (place, datetime.now().strftime("%H:%M")) if p))
+        self._show_page(self._reading)
+        self._notify()
+
+    @pyqtSlot(str)
+    def _on_weather_error(self, message: str) -> None:
+        self._show_idle(self._plan_uses() + " · " + QApplication.translate("tilauscope_roast_setup", "tap to retry"))
+        self._idle_btn.setText(QApplication.translate("tilauscope_roast_setup", "Weather unavailable"))
+        self._idle_btn.setStyleSheet(self._link_css.replace(THEME['ACCENT'], THEME['WARNING'], 1))
+        from tilauscope.online_weather import weather_error_text  # noqa: PLC0415
+        self._idle_btn.setToolTip(weather_error_text(message))
+
+    def _fill_typed(self) -> None:
+        if self._temperature is not None and not self._t_edit.text():
+            self._t_edit.setText(f"{self.temperature:.1f}")
+        if self._humidity is not None and not self._h_edit.text():
+            self._h_edit.setText(f"{self._humidity:.0f}")
+        if self.altitude is not None and not self._a_edit.text():
+            self._a_edit.setText(f"{self.altitude:.0f}")
+
+    @pyqtSlot(str)
+    def _on_typed(self, _text: str) -> None:
+        def _num(edit: QLineEdit) -> float | None:
+            try:
+                return float(edit.text().replace(',', '.'))
+            except ValueError:
+                return None
+        t = _num(self._t_edit)
+        if t is not None and self._aw.qmc.mode == "F":
+            t = (t - 32.0) / 1.8
+        self._temperature = t if t is not None and -20.0 <= t <= 50.0 else None
+        h = _num(self._h_edit)
+        self._humidity = h if h is not None and 0.0 <= h <= 100.0 else None
+        a = _num(self._a_edit)
+        self._altitude = a if a is not None and -500.0 <= a <= 6000.0 else None
+        self._pressure = None
+        if self._altitude is not None:
+            self._remembered_altitude = self._altitude
+            QSettings().setValue(self.ALTITUDE_KEY, self._altitude)
+        elif not self._a_edit.text().strip():   # an emptied field forgets the altitude
+            self._remembered_altitude = None
+            QSettings().remove(self.ALTITUDE_KEY)
+        self._notify()
+
+    def _notify(self) -> None:
+        on_reading = getattr(self._parent_dialog, "_on_ambient_reading", None)
+        if callable(on_reading):
+            on_reading()
+
+    # ── Cleanup ───────────────────────────────────────────────────────────────
+
+    def closeEvent(self, event) -> None:  # noqa: ANN001
+        thread, worker = self._thread, self._worker
+        if thread is not None and worker is not None:
+            for sig, slot in ((worker.finished, self._on_weather), (worker.error, self._on_weather_error),
+                              (thread.finished, self._on_thread_done)):
+                try:
+                    sig.disconnect(slot)
+                except (TypeError, RuntimeError):
+                    pass
+            park_until_finished(thread, worker)   # dropping it while it runs aborts Qt
+        self._thread = self._worker = None
+        super().closeEvent(event)
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # Roast Insights — non-blocking educational panel
@@ -875,6 +1343,23 @@ class _AmbientFloatWindow(QDialog):
 # guarded by a 250 ms debounce. Do NOT run this off-thread: build_insights() and
 # the roast-plan engine call QApplication.translate() and reach into the live
 # shared qmc, which corrupts Qt/Artisan state off the GUI thread.
+
+
+def _tasting_change_text(change: dict, unit: str) -> str:
+    """'💡 Last time: <defect> — <change> (<before → after>)' for a plan's "Tasting Change"."""
+    from tilauscope.cave.tasting_dialog import change_text, defect_labels  # noqa: PLC0415
+    mode = 'F' if unit == 'F' else 'C'
+    before, after = float(change["before"]), float(change["after"])
+    lever = change["lever"]
+    if lever.startswith("burner_"):
+        values = f"{before:.0f} → {after:.0f} %"
+    elif lever == "development_s":
+        values = f"{int(before) // 60}:{int(before) % 60:02d} → {int(after) // 60}:{int(after) % 60:02d}"
+    else:
+        values = f"{before:.0f} → {after:.0f} °{mode}"
+    return QApplication.translate(
+        "tilauscope_roast_setup", "💡 Last time: {0} — {1} ({2})").format(
+            defect_labels().get(change["defect"], ""), change_text(change["defect"], mode)[0], values)
 
 
 class _RoastInsightsPanel(QWidget):
@@ -897,12 +1382,17 @@ class _RoastInsightsPanel(QWidget):
         self._pending: dict | None = None
         self._last_setup: dict | None = None
         self._target_scale = None          # AgtronScale | None (from OPTIONS)
-        self._targets_host: QWidget | None = None
-        self._targets_hint: QLabel | None = None
 
         self._engine = None                # TilauScopeRoastPlan, built on demand
         self._engine_ctx = None            # roaster context the engine was built for
         self._plan: dict | None = None    # latest plan, used by RoastSetupDialog
+        self._plan_result: tuple | None = None  # (plan, graph, crashes, flicks) — what the PDF needs
+        self._plan_failed = False
+        self._pinned: dict | None = None   # {"plan", "label"} — column A of a comparison
+        self._load_alarms = False          # Expert: load the plan's alarms at Start
+        self._roadmap_host: QWidget | None = None
+        self._pin_btn: QPushButton | None = None
+        self._pdf_btn: QPushButton | None = None
 
         self._debounce = QTimer(self)
         self._debounce.setSingleShot(True)
@@ -917,24 +1407,8 @@ class _RoastInsightsPanel(QWidget):
 
     def _build_ui(self) -> None:
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(0, 16, 0, 0)
+        lay.setContentsMargins(0, 4, 0, 0)
         lay.setSpacing(10)
-
-        # Read-only reminder of the plan chosen in the OPTIONS tab
-        plan_row = QHBoxLayout()
-        plan_cap = QLabel(QApplication.translate("tilauscope_roast_setup", "Plan"))
-        plan_cap.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px; border: none;")
-        self._plan_lbl = QLabel(
-            QApplication.translate("tilauscope_roast_setup", "No plan selected — choose one in OPTIONS")
-        )
-        self._plan_lbl.setStyleSheet(
-            f"color: {THEME['TEXT']}; background: {THEME['SURFACE']};"
-            f"border: 1px solid {THEME['BORDER']}; border-radius: 6px;"
-            f"padding: 6px 10px; font-size: 13px;"
-        )
-        plan_row.addWidget(plan_cap)
-        plan_row.addWidget(self._plan_lbl, 1)
-        lay.addLayout(plan_row)
 
         self._stack = QStackedWidget()
         self._computing = QLabel("⟳  " + QApplication.translate("tilauscope_roast_setup", "Computing…"))
@@ -945,6 +1419,8 @@ class _RoastInsightsPanel(QWidget):
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        # The content wraps to the width it is given; it never scrolls sideways.
+        self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._scroll.setWidget(QWidget())
         self._stack.addWidget(self._scroll)
 
@@ -955,15 +1431,11 @@ class _RoastInsightsPanel(QWidget):
 
     def request(self, *, bean, density, moisture, green_weight, bean_temp,
                 ctx, mode, ambient_temp, ambient_humidity, altitude,
-                plan_parent, target_scale=None, plan_name="", run_plan=True) -> None:  # noqa: ANN001
+                plan_parent, target_scale=None, run_plan=True) -> None:  # noqa: ANN001
         """Queue a (debounced) recompute with the current setup values."""
         if self._destroyed:
             return
         self._target_scale = target_scale
-        self._plan_lbl.setText(
-            plan_name or QApplication.translate(
-                "tilauscope_roast_setup", "No plan selected — choose one in OPTIONS")
-        )
         self._last_setup = dict(
             bean=bean, density=density, moisture=moisture,
             green_weight=green_weight, bean_temp=bean_temp, ctx=ctx, mode=mode,
@@ -1030,7 +1502,9 @@ class _RoastInsightsPanel(QWidget):
                 agtron_target=s["target_scale"],
                 ambient_temp=s["ambient_temp"], ambient_humidity=s["ambient_humidity"],
                 charge_weight=s["green_weight"], altitude=s["altitude"],
-                airwave_present=False,
+                # Same reading as the assistant: a paired AirWave puts the
+                # extraction path into the plan, its PDF and its alarms.
+                airwave_present=getattr(s["plan_parent"], "bleAirwaveDevice", None) is not None,
             )
 
         # Computed synchronously on the GUI thread: build_insights() and the
@@ -1044,6 +1518,7 @@ class _RoastInsightsPanel(QWidget):
         self._on_ready(gen, res)
 
         plan = None
+        full = None
         if plan_params is not None:
             try:
                 # One engine for the whole dialog: a fresh instance drops the
@@ -1063,12 +1538,14 @@ class _RoastInsightsPanel(QWidget):
                     airwave_present=plan_params.get("airwave_present", False),
                 )
                 # generate_roast_plan returns (plan_dict, graph, crashes, flicks)
-                plan = result[0] if isinstance(result, tuple) else result
+                full = result if isinstance(result, tuple) else (result, {}, [], [])
+                plan = full[0]
             except Exception:  # noqa: BLE001
                 _log.exception("RoastInsights: roast plan generation failed")
                 plan = None
+                full = None
         _log.info("INSIGHTS computed gen=%s plan=%s", gen, "ok" if plan else "None")
-        self._on_plan_ready(gen, plan)
+        self._on_plan_ready(gen, plan, full)
 
     @pyqtSlot(int, object)
     def _on_ready(self, gen: int, result: object) -> None:
@@ -1083,18 +1560,20 @@ class _RoastInsightsPanel(QWidget):
         self._render(result)
         self._stack.setCurrentIndex(1)
 
-    @pyqtSlot(int, object)
-    def _on_plan_ready(self, gen: int, plan: object) -> None:
+    @pyqtSlot(int, object, object)
+    def _on_plan_ready(self, gen: int, plan: object, full: object = None) -> None:
         _log.info("INSIGHTS on_plan_ready gen=%s cur=%s plan=%s", gen, self._gen, type(plan).__name__)
         if self._destroyed or gen != self._gen:
             return
         if plan is None:
             self._plan = None
-            if self._target_scale is not None:
-                self._set_targets_hint(QApplication.translate(
-                    "tilauscope_roast_setup", "Plan unavailable — see log for details."))
+            self._plan_result = None
+            self._plan_failed = self._target_scale is not None
+            self._render_roadmap()
             return
         self._plan = plan if isinstance(plan, dict) else None
+        self._plan_result = full if isinstance(full, tuple) and self._plan is not None else None
+        self._plan_failed = False
         charge_temp = self.charge_temperature()
         # The INSIGHTS tab page is the parent once laid out; the dialog is the window.
         owner = self.window()
@@ -1114,14 +1593,7 @@ class _RoastInsightsPanel(QWidget):
             show_tasting = getattr(owner, "_set_tasting_readout", None)
             if callable(show_tasting):
                 show_tasting(self._plan.get("Tasting Change"))
-        try:
-            mode = (self._last_setup or {}).get("mode", "C")
-            targets = targets_from_plan(plan, mode)
-        except Exception:  # noqa: BLE001
-            targets = None
-        if targets:
-            self._render_targets(targets)
-            self._set_targets_hint("")
+        self._render_roadmap()
 
     def charge_temperature(self) -> float | None:
         """Return the generated plan's charge temperature in display units."""
@@ -1163,21 +1635,14 @@ class _RoastInsightsPanel(QWidget):
             if w is not None:
                 w.deleteLater()
 
-    def _set_targets_hint(self, text: str) -> None:
-        h = self._targets_hint
-        if h is None:
-            return
-        try:
-            h.setText(text)
-            h.setVisible(bool(text))
-        except RuntimeError:
-            pass
-
     def _chip(self, sig) -> QFrame:  # noqa: ANN001
         color = self._sev_color(sig.severity)
         f = QFrame()
+        # By name: a bare QFrame rule reaches the QLabels inside (a QLabel is a
+        # QFrame) and draws the accent bar again before every line of text.
+        f.setObjectName("insightChip")
         f.setStyleSheet(
-            f"QFrame {{ background: {THEME['SURFACE']}; border-radius: 8px;"
+            f"QFrame#insightChip {{ background: {THEME['SURFACE']}; border-radius: 8px;"
             f"border-left: 3px solid {color}; }}"
         )
         v = QVBoxLayout(f)
@@ -1214,29 +1679,19 @@ class _RoastInsightsPanel(QWidget):
             v.addWidget(lbl)
         return f
 
-    def _render_targets(self, targets) -> None:  # noqa: ANN001
-        host = self._targets_host
-        if host is None:
-            return
-        try:
-            lay = host.layout()
-        except RuntimeError:
-            return
-        if lay is None:
-            return
-        self._clear_layout(lay)
-        for tgt in targets:
-            color = THEME['TODAY'] if tgt.known else THEME['BORDER']
-            lbl = QLabel(f"{tgt.label}  <b style='color:{color};'>{tgt.value_text}</b>")
-            lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px; border: none;")
-            lay.addWidget(lbl)
-        lay.addStretch()
-
     def _render(self, ins) -> None:  # noqa: ANN001
         host = QWidget()
         v = QVBoxLayout(host)
         v.setContentsMargins(2, 0, 8, 8)
         v.setSpacing(14)
+
+        # The roadmap leads: it is what the operator reads before the drum turns.
+        v.addLayout(self._roadmap_header())
+        self._roadmap_host = QWidget()
+        rh = QVBoxLayout(self._roadmap_host)
+        rh.setContentsMargins(0, 0, 0, 0)
+        rh.setSpacing(8)
+        v.addWidget(self._roadmap_host)
 
         if ins.signals:
             v.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Green signals")))
@@ -1291,32 +1746,11 @@ class _RoastInsightsPanel(QWidget):
                 grid.addWidget(self._band_card(band), 0, i)
             v.addLayout(grid)
 
-        # Predicted targets — heuristic first; the plan patches them in place
-        v.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Predicted targets")))
-        self._targets_host = QWidget()
-        th = QHBoxLayout(self._targets_host)
-        th.setContentsMargins(0, 0, 0, 0)
-        th.setSpacing(16)
-        v.addWidget(self._targets_host)
-        self._render_targets(ins.targets)
-
-        self._targets_hint = QLabel("")
-        self._targets_hint.setWordWrap(True)
-        self._targets_hint.setStyleSheet(
-            f"color: {THEME['BORDER']}; font-size: 11px; border: none; font-style: italic;")
-        v.addWidget(self._targets_hint)
-        if self._target_scale is None:
-            self._set_targets_hint(QApplication.translate(
-                "tilauscope_roast_setup",
-                "Select a roast plan in OPTIONS to predict DTR, weight loss and time."))
-        else:
-            self._set_targets_hint("⟳  " + QApplication.translate(
-                "tilauscope_roast_setup", "Predicting targets from plan…"))
-
         if ins.strategy:
             box = QFrame()
+            box.setObjectName("strategyBox")
             box.setStyleSheet(
-                f"QFrame {{ background: {THEME['SURFACE']}; border: 1px solid {THEME['ACCENT']};"
+                f"QFrame#strategyBox {{ background: {THEME['SURFACE']}; border: 1px solid {THEME['ACCENT']};"
                 f"border-radius: 8px; }}"
             )
             bv = QVBoxLayout(box)
@@ -1333,6 +1767,355 @@ class _RoastInsightsPanel(QWidget):
 
         v.addStretch()
         self._scroll.setWidget(host)   # takes ownership; old host is destroyed
+        self._render_roadmap()
+
+    # ── Roadmap (PLAN tab) ───────────────────────────────────────────────────
+
+    def _roadmap_header(self) -> QHBoxLayout:
+        row = QHBoxLayout()
+        row.setSpacing(8)
+        row.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Roadmap")))
+        row.addStretch()
+        self._pin_btn = QPushButton()
+        self._pin_btn.setProperty('variant', 'outline')
+        self._pin_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pin_btn.setToolTip(QApplication.translate(
+            "tilauscope_roast_setup",
+            "Keep this plan aside, then change the weight, the use or the level to compare."))
+        self._pin_btn.clicked.connect(self._toggle_pin)
+        row.addWidget(self._pin_btn)
+        self._pdf_btn = QPushButton("📄  " + QApplication.translate("tilauscope_roast_setup", "PDF"))
+        self._pdf_btn.setProperty('variant', 'outline')
+        self._pdf_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._pdf_btn.setToolTip(QApplication.translate(
+            "tilauscope_roast_setup",
+            "Save the plan as a PDF to keep at hand — with a comparison page when a plan is pinned."))
+        self._pdf_btn.clicked.connect(self._export_pdf)
+        row.addWidget(self._pdf_btn)
+        return row
+
+    @staticmethod
+    def _hint_label(text: str, color: str | None = None) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setWordWrap(True)
+        lbl.setStyleSheet(f"color: {color or THEME['SUBTEXT']}; font-size: 12px; border: none;")
+        return lbl
+
+    @staticmethod
+    def _mmss(text: Any) -> str:
+        """'04:44' → '4:44'; anything else unchanged."""
+        m = re.fullmatch(r"\s*(\d+):(\d\d)\s*", str(text or ""))
+        return f"{int(m.group(1))}:{m.group(2)}" if m else str(text or "")
+
+    def _mode(self) -> str:
+        return (self._last_setup or {}).get("mode", "C")
+
+    def _plan_label(self, plan: dict) -> str:
+        """'Filter · 250 g · Medium Light' — names a plan in a comparison."""
+        from tilauscope.roast_plan_model import BuildPRoastPlanPDF  # noqa: PLC0415
+        parts = [BuildPRoastPlanPDF._destination_label(plan.get("Roast Destination"))]  # pylint: disable=protected-access
+        try:
+            parts.append(f"{float(plan.get('Weight') or 0):.0f} g")
+        except (TypeError, ValueError):
+            pass
+        if self._target_scale is not None:
+            parts.append(str(getattr(self._target_scale, 'name', '')))
+        return " · ".join(p for p in parts if p)
+
+    def _confidence(self, plan: dict) -> tuple[str, bool]:
+        """What the plan rests on, in words — and whether it is guessing."""
+        prev = plan.get("Previous Harvest") or {}
+        if prev.get("crop"):
+            return QApplication.translate(
+                "tilauscope_roast_setup", "Built on the {0} harvest ({1} roasts)").format(
+                    prev["crop"], prev.get("roasts", 0)), False
+        try:
+            n = int(plan.get("History Roasts") or 0)
+        except (TypeError, ValueError):
+            n = 0
+        if n > 1:   # a single roast is shown as reference only; the plan starts from the grid
+            return QApplication.translate(
+                "tilauscope_roast_setup", "Based on {0} roasts of this coffee").format(n), False
+        bean = (self._last_setup or {}).get("bean")
+        if int(getattr(bean, 'count', 0) or 0) == 0:
+            return QApplication.translate(
+                "tilauscope_roast_setup",
+                "First roast of this coffee — the plan starts from its characteristics; "
+                "expect to adjust after tasting."), True
+        return QApplication.translate(
+            "tilauscope_roast_setup",
+            "No earlier roast of this coffee could be used — the plan starts from its characteristics."), True
+
+    def _render_roadmap(self) -> None:
+        host = self._roadmap_host
+        if host is None:
+            return
+        try:
+            lay = host.layout()
+        except RuntimeError:
+            return
+        if lay is None:
+            return
+        self._clear_layout(lay)
+        plan = self._plan
+        ready = plan is not None and self._target_scale is not None
+        try:
+            if self._pin_btn is not None:
+                self._pin_btn.setEnabled(ready)
+                self._pin_btn.setText("📌  " + (
+                    QApplication.translate("tilauscope_roast_setup", "Unpin") if self._pinned is not None
+                    else QApplication.translate("tilauscope_roast_setup", "Pin")))
+            if self._pdf_btn is not None:
+                self._pdf_btn.setEnabled(ready)
+        except RuntimeError:
+            pass
+        if self._target_scale is None:
+            lay.addWidget(self._hint_label(QApplication.translate(
+                "tilauscope_roast_setup", "Choose a roast level above to see the roadmap.")))
+            return
+        if plan is None:
+            lay.addWidget(self._hint_label(
+                QApplication.translate("tilauscope_roast_setup", "Plan unavailable — see log for details.")
+                if self._plan_failed else
+                "⟳  " + QApplication.translate("tilauscope_roast_setup", "Building the roadmap…")))
+            return
+        mode = self._mode()
+        try:
+            if self._pinned is not None:
+                lay.addWidget(self._comparison_card(self._pinned, plan, mode))
+            else:
+                lay.addWidget(self._roadmap_card(plan, mode))
+        except Exception:  # noqa: BLE001
+            _log.exception("RoastInsights: roadmap render failed")
+        change = plan.get("Tasting Change")
+        if change:
+            try:
+                lay.addWidget(self._hint_label(_tasting_change_text(change, mode), THEME['TODAY']))
+            except Exception:  # noqa: BLE001
+                _log.exception("RoastInsights: tasting line failed")
+        text, guessing = self._confidence(plan)
+        lay.addWidget(self._hint_label(text, THEME['WARNING'] if guessing else None))
+        if operator_level(self._aw) == "expert":
+            cb = QCheckBox(QApplication.translate(
+                "tilauscope_roast_setup", "Load the plan's alarms at start — replaces your current alarms"))
+            cb.setChecked(self._load_alarms)
+            cb.toggled.connect(self._on_load_alarms_toggled)
+            lay.addWidget(cb)
+
+    def _roadmap_card(self, plan: dict, mode: str) -> QFrame:
+        from tilauscope.roast_plan_model import BuildPRoastPlanPDF, plan_cooled_weight  # noqa: PLC0415
+        unit = f"°{mode}"
+        mono = mono_family()
+        levels = BuildPRoastPlanPDF.entry_levels(plan)
+
+        def _levers(i: int, drum: bool) -> str:
+            parts = []
+            for key, text in (
+                    ("heater", QApplication.translate("tilauscope_roast_setup", "Burner {0} %")),
+                    ("airflow", QApplication.translate("tilauscope_roast_setup", "Air {0} %"))):
+                values = levels.get(key) or []
+                if i < len(values) and values[i] is not None:
+                    parts.append(text.format(f"{values[i]:.0f}"))
+            drum_values = levels.get("drum") or []
+            if drum and drum_values and drum_values[0] is not None:
+                parts.append(QApplication.translate("tilauscope_roast_setup", "Drum {0} %").format(
+                    f"{drum_values[0]:.0f}"))
+            return "  ·  ".join(parts)
+
+        try:
+            dev_pct = f"{float(plan.get('Development Phase %')):.0f}"
+        except (TypeError, ValueError):
+            dev_pct = "—"
+        rows = (
+            (QApplication.translate("Button", "CHARGE"), THEME['ACCENT'],
+             plan.get("Charge Temp"), "", _levers(0, True)),
+            (QApplication.translate("Button", "DRY END"), THEME['WARNING'],
+             plan.get("End of Dry Temp"), "~" + self._mmss(plan.get("Dry Phase")), _levers(1, False)),
+            (QApplication.translate("Button", "FC START"), THEME['TODAY'],
+             plan.get("First Crack Temp"), "~" + self._mmss(plan.get("FC Time")), _levers(2, False)),
+            (QApplication.translate("Button", "DROP"), THEME['CRITICAL'],
+             plan.get("Drop Temp"), "~" + self._mmss(plan.get("Total Time")),
+             QApplication.translate("tilauscope_roast_setup", "Development {0} ({1} %)").format(
+                 self._mmss(plan.get("Development Phase")), dev_pct)),
+        )
+
+        card = QFrame()
+        card.setObjectName("roadmapCard")
+        card.setStyleSheet(
+            f"QFrame#roadmapCard {{ background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']};"
+            f"border-radius: 10px; }}")
+        cv = QVBoxLayout(card)
+        cv.setContentsMargins(0, 0, 0, 0)
+        cv.setSpacing(0)
+        for i, (name, colour, temp, when, levers) in enumerate(rows):
+            row = QFrame()
+            row.setObjectName("roadmapRow")
+            row.setStyleSheet(
+                "QFrame#roadmapRow { border: none; "
+                + ("" if i == 0 else f"border-top: 1px solid {THEME['BORDER']}; ") + "}")
+            h = QHBoxLayout(row)
+            h.setContentsMargins(14, 9, 14, 9)
+            h.setSpacing(10)
+            name_lbl = QLabel(f"<span style='color:{colour};'>●</span>&nbsp;&nbsp;{name}")
+            name_lbl.setStyleSheet(
+                f"color: {THEME['SUBTEXT']}; font-size: 11px; font-weight: bold; letter-spacing: 1px; border: none;")
+            name_lbl.setFixedWidth(104)
+            temp_lbl = QLabel(f"{temp} {unit}")
+            temp_lbl.setStyleSheet(
+                f"color: {THEME['TEXT']}; font-family: '{mono}'; font-size: 16px; font-weight: bold; border: none;")
+            temp_lbl.setFixedWidth(76)
+            when_lbl = QLabel(when)
+            when_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-family: '{mono}'; font-size: 13px; border: none;")
+            when_lbl.setFixedWidth(54)
+            lever_lbl = QLabel(levers)
+            lever_lbl.setWordWrap(True)
+            lever_lbl.setStyleSheet(f"color: {THEME['TEXT']}; font-size: 12px; border: none;")
+            h.addWidget(name_lbl)
+            h.addWidget(temp_lbl)
+            h.addWidget(when_lbl)
+            h.addWidget(lever_lbl, 1)
+            cv.addWidget(row)
+
+        cooled = plan_cooled_weight(plan)
+        loss = plan.get("Target Weight Loss")
+        if cooled is not None:
+            foot = QFrame()
+            foot.setObjectName("roadmapFoot")
+            foot.setStyleSheet(
+                f"QFrame#roadmapFoot {{ background: {tint('ACCENT', 10)}; border: none;"
+                f"border-top: 1px solid {THEME['BORDER']}; border-bottom-left-radius: 10px;"
+                f"border-bottom-right-radius: 10px; }}")
+            fh = QHBoxLayout(foot)
+            fh.setContentsMargins(14, 9, 14, 9)
+            lbl = QLabel(QApplication.translate(
+                "tilauscope_roast_setup", "After cooling, aim for {0}  ·  ≈ {1} g on the scale").format(
+                    f"<b style='color:{THEME['ACCENT']}; font-family:\"{mono}\";'>−{loss} %</b>", f"{cooled:.0f}"))
+            lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px; border: none;")
+            fh.addWidget(lbl)
+            cv.addWidget(foot)
+        return card
+
+    def _comparison_card(self, pinned: dict, plan: dict, mode: str) -> QFrame:
+        from tilauscope.roast_plan_model import plan_comparison_rows  # noqa: PLC0415
+        mono = mono_family()
+        rows = plan_comparison_rows(pinned["plan"], plan, f"°{mode}")
+        card = QFrame()
+        card.setObjectName("roadmapCard")
+        card.setStyleSheet(
+            f"QFrame#roadmapCard {{ background: {THEME['SURFACE']}; border: 1px solid {THEME['BORDER']};"
+            f"border-radius: 10px; }}")
+        grid = QGridLayout(card)
+        grid.setContentsMargins(14, 10, 14, 10)
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(6)
+
+        def _cell(text: str, css: str, align=Qt.AlignmentFlag.AlignLeft) -> QLabel:  # noqa: ANN001
+            lbl = QLabel(text)
+            lbl.setStyleSheet(css + "border: none;")
+            lbl.setAlignment(align | Qt.AlignmentFlag.AlignVCenter)
+            return lbl
+
+        def _two_lines(label: str) -> str:
+            # The level goes under use and weight: one line is wider than the sheet.
+            return "\n".join(label.rsplit(" · ", 1))
+
+        head = f"color: {THEME['SUBTEXT']}; font-size: 11px; font-weight: bold;"
+        grid.addWidget(_cell("📌  " + _two_lines(pinned["label"]), head), 0, 1)
+        grid.addWidget(_cell(_two_lines(self._plan_label(plan)),
+                             f"color: {THEME['TEXT']}; font-size: 11px; font-weight: bold;"), 0, 2)
+        grid.addWidget(_cell(QApplication.translate("tilauscope_roast_setup", "Change"), head,
+                             Qt.AlignmentFlag.AlignRight), 0, 3)
+        moved = False
+        for r, (label, a, b, delta) in enumerate(rows, start=1):
+            changed = a != b
+            moved = moved or changed
+            grid.addWidget(_cell(label, f"color: {THEME['SUBTEXT']}; font-size: 12px;"), r, 0)
+            grid.addWidget(_cell(a, f"color: {THEME['SUBTEXT']}; font-family: '{mono}'; font-size: 12px;"), r, 1)
+            grid.addWidget(_cell(b, f"color: {THEME['TODAY'] if changed else THEME['TEXT']}; font-family: '{mono}';"
+                                    f"font-size: 12px; font-weight: {'bold' if changed else 'normal'};"), r, 2)
+            grid.addWidget(_cell(delta or "—", f"color: {THEME['TODAY'] if delta else THEME['BORDER']};"
+                                                f"font-family: '{mono}'; font-size: 12px; font-weight: bold;",
+                                 Qt.AlignmentFlag.AlignRight), r, 3)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(2, 1)
+        if not moved:
+            grid.addWidget(_cell(QApplication.translate(
+                "tilauscope_roast_setup", "Change the weight, the use or the level to see what moves."),
+                f"color: {THEME['WARNING']}; font-size: 12px;"), len(rows) + 1, 0, 1, 4)
+        return card
+
+    @pyqtSlot()
+    def _toggle_pin(self) -> None:
+        if self._pinned is not None:
+            self._pinned = None
+        elif self._plan is not None and self._target_scale is not None:
+            self._pinned = {"plan": {"Target Roast Level": self._target_scale.name} | self._plan,
+                            "label": self._plan_label(self._plan)}
+        self._render_roadmap()
+
+    @pyqtSlot(bool)
+    def _on_load_alarms_toggled(self, checked: bool) -> None:
+        self._load_alarms = checked
+
+    def load_alarms_requested(self) -> bool:
+        """Expert asked for the plan's alarms to replace theirs at Start."""
+        return (self._load_alarms and self._plan is not None
+                and operator_level(self._aw) == "expert")
+
+    def write_plan_alarms(self) -> str | None:
+        """Export the current plan's alarm set; returns the file, or None."""
+        if self._plan is None or self._target_scale is None:
+            return None
+        from pathlib import Path  # noqa: PLC0415
+        from PyQt6.QtCore import QStandardPaths  # noqa: PLC0415
+        from tilauscope.roast_plan_model import TilauscopeAlarmFactory  # noqa: PLC0415
+        folder = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
+        folder.mkdir(parents=True, exist_ok=True)
+        path = str(folder / "roast_plan_alarms.alrm")
+        TilauscopeAlarmFactory({"Target Roast Level": self._target_scale.name} | self._plan).export(path)
+        return path
+
+    @pyqtSlot()
+    def _export_pdf(self) -> None:
+        """Save the plan as a PDF, its alarm set beside it, and open it."""
+        if self._plan_result is None or self._target_scale is None:
+            return
+        from tilauscope.roast_plan_model import BuildPRoastPlanPDF, TilauscopeAlarmFactory  # noqa: PLC0415
+        from tilauscope.label_printer import get_downloads_dir  # noqa: PLC0415
+        plan, graph, crashes, flicks = self._plan_result
+        scale = self._target_scale
+        data = {"Target Roast Level": scale.name} | plan
+        owner = self.window()
+        bean_name = str(plan.get("Bean Name") or "roast_plan").replace(" ", "_").replace("/", "-")
+        rng = getattr(scale, "agtron_range", None)
+        suffix = f"_{rng.min_value}-{rng.max_value}Ag" if rng is not None else ""
+        default = str(get_downloads_dir() / f"Roast_Plan_{bean_name}_{scale.name}{suffix}.pdf")
+        path, _ = QFileDialog.getSaveFileName(
+            owner, QApplication.translate("tilauscope_roast_setup", "Save the roast plan"), default,
+            QApplication.translate("tilauscope_roast_setup", "PDF Files (*.pdf)"))
+        if not path:
+            return
+        try:
+            pdf = BuildPRoastPlanPDF(orientation='P', unit='mm', format='A4', temp_unit=self._mode(),
+                                     roaster_ctx=(self._last_setup or {}).get("ctx"))
+            if self._pinned is not None:
+                pdf.create_comparison_page(self._pinned["plan"], self._pinned["label"],
+                                           data, self._plan_label(plan))
+            pdf.create_pdf_report(data, graph, crashes, flicks)
+            pdf.output(path)
+            stem = path[:-4] if path.lower().endswith(".pdf") else path
+            TilauscopeAlarmFactory(data).export(stem + ".alrm")
+        except Exception as exc:  # noqa: BLE001
+            _log.exception("RoastInsights: plan PDF failed")
+            show_styled_message(
+                owner, QApplication.translate("tilauscope_roast_setup", "Error"),
+                QApplication.translate("tilauscope_roast_setup",
+                                       "Could not generate the roast plan:<br><b>{0}</b>").format(exc),
+                QMessageBox.Icon.Warning, rich=True)
+            return
+        helpers = [w for w in (getattr(owner, "_scale_window", None), getattr(owner, "_ambient_window", None),
+                               getattr(owner, "_weather_window", None)) if w is not None]
+        open_in_os_viewer(path, owner, helpers=helpers)
 
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -1378,6 +2161,7 @@ class RoastSetupDialog(QDialog):
         self,
         bean: GreenBean,
         parent: 'BeancaveDlg',
+        open_tab: str = "roast",
     ) -> None:
         super().__init__(parent)  # no parent → independent window
         self.setModal(True)
@@ -1396,6 +2180,11 @@ class RoastSetupDialog(QDialog):
         # types in it, then the field is theirs and the plan only advises.
         self._plan_charge_temperature: float | None = None
         self._pid_charge_temp_user_set: bool = False
+
+        # A weight pre-filled from the last batch is a proposal: Start waits
+        # until it is weighed or typed. Source: "scale" | "typed" | "" (none yet).
+        self._weight_confirmed: bool = False
+        self._weight_source: str = ""
 
         # scale management
         self._scale_window: _ScaleFloatWindow | None = None
@@ -1416,16 +2205,23 @@ class RoastSetupDialog(QDialog):
         # the unconfigured marker is 'none' (main.py default), not ""
         self._is_tilau_probe = self._aw.bleTilauScopeDeviceName not in (None, "", "none")
         self._ambient_window: _AmbientFloatWindow | None = None
+        self._weather_window: _WeatherFloatWindow | None = None
         if self._is_tilau_probe:
             self._ambient_window = _AmbientFloatWindow(self)
+        else:
+            # No probe: the room comes from the weather, on a tap, or is typed.
+            self._weather_window = _WeatherFloatWindow(self)
 
         self.setStyleSheet(base_qss(ground=False) + _local_style())
         self._build_ui()
         self._populate_fields()
+        if open_tab == "plan":
+            self._tabs.setCurrentWidget(self._plan_tab)
         self.setMinimumWidth(580)
         # No explicit minimum height: the layout's own minimum keeps the tallest
         # tab from being squeezed below its widgets' sizes.
-        self.resize(630, 625)
+        # Wide enough for the PLAN tab's A/B comparison without squeezing it.
+        self.resize(720, 640)
         # drag support state
         self._drag_pos: object = None
 
@@ -1508,25 +2304,58 @@ class RoastSetupDialog(QDialog):
             # which needs the very same link to weigh the roasted batch.
 
     def _show_scale_window(self) -> None:
-        if self._scale_window is None:
-            return
-        # position it to the right of this dialog
+        """Float the scale card, then the room card below it, right of the sheet."""
         geo = self.geometry()
-        self._scale_window.move(geo.right() + 12, geo.top() + 40)
-        self._scale_window.show()
+        x, y = geo.right() + 12, geo.top() + 40
+        if self._scale_window is not None:
+            self._scale_window.move(x, y)
+            self._scale_window.show()
+            y = self._scale_window.geometry().bottom() + 8
+        room = self._room_window()
+        if room is not None:
+            room.move(x, y)
+            room.show()
 
-        # ambient card: directly below the scale card, same x
-        if self._ambient_window is not None:
-            scale_geo = self._scale_window.geometry()
-            self._ambient_window.move(scale_geo.left(), scale_geo.bottom() + 8)
-            self._ambient_window.show()
+    def _room_window(self):  # noqa: ANN202
+        """The card the room is read from: the ambient probe, else the weather card."""
+        return self._ambient_window or getattr(self, "_weather_window", None)
+
+    def _artisan_elevation(self) -> float:
+        """The altitude set in Artisan's own settings, 0 when none."""
+        try:
+            elevation = float(self._aw.qmc.elevation or 0.0)
+        except (AttributeError, TypeError, ValueError):
+            return 0.0
+        return elevation if elevation > 0 else 0.0
+
+    def _room_values(self) -> tuple[float, float, float]:
+        """(temperature in the display unit, humidity %, altitude m) the plan is built on.
+
+        Probe or weather card first; the altitude then falls back to Artisan's
+        own setting, then to sea level.
+        """
+        t = 20.0 if self._temp_unit() != 'F' else fromCtoFstrict(20.0)
+        h = 50.0
+        a: float | None = None
+        room = self._room_window()
+        if room is not None:
+            try:
+                if room.temperature is not None:
+                    t = float(room.temperature)
+                if room.humidity is not None:
+                    h = float(room.humidity)
+                if room.altitude is not None:
+                    a = float(room.altitude)
+            except Exception:  # noqa: BLE001
+                pass
+        return t, h, (a if a is not None else self._artisan_elevation())
 
     @pyqtSlot(float)
     def receive_scale_weight(self, weight: float) -> None:
         """Called when user clicks the floating scale value."""
         current = self._green_weight_edit.text().strip()
-        if current in ('', '0', '0.0'):
-            self._green_weight_edit.setText(f"{weight:.0f}")
+        if current in ('', '0', '0.0') or not self._weight_confirmed:
+            self._set_confirmed_weight(f"{weight:.0f}", "scale")
         else:
             reply = show_styled_message(
                 self,
@@ -1537,7 +2366,35 @@ class RoastSetupDialog(QDialog):
                 width=400,
             )
             if reply == QMessageBox.StandardButton.Ok:
-                self._green_weight_edit.setText(f"{weight:.0f}")
+                self._set_confirmed_weight(f"{weight:.0f}", "scale")
+
+    def _set_confirmed_weight(self, text: str, source: str) -> None:
+        self._weight_confirmed = True
+        self._weight_source = source
+        self._green_weight_edit.setText(text)
+        self._update_ok_button_state()
+
+    @pyqtSlot(str)
+    def _on_weight_typed(self, _text: str) -> None:
+        self._weight_confirmed = True
+        self._weight_source = "typed"
+        self._update_ok_button_state()
+
+    def _last_batch_weight(self) -> float | None:
+        """Green weight of the most recent roast of this coffee, from BeanCave's roast index."""
+        cache = getattr(self._parent_widget, "_metadata_cache", None)
+        uuid = (getattr(self._bean, "uuid", "") or "").lower()
+        if cache is None or not uuid:
+            return None
+        latest = None
+        try:
+            for rec in cache.records.values():
+                if (rec.uuid or "").lower() == uuid and not rec.simulated and rec.weight_in_g > 0 and (
+                        latest is None or rec.roastepoch > latest.roastepoch):
+                    latest = rec
+        except Exception:  # noqa: BLE001
+            return None
+        return latest.weight_in_g if latest is not None else None
 
     # ── UI construction ──────────────────────────────────────────────────────
 
@@ -1722,6 +2579,11 @@ class RoastSetupDialog(QDialog):
         weight_row.addWidget(self._stock_lbl)
         weight_row.addStretch()
         t1.addLayout(weight_row)
+        self._weight_prefill_lbl = QLabel(QApplication.translate(
+            "tilauscope_roast_setup", "Last batch of this coffee — weigh it or type it to confirm."))
+        self._weight_prefill_lbl.setStyleSheet(f"color: {THEME['WARNING']}; font-size: 11px;")
+        self._weight_prefill_lbl.hide()
+        t1.addWidget(self._weight_prefill_lbl)
 
         self._decrease_stock_cb = QCheckBox(QApplication.translate("tilauscope_roast_setup", "Decrease bean stock by this weight after OK"))
         self._decrease_stock_cb.setChecked(True)
@@ -1753,13 +2615,16 @@ class RoastSetupDialog(QDialog):
         self._tabs.addTab(tab3, QApplication.translate("tilauscope_roast_setup", "⚙  MORE OPTIONS"))
         self._build_optional_tab3(tab3)
 
-        # ── TAB 4: Roast insights (educational) ───────────────────────────
+        # ── TAB 4: the plan — choices stay put, the roadmap scrolls ───────
         tab4 = QWidget()
-        self._tabs.addTab(tab4, QApplication.translate("tilauscope_roast_setup", "ⓘ  INSIGHTS"))
+        self._plan_tab = tab4
+        self._tabs.addTab(tab4, QApplication.translate("tilauscope_roast_setup", "ⓘ  PLAN"))
         t4 = QVBoxLayout(tab4)
-        t4.setContentsMargins(0, 0, 0, 0)
+        t4.setContentsMargins(0, 14, 0, 0)
+        t4.setSpacing(10)
+        t4.addWidget(self._build_plan_choices())
         self._insights_panel = _RoastInsightsPanel(self._aw, self)
-        t4.addWidget(self._insights_panel)
+        t4.addWidget(self._insights_panel, 1)
 
         # ── Buttons (always visible, outside tabs) ────────────────────────
         card_layout.addWidget(_separator())
@@ -1777,18 +2642,25 @@ class RoastSetupDialog(QDialog):
         self._ok_btn.setDefault(True)
         self._ok_btn.clicked.connect(self._on_ok)
 
+        self._weigh_hint_lbl = QLabel("⚖  " + QApplication.translate(
+            "tilauscope_roast_setup", "Weigh the batch to start the roast"))
+        self._weigh_hint_lbl.setStyleSheet(f"color: {THEME['WARNING']}; font-size: 12px;")
+        btn_row.addWidget(self._weigh_hint_lbl)
         btn_row.addStretch()
         btn_row.addWidget(cancel_btn)
         btn_row.addWidget(self._ok_btn)
         card_layout.addLayout(btn_row)
 
         self._green_weight_edit.textChanged.connect(self._update_ok_button_state)
+        self._green_weight_edit.textEdited.connect(self._on_weight_typed)
         # Recompute insights when any physical / setup input changes (debounced)
         for _w in (self._green_weight_edit, self._density_edit,
                    self._moisture_edit, self._bean_temp_edit):
             _w.textChanged.connect(self._refresh_insights)
         # Populate from current Artisan state
         self._populate_optional_tab()
+        self._fill_plan_level_combo()
+        self._profile_combo.currentIndexChanged.connect(self._sync_plan_level)
 
 
     # ── Helpers ──────────────────────────────────────────────────────────────
@@ -1874,6 +2746,12 @@ class RoastSetupDialog(QDialog):
                 f"color: {THEME['CRITICAL']}; font-size: 12px; margin-left: 16px;"
             )
 
+        # Batch weight: the last one of this coffee, proposed until confirmed
+        if not self._green_weight_edit.text().strip():
+            last_batch = self._last_batch_weight()
+            if last_batch:
+                self._green_weight_edit.setText(f"{last_batch:.0f}")
+
         # Physical
         self._density_edit.setText(f"{b.density:.1f}" if b.density else "")
         self._moisture_edit.setText(f"{b.last_humidity:.1f}" if b.last_humidity else "")
@@ -1898,13 +2776,151 @@ class RoastSetupDialog(QDialog):
 
     @pyqtSlot()
     def _update_ok_button_state(self) -> None:
-        """Enables the OK button only if weight > 0."""
+        """Start needs a weight that was weighed or typed — a pre-filled one is only a proposal."""
         try:
             txt = self._green_weight_edit.text().replace(',', '.')
             val = float(txt) if txt else 0.0
-            self._ok_btn.setEnabled(val > 0)
         except ValueError:
-            self._ok_btn.setEnabled(False)
+            val = 0.0
+        ready = val > 0 and self._weight_confirmed
+        self._ok_btn.setEnabled(ready)
+        self._weigh_hint_lbl.setVisible(not ready)
+        self._weight_prefill_lbl.setVisible(val > 0 and not self._weight_confirmed)
+        self._refresh_plan_weight(val)
+
+    # ── PLAN tab choices: the same three settings as ROAST and OPTIONS ────────
+
+    def _build_plan_choices(self) -> QWidget:
+        host = QWidget()
+        row = QHBoxLayout(host)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(12)
+
+        def _column(caption: str, widget: QWidget, stretch: int = 0) -> None:
+            col = QVBoxLayout()
+            col.setSpacing(5)
+            cap = QLabel(caption.upper())
+            cap.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 10px; letter-spacing: 1.5px;")
+            col.addWidget(cap)
+            col.addWidget(widget)
+            row.addLayout(col, stretch)
+
+        # Weight: the field of the ROAST tab, read here; a tap weighs.
+        self._plan_weight_btn = QPushButton()
+        self._plan_weight_btn.setObjectName("planWeightChip")
+        self._plan_weight_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._plan_weight_btn.setMinimumSize(180, 54)
+        wl = QVBoxLayout(self._plan_weight_btn)
+        wl.setContentsMargins(12, 5, 12, 5)
+        wl.setSpacing(0)
+        self._plan_weight_val = QLabel()
+        self._plan_weight_val.setStyleSheet(
+            f"color: {THEME['TEXT']}; font-family: '{mono_family()}'; font-size: 17px; font-weight: bold;"
+            f"background: transparent;")
+        self._plan_weight_sub = QLabel()
+        for lbl in (self._plan_weight_val, self._plan_weight_sub):
+            lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            wl.addWidget(lbl)
+        self._plan_weight_btn.clicked.connect(self._on_plan_weight_clicked)
+        _column(QApplication.translate("tilauscope_roast_setup", "Green weight"), self._plan_weight_btn)
+
+        # Use: a second face of the OPTIONS segmented control.
+        seg = QWidget()
+        sl = QHBoxLayout(seg)
+        sl.setContentsMargins(0, 0, 0, 0)
+        sl.setSpacing(0)
+        self._plan_dest_group = QButtonGroup(self)
+        self._plan_dest_group.setExclusive(True)
+        self._plan_dest_buttons: dict[str, QPushButton] = {}
+        for i, key in enumerate(self._DEST_KEYS):
+            b = QPushButton(self._dest_buttons[key].text())
+            b.setCheckable(True)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.setMinimumHeight(54)
+            b.setStyleSheet(self._dest_buttons[key].styleSheet())
+            self._plan_dest_group.addButton(b, i)
+            self._plan_dest_buttons[key] = b
+            sl.addWidget(b, 1)
+        for key, b in self._dest_buttons.items():
+            self._plan_dest_buttons[key].setChecked(b.isChecked())
+        self._plan_dest_group.idClicked.connect(self._on_plan_destination_clicked)
+        _column(QApplication.translate("tilauscope_roast_setup", "What is this coffee for?"), seg, 1)
+
+        # Level: the OPTIONS profile, by name only.
+        self._plan_level_combo = QComboBox()
+        self._plan_level_combo.setMinimumHeight(54)
+        self._plan_level_combo.setMinimumWidth(150)
+        self._plan_level_combo.currentIndexChanged.connect(self._on_plan_level_changed)
+        _column(QApplication.translate("tilauscope_roast_setup", "Roast level"), self._plan_level_combo)
+        return host
+
+    def _refresh_plan_weight(self, val: float) -> None:
+        if not hasattr(self, "_plan_weight_btn"):
+            return
+        self._plan_weight_val.setText(f"{val:.0f} g" if val > 0 else "— g")
+        if val <= 0:
+            sub, colour, border = (QApplication.translate("tilauscope_roast_setup", "tap to weigh"),
+                                   THEME['SUBTEXT'], f"1.5px dashed {THEME['BORDER']}")
+        elif not self._weight_confirmed:
+            sub, colour, border = (QApplication.translate("tilauscope_roast_setup", "last batch — tap to weigh"),
+                                   THEME['WARNING'], f"1.5px dashed {THEME['WARNING']}")
+        elif self._weight_source == "scale":
+            sub, colour, border = (QApplication.translate("tilauscope_roast_setup", "weighed on the scale"),
+                                   THEME['SUCCESS'], f"1px solid {THEME['BORDER']}")
+        else:
+            sub, colour, border = (QApplication.translate("tilauscope_roast_setup", "entered by hand"),
+                                   THEME['SUBTEXT'], f"1px solid {THEME['BORDER']}")
+        self._plan_weight_sub.setText(sub)
+        self._plan_weight_sub.setStyleSheet(f"color: {colour}; font-size: 10px; background: transparent;")
+        self._plan_weight_btn.setStyleSheet(
+            f"QPushButton#planWeightChip {{ background: {THEME['SURFACE']}; border: {border};"
+            f"border-radius: 8px; text-align: left; }}"
+            f"QPushButton#planWeightChip:hover {{ border-color: {THEME['ACCENT']}; }}")
+
+    @pyqtSlot()
+    def _on_plan_weight_clicked(self) -> None:
+        """Take the scale's reading when there is one, else hand over to the weight field."""
+        try:
+            sm = self._aw.scale_manager
+            if sm.is_scale1_configured() and sm.is_scale1_connected():
+                last = sm.get_scale1_last_weight()
+                if last is not None and float(last) > 0:
+                    self.receive_scale_weight(float(last))
+                    return
+        except Exception:  # noqa: BLE001
+            pass
+        self._tabs.setCurrentIndex(0)
+        self._green_weight_edit.setFocus()
+        self._green_weight_edit.selectAll()
+
+    def _on_plan_destination_clicked(self, index: int) -> None:
+        if 0 <= index < len(self._DEST_KEYS):
+            self._dest_buttons[self._DEST_KEYS[index]].setChecked(True)
+        self._on_destination_changed(index)
+
+    def _fill_plan_level_combo(self) -> None:
+        combo = self._plan_level_combo
+        combo.blockSignals(True)
+        combo.clear()
+        for i in range(self._profile_combo.count()):
+            data = self._profile_combo.itemData(i)
+            profile = data.get('profile') if isinstance(data, dict) else None
+            combo.addItem(str(getattr(profile, 'name', '')) if profile is not None
+                          else QApplication.translate("tilauscope_roast_setup", "Choose…"))
+        combo.setCurrentIndex(self._profile_combo.currentIndex())
+        combo.blockSignals(False)
+
+    @pyqtSlot(int)
+    def _on_plan_level_changed(self, index: int) -> None:
+        if 0 <= index < self._profile_combo.count() and index != self._profile_combo.currentIndex():
+            self._profile_combo.setCurrentIndex(index)
+
+    @pyqtSlot(int)
+    def _sync_plan_level(self, index: int) -> None:
+        if self._plan_level_combo.currentIndex() != index:
+            self._plan_level_combo.blockSignals(True)
+            self._plan_level_combo.setCurrentIndex(index)
+            self._plan_level_combo.blockSignals(False)
 
     _DEST_KEYS: tuple[str, ...] = ("filter", "omni", "espresso")
 
@@ -1926,6 +2942,9 @@ class RoastSetupDialog(QDialog):
         if not 0 <= index < len(self._DEST_KEYS):
             return
         QSettings().setValue("tilauscope/roast_destination", self._DEST_KEYS[index])
+        plan_button = getattr(self, "_plan_dest_buttons", {}).get(self._DEST_KEYS[index])
+        if plan_button is not None:
+            plan_button.setChecked(True)
         self._refresh_insights()
 
     def _set_family_readout(self, family: str, delta_c: float) -> None:
@@ -1954,19 +2973,7 @@ class RoastSetupDialog(QDialog):
         if not change:
             self._tasting_lbl.hide()
             return
-        from tilauscope.cave.tasting_dialog import change_text, defect_labels  # noqa: PLC0415
-        mode = 'F' if self._temp_unit() == 'F' else 'C'
-        before, after = float(change["before"]), float(change["after"])
-        lever = change["lever"]
-        if lever.startswith("burner_"):
-            values = f"{before:.0f} → {after:.0f} %"
-        elif lever == "development_s":
-            values = f"{int(before) // 60}:{int(before) % 60:02d} → {int(after) // 60}:{int(after) % 60:02d}"
-        else:
-            values = f"{before:.0f} → {after:.0f} °{mode}"
-        self._tasting_lbl.setText(QApplication.translate(
-            "tilauscope_roast_setup", "💡 Last time: {0} — {1} ({2})").format(
-                defect_labels().get(change["defect"], ""), change_text(change["defect"], mode)[0], values))
+        self._tasting_lbl.setText(_tasting_change_text(change, self._temp_unit()))
         self._tasting_lbl.show()
 
     @pyqtSlot()
@@ -1981,26 +2988,15 @@ class RoastSetupDialog(QDialog):
             except (ValueError, AttributeError):
                 return default
 
-        # Ambient from the TilauAmbient probe when available (°C)
-        amb_t, amb_h = 20.0, 50.0
-        aw_win = getattr(self, "_ambient_window", None)
-        if aw_win is not None:
-            try:
-                # properties, not methods — calling them raised and
-                # the plan silently fell back to 20 °C / 50 %. Plan wants °C.
-                t = aw_win.temperature_c
-                h = aw_win.humidity
-                if t is not None:
-                    amb_t = float(t)
-                if h is not None:
-                    amb_h = float(h)
-            except Exception:  # noqa: BLE001
-                pass
+        # The room from the probe or the weather card. The engine takes the
+        # temperature in the DISPLAY unit and normalises it itself, exactly as
+        # the assistant passes it — °C here was read as °F in °F mode.
+        amb_t, amb_h, altitude = self._room_values()
+        self._planned_ambient = (amb_t, amb_h, altitude)
 
         # Target roast level comes from the OPTIONS profile selection
         data = self._profile_combo.itemData(self._profile_combo.currentIndex())
         target_scale = data.get('profile') if isinstance(data, dict) else None
-        plan_name = self._profile_combo.currentText() if target_scale is not None else ""
 
         bt_txt = self._bean_temp_edit.text().strip()
         panel.request(
@@ -2013,12 +3009,23 @@ class RoastSetupDialog(QDialog):
             mode=self._temp_unit(),
             ambient_temp=amb_t,
             ambient_humidity=amb_h,
-            altitude=0.0,
+            altitude=altitude,
             plan_parent=self._aw,
             target_scale=target_scale,
-            plan_name=plan_name,
             run_plan=True,
         )
+
+    def _on_ambient_reading(self) -> None:
+        """Re-plan when the room differs from the one the plan was built on.
+
+        The probe answers a few seconds after the sheet opens, the weather on a
+        tap: without this the plan stayed on the 20 °C / sea-level defaults.
+        """
+        last = getattr(self, "_planned_ambient", None)
+        t, h, a = self._room_values()
+        if (last is None or abs(t - last[0]) >= 0.5
+                or abs(h - last[1]) >= 2.0 or abs(a - last[2]) >= 10.0):
+            self._refresh_insights()
 
     @pyqtSlot(float)
     def _on_plan_charge_temperature(self, temperature: float) -> None:
@@ -2629,8 +3636,9 @@ class RoastSetupDialog(QDialog):
                 self._scale_window.move(helper_x, helper_y)
                 helper_y = self._scale_window.y() + self._scale_window.height() + 8
 
-            if self._ambient_window and self._ambient_window.isVisible():
-                self._ambient_window.move(helper_x, helper_y)
+            room = self._room_window()
+            if room is not None and room.isVisible():
+                room.move(helper_x, helper_y)
 
             self._drag_pos = event.globalPosition().toPoint()
         super().mouseMoveEvent(event)
@@ -2744,13 +3752,17 @@ class RoastSetupDialog(QDialog):
                 _log.warning("RoastSetupDialog: batch apply failed: %s", exc)
 
             # if ambient values are detectable and window exists
-            if self._is_tilau_probe and self._ambient_window is not None:
-                if self._ambient_window.humidity is not None:
-                    qmc.ambient_humidity = self._ambient_window.humidity
-                if self._ambient_window.pressure is not None:
-                    qmc.ambient_pressure = self._ambient_window.pressure
-                if self._ambient_window.temperature is not None:
-                    qmc.ambientTemp = self._ambient_window.temperature
+            room = self._room_window()
+            # A remembered probe reading is not this roast's ambient: it is not recorded.
+            if room is not None and not getattr(room, "_showing_last", False):
+                if room.humidity is not None:
+                    qmc.ambient_humidity = room.humidity
+                if room.pressure is not None:
+                    qmc.ambient_pressure = room.pressure
+                if room.temperature is not None:
+                    qmc.ambientTemp = room.temperature
+            # The assistant plans on the room this sheet planned with, a remembered reading included.
+            self._aw._tilau_planned_room = getattr(self, "_planned_ambient", None)
 
             # Trigger redraw / dirty flag if a profile is loaded
             if len(qmc.timex):
@@ -2886,6 +3898,16 @@ class RoastSetupDialog(QDialog):
         self._aw.TilauScopeDEMarkFlag = de_checked
         self._aw.TilauScopeFCMarkFlag = self._auto_fc_cb.isChecked()
 
+        # Expert: the plan's alarms replace the operator's own — written only now
+        # that the roast is confirmed, never while the plan is merely looked at.
+        if self._insights_panel.load_alarms_requested():
+            try:
+                alarms_path = self._insights_panel.write_plan_alarms()
+                if alarms_path:
+                    self._aw.loadAlarms(alarms_path)
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("RoastSetupDialog: plan alarms not loaded: %s", exc)
+
         # Roast profile – reserved for next version (phase injection)
         # selected_data = self._profile_combo.currentData()
         # if selected_data:  # TODO: inject phases in next version
@@ -2954,7 +3976,9 @@ class RoastSetupDialog(QDialog):
             return
         previous = float(bean.weight_left or 0.0)
         bean.weight_left = max(0.0, previous - green_weight)
-        host.save_green_beans()
+        if not host.save_green_beans():
+            bean.weight_left = previous   # the file still holds it; the operator was told why
+            return
         prompt_release_if_emptied(host, bean, previous, host.save_green_beans)
         host.populate_table()   # reselects the row, so the form reloads the new stock
 
@@ -2967,6 +3991,9 @@ class RoastSetupDialog(QDialog):
         if self._ambient_window is not None:
             self._ambient_window.close()
             self._ambient_window = None
+        if self._weather_window is not None:
+            self._weather_window.close()
+            self._weather_window = None
         panel = getattr(self, "_insights_panel", None)
         if panel is not None:
             panel.shutdown()

@@ -42,8 +42,8 @@ is pre-selected in the list, and the line under it shows the coffee it resolved 
 
 Under them, **Brewed as** — *Filter*, *[Omni](glossary.md#omni)* or *Espresso* — is the same
 choice, and the same setting, as the *What is this coffee for?* of the
-[roast setup sheet](preparing-a-roast.md#saying-what-the-coffee-is-for) and of the
-[planning tab](the-roast-plan.md): change it in any of the three and all three follow. It is
+[roast setup sheet](preparing-a-roast.md#saying-what-the-coffee-is-for), on its OPTIONS and
+PLAN tabs: change it in any of the three and all three follow. It is
 here as well because the assistant can be opened without going through the setup sheet, and the
 choice is worth a few seconds of development, which carries through to the drop temperature and
 the weight loss to aim for. Once the roast starts it stops being a choice: the line under the

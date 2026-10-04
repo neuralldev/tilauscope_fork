@@ -29,8 +29,7 @@ and whose declared unit is `W`. Each reading is stamped with its ARRIVAL time
 from the MQTT cache, not the sampling time: Artisan repeats the last cached
 value on every sample, so a silent plug would otherwise look alive.
 
-Per tick: a few dictionary reads and an incremental integration of the newly
-settled interval. No I/O, no scan of the history.
+Per tick: a few dictionary reads. No I/O, no scan of the history.
 """
 
 import logging
@@ -38,21 +37,15 @@ import time
 from statistics import quantiles
 from typing import Any, Final
 
-from PyQt6.QtCore import QObject, QSettings, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QSettings, pyqtSlot
 
 from tilauscope.energy_model import (
-    CHANNELS, EXTRACTOR, ROASTER, EnergySession, Totals, heater_watts,
+    CHANNELS, EXTRACTOR, ROASTER, EnergySession, heater_watts,
 )
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
 SETTING_EXTRACTOR_ON_ROASTER_METER: Final[str] = "tilauscope/energy_extractor_on_roaster_meter"
-
-# Sensor status per reserved name, read by the panel.
-OK: Final[str] = "ok"
-MISSING: Final[str] = "missing"
-DUPLICATE: Final[str] = "duplicate"
-UNIT: Final[str] = "unit"
 
 # A push sensor (no gateway poll) reports on change plus a periodic report —
 # about 60 s on the Fibaro plug. Absence of a message within that period means
@@ -62,8 +55,8 @@ _PUSH_PERIOD_S: Final[float] = 60.0
 _PERIOD_SAMPLES: Final[int] = 20     # arrivals observed before the cadence is fixed
 
 
-def resolve_sensors(sensors: Any) -> tuple[dict[str, Any], dict[str, str]]:
-    """Reserved-name sensors, and a status for each name.
+def resolve_sensors(sensors: Any) -> dict[str, Any]:
+    """Reserved-name sensors, by name.
 
     The name makes the association; the declared unit `W` proves it. Two
     sensors under one name are both refused rather than picked arbitrarily.
@@ -73,34 +66,17 @@ def resolve_sensors(sensors: Any) -> tuple[dict[str, Any], dict[str, str]]:
         key = str(getattr(s, "id", "") or "").strip().lower()
         if key in found and getattr(s, "topic", ""):
             found[key].append(s)
-    chosen: dict[str, Any] = {}
-    status: dict[str, str] = {}
-    for name, hits in found.items():
-        if not hits:
-            status[name] = MISSING
-        elif len(hits) > 1:
-            status[name] = DUPLICATE
-        elif str(getattr(hits[0], "unit", "")) != "W":
-            status[name] = UNIT
-        else:
-            status[name] = OK
-            chosen[name] = hits[0]
-    return chosen, status
+    return {name: hits[0] for name, hits in found.items()
+            if len(hits) == 1 and str(getattr(hits[0], "unit", "")) == "W"}
 
 
 class EnergyTap(QObject):
     """One per application; lives on `aw.tilau_energy_tap`."""
 
-    updated = pyqtSignal()
-
     def __init__(self, aw) -> None:
         super().__init__()
         self._aw = aw
         self.session: EnergySession | None = None
-        self.status: dict[str, str] = dict.fromkeys(CHANNELS, MISSING)
-        # running totals since ON, per channel, and up to where they are summed
-        self.acc: dict[str, Totals] = {}
-        self._acc_t: dict[str, float] = {}
         self._sensors: dict[str, Any] = {}
         self._last_ts: dict[str, float] = {}
         self._arrivals: dict[str, list[float]] = {}
@@ -121,12 +97,6 @@ class EnergyTap(QObject):
     @property
     def live(self) -> bool:
         return self._on and self.session is not None
-
-    def sensor(self, name: str) -> Any:
-        return self._sensors.get(name)
-
-    def last_arrival(self, name: str) -> float | None:
-        return self._last_ts.get(name)
 
     def sync_state(self) -> None:
         """Follow ON / START / OFF. Called on ticks and from the status refresh,
@@ -151,12 +121,9 @@ class EnergyTap(QObject):
             self._begin(now)
         elif not on and self._on:
             self._on = False
-            # OFF may come before the next reading: close at the last tick,
-            # the time left without a reading counts as unknown
+            # OFF may come before the next reading: close at the last tick
             if self.session is not None:
-                self._accumulate(self._last_on, final=True)
                 self.session.end = max(self.session.end, self._last_on)
-            self.updated.emit()
             return
         self._on = on
         if not on or self.session is None:
@@ -176,7 +143,6 @@ class EnergyTap(QObject):
         # RESET under monitoring clears the profile's reference; put it back
         if getattr(qmc, "tilau_energy", None) is not self.session:
             qmc.tilau_energy = self.session
-        self.updated.emit()
 
     def _begin(self, now: float) -> None:
         aw = self._aw
@@ -184,7 +150,6 @@ class EnergyTap(QObject):
         self.session.roaster = str(getattr(aw, "tilau_roaster", "") or "")
         self.session.extractor_on_roaster_meter = bool(
             QSettings().value(SETTING_EXTRACTOR_ON_ROASTER_METER, False, type=bool))
-        self.acc, self._acc_t = {}, {}
         self._sensors, self._last_ts, self._arrivals = {}, {}, {}
         self._rec = False
         self._last_sec = -1
@@ -214,8 +179,7 @@ class EnergyTap(QObject):
         """Pick the reserved sensors. The MQTT list may arrive after ON, so this
         runs until both names are settled; a list of a few sensors per second."""
         cfg = getattr(self._aw, "mqtt_database", None)
-        chosen, self.status = resolve_sensors(getattr(cfg, "sensors", None))
-        for name, sensor in chosen.items():
+        for name, sensor in resolve_sensors(getattr(cfg, "sensors", None)).items():
             self._sensors.setdefault(name, sensor)
 
     def _period(self, topic: str) -> float | None:
@@ -279,22 +243,7 @@ class EnergyTap(QObject):
         sess.extractor_expected = (EXTRACTOR in self._sensors
                                    or getattr(self._aw, "bleAirwaveDevice", None) is not None)
         sess.add_context(now, burner, air, fan)
-
-        self._accumulate(now)
         sess.end = sess.horizon(now)
-
-    def _accumulate(self, now: float, final: bool = False) -> None:
-        """Add each channel's newly settled interval to its running total;
-        `final` settles everything up to `now`."""
-        sess = self.session
-        assert sess is not None
-        for name, ch in sess.channels.items():
-            t0 = self._acc_t.get(name, sess.start)
-            t1 = now if final else ch.settled(now)
-            if t1 > t0:
-                self.acc.setdefault(name, Totals())
-                self.acc[name] += ch.integrate(t0, t1)
-                self._acc_t[name] = t1
 
     def _roasting(self) -> bool:
         """Recording, CHARGE marked, DROP not yet (per-index sentinels)."""

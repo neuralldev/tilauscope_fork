@@ -33,6 +33,7 @@ import time
 
 from PyQt6.QtCore import QRect, Qt, QTimer, pyqtSlot
 from PyQt6.QtWidgets import QApplication, QGraphicsOpacityEffect
+from artisanlib.util import convertRoRstrict
 from tilauscope.graph.common import simulation_source
 from tilauscope.tilauscope_types import THEME
 from tilauscope.window.layout import _TIMER_FONT_PX
@@ -525,7 +526,8 @@ class LiveMixin:
                         current_time = qmc.timex[-1] if qmc.timex else None
                         if current_time is not None:
                             elapsed = current_time - self._bt_drop_timestamp
-                            if 0 < elapsed <= 30 and (self._bt_at_drop - fv) >= 10:
+                            fall = convertRoRstrict(10, 'C', qmc.mode)   # 10 °C in BT's unit
+                            if 0 < elapsed <= 30 and (self._bt_at_drop - fv) >= fall:
                                 self.handle_cooling()
                     except (IndexError, TypeError):
                         pass

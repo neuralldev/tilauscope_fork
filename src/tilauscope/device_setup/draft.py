@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import itertools
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Final
 
@@ -40,6 +41,7 @@ from tilauscope.device_setup import artisan_mirror as mirror
 from tilauscope.device_setup.catalogue import (TC4_DEVICE_ID, TILAUAMBIENT_SOURCES,
                                                kind_by_key, kind_of, meter_name_of,
                                                meter_uses_usb_port)
+from tilauscope.tilauscope_types import name_key
 
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow  # noqa: F401
@@ -261,6 +263,25 @@ def remove_row(draft: DeviceDraft, row: ExtraRow) -> None:
     for key, source in draft.ambient.items():
         if isinstance(source, tuple) and source[0] in gone:
             draft.ambient[key] = 0
+
+
+def name_clashes(draft: DeviceDraft, subst: Callable[[str], str]) -> dict[tuple[int, int], tuple[int, int]]:
+    """Each used channel whose name another used channel carries, mapped to the first such other.
+
+    Channels are (row uid, channel). Names compare as shown, without case or surrounding
+    spaces; Artisan's placeholder names are no name.
+    """
+    holders: dict[str, list[tuple[int, int]]] = {}
+    for row in draft.rows:
+        kind = kind_of(row.device_id)
+        for channel in (0, 1):
+            if kind is not None and not kind.names[channel]:
+                continue
+            shown = subst(row.names[channel]).strip()
+            if shown not in _PLACEHOLDER_NAMES:
+                holders.setdefault(name_key(shown), []).append((row.uid, channel))
+    return {channel: next(other for other in same if other != channel)
+            for same in holders.values() if len(same) > 1 for channel in same}
 
 
 def is_misordered(draft: DeviceDraft, row: ExtraRow) -> bool:

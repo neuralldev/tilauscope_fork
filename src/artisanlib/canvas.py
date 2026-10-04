@@ -13393,8 +13393,12 @@ class tgraphcanvas(QObject):
 
     @pyqtSlot()
     def startTilauMqttManager(self) -> None:
-        ## TILAU ##
-        if self.aw.mqttConfig is not None:
+        ## TILAU ## a client still running (OFF stops it only for an MQTT main device) is kept,
+        ## unless the broker settings were edited since it connected
+        client = self.aw.tilauscope_mqtt_client
+        if client is not None and self.aw.mqttConfig is not None and not client.opened_with(self.aw.mqttConfig):
+            self.stopTilauMqttManager()
+        if self.aw.mqttConfig is not None and self.aw.tilauscope_mqtt_client is None:
             self.aw.mqtt_database = MQTTSensorConfig(sensors=[]) # by default set an empty database in memory
             if self.aw.mqttConfig is not None and self.aw.mqttConfig.username !="" and self.aw.mqttConfig.password != "":
                 _logd.info('Tilau MQTT manager starting')
@@ -13408,6 +13412,10 @@ class tgraphcanvas(QObject):
                 _logd.info('TilauScope MQTT manager started')
             else:
                 _logd.warning('Tilau MQTT manager not started: broker username or password is empty')
+        elif self.aw.tilauscope_mqtt_client is not None:
+            ## TILAU ## a kept client takes the sensor table and polling as they are now
+            self.tilau_mqtt_ports = None
+            self.loadTilauMqttSensors()
 
     ## TILAU ##
     def loadTilauMqttSensors(self) -> None:
@@ -13624,6 +13632,22 @@ class tgraphcanvas(QObject):
             res = self.reset(redraw=False, soundOn=False, keepProperties=True, onMonitor=True)
             if not res: # reset canceled
                 return
+
+            ## TILAU ## detectors and TilauScope devices, on ON and on START from OFF
+            ## alike; a failing one keeps neither Artisan from monitoring nor the next ones from starting
+            for start in (self.fc_detector.reset,
+                          lambda: self.fc_detector.detect_extradevice(self.aw),
+                          self.de_detector.reset,
+                          lambda: self.de_detector.configure(self.aw),
+                          self.startDifluidManager,
+                          self.startTilauAmbientManager,
+                          self.startTilauMqttManager,
+                          self.startSkywalkerManager,
+                          self.startTilauPidManager):
+                try:
+                    start()
+                except Exception as e: # pylint: disable=broad-except
+                    _log.exception(e)
 
 #SCHEDULER:
 
@@ -14637,18 +14661,7 @@ class tgraphcanvas(QObject):
         _log.debug('ToggleMonitor')
         #turn ON
         if not self.flagon:
-            ## TILAU ##
-            ## TILAU — reset state THEN (re)discover devices for both detectors
-            self.fc_detector.reset()
-            self.fc_detector.detect_extradevice(self.aw)
-            ## TILAU — Dry End : configure device discovery au même moment que FC
-            self.de_detector.reset()
-            self.de_detector.configure(self.aw)
-            self.startDifluidManager()
-            self.startTilauAmbientManager()
-            self.startTilauMqttManager()
-            self.startSkywalkerManager()        ## TILAU ##
-            self.startTilauPidManager()
+            ## TILAU ## TilauScope devices are started in OnMonitor(), which START reaches too
             # the sample thread might still run, but should terminate soon. We do nothing and ignore this click on ON
             if not self.flagsamplingthreadrunning:
                 if not self.checkSaved():

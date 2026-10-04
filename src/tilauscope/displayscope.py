@@ -187,6 +187,8 @@ MENU_STYLE = f"""
 class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMixin, LifecycleMixin, EmergencyMixin, QWidget):
 
     alarm_fired_signal = pyqtSignal(int)
+    # Artisan's SV echo; setSV() also runs on event-action threads (pidSV commands)
+    pid_sv_from_artisan_signal = pyqtSignal(float, bool, bool)
 
     # Phase progress mapping — hot BT path (per sample). Class constants so the
     # per-sample handler never re-allocates these lists.

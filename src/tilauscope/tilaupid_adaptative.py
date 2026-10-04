@@ -50,7 +50,9 @@ import logging
 import threading
 import time
 import math
-from collections import deque
+import re
+from bisect import bisect_right
+from collections import Counter, deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from statistics import mean, median, stdev
@@ -259,8 +261,8 @@ class RoastPreheatMetrics:
     # True when target_sv came from a real recorded SV event ("TilauPID Preheat started");
     # extraction requires that marker, so every extracted metric sets this True.
     target_is_recorded_sv: bool = False
-    # True when this roast logged the continuous 'Burner' extra-device channel — the only
-    # trustworthy hold-power source. Historical roasts without it carry no P_ss datapoint.
+    # True when this roast has a trustworthy hold-power source: TilauPID's logged heater
+    # commands, else the continuous 'Burner' channel. Without one, no P_ss datapoint.
     had_burner_channel: bool = False
 
     # Paramètres PID qui ont produit ce résultat
@@ -654,13 +656,21 @@ class AlogScanner:
                     stabilise_extra = t_slice[k] - time_to_sv - t_slice[0]
                     break
 
-        # Puissance hold = le canal brûleur continu (extra-device 'Burner'), pas les
-        # événements spéciaux (trop épars, dernier event avant CHARGE souvent une valeur de rampe périmée).
-        burner = self._burner_channel(data)
+        # Puissance hold = les commandes que TilauPID a enregistrées sur le curseur de
+        # chauffe ; à défaut, le canal brûleur continu (souvent absent, et son slot
+        # peut désigner un autre appareil).
+        events = self._heater_events(data, i1)
+        burner = events or self._burner_channel(data)
         had_burner_channel = burner is not None
         hold_power_vals: list[float] = []
         if was_stable and sv_reach_idx is not None and burner is not None:
             bvals, btimex = burner
+            if events is not None:
+                # Une commande vaut jusqu'à la suivante ; avant la première, inconnue.
+                held = [(timex[j], bvals[bisect_right(btimex, timex[j]) - 1])
+                        for j in range(sv_reach_idx, i1 + 1) if timex[j] >= btimex[0]]
+                btimex = [t for t, _v in held]
+                bvals = [v for _t, v in held]
             t_hi = timex[i1]
             t_lo = max(timex[sv_reach_idx], t_hi - 30.0)
             hold_power_vals = [
@@ -668,7 +678,9 @@ class AlogScanner:
                 for j in range(min(len(bvals), len(btimex)))
                 if t_lo <= btimex[j] <= t_hi
                 and isinstance(bvals[j], (int, float))
-                and 0.0 < bvals[j] <= 100.0          # rejette -1 et valeurs aberrantes
+                and 0.0 <= bvals[j] <= 100.0         # rejette -1 et valeurs aberrantes
+                # une commande à 0 % est le brûleur coupé ; sur le canal, 0 reste écarté
+                and (bvals[j] > 0.0 or events is not None)
             ]
         if sv_reach_idx is not None:
             hold_span = min(30.0, timex[i1] - timex[sv_reach_idx])
@@ -709,15 +721,45 @@ class AlogScanner:
         return min(range(len(timex)), key=lambda i: abs(timex[i] - t))
 
     @staticmethod
+    def _heater_events(data: dict, end_index: int) -> tuple[list, list] | None:
+        """The heater commands up to `end_index`, as (values %, times).
+
+        TilauPID records each command as an `S<n>:<v>%` event on slider n, so the
+        roast names its own heater slider; the operator's moves on that slider are
+        kept too. Fewer than two TilauPID events is an older build that logged only
+        its opening command, a stale ramp value: None, so the burner channel is used instead.
+        """
+        timex = data.get("timex", [])
+        events = [
+            (idx, etype, value, str(text))
+            for idx, etype, value, text in zip(
+                data.get("specialevents", []), data.get("specialeventstype", []),
+                data.get("specialeventsvalue", []), data.get("specialeventsStrings", []),
+                strict=False)
+            if isinstance(idx, int) and 0 <= idx <= end_index and idx < len(timex)
+            and isinstance(value, (int, float))
+        ]
+        labelled = Counter(
+            etype for _idx, etype, _value, text in events
+            if (m := re.match(r"S(\d+):\d+%$", text)) and int(m.group(1)) == etype)
+        if not labelled:
+            return None
+        slider, tilaupid = labelled.most_common(1)[0]
+        if tilaupid < 2:
+            return None
+        held = [(idx, value) for idx, etype, value, _text in events if etype == slider]
+        return ([float(events_internal_to_external_value(value)) for _idx, value in held],
+                [timex[idx] for idx, _value in held])
+
+    @staticmethod
     def _burner_channel(data: dict) -> "tuple[list, list] | None":
         """Locate the continuous burner-power extra-device channel and its own timebase.
 
         Burner power is logged as an Artisan extra device (name ~ 'Burner'; note the
         real-world typo 'Buner' — we match the 'bun' substring), 0–100 %, sampled ~1 Hz
-        with its OWN timebase `extratimex[i]` (independent of the main `timex`). This is
-        the only trustworthy hold-power source: the type-3 special-event stream is too
-        sparse (a flat hold emits none) and its last pre-CHARGE value is a stale ramp
-        reading. Returns (values, timebase) for the first matching channel, else None.
+        with its OWN timebase `extratimex[i]` (independent of the main `timex`). Fallback
+        when the alog holds no TilauPID heater events (see _heater_events).
+        Returns (values, timebase) for the first matching channel, else None.
         Shared by _extract_metrics and the offline preheat_corpus_report tool.
         """
         etx = data.get("extratimex", [])

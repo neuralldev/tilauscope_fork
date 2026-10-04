@@ -2268,7 +2268,7 @@ class _DryingPage(QWidget):
         self._tr_ror_out_of_range_check_heater    = QApplication.translate("tilauscope_roast_assistant", "⚠ RoR out of range — check heater now")
         self._tr_critical_gap_et_bt               = QApplication.translate("tilauscope_roast_assistant", "⚠ Critical Gap between ET/BT — dangerous thermic gradiant")
         # templates
-        self._tpl_humid_keep_moderate             = QApplication.translate("tilauscope_roast_assistant", "humid ({0}%) → keep RoR moderate, longer drying ahead")
+        self._tpl_humid_keep_moderate             = QApplication.translate("tilauscope_roast_assistant", "humid ({0}%) → give it energy at the start; a high turning point is the water, not a runaway")
         self._tpl_dry_beans_flash_risk            = QApplication.translate("tilauscope_roast_assistant", "dry beans ({0}%) → watch for flash drying")
         self._tpl_low_density_heat_faster         = QApplication.translate("tilauscope_roast_assistant", "low density (ρ={0}) → heat transfer faster")
         self._tpl_dense_bean_sustained_heat       = QApplication.translate("tilauscope_roast_assistant", "dense bean (ρ={0}) → needs sustained heat")
@@ -5531,18 +5531,13 @@ class RoastAssistantPanel(QWidget):
 
         # Tentative de génération du plan prédictif
         try:
-            dev = self._read_probe_deviation()
-
             # Nouvelle session → nouveau générateur (cache historique vierge)
             self._rp = TilauScopeRoastPlan(parent=self.aw, roaster_ctx=self.roast_context)
             rp = self._rp
-            ambient_temp  = float(self.aw.qmc.ambientTemp
-                                  or (20.0 if self.aw.qmc.mode == 'C' else fromCtoFstrict(20.0)))
-            ambient_hum   = float(self.aw.qmc.ambient_humidity or 60.0)
+            ambient_temp, ambient_hum = self._room_ambient()
             charge_weight = self._charge_weight_g()   # qmc.weight[2] → grammes
-            roast_alt     = float(self.aw.qmc.roastertype_setup_altitude
-                                  if hasattr(self.aw.qmc, "roastertype_setup_altitude")
-                                  else 0.0)
+            # Altitude Roast Setup planned with, else Artisan's own setting.
+            roast_alt     = self._roast_altitude()
 
             plan_dict, *_ = rp.generate_roast_plan(
                 bean=bean,
@@ -5551,7 +5546,7 @@ class RoastAssistantPanel(QWidget):
                 ambient_humidity=ambient_hum,
                 charge_weight=charge_weight,
                 roast_altitude=roast_alt,
-                bt_deviation=dev,
+                bt_deviation=None,   # the roaster's own offsets, as in Roast Setup's plan
                 airwave_present=getattr(self.aw, "bleAirwaveDevice", None) is not None,
                 minutes_since_last_drop=self._minutes_since_last_drop(),
             )
@@ -5631,6 +5626,21 @@ class RoastAssistantPanel(QWidget):
             self.aw.tilauscope_main.update_status_text()
         except Exception:  # pylint: disable=broad-except
             _logd.exception("RoastAssistant: status refresh failed")
+
+    def _room_ambient(self) -> tuple[float, float]:
+        """(temperature in the display unit, humidity %) Roast Setup planned with, else the recorded room."""
+        room = getattr(self.aw, "_tilau_planned_room", None)
+        if room:
+            return float(room[0]), float(room[1])
+        qmc = self.aw.qmc
+        return (float(qmc.ambientTemp or (20.0 if qmc.mode == 'C' else fromCtoFstrict(20.0))),
+                float(qmc.ambient_humidity or 60.0))
+
+    def _roast_altitude(self) -> float:
+        """Altitude the setup sheet planned with, else Artisan's own setting, else sea level."""
+        room = getattr(self.aw, "_tilau_planned_room", None)
+        alt = room[2] if room else getattr(self.aw.qmc, "elevation", 0)
+        return float(alt or 0.0)
 
     def _stop_assistant(self) -> None:
         self.is_active = False
@@ -5952,6 +5962,8 @@ class RoastAssistantPanel(QWidget):
 
     @pyqtSlot(bool)
     def _on_roast_state(self, active: bool) -> None:
+        if not active and self.aw.qmc.timeindex[0] > -1:
+            self.aw._tilau_planned_room = None   # the next roast plans on its own room
         if not active and self.is_active:
             self._stop_assistant()
         elif active and not self.is_active and (
@@ -5977,47 +5989,12 @@ class RoastAssistantPanel(QWidget):
             plan, plan_id=qmc.roastUUID, target_color_agtron=target_mid,
             expected_color_basis="ground", mode=qmc.mode)
 
-    def _read_probe_deviation(self):
-        """
-        Lit la déviation sonde manuelle depuis QSettings (groupe ProbeDeviation).
-        Source UNIQUE pour _start_assistant et _regenerate_plan — les deux
-        générations d'une même session doivent utiliser la même correction.
-        Retourne None si l'override manuel n'est pas activé.
-
-        DOCTRINE unité : les offsets sont TOUJOURS en °C (même frame que
-        RoasterContext.bt_offsets), quel que soit le mode Artisan — le plan
-        les additionne à ses valeurs internes °C. L'UI BeanCave les étiquette
-        « (°C) ».
-        """
-        from tilauscope.tilauscope_types import ProbeDeviation, ProbeDeviationInterval
-        from PyQt6.QtCore import QSettings
-
-        settings = QSettings()
-        settings.beginGroup("ProbeDeviation")
-        def _read_dev(key):
-            s = settings.value(f"{key}_start", 0.0, type=float)
-            e = settings.value(f"{key}_end",   0.0, type=float)
-            return ProbeDeviationInterval(s, e)
-        dev = None
-        if settings.value("ManualProbeSettings", False, bool):
-            dev = ProbeDeviation(
-                probe_id="default",
-                bt_at_charge=_read_dev("bt_at_charge"),
-                bt_at_de=_read_dev("bt_at_de"),
-                bt_at_fc=_read_dev("bt_at_fc"),
-                bt_at_drop=_read_dev("bt_at_drop"),
-            )
-        settings.endGroup()
-        return dev
-
     def _regenerate_plan(self, ambient_temp: float, ambient_hum: float) -> None:
         """Régénère le plan prédictif avec des valeurs ambiantes mises à jour.
 
         `ambient_temp` arrive en °C (le bridge normalise à la frontière d'entrée).
         """
         try:
-            dev = self._read_probe_deviation()
-
             qmc = self.aw.qmc
             # generate_roast_plan reçoit l'ambiante dans l'unité d'AFFICHAGE
             # d'Artisan et la normalise lui-même : lui passer les °C du bridge
@@ -6039,11 +6016,8 @@ class RoastAssistantPanel(QWidget):
                 ambient_temp=ambient_native,
                 ambient_humidity=ambient_hum,
                 charge_weight=charge_weight,
-                roast_altitude=float(
-                    qmc.roastertype_setup_altitude
-                    if hasattr(qmc, "roastertype_setup_altitude") else 0.0
-                ),
-                bt_deviation=dev,
+                roast_altitude=self._roast_altitude(),
+                bt_deviation=None,
                 airwave_present=getattr(self.aw, "bleAirwaveDevice", None) is not None,
                 minutes_since_last_drop=self._minutes_since_last_drop(),
             )

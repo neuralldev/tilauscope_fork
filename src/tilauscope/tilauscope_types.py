@@ -20,7 +20,8 @@ import math
 import logging
 import platform
 from dataclasses import dataclass, field
-from collections.abc import Mapping
+from collections import Counter
+from collections.abc import Iterable, Mapping
 from typing import Any, Final, NamedTuple
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.dict import DataClassDictMixin
@@ -259,6 +260,19 @@ def price_per_kg_spin() -> QDoubleSpinBox:
     spin.setToolTip(QApplication.translate("tilauscope_beancave",
         "Purchase price per kg of green beans. Leave 0 if unknown."))
     return spin
+
+
+def select_listed_or_other(combo, value: object) -> None:
+    """Select ``value`` in a closed list; one the list does not carry lands on "Other".
+
+    ``setCurrentText`` silently selects nothing for an unlisted value, and the
+    editor then writes the record back blank.
+    """
+    text = '' if value is None else str(value)
+    idx = combo.findText(text)
+    if idx < 0 and text:
+        idx = combo.findText(QApplication.translate("tilauscope_beancave", "Other"))
+    combo.setCurrentIndex(idx)
 
 
 def format_money(value: float) -> str:
@@ -2341,6 +2355,17 @@ _EXTRA_MATCH: Final[dict[str, tuple[tuple[str, ...], tuple[str, ...]]]] = {
 #: counts, so it wins the binding whatever order the devices are declared in.
 _ACOUSTIC_TOKENS: Final[frozenset[str]] = frozenset(("crack", "cracks"))
 _EXTRA_PRIORITY: Final[tuple[str, ...]] = ("roc", "color", "sc", "fc")
+
+
+def name_key(name: str) -> str:
+    """A sensor or channel name as compared for uniqueness: case and surrounding spaces ignored."""
+    return name.strip().casefold()
+
+
+def duplicate_names(names: Iterable[str]) -> set[str]:
+    """The name keys (see name_key) more than one non-empty name carries."""
+    counts = Counter(name_key(name) for name in names)
+    return {key for key, count in counts.items() if key and count > 1}
 
 
 def classify_extra_channel(name: str) -> str | None:

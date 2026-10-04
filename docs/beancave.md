@@ -13,42 +13,56 @@ BeanCave is where a TilauScope setup begins. It opens from **TilauScope → Bean
 first time it opens it runs the
 [first-time setup wizard](getting-started.md#first-time-setup).
 
+<!-- CAPTURE 3.1 [scene:cave_beans] — the BeanCave window on the Green Beans tab, with several beans in the list and
+the three tabs (Green Beans, Roasts, Storage) visible; Roast and Plan on the bean record. -->
+
 ![The BeanCave window on the Green Beans tab, with several beans in the list](assets/beancave-3.1.png)
 
 ---
 
-## The four tabs
+## The three tabs
 
 | Tab | What it is for |
 |---|---|
 | **Green Beans** | The catalogue and the bean records. This chapter. |
 | **Roasts** | Every roast, grouped by day and searchable, and reading one back — curve, statistics, tasting. See [After the roast](after-the-roast.md#the-roasts-tab). |
-| **Roasting plan** | Generating a [roast plan](the-roast-plan.md) and its PDF. |
 | **Storage** | How your coffee is keeping: [water activity](glossary.md#aw--water-activity), conditioning, sack labels — see [Sacks, stock and conservation](sacks-and-storage.md). |
 
 ---
 
 ## The catalogue
 
-The Green Beans tab is a readable list, not a spreadsheet: each coffee on a few compact lines
-with its stock, its origin and its freshness.
+The Green Beans tab is where you choose what to roast. The catalogue is a readable list, not a
+spreadsheet: each coffee on three compact lines — its name, its origin, then what decides the
+next roast.
 
 **Search** — *Search name, country, farm…* filters as you type.
 
-**In stock** — *Hide out-of-stock beans* narrows the list to what you can actually roast today. A
-coffee you have finished stays in the database, with its history intact, without cluttering the
-list.
+**Show** — *Show: in stock* narrows the list to what you can actually roast today; *Show: all
+coffees* brings the rest back. A coffee you have finished stays in the database, with its history
+intact: out-of-stock coffees always sit at the bottom of the list, and while only the stock is
+shown they fold behind one line, *Out of stock · 6 coffees*, which brings them back.
+
+**Sort** — *Sort: To roast first* puts on top the coffee that keeps worst: a
+[water activity](glossary.md#aw--water-activity) flagged as a storage risk first, then the oldest
+harvest, then the coffee left longest since its last roast — a coffee never roasted comes before
+any. *Sort: Name* lists them alphabetically. Both choices are remembered.
 
 When BeanCave opens without a bean linked to the current roast, the record shows the first
-coffee matching the active filters. If none matches, the record is empty.
+coffee of the list as filtered and sorted. If none matches, the record is empty.
 
-Each entry carries badges that answer the questions asked when choosing what to roast: whether it
-is a **blend**, how old the harvest is — *Harvest is 2 years old* — and whether it is **out of
-stock**. Where sack labels are used, the labels attached to that coffee are shown too.
+Each entry's third line reads the stock in grams and in **batches** — *≈ 2 batches*, at the weight
+of the coffee's last roast — then when it was last roasted, or *not roasted yet*, and a dot for its
+water activity: green when typical, amber or red when it sits outside the usual range, with the
+word that says why, grey when it was never measured. Badges answer the remaining questions:
+**TO TASTE** when the last roast has rested past its degassing and has not been tasted yet,
+**BLEND**, and the year of a harvest two or more years old — *Harvest is 2 years old*.
 
 !!! note
     An empty list after filtering says so — *No bean matches the current filter.* — rather than
     looking like an empty database.
+
+<!-- CAPTURE 3.2 [scene:cave_catalogue] — the catalogue with a search typed in, narrowed to the matching coffees. CAPTURE 3.3 [scene:cave_badges] — the catalogue rows, cropped, so the badges are legible: blend, old harvest, to taste, out of stock. -->
 
 ![The catalogue with the search field in use](assets/beancave-3.2.png)
 
@@ -65,24 +79,30 @@ every coffee on file with that one.
 
 ## The bean record
 
-A record opens **to be read**, not to be edited. It is laid out in zones, and **each zone has its
-own ✎ Edit dialog** — so correcting an altitude does not mean re-opening a form with forty fields
-in it.
+A record opens **to be read**, not to be edited. It is laid out in two columns that fit whole
+in a small window, and **each zone has its own ✎ Edit dialog** — so correcting an altitude does
+not mean re-opening a form with forty fields in it. On a taller window the sheet spreads out
+rather than leaving its zones cramped at the top.
 
 | Zone | What it holds |
 |---|---|
-| **Essentials** | Name, origin, crop year, stock — as stat tiles, with the stock's value once a price is entered. |
-| **Provenance** | Farm, supplier, altitude, purchase price. |
-| **Characteristics** | Type, category, process, species, varieties, [density](glossary.md#density), [humidity](glossary.md#moisture-content), [screen size](glossary.md#screen-size). |
-| **Sensory & notes** | [SCA](glossary.md#sca-score) score, flavour notes, roasting memo. |
-| **Sacks** | The physical bags of this coffee, and their labels — see [Sacks, stock and conservation](sacks-and-storage.md). |
-| **Roasts** | Every roast of this coffee. |
+| **Essentials** | Name, origin, process and supplier; stock (with the batches it still makes), crop year, [SCA](glossary.md#sca-score) score and number of roasts as tiles; the flavour notes and the roasting memo. Hovering the stock shows what it is worth once a price is entered. The ✎ beside the flavour notes edits the score, the notes and the memo. |
+| **Roast memory** | The coffee's last roast — see [below](#the-roast-history-of-a-coffee). |
+| **Characteristics** | Process, species, varieties and [screen size](glossary.md#screen-size); [density](glossary.md#density), [humidity](glossary.md#moisture-content) and water activity as tiles with their meaning; a blend's components as one bar; the [bean family](glossary.md#bean-family) and what it does to the pace of the roast. |
+| **Provenance** | Farm, altitude, supplier, purchase price. |
+| **Sacks** | The labels of this coffee's bags, when it has any, and **🌱 New crop** — see [Sacks, stock and conservation](sacks-and-storage.md). |
+
+Under the record, **Roast this coffee** opens the [roast setup sheet](preparing-a-roast.md) for
+it, and **Plan** opens the same sheet on its PLAN tab, to see — and compare — what a batch of it
+would look like before roasting it. **Share & print** holds the bean label, its QR code and the
+shareable card; the bin at the far end deletes the record, after asking.
 
 Each zone's edit button states what it covers — *Edit name, origin, year and stock*, *Edit farm,
 supplier, altitude and price* — so there is no guessing which dialog holds which field. Editing a zone
 changes **only** that zone: *Only this section is changed. Save writes the record immediately.*
 
-<!-- CAPTURE 3.4 — a complete bean record, all zones visible, on a coffee with a price and a screen size: the Stock value tile beside Stock in Essentials, Price in Provenance, Screen size in Characteristics -->
+<!-- CAPTURE 3.4 [scene:cave_record] — a complete bean record on a blend that has been roasted and tasted, with a price, a screen size and a sack: both columns visible, Roast memory showing its Next time line. -->
+
 ![a complete bean record, all zones visible](assets/beancave-3.4.png)
 
 ![One zone editor open,
@@ -120,8 +140,8 @@ vocabulary consistent from one coffee to the next.
 ### Price and screen size
 
 **Price** is what the green coffee cost per kg, in the currency chosen in
-[Configuration](configuration.md#-beancave--files-and-currency). Once it is entered, the record
-shows what the remaining stock is worth, and each roast of this coffee shows what its green cost
+[Configuration](configuration.md#-beancave--files-and-currency). Once it is entered, hovering the
+stock on the record shows what the remaining stock is worth, and each roast of this coffee shows what its green cost
 — see [After the roast](after-the-roast.md). Leave it at 0 if you do not know it; nothing else
 depends on it.
 
@@ -143,7 +163,8 @@ does not change the roast plan.
 
 ## Adding a coffee
 
-**Add New Bean** asks how you want to start: **From current fields**, which pre-fills from what
+**Add — expert form**, in the menu of the **+ New sack** button at the top of the catalogue,
+asks how you want to start: **From current fields**, which pre-fills from what
 you have already typed, or **Blank bean**, which starts fresh. A full expert form follows, with
 required fields named up front — *Fill the required fields (\*): name, country, category, process,
 species, varieties* — and the reassurance that matters when a bag has just arrived: *Fill what you
@@ -151,15 +172,19 @@ know — everything can be refined later from the sheet.*
 
 **Blends** are declared as such, with their components and ratios.
 
+Origins, processes, varieties and blend components are picked from fixed lists, the same in
+every editor. A process, variety or component the list does not carry — one typed freely in an
+older record, or read from a supplier's page — is shown and saved as **Other**.
+
 !!! tip "The guided way in"
-    For a bag that has just arrived, the **+ New sack** assistant is the better route: it walks
+    For a bag that has just arrived, a click on **+ New sack** itself is the better route: it walks
     through registering a new coffee, restocking an existing one, or opening a new crop year, and
     reviews everything before saving. The expert form exists for when you know exactly what you
     are entering. See [Sacks, stock and conservation](sacks-and-storage.md) for the assistant in
     full.
 
     When the coffee is already in the catalogue and this is simply its next harvest, select it and
-    use **🌱 New crop** instead: it inherits everything that does not change and asks only for the
+    use **🌱 New crop**, on the Sacks line of its record, instead: it inherits everything that does not change and asks only for the
     new year, the weight, the price and the measurements of the lot.
 
 ### Filling a record from the supplier's page
@@ -197,13 +222,22 @@ says what the request carries before anything leaves — see [Configuration](con
 
 ## The roast history of a coffee
 
-The **Roasts** zone lists every roast of this coffee, with the total weight roasted computed for
-you. This is the same history the [roast plan](the-roast-plan.md#what-the-plan-learns-and-when)
-learns from, which is why keeping records attached to the right coffee matters: a roast filed
-against the wrong bag teaches the plan the wrong lesson.
+The **Roast memory** zone recalls the coffee's last roast: its date, the
+level it ran at — read from how long it developed and how hot it was
+dropped, not from its colour — and its weight, then its development, weight loss and colour.
+What follows depends on where that roast stands:
 
-A roast opens in the **Roasts** tab — curve, key events, statistics and tasting. See
-[After the roast](after-the-roast.md) for what it shows and how to read it.
+- **Not roasted yet** — the first plan starts from the coffee's characteristics.
+- **Rested, not tasted** — *Rested 6 days — how did it taste?* with **Taste…**, which opens the
+  [tasting](after-the-roast.md#tasting) of that roast.
+- **Tasted** — what was tasted, for example *Tasted 18 Sep: Flat, papery*, and the one change the
+  next roast makes: *Next time: Burner one notch higher before first crack*.
+
+**All 4 roasts →** opens the **Roasts** tab narrowed to this coffee — curve, key events,
+statistics and tasting; see [After the roast](after-the-roast.md) for what it shows. This is the
+same history the [roast plan](the-roast-plan.md#what-the-plan-learns-and-when) learns from,
+which is why keeping records attached to the right coffee matters: a roast filed against the
+wrong bag teaches the plan the wrong lesson.
 
 ---
 
@@ -213,7 +247,8 @@ A bean record can be exported as a **landscape image sized for social networks**
 roast — green coffee, roast level, key figures and the curve on one card (see
 [After the roast](after-the-roast.md#sharing-a-roast) for the roast card).
 
-Labels for beans, roasts and sacks print from here, each carrying a QR code that opens the
+Labels for beans, roasts and sacks print from here — a bean's from **Share & print** on its
+record — each carrying a QR code that opens the
 corresponding record. The **📷 SCAN** button reads those codes with the webcam; a phone camera
 works too — see [Labels and QR](labels-and-qr.md) for printing and scanning in full.
 

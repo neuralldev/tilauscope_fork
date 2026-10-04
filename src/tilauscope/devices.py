@@ -20,6 +20,7 @@ import os
 import re
 import logging
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Final, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -56,8 +57,10 @@ from PyQt6.QtGui import QCursor, QPalette, QColor
 from PyQt6 import sip
 
 from tilauscope.config_controls_tab import ControlsTab
+from tilauscope.energy_tap import SETTING_EXTRACTOR_ON_ROASTER_METER, resolve_sensors
 from tilauscope.theme_qss import base_qss, style_combo_popup, tooltip_qss
-from tilauscope.tilauscope_types import (THEME, literal_ampersand, no_enter_default, resolve_crack_channel,
+from tilauscope.tilauscope_types import (THEME, duplicate_names, literal_ampersand, name_key,
+                                         no_enter_default, resolve_crack_channel,
                                          resolve_fc_window, show_styled_message,
                                          TilauProgress, CURRENCIES, currency_code)
 # Shared with the Devices window (device_setup/dialog.py): one look for both.
@@ -2060,11 +2063,17 @@ class TilauscopeConfigDlg(QDialog):
         self.mqtt_sensor_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.mqtt_sensor_table.setMinimumHeight(140)
         self._mqtt_power_hint = self._build_mqtt_power_hint()
+        self._mqtt_name_note = QLabel()
+        self._mqtt_name_note.setWordWrap(True)
+        self._mqtt_name_note.setStyleSheet(
+            f"color: {THEME['CRITICAL']}; font-size: 11px; background: transparent;")
         self._populate_mqtt_sensor_table()
         form_layout.addRow(self.mqtt_sensor_table)
+        form_layout.addRow(self._mqtt_name_note)
         form_layout.addRow(self._mqtt_power_hint)
         self.mqtt_sensor_table.currentCellChanged.connect(self._mqtt_refresh_power_hint)
         self.mqtt_sensor_table.itemChanged.connect(self._mqtt_refresh_power_hint)
+        self.mqtt_sensor_table.itemChanged.connect(self._mqtt_check_names)
 
         buttons = QWidget()
         btn_layout = QHBoxLayout(buttons)
@@ -2094,6 +2103,15 @@ class TilauscopeConfigDlg(QDialog):
         btn_layout.addWidget(self.mqttCheckSensorButton)
         form_layout.addRow(buttons)
 
+        self.mqttExtractorOnMeterCheck = QCheckBox(QApplication.translate(
+            "tilauscope_energy", "Extractor is plugged into the roaster meter"))
+        self.mqttExtractorOnMeterCheck.setToolTip(QApplication.translate(
+            "tilauscope_energy", "Counts the extractor inside the roaster reading instead of adding it. "
+                  "Applies from the next monitoring session, or now before START."))
+        self.mqttExtractorOnMeterCheck.setChecked(
+            QSettings().value(SETTING_EXTRACTOR_ON_ROASTER_METER, False, type=bool))
+        form_layout.addRow(self.mqttExtractorOnMeterCheck)
+
     def _set_mqtt_row_widgets(self, row: int, multiplier: float | None,
                               divider: float | None, unit: str) -> None:
         """Cell widgets of one sensor row: the two scaling factors and the unit."""
@@ -2112,6 +2130,7 @@ class TilauscopeConfigDlg(QDialog):
         cb.setCurrentIndex(max(index, 0))
         cb.setStyleSheet(_table_combobox_style())
         cb.currentIndexChanged.connect(self._mqtt_refresh_power_hint)
+        cb.currentIndexChanged.connect(self._mqtt_check_names)
         cb.setToolTip(QApplication.translate(
             "tilauscope_devices",
             "Unit the sensor publishes in. A temperature is converted to the unit "
@@ -2160,17 +2179,96 @@ class TilauscopeConfigDlg(QDialog):
             hint.setVisible(self._mqtt_row_reads_power(self.mqtt_sensor_table.currentRow()))
 
     def _mqtt_use_as_power(self, reserved: str) -> None:
-        row = self.mqtt_sensor_table.currentRow()
+        table = self.mqtt_sensor_table
+        row = table.currentRow()
         if row < 0:
             return
-        item = self.mqtt_sensor_table.item(row, 0)
+        # the name moves: the row that held it is left to be named again
+        held = [r for r in range(table.rowCount())
+                if r != row and name_key(self._mqtt_cell_text(r, 0)) == reserved]
+        item = table.item(row, 0)
         if item is None:
             item = QTableWidgetItem("")
-            self.mqtt_sensor_table.setItem(row, 0, item)
+            table.setItem(row, 0, item)
         item.setText(reserved)
-        cb = self.mqtt_sensor_table.cellWidget(row, 5)
+        cb = table.cellWidget(row, 5)
         if isinstance(cb, QComboBox):
             cb.setCurrentIndex(max(cb.findData("W"), 0))
+        for r in held:
+            other = table.item(r, 0)
+            if other is not None:
+                other.setText("")
+        if held:
+            table.setCurrentCell(held[0], 0)
+            table.editItem(table.item(held[0], 0))
+            self._mqtt_name_note.setText(QApplication.translate(
+                "tilauscope_devices", 'Name this sensor — "{0}" moved to the row you chose.').format(reserved))
+            self._mqtt_name_note.setVisible(True)
+
+    def _mqtt_row_unit(self, row: int) -> str:
+        cb = self.mqtt_sensor_table.cellWidget(row, 5)
+        return str(cb.currentData() or "") if isinstance(cb, QComboBox) else ""
+
+    def _mqtt_cell_text(self, row: int, col: int) -> str:
+        item = self.mqtt_sensor_table.item(row, col)
+        return item.text().strip() if item is not None else ""
+
+    def _mqtt_check_names(self, *_args: object) -> None:
+        """Mark in red the IDs another row carries too, and say it under the table;
+        number the rows, the energy view's meters by their symbol instead."""
+        table = self.mqtt_sensor_table
+        ids = [self._mqtt_cell_text(row, 0) for row in range(table.rowCount())]
+        shared = duplicate_names(ids)
+        rows = [SimpleNamespace(id=ids[r], topic=self._mqtt_cell_text(r, 1), unit=self._mqtt_row_unit(r), row=r)
+                for r in range(table.rowCount())]
+        meters = {sensor.row: name for name, sensor in resolve_sensors(rows).items()}
+        table.blockSignals(True)   # a colour change is an itemChanged too
+        for row, sensor_id in enumerate(ids):
+            item = table.item(row, 0)
+            if item is not None:
+                item.setData(Qt.ItemDataRole.ForegroundRole,
+                             QColor(THEME['CRITICAL']) if name_key(sensor_id) in shared else None)
+            header = QTableWidgetItem(str(row + 1))
+            if meters.get(row) == "roaster":
+                header.setText("⚡")
+                header.setToolTip(QApplication.translate(
+                    "tilauscope_devices", "Used as the roaster meter for energy"))
+            elif meters.get(row) == "extractor":
+                header.setText("💨")
+                header.setToolTip(QApplication.translate(
+                    "tilauscope_devices", "Used as the extractor meter for energy"))
+            table.setVerticalHeaderItem(row, header)
+        table.blockSignals(False)
+        name = next((sensor_id for sensor_id in ids if name_key(sensor_id) in shared), None)
+        if name is not None:
+            self._mqtt_name_note.setText(QApplication.translate(
+                "tilauscope_devices",
+                '⚠ Two sensors are named "{0}" — rename one. Until then, neither is used '
+                'for energy and its curve may show the other.').format(name))
+        self._mqtt_name_note.setVisible(name is not None)
+
+    def _mqtt_names_ready(self) -> bool:
+        """Every sensor row with a topic has a name no other row carries; otherwise say which, and stay."""
+        table = self.mqtt_sensor_table
+        rows = [(self._mqtt_cell_text(r, 0), self._mqtt_cell_text(r, 1)) for r in range(table.rowCount())]
+        shared = duplicate_names(sensor_id for sensor_id, _topic in rows)
+        for r, (sensor_id, topic) in enumerate(rows):
+            if topic and not sensor_id:
+                text = QApplication.translate(
+                    "tilauscope_devices", "This sensor has no name. Name it, then save again.")
+            elif name_key(sensor_id) in shared:
+                text = QApplication.translate(
+                    "tilauscope_devices", 'Two sensors are named "{0}". Rename one, then save again.'
+                ).format(sensor_id)
+            else:
+                continue
+            self._tabs.setCurrentWidget(self._integrations_tab)
+            table.selectRow(r)
+            table.scrollToItem(table.item(r, 0) or table.item(r, 1))
+            show_styled_message(self, QApplication.translate("tilauscope_devices", "Sensors"),
+                                text, QMessageBox.Icon.Warning)
+            return False
+        return True
 
     def _populate_mqtt_sensor_table(self) -> None:
         sensors = self._mqtt_sensors.sensors
@@ -2179,6 +2277,7 @@ class TilauscopeConfigDlg(QDialog):
             for col, value in enumerate((sensor.id, sensor.topic, sensor.command)):
                 self.mqtt_sensor_table.setItem(row, col, QTableWidgetItem(value or ""))
             self._set_mqtt_row_widgets(row, sensor.multiplier, sensor.divider, sensor.unit)
+        self._mqtt_check_names()
 
     def _get_mqtt_sensor_data(self) -> 'MQTTSensorConfig':
         """Rebuild the sensor list from the table. Rows without an id or a topic
@@ -2224,6 +2323,7 @@ class TilauscopeConfigDlg(QDialog):
         if row < 0:
             return
         self.mqtt_sensor_table.removeRow(row)
+        self._mqtt_check_names()
 
     @pyqtSlot()
     def _mqtt_check_sensor(self) -> None:
@@ -2620,6 +2720,8 @@ class TilauscopeConfigDlg(QDialog):
 
     def _on_ok(self) -> None:
         aw = self.aw
+        if not self._mqtt_names_ready():
+            return
         self._unhook_scanner()  # stop background sensor detection
         _no_dev = self._no_device_text()  # explicit-unassign placeholder
 
@@ -2792,6 +2894,13 @@ class TilauscopeConfigDlg(QDialog):
         # sensor list is rebuilt from the table and persisted to QSettings
         self._mqtt_sensors = self._get_mqtt_sensor_data()
         self._mqtt_ports.save_mqtt_sensors(self._mqtt_sensors)
+
+        # energy: an extractor counted inside the roaster meter; a session not yet recording follows at once
+        on_meter = self.mqttExtractorOnMeterCheck.isChecked()
+        QSettings().setValue(SETTING_EXTRACTOR_ON_ROASTER_METER, on_meter)
+        tap = getattr(aw, "tilau_energy_tap", None)
+        if tap is not None and tap.live and tap.session is not None and not aw.qmc.flagstart:
+            tap.session.extractor_on_roaster_meter = on_meter
 
         # headless "BeanCave home" mode -> QSettings (boot-time; restart)
         _h_prev = QSettings().value('tilauscope/headless_mode', False, type=bool)

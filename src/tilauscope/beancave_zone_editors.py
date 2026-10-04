@@ -43,7 +43,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from tilauscope.tilauscope_types import THEME, TilauProgressDialog, show_styled_message, price_per_kg_spin
+from tilauscope.tilauscope_types import (THEME, TilauProgressDialog, show_styled_message, price_per_kg_spin,
+                                         select_listed_or_other)
 from tilauscope.bean_qualifiers import screen_size_options
 from tilauscope.header_icons import SVG_PROG_AI
 from tilauscope.sack_manager import prompt_release_if_emptied  # sack reclaim (§9.3)
@@ -361,6 +362,7 @@ class ZoneEditorDialog(QDialog):
 
         # blend components (hidden for single origin)
         varieties_all = list((getattr(host, 'coffee_bean_types', {}) or {}).get('Arabica', []) or [])
+        varieties_all.append(QApplication.translate("tilauscope_beancave", "Other"))
         self._blend_w = QWidget()
         bl = QFormLayout(self._blend_w)
         bl.setContentsMargins(0, 0, 0, 0)
@@ -375,7 +377,7 @@ class ZoneEditorDialog(QDialog):
         bl.addRow(QApplication.translate("tilauscope_beancave", "This bean:"), self.bean1_ratio_spin)
         self.bean2_combo = QComboBox()
         self.bean2_combo.addItems([""] + varieties_all)
-        self.bean2_combo.setCurrentText(getattr(b, 'bean2_name', '') or "")
+        select_listed_or_other(self.bean2_combo, getattr(b, 'bean2_name', '') or "")
         self.bean2_ratio_spin = QDoubleSpinBox()
         self.bean2_ratio_spin.setRange(0.0, 100.0)
         self.bean2_ratio_spin.setDecimals(0)
@@ -387,7 +389,7 @@ class ZoneEditorDialog(QDialog):
         bl.addRow(QApplication.translate("tilauscope_beancave", "Component 2:"), r2)
         self.bean3_combo = QComboBox()
         self.bean3_combo.addItems([""] + varieties_all)
-        self.bean3_combo.setCurrentText(getattr(b, 'bean3_name', '') or "")
+        select_listed_or_other(self.bean3_combo, getattr(b, 'bean3_name', '') or "")
         self.bean3_ratio_spin = QDoubleSpinBox()
         self.bean3_ratio_spin.setRange(0.0, 100.0)
         self.bean3_ratio_spin.setDecimals(0)
@@ -409,7 +411,7 @@ class ZoneEditorDialog(QDialog):
         self.process_combo = QComboBox()
         self.process_combo.setMinimumWidth(300)
         self._refresh_processes(b.category or "")
-        self.process_combo.setCurrentText(b.process or "")
+        select_listed_or_other(self.process_combo, b.process or "")
         self._form.addRow(self._req(QApplication.translate("tilauscope_beancave", "Process:")), self.process_combo)
 
         self.species_combo = QComboBox()
@@ -422,7 +424,7 @@ class ZoneEditorDialog(QDialog):
         self.varieties_combo = QComboBox()
         self.varieties_combo.setMinimumWidth(320)
         self._refresh_varieties(b.species or "")
-        self.varieties_combo.setCurrentText(b.varieties or "")
+        select_listed_or_other(self.varieties_combo, b.varieties or "")
         self._form.addRow(self._req(QApplication.translate("tilauscope_beancave", "Varieties:")), self.varieties_combo)
 
         self.density_spin = QDoubleSpinBox()
@@ -505,7 +507,8 @@ class ZoneEditorDialog(QDialog):
         current = self.process_combo.currentText()
         self.process_combo.blockSignals(True)
         self.process_combo.clear()
-        self.process_combo.addItems([""] + list(methods.get(category, []) or []))
+        self.process_combo.addItems([""] + list(methods.get(category, []) or [])
+                                    + [QApplication.translate("tilauscope_beancave", "Other")])
         self.process_combo.setCurrentText(current)
         self.process_combo.blockSignals(False)
 
@@ -590,10 +593,10 @@ class ZoneEditorDialog(QDialog):
 
         self.category_combo.setCurrentText(bean.category or "")
         self._refresh_processes(bean.category or "")
-        self.process_combo.setCurrentText(bean.process or "")
+        select_listed_or_other(self.process_combo, bean.process or "")
         self.species_combo.setCurrentText(bean.species or "")
         self._refresh_varieties(bean.species or "")
-        self.varieties_combo.setCurrentText(bean.varieties or "")
+        select_listed_or_other(self.varieties_combo, bean.varieties or "")
 
         self.density_spin.setValue(float(bean.density or 0.0))
         self.humidity_spin.setValue(float(bean.last_humidity or 0.0))
@@ -604,9 +607,9 @@ class ZoneEditorDialog(QDialog):
 
         if getattr(bean, 'is_blend', False):
             self.type_combo.setCurrentIndex(1)
-            self.bean2_combo.setCurrentText(bean.bean2_name or "")
+            select_listed_or_other(self.bean2_combo, bean.bean2_name or "")
             self.bean2_ratio_spin.setValue(float(bean.bean2_ratio or 0.0))
-            self.bean3_combo.setCurrentText(bean.bean3_name or "")
+            select_listed_or_other(self.bean3_combo, bean.bean3_name or "")
             self.bean3_ratio_spin.setValue(float(bean.bean3_ratio or 0.0))
         else:
             self.type_combo.setCurrentIndex(0)
@@ -953,8 +956,12 @@ class ZoneEditorDialog(QDialog):
                     self._host.uuidmap = {}
                 self._host.uuidmap[b.uuid] = b
 
-            # A failed save has told the operator why; stay open with the entry.
+            # A failed save has told the operator why; stay open with the entry,
+            # out of the cave again so a retry does not add it twice.
             if not self._host.save_green_beans():
+                if self._create:
+                    cave.green_beans.remove(b)
+                    self._host.uuidmap.pop(b.uuid, None)
                 return
             # stock just hit 0 g: offer to reclaim this bean's labels
             # (design v4 §9.3, shared helper — never duplicate this check).

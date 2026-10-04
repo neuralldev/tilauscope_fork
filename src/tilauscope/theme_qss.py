@@ -432,7 +432,12 @@ def tint(token: str, alpha: float) -> str:
     hex will ever find: retune the token and the border moves while the fill
     stays where it was. Derive it here instead and the three follow together.
     """
-    h = THEME[token].lstrip('#')
+    return tint_hex(THEME[token], alpha)
+
+
+def tint_hex(colour: str, alpha: float) -> str:
+    """``rgba(r, g, b, alpha)`` for a ``#rrggbb`` colour — tint() for a colour already resolved."""
+    h = colour.lstrip('#')
     r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
     return f"rgba({r}, {g}, {b}, {alpha})"
 

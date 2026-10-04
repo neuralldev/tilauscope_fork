@@ -178,15 +178,6 @@ class Channel:
         j = bisect_right(self.et, t) - 1
         return self.ew[j] if j >= 0 and self.ew[j] >= 0 else None
 
-    def power_now(self, now: float) -> tuple[float | None, str]:
-        """Last fresh reading, else the current estimate, else unknown."""
-        if self.mt and 0 <= now - self.mt[-1] <= self.max_gap_s:
-            return self.mw[-1], MEASURED
-        est = self._estimate_at(now)
-        if est is not None:
-            return est, ESTIMATED
-        return None, NONE
-
     def settled(self, now: float) -> float:
         """Up to where the power is final. While the last reading is fresh the
         interval after it waits for the next one: it may still be bridged."""

@@ -88,6 +88,11 @@ Some names do more than label a counter. A reading named for the crack count is 
 automatic first-crack detection listens to: the card says **Used for first crack detection**
 under that name, and warns if an edit makes it lose that role.
 
+Each reading has a name of its own. A name another reading already carries — capitals and spaces
+around it do not count — is flagged under it with the card that has it, and **Save** refuses to
+save until one is renamed. The names Artisan gives a reading it knows nothing about (*Extra 1*,
+*Extra 2*) are not names, and may repeat.
+
 TilauAmbient pressure and altitude are read through its temperature and humidity device, so that
 card has to sit above them. Adding pressure adds temperature and humidity first, deleting
 temperature and humidity deletes pressure too after asking, and a pressure card dragged above

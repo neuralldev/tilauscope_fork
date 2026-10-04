@@ -575,10 +575,31 @@ class DeviceSetupDialog(_DragToMove, QDialog):
                                    self.aw.qmc.device_name_subst)
             card.set_selected(row.uid == self._selected_uid)
             card.clicked.connect(self._select)
+            card.renamed.connect(self._check_names)
             self._cards.addWidget(card)
             self._cards_by_uid[row.uid] = card
         self._cards.addStretch(1)
+        self._check_names()
         self._sync_extras_bar()
+
+    @pyqtSlot()
+    def _check_names(self) -> None:
+        """Under each channel named like another, which card carries the same name."""
+        clashes = draft.name_clashes(self._draft, self.aw.qmc.device_name_subst)
+        rows = {row.uid: row for row in self._draft.rows}
+        for uid, card in self._cards_by_uid.items():
+            for channel in (0, 1):
+                other = clashes.get((uid, channel))
+                if other is None:
+                    warning = ''
+                elif other[0] == uid:
+                    warning = QApplication.translate(
+                        'tilauscope_devices', 'Same name as the other channel of this card — rename one.')
+                else:
+                    warning = QApplication.translate(
+                        'tilauscope_devices', 'Same name as the {0} card — rename one.'
+                    ).format(self._row_title(rows[other[0]]))
+                card.set_clash(channel, warning)
 
     def _no_room(self) -> None:
         show_styled_message(
@@ -851,6 +872,19 @@ class DeviceSetupDialog(_DragToMove, QDialog):
             return
         self._read_widgets()
         d = self._draft
+        clashes = draft.name_clashes(d, aw.qmc.device_name_subst)
+        if clashes:
+            uid, channel = next(iter(clashes))
+            row = next(r for r in d.rows if r.uid == uid)
+            self._tabs.setCurrentIndex(1)
+            self._select(uid)
+            show_styled_message(
+                self, QApplication.translate('tilauscope_devices', 'Devices'),
+                QApplication.translate('tilauscope_devices',
+                                       'Two channels are named "{0}". Rename one, then save again.'
+                                       ).format(aw.qmc.device_name_subst(row.names[channel]).strip()),
+                QMessageBox.Icon.Warning)
+            return
         if d.mode == 'meter' and not d.meter:
             self._tabs.setCurrentIndex(0)
             show_styled_message(

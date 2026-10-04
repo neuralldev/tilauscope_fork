@@ -1,6 +1,6 @@
 #
 # ABOUT
-# Energy view: header pill, floating energy sheet, shared formatting.
+# Energy view: floating energy sheet, shared formatting.
 
 # LICENSE
 # This file is part of TilauScope, a fork of Artisan Roaster Scope.
@@ -19,18 +19,16 @@
 
 """What the operator sees of the energy session.
 
-The pill reads the tap's running totals only (O(1) per tick). The sheet
-recomputes the phase bill on its own 1 s timer while open — never inside
-Artisan's update slot.
+The sheet computes the bill of a saved roast once, when it opens — never
+inside Artisan's update slot.
 """
 
 import logging
-import time
 from typing import Any, Final
 
-from PyQt6.QtCore import QPoint, QPointF, QRectF, QSettings, QSize, Qt, QTimer
-from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QPolygonF
-from PyQt6.QtWidgets import (QApplication, QCheckBox, QDialog, QFrame, QGridLayout,
+from PyQt6.QtCore import QPoint, QPointF, QRectF, QSize, Qt
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
+from PyQt6.QtWidgets import (QApplication, QDialog, QFrame, QGridLayout,
                              QHBoxLayout, QLabel, QPushButton, QSizePolicy, QToolTip,
                              QVBoxLayout, QWidget)
 
@@ -38,9 +36,7 @@ from tilauscope.energy_model import (
     ESTIMATED, EXTRACTOR, MEASURED, MIXED, NONE, ROASTER, EnergySession, Summary,
     Totals, phase_bounds, session_for_profile,
 )
-from tilauscope.energy_tap import (
-    DUPLICATE, MISSING, OK, SETTING_EXTRACTOR_ON_ROASTER_METER, UNIT, EnergyTap,
-)
+from tilauscope.energy_tap import EnergyTap
 from tilauscope.theme_qss import base_qss
 from tilauscope.tilauscope_types import THEME
 
@@ -77,11 +73,6 @@ def green_kg(weight: Any) -> float:
         return convertWeight(v, weight_units.index(str(w[2])), weight_units.index("Kg")) if v > 0 else 0.0
     except Exception:  # pylint: disable=broad-except
         return 0.0
-
-
-def summarize_current(aw: Any, session: EnergySession, live: bool) -> Summary:
-    qmc = aw.qmc
-    return session.summarize(phase_bounds(qmc.timex, qmc.timeindex), green_kg(qmc.weight), live)
 
 
 def summarize_profile(profile: dict, session: EnergySession) -> Summary:
@@ -125,62 +116,6 @@ def _mono(size: int, weight: int = 400, color: str = "") -> str:
 def _channel_label(name: str) -> str:
     return (QApplication.translate("tilauscope_energy", "🔥 Roaster") if name == ROASTER
             else QApplication.translate("tilauscope_energy", "💨 Extractor"))
-
-
-# ── header pill ──────────────────────────────────────────────────────────
-
-class EnergyPill(QPushButton):
-    """⚡ power now · energy since ON. Fixed width: a live figure never
-    moves its neighbours."""
-
-    def __init__(self, tap: EnergyTap, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._tap = tap
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setProperty('variant', 'icon')
-        self.setFixedHeight(26)
-        mono = QFont("JetBrains Mono")
-        mono.setPixelSize(11)
-        self.setFixedWidth(QFontMetrics(mono).horizontalAdvance("⚡ 88.88 kW · 88.888 kWh ●") + 24)
-        self._colour = ""
-        self.hide()
-        tap.updated.connect(self.refresh)
-
-    def refresh(self) -> None:
-        try:
-            tap = self._tap
-            sess = tap.session
-            # shown as soon as a reserved sensor exists, even before its first
-            # reading: its sheet is where an unconfirmed unit gets fixed
-            if not tap.live or sess is None or not (
-                    sess.channels or any(v != MISSING for v in tap.status.values())):
-                self.setVisible(False)
-                return
-            now = time.time()
-            watts: float | None = None
-            total = Totals()
-            for name in sess.expected():
-                ch = sess.channels.get(name)
-                if ch is not None:
-                    w, _ = ch.power_now(now)
-                    if w is not None:
-                        watts = (watts or 0.0) + w
-                if name in tap.acc:
-                    total += tap.acc[name]
-            glyph, colour, words = provenance(total if total.span_s > 0 else None)
-            self.setText(f"⚡ {fmt_power(watts)} · {fmt_kwh(total.wh)} {glyph}")
-            self.setToolTip(QApplication.translate(
-                "tilauscope_energy", "Power now and energy since monitoring started — {0}. Tap for details.").format(words))
-            if colour != self._colour:
-                self._colour = colour
-                self.setStyleSheet(
-                    f"QPushButton {{ background: {THEME['SURFACE']}; color: {THEME['TEXT']};"
-                    f" border: 1px solid {colour}; border-radius: 13px; padding: 0 8px;"
-                    f" font-family: 'JetBrains Mono', monospace; font-size: 11px; }}"
-                    f"QPushButton:hover {{ background: {THEME['BORDER']}; }}")
-            self.setVisible(True)
-        except Exception as e:  # pylint: disable=broad-except
-            _log.debug("energy pill: %s", e)
 
 
 # ── power trace ──────────────────────────────────────────────────────────
@@ -395,15 +330,13 @@ def _power_at(ch: Any, t: float) -> float | None:
 # ── energy sheet ─────────────────────────────────────────────────────────
 
 class EnergyPanel(QDialog):
-    """Non-modal sheet: live while monitoring, otherwise the loaded roast —
-    or, with `profile`, one saved roast (BeanCave), never live."""
+    """Non-modal sheet of one saved roast (BeanCave)."""
 
-    def __init__(self, aw: Any, parent: QWidget | None = None, profile: dict | None = None) -> None:
+    def __init__(self, aw: Any, parent: QWidget | None, profile: dict) -> None:
         super().__init__(parent)
         self.aw = aw
         self._profile = profile
-        self._profile_session = session_for_profile(profile) if profile is not None else None
-        self._tap = ensure_energy_tap(aw)
+        self._profile_session = session_for_profile(profile)
         self._drag_pos: QPoint | None = None
         self.setModal(False)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
@@ -435,12 +368,9 @@ class EnergyPanel(QDialog):
         root.addLayout(head)
 
         hero = QHBoxLayout()
-        self._now = QLabel()
-        self._now.setStyleSheet(_mono(18, 700, THEME['TEXT']))
         self._total = QLabel()
         self._total.setStyleSheet(_mono(13, 700, THEME['TEXT']))
         self._total.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        hero.addWidget(self._now)
         hero.addStretch(1)
         hero.addWidget(self._total)
         root.addLayout(hero)
@@ -483,28 +413,20 @@ class EnergyPanel(QDialog):
         self._cells: dict[str, list[QLabel]] = {}
         r = 0
         for name in (ROASTER, EXTRACTOR):
-            cells = [QLabel(_channel_label(name)), QLabel(), QLabel(), QLabel()]
+            cells = [QLabel(_channel_label(name)), QLabel(), QLabel()]
             cells[1].setStyleSheet(_mono(11, 400, THEME['TEXT']))
-            cells[2].setStyleSheet(_mono(11, 400, THEME['TEXT']))
-            for c in (1, 2):
-                cells[c].setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            cells[1].setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             for c, cell in enumerate(cells):
                 self._rows.addWidget(cell, r, c)
             note = QLabel()
             note.setWordWrap(True)
             note.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
-            self._rows.addWidget(note, r + 1, 0, 1, 4)
+            self._rows.addWidget(note, r + 1, 0, 1, 3)
             cells.append(note)
             self._cells[name] = cells
             r += 2
         self._rows.setColumnStretch(0, 1)
         root.addLayout(self._rows)
-
-        self._setup_btn = QPushButton(QApplication.translate("tilauscope_energy", "Set up meter"))
-        self._setup_btn.setProperty('variant', 'outline')
-        self._setup_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._setup_btn.clicked.connect(self._open_setup)
-        root.addWidget(self._setup_btn, 0, Qt.AlignmentFlag.AlignRight)
 
         self._per_kg = QLabel()
         self._coverage = QLabel()
@@ -513,49 +435,9 @@ class EnergyPanel(QDialog):
         root.addWidget(self._per_kg)
         root.addWidget(self._coverage)
 
-        self._sources_btn = QPushButton(QApplication.translate("tilauscope_energy", "⚙ Sources"))
-        self._sources_btn.setProperty('variant', 'ghost')
-        self._sources_btn.setCheckable(True)
-        self._sources_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._sources_btn.toggled.connect(self._toggle_sources)
-        root.addWidget(self._sources_btn, 0, Qt.AlignmentFlag.AlignRight)
-
-        self._sources = QFrame()
-        src = QVBoxLayout(self._sources)
-        src.setContentsMargins(0, 0, 0, 0)
-        src.setSpacing(4)
-        self._src_line: dict[str, QLabel] = {}
-        for name in (ROASTER, EXTRACTOR):
-            lbl = QLabel()
-            lbl.setWordWrap(True)
-            lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px;")
-            src.addWidget(lbl)
-            self._src_line[name] = lbl
-        self._on_meter = QCheckBox(QApplication.translate("tilauscope_energy", "Extractor is plugged into the roaster meter"))
-        self._on_meter.setToolTip(QApplication.translate(
-            "tilauscope_energy", "Counts the extractor inside the roaster reading instead of adding it. "
-                  "Applies from the next monitoring session, or now before START."))
-        self._on_meter.setChecked(bool(QSettings().value(SETTING_EXTRACTOR_ON_ROASTER_METER, False, type=bool)))
-        self._on_meter.toggled.connect(self._set_on_meter)
-        src.addWidget(self._on_meter)
-        self._sources.hide()
-        root.addWidget(self._sources)
-
-        self._timer = QTimer(self)
-        self._timer.setInterval(1000)
-        self._timer.timeout.connect(self.refresh)
-        self._timer.start()
         self.refresh()
 
     # ── data ─────────────────────────────────────────────────────────────
-
-    def _current(self) -> tuple[EnergySession | None, bool]:
-        if self._profile is not None:
-            return self._profile_session, False
-        tap = self._tap
-        if tap is not None and tap.live:
-            return tap.session, True
-        return getattr(self.aw.qmc, "tilau_energy", None), False
 
     def refresh(self) -> None:
         try:
@@ -564,47 +446,27 @@ class EnergyPanel(QDialog):
             _log.debug("energy panel: %s", e)
 
     def _refresh(self) -> None:
-        session, live = self._current()
-        qmc = self.aw.qmc
-        recording = live and bool(getattr(qmc, "flagstart", False))
+        session = self._profile_session
         self._state.setText(
-            QApplication.translate("tilauscope_energy", "Roasting") if recording
-            else QApplication.translate("tilauscope_energy", "Monitoring") if live
-            else QApplication.translate("tilauscope_energy", "Rebuilt from the saved curve")
+            QApplication.translate("tilauscope_energy", "Rebuilt from the saved curve")
             if session is not None and session.rebuilt
             else QApplication.translate("tilauscope_energy", "Saved roast") if session is not None
             else QApplication.translate("tilauscope_energy", "No energy data"))
-        self._on_meter.setEnabled(not recording)
-        self._timer.setInterval(1000 if live else 5000)
-        self._refresh_sources()
 
         if session is None:
-            self._now.setText("—")
             self._total.setText("")
             for key in ("before", "roast", "after"):
                 self._phase[key].setText("—")
             for name, cells in self._cells.items():
-                self._fill_row(name, cells, None, None, None, None)
+                self._fill_row(name, cells, None, None, None)
             self._per_kg.setText("")
             self._coverage.setText(QApplication.translate(
                 "tilauscope_energy", "This roast carries no energy record."))
-            self._setup_btn.setVisible(self._profile is None)
-            self._sources_btn.setVisible(self._profile is None)
             self._trace.set_data(None, None)
             return
 
-        summary = (summarize_profile(self._profile, session) if self._profile is not None
-                   else summarize_current(self.aw, session, live))
+        summary = summarize_profile(self._profile, session)
         self._trace.set_data(session, summary)
-        now = time.time()
-        power: float | None = None
-        if live:
-            for name in summary.expected:
-                ch = session.channels.get(name)
-                w = ch.power_now(now)[0] if ch is not None else None
-                if w is not None:
-                    power = (power or 0.0) + w
-        self._now.setText(QApplication.translate("tilauscope_energy", "{0} now").format(fmt_power(power)) if live else "")
         total = summary.total(summary.since_start)
         complete = summary.complete(summary.since_start)
         self._total.setText(
@@ -630,10 +492,7 @@ class EnergyPanel(QDialog):
             self._phase["roast"].setToolTip("")
 
         for name, cells in self._cells.items():
-            ch = session.channels.get(name)
-            tot = summary.since_start.get(name)
-            w = ch.power_now(now)[0] if (ch is not None and live) else None
-            self._fill_row(name, cells, session, summary, tot, w)
+            self._fill_row(name, cells, session, summary, summary.since_start.get(name))
 
         if summary.wh_per_kg is not None:
             self._per_kg.setText(QApplication.translate(
@@ -641,7 +500,7 @@ class EnergyPanel(QDialog):
         elif summary.roast is None or summary.roast.open:
             self._per_kg.setText(QApplication.translate(
                 "tilauscope_energy", "Roast energy per kg green   — (after DROP)"))
-        elif green_kg(self._profile.get("weight") if self._profile is not None else qmc.weight) <= 0:
+        elif green_kg(self._profile.get("weight")) <= 0:
             self._per_kg.setText(QApplication.translate(
                 "tilauscope_energy", "Roast energy per kg green   — (green weight missing)"))
         else:
@@ -660,11 +519,9 @@ class EnergyPanel(QDialog):
             share = min(summary.since_start[n].coverage for n in summary.expected)
             self._coverage.setText(QApplication.translate(
                 "tilauscope_energy", "Coverage: {0} % of the period — the rest is left out.").format(f"{share * 100:.0f}"))
-        self._setup_btn.setVisible(live and self._needs_setup(summary))
-        self._sources_btn.setVisible(self._profile is None)
 
     def _fill_row(self, name: str, cells: list[QLabel], session: EnergySession | None,
-                  summary: Summary | None, tot: Totals | None, watts: float | None) -> None:
+                  summary: Summary | None, tot: Totals | None) -> None:
         included = summary is not None and name == EXTRACTOR and summary.extractor_included
         expected = summary is not None and (name in summary.expected or included)
         visible = name == ROASTER or expected or (session is not None and name in session.channels)
@@ -672,15 +529,12 @@ class EnergyPanel(QDialog):
             c.setVisible(visible)
         if not visible:
             return
-        cells[1].setVisible(session is not None and self._profile is None and self._tap is not None
-                            and self._tap.live)   # "now" means nothing for a saved roast
-        cells[1].setText(fmt_power(watts))
-        cells[2].setText(fmt_kwh(tot.wh) if tot is not None and tot.provenance != NONE else "—")
+        cells[1].setText(fmt_kwh(tot.wh) if tot is not None and tot.provenance != NONE else "—")
         glyph, colour, words = provenance(tot)
         if included:
             words = QApplication.translate("tilauscope_energy", "Included in roaster meter")
-        cells[3].setText(f"{glyph} {words}")
-        cells[3].setStyleSheet(f"color: {colour}; font-size: 11px;")
+        cells[2].setText(f"{glyph} {words}")
+        cells[2].setStyleSheet(f"color: {colour}; font-size: 11px;")
         note = ""
         if tot is None or tot.provenance == NONE:
             if name == ROASTER and not included:
@@ -693,78 +547,8 @@ class EnergyPanel(QDialog):
         elif tot.provenance in (ESTIMATED, MIXED):
             note = QApplication.translate(
                 "tilauscope_energy", "Estimated from the rated power and the burner setting.")
-        cells[4].setText(note)
-        cells[4].setVisible(bool(note))
-
-    def _refresh_sources(self) -> None:
-        tap = self._tap
-        for name, lbl in self._src_line.items():
-            status = tap.status.get(name, MISSING) if tap is not None else MISSING
-            label = _channel_label(name)
-            if status == OK and tap is not None:
-                sensor = tap.sensor(name)
-                seen = tap.last_arrival(name)
-                age = (QApplication.translate("tilauscope_energy", "last reading {0} s ago").format(f"{time.time() - seen:.0f}")
-                       if seen is not None else QApplication.translate("tilauscope_energy", "no reading yet"))
-                topic = sensor.topic if sensor is not None else ""
-                lbl.setText(f"{label} — {topic} · W · {age}")
-            elif status == DUPLICATE:
-                lbl.setText(QApplication.translate("tilauscope_energy", '{0} — two sensors are named "{1}": keep one.').format(label, name))
-            elif status == UNIT:
-                lbl.setText(QApplication.translate("tilauscope_energy", '{0} — sensor "{1}" is not set to W: unit not confirmed.').format(label, name))
-            else:
-                lbl.setText(QApplication.translate("tilauscope_energy", '{0} — no MQTT sensor named "{1}".').format(label, name))
-
-    # ── actions ──────────────────────────────────────────────────────────
-
-    def _toggle_sources(self, shown: bool) -> None:
-        self._sources.setVisible(shown)
-        self.adjustSize()
-
-    def _set_on_meter(self, checked: bool) -> None:
-        QSettings().setValue(SETTING_EXTRACTOR_ON_ROASTER_METER, checked)
-        tap = self._tap
-        if tap is not None and tap.live and tap.session is not None \
-                and not bool(getattr(self.aw.qmc, "flagstart", False)):
-            tap.session.extractor_on_roaster_meter = checked
-        self.refresh()
-
-    def _needs_setup(self, summary: Summary) -> bool:
-        """A source the operator expects is not usable as configured."""
-        tap = self._tap
-        if tap is None:
-            return True
-        names = [ROASTER] + ([EXTRACTOR] if EXTRACTOR in summary.expected or summary.extractor_included else [])
-        return any(tap.status.get(n, MISSING) != OK for n in names)
-
-    def _open_setup(self) -> None:
-        """Straight to the MQTT sensor table, scrolled into view, with the first
-        reserved sensor that still needs its unit selected: its one-tap pills
-        show under the table."""
-        try:
-            from PyQt6.QtWidgets import QScrollArea
-            from tilauscope.devices import TilauscopeConfigDlg
-            dlg = TilauscopeConfigDlg(self.aw, self.aw)
-            dlg._tabs.setCurrentWidget(dlg._integrations_tab)   # pylint: disable=protected-access
-            table = dlg.mqtt_sensor_table
-            for row in range(table.rowCount()):
-                item = table.item(row, 0)
-                name = item.text().strip().lower() if item is not None else ""
-                unit = table.cellWidget(row, 5)
-                if name in (ROASTER, EXTRACTOR) and getattr(unit, "currentData", lambda: "")() != "W":
-                    table.setCurrentCell(row, 0)   # current, so the power pills show
-                    break
-            dlg.show()
-
-            def _reveal() -> None:
-                w = table.parentWidget()
-                while w is not None and not isinstance(w, QScrollArea):
-                    w = w.parentWidget()
-                if w is not None:
-                    w.ensureWidgetVisible(table, 0, 40)
-            QTimer.singleShot(0, _reveal)
-        except Exception as e:  # pylint: disable=broad-except
-            _log.warning("energy: opening the meter setup failed: %s", e)
+        cells[3].setText(note)
+        cells[3].setVisible(bool(note))
 
     # ── frameless drag ───────────────────────────────────────────────────
 

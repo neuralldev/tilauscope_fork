@@ -49,6 +49,7 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.header_icons import make_icon
+from tilauscope.beancave_catalogue import svg_icon
 from tilauscope.theme_qss import style_combo_popup, styled_popup_view, tint
 from tilauscope.tilauscope_types import (THEME, literal_ampersand, standardization_map,
                                          TilauProgressRow, to_agtron, normalize_timeindex,
@@ -459,6 +460,7 @@ class ViewerMixin:
         self.burner_air_button.setChecked(self._curve_show_settings)
         self._sync_burner_air_text()
         self.burner_air_button.toggled.connect(self._on_burner_air_toggled)
+        self.roast_curve.lanes_requested.connect(lambda: self.burner_air_button.setChecked(True))
 
         view_caption = QLabel(QApplication.translate("tilauscope_beancave", "View"))
         view_caption.setProperty('variant', 'caption')
@@ -566,6 +568,7 @@ class ViewerMixin:
             combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
             combo.setMinimumContentsLength(8)
         filters.addWidget(self.roast_coffee_combo, 3)
+        filters.addWidget(self._build_coffee_chip(), 5)
         filters.addWidget(self.roast_sort_combo, 2)
         layout.addLayout(filters)
 
@@ -1040,7 +1043,6 @@ class ViewerMixin:
                 self.select_roast(self._roast_to_select_on_open())
                 self.hasfinished = True
                 self.load_roast_data_and_plot()
-                self._populate_plan_roast_combo()
             else:
                 # Background refresh — the selection outlives the rebuild. When none
                 # of it survives (its files are gone, or a concurrent startup refresh
@@ -1070,13 +1072,6 @@ class ViewerMixin:
                 # Restore the scroll position so the list doesn't jump under the cursor.
                 self.roast_list_view.verticalScrollBar().setValue(
                     getattr(self, "_pending_restore_scroll", 0))
-
-    @pyqtSlot(int)
-    def _on_roaster_model_changed(self, index: int):
-        self.current_roaster_model = self.roaster_combo.currentText()
-        settings = QSettings()
-        settings.setValue("RoastPlan/RoasterModel", self.current_roaster_model)
-        _logd.debug(f"Modèle de torréfacteur mis à jour : {self.current_roaster_model}")
 
     @pyqtSlot()
     def _on_selection_changed(self) -> None:
@@ -1263,6 +1258,7 @@ class ViewerMixin:
         for row in self._roast_model.rows():
             labels.setdefault(row.group, f"{row.title} · {row.crop}" if row.crop else row.title)
             counts[row.group] = counts.get(row.group, 0) + 1
+        self._coffee_labels = labels
         combo.blockSignals(True)
         try:
             combo.clear()
@@ -1274,6 +1270,93 @@ class ViewerMixin:
             combo.blockSignals(False)
         if (combo.currentData() or "") != chosen:
             self._refilter_roasts(lambda: self._roast_proxy.set_group(""))
+        else:
+            self._update_list_chrome()
+
+    def _build_coffee_chip(self) -> QFrame:
+        """The coffee the list follows, in place of the coffee list while one is chosen."""
+        # The coffee selected in Green Beans the list last followed: it follows
+        # again only for another one, so a ✕ is never undone behind the operator.
+        self._followed_bean_uuid: str | None = None
+        self._followed_bean_name = ""
+        self._coffee_labels: dict[str, str] = {}
+        chip = self.roast_coffee_chip = QFrame()
+        chip.setObjectName("coffeeChip")
+        chip.setFixedHeight(32)
+        chip.setStyleSheet(
+            f"QFrame#coffeeChip {{ background:{tint('ACCENT', 0.14)};border:1px solid {THEME['ACCENT']};"
+            f"border-radius:16px; }}")
+        lay = QHBoxLayout(chip)
+        lay.setContentsMargins(10, 0, 5, 0)
+        lay.setSpacing(7)
+        icon = QLabel()
+        icon.setPixmap(svg_icon(
+            "M5 8h11v6a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10h2a2 2 0 0 1 0 4h-2",
+            THEME['ACCENT'], 14, 1.8).pixmap(QSize(14, 14)))
+        icon.setStyleSheet("background:transparent;border:none;")
+        lay.addWidget(icon)
+        self._coffee_chip_label = QLabel()
+        self._coffee_chip_label.setStyleSheet(
+            f"color:{THEME['ACCENT']};font-weight:600;background:transparent;border:none;")
+        self._coffee_chip_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        lay.addWidget(self._coffee_chip_label, 1)
+        close = QPushButton("✕")
+        close.setFixedSize(22, 22)
+        close.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        close.setToolTip(QApplication.translate("tilauscope_beancave", "Show all coffees"))
+        close.setStyleSheet(
+            f"QPushButton {{ background:{tint('ACCENT', 0.2)};color:{THEME['ACCENT']};border:none;"
+            f"border-radius:11px;font-size:10px;font-weight:700;padding:0; }}"
+            f"QPushButton:hover {{ background:{THEME['ACCENT']};color:{THEME['BG']}; }}")
+        close.clicked.connect(self._show_all_coffees)
+        lay.addWidget(close)
+        chip.hide()
+        return chip
+
+    def follow_bean(self, bean, again: bool = False) -> None:  # noqa: ANN001
+        """Narrow the list to the coffee selected in Green Beans — once per new selection.
+
+        `again` follows the same coffee anew, for an explicit request from its record.
+        """
+        uuid = getattr(bean, 'uuid', '') or ''
+        if not uuid or (uuid == self._followed_bean_uuid and not again):
+            return
+        self._followed_bean_uuid = uuid
+        crop = int(getattr(bean, 'crop', 0) or 0)
+        self._followed_bean_name = f"{bean.name} · {crop}" if crop > 0 else (bean.name or "")
+        group = f"bean:{uuid}"
+        combo = self.roast_coffee_combo
+        combo.blockSignals(True)
+        try:
+            # A coffee with no roast has no entry: the list stays on it, empty, and says why.
+            combo.setCurrentIndex(max(combo.findData(group), 0))
+        finally:
+            combo.blockSignals(False)
+        self._refilter_roasts(lambda: self._roast_proxy.set_group(group))
+
+    @pyqtSlot()
+    def _show_all_coffees(self) -> None:
+        combo = self.roast_coffee_combo
+        combo.blockSignals(True)
+        try:
+            combo.setCurrentIndex(0)
+        finally:
+            combo.blockSignals(False)
+        self._refilter_roasts(lambda: self._roast_proxy.set_group(""))
+
+    def _update_coffee_chip(self, shown: int) -> None:
+        """The chip names the followed coffee and its roasts; the coffee list stands in for it otherwise."""
+        group = self._roast_proxy.group()
+        self.roast_coffee_chip.setVisible(bool(group))
+        self.roast_coffee_combo.setVisible(not group)
+        if not group:
+            return
+        name = self._coffee_labels.get(group) or self._followed_bean_name
+        count = (QApplication.translate("tilauscope_beancave", "no roast") if shown == 0 else
+                 QApplication.translate("tilauscope_beancave", "1 roast") if shown == 1 else
+                 QApplication.translate("tilauscope_beancave", "{0} roasts").format(shown))
+        self._coffee_chip_label.setText(f"{name} · {count}")
+        self._coffee_chip_label.setToolTip(name)
 
     def _refilter_roasts(self, change) -> None:  # noqa: ANN001
         """A search, coffee or order change: the list follows, the detail stays."""
@@ -1303,6 +1386,8 @@ class ViewerMixin:
             else:
                 self.roast_count_label.setText(roast_count_text(total))
             self.roast_clear_filters_button.setVisible(filtered)
+            self._update_coffee_chip(shown)
+            group = self._roast_proxy.group()
 
             text, action = "", ""
             if total == 0 and self._roast_folder_missing:
@@ -1312,6 +1397,12 @@ class ViewerMixin:
                 title = QApplication.translate("tilauscope_beancave", "No roasts yet")
                 text = QApplication.translate("tilauscope_beancave",
                                               "Your roasts appear here once the first one is saved.")
+            elif total and group and group not in self._coffee_labels:
+                title = QApplication.translate("tilauscope_beancave", "{0} has no roast yet").format(
+                    self._followed_bean_name)
+                text = QApplication.translate("tilauscope_beancave",
+                                              "Its first roast will appear here. The plan starts from its characteristics.")
+                action = 'all'
             elif total and not shown and self.roast_search.text().strip():
                 title = QApplication.translate("tilauscope_beancave", "No roast matches “{0}”").format(
                     self.roast_search.text().strip())
@@ -1332,6 +1423,8 @@ class ViewerMixin:
                 self.roast_empty_button.setText(QApplication.translate("tilauscope_beancave", "Clear search"))
             elif action == 'filters':
                 self.roast_empty_button.setText(QApplication.translate("tilauscope_beancave", "Clear filters"))
+            elif action == 'all':
+                self.roast_empty_button.setText(QApplication.translate("tilauscope_beancave", "Show all coffees"))
             self._roast_empty_action = action
             self.roast_empty_button.setVisible(bool(action))
             self.roast_list_stack.setCurrentIndex(1)
@@ -1380,6 +1473,8 @@ class ViewerMixin:
             self.select_alog_directory()
         elif self._roast_empty_action in ('search', 'filters'):
             self._clear_roast_filters()
+        elif self._roast_empty_action == 'all':
+            self._show_all_coffees()
 
     @pyqtSlot()
     def _focus_roast_list(self) -> None:
@@ -2215,7 +2310,6 @@ class ViewerMixin:
         self.remember_deltas(profiledata, 'temp2', deltabt)
         # Draws the roast and fills its sheet (display_roast_info) in one pass.
         self.plot_bt_curve_preview(self.lastprofiledata, deltaet, deltabt)  # type: ignore
-        self._update_roast_plan_values()
         # ── Update header label with roast display name ──────────────────────
         # The detail head names it: the line above the curve is for messages only.
         self.roast_plot_label.setText("")

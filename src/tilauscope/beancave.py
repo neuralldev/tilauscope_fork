@@ -25,14 +25,14 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QDialog
 
 from tilauscope.cave import (AmbientMixin, AnalysisMixin, BeanTabBuildMixin, BeanTabMixin, LifecycleMixin,
-                             PlanTabMixin, PrintingMixin, ViewerMixin, ViewerMultiMixin,
+                             PrintingMixin, ViewerMixin, ViewerMultiMixin,
                              ViewerPlotMixin)
 
 
-class BeancaveDlg(LifecycleMixin, PlanTabMixin, ViewerMixin, ViewerMultiMixin, ViewerPlotMixin,
+class BeancaveDlg(LifecycleMixin, ViewerMixin, ViewerMultiMixin, ViewerPlotMixin,
                   AnalysisMixin, BeanTabMixin, BeanTabBuildMixin, AmbientMixin, PrintingMixin,
                   QDialog): # 2025-12-23 changed from ArtisanResizeablDialog to QDialog to handle modality
-    """The bean library, the roast viewer and the roast plan, in one dialog.
+    """The bean library, the roast viewer and the storage dashboard, in one dialog.
 
     The dialog itself is only the assembly: every slice of behaviour lives in a
     mixin under ``tilauscope.cave``, and they all share this one set of

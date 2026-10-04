@@ -18,7 +18,7 @@ to open a record, are covered in the next chapter — this one covers what a sac
 
 ## Bringing a new bag in: the "+ New sack" assistant
 
-**+ New sack**, next to the catalogue's other actions, opens a short wizard for the three
+**+ New sack**, at the top of the catalogue beside the search, opens a short wizard for the three
 situations a new bag actually represents: a coffee never seen before, more of a coffee
 already on the shelf, or the same coffee's next harvest.
 
@@ -67,9 +67,8 @@ without restarting, and a warning if a starting weight of 0 g is about to be con
 
 ## The next harvest of a coffee you already roast: "🌱 New crop"
 
-Select the coffee in the catalogue and press **🌱 New crop**, next to **+ New sack**. It opens
-the same assistant, already locked on that record and reduced to three steps. The button is
-greyed out until a coffee is selected.
+Select the coffee in the catalogue and press **🌱 New crop**, on the Sacks line of its record. It
+opens the same assistant, already locked on that record and reduced to three steps.
 
 A new crop is the same coffee from a different year. Its **identity** — origin, farm, altitude,
 process, species, variety, category, blend composition — is inherited as it stands and is shown

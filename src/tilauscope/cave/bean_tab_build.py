@@ -30,7 +30,8 @@ from PyQt6.QtCore import (Qt, QTimer, QByteArray, QSize,
                           QT_TRANSLATE_NOOP) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
 from PyQt6.QtGui import ( QPixmap, QPainter) # @UnusedImport @Reimport  @UnresolvedImport
 from PyQt6.QtWidgets import (QApplication, QComboBox, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QScrollArea,  # @UnusedImport @Reimport  @UnresolvedImport
-                                QPushButton, QWidget, QGridLayout, QGroupBox, QStyledItemDelegate, QListView, QFrame, QSplitter, QSizePolicy, QStackedWidget) # @UnusedImport @Reimport  @UnresolvedImport
+                                QPushButton, QWidget, QGridLayout, QGroupBox, QStyledItemDelegate, QListView, QFrame, QSplitter, QSizePolicy, QStackedWidget,  # @UnusedImport @Reimport  @UnresolvedImport
+                                QMenu, QToolButton)
 from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 
 # Import QWebEngineView for both PyQt6 and PyQt5
@@ -38,8 +39,9 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 from tilauscope.theme_qss import style_combo_popup, tint, tooltip_qss
 from tilauscope.tilauscope_types import (THEME)
 from tilauscope.sack_manager import SackChipsRow  # sack labels (Lot 1, §9.3)
-from tilauscope.beancave_catalogue import CatalogueListWidget  # rich catalogue list (Lot 5)
+from tilauscope.beancave_catalogue import CatalogueListWidget, svg_icon  # rich catalogue list (Lot 5)
 from tilauscope.beancave_bean_sheet import BeanSheetWidget  # read-first bean sheet (Lot 5)
+from tilauscope.cave.viewer_detail import menu_qss
 from tilauscope.cave.common import (
     _SVG_DENSITY,
     _svg_bytes_to_icon)
@@ -276,11 +278,27 @@ class BeanTabBuildMixin:
         self.remove_button.setToolTip(QApplication.translate("tilauscope_beancave","Delete the selected green bean record. A confirmation dialog will appear."))
 
         # ── Boutons secondaires ─────────────────────────────────────────────
+        # The one filled button of the bar: roasting is what the sheet is for.
         self.roast = _icon_btn(
             "M7 2c0 2-3 3-3 5.5a3 3 0 0 0 6 0C10 5 7 4 7 2z",
-            QT_TRANSLATE_NOOP("tilauscope_beancave", "Roast"), stroke=THEME["WARNING"])
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Roast this coffee"), stroke=THEME["BG"])
+        self.roast.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.roast.setStyleSheet(
+            f"QPushButton {{ background:{THEME['ACCENT']};color:{THEME['BG']};border:none;"
+            f"border-radius:8px;padding:8px 18px;font-weight:700;font-size:13px; }}"
+            f"QPushButton:hover {{ background:{THEME['LAVENDER']}; }}"
+            f"QPushButton:disabled {{ background:{THEME['BORDER']};color:{THEME['SUBTEXT']}; }}"
+            + tooltip_qss())
         self.roast.clicked.connect(self.on_click_roast_properties)
         self.roast.setToolTip(QApplication.translate("tilauscope_beancave","Set a roast session based on the current selection."))
+
+        self.plan_button = _icon_btn(
+            "M4 2h6v1.5H4zM3 3h8v10H3zM5 6h4M5 8.5h4M5 11h2",
+            QT_TRANSLATE_NOOP("tilauscope_beancave", "Plan"))
+        self.plan_button.clicked.connect(self.on_click_roast_plan)
+        self.plan_button.setToolTip(QApplication.translate(
+            "tilauscope_beancave",
+            "See the roast plan for this coffee — weight, use and level — without starting a roast."))
 
         self.generate_label_button = _icon_btn(
             "M1.5 3H12.5a1.5 1.5 0 0 1 1.5 1.5v6A1.5 1.5 0 0 1 12.5 12H1.5A1.5 1.5 0 0 1 0 10.5v-6A1.5 1.5 0 0 1 1.5 3zM3 6.5h8M3 8.5h5",
@@ -337,7 +355,8 @@ class BeanTabBuildMixin:
         self.flavorselector.setToolTip(QApplication.translate("tilauscope_beancave","Select flavor notes based on a Flavor Wheel."))
 
         # ── Blend component widgets ─────────────────────────────────────────
-        _initial_list = [QApplication.translate("tilauscope_beancave","N/A - Select a bean")]
+        _initial_list = [QApplication.translate("tilauscope_beancave","N/A - Select a bean"),
+                         QApplication.translate("tilauscope_beancave", "Other")]
         self.bean2_combo = QComboBox()
         self.bean2_combo.setItemDelegate(QStyledItemDelegate())
         self.bean2_combo.setView(QListView())
@@ -717,8 +736,19 @@ class BeanTabBuildMixin:
             f"background:{tint('ACCENT', 12)};border-bottom:1px solid {THEME['BORDER']};"
         )
 
-        # ── Actions bar — une seule ligne ──────────────────────────────────
-        # Primaires (Update/Add/Clear/Delete) | séparateur | Secondaires (Roast…Flavors)
+        # The guided assistant and its new-crop shortcut; both now open from
+        # the catalogue and the sheet, these stay as their enabled-state holders.
+        self.new_sack_button = QPushButton("+ " + QApplication.translate("tilauscope_beancave", "New sack"))
+        self.new_sack_button.setToolTip(QApplication.translate(
+            "tilauscope_beancave",
+            "Register an incoming bag of green coffee with a step-by-step "
+            "assistant: new bean, restock or new crop — sack labelling stays "
+            "optional."))
+        self.new_sack_button.clicked.connect(self._open_new_sack_wizard)
+        self.new_crop_button = QPushButton("🌱 " + QApplication.translate("tilauscope_beancave", "New crop"))
+        self.new_crop_button.clicked.connect(self._open_new_crop_wizard)
+
+        # ── Actions bar — roast first, then the plan, sharing, delete apart ──
         _actions_widget = QWidget()
         _actions_widget.setObjectName("BcActionBar")
         # Cibler uniquement le widget lui-même — ne pas propager aux boutons enfants
@@ -729,69 +759,74 @@ class BeanTabBuildMixin:
             f"}}"
         )
         _actions_layout = QHBoxLayout(_actions_widget)
-        _actions_layout.setContentsMargins(8, 5, 8, 5)
-        _actions_layout.setSpacing(5)
-
-        # Primaires
-        # "New sack" guided assistant — head of the primary zone
-        # (validated mock v2: all buttons live in the bottom action bar)
-        self.new_sack_button = QPushButton("+ " + QApplication.translate("tilauscope_beancave", "New sack"))
-        self.new_sack_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.new_sack_button.setStyleSheet(
-            f"QPushButton {{ background: {THEME['ACCENT']}; color: {THEME['BG']};"
-            f" border: none; border-radius: 6px; padding: 5px 14px; font-weight: 700; }}"
-            f"QPushButton:hover {{ background: {THEME['LAVENDER']}; }}")
-        self.new_sack_button.setToolTip(QApplication.translate(
-            "tilauscope_beancave",
-            "Register an incoming bag of green coffee with a step-by-step "
-            "assistant: new bean, restock or new crop — sack labelling stays "
-            "optional."))
-        self.new_sack_button.clicked.connect(self._open_new_sack_wizard)
-        _actions_layout.addWidget(self.new_sack_button)
-
-        # Shortcut of the same assistant, locked on the selected record
-        self.new_crop_button = QPushButton("🌱 " + QApplication.translate("tilauscope_beancave", "New crop"))
-        self.new_crop_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.new_crop_button.setStyleSheet(
-            f"QPushButton {{ background: transparent; color: {THEME['ACCENT']};"
-            f" border: 1px solid {THEME['BORDER']}; border-radius: 6px;"
-            f" padding: 5px 12px; font-weight: 600; }}"
-            f"QPushButton:hover {{ border-color: {THEME['ACCENT']}; }}"
-            f"QPushButton:disabled {{ color: {THEME['SUBTEXT']}; }}")
-        self.new_crop_button.setToolTip(QApplication.translate(
-            "tilauscope_beancave",
-            "Start the next harvest of the selected coffee: origin, process "
-            "and variety are inherited, you only enter the new year, the "
-            "weight and the measurements of the lot."))
-        self.new_crop_button.clicked.connect(self._open_new_crop_wizard)
-        _actions_layout.addWidget(self.new_crop_button)
-        _sep_ns = QFrame()
-        _sep_ns.setFrameShape(QFrame.Shape.VLine)
-        _sep_ns.setFixedHeight(20)
-        _sep_ns.setStyleSheet(f"color:{THEME['BORDER']};max-width:1px;")
-        _actions_layout.addWidget(_sep_ns)
-
-        # Update/Clear/Flavors/AI are absorbed by the sheet's ✎ zone editors; the
-        # widgets stay alive (hidden) so their enabled-state code paths still work.
+        _actions_layout.setContentsMargins(10, 7, 10, 7)
+        _actions_layout.setSpacing(8)
         _actions_layout.addWidget(self.roast)
-        _actions_layout.addWidget(self.generate_label_button)
-        _actions_layout.addWidget(self.generate_qr_button)
-        _actions_layout.addWidget(self.generate_card_button)
+        _actions_layout.addWidget(self.plan_button)
 
-        _sep_crud = QFrame()
-        _sep_crud.setFrameShape(QFrame.Shape.VLine)
-        _sep_crud.setFixedHeight(20)
-        _sep_crud.setStyleSheet(f"color:{THEME['BORDER']};max-width:1px;")
-        _actions_layout.addWidget(_sep_crud)
-        _actions_layout.addWidget(self.add_button)
+        # Label, QR and card are one gesture — sharing the coffee — behind one
+        # button; the three buttons stay the source of truth for enabled state.
+        self.share_button = QPushButton(
+            QApplication.translate("tilauscope_beancave", "Share & print").replace("&", "&&") + "  ▾")
+        self.share_button.setStyleSheet("QPushButton::menu-indicator { image: none; width: 0; }")
+        self.share_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.share_button.setToolTip(QApplication.translate(
+            "tilauscope_beancave", "Print a label, make a QR code or a shareable card of this coffee."))
+        _share_menu = QMenu(self.share_button)
+        _share_menu.setStyleSheet(menu_qss())
+        _share_actions = []
+        for _text, _btn in (
+                (QApplication.translate("tilauscope_beancave", "Print a label"), self.generate_label_button),
+                (QApplication.translate("tilauscope_beancave", "QR code"), self.generate_qr_button),
+                (QApplication.translate("tilauscope_beancave", "Shareable card (image)"), self.generate_card_button)):
+            _act = _share_menu.addAction(_text)
+            _act.triggered.connect(_btn.click)
+            _share_actions.append((_act, _btn))
+            _btn.setVisible(False)
+        _share_menu.aboutToShow.connect(
+            lambda: [act.setEnabled(btn.isEnabled()) for act, btn in _share_actions])
+        self.share_button.setMenu(_share_menu)
+        _actions_layout.addWidget(self.share_button)
 
-        for _hidden in (self.update_button, self.clear_button,
+        for _hidden in (self.update_button, self.clear_button, self.add_button, self.new_crop_button,
                         self.inject_from_ai_button, self.flavorselector):
             _hidden.setVisible(False)
 
-        # Spacer + Delete isolé à droite
+        # Delete isolé à droite, en icône seule
         _actions_layout.addStretch(1)
+        self.remove_button.setText("")
+        self.remove_button.setIconSize(QSize(16, 16))
+        self.remove_button.setFixedSize(36, 34)
         _actions_layout.addWidget(self.remove_button)
+
+        # « + New sack ▾ » heads the catalogue: the guided assistant on a click,
+        # the expert form in its menu.
+        self.new_sack_tool = QToolButton()
+        self.new_sack_tool.setText(QApplication.translate("tilauscope_beancave", "New sack"))
+        self.new_sack_tool.setIcon(svg_icon("M12 5v14M5 12h14", THEME['BG'], 15, 2.4))
+        self.new_sack_tool.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.new_sack_tool.setToolTip(self.new_sack_button.toolTip())
+        self.new_sack_tool.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.new_sack_tool.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        self.new_sack_tool.clicked.connect(self._open_new_sack_wizard)
+        _sack_menu = QMenu(self.new_sack_tool)
+        _sack_menu.setStyleSheet(menu_qss())
+        _sack_menu.addAction(QApplication.translate("tilauscope_beancave", "New sack — guided"),
+                             self._open_new_sack_wizard)
+        _sack_menu.addAction(QApplication.translate("tilauscope_beancave", "Add — expert form"),
+                             self.add_button.click)
+        self.new_sack_tool.setMenu(_sack_menu)
+        # One piece, as drawn: the chevron opens the expert form, no divider.
+        self.new_sack_tool.setFixedHeight(38)
+        self.new_sack_tool.setStyleSheet(
+            f"QToolButton {{ background:{THEME['ACCENT']};color:{THEME['BG']};border:none;"
+            f"border-radius:8px;padding:0 26px 0 10px;font-weight:700;font-size:13px; }}"
+            f"QToolButton:hover {{ background:{THEME['LAVENDER']}; }}"
+            f"QToolButton::menu-button {{ border:none;width:20px;"
+            f"border-top-right-radius:8px;border-bottom-right-radius:8px; }}"
+            f"QToolButton::menu-arrow {{ width:9px;height:9px; }}"
+            + tooltip_qss())
+        self.new_sack_button.setVisible(False)
 
         # ── Pane droit assembly ─────────────────────────────────────────────
         _right_pane = QWidget()
@@ -804,10 +839,16 @@ class BeanTabBuildMixin:
         self.bean_sheet = BeanSheetWidget()
         self.bean_sheet.editRequested.connect(self._open_zone_editor)
         self.bean_sheet.sackReleased.connect(self._on_sack_released)
+        self.bean_sheet.tasteRequested.connect(self._taste_from_sheet)
+        self.bean_sheet.allRoastsRequested.connect(self._show_bean_roasts)
+        self.bean_sheet.newCropRequested.connect(self._open_new_crop_wizard)
         self._right_stack = QStackedWidget()
         self._right_stack.addWidget(self.bean_sheet)   # 0 — read
         self._right_stack.addWidget(_form_scroll)      # 1 — edit form
         _right_layout.addWidget(self._right_stack, 1)
+        # The sheet names its coffee itself; the bar only labels the edit form.
+        self._right_stack.currentChanged.connect(lambda i: self._notice_bar.setVisible(i == 1))
+        self._notice_bar.setVisible(False)
         _right_layout.addWidget(_actions_widget)
 
         # ── Pane gauche : datatable ─────────────────────────────────────────
@@ -819,7 +860,9 @@ class BeanTabBuildMixin:
         # layout but hidden — it remains the selection model (row == green_beans
         # index) every code path relies on.
         self.catalogue_list = CatalogueListWidget()
+        self.catalogue_list.memory_for = self._catalogue_memories
         self.catalogue_list.rowActivated.connect(self._on_catalogue_row_activated)
+        self.catalogue_list.lead_tools.insertWidget(0, self.new_sack_tool)
         _left_layout.addWidget(self.catalogue_list, 1)
         _left_layout.addWidget(self.datatable)
         self.datatable.hide()

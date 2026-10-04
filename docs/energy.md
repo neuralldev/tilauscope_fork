@@ -51,41 +51,38 @@ is a power reading. Both are needed.
 4. **Name it**: with that line selected, the buttons **⚡ Use as roaster** and **💨 Use as
    extractor** appear under the list as soon as the topic ends in *Power* or the unit is W. Press
    the one that matches. It writes the name — **roaster** or **extractor** — and sets **Unit** to
-   **W** in one go. Typing the name and choosing W by hand does exactly the same.
+   **W** in one go. Typing the name and choosing W by hand does exactly the same. If another line
+   already carries that name, the name moves to the selected line and the other line is left with
+   no name, ready to be named again. Once a line is in use, ⚡ or 💨 replaces its line number.
 5. **Check it**: **Check sensor** reads the selected line once from the broker and reports the
    power it got. A meter that is silent at that moment is still kept.
 6. **Repeat steps 3 to 5 for the extractor**, if it has its own meter. If instead it is plugged
    into the roaster's meter, see *One meter behind the other* below.
 7. **Save with OK**, then **turn monitoring off and on again**: the sensor list is read each time
    monitoring starts.
-8. **Confirm**: the ⚡ pill appears in the header. Open it and unfold **⚙ Sources** — each source
-   reads **Roaster — zwave/154/49/0/Power · W · last reading 4 s ago**. The meter is in use.
+8. **Confirm**: after the next roast, its **Energy** figure in **BeanCave → Roasts** reads
+   **Measured**. The meter is in use.
 
 Nothing else is required: the energy is counted from the sensor itself, whether or not it is also
 added as an extra device. Adding the MQTT extra device as well draws the power on the roast graph
 and keeps it in the roast file, like any other channel.
 
-!!! note "When the pill does not appear, or a source is not used"
-    No pill at all, with monitoring on, means that no sensor is named **roaster** or **extractor**:
-    go back to step 4 (spaces and capitals in the name do not matter).
+!!! note "When a roast shows no energy, or a source is not used"
+    A source reading **Not tracked** on a roast that had a meter was not usable as set up. Check,
+    in the **Sensors** list:
 
-    Once the pill is there, **⚙ Sources** in the energy sheet names the problem for each source,
-    and **Set up meter** opens the Sensors list scrolled into view, with the first sensor still
-    missing its unit selected:
-
-    - *no MQTT sensor named "extractor"* — only the roaster has a meter, which is fine unless the
-      extractor should be counted;
-    - *sensor "roaster" is not set to W: unit not confirmed* — step 4 was not done;
-    - *two sensors are named "roaster": keep one* — neither is used until one is renamed;
-    - *no reading yet* — the sensor is set up but nothing has arrived from the broker: check the
-      topic, the broker connection, and the meter itself.
+    - its line shows ⚡ or 💨 in place of its number — if not, it is not named **roaster** or
+      **extractor** (step 4; spaces and capitals in the name do not matter), or its **Unit** is not
+      **W**;
+    - **Check sensor** gets a value — if not, check the topic, the broker connection, and the
+      meter itself.
 
 !!! note "One meter behind the other"
     When the extractor is plugged into the same meter as the roaster, the roaster reading already
-    includes it. Tick **Extractor is plugged into the roaster meter** under **⚙ Sources** in the
-    energy sheet: the extractor is then shown as part of the roaster reading and never added a
-    second time. The setting applies from the next monitoring session, or straight away before
-    START.
+    includes it. Tick **Extractor is plugged into the roaster meter**, under the **Sensors** list,
+    and save with **OK**: the extractor is then shown as part of the roaster reading and never
+    added a second time. The setting applies from the next monitoring session, or straight away
+    when saved before START.
 
 !!! tip "Meters that report only on change"
     Many smart plugs send a reading when the power changes, plus a periodic report — about once a
@@ -95,66 +92,45 @@ and keeps it in the roast file, like any other channel.
     sooner.
 
 <!-- CAPTURE 15.2 [scene:config_energy] — TilauScope Config → INTEGRATIONS, the Sensors list with a line
-"roaster" on topic zwave/154/49/0/Power selected, Unit on W, and the "Power reading detected." bar under the list
-with its ⚡ Use as roaster and 💨 Use as extractor buttons. -->
+"roaster" on topic zwave/154/49/0/Power selected, Unit on W, ⚡ and 💨 in place of the line numbers of the
+roaster and extractor lines, and the "Power reading detected." bar under the list with its ⚡ Use as roaster
+and 💨 Use as extractor buttons. -->
 
 ![The MQTT sensor list with a power meter selected and the Use as roaster and Use as extractor buttons.](assets/energy-15.2.png)
 
 ---
 
-## Reading it during a session
+## After the roast
 
-While monitoring is on and a power source exists, a pill appears on the second line of the header,
-just before the emergency heat cut: **⚡ 1.28 kW · 0.184 kWh ●** — the power now, and the energy
-used since monitoring was turned on. Its outline takes the colour of the figure's
-[provenance](glossary.md#energy-provenance), and hovering it names that provenance in words. It
-asks for nothing during the roast: energy never calls for a gesture on the machine.
+Energy is counted from the moment monitoring starts, not from START: the energy of the preheat is
+kept even though Artisan itself records nothing before START. Nothing is shown while you roast —
+energy never calls for a gesture on the machine.
 
-Pressing the pill opens the **energy sheet**, a floating window that can stay open beside the
-roast:
+Each roast saves its energy record with it, preheat included. Opening the roast again — right
+after STOP or months later — gives the same figures, recalculated on its milestones: moving
+CHARGE or DROP afterwards moves the periods with them.
 
-- **Power now** and the **total** since monitoring started. The total is only called *Total* when
-  every expected source was tracked over the whole period; otherwise it reads **Known
-  consumption**, and the line at the bottom names what is missing.
+**BeanCave → Roasts** shows an **Energy** figure beside the four others: the roast's kWh, with the
+kWh per kg and the [provenance](glossary.md#energy-provenance) underneath. Its **›** opens the
+**energy sheet** of that roast, a floating window:
+
+- **The total** since monitoring started. It is only called *Total* when every expected source was
+  tracked over the whole period; otherwise it reads **Known consumption**, and the line at the
+  bottom names what is missing.
 - **The power curve**, in watts, on the roast's own clock — time counted from CHARGE, negative
   during the preheat, with CHARGE and DROP marked. A dotted line is an estimate; a grey band
   marked *no reading* is time with no source at all. Hovering the curve gives the time and the
   power at that point.
 - **Three periods**: **Preheat** (monitoring ON to CHARGE), **Roast** (CHARGE to DROP) and
   **Cooling** (DROP to monitoring OFF), each in kWh. Preheat and Cooling also count any wait at
-  either end of the session; hovering a period gives its exact bounds.
-  The period in progress is outlined. Hovering **Roast**, once dry end and first crack are
-  marked, splits it into drying, Maillard and development.
+  either end of the session; hovering a period gives its exact bounds. Hovering **Roast**, once
+  dry end and first crack are marked, splits it into drying, Maillard and development.
 - **One line per source**, with its energy and its provenance, and a short note when something is
   off — a meter that fell silent, or a figure that is only estimated.
 - **Roast energy per kg green** — the roast's energy divided by the green weight
-  ([kWh per kg green](glossary.md#kwh-per-kg-green)). It is shown only
-  once DROP is marked, the green weight is known and every expected source covered the whole
-  roast; otherwise it reads *—* with the reason.
-
-The session follows monitoring, not recording: the energy of the preheat is kept even though
-Artisan itself records nothing before START. Closing the sheet, or never opening it, changes
-nothing to what is counted.
-
-<!-- CAPTURE 15.0 [scene:energy_live] — mid-Maillard, a roaster meter named "roaster" (unit W): the ⚡ pill of the header, and the
-energy sheet it opens, outlined in blue — power now, Known consumption, the power curve in W with CHARGE marked and
-the Roast period outlined, the Roaster line reading Measured. -->
-
-![The energy pill of the header and the energy sheet it opens during a roast.](assets/energy-15.0.png)
-
----
-
-## After the roast
-
-Each roast saves its energy record with it, preheat included. Opening the roast again — right
-after STOP or months later — gives the same figures, recalculated on its milestones: moving
-CHARGE or DROP afterwards moves the periods with them.
-
-- **The roast review** carries one line: **⚡ 0.105 kWh roast · 0.300 kWh/kg green · Measured ›**.
-  Pressing it opens the energy sheet for that roast.
-- **BeanCave → Roasts** shows an **Energy** figure beside the four others: the roast's kWh, with
-  the kWh per kg and the provenance underneath. It opens the energy sheet of that roast, read-only
-  — the live controls (**Set up meter**, **⚙ Sources**) are not offered for a roast already made.
+  ([kWh per kg green](glossary.md#kwh-per-kg-green)). It is shown only once DROP is marked, the
+  green weight is known and every expected source covered the whole roast; otherwise it reads *—*
+  with the reason.
 
 <!-- CAPTURE 15.1 [scene:energy_saved] — the energy sheet of a saved roast opened from its Energy figure, headed "Rebuilt from the
 saved curve": the power curve with CHARGE and DROP, the three periods, and the kWh per kg of green. The Energy

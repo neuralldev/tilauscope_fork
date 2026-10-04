@@ -29,11 +29,10 @@ from tilauscope.cave.analysis import AnalysisMixin
 from tilauscope.cave.bean_tab import BeanTabMixin
 from tilauscope.cave.bean_tab_build import BeanTabBuildMixin
 from tilauscope.cave.lifecycle import LifecycleMixin
-from tilauscope.cave.plan_tab import PlanTabMixin
 from tilauscope.cave.printing import PrintingMixin
 from tilauscope.cave.viewer import ViewerMixin
 from tilauscope.cave.viewer_multi import ViewerMultiMixin
 from tilauscope.cave.viewer_plot import ViewerPlotMixin
 
-__all__ = ['AmbientMixin', 'AnalysisMixin', 'BeanTabBuildMixin', 'BeanTabMixin', 'LifecycleMixin', 'PlanTabMixin',
+__all__ = ['AmbientMixin', 'AnalysisMixin', 'BeanTabBuildMixin', 'BeanTabMixin', 'LifecycleMixin',
            'PrintingMixin', 'ViewerMixin', 'ViewerMultiMixin', 'ViewerPlotMixin']

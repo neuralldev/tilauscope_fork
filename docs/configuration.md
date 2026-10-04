@@ -28,7 +28,7 @@ GENERAL, CONTROLS, SENSORS, DETECTION, INTEGRATIONS, PRINTING, BEANCAVE. -->
 
 **Model** selects the active roaster profile from sixteen predefined machines. This is the
 single most consequential setting in the whole dialog: it is what makes the
-[roast plan](the-roast-plan.md), the pre-roast [insights](preparing-a-roast.md#judging-the-batch-before-it-starts)
+[roast plan](the-roast-plan.md), the pre-roast [roadmap](preparing-a-roast.md#judging-the-batch-before-it-starts)
 and the guidance during roasting specific to your machine rather than generic. Leaving it unset
 does not stop TilauScope from working, but every recommendation it gives will be a guess rather
 than something tuned to your drum.
@@ -238,7 +238,8 @@ takes a moment, needs more than the three seconds used by default. **Keepalive**
 after which the connection is checked; see [keepalive](glossary.md#keepalive).
 
 Below the broker settings, **Sensors** lists the individual readings taken from that broker. Each
-line names one sensor: an **ID** to refer to it by, the **Topic** it is published on, the
+line names one sensor: an **ID** to refer to it by — each sensor has its own, two lines cannot share
+one — the **Topic** it is published on, the
 **Command** — the field to read inside the message when the message carries several values —
 a **Multiplier** and **Divider** to bring the raw figure into the unit you want, and the **Unit**
 that figure is then expressed in. Every cell is edited directly in the list.
@@ -247,7 +248,9 @@ that figure is then expressed in. Every cell is edited directly in the list.
 power reading, or the dash for anything else — humidity, fan speed, pressure. A power sensor named
 **roaster** or **extractor** with the unit **W** feeds the [Energy](energy.md) view; for a line whose
 topic ends in *Power*, the buttons **⚡ Use as roaster** and **💨 Use as extractor** under the list
-set both at once. A temperature is converted on
+set both at once, and **Extractor is plugged into the roaster meter** says that one meter counts
+both — see [Energy](energy.md#setting-up-a-meter-step-by-step). The line the Energy view uses shows
+⚡ (roaster) or 💨 (extractor) in place of its line number. A temperature is converted on
 arrival into the unit the application is working in, so a probe publishing in Celsius reads
 correctly during a Fahrenheit session and the other way round. Multiplier and divider are applied
 first, the conversion second: a probe sending tenths of a degree needs a divider of 10 *and* its
@@ -257,7 +260,9 @@ obtained. A sensor whose topic happens to be silent at that moment is still kept
 there to confirm a reading, not to grant permission.
 
 The list is saved along with the rest of the settings when the window is closed with OK, and
-discarded on Cancel. It can be edited whether or not the broker is reachable; only **Check
+discarded on Cancel. An ID that another line already carries turns red, with a note under the list,
+and OK refuses to save until one is renamed — capitals and spaces around the name do not make two
+names different. OK also refuses a line that has a topic but no ID. It can be edited whether or not the broker is reachable; only **Check
 sensor** needs a live connection.
 
 A sensor only ever shows what its publisher sends. Two settings on the publishing side decide
@@ -330,10 +335,12 @@ someone else. The notice is never raised with a batch in the drum — a request 
 refused with an explanation instead, and works normally once the roast is over.
 
 **Location lookup** covers the one place TilauScope needs to know where you are: the online
-weather in the roasting plan. Finding your town means handing your internet address to a lookup
-service outside the European Union, so the first time you use it TilauScope says so and lets you
-choose between looking it up and typing the three values yourself — choosing to type them puts
-the cursor in the first of the three.
+weather of the [roast setup sheet](preparing-a-roast.md#what-the-coffee-and-the-room-are-doing),
+offered when no ambient probe is configured. It reads the temperature, humidity, pressure and
+altitude of your town. Finding your town means handing your internet address to a lookup service outside the
+European Union, so the first time you use it TilauScope says so and lets you choose between
+looking it up and typing the three values yourself — choosing to type them puts the cursor in the
+first of the three.
 
 Both answers are shown here with an **Ask me again** button, which forgets the answer so the
 notice appears once more the next time the feature is used. A line reading *not asked yet* means

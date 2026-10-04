@@ -501,6 +501,7 @@ class RoastCurveWidget(QWidget):
     #: The operator keeps, or drops, the correction staged on a saved roast.
     corrections_save_requested = pyqtSignal()
     corrections_undo_requested = pyqtSignal()
+    lanes_requested = pyqtSignal()
 
     def __init__(self, aw: Any, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -3283,6 +3284,9 @@ class RoastCurveWidget(QWidget):
         self.update()
 
     def _set_lane_mode(self, mode: str) -> None:
+        if self._comparison and not self._static_lanes:
+            # Choosing how the strips are drawn asks to see them: the card's switch follows.
+            self.lanes_requested.emit()
         if mode == self._lane_mode:
             return
         self._lane_mode = mode

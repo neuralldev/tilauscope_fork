@@ -467,7 +467,7 @@ def ensure_geo_consent(parent: QWidget | None) -> bool:
           'TilauScope does not know where you are. To read the weather it '
           'first asks ip-api.com, a service outside the European Union, '
           'which turns your internet address into a town — then asks '
-          'Open-Meteo for that town\'s temperature, humidity and pressure.'),
+          'Open-Meteo for that town\'s temperature, humidity, pressure and altitude.'),
         QApplication.translate('tilauscope_beancave',
           'Your internet address is what identifies your connection. Neither '
           'service is told anything about you or your coffee.'),

@@ -2083,17 +2083,21 @@ class serialport:
         tx = self.aw.qmc.timeclock.elapsedMilli()
         if self.aw.bleTilauScopeDeviceName is not None and self.aw.bleTilauScopeDevice is not None:
             self.aw.tilauScopeBlock = self.aw.bleTilauScopeDevice.get_ambient("AMBIENT")
-            # t1 = temperature (canal principal), t2 = humidity (canal secondaire)
-            t2 = self.aw.tilauScopeBlock.temperature if self.aw.qmc.mode == 'C' else fromCtoFstrict(self.aw.tilauScopeBlock.temperature)
-            t1 = self.aw.tilauScopeBlock.humidity
-            #_logd.debug(f"tilauscope read 12 temp={t2:.1f} hum={t1:.1f} valid={self.aw.tilauScopeBlock.valid}")
+            if self.aw.tilauScopeBlock.valid:
+                # t1 = temperature (canal principal), t2 = humidity (canal secondaire)
+                t2 = self.aw.tilauScopeBlock.temperature if self.aw.qmc.mode == 'C' else fromCtoFstrict(self.aw.tilauScopeBlock.temperature)
+                t1 = self.aw.tilauScopeBlock.humidity
+                #_logd.debug(f"tilauscope read 12 temp={t2:.1f} hum={t1:.1f} valid={self.aw.tilauScopeBlock.valid}")
+            else: ## TILAU ## a failed read is no reading, not 0
+                t1 = t2 = -1
         else:
             t1 = t2 = -1
         return tx, t1, t2  # time, ch2:humidity, ch1:temperature
 
     def TILAUSCOPE34(self) -> tuple[float,float,float]:  # fetching data from previous read, device 12 must be set before 34
         tx = self.aw.qmc.timeclock.elapsedMilli()
-        if self.aw.bleTilauScopeDeviceName is not None and self.aw.bleTilauScopeDevice is not None and self.aw.tilauScopeBlock is not None:
+        ## TILAU ## an invalid block is no reading
+        if self.aw.bleTilauScopeDeviceName is not None and self.aw.bleTilauScopeDevice is not None and self.aw.tilauScopeBlock is not None and self.aw.tilauScopeBlock.valid:
             t2 = self.aw.tilauScopeBlock.pressure
             t1 = self.aw.tilauScopeBlock.altitude  # already in metres from parse_full_message (alt_x10 / 10)
             #_logd.debug(f"tilauscope read 34 pressure={t2:.1f}hPa alt={t1:.1f}m valid={self.aw.tilauScopeBlock.valid}")
@@ -2126,19 +2130,20 @@ class serialport:
         FIX: résolution par sensor.id plutôt que par index brut (robuste au réordonnancement).
         Conversion °C/°F selon l'unité déclarée du capteur, à la frontière d'acquisition.
         """
-        if (self.aw.mqtt_database is None
+        ## TILAU ## read once: monitoring OFF clears them on the GUI thread while this runs
+        database = self.aw.mqtt_database
+        ports = self.aw.qmc.tilau_mqtt_ports
+        if (database is None
                 or self.aw.tilauscope_mqtt_client is None
-                or self.aw.qmc.tilau_mqtt_ports is None):
+                or ports is None):
             return -1.0
-        sensors = self.aw.mqtt_database.sensors
+        sensors = database.sensors
         if index >= len(sensors):
             return -1.0
         sensor_id = sensors[index].id
         # qmc.mode is the unit the application works in: a sensor that declares a
         # temperature unit is converted into it, a unitless one passes through.
-        val = self.aw.qmc.tilau_mqtt_ports.poll_sensor_by_id(
-            sensor_id, self.aw.mqtt_database, self.aw.qmc.mode
-        )
+        val = ports.poll_sensor_by_id(sensor_id, database, self.aw.qmc.mode)
         return val if val is not None else -1.0
 
     def TILAUMQTTBRIDGE12(self) -> tuple[float, float, float]:

@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 from PyQt6.QtWidgets import QApplication
 
 from tilauscope.tilauscope_types import (
-    get_ror_ideal_band, standardization_map, weight_loss_target_from_plan,
+    get_ror_ideal_band, standardization_map,
 )
 
 if TYPE_CHECKING:
@@ -62,10 +62,6 @@ _LOAD_CRIT_HI = 115.0
 _BEAN_COOL = 18.0
 _BEAN_WARM = 30.0
 
-# First-crack BT estimate by heater class (°C)
-_FC_BT_RADIANT = 187.0
-_FC_BT_GENERIC = 198.0
-
 
 def _c_to_f(c: float) -> float:
     return c * 1.8 + 32.0
@@ -93,13 +89,6 @@ class PhaseBand:
 
 
 @dataclass(frozen=True)
-class Target:
-    label: str
-    value_text: str
-    known: bool
-
-
-@dataclass(frozen=True)
 class LoadInfo:
     pct: float | None
     severity: str
@@ -112,7 +101,6 @@ class RoastInsights:
     signals: list[Signal] = field(default_factory=list)
     load: LoadInfo | None = None
     bands: list[PhaseBand] = field(default_factory=list)
-    targets: list[Target] = field(default_factory=list)
     strategy: str = ""
     roaster_known: bool = False
 
@@ -159,13 +147,13 @@ def _moisture_signal(moisture: float) -> Signal | None:
                       f"{moisture:.1f} % · " + QApplication.translate("tilauscope_roast_review", "high"),
                       "warn",
                       QApplication.translate("tilauscope_roast_review",
-                          "High steam load → longer drying, slower TP recovery. Don't rush or it under-develops."))
+                          "High steam load → it needs more energy at the start; a high TP is the water, not a runaway. Don't cut the burner early or it under-develops."))
     if moisture < _MOISTURE_LOW:
         return Signal("moisture", label,
                       f"{moisture:.1f} % · " + QApplication.translate("tilauscope_roast_review", "low"),
                       "warn",
                       QApplication.translate("tilauscope_roast_review",
-                          "Dry/fragile → shorter drying, scorch risk. Ease heat early."))
+                          "Dry/fragile → the RoR peaks harder at the same setup, scorch risk. Ease heat early."))
     return Signal("moisture", label,
                   f"{moisture:.1f} % · " + QApplication.translate("tilauscope_roast_review", "normal"),
                   "ok",
@@ -255,7 +243,7 @@ def _bean_temp_note(bean_temp: float | None, mode: str) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Load, bands, targets, strategy
+# Load, bands, strategy
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _load_info(green_weight: float, ctx: "RoasterContext | None",
@@ -306,25 +294,6 @@ def _bands(mode: str) -> list[PhaseBand]:
         lo, hi = get_ror_ideal_band(phase, mode)
         out.append(PhaseBand(name, lo, hi, unit))
     return out
-
-
-def _targets(ctx: "RoasterContext | None", mode: str) -> list[Target]:
-    if ctx is not None:
-        fc_c = _FC_BT_RADIANT if getattr(ctx, "is_radiant_electric", False) else _FC_BT_GENERIC
-        fc_val = fc_c if mode == "C" else _c_to_f(fc_c)
-        unit = "°F" if mode == "F" else "°C"
-        suffix = (" (" + QApplication.translate("tilauscope_roast_review", "radiant") + ")"
-                  if getattr(ctx, "is_radiant_electric", False) else "")
-        fc = Target(QApplication.translate("tilauscope_roast_review", "FC BT"),
-                    f"≈{fc_val:.0f} {unit}{suffix}", True)
-    else:
-        fc = Target(QApplication.translate("tilauscope_roast_review", "FC BT"), "—", False)
-    return [
-        fc,
-        Target(QApplication.translate("tilauscope_roast_review", "DTR"), "—", False),
-        Target(QApplication.translate("tilauscope_roast_review", "Weight loss"), "—", False),
-        Target(QApplication.translate("tilauscope_roast_review", "Total time"), "—", False),
-    ]
 
 
 def _strategy(density: float, moisture: float, process_cls: str,
@@ -385,56 +354,6 @@ def _strategy(density: float, moisture: float, process_cls: str,
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Roast-plan integration — map the plan dict into the reserved Targets
-# ─────────────────────────────────────────────────────────────────────────────
-
-def targets_from_plan(plan: dict | None, mode: str = "C") -> list[Target] | None:
-    """Map the plan dict into the four panel targets (temperatures already in
-    native unit). Returns None when unavailable so the caller keeps heuristic targets."""
-    if not plan:
-        return None
-    unit = "°F" if mode == "F" else "°C"
-
-    def _val(key: str):
-        v = plan.get(key)
-        return None if v in (None, "", "N/A") else v
-
-    def _num(key: str):
-        v = _val(key)
-        if v is None:
-            return None
-        try:
-            return float(v)
-        except (TypeError, ValueError):
-            return None
-
-    chg = _num("Charge Temp")
-    fc  = _num("First Crack Temp")
-    dtr = _num("Target DTR")
-    tot = _val("Total Time")
-    # Weight loss follows the water and the development, not the colour alone —
-    # both come from the plan itself, so the panel promises what it planned.
-    wl  = weight_loss_target_from_plan(plan)
-    min_lbl = QApplication.translate("tilauscope_roast_review", "min")
-
-    return [
-        # Charge leads: it is the first figure the operator acts on, and the one
-        # the preheat PID is set from. It was computed and silently pushed into
-        # the PID field, but never stated.
-        Target(QApplication.translate("tilauscope_roast_review", "Charge"),
-               f"{chg:.0f} {unit}" if chg is not None else "—", chg is not None),
-        Target(QApplication.translate("tilauscope_roast_review", "FC BT"),
-               f"{fc:.0f} {unit}" if fc is not None else "—", fc is not None),
-        Target(QApplication.translate("tilauscope_roast_review", "DTR"),
-               f"{dtr:.1f} %" if dtr is not None else "—", dtr is not None),
-        Target(QApplication.translate("tilauscope_roast_review", "Weight loss"),
-               f"{wl.target:.1f} %" if wl else "—", wl is not None),
-        Target(QApplication.translate("tilauscope_roast_review", "Total time"),
-               f"{tot} {min_lbl}" if tot else "—", tot is not None),
-    ]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Public entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -465,7 +384,6 @@ def build_insights(
         signals=signals,
         load=_load_info(green_weight, ctx, bean_temp, mode),
         bands=_bands(mode),
-        targets=_targets(ctx, mode),
         strategy=_strategy(density, moisture,
                            _process_class(getattr(bean, "process", "")), ctx),
         roaster_known=ctx is not None,

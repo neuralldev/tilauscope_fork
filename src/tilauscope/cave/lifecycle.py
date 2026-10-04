@@ -36,8 +36,8 @@ from artisanlib.atypes import ProfileData
 
 from PyQt6.QtCore import (QMutex, QMutexLocker,QStandardPaths, Qt, pyqtSlot, QSettings, QThread, QPoint, QTimer, QEvent) # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
 from PyQt6.QtGui import ( QCloseEvent, QGuiApplication, QKeyEvent) # @UnusedImport @Reimport  @UnresolvedImport
-from PyQt6.QtWidgets import (QApplication, QComboBox, QSizeGrip, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QWidget, QTabWidget, # @UnusedImport @Reimport  @UnresolvedImport
-                                QGroupBox, QTableWidget, QHeaderView, QStyledItemDelegate, QListView, QFrame, QFileDialog, QMessageBox, QDialog, QDoubleSpinBox) # @UnusedImport @Reimport  @UnresolvedImport
+from PyQt6.QtWidgets import (QApplication, QComboBox, QSizeGrip, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QWidget, QTabWidget, QTabBar, # @UnusedImport @Reimport  @UnresolvedImport
+                                QTableWidget, QHeaderView, QStyledItemDelegate, QListView, QFrame, QFileDialog, QMessageBox, QDialog) # @UnusedImport @Reimport  @UnresolvedImport
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
@@ -154,8 +154,6 @@ class LifecycleMixin:
         self.roaster_manager:RoasterManager | None = None
         # Charger le fichier JSON (ajustez le chemin selon votre structure)
 
-        self.current_roaster_model = "" # Sera peuplé par load_settings
-        self.probe_override:bool = False
 
         # process uuid and actual filename loaded in artisan to preposition cursors
         self.uuid_pattern = re.compile(r'uuid: \s*([a-fA-F0-9-]{36})')
@@ -184,8 +182,6 @@ class LifecycleMixin:
         self.trigger_cache_refresh()
         self.cache_refresh_timer.start()
 
-        # Guards the datatable <-> plan-combo mirror against re-entering itself.
-        self._syncing_bean_selection: bool = False
         self.last_sorted_column = -1
         self.sort_order = Qt.SortOrder.AscendingOrder
         self.last_plot_data: dict|None = None
@@ -198,18 +194,9 @@ class LifecycleMixin:
         self.bleTilauAmbientDevice = None  # BeanCave-managed ambient probe (BME280), same pattern as Lebrew
 
         self.deviceID: str = ""
-        self.current_bean_name = ""
-        self.roast_plan_inputs: dict[str, QDoubleSpinBox] = {}
-        self.status_label: QLabel|None = None
-        self.input_group: QGroupBox|None = None
-        self.generate_plan_btn: QPushButton|None = None
-        self.injectinartisan_btn: QPushButton|None = None
         # Assigned, not merely annotated: the Roast Viewer enables its actions
         # as soon as the list is painted, before the first async load lands.
         self.lastprofiledata:ProfileData|None = None
-        # Ambient lookup (weather / probe) — one at a time, joined at teardown.
-        self._ambient_thread = None
-        self._ambient_worker = None
         self._alog_cache: dict[str, tuple[float, ProfileData]] = {}  # LRU cap = ALOG_CACHE_MAX
         # The cache is filled from the load thread as well as the GUI thread.
         self._alog_cache_lock = threading.Lock()
@@ -260,7 +247,6 @@ class LifecycleMixin:
                 if uuid_item and uuid_item.text() == b.uuid:
                     self.datatable.selectRow(row)
                     self.datatable.scrollToItem(uuid_item)
-                    QTimer.singleShot(600, self._update_roast_plan_ui_state)
                     break
 
         # by default disable all buttons
@@ -272,6 +258,7 @@ class LifecycleMixin:
         self.generate_qr_button.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
         self.generate_card_button.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
         self.roast.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
+        self.plan_button.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
         self.remove_button.setEnabled(False)
         self.new_crop_button.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
         self.update_ui_visibility()
@@ -539,6 +526,9 @@ class LifecycleMixin:
         # Refresh GUI views smoothly
         if self.initialized:
             self.list_alog_files()
+            self._refresh_bean_sheet()
+            if self.cave is not None:
+                self.catalogue_list.set_beans(self.cave.green_beans)
 
     def _cancel_threads(self) -> None:
         """Request stop + wait (briefly) for all background threads."""
@@ -565,30 +555,6 @@ class LifecycleMixin:
         # Same parenting, same fatal end: a scan of a slow or large directory
         # still running when the dialog is destroyed aborts the process.
         self._stop_list_scan()
-
-        # --- Ambient lookup (weather / probe) ---
-        if getattr(self, '_ambient_thread', None) is not None:
-            # Which slots were wired depends on which lookup ran, so drop every
-            # receiver rather than naming them: a reading landing during the
-            # wait would reach a half-destroyed dialog.
-            # Reading an attribute off a worker Qt already deleted raises
-            # RuntimeError, which getattr does not catch: same rule as the
-            # timers above, a raise here abandons every thread below.
-            try:
-                for signal_name in ('finished', 'error'):
-                    sig = getattr(self._ambient_worker, signal_name, None)
-                    if sig is None:
-                        continue
-                    try:
-                        sig.disconnect()
-                    except (TypeError, RuntimeError):
-                        pass
-                stop_worker_thread(self._ambient_thread, self._ambient_worker,
-                                   name="ambient lookup")
-            except RuntimeError:
-                pass  # already collected by Qt
-            self._ambient_thread = None
-            self._ambient_worker = None
 
         # --- Indexer (Cache load) ---
         if hasattr(self, '_indexer_thread') and self._indexer_thread is not None:
@@ -984,10 +950,7 @@ class LifecycleMixin:
     @pyqtSlot(object)
     def _on_roaster_loaded(self, mgr: RoasterManager) -> None:
         self.roaster_manager = mgr
-        # UI is already built at this point — just refresh the combo
-        if hasattr(self, 'roaster_combo'):
-            self._populate_roaster_list()
-            _log.info(f"Roasters loaded: {len(mgr.roasters)} entries")
+        _log.info(f"Roasters loaded: {len(mgr.roasters)} entries")
 
     @pyqtSlot()
     def _on_roaster_thread_done(self) -> None:
@@ -1021,7 +984,8 @@ class LifecycleMixin:
 
         # --- MODERN HEADER ---
         header = QHBoxLayout()
-        header.setContentsMargins(5, 2, 5, 4)
+        header.setContentsMargins(5, 4, 5, 6)
+        header.setSpacing(10)
 
         title_lbl = QLabel(QApplication.translate("tilauscope_beancave", "BEANCAVE"))
         title_lbl.setStyleSheet(f"color: {THEME['ACCENT']}; font-size: 18px; font-weight: 800; border: none; background: transparent;")
@@ -1044,8 +1008,6 @@ class LifecycleMixin:
             }}
         """)
 
-        header.addWidget(title_lbl)
-        header.addStretch()
         # QR scan entry point (spec wiki/QR-Scan-Spec.md §3.1) — the camera
         # only runs while the scan dialog is open, hence a button, never always-on.
         self.scan_qr_btn = QPushButton(QApplication.translate("tilauscope_beancave", "📷  SCAN"))
@@ -1090,25 +1052,36 @@ class LifecycleMixin:
             """)
             header.addWidget(self.open_tilauscope_btn)
         header.addWidget(self.close_btn)
+
         self.layout.addLayout(header)
 
         self.tab_widget = QTabWidget()
         self.main_tab = QWidget()
         self.roast_viewer_tab = QWidget()
-        self.roast_plan_tab = QWidget()
         self.storage_tab = QWidget()  # conservation / water-activity dashboard
-        self.status_label = QLabel()
-        self.input_group = QGroupBox()
 
         self.tab_widget.addTab(self.main_tab, QApplication.translate("tilauscope_beancave","Green Beans"))
         self.tab_widget.addTab(self.roast_viewer_tab, QApplication.translate("tilauscope_beancave","Roasts"))
-        self.tab_widget.addTab(self.roast_plan_tab, QApplication.translate("tilauscope_beancave","Roasting plan"))
         self.tab_widget.addTab(self.storage_tab, QApplication.translate("tilauscope_beancave","Storage"))
-        # refresh the TilauAmbient probe button state on entering the plan tab
+        # One line: the title and the tabs on the left, scan and close on the right.
+        # The tabs live in the header row, mirrored both ways with the tab widget,
+        # whose own bar is hidden — a corner widget is clipped to the bar's height.
+        self._header_tabs = QTabBar()
+        self._header_tabs.setDrawBase(False)
+        self._header_tabs.setExpanding(False)
+        for _i in range(self.tab_widget.count()):
+            self._header_tabs.addTab(self.tab_widget.tabText(_i))
+        self._header_tabs.currentChanged.connect(self.tab_widget.setCurrentIndex)
+        self.tab_widget.currentChanged.connect(self._header_tabs.setCurrentIndex)
+        self.tab_widget.tabBar().hide()
+        header.insertWidget(0, title_lbl)
+        header.insertSpacing(1, 14)
+        header.insertWidget(2, self._header_tabs, 0, Qt.AlignmentFlag.AlignBottom)
+        header.insertStretch(3, 1)
+        # the Storage tab polls its ambient sensor only while it is shown
         self.tab_widget.currentChanged.connect(self._on_beancave_tab_changed)
         self.setup_main_tab_ui()
         self.setup_roast_viewer_tab_ui()
-        self.setup_roast_plan_tab_ui()
         self.setup_storage_tab_ui()
         self.layout.addWidget(self.tab_widget)
 
@@ -1199,26 +1172,9 @@ class LifecycleMixin:
             self.C_WL_COLOR = float(settings.value(C_WL_COLOR_KEY, self.C_WL_COLOR))
             from tilauscope.roast_coach import DEFAULT_DURATION_RULES
             self.duration_rules = settings.value("duration_rules", dict(DEFAULT_DURATION_RULES))
-            self.current_roaster_model = settings.value("RoastPlan/RoasterModel", "", str)
         except Exception as e:
             _logd.warning(f"color prediction coefficients loading failed, falling back to defaults: {e}")
 
-        settings.beginGroup("ProbeDeviation")
-        self.probe_override = settings.value("ManualProbeSettings", False, bool)
-        if not hasattr(self, 'dev_inputs'):
-            return
-        for key, widgets in self.dev_inputs.items():
-            try:
-                start_widget, end_widget = widgets
-                # Read values, defaulting to 0.0 if not found
-                val_start = settings.value(f"{key}_start", 0.0, type=float)
-                val_end = settings.value(f"{key}_end", 0.0, type=float)
-
-                start_widget.setValue(val_start)
-                end_widget.setValue(val_end)
-            except Exception as e:
-                _logd.error(f"Error loading settings for {key}: {e}")
-        settings.endGroup()
 
     @pyqtSlot()
     def save_settings(self) -> None:
@@ -1231,18 +1187,6 @@ class LifecycleMixin:
         settings.setValue(C_WL_COLOR_KEY, self.C_WL_COLOR)
         settings.setValue("duration_rules",self.duration_rules)
         settings.setValue(self._LAST_ROAST_KEY, getattr(self, '_last_roast_uuid', ""))
-        settings.beginGroup("ProbeDeviation")
-        for key, widgets in self.dev_inputs.items():
-            try:
-                start_widget, end_widget = widgets
-                # Ensure we are saving raw floats
-                settings.setValue(f"{key}_start", float(start_widget.value()))
-                settings.setValue(f"{key}_end", float(end_widget.value()))
-            except (AttributeError, ValueError) as e:
-                _logd.warning(f"Could not save ProbeDeviation for {key}: {e}")
-                continue
-            settings.setValue("ManualProbeSettings", self.probe_override)
-        settings.endGroup()
 
         settings.sync() # Forces immediate write to disk
         _logd.debug("Settings saved successfully.")
@@ -1486,6 +1430,14 @@ class LifecycleMixin:
 
     @pyqtSlot()
     def on_click_roast_properties(self) -> None:
+        self._open_roast_setup("roast")
+
+    @pyqtSlot()
+    def on_click_roast_plan(self) -> None:
+        """The same setup sheet, opened on its PLAN tab: look before roasting."""
+        self._open_roast_setup("plan")
+
+    def _open_roast_setup(self, open_tab: str) -> None:
         selected_row_index = self.datatable.currentRow()
         if selected_row_index == -1:
             self._show_message(self, QApplication.translate("tilauscope_beancave","Error"), QApplication.translate("tilauscope_beancave","Select a line to start a Roast!"), QMessageBox.Icon.Warning)
@@ -1493,7 +1445,8 @@ class LifecycleMixin:
         if self.cave is None or not hasattr(self.cave, 'green_beans'):
             return
         from tilauscope.roast_properties import RoastSetupDialog
-        self.roast_properties_dialog = RoastSetupDialog(self.cave.green_beans[selected_row_index], self)
+        self.roast_properties_dialog = RoastSetupDialog(
+            self.cave.green_beans[selected_row_index], self, open_tab=open_tab)
         self.roast_properties_dialog.exec()
 
     def try_to_open_file(self, file_path: str):

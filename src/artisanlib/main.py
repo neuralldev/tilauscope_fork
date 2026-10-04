@@ -16033,14 +16033,13 @@ class ApplicationWindow(QMainWindow):
     def validateProfileDict(self, profile_dict:dict[str,Any], quiet:bool=True, validate_signature:bool = False) -> ProfileData:
         ta:TypeAdapter[ProfileData] = self.getProfileDataTypeAdapter()
         profile:ProfileData = ta.validate_python(profile_dict)
-        ## TILAU ## P2 extension key: validate the untouched Artisan contract,
-        ## then restore the opaque fork payload before hash verification. This
-        ## keeps signed/hashed .alogs round-trippable without adding a field to
-        ## ProfileData.
-        _tilau_snapshot = profile_dict.get('tilau_roast_plan_snapshot')
-        if isinstance(_tilau_snapshot, dict):
-            cast(dict[str, Any], profile)['tilau_roast_plan_snapshot'] = copyd.deepcopy(
-                _tilau_snapshot)
+        ## TILAU ## fork keys: validate the untouched Artisan contract, then
+        ## restore every tilau_* key (pydantic drops undeclared keys) before hash
+        ## verification. This keeps signed/hashed .alogs round-trippable without
+        ## adding fields to ProfileData.
+        for _tilau_key, _tilau_value in profile_dict.items():
+            if _tilau_key.startswith('tilau_'):
+                cast(dict[str, Any], profile)[_tilau_key] = _tilau_value # profile_dict is freshly parsed, never shared
         if self.official_build and validate_signature and ('version' not in profile or QVersionNumber.fromString(profile['version'])[0] >= QVersionNumber(4,2,0)):
 #        # testing:
 #        if validate_signature and 'version' in profile and 'signature' in profile:
@@ -18922,8 +18921,9 @@ class ApplicationWindow(QMainWindow):
                 if val is not None and isinstance(val, dict):
                     # Use mashumaro to turn the dictionary back into a class instance
                     self.mqttConfig = MQTTConfig.from_dict(val)
-                else:
-                    # Initialize with defaults if no settings found or wrong type
+                elif self.mqttConfig is None:
+                    ## TILAU ## defaults on a first load only: a theme or machine preset
+                    ## carries no such key and keeps the current configuration
                     self.mqttConfig = MQTTConfig()
             except (NameError, Exception) as e:
                 _log.error(f"Failed to load MQTT configuration: {e}")
@@ -18934,8 +18934,9 @@ class ApplicationWindow(QMainWindow):
                 if val is not None and isinstance(val, dict):
                     # Use mashumaro to turn the dictionary back into a class instance
                     self.tilau_aiConfig = TilauAIConfig.from_dict(val)
-                else:
-                    # Initialize with defaults if no settings found or wrong type
+                elif self.tilau_aiConfig is None:
+                    ## TILAU ## defaults on a first load only: a theme or machine preset
+                    ## carries no such key and keeps the current configuration
                     self.tilau_aiConfig = TilauAIConfig()
             except (NameError, Exception) as e:
                 _log.error(f"Failed to load AI configuration: {e}")
@@ -22341,22 +22342,23 @@ class ApplicationWindow(QMainWindow):
         self.quitAction.setEnabled(False)
         try:
             unsaved_changes = self.qmc.safesaveflag
-    
-            ## TILAU ##
-            # when Artisan stops, stops all beancave activities as well FIX 2026/02/08
-            if hasattr(self,"beancaveWindow") :
-                if self.beancaveWindow is not None:
-                    self.beancaveWindow.close()
 
-            ## TILAU ## stop the app-level web host (replaces BeanCave's aboutToQuit hook)
-            if getattr(self, 'tilau_web_host', None) is not None:
-                try:
-                    self.tilau_web_host.stop()
-                except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
-                    _log.debug(f"tilau_web_host stop: {e}")
- 
             if self.qmc.checkSaved(): # if not canceled
                 _log.info('MODE: QUIT')
+
+                ## TILAU ## only once the quit is confirmed: a Cancel keeps both running
+                # when Artisan stops, stops all beancave activities as well FIX 2026/02/08
+                if hasattr(self,"beancaveWindow") :
+                    if self.beancaveWindow is not None:
+                        self.beancaveWindow.close()
+
+                ## TILAU ## stop the app-level web host (replaces BeanCave's aboutToQuit hook)
+                if getattr(self, 'tilau_web_host', None) is not None:
+                    try:
+                        self.tilau_web_host.stop()
+                    except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
+                        _log.debug(f"tilau_web_host stop: {e}")
+
                 flagKeepON = self.qmc.flagKeepON
                 self.qmc.flagKeepON = False # temporarily turn keepOn off
 

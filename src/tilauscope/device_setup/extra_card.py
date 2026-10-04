@@ -69,6 +69,7 @@ class ExtraDeviceCard(QFrame):
     """Grip, title, and one line per channel the device uses."""
 
     clicked = pyqtSignal(int)   # uid of the row
+    renamed = pyqtSignal()
 
     def __init__(self, row: ExtraRow, title: str, used: tuple[bool, bool], warning: str,
                  name_subst: Callable[[str], str], parent: QWidget | None = None) -> None:
@@ -76,6 +77,7 @@ class ExtraDeviceCard(QFrame):
         self._row = row
         self._name_subst = name_subst
         self._selected = False
+        self._roles: dict[int, tuple[QLabel, str | None]] = {}   # channel -> (role line, role when opened)
         self.setObjectName('extraDeviceCard')
         self._apply_frame_style()
 
@@ -158,17 +160,32 @@ class ExtraDeviceCard(QFrame):
         role.setContentsMargins(_CHANNEL_INDENT, 0, 0, 0)
         outer.addWidget(role)
         initial = classify_extra_channel(shown)
+        self._roles[channel] = (role, initial)
         self._show_role(role, initial, initial)
 
         def renamed(text: str) -> None:
             self._row.names[channel] = text
             self._show_role(role, initial, classify_extra_channel(text))
+            self.renamed.emit()
 
         def toggled(checked: bool) -> None:
             self._row.show[channel] = checked
 
         edit.textEdited.connect(renamed)
         show.toggled.connect(toggled)
+
+    def set_clash(self, channel: int, warning: str) -> None:
+        """Put `warning` in place of the channel's role line; empty gives the role back."""
+        if channel not in self._roles:
+            return
+        role, initial = self._roles[channel]
+        if not warning:
+            self._show_role(role, initial,
+                            classify_extra_channel(self._name_subst(self._row.names[channel])))
+            return
+        role.setText('⚠ ' + warning)
+        role.setStyleSheet(f"color: {THEME['WARNING']}; font-size: 11px; background: transparent;")
+        role.setVisible(True)
 
     @staticmethod
     def _show_role(label: QLabel, initial: str | None, now: str | None) -> None:

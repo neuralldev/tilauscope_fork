@@ -247,6 +247,10 @@ class RoastFilterProxy(QSortFilterProxyModel):
     def sort_mode(self) -> str:
         return self._sort
 
+    def group(self) -> str:
+        """The coffee the list is narrowed to, '' for every coffee."""
+        return self._group
+
     def set_locale(self, locale: QLocale) -> None:
         """The language day names are written in — the interface's, not the system's."""
         self._locale = locale
