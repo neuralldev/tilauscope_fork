@@ -3,15 +3,18 @@
 !!! abstract "Artisan does / TilauScope adds"
     **Artisan does** — an energy and CO₂ estimate in **Roast Properties → Energy**, computed from
     loads you describe yourself: each heater's rated power, the events that drive it, and a
-    protocol for preheating, between batches and cooling.
+    protocol for preheating, between batches and cooling. For some roasters these are filled in
+    when the roaster is chosen in the first-time setup.
 
     **TilauScope adds** — the power actually drawn, read from a power meter, from the moment
     monitoring starts: the energy spent before charge, during the roast and after drop, the energy
     per kilogram of green coffee, and for every figure where it comes from. Roasts saved earlier
-    with a power reading get their energy too, and every roast shows it in BeanCave.
+    with a power reading get their energy too, and every roast shows it in BeanCave. Without a
+    meter, the roaster's energy is estimated from what is known of its power.
 
-Artisan's own Energy tab is unchanged and remains available. What this chapter describes is a
-separate, simpler reading built on measurement rather than on a description of the machine.
+Artisan's own Energy tab is not offered in TilauScope. Its heaters still serve, as a last resort,
+to estimate the roaster's energy when there is no meter — see [Without a meter](#without-a-meter).
+What this chapter describes is a separate, simpler reading built on measurement first.
 
 What is counted is the electricity the installation draws — [power](glossary.md#power-w-and-energy-kwh)
 in watts at any instant, energy in kilowatt-hours over time. It is not the heat taken up by the
@@ -58,7 +61,7 @@ is a power reading. Both are needed.
    power it got. A meter that is silent at that moment is still kept.
 6. **Repeat steps 3 to 5 for the extractor**, if it has its own meter. If instead it is plugged
    into the roaster's meter, see *One meter behind the other* below.
-7. **Save with OK**, then **turn monitoring off and on again**: the sensor list is read each time
+7. **Press Save**, then **turn monitoring off and on again**: the sensor list is read each time
    monitoring starts.
 8. **Confirm**: after the next roast, its **Energy** figure in **BeanCave → Roasts** reads
    **Measured**. The meter is in use.
@@ -80,7 +83,7 @@ and keeps it in the roast file, like any other channel.
 !!! note "One meter behind the other"
     When the extractor is plugged into the same meter as the roaster, the roaster reading already
     includes it. Tick **Extractor is plugged into the roaster meter**, under the **Sensors** list,
-    and save with **OK**: the extractor is then shown as part of the roaster reading and never
+    and press **Save**: the extractor is then shown as part of the roaster reading and never
     added a second time. The setting applies from the next monitoring session, or straight away
     when saved before START.
 
@@ -155,20 +158,59 @@ A simulated roast is never rebuilt.
 
 ## Without a meter
 
-Some roasters have their power described in TilauScope's machine database. On those, the roaster's
-power is **estimated** from the burner setting, **between CHARGE and DROP only**, and every figure
-built on it says *Estimated*. Before charge the machine's own thermostat decides how much it heats,
+Without a meter, the roaster's power is **estimated** from the burner setting, **between CHARGE
+and DROP only**, and every figure built on it says *Estimated*. Before charge the machine's own thermostat decides how much it heats,
 whatever the setting; after drop the heater is cut while the setting stays where it was. Neither can
 be read from the burner setting, so neither is estimated.
 
-| Roaster | Estimate |
-|---|---|
-| **Skywalker V2** | A power curve measured on the operator's own roasts with a meter on the roaster's socket — within a few percent of the measured roast energy |
-| **Skywalker V1** | Its 1 000 W rating, not yet checked against a measurement |
+The estimate rests on the first of these that knows the roaster:
+
+1. **TilauScope's machine database**, for these roasters:
+
+    | Roaster | Estimate |
+    |---|---|
+    | **Skywalker V2** | A power curve measured on the operator's own roasts with a meter on the roaster's socket — within a few percent of the measured roast energy |
+    | **Skywalker V1** | Its 1 000 W rating, not yet checked against a measurement |
+
+2. **The Heater power set for the roaster** in the configuration, below.
+3. **The heater Artisan rates for the roaster** in its [energy loads](glossary.md#energy-loads):
+   those set up for this roaster, else those Artisan gives for its capacity — the Aillio Bullet
+   and the Kaleido M1, M6 and M10, for example.
+
+The heater's power counts in proportion to the burner setting, as Artisan counts it. A roaster
+that burns gas is not estimated: this chapter counts electricity.
 
 When a meter is present, its reading always wins: the estimate only fills a stretch where the meter
-fell silent during the roast, and the figure then reads *Mixed*. On any other machine, or outside
-the roast, no meter means **Not tracked** — a figure is never invented.
+fell silent during the roast, and the figure then reads *Mixed*. When none of them knows the
+roaster, or outside the roast, no meter means **Not tracked** — a figure is never invented.
+
+### Where the estimate comes from
+
+**TilauScope → TilauScope Config... → 🌐 INTEGRATIONS**, under the **Sensors** list, **Without a
+meter** says where the roaster's energy will come from:
+
+- **●** a meter named **roaster** is set — it comes first, and the estimate only fills the moments
+  it falls silent;
+- **◑** the estimate comes from TilauScope's power curve, or its rated power, for the roaster;
+- **◑** the estimate comes from the heater power below;
+- **◑** the estimate comes from the heater Artisan rates for the roaster — listed with its power
+  and the slider it follows;
+- **○** there is no estimate for this roaster.
+
+When TilauScope's database has no figures for the roaster, with or without a meter (the estimate
+fills the moments a meter falls silent), **Heater power** sets the power the
+heater draws at full burner, as on the roaster's rating plate. It starts on the heater Artisan
+rates for the roaster, when it rates one. Each roaster keeps its own value; set it to *none* for
+no estimate at all. It is not offered on a roaster that burns gas. It is saved with **Save**, for
+the roaster the window was opened on, and used from the next monitoring session, or straight away
+when saved before START.
+
+<!-- CAPTURE 15.3 [scene:config_energy_estimate] — TilauScope Config → INTEGRATIONS, under the Sensors list and the
+"Extractor is plugged into the roaster meter" box, the "Without a meter" section reading "◑ Estimated from the heater
+Artisan rates for this roaster", the line "Heater · 1.55 kW · follows Burner" under it, and the Heater power field on
+1550 W — roaster set up as an Aillio Bullet R1 V2, no sensor named roaster. -->
+
+![The Without a meter section estimating an Aillio Bullet from the heater Artisan rates for it, with its Heater power field.](assets/energy-15.3.png)
 
 !!! warning "The extractor is never estimated"
     An extractor's speed setting says nothing reliable about the power it draws. Without a meter of

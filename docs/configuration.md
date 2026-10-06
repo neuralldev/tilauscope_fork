@@ -220,7 +220,7 @@ counter, so the status line is the grey one, not the peach warning. -->
 
 **Broker URL**, **Port**, **Topic**, **Username**, **Password**, and a **Test Connection** button
 that checks the connection before it is relied on. The test uses the password as typed; it is
-stored only when you press **OK**, and it follows the broker if you later change its address,
+stored only when you press **Save**, and it follows the broker if you later change its address,
 port or user. This is what the
 [ambient humidity tracking](beancave.md) and any [MQTT-fed device](the-window.md) depend on.
 
@@ -250,7 +250,9 @@ power reading, or the dash for anything else — humidity, fan speed, pressure. 
 topic ends in *Power*, the buttons **⚡ Use as roaster** and **💨 Use as extractor** under the list
 set both at once, and **Extractor is plugged into the roaster meter** says that one meter counts
 both — see [Energy](energy.md#setting-up-a-meter-step-by-step). The line the Energy view uses shows
-⚡ (roaster) or 💨 (extractor) in place of its line number. A temperature is converted on
+⚡ (roaster) or 💨 (extractor) in place of its line number. Below the list, **Without a meter**
+says where the roaster's energy comes from when no meter is set, and offers **Heater power** when
+TilauScope has no power figures of its own for the roaster — see [Energy](energy.md#where-the-estimate-comes-from). A temperature is converted on
 arrival into the unit the application is working in, so a probe publishing in Celsius reads
 correctly during a Fahrenheit session and the other way round. Multiplier and divider are applied
 first, the conversion second: a probe sending tenths of a degree needs a divider of 10 *and* its
@@ -259,10 +261,10 @@ and **Check sensor** reads the selected sensor once from the broker and reports 
 obtained. A sensor whose topic happens to be silent at that moment is still kept — the check is
 there to confirm a reading, not to grant permission.
 
-The list is saved along with the rest of the settings when the window is closed with OK, and
+The list is saved along with the rest of the settings when the window is closed with **Save**, and
 discarded on Cancel. An ID that another line already carries turns red, with a note under the list,
-and OK refuses to save until one is renamed — capitals and spaces around the name do not make two
-names different. OK also refuses a line that has a topic but no ID. It can be edited whether or not the broker is reachable; only **Check
+and **Save** is refused until one is renamed — capitals and spaces around the name do not make two
+names different. **Save** is also refused for a line that has a topic but no ID. It can be edited whether or not the broker is reachable; only **Check
 sensor** needs a live connection.
 
 A sensor only ever shows what its publisher sends. Two settings on the publishing side decide

@@ -32,6 +32,7 @@ value on every sample, so a silent plug would otherwise look alive.
 Per tick: a few dictionary reads. No I/O, no scan of the history.
 """
 
+import json
 import logging
 import time
 from statistics import quantiles
@@ -40,12 +41,15 @@ from typing import Any, Final
 from PyQt6.QtCore import QObject, QSettings, pyqtSlot
 
 from tilauscope.energy_model import (
-    CHANNELS, EXTRACTOR, ROASTER, EnergySession, heater_watts,
+    CHANNELS, EXTRACTOR, HEATER_FROM_ARTISAN, HEATER_FROM_CONFIG, ROASTER, SOURCE_CURVE, SOURCE_RATED,
+    EnergySession, heater_watts,
 )
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
 SETTING_EXTRACTOR_ON_ROASTER_METER: Final[str] = "tilauscope/energy_extractor_on_roaster_meter"
+# The Heater power set in TilauScope Config, per roaster: JSON {roaster name: W}, 0 = none.
+SETTING_HEATER_POWER: Final[str] = "tilauscope/heater_power_w"
 
 # A push sensor (no gateway poll) reports on change plus a periodic report —
 # about 60 s on the Fibaro plug. Absence of a message within that period means
@@ -53,6 +57,69 @@ SETTING_EXTRACTOR_ON_ROASTER_METER: Final[str] = "tilauscope/energy_extractor_on
 # median of the change bursts.
 _PUSH_PERIOD_S: Final[float] = 60.0
 _PERIOD_SAMPLES: Final[int] = 20     # arrivals observed before the cadence is fixed
+
+
+def find_roaster(name: str) -> Any:
+    """The record of *name* in TilauScope's roaster database, None when unknown. Reads a file."""
+    try:
+        from tilauscope.roasters import RoasterManager
+        return RoasterManager().get_by_display_name(name) if name else None
+    except Exception as e:  # noqa: BLE001
+        _log.debug("EnergyTap roaster record: %s", e)
+        return None
+
+
+def rated_heater(roaster: Any) -> tuple[float | None, float, list[list[float]] | None]:
+    """Declared rating of a roaster record, the shape of its heater command and
+    its measured curve, if any."""
+    spec = getattr(roaster, "electrical_specification", None)
+    if spec is None:
+        return None, 1.0, None
+    kw = spec.max_power_draw_kw
+    return ((float(kw) * 1000.0 if kw else None),
+            float(spec.heater_power_exponent or 1.0), spec.heater_power_curve)
+
+
+def _heater_powers() -> dict:
+    try:
+        powers = json.loads(str(QSettings().value(SETTING_HEATER_POWER, "{}", type=str) or "{}"))
+    except ValueError:
+        return {}
+    return powers if isinstance(powers, dict) else {}
+
+
+def heater_power(roaster: str) -> int | None:
+    """The Heater power set in TilauScope Config for *roaster*, None when never set (0 = none)."""
+    w = _heater_powers().get(roaster)
+    return int(w) if isinstance(w, (int, float)) else None
+
+
+def set_heater_power(roaster: str, watts: int) -> None:
+    powers = _heater_powers()
+    powers[roaster] = int(watts)
+    QSettings().setValue(SETTING_HEATER_POWER, json.dumps(powers))
+
+
+def heater_estimate(aw: Any, name: str, roaster: Any) -> tuple[str, float | None, float, list[list[float]] | None]:
+    """What the roaster estimate rests on without a meter: (source, W, exponent, curve).
+    TilauScope's own figures first, then the Heater power set in Config, then the
+    heater Artisan rates: the loads its machine setup holds for this roaster, else the
+    roaster's preset; "" and no W when none of them, or when one cannot be read."""
+    try:
+        rated_w, exponent, curve = rated_heater(roaster)
+        if curve:
+            return SOURCE_CURVE, rated_w, exponent, curve
+        if rated_w:
+            return SOURCE_RATED, rated_w, exponent, None
+        own = heater_power(name)
+        if own is not None:
+            return (HEATER_FROM_CONFIG, float(own), 1.0, None) if own > 0 else ("", None, 1.0, None)
+        from tilauscope.machine_setup import preset_heater_w, setup_heater_w
+        artisan = setup_heater_w(aw.qmc, name) or preset_heater_w(aw.qmc, roaster)
+        return (HEATER_FROM_ARTISAN, float(artisan), 1.0, None) if artisan else ("", None, 1.0, None)
+    except Exception as e:  # noqa: BLE001  no estimate rather than no session
+        _log.debug("EnergyTap heater estimate: %s", e)
+        return "", None, 1.0, None
 
 
 def resolve_sensors(sensors: Any) -> dict[str, Any]:
@@ -97,6 +164,11 @@ class EnergyTap(QObject):
     @property
     def live(self) -> bool:
         return self._on and self.session is not None
+
+    def refresh_heater(self) -> None:
+        """Read the heater again for a session not yet recording: Config may have just set it."""
+        if self.live and not getattr(self._aw.qmc, "flagstart", False):
+            self._read_heater()
 
     def sync_state(self) -> None:
         """Follow ON / START / OFF. Called on ticks and from the status refresh,
@@ -153,27 +225,19 @@ class EnergyTap(QObject):
         self._sensors, self._last_ts, self._arrivals = {}, {}, {}
         self._rec = False
         self._last_sec = -1
-        self._rated_w, self._rated_exp, self._rated_curve = self._rated_heater()
+        source = self._read_heater()
         aw.qmc.tilau_energy = self.session
-        _log.info("EnergyTap: session started (rated %s W, exponent %s, curve %s)",
-                  self._rated_w, self._rated_exp, bool(self._rated_curve))
+        _log.info("EnergyTap: session started (heater %s %s W, exponent %s, curve %s)",
+                  source or "none", self._rated_w, self._rated_exp, bool(self._rated_curve))
 
-    def _rated_heater(self) -> tuple[float | None, float, list[list[float]] | None]:
-        """Declared rating of the selected roaster, the shape of its heater
-        command and its measured curve, if any. Read once per session: the
-        roaster database is a file."""
-        try:
-            from tilauscope.roasters import RoasterManager
-            r = RoasterManager().get_by_display_name(str(getattr(self._aw, "tilau_roaster", "") or ""))
-            spec = r.electrical_specification if r is not None else None
-            if spec is None:
-                return None, 1.0, None
-            kw = spec.max_power_draw_kw
-            return ((float(kw) * 1000.0 if kw else None),
-                    float(spec.heater_power_exponent or 1.0), spec.heater_power_curve)
-        except Exception as e:  # noqa: BLE001
-            _log.debug("EnergyTap rated power: %s", e)
-            return None, 1.0, None
+    def _read_heater(self) -> str:
+        """The heater the session estimates from; its source."""
+        assert self.session is not None
+        source, self._rated_w, self._rated_exp, self._rated_curve = heater_estimate(
+            self._aw, self.session.roaster, find_roaster(self.session.roaster))
+        shown = source in (HEATER_FROM_CONFIG, HEATER_FROM_ARTISAN) and self._rated_w
+        self.session.heater_from, self.session.heater_w = (source, self._rated_w) if shown else ("", 0.0)
+        return source
 
     def _resolve(self) -> None:
         """Pick the reserved sensors. The MQTT list may arrive after ON, so this
@@ -254,16 +318,18 @@ class EnergyTap(QObject):
         except Exception:  # noqa: BLE001
             return False
 
+    def _pct(self, idx: int) -> float:
+        """Event slider *idx* as Artisan holds it, whether or not TilauScope's window
+        is open; -1 for a hidden slider."""
+        aw = self._aw
+        try:
+            return float(aw.eventslidervalues[idx]) if aw.eventslidervisibilities[idx] else -1.0
+        except (AttributeError, IndexError, TypeError, ValueError):
+            return -1.0
+
     def _controls(self) -> tuple[float, float, float]:
         """Burner, air and extraction in %, -1 when unknown. The burner is the
         roaster's own echo when it reports one, else the last command."""
-        def pct(idx: int) -> float:
-            try:
-                from tilauscope.roast_asssistant import _read_slider_pct
-                v = _read_slider_pct(self._aw, idx)
-                return float(v) if v is not None else -1.0
-            except Exception:  # noqa: BLE001
-                return -1.0
         burner = -1.0
         dev = getattr(self._aw, "bleSkywalkerDevice", None)
         if dev is not None:
@@ -272,5 +338,5 @@ class EnergyTap(QObject):
             except Exception:  # noqa: BLE001
                 burner = -1.0
         if burner < 0:
-            burner = pct(3)
-        return burner, pct(0), pct(2)
+            burner = self._pct(3)
+        return burner, self._pct(0), self._pct(2)

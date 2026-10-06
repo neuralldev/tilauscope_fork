@@ -1,4 +1,10 @@
 ## [4.3] 2026-09-13
+build 26
+* ⚡ [feat(i18n)] : French, German, Spanish, Italian and Chinese (Simplified and Traditional) are up to date with every new screen text, the new energy texts included
+* ⚡ [feat(energy)] : without a power meter, a roaster TilauScope has no power figures for is estimated from the new Heater power field, kept per roaster, or else from the heater Artisan rates for it; TilauScope Config → INTEGRATIONS shows under Without a meter where the roaster's energy comes from; a Heater power saved before START applies to the current session
+* 🐛 [fix(roasters)] : the Kaleido M6 Pro accepts batches up to 700 g, its maximum capacity, instead of 600 g
+* ⚡ [feat(machine_setup)] : choosing an Aillio Bullet or a Kaleido M1, M2, M6 or M10 in the first-time setup also fills Artisan's Energy tab with that roaster's loads and protocol, as Artisan's Config › Machine does; the roast's machine size is the roaster's capacity, not its usual batch; setting up another roaster never keeps the previous one's energy loads, and setting up the same roaster again keeps yours
+* 🐛 [fix(energy)] : without a meter, the roaster's energy is estimated from the burner setting also while the TilauScope window is closed
 build 25
 * ⚡ [feat(beancave)] : the button at the top of the catalogue reads + New bean — it creates a green-bean record; its guided entry still opens the New sack assistant
 * 🐛 [fix(beancave)] : BeanCave opens on the coffee loaded for the current roast, also when coming back to it, instead of the first coffee of the list

@@ -715,7 +715,7 @@
             "convection"
         ],
         "batch_capacity_min_g": 200,
-        "batch_capacity_max_g": 600,
+        "batch_capacity_max_g": 700,
         "optimal_batch_capacity_g": 500,
         "agitation_type": "drum_rotation",
         "drum_material": "stainless_steel",

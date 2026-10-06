@@ -33,7 +33,8 @@ from PyQt6.QtWidgets import (QApplication, QDialog, QFrame, QGridLayout,
                              QVBoxLayout, QWidget)
 
 from tilauscope.energy_model import (
-    ESTIMATED, EXTRACTOR, MEASURED, MIXED, NONE, ROASTER, EnergySession, Summary,
+    ESTIMATED, EXTRACTOR, HEATER_FROM_ARTISAN, HEATER_FROM_CONFIG, MEASURED, MIXED, NONE, ROASTER,
+    EnergySession, Summary,
     Totals, phase_bounds, session_for_profile,
 )
 from tilauscope.energy_tap import EnergyTap
@@ -544,6 +545,15 @@ class EnergyPanel(QDialog):
         elif tot.incomplete:
             note = QApplication.translate(
                 "tilauscope_energy", "Meter silent for {0} s in all — that time is left out.").format(f"{tot.unknown_s:.0f}")
+        elif tot.provenance in (ESTIMATED, MIXED) and session is not None and session.heater_from == HEATER_FROM_ARTISAN:
+            note = QApplication.translate(
+                "tilauscope_energy", "Estimated from the heater Artisan rates for this roaster ({0}) and the burner "
+                                     "setting.").format(
+                    f"{session.heater_w / 1000:.3g} kW")
+        elif tot.provenance in (ESTIMATED, MIXED) and session is not None and session.heater_from == HEATER_FROM_CONFIG:
+            note = QApplication.translate(
+                "tilauscope_energy", "Estimated from the heater power set in TilauScope Config ({0}) and the burner "
+                                     "setting.").format(f"{session.heater_w / 1000:.3g} kW")
         elif tot.provenance in (ESTIMATED, MIXED):
             note = QApplication.translate(
                 "tilauscope_energy", "Estimated from the rated power and the burner setting.")

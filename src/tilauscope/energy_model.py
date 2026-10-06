@@ -52,6 +52,12 @@ _EPS_S: Final[float] = 0.5
 # Cadence assumed until the channel has shown its own.
 DEFAULT_PERIOD_S: Final[float] = 10.0
 
+# What a roaster estimate without a meter rests on.
+SOURCE_CURVE: Final[str] = "curve"            # TilauScope's measured heater curve
+SOURCE_RATED: Final[str] = "rated"            # TilauScope's declared rating
+HEATER_FROM_ARTISAN: Final[str] = "artisan"   # the heater Artisan rates for the roaster
+HEATER_FROM_CONFIG: Final[str] = "config"     # the Heater power set in TilauScope Config
+
 
 def freshness_s(period_s: float) -> float:
     """Longest gap bridged between two measurements (spec §6)."""
@@ -337,6 +343,10 @@ class EnergySession:
     recorded: bool = False
     # Rebuilt from a saved extra-device curve, not recorded live.
     rebuilt: bool = False
+    # Where the heater power of the roaster estimate came from when TilauScope's
+    # roaster database has none: HEATER_FROM_ARTISAN or HEATER_FROM_CONFIG, and its W.
+    heater_from: str = ""
+    heater_w: float = 0.0
 
     # ── live feed ────────────────────────────────────────────────────────
 
@@ -429,6 +439,8 @@ class EnergySession:
             "extractor_expected": self.extractor_expected,
             "extractor_on_roaster_meter": self.extractor_on_roaster_meter,
             "rebuilt": self.rebuilt,
+            "heater_from": self.heater_from,
+            "heater_w": self.heater_w,
             "channels": {n: ch.shifted(shift).to_dict() for n, ch in self.channels.items()},
             "context": [[round(r[0] - shift, 3), *r[1:]] for r in self.context],
         }
@@ -446,7 +458,9 @@ class EnergySession:
                     extractor_on_roaster_meter=bool(d.get("extractor_on_roaster_meter", False)),
                     roaster=str(d.get("roaster", "")),
                     recorded=d.get("axis") == "recording",
-                    rebuilt=bool(d.get("rebuilt", False)))
+                    rebuilt=bool(d.get("rebuilt", False)),
+                    heater_from=str(d.get("heater_from", "")),
+                    heater_w=float(d.get("heater_w", 0.0)))
             for name, cd in (d.get("channels") or {}).items():
                 if name in CHANNELS and isinstance(cd, dict):
                     s.channels[name] = Channel.from_dict(cd)

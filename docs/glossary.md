@@ -269,6 +269,13 @@ Where an energy figure comes from, stated beside it:
   onward.
 - **Not tracked** — no meter and no estimate: the figure is shown as a dash, never as zero.
 
+#### Energy loads
+
+Artisan's description of what draws energy on a roaster: up to four heaters or motors, each
+with its power, whether it runs on electricity or gas, and the slider that drives it. Without a
+meter, TilauScope estimates a roaster's energy from the electric heater Artisan rates for it when
+neither its own machine database nor the Heater power set for the roaster gives a figure.
+
 #### kWh per kg green
 
 The energy of the roast, CHARGE to DROP, divided by the weight of green coffee charged. It

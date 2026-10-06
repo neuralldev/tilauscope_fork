@@ -57,7 +57,9 @@ from PyQt6.QtGui import QCursor, QPalette, QColor
 from PyQt6 import sip
 
 from tilauscope.config_controls_tab import ControlsTab
-from tilauscope.energy_tap import SETTING_EXTRACTOR_ON_ROASTER_METER, resolve_sensors
+from tilauscope.energy_model import HEATER_FROM_ARTISAN, HEATER_FROM_CONFIG, ROASTER, SOURCE_CURVE, SOURCE_RATED
+from tilauscope.energy_tap import (SETTING_EXTRACTOR_ON_ROASTER_METER, heater_estimate, resolve_sensors,
+                                   set_heater_power)
 from tilauscope.theme_qss import base_qss, style_combo_popup, tooltip_qss
 from tilauscope.tilauscope_types import (THEME, duplicate_names, literal_ampersand, name_key,
                                          no_enter_default, resolve_crack_channel,
@@ -303,6 +305,8 @@ class TilauscopeConfigDlg(QDialog):
     def __init__(self, parent: QWidget, aw: 'ApplicationWindow') -> None:
         super().__init__(parent)
         self.aw = aw
+        from tilauscope.roasters import RoasterManager
+        self._roasters = RoasterManager()   # the roaster database, read once per opening
 
         # Frameless + translucent
         self.setWindowFlags(
@@ -645,10 +649,8 @@ class TilauscopeConfigDlg(QDialog):
         self.tilauRoaster.setToolTip(
             QApplication.translate("tilauscope_devices", "Select the active roaster machine profile")
         )
-        from tilauscope.roasters import RoasterManager
-        rm = RoasterManager()
         items = [QApplication.translate("tilauscope_devices", "— select a roaster model —")]
-        items.extend(rm.get_roaster_list())
+        items.extend(self._roasters.get_roaster_list())
         self.tilauRoaster.addItems(items)
         if self.aw.tilau_roaster:
             idx = self.tilauRoaster.findText(self.aw.tilau_roaster)
@@ -2111,6 +2113,62 @@ class TilauscopeConfigDlg(QDialog):
         self.mqttExtractorOnMeterCheck.setChecked(
             QSettings().value(SETTING_EXTRACTOR_ON_ROASTER_METER, False, type=bool))
         form_layout.addRow(self.mqttExtractorOnMeterCheck)
+        self._build_energy_estimate(form_layout)
+
+    def _build_energy_estimate(self, form_layout: QFormLayout) -> None:
+        """Where the roaster's energy comes from without a meter, read once at opening, and its
+        Heater power when TilauScope's roaster database has no figures for it."""
+        from tilauscope.roasters import HeatingType
+        qmc = self.aw.qmc
+        roaster = self._energy_roaster = str(getattr(self.aw, "tilau_roaster", "") or "")
+        form_layout.addRow(_section_label(QApplication.translate("tilauscope_energy", "Without a meter")))
+        status, detail = QLabel(), QLabel()
+        for lbl in (status, detail):
+            lbl.setWordWrap(True)
+        detail.setStyleSheet(f"color: {THEME['SUBTEXT']};")
+        self.heaterPowerSpin: QSpinBox | None = None
+        record = self._roasters.get_by_display_name(roaster) if roaster else None
+        source, watts, _exp, _curve = heater_estimate(self.aw, roaster, record)
+        metered = ROASTER in resolve_sensors(self._mqtt_sensors.sensors)
+        if metered:
+            status.setText(QApplication.translate(
+                "tilauscope_energy", '● A meter named "roaster" is set — it always comes first; '
+                                     'the estimate only fills the moments it falls silent.'))
+        elif source == SOURCE_CURVE:
+            status.setText(QApplication.translate(
+                "tilauscope_energy", "◑ Estimated from TilauScope's power curve for {0}").format(roaster))
+        elif source == SOURCE_RATED:
+            status.setText(QApplication.translate(
+                "tilauscope_energy", "◑ Estimated from TilauScope's rated power for {0} ({1} kW)").format(
+                    roaster, f"{(watts or 0) / 1000:g}"))
+        elif source == HEATER_FROM_CONFIG:
+            status.setText(QApplication.translate("tilauscope_energy", "◑ Estimated from the heater power below"))
+        elif source == HEATER_FROM_ARTISAN:
+            status.setText(QApplication.translate(
+                "tilauscope_energy", "◑ Estimated from the heater Artisan rates for this roaster"))
+            detail.setText(QApplication.translate("tilauscope_energy", "{0} · {1} kW · follows {2}").format(
+                QApplication.translate("tilauscope_energy", "Heater"), f"{(watts or 0) / 1000:.3g}", qmc.etypes[3]))
+        else:
+            status.setText(QApplication.translate(
+                "tilauscope_energy", "○ No estimate for this roaster. Add a power meter above to track its energy."))
+        form_layout.addRow(status)
+        if detail.text():
+            form_layout.addRow(detail)
+        # TilauScope's own figures need none; a roaster that burns gas has no heater power to give.
+        # With a meter, the heater power still fills the moments it falls silent.
+        if (roaster and source not in (SOURCE_CURVE, SOURCE_RATED)
+                and getattr(record, "heating_type", None) != HeatingType.GAS):
+            self._heater_w = round(watts or 0)
+            self.heaterPowerSpin = QSpinBox()
+            self.heaterPowerSpin.setRange(0, max(20000, self._heater_w))
+            self.heaterPowerSpin.setSingleStep(50)
+            self.heaterPowerSpin.setValue(self._heater_w)
+            self.heaterPowerSpin.setSuffix(QApplication.translate("tilauscope_energy", " W"))
+            self.heaterPowerSpin.setSpecialValueText(QApplication.translate("tilauscope_energy", "none"))
+            self.heaterPowerSpin.setToolTip(QApplication.translate(
+                "tilauscope_energy", "The power the heater draws at full burner, as on the roaster's rating plate. "
+                                     "Without a meter, the roast energy is estimated from it and the burner setting."))
+            form_layout.addRow(QApplication.translate("tilauscope_energy", "Heater power:"), self.heaterPowerSpin)
 
     def _set_mqtt_row_widgets(self, row: int, multiplier: float | None,
                               divider: float | None, unit: str) -> None:
@@ -2901,6 +2959,11 @@ class TilauscopeConfigDlg(QDialog):
         tap = getattr(aw, "tilau_energy_tap", None)
         if tap is not None and tap.live and tap.session is not None and not aw.qmc.flagstart:
             tap.session.extractor_on_roaster_meter = on_meter
+        # for the roaster the window opened on, even if this Save changes it
+        if self.heaterPowerSpin is not None and self.heaterPowerSpin.value() != self._heater_w:
+            set_heater_power(self._energy_roaster, self.heaterPowerSpin.value())
+            if tap is not None:
+                tap.refresh_heater()
 
         # headless "BeanCave home" mode -> QSettings (boot-time; restart)
         _h_prev = QSettings().value('tilauscope/headless_mode', False, type=bool)

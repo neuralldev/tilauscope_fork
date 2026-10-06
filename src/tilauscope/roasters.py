@@ -924,7 +924,7 @@ def sync_roaster_to_qmc(aw: object, name: str | None) -> bool:
     qmc.roastertype_setup = ctx.display_name
     qmc.machinesetup = ctx.display_name
 
-    batch_g = ctx.batch_optimal_g or ctx.batch_max_g
+    batch_g = ctx.batch_max_g   # Artisan's machine capacity, the key of its energy defaults
     if batch_g:
         kg = batch_g / 1000.0
         qmc.roastersize_setup = kg

@@ -26,14 +26,16 @@ Module top level is stdlib only: tools/ reuses `functional_text` offline.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import tempfile
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
+    from artisanlib.canvas import tgraphcanvas
     from artisanlib.main import ApplicationWindow
-    from tilauscope.roasters import ArtisanSetup
+    from tilauscope.roasters import ArtisanSetup, Roaster
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -77,6 +79,9 @@ DROP_PREFIXES: Final[dict[str, tuple[str, ...]]] = {
 }
 
 _SLIDER_VIS_BACKUP_KEY: Final[str] = 'tilauscope/slider_vis_backup'  # devices.py read-only snapshot
+# The roaster Artisan's energy loads were set up for, with their ratings: picking another
+# roaster in Config, or changing the loads in Artisan, leaves them no longer its own.
+_ENERGY_LOADS_ROASTER_KEY: Final[str] = 'tilauscope/energy_loads_roaster'
 
 
 def _keeps(section: str, key: str) -> bool:
@@ -293,8 +298,48 @@ def auto_port(saved: str, ports: list[tuple[str, str]]) -> str | None:
 
 # ── apply ──────────────────────────────────────────────────────────────────
 
+# Preset energy rating → (expected length, Artisan *_setup field, cast);
+# length 1 = a duration. Mirrors the energy block of Artisan's Config › Machine
+# (main.py openMachineSettings), except that it applies preheatDuration, which
+# Artisan's length test on preheatenergies never lets through.
+_ENERGY_RATINGS: Final[dict[str, tuple[int, str, type]]] = {
+    'loadlabels': (4, 'loadlabels_setup', str),
+    'loadratings': (4, 'loadratings_setup', float),
+    'ratingunits': (4, 'ratingunits_setup', int),
+    'sourcetypes': (4, 'sourcetypes_setup', int),
+    'load_etypes': (4, 'load_etypes_setup', int),
+    'presssure_percents': (4, 'presssure_percents_setup', bool),
+    'loadevent_zeropcts': (4, 'loadevent_zeropcts_setup', int),
+    'loadevent_hundpcts': (4, 'loadevent_hundpcts_setup', int),
+    'meterlabels': (2, 'meterlabels_setup', str),
+    'meterunits': (2, 'meterunits_setup', int),
+    'meterfuels': (2, 'meterfuels_setup', int),
+    'metersources': (2, 'metersources_setup', int),
+    'preheatDuration': (1, 'preheatDuration_setup', int),
+    'preheatenergies': (4, 'preheatenergies_setup', float),
+    'betweenbatchDuration': (1, 'betweenbatchDuration_setup', int),
+    'betweenbatchenergies': (4, 'betweenbatchenergies_setup', float),
+    'coolingDuration': (1, 'coolingDuration_setup', int),
+    'coolingenergies': (4, 'coolingenergies_setup', float),
+}
+
+# Artisan's factory values (canvas.py) for the energy figures that belong to the
+# machine; the meters belong to the site and stay.
+_ENERGY_FACTORY: Final[dict[str, object]] = {
+    'loadlabels_setup': [''] * 4, 'loadratings_setup': [0.0] * 4, 'ratingunits_setup': [0] * 4,
+    'sourcetypes_setup': [0] * 4, 'load_etypes_setup': [0] * 4, 'presssure_percents_setup': [False] * 4,
+    'loadevent_zeropcts_setup': [0] * 4, 'loadevent_hundpcts_setup': [100] * 4,
+    'preheatDuration_setup': 0, 'preheatenergies_setup': [0.0] * 4,
+    'betweenbatchDuration_setup': 0, 'betweenbatchenergies_setup': [0.0] * 4,
+    'coolingDuration_setup': 0, 'coolingenergies_setup': [0.0] * 4,
+}
+
+
 def _reset_functional(aw: ApplicationWindow) -> None:
-    """Factory values for what a preset may leave out, so nothing of the previous machine survives."""
+    """Factory values for what a preset may leave out, so nothing of the previous machine survives.
+
+    The energy figures are left to apply(), which knows whose they are.
+    """
     qmc = aw.qmc
     aw.resetExtraDevices()
     n = aw.eventsliders
@@ -320,6 +365,7 @@ def _reset_functional(aw: ApplicationWindow) -> None:
                  'extraeventsdescriptions', 'extraeventbuttoncolor', 'extraeventbuttontextcolor'):
         setattr(aw, name, [])
     aw.eventquantifieractive = [0] * len(aw.eventquantifieractive)
+    qmc.machinesetup_energy_ratings = None
     qmc.etypes = qmc.etypesdefault[:]
     qmc.ETfunction = ''
     qmc.BTfunction = ''
@@ -334,6 +380,118 @@ def _set_first_batch(aw: ApplicationWindow, grams: int) -> None:
     qmc.last_batchsize = float(grams)
     qmc.end_weight_est = 0
     qmc.weight = (convertWeight(grams, 0, weight_units.index(unit)), 0, unit)
+
+
+def _energy_entry(ratings: object, heating: int, size_kg: float) -> dict | None:
+    """Artisan's energy defaults for a heating type and a capacity in kg, None when it has none."""
+    by_size = ratings.get(heating, {}) if isinstance(ratings, dict) else {}
+    entry = by_size.get(size_kg) if isinstance(by_size, dict) else None
+    return entry if isinstance(entry, dict) and entry else None
+
+
+def _apply_energy_defaults(qmc: tgraphcanvas, new_roaster: bool) -> bool:
+    """Artisan's default energy loads and protocol for this heating and capacity, as its
+    Config › Machine sets them: what the preset rates replaces, the rest stays. True when
+    some were set; a malformed rating sets nothing. The same roaster set up again keeps
+    the loads it has: they may be the operator's own."""
+    if not new_roaster and any(float(r) > 0 for r in qmc.loadratings_setup):
+        return False
+    entry = _energy_entry(qmc.machinesetup_energy_ratings, qmc.roasterheating_setup, qmc.roastersize_setup)
+    if entry is None:
+        _log.info('no energy defaults for %s kg', qmc.roastersize_setup)
+        return False
+    try:
+        rated = {attr: cast(values[0]) if length == 1 else [cast(v) for v in values]
+                 for key, (length, attr, cast) in _ENERGY_RATINGS.items()
+                 if (values := entry.get(key)) is not None and len(values) == length}
+    except (TypeError, ValueError):
+        _log.warning('malformed energy defaults for %s kg', qmc.roastersize_setup)
+        return False
+    for attr, value in rated.items():
+        setattr(qmc, attr, value)
+    return True
+
+
+def _machine_energy(qmc: tgraphcanvas) -> dict[str, object]:
+    """The energy figures of the machine as Artisan's setup holds them."""
+    return {attr: (v[:] if isinstance(v := getattr(qmc, attr), list) else v) for attr in _ENERGY_FACTORY}
+
+
+def _put_machine_energy(qmc: tgraphcanvas, figures: dict[str, object]) -> None:
+    for attr, value in figures.items():
+        setattr(qmc, attr, value[:] if isinstance(value, list) else value)
+
+
+def _energy_before_preset(qmc: tgraphcanvas, previous: str, roaster_name: str) -> dict[str, object] | None:
+    """Ready the energy figures for the preset, whose own loads then apply over them: a
+    roaster set up in place of another starts from Artisan's factory values; the same one
+    again returns the loads it has, to put back over the preset's (they may be the operator's own)."""
+    if previous and previous != roaster_name:
+        _put_machine_energy(qmc, _ENERGY_FACTORY)
+    elif previous == roaster_name and any(float(r) > 0 for r in qmc.loadratings_setup):
+        return _machine_energy(qmc)
+    return None
+
+
+def energy_loads_owner(qmc: tgraphcanvas) -> str:
+    """The roaster Artisan's energy loads were set up for; '' when unknown or changed since."""
+    from PyQt6.QtCore import QSettings
+    try:
+        stored = QSettings().value(_ENERGY_LOADS_ROASTER_KEY, '', type=str)
+        name, ratings = json.loads(stored or 'null') or ('', None)
+        return str(name) if ratings == [float(r) for r in qmc.loadratings_setup] else ''
+    except (AttributeError, TypeError, ValueError):
+        return ''
+
+
+def mark_energy_loads(qmc: tgraphcanvas, roaster_name: str) -> None:
+    from PyQt6.QtCore import QSettings
+    QSettings().setValue(_ENERGY_LOADS_ROASTER_KEY,
+                         json.dumps([roaster_name, [float(r) for r in qmc.loadratings_setup]]))
+
+
+# Artisan's electric source type, and its load_etypes for the Burner slider (event type 3, + 1).
+_ELECTRIC: Final[int] = 2
+_BURNER_LOAD: Final[int] = 4
+
+
+def _burner_heater_w(qmc: tgraphcanvas, loads: object) -> int:
+    """The first electric load on the Burner slider among (rating, unit, source, etype), in W; 0 when none."""
+    for rating, unit, source, etype in loads:
+        if int(source) == _ELECTRIC and int(etype) == _BURNER_LOAD and float(rating) > 0:
+            return round(qmc.convertHeat(float(rating), qmc.powerunits[int(unit)], 'W'))
+    return 0
+
+
+def setup_heater_w(qmc: tgraphcanvas, roaster_name: str) -> int:
+    """The electric heater on the Burner slider among the loads Artisan's machine setup holds,
+    the operator's own included, in W; 0 when it holds none or they were set up for another roaster."""
+    if not roaster_name or energy_loads_owner(qmc) != roaster_name:
+        return 0
+    try:
+        return _burner_heater_w(qmc, zip(qmc.loadratings_setup, qmc.ratingunits_setup,
+                                         qmc.sourcetypes_setup, qmc.load_etypes_setup, strict=False))
+    except (AttributeError, IndexError, TypeError, ValueError):
+        return 0
+
+
+def preset_heater_w(qmc: tgraphcanvas, roaster: Roaster | None) -> int:
+    """The electric heater on the Burner slider that the roaster's Artisan preset rates
+    for its capacity and heating, in W through Artisan's own units; 0 when it rates none."""
+    from PyQt6.QtCore import QSettings
+    from tilauscope.roasters import _QMC_HEATING_CODE
+    path = preset_path(roaster.artisan_setups[0]) if roaster is not None and roaster.artisan_setups else None
+    entry = _energy_entry(QSettings(path, QSettings.Format.IniFormat).value('EnergyDefaults/ratings'),
+                          _QMC_HEATING_CODE.get(roaster.heating_type, 0),
+                          roaster.batch_capacity_max_g / 1000.0) if path is not None and roaster is not None else None
+    if entry is None:
+        return 0
+    try:
+        return _burner_heater_w(qmc, zip(*(entry.get(k) or [] for k in (
+            'loadratings', 'ratingunits', 'sourcetypes', 'load_etypes')), strict=False))
+    except (IndexError, TypeError, ValueError):
+        _log.warning('malformed heater rating in the Artisan preset of %s', roaster.model)
+    return 0
 
 
 def apply(aw: ApplicationWindow, roaster_name: str, setup: ArtisanSetup, port: str | None,
@@ -361,8 +519,12 @@ def apply(aw: ApplicationWindow, roaster_name: str, setup: ArtisanSetup, port: s
     try:
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
             f.write(text)
+        previous = energy_loads_owner(aw.qmc) or str(getattr(aw, 'tilau_roaster', '') or '')
         _reset_functional(aw)
+        kept = _energy_before_preset(aw.qmc, previous, roaster_name)
         aw.loadSettings(fn=tmp, remember=False, machine=True, reload=False)
+        if kept is not None:
+            _put_machine_energy(aw.qmc, kept)
     finally:
         try:
             os.remove(tmp)
@@ -387,5 +549,10 @@ def apply(aw: ApplicationWindow, roaster_name: str, setup: ArtisanSetup, port: s
         QTimer.singleShot(700, qmc.startPhidgetManager)  # as Artisan's Config › Machine
     apply_airwave_damper_mapping(aw)  # a paired AirWave keeps its slider
     aw.establish_etypes()
+    # last: a malformed rating leaves the machine itself set up
+    if _apply_energy_defaults(qmc, previous != roaster_name) or kept is not None:
+        qmc.restoreEnergyLoadDefaults()
+        qmc.restoreEnergyProtocolDefaults()
+    mark_energy_loads(qmc, roaster_name)
     _log.info('machine set up for %s from %s', roaster_name, setup.preset)
     return True

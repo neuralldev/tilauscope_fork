@@ -86,6 +86,10 @@ nothing to type.
 **3. Connection.** *How is your roaster connected?* Choose the link you use. The choice sets
 everything that makes the roaster measure and obey: the sliders and the commands they send,
 the command sent by each milestone button, the probes and how their readings are smoothed.
+When Artisan knows the roaster's [energy loads](glossary.md#energy-loads), they are filled in
+as well: without a meter, they give the roaster's estimated energy — see
+[Energy](energy.md#without-a-meter). Setting up another roaster never keeps the previous one's
+loads; setting up the same roaster again keeps the loads it has.
 None of it has to be entered by hand. Artisan's **Config → Machine** and **Config → Machine Name** menus are no longer offered:
 this step replaces it, and **TilauScope → Redo First-Time Setup...** is the way to change
 roaster later.
