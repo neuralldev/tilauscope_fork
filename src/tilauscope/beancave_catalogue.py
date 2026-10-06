@@ -130,6 +130,7 @@ class _BeanRow(QFrame):
     """One catalogue entry: 3 lines, selectable, dimmed when out of stock."""
 
     clicked = pyqtSignal(int)
+    double_clicked = pyqtSignal(int)
 
     def __init__(self, index: int, bean, memory: RoastMemory | None = None,
                  parent: QWidget | None = None) -> None:
@@ -144,6 +145,7 @@ class _BeanRow(QFrame):
         self.order = to_roast_order(bean, memory)
         self.name_key = (bean.name or '').lower()
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolTip(QApplication.translate("tilauscope_beancave", "Double-click to see its roasts"))
         self._build(bean, memory)
         self._restyle()
 
@@ -256,11 +258,19 @@ class _BeanRow(QFrame):
             self.clicked.emit(self._index)
         super().mousePressEvent(event)
 
+    def mouseDoubleClickEvent(self, event):  # noqa: N802
+        # Not passed to the base class: QWidget's default replays it as a
+        # second press, which would select the row again behind the Roasts tab.
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.double_clicked.emit(self._index)
+        event.accept()
+
 
 class CatalogueListWidget(QWidget):
     """Search bar + stock filter + sort + scrollable rich rows (row i == green_beans[i])."""
 
     rowActivated = pyqtSignal(int)  # noqa: N815 — Qt signal naming
+    rowDoubleClicked = pyqtSignal(int)  # noqa: N815
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -281,7 +291,7 @@ class CatalogueListWidget(QWidget):
         tools_lay = QVBoxLayout(tools)
         tools_lay.setContentsMargins(14, 12, 14, 10)
         tools_lay.setSpacing(8)
-        # Row 1: whatever the tab puts first (New sack), then the search.
+        # Row 1: whatever the tab puts first (New bean), then the search.
         tl = QHBoxLayout()
         tl.setSpacing(8)
         self.lead_tools = tl
@@ -405,6 +415,7 @@ class CatalogueListWidget(QWidget):
                 _logd.exception("catalogue row %s skipped", i)
                 continue
             row.clicked.connect(self._on_row_clicked)
+            row.double_clicked.connect(self.rowDoubleClicked)
             self._rows.append(row)
         self._place_rows()
         row = self._row_for(self._selected)

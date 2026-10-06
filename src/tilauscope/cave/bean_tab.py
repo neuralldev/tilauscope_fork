@@ -340,13 +340,25 @@ class BeanTabMixin:
         bean = self._current_selected_bean()
         self.tab_widget.setCurrentWidget(self.roast_viewer_tab)
         if bean is not None:
-            self.follow_bean(bean, again=True)
+            self.follow_bean(bean)
 
     # Syncs the catalogue rich list selection to the hidden datatable
     @pyqtSlot(int)
     def _on_catalogue_row_activated(self, index: int) -> None:
         if 0 <= index < self.datatable.rowCount():
             self.datatable.selectRow(index)
+
+    @pyqtSlot(int)
+    def _on_catalogue_row_double_clicked(self, index: int) -> None:
+        """A double-click is the only gesture that narrows Roasts to a coffee."""
+        self._on_catalogue_row_activated(index)
+        self._show_bean_roasts()
+
+    def select_loaded_bean(self) -> None:
+        """Point the catalogue at the coffee loaded in TilauScope, when it is in it."""
+        bean = self._get_uuid_from_bean_description(getattr(self.aw.qmc, 'beans', '') or '')
+        if bean:
+            self.select_bean_by_uuid(bean.uuid, scroll=True)
 
     # Switches the right pane from the read sheet to the edit form
     def _enter_edit_mode(self, _zone: object = None) -> None:
@@ -954,6 +966,10 @@ class BeanTabMixin:
             self.populate_table()
         except Exception:  # noqa: BLE001
             _logd.exception("BeanCave refresh_home: reload/populate failed")
+        try:
+            self.select_loaded_bean()
+        except Exception:  # noqa: BLE001
+            _logd.exception("BeanCave refresh_home: selecting the loaded coffee failed")
         try:
             self.trigger_cache_refresh()
         except Exception:  # noqa: BLE001

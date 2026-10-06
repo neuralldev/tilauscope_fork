@@ -1,4 +1,13 @@
 ## [4.3] 2026-09-13
+build 25
+* ⚡ [feat(beancave)] : the button at the top of the catalogue reads + New bean — it creates a green-bean record; its guided entry still opens the New sack assistant
+* 🐛 [fix(beancave)] : BeanCave opens on the coffee loaded for the current roast, also when coming back to it, instead of the first coffee of the list
+* ⚡ [feat(beancave)] : the Roasts tab no longer follows each coffee selected in Green Beans; double-click a coffee to see its roasts
+* ⚡ [feat(brew)] : Dial-in shows the coffee's roast level in its colour, its weight loss and its rest — not ready yet, in its window, drink soon or past its window, as on the rest calendar — as pills under its name
+* ⚡ [feat(brew)] : Dial-in's notes are open under the steps as Before you brew, worst first with an icon each; warnings never fold, extra tips fold behind Show N more notes
+* ⚡ [feat(brew)] : the taste verdict sits in a card with the next brew's setting — old value struck through, new one in large — and Apply to next brew inside it; each taste button carries a colour
+* ⚡ [feat(brew)] : after a brew, the steps fold into one Brew done line and only the notes to watch stay open
+* ⚡ [feat(brew)] : a recipe value coming from your dial-in is marked yours on its tile, with the value it replaced
 build 24
 * 🐛 [fix(roast_plan)] : a wetter coffee no longer gets a longer drying phase — your own roasts show moisture barely changes drying time, so a 12.8 % coffee plans about 5:50 of drying instead of 6:45, and the calendar follows weight, variety and process
 * 🐛 [fix(roast_setup)] : a remembered ambient probe reading, shown greyed as the last reading, is no longer saved into the roast file as that roast's room conditions

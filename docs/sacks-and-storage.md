@@ -9,17 +9,17 @@
     [water activity](glossary.md#aw--water-activity) dashboard that says which bags need
     attention before they spoil.
 
-This chapter covers the **+ New sack** assistant, sack labels and how they are managed, and
+This chapter covers the **New sack** assistant, sack labels and how they are managed, and
 the **Storage** tab in [BeanCave](beancave.md). Printing a label physically, and scanning one
 to open a record, are covered in the next chapter — this one covers what a sack label
 *is* and what it tracks.
 
 ---
 
-## Bringing a new bag in: the "+ New sack" assistant
+## Bringing a new bag in: the "New sack" assistant
 
-**+ New sack**, at the top of the catalogue beside the search, opens a short wizard for the three
-situations a new bag actually represents: a coffee never seen before, more of a coffee
+**+ New bean**, at the top of the catalogue beside the search, opens the **New sack** assistant,
+a short wizard for the three situations a new bag actually represents: a coffee never seen before, more of a coffee
 already on the shelf, or the same coffee's next harvest.
 
 **Start.** Either paste a supplier page URL and let AI fill in what it can, or go
@@ -59,7 +59,10 @@ as above.
 without restarting, and a warning if a starting weight of 0 g is about to be confirmed.
 **✓ Create the sack** writes the record and, if a label id was chosen, marks it assigned.
 
-![the + New sack button and the Start page](assets/sacks-and-storage-3.1.png)
+<!-- CAPTURE 3.1 — the + New bean button at the top of the catalogue and the New sack
+assistant's Start page. -->
+
+![the + New bean button and the New sack assistant's Start page](assets/sacks-and-storage-3.1.png)
 ![the "what kind of bag" step](assets/sacks-and-storage-3.2.png)
 ![the Review page](assets/sacks-and-storage-3.3.png)
 

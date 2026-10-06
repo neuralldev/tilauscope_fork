@@ -48,8 +48,12 @@ shown they fold behind one line, *Out of stock · 6 coffees*, which brings them 
 harvest, then the coffee left longest since its last roast — a coffee never roasted comes before
 any. *Sort: Name* lists them alphabetically. Both choices are remembered.
 
-When BeanCave opens without a bean linked to the current roast, the record shows the first
+When BeanCave opens, or when you come back to it, it selects the coffee loaded in TilauScope for
+the current roast, if that coffee is in the catalogue. Otherwise the record shows the first
 coffee of the list as filtered and sorted. If none matches, the record is empty.
+
+**Double-click** a coffee to open the **Roasts** tab narrowed to its roasts. A single click only
+selects it: the Roasts tab keeps whatever it was showing.
 
 Each entry's third line reads the stock in grams and in **batches** — *≈ 2 batches*, at the weight
 of the coffee's last roast — then when it was last roasted, or *not roasted yet*, and a dot for its
@@ -163,7 +167,7 @@ does not change the roast plan.
 
 ## Adding a coffee
 
-**Add — expert form**, in the menu of the **+ New sack** button at the top of the catalogue,
+**Add — expert form**, in the menu of the **+ New bean** button at the top of the catalogue,
 asks how you want to start: **From current fields**, which pre-fills from what
 you have already typed, or **Blank bean**, which starts fresh. A full expert form follows, with
 required fields named up front — *Fill the required fields (\*): name, country, category, process,
@@ -177,8 +181,8 @@ every editor. A process, variety or component the list does not carry — one ty
 older record, or read from a supplier's page — is shown and saved as **Other**.
 
 !!! tip "The guided way in"
-    For a bag that has just arrived, a click on **+ New sack** itself is the better route: it walks
-    through registering a new coffee, restocking an existing one, or opening a new crop year, and
+    For a bag that has just arrived, a click on **+ New bean** itself is the better route: it opens
+    the **New sack** assistant, which walks through registering a new coffee, restocking an existing one, or opening a new crop year, and
     reviews everything before saving. The expert form exists for when you know exactly what you
     are entering. See [Sacks, stock and conservation](sacks-and-storage.md) for the assistant in
     full.

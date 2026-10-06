@@ -759,7 +759,7 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
             # one is replaced: its teardown (printer, selection, tooltip) is not undone on show.
             bc = getattr(self.aw, 'beancaveWindow', None)
             if not live_beancave(bc):
-                bc = BeancaveDlg(self.aw)
+                bc = BeancaveDlg(self.aw, self.aw.qmc.beans if self.aw.qmc.beans else "")
                 bc.setWindowModality(Qt.WindowModality.NonModal)
                 self.aw.beancaveWindow = bc
             elif hasattr(bc, 'refresh_home'):

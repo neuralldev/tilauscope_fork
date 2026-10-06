@@ -562,10 +562,10 @@
         <translation>写入PIDs</translation>
     </message>
     <message>
-        <location filename="../plus/login.py" line="84" />
         <location filename="../tilauscope/cave/printing.py" line="578" />
         <location filename="../tilauscope/cave/widgets.py" line="965" />
         <location filename="../tilauscope/alarms.py" line="2022" />
+        <location filename="../plus/login.py" line="84" />
         <location filename="../artisanlib/dialogs.py" line="633" />
         <location filename="../artisanlib/dialogs.py" line="94" />
         <location filename="../artisanlib/comm.py" line="231" />
@@ -12493,8 +12493,8 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>标记</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="2105" />
         <location filename="../tilauscope/graph/annotation_text.py" line="84" />
+        <location filename="../plus/schedule.py" line="2105" />
         <location filename="../artisanlib/roast_properties.py" line="1090" />
         <location filename="../artisanlib/events.py" line="464" />
         <source>Color</source>
@@ -13150,8 +13150,8 @@ Using math formulas in the plotter also allows to use the symbolic variables P a
         <translation>混合物</translation>
     </message>
     <message>
-        <location filename="../plus/schedule.py" line="2085" />
         <location filename="../tilauscope/cave/analysis.py" line="589" />
+        <location filename="../plus/schedule.py" line="2085" />
         <location filename="../artisanlib/main.py" line="24745" />
         <location filename="../artisanlib/roast_properties.py" line="1760" />
         <source>Defects</source>
@@ -14728,6 +14728,11 @@ Fewer nodes: simpler curve but may lose detail</source>
         <translation>纵横比</translation>
     </message>
     <message>
+        <location filename="../plus/schedule.py" line="2130" />
+        <source>Score</source>
+        <translation>分数</translation>
+    </message>
+    <message>
         <location filename="../tilauscope/visualalarm.py" line="104" />
         <source>Visual Alarm Timeline</source>
         <translation type="unfinished" />
@@ -14801,11 +14806,6 @@ Fewer nodes: simpler curve but may lose detail</source>
         <location filename="../tilauscope/window/sidebar.py" line="152" />
         <source>Alarm</source>
         <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2130" />
-        <source>Score</source>
-        <translation>分数</translation>
     </message>
 </context><context>
     <name>MAC_APPLICATION_MENU</name>
@@ -18114,26 +18114,6 @@ Profile missing [CHARGE] or [DROP]</source>
         <translation>没有发现背景曲线配置</translation>
     </message>
     <message>
-        <location filename="../tilauscope/tilaupid.py" line="959" />
-        <source>Preheat stopped because its controller encountered an error.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/tilaupid.py" line="962" />
-        <source>Preheat stopped: no valid temperature reading was received.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/tilaupid.py" line="965" />
-        <source>Preheat stopped: the temperature reading is invalid.</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../tilauscope/widgets/dialogs.py" line="108" />
-        <source>WARNING REPLAY AUTOMATISM ARE ACTIVE</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
         <location filename="../plus/schedule.py" line="1527" />
         <source>Register the currently loaded roast profile&lt;br&gt;in the selected entry.&lt;br&gt;This will overwrite some roast properties.</source>
         <translation>在选定的条目中注册当前加载的烘焙配置文件&lt;br&gt;。&lt;br&gt;这将覆盖一些烘焙属性。</translation>
@@ -18189,6 +18169,26 @@ Profile missing [CHARGE] or [DROP]</source>
         <location filename="../plus/schedule.py" line="3650" />
         <source>Fetching completed roast properties failed</source>
         <translation>获取已完成的烘焙属性失败</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/tilaupid.py" line="959" />
+        <source>Preheat stopped because its controller encountered an error.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/tilaupid.py" line="962" />
+        <source>Preheat stopped: no valid temperature reading was received.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/tilaupid.py" line="965" />
+        <source>Preheat stopped: the temperature reading is invalid.</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/widgets/dialogs.py" line="108" />
+        <source>WARNING REPLAY AUTOMATISM ARE ACTIVE</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <source>artisan-settings</source>
@@ -21853,6 +21853,11 @@ enabling the addition of more batches</source>
         <translation>将按钮颜色设置为灰度，将 LCD 颜色设置为黑白</translation>
     </message>
     <message>
+        <location filename="../plus/schedule.py" line="2266" />
+        <source>Update schedule</source>
+        <translation>更新时间表</translation>
+    </message>
+    <message>
         <location filename="../tilauscope/visualalarm.py" line="189" />
         <source>Automatically center the timeline in the visualization window.</source>
         <translation type="unfinished" />
@@ -21866,11 +21871,6 @@ enabling the addition of more batches</source>
         <location filename="../tilauscope/visualalarm.py" line="222" />
         <source>Zoom in (Ctrl+scroll up / pinch)</source>
         <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../plus/schedule.py" line="2266" />
-        <source>Update schedule</source>
-        <translation>更新时间表</translation>
     </message>
     <message>
         <source>Reset original view</source>
@@ -23246,7 +23246,7 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation>豆中豆 — PB</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1612" />
+        <location filename="../tilauscope/cave/viewer.py" line="1617" />
         <location filename="../tilauscope/beancave_zone_editors.py" line="157" />
         <location filename="../tilauscope/beancave_zone_editors.py" line="67" />
         <location filename="../tilauscope/beancave_bean_sheet.py" line="134" />
@@ -23265,13 +23265,13 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation>编辑名称、产地、年份和库存</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="172" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="174" />
         <location filename="../tilauscope/beancave_bean_sheet.py" line="286" />
         <source>BLEND</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="210" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="212" />
         <location filename="../tilauscope/beancave_bean_sheet.py" line="300" />
         <source>≈ {0} batches</source>
         <translation type="unfinished" />
@@ -23287,9 +23287,9 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="786" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="604" />
-        <location filename="../tilauscope/beancave_catalogue.py" line="178" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="798" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="616" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="180" />
         <location filename="../tilauscope/beancave_bean_sheet.py" line="321" />
         <source>Harvest is {0} years old</source>
         <translation>收获已有{0}年</translation>
@@ -23640,7 +23640,7 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation>单一产地</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="732" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="744" />
         <location filename="../tilauscope/beancave_zone_editors.py" line="358" />
         <source>Blend</source>
         <translation type="unfinished">混合物</translation>
@@ -23651,7 +23651,7 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation>类型：</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1336" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1349" />
         <location filename="../tilauscope/cave/bean_tab.py" line="190" />
         <location filename="../tilauscope/cave/bean_tab.py" line="107" />
         <location filename="../tilauscope/cave/bean_tab.py" line="93" />
@@ -23761,25 +23761,25 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation>烘焙提示/备注：</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1290" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1303" />
         <location filename="../tilauscope/beancave_zone_editors.py" line="549" />
         <source>Reading the supplier page…</source>
         <translation>正在读取供应商页面…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1292" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1305" />
         <location filename="../tilauscope/beancave_zone_editors.py" line="551" />
         <source>about 20 seconds</source>
         <translation>约 20 秒</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1370" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1383" />
         <location filename="../tilauscope/beancave_zone_editors.py" line="621" />
         <source>AI Error</source>
         <translation>AI 错误</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1371" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1384" />
         <location filename="../tilauscope/beancave_zone_editors.py" line="622" />
         <source>Failed to extract bean data</source>
         <translation>无法提取豆子数据</translation>
@@ -23806,7 +23806,7 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation>未配置秤</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/ambient.py" line="95" />
+        <location filename="../tilauscope/cave/ambient.py" line="89" />
         <location filename="../tilauscope/beancave_zone_editors.py" line="800" />
         <source>Pair your scale in TilauScope Config › Sensors to measure density.</source>
         <translation>在 TilauScope 配置 › 传感器中配对你的秤来测量密度。</translation>
@@ -23906,90 +23906,95 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation>无法读取此地址。粘贴供应商页面的http或https链接。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="167" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="148" />
+        <source>Double-click to see its roasts</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/beancave_catalogue.py" line="169" />
         <source>TO TASTE</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="168" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="170" />
         <source>Its last roast has rested: taste it before roasting it again.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="193" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="195" />
         <source>out of stock</source>
         <translation>缺货</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="209" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="211" />
         <source>≈ 1 batch</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="212" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="214" />
         <source>last roast {0}</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="214" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="216" />
         <source>not roasted yet</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="226" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="228" />
         <source>aw not measured</source>
         <translation type="unfinished">aw 未测量</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="294" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="302" />
         <source>Search name, country, farm…</source>
         <translation>搜索名称、国家、农场…</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="311" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="319" />
         <source>Hide or show the coffees out of stock</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="457" />
-        <location filename="../tilauscope/beancave_catalogue.py" line="334" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="466" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="342" />
         <source>To roast first</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="335" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="343" />
         <source>Storage risk first (water activity), then the oldest harvest, then the coffee left longest since its last roast.</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/cave/bean_tab_build.py" line="476" />
-        <location filename="../tilauscope/beancave_catalogue.py" line="458" />
-        <location filename="../tilauscope/beancave_catalogue.py" line="338" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="467" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="346" />
         <source>Name</source>
         <translation type="unfinished">名称</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="362" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="370" />
         <source>No bean matches the current filter.</source>
         <translation>没有咖啡豆与当前筛选器匹配。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="459" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="468" />
         <source>Sort: {0}</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="470" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="479" />
         <source>Show: in stock</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="471" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="480" />
         <source>Show: all coffees</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/beancave_catalogue.py" line="489" />
+        <location filename="../tilauscope/beancave_catalogue.py" line="498" />
         <source>Out of stock · {0} coffees</source>
         <translation type="unfinished" />
     </message>
@@ -24128,7 +24133,7 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation>标签(PDF)</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1706" />
+        <location filename="../tilauscope/cave/viewer.py" line="1711" />
         <location filename="../tilauscope/cave/viewer.py" line="169" />
         <source>Print label</source>
         <translation>打印标签</translation>
@@ -24306,7 +24311,7 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation>咖啡A–Z</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1425" />
+        <location filename="../tilauscope/cave/viewer.py" line="1430" />
         <location filename="../tilauscope/cave/viewer.py" line="628" />
         <source>Clear filters</source>
         <translation>清除过滤器</translation>
@@ -24325,16 +24330,16 @@ Remote control is enabled, so you can open the control client in your browser in
         <location filename="../tilauscope/cave/printing.py" line="117" />
         <location filename="../tilauscope/cave/printing.py" line="82" />
         <location filename="../tilauscope/cave/printing.py" line="71" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1164" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1124" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1119" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="571" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="473" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1177" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1137" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1132" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="583" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="485" />
         <location filename="../tilauscope/cave/lifecycle.py" line="1443" />
-        <location filename="../tilauscope/cave/viewer.py" line="2251" />
-        <location filename="../tilauscope/cave/viewer.py" line="2238" />
-        <location filename="../tilauscope/cave/viewer.py" line="2189" />
-        <location filename="../tilauscope/cave/viewer.py" line="2112" />
+        <location filename="../tilauscope/cave/viewer.py" line="2260" />
+        <location filename="../tilauscope/cave/viewer.py" line="2247" />
+        <location filename="../tilauscope/cave/viewer.py" line="2198" />
+        <location filename="../tilauscope/cave/viewer.py" line="2121" />
         <location filename="../tilauscope/cave/viewer.py" line="784" />
         <location filename="../tilauscope/cave/viewer.py" line="765" />
         <location filename="../tilauscope/cave/viewer.py" line="701" />
@@ -24376,204 +24381,204 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation>指定的ALog目录不存在或不是目录。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1838" />
+        <location filename="../tilauscope/cave/viewer.py" line="1843" />
         <location filename="../tilauscope/cave/viewer.py" line="1086" />
         <source>Select one roast to analyze; its readings will load first.</source>
         <translation>选择一个烘焙进行分析；其数据将首先加载。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1427" />
+        <location filename="../tilauscope/cave/viewer.py" line="1432" />
         <location filename="../tilauscope/cave/viewer.py" line="1306" />
         <source>Show all coffees</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1355" />
+        <location filename="../tilauscope/cave/viewer.py" line="1360" />
         <source>no roast</source>
         <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/cave/roast_list.py" line="170" />
-        <location filename="../tilauscope/cave/viewer.py" line="1356" />
+        <location filename="../tilauscope/cave/viewer.py" line="1361" />
         <source>1 roast</source>
         <translation>1条烘焙</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/roast_list.py" line="171" />
-        <location filename="../tilauscope/cave/viewer.py" line="1357" />
+        <location filename="../tilauscope/cave/viewer.py" line="1362" />
         <source>{0} roasts</source>
         <translation>{0}条烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1384" />
+        <location filename="../tilauscope/cave/viewer.py" line="1389" />
         <source>{0} of {1} roasts</source>
         <translation>{0}条烘焙，共{1}条</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1394" />
+        <location filename="../tilauscope/cave/viewer.py" line="1399" />
         <source>Roast folder not found</source>
         <translation>未找到烘焙文件夹</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1397" />
+        <location filename="../tilauscope/cave/viewer.py" line="1402" />
         <source>No roasts yet</source>
         <translation>还没有烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1398" />
+        <location filename="../tilauscope/cave/viewer.py" line="1403" />
         <source>Your roasts appear here once the first one is saved.</source>
         <translation>保存第一次烘焙后，您的烘焙将出现在这里。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1401" />
+        <location filename="../tilauscope/cave/viewer.py" line="1406" />
         <source>{0} has no roast yet</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1403" />
+        <location filename="../tilauscope/cave/viewer.py" line="1408" />
         <source>Its first roast will appear here. The plan starts from its characteristics.</source>
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1407" />
+        <location filename="../tilauscope/cave/viewer.py" line="1412" />
         <source>No roast matches “{0}”</source>
         <translation>没有烘焙与「{0}」匹配</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1411" />
+        <location filename="../tilauscope/cave/viewer.py" line="1416" />
         <source>No roast matches the filters</source>
         <translation>没有烘焙与过滤器匹配</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1421" />
+        <location filename="../tilauscope/cave/viewer.py" line="1426" />
         <source>Choose folder</source>
         <translation>选择文件夹</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1423" />
+        <location filename="../tilauscope/cave/viewer.py" line="1428" />
         <source>Clear search</source>
         <translation>清除搜索</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1509" />
+        <location filename="../tilauscope/cave/viewer.py" line="1514" />
         <source>Crop {0}</source>
         <translation>裁剪{0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1511" />
+        <location filename="../tilauscope/cave/viewer.py" line="1516" />
         <source>Batch {0}</source>
         <translation>批号{0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1583" />
+        <location filename="../tilauscope/cave/viewer.py" line="1588" />
         <source>Opens the energy details of this roast</source>
         <translation>打开此烘烤的能量详情</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1611" />
+        <location filename="../tilauscope/cave/viewer.py" line="1616" />
         <source>Tasted: {0}</source>
         <translation>品鉴结果：{0}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1622" />
+        <location filename="../tilauscope/cave/viewer.py" line="1627" />
         <source>Rested and ready — how did it taste?</source>
         <translation>已静置准备好 — 味道如何？</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1623" />
+        <location filename="../tilauscope/cave/viewer.py" line="1628" />
         <source>Taste</source>
         <translation type="unfinished">味道</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/tasting_dialog.py" line="91" />
-        <location filename="../tilauscope/cave/viewer.py" line="1634" />
+        <location filename="../tilauscope/cave/viewer.py" line="1639" />
         <source>Tasting</source>
         <translation>品鉴</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/analysis.py" line="138" />
-        <location filename="../tilauscope/cave/viewer.py" line="1635" />
+        <location filename="../tilauscope/cave/viewer.py" line="1640" />
         <source>Please select a roast file first.</source>
         <translation>请先选择烘烤文件。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1689" />
-        <location filename="../tilauscope/cave/viewer.py" line="1672" />
+        <location filename="../tilauscope/cave/viewer.py" line="1694" />
+        <location filename="../tilauscope/cave/viewer.py" line="1677" />
         <source>{0} roasts compared</source>
         <translation>比较{0}条烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1676" />
+        <location filename="../tilauscope/cave/viewer.py" line="1681" />
         <source>Only the first five selected roasts are drawn.</source>
         <translation>仅绘制选定的前五条烘焙。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1708" />
+        <location filename="../tilauscope/cave/viewer.py" line="1713" />
         <source>Print label — printer not connected</source>
         <translation>打印标签——打印机未连接</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1782" />
+        <location filename="../tilauscope/cave/viewer.py" line="1787" />
         <source>From</source>
         <translation type="unfinished">来自</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1784" />
+        <location filename="../tilauscope/cave/viewer.py" line="1789" />
         <source>To</source>
         <translation>至</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1786" />
+        <location filename="../tilauscope/cave/viewer.py" line="1791" />
         <source>Apply</source>
         <translation type="unfinished">应用</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="1831" />
+        <location filename="../tilauscope/cave/viewer.py" line="1836" />
         <source>Burner &amp; air</source>
         <translation>燃烧器和空气</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/printing.py" line="439" />
-        <location filename="../tilauscope/cave/viewer.py" line="1841" />
+        <location filename="../tilauscope/cave/viewer.py" line="1846" />
         <source>Select a roast file to see the curve preview.</source>
         <translation>选择烘烤文件以查看曲线预览。</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/printing.py" line="443" />
-        <location filename="../tilauscope/cave/viewer.py" line="1842" />
+        <location filename="../tilauscope/cave/viewer.py" line="1847" />
         <source>Roast Information will appear here.</source>
         <translation>烘烤信息将显示在此处。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2013" />
+        <location filename="../tilauscope/cave/viewer.py" line="2022" />
         <source>Loading was interrupted — select the roast again to see its curve.</source>
         <translation>加载被中断 — 再次选择烤制以查看其曲线。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2252" />
-        <location filename="../tilauscope/cave/viewer.py" line="2190" />
-        <location filename="../tilauscope/cave/viewer.py" line="2113" />
+        <location filename="../tilauscope/cave/viewer.py" line="2261" />
+        <location filename="../tilauscope/cave/viewer.py" line="2199" />
+        <location filename="../tilauscope/cave/viewer.py" line="2122" />
         <source>Please, select a roast session first.</source>
         <translation>请先选择一次烘烤。</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/printing.py" line="869" />
-        <location filename="../tilauscope/cave/viewer.py" line="2154" />
+        <location filename="../tilauscope/cave/viewer.py" line="2163" />
         <source>Missing Bean</source>
         <translation>缺少豆子</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2155" />
+        <location filename="../tilauscope/cave/viewer.py" line="2164" />
         <source>This roast is not linked to any bean in your cave. Please select the bean in the 'Green Beans' tab first.</source>
         <translation>此烘烤未链接到您的豆库中的任何咖啡豆。请先在"生豆"选项卡中选择咖啡豆。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2213" />
+        <location filename="../tilauscope/cave/viewer.py" line="2222" />
         <source>Save Roast Card</source>
         <translation>保存烘烤卡</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2215" />
+        <location filename="../tilauscope/cave/viewer.py" line="2224" />
         <source>PNG Images (*.png)</source>
         <translation>PNG 图像 (*.png)</translation>
     </message>
@@ -24581,32 +24586,32 @@ Remote control is enabled, so you can open the control client in your browser in
         <location filename="../tilauscope/cave/printing.py" line="970" />
         <location filename="../tilauscope/cave/printing.py" line="932" />
         <location filename="../tilauscope/cave/printing.py" line="885" />
-        <location filename="../tilauscope/cave/viewer.py" line="2232" />
+        <location filename="../tilauscope/cave/viewer.py" line="2241" />
         <source>Success</source>
         <translation>成功</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2233" />
+        <location filename="../tilauscope/cave/viewer.py" line="2242" />
         <source>Roast card saved to</source>
         <translation>烘烤卡已保存到</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2239" />
+        <location filename="../tilauscope/cave/viewer.py" line="2248" />
         <source>The roast card could not be generated.</source>
         <translation>无法生成烘烤卡。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2289" />
+        <location filename="../tilauscope/cave/viewer.py" line="2298" />
         <source>Error reading/parsing file</source>
         <translation>文件读取/解析错误</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2290" />
+        <location filename="../tilauscope/cave/viewer.py" line="2299" />
         <source>Error reading/parsing file.</source>
         <translation>文件读取/解析错误。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/viewer.py" line="2291" />
+        <location filename="../tilauscope/cave/viewer.py" line="2300" />
         <source>The roast could not be read. Select it again to retry.</source>
         <translation>无法读取烘焙。再次选择以重试。</translation>
     </message>
@@ -24795,17 +24800,17 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation type="unfinished">阶段</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/ambient.py" line="94" />
+        <location filename="../tilauscope/cave/ambient.py" line="88" />
         <source>No scale configured</source>
         <translation>未配置秤</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/ambient.py" line="162" />
+        <location filename="../tilauscope/cave/ambient.py" line="156" />
         <source>Replace Density?</source>
         <translation>替换密度？</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/ambient.py" line="163" />
+        <location filename="../tilauscope/cave/ambient.py" line="157" />
         <source>Current density is &lt;b&gt;{0} g/l&lt;/b&gt;.&lt;br&gt;Replace with measured &lt;b&gt;{1} g/l&lt;/b&gt;?</source>
         <translation>当前密度为&lt;b&gt;{0} g/l&lt;/b&gt;。&lt;br&gt;替换为测量值&lt;b&gt;{1} g/l&lt;/b&gt;？</translation>
     </message>
@@ -25020,9 +25025,9 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation>PNG 文件 (*.png);;所有文件 (*)</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1168" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1162" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1139" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1181" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1175" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1152" />
         <location filename="../tilauscope/cave/viewer_plot.py" line="259" />
         <location filename="../tilauscope/cave/viewer_plot.py" line="211" />
         <location filename="../tilauscope/cave/widgets.py" line="581" />
@@ -25142,7 +25147,7 @@ Remote control is enabled, so you can open the control client in your browser in
         <translation>启动时配置的一个或多个目录不再有效。请在 TilauScope 配置 &gt; BeanCave 中重新选择。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="525" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="537" />
         <location filename="../tilauscope/cave/lifecycle.py" line="779" />
         <source>Directory Error</source>
         <translation>目录错误</translation>
@@ -25846,7 +25851,7 @@ BT 拟合和误差使用原始读数；参考 RoR 是拟合 BT 的导数。测�
         <translation>供应商或杯测会给出的风味笔记</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="781" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="793" />
         <location filename="../tilauscope/cave/bean_tab_build.py" line="113" />
         <source>Year of Harvesting.</source>
         <translation>收获年份。</translation>
@@ -25918,8 +25923,8 @@ BT 拟合和误差使用原始读数；参考 RoR 是拟合 BT 的导数。测�
     </message>
     <message>
         <location filename="../tilauscope/cave/bean_tab_build.py" line="263" />
-        <source>Create a new green bean record in a single expert form. For a guided entry, use « + New sack ».</source>
-        <translation>在单一专家表格中创建新的绿豆记录。如需引导式输入，请使用「+ 新麻袋」。</translation>
+        <source>Create a new green bean record in a single expert form. For a guided entry, use « + New bean ».</source>
+        <translation type="unfinished" />
     </message>
     <message>
         <location filename="../tilauscope/cave/bean_tab_build.py" line="266" />
@@ -25932,7 +25937,7 @@ BT 拟合和误差使用原始读数；参考 RoR 是拟合 BT 的导数。测�
         <translation>清空所有输入字段至默认状态。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="981" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="994" />
         <location filename="../tilauscope/cave/bean_tab_build.py" line="273" />
         <source>Delete</source>
         <translation type="unfinished">删除</translation>
@@ -26154,7 +26159,7 @@ BT 拟合和误差使用原始读数；参考 RoR 是拟合 BT 的导数。测�
         <translation>豆类：</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="738" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="750" />
         <location filename="../tilauscope/cave/bean_tab_build.py" line="726" />
         <source>Single Origin</source>
         <translation>单一产地</translation>
@@ -26162,8 +26167,8 @@ BT 拟合和误差使用原始读数；参考 RoR 是拟合 BT 的导数。测�
     <message>
         <location filename="../tilauscope/cave/bean_tab_build.py" line="805" />
         <location filename="../tilauscope/cave/bean_tab_build.py" line="741" />
-        <source>New sack</source>
-        <translation>新麻袋</translation>
+        <source>New bean</source>
+        <translation type="unfinished">新豆种</translation>
     </message>
     <message>
         <location filename="../tilauscope/cave/bean_tab_build.py" line="742" />
@@ -26197,7 +26202,7 @@ BT 拟合和误差使用原始读数；参考 RoR 是拟合 BT 的导数。测�
     </message>
     <message>
         <location filename="../tilauscope/cave/bean_tab_build.py" line="814" />
-        <source>New sack — guided</source>
+        <source>New bean — guided</source>
         <translation type="unfinished" />
     </message>
     <message>
@@ -26411,120 +26416,120 @@ BT 拟合和误差使用原始读数；参考 RoR 是拟合 BT 的导数。测�
         <translation>您的豆类库为空。请使用「添加」按钮定义您的第一个豆类。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="442" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="454" />
         <source>QR scan unavailable</source>
         <translation>二维码扫描不可用</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="463" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="475" />
         <source>Roast not found</source>
         <translation>未找到烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="464" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="476" />
         <source>No roast with this identifier in the ALog directory.
 If the application just started, indexing may still be running — try again in a few seconds.</source>
         <translation>ALog目录中没有具有此标识符的烘焙。
 如果应用程序刚启动，索引可能仍在运行 — 请在几秒钟后重试。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="474" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="486" />
         <source>The roast file could not be read.</source>
         <translation>无法读取烘焙文件。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="495" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="507" />
         <source>Bean not found</source>
         <translation>未找到豆类</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="496" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="508" />
         <source>No green bean with this identifier in the BeanCave catalogue.</source>
         <translation>BeanCave目录中没有具有此标识符的绿豆。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="513" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="525" />
         <source>Sack not found</source>
         <translation>未找到麻袋</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="514" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="526" />
         <source>This label is not currently attached to any coffee in the BeanCave catalogue.</source>
         <translation>此标签目前未附加到BeanCave目录中的任何咖啡。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="526" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="538" />
         <source>Please select a valid ALog directory first.</source>
         <translation>请先选择有效的 ALog 目录。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="751" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="763" />
         <source>Start a roast with this bean</source>
         <translation>使用此豆类开始烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="753" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="765" />
         <source>Out of stock — refill this bean before roasting</source>
         <translation>库存不足 — 烘焙前请补充此豆类</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="974" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="987" />
         <source>Confirm Deletion</source>
         <translation>确认删除</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="975" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="988" />
         <source>Delete &lt;b&gt;{0}&lt;/b&gt;?&lt;br&gt;This action cannot be undone.</source>
         <translation>删除&lt;b&gt;{0}&lt;/b&gt;？&lt;br&gt;此操作无法撤销。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="982" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="995" />
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1112" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1125" />
         <source>Read Error</source>
         <translation>读取错误</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1113" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1126" />
         <source>Unable to read file</source>
         <translation>无法读取文件</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1115" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1128" />
         <source>The file might be corrupted.</source>
         <translation>文件可能已损坏。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1118" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1131" />
         <source>Unexpected error while reading beancave.json</source>
         <translation>读取beancave.json时出现意外错误</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1119" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1132" />
         <source>An unexpected error occurred</source>
         <translation>发生意外错误</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1124" />
-        <location filename="../tilauscope/cave/bean_tab.py" line="1123" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1137" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1136" />
         <source>Directory or file access is not possible</source>
         <translation>无法访问目录或文件</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1140" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1153" />
         <source>The bean library file could not be read, so nothing is saved over it. Repair or restore beancave.json, then reopen BeanCave.</source>
         <translation>无法读取豆类库文件，因此不会保存任何内容。修复或恢复 beancave.json，然后重新打开 BeanCave。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1163" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1176" />
         <source>Unable to save file</source>
         <translation>无法保存文件</translation>
     </message>
     <message>
-        <location filename="../tilauscope/cave/bean_tab.py" line="1169" />
+        <location filename="../tilauscope/cave/bean_tab.py" line="1182" />
         <source>Please select a directory to store the JSON beancave file and where your alog files are located. Then exit BeanCave and relaunch it!</source>
         <translation>请选择一个目录来存储 JSON beancave 文件和 alog 文件位置。然后退出 BeanCave 并重新启动！</translation>
     </message>
@@ -26813,6 +26818,14 @@ If the application just started, indexing may still be running — try again in 
         <location filename="../tilauscope/cave/printing.py" line="976" />
         <source>The bean card could not be generated.</source>
         <translation>豆子卡无法生成。</translation>
+    </message>
+    <message>
+        <source>Create a new green bean record in a single expert form. For a guided entry, use « + New sack ».</source>
+        <translation type="vanished">在单一专家表格中创建新的绿豆记录。如需引导式输入，请使用「+ 新麻袋」。</translation>
+    </message>
+    <message>
+        <source>New sack</source>
+        <translation type="vanished">新麻袋</translation>
     </message>
     <message>
         <source>Stock value</source>
@@ -28398,587 +28411,689 @@ If the application just started, indexing may still be running — try again in 
         <translation>保存它，下次冲泡这个豆子时就会用这个设置。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="317" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="327" />
+        <source>{d} d · too fresh</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="328" />
+        <source>{d} d · in its window</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="329" />
+        <source>{d} d · nearing peak</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="330" />
+        <source>{d} d · past its window</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="333" />
         <source>Auto / measured</source>
         <translation>自动／测量</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="318" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="334" />
         <source>SCA target</source>
         <translation>SCA 目标</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="319" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="335" />
         <source>Soft</source>
         <translation>柔和</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="320" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="336" />
         <source>Hard</source>
         <translation>硬</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="503" />
-        <source>1 diagnostic</source>
-        <translation>1 项诊断</translation>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="404" />
+        <source>yours</source>
+        <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="504" />
-        <source>{n} diagnostics</source>
-        <translation>{n} 项诊断</translation>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="569" />
+        <source>BEFORE YOU BREW</source>
+        <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1078" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="658" />
+        <source>Show fewer notes</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="660" />
+        <source>Show 1 more note</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="662" />
+        <source>Show {n} more notes</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="667" />
+        <source>{n} to watch</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="670" />
+        <source>1 good sign</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="671" />
+        <source>{n} good signs</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="674" />
+        <source>1 tip</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="675" />
+        <source>{n} tips</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1234" />
         <source>Roast</source>
         <translation type="unfinished">烘焙</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1258" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1414" />
         <source>Barista Expert — Brew Advisor</source>
         <translation>Barista Expert — 冲泡顾问</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1277" />
-        <source>Color</source>
-        <translation type="unfinished">颜色</translation>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1454" />
+        <source>Weight loss {wl} %</source>
+        <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1277" />
-        <source>WL</source>
-        <translation>WL</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1278" />
-        <source>Rest</source>
-        <translation>静置</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1304" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1496" />
         <source>Machine</source>
         <translation type="unfinished">机器</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1313" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1505" />
         <source>Style</source>
         <translation type="unfinished">风格</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1320" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1512" />
         <source>Classic long: keeps the grind the roast asks for and lets the shot run as long as the ratio needs.
 Turbo: fixes the shot around 25 s and opens the grind to get the flow — the roast is then expressed by the ratio alone.
 Modern: a fixed short pre-infusion (2-3 s bloom, 7-8 s soak) then a fast 9-bar pull, 10-20 s depending on the roast — for a high-flow basket and light roasts only.</source>
         <translation>Classic 长：保留烘焙要求的研磨度并让萃取根据比例运行。\nTurbo：将萃取固定在约 25 秒并打开研磨度以获得流速 — 烘焙然后仅通过比例表示。\nModern：固定短预浸（2-3 秒闷蒸、7-8 秒闷泡）然后快速 9 bar 拉杆，10-20 秒取决于烘焙 — 仅适用于高流速篮和浅烘焙。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1330" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1522" />
         <source>Method</source>
         <translation>方法</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2079" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1350" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1332" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2332" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1542" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1524" />
         <source>Dose</source>
         <translation>粉量</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3346" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3326" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2077" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1351" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1334" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3678" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3657" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2330" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1543" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1526" />
         <source>Water</source>
         <translation>水</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3194" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2081" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1352" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3460" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2334" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1544" />
         <source>Ratio</source>
         <translation type="unfinished">纵横比</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3188" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2082" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1353" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3453" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2335" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1545" />
         <source>Temp</source>
         <translation type="unfinished">温度</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3184" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2083" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1354" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3449" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2336" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1546" />
         <source>Grind</source>
         <translation>研磨</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1355" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1547" />
         <source>Time</source>
         <translation type="unfinished">时间</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1374" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1582" />
         <source>PROTOCOL</source>
         <translation>冲泡方案</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1396" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1597" />
+        <source>Brew done</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1626" />
         <source>HOW DOES IT TASTE?</source>
         <translation>感觉怎么样？</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1402" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1632" />
         <source>Tell the advisor and it will adjust the recipe.</source>
         <translation>告诉顾问，它会调整配方。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1412" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1642" />
         <source>Sour</source>
         <translation>酸</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1413" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1643" />
         <source>Bitter</source>
         <translation>苦</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1414" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1644" />
         <source>Harsh</source>
         <translation>刺激</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1415" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1645" />
         <source>Thin</source>
         <translation>薄</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1416" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1646" />
         <source>✓ Balanced</source>
         <translation>✓ 均衡</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3174" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1447" />
-        <source>Apply to next brew</source>
-        <translation>应用到下一次冲泡</translation>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1686" />
+        <source>NEXT BREW</source>
+        <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1501" />
-        <source>Live extraction</source>
-        <translation>实时萃取</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2290" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1531" />
-        <source>Flow: –– g/s</source>
-        <translation>流速：–– g/s</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1559" />
-        <source>SHOT RESULT</source>
-        <translation>萃取结果</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2962" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1566" />
-        <source>Shot time</source>
-        <translation>萃取时间</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1571" />
-        <source>In the cup</source>
-        <translation>杯中</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1596" />
-        <source>Cancel</source>
-        <translation type="unfinished">取消</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1601" />
-        <source>Record</source>
-        <translation>记录</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1619" />
-        <source>BREW COMPLETE</source>
-        <translation>冲泡完成</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2178" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1672" />
-        <source>▶ Start brew</source>
-        <translation>▶ 开始冲泡</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1674" />
-        <source>Auto-stop</source>
-        <translation>自动停止</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1679" />
-        <source>Stop the shot on its own when the cup reaches the target yield.</source>
-        <translation>当杯中达到目标产量时自动停止萃取。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1695" />
-        <source>✎ Enter manually</source>
-        <translation>✎ 手动输入</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1698" />
-        <source>Type the shot time and the weight in the cup, for machines whose scale is built in and leaves no room for an Acaia.</source>
-        <translation>输入萃取时间和杯中重量，适用于内置秤且无 Acaia 空间的机器。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2028" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1719" />
-        <source>✦ Refine (AI)</source>
-        <translation>✦ 优化（AI）</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1723" />
-        <source>Configure an AI engine in the settings to enable refinement.</source>
-        <translation>在设置中配置 AI 引擎以启用优化。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1725" />
-        <source>50×30 label</source>
-        <translation>50×30 标签</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1730" />
-        <source>Connect the Niimbot B21S in BeanCave to print a 50×30 recipe label.</source>
-        <translation>在 BeanCave 中连接 Niimbot B21S 以打印 50×30 配方标签。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1734" />
-        <source>Close</source>
-        <translation type="unfinished">关闭</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="1965" />
-        <source>✦ Refining…</source>
-        <translation>✦ 优化中…</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2065" />
-        <source>Print</source>
-        <translation type="unfinished">打印</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2066" />
-        <source>Brew labels need the 50×30 mm roll (detected: {0}×{1} mm).</source>
-        <translation>冲泡标签需要 50×30 mm 卷纸（检测到：{0}×{1} mm）。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3346" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3326" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2076" />
-        <source>Yield</source>
-        <translation type="unfinished">产量</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2084" />
-        <source>Time</source>
-        <translation type="unfinished">时间</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2102" />
-        <source>Print</source>
-        <translation>打印</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2103" />
-        <source>The label could not be built, so nothing was sent to the printer.</source>
-        <translation>标签无法构建，因此未发送任何内容到打印机。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2123" />
-        <source>Label printed</source>
-        <translation>标签已打印</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2132" />
-        <source>Printing failed — check the printer</source>
-        <translation>打印失败 — 检查打印机</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2166" />
-        <source>■ Stop brew</source>
-        <translation>■ 停止冲泡</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2188" />
-        <source>⟳  Searching for the scale…</source>
-        <translation>⟳ 搜索秤中…</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2189" />
-        <source>Switch the scale on and it will connect by itself.</source>
-        <translation>打开秤，它会自动连接。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2194" />
-        <source>No scale configured</source>
-        <translation>未配置秤</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2195" />
-        <source>Configure a Bluetooth scale in the settings to enable live brewing.</source>
-        <translation type="unfinished">在设置中配置蓝牙秤以启用实时冲泡。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2231" />
-        <source>● scale lost</source>
-        <translation>● 秤已断开</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2424" />
-        <source>Target: {g} g in {t}</source>
-        <translation>目标：{g} g / {t}</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2634" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2460" />
-        <source>{p}% of {t} g</source>
-        <translation>{p}% / {t} g</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2626" />
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2463" />
-        <source>Flow: {f} g/s</source>
-        <translation>流速：{f} g/s</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2526" />
-        <source>● {g} g ahead</source>
-        <translation>● 领先 {g} g</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2529" />
-        <source>● {g} g behind</source>
-        <translation>● 落后 {g} g</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2532" />
-        <source>● on plan</source>
-        <translation>● 按计划</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2604" />
-        <source>● scale silent</source>
-        <translation>● 秤无响应</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2606" />
-        <source>The scale is connected but has not sent a single weight since the brew started. Take the cup off and put it back, or switch the scale off and on again — the app reconnects by itself.</source>
-        <translation>秤已连接但自冲泡开始以来未发送过任何重量。取下杯子再放回，或关闭秤再打开——应用会自动重新连接。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2725" />
-        <source>today</source>
-        <translation>今天</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2727" />
-        <source>{n} d</source>
-        <translation>{n} 天</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2729" />
-        <source>{n} wk</source>
-        <translation>{n} 周</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2730" />
-        <source>{n} mo</source>
-        <translation>{n} 月</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2733" />
-        <source>This recipe carries the correction you saved for this bean on this brew method, applied on top of today's recommendation.</source>
-        <translation>这个配方包含了你为这个豆子在这个冲泡方法上保存的修正，应用在今天建议的基础上。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2740" />
-        <source>It was saved before TilauScope kept the date, so its age is unknown.</source>
-        <translation>它在 TilauScope 记录日期之前保存，所以其年龄未知。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2743" />
-        <source>Saved on {d}.</source>
-        <translation>保存于 {d}。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2747" />
-        <source>That is a while ago: it was dialled on a different roast of this bean, and the green itself has aged since. Treat it as a starting point and taste before trusting it.</source>
-        <translation>那已经是一段时间前了：它是在这个豆子的另一个烘焙上调试的，生豆本身也已老化。把它当作起点，尝味后再信任。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2942" />
-        <source>PREVIOUS ATTEMPT — {d}</source>
-        <translation>上次尝试 — {d}</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2952" />
-        <source>Grind {a} → {b} µm  ({p:+.0f} %)</source>
-        <translation>研磨 {a} → {b} µm（{p:+.0f} %）</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2956" />
-        <source>Grind unchanged — {a} µm</source>
-        <translation>研磨未变 — {a} µm</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2966" />
-        <source>Drawdown</source>
-        <translation>萃取</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2973" />
-        <source>Flow was not measured: no scale was connected. The total time depends mostly on how you poured, so it says nothing about the grind.</source>
-        <translation>流速未测量：未连接秤。总时间主要取决于你的倒水方式，对研磨粗度没有说明。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2992" />
-        <source>Same grind as the attempt before: this is the spread between two brews at the same setting.</source>
-        <translation>与之前尝试的研磨相同：这是同一设置下两次冲泡的差异。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="2995" />
-        <source>Same grind, yet the flow moved: something other than the grind changed between these two brews.</source>
-        <translation>研磨相同，但流速变了：这两次冲泡之间有其他因素改变了。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3004" />
-        <source>The bed resists more: that step bit.</source>
-        <translation>咖啡床阻力更大：那一步起作用了。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3007" />
-        <source>The flow moved the other way to the grind — worth a second look before trusting it.</source>
-        <translation>流速的变化与研磨粗度相反——信任前值得再看一遍。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3013" />
-        <source>That step changed nothing in the flow.</source>
-        <translation>那一步对流速没有影响。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3019" />
-        <source>Can come from: play on that step of your grinder · a different dose or pour · a bean still very fresh.</source>
-        <translation>可能来自：磨豆机那一步的公差·不同的粉量或倒水·豆子仍很新鲜。</translation>
-    </message>
-    <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3153" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1693" />
         <source>No brew time was measured, so this reads the taste alone.</source>
         <translation>未测量冲泡时间，所以这只反映风味。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3172" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3439" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1701" />
+        <source>Apply to next brew</source>
+        <translation>应用到下一次冲泡</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1754" />
+        <source>Live extraction</source>
+        <translation>实时萃取</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2543" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1784" />
+        <source>Flow: –– g/s</source>
+        <translation>流速：–– g/s</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1812" />
+        <source>SHOT RESULT</source>
+        <translation>萃取结果</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3217" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1819" />
+        <source>Shot time</source>
+        <translation>萃取时间</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1824" />
+        <source>In the cup</source>
+        <translation>杯中</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1849" />
+        <source>Cancel</source>
+        <translation type="unfinished">取消</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1854" />
+        <source>Record</source>
+        <translation>记录</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1872" />
+        <source>BREW COMPLETE</source>
+        <translation>冲泡完成</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2431" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1925" />
+        <source>▶ Start brew</source>
+        <translation>▶ 开始冲泡</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1927" />
+        <source>Auto-stop</source>
+        <translation>自动停止</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1932" />
+        <source>Stop the shot on its own when the cup reaches the target yield.</source>
+        <translation>当杯中达到目标产量时自动停止萃取。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1948" />
+        <source>✎ Enter manually</source>
+        <translation>✎ 手动输入</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1951" />
+        <source>Type the shot time and the weight in the cup, for machines whose scale is built in and leaves no room for an Acaia.</source>
+        <translation>输入萃取时间和杯中重量，适用于内置秤且无 Acaia 空间的机器。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2281" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1972" />
+        <source>✦ Refine (AI)</source>
+        <translation>✦ 优化（AI）</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1976" />
+        <source>Configure an AI engine in the settings to enable refinement.</source>
+        <translation>在设置中配置 AI 引擎以启用优化。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1978" />
+        <source>50×30 label</source>
+        <translation>50×30 标签</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1983" />
+        <source>Connect the Niimbot B21S in BeanCave to print a 50×30 recipe label.</source>
+        <translation>在 BeanCave 中连接 Niimbot B21S 以打印 50×30 配方标签。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="1987" />
+        <source>Close</source>
+        <translation type="unfinished">关闭</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2218" />
+        <source>✦ Refining…</source>
+        <translation>✦ 优化中…</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2318" />
+        <source>Print</source>
+        <translation type="unfinished">打印</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2319" />
+        <source>Brew labels need the 50×30 mm roll (detected: {0}×{1} mm).</source>
+        <translation>冲泡标签需要 50×30 mm 卷纸（检测到：{0}×{1} mm）。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3678" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3657" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2329" />
+        <source>Yield</source>
+        <translation type="unfinished">产量</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2337" />
+        <source>Time</source>
+        <translation type="unfinished">时间</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2355" />
+        <source>Print</source>
+        <translation>打印</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2356" />
+        <source>The label could not be built, so nothing was sent to the printer.</source>
+        <translation>标签无法构建，因此未发送任何内容到打印机。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2376" />
+        <source>Label printed</source>
+        <translation>标签已打印</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2385" />
+        <source>Printing failed — check the printer</source>
+        <translation>打印失败 — 检查打印机</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2419" />
+        <source>■ Stop brew</source>
+        <translation>■ 停止冲泡</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2441" />
+        <source>⟳  Searching for the scale…</source>
+        <translation>⟳ 搜索秤中…</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2442" />
+        <source>Switch the scale on and it will connect by itself.</source>
+        <translation>打开秤，它会自动连接。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2447" />
+        <source>No scale configured</source>
+        <translation>未配置秤</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2448" />
+        <source>Configure a Bluetooth scale in the settings to enable live brewing.</source>
+        <translation type="unfinished">在设置中配置蓝牙秤以启用实时冲泡。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2484" />
+        <source>● scale lost</source>
+        <translation>● 秤已断开</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2678" />
+        <source>Target: {g} g in {t}</source>
+        <translation>目标：{g} g / {t}</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2889" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2715" />
+        <source>{p}% of {t} g</source>
+        <translation>{p}% / {t} g</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2881" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2718" />
+        <source>Flow: {f} g/s</source>
+        <translation>流速：{f} g/s</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2781" />
+        <source>● {g} g ahead</source>
+        <translation>● 领先 {g} g</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2784" />
+        <source>● {g} g behind</source>
+        <translation>● 落后 {g} g</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2787" />
+        <source>● on plan</source>
+        <translation>● 按计划</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2859" />
+        <source>● scale silent</source>
+        <translation>● 秤无响应</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2861" />
+        <source>The scale is connected but has not sent a single weight since the brew started. Take the cup off and put it back, or switch the scale off and on again — the app reconnects by itself.</source>
+        <translation>秤已连接但自冲泡开始以来未发送过任何重量。取下杯子再放回，或关闭秤再打开——应用会自动重新连接。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2980" />
+        <source>today</source>
+        <translation>今天</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2982" />
+        <source>{n} d</source>
+        <translation>{n} 天</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2984" />
+        <source>{n} wk</source>
+        <translation>{n} 周</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2985" />
+        <source>{n} mo</source>
+        <translation>{n} 月</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2988" />
+        <source>This recipe carries the correction you saved for this bean on this brew method, applied on top of today's recommendation.</source>
+        <translation>这个配方包含了你为这个豆子在这个冲泡方法上保存的修正，应用在今天建议的基础上。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2995" />
+        <source>It was saved before TilauScope kept the date, so its age is unknown.</source>
+        <translation>它在 TilauScope 记录日期之前保存，所以其年龄未知。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="2998" />
+        <source>Saved on {d}.</source>
+        <translation>保存于 {d}。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3002" />
+        <source>That is a while ago: it was dialled on a different roast of this bean, and the green itself has aged since. Treat it as a starting point and taste before trusting it.</source>
+        <translation>那已经是一段时间前了：它是在这个豆子的另一个烘焙上调试的，生豆本身也已老化。把它当作起点，尝味后再信任。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3197" />
+        <source>PREVIOUS ATTEMPT — {d}</source>
+        <translation>上次尝试 — {d}</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3207" />
+        <source>Grind {a} → {b} µm  ({p:+.0f} %)</source>
+        <translation>研磨 {a} → {b} µm（{p:+.0f} %）</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3211" />
+        <source>Grind unchanged — {a} µm</source>
+        <translation>研磨未变 — {a} µm</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3221" />
+        <source>Drawdown</source>
+        <translation>萃取</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3228" />
+        <source>Flow was not measured: no scale was connected. The total time depends mostly on how you poured, so it says nothing about the grind.</source>
+        <translation>流速未测量：未连接秤。总时间主要取决于你的倒水方式，对研磨粗度没有说明。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3247" />
+        <source>Same grind as the attempt before: this is the spread between two brews at the same setting.</source>
+        <translation>与之前尝试的研磨相同：这是同一设置下两次冲泡的差异。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3250" />
+        <source>Same grind, yet the flow moved: something other than the grind changed between these two brews.</source>
+        <translation>研磨相同，但流速变了：这两次冲泡之间有其他因素改变了。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3259" />
+        <source>The bed resists more: that step bit.</source>
+        <translation>咖啡床阻力更大：那一步起作用了。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3262" />
+        <source>The flow moved the other way to the grind — worth a second look before trusting it.</source>
+        <translation>流速的变化与研磨粗度相反——信任前值得再看一遍。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3268" />
+        <source>That step changed nothing in the flow.</source>
+        <translation>那一步对流速没有影响。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3274" />
+        <source>Can come from: play on that step of your grinder · a different dose or pour · a bean still very fresh.</source>
+        <translation>可能来自：磨豆机那一步的公差·不同的粉量或倒水·豆子仍很新鲜。</translation>
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3437" />
         <source>Save this dial-in</source>
         <translation>保存此设置</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3182" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3706" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3447" />
         <source>finer</source>
         <translation>更细</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3183" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3705" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3448" />
         <source>coarser</source>
         <translation>更粗</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3209" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3494" />
         <source>✓ Applied and saved to {bean}</source>
         <translation>✓ 已应用并保存到 {bean}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3215" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3500" />
         <source>Applied — but could not be saved to this bean</source>
         <translation>已应用——但无法保存到此豆子</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3290" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3575" />
         <source>over</source>
         <translation>过</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3291" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3576" />
         <source>under</source>
         <translation>不足</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3295" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3580" />
         <source>slow</source>
         <translation>慢</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3296" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3581" />
         <source>fast</source>
         <translation>快</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3304" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3589" />
         <source>Ran fast: grind one step finer next time.</source>
         <translation>流速快：下次研磨细一挡。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3307" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3592" />
         <source>Ran slow: grind one step coarser next time.</source>
         <translation>流速慢：下次研磨粗一挡。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3310" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3595" />
         <source>Overshot the target weight: stop earlier or enable auto-stop.</source>
         <translation>超过目标重量：更早停止或启用自动停止。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3328" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3600" />
+        <source>{n} steps · {t} · {g} g</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3622" />
+        <source>Hide steps</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3623" />
+        <source>Show steps</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3659" />
         <source>Target</source>
         <translation type="unfinished">目标</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3361" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3686" />
+        <source>was {v}</source>
+        <translation type="unfinished" />
+    </message>
+    <message>
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3718" />
         <source>Bloom {g} g / {s} s</source>
         <translation>闷蒸 {g} g / {s} 秒</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3365" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3722" />
         <source>EY {ey}</source>
         <translation>EY {ey}</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3369" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3726" />
         <source>✓ your dial-in</source>
         <translation>✓ 你的烤豆调校</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3377" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3734" />
         <source>coarse</source>
         <translation>粗</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3378" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3735" />
         <source>fine</source>
         <translation>细</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3379" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3736" />
         <source>⌁ setup runs ~{p}% {w} — adjusted</source>
         <translation>⌁ 设置运行~{p}% {w} — 已调整</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3382" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3739" />
         <source>Learned from {n} dial-ins across your beans: they all needed a correction in the same direction, so it is applied up front to a bean you have not dialled in yet. This covers your whole setup — grinder, water, palate and technique — not the grinder alone.</source>
         <translation>根据你{n}次烤豆调校的经验学习：它们都需要同一方向的修正，所以这个修正被提前应用到你还没有调校过的豆子。这涵盖了你的整个设置 — 研磨机、水、味觉和技术 — 不仅仅是研磨机。</translation>
     </message>
     <message>
-        <location filename="../tilauscope/brew_advisor_dialog.py" line="3390" />
+        <location filename="../tilauscope/brew_advisor_dialog.py" line="3747" />
         <source>✦ AI-refined</source>
         <translation>✦ AI精化</translation>
+    </message>
+    <message>
+        <source>1 diagnostic</source>
+        <translation type="vanished">1 项诊断</translation>
+    </message>
+    <message>
+        <source>{n} diagnostics</source>
+        <translation type="vanished">{n} 项诊断</translation>
+    </message>
+    <message>
+        <source>Color</source>
+        <translation type="vanished">颜色</translation>
+    </message>
+    <message>
+        <source>WL</source>
+        <translation type="vanished">WL</translation>
+    </message>
+    <message>
+        <source>Rest</source>
+        <translation type="vanished">静置</translation>
     </message>
     <message>
         <source>Configure an Acaia scale in the settings to enable live brewing.</source>
@@ -38154,22 +38269,22 @@ FC START</translation>
         <translation type="unfinished">目标</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_timeline.py" line="826" />
+        <location filename="../tilauscope/roast_timeline.py" line="827" />
         <source>☕ Filter</source>
         <translation>☕ 过滤</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_timeline.py" line="827" />
+        <location filename="../tilauscope/roast_timeline.py" line="828" />
         <source>⚙ Espresso</source>
         <translation>⚙ 意式浓缩</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_timeline.py" line="886" />
+        <location filename="../tilauscope/roast_timeline.py" line="887" />
         <source>Today (dashed)</source>
         <translation>今天（虚线）</translation>
     </message>
     <message>
-        <location filename="../tilauscope/roast_timeline.py" line="905" />
+        <location filename="../tilauscope/roast_timeline.py" line="906" />
         <source>⏳ Scanning roast logs…</source>
         <translation>⏳ 正在扫描烘焙日志…</translation>
     </message>

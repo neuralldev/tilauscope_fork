@@ -1275,9 +1275,6 @@ class ViewerMixin:
 
     def _build_coffee_chip(self) -> QFrame:
         """The coffee the list follows, in place of the coffee list while one is chosen."""
-        # The coffee selected in Green Beans the list last followed: it follows
-        # again only for another one, so a ✕ is never undone behind the operator.
-        self._followed_bean_uuid: str | None = None
         self._followed_bean_name = ""
         self._coffee_labels: dict[str, str] = {}
         chip = self.roast_coffee_chip = QFrame()
@@ -1313,15 +1310,12 @@ class ViewerMixin:
         chip.hide()
         return chip
 
-    def follow_bean(self, bean, again: bool = False) -> None:  # noqa: ANN001
-        """Narrow the list to the coffee selected in Green Beans — once per new selection.
-
-        `again` follows the same coffee anew, for an explicit request from its record.
-        """
+    def follow_bean(self, bean) -> None:  # noqa: ANN001
+        """Narrow the list to one coffee, on an explicit request: a double-click
+        in the catalogue or All N roasts on its record."""
         uuid = getattr(bean, 'uuid', '') or ''
-        if not uuid or (uuid == self._followed_bean_uuid and not again):
+        if not uuid:
             return
-        self._followed_bean_uuid = uuid
         crop = int(getattr(bean, 'crop', 0) or 0)
         self._followed_bean_name = f"{bean.name} · {crop}" if crop > 0 else (bean.name or "")
         group = f"bean:{uuid}"
@@ -1333,6 +1327,11 @@ class ViewerMixin:
         finally:
             combo.blockSignals(False)
         self._refilter_roasts(lambda: self._roast_proxy.set_group(group))
+        if not self._roast_proxy.rowCount() and self._selected_fnames:
+            # The roast on screen belongs to another coffee: the detail empties with the list.
+            self._selected_fnames = []
+            self._highlight_selected()
+            self.load_roast_data_and_plot()
 
     @pyqtSlot()
     def _show_all_coffees(self) -> None:
@@ -1842,8 +1841,12 @@ class ViewerMixin:
             self.roast_info_text.setText(QApplication.translate("tilauscope_beancave","Roast Information will appear here."))
             self._set_viewer_buttons_enabled(False, multi=False)
             self._show_detail_none()
+            self.canvas_container.hide()
+            self.roast_plot_label.setAlignment(Qt.AlignmentFlag.AlignCenter)   # alone in the card
             return
 
+        self.canvas_container.show()
+        self.roast_plot_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.is_zoomed = False
 
         if len(selected) == 1:

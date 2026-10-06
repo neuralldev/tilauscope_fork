@@ -63,16 +63,10 @@ class AmbientMixin:
 
     @pyqtSlot(int)
     def _on_beancave_tab_changed(self, index: int) -> None:
-        """Start/stop the Storage tab's ambient polling with its visibility; the Roasts
-        tab follows the selected coffee."""
+        """Start/stop the Storage tab's ambient polling with its visibility."""
         if getattr(self, 'tab_widget', None) is None:
             return
         current = self.tab_widget.widget(index)
-        # The Roasts tab follows the coffee selected in Green Beans.
-        if current is getattr(self, 'roast_viewer_tab', None):
-            bean = self._current_selected_bean()
-            if bean is not None:
-                self.follow_bean(bean)
         st = getattr(self, 'storage_tab_widget', None)
         if st is not None:
             if current is getattr(self, 'storage_tab', None):

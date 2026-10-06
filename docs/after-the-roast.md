@@ -133,13 +133,12 @@ you scroll.
 - **Search** matches the coffee, its process, crop year, farm and country, and the batch
   number (type `#44`). Accents and capitals do not matter, and every word typed must match.
   **Ctrl+F** (**⌘F** on macOS) moves to the search box; **Esc** empties it.
-- **All coffees** narrows the list to one coffee, each shown with its number of roasts. The
-  list also follows the coffee selected in BeanCave's Green Beans tab: opening the Roasts tab
-  shows that coffee's roasts only. While the list follows one coffee, a chip names it — *☕
-  Caturra · 2025 · 4 roasts* — in place of the menu, and its **✕** shows every coffee again.
-  The list then stays on every coffee until another one is selected in Green Beans; **All 4
-  roasts →** on a coffee's record narrows it again in any case. A coffee never roasted says so —
-  *Guji 74110 has no roast yet* — with **Show all coffees** to leave it.
+- **All coffees** narrows the list to one coffee, each shown with its number of roasts.
+  Double-clicking a coffee in BeanCave's Green Beans tab, or **All 4 roasts →** on its record,
+  opens the Roasts tab narrowed to that coffee. Selecting a coffee with a single click does not
+  change the list. While the list shows one coffee, a chip names it — *☕ Caturra · 2025 · 4
+  roasts* — in place of the menu, and its **✕** shows every coffee again. A coffee never
+  roasted says so — *Guji 74110 has no roast yet* — with **Show all coffees** to leave it.
 - The order menu offers **Most recent**, **Oldest first** and **Coffee A–Z**. In coffee order
   the headings name the coffee instead of the day, and each roast shows its charge weight and
   its roasted weight. The order is kept for next time; the search and the coffee filter are

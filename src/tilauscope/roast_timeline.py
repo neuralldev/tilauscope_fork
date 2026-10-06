@@ -786,7 +786,7 @@ class RoastReadyDialog(QDialog):
         )
         title.setStyleSheet(
             "color:white; font-size:22px; font-weight:900;"
-            " "
+            " border:none; background:transparent;"   # a QLabel is a QFrame: the container's rule reaches it
         )
         today_btn = QPushButton(
             QApplication.translate("tilauscope_roast_review", "◎ Today")
@@ -816,6 +816,7 @@ class RoastReadyDialog(QDialog):
         # targeted brew method (Filter / Espresso) — shifts every window & persists
         seg_lbl = QLabel(QApplication.translate("tilauscope_roast_review", "Target"))
         seg_lbl.setProperty('variant', 'eyebrow')
+        seg_lbl.setStyleSheet("border:none; background:transparent;")
         seg = QFrame()
         seg.setStyleSheet(
             f"QFrame {{ background:{THEME['SURFACE']}; border:1px solid {THEME['BORDER']};"

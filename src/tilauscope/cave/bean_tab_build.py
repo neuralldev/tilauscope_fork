@@ -249,7 +249,7 @@ class BeanTabBuildMixin:
         # for `danger-outline`, AI and « Roast finished! » keep their tints.
 
         # ── Boutons CRUD primaires ──────────────────────────────────────────
-        # "+ New sack" is the single accent button of the action bar —
+        # "+ New bean" is the single accent button of the action bar —
         # Update dresses like the other CRUD buttons to avoid two defaults.
         self.update_button = _icon_btn(
             "M2 7h10M7 2l5 5-5 5", QT_TRANSLATE_NOOP("tilauscope_beancave", "Update"))
@@ -260,7 +260,7 @@ class BeanTabBuildMixin:
             "M7 2v10M2 7h10", QT_TRANSLATE_NOOP("tilauscope_beancave", "Add"))
         # Lot 5 step D: Add opens the full expert editor on a blank record
         self.add_button.clicked.connect(self._open_full_bean_editor)
-        self.add_button.setToolTip(QApplication.translate("tilauscope_beancave","Create a new green bean record in a single expert form. For a guided entry, use « + New sack »."))
+        self.add_button.setToolTip(QApplication.translate("tilauscope_beancave","Create a new green bean record in a single expert form. For a guided entry, use « + New bean »."))
 
         self.clear_button = _icon_btn(
             "M5 4l-3 3 3 3M2 7h9a2 2 0 0 0 0-4H9", QT_TRANSLATE_NOOP("tilauscope_beancave", "Clear"))
@@ -738,7 +738,7 @@ class BeanTabBuildMixin:
 
         # The guided assistant and its new-crop shortcut; both now open from
         # the catalogue and the sheet, these stay as their enabled-state holders.
-        self.new_sack_button = QPushButton("+ " + QApplication.translate("tilauscope_beancave", "New sack"))
+        self.new_sack_button = QPushButton("+ " + QApplication.translate("tilauscope_beancave", "New bean"))
         self.new_sack_button.setToolTip(QApplication.translate(
             "tilauscope_beancave",
             "Register an incoming bag of green coffee with a step-by-step "
@@ -799,10 +799,10 @@ class BeanTabBuildMixin:
         self.remove_button.setFixedSize(36, 34)
         _actions_layout.addWidget(self.remove_button)
 
-        # « + New sack ▾ » heads the catalogue: the guided assistant on a click,
+        # « + New bean ▾ » heads the catalogue: the guided assistant on a click,
         # the expert form in its menu.
         self.new_sack_tool = QToolButton()
-        self.new_sack_tool.setText(QApplication.translate("tilauscope_beancave", "New sack"))
+        self.new_sack_tool.setText(QApplication.translate("tilauscope_beancave", "New bean"))
         self.new_sack_tool.setIcon(svg_icon("M12 5v14M5 12h14", THEME['BG'], 15, 2.4))
         self.new_sack_tool.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.new_sack_tool.setToolTip(self.new_sack_button.toolTip())
@@ -811,7 +811,7 @@ class BeanTabBuildMixin:
         self.new_sack_tool.clicked.connect(self._open_new_sack_wizard)
         _sack_menu = QMenu(self.new_sack_tool)
         _sack_menu.setStyleSheet(menu_qss())
-        _sack_menu.addAction(QApplication.translate("tilauscope_beancave", "New sack — guided"),
+        _sack_menu.addAction(QApplication.translate("tilauscope_beancave", "New bean — guided"),
                              self._open_new_sack_wizard)
         _sack_menu.addAction(QApplication.translate("tilauscope_beancave", "Add — expert form"),
                              self.add_button.click)
@@ -862,6 +862,7 @@ class BeanTabBuildMixin:
         self.catalogue_list = CatalogueListWidget()
         self.catalogue_list.memory_for = self._catalogue_memories
         self.catalogue_list.rowActivated.connect(self._on_catalogue_row_activated)
+        self.catalogue_list.rowDoubleClicked.connect(self._on_catalogue_row_double_clicked)
         self.catalogue_list.lead_tools.insertWidget(0, self.new_sack_tool)
         _left_layout.addWidget(self.catalogue_list, 1)
         _left_layout.addWidget(self.datatable)

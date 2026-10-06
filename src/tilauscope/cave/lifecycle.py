@@ -55,7 +55,7 @@ from tilauscope.alogmanager import (AlogCacheCollection, AlogIndex, _AlogCacheIn
 from tilauscope.cave.common import (PKG_DIR,
     _log, _logd, C0_COLOR_KEY, C_BT_COLOR_KEY, C_DTR_COLOR_KEY, C_WL_COLOR_KEY,
     DEFAULT_C0, DEFAULT_C_BT, DEFAULT_C_DTR, DEFAULT_C_WL,
-    greencave_headers, apply_mica_acrylic_effect)
+    apply_mica_acrylic_effect)
 from tilauscope.cave.widgets import (
     _DensityFloatWindow)
 from tilauscope.tilauscope_types import park_until_finished
@@ -240,14 +240,7 @@ class LifecycleMixin:
         # Positioning on the green bean if a bean match was found for the provided uuid parameter
         self.populate_table()
         if b != "":
-            # set current record of the datatable pointing to the matched bean's uuid
-            for row in range(self.datatable.rowCount()):
-                # Use the uuid field (last column) to find the match
-                uuid_item = self.datatable.item(row, len(greencave_headers) - 1)
-                if uuid_item and uuid_item.text() == b.uuid:
-                    self.datatable.selectRow(row)
-                    self.datatable.scrollToItem(uuid_item)
-                    break
+            self.select_bean_by_uuid(b.uuid, scroll=True)
 
         # by default disable all buttons
         self.add_button.setEnabled(True)

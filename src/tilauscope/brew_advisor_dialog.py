@@ -26,8 +26,8 @@ import logging
 from typing import Final, Optional, Callable
 
 from PyQt6.QtCore import (Qt, QObject, QPoint, QPointF, QRectF, QTimer, QElapsedTimer,
-                          pyqtSignal, pyqtSlot, QLocale, QT_TRANSLATE_NOOP)
-from PyQt6.QtGui import QPalette, QColor, QMouseEvent, QPainter, QPen, QPolygonF
+                          pyqtSignal, pyqtSlot, QLocale, QT_TRANSLATE_NOOP, QSize)
+from PyQt6.QtGui import QPalette, QColor, QMouseEvent, QPainter, QPen, QPolygonF, QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QSpinBox,
     QPushButton, QWidget, QFrame, QApplication, QMessageBox, QScrollArea,
@@ -43,7 +43,7 @@ from tilauscope.brew_advisor import (
     EspressoMachine, AgitationCode, GrindCat, NoteCode, PIType,
     ESPRESSO_MACHINE_ORDER, ESPRESSO_STYLE_ORDER, EspressoStyle, METHOD_ORDER, METHOD_ANCHORS, grind_cat,
     BrewCorrection, TasteCode, DiagnosisCode, diagnose, rest_window, RestStatus,
-    learn_setup_offset, ratio_floor, planned_pour_rate,
+    learn_setup_offset, ratio_floor, planned_pour_rate, degassing_band,
 )
 
 _log: Final = logging.getLogger(__name__)
@@ -309,9 +309,27 @@ def _diagnosis_text(code: DiagnosisCode) -> tuple[str, str]:
     }.get(code, ("", ""))
 
 
-_SEV_COLOR = {
-    Severity.GOOD: THEME["SUCCESS"], Severity.WARN: THEME["WARNING"],
-    Severity.CRIT: THEME["CRITICAL"], Severity.INFO: THEME["SUBTEXT"],
+# (colour, badge glyph) per note severity; the glyph keeps the meaning
+# readable without the colour.
+_SEV_LOOK = {
+    Severity.CRIT: (THEME["CRITICAL"], "✕"), Severity.WARN: (THEME["WARNING"], "!"),
+    Severity.GOOD: (THEME["SUCCESS"], "✓"), Severity.INFO: (THEME["SUBTEXT"], "i"),
+}
+_SEV_ORDER = {Severity.CRIT: 0, Severity.WARN: 1, Severity.GOOD: 2, Severity.INFO: 3}
+# Taste buttons: yellow = under-extracted side, peach / red = over-extracted
+# side, sky = ratio, green = keep it.
+_TASTE_COLOR = {
+    TasteCode.SOUR: THEME["YELLOW"], TasteCode.BITTER: THEME["WARNING"],
+    TasteCode.HARSH: THEME["CRITICAL"], TasteCode.THIN: THEME["SKY"],
+    TasteCode.BALANCED: THEME["SUCCESS"],
+}
+# Same words and colours as the rest calendar (roast_timeline). NEAR_PEAK is
+# the tail after the peak window: still good, best drunk soon.
+_REST_LOOK = {
+    RestStatus.FRESH: (THEME["ACCENT"], "◔", QT_TRANSLATE_NOOP("tilauscope_brew", "{d} d · not ready yet")),
+    RestStatus.OPTIMAL: (THEME["SUCCESS"], "✓", QT_TRANSLATE_NOOP("tilauscope_brew", "{d} d · in its window")),
+    RestStatus.NEAR_PEAK: (THEME["YELLOW"], "◑", QT_TRANSLATE_NOOP("tilauscope_brew", "{d} d · drink soon")),
+    RestStatus.STALE: (THEME["WARNING"], "⚠", QT_TRANSLATE_NOOP("tilauscope_brew", "{d} d · past its window")),
 }
 _WATER_ITEMS = (
     (WaterProfile.AUTO, QT_TRANSLATE_NOOP("tilauscope_brew", "Auto / measured")),
@@ -359,33 +377,104 @@ class _KpiTile(QFrame):
     def __init__(self, caption: str, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setObjectName("kpiTile")
-        self.setStyleSheet(
-            f"QFrame#kpiTile {{ background:{THEME['SURFACE']};"
-            f" border:1px solid {THEME['BORDER']}; border-radius:10px; }}"
-            f" QLabel {{ border:none; background:transparent; }}")
         lay = QVBoxLayout(self)
         lay.setContentsMargins(10, 7, 10, 7)
         lay.setSpacing(1)
+        self._caption = caption
         self._cap = QLabel(caption.upper())
         self._cap.setProperty('variant', 'eyebrow')
         self._val = QLabel("—")
         self._val.setProperty('variant', 'readout-sm')
         self._val.setStyleSheet(f"color: {THEME['TEXT']};")
         self._sub = QLabel("")
-        self._sub.setStyleSheet(
-            f"color:{THEME['SUBTEXT']};font-size:10px;")
         self._sub.setVisible(False)
         lay.addWidget(self._cap)
         lay.addWidget(self._val)
         lay.addWidget(self._sub)
+        self._dialled = False
+        self._restyle()
+
+    def _restyle(self) -> None:
+        if self._dialled:
+            c = THEME["SUCCESS"]
+            self.setStyleSheet(
+                f"QFrame#kpiTile {{ background:{_rgba(c, 0.06)};"
+                f" border:1px solid {c}; border-radius:10px; }}"
+                f" QLabel {{ border:none; background:transparent; }}")
+            self._cap.setStyleSheet(f"color:{c};")
+            self._sub.setStyleSheet(f"color:{c};font-size:10px;")
+            self._cap.setText(f"{self._caption} · {QApplication.translate('tilauscope_brew', 'yours')}".upper())
+        else:
+            self.setStyleSheet(
+                f"QFrame#kpiTile {{ background:{THEME['SURFACE']};"
+                f" border:1px solid {THEME['BORDER']}; border-radius:10px; }}"
+                f" QLabel {{ border:none; background:transparent; }}")
+            self._cap.setStyleSheet("")
+            self._sub.setStyleSheet(f"color:{THEME['SUBTEXT']};font-size:10px;")
+            self._cap.setText(self._caption.upper())
 
     def set_caption(self, text: str) -> None:
-        self._cap.setText(text.upper())
+        self._caption = text
+        self._restyle()
 
-    def set_value(self, value: str, sub: str = "") -> None:
+    def set_value(self, value: str, sub: str = "", dialled: bool = False) -> None:
+        """``dialled``: the value comes from this bean's dial-in, not the engine;
+        ``sub`` then says what it replaced."""
         self._val.setText(value)
         self._sub.setText(sub)
         self._sub.setVisible(bool(sub))
+        if dialled != self._dialled:
+            self._dialled = dialled
+            self._restyle()
+
+
+def _rgba(hex_color: str, alpha: float) -> str:
+    c = QColor(hex_color)
+    return f"rgba({c.red()},{c.green()},{c.blue()},{int(alpha * 255)})"
+
+
+def _badge_qss(color: str, size: int) -> str:
+    fg = THEME["TEXT"] if color == THEME["SUBTEXT"] else THEME["BG"]
+    bg = THEME["SURFACE2"] if color == THEME["SUBTEXT"] else color
+    return (f"background:{bg}; color:{fg}; border:none; border-radius:{size // 2}px;"
+            f" font-size:{size * 6 // 10}px; font-weight:800;")
+
+
+def _badge(glyph: str, color: str, size: int = 18) -> QLabel:
+    """Round severity badge: the glyph carries the meaning, the fill the colour."""
+    lbl = QLabel(glyph)
+    lbl.setFixedSize(size, size)
+    lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    lbl.setStyleSheet(_badge_qss(color, size))
+    return lbl
+
+
+def _link_button(text: str = "") -> QPushButton:
+    """Flat text link for a show / hide gesture — readable as a sentence, not an arrow."""
+    b = QPushButton(text)
+    b.setCursor(Qt.CursorShape.PointingHandCursor)
+    b.setStyleSheet(
+        f"QPushButton {{ background:transparent; color:{THEME['ACCENT']}; border:none;"
+        f" padding:2px 0; font-size:12px; font-weight:600; text-align:left; }}"
+        f" QPushButton:hover {{ color:{THEME['LAVENDER']}; text-decoration:underline; }}")
+    return b
+
+
+def _dot_icon(color: str) -> QIcon:
+    """Coloured dot for a taste button, inverted to the background once checked."""
+    icon = QIcon()
+    for fill, state in ((color, QIcon.State.Off), (THEME["BG"], QIcon.State.On)):
+        pm = QPixmap(20, 20)
+        pm.setDevicePixelRatio(2.0)
+        pm.fill(Qt.GlobalColor.transparent)
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(fill))
+        p.drawEllipse(QRectF(1, 1, 8, 8))
+        p.end()
+        icon.addPixmap(pm, QIcon.Mode.Normal, state)
+    return icon
 
 
 def _make_chip(text: str, color: Optional[str] = None) -> QLabel:
@@ -462,63 +551,132 @@ class _StepRow(QFrame):
             f"border:1px solid {THEME['BORDER']};border-radius:8px;padding:1px 7px;")
 
 
-class _DiagnosticsBox(QWidget):
-    """Collapsed-by-default notes list. The header shows the count plus one
-    severity dot per note so the panel stays scannable when folded."""
+class _NotesBox(QWidget):
+    """"Before you brew": the engine's notes, open by default, worst first.
+
+    Warnings never fold. Past ``_FOLD_AT`` notes the info rows beyond it fold
+    behind a "Show N more notes" link; once a brew is done (``compact``) every
+    row but the warnings folds, so the taste verdict gets the room.
+    """
+
+    _FOLD_AT: Final = 4
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setContentsMargins(0, 6, 0, 0)
         lay.setSpacing(4)
-        self._btn = QPushButton("")
-        self._btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn.setStyleSheet(
-            f"QPushButton {{ background:transparent; color:{THEME['SUBTEXT']};"
-            f" border:none; padding:4px 0; text-align:left;"
-            f" font-size:12px; font-weight:bold; }}"
-            f" QPushButton:hover {{ color:{THEME['ACCENT']}; }}")
-        self._btn.clicked.connect(self._toggle)
-        self._body = QLabel("")
-        self._body.setWordWrap(True)
-        self._body.setTextFormat(Qt.TextFormat.RichText)
-        self._body.setStyleSheet(
-            f"color:{THEME['TEXT']};font-size:12px;"
-            f"background:{THEME['SURFACE']};border:1px solid {THEME['BORDER']};"
-            f"border-radius:8px;padding:8px 10px;")
-        self._body.setVisible(False)
-        lay.addWidget(self._btn)
-        lay.addWidget(self._body)
+        head = QHBoxLayout()
+        head.setSpacing(12)
+        title = QLabel(QApplication.translate("tilauscope_brew", "BEFORE YOU BREW"))
+        title.setProperty('variant', 'eyebrow')
+        self._counts = QLabel("")
+        self._counts.setTextFormat(Qt.TextFormat.RichText)
+        head.addWidget(title)
+        head.addWidget(self._counts)
+        head.addStretch(1)
+        lay.addLayout(head)
+        self._rows_host = QWidget()
+        self._rows = QVBoxLayout(self._rows_host)
+        self._rows.setContentsMargins(0, 0, 0, 0)
+        self._rows.setSpacing(4)
+        lay.addWidget(self._rows_host)
+        self._link = _link_button()
+        self._link.clicked.connect(self._toggle)
+        lay.addWidget(self._link)
+        self._notes: list = []
         self._expanded = False
-        self._count = 0
-        self._dots = ""
+        self._compact = False
+        self.setVisible(False)
+
+    @staticmethod
+    def _look(sev, code) -> tuple[str, str]:
+        if code == NoteCode.AI_ADJUSTED:
+            return THEME["MAUVE"], "✦"
+        return _SEV_LOOK.get(sev, _SEV_LOOK[Severity.INFO])
+
+    def _row(self, sev, code, params) -> QFrame:
+        color, glyph = self._look(sev, code)
+        row = QFrame()
+        row.setObjectName("noteRow")
+        neutral = color == THEME["SUBTEXT"]
+        row.setStyleSheet(
+            f"QFrame#noteRow {{ background:{THEME['SURFACE'] if neutral else _rgba(color, 0.09)};"
+            f" border:1px solid {THEME['BORDER'] if neutral else _rgba(color, 0.4)};"
+            f" border-radius:8px; }}")
+        h = QHBoxLayout(row)
+        h.setContentsMargins(10, 6, 10, 6)
+        h.setSpacing(10)
+        h.addWidget(_badge(glyph, color), 0, Qt.AlignmentFlag.AlignTop)
+        txt = QLabel(_note_text(code, params))
+        txt.setTextFormat(Qt.TextFormat.PlainText)
+        txt.setWordWrap(True)
+        txt.setStyleSheet(
+            f"color:{THEME['TEXT'] if neutral else color}; font-size:12px;"
+            f" background:transparent; border:none;")
+        h.addWidget(txt, 1)
+        return row
 
     def _toggle(self) -> None:
         self._expanded = not self._expanded
-        self._body.setVisible(self._expanded and self._count > 0)
-        self._sync_header()
+        self._rebuild()
 
-    def _sync_header(self) -> None:
-        arrow = "▾" if self._expanded else "▸"
-        label = (QApplication.translate("tilauscope_brew", "1 diagnostic") if self._count == 1
-                 else QApplication.translate("tilauscope_brew", "{n} diagnostics").format(n=self._count))
-        self._btn.setText(f"{arrow}  {label}   {self._dots}")
+    def set_compact(self, compact: bool) -> None:
+        if compact != self._compact:
+            self._compact = compact
+            self._expanded = False
+            self._rebuild()
 
     def set_notes(self, notes) -> None:
-        self._count = len(notes)
-        # QPushButton renders plain text only: the folded header carries one
-        # neutral dot per note, colours live in the expanded body.
-        self._dots = "●" * min(self._count, 8)
-        self._btn.setVisible(self._count > 0)
-        if self._count == 0:
-            self._body.setVisible(False)
+        self._notes = sorted(notes, key=lambda n: _SEV_ORDER.get(n[0], 3))
+        self._expanded = False
+        self._rebuild()
+
+    def _rebuild(self) -> None:
+        _clear_layout(self._rows)
+        notes = self._notes
+        self.setVisible(bool(notes))
+        if not notes:
             return
-        self._body.setText("".join(
-            f"<div style='color:{_SEV_COLOR.get(sev, THEME['SUBTEXT'])};margin:2px 0;'>"
-            + ("✦ " if code == NoteCode.AI_ADJUSTED else "• ")
-            + f"{_note_text(code, params)}</div>" for sev, code, params in notes))
-        self._body.setVisible(self._expanded)
-        self._sync_header()
+        watch = [n for n in notes if n[0] in (Severity.CRIT, Severity.WARN)]
+        good = sum(1 for n in notes if n[0] == Severity.GOOD)
+        tips = len(notes) - len(watch) - good
+        if self._compact:
+            folded = watch
+        else:
+            # Only info rows fold: everything else stays, info fills what is left.
+            room = max(self._FOLD_AT - len(notes) + tips, 0) if len(notes) > self._FOLD_AT else tips
+            folded = [n for n in notes if n[0] != Severity.INFO]
+            folded += [n for n in notes if n[0] == Severity.INFO][:room]
+            folded.sort(key=lambda n: _SEV_ORDER.get(n[0], 3))
+        hidden = len(notes) - len(folded)
+        shown = notes if self._expanded else folded
+        for sev, code, params in shown:
+            self._rows.addWidget(self._row(sev, code, params))
+        self._rows_host.setVisible(bool(shown))
+
+        self._link.setVisible(hidden > 0)
+        if self._expanded:
+            self._link.setText(QApplication.translate("tilauscope_brew", "Show fewer notes"))
+        elif hidden == 1:
+            self._link.setText(QApplication.translate("tilauscope_brew", "Show 1 more note"))
+        else:
+            self._link.setText(QApplication.translate("tilauscope_brew", "Show {n} more notes").format(n=hidden))
+
+        parts = []
+        if watch:
+            c = THEME["CRITICAL"] if any(n[0] == Severity.CRIT for n in watch) else THEME["WARNING"]
+            parts.append((c, QApplication.translate("tilauscope_brew", "{n} to watch").format(n=len(watch))))
+        if good:
+            parts.append((THEME["SUCCESS"],
+                          QApplication.translate("tilauscope_brew", "1 good sign") if good == 1
+                          else QApplication.translate("tilauscope_brew", "{n} good signs").format(n=good)))
+        if tips:
+            parts.append((THEME["SUBTEXT"],
+                          QApplication.translate("tilauscope_brew", "1 tip") if tips == 1
+                          else QApplication.translate("tilauscope_brew", "{n} tips").format(n=tips)))
+        self._counts.setText("&nbsp;&nbsp;&nbsp;".join(
+            f"<span style='color:{c};font-size:11px;font-weight:bold;'>● {t}</span>" for c, t in parts))
 
 
 # ── Protocol → target corridor ────────────────────────────────────────────
@@ -1270,14 +1428,50 @@ class BrewAdvisorDlg(QDialog):
         bar.addWidget(btn_x)
         root.addLayout(bar)
 
-        agt = inp.ground_color if inp.ground_color > 0 else inp.whole_color
-        rest = inp.days_off_roast if inp.days_off_roast >= 0 else "N/A"
-        self.lbl_head = QLabel(
-            f"<span style='color:{THEME['SUBTEXT']};font-size:12px;'>{self._title} · "
-            f"{QApplication.translate("tilauscope_brew", 'Color')}: {agt} {inp.color_system} · {QApplication.translate("tilauscope_brew", 'WL')}: {inp.weight_loss:.1f}% · "
-            f"{QApplication.translate("tilauscope_brew", 'Rest')}: {rest} d</span>")
-        self.lbl_head.setTextFormat(Qt.TextFormat.RichText)
-        root.addWidget(self.lbl_head)
+        # ── bean identity: name, then roast level / weight loss / rest as pills ──
+        # The pills that depend on the recipe (roast swatch, rest status) are
+        # filled in _render; the weight loss is known now.
+        ident = QVBoxLayout()
+        ident.setSpacing(8)
+        self.lbl_head = QLabel(self._title)
+        self.lbl_head.setStyleSheet(f"font-size:16px;font-weight:bold;color:{THEME['TEXT']};")
+        ident.addWidget(self.lbl_head)
+        pills = QHBoxLayout()
+        pills.setSpacing(6)
+        self.pill_roast = QFrame()
+        self.pill_roast.setObjectName("roastPill")
+        self.pill_roast.setStyleSheet(
+            f"QFrame#roastPill {{ background:{THEME['SURFACE']}; border:1px solid {THEME['BORDER']};"
+            f" border-radius:10px; }}")
+        rp = QHBoxLayout(self.pill_roast)
+        rp.setContentsMargins(10, 3, 10, 3)
+        rp.setSpacing(6)
+        self.roast_swatch = QFrame()
+        self.roast_swatch.setFixedSize(12, 12)
+        self.lbl_roast = QLabel("")
+        self.lbl_roast.setStyleSheet(f"color:{THEME['TEXT']};font-size:12px;border:none;")
+        rp.addWidget(self.roast_swatch)
+        rp.addWidget(self.lbl_roast)
+        self.pill_roast.setVisible(False)
+        self.pill_wl = QLabel(QApplication.translate("tilauscope_brew", "Weight loss {wl} %").format(
+            wl=f"{inp.weight_loss:.1f}"))
+        self.pill_wl.setStyleSheet(
+            f"color:{THEME['SUBTEXT']};background:{THEME['SURFACE']};border:1px solid {THEME['BORDER']};"
+            f"border-radius:10px;padding:3px 10px;font-size:12px;")
+        self.pill_wl.setVisible(inp.weight_loss > 0)
+        self.pill_rest = QLabel("")
+        self.pill_rest.setVisible(False)
+        pills.addWidget(self.pill_roast)
+        pills.addWidget(self.pill_wl)
+        pills.addWidget(self.pill_rest)
+        pills.addStretch(1)
+        ident.addLayout(pills)
+        root.addLayout(ident)
+
+        sep = QFrame()
+        sep.setFixedHeight(1)
+        sep.setStyleSheet(f"background:{THEME['BORDER']};border:none;")
+        root.addWidget(sep)
 
         # ── controls (full width: they drive both columns) ──
         ctrl = QHBoxLayout()
@@ -1368,26 +1562,64 @@ class BrewAdvisorDlg(QDialog):
         body = QHBoxLayout()
         body.setSpacing(14)
 
-        left = QVBoxLayout()
+        # The left column scrolls, like the right one: the step list, the
+        # notes and an open taste verdict together can outgrow a short window,
+        # and Qt overlaps rather than clips a column that cannot fit.
+        left_host = QWidget()
+        left_host.setObjectName("brewLeft")
+        left = QVBoxLayout(left_host)
+        left.setContentsMargins(0, 0, 6, 0)
         left.setSpacing(8)
+        self._left_scroll = QScrollArea()
+        self._left_scroll.setObjectName("brewLeftScroll")
+        self._left_scroll.setWidgetResizable(True)
+        self._left_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._left_scroll.setStyleSheet(
+            "QScrollArea#brewLeftScroll, QScrollArea#brewLeftScroll > QWidget,"
+            " QWidget#brewLeft { background: transparent; border: none; }")
+        self._left_scroll.setWidget(left_host)
+        self._left_scroll.setMinimumWidth(400)
 
-        lbl_proto = QLabel(QApplication.translate("tilauscope_brew", "PROTOCOL"))
-        lbl_proto.setProperty('variant', 'eyebrow')
-        left.addWidget(lbl_proto)
+        self.lbl_proto = QLabel(QApplication.translate("tilauscope_brew", "PROTOCOL"))
+        self.lbl_proto.setProperty('variant', 'eyebrow')
+        left.addWidget(self.lbl_proto)
+
+        # Once a brew is done the steps fold into one line: the verdict is
+        # what the operator acts on next. They stay one click away.
+        self.proto_done = QFrame()
+        self.proto_done.setObjectName("protoDone")
+        self.proto_done.setStyleSheet(
+            f"QFrame#protoDone {{ background:{THEME['SURFACE']}; border:1px solid {THEME['BORDER']};"
+            f" border-radius:8px; }} QLabel {{ border:none; background:transparent; }}")
+        pd = QHBoxLayout(self.proto_done)
+        pd.setContentsMargins(12, 7, 12, 7)
+        pd.setSpacing(10)
+        pd.addWidget(_badge("✓", THEME["SUCCESS"]))
+        lbl_done = QLabel(QApplication.translate("tilauscope_brew", "Brew done"))
+        lbl_done.setStyleSheet("font-weight:bold;")
+        self.lbl_proto_summary = QLabel("")
+        self.lbl_proto_summary.setStyleSheet(f"color:{THEME['SUBTEXT']};")
+        self.btn_steps = _link_button()
+        self.btn_steps.clicked.connect(self._toggle_steps)
+        pd.addWidget(lbl_done)
+        pd.addWidget(self.lbl_proto_summary)
+        pd.addStretch(1)
+        pd.addWidget(self.btn_steps)
+        self.proto_done.setVisible(False)
+        left.addWidget(self.proto_done)
+        self._brew_done = False
+        self._steps_open = False
 
         self.steps_host = QWidget()
         self.steps_lay = QVBoxLayout(self.steps_host)
         self.steps_lay.setContentsMargins(0, 0, 0, 0)
         self.steps_lay.setSpacing(2)
-        self.steps_lay.addStretch(1)
-        steps_scroll = QScrollArea()
-        steps_scroll.setWidgetResizable(True)
-        steps_scroll.setWidget(self.steps_host)
-        steps_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        steps_scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }"
-                                   " QWidget { background: transparent; }")
-        steps_scroll.setMinimumWidth(400)
-        left.addWidget(steps_scroll, 1)
+        left.addWidget(self.steps_host)
+
+        self.notes = _NotesBox()
+        left.addWidget(self.notes)
+        left.addStretch(1)
 
         # ── taste feedback ──
         # Always available, not gated behind a live brew: you do not need a
@@ -1396,7 +1628,7 @@ class BrewAdvisorDlg(QDialog):
         _taste_hdr = QLabel(QApplication.translate("tilauscope_brew", "HOW DOES IT TASTE?"))
         _taste_hdr.setStyleSheet(
             f"color:{THEME['SUBTEXT']};font-size:11px;letter-spacing:1.5px;"
-            f"font-weight:bold;padding-top:6px;")
+            f"font-weight:bold;padding-top:10px;")
         left.addWidget(_taste_hdr)
         self.lbl_taste_prompt = QLabel(
             QApplication.translate("tilauscope_brew", "Tell the advisor and it will adjust the recipe."))
@@ -1406,7 +1638,7 @@ class BrewAdvisorDlg(QDialog):
         left.addWidget(self.lbl_taste_prompt)
 
         taste_row = QHBoxLayout()
-        taste_row.setSpacing(4)
+        taste_row.setSpacing(6)
         self.taste_btns: dict[TasteCode, QPushButton] = {}
         for code, label in (
             (TasteCode.SOUR,     QApplication.translate("tilauscope_brew", "Sour")),
@@ -1418,12 +1650,15 @@ class BrewAdvisorDlg(QDialog):
             b = QPushButton(label)
             b.setCheckable(True)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
-            on = THEME["SUCCESS"] if code == TasteCode.BALANCED else THEME["ACCENT"]
+            on = _TASTE_COLOR[code]
+            if code != TasteCode.BALANCED:   # Balanced already carries its ✓
+                b.setIcon(_dot_icon(on))
+                b.setIconSize(QSize(10, 10))
             b.setStyleSheet(
-                f"QPushButton {{ background:{THEME['SURFACE']}; color:{THEME['SUBTEXT']};"
-                f" border:1px solid {THEME['BORDER']}; border-radius:9px;"
-                f" padding:3px 9px; font-size:12px; }}"
-                f" QPushButton:hover {{ color:{THEME['TEXT']}; }}"
+                f"QPushButton {{ background:{THEME['SURFACE']}; color:{THEME['SUBTEXT1']};"
+                f" border:1px solid {THEME['BORDER']}; border-radius:12px;"
+                f" padding:5px 12px; min-height:16px; font-size:12px; }}"
+                f" QPushButton:hover {{ color:{THEME['TEXT']}; border:1px solid {on}; }}"
                 f" QPushButton:checked {{ background:{on}; color:{THEME['BG']};"
                 f" border:1px solid {on}; font-weight:bold; }}")
             b.clicked.connect(lambda _c, tc=code: self._on_taste_clicked(tc))
@@ -1432,17 +1667,38 @@ class BrewAdvisorDlg(QDialog):
         taste_row.addStretch(1)
         left.addLayout(taste_row)
 
-        # verdict + bounded correction, shown once a taste is reported
-        self.lbl_verdict = QLabel("")
-        self.lbl_verdict.setWordWrap(True)
-        self.lbl_verdict.setTextFormat(Qt.TextFormat.RichText)
-        self.lbl_verdict.setStyleSheet(
-            "font-size:12px;padding-top:4px;")
-        self.lbl_verdict.setVisible(False)
-        left.addWidget(self.lbl_verdict)
-
+        # ── verdict card: what went wrong, what changes next brew, the action ──
+        self.verdict_card = QFrame()
+        self.verdict_card.setObjectName("verdictCard")
+        vl = QVBoxLayout(self.verdict_card)
+        vl.setContentsMargins(18, 14, 18, 14)
+        vl.setSpacing(10)
+        vh = QHBoxLayout()
+        vh.setSpacing(10)
+        self.verdict_badge = _badge("", THEME["WARNING"], 22)
+        self.lbl_verdict_title = QLabel("")
+        self.lbl_verdict_title.setWordWrap(True)
+        vh.addWidget(self.verdict_badge, 0, Qt.AlignmentFlag.AlignTop)
+        vh.addWidget(self.lbl_verdict_title, 1)
+        vl.addLayout(vh)
+        self.lbl_verdict_what = QLabel("")
+        self.lbl_verdict_what.setWordWrap(True)
+        self.lbl_verdict_what.setStyleSheet(f"color:{THEME['SUBTEXT1']};font-size:13px;")
+        vl.addWidget(self.lbl_verdict_what)
+        self.lbl_next_brew = QLabel(QApplication.translate("tilauscope_brew", "NEXT BREW"))
+        self.lbl_next_brew.setProperty('variant', 'eyebrow')
+        vl.addWidget(self.lbl_next_brew)
+        self.lbl_verdict_change = QLabel("")
+        self.lbl_verdict_change.setTextFormat(Qt.TextFormat.RichText)
+        self.lbl_verdict_change.setWordWrap(True)
+        vl.addWidget(self.lbl_verdict_change)
+        self.lbl_verdict_note = QLabel(QApplication.translate(
+            "tilauscope_brew", "No brew time was measured, so this reads the taste alone."))
+        self.lbl_verdict_note.setWordWrap(True)
+        self.lbl_verdict_note.setStyleSheet(f"color:{THEME['SUBTEXT']};font-size:11px;")
+        vl.addWidget(self.lbl_verdict_note)
         apply_row = QHBoxLayout()
-        apply_row.setSpacing(6)
+        apply_row.addStretch(1)
         self.btn_apply_fix = QPushButton(
             QApplication.translate("tilauscope_brew", "Apply to next brew"))
         # The panel's primary action; hover/pressed states come from the base
@@ -1452,8 +1708,9 @@ class BrewAdvisorDlg(QDialog):
         self.btn_apply_fix.clicked.connect(self._apply_taste_correction)
         self.btn_apply_fix.setVisible(False)
         apply_row.addWidget(self.btn_apply_fix)
-        apply_row.addStretch(1)
-        left.addLayout(apply_row)
+        vl.addLayout(apply_row)
+        self.verdict_card.setVisible(False)
+        left.addWidget(self.verdict_card)
         # Full width and on its own row, not beside the button: the
         # confirmation now names the bean and restates both numbers, which does
         # not fit next to a button and must not be read as a caption of it.
@@ -1464,10 +1721,8 @@ class BrewAdvisorDlg(QDialog):
             "font-size:12px;padding-top:2px;")
         self.lbl_fix_done.setVisible(False)
         left.addWidget(self.lbl_fix_done)
-        self.diagnostics = _DiagnosticsBox()
-        left.addWidget(self.diagnostics)
 
-        body.addLayout(left, 3)
+        body.addWidget(self._left_scroll, 3)
 
         # right column: live extraction (Acaia)
         # The readouts scroll, the brew controls do not. This column's height is
@@ -1753,7 +2008,7 @@ class BrewAdvisorDlg(QDialog):
         # selectors: a hidden widget contributes nothing to a layout's size hint,
         # so measuring after would give a width too small for espresso.
         need_w = self._ctrl_row.sizeHint().width() + 18 + 18 + 8   # + root margins
-        self.setMinimumSize(max(980, need_w), 760)
+        self.setMinimumSize(max(980, need_w), 800)
         self._update_machine_visibility()
 
     # ── control slots ──
@@ -2371,6 +2626,7 @@ class BrewAdvisorDlg(QDialog):
         self._reset_live_view()
         self._set_recipe_locked(True)
         self.debrief.setVisible(False)
+        self._set_brew_done(False)
         self.spark.setVisible(True)
         self.lbl_pace.setVisible(True)
         self._apply_plan_to_chart()
@@ -2424,6 +2680,7 @@ class BrewAdvisorDlg(QDialog):
             QApplication.translate("tilauscope_brew", "Target: {g} g in {t}")
             .format(g=f"{rec.water_g:.0f}", t=self._fmt_time(rec.total_time_s)))
         self.debrief.setVisible(False)
+        self._set_brew_done(False)
         self.manual_card.setVisible(True)
         call_later(self, 0, lambda: self._right_scroll.ensureWidgetVisible(self.manual_card))
 
@@ -3097,7 +3354,7 @@ class BrewAdvisorDlg(QDialog):
             b.blockSignals(True)
             b.setChecked(False)
             b.blockSignals(False)
-        self.lbl_verdict.setVisible(False)
+        self.verdict_card.setVisible(False)
         self.btn_apply_fix.setVisible(False)
         self.lbl_fix_done.setVisible(False)
         self._pending_fix = None
@@ -3127,7 +3384,7 @@ class BrewAdvisorDlg(QDialog):
         tastes = self._selected_tastes()
         self.lbl_fix_done.setVisible(False)
         if rec is None or not tastes:
-            self.lbl_verdict.setVisible(False)
+            self.verdict_card.setVisible(False)
             self.btn_apply_fix.setVisible(False)
             self._pending_fix = None
             self.lbl_debrief_coach.setVisible(bool(self.lbl_debrief_coach.text()))
@@ -3137,25 +3394,35 @@ class BrewAdvisorDlg(QDialog):
                       family=rec.family, current_ratio=self._ratio_of(rec))
         title, what = _diagnosis_text(dg.code)
         if not title:
-            self.lbl_verdict.setVisible(False)
+            self.verdict_card.setVisible(False)
             self.btn_apply_fix.setVisible(False)
             self._pending_fix = None
             return
-        color = (THEME["SUCCESS"] if dg.code == DiagnosisCode.BALANCED
-                 else THEME["WARNING"] if dg.actionable else THEME["CRITICAL"])
-        html = (f"<span style='color:{color};font-weight:bold;'>{title}</span><br/>"
-                f"<span style='color:{THEME['SUBTEXT']};'>{what}</span>")
-        if dg.actionable and not dg.correction.is_empty:
-            html += "<br/>" + self._correction_preview(rec, dg.correction)
-        if not dg.used_time and dg.code not in (DiagnosisCode.UNDER_NO_TIME,
-                                                DiagnosisCode.OVER_NO_TIME):
-            html += ("<br/><span style='color:" + THEME["SUBTEXT"] + ";'>"
-                     + QApplication.translate(
-                         "tilauscope_brew",
-                         "No brew time was measured, so this reads the taste alone.")
-                     + "</span>")
-        self.lbl_verdict.setText(html)
-        self.lbl_verdict.setVisible(True)
+        if dg.code == DiagnosisCode.BALANCED:
+            color, glyph = THEME["SUCCESS"], "✓"
+        elif dg.actionable:
+            color, glyph = THEME["WARNING"], "!"
+        else:
+            color, glyph = THEME["CRITICAL"], "✕"
+        self.verdict_card.setStyleSheet(
+            f"QFrame#verdictCard {{ background:{_rgba(color, 0.07)};"
+            f" border:1px solid {_rgba(color, 0.45)}; border-radius:12px; }}"
+            f" QLabel {{ border:none; background:transparent; }}")
+        self.verdict_badge.setText(glyph)
+        self.verdict_badge.setStyleSheet(_badge_qss(color, 22))
+        self.lbl_verdict_title.setText(title)
+        self.lbl_verdict_title.setStyleSheet(f"color:{color};font-size:15px;font-weight:bold;")
+        self.lbl_verdict_what.setText(what)
+        change = dg.actionable and not dg.correction.is_empty
+        self.lbl_next_brew.setVisible(change)
+        self.lbl_verdict_change.setVisible(change)
+        if change:
+            self.lbl_verdict_change.setText(self._correction_rows(rec, dg.correction))
+        self.lbl_verdict_note.setVisible(
+            not dg.used_time and dg.code not in (DiagnosisCode.UNDER_NO_TIME,
+                                                 DiagnosisCode.OVER_NO_TIME))
+        self.verdict_card.setVisible(True)
+        call_later(self, 0, lambda: self._left_scroll.ensureWidgetVisible(self.verdict_card))
         # The time-only coach is a fallback for when no taste was reported. Once
         # it is, the taste diagnosis knows strictly more and must not sit next to
         # a contradictory "grind coarser" line (slow+sour is channelling, not
@@ -3174,27 +3441,47 @@ class BrewAdvisorDlg(QDialog):
             else QApplication.translate("tilauscope_brew", "Apply to next brew"))
         self._pending_fix = dg if offer else None
 
-    def _correction_preview(self, rec, corr) -> str:
-        """Show the change as before → after, so nothing moves invisibly."""
-        bits: list[str] = []
+    def _correction_bits(self, rec, corr) -> list[tuple[str, str, str, str, str]]:
+        """(lever, before, after, qualifier, arrow) for each lever the correction moves."""
+        bits: list[tuple[str, str, str, str, str]] = []
         if abs(corr.grind_mult - 1.0) > 1e-6:
             new = int(_clamp(round(rec.grind_um * corr.grind_mult), 150, 1300))
             word = (QApplication.translate("tilauscope_brew", "finer")
                     if new < rec.grind_um else QApplication.translate("tilauscope_brew", "coarser"))
-            bits.append(f"{QApplication.translate('tilauscope_brew', 'Grind')} "
-                        f"{rec.grind_um} → <b>{new} µm</b> ({word})")
+            bits.append((QApplication.translate('tilauscope_brew', 'Grind'),
+                         f"{rec.grind_um}", f"{new} µm", word, "▼" if new < rec.grind_um else "▲"))
         if abs(corr.temp_delta) > 1e-6:
             new_t = _clamp(rec.temp_c + corr.temp_delta, 80.0, 99.0)
-            bits.append(f"{QApplication.translate('tilauscope_brew', 'Temp')} "
-                        f"{self._fmt_temp(rec.temp_c)} → <b>{self._fmt_temp(new_t)}</b>")
+            bits.append((QApplication.translate('tilauscope_brew', 'Temp'),
+                         self._fmt_temp(rec.temp_c), self._fmt_temp(new_t), "",
+                         "▼" if new_t < rec.temp_c else "▲"))
         if abs(corr.ratio_delta) > 1e-6:
             m = _re.search(r"1:([\d.]+)", rec.ratio_str)
             if m:
                 base = max(ratio_floor(rec.family), float(m.group(1)) + corr.ratio_delta)
-                bits.append(f"{QApplication.translate('tilauscope_brew', 'Ratio')} "
-                            f"{rec.ratio_str} → <b>1:{base:.1f}</b> "
-                            f"({rec.water_g:.0f} → {rec.dose_g * base:.0f} g)")
-        return f"<span style='color:{THEME['TEXT']};'>" + " · ".join(bits) + "</span>"
+                bits.append((QApplication.translate('tilauscope_brew', 'Ratio'),
+                             rec.ratio_str, f"1:{base:.1f}",
+                             f"{rec.water_g:.0f} → {rec.dose_g * base:.0f} g", ""))
+        return bits
+
+    def _correction_preview(self, rec, corr) -> str:
+        """Show the change as before → after, so nothing moves invisibly."""
+        return f"<span style='color:{THEME['TEXT']};'>" + " · ".join(
+            f"{lever} {before} → <b>{after}</b>" + (f" ({qual})" if qual else "")
+            for lever, before, after, qual, _arrow in self._correction_bits(rec, corr)) + "</span>"
+
+    def _correction_rows(self, rec, corr) -> str:
+        """The same change for the verdict card: one lever per line, the new
+        value large, the old one struck through."""
+        return "".join(
+            f"<div style='margin:3px 0;'>"
+            f"<span style='color:{THEME['SUBTEXT']};'>{lever}</span>&nbsp;&nbsp;&nbsp;"
+            f"<span style='color:{THEME['OVERLAY1']};text-decoration:line-through;'>{before}</span>"
+            f"<span style='color:{THEME['OVERLAY1']};'>&nbsp;→&nbsp;</span>"
+            f"<span style='color:{THEME['TEXT']};font-size:20px;font-weight:bold;'>{after}</span>"
+            f"&nbsp;&nbsp;<span style='color:{THEME['ACCENT']};font-weight:bold;'>"
+            f"{(arrow + ' ' + qual).strip()}</span></div>"
+            for lever, before, after, qual, arrow in self._correction_bits(rec, corr))
 
     # The acknowledgement of an accepted correction. It has one job the
     # previous "Saved ✓" could not do: prove the click landed. Accepting a fix
@@ -3312,6 +3599,52 @@ class BrewAdvisorDlg(QDialog):
         self.lbl_debrief_coach.setText(tip)
         self.lbl_debrief_coach.setVisible(bool(tip))
         self.debrief.setVisible(True)
+        self.lbl_proto_summary.setText(QApplication.translate(
+            "tilauscope_brew", "{n} steps · {t} · {g} g").format(
+                n=len(rec.steps), t=self._fmt_time(int(t_end)), g=f"{w_end:.0f}"))
+        self._set_brew_done(True)
+
+    # ── brew done: the steps fold, the verdict gets the room ──
+    def _set_brew_done(self, done: bool) -> None:
+        self._brew_done = done
+        self._steps_open = False
+        self._sync_steps()
+        self.notes.set_compact(done)
+
+    def _toggle_steps(self) -> None:
+        self._steps_open = not self._steps_open
+        self._sync_steps()
+
+    def _sync_steps(self) -> None:
+        done = self._brew_done
+        self.proto_done.setVisible(done)
+        self.lbl_proto.setVisible(not done)
+        self.steps_host.setVisible(not done or self._steps_open)
+        self.btn_steps.setText(
+            QApplication.translate("tilauscope_brew", "Hide steps") if self._steps_open
+            else QApplication.translate("tilauscope_brew", "Show steps"))
+
+    def _render_header_pills(self, rec) -> None:
+        """Roast level as its swatch, rest as its status — no naked number."""
+        inp = self.service.input
+        agt = inp.ground_color if inp.ground_color > 0 else inp.whole_color
+        swatch = THEME[degassing_band(rec.agtron).key]
+        self.roast_swatch.setStyleSheet(
+            f"background:{swatch}; border:1px solid {THEME['SURFACE2']}; border-radius:3px;")
+        label = _roast_label(rec.roast_key)
+        self.lbl_roast.setText(f"{label} · {agt} {inp.color_system}" if agt > 0 else label)
+        self.pill_roast.setVisible(True)
+        if inp.days_off_roast < 0:
+            self.pill_rest.setVisible(False)
+            return
+        status = rest_window(rec.agtron, inp.days_off_roast, rec.family).status
+        color, glyph, text = _REST_LOOK[status]
+        self.pill_rest.setText(
+            f"{glyph} " + QApplication.translate("tilauscope_brew", text).format(d=inp.days_off_roast))
+        self.pill_rest.setStyleSheet(
+            f"color:{color}; background:{_rgba(color, 0.10)}; border:1px solid {_rgba(color, 0.6)};"
+            f" border-radius:10px; padding:3px 10px; font-size:12px; font-weight:bold;")
+        self.pill_rest.setVisible(True)
 
     # ── render slot ──
     @pyqtSlot(object)
@@ -3335,6 +3668,7 @@ class BrewAdvisorDlg(QDialog):
             self._apply_plan_to_chart()
             if not getattr(self, "_applying_fix", False):
                 self.debrief.setVisible(False)
+                self._set_brew_done(False)
             # The brew controls depend on the RECIPE (only espresso is
             # offered an auto-stop or a manual entry), not just on the scale, so
             # they have to be resynced whenever the recipe moves. Without this
@@ -3345,18 +3679,49 @@ class BrewAdvisorDlg(QDialog):
             self._sync_scale_ui()
         water_label = QApplication.translate("tilauscope_brew", "Yield") if rec.water_is_yield else QApplication.translate("tilauscope_brew", "Water")
 
+        self._render_header_pills(rec)
+
         # ── KPI strip ──
+        # A dial-in replaces the engine's value: the tile says so and shows
+        # what it replaced, on the levers a taste correction moves.
+        # Not on an AI-refined recipe: the gap to the engine would then mix the
+        # AI's change into what the tile calls yours.
+        base = (self.service.base_recipe()
+                if getattr(rec, "dialed_in", False) and not rec.ai_adjusted else None)
+        was = QApplication.translate("tilauscope_brew", "was {v}")
         self.kpis["dose"].set_value(f"{rec.dose_g:.0f} g")
         self.kpis["water"].set_caption(water_label)
         self.kpis["water"].set_value(f"{rec.water_g:.0f} g")
-        self.kpis["ratio"].set_value(rec.ratio_str)
-        self.kpis["temp"].set_value(self._fmt_temp(rec.temp_c))
-        self.kpis["grind"].set_value(f"{rec.grind_um} µm", _grind_label(rec.grind_cat))
+        if base is not None and base.ratio_str != rec.ratio_str:
+            up = self._ratio_of(rec) > self._ratio_of(base)
+            self.kpis["ratio"].set_value(
+                rec.ratio_str, f"{'▲' if up else '▼'} " + was.format(v=base.ratio_str), True)
+        else:
+            self.kpis["ratio"].set_value(rec.ratio_str)
+        if base is not None and abs(base.temp_c - rec.temp_c) >= 0.5:
+            up = rec.temp_c > base.temp_c
+            self.kpis["temp"].set_value(
+                self._fmt_temp(rec.temp_c),
+                f"{'▲' if up else '▼'} " + was.format(v=self._fmt_temp(base.temp_c)), True)
+        else:
+            self.kpis["temp"].set_value(self._fmt_temp(rec.temp_c))
+        if base is not None and base.grind_um != rec.grind_um:
+            coarser = rec.grind_um > base.grind_um
+            word = (QApplication.translate("tilauscope_brew", "coarser") if coarser
+                    else QApplication.translate("tilauscope_brew", "finer"))
+            self.kpis["grind"].set_value(
+                f"{rec.grind_um} µm",
+                f"{'▲' if coarser else '▼'} " + was.format(v=f"{base.grind_um} µm") + f" · {word}", True)
+            # the sub-line now says what was replaced; the category stays one hover away
+            self.kpis["grind"].setToolTip(_grind_label(rec.grind_cat))
+        else:
+            self.kpis["grind"].set_value(f"{rec.grind_um} µm", _grind_label(rec.grind_cat))
+            self.kpis["grind"].setToolTip("")
         self.kpis["time"].set_value(self._fmt_time(rec.total_time_s))
 
         # ── secondary chips ──
         _clear_layout(self.chip_row)
-        chips: list[tuple[str, Optional[str]]] = [(_roast_label(rec.roast_key), None)]
+        chips: list[tuple[str, Optional[str]]] = []
         if rec.bloom_g > 0:
             chips.append((QApplication.translate("tilauscope_brew", "Bloom {g} g / {s} s")
                           .format(g=f"{rec.bloom_g:.0f}", s=rec.bloom_s), None))
@@ -3400,13 +3765,12 @@ class BrewAdvisorDlg(QDialog):
             row = _StepRow(self._fmt_time(s.at_s), _step_text(s.label_key, s.params), tgt)
             self.step_rows.append(row)
             self.steps_lay.addWidget(row)
-        self.steps_lay.addStretch(1)
 
         # ── did the last setting change do anything? (from the journal, in memory) ──
         self._refresh_previous_try()
 
-        # ── diagnostics (folded) ──
-        self.diagnostics.set_notes(rec.notes)
+        # ── before you brew (open; warnings never fold) ──
+        self.notes.set_notes(rec.notes)
 
 
     # ── frameless: drag + center + cleanup ──

@@ -58,6 +58,12 @@ weight loss, how it was developed, its origin and altitude, how many days it has
 the brewing method chosen: filter methods (V60, French press, AeroPress, Pulsar, Weber Bird,
 Moka) or espresso.
 
+Under the coffee's name, three pills sum up the roast the recipe is built on: its roast level,
+in the colour BeanCave's rest calendar uses, with the measured colour; its weight loss; and its
+rest — the days since roasting with where they stand, in the words and colours of the rest
+calendar: *not ready yet*, *in its window*, *drink soon* once past its peak, or *past its
+window*.
+
 A weight loss is called high or low against the loss this roast should have had — the lot's
 moisture, its colour and its development — not against one fixed range: a wet lot loses more
 without being over-developed. Without a colour measurement there is no aim, and weight loss is
@@ -82,7 +88,24 @@ Classic timing instead.
     A coffee with water quality entered — general and carbonate hardness — has that folded
     into the grind recommendation as well, on its own, independent of temperature.
 
+Under the steps, **Before you brew** lists what the advisor noticed about this coffee, its
+rest, the water or the method, worst first: each note carries an icon — **✕** a problem, **!**
+something to watch, **✓** a good sign, **i** a tip — and the heading counts them. Warnings are
+always shown. When there are more than four notes, the extra tips fold behind **Show N more
+notes**.
+
+A recipe value that comes from your own dial-in of this coffee, rather than from the
+calculation, is marked on its tile — *GRIND · YOURS* — with the value it replaced: *▲ was
+292 µm · coarser*.
+
+<!-- CAPTURE 11.3 [scene:brew_filter] — Dial-in on a filter method for a coffee past its rest window: the peach rest
+pill, the roast-level pill with its colour, Before you brew open with a warning and two tips
+under the steps. -->
+
 ![Dial-in open on a filter method, recipe and step list visible](assets/brew-11.3.png)
+
+<!-- CAPTURE 11.4 [scene:brew_espresso] — the same for espresso, with a machine profile selected, on a coffee already
+dialled in: the grind tile marked YOURS with the value it replaced. -->
 
 ![the same for espresso, with a machine profile selected](assets/brew-11.4.png)
 
@@ -90,7 +113,9 @@ Classic timing instead.
 ### Dialling in by taste
 
 Four buttons — **Sour / Bitter / Harsh / Thin** — plus **Balanced**, describe how the last
-brew tasted. TilauScope reads what actually happened against what was planned — brew time,
+brew tasted. Each carries a colour: yellow for sour, the under-extracted side; peach and red
+for bitter and harsh, the over-extracted side; sky blue for thin, a matter of ratio; green for
+balanced. TilauScope reads what actually happened against what was planned — brew time,
 ratio, whether the coffee is at the right point in its rest — and proposes a bounded
 correction, one reasonable grind step at a time.
 
@@ -101,6 +126,12 @@ would not fix it. Sour and bitter together, at the same time, likewise points at
 rather than grind. A coffee still resting is flagged plainly, since a young coffee can taste
 off for reasons no adjustment will fix.
 
+The verdict comes in a card: what went wrong, why, then **NEXT BREW** — the setting that changes,
+the current value struck through and the new one in large, *Grind 667 → 707 µm ▲ coarser* — and
+**Apply to next brew** at the bottom of the card. Once a brew is done, the steps fold into a
+single **Brew done** line — steps, time and weight, with **Show steps** to open them — and
+Before you brew keeps only the notes to watch, so the verdict has the room.
+
 Accepting a correction does two separate things: it becomes the starting point the next time
 Dial-in opens for this coffee and method, and it is added to this coffee's brew journal below
 — what changed, and what it tasted like.
@@ -108,6 +139,9 @@ Dial-in opens for this coffee and method, and it is added to this coffee's brew 
 **Balanced** is accepted the same way, and it matters as much as a correction: it records the
 setting you just brewed as the one this coffee reopens on. A coffee you have already dialled
 in is never moved afterwards by what your other coffees needed.
+
+<!-- CAPTURE 11.5 [scene:brew_verdict] — after a measured brew, Bitter selected: the Brew done line in place of the
+steps, the verdict card with NEXT BREW and Apply to next brew, the debrief on the right. -->
 
 ![ the taste buttons and a proposed correction.](assets/brew-11.5.png)
 
