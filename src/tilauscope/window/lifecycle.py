@@ -586,8 +586,8 @@ class LifecycleMixin:
             path = self.aw.curFile
             if not saved or not path:
                 show_styled_message(
-                    self, QApplication.translate('tilauscope_review', 'Next batch'),
-                    QApplication.translate('tilauscope_review',
+                    self, QApplication.translate('tilauscope_common', 'Next batch'),
+                    QApplication.translate('tilauscope_window',
                                            'This roast could not be saved, so nothing was reset.'),
                     QMessageBox.Icon.Warning)
                 return

@@ -125,7 +125,7 @@ class BeanTabBuildMixin:
         self.density_input.setDecimals(0)
         self.density_input.setSuffix("g/l")
         self.density_input.setSpecialValueText(
-            QApplication.translate("tilauscope_beancave", "not measured"))
+            QApplication.translate("tilauscope_common", "not measured"))
         self.density_input.setMinimumHeight(30)
         self.density_input.setToolTip(QApplication.translate("tilauscope_beancave","Density of green beans in g/l."))
 
@@ -350,13 +350,13 @@ class BeanTabBuildMixin:
         self.flavorselector = QPushButton()
         self.flavorselector.setIcon(_QIFW(_fw_px))
         self.flavorselector.setIconSize(QSize(18, 18))
-        self.flavorselector.setText(QApplication.translate("tilauscope_beancave", "Flavors"))
+        self.flavorselector.setText(QApplication.translate("tilauscope_common", "Flavors"))
         self.flavorselector.clicked.connect(self.on_click_select_flavor)
-        self.flavorselector.setToolTip(QApplication.translate("tilauscope_beancave","Select flavor notes based on a Flavor Wheel."))
+        self.flavorselector.setToolTip(QApplication.translate("tilauscope_common","Select flavor notes based on a Flavor Wheel."))
 
         # ── Blend component widgets ─────────────────────────────────────────
         _initial_list = [QApplication.translate("tilauscope_beancave","N/A - Select a bean"),
-                         QApplication.translate("tilauscope_beancave", "Other")]
+                         QApplication.translate("tilauscope_common", "Other")]
         self.bean2_combo = QComboBox()
         self.bean2_combo.setItemDelegate(QStyledItemDelegate())
         self.bean2_combo.setView(QListView())
@@ -473,7 +473,7 @@ class BeanTabBuildMixin:
         _gl1.setColumnMinimumWidth(2, 120)  # label droite
 
         # col gauche : Name (pleine largeur), Farm, Country
-        _name_lbl = QLabel(QApplication.translate("tilauscope_beancave","Name"))
+        _name_lbl = QLabel(QApplication.translate("Table","Name"))
         _name_lbl.setProperty('variant', 'caption')
         _name_lbl.setFixedWidth(120)
         _name_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
@@ -514,11 +514,11 @@ class BeanTabBuildMixin:
         # Ratio 1 affiché dans le groupe Blend en mode Blend (géré par _toggle_blend_fields)
 
         # Species + Variety : ligne 1 — visibles uniquement en Single Origin
-        self._species_row_lbl = QLabel(QApplication.translate("tilauscope_beancave","Species"))
+        self._species_row_lbl = QLabel(QApplication.translate("tilauscope_common","Species"))
         self._species_row_lbl.setProperty('variant', 'caption')
         self._species_row_lbl.setFixedWidth(120)
         self._species_row_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self._variety_row_lbl = QLabel(QApplication.translate("tilauscope_beancave","Variety"))
+        self._variety_row_lbl = QLabel(QApplication.translate("tilauscope_common","Variety"))
         self._variety_row_lbl.setProperty('variant', 'caption')
         self._variety_row_lbl.setFixedWidth(120)
         self._variety_row_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
@@ -634,7 +634,7 @@ class BeanTabBuildMixin:
         _gl4.addWidget(self.bean3_ratio_input, 1, 3)
 
         # Notes blend sur la même ligne (cols 4-7)
-        _bl_notes_lbl = QLabel(QApplication.translate("tilauscope_beancave","Notes"))
+        _bl_notes_lbl = QLabel(QApplication.translate("Tab","Notes"))
         _bl_notes_lbl.setProperty('variant', 'caption')
         _gl4.addWidget(_bl_notes_lbl,          1, 4)
         _gl4.addWidget(self.blend_notes_input, 1, 5, 1, 3)
@@ -679,7 +679,7 @@ class BeanTabBuildMixin:
         # Sack chips row (optional bag labels — invisible when the
         # bean has none, so unequipped users see the form exactly as before).
         self._current_sacks: list[str] = []
-        self._sacks_lbl = QLabel(QApplication.translate("tilauscope_beancave","Sacks"))
+        self._sacks_lbl = QLabel(QApplication.translate("tilauscope_common","Sacks"))
         self._sacks_lbl.setProperty('variant', 'caption')
         self._sacks_lbl.setFixedWidth(120)
         self._sacks_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
@@ -738,14 +738,14 @@ class BeanTabBuildMixin:
 
         # The guided assistant and its new-crop shortcut; both now open from
         # the catalogue and the sheet, these stay as their enabled-state holders.
-        self.new_sack_button = QPushButton("+ " + QApplication.translate("tilauscope_beancave", "New bean"))
+        self.new_sack_button = QPushButton("+ " + QApplication.translate("tilauscope_common", "New bean"))
         self.new_sack_button.setToolTip(QApplication.translate(
             "tilauscope_beancave",
             "Register an incoming bag of green coffee with a step-by-step "
             "assistant: new bean, restock or new crop — sack labelling stays "
             "optional."))
         self.new_sack_button.clicked.connect(self._open_new_sack_wizard)
-        self.new_crop_button = QPushButton("🌱 " + QApplication.translate("tilauscope_beancave", "New crop"))
+        self.new_crop_button = QPushButton("🌱 " + QApplication.translate("tilauscope_common", "New crop"))
         self.new_crop_button.clicked.connect(self._open_new_crop_wizard)
 
         # ── Actions bar — roast first, then the plan, sharing, delete apart ──
@@ -776,7 +776,7 @@ class BeanTabBuildMixin:
         _share_menu.setStyleSheet(menu_qss())
         _share_actions = []
         for _text, _btn in (
-                (QApplication.translate("tilauscope_beancave", "Print a label"), self.generate_label_button),
+                (QApplication.translate("tilauscope_common", "Print a label"), self.generate_label_button),
                 (QApplication.translate("tilauscope_beancave", "QR code"), self.generate_qr_button),
                 (QApplication.translate("tilauscope_beancave", "Shareable card (image)"), self.generate_card_button)):
             _act = _share_menu.addAction(_text)
@@ -802,7 +802,7 @@ class BeanTabBuildMixin:
         # « + New bean ▾ » heads the catalogue: the guided assistant on a click,
         # the expert form in its menu.
         self.new_sack_tool = QToolButton()
-        self.new_sack_tool.setText(QApplication.translate("tilauscope_beancave", "New bean"))
+        self.new_sack_tool.setText(QApplication.translate("tilauscope_common", "New bean"))
         self.new_sack_tool.setIcon(svg_icon("M12 5v14M5 12h14", THEME['BG'], 15, 2.4))
         self.new_sack_tool.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.new_sack_tool.setToolTip(self.new_sack_button.toolTip())

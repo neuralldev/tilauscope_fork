@@ -208,7 +208,7 @@ class ViewerPlotMixin:
             _log.error(f"_save_timeindex_to_alog: {e}", exc_info=True)
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Save Error"),
+                QApplication.translate("tilauscope_common", "Save Error"),
                 str(e),
                 QMessageBox.Icon.Critical,
             )
@@ -256,5 +256,5 @@ class ViewerPlotMixin:
                 # show the snapshot straight away, like the roast card does
                 self.try_to_open_file(file_path)
             except Exception as e:
-                self._show_message(self, QApplication.translate("tilauscope_beancave","Save Error"),
+                self._show_message(self, QApplication.translate("tilauscope_common","Save Error"),
                                      QApplication.translate("tilauscope_beancave","An error occurred while saving the figure:")+f"\n{e}", QMessageBox.Icon.Critical)

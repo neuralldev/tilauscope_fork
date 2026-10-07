@@ -1,4 +1,5 @@
 ## [4.3] 2026-09-13
+build 27
 build 26
 * ⚡ [feat(i18n)] : French, German, Spanish, Italian and Chinese (Simplified and Traditional) are up to date with every new screen text, the new energy texts included
 * ⚡ [feat(energy)] : without a power meter, a roaster TilauScope has no power figures for is estimated from the new Heater power field, kept per roaster, or else from the heater Artisan rates for it; TilauScope Config → INTEGRATIONS shows under Without a meter where the roaster's energy comes from; a Heater power saved before START applies to the current session

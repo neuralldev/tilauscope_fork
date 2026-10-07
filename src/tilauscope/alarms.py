@@ -799,7 +799,7 @@ class _GripHandle(GripHandle):
 
     def __init__(self, on_drag_start, parent: QWidget | None = None) -> None:
         super().__init__(on_drag_start,
-                         QApplication.translate('tilauscope_alarms', 'Drag to reorder'), parent)
+                         QApplication.translate('tilauscope_common', 'Drag to reorder'), parent)
 
 
 class _AlarmListBody(ReorderDropBody):
@@ -1191,7 +1191,7 @@ class _ChipEditOverlay(QFrame):
         elif self.cluster == 'ref':
             self._build_ref(a)
 
-        done = QPushButton(QApplication.translate('tilauscope_alarms', 'Done'))
+        done = QPushButton(QApplication.translate('tilauscope_common', 'Done'))
         done.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         done.setProperty('variant', 'primary')
         done.clicked.connect(self._close)
@@ -1712,7 +1712,7 @@ class TilauAlarmDlg(QDialog):
         self._btn_insert = self._tool_btn(
             QApplication.translate('tilauscope_alarms', 'Insert below'), self._on_insert)
         self._btn_dup = self._tool_btn(
-            QApplication.translate('tilauscope_alarms', 'Duplicate'), self._on_duplicate)
+            QApplication.translate('tilauscope_common', 'Duplicate'), self._on_duplicate)
         self._btn_del = self._tool_btn(
             QApplication.translate('Button', 'Delete'), self._on_delete)
         bar.addWidget(self._btn_add)

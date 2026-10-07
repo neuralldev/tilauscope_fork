@@ -223,7 +223,7 @@ class ViewerMixin:
         self.roast_compare_chips.setTextFormat(Qt.TextFormat.RichText)
         self.roast_compare_chips.setWordWrap(True)
         self.roast_compare_clear = QPushButton(
-            QApplication.translate("tilauscope_beancave", "Clear") + " ✕")
+            QApplication.translate("tilauscope_common", "Clear") + " ✕")
         self.roast_compare_clear.setProperty('variant', 'ghost')
         self.roast_compare_clear.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.roast_compare_clear.clicked.connect(self._leave_comparison)
@@ -369,7 +369,7 @@ class ViewerMixin:
         # ── The curve card: Curve or Statistics, and the curve's own choices under it ──
         self.detail_page_switch = SegmentedControl(
             [QApplication.translate("tilauscope_beancave", "Curve"),
-             QApplication.translate("tilauscope_beancave", "Statistics"),
+             QApplication.translate("Tab", "Statistics"),
              QApplication.translate("tilauscope_beancave", "Analysis")], compact=True)
         self.detail_page_switch.set_current(0)
         self.detail_page_switch.changed.connect(self._on_detail_page_changed)
@@ -404,7 +404,7 @@ class ViewerMixin:
 
         self.curve_view_switch = SegmentedControl(
             [QApplication.translate("tilauscope_beancave", "Temperatures"),
-             QApplication.translate("tilauscope_beancave", "Rate of rise"),
+             QApplication.translate("tilauscope_common", "Rate of rise"),
              QApplication.translate("tilauscope_beancave", "Both")], compact=True)
         self.curve_view_switch.set_current(self._CURVE_VIEWS.index(self._curve_view))
         self.curve_view_switch.changed.connect(self._on_curve_view_changed)
@@ -434,7 +434,7 @@ class ViewerMixin:
         self.compare_view_switch.hide()
 
         self.curve_range_switch = SegmentedControl(
-            [QApplication.translate("tilauscope_beancave", "Auto"),
+            [QApplication.translate("CheckBox", "Auto"),
              QApplication.translate("tilauscope_beancave", "0–12 min"),
              QApplication.translate("tilauscope_beancave", "Custom…")], compact=True)
         self.curve_range_switch.set_current(self._CURVE_RANGES.index(self._curve_range))
@@ -462,7 +462,7 @@ class ViewerMixin:
         self.burner_air_button.toggled.connect(self._on_burner_air_toggled)
         self.roast_curve.lanes_requested.connect(lambda: self.burner_air_button.setChecked(True))
 
-        view_caption = QLabel(QApplication.translate("tilauscope_beancave", "View"))
+        view_caption = QLabel(QApplication.translate("Menu", "View"))
         view_caption.setProperty('variant', 'caption')
         view_switches = QHBoxLayout()
         view_switches.setSpacing(0)
@@ -698,7 +698,7 @@ class ViewerMixin:
     def show_roast_ready_view(self):
         # Utilise la liste des fichiers .alog déjà chargés par list_alog_files()
         if not self.roast_count() > 0:
-            self._show_message(self, QApplication.translate("tilauscope_beancave","Error"), QApplication.translate("tilauscope_beancave","No file found."), QMessageBox.Icon.Warning)
+            self._show_message(self, QApplication.translate("Error Message","Error"), QApplication.translate("tilauscope_beancave","No file found."), QMessageBox.Icon.Warning)
             return
         self._pending_brew_filepath = None
         self._pending_observe_filepath = None
@@ -730,7 +730,7 @@ class ViewerMixin:
         places at once."""
         fp = Path(filepath)
         if not filepath or not fp.exists():
-            self._show_message(self, QApplication.translate("tilauscope_beancave", "Error"),
+            self._show_message(self, QApplication.translate("Error Message", "Error"),
                                QApplication.translate("tilauscope_beancave", "Could not open this roast file."),
                                QMessageBox.Icon.Warning)
             return
@@ -762,7 +762,7 @@ class ViewerMixin:
         is fully enriched (weight loss, phases) before advising."""
         fp = Path(filepath)
         if not filepath or not fp.exists():
-            self._show_message(self, QApplication.translate("tilauscope_beancave", "Error"),
+            self._show_message(self, QApplication.translate("Error Message", "Error"),
                                QApplication.translate("tilauscope_beancave", "Could not open this roast file."),
                                QMessageBox.Icon.Warning)
             return
@@ -781,7 +781,7 @@ class ViewerMixin:
         if data:
             self.show_barista_expert_view(data)
         else:
-            self._show_message(self, QApplication.translate("tilauscope_beancave", "Error"),
+            self._show_message(self, QApplication.translate("Error Message", "Error"),
                                QApplication.translate("tilauscope_beancave", "Could not open this roast file."),
                                QMessageBox.Icon.Warning)
 
@@ -1608,7 +1608,7 @@ class ViewerMixin:
             labels = defect_labels()
             parts = [verdict_labels().get(tasting.verdict, '')] + [labels[d] for d in tasting.defects if d in labels]
             banner.show_state(QApplication.translate("tilauscope_beancave", "Tasted: {0}").format(
-                " · ".join(p for p in parts if p)), QApplication.translate("tilauscope_beancave", "Edit"))
+                " · ".join(p for p in parts if p)), QApplication.translate("Menu", "Edit"))
             return
         epoch = self._roast_epoch(profile)
         colour = to_agtron(float(profile.get('ground_color') or 0) or float(profile.get('whole_color') or 0),
@@ -1619,7 +1619,7 @@ class ViewerMixin:
                 if epoch > 0 else -1)
         if days >= 0 and rest_window(colour, days).status != RestStatus.FRESH:
             banner.show_state(QApplication.translate("tilauscope_beancave", "Rested and ready — how did it taste?"),
-                              QApplication.translate("tilauscope_beancave", "Taste"))
+                              QApplication.translate("Textbox", "Taste"))
         else:
             banner.hide()
 
@@ -1778,11 +1778,11 @@ class ViewerMixin:
         end = QTimeEdit(QTime(0, 0).addSecs(int(end_s)))
         for field in (start, end):
             field.setDisplayFormat("m:ss")
-        grid.addWidget(QLabel(QApplication.translate("tilauscope_beancave", "From")), 0, 0)
+        grid.addWidget(QLabel(QApplication.translate("Label", "From")), 0, 0)
         grid.addWidget(start, 0, 1)
         grid.addWidget(QLabel(QApplication.translate("tilauscope_beancave", "To")), 1, 0)
         grid.addWidget(end, 1, 1)
-        apply_button = QPushButton(QApplication.translate("tilauscope_beancave", "Apply"))
+        apply_button = QPushButton(QApplication.translate("Button", "Apply"))
         apply_button.setProperty('variant', 'primary')
         hint = QLabel("")
         hint.setProperty('variant', 'caption')
@@ -2112,7 +2112,7 @@ class ViewerMixin:
         selected = self.selected_roast_fnames()
         if not selected:
             self._show_message(self,
-                                QApplication.translate("tilauscope_beancave","Error"),
+                                QApplication.translate("Error Message","Error"),
                                 QApplication.translate("tilauscope_beancave","Please, select a roast session first."), QMessageBox.Icon.Warning)
             return
 
@@ -2189,7 +2189,7 @@ class ViewerMixin:
         if not self.selected_roast_fnames():
             self._show_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Error"),
+                QApplication.translate("Error Message", "Error"),
                 QApplication.translate("tilauscope_beancave", "Please, select a roast session first."),
                 QMessageBox.Icon.Warning)
             return
@@ -2232,13 +2232,13 @@ class ViewerMixin:
         if ok:
             self._show_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Success"),
+                QApplication.translate("tilauscope_common", "Success"),
                 QApplication.translate("tilauscope_beancave", "Roast card saved to") + f" {file_path}")
             self.try_to_open_file(file_path)
         else:
             self._show_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Error"),
+                QApplication.translate("Error Message", "Error"),
                 QApplication.translate("tilauscope_beancave", "The roast card could not be generated."),
                 QMessageBox.Icon.Warning)
 
@@ -2251,7 +2251,7 @@ class ViewerMixin:
         if not self.selected_roast_fnames():
             self._show_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Error"),
+                QApplication.translate("Error Message", "Error"),
                 QApplication.translate("tilauscope_beancave", "Please, select a roast session first."),
                 QMessageBox.Icon.Warning)
             return

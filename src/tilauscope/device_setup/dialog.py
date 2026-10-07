@@ -136,7 +136,7 @@ class _OtherDevicePicker(_DragToMove, QDialog):
         layout.addWidget(self._list, 1)
 
         buttons = QHBoxLayout()
-        cancel = _footer_button(QApplication.translate('tilauscope_devices', 'Cancel'), 'outline')
+        cancel = _footer_button(QApplication.translate('Button', 'Cancel'), 'outline')
         cancel.clicked.connect(self.reject)
         ok = _footer_button(confirm, 'primary')
         ok.clicked.connect(self.accept)
@@ -204,9 +204,9 @@ class DeviceSetupDialog(_DragToMove, QDialog):
         self._tabs.setStyleSheet(config_tabs_qss())
         tab_qss = 'QWidget { background: transparent; }' + tooltip_qss()
         pages = []
-        for title in (QApplication.translate('tilauscope_devices', 'ROASTER'),
+        for title in (QApplication.translate('tilauscope_common', 'ROASTER'),
                       QApplication.translate('tilauscope_devices', 'EXTRA DEVICES'),
-                      QApplication.translate('tilauscope_devices', 'AMBIENT')):
+                      QApplication.translate('HelpDlg', 'AMBIENT')):
             page = QWidget()
             page.setStyleSheet(tab_qss)
             self._tabs.addTab(page, title)
@@ -220,9 +220,9 @@ class DeviceSetupDialog(_DragToMove, QDialog):
         layout.addWidget(separator())
         footer = QHBoxLayout()
         footer.setSpacing(12)
-        cancel = _footer_button(QApplication.translate('tilauscope_devices', 'Cancel'), 'outline')
+        cancel = _footer_button(QApplication.translate('Button', 'Cancel'), 'outline')
         cancel.clicked.connect(self.reject)
-        save = _footer_button(QApplication.translate('tilauscope_devices', 'Save'), 'primary')
+        save = _footer_button(QApplication.translate('Message', 'Save'), 'primary')
         save.setDefault(True)
         save.clicked.connect(self._on_save)
         footer.addStretch()
@@ -248,7 +248,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
         layout.addWidget(_caption(QApplication.translate(
             'tilauscope_devices', 'Choose how TilauScope reads bean and environment temperatures.')))
 
-        self._mode = SegmentedControl([QApplication.translate('tilauscope_devices', 'Meter'),
+        self._mode = SegmentedControl([QApplication.translate('Radio Button', 'Meter'),
                                        QApplication.translate('tilauscope_devices', 'TC4 board')])
         self._mode.set_current({'meter': _METER, 'tc4': _TC4}.get(self._draft.mode, -1))
         self._mode.changed.connect(self._on_mode_changed)
@@ -265,7 +265,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
         grid.setVerticalSpacing(10)
         grid.setColumnStretch(1, 1)
 
-        self._meter_label = field_label(QApplication.translate('tilauscope_devices', 'Meter'), _LABEL_W)
+        self._meter_label = field_label(QApplication.translate('Radio Button', 'Meter'), _LABEL_W)
         self._meter_combo = self._build_meter_combo()
         grid.addWidget(self._meter_label, 0, 0)
         grid.addWidget(self._meter_combo, 0, 1)
@@ -283,7 +283,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
         grid.addWidget(self._connection_btn, 2, 1, Qt.AlignmentFlag.AlignLeft)
 
         from artisanlib.dialogs import PortComboBox  # Artisan's own port list: same filters, same names
-        self._port_label = field_label(QApplication.translate('tilauscope_devices', 'USB port'), _LABEL_W)
+        self._port_label = field_label(QApplication.translate('tilauscope_common', 'USB port'), _LABEL_W)
         self._port_combo = PortComboBox(selection=self._draft.comport or None)
         self._port_combo.setView(styled_combo_view())
         style_combo_popup(self._port_combo)
@@ -436,7 +436,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
         # the alarm editor's command bar: each command acts on the selected card
         bar = QHBoxLayout()
         bar.setSpacing(8)
-        self._btn_add = toolbar_button(QApplication.translate('tilauscope_devices', 'Add') + '  ▾',
+        self._btn_add = toolbar_button(QApplication.translate('Button', 'Add') + '  ▾',
                                        accent=THEME['SUCCESS'])
         self._btn_add.clicked.connect(
             lambda _checked=False: self._show_device_menu(self._btn_add, self._add_kind, self._add_other))
@@ -444,7 +444,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
         self._btn_change.clicked.connect(
             lambda _checked=False: self._show_device_menu(self._btn_change, self._change_to_kind,
                                                           self._change_to_other))
-        self._btn_delete = toolbar_button(QApplication.translate('tilauscope_devices', 'Delete'))
+        self._btn_delete = toolbar_button(QApplication.translate('Button', 'Delete'))
         self._btn_delete.clicked.connect(lambda _checked=False: self._on_delete())
         for button in (self._btn_add, self._btn_change, self._btn_delete):
             bar.addWidget(button)
@@ -620,7 +620,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
     def _add_other(self) -> None:
         device_id = self._pick_other_device(
             QApplication.translate('tilauscope_devices', 'ADD A DEVICE'),
-            QApplication.translate('tilauscope_devices', 'Add'))
+            QApplication.translate('Button', 'Add'))
         if device_id is None:
             return
         row = draft.add_device(self._draft, device_id, self._capacity)
@@ -678,7 +678,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
                                        ).format(', '.join(self._row_title(d) for d in dependents)),
                 QMessageBox.Icon.Question,
                 buttons=[QApplication.translate('tilauscope_devices', 'Delete both'),
-                         QApplication.translate('tilauscope_devices', 'Cancel')])
+                         QApplication.translate('Button', 'Cancel')])
             if reply != 0:
                 return
         index = draft.row_index(self._draft, row.uid) or 0
@@ -748,7 +748,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
                    'pressure': qmc.pressuredevicefunctionlist}
         self._ambient_widgets: dict[str, QWidget] = {}
         for r, (key, label) in enumerate((
-                ('temperature', QApplication.translate('tilauscope_devices', 'Temperature')),
+                ('temperature', QApplication.translate('Menu', 'Temperature')),
                 ('humidity', QApplication.translate('tilauscope_devices', 'Humidity')),
                 ('pressure', QApplication.translate('tilauscope_devices', 'Pressure')))):
             grid.addWidget(field_label(label, 120), r, 0)
@@ -844,7 +844,7 @@ class DeviceSetupDialog(_DragToMove, QDialog):
                                        'The changes made in this window will be discarded.'),
                 QMessageBox.Icon.Question,
                 buttons=[QApplication.translate('tilauscope_devices', 'Discard and open'),
-                         QApplication.translate('tilauscope_devices', 'Cancel')])
+                         QApplication.translate('Button', 'Cancel')])
             if reply != 0:
                 return
         self.reject()
@@ -901,8 +901,8 @@ class DeviceSetupDialog(_DragToMove, QDialog):
                                        'Removing {0} also removes its readings from the roast that is '
                                        'open. Save anyway?').format(', '.join(self._row_title(r) for r in removed)),
                 QMessageBox.Icon.Question,
-                buttons=[QApplication.translate('tilauscope_devices', 'Save'),
-                         QApplication.translate('tilauscope_devices', 'Cancel')])
+                buttons=[QApplication.translate('Message', 'Save'),
+                         QApplication.translate('Button', 'Cancel')])
             if reply != 0:
                 return
         try:

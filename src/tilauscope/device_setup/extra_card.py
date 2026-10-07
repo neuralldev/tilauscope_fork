@@ -88,7 +88,7 @@ class ExtraDeviceCard(QFrame):
         header = QHBoxLayout()
         header.setSpacing(7)
         header.addWidget(GripHandle(self._start_drag,
-                                    QApplication.translate('tilauscope_devices', 'Drag to reorder')))
+                                    QApplication.translate('tilauscope_common', 'Drag to reorder')))
         title_lbl = QLabel(title)
         title_lbl.setProperty('variant', 'title')
         header.addWidget(title_lbl)

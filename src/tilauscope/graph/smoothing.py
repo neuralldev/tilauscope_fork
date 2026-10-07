@@ -90,11 +90,11 @@ def label(level: Level) -> str:
     table walked in a loop would ship three untranslatable names.
     """
     if level.key == 'responsive':
-        name = QApplication.translate('tilauscope', 'Responsive')
+        name = QApplication.translate('tilauscope_graph', 'Responsive')
     elif level.key == 'standard':
-        name = QApplication.translate('tilauscope', 'Standard')
+        name = QApplication.translate('Menu', 'Standard')
     else:
-        name = QApplication.translate('tilauscope', 'Smooth')
+        name = QApplication.translate('tilauscope_graph', 'Smooth')
     return f'{name}  ·  {level.span} s'
 
 

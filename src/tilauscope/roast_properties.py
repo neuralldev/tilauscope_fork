@@ -389,7 +389,7 @@ class _BatchBlock(QFrame):
             label = format_batch_label(qmc.roastbatchprefix, qmc.roastbatchnr, qmc.roastbatchpos)
             self._badge.setText(label or "—")
             self._pill.setText(
-                QApplication.translate("tilauscope_roast_setup", "assigned")
+                QApplication.translate("tilauscope_common", "assigned")
                 if label else QApplication.translate("tilauscope_roast_setup", "unassigned"))
             self._hint.setText("" if label else QApplication.translate(
                 "tilauscope_roast_setup", "no batch number for this roast"))
@@ -473,7 +473,7 @@ class _ScaleFloatWindow(QDialog):
         self._weight_lbl.mousePressEvent = self._on_weight_clicked  # type: ignore[method-assign]
         self._weight_lbl.mouseDoubleClickEvent = self._on_weight_double_clicked  # type: ignore[method-assign]
 
-        self._hint_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "tap to use"))
+        self._hint_lbl = QLabel(QApplication.translate("tilauscope_common", "tap to use"))
         self._hint_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._hint_lbl.setProperty('variant', 'caption')
 
@@ -512,7 +512,7 @@ class _ScaleFloatWindow(QDialog):
 
     def scale_ready(self) -> None:
         self._connecting = False
-        self.set_status(QApplication.translate("tilauscope_roast_setup", "tap to use"))
+        self.set_status(QApplication.translate("tilauscope_common", "tap to use"))
 
     # ── Interaction ──────────────────────────────────────────────────────────
 
@@ -610,7 +610,7 @@ def _age_text(epoch: float) -> str:
     """How long ago a reading was taken, in words."""
     secs = max(0.0, time.time() - epoch)
     if secs < 120:
-        return QApplication.translate("tilauscope_roast_setup", "just now")
+        return QApplication.translate("tilauscope_common", "just now")
     if secs < 3600:
         return QApplication.translate("tilauscope_roast_setup", "{0} min ago").format(int(secs // 60))
     if secs < 2 * 86400:
@@ -1152,7 +1152,7 @@ class _WeatherFloatWindow(QDialog):
         self._h_edit = self._typed_row(tl, _SVG_HUM, "%",
                                        QApplication.translate("tilauscope_roast_setup", "Room humidity"))
         self._a_edit = self._typed_row(tl, _SVG_ALTITUDE, "m",
-                                       QApplication.translate("tilauscope_roast_setup", "Altitude"))
+                                       QApplication.translate("tilauscope_common", "Altitude"))
         typed_note = QLabel(QApplication.translate("tilauscope_roast_setup", "typed · altitude remembered"))
         typed_note.setAlignment(Qt.AlignmentFlag.AlignCenter)
         typed_note.setStyleSheet(caption_css)
@@ -2092,7 +2092,7 @@ class _RoastInsightsPanel(QWidget):
         default = str(get_downloads_dir() / f"Roast_Plan_{bean_name}_{scale.name}{suffix}.pdf")
         path, _ = QFileDialog.getSaveFileName(
             owner, QApplication.translate("tilauscope_roast_setup", "Save the roast plan"), default,
-            QApplication.translate("tilauscope_roast_setup", "PDF Files (*.pdf)"))
+            QApplication.translate("tilauscope_common", "PDF Files (*.pdf)"))
         if not path:
             return
         try:
@@ -2108,7 +2108,7 @@ class _RoastInsightsPanel(QWidget):
         except Exception as exc:  # noqa: BLE001
             _log.exception("RoastInsights: plan PDF failed")
             show_styled_message(
-                owner, QApplication.translate("tilauscope_roast_setup", "Error"),
+                owner, QApplication.translate("Error Message", "Error"),
                 QApplication.translate("tilauscope_roast_setup",
                                        "Could not generate the roast plan:<br><b>{0}</b>").format(exc),
                 QMessageBox.Icon.Warning, rich=True)
@@ -2503,7 +2503,7 @@ class RoastSetupDialog(QDialog):
         self._tabs.addTab(tab1, QApplication.translate("tilauscope_roast_setup", "⬥  ROAST"))
 
         # Bean
-        t1.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Bean")))
+        t1.addWidget(_section_label(QApplication.translate("tilauscope_common", "Bean")))
         self._bean_info_frame = QFrame()
         self._bean_info_frame.setStyleSheet(" border: none;")
         bean_info_layout = QVBoxLayout(self._bean_info_frame)
@@ -2547,7 +2547,7 @@ class RoastSetupDialog(QDialog):
         t1.addWidget(self._title_combo)
 
         # Batch (forecast — never advances the counter; toggle delegates activation)
-        t1.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Batch")))
+        t1.addWidget(_section_label(QApplication.translate("Label", "Batch")))
         self._batch_block = _BatchBlock(self._aw, _BatchBlock.MODE_PREVIEW)
         # guard against vertical compression on short screens
         self._batch_block.setMinimumHeight(56)
@@ -2568,7 +2568,7 @@ class RoastSetupDialog(QDialog):
             f"border-radius: 8px; padding: 6px 12px; }}"
             f"QLineEdit:focus {{ border-color: {THEME['ACCENT']}; }}"
         )
-        g_unit = QLabel(QApplication.translate("tilauscope_roast_setup", "g"))
+        g_unit = QLabel(QApplication.translate("Label", "g"))
         g_unit.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 18px; margin-left: 4px;")
         self._stock_lbl = QLabel()
         self._stock_lbl.setStyleSheet(
@@ -2631,7 +2631,7 @@ class RoastSetupDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(12)
 
-        cancel_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "Cancel"))
+        cancel_btn = QPushButton(QApplication.translate("Button", "Cancel"))
         cancel_btn.setObjectName('footerBtn')
         cancel_btn.setProperty('variant', 'outline')
         cancel_btn.clicked.connect(self._on_cancel)
@@ -2680,15 +2680,15 @@ class RoastSetupDialog(QDialog):
         if b.country:
             parts.append(b.country)
         if b.farm:
-            parts.append("{0} {1}".format(QApplication.translate("tilauscope_roast_setup", "Farm:"), b.farm))
+            parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Farm:"), b.farm))
         if b.process:
-            parts.append("{0} {1}".format(QApplication.translate("tilauscope_roast_setup", "Process"), b.process))
+            parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Process"), b.process))
         if b.varieties:
-            parts.append("{0} {1}".format(QApplication.translate("tilauscope_roast_setup", "Variety"), b.varieties))
+            parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Variety"), b.varieties))
         if b.altitude:
-            parts.append("{0} {1}m".format(QApplication.translate("tilauscope_roast_setup", "Altitude:"), b.altitude))
+            parts.append("{0} {1}m".format(QApplication.translate("tilauscope_common", "Altitude:"), b.altitude))
         if b.sca:
-            parts.append(QApplication.translate("tilauscope_roast_setup", "SCA: {0}").format(f"{b.sca:.1f}"))
+            parts.append(QApplication.translate("tilauscope_common", "SCA: {0}").format(f"{b.sca:.1f}"))
         if b.uuid:
             # Machine key, not a label: the assistant reads it back to find the
             # bean. Translated, French returned "uuid : : {0}" and the roast lost
@@ -2714,9 +2714,9 @@ class RoastSetupDialog(QDialog):
         if b.varieties:
             full_parts.append(b.varieties)
         if b.altitude:
-            full_parts.append("{0} {1} m".format(QApplication.translate("tilauscope_roast_setup", "Altitude:"), b.altitude))
+            full_parts.append("{0} {1} m".format(QApplication.translate("tilauscope_common", "Altitude:"), b.altitude))
         if b.crop:
-            full_parts.append("{0} {1}".format(QApplication.translate("tilauscope_roast_setup", "Crop"), b.crop))
+            full_parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Crop"), b.crop))
         if b.sca:
             full_parts.append(QApplication.translate("tilauscope_roast_setup", "SCA {0}").format(f"{b.sca:.1f}"))
 
@@ -2851,7 +2851,7 @@ class RoastSetupDialog(QDialog):
         self._plan_level_combo.setMinimumHeight(54)
         self._plan_level_combo.setMinimumWidth(150)
         self._plan_level_combo.currentIndexChanged.connect(self._on_plan_level_changed)
-        _column(QApplication.translate("tilauscope_roast_setup", "Roast level"), self._plan_level_combo)
+        _column(QApplication.translate("tilauscope_common", "Roast level"), self._plan_level_combo)
         return host
 
     def _refresh_plan_weight(self, val: float) -> None:
@@ -2906,7 +2906,7 @@ class RoastSetupDialog(QDialog):
             data = self._profile_combo.itemData(i)
             profile = data.get('profile') if isinstance(data, dict) else None
             combo.addItem(str(getattr(profile, 'name', '')) if profile is not None
-                          else QApplication.translate("tilauscope_roast_setup", "Choose…"))
+                          else QApplication.translate("tilauscope_common", "Choose…"))
         combo.setCurrentIndex(self._profile_combo.currentIndex())
         combo.blockSignals(False)
 
@@ -2959,11 +2959,11 @@ class RoastSetupDialog(QDialog):
                 "tilauscope_roast_setup", "Bean family: not known — using the standard pace"))
             return
         if delta_c > 0:
-            pace = QApplication.translate("tilauscope_roast_setup", "wants a faster roast")
+            pace = QApplication.translate("tilauscope_common", "wants a faster roast")
         elif delta_c < 0:
-            pace = QApplication.translate("tilauscope_roast_setup", "takes a slower roast")
+            pace = QApplication.translate("tilauscope_common", "takes a slower roast")
         else:
-            pace = QApplication.translate("tilauscope_roast_setup", "keeps the standard pace")
+            pace = QApplication.translate("tilauscope_common", "keeps the standard pace")
         self._family_lbl.setText(QApplication.translate(
             "tilauscope_roast_setup", "Bean family: {0} — {1} ({2} °{3} on the charge)").format(
                 family, pace, f"{delta_c:+.0f}", self._temp_unit()))
@@ -3115,7 +3115,7 @@ class RoastSetupDialog(QDialog):
         _dest_defs = (
             ("filter",   QApplication.translate("tilauscope_roast_setup", "Filter")),
             ("omni",     QApplication.translate("tilauscope_roast_setup", "Omni")),
-            ("espresso", QApplication.translate("tilauscope_roast_setup", "Espresso")),
+            ("espresso", QApplication.translate("tilauscope_common", "Espresso")),
         )
         self._dest_buttons: dict[str, QPushButton] = {}
         for _i, (_key, _label) in enumerate(_dest_defs):
@@ -3208,7 +3208,7 @@ class RoastSetupDialog(QDialog):
 
         density_col = QVBoxLayout()
         density_col.setSpacing(4)
-        density_col.addWidget(_field_label(QApplication.translate("tilauscope_roast_setup", "Density:")))
+        density_col.addWidget(_field_label(QApplication.translate("tilauscope_common", "Density:")))
         self._density_edit = QLineEdit()
         self._density_edit.setPlaceholderText("0.0")
         self._density_edit.setMinimumHeight(34)
@@ -3218,7 +3218,7 @@ class RoastSetupDialog(QDialog):
 
         moisture_col = QVBoxLayout()
         moisture_col.setSpacing(4)
-        moisture_col.addWidget(_field_label(QApplication.translate("tilauscope_roast_setup", "Moisture")))
+        moisture_col.addWidget(_field_label(QApplication.translate("Label", "Moisture")))
         self._moisture_edit = QLineEdit()
         self._moisture_edit.setPlaceholderText("0.0")
         self._moisture_edit.setMinimumHeight(34)
@@ -3313,13 +3313,13 @@ class RoastSetupDialog(QDialog):
             f"QPushButton:disabled {{ color: {THEME['BORDER']}; border-color: {THEME['BORDER']};"
             f"background: {THEME['BG']}; }}"
         )
-        self._pid_input_bt_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "BT"))
+        self._pid_input_bt_btn = QPushButton(QApplication.translate("Button", "BT"))
         self._pid_input_bt_btn.setStyleSheet(
             f"QPushButton {{ color: {THEME['SUBTEXT']}; background: {THEME['BG']};"
             f"border: 1px solid {THEME['BORDER']}; padding: 6px 16px; font-size: 13px; font-weight: bold;"
             f"border-top-left-radius: 6px; border-bottom-left-radius: 6px; }}" + _seg_checked
         )
-        self._pid_input_et_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "ET"))
+        self._pid_input_et_btn = QPushButton(QApplication.translate("Button", "ET"))
         self._pid_input_et_btn.setStyleSheet(
             f"QPushButton {{ color: {THEME['SUBTEXT']}; background: {THEME['BG']};"
             f"border: 1px solid {THEME['BORDER']}; border-left: none; padding: 6px 16px; font-size: 13px; font-weight: bold;"
@@ -4680,9 +4680,9 @@ class RoastResultDialog(QDialog):
             rich=True,
             width=380,
             buttons=[
-                QApplication.translate("tilauscope_roast_setup", "Whole bean"),
-                QApplication.translate("tilauscope_roast_setup", "Ground"),
-                QApplication.translate("tilauscope_roast_setup", "Cancel"),
+                QApplication.translate("tilauscope_common", "Whole bean"),
+                QApplication.translate("Label", "Ground"),
+                QApplication.translate("Button", "Cancel"),
             ],
         )
         # show_styled_message returns a StandardButton; map text via index
@@ -4860,10 +4860,10 @@ class RoastResultDialog(QDialog):
 
         metrics = [
             (_SVG_CLOCK,       THEME['SUBTEXT'], QApplication.translate("tilauscope_roast_setup", "Total"),     _fmt_time(total_s),               THEME['TEXT']),
-            (_SVG_THERMOMETER, THEME['ACCENT'],        QApplication.translate("tilauscope_roast_setup", "Charge"),    _fmt_temp(charge_bt),              THEME['ACCENT']),
-            (_SVG_THERMOMETER, "#fab387",        QApplication.translate("tilauscope_roast_setup", "Drop"),      _fmt_temp(drop_bt),                "#fab387"),
-            (_SVG_CLOCK,       THEME['ACCENT'],  QApplication.translate("tilauscope_roast_setup", "Dev"),       _fmt_time(dev_s),                  THEME['ACCENT']),
-            (_SVG_DEVELOPMENT, THEME['ACCENT'],  QApplication.translate("tilauscope_roast_setup", "DTR"),       _fmt_dtr(dev_s, total_s_stat),     THEME['ACCENT']),
+            (_SVG_THERMOMETER, THEME['ACCENT'],        QApplication.translate("Tooltip", "Charge"),    _fmt_temp(charge_bt),              THEME['ACCENT']),
+            (_SVG_THERMOMETER, "#fab387",        QApplication.translate("Tooltip", "Drop"),      _fmt_temp(drop_bt),                "#fab387"),
+            (_SVG_CLOCK,       THEME['ACCENT'],  QApplication.translate("tilauscope_common", "Dev"),       _fmt_time(dev_s),                  THEME['ACCENT']),
+            (_SVG_DEVELOPMENT, THEME['ACCENT'],  QApplication.translate("tilauscope_common", "DTR"),       _fmt_dtr(dev_s, total_s_stat),     THEME['ACCENT']),
         ]
 
         for i, (svg, icon_color, label, value, val_color) in enumerate(metrics):
@@ -5024,7 +5024,7 @@ class RoastResultDialog(QDialog):
         batch_lay = QVBoxLayout(batch_card)
         batch_lay.setContentsMargins(14, 6, 14, 8)
         batch_lay.setSpacing(2)
-        batch_lay.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Batch")))
+        batch_lay.addWidget(_section_label(QApplication.translate("Label", "Batch")))
         self._batch_block = _BatchBlock(self._aw, _BatchBlock.MODE_EDIT)
         batch_lay.addWidget(self._batch_block)
         batch_card.setFixedWidth(270)
@@ -5049,7 +5049,7 @@ class RoastResultDialog(QDialog):
         weight_sec_row = QHBoxLayout()
         weight_sec_row.addWidget(_svg_icon_label(_SVG_SCALE_RESULT, THEME['ACCENT'], 18))
         weight_sec_row.addSpacing(6)
-        weight_sec_row.addWidget(_section_label(QApplication.translate("tilauscope_roast_setup", "Roasted weight")))
+        weight_sec_row.addWidget(_section_label(QApplication.translate("tilauscope_common", "Roasted weight")))
         weight_sec_row.addStretch()
         left_col.addLayout(weight_sec_row)
 
@@ -5089,7 +5089,7 @@ class RoastResultDialog(QDialog):
         defect_row = QHBoxLayout()
         defect_row.setSpacing(10)
         defect_row.addWidget(_svg_icon_label(_SVG_DEFECT, THEME['WARNING'], 16))
-        defect_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Defects"))
+        defect_lbl = QLabel(QApplication.translate("Textbox", "Defects"))
         defect_lbl.setProperty('variant', 'secondary')
         defect_row.addWidget(defect_lbl)
         self._defects_edit = QLineEdit(str(round(_to_grams(qmc.roasted_defects_weight, qmc.weight[2]), 1)))
@@ -5150,7 +5150,7 @@ class RoastResultDialog(QDialog):
         whole_header = QHBoxLayout()
         whole_header.addWidget(_svg_icon_label(_SVG_BEAN, THEME['SUBTEXT'], 14))
         whole_header.addSpacing(4)
-        wh_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Whole bean"))
+        wh_lbl = QLabel(QApplication.translate("tilauscope_common", "Whole bean"))
         wh_lbl.setProperty('variant', 'caption')
         whole_header.addWidget(wh_lbl)
         whole_header.addStretch()
@@ -5179,7 +5179,7 @@ class RoastResultDialog(QDialog):
         ground_header = QHBoxLayout()
         ground_header.addWidget(_svg_icon_label(_SVG_DEFECT, THEME['SUBTEXT'], 14))
         ground_header.addSpacing(4)
-        gr_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Ground"))
+        gr_lbl = QLabel(QApplication.translate("Label", "Ground"))
         gr_lbl.setProperty('variant', 'caption')
         ground_header.addWidget(gr_lbl)
         ground_header.addStretch()
@@ -5300,7 +5300,7 @@ class RoastResultDialog(QDialog):
         cl.addWidget(_separator())
         btn_row = QHBoxLayout()
         btn_row.setSpacing(12)
-        cancel_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "Cancel"))
+        cancel_btn = QPushButton(QApplication.translate("Button", "Cancel"))
         cancel_btn.setObjectName('footerBtn')
         cancel_btn.setProperty('variant', 'outline')
         cancel_btn.clicked.connect(self._on_cancel)
@@ -5720,9 +5720,9 @@ class RoastResultDialog(QDialog):
 
             file_path, _ = QFileDialog.getSaveFileName(
                 self,
-                QApplication.translate("tilauscope_roast_setup", "Save Label PDF"),
+                QApplication.translate("tilauscope_common", "Save Label PDF"),
                 default,
-                QApplication.translate("tilauscope_roast_setup", "PDF Files (*.pdf)"))
+                QApplication.translate("tilauscope_common", "PDF Files (*.pdf)"))
             if not file_path:
                 return
 
@@ -5730,8 +5730,8 @@ class RoastResultDialog(QDialog):
             if not ok:
                 show_styled_message(
                     self,
-                    QApplication.translate("tilauscope_roast_setup", "Error"),
-                    QApplication.translate("tilauscope_roast_setup", "PDF file was not generated."),
+                    QApplication.translate("Error Message", "Error"),
+                    QApplication.translate("tilauscope_common", "PDF file was not generated."),
                     QMessageBox.Icon.Warning)
                 return
 
@@ -5742,7 +5742,7 @@ class RoastResultDialog(QDialog):
             _log.error("RoastResultDialog: label printing failed: %s", exc)
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_roast_setup", "Error"),
+                QApplication.translate("Error Message", "Error"),
                 QApplication.translate("tilauscope_roast_setup",
                     "Could not generate the roast label:<br><b>{0}</b>").format(exc),
                 QMessageBox.Icon.Warning, rich=True)
@@ -5857,7 +5857,7 @@ class RoastResultDialog(QDialog):
             _log.error("RoastResultDialog injection error: %s", exc)
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_roast_setup", "Save Error"),
+                QApplication.translate("tilauscope_common", "Save Error"),
                 QApplication.translate("tilauscope_roast_setup",
                     "Could not save roast result:<br><b>{0}</b>").format(exc),
                 QMessageBox.Icon.Warning, rich=True,
@@ -5879,7 +5879,7 @@ class RoastResultDialog(QDialog):
             restore()
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_roast_setup", "Save Error"),
+                QApplication.translate("tilauscope_common", "Save Error"),
                 QApplication.translate("tilauscope_roast_setup",
                     "The roast could not be saved. Your data is still in this window; "
                     "choose Save roast to try again."),
@@ -6166,7 +6166,7 @@ class RoastDataReaderDialog(QDialog):
         close = QPushButton("✕")
         close.setCursor(Qt.CursorShape.PointingHandCursor)
         close.setFixedSize(22, 22)
-        close.setToolTip(QApplication.translate("tilauscope_roast_setup", "Close"))
+        close.setToolTip(QApplication.translate("Button", "Close"))
         close.setStyleSheet(
             f"QPushButton {{ background: {THEME['CRITICAL']}; color: {THEME['BG']};"
             f"border: none; border-radius: 11px; font-size: 12px; font-weight: bold; }} "
@@ -6196,7 +6196,7 @@ class RoastDataReaderDialog(QDialog):
         row.addWidget(self._summary)
         row.addStretch()
 
-        lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Show"))
+        lbl = QLabel(QApplication.translate("Label", "Show"))
         lbl.setProperty('variant', 'caption')
         row.addWidget(lbl)
 
@@ -6205,7 +6205,7 @@ class RoastDataReaderDialog(QDialog):
         for key, text in (
             ('all',       QApplication.translate("tilauscope_roast_setup", "All")),
             ('milestone', QApplication.translate("tilauscope_roast_setup", "Milestones")),
-            ('event',     QApplication.translate("tilauscope_roast_setup", "Events")),
+            ('event',     QApplication.translate("Tab", "Events")),
         ):
             btn = QPushButton(text)
             btn.setCheckable(True)
@@ -6276,9 +6276,9 @@ class RoastDataReaderDialog(QDialog):
 
     def _setup_columns(self) -> None:
         """Columns follow the profile: each roast brings its own extra devices."""
-        cols = [QApplication.translate("tilauscope_roast_setup", "Time"),
+        cols = [QApplication.translate("Table", "Time"),
                 "ET", "BT", "ΔET", "ΔBT",
-                QApplication.translate("tilauscope_roast_setup", "Marker")]
+                QApplication.translate("Label", "Marker")]
         self._extra_cols: list[tuple[int, int]] = []   # (extra_device_k, 1 or 2)
         for k in range(len(self._extratemp1)):
             n1 = self._extraname1[k] if k < len(self._extraname1) else ""

@@ -110,7 +110,7 @@ def _destination_label(key: str) -> str:
     return {
         "filter":   QApplication.translate("tilauscope_roast_assistant", "Filter"),
         "omni":     QApplication.translate("tilauscope_roast_assistant", "Omni"),
-        "espresso": QApplication.translate("tilauscope_roast_assistant", "Espresso"),
+        "espresso": QApplication.translate("tilauscope_common", "Espresso"),
     }.get(str(key or "").strip().lower(), str(key or ""))
 
 
@@ -1966,7 +1966,7 @@ class _PreheatPage(QWidget):
         # Quick adjust — burner only during preheat
         self.quick_adjust = _QuickAdjustRow(aw, _filter_slider_configs(
             aw, getattr(aw, "_tilau_roast_context", None), [
-                (QApplication.translate("tilauscope_roast_assistant", "Burner"), 3, THEME['CRITICAL']),
+                (QApplication.translate("ComboBox", "Burner"), 3, THEME['CRITICAL']),
             ]))
         # Torréfacteur sans commandes : pas de slider burner à régler.
         if _guidance_curve_only(aw):
@@ -1974,7 +1974,7 @@ class _PreheatPage(QWidget):
 
         # Charge button (terminal action)
         self.btn_charge = _ContextButton(
-            QApplication.translate("tilauscope_roast_assistant", "Charge"),
+            QApplication.translate("Tooltip", "Charge"),
             QApplication.translate("tilauscope_roast_assistant", "BT stable ± 2° from SV"),
             style='dim',
         )
@@ -2008,11 +2008,11 @@ class _PreheatPage(QWidget):
         self._tr_coach_normal     = QApplication.translate("tilauscope_roast_assistant", "Heat rate normal — wait for ET to stabilize, then charge.")
         self._tr_coach_normal_bt = QApplication.translate("tilauscope_roast_assistant", "Heat rate normal — wait for BT to stabilize, then charge.")
         # chip labels
-        self._cl_bt   = QApplication.translate("tilauscope_roast_assistant", "BT")
-        self._cl_et   = QApplication.translate("tilauscope_roast_assistant", "ET")
+        self._cl_bt   = QApplication.translate("Button", "BT")
+        self._cl_et   = QApplication.translate("Button", "ET")
         self._cl_ror  = QApplication.translate("tilauscope_roast_assistant", "ROR")
         self._cl_htr  = QApplication.translate("tilauscope_roast_assistant", "HTR")
-        self._cl_sv   = QApplication.translate("tilauscope_roast_assistant", "SV")
+        self._cl_sv   = QApplication.translate("Tab", "SV")
         self._cl_eta  = QApplication.translate("tilauscope_roast_assistant", "ETA")
         self._cl_chrg = QApplication.translate("tilauscope_roast_assistant", "CHRG")
 
@@ -2213,13 +2213,13 @@ class _DryingPage(QWidget):
         self.btn_cancel.hide()
 
         self.btn_dry_end = _ContextButton(
-            QApplication.translate("tilauscope_roast_assistant", "Dry end"),
+            QApplication.translate("tilauscope_common", "Dry end"),
             QApplication.translate("tilauscope_roast_assistant", "near target"), style='dim')
         self.btn_dry_end.clicked.connect(lambda: aw.qmc.markDRYSignal.emit(False))
         self.btn_dry_end.setEnabled(False)
 
         self.btn_airwave = _ContextButton(
-            QApplication.translate("tilauscope_roast_assistant", "AirWave"),
+            QApplication.translate("tilauscope_common", "AirWave"),
             QApplication.translate("tilauscope_roast_assistant", "MODE STD"), style='dim')
         self.btn_airwave.clicked.connect(lambda: _send_airwave_mode(aw, "MODE STD"))
         self.btn_airwave.setEnabled(False)
@@ -2276,7 +2276,7 @@ class _DryingPage(QWidget):
         self._tpl_extended_drying                 = QApplication.translate("tilauscope_roast_assistant", "⚠ Extended drying: ~{0} vs plan {1} — baked risk, raise heater")
         # B-layout labels
         self._w_phase            = QApplication.translate("tilauscope_roast_assistant", "DRYING")
-        self._w_stabilizing      = QApplication.translate("tilauscope_roast_assistant", "STABILIZING")
+        self._w_stabilizing      = QApplication.translate("tilauscope_common", "STABILIZING")
         self._w_in_band          = QApplication.translate("tilauscope_roast_assistant", "RoR IN BAND")
         self._w_drifting         = QApplication.translate("tilauscope_roast_assistant", "RoR DRIFTING")
         self._w_out_of_band      = QApplication.translate("tilauscope_roast_assistant", "RoR OUT OF BAND")
@@ -2589,7 +2589,7 @@ class _MaillardPage(QWidget):
         # après FC end, jamais en Maillard où le bouton restait mort ; le
         # retirer d'ici libère un slot (le panneau ne tient que ~3 boutons).
         self.btn_airwave = _ContextButton(
-            QApplication.translate("tilauscope_roast_assistant", "AirWave"),
+            QApplication.translate("tilauscope_common", "AirWave"),
             QApplication.translate("tilauscope_roast_assistant", "MODE EXT"), style='dim')
         self.btn_airwave.clicked.connect(lambda: _send_airwave_mode(aw, "MODE EXT"))
         self.btn_airwave.setEnabled(False)
@@ -2913,7 +2913,7 @@ class _DevelopmentPage(QWidget):
             ]))
 
         self.btn_drop = _ContextButton(
-            QApplication.translate("tilauscope_roast_assistant", "Drop"),
+            QApplication.translate("Tooltip", "Drop"),
             QApplication.translate("tilauscope_roast_assistant", "near drop target"), style='dim')
         self.btn_drop.clicked.connect(lambda: aw.qmc.markDropSignal.emit(False))
         self.btn_missing = _ContextButton(
@@ -2933,7 +2933,7 @@ class _DevelopmentPage(QWidget):
         self.btn_scs.clicked.connect(lambda: aw.qmc.markSCsSignal.emit(False))
         self.btn_scs.setVisible(False)
         self.btn_airwave = _ContextButton(
-            QApplication.translate("tilauscope_roast_assistant", "AirWave"),
+            QApplication.translate("tilauscope_common", "AirWave"),
             QApplication.translate("tilauscope_roast_assistant", "MODE EXT"), style='dim')
         self.btn_airwave.clicked.connect(lambda: _send_airwave_mode(aw, "MODE EXT"))
         self.btn_airwave.setEnabled(False)
@@ -2973,7 +2973,7 @@ class _DevelopmentPage(QWidget):
             "tilauscope_roast_assistant", "available at any time")
         self._tr_color_in_target_range           = QApplication.translate("tilauscope_roast_assistant", "color in target range")
         # B-layout labels
-        self._w_phase     = QApplication.translate("tilauscope_roast_assistant", "DEVELOPMENT")
+        self._w_phase     = QApplication.translate("tilauscope_common", "DEVELOPMENT")
         self._w_on_target = QApplication.translate("tilauscope_roast_assistant", "DTR ON TARGET")
         self._w_drifting  = QApplication.translate("tilauscope_roast_assistant", "DTR DRIFTING")
         self._w_off       = QApplication.translate("tilauscope_roast_assistant", "DTR OFF TARGET")
@@ -3240,7 +3240,7 @@ class _CoolingPage(QWidget):
 
         # ── Hero — BT (watched while it falls) ────────────────────────────
         self.hero = _HeroMetric(
-            QApplication.translate("tilauscope_roast_assistant", "Bean Temp"), "°", THEME['ACCENT'])
+            QApplication.translate("HTML Report Template", "Bean Temp"), "°", THEME['ACCENT'])
 
         # ── Progress — drop BT → safe target ──────────────────────────────
         self._prog_row = QHBoxLayout()
@@ -3340,8 +3340,8 @@ class _CoolingPage(QWidget):
             return l, v
 
         _, self._eor_dry_val   = _eor_row(QApplication.translate("tilauscope_roast_assistant", "Dry"))
-        _, self._eor_mai_val   = _eor_row(QApplication.translate("tilauscope_roast_assistant", "Maillard"))
-        _, self._eor_dev_val   = _eor_row(QApplication.translate("tilauscope_roast_assistant", "Dev"))
+        _, self._eor_mai_val   = _eor_row(QApplication.translate("Label", "Maillard"))
+        _, self._eor_dev_val   = _eor_row(QApplication.translate("tilauscope_common", "Dev"))
         _, self._eor_dtr2_val  = _eor_row(QApplication.translate("tilauscope_roast_assistant", "DTR vs target"))
         _, self._eor_col2_val  = _eor_row(QApplication.translate("tilauscope_roast_assistant", "Color vs target"))
         _, self._eor_fcdrop_val= _eor_row(QApplication.translate("tilauscope_roast_assistant", "FC · Drop BT"))
@@ -3405,11 +3405,11 @@ class _CoolingPage(QWidget):
             return dot, v
 
         self._eor_traj_dry_dot, self._eor_traj_dry_val = _traj_row(
-            QApplication.translate("tilauscope_roast_assistant", "Drying"))
+            QApplication.translate("Label", "Drying"))
         self._eor_traj_mai_dot, self._eor_traj_mai_val = _traj_row(
-            QApplication.translate("tilauscope_roast_assistant", "Maillard"))
+            QApplication.translate("Label", "Maillard"))
         self._eor_traj_dev_dot, self._eor_traj_dev_val = _traj_row(
-            QApplication.translate("tilauscope_roast_assistant", "Development"))
+            QApplication.translate("Label", "Development"))
 
         eor_layout.addWidget(self._eor_traj_box)
         self._eor_traj_box.hide()
@@ -3418,7 +3418,7 @@ class _CoolingPage(QWidget):
         _eor_acts = QHBoxLayout()
         _eor_acts.setSpacing(8)
         self._eor_btn_notes = QPushButton(
-            QApplication.translate("tilauscope_roast_assistant", "Notes"))
+            QApplication.translate("Tab", "Notes"))
         self._eor_btn_notes.setStyleSheet(
             f"QPushButton {{ border: 1px solid {_BORDER}; border-radius: 6px;"
             f"color: {THEME['TEXT']}; font-size: 10px; font-weight: 700; {_FONT} "
@@ -3474,7 +3474,7 @@ class _CoolingPage(QWidget):
         # template
         self._tpl_back_to_back                   = QApplication.translate("tilauscope_roast_assistant", "🔄 **Back-to-Back Mode**:\nKeep airflow high until ET drops. Once BT reaches ~{0}°C, switch to Preheat/Stabilization phase for the next batch.")
         # B-layout labels + condensed coach lines
-        self._w_phase         = QApplication.translate("tilauscope_roast_assistant", "COOLING")
+        self._w_phase         = QApplication.translate("Label", "COOLING")
         self._w_in_progress   = QApplication.translate("tilauscope_roast_assistant", "IN PROGRESS")
         self._w_safe          = QApplication.translate("tilauscope_roast_assistant", "SAFE")
         self._w_not_cooling   = QApplication.translate("tilauscope_roast_assistant", "NOT COOLING")
@@ -3491,9 +3491,9 @@ class _CoolingPage(QWidget):
         self._tpl_soak_hint = QApplication.translate(
             "tilauscope_roast_assistant", "next batch: charge {0}° (heat soak) — neutral in ~{1} min")
         # Trajectory-vs-plan verdicts (end-of-roast summary)
-        self._tr_traj_drying      = QApplication.translate("tilauscope_roast_assistant", "Drying")
-        self._tr_traj_maillard    = QApplication.translate("tilauscope_roast_assistant", "Maillard")
-        self._tr_traj_dev         = QApplication.translate("tilauscope_roast_assistant", "Development")
+        self._tr_traj_drying      = QApplication.translate("Label", "Drying")
+        self._tr_traj_maillard    = QApplication.translate("Label", "Maillard")
+        self._tr_traj_dev         = QApplication.translate("Label", "Development")
         self._tr_traj_inplan      = QApplication.translate("tilauscope_roast_assistant", "on plan")
         self._tr_traj_hotter      = QApplication.translate("tilauscope_roast_assistant", "hotter")
         self._tr_traj_cooler      = QApplication.translate("tilauscope_roast_assistant", "cooler")
@@ -3881,7 +3881,7 @@ class _CoolingPage(QWidget):
         self._eor_color_next_line.setText(
             f"<span style='color:{col}'>"
             + QApplication.translate(
-                "tilauscope",
+                "tilauscope_roast_assistant",
                 "Measured colour {0} is {1} by {2} Agtron points. Review development time and the live curve; no universal DROP-temperature correction is applied.").format(
                     val_txt, dir_txt, f"{abs(miss):.0f}")
             + "</span>")
@@ -4335,7 +4335,7 @@ class _BeanHeader(QFrame):
         self.btn_auto.setToolTip(QApplication.translate(
             "tilauscope_roast_assistant", "Auto mode: the roast plan drives the levers. Tap to arm / disarm."))
         self.btn_manual = QPushButton(QApplication.translate(
-            "tilauscope_roast_assistant", "MANUAL"))
+            "Label", "MANUAL"))
         self.btn_manual.setFixedHeight(24)
         self.btn_manual.setMinimumWidth(52)
         self.btn_manual.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -4936,12 +4936,12 @@ class RoastAssistantPanel(QWidget):
         self._tr_cp_pausest = QApplication.translate("tilauscope_roast_assistant", "PAUSED — tap AUTO")
         self._tr_cp_waiting = QApplication.translate("tilauscope_roast_assistant", "⚙ following the plan")
         self._tpl_cp_ago    = QApplication.translate("tilauscope_roast_assistant", "{0}s ago")
-        self._tr_cp_justnow = QApplication.translate("tilauscope_roast_assistant", "just now")
+        self._tr_cp_justnow = QApplication.translate("tilauscope_common", "just now")
         self._tpl_ap_marked = QApplication.translate("tilauscope_roast_assistant", "⚙ {0} marked (auto)")
         self._cp_phase_words = {
             self._PHASE_DRY: QApplication.translate("tilauscope_roast_assistant", "DRYING"),
             self._PHASE_MAI: QApplication.translate("tilauscope_roast_assistant", "MAILLARD"),
-            self._PHASE_DEV: QApplication.translate("tilauscope_roast_assistant", "DEVELOPMENT"),
+            self._PHASE_DEV: QApplication.translate("tilauscope_common", "DEVELOPMENT"),
         }
         self._cp_ms_words = {
             self._PHASE_DRY: "DE", self._PHASE_MAI: "FC", self._PHASE_DEV: "DROP",

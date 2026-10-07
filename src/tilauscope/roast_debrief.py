@@ -302,7 +302,7 @@ def build_debrief(profile: dict, snapshot: "dict | None" = None,
             band=QApplication.translate("tilauscope_review", "first crack was not marked"))
     elif planned_dtr is not None:
         sev = "ok" if abs(dtr - planned_dtr) <= 3.0 else "attention"
-        word = (QApplication.translate("tilauscope_review", "on target") if sev == "ok"
+        word = (QApplication.translate("tilauscope_common", "on target") if sev == "ok"
                 else (QApplication.translate("tilauscope_review", "short") if dtr < planned_dtr
                       else QApplication.translate("tilauscope_review", "long")))
         out.figures["dtr"] = Figure(
@@ -364,7 +364,7 @@ def build_debrief(profile: dict, snapshot: "dict | None" = None,
                 f"{planned_colour:.0f}"))
     else:
         out.figures["colour"] = Figure(
-            band=QApplication.translate("tilauscope_review", "not measured"))
+            band=QApplication.translate("tilauscope_common", "not measured"))
 
     # weight loss
     loss = _pos(computed.get("weight_loss"))

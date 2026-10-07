@@ -322,7 +322,7 @@ class AIFloatPanel(QWidget):
         self._preview_btn.clicked.connect(self._on_preview)
 
         self._clear_btn = QPushButton(
-            QApplication.translate("tilauscope_ai", "Clear")
+            QApplication.translate("tilauscope_common", "Clear")
         )
         self._clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._clear_btn.setStyleSheet(f"""

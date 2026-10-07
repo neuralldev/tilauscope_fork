@@ -6380,7 +6380,7 @@ def plan_comparison_rows(plan_a: dict, plan_b: dict, unit: str) -> "list[tuple[s
         w = _plan_num(plan.get("Weight"))
         return f"{w:.0f}" if w is not None else "N/A"
 
-    time_lbl = QApplication.translate("tilauscope_roast_plan", "time")
+    time_lbl = QApplication.translate("Label", "time")
     ca, cb = plan_cooled_weight(plan_a), plan_cooled_weight(plan_b)
     return [
         (QApplication.translate("tilauscope_roast_plan", "Weight to roast") + " (g)",
@@ -6393,10 +6393,10 @@ def plan_comparison_rows(plan_a: dict, plan_b: dict, unit: str) -> "list[tuple[s
         (QApplication.translate("tilauscope_roast_plan", "First Crack") + f" ({unit} · {time_lbl})",
          _temp_time(plan_a, "First Crack Temp", "FC Time"), _temp_time(plan_b, "First Crack Temp", "FC Time"),
          _joined(_num_delta("First Crack Temp", "{:.0f}"), _time_delta("FC Time"))),
-        (QApplication.translate("tilauscope_roast_plan", "Drop") + f" ({unit} · {time_lbl})",
+        (QApplication.translate("Tooltip", "Drop") + f" ({unit} · {time_lbl})",
          _temp_time(plan_a, "Drop Temp", "Total Time"), _temp_time(plan_b, "Drop Temp", "Total Time"),
          _joined(_num_delta("Drop Temp", "{:.0f}"), _time_delta("Total Time"))),
-        (QApplication.translate("tilauscope_roast_plan", "Development") + f" ({time_lbl} · DTR)",
+        (QApplication.translate("Label", "Development") + f" ({time_lbl} · DTR)",
          _dev(plan_a), _dev(plan_b), _time_delta("Development Phase")),
         (QApplication.translate("tilauscope_roast_plan", "Target weight loss (%)"),
          str(plan_a.get("Target Weight Loss")), str(plan_b.get("Target Weight Loss")),
@@ -6859,7 +6859,7 @@ class BuildPRoastPlanPDF(FPDF):
             QApplication.translate("Label", "BT") + f": (°{self.mode})")
         self.text(
             x_pos + width / 2 - 5, y_pos + height + 12,
-            QApplication.translate("tilauscope_roast_plan", "Time") + " (min)"
+            QApplication.translate("Table", "Time") + " (min)"
         )
 
         # ── H. LEGEND ────────────────────────────────────────────────────────────
@@ -7102,7 +7102,7 @@ class BuildPRoastPlanPDF(FPDF):
 
         rows: "list[tuple[str, list[str]]]" = []
         if levels["heater"]:
-            rows.append((QApplication.translate("tilauscope_roast_plan", "Heater") + " (%)",
+            rows.append((QApplication.translate("tilauscope_common", "Heater") + " (%)",
                          _fmt(levels["heater"], ctx.pct_to_heater_label if ctx else None)))
         if levels["airflow"]:
             rows.append((QApplication.translate("tilauscope_roast_plan", "Airflow") + " (%)",
@@ -7110,14 +7110,14 @@ class BuildPRoastPlanPDF(FPDF):
         # Drum is a SETUP value: one setting for the whole roast, so its three
         # columns are the same figure by construction, not by accident.
         if levels["drum"]:
-            rows.append((QApplication.translate("tilauscope_roast_plan", "Drum Speed") + " (%)",
+            rows.append((QApplication.translate("Label", "Drum Speed") + " (%)",
                          _fmt(levels["drum"], ctx.pct_to_drum_label if ctx else None)))
         # AirWave: posted at CHARGE and at DRY END, then carried by the Dev Ramp
         # — so the value at FC entry is still the Maillard one, as for airflow.
         if str(plan_data.get("Extraction (%) (Dry|Mai|Dev)", "")).strip():
             _ext = _phase("Extraction (%) (Dry|Mai|Dev)", (0, 1, 1))
-            rows.append((QApplication.translate("tilauscope_roast_plan", "AirWave")
-                         + " (% " + QApplication.translate("tilauscope_roast_plan", "Fan") + ")",
+            rows.append((QApplication.translate("tilauscope_common", "AirWave")
+                         + " (% " + QApplication.translate("ComboBox", "Fan") + ")",
                          _fmt(_ext, None)))
         return rows
 
@@ -7144,7 +7144,7 @@ class BuildPRoastPlanPDF(FPDF):
         t_de = float(ms.get("dry_end") or 0.0)
         t_fc = float(ms.get("fc_start") or 0.0)
         out: "list[dict]" = []
-        for points, lever in ((heater, QApplication.translate("tilauscope_roast_plan", "Heater")),
+        for points, lever in ((heater, QApplication.translate("tilauscope_common", "Heater")),
                               (airflow, QApplication.translate("tilauscope_roast_plan", "Airflow"))):
             for i in range(1, len(points)):
                 out.append({"t": points[i][0], "lever": lever,
@@ -7307,7 +7307,7 @@ class BuildPRoastPlanPDF(FPDF):
 
         cols = [14, 20, 22, 28, 34, 44]
         heads = ["#",
-                 QApplication.translate("tilauscope_roast_plan", "Time"),
+                 QApplication.translate("Table", "Time"),
                  QApplication.translate("Label", "BT"),
                  QApplication.translate("tilauscope_roast_plan", "Lever"),
                  QApplication.translate("tilauscope_roast_plan", "Change"),
@@ -7388,7 +7388,7 @@ class BuildPRoastPlanPDF(FPDF):
         return {
             "filter":   QApplication.translate("tilauscope_roast_plan", "Filter"),
             "omni":     QApplication.translate("tilauscope_roast_plan", "Omni"),
-            "espresso": QApplication.translate("tilauscope_roast_plan", "Espresso"),
+            "espresso": QApplication.translate("tilauscope_common", "Espresso"),
         }.get(str(key or "").lower(), "")
 
     @staticmethod
@@ -7470,13 +7470,13 @@ class BuildPRoastPlanPDF(FPDF):
             "and times in Minutes:Seconds."), border=0)
 
         _section(QApplication.translate("tilauscope_roast_plan", "2. Machine settings at phase entry"))
-        _head((QApplication.translate("tilauscope_roast_plan", "Control"),
+        _head((QApplication.translate("Label", "Control"),
                QApplication.translate("tilauscope_roast_plan", "At CHARGE"),
                QApplication.translate("Button", "DRY END"), QApplication.translate("Button", "FC START")))
         la, lb = self.entry_levels(plan_a), self.entry_levels(plan_b)
-        for key, name in (("heater", QApplication.translate("tilauscope_roast_plan", "Heater")),
+        for key, name in (("heater", QApplication.translate("tilauscope_common", "Heater")),
                           ("airflow", QApplication.translate("tilauscope_roast_plan", "Airflow")),
-                          ("drum", QApplication.translate("tilauscope_roast_plan", "Drum Speed"))):
+                          ("drum", QApplication.translate("Label", "Drum Speed"))):
             va, vb = la.get(key) or [], lb.get(key) or []
             if not va and not vb:
                 continue
@@ -7585,13 +7585,13 @@ class BuildPRoastPlanPDF(FPDF):
         self.ln(1)
 
         info_data = [
-            (QApplication.translate("tilauscope_roast_plan","Roaster"), plan_data.get("Roaster")),
+            (QApplication.translate("Label","Roaster"), plan_data.get("Roaster")),
             (QApplication.translate("tilauscope_roast_plan","Bean Name"), plan_data.get("Bean Name")),
             (QApplication.translate("tilauscope_roast_plan","Process Type"), plan_data.get("Process Type")),
-            (QApplication.translate("tilauscope_roast_plan","Density")+" (g/L)", plan_data.get("Density")),
+            (QApplication.translate("Label","Density")+" (g/L)", plan_data.get("Density")),
             (QApplication.translate("tilauscope_roast_plan","Bean Humidity")+" (%)", self._humidity_text(plan_data)),
             (QApplication.translate("tilauscope_roast_plan","Ambient Temp")+f" (°{self.mode})", plan_data.get("Ambient Temp")),
-            (QApplication.translate("tilauscope_roast_plan","Ambient Humidity")+" (%)", plan_data.get("Ambient Humidity")),
+            (QApplication.translate("HTML Report Template","Ambient Humidity")+" (%)", plan_data.get("Ambient Humidity")),
             (QApplication.translate("tilauscope_roast_plan","Weight to roast")+" (g)", plan_data.get("Weight")),
             (QApplication.translate("tilauscope_roast_plan","Intended use"), self._destination),
         ]
@@ -7637,8 +7637,8 @@ class BuildPRoastPlanPDF(FPDF):
             (QApplication.translate("tilauscope_roast_plan","Maillard Phase Time")+" (%)", get_phase_info("Maillard Phase", "Maillard Phase %")),
             (QApplication.translate("tilauscope_roast_plan","Development Phase Time")+" (%)", get_phase_info("Development Phase", "Development Phase %")), # Assumes a key for Dev Phase Time/Duration
             # --- END OF PHASE TIME & % COMBINED ---
-            (QApplication.translate("tilauscope_roast_plan","First Crack Time")+" ("+QApplication.translate("tilauscope_roast_plan","FC")+")", plan_data.get("FC Time")),
-            (QApplication.translate("tilauscope_roast_plan","Total Time")+" ("+QApplication.translate("tilauscope_roast_plan","Drop")+")", plan_data.get("Total Time")),
+            (QApplication.translate("tilauscope_roast_plan","First Crack Time")+" ("+QApplication.translate("Label","FC")+")", plan_data.get("FC Time")),
+            (QApplication.translate("HTML Report Template","Total Time")+" ("+QApplication.translate("Tooltip","Drop")+")", plan_data.get("Total Time")),
         ]
 
         self.set_font('helvetica', '', 10)
@@ -7689,7 +7689,7 @@ class BuildPRoastPlanPDF(FPDF):
         # Table Header
         self.set_fill_color(220, 220, 220)
         self.set_font('helvetica', 'B', 10)
-        self.cell(col_widths[0], 7, QApplication.translate("tilauscope_roast_plan","Control"), 1, align='C', fill=True)
+        self.cell(col_widths[0], 7, QApplication.translate("Label","Control"), 1, align='C', fill=True)
         self.cell(col_widths[1], 7, QApplication.translate("tilauscope_roast_plan","At CHARGE"), 1, align='C', fill=True)
         self.cell(col_widths[2], 7, QApplication.translate("Button","DRY END"), 1, align='C', fill=True)
         self.cell(col_widths[3], 7, QApplication.translate("Button","FC START"), 1, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C', fill=True)

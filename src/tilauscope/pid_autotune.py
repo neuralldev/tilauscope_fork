@@ -2003,7 +2003,7 @@ class CalibrationReadinessDialog(QDialog):
         self.export_pilot = assistant._secondary_button(
             QApplication.translate("tilauscope_pid", "EXPORT HARDWARE PILOT SHEET")
         )
-        close = assistant._primary_button(QApplication.translate("tilauscope_pid", "CLOSE"))
+        close = assistant._primary_button(QApplication.translate("Label", "CLOSE"))
         self.details_button.clicked.connect(self._toggle_details)
         self.export_pilot.clicked.connect(self._export_pilot_sheet)
         close.clicked.connect(self._request_close)
@@ -2633,7 +2633,7 @@ class CalibrationReadinessDialog(QDialog):
                 "action. The previous power will not be restored. Continue?"
             ),
             icon=QMessageBox.Icon.Question,
-            buttons=[QApplication.translate("tilauscope_pid", "Cancel"),
+            buttons=[QApplication.translate("Button", "Cancel"),
                      QApplication.translate("tilauscope_pid", "Continue")],
         )
         if answer != 1:
@@ -2756,7 +2756,7 @@ class CalibrationReadinessDialog(QDialog):
                 "shutdown verification. Start now?"
             ),
             icon=QMessageBox.Icon.Question,
-            buttons=[QApplication.translate("tilauscope_pid", "Cancel"),
+            buttons=[QApplication.translate("Button", "Cancel"),
                      QApplication.translate("tilauscope_pid", "Start")],
         )
         if answer != 1:
@@ -3084,7 +3084,7 @@ class HelpDialog(QDialog):
         """))
         layout.addWidget(text)
 
-        close = QPushButton(QApplication.translate("tilauscope_pid", "CLOSE"))
+        close = QPushButton(QApplication.translate("Label", "CLOSE"))
         close.setMinimumHeight(40)
         close.clicked.connect(self.close)
         layout.addWidget(close)

@@ -392,7 +392,7 @@ class TilauRoutineCheck(QDialog):
             f"QPushButton:hover {{ opacity: 0.9; }}"
         )
 
-        self._later_btn = QPushButton(QApplication.translate("tilauscope_diagnostics","Later").upper())
+        self._later_btn = QPushButton(QApplication.translate("tilauscope_common","Later").upper())
         self._later_btn.setFixedHeight(38)
         self._later_btn.clicked.connect(self.fade_out_and_close)
         self._later_btn.setStyleSheet(
@@ -519,7 +519,7 @@ class TilauRoutineCheck(QDialog):
             self._timer.stop()
         now = QDateTime.currentDateTime()
         self.settings.setValue("lastCleaningDate", now.toString(Qt.DateFormat.ISODate))
-        show_styled_message(self, QApplication.translate("tilauscope_diagnostics","Success"), QApplication.translate("tilauscope_diagnostics","Cleaning cycle reset!"))
+        show_styled_message(self, QApplication.translate("tilauscope_common","Success"), QApplication.translate("tilauscope_diagnostics","Cleaning cycle reset!"))
         self.fade_out_and_close()
 
     def fade_out_and_close(self) -> None:

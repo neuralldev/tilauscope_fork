@@ -309,12 +309,12 @@ class OnboardingWizard(QDialog):
         self._count_lbl.setStyleSheet(
             f"color:{_T['MUTED']}; font-size:11px;"
         )
-        self._back_btn = QPushButton(QApplication.translate("tilauscope_onboarding","Back"))
+        self._back_btn = QPushButton(QApplication.translate("Toolbar","Back"))
         self._back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._back_btn.setStyleSheet(self._ghost_style())
         self._back_btn.clicked.connect(lambda: self._go(-1))
 
-        self._next_btn = QPushButton(QApplication.translate("tilauscope_onboarding","Next"))
+        self._next_btn = QPushButton(QApplication.translate("tilauscope_common","Next"))
         self._next_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._next_btn.setStyleSheet(self._primary_style())
         self._next_btn.clicked.connect(self._on_next)
@@ -340,7 +340,7 @@ class OnboardingWizard(QDialog):
         pen.setStyleSheet(f"color:{_T['MUTED']}; font-size:20px; background:transparent;")
         self._operator_edit = QLineEdit(self._operator)
         self._operator_edit.setPlaceholderText(
-            QApplication.translate("tilauscope_onboarding","Your name"))
+            QApplication.translate("tilauscope_common","Your name"))
         self._operator_edit.setMaxLength(64)
         self._operator_edit.setStyleSheet(
             f"QLineEdit {{ background:transparent; color:{_T['TEXT']}; border:none;"
@@ -453,8 +453,8 @@ class OnboardingWizard(QDialog):
         facts = QHBoxLayout()
         facts.setSpacing(8)
         self._fact_labels: list[tuple[QLabel, QLabel]] = []
-        for caption in (QApplication.translate("tilauscope_onboarding","Capacity"),
-                        QApplication.translate("tilauscope_onboarding","Heating"),
+        for caption in (QApplication.translate("HTML Report Template","Capacity"),
+                        QApplication.translate("Label","Heating"),
                         QApplication.translate("tilauscope_onboarding","First batch")):
             tile = QFrame()
             tile.setObjectName("Fact")
@@ -668,7 +668,7 @@ class OnboardingWizard(QDialog):
                 QApplication.translate("tilauscope_onboarding","USB port found"), auto, why)))
             return
         if ports:
-            g = QLabel(QApplication.translate("tilauscope_onboarding","USB port").upper())
+            g = QLabel(QApplication.translate("tilauscope_common","USB port").upper())
             g.setStyleSheet(self._group_style())
             self._conn_body.addWidget(g)
             group = self._fresh_group("_port_group")
@@ -685,7 +685,7 @@ class OnboardingWizard(QDialog):
         else:
             self._conn_body.addWidget(self._hint("WARNING", "!", QApplication.translate("tilauscope_onboarding",
                 "No USB port found. Plug the cable in, switch the roaster on, then scan again.")))
-        rescan = QPushButton("↻  " + QApplication.translate("tilauscope_onboarding","Scan again"))
+        rescan = QPushButton("↻  " + QApplication.translate("tilauscope_common","Scan again"))
         rescan.setCursor(Qt.CursorShape.PointingHandCursor)
         rescan.setStyleSheet(self._pair_style())
         rescan.clicked.connect(self._fill_connection)
@@ -887,7 +887,7 @@ class OnboardingWizard(QDialog):
         self._dir_path_lbls[kind] = pl
         box.addWidget(nl)
         box.addWidget(pl)
-        btn = QPushButton(QApplication.translate("tilauscope_onboarding","Choose…"))
+        btn = QPushButton(QApplication.translate("tilauscope_common","Choose…"))
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setStyleSheet(self._pair_style())
         btn.clicked.connect(lambda _=False, k=kind: self._pick_dir(k))
@@ -992,23 +992,23 @@ class OnboardingWizard(QDialog):
         rows = self._recap_set[1]
         self._clear_layout(rows)
         if self._operator:
-            self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Roasted by"), self._operator)
+            self._recap_row(rows, QApplication.translate("tilauscope_common","Roasted by"), self._operator)
         self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Units"), "°C" if self._unit == "C" else "°F")
         setup = self._current_setup()
         link = (QApplication.translate("tilauscope_onboarding", _LINK_LABELS.get(setup.link, setup.link))
                 if setup is not None else QApplication.translate("tilauscope_onboarding","set up later in Devices…"))
-        self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Roaster"), f"{self._roaster or '—'} · {link}")
+        self._recap_row(rows, QApplication.translate("Label","Roaster"), f"{self._roaster or '—'} · {link}")
         if self._port:
-            self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Port"), os.path.basename(self._port))
+            self._recap_row(rows, QApplication.translate("Label","Port"), os.path.basename(self._port))
         if setup is not None and setup.link == "network" and self._host:
             self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Address"), self._host)
         path = machine_setup.preset_path(setup) if setup is not None else None
         if path is not None:
             sliders, milestones, buttons = machine_setup.preset_controls(path, list(self._aw.qmc.etypesdefault))
             if setup.read_only:
-                self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Sliders"), QApplication.translate("tilauscope_onboarding","none · read-only roaster"))
+                self._recap_row(rows, QApplication.translate("Tab","Sliders"), QApplication.translate("tilauscope_onboarding","none · read-only roaster"))
             elif sliders:
-                self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Sliders"), " · ".join(sliders))
+                self._recap_row(rows, QApplication.translate("Tab","Sliders"), " · ".join(sliders))
             if milestones:
                 self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Milestone buttons"),
                                 QApplication.translate("tilauscope_onboarding","{0} send commands").format(" · ".join(_MILESTONES[i] for i in milestones if i < len(_MILESTONES))))
@@ -1018,7 +1018,7 @@ class OnboardingWizard(QDialog):
         roaster = RoasterManager().get_by_display_name(self._roaster)
         if roaster is not None:
             heating = QApplication.translate("tilauscope_onboarding", _HEATING_LABELS.get(str(roaster.heating_type), str(roaster.heating_type))).lower()
-            self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Capacity"), f"{roaster.batch_capacity_max_g / 1000:g} kg · {heating}")
+            self._recap_row(rows, QApplication.translate("HTML Report Template","Capacity"), f"{roaster.batch_capacity_max_g / 1000:g} kg · {heating}")
             self._recap_row(rows, QApplication.translate("tilauscope_onboarding","First batch"), f"{roaster.optimal_batch_capacity_g or roaster.batch_capacity_max_g} g")
         self._recap_row(rows, QApplication.translate("tilauscope_onboarding","Theme and curves"), "Catppuccin")
         if self._beancave_dir:
@@ -1072,7 +1072,7 @@ class OnboardingWizard(QDialog):
         hl.addLayout(box)
         hl.addStretch()
         if action:
-            btn = QPushButton(QApplication.translate("tilauscope_onboarding","Pair"))
+            btn = QPushButton(QApplication.translate("tilauscope_common","Pair"))
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setStyleSheet(self._pair_style())
             hl.addWidget(btn)
@@ -1115,7 +1115,7 @@ class OnboardingWizard(QDialog):
 
         self._back_btn.setEnabled(index > 0)
         last = index == len(self.STEPS) - 1
-        self._next_btn.setText(QApplication.translate("tilauscope_onboarding","Finish") if last else QApplication.translate("tilauscope_onboarding","Next"))
+        self._next_btn.setText(QApplication.translate("tilauscope_onboarding","Finish") if last else QApplication.translate("tilauscope_common","Next"))
         self._count_lbl.setText(f"{index + 1} / {len(self.STEPS)}")
 
         if index >= 1:
@@ -1156,7 +1156,7 @@ class OnboardingWizard(QDialog):
 
     # ── hardware detection (best-effort, non-blocking) ────────────────────
     def _mark_detected(self, status: QLabel) -> None:
-        status.setText(QApplication.translate("tilauscope_onboarding","detected ✓"))
+        status.setText(QApplication.translate("tilauscope_common","detected ✓"))
         status.setStyleSheet(
             f"color:{_T['GREEN']}; font-size:12px;"
             f" background:transparent;"
@@ -1283,7 +1283,7 @@ class OnboardingWizard(QDialog):
             f"color:{_T['MUTED']}; font-size:11px;"
             f" background:transparent;"
         )
-        tag = QLabel(QApplication.translate("tilauscope_onboarding","recognised · not configured"))
+        tag = QLabel(QApplication.translate("tilauscope_common","recognised · not configured"))
         tag.setStyleSheet(
             f"color:{_T['MAUVE']}; font-size:11px;"
             f" background:transparent;"

@@ -814,7 +814,7 @@ class RoastReadyDialog(QDialog):
             QPushButton:hover {{ background:{THEME['CRITICAL']}; color:{THEME['BG']}; }}
         """)
         # targeted brew method (Filter / Espresso) — shifts every window & persists
-        seg_lbl = QLabel(QApplication.translate("tilauscope_roast_review", "Target"))
+        seg_lbl = QLabel(QApplication.translate("Label", "Target"))
         seg_lbl.setProperty('variant', 'eyebrow')
         seg_lbl.setStyleSheet("border:none; background:transparent;")
         seg = QFrame()

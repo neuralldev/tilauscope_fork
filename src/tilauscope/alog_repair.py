@@ -160,15 +160,15 @@ def build_beans_field(bean: GreenBean) -> str:
     if bean.country:
         parts.append(bean.country)
     if bean.farm:
-        parts.append("{0} {1}".format(QApplication.translate("tilauscope_beancave", "Farm:"), bean.farm))
+        parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Farm:"), bean.farm))
     if bean.process:
-        parts.append("{0} {1}".format(QApplication.translate("tilauscope_beancave", "Process"), bean.process))
+        parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Process"), bean.process))
     if bean.varieties:
-        parts.append("{0} {1}".format(QApplication.translate("tilauscope_beancave", "Variety"), bean.varieties))
+        parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Variety"), bean.varieties))
     if bean.altitude:
-        parts.append("{0} {1}m".format(QApplication.translate("tilauscope_beancave", "Altitude:"), bean.altitude))
+        parts.append("{0} {1}m".format(QApplication.translate("tilauscope_common", "Altitude:"), bean.altitude))
     if bean.sca:
-        parts.append(QApplication.translate("tilauscope_beancave", "SCA: {0}").format(f"{bean.sca:.1f}"))
+        parts.append(QApplication.translate("tilauscope_common", "SCA: {0}").format(f"{bean.sca:.1f}"))
     if bean.uuid:
         # Machine key, not a label — see the same line in roast_properties.
         parts.append(f"uuid: {bean.uuid}")
@@ -693,7 +693,7 @@ class AlogRepairDialog(QDialog):
         # "Reading roast files… 47 / 312".
         self._scan_bar = TilauProgress(TilauProgress.BAR)
         self._scan_bar.setRange(0, 100)
-        self._scan_btn = QPushButton(QApplication.translate("tilauscope_repair", "Cancel"))
+        self._scan_btn = QPushButton(QApplication.translate("Button", "Cancel"))
         self._scan_btn.setObjectName("btnGhost")
         self._scan_btn.setToolTip(QApplication.translate(
             "tilauscope_repair", "Stop reading the roast files. Those already read stay listed."))
@@ -819,7 +819,7 @@ class AlogRepairDialog(QDialog):
 
         # roaster identity persisted by Artisan (optional when unlisted)
         form.addWidget(self._field_label(QApplication.translate(
-            "tilauscope_repair", "ROASTER")))
+            "tilauscope_common", "ROASTER")))
         self._roaster_combo = QComboBox()
         self._roaster_combo.addItem(QApplication.translate(
             "tilauscope_repair", "— not listed / leave empty —"), userData='')
@@ -869,7 +869,7 @@ class AlogRepairDialog(QDialog):
         grid = QGridLayout()
         grid.addWidget(self._w_in_lbl,  0, 0)
         grid.addWidget(self._w_out_lbl, 0, 1)
-        grid.addWidget(self._field_label(QApplication.translate("tilauscope_repair", "WEIGHT LOSS")), 0, 2)
+        grid.addWidget(self._field_label(QApplication.translate("tilauscope_common", "WEIGHT LOSS")), 0, 2)
         grid.addWidget(self._w_in_edit,  1, 0)
         grid.addWidget(self._w_out_edit, 1, 1)
         grid.addWidget(self._loss_lbl,   1, 2)
@@ -919,7 +919,7 @@ class AlogRepairDialog(QDialog):
             "tilauscope_repair",
             "Rebuild tilau_name_map in all ALogs that pre-date automatic device-index stamping."))
         self._stamp_btn.clicked.connect(self._stamp_device_map_batch)
-        close_btn = QPushButton(QApplication.translate("tilauscope_repair", "Close"))
+        close_btn = QPushButton(QApplication.translate("Button", "Close"))
         close_btn.setObjectName("btnGhost")
         close_btn.clicked.connect(self.close)
         btn_row.addWidget(self._record_btn)
@@ -1001,7 +1001,7 @@ class AlogRepairDialog(QDialog):
         self._scan_seen = set()
         self._scan_active = True
         self._scan_bar.setValue(0)
-        self._scan_btn.setText(QApplication.translate("tilauscope_repair", "Cancel"))
+        self._scan_btn.setText(QApplication.translate("Button", "Cancel"))
         self._scan_btn.setToolTip(QApplication.translate(
             "tilauscope_repair", "Stop reading the roast files. Those already read stay listed."))
         # The progress row only appears if the reading is still going after a
@@ -1096,7 +1096,7 @@ class AlogRepairDialog(QDialog):
     def _finish_scan(self, cancelled: bool) -> None:
         self._scan_active = False
         if cancelled:
-            self._scan_btn.setText(QApplication.translate("tilauscope_repair", "Scan again"))
+            self._scan_btn.setText(QApplication.translate("tilauscope_common", "Scan again"))
             self._scan_btn.setToolTip(QApplication.translate(
                 "tilauscope_repair", "Read the roast files that were left out."))
             self._summary_lbl.setText(QApplication.translate(
@@ -1138,8 +1138,8 @@ class AlogRepairDialog(QDialog):
         directory = Path(self._bc.alog_directory) if self._bc.alog_directory else None
         if directory is None or not directory.is_dir():
             show_styled_message(self,
-                QApplication.translate("tilauscope_repair", "Error"),
-                QApplication.translate("tilauscope_repair",
+                QApplication.translate("Error Message", "Error"),
+                QApplication.translate("tilauscope_common",
                     "Please select a valid ALog directory first."))
             return
         cave = getattr(self._bc, 'cave', None)
@@ -1372,7 +1372,7 @@ class AlogRepairDialog(QDialog):
 
         progress = QProgressDialog(
             QApplication.translate("tilauscope_repair", "Stamping device map…"),
-            QApplication.translate("tilauscope_repair", "Cancel"),
+            QApplication.translate("Button", "Cancel"),
             0, total, self,
         )
         progress.setWindowModality(Qt.WindowModality.WindowModal)
@@ -1496,7 +1496,7 @@ class AlogRepairDialog(QDialog):
             _log.error("ALog repair write failed: %s", exc)
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_repair", "Save Error"),
+                QApplication.translate("tilauscope_common", "Save Error"),
                 QApplication.translate("tilauscope_repair",
                     "Could not write the ALog file:<br><b>{0}</b>").format(exc),
                 QMessageBox.Icon.Warning, rich=True)
@@ -1545,7 +1545,7 @@ class AlogRepairDialog(QDialog):
             self._learn_btns[previous].setChecked(True)
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_repair", "Save Error"),
+                QApplication.translate("tilauscope_common", "Save Error"),
                 QApplication.translate("tilauscope_repair",
                     "Could not write the ALog file:<br><b>{0}</b>").format(exc),
                 QMessageBox.Icon.Warning, rich=True)

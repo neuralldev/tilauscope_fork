@@ -634,7 +634,7 @@ class Difluid(QObject): # pyright: ignore [reportGeneralTypeIssues] # Argument t
         try:
             aw.sendmessageSignal.emit(
                 QApplication.translate(
-                    "tilauscope",
+                    "tilauscope_devices",
                     "Extractor did not confirm '{0}' ({1})").format(command, reason),
                 True, None)
         except Exception:  # pylint: disable=broad-except

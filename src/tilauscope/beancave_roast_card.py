@@ -142,7 +142,7 @@ class RoastSocialCard(CardPainter):
                        QApplication.translate('tilauscope_roast_review', 'Colour · whole bean'))
         agtron = self.agtron_of(profile)
         if not agtron:
-            color_label = QApplication.translate('tilauscope_roast_review', 'Colour')
+            color_label = QApplication.translate('tilauscope_common', 'Colour')
         self._label(p, 574, 254, color_label, 25, 450, _MUTED)
         self._label(p, 574, 291,
                     QApplication.translate('tilauscope_roast_review', 'Agtron') + f' {agtron}'
@@ -173,7 +173,7 @@ class RoastSocialCard(CardPainter):
         self._panel(p, 820, 294)
         unit = '°F' if profile.get('mode') == 'F' else '°C'
         self._label(p, 52, 407, QApplication.translate('tilauscope_roast_review', 'Bean temperature') + f' · {unit}', 31, bold=True)
-        self._label(p, 52, 839, QApplication.translate('tilauscope_roast_review', 'Rate of rise') + f' · {unit}/min', 30, color=_RISE, bold=True)
+        self._label(p, 52, 839, QApplication.translate('tilauscope_common', 'Rate of rise') + f' · {unit}/min', 30, color=_RISE, bold=True)
         times = profile.get('timex') or []
         bt = profile.get('temp2') or []
         if 'charge' not in marks or 'drop' not in marks:
@@ -276,9 +276,9 @@ class RoastSocialCard(CardPainter):
     def _summary(self, p: QPainter, profile: dict, marks, duration) -> None:
         times, bt = profile.get('timex') or [], profile.get('temp2') or []
         unit = '°F' if profile.get('mode') == 'F' else '°C'
-        labels = (QApplication.translate('tilauscope_roast_review', 'Dry end'),
-                  QApplication.translate('tilauscope_roast_review', 'First crack'),
-                  QApplication.translate('tilauscope_roast_review', 'Drop'))
+        labels = (QApplication.translate('tilauscope_common', 'Dry end'),
+                  QApplication.translate('tilauscope_common', 'First crack'),
+                  QApplication.translate('Tooltip', 'Drop'))
         missing = QApplication.translate('tilauscope_roast_review', 'Not marked')
         for i, (key, label, color) in enumerate(zip(('dry', 'fc', 'drop'), labels, _PHASE_COLORS, strict=True)):
             x = 48 + 342 * i
@@ -293,9 +293,9 @@ class RoastSocialCard(CardPainter):
                     value += f' · {temp:.0f} {unit}'
             self._label(p, x, 1182, value, 32, 312, bold=True)
         phases = self._phase_durations(profile, marks)
-        phase_labels = (QApplication.translate('tilauscope_roast_review', 'Drying'),
-                        QApplication.translate('tilauscope_roast_review', 'Maillard'),
-                        QApplication.translate('tilauscope_roast_review', 'Development'))
+        phase_labels = (QApplication.translate('Label', 'Drying'),
+                        QApplication.translate('Label', 'Maillard'),
+                        QApplication.translate('Label', 'Development'))
         if duration and all(v is not None for v in phases):
             x = 30.0
             for length, color in zip(phases, _PHASE_COLORS, strict=True):
@@ -323,7 +323,7 @@ class RoastSocialCard(CardPainter):
                 mass += f' → {outgoing:g} {weight[2]}'
                 loss = f'{(incoming - outgoing) / incoming * 100:.1f} %'
         self._label(p, 52, 1458, mass, 34, 500, bold=True)
-        self._label(p, 580, 1443, QApplication.translate('tilauscope_roast_review', 'Weight loss'), 23, 440, _MUTED)
+        self._label(p, 580, 1443, QApplication.translate('tilauscope_common', 'Weight loss'), 23, 440, _MUTED)
         self._label(p, 580, 1475, loss, 32, 440, bold=True)
         self._label(p, 48, 1561, 'TilauScope', 26, 400, _MUTED, True)
 

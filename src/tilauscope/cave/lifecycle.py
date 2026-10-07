@@ -1433,7 +1433,7 @@ class LifecycleMixin:
     def _open_roast_setup(self, open_tab: str) -> None:
         selected_row_index = self.datatable.currentRow()
         if selected_row_index == -1:
-            self._show_message(self, QApplication.translate("tilauscope_beancave","Error"), QApplication.translate("tilauscope_beancave","Select a line to start a Roast!"), QMessageBox.Icon.Warning)
+            self._show_message(self, QApplication.translate("Error Message","Error"), QApplication.translate("tilauscope_beancave","Select a line to start a Roast!"), QMessageBox.Icon.Warning)
             return
         if self.cave is None or not hasattr(self.cave, 'green_beans'):
             return

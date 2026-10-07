@@ -51,9 +51,9 @@ class MilestonesMixin:
         # check if there are phases defined on artisan
         if self.aw.qmc.phasesbuttonflag:
             if phase == "DRY":
-                return QApplication.translate("tilauscope_window", "Auto")
+                return QApplication.translate("CheckBox", "Auto")
             if phase == "MAI" :
-                return QApplication.translate("tilauscope_window", "Auto")
+                return QApplication.translate("CheckBox", "Auto")
             if phase == "DEV" :
                 return QApplication.translate("tilauscope_window", "Aims ") + str(self.aw.qmc.phases[3]) + "°" + self.aw.qmc.mode
             return ""

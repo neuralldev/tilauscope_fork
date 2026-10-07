@@ -54,14 +54,14 @@ def physical_qualifier(kind: str, value: float) -> tuple[str, str | None]:
         if value < DENSITY_LIGHT_BELOW:
             return QApplication.translate("tilauscope_beancave", "light"), THEME['WARNING']
         if value > DENSITY_DENSE_ABOVE:
-            return QApplication.translate("tilauscope_beancave", "dense"), THEME['WARNING']
-        return QApplication.translate("tilauscope_beancave", "standard"), None
+            return QApplication.translate("tilauscope_common", "dense"), THEME['WARNING']
+        return QApplication.translate("tilauscope_common", "standard"), None
     if kind == 'humidity':
         if value < HUMIDITY_LOW_PCT:
             return QApplication.translate("tilauscope_beancave", "dry — old crop"), THEME['WARNING']
         if value > HUMIDITY_HIGH_PCT:
             return QApplication.translate("tilauscope_beancave", "moist"), THEME['WARNING']
-        return QApplication.translate("tilauscope_beancave", "normal"), None
+        return QApplication.translate("tilauscope_common", "normal"), None
     if kind == 'aw':
         if value < AW_BOUND_BELOW:
             return QApplication.translate("tilauscope_beancave", "bound water"), THEME['WARNING']

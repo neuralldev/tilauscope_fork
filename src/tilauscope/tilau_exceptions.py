@@ -237,7 +237,7 @@ def report_a_bug(parent=None) -> bool:
         QApplication.translate("tilauscope_diagnostics",
             "Attach the archive to your report so the problem can be reproduced."),
         buttons=[QApplication.translate("tilauscope_diagnostics", "Open GitHub"),
-                 QApplication.translate("tilauscope_diagnostics", "Done")])
+                 QApplication.translate("tilauscope_common", "Done")])
     if choice == 0:
         QDesktopServices.openUrl(QUrl(TILAUSCOPE_ISSUES_URL))
     return True
@@ -262,5 +262,5 @@ def my_exception_hook(exctype, value, tb):
     if dialog.exec() == QDialog.DialogCode.Accepted:
         if export_logs_to_zip():
             from tilauscope.tilauscope_types import show_styled_message
-            show_styled_message(None, QApplication.translate("tilauscope_diagnostics","Success"), QApplication.translate("tilauscope_diagnostics","Logs bundled. Please send this to the TilauScope team."))
+            show_styled_message(None, QApplication.translate("tilauscope_common","Success"), QApplication.translate("tilauscope_diagnostics","Logs bundled. Please send this to the TilauScope team."))
     sys.exit(1)

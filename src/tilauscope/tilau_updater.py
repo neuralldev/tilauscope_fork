@@ -525,7 +525,7 @@ class _UpdateAvailableDialog(QDialog):
         )
         self.btn_download.clicked.connect(self.accept)
 
-        btn_later = QPushButton(QApplication.translate("tilauscope_updates","Later"))
+        btn_later = QPushButton(QApplication.translate("tilauscope_common","Later"))
         btn_later.clicked.connect(self.reject)
 
         btn_layout.addStretch()
@@ -609,7 +609,7 @@ class _DownloadProgressDialog(QDialog):
         self._pct_label.setStyleSheet(f"color: {_THEME['TEXT']}; font-size: 13px;")
         inner.addWidget(self._pct_label)
 
-        btn_cancel = QPushButton(QApplication.translate("tilauscope_updates","Cancel"))
+        btn_cancel = QPushButton(QApplication.translate("Button","Cancel"))
         btn_cancel.setFixedWidth(120)
         btn_cancel.clicked.connect(self._on_cancel)
         cancel_row = QHBoxLayout()
@@ -698,7 +698,7 @@ class _InstallReadyDialog(QDialog):
         )
         self.btn_install.clicked.connect(self.accept)
 
-        btn_later = QPushButton(QApplication.translate("tilauscope_updates","Later"))
+        btn_later = QPushButton(QApplication.translate("tilauscope_common","Later"))
         btn_later.clicked.connect(self.reject)
 
         btn_layout.addStretch()
@@ -803,7 +803,7 @@ class TilauUpdater(QObject):
             from tilauscope.tilauscope_types import show_styled_message
             show_styled_message(
                 self._parent,
-                QApplication.translate("tilauscope_updates", "Check for Updates"),
+                QApplication.translate("Menu", "Check for Updates"),
                 QApplication.translate("tilauscope_updates",
                     "You are running the latest version of TilauScope."),
                 QMessageBox.Icon.Information,
@@ -818,7 +818,7 @@ class TilauUpdater(QObject):
             from tilauscope.tilauscope_types import show_styled_message
             show_styled_message(
                 self._parent,
-                QApplication.translate("tilauscope_updates", "Check for Updates"),
+                QApplication.translate("Menu", "Check for Updates"),
                 QApplication.translate("tilauscope_updates",
                     "Could not check for updates. Please check your internet connection."),
                 QMessageBox.Icon.Warning,

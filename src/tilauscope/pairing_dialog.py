@@ -325,7 +325,7 @@ class PairingDialog(QDialog):
                      f"<br><span style='color:{THEME['SUBTEXT']};font-size:10px'>{when}</span>")
         txt.setStyleSheet("")
         rename = self._icon_btn("✏", 'ACCENT')
-        rename.setToolTip(QApplication.translate("tilauscope_devices", "Rename"))
+        rename.setToolTip(QApplication.translate("Button", "Rename"))
         rename.clicked.connect(lambda _=False, d=device_id: self._begin_rename(d))
         revoke = QPushButton(QApplication.translate("tilauscope_devices", "Revoke"))
         revoke.clicked.connect(lambda _=False, d=device_id: self._revoke(d))

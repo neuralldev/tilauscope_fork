@@ -218,7 +218,7 @@ def prompt_release_if_emptied(parent: QWidget | None, bean, previous_weight: flo
         if not ids:
             return False
 
-        name = getattr(bean, "name", "") or QApplication.translate("tilauscope_sacks", "(unnamed)")
+        name = getattr(bean, "name", "") or QApplication.translate("tilauscope_common", "(unnamed)")
         choice = show_styled_message(
             parent,
             QApplication.translate("tilauscope_sacks", "Stock exhausted"),
@@ -289,7 +289,7 @@ def confirm_release(parent: QWidget | None, sack_id: str) -> bool:
 
     btn_row = QHBoxLayout()
     btn_row.addStretch(1)
-    cancel_btn = _sack_button(QApplication.translate("tilauscope_sacks", "Cancel"))
+    cancel_btn = _sack_button(QApplication.translate("Button", "Cancel"))
     ok_btn = _sack_button(QApplication.translate("tilauscope_sacks", "Release"), primary=True)
     cancel_btn.clicked.connect(dlg.reject)
     ok_btn.clicked.connect(dlg.accept)
@@ -415,7 +415,7 @@ class SackAssignDialog(QDialog):
         from PyQt6.QtWidgets import QListWidget, QListWidgetItem  # noqa: PLC0415
         self._QListWidgetItem = QListWidgetItem
 
-        bean_name = getattr(bean, "name", "") or QApplication.translate("tilauscope_sacks", "(unnamed)")
+        bean_name = getattr(bean, "name", "") or QApplication.translate("tilauscope_common", "(unnamed)")
         dlg_title = QApplication.translate("tilauscope_sacks", "Assign a label") + f" — {bean_name}"
         self.setWindowTitle(dlg_title)
         self.setMinimumWidth(420)
@@ -470,9 +470,9 @@ class SackAssignDialog(QDialog):
         self.print_btn.clicked.connect(self._open_labels_tool)
         actions.addWidget(self.print_btn)
         actions.addStretch(1)
-        cancel_btn = _sack_button(QApplication.translate("tilauscope_sacks", "Cancel"))
+        cancel_btn = _sack_button(QApplication.translate("Button", "Cancel"))
         cancel_btn.clicked.connect(self.reject)
-        self.ok_btn = _sack_button(QApplication.translate("tilauscope_sacks", "Assign"), primary=True)
+        self.ok_btn = _sack_button(QApplication.translate("tilauscope_common", "Assign"), primary=True)
         self.ok_btn.clicked.connect(self._accept)
         self.ok_btn.setDefault(True)
         actions.addWidget(cancel_btn)
@@ -607,7 +607,7 @@ class ReclaimSacksDialog(QDialog):
             row = QHBoxLayout()
             row.setSpacing(10)
             box = QCheckBox(getattr(bean, "name", "") or
-                            QApplication.translate("tilauscope_sacks", "(unnamed)"))
+                            QApplication.translate("tilauscope_common", "(unnamed)"))
             box.setChecked(True)
             box.stateChanged.connect(self._refresh_count)
             row.addWidget(box, 1)
@@ -620,7 +620,7 @@ class ReclaimSacksDialog(QDialog):
 
         actions = QHBoxLayout()
         actions.addStretch(1)
-        cancel_btn = _sack_button(QApplication.translate("tilauscope_sacks", "Cancel"))
+        cancel_btn = _sack_button(QApplication.translate("Button", "Cancel"))
         cancel_btn.clicked.connect(self.reject)
         self.ok_btn = _sack_button("", primary=True)
         self.ok_btn.clicked.connect(self.accept)
@@ -825,7 +825,7 @@ class SackLabelsDialog(QDialog):
         self.batch_preview = QLabel("")
         self.batch_preview.setStyleSheet(f"color: {THEME['SUBTEXT']};")
         bf.addRow(QApplication.translate("tilauscope_sacks", "Number of labels"), self.count_spin)
-        bf.addRow(QApplication.translate("tilauscope_sacks", "Prefix"), self.prefix_edit)
+        bf.addRow(QApplication.translate("Label", "Prefix"), self.prefix_edit)
         bf.addRow(QApplication.translate("tilauscope_sacks", "Next number"), self.start_spin)
         bf.addRow(QApplication.translate("tilauscope_sacks", "Will print"), self.batch_preview)
         bl.addLayout(bf)
@@ -1113,7 +1113,7 @@ class SackLabelsDialog(QDialog):
         self._print_pill = None
         if pill is not None:
             if printed < self._run_total:
-                done = QApplication.translate("tilauscope_sacks",
+                done = QApplication.translate("tilauscope_common",
                     "Stopped after {0} of {1} labels").format(printed, self._run_total)
             else:
                 done = QApplication.translate("tilauscope_sacks",
@@ -1174,7 +1174,7 @@ class SackLabelsDialog(QDialog):
         self._print_pill = None
         if pill is not None:
             pill.fail("🖨  " + QApplication.translate(
-                "tilauscope_sacks", "Printing stopped — see the message"))
+                "tilauscope_common", "Printing stopped — see the message"))
         show_styled_message(self,
             QApplication.translate("tilauscope_sacks", "Sack ID labels"),
             QApplication.translate("tilauscope_sacks",

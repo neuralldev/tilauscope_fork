@@ -235,7 +235,7 @@ def apply_meter(aw: 'ApplicationWindow', name: str, parent: Any = None) -> str |
         if tilau[name] == 'trp_btet':
             for param, value in _TRP_SERIAL.items():
                 setattr(aw.ser, param, value)
-        return QApplication.translate('tilauscope_devices', 'Device set to {0}').format(name)
+        return QApplication.translate('Message', 'Device set to {0}').format(name)
 
     branch = METER_BRANCHES.get(name)
     if branch is None:
@@ -259,13 +259,13 @@ def apply_meter(aw: 'ApplicationWindow', name: str, parent: Any = None) -> str |
             from tilauscope.tilauscope_types import show_styled_message
             show_styled_message(
                 parent,
-                QApplication.translate('tilauscope_devices', 'Bluetooth'),
+                QApplication.translate('Label', 'Bluetooth'),
                 QApplication.translate(
                     'tilauscope_devices',
                     'Bluetooth access was denied. Allow TilauScope in the system '
                     'Bluetooth settings, then choose the meter again.'),
                 QMessageBox.Icon.Warning)
-    return QApplication.translate('tilauscope_devices', 'Device set to {0}').format(name)
+    return QApplication.translate('Message', 'Device set to {0}').format(name)
 
 
 def refresh(aw: 'ApplicationWindow', *, meter_mode: bool, message: str | None) -> None:

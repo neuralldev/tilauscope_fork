@@ -321,7 +321,7 @@ class ScanQRDialog(QDialog):
         self._camera_combo.setVisible(False)
         bottom.addWidget(self._camera_combo)
         bottom.addStretch()
-        cancel = QPushButton(QApplication.translate("tilauscope_webclient", "Close"))
+        cancel = QPushButton(QApplication.translate("Button", "Close"))
         cancel.clicked.connect(self.reject)
         bottom.addWidget(cancel)
         layout.addLayout(bottom)

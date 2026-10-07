@@ -653,14 +653,14 @@ class AlarmTimelineWidget(QWidget):
         # Guards are 0-based rows, -1 = none; the alarm table shows them 1-based.
         if d.event_code == 10 and d.previous_alarm >= 0:
             return (f"#{d.index+1} | "
-                    + QApplication.translate("tilauscope_alarms", "IF ALARM")
+                    + QApplication.translate("tilauscope_common", "IF ALARM")
                     + f" #{d.previous_alarm + 1}, "
                     + QApplication.translate("tilauscope_alarms", "at")
                     + f" +{d.offset}s "
                     + QApplication.translate("tilauscope_alarms", "do"))
         if d.event_code == 10 and d.not_alarm >= 0:
             return (f"#{d.index+1} | "
-                    + QApplication.translate("tilauscope_alarms", "IF NOT ALARM")
+                    + QApplication.translate("tilauscope_common", "IF NOT ALARM")
                     + f" #{d.not_alarm + 1}, "
                     + QApplication.translate("tilauscope_alarms", "at")
                     + f" +{d.offset}s "

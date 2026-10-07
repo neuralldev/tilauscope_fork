@@ -107,8 +107,8 @@ def chip_bbox(*, alpha: float = CHIP_FILL_ALPHA) -> dict[str, Any]:
 
 
 def _unit(mode: str) -> str:
-    return (QApplication.translate('tilauscope', '°F') if mode == 'F'
-            else QApplication.translate('tilauscope', '°C'))
+    return (QApplication.translate('tilauscope_graph', '°F') if mode == 'F'
+            else QApplication.translate('tilauscope_graph', '°C'))
 
 
 def milestone_chip_ladder(label: str, temp: float | None, mode: str,

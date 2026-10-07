@@ -241,10 +241,10 @@ class BuildMixin:
 
         # _update_automation_banner() runs once/sec from the TIMER path — these
         # must be pre-translated here, never re-translated inside the 1Hz tick.
-        self.str_automation_pid           = QApplication.translate("tilauscope_window", "PID")
+        self.str_automation_pid           = QApplication.translate("Tab", "PID")
         self.str_automation_replay_events = QApplication.translate("tilauscope_window", "Replay Events")
         self.str_automation_auto_drop     = QApplication.translate("tilauscope_window", "Auto-DROP")
-        self.str_automation_playback_aid  = QApplication.translate("tilauscope_window", "Playback Aid")
+        self.str_automation_playback_aid  = QApplication.translate("CheckBox", "Playback Aid")
         self.str_automation_prefix        = QApplication.translate("tilauscope_window", "⚠ AUTOMATED ROAST")
 
         # Probe silence — pre-translated, never re-translated in the sample path
@@ -834,9 +834,9 @@ class BuildMixin:
         self.phase_box.setSpacing(2) # Small gap between phase blocks
 
         self.phases = {
-            "DRY": PhaseWidget("DRY", QApplication.translate("tilauscope_window","Drying Phase").upper(), THEME['ACCENT'], self.theme, self._update_phase_subtitle("DRY")),
-            "MAI": PhaseWidget("MAI", QApplication.translate("tilauscope_window","Maillard Phase").upper(), THEME['YELLOW'], self.theme, self._update_phase_subtitle("MAI")),
-            "DEV": PhaseWidget("DEV", QApplication.translate("tilauscope_window","Finishing Phase").upper(), THEME['CRITICAL'], self.theme, self._update_phase_subtitle("DEV"))}
+            "DRY": PhaseWidget("DRY", QApplication.translate("Button","Drying Phase").upper(), THEME['ACCENT'], self.theme, self._update_phase_subtitle("DRY")),
+            "MAI": PhaseWidget("MAI", QApplication.translate("Label","Maillard Phase").upper(), THEME['YELLOW'], self.theme, self._update_phase_subtitle("MAI")),
+            "DEV": PhaseWidget("DEV", QApplication.translate("Button","Finishing Phase").upper(), THEME['CRITICAL'], self.theme, self._update_phase_subtitle("DEV"))}
         _PHASE_IDX = {"DRY": 1, "MAI": 2, "DEV": 3}
         for key, p in self.phases.items():
             self.phase_box.addWidget(p)

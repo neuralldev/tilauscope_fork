@@ -85,7 +85,7 @@ class AmbientMixin:
         if sm is None or not sm.is_scale1_configured():
             show_styled_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "No scale configured"),
+                QApplication.translate("tilauscope_common", "No scale configured"),
                 QApplication.translate("tilauscope_beancave",
                     "Pair your scale in TilauScope Config › Sensors to measure density."),
                 QMessageBox.Icon.Information,

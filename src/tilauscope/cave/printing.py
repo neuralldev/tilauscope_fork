@@ -68,7 +68,7 @@ class PrintingMixin:
         if selected_row_index == -1:
             self._show_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Error"),
+                QApplication.translate("Error Message", "Error"),
                 QApplication.translate("tilauscope_beancave", "Select a line to generate a QRCODE!"),
                 QMessageBox.Icon.Warning
             )
@@ -79,7 +79,7 @@ class PrintingMixin:
         if not bean.uuid:
             self._show_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Error"),
+                QApplication.translate("Error Message", "Error"),
                 QApplication.translate("tilauscope_beancave",
                     "Save this bean before generating its QR code — the code points at the record."),
                 QMessageBox.Icon.Warning,
@@ -114,7 +114,7 @@ class PrintingMixin:
         except Exception as e:
             self._show_message(
                 self,
-                QApplication.translate("tilauscope_beancave", "Error"),
+                QApplication.translate("Error Message", "Error"),
                 QApplication.translate("tilauscope_beancave", "An error happened while generating the QRCode:") + f" {e}",
                 QMessageBox.Icon.Critical,
             )
@@ -421,7 +421,7 @@ class PrintingMixin:
         running = getattr(self, "niimbot_thread", None)
         if running is not None and running.isRunning():
             self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Print"),
+                QApplication.translate("HelpDlg", "Print"),
                 QApplication.translate("tilauscope_beancave", "A print is already in progress"),
                 QMessageBox.Icon.Warning)
             return
@@ -447,7 +447,7 @@ class PrintingMixin:
             selected_rows = self.datatable.selectionModel().selectedRows()  # type: ignore
             if not selected_rows:
                 self._show_message(self,
-                    QApplication.translate("tilauscope_beancave", "Print"),
+                    QApplication.translate("HelpDlg", "Print"),
                     QApplication.translate("tilauscope_beancave",
                         "Please, select a green bean first in the first tab, then the roast."),
                     QMessageBox.Icon.Warning)
@@ -459,7 +459,7 @@ class PrintingMixin:
         # ── Vérifications imprimante ─────────────────────────────────────────
         if self.np is not None and self.np.remaining_labels == 0:
             self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Print"),
+                QApplication.translate("HelpDlg", "Print"),
                 QApplication.translate("tilauscope_beancave",
                     "There is no more labels on the roll, please load a new roll"),
                 QMessageBox.Icon.Warning)
@@ -473,7 +473,7 @@ class PrintingMixin:
             or paper_width == 0 or paper_height == 0
         ):
             self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Print"),
+                QApplication.translate("HelpDlg", "Print"),
                 QApplication.translate("tilauscope_beancave",
                     "Label size or type of paper was not correctly detected, "
                     "please close and retry to open bean cave"),
@@ -482,7 +482,7 @@ class PrintingMixin:
 
         if paper_height not in (30, 80):
             self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Print"),
+                QApplication.translate("HelpDlg", "Print"),
                 QApplication.translate("tilauscope_beancave", "unsupported paper size")
                 + f" {paper_width}x{paper_height}",
                 QMessageBox.Icon.Warning)
@@ -673,7 +673,7 @@ class PrintingMixin:
         except Exception as e:
             self._show_message(self,
                 QApplication.translate("tilauscope_beancave", "Niimbot B21S Print"),
-                QApplication.translate("tilauscope_beancave", "Error") + f" : {e}",
+                QApplication.translate("Error Message", "Error") + f" : {e}",
                 QMessageBox.Icon.Critical)
             _logd.error(f"Label printing error: {e}")
 
@@ -731,13 +731,13 @@ class PrintingMixin:
         # succès ordinaire. Seul le rouleau bientôt vide justifie de couper
         # l'opérateur, parce que c'est un geste à faire avant le prochain lot.
         if printed < copies:
-            done = QApplication.translate("tilauscope_beancave",
+            done = QApplication.translate("tilauscope_common",
                 "Stopped after {0} of {1} labels").format(printed, copies)
         elif printed > 1:
             done = QApplication.translate("tilauscope_beancave",
                 "{0} labels printed").format(printed)
         else:
-            done = QApplication.translate("tilauscope_beancave", "Label printed")
+            done = QApplication.translate("tilauscope_common", "Label printed")
         pill = getattr(self, "_print_pill", None)
         self._print_pill = None
         if pill is not None:
@@ -761,11 +761,11 @@ class PrintingMixin:
         self._print_pill = None
         if pill is not None:
             pill.fail("🖨  " + QApplication.translate(
-                "tilauscope_beancave", "Printing stopped — see the message"))
+                "tilauscope_common", "Printing stopped — see the message"))
         show_styled_message(self,
                             QApplication.translate("tilauscope_beancave","Niimbot B21S Print"),
                             QApplication.translate(
-                                "tilauscope_label",
+                                "tilauscope_common",
                                 "The label did not print: {0}\n\nCheck the printer is on and the roll "
                                 "is loaded, then try again.").format(message),
                             QMessageBox.Icon.Warning)
@@ -849,8 +849,8 @@ class PrintingMixin:
         roast_properties = self.get_alog_data(alog_full_path)
         if roast_properties is None:
             self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Error"),
-                QApplication.translate("tilauscope_beancave", "PDF file was not generated."),
+                QApplication.translate("Error Message", "Error"),
+                QApplication.translate("tilauscope_common", "PDF file was not generated."),
                 QMessageBox.Icon.Warning)
             return
         if alog_filename:
@@ -874,7 +874,7 @@ class PrintingMixin:
             if not downloads_dir:
                 downloads_dir = str(Path.home() / "Downloads")
             default_name = str(Path(downloads_dir) / f"roast_label_{alog_filename}.pdf")
-            file_path = self._open_file_dialog_save( QApplication.translate("tilauscope_beancave", "Save Label PDF"), default_name, QApplication.translate("tilauscope_beancave", "PDF Files (*.pdf)"))
+            file_path = self._open_file_dialog_save( QApplication.translate("tilauscope_common", "Save Label PDF"), default_name, QApplication.translate("tilauscope_common", "PDF Files (*.pdf)"))
             if file_path:
                 from tilauscope.label_printer import RoastedBeanLabelPrinter
                 printer = RoastedBeanLabelPrinter()
@@ -882,19 +882,19 @@ class PrintingMixin:
                     success = printer.print_to_label(roast_properties, target_bean, file_path)
                     if success:
                         self._show_message(self,
-                                        QApplication.translate("tilauscope_beancave","Success"),
+                                        QApplication.translate("tilauscope_common","Success"),
                                         QApplication.translate("tilauscope_beancave","Label saved to")+f" {file_path}")
                         self.try_to_open_file(file_path)
                     else:
                         self._show_message(self,
-                                QApplication.translate("tilauscope_beancave","Error"),
-                                QApplication.translate("tilauscope_beancave","PDF file was not generated."),
+                                QApplication.translate("Error Message","Error"),
+                                QApplication.translate("tilauscope_common","PDF file was not generated."),
                                 QMessageBox.Icon.Warning)
                 except Exception as e:
                     _logd.error(f"error printing to pdf: {e}")
                     self._show_message(self,
-                        QApplication.translate("tilauscope_beancave", "Error"),
-                        QApplication.translate("tilauscope_beancave", "PDF file was not generated."),
+                        QApplication.translate("Error Message", "Error"),
+                        QApplication.translate("tilauscope_common", "PDF file was not generated."),
                         QMessageBox.Icon.Warning)
 
 
@@ -918,8 +918,8 @@ class PrintingMixin:
                 downloads_dir = str(Path.home() / "Downloads")
             default_name = str(Path(downloads_dir) / f"Label_{bean.name}.pdf")
             file_path = self._open_file_dialog_save(
-                QApplication.translate("tilauscope_beancave", "Save Label PDF"), default_name,
-                QApplication.translate("tilauscope_beancave", "PDF Files (*.pdf)"))
+                QApplication.translate("tilauscope_common", "Save Label PDF"), default_name,
+                QApplication.translate("tilauscope_common", "PDF Files (*.pdf)"))
 
             if file_path:
                 from tilauscope.label_printer import GreenBeanLabelPrinter
@@ -929,7 +929,7 @@ class PrintingMixin:
 
                 if success:
                     self._show_message(self,
-                                            QApplication.translate("tilauscope_beancave","Success"),
+                                            QApplication.translate("tilauscope_common","Success"),
                                             QApplication.translate("tilauscope_beancave","Label saved to")+f" {file_path}")
                 self.try_to_open_file(file_path)
 
@@ -967,11 +967,11 @@ class PrintingMixin:
 
         if ok:
             self._show_message(self,
-                                QApplication.translate("tilauscope_beancave","Success"),
+                                QApplication.translate("tilauscope_common","Success"),
                                 QApplication.translate("tilauscope_beancave","Bean card saved to")+f" {file_path}")
             self.try_to_open_file(file_path)
         else:
             self._show_message(self,
-                                QApplication.translate("tilauscope_beancave","Error"),
+                                QApplication.translate("Error Message","Error"),
                                 QApplication.translate("tilauscope_beancave","The bean card could not be generated."),
                                 QMessageBox.Icon.Warning)

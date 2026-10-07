@@ -100,7 +100,7 @@ def provenance(tot: Totals | None) -> tuple[str, str, str]:
     if kind == NONE:
         return "○", THEME['OVERLAY0'], QApplication.translate("tilauscope_energy", "Not tracked")
     word = {MEASURED: QApplication.translate("tilauscope_energy", "Measured"),
-            ESTIMATED: QApplication.translate("tilauscope_energy", "Estimated"),
+            ESTIMATED: QApplication.translate("tilauscope_common", "Estimated"),
             MIXED: QApplication.translate("tilauscope_energy", "Mixed")}[kind]
     colour = THEME['SUCCESS'] if kind == MEASURED else THEME['WARNING']
     if tot is not None and tot.incomplete:
@@ -289,7 +289,7 @@ class _PowerTrace(QWidget):
         # legend, in each source's hue
         x = self._LEFT + 4
         for name in s.channels:
-            text = (QApplication.translate("tilauscope_energy", "Roaster") if name == ROASTER
+            text = (QApplication.translate("Label", "Roaster") if name == ROASTER
                     else QApplication.translate("tilauscope_energy", "Extractor"))
             p.setPen(QColor(_HUE.get(name, THEME['TEXT'])))
             p.drawText(QRectF(x, self._TOP + 1, 120, 12), Qt.AlignmentFlag.AlignLeft, "— " + text)
@@ -306,7 +306,7 @@ class _PowerTrace(QWidget):
             parts = []
             for name, ch in s.channels.items():
                 w = _power_at(ch, t)
-                label = (QApplication.translate("tilauscope_energy", "Roaster") if name == ROASTER
+                label = (QApplication.translate("Label", "Roaster") if name == ROASTER
                          else QApplication.translate("tilauscope_energy", "Extractor"))
                 parts.append(f"{label} {fmt_power(w)}")
             where = (QApplication.translate("tilauscope_energy", "{0} from CHARGE")
@@ -385,11 +385,11 @@ class EnergyPanel(QDialog):
         self._phase: dict[str, QLabel] = {}
         self._phase_box: dict[str, QFrame] = {}
         for key, title, tip, stretch in (
-                ("before", QApplication.translate("tilauscope_energy", "Preheat"),
+                ("before", QApplication.translate("Label", "Preheat"),
                  QApplication.translate("tilauscope_energy", "From monitoring ON to CHARGE, including any wait before preheating."), 1),
                 ("roast", QApplication.translate("tilauscope_energy", "Roast"),
                  QApplication.translate("tilauscope_energy", "From CHARGE to DROP."), 2),
-                ("after", QApplication.translate("tilauscope_energy", "Cooling"),
+                ("after", QApplication.translate("Label", "Cooling"),
                  QApplication.translate("tilauscope_energy", "From DROP to monitoring OFF, including any wait after cooling."), 1)):
             box = QFrame()
             box.setObjectName("phase")
@@ -484,9 +484,9 @@ class EnergyPanel(QDialog):
                 f"QFrame#phase {{ background: {THEME['SURFACE']}; border-radius: 6px;"
                 f" border: 1px solid {THEME['ACCENT'] if active else THEME['BORDER']}; }}")
         if summary.roast_split:
-            names = {"drying": QApplication.translate("tilauscope_energy", "Drying"),
-                     "maillard": QApplication.translate("tilauscope_energy", "Maillard"),
-                     "development": QApplication.translate("tilauscope_energy", "Development")}
+            names = {"drying": QApplication.translate("Label", "Drying"),
+                     "maillard": QApplication.translate("Label", "Maillard"),
+                     "development": QApplication.translate("Label", "Development")}
             self._phase["roast"].setToolTip("\n".join(
                 f"{names[n]}  {fmt_kwh(summary.total(p.per_channel).wh)}" for n, p in summary.roast_split))
         else:

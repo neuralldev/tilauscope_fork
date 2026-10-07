@@ -124,7 +124,7 @@ class CoachAdviceDialog(QDialog):
         layout.addLayout(head_row)
 
         name = QLabel((display_name(profile) or QApplication.translate(
-            "tilauscope_review", "ROAST")).upper())
+            "tilauscope_common", "ROAST")).upper())
         name.setWordWrap(True)
         name.setStyleSheet(f"font-size: 15px; font-weight: 800; color: {THEME['ACCENT']};")
         layout.addWidget(name)

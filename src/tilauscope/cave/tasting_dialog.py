@@ -43,7 +43,7 @@ def defect_labels() -> dict[str, str]:
 def verdict_labels() -> dict[str, str]:
     """Verdict key → its thumb and word, as the operator picked it."""
     return {
-        'yes': "👍  " + QApplication.translate("tilauscope_beancave", "Yes"),
+        'yes': "👍  " + QApplication.translate("HelpDlg", "Yes"),
         'almost': "🤏  " + QApplication.translate("tilauscope_beancave", "Almost"),
         'no': "👎  " + QApplication.translate("tilauscope_beancave", "No"),
     }
@@ -145,7 +145,7 @@ class TastingDialog(QDialog):
         lay.addLayout(row)
 
         lay.addWidget(self._question(QApplication.translate("tilauscope_beancave", "What was off?"),
-                                     QApplication.translate("tilauscope_beancave", "optional")))
+                                     QApplication.translate("tilauscope_common", "optional")))
         chips = QGridLayout()
         chips.setSpacing(8)
         self._defects: dict[str, QPushButton] = {}
@@ -184,9 +184,9 @@ class TastingDialog(QDialog):
 
         nav = QHBoxLayout()
         nav.addStretch(1)
-        cancel = QPushButton(QApplication.translate("tilauscope_beancave", "Cancel"))
+        cancel = QPushButton(QApplication.translate("Button", "Cancel"))
         cancel.clicked.connect(self.reject)
-        save = QPushButton("✓ " + QApplication.translate("tilauscope_beancave", "Save"))
+        save = QPushButton("✓ " + QApplication.translate("Message", "Save"))
         save.setStyleSheet(f"QPushButton {{ color:{THEME['SUCCESS']}; border:1px solid {THEME['SUCCESS']};"
                            f"border-radius:8px; padding:6px 16px; background:rgba(166,227,161,0.10); }}")
         save.clicked.connect(self._save)

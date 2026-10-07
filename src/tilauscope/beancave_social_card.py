@@ -62,7 +62,7 @@ class GreenBeanSocialCard(CardPainter):
             out.append((bean.species.strip(), THEME['BORDER']))
         crop = int(getattr(bean, 'crop', 0) or 0)
         if crop > 0:
-            crop_label = QApplication.translate("tilauscope_roast_review", "Crop")
+            crop_label = QApplication.translate("tilauscope_common", "Crop")
             out.append((f"{crop_label} {crop}", THEME['BORDER']))
         return out[:4]
 
@@ -72,29 +72,29 @@ class GreenBeanSocialCard(CardPainter):
         out: list[tuple[str, str, str, bool]] = []
         sca = float(getattr(bean, 'sca', 0) or 0)
         if sca > 0:
-            out.append((QApplication.translate("tilauscope_roast_review", "SCA score"), f"{sca:.1f}".rstrip('0').rstrip('.'), "", True))
+            out.append((QApplication.translate("tilauscope_common", "SCA score"), f"{sca:.1f}".rstrip('0').rstrip('.'), "", True))
         alt = int(getattr(bean, 'altitude', 0) or 0)
         if alt > 0:
-            out.append((QApplication.translate("tilauscope_roast_review", "Altitude"), f"{alt:,}".replace(",", " "), "m", False))
+            out.append((QApplication.translate("tilauscope_common", "Altitude"), f"{alt:,}".replace(",", " "), "m", False))
         dens = float(getattr(bean, 'density', 0) or 0)
         if dens > 0:
-            out.append((QApplication.translate("tilauscope_roast_review", "Density"), f"{dens:g}", "g/l", False))
+            out.append((QApplication.translate("Label", "Density"), f"{dens:g}", "g/l", False))
         hum = float(getattr(bean, 'last_humidity', 0) or 0)
         if hum > 0:
-            out.append((QApplication.translate("tilauscope_roast_review", "Humidity"), f"{hum:g}", "%", False))
+            out.append((QApplication.translate("Label", "Humidity"), f"{hum:g}", "%", False))
         return out[:4]
 
     @staticmethod
     def _provenance(bean) -> list[tuple[str, str]]:
-        rows = [(QApplication.translate("tilauscope_roast_review", "Farm"), bean.farm), (QApplication.translate("tilauscope_roast_review", "Country"), bean.country),
-                (QApplication.translate("tilauscope_roast_review", "Supplier"), bean.supplier)]
+        rows = [(QApplication.translate("tilauscope_common", "Farm"), bean.farm), (QApplication.translate("tilauscope_common", "Country"), bean.country),
+                (QApplication.translate("tilauscope_common", "Supplier"), bean.supplier)]
         return [(k, str(v).strip()) for k, v in rows if str(v or '').strip()]
 
     @staticmethod
     def _characteristics(bean) -> list[tuple[str, str]]:
         rows: list[tuple[str, str]] = []
         if (bean.species or '').strip():
-            rows.append((QApplication.translate("tilauscope_roast_review", "Species"), bean.species.strip()))
+            rows.append((QApplication.translate("tilauscope_common", "Species"), bean.species.strip()))
         # a blend shows its composition where a single origin shows varieties.
         # Same semantics as the on-screen sheet: component 1 is the record itself
         # (labelled by its varieties), and a 0 ratio means "unknown", not "absent".
@@ -111,10 +111,10 @@ class GreenBeanSocialCard(CardPainter):
         elif (bean.varieties or '').strip():
             rows.append((QApplication.translate("tilauscope_roast_review", "Varieties"), bean.varieties.strip()))
         if (bean.category or '').strip():
-            rows.append((QApplication.translate("tilauscope_roast_review", "Category"), bean.category.strip()))
+            rows.append((QApplication.translate("tilauscope_common", "Category"), bean.category.strip()))
         aw = float(getattr(bean, 'water_activity', 0) or 0)
         if aw > 0:
-            rows.append((QApplication.translate("tilauscope_roast_review", "Water activity"), f"{aw:g} aw"))
+            rows.append((QApplication.translate("tilauscope_common", "Water activity"), f"{aw:g} aw"))
         return rows[:4]
 
     # ── columns ──────────────────────────────────────────────────────────────
@@ -125,7 +125,7 @@ class GreenBeanSocialCard(CardPainter):
         p.drawLine(_LEFT_W, 0, _LEFT_W, CARD_H)
 
         y = _PAD_TOP
-        origin = (QApplication.translate("tilauscope_roast_review", "Blend") if getattr(bean, 'is_blend', False)
+        origin = (QApplication.translate("tilauscope_common", "Blend") if getattr(bean, 'is_blend', False)
                   else (bean.country or '').strip())
         if origin:
             y = self._text(p, x, y, origin.upper(), self._font(12, tracking=22.0),
@@ -182,8 +182,8 @@ class GreenBeanSocialCard(CardPainter):
         if stats:
             y = self._paint_stats(p, x, y, w, stats) + 32
 
-        for title, rows in ((QApplication.translate("tilauscope_roast_review", "Provenance"), self._provenance(bean)),
-                            (QApplication.translate("tilauscope_roast_review", "Characteristics"), self._characteristics(bean))):
+        for title, rows in ((QApplication.translate("tilauscope_common", "Provenance"), self._provenance(bean)),
+                            (QApplication.translate("CheckBox", "Characteristics"), self._characteristics(bean))):
             if not rows:
                 continue
             y = self._text(p, x, y, title.upper(), self._font(10, tracking=16.0),

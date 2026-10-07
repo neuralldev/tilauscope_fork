@@ -187,7 +187,7 @@ class TilauAboutDlg(QDialog):
             f"QPushButton {{ background:transparent; color:{THEME['ACCENT']}; border:1px solid {THEME['ACCENT']};"
             f" border-radius:8px; padding:9px 18px; font-weight:600; }}"
             f"QPushButton:hover {{ background:{THEME['ACCENT']}; color:{THEME['BG']}; }}")
-        close = QPushButton(QApplication.translate("tilauscope_updates", "Close"))
+        close = QPushButton(QApplication.translate("Button", "Close"))
         close.setMinimumWidth(118)
         close.clicked.connect(self.accept)
         close.setStyleSheet(

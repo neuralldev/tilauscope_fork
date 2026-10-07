@@ -104,13 +104,13 @@ def _labels() -> dict[str, str]:
             ## TILAU ## TilauPID preheat annotation (Artisan canvas, no TilauScope window needed)
             'ReadyIn': QApplication.translate('tilauscope_graph', 'READY IN'),
             'ReadyToCharge': QApplication.translate('tilauscope_graph', 'READY TO CHARGE'),
-            'Stabilizing': QApplication.translate('tilauscope_graph', 'STABILIZING'),
-            'Heating': QApplication.translate('tilauscope_graph', 'HEATING'),
+            'Stabilizing': QApplication.translate('tilauscope_common', 'STABILIZING'),
+            'Heating': QApplication.translate('Label', 'HEATING'),
             ## TILAU ## Learning-maturity badge (EXPERIENCE band + capability lines) — cached
             ## once per TilauPreheatPID.start(), never rebuilt on the canvas redraw path.
             'Experience': QApplication.translate('tilauscope_graph', 'EXPERIENCE'),
             'LevelLearning': QApplication.translate('tilauscope_graph', 'Learning'),
-            'LevelEstimated': QApplication.translate('tilauscope_graph', 'Estimated'),
+            'LevelEstimated': QApplication.translate('tilauscope_common', 'Estimated'),
             'LevelTuned': QApplication.translate('tilauscope_graph', 'Tuned'),
             'LevelCalibrated': QApplication.translate('tilauscope_graph', 'Calibrated'),
             'FirstPreheatSub': QApplication.translate('tilauscope_graph', 'First preheat at this setpoint'),
@@ -124,7 +124,7 @@ def _labels() -> dict[str, str]:
             'CapLead_approx': QApplication.translate('tilauscope_graph', 'Estimating when to back off'),
             'CapLead_learning': QApplication.translate('tilauscope_graph', 'Still learning when to back off'),
             'SimNotRecorded': QApplication.translate('tilauscope_graph', 'Simulation — not recorded'),
-            'DryingPhase': QApplication.translate('tilauscope_graph', 'Drying Phase'),
+            'DryingPhase': QApplication.translate('Button', 'Drying Phase'),
             'CoolingPhase': QApplication.translate('Button', 'Cooling Phase'),
             # ── Coach (guided simplified view) — cached once, never on the hot path
             'coach_toward_dry':     QApplication.translate('tilauscope_graph', 'to DRY END'),
@@ -142,7 +142,7 @@ def _labels() -> dict[str, str]:
             'coach_underdeveloped': QApplication.translate('tilauscope_graph', '⚠ Under-developed — let it ride'),
             'coach_ready_drop':     QApplication.translate('tilauscope_graph', '⏏ Ready to DROP'),
             'coach_cool_fast':      QApplication.translate('tilauscope_graph', 'Cool down fast'),
-            'coach_dev_short':      QApplication.translate('tilauscope_graph', 'DEV'),
+            'coach_dev_short':      QApplication.translate('tilauscope_common', 'DEV'),
         }
     return _LABELS
 

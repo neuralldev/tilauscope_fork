@@ -396,7 +396,7 @@ class CustomButtonManager(QDialog):
 
         footer = QHBoxLayout()
         footer.addStretch()
-        cancel = QPushButton(QApplication.translate('tilauscope_buttons', 'Cancel'))
+        cancel = QPushButton(QApplication.translate('Button', 'Cancel'))
         cancel.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         cancel.setMinimumWidth(100)
         cancel.clicked.connect(self.reject)
@@ -404,7 +404,7 @@ class CustomButtonManager(QDialog):
             f"QPushButton {{ background:{THEME['SURFACE']}; color:{THEME['TEXT']};"
             f"border:1px solid {THEME['BORDER']}; border-radius:8px; padding:7px 16px;"
             ' font-size:12px; }')
-        save = QPushButton(QApplication.translate('tilauscope_buttons', 'Apply'))
+        save = QPushButton(QApplication.translate('Button', 'Apply'))
         save.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         save.setMinimumWidth(110)
         save.clicked.connect(self._apply)
@@ -424,13 +424,13 @@ class CustomButtonManager(QDialog):
         self._btn_add = self._tool_btn(
             QApplication.translate('tilauscope_buttons', 'Add button'), self._add, THEME['SUCCESS'])
         self._btn_dup = self._tool_btn(
-            QApplication.translate('tilauscope_buttons', 'Duplicate'), self._duplicate)
+            QApplication.translate('tilauscope_common', 'Duplicate'), self._duplicate)
         self._btn_gap = self._tool_btn(
             QApplication.translate('tilauscope_buttons', 'Add gap'), self._add_gap)
         self._btn_gap.setToolTip(QApplication.translate(
             'tilauscope_buttons', 'Leaves an empty slot that splits the row into two groups.'))
         self._btn_del = self._tool_btn(
-            QApplication.translate('tilauscope_buttons', 'Delete'), self._delete, THEME['CRITICAL'])
+            QApplication.translate('Button', 'Delete'), self._delete, THEME['CRITICAL'])
         for b in (self._btn_add, self._btn_dup, self._btn_gap, self._btn_del):
             bar.addWidget(b)
         bar.addStretch()
@@ -476,7 +476,7 @@ class CustomButtonManager(QDialog):
         self.label.setStyleSheet(self._edit_qss())
         line1.addWidget(self.label, 1)
         self._btn_insert = self._tool_btn(
-            QApplication.translate('tilauscope_buttons', 'Insert') + '  ▾', self._show_insert_menu)
+            QApplication.translate('Button', 'Insert') + '  ▾', self._show_insert_menu)
         line1.addWidget(self._btn_insert)
         lay.addLayout(line1)
 
@@ -1073,8 +1073,8 @@ class CustomButtonManager(QDialog):
             self, QApplication.translate('tilauscope_buttons', 'Delete this button?'),
             QApplication.translate(
                 'tilauscope_buttons', 'It is removed from the roast screen right away.'),
-            buttons=[QApplication.translate('tilauscope_buttons', 'Cancel'),
-                     QApplication.translate('tilauscope_buttons', 'Delete')])
+            buttons=[QApplication.translate('Button', 'Cancel'),
+                     QApplication.translate('Button', 'Delete')])
         if answer != 1:
             return
         self._rows.pop(self._selected)
@@ -1151,7 +1151,7 @@ class CustomButtonManager(QDialog):
                 qmc.alarmstrings[i] = renumbered
         if switched_off:
             show_styled_message(
-                self, QApplication.translate('tilauscope_buttons', 'Buttons'),
+                self, QApplication.translate('Tab', 'Buttons'),
                 QApplication.translate(
                     'tilauscope_buttons',
                     'These alarms pressed a button you deleted and have been switched off: {0}'

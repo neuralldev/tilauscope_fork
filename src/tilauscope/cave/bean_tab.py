@@ -90,7 +90,7 @@ class BeanTabMixin:
                 # holding nothing but "Other", with no trace of why.
                 _logd.warning(f"no varieties listed for species '{var}': {e}")
             self.varieties_combo.addItem(
-                QApplication.translate("tilauscope_beancave", "Other"))
+                QApplication.translate("tilauscope_common", "Other"))
             self.varieties_combo.blockSignals(False)
             # clear() wipes WA_Hover + stylesheet — restore them
             self._reattach_hover(self.varieties_combo)
@@ -104,7 +104,7 @@ class BeanTabMixin:
             except (KeyError, TypeError) as e:
                 _logd.warning(f"no processing methods listed for category '{cat}': {e}")
             self.process_combo.addItem(
-                QApplication.translate("tilauscope_beancave", "Other"))
+                QApplication.translate("tilauscope_common", "Other"))
             self.process_combo.blockSignals(False)
             # clear() wipes WA_Hover + stylesheet — restore them
             self._reattach_hover(self.process_combo)
@@ -187,7 +187,7 @@ class BeanTabMixin:
         # deliberate choice. The rest of this class already assumes it is there.
         single_origin_names.insert(0, BLEND_COMPONENT_PLACEHOLDER())
         # an unlisted component is filed here, as in every other closed list
-        single_origin_names.append(QApplication.translate("tilauscope_beancave", "Other"))
+        single_origin_names.append(QApplication.translate("tilauscope_common", "Other"))
 
         # Store the currently selected items to restore them after updating the list
         current_bean2 = self.bean2_combo.currentText()
@@ -482,7 +482,7 @@ class BeanTabMixin:
         profile = self.get_alog_data(meta.filepath_str)
         if not profile:
             self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Error"),
+                QApplication.translate("Error Message", "Error"),
                 QApplication.translate("tilauscope_beancave",
                     "The roast file could not be read.")
                 + f"\n{meta.filename}",
@@ -535,7 +535,7 @@ class BeanTabMixin:
         if not self.alog_directory or not Path(self.alog_directory).is_dir():
             self._show_message(self,
                 QApplication.translate("tilauscope_beancave", "Directory Error"),
-                QApplication.translate("tilauscope_beancave",
+                QApplication.translate("tilauscope_common",
                     "Please select a valid ALog directory first."))
             return
         from tilauscope.alog_repair import AlogRepairDialog
@@ -580,7 +580,7 @@ class BeanTabMixin:
                     _log.error(f"Error processing bean {bean.name}: {e}")
                     # No `continue`: skipping the item leaves the cell None, and
                     # on column 0 that loses the uuid anchor the row is found by.
-                    value = QApplication.translate("tilauscope_beancave", "Error")
+                    value = QApplication.translate("Error Message", "Error")
                 item = QTableWidgetItem(value)
                 # Right-align the numeric columns. This used to write the parsed
                 # float under EditRole, which QTableWidgetItem also serves as the
@@ -994,8 +994,8 @@ class BeanTabMixin:
             rich=True,
             width=420,
             buttons=[
-                QApplication.translate("tilauscope_beancave", "Delete"),
-                QApplication.translate("tilauscope_beancave", "Cancel"),
+                QApplication.translate("Button", "Delete"),
+                QApplication.translate("Button", "Cancel"),
             ],
         )
         if reply == 0:
@@ -1132,12 +1132,12 @@ class BeanTabMixin:
             except Exception as e:
                 self._library_unreadable = True
                 _logd.error(QApplication.translate("tilauscope_beancave","Unexpected error while reading beancave.json")+f": {e}")
-                self._show_message(self, QApplication.translate("tilauscope_beancave","Error"), QApplication.translate("tilauscope_beancave","An unexpected error occurred")+f": {e}", QMessageBox.Icon.Warning)
+                self._show_message(self, QApplication.translate("Error Message","Error"), QApplication.translate("tilauscope_common","An unexpected error occurred")+f": {e}", QMessageBox.Icon.Warning)
         else:
             if str(self.beancave_directory) != "":
                 self._library_unreadable = beancave_file_path.exists()
                 _logd.error(QApplication.translate("tilauscope_beancave","Directory or file access is not possible"))
-                self._show_message(self, QApplication.translate("tilauscope_beancave","Error"), QApplication.translate("tilauscope_beancave","Directory or file access is not possible"), QMessageBox.Icon.Warning)
+                self._show_message(self, QApplication.translate("Error Message","Error"), QApplication.translate("tilauscope_beancave","Directory or file access is not possible"), QMessageBox.Icon.Warning)
             else:
                 # call first bean assist
                 _logd.debug("bean cave is empty, run first bean assistant")
@@ -1152,7 +1152,7 @@ class BeanTabMixin:
         """
         if getattr(self, '_library_unreadable', False):
             self._show_message(self,
-                QApplication.translate("tilauscope_beancave", "Save Error"),
+                QApplication.translate("tilauscope_common", "Save Error"),
                 QApplication.translate("tilauscope_beancave",
                     "The bean library file could not be read, so nothing is saved over it. "
                     "Repair or restore beancave.json, then reopen BeanCave."),
@@ -1175,13 +1175,13 @@ class BeanTabMixin:
             except Exception as e:
                 _logd.error(f'Error writing to beancave.json: {e}')
                 self._show_message(self,
-                                    QApplication.translate("tilauscope_beancave","Save Error"),
+                                    QApplication.translate("tilauscope_common","Save Error"),
                                     QApplication.translate("tilauscope_beancave","Unable to save file") + f" '{beancave_file_path}'. " +
-                                    QApplication.translate("tilauscope_beancave","Error")+f": {e}", QMessageBox.Icon.Warning)
+                                    QApplication.translate("Error Message","Error")+f": {e}", QMessageBox.Icon.Warning)
                 return False
         else:
             self._show_message(self,
-                                QApplication.translate("tilauscope_beancave","Save Error"),
+                                QApplication.translate("tilauscope_common","Save Error"),
                                 QApplication.translate("tilauscope_beancave","Please select a directory to store the JSON beancave file and where your alog files are located. Then exit BeanCave and relaunch it!"),
                                 QMessageBox.Icon.Warning)
         return False
@@ -1349,7 +1349,7 @@ class BeanTabMixin:
             if index < 0:  # 0 is the first entry, not "not found"
                 # "Other" when the list has one; otherwise no guess — the last
                 # entry is a real value (Liberica, a blend component…).
-                index = combo.findText(QApplication.translate("tilauscope_beancave", "Other"))
+                index = combo.findText(QApplication.translate("tilauscope_common", "Other"))
             if index >= 0:
                 combo.setCurrentIndex(index)
         self.name_input.setText(bean.name)
@@ -1383,6 +1383,6 @@ class BeanTabMixin:
     def _on_bean_ai_error(self, message):
         self.ai_progress.close()
         self._show_message(self,
-                            QApplication.translate("tilauscope_beancave","AI Error"),
-                            QApplication.translate("tilauscope_beancave","Failed to extract bean data")+f": {message}",
+                            QApplication.translate("tilauscope_common","AI Error"),
+                            QApplication.translate("tilauscope_common","Failed to extract bean data")+f": {message}",
                             QMessageBox.Icon.Warning)

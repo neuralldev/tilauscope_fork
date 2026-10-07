@@ -374,20 +374,20 @@ def _milestone_label(i: int) -> str:
     """Translated milestone name. One literal per case — a table built in a
     loop would be invisible to the string extractor."""
     if i == 0:
-        return QApplication.translate('tilauscope', 'CHARGE')
+        return QApplication.translate('Label', 'CHARGE')
     if i == 1:
-        return QApplication.translate('tilauscope', 'DRY END')
+        return QApplication.translate('Label', 'DRY END')
     if i == 2:
-        return QApplication.translate('tilauscope', 'FIRST CRACK')
+        return QApplication.translate('tilauscope_common', 'FIRST CRACK')
     if i == 3:
-        return QApplication.translate('tilauscope', 'FC END')
+        return QApplication.translate('Label', 'FC END')
     if i == 4:
-        return QApplication.translate('tilauscope', 'SECOND CRACK')
+        return QApplication.translate('tilauscope_graph', 'SECOND CRACK')
     if i == 5:
-        return QApplication.translate('tilauscope', 'SC END')
+        return QApplication.translate('Label', 'SC END')
     if i == 6:
-        return QApplication.translate('tilauscope', 'DROP')
-    return QApplication.translate('tilauscope', 'COOL END')
+        return QApplication.translate('Label', 'DROP')
+    return QApplication.translate('HelpDlg', 'COOL END')
 
 
 def _sample_temp_c(raw: Any, mode: str) -> float | None:
@@ -454,16 +454,16 @@ def readout_parts(t: float, temp_c: float | None, air_c: float | None,
     """
     parts: list[tuple[str, str, str]] = [('', fmt_clock(t), THEME['TEXT'])]
     if temp_c is not None:
-        parts.append((QApplication.translate('tilauscope', 'Bean'),
+        parts.append((QApplication.translate('tilauscope_common', 'Bean'),
                       f'{int(round(temp_c))}°', grain))
     if air_c is not None:
-        parts.append((QApplication.translate('tilauscope', 'Air'),
+        parts.append((QApplication.translate('ComboBox', 'Air'),
                       f'{int(round(air_c))}°', air))
     if ror_c is not None:
-        parts.append((QApplication.translate('tilauscope', 'Rise'),
+        parts.append((QApplication.translate('tilauscope_graph', 'Rise'),
                       f'{ror_c:.1f}°/min', rise))
     if machine_c is not None:
-        parts.append((QApplication.translate('tilauscope', 'Machine response'),
+        parts.append((QApplication.translate('tilauscope_graph', 'Machine response'),
                       f'{machine_c:.1f}°/min', machine_rise))
     return parts
 
@@ -483,7 +483,7 @@ class _Drag:
 def _disorder_text() -> str:
     """Why an idle profile offers no milestone correction on the curve."""
     return QApplication.translate(
-        'tilauscope', 'Milestones out of order — right-click a ⚠ mark to remove it')
+        'tilauscope_graph', 'Milestones out of order — right-click a ⚠ mark to remove it')
 
 
 class RoastCurveWidget(QWidget):
@@ -614,8 +614,8 @@ class RoastCurveWidget(QWidget):
         _row = QHBoxLayout(self._view_btn)
         _row.setContentsMargins(0, 0, 0, 0)
         _row.setSpacing(0)
-        self._seg_full = QPushButton(QApplication.translate('tilauscope', 'Full scale'))
-        self._seg_closeup = QPushButton(QApplication.translate('tilauscope', 'Charge to drop'))
+        self._seg_full = QPushButton(QApplication.translate('tilauscope_graph', 'Full scale'))
+        self._seg_closeup = QPushButton(QApplication.translate('tilauscope_graph', 'Charge to drop'))
         for _b in (self._seg_full, self._seg_closeup):
             _b.setCheckable(True)
             _b.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -654,8 +654,8 @@ class RoastCurveWidget(QWidget):
         _prow = QHBoxLayout(self._pid_btn)
         _prow.setContentsMargins(0, 0, 0, 0)
         _prow.setSpacing(0)
-        self._pid_on = QPushButton(QApplication.translate('tilauscope', 'PID ON'))
-        self._pid_off = QPushButton(QApplication.translate('tilauscope', 'PID OFF'))
+        self._pid_on = QPushButton(QApplication.translate('StatusBar', 'PID ON'))
+        self._pid_off = QPushButton(QApplication.translate('Message', 'PID OFF'))
         for _b in (self._pid_on, self._pid_off):
             _b.setCheckable(True)
             _b.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -677,7 +677,7 @@ class RoastCurveWidget(QWidget):
         self._switch_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._switch_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._switch_btn.setToolTip(QApplication.translate(
-            'tilauscope', 'Swap the foreground roast and the background curve'))
+            'tilauscope_graph', 'Swap the foreground roast and the background curve'))
         self._switch_btn.setStyleSheet(f"""
             QToolButton {{
                 background-color: {THEME['SURFACE']};
@@ -712,14 +712,14 @@ class RoastCurveWidget(QWidget):
         _pill.setSpacing(6)
         self._unsaved_label = QLabel()
         self._unsaved_label.setObjectName('unsavedText')
-        _undo = QPushButton(QApplication.translate('tilauscope', 'Undo'))
+        _undo = QPushButton(QApplication.translate('tilauscope_graph', 'Undo'))
         _undo.setObjectName('unsavedUndo')
         _undo.setToolTip(QApplication.translate(
-            'tilauscope', 'Put the milestones back as the file has them'))
-        _save = QPushButton(QApplication.translate('tilauscope', 'Save'))
+            'tilauscope_graph', 'Put the milestones back as the file has them'))
+        _save = QPushButton(QApplication.translate('Message', 'Save'))
         _save.setObjectName('unsavedSave')
         _save.setToolTip(QApplication.translate(
-            'tilauscope', 'Write the corrected milestones into the roast file'))
+            'tilauscope_graph', 'Write the corrected milestones into the roast file'))
         for _b in (_undo, _save):
             _b.setCursor(Qt.CursorShape.PointingHandCursor)
             _b.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -873,7 +873,7 @@ class RoastCurveWidget(QWidget):
         if not changed:
             return ''
         if len(changed) > 1:
-            return QApplication.translate('tilauscope', '{0} milestones corrected').format(len(changed))
+            return QApplication.translate('tilauscope_graph', '{0} milestones corrected').format(len(changed))
 
         # The file's own clock, from the CHARGE it holds: the clock drawn starts
         # at the new one, and a CHARGE read there always lands on 0:00.
@@ -885,7 +885,7 @@ class RoastCurveWidget(QWidget):
 
         i = changed[0]
         if not marked(saved, i):
-            return QApplication.translate('tilauscope', '{0} added at {1}').format(
+            return QApplication.translate('tilauscope_graph', '{0} added at {1}').format(
                 _milestone_label(i), clock(now[i]))
         return f'{_milestone_label(i)}  {clock(saved[i])} → {clock(now[i])}'
 
@@ -966,9 +966,9 @@ class RoastCurveWidget(QWidget):
         self._pid_on.setChecked(active)
         self._pid_off.setChecked(not active)
         if active:
-            tip = QApplication.translate('tilauscope', 'Disable TilauPID preheating')
+            tip = QApplication.translate('tilauscope_graph', 'Disable TilauPID preheating')
         else:
-            tip = QApplication.translate('tilauscope', 'Enable TilauPID preheating')
+            tip = QApplication.translate('tilauscope_graph', 'Enable TilauPID preheating')
         self._pid_on.setToolTip(tip)
         self._pid_off.setToolTip(tip)
         if self._pid_btn.isVisible() != preheating:
@@ -1147,16 +1147,16 @@ class RoastCurveWidget(QWidget):
         # side across and empties the other, and the tooltip says which.
         if locked:
             tooltip = QApplication.translate(
-                'tilauscope', 'Profile swap is locked while monitoring or roasting')
+                'tilauscope_graph', 'Profile swap is locked while monitoring or roasting')
         elif foreground and background:
             tooltip = QApplication.translate(
-                'tilauscope', 'Swap the foreground roast and the background curve')
+                'tilauscope_graph', 'Swap the foreground roast and the background curve')
         elif foreground:
             tooltip = QApplication.translate(
-                'tilauscope', 'Send this roast to the background curve — the foreground is cleared')
+                'tilauscope_graph', 'Send this roast to the background curve — the foreground is cleared')
         else:
             tooltip = QApplication.translate(
-                'tilauscope', 'Bring the background curve to the foreground')
+                'tilauscope_graph', 'Bring the background curve to the foreground')
         if self._switch_btn.toolTip() != tooltip:
             self._switch_btn.setToolTip(tooltip)
         # The glyph shows the move before the tooltip names it: ⤓ into the
@@ -1487,7 +1487,7 @@ class RoastCurveWidget(QWidget):
             painter.setPen(QPen(state))
             painter.drawText(QRectF(r.left() + 6.0, y - 18.0, 220.0, 16.0),
                              int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom),
-                             QApplication.translate('tilauscope', 'target {0}°').format(
+                             QApplication.translate('tilauscope_graph', 'target {0}°').format(
                                  fmt_temp(getattr(preheat, 'target', target_c))))
 
         points = QPolygonF()
@@ -1663,7 +1663,7 @@ class RoastCurveWidget(QWidget):
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
     def _draw_ready_badge(self, painter: QPainter, head: QPointF) -> None:
-        text = QApplication.translate('tilauscope', 'CHARGE NOW')
+        text = QApplication.translate('tilauscope_graph', 'CHARGE NOW')
         f = QFont()
         f.setPointSize(_LEGEND_FONT_PT + 2)
         f.setBold(True)
@@ -1940,13 +1940,13 @@ class RoastCurveWidget(QWidget):
         p.setPen(text_pen)
         p.drawText(QRectF(0.0, 2.0, float(_MARGIN_LEFT) - 4.0, 16.0),
                    int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
-                   QApplication.translate('tilauscope', '°F') if self._mode == 'F'
-                   else QApplication.translate('tilauscope', '°C'))
+                   QApplication.translate('tilauscope_graph', '°F') if self._mode == 'F'
+                   else QApplication.translate('tilauscope_graph', '°C'))
         if self._rate_axis:
             p.drawText(QRectF(r.right() + 8.0, 2.0, float(_MARGIN_RIGHT) - 10.0, 16.0),
                        int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
-                       QApplication.translate('tilauscope', '°F/min') if self._mode == 'F'
-                       else QApplication.translate('tilauscope', '°C/min'))
+                       QApplication.translate('tilauscope_graph', '°F/min') if self._mode == 'F'
+                       else QApplication.translate('tilauscope_graph', '°C/min'))
 
         p.end()
         return pm
@@ -2195,7 +2195,7 @@ class RoastCurveWidget(QWidget):
         painter.setPen(QPen(QColor(THEME['OVERLAY0'])))
         painter.drawText(QRectF(x + 4.0, r.top() + 2.0, 90.0, 14.0),
                          int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
-                         QApplication.translate('tilauscope', 'FC planned'))
+                         QApplication.translate('tilauscope_graph', 'FC planned'))
 
     def _draw_milestones(self, painter: QPainter, timex: list[Any], temp2: list[Any],
                          mode: str, timeindex: list[Any], tp_index: int,
@@ -2234,7 +2234,7 @@ class RoastCurveWidget(QWidget):
             t = float(timex[tp_index])
             if self._t_min <= t <= self._t_max:
                 raw = temp2[tp_index] if tp_index < len(temp2) else None
-                marks.append((t, QApplication.translate('tilauscope', 'TP'),
+                marks.append((t, QApplication.translate('ComboBox', 'TP'),
                               _sample_temp_c(raw, mode), -1))
 
         if not marks:
@@ -2591,25 +2591,25 @@ class RoastCurveWidget(QWidget):
         """The trace legend, with phase grounds and rates only when they were painted."""
         painter.setClipping(False)
         legend: list[tuple[str, str, str]] = [
-            (self._grain_colour(), QApplication.translate('tilauscope', 'Bean'), 'line'),
+            (self._grain_colour(), QApplication.translate('tilauscope_common', 'Bean'), 'line'),
         ]
         if rise:
             legend.append((self._rise_colour(),
-                           QApplication.translate('tilauscope', 'Rise'), 'line'))
+                           QApplication.translate('tilauscope_graph', 'Rise'), 'line'))
         if self.show_air_temperature:
             legend.insert(1, (self._air_colour(),
-                              QApplication.translate('tilauscope', 'Air'), 'line'))
+                              QApplication.translate('ComboBox', 'Air'), 'line'))
         if rise and self.show_machine_response:
             legend.append((self._machine_rise_colour(),
-                           QApplication.translate('tilauscope', 'Machine response'), 'dash'))
+                           QApplication.translate('tilauscope_graph', 'Machine response'), 'dash'))
         if phases:
             legend.extend((
                 (_PHASE_DRYING[0],
-                 QApplication.translate('tilauscope', 'Drying'), 'block'),
+                 QApplication.translate('Label', 'Drying'), 'block'),
                 (_PHASE_MAILLARD[0],
-                 QApplication.translate('tilauscope', 'Maillard'), 'block'),
+                 QApplication.translate('Label', 'Maillard'), 'block'),
                 (_PHASE_DEVELOPMENT[0],
-                 QApplication.translate('tilauscope', 'Development'), 'block'),
+                 QApplication.translate('Label', 'Development'), 'block'),
             ))
         self._draw_legend(painter, legend, self._plot_rect.left(),
                           self._lanes_bottom() + 30.0)
@@ -2722,12 +2722,12 @@ class RoastCurveWidget(QWidget):
         if milestone is not None and profile is not None:
             if usable:
                 tip = QApplication.translate(
-                    'tilauscope', 'Drag sideways to move {0}. Right-click it to type its time.').format(
+                    'tilauscope_graph', 'Drag sideways to move {0}. Right-click it to type its time.').format(
                         _milestone_label(milestone))
             else:
                 partner = edit.conflicts(profile.timex, profile.timeindex).get(milestone, -1)
                 tip = (QApplication.translate(
-                    'tilauscope', 'Out of order with {0} — right-click to remove it, '
+                    'tilauscope_graph', 'Out of order with {0} — right-click to remove it, '
                     'then add it back where it belongs.').format(_milestone_label(partner))
                        if partner is not None and partner >= 0 else _disorder_text())
         if self.toolTip() != tip:
@@ -2878,7 +2878,7 @@ class RoastCurveWidget(QWidget):
         self.update()
 
     def _remove_action(self, menu: QMenu, profile: edit.Profile, milestone: int) -> QAction:
-        remove = QAction('✕  ' + QApplication.translate('tilauscope', 'Remove {0}').format(
+        remove = QAction('✕  ' + QApplication.translate('tilauscope_graph', 'Remove {0}').format(
             _milestone_label(milestone)), menu)
         remove.triggered.connect(
             lambda _checked=False, p=profile, m=milestone: self._remove_milestone(p, m))
@@ -2947,7 +2947,7 @@ class RoastCurveWidget(QWidget):
         reading = DASH if temp_c is None else f'{int(round(convertTemp(temp_c, "C", mode)))}°'
         lines = [f'{_milestone_label(drag.milestone)}  {fmt_clock(t)}  {reading}']
         if drag.proposal.limit is not None:
-            lines.append(QApplication.translate('tilauscope', 'Limit: {0}').format(
+            lines.append(QApplication.translate('tilauscope_graph', 'Limit: {0}').format(
                 _milestone_label(drag.proposal.limit)))
         font = QFont()
         font.setPointSize(_MARK_FONT_PT)
@@ -3121,7 +3121,7 @@ class RoastCurveWidget(QWidget):
             return None
         menu.addSeparator()
         action = QAction(
-            QApplication.translate('tilauscope', 'Remove reference curve'), menu)
+            QApplication.translate('tilauscope_graph', 'Remove reference curve'), menu)
         action.triggered.connect(self._clear_background)
         menu.addAction(action)
         return action
@@ -3143,7 +3143,7 @@ class RoastCurveWidget(QWidget):
             flagged = edit.conflicts(profile.timex, profile.timeindex)
             if milestone in flagged:
                 menu.addAction(self._menu_heading(menu, QApplication.translate(
-                    'tilauscope', '{0} is out of order').format(_milestone_label(milestone))))
+                    'tilauscope_graph', '{0} is out of order').format(_milestone_label(milestone))))
                 menu.addAction(self._remove_action(menu, profile, milestone))
                 menu.addSeparator()
             elif self._plot_rect.contains(pos):
@@ -3158,7 +3158,7 @@ class RoastCurveWidget(QWidget):
             span = edit.interval(profile, milestone)
             if span is not None and span[0] < span[1]:
                 change = QAction(QApplication.translate(
-                    'tilauscope', 'Change the time of {0}…').format(_milestone_label(milestone)), menu)
+                    'tilauscope_graph', 'Change the time of {0}…').format(_milestone_label(milestone)), menu)
                 change.triggered.connect(
                     lambda _checked=False, p=profile, m=milestone: self._type_milestone_time(p, m))
                 menu.addAction(change)
@@ -3171,14 +3171,14 @@ class RoastCurveWidget(QWidget):
         start = edit.origin(profile)
         found = edit.propose_add(profile, self._t_for_x(pos.x()) + start)
         if found is None:
-            nothing = QAction(QApplication.translate('tilauscope', 'No milestone to add here'), menu)
+            nothing = QAction(QApplication.translate('tilauscope_graph', 'No milestone to add here'), menu)
             nothing.setEnabled(False)
             menu.addAction(nothing)
         else:
             index, milestones = found
             self._menu_t = profile.timex[index] - start
             menu.addAction(self._menu_heading(menu, QApplication.translate(
-                'tilauscope', 'Add a milestone at {0}').format(fmt_clock(self._menu_t))))
+                'tilauscope_graph', 'Add a milestone at {0}').format(fmt_clock(self._menu_t))))
             for candidate in milestones:
                 add = QAction(_milestone_label(candidate), menu)
                 add.triggered.connect(
@@ -3206,7 +3206,7 @@ class RoastCurveWidget(QWidget):
             self._add_correction_actions(menu, QPointF(event.pos()))
         except Exception:
             report_once('RoastCurveWidget: milestone menu')
-        air = QAction(QApplication.translate('tilauscope', 'Air temperature'), menu)
+        air = QAction(QApplication.translate('tilauscope_graph', 'Air temperature'), menu)
         air.setCheckable(True)
         air.setChecked(self._static_air if self._comparison else self.show_air_temperature)
         # A roast recorded with the air probe off has nothing to trace, and an
@@ -3215,14 +3215,14 @@ class RoastCurveWidget(QWidget):
         if not self._has_air_readings():
             air.setEnabled(False)
             air.setToolTip(QApplication.translate(
-                'tilauscope', 'This roast carries no air temperature'))
+                'tilauscope_graph', 'This roast carries no air temperature'))
         # Above the rate it belongs to, because that is the order they are read
         # in: what the air IS, then how fast it is moving.
         air.toggled.connect(self._set_air_temperature)
         if et_available_for(self._aw):
             menu.addAction(air)
 
-        act = QAction(QApplication.translate('tilauscope', 'Machine response'), menu)
+        act = QAction(QApplication.translate('tilauscope_graph', 'Machine response'), menu)
         act.setCheckable(True)
         act.setChecked(self.show_machine_response)
         # It moves before the bean does: the only trace that says a burner change
@@ -3235,14 +3235,14 @@ class RoastCurveWidget(QWidget):
             menu.addAction(act)
 
         menu.addSeparator()
-        lanes = QAction(QApplication.translate('tilauscope', 'One lane per channel'), menu)
+        lanes = QAction(QApplication.translate('tilauscope_graph', 'One lane per channel'), menu)
         lanes.setCheckable(True)
         lanes.setChecked(self._lane_mode == _LANE_MODE_LANES)
         lanes.triggered.connect(lambda: self._set_lane_mode(_LANE_MODE_LANES))
         menu.addAction(lanes)
 
         burner = QAction(
-            QApplication.translate('tilauscope', 'Burner traced, others as gestures'), menu)
+            QApplication.translate('tilauscope_graph', 'Burner traced, others as gestures'), menu)
         burner.setCheckable(True)
         burner.setChecked(self._lane_mode == _LANE_MODE_BURNER)
         burner.triggered.connect(lambda: self._set_lane_mode(_LANE_MODE_BURNER))
@@ -3256,7 +3256,7 @@ class RoastCurveWidget(QWidget):
         # A saved roast draws the rate its file holds: the level would only
         # change the live session's, out of sight.
         if not self._comparison:
-            smoothing = menu.addMenu(QApplication.translate('tilauscope', 'Rate of rise'))
+            smoothing = menu.addMenu(QApplication.translate('tilauscope_common', 'Rate of rise'))
             smoothing.setStyleSheet(menu_qss())
             qmc = getattr(self._aw, 'qmc', None)
             chosen = smooth.current(qmc) if qmc is not None else ''
@@ -3545,7 +3545,7 @@ class RoastCurveWidget(QWidget):
         painter.setPen(QPen(QColor(THEME['OVERLAY1'])))
         painter.drawText(QRectF(band.left() + 6.0, band.top() + 2.0, 160.0, 14.0),
                          int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter),
-                         QApplication.translate('tilauscope', 'Gap to {0}').format(ref.title))
+                         QApplication.translate('tilauscope_graph', 'Gap to {0}').format(ref.title))
         painter.drawText(QRectF(band.right() - 86.0, band.top() + 2.0, 80.0, 14.0),
                          int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
                          f'\u00b1{fmt_temp(span)} \u00b0{ref.mode}')
@@ -3824,23 +3824,23 @@ class RoastCurveWidget(QWidget):
             # warning said three ways is a warning read none. A simulation is its
             # own case: the replay is armed and waits for the operator.
             if simulating and not recording:
-                headline = QApplication.translate('tilauscope', 'Simulation ready')
+                headline = QApplication.translate('tilauscope_graph', 'Simulation ready')
                 if monitoring:
-                    detail = QApplication.translate('tilauscope', 'Press START to replay {0}.')
+                    detail = QApplication.translate('tilauscope_graph', 'Press START to replay {0}.')
                 else:
-                    detail = QApplication.translate('tilauscope', 'Turn monitoring on, then START to replay {0}.')
+                    detail = QApplication.translate('tilauscope_graph', 'Turn monitoring on, then START to replay {0}.')
                 detail = detail.format(simulation_source(self._aw))
             elif not monitoring:
-                headline = QApplication.translate('tilauscope', 'No roast recorded')
-                detail = QApplication.translate('tilauscope', 'The curve starts when the charge is marked.')
+                headline = QApplication.translate('tilauscope_graph', 'No roast recorded')
+                detail = QApplication.translate('tilauscope_graph', 'The curve starts when the charge is marked.')
             elif no_meter:
-                headline = QApplication.translate('tilauscope', 'No meter connected')
-                detail = QApplication.translate('tilauscope', 'Configure a device in Machine > Device.')
+                headline = QApplication.translate('tilauscope_graph', 'No meter connected')
+                detail = QApplication.translate('tilauscope_graph', 'Configure a device in Machine > Device.')
             elif not _readings(temp2, 1):
-                headline = QApplication.translate('tilauscope', 'Waiting for the machine')
-                detail = QApplication.translate('tilauscope', 'The curve starts with the first temperature reading.')
+                headline = QApplication.translate('tilauscope_graph', 'Waiting for the machine')
+                detail = QApplication.translate('tilauscope_graph', 'The curve starts with the first temperature reading.')
             else:
-                headline = QApplication.translate('tilauscope', 'Waiting for charge')
+                headline = QApplication.translate('tilauscope_graph', 'Waiting for charge')
                 detail = ''
             r = self._plot_rect
             f = QFont()

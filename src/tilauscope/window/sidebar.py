@@ -181,16 +181,16 @@ class TriggeredAlarmBadge(QFrame):
             # guard is configured.  Therefore alarm #1 is represented by 0 and
             # must not be rejected by a ``> 0`` check.
             if alarm.previous_alarm >= 0:
-                condition = QApplication.translate("tilauscope_window", "IF ALARM")
+                condition = QApplication.translate("tilauscope_common", "IF ALARM")
                 referenced_alarm = alarm.previous_alarm
             elif alarm.not_alarm >= 0:
-                condition = QApplication.translate("tilauscope_window", "IF NOT ALARM")
+                condition = QApplication.translate("tilauscope_common", "IF NOT ALARM")
                 referenced_alarm = alarm.not_alarm
             else:
                 # Defensive fallback for an invalid/incomplete IF ALARM entry:
                 # keep the live-events sidebar operational instead of using an
                 # uninitialised ``header`` variable.
-                condition = QApplication.translate("tilauscope_window", "IF ALARM")
+                condition = QApplication.translate("tilauscope_common", "IF ALARM")
                 referenced_alarm = None
 
             reference = f" #{referenced_alarm + 1}," if referenced_alarm is not None else ""

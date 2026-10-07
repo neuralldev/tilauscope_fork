@@ -59,12 +59,12 @@ from tilauscope.theme_qss import apply_tilau_theme
 
 def _zone_title(zone: str) -> str:
     return {
-        'essentials': QApplication.translate("tilauscope_beancave", "Essentials"),
-        'provenance': QApplication.translate("tilauscope_beancave", "Provenance"),
-        'characteristics': QApplication.translate("tilauscope_beancave", "Characteristics"),
-        'sensory': QApplication.translate("tilauscope_beancave", "Sensory & notes"),
+        'essentials': QApplication.translate("tilauscope_common", "Essentials"),
+        'provenance': QApplication.translate("tilauscope_common", "Provenance"),
+        'characteristics': QApplication.translate("CheckBox", "Characteristics"),
+        'sensory': QApplication.translate("tilauscope_common", "Sensory & notes"),
         'all': QApplication.translate("tilauscope_beancave", "New bean (expert)"),
-    }.get(zone, QApplication.translate("tilauscope_beancave", "Edit"))
+    }.get(zone, QApplication.translate("Menu", "Edit"))
 
 
 
@@ -122,7 +122,7 @@ class _AwFloatWindow(QDialog):
     def update_value(self, wa: float) -> None:
         self._value = wa
         self._value_lbl.setText(f"{wa:.2f}")
-        self._hint_lbl.setText(QApplication.translate("tilauscope_beancave", "tap to use"))
+        self._hint_lbl.setText(QApplication.translate("tilauscope_common", "tap to use"))
 
     def set_status(self, text: str) -> None:
         self._hint_lbl.setText(text)
@@ -154,7 +154,7 @@ class ZoneEditorDialog(QDialog):
         self._density_was_connected = False
         self._aw_win: _AwFloatWindow | None = None
 
-        self.setWindowTitle(QApplication.translate("tilauscope_beancave", "Edit"))
+        self.setWindowTitle(QApplication.translate("Menu", "Edit"))
         self.setMinimumWidth(720 if zone == 'all' else 560)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
@@ -255,11 +255,11 @@ class ZoneEditorDialog(QDialog):
 
         nav = QHBoxLayout()
         nav.addStretch(1)
-        cancel_btn = QPushButton(QApplication.translate("tilauscope_beancave", "Cancel"))
+        cancel_btn = QPushButton(QApplication.translate("Button", "Cancel"))
         cancel_btn.setStyleSheet(self._btn_style(THEME['SUBTEXT'], THEME['BORDER']))
         cancel_btn.clicked.connect(self.reject)
         nav.addWidget(cancel_btn)
-        save_btn = QPushButton("✓ " + (QApplication.translate("tilauscope_beancave", "Create") if create else QApplication.translate("tilauscope_beancave", "Save")))
+        save_btn = QPushButton("✓ " + (QApplication.translate("tilauscope_beancave", "Create") if create else QApplication.translate("Message", "Save")))
         save_btn.setStyleSheet(self._btn_style(THEME['SUCCESS'], THEME['SUCCESS'],
                                                "rgba(166,227,161,0.10)"))
         save_btn.clicked.connect(self._save)
@@ -307,7 +307,7 @@ class ZoneEditorDialog(QDialog):
         b = self._bean
         self.name_edit = QLineEdit(b.name or "")
         self.name_edit.setMinimumWidth(300)
-        self._form.addRow(self._req(QApplication.translate("tilauscope_beancave", "Bean name:")), self.name_edit)
+        self._form.addRow(self._req(QApplication.translate("tilauscope_common", "Bean name:")), self.name_edit)
 
         self.country_combo = QComboBox()
         self.country_combo.setMinimumWidth(260)
@@ -330,24 +330,24 @@ class ZoneEditorDialog(QDialog):
         self.stock_spin.setSuffix(" g")
         self.stock_spin.setValue(getattr(b, 'weight_left', 0.0) or 0.0)
         self.stock_spin.setToolTip(QApplication.translate("tilauscope_beancave", "Remaining stock. With a scale configured, click the ⚖ reading to capture the exact weight."))
-        self._form.addRow(QApplication.translate("tilauscope_beancave", "Stock:"), self.stock_spin)
+        self._form.addRow(QApplication.translate("tilauscope_common", "Stock:"), self.stock_spin)
 
     def _build_provenance(self) -> None:
         b = self._bean
         self.farm_edit = QLineEdit(b.farm or "")
         self.farm_edit.setMinimumWidth(300)
-        self._form.addRow(QApplication.translate("tilauscope_beancave", "Farm:"), self.farm_edit)
+        self._form.addRow(QApplication.translate("tilauscope_common", "Farm:"), self.farm_edit)
         self.supplier_edit = QLineEdit(b.supplier or "")
         self.supplier_edit.setMinimumWidth(300)
-        self._form.addRow(QApplication.translate("tilauscope_beancave", "Supplier:"), self.supplier_edit)
+        self._form.addRow(QApplication.translate("tilauscope_common", "Supplier:"), self.supplier_edit)
         self.altitude_spin = QSpinBox()
         self.altitude_spin.setRange(0, 3000)
         self.altitude_spin.setSuffix(" m")
         self.altitude_spin.setValue(int(getattr(b, 'altitude', 0) or 0))
-        self._form.addRow(QApplication.translate("tilauscope_beancave", "Altitude:"), self.altitude_spin)
+        self._form.addRow(QApplication.translate("tilauscope_common", "Altitude:"), self.altitude_spin)
         self.price_spin = price_per_kg_spin()
         self.price_spin.setValue(float(getattr(b, 'price_per_kg', 0.0) or 0.0))
-        self._form.addRow(QApplication.translate("tilauscope_beancave", "Price:"), self.price_spin)
+        self._form.addRow(QApplication.translate("tilauscope_common", "Price:"), self.price_spin)
 
     def _build_characteristics(self) -> None:
         b = self._bean
@@ -355,14 +355,14 @@ class ZoneEditorDialog(QDialog):
 
         self.type_combo = QComboBox()
         self.type_combo.setMinimumWidth(220)
-        self.type_combo.addItems([QApplication.translate("tilauscope_beancave", "Single origin"), QApplication.translate("tilauscope_beancave", "Blend")])
+        self.type_combo.addItems([QApplication.translate("tilauscope_common", "Single origin"), QApplication.translate("tilauscope_beancave", "Blend")])
         self.type_combo.setCurrentIndex(1 if getattr(b, 'is_blend', False) else 0)
         self.type_combo.currentIndexChanged.connect(self._refresh_blend_visibility)
         self._form.addRow(QApplication.translate("tilauscope_beancave", "Type:"), self.type_combo)
 
         # blend components (hidden for single origin)
         varieties_all = list((getattr(host, 'coffee_bean_types', {}) or {}).get('Arabica', []) or [])
-        varieties_all.append(QApplication.translate("tilauscope_beancave", "Other"))
+        varieties_all.append(QApplication.translate("tilauscope_common", "Other"))
         self._blend_w = QWidget()
         bl = QFormLayout(self._blend_w)
         bl.setContentsMargins(0, 0, 0, 0)
@@ -386,7 +386,7 @@ class ZoneEditorDialog(QDialog):
         r2 = QHBoxLayout()
         r2.addWidget(self.bean2_combo, 1)
         r2.addWidget(self.bean2_ratio_spin)
-        bl.addRow(QApplication.translate("tilauscope_beancave", "Component 2:"), r2)
+        bl.addRow(QApplication.translate("tilauscope_common", "Component 2:"), r2)
         self.bean3_combo = QComboBox()
         self.bean3_combo.addItems([""] + varieties_all)
         select_listed_or_other(self.bean3_combo, getattr(b, 'bean3_name', '') or "")
@@ -398,7 +398,7 @@ class ZoneEditorDialog(QDialog):
         r3 = QHBoxLayout()
         r3.addWidget(self.bean3_combo, 1)
         r3.addWidget(self.bean3_ratio_spin)
-        bl.addRow(QApplication.translate("tilauscope_beancave", "Component 3:"), r3)
+        bl.addRow(QApplication.translate("tilauscope_common", "Component 3:"), r3)
         self._form.addRow("", self._blend_w)
 
         self.category_combo = QComboBox()
@@ -406,26 +406,26 @@ class ZoneEditorDialog(QDialog):
         self.category_combo.addItems([""] + list(getattr(host, 'coffee_beans_categories', []) or []))
         self.category_combo.setCurrentText(b.category or "")
         self.category_combo.currentTextChanged.connect(self._refresh_processes)
-        self._form.addRow(self._req(QApplication.translate("tilauscope_beancave", "Category:")), self.category_combo)
+        self._form.addRow(self._req(QApplication.translate("tilauscope_common", "Category:")), self.category_combo)
 
         self.process_combo = QComboBox()
         self.process_combo.setMinimumWidth(300)
         self._refresh_processes(b.category or "")
         select_listed_or_other(self.process_combo, b.process or "")
-        self._form.addRow(self._req(QApplication.translate("tilauscope_beancave", "Process:")), self.process_combo)
+        self._form.addRow(self._req(QApplication.translate("tilauscope_common", "Process:")), self.process_combo)
 
         self.species_combo = QComboBox()
         self.species_combo.setMinimumWidth(260)
         self.species_combo.addItems([""] + list(getattr(host, 'coffee_beans_species', []) or []))
         self.species_combo.setCurrentText(b.species or "")
         self.species_combo.currentTextChanged.connect(self._refresh_varieties)
-        self._form.addRow(self._req(QApplication.translate("tilauscope_beancave", "Species:")), self.species_combo)
+        self._form.addRow(self._req(QApplication.translate("tilauscope_common", "Species:")), self.species_combo)
 
         self.varieties_combo = QComboBox()
         self.varieties_combo.setMinimumWidth(320)
         self._refresh_varieties(b.species or "")
         select_listed_or_other(self.varieties_combo, b.varieties or "")
-        self._form.addRow(self._req(QApplication.translate("tilauscope_beancave", "Varieties:")), self.varieties_combo)
+        self._form.addRow(self._req(QApplication.translate("tilauscope_common", "Varieties:")), self.varieties_combo)
 
         self.density_spin = QDoubleSpinBox()
         self.density_spin.setRange(0.0, 800.0)
@@ -442,32 +442,32 @@ class ZoneEditorDialog(QDialog):
             dr = QHBoxLayout()
             dr.addWidget(self.density_spin, 1)
             dr.addWidget(measure_btn)
-            self._form.addRow(QApplication.translate("tilauscope_beancave", "Density:"), dr)
+            self._form.addRow(QApplication.translate("tilauscope_common", "Density:"), dr)
         else:
-            self._form.addRow(QApplication.translate("tilauscope_beancave", "Density:"), self.density_spin)
+            self._form.addRow(QApplication.translate("tilauscope_common", "Density:"), self.density_spin)
 
         self.humidity_spin = QDoubleSpinBox()
         self.humidity_spin.setRange(0.0, 15.0)
         self.humidity_spin.setDecimals(1)
         self.humidity_spin.setSuffix(" %")
         self.humidity_spin.setValue(getattr(b, 'last_humidity', 0.0) or 0.0)
-        self._form.addRow(QApplication.translate("tilauscope_beancave", "Humidity:"), self.humidity_spin)
+        self._form.addRow(QApplication.translate("tilauscope_common", "Humidity:"), self.humidity_spin)
 
         self.wa_spin = QDoubleSpinBox()
         self.wa_spin.setRange(0.0, 2.0)
         self.wa_spin.setDecimals(2)
         self.wa_spin.setSingleStep(0.01)
         self.wa_spin.setValue(getattr(b, 'water_activity', 0.0) or 0.0)
-        self._form.addRow(QApplication.translate("tilauscope_beancave", "Water activity:"), self.wa_spin)
+        self._form.addRow(QApplication.translate("tilauscope_common", "Water activity:"), self.wa_spin)
 
         self.screen_combo = QComboBox()
         self.screen_combo.setMinimumWidth(260)
         for key, label in screen_size_options():
             self.screen_combo.addItem(label, key)
         self._set_screen_size(getattr(b, 'screen_size', '') or '')
-        self.screen_combo.setToolTip(QApplication.translate("tilauscope_beancave",
+        self.screen_combo.setToolTip(QApplication.translate("tilauscope_common",
             "Use the size given on the supplier sheet (AA, Supremo, 17/18…). Leave Unknown if it is not stated."))
-        self._form.addRow(QApplication.translate("tilauscope_beancave", "Screen size:"), self.screen_combo)
+        self._form.addRow(QApplication.translate("tilauscope_common", "Screen size:"), self.screen_combo)
 
         self._refresh_blend_visibility()
 
@@ -481,17 +481,17 @@ class ZoneEditorDialog(QDialog):
         self.sca_spin.setRange(0.0, 100.0)
         self.sca_spin.setDecimals(1)
         self.sca_spin.setValue(getattr(b, 'sca', 0.0) or 0.0)
-        self._form.addRow(QApplication.translate("tilauscope_beancave", "SCA score:"), self.sca_spin)
+        self._form.addRow(QApplication.translate("tilauscope_common", "SCA score:"), self.sca_spin)
 
         self.flavour_edit = QLineEdit(b.flavour_notes or "")
         self.flavour_edit.setMinimumWidth(280)
-        wheel_btn = QPushButton("🎡 " + QApplication.translate("tilauscope_beancave", "Flavors"))
+        wheel_btn = QPushButton("🎡 " + QApplication.translate("tilauscope_common", "Flavors"))
         wheel_btn.setStyleSheet(self._btn_style(THEME['ACCENT'], THEME['BORDER']))
         wheel_btn.clicked.connect(self._open_flavor_wheel)
         fr = QHBoxLayout()
         fr.addWidget(self.flavour_edit, 1)
         fr.addWidget(wheel_btn)
-        self._form.addRow(QApplication.translate("tilauscope_beancave", "Flavour notes:"), fr)
+        self._form.addRow(QApplication.translate("tilauscope_common", "Flavour notes:"), fr)
 
         self.tips_edit = QPlainTextEdit(getattr(b, 'tips', '') or "")
         self.tips_edit.setFixedHeight(80)
@@ -508,7 +508,7 @@ class ZoneEditorDialog(QDialog):
         self.process_combo.blockSignals(True)
         self.process_combo.clear()
         self.process_combo.addItems([""] + list(methods.get(category, []) or [])
-                                    + [QApplication.translate("tilauscope_beancave", "Other")])
+                                    + [QApplication.translate("tilauscope_common", "Other")])
         self.process_combo.setCurrentText(current)
         self.process_combo.blockSignals(False)
 
@@ -518,7 +518,7 @@ class ZoneEditorDialog(QDialog):
         self.varieties_combo.blockSignals(True)
         self.varieties_combo.clear()
         self.varieties_combo.addItems([""] + list(types.get(species, []) or [])
-                                      + [QApplication.translate("tilauscope_beancave", "Other")])
+                                      + [QApplication.translate("tilauscope_common", "Other")])
         self.varieties_combo.setCurrentText(current)
         self.varieties_combo.blockSignals(False)
 
@@ -618,8 +618,8 @@ class ZoneEditorDialog(QDialog):
     def _on_ai_parse_error(self, message: str) -> None:
         self._ai_progress.close()
         show_styled_message(self,
-            QApplication.translate("tilauscope_beancave", "AI Error"),
-            QApplication.translate("tilauscope_beancave", "Failed to extract bean data") + f": {message}",
+            QApplication.translate("tilauscope_common", "AI Error"),
+            QApplication.translate("tilauscope_common", "Failed to extract bean data") + f": {message}",
             QMessageBox.Icon.Warning)
 
     # ── create gate: required fields drive the Create button ────────────────
@@ -747,7 +747,7 @@ class ZoneEditorDialog(QDialog):
                     if last > 0:
                         self._aw_win.update_value(last)
                     if not getattr(dev, 'is_connected', False):
-                        self._aw_win.set_status(QApplication.translate("tilauscope_beancave", "probe not connected…"))
+                        self._aw_win.set_status(QApplication.translate("tilauscope_common", "probe not connected…"))
                     # live connection state while the editor is open
                     dev.connected_signal.connect(self._on_aw_probe_connected)
                     dev.disconnected_signal.connect(self._on_aw_probe_disconnected)
@@ -769,7 +769,7 @@ class ZoneEditorDialog(QDialog):
 
     def _on_aw_probe_disconnected(self) -> None:
         if self._aw_win is not None:
-            self._aw_win.set_status(QApplication.translate("tilauscope_beancave", "probe not connected…"))
+            self._aw_win.set_status(QApplication.translate("tilauscope_common", "probe not connected…"))
 
     def _teardown_aw(self) -> None:
         if self._aw_win is None:
@@ -796,7 +796,7 @@ class ZoneEditorDialog(QDialog):
             sm = getattr(self._aw, 'scale_manager', None)
             if sm is None or not sm.is_scale1_configured():
                 show_styled_message(
-                    self, QApplication.translate("tilauscope_beancave", "No scale configured"),
+                    self, QApplication.translate("tilauscope_common", "No scale configured"),
                     QApplication.translate("tilauscope_beancave", "Pair your scale in TilauScope Config › Sensors to measure density."))
                 return
             if self._density_win is None:

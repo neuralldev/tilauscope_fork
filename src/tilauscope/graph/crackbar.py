@@ -49,12 +49,12 @@ _COLOUR: Final[dict[str, str]] = {
 
 def _phase_word(phase: str) -> str:
     if phase == FIRST:
-        return QApplication.translate('tilauscope', 'FIRST POPS')
+        return QApplication.translate('tilauscope_graph', 'FIRST POPS')
     if phase == ROLLING:
-        return QApplication.translate('tilauscope', 'ROLLING')
+        return QApplication.translate('tilauscope_graph', 'ROLLING')
     if phase == SETTLING:
-        return QApplication.translate('tilauscope', 'SETTLING')
-    return QApplication.translate('tilauscope', 'QUIET')
+        return QApplication.translate('tilauscope_graph', 'SETTLING')
+    return QApplication.translate('tilauscope_graph', 'QUIET')
 
 
 class CrackBar(QFrame):
@@ -88,7 +88,7 @@ class CrackBar(QFrame):
         row.setContentsMargins(9, 3, 9, 3)
         row.setSpacing(8)
 
-        self._lbl = QLabel(QApplication.translate('tilauscope', 'CRACK'))
+        self._lbl = QLabel(QApplication.translate('tilauscope_graph', 'CRACK'))
         self._lbl.setStyleSheet(
             f"border: none; color: {THEME['OVERLAY0']};"
             " font-family: 'JetBrains Mono'; font-size: 9px; letter-spacing: 1px;")
@@ -228,7 +228,7 @@ class CrackBar(QFrame):
                 text = f'{text} · {total}'
             self._rate.setText(text)
         self.setToolTip(
-            QApplication.translate('tilauscope', '{0} pops in the last {1} s').format(n, int(window)))
+            QApplication.translate('tilauscope_graph', '{0} pops in the last {1} s').format(n, int(window)))
         self.setVisible(True)
         # Published for the assistant's coach line, which speaks the gesture:
         # the bar is the readout, and guidance keeps its one place on screen.

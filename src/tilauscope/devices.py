@@ -483,12 +483,12 @@ class TilauscopeConfigDlg(QDialog):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(12)
 
-        cancel_btn = QPushButton(QApplication.translate("tilauscope_devices", "Cancel"))
+        cancel_btn = QPushButton(QApplication.translate("Button", "Cancel"))
         cancel_btn.setObjectName("footerBtn")
         cancel_btn.setProperty('variant', 'outline')
         cancel_btn.clicked.connect(self._on_cancel)
 
-        ok_btn = QPushButton(QApplication.translate("tilauscope_devices", "⬥  Save"))
+        ok_btn = QPushButton(QApplication.translate("tilauscope_common", "⬥  Save"))
         ok_btn.setObjectName("footerBtn")
         ok_btn.setProperty('variant', 'primary')
         ok_btn.setDefault(True)
@@ -562,7 +562,7 @@ class TilauscopeConfigDlg(QDialog):
         el.setSpacing(6)
         self._identity_edit = QLineEdit()
         self._identity_edit.setMaxLength(64)
-        self._identity_edit.setPlaceholderText(QApplication.translate("tilauscope_devices", "Your name"))
+        self._identity_edit.setPlaceholderText(QApplication.translate("tilauscope_common", "Your name"))
         self._identity_edit.returnPressed.connect(self._commit_identity)
         el.addWidget(self._identity_edit, 1)
         for glyph, slot, colour in (("✓", self._commit_identity, THEME['SUCCESS']),
@@ -615,7 +615,7 @@ class TilauscopeConfigDlg(QDialog):
         layout.addWidget(self._build_identity_card())
 
         # Roaster model
-        layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "Roaster")))
+        layout.addWidget(_section_label(QApplication.translate("Label", "Roaster")))
         roaster_group = QGroupBox(QApplication.translate("tilauscope_devices", "Machine Profile"))
         rg = QFormLayout(roaster_group)
         self.tilauRoaster = QComboBox()
@@ -797,7 +797,7 @@ class TilauscopeConfigDlg(QDialog):
 
         # ── Ambient — TilauAmbient BLE ────────────────────────────────────
         layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_devices", "Ambient")
+            QApplication.translate("Tab", "Ambient")
         ))
         ambient_group = QGroupBox("TilauAmbient  (BME280 / BLE)")
         ambient_group.setContentsMargins(12, 18, 12, 12)
@@ -917,7 +917,7 @@ class TilauscopeConfigDlg(QDialog):
         self.lebrewRoastSeeC1ComboBox = QComboBox()
         self.lebrewRoastSeeC1ComboBox.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         c1_cell = self._sensor_cell(
-            QApplication.translate("tilauscope_devices", "Colour"),
+            QApplication.translate("tilauscope_common", "Colour"),
             self._prefixes["c1"], self.lebrewRoastSeeC1ComboBox,
             "bleRoastSeeDeviceName", "bleRoastSeeDeviceslist",
         )
@@ -953,7 +953,7 @@ class TilauscopeConfigDlg(QDialog):
         # ── Scale — Bluetooth, any registered brand ────────────────────────
         # Scale 1: the one every weight capture in TilauScope reads.
         layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_devices", "Scale")
+            QApplication.translate("tilauscope_common", "Scale")
         ))
         scale_group = QGroupBox(QApplication.translate("tilauscope_devices", "Scale  (Bluetooth)"))
         scale_group.setContentsMargins(12, 18, 12, 12)
@@ -964,7 +964,7 @@ class TilauscopeConfigDlg(QDialog):
         self.scaleComboBox = QComboBox()
         self.scaleComboBox.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         scale_cell = self._sensor_cell(
-            QApplication.translate("tilauscope_devices", "Scale"),
+            QApplication.translate("tilauscope_common", "Scale"),
             self._prefixes["scale"], self.scaleComboBox,
             "scale1_id", "bleScaleDeviceslist",
         )
@@ -1701,14 +1701,14 @@ class TilauscopeConfigDlg(QDialog):
             if sel_id in g.seen:
                 self._set_pill(
                     g.status,
-                    QApplication.translate("tilauscope_devices", "detected ✓"),
+                    QApplication.translate("tilauscope_common", "detected ✓"),
                     THEME['SUCCESS'], g.spinner, False)
             else:
                 # Configured but not seen: the device may simply be off, so no
                 # ring — a spinner that never stops reads as a stuck app.
                 self._set_pill(
                     g.status,
-                    QApplication.translate("tilauscope_devices", "assigned"),
+                    QApplication.translate("tilauscope_common", "assigned"),
                     THEME['ACCENT'], g.spinner, False)
         elif g.seen:
             self._set_pill(
@@ -2000,7 +2000,7 @@ class TilauscopeConfigDlg(QDialog):
         accent = THEME['WARNING'] if is_own else THEME['MAUVE']  # mauve for third-party
         tag_txt = (QApplication.translate("tilauscope_devices", "detected · not linked")
                    if is_own else
-                   QApplication.translate("tilauscope_devices", "recognised · not configured"))
+                   QApplication.translate("tilauscope_common", "recognised · not configured"))
         row = QFrame()
         row.setStyleSheet(
             f"background:{THEME['SURFACE']}; border:1px solid {THEME['BORDER']};"
@@ -2047,12 +2047,12 @@ class TilauscopeConfigDlg(QDialog):
 
         self.mqtt_sensor_table = QTableWidget()
         self._mqtt_sensor_headers = [
-            QApplication.translate("tilauscope_devices", "ID"),
-            QApplication.translate("tilauscope_devices", "Topic"),
-            QApplication.translate("tilauscope_devices", "Command"),
+            QApplication.translate("Label", "ID"),
+            QApplication.translate("Label", "Topic"),
+            QApplication.translate("Label", "Command"),
             QApplication.translate("tilauscope_devices", "Multiplier"),
-            QApplication.translate("tilauscope_devices", "Divider"),
-            QApplication.translate("tilauscope_devices", "Unit"),
+            QApplication.translate("Label", "Divider"),
+            QApplication.translate("Label", "Unit"),
         ]
         self.mqtt_sensor_table.setColumnCount(len(self._mqtt_sensor_headers))
         self.mqtt_sensor_table.setHorizontalHeaderLabels(self._mqtt_sensor_headers)
@@ -2086,7 +2086,7 @@ class TilauscopeConfigDlg(QDialog):
         self.mqttAddSensorButton.setProperty('variant', 'outline')
         self.mqttAddSensorButton.clicked.connect(self._mqtt_add_sensor_row)
         self.mqttDeleteSensorButton = QPushButton(
-            QApplication.translate("tilauscope_devices", "Delete")
+            QApplication.translate("Button", "Delete")
         )
         self.mqttDeleteSensorButton.setProperty('variant', 'outline')
         self.mqttDeleteSensorButton.clicked.connect(self._mqtt_delete_sensor_row)
@@ -2106,9 +2106,9 @@ class TilauscopeConfigDlg(QDialog):
         form_layout.addRow(buttons)
 
         self.mqttExtractorOnMeterCheck = QCheckBox(QApplication.translate(
-            "tilauscope_energy", "Extractor is plugged into the roaster meter"))
+            "tilauscope_devices", "Extractor is plugged into the roaster meter"))
         self.mqttExtractorOnMeterCheck.setToolTip(QApplication.translate(
-            "tilauscope_energy", "Counts the extractor inside the roaster reading instead of adding it. "
+            "tilauscope_devices", "Counts the extractor inside the roaster reading instead of adding it. "
                   "Applies from the next monitoring session, or now before START."))
         self.mqttExtractorOnMeterCheck.setChecked(
             QSettings().value(SETTING_EXTRACTOR_ON_ROASTER_METER, False, type=bool))
@@ -2121,7 +2121,7 @@ class TilauscopeConfigDlg(QDialog):
         from tilauscope.roasters import HeatingType
         qmc = self.aw.qmc
         roaster = self._energy_roaster = str(getattr(self.aw, "tilau_roaster", "") or "")
-        form_layout.addRow(_section_label(QApplication.translate("tilauscope_energy", "Without a meter")))
+        form_layout.addRow(_section_label(QApplication.translate("tilauscope_devices", "Without a meter")))
         status, detail = QLabel(), QLabel()
         for lbl in (status, detail):
             lbl.setWordWrap(True)
@@ -2132,25 +2132,25 @@ class TilauscopeConfigDlg(QDialog):
         metered = ROASTER in resolve_sensors(self._mqtt_sensors.sensors)
         if metered:
             status.setText(QApplication.translate(
-                "tilauscope_energy", '● A meter named "roaster" is set — it always comes first; '
+                "tilauscope_devices", '● A meter named "roaster" is set — it always comes first; '
                                      'the estimate only fills the moments it falls silent.'))
         elif source == SOURCE_CURVE:
             status.setText(QApplication.translate(
-                "tilauscope_energy", "◑ Estimated from TilauScope's power curve for {0}").format(roaster))
+                "tilauscope_devices", "◑ Estimated from TilauScope's power curve for {0}").format(roaster))
         elif source == SOURCE_RATED:
             status.setText(QApplication.translate(
-                "tilauscope_energy", "◑ Estimated from TilauScope's rated power for {0} ({1} kW)").format(
+                "tilauscope_devices", "◑ Estimated from TilauScope's rated power for {0} ({1} kW)").format(
                     roaster, f"{(watts or 0) / 1000:g}"))
         elif source == HEATER_FROM_CONFIG:
-            status.setText(QApplication.translate("tilauscope_energy", "◑ Estimated from the heater power below"))
+            status.setText(QApplication.translate("tilauscope_devices", "◑ Estimated from the heater power below"))
         elif source == HEATER_FROM_ARTISAN:
             status.setText(QApplication.translate(
-                "tilauscope_energy", "◑ Estimated from the heater Artisan rates for this roaster"))
-            detail.setText(QApplication.translate("tilauscope_energy", "{0} · {1} kW · follows {2}").format(
-                QApplication.translate("tilauscope_energy", "Heater"), f"{(watts or 0) / 1000:.3g}", qmc.etypes[3]))
+                "tilauscope_devices", "◑ Estimated from the heater Artisan rates for this roaster"))
+            detail.setText(QApplication.translate("tilauscope_devices", "{0} · {1} kW · follows {2}").format(
+                QApplication.translate("tilauscope_common", "Heater"), f"{(watts or 0) / 1000:.3g}", qmc.etypes[3]))
         else:
             status.setText(QApplication.translate(
-                "tilauscope_energy", "○ No estimate for this roaster. Add a power meter above to track its energy."))
+                "tilauscope_devices", "○ No estimate for this roaster. Add a power meter above to track its energy."))
         form_layout.addRow(status)
         if detail.text():
             form_layout.addRow(detail)
@@ -2163,12 +2163,12 @@ class TilauscopeConfigDlg(QDialog):
             self.heaterPowerSpin.setRange(0, max(20000, self._heater_w))
             self.heaterPowerSpin.setSingleStep(50)
             self.heaterPowerSpin.setValue(self._heater_w)
-            self.heaterPowerSpin.setSuffix(QApplication.translate("tilauscope_energy", " W"))
-            self.heaterPowerSpin.setSpecialValueText(QApplication.translate("tilauscope_energy", "none"))
+            self.heaterPowerSpin.setSuffix(QApplication.translate("tilauscope_devices", " W"))
+            self.heaterPowerSpin.setSpecialValueText(QApplication.translate("tilauscope_devices", "none"))
             self.heaterPowerSpin.setToolTip(QApplication.translate(
-                "tilauscope_energy", "The power the heater draws at full burner, as on the roaster's rating plate. "
+                "tilauscope_devices", "The power the heater draws at full burner, as on the roaster's rating plate. "
                                      "Without a meter, the roast energy is estimated from it and the burner setting."))
-            form_layout.addRow(QApplication.translate("tilauscope_energy", "Heater power:"), self.heaterPowerSpin)
+            form_layout.addRow(QApplication.translate("tilauscope_devices", "Heater power:"), self.heaterPowerSpin)
 
     def _set_mqtt_row_widgets(self, row: int, multiplier: float | None,
                               divider: float | None, unit: str) -> None:
@@ -2743,7 +2743,7 @@ class TilauscopeConfigDlg(QDialog):
         edit = QLineEdit(value)
         edit.setReadOnly(True)
         edit.setPlaceholderText(QApplication.translate("tilauscope_devices", "Not configured"))
-        button = QPushButton(QApplication.translate("tilauscope_devices", "Choose…"))
+        button = QPushButton(QApplication.translate("tilauscope_common", "Choose…"))
         button.setProperty('variant', 'outline')
         button.clicked.connect(lambda _checked=False: self._choose_beancave_directory(kind, edit))
         row_layout.addWidget(edit, 1)

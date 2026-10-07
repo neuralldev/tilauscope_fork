@@ -261,7 +261,7 @@ class RoastReviewPanel(QWidget):
         ident.setSpacing(2)
 
         title = display_name(profile)
-        name = QLabel(title.upper() or QApplication.translate("tilauscope_review", "ROAST"))
+        name = QLabel(title.upper() or QApplication.translate("tilauscope_common", "ROAST"))
         name.setWordWrap(True)
         name.setStyleSheet(f"font-size: 13px; font-weight: 800; color: {THEME['ACCENT']};")
         ident.addWidget(name)
@@ -342,9 +342,9 @@ class RoastReviewPanel(QWidget):
             return None
         # Each phase name is passed to translate() as a literal: the string
         # extractor cannot see a name held in a loop variable.
-        names = {"dry": QApplication.translate("tilauscope_review", "DRY"),
+        names = {"dry": QApplication.translate("HelpDlg", "DRY"),
                  "mai": QApplication.translate("tilauscope_review", "MAI"),
-                 "dev": QApplication.translate("tilauscope_review", "DEV")}
+                 "dev": QApplication.translate("tilauscope_common", "DEV")}
         segments = [(names[key], debrief.phases[key],
                      debrief.phases[key] / total * 100.0, _PHASE_COLOR[key])
                     for key in ("dry", "mai", "dev") if debrief.phases.get(key)]
@@ -383,11 +383,11 @@ class RoastReviewPanel(QWidget):
         delta_key = {"DRY END": "dry_end", "FC START": "first_crack", "DROP": "drop"}
         # The curve's own names for the same milestones — same context, same
         # source — so the table and the chips on the curve share one word each.
-        names = {"CHARGE": QApplication.translate('tilauscope', 'CHARGE'),
-                 "TP": QApplication.translate('tilauscope', 'TP'),
-                 "DRY END": QApplication.translate('tilauscope', 'DRY END'),
-                 "FC START": QApplication.translate('tilauscope', 'FIRST CRACK'),
-                 "DROP": QApplication.translate('tilauscope', 'DROP')}
+        names = {"CHARGE": QApplication.translate('Label', 'CHARGE'),
+                 "TP": QApplication.translate('ComboBox', 'TP'),
+                 "DRY END": QApplication.translate('Label', 'DRY END'),
+                 "FC START": QApplication.translate('tilauscope_common', 'FIRST CRACK'),
+                 "DROP": QApplication.translate('Label', 'DROP')}
         for row, (key, seconds, bt) in enumerate(debrief.milestones, start=1):
             name = QLabel(names.get(key, key))
             name.setStyleSheet(_mono(9, 700, colours.get(key, THEME['TEXT'])))
@@ -424,10 +424,10 @@ class RoastReviewPanel(QWidget):
         grid = QGridLayout(box)
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(6)
-        cells = (("dtr", QApplication.translate("tilauscope_review", "DEVELOPMENT")),
+        cells = (("dtr", QApplication.translate("tilauscope_common", "DEVELOPMENT")),
                  ("dev_rise", QApplication.translate("tilauscope_review", "DEV RISE")),
                  ("peak_ror", QApplication.translate("tilauscope_review", "PEAK RoR")),
-                 ("weight_loss", QApplication.translate("tilauscope_review", "WEIGHT LOSS")))
+                 ("weight_loss", QApplication.translate("tilauscope_common", "WEIGHT LOSS")))
         for i, (key, label) in enumerate(cells):
             fig = debrief.figures.get(key)
             grid.addWidget(self._cell(label, fig), i // 2, i % 2)
@@ -587,7 +587,7 @@ class RoastReviewPanel(QWidget):
         """The same coffee again, set up with this roast as its guide curve."""
         from PyQt6.QtCore import QSize
         from tilauscope.header_icons import SVG_NEXT_BATCH, make_icon
-        pill = self._tonal_pill(QApplication.translate("tilauscope_review", "Next batch"), icon=True)
+        pill = self._tonal_pill(QApplication.translate("tilauscope_common", "Next batch"), icon=True)
         pill.setIcon(make_icon(SVG_NEXT_BATCH, THEME['ACCENT'], QSize(18, 18)))
         pill.setIconSize(QSize(18, 18))
         pill.setToolTip(QApplication.translate(

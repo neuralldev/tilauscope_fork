@@ -327,7 +327,7 @@ class AiPayloadPreviewDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(10)
         btn_row.addStretch()
-        copy_btn = QPushButton(QApplication.translate('tilauscope_privacy',
+        copy_btn = QPushButton(QApplication.translate('Menu',
                                                       'Copy'))
         copy_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         copy_btn.setStyleSheet(f"""
@@ -339,7 +339,7 @@ class AiPayloadPreviewDialog(QDialog):
             QPushButton:hover {{ border-color: {T['TEXT']}; }}
         """)
         copy_btn.clicked.connect(self._copy)
-        close2 = QPushButton(QApplication.translate('tilauscope_privacy',
+        close2 = QPushButton(QApplication.translate('Button',
                                                     'Close'))
         close2.setCursor(Qt.CursorShape.PointingHandCursor)
         close2.setStyleSheet(f"""
@@ -462,26 +462,26 @@ def ensure_geo_consent(parent: QWidget | None) -> bool:
     from tilauscope.tilauscope_types import show_styled_message  # noqa: PLC0415
 
     text = '\n\n'.join((
-        QApplication.translate('tilauscope_beancave', 'Where should the weather be read?'),
-        QApplication.translate('tilauscope_beancave',
+        QApplication.translate('tilauscope_privacy', 'Where should the weather be read?'),
+        QApplication.translate('tilauscope_privacy',
           'TilauScope does not know where you are. To read the weather it '
           'first asks ip-api.com, a service outside the European Union, '
           'which turns your internet address into a town — then asks '
           'Open-Meteo for that town\'s temperature, humidity, pressure and altitude.'),
-        QApplication.translate('tilauscope_beancave',
+        QApplication.translate('tilauscope_privacy',
           'Your internet address is what identifies your connection. Neither '
           'service is told anything about you or your coffee.'),
-        QApplication.translate('tilauscope_beancave',
+        QApplication.translate('tilauscope_privacy',
           'You can always type the three values by hand instead.'),
     ))
     try:
         clicked = show_styled_message(
             parent,
-            QApplication.translate('tilauscope_beancave', 'Online weather'),
+            QApplication.translate('tilauscope_privacy', 'Online weather'),
             text,
             QMessageBox.Icon.Information,
-            buttons=[QApplication.translate('tilauscope_beancave', "I'll type it"),
-                     QApplication.translate('tilauscope_beancave', 'Find my town and fill them in')],
+            buttons=[QApplication.translate('tilauscope_privacy', "I'll type it"),
+                     QApplication.translate('tilauscope_privacy', 'Find my town and fill them in')],
         )
     except Exception as exc:  # noqa: BLE001
         _log.error('Location consent could not be shown: %s', exc)

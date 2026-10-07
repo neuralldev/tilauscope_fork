@@ -365,7 +365,7 @@ class AnalysisMixin:
 
         def dtr_badge_text(val, ok_min, ok_max):
             return _range_badge(val, ok_min, ok_max,
-                                QApplication.translate("tilauscope_beancave", "Optimal"))
+                                QApplication.translate("tilauscope_common", "Optimal"))
 
         def wl_badge_text(val, ok_min, ok_max):
             return _range_badge(val, ok_min, ok_max,
@@ -504,10 +504,10 @@ class AnalysisMixin:
         wl_lo_eff, wl_hi_eff = reading.wl_window
 
         # ── Translated labels ─────────────────────────────────────────────
-        _total_time   = QApplication.translate("tilauscope_beancave", "Total Time")
-        _weight_loss_l= QApplication.translate("tilauscope_beancave", "Weight loss")
+        _total_time   = QApplication.translate("HTML Report Template", "Total Time")
+        _weight_loss_l= QApplication.translate("tilauscope_common", "Weight loss")
         _bean_weight  = QApplication.translate("tilauscope_beancave", "Green beans weight")
-        _roast_weight = QApplication.translate("tilauscope_beancave", "Roasted weight")
+        _roast_weight = QApplication.translate("tilauscope_common", "Roasted weight")
         _charge_bt    = QApplication.translate("tilauscope_beancave", "Charge BT")
         _tp           = QApplication.translate("tilauscope_beancave", "Turn Point BT")
         _de           = QApplication.translate("tilauscope_beancave", "Dry End BT")
@@ -590,7 +590,7 @@ class AnalysisMixin:
     </tr>
 
     <!-- PHASES -->
-    {section_title(QApplication.translate("tilauscope_beancave","Phases"))}
+    {section_title(QApplication.translate("Table","Phases"))}
     {phase_bar_html}
 
     <!-- TEMPÉRATURES -->

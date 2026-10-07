@@ -157,9 +157,9 @@ def day_label(day: date | None, today: date, locale: QLocale | None = None) -> s
     if day is None:
         return QApplication.translate('tilauscope_beancave', 'No date')
     if day == today:
-        return QApplication.translate('tilauscope_beancave', 'Today')
+        return QApplication.translate('Plus', 'Today')
     if day == today - timedelta(days=1):
-        return QApplication.translate('tilauscope_beancave', 'Yesterday')
+        return QApplication.translate('Plus', 'Yesterday')
     pattern = 'dddd d MMMM' if day.year == today.year else 'dddd d MMMM yyyy'
     text = (locale or QLocale()).toString(QDate(day.year, day.month, day.day), pattern)
     return text[:1].upper() + text[1:]

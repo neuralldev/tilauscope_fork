@@ -225,7 +225,7 @@ class _BeanRow(QFrame):
             l3.addWidget(dot)
             l3.addWidget(self._small(
                 (f"aw {aw:.2f}" + (f" · {word}" if colour else "")) if aw > 0 else
-                QApplication.translate("tilauscope_beancave", "aw not measured"), _DIM))
+                QApplication.translate("tilauscope_common", "aw not measured"), _DIM))
         l3.addStretch(1)
         lay.addLayout(l3)
 
@@ -345,7 +345,7 @@ class CatalogueListWidget(QWidget):
                  QApplication.translate("tilauscope_beancave",
                                         "Storage risk first (water activity), then the oldest harvest, "
                                         "then the coffee left longest since its last roast.")),
-                (SORT_NAME, QApplication.translate("tilauscope_beancave", "Name"), "")):
+                (SORT_NAME, QApplication.translate("Table", "Name"), "")):
             act = menu.addAction(text)
             act.setToolTip(tip)
             act.triggered.connect(lambda _=False, k=key: self._set_sort(k))
@@ -466,7 +466,7 @@ class CatalogueListWidget(QWidget):
 
     def _label_sort(self) -> None:
         names = {SORT_TO_ROAST: QApplication.translate("tilauscope_beancave", "To roast first"),
-                 SORT_NAME: QApplication.translate("tilauscope_beancave", "Name")}
+                 SORT_NAME: QApplication.translate("Table", "Name")}
         self.sort_btn.setText(QApplication.translate("tilauscope_beancave", "Sort: {0}").format(
             names.get(self._sort, names[SORT_TO_ROAST])))
 

@@ -418,12 +418,12 @@ class ViewerMultiMixin:
         # Development → [Label].
         rows = [
             (QApplication.translate("tilauscope_beancave", "Total"),       'total_s',    _t),
-            (QApplication.translate("tilauscope_beancave", "Drying"),      'drying_s',   _t),
-            (QApplication.translate("tilauscope_beancave", "Maillard"),    'maillard_s', _t),
+            (QApplication.translate("Label", "Drying"),      'drying_s',   _t),
+            (QApplication.translate("Label", "Maillard"),    'maillard_s', _t),
             (QApplication.translate("Label", "Development"),               'dev_s',      _t),
-            (QApplication.translate("tilauscope_beancave", "DTR") + " %",  'dtr',     lambda v: f"{v:.0f}%"),
+            (QApplication.translate("tilauscope_common", "DTR") + " %",  'dtr',     lambda v: f"{v:.0f}%"),
             (QApplication.translate("tilauscope_beancave", "Drop BT"),     'drop_bt', lambda v: f"{v:.0f}°"),
-            (QApplication.translate("tilauscope_beancave", "Weight loss") + " %", 'wl', lambda v: f"{v:.0f}%"),
+            (QApplication.translate("tilauscope_common", "Weight loss") + " %", 'wl', lambda v: f"{v:.0f}%"),
         ]
         # Roast area (AUC) — added only when the roasts carry the data. The dot
         # plot normalises each row by its own min/max, so AUC is shown purely as

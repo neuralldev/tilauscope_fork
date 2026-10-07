@@ -236,13 +236,13 @@ class NewSackWizard(QDialog):
         self._scale_was_connected = False
 
         self._page_titles = {
-            self._PAGE_ESSENTIALS: QApplication.translate("tilauscope_sacks", "Essentials"),
+            self._PAGE_ESSENTIALS: QApplication.translate("tilauscope_common", "Essentials"),
             self._PAGE_SACK: QApplication.translate("tilauscope_sacks", "Sack ID"),
-            self._PAGE_PROVENANCE: QApplication.translate("tilauscope_sacks", "Provenance"),
-            self._PAGE_FACTS: QApplication.translate("tilauscope_sacks", "Characteristics"),
-            self._PAGE_SENSORY: QApplication.translate("tilauscope_sacks", "Sensory & notes"),
+            self._PAGE_PROVENANCE: QApplication.translate("tilauscope_common", "Provenance"),
+            self._PAGE_FACTS: QApplication.translate("CheckBox", "Characteristics"),
+            self._PAGE_SENSORY: QApplication.translate("tilauscope_common", "Sensory & notes"),
             self._PAGE_REVIEW: QApplication.translate("tilauscope_sacks", "Review"),
-            self._PAGE_NEWCROP: QApplication.translate("tilauscope_sacks", "New crop"),
+            self._PAGE_NEWCROP: QApplication.translate("tilauscope_common", "New crop"),
         }
 
         self.setWindowTitle(QApplication.translate("tilauscope_sacks", "New sack"))
@@ -336,7 +336,7 @@ class NewSackWizard(QDialog):
         nav_sep.setStyleSheet(f"color: {THEME['BORDER']};")
         lay.addWidget(nav_sep)
         nav = QHBoxLayout()
-        self.back_btn = QPushButton("◂ " + QApplication.translate("tilauscope_sacks", "Back"))
+        self.back_btn = QPushButton("◂ " + QApplication.translate("Toolbar", "Back"))
         self.back_btn.setStyleSheet(
             f"QPushButton {{ background: transparent; color: {THEME['TEXT']};"
             f" border: 1px solid {THEME['BORDER']}; border-radius: 7px;"
@@ -347,7 +347,7 @@ class NewSackWizard(QDialog):
         self.skip_btn = QPushButton(QApplication.translate("tilauscope_sacks", "Skip") + " ▸")
         self.skip_btn.setStyleSheet(self.back_btn.styleSheet())
         self.skip_btn.clicked.connect(self._on_skip)
-        self.next_btn = QPushButton(QApplication.translate("tilauscope_sacks", "Next") + " ▸")
+        self.next_btn = QPushButton(QApplication.translate("tilauscope_common", "Next") + " ▸")
         self.next_btn.setStyleSheet(
             f"QPushButton {{ background: {THEME['ACCENT']}; color: {THEME['BG']};"
             f" border: none; border-radius: 7px; "
@@ -399,7 +399,7 @@ class NewSackWizard(QDialog):
     # ── Style helpers (ROAST SETUP visual language) ───────────────────────────
     def _section(self, text: str, optional: bool = False) -> QLabel:
         suffix = (f"  <span style='color:{_DIM};font-weight:600;"
-                  f"letter-spacing:1px;'>· " + QApplication.translate("tilauscope_sacks", "optional") + "</span>") if optional else ""
+                  f"letter-spacing:1px;'>· " + QApplication.translate("tilauscope_common", "optional") + "</span>") if optional else ""
         w = QLabel(text.upper() + suffix)
         w.setTextFormat(Qt.TextFormat.RichText)
         w.setStyleSheet(
@@ -465,8 +465,8 @@ class NewSackWizard(QDialog):
         url_row = QHBoxLayout()
         url_row.setSpacing(10)
         self.url_edit = QLineEdit()
-        self.url_edit.setPlaceholderText(QApplication.translate("tilauscope_sacks", "Enter URL of supplier here..."))
-        paste_btn = self._ghost_btn(QApplication.translate("tilauscope_sacks", "Paste"))
+        self.url_edit.setPlaceholderText(QApplication.translate("tilauscope_common", "Enter URL of supplier here..."))
+        paste_btn = self._ghost_btn(QApplication.translate("Menu", "Paste"))
         paste_btn.clicked.connect(
             lambda: self.url_edit.setText(QGuiApplication.clipboard().text()))
         url_row.addWidget(self.url_edit, 1)
@@ -557,8 +557,8 @@ class NewSackWizard(QDialog):
     def _on_ai_error(self, message: str) -> None:
         self.start_btn.setEnabled(True)
         self.ai_status_lbl.hide()
-        show_styled_message(self, QApplication.translate("tilauscope_sacks", "AI Error"),
-                            QApplication.translate("tilauscope_sacks", "Failed to extract bean data") + f": {message}",
+        show_styled_message(self, QApplication.translate("tilauscope_common", "AI Error"),
+                            QApplication.translate("tilauscope_common", "Failed to extract bean data") + f": {message}",
                             QMessageBox.Icon.Warning)
 
     # ── Page 1 : essentials ───────────────────────────────────────────────────
@@ -586,7 +586,7 @@ class NewSackWizard(QDialog):
         v.addLayout(cards)
 
         # -- new bean zone
-        self._new_section = self._section(QApplication.translate("tilauscope_sacks", "New bean"))
+        self._new_section = self._section(QApplication.translate("tilauscope_common", "New bean"))
         v.addWidget(self._new_section)
         self._new_zone, nz = self._zone()
         nf = QFormLayout()
@@ -605,7 +605,7 @@ class NewSackWizard(QDialog):
         self.weight_spin.setDecimals(0)
         self.weight_spin.setSuffix(" g")
         self.weight_spin.setValue(1000.0)
-        nf.addRow(QApplication.translate("tilauscope_sacks", "Bean name:"), self.name_edit)
+        nf.addRow(QApplication.translate("tilauscope_common", "Bean name:"), self.name_edit)
         nf.addRow(QApplication.translate("tilauscope_sacks", "Origin / country:"), self.country_combo)
         nf.addRow(QApplication.translate("tilauscope_sacks", "Harvest year:"), self.crop_spin)
         nf.addRow(QApplication.translate("tilauscope_sacks", "Initial weight (stock):"), self.weight_spin)
@@ -757,15 +757,15 @@ class NewSackWizard(QDialog):
         self.nc_supplier_edit.textChanged.connect(self._mirror_supplier)
         nf.addRow(QApplication.translate("tilauscope_sacks", "Harvest year:"), self.newcrop_crop_spin)
         nf.addRow(QApplication.translate("tilauscope_sacks", "Weight received:"), self.newcrop_weight_spin)
-        nf.addRow(QApplication.translate("tilauscope_sacks", "Supplier:"), self.nc_supplier_edit)
+        nf.addRow(QApplication.translate("tilauscope_common", "Supplier:"), self.nc_supplier_edit)
         self.nc_price_spin = price_per_kg_spin()
-        nf.addRow(QApplication.translate("tilauscope_beancave", "Price:"), self.nc_price_spin)
+        nf.addRow(QApplication.translate("tilauscope_common", "Price:"), self.nc_price_spin)
         self.nc_screen_combo = QComboBox()
         for key, label in screen_size_options():
             self.nc_screen_combo.addItem(label, key)
-        self.nc_screen_combo.setToolTip(QApplication.translate("tilauscope_beancave",
+        self.nc_screen_combo.setToolTip(QApplication.translate("tilauscope_common",
             "Use the size given on the supplier sheet (AA, Supremo, 17/18…). Leave Unknown if it is not stated."))
-        nf.addRow(QApplication.translate("tilauscope_beancave", "Screen size:"), self.nc_screen_combo)
+        nf.addRow(QApplication.translate("tilauscope_common", "Screen size:"), self.nc_screen_combo)
         nzl.addLayout(nf)
         v.addWidget(nz)
 
@@ -818,9 +818,9 @@ class NewSackWizard(QDialog):
             row.addWidget(ref, 1)
             holder = QWidget()
             holder.setLayout(row)
-            label = {self.nc_density_spin: QApplication.translate("tilauscope_sacks", "Density:"),
-                     self.nc_humidity_spin: QApplication.translate("tilauscope_sacks", "Humidity:"),
-                     self.nc_wa_spin: QApplication.translate("tilauscope_sacks", "Water activity:")}[spin]
+            label = {self.nc_density_spin: QApplication.translate("tilauscope_common", "Density:"),
+                     self.nc_humidity_spin: QApplication.translate("tilauscope_common", "Humidity:"),
+                     self.nc_wa_spin: QApplication.translate("tilauscope_common", "Water activity:")}[spin]
             mf.addRow(label, holder)
         mzl.addLayout(mf)
         v.addWidget(mz)
@@ -847,7 +847,7 @@ class NewSackWizard(QDialog):
         self.nc_sca_spin.setDecimals(1)
         self.nc_sca_spin.valueChanged.connect(
             lambda val: self.sca_spin.setValue(float(val)))
-        mwf.addRow(QApplication.translate("tilauscope_sacks", "Flavour notes:"), self.nc_flavour_edit)
+        mwf.addRow(QApplication.translate("tilauscope_common", "Flavour notes:"), self.nc_flavour_edit)
         mwf.addRow(QApplication.translate("tilauscope_sacks", "Score:"), self.nc_sca_spin)
         mwl.addLayout(mwf)
         self.nc_retire_chk = QCheckBox("")
@@ -1039,7 +1039,7 @@ class NewSackWizard(QDialog):
         page = QWidget()
         v = QVBoxLayout(page)
         v.setSpacing(12)
-        v.addWidget(self._section(QApplication.translate("tilauscope_sacks", "Provenance"), optional=True))
+        v.addWidget(self._section(QApplication.translate("tilauscope_common", "Provenance"), optional=True))
         z, zl = self._zone()
         zl.addWidget(self._hint(QApplication.translate("tilauscope_sacks",
             "Where this coffee comes from. Leave anything blank if you don't "
@@ -1055,9 +1055,9 @@ class NewSackWizard(QDialog):
         self.altitude_spin = QSpinBox()
         self.altitude_spin.setRange(0, 3000)
         self.altitude_spin.setSuffix(" m")
-        f.addRow(QApplication.translate("tilauscope_sacks", "Farm:"), self.farm_edit)
-        f.addRow(QApplication.translate("tilauscope_sacks", "Supplier:"), self.supplier_edit)
-        f.addRow(QApplication.translate("tilauscope_sacks", "Altitude:"), self.altitude_spin)
+        f.addRow(QApplication.translate("tilauscope_common", "Farm:"), self.farm_edit)
+        f.addRow(QApplication.translate("tilauscope_common", "Supplier:"), self.supplier_edit)
+        f.addRow(QApplication.translate("tilauscope_common", "Altitude:"), self.altitude_spin)
         zl.addLayout(f)
         v.addWidget(z)
         v.addStretch(1)
@@ -1074,8 +1074,8 @@ class NewSackWizard(QDialog):
         tz, tzl = self._zone()
         pills = QHBoxLayout()
         pills.setSpacing(10)
-        self.pill_single = _Pill(QApplication.translate("tilauscope_sacks", "Single origin"))
-        self.pill_blend = _Pill(QApplication.translate("tilauscope_sacks", "Blend"))
+        self.pill_single = _Pill(QApplication.translate("tilauscope_common", "Single origin"))
+        self.pill_blend = _Pill(QApplication.translate("tilauscope_common", "Blend"))
         self.pill_single.setChecked(True)
         self.pill_single.clicked.connect(lambda: self._pick_type(self.pill_single))
         self.pill_blend.clicked.connect(lambda: self._pick_type(self.pill_blend))
@@ -1095,7 +1095,7 @@ class NewSackWizard(QDialog):
         self.bean1_ratio_spin.setSuffix(" %")
         self.bean1_ratio_spin.setValue(50.0)
         blend_names = list((getattr(self._host, 'coffee_bean_types', {}) or {}).get('Arabica', []))
-        blend_names.append(QApplication.translate("tilauscope_beancave", "Other"))
+        blend_names.append(QApplication.translate("tilauscope_common", "Other"))
         self.bean2_combo = QComboBox()
         self.bean2_combo.addItems([""] + blend_names)
         self.bean2_ratio_spin = QDoubleSpinBox()
@@ -1122,8 +1122,8 @@ class NewSackWizard(QDialog):
         row3w = QWidget()
         row3w.setLayout(row3)
         bl.addRow(QApplication.translate("tilauscope_sacks", "This bean's share:"), self.bean1_ratio_spin)
-        bl.addRow(QApplication.translate("tilauscope_sacks", "Component 2:"), row2w)
-        bl.addRow(QApplication.translate("tilauscope_sacks", "Component 3:"), row3w)
+        bl.addRow(QApplication.translate("tilauscope_common", "Component 2:"), row2w)
+        bl.addRow(QApplication.translate("tilauscope_common", "Component 3:"), row3w)
         self._blend_w.hide()
         tzl.addWidget(self._blend_w)
         v.addWidget(tz)
@@ -1157,13 +1157,13 @@ class NewSackWizard(QDialog):
         self.wa_spin.setDecimals(2)
         self.wa_spin.setSingleStep(0.01)
         self.wa_spin.setSuffix(" aw")
-        f.addRow(QApplication.translate("tilauscope_sacks", "Category:"), self.category_combo)
-        f.addRow(QApplication.translate("tilauscope_sacks", "Process:"), self.process_combo)
-        f.addRow(QApplication.translate("tilauscope_sacks", "Species:"), self.species_combo)
-        f.addRow(QApplication.translate("tilauscope_sacks", "Varieties:"), self.varieties_combo)
-        f.addRow(QApplication.translate("tilauscope_sacks", "Density:"), self.density_spin)
-        f.addRow(QApplication.translate("tilauscope_sacks", "Humidity:"), self.humidity_spin)
-        f.addRow(QApplication.translate("tilauscope_sacks", "Water activity:"), self.wa_spin)
+        f.addRow(QApplication.translate("tilauscope_common", "Category:"), self.category_combo)
+        f.addRow(QApplication.translate("tilauscope_common", "Process:"), self.process_combo)
+        f.addRow(QApplication.translate("tilauscope_common", "Species:"), self.species_combo)
+        f.addRow(QApplication.translate("tilauscope_common", "Varieties:"), self.varieties_combo)
+        f.addRow(QApplication.translate("tilauscope_common", "Density:"), self.density_spin)
+        f.addRow(QApplication.translate("tilauscope_common", "Humidity:"), self.humidity_spin)
+        f.addRow(QApplication.translate("tilauscope_common", "Water activity:"), self.wa_spin)
         zl.addLayout(f)
         v.addWidget(z)
         v.addStretch(1)
@@ -1185,7 +1185,7 @@ class NewSackWizard(QDialog):
         items = (getattr(self._host, 'coffee_bean_types', {}) or {}).get(species, [])
         # same entries as the BeanCave form, "Other" included, so a saved variety reloads there
         self.varieties_combo.addItems([""] + list(items)
-                                      + [QApplication.translate("tilauscope_beancave", "Other")])
+                                      + [QApplication.translate("tilauscope_common", "Other")])
         idx = self.varieties_combo.findText(current) if current else -1
         if idx >= 0:
             self.varieties_combo.setCurrentIndex(idx)
@@ -1196,7 +1196,7 @@ class NewSackWizard(QDialog):
         items = (getattr(self._host, 'coffee_processing_methods', {}) or {}).get(category, [])
         # same entries as the BeanCave form, "Other" included, so a saved process reloads there
         self.process_combo.addItems(list(items)
-                                    + [QApplication.translate("tilauscope_beancave", "Other")])
+                                    + [QApplication.translate("tilauscope_common", "Other")])
         if current:
             idx = self.process_combo.findText(current)
             if idx >= 0:
@@ -1207,7 +1207,7 @@ class NewSackWizard(QDialog):
         page = QWidget()
         v = QVBoxLayout(page)
         v.setSpacing(12)
-        v.addWidget(self._section(QApplication.translate("tilauscope_sacks", "Sensory & notes"), optional=True))
+        v.addWidget(self._section(QApplication.translate("tilauscope_common", "Sensory & notes"), optional=True))
         z, zl = self._zone()
         zl.addWidget(self._hint(QApplication.translate("tilauscope_sacks",
             "What this coffee should taste like, plus any memo for future you.")))
@@ -1225,8 +1225,8 @@ class NewSackWizard(QDialog):
         flav_row.setContentsMargins(0, 0, 0, 0)
         flav_row.setSpacing(8)
         flav_row.addWidget(self.flavour_edit, 1)
-        wheel_btn = self._ghost_btn("🎡 " + QApplication.translate("tilauscope_sacks", "Flavors"))
-        wheel_btn.setToolTip(QApplication.translate("tilauscope_sacks", "Select flavor notes based on a Flavor Wheel."))
+        wheel_btn = self._ghost_btn("🎡 " + QApplication.translate("tilauscope_common", "Flavors"))
+        wheel_btn.setToolTip(QApplication.translate("tilauscope_common", "Select flavor notes based on a Flavor Wheel."))
         wheel_btn.clicked.connect(self._open_flavor_wheel)
         flav_row.addWidget(wheel_btn)
         flav_w = QWidget()
@@ -1235,8 +1235,8 @@ class NewSackWizard(QDialog):
         self.tips_edit = QPlainTextEdit()
         self.tips_edit.setPlaceholderText(QApplication.translate("tilauscope_sacks", "Roasting tips / memo"))
         self.tips_edit.setFixedHeight(70)
-        f.addRow(QApplication.translate("tilauscope_sacks", "SCA score:"), self.sca_spin)
-        f.addRow(QApplication.translate("tilauscope_sacks", "Flavour notes:"), flav_w)
+        f.addRow(QApplication.translate("tilauscope_common", "SCA score:"), self.sca_spin)
+        f.addRow(QApplication.translate("tilauscope_common", "Flavour notes:"), flav_w)
         f.addRow(QApplication.translate("tilauscope_sacks", "Tips / memo:"), self.tips_edit)
         zl.addLayout(f)
         v.addWidget(z)
@@ -1265,7 +1265,7 @@ class NewSackWizard(QDialog):
         head.addWidget(t)
         head.addStretch(1)
         if edit_page is not None:
-            edit = self._ghost_btn("✎ " + QApplication.translate("tilauscope_sacks", "Edit"))
+            edit = self._ghost_btn("✎ " + QApplication.translate("Menu", "Edit"))
             edit.setToolTip(edit_tooltip)
             edit.clicked.connect(
                 lambda _=False, p=edit_page: self._edit_from_review(self._resolve_edit_page(p)))
@@ -1296,10 +1296,10 @@ class NewSackWizard(QDialog):
                 (self._PAGE_PROVENANCE, self._page_titles[self._PAGE_PROVENANCE],
                  QApplication.translate("tilauscope_sacks", "Edit farm, supplier and altitude")),
                 (self._PAGE_FACTS, self._page_titles[self._PAGE_FACTS],
-                 QApplication.translate("tilauscope_sacks", "Edit type, category, process, species, varieties, "
+                 QApplication.translate("tilauscope_common", "Edit type, category, process, species, varieties, "
                      "density, humidity")),
                 (self._PAGE_SENSORY, QApplication.translate("tilauscope_sacks", "Sensory"),
-                 QApplication.translate("tilauscope_sacks", "Edit SCA score, flavour notes and memo"))):
+                 QApplication.translate("tilauscope_common", "Edit SCA score, flavour notes and memo"))):
             card, cl = self._review_card(title, page_idx, tip)
             val = QLabel("")
             val.setWordWrap(True)
@@ -1340,7 +1340,7 @@ class NewSackWizard(QDialog):
             added = self.restock_weight_spin.value()
             self.review_head.setText(self._join(
                 [src.name, src.country, str(src.crop) if src.crop else ""]))
-            self.review_sack.setText(self._sack_line(added) + "   —   " + QApplication.translate("tilauscope_sacks",
+            self.review_sack.setText(self._sack_line(added) + "   —   " + QApplication.translate("tilauscope_common",
                 "Stock:") + f" {src.weight_left:.0f} g → {src.weight_left + added:.0f} g")
         else:
             if mode == "newcrop" and src is not None:
@@ -1368,7 +1368,7 @@ class NewSackWizard(QDialog):
                 ratios = [self.bean1_ratio_spin.value(), self.bean2_ratio_spin.value(),
                           self.bean3_ratio_spin.value()]
                 shown = "/".join(f"{r:.0f}" for r in ratios if r > 0)
-                facts_parts.append(QApplication.translate("tilauscope_sacks", "Blend") + f" {shown}")
+                facts_parts.append(QApplication.translate("tilauscope_common", "Blend") + f" {shown}")
             facts_parts += [
                 self.category_combo.currentText(),
                 self.process_combo.currentText(),
@@ -1408,7 +1408,7 @@ class NewSackWizard(QDialog):
             if not self.humidity_spin.value():
                 missing.append(QApplication.translate("tilauscope_sacks", "humidity"))
             if not self.sca_spin.value():
-                missing.append(QApplication.translate("tilauscope_sacks", "SCA score"))
+                missing.append(QApplication.translate("tilauscope_common", "SCA score"))
             if missing:
                 warn_parts.append(
                     QApplication.translate("tilauscope_sacks", "Not extracted by the AI:") + " " + ", ".join(missing) + ".")
@@ -1581,7 +1581,7 @@ class NewSackWizard(QDialog):
                     if last > 0:
                         self._aw_win.update_value(last)
                     if not getattr(dev, 'is_connected', False):
-                        self._aw_win.set_status(QApplication.translate("tilauscope_sacks", "probe not connected…"))
+                        self._aw_win.set_status(QApplication.translate("tilauscope_common", "probe not connected…"))
             # below the ⚖ scale window, which sits at the top of the same edge
             self._aw_win.move(*self._annex_pos(self._aw_win, 220))
             self._aw_win.show()
@@ -1810,8 +1810,8 @@ class NewSackWizard(QDialog):
             self.accept()
         except Exception as e:  # noqa: BLE001
             _logd.exception("new sack wizard: create failed")
-            show_styled_message(self, QApplication.translate("tilauscope_sacks", "Save Error"),
-                                QApplication.translate("tilauscope_sacks", "An unexpected error occurred") + f": {e}",
+            show_styled_message(self, QApplication.translate("tilauscope_common", "Save Error"),
+                                QApplication.translate("tilauscope_common", "An unexpected error occurred") + f": {e}",
                                 QMessageBox.Icon.Warning)
 
     def _collect_bean(self, mode: str) -> GreenBean:

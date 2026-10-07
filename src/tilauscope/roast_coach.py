@@ -499,7 +499,7 @@ def read_roast(data: dict, *, roast_context: Any = None, bean: Any = None,
                     "warn")
             else:
                 add("✓",
-                    f"{phase_tr} {QApplication.translate('tilauscope_beancave', 'on target')}"
+                    f"{phase_tr} {QApplication.translate('tilauscope_common', 'on target')}"
                     + f" ({actual_min:.1f} min)", "ok")
 
     # ── 4. Cross-check: Drop BT vs DTR consistency ─────────────────────────

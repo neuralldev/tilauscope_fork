@@ -506,7 +506,7 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
         # Reflect the level on the cycling button (letter + colour + tooltip).
         _meta = {
             "guided": ("G", "#A6E3A1", QApplication.translate("tilauscope_window", "Guided")),
-            "expert": ("E", "#FAB387", QApplication.translate("tilauscope_window", "Expert")),
+            "expert": ("E", "#FAB387", QApplication.translate("Menu", "Expert")),
         }
         _letter, _col, _name = _meta.get(level, _meta["guided"])
         _next_name = _meta["expert" if level == "guided" else "guided"][2]

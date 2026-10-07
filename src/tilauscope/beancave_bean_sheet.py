@@ -131,7 +131,7 @@ class _Zone(QFrame):
             f"color:{THEME['ACCENT'] if accent else _DIM};font-size:{_fs(10)}px;"
             f"{'font-weight:600;' if accent else ''}letter-spacing:2px;" + _PLAIN)
         self.head.addWidget(t, 1)
-        self.edit_btn = QPushButton("✎ " + QApplication.translate("tilauscope_beancave", "Edit"))
+        self.edit_btn = QPushButton("✎ " + QApplication.translate("Menu", "Edit"))
         self.edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.edit_btn.setStyleSheet(_link_css())
         self.head.addWidget(self.edit_btn)
@@ -274,7 +274,7 @@ class BeanSheetWidget(QWidget):
         return g
 
     def _build_essentials(self, bean, memory: RoastMemory | None) -> None:
-        z = _Zone(QApplication.translate("tilauscope_beancave", "Essentials"))
+        z = _Zone(QApplication.translate("tilauscope_common", "Essentials"))
         z.edit_btn.setToolTip(QApplication.translate("tilauscope_beancave", "Edit name, origin, year and stock"))
         z.edit_btn.clicked.connect(lambda: self.editRequested.emit('essentials'))
 
@@ -300,7 +300,7 @@ class BeanSheetWidget(QWidget):
             stock_caption = QApplication.translate("tilauscope_beancave", "≈ {0} batches").format(
                 max(1, round(stock / batch)) if stock >= batch / 2 else 0)
         else:
-            stock_caption = QApplication.translate("tilauscope_beancave", "Stock")
+            stock_caption = QApplication.translate("Label", "Stock")
         stock_tile = self._tile(f"{stock:.0f} g", stock_caption, THEME['SUCCESS'] if stock > 0 else _DIM)
         price = float(getattr(bean, 'price_per_kg', 0.0) or 0.0)
         if price > 0:
@@ -320,13 +320,13 @@ class BeanSheetWidget(QWidget):
             if age >= 2:
                 crop_tip = QApplication.translate("tilauscope_beancave", "Harvest is {0} years old").format(age)
         crop_tile = self._tile(str(crop) if crop > 0 else "—",
-                               QApplication.translate("tilauscope_beancave", "Crop"), crop_col)
+                               QApplication.translate("tilauscope_common", "Crop"), crop_col)
         if crop_tip:
             crop_tile.setToolTip(crop_tip)
         tiles.append(crop_tile)
         sca = float(getattr(bean, 'sca', 0.0) or 0.0)
         tiles.append(self._tile(f"{sca:.1f}" if sca > 0 else "—",
-                                QApplication.translate("tilauscope_beancave", "SCA"), THEME['TEXT']))
+                                QApplication.translate("tilauscope_common", "SCA"), THEME['TEXT']))
         tiles.append(self._tile(str(getattr(bean, 'count', 0) or 0),
                                 QApplication.translate("tilauscope_beancave", "Roasts"), THEME['TEXT']))
         z.body.addLayout(self._tiles_row(tiles))
@@ -344,7 +344,7 @@ class BeanSheetWidget(QWidget):
         edit_notes = QPushButton("✎")
         edit_notes.setCursor(Qt.CursorShape.PointingHandCursor)
         edit_notes.setStyleSheet(_link_css())
-        edit_notes.setToolTip(QApplication.translate("tilauscope_beancave", "Edit SCA score, flavour notes and memo"))
+        edit_notes.setToolTip(QApplication.translate("tilauscope_common", "Edit SCA score, flavour notes and memo"))
         edit_notes.clicked.connect(lambda: self.editRequested.emit('sensory'))
         flow.addWidget(edit_notes)
         z.body.addWidget(flow_host)
@@ -396,11 +396,11 @@ class BeanSheetWidget(QWidget):
         basis = (QApplication.translate("tilauscope_beancave", "ground") if memory.colour_basis == 'ground'
                  else QApplication.translate("tilauscope_beancave", "whole"))
         for text, value, suffix in (
-                (QApplication.translate("tilauscope_beancave", "Development"),
+                (QApplication.translate("Label", "Development"),
                  f"{memory.dev_pct:.0f} %" if memory.dev_pct is not None else None, ""),
-                (QApplication.translate("tilauscope_beancave", "Loss"),
+                (QApplication.translate("HTML Report Template", "Loss"),
                  f"{memory.loss_pct:.1f} %" if memory.loss_pct is not None else None, ""),
-                (QApplication.translate("tilauscope_beancave", "Colour"),
+                (QApplication.translate("tilauscope_common", "Colour"),
                  f"{memory.colour:.0f}" if memory.colour is not None else None, " " + basis)):
             if value is None:
                 continue
@@ -468,9 +468,9 @@ class BeanSheetWidget(QWidget):
         self._add(self._left, z)
 
     def _build_characteristics(self, bean) -> None:
-        z = _Zone(QApplication.translate("tilauscope_beancave", "Characteristics"))
+        z = _Zone(QApplication.translate("CheckBox", "Characteristics"))
         z.edit_btn.setToolTip(QApplication.translate(
-            "tilauscope_beancave", "Edit type, category, process, species, varieties, density, humidity"))
+            "tilauscope_common", "Edit type, category, process, species, varieties, density, humidity"))
         z.edit_btn.clicked.connect(lambda: self.editRequested.emit('characteristics'))
 
         chips_host = QWidget()
@@ -489,9 +489,9 @@ class BeanSheetWidget(QWidget):
         tiles = []
         for kind, value, text, caption in (
                 ('density', float(getattr(bean, 'density', 0.0) or 0.0), "{0:.0f} g/l",
-                 QApplication.translate("tilauscope_beancave", "Density")),
+                 QApplication.translate("Label", "Density")),
                 ('humidity', float(getattr(bean, 'last_humidity', 0.0) or 0.0), "{0:.1f} %",
-                 QApplication.translate("tilauscope_beancave", "Humidity")),
+                 QApplication.translate("Label", "Humidity")),
                 ('aw', float(getattr(bean, 'water_activity', 0.0) or 0.0), "{0:.2f}",
                  QApplication.translate("tilauscope_beancave", "aw"))):
             if value <= 0:
@@ -513,11 +513,11 @@ class BeanSheetWidget(QWidget):
         else:
             name, delta = family
             if delta > 0:
-                word = QApplication.translate("tilauscope_beancave", "wants a faster roast")
+                word = QApplication.translate("tilauscope_common", "wants a faster roast")
             elif delta < 0:
-                word = QApplication.translate("tilauscope_beancave", "takes a slower roast")
+                word = QApplication.translate("tilauscope_common", "takes a slower roast")
             else:
-                word = QApplication.translate("tilauscope_beancave", "keeps the standard pace")
+                word = QApplication.translate("tilauscope_common", "keeps the standard pace")
             pace = f"{name} — {word}"
         fam = QFrame()
         fam.setObjectName("familyLine")
@@ -570,7 +570,7 @@ class BeanSheetWidget(QWidget):
         return lay
 
     def _build_provenance(self, bean) -> None:
-        z = _Zone(QApplication.translate("tilauscope_beancave", "Provenance"))
+        z = _Zone(QApplication.translate("tilauscope_common", "Provenance"))
         z.edit_btn.setToolTip(QApplication.translate("tilauscope_beancave", "Edit farm, supplier, altitude and price"))
         z.edit_btn.clicked.connect(lambda: self.editRequested.emit('provenance'))
         host = QWidget()
@@ -579,10 +579,10 @@ class BeanSheetWidget(QWidget):
         alt = int(getattr(bean, 'altitude', 0) or 0)
         price = float(getattr(bean, 'price_per_kg', 0.0) or 0.0)
         items = [
-            (_SVG_PLACE, bean.farm or "", QApplication.translate("tilauscope_beancave", "Farm")),
+            (_SVG_PLACE, bean.farm or "", QApplication.translate("tilauscope_common", "Farm")),
             (_SVG_ALTITUDE, f"<b style=\"font-family:{_MONO};\">{alt}</b> m" if alt > 0 else "",
-             QApplication.translate("tilauscope_beancave", "Altitude")),
-            (_SVG_SUPPLIER, bean.supplier or "", QApplication.translate("tilauscope_beancave", "Supplier")),
+             QApplication.translate("tilauscope_common", "Altitude")),
+            (_SVG_SUPPLIER, bean.supplier or "", QApplication.translate("tilauscope_common", "Supplier")),
             (_SVG_PRICE, f"{format_money(price)}/kg" if price > 0 else "",
              QApplication.translate("tilauscope_beancave", "Price")),
         ]
@@ -617,7 +617,7 @@ class BeanSheetWidget(QWidget):
         sacks = list(getattr(bean, 'sacks', None) or [])
         # doctrine: no sacks → no label, no reminder
         if sacks:
-            row.addWidget(_label(QApplication.translate("tilauscope_beancave", "Sacks").upper(),
+            row.addWidget(_label(QApplication.translate("tilauscope_common", "Sacks").upper(),
                                  f"color:{_DIM};font-size:{_fs(10)}px;letter-spacing:2px;"))
             chips = SackChipsRow()
             chips.set_sacks(sacks)
@@ -626,7 +626,7 @@ class BeanSheetWidget(QWidget):
             chips.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
             row.addWidget(chips)
         row.addStretch(1)
-        crop = QPushButton("🌱 " + QApplication.translate("tilauscope_beancave", "New crop"))
+        crop = QPushButton("🌱 " + QApplication.translate("tilauscope_common", "New crop"))
         crop.setCursor(Qt.CursorShape.PointingHandCursor)
         crop.setStyleSheet(
             f"QPushButton {{ background:transparent;color:{THEME['ACCENT']};"

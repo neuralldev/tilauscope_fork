@@ -219,7 +219,7 @@ class RoastCardDialog(QDialog):
         notes = str(profile.get("cuppingnotes") or "").strip()
         if notes:
             layout.addWidget(self._separator())
-            nt = QLabel(QApplication.translate("tilauscope_roast_review", "Tasting notes"))
+            nt = QLabel(QApplication.translate("tilauscope_common", "Tasting notes"))
             nt.setStyleSheet(f"color: {THEME['ACCENT']}; font-size: 12px; font-weight: 700;")
             layout.addWidget(nt)
             nb = QLabel("« " + notes + " »")

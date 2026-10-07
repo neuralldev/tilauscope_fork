@@ -106,7 +106,7 @@ class CustomLabelDlg(QDialog):
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setWindowTitle(QApplication.translate("tilauscope_label", "Print a label"))
+        self.setWindowTitle(QApplication.translate("tilauscope_common", "Print a label"))
 
         self._build_ui()
         self._restore_last()
@@ -135,7 +135,7 @@ class CustomLabelDlg(QDialog):
 
         # custom title bar (drag handle + close)
         bar = QHBoxLayout()
-        title = QLabel("🏷  " + QApplication.translate("tilauscope_label", "Print a label"))
+        title = QLabel("🏷  " + QApplication.translate("tilauscope_common", "Print a label"))
         title.setStyleSheet(f"font-size:15px;font-weight:bold;color:{THEME['ACCENT']};")
         btn_x = QPushButton("✕")
         btn_x.setFixedSize(26, 26)
@@ -225,21 +225,21 @@ class CustomLabelDlg(QDialog):
 
         form.addWidget(_lbl(QApplication.translate("tilauscope_label", "Coffee name")), 0, 0)
         form.addWidget(self.ed_name, 0, 1, 1, 4)
-        form.addWidget(_lbl(QApplication.translate("tilauscope_label", "Roasted by")), 1, 0)
+        form.addWidget(_lbl(QApplication.translate("tilauscope_common", "Roasted by")), 1, 0)
         form.addWidget(self.ed_roaster, 1, 1, 1, 4)
-        form.addWidget(_lbl(QApplication.translate("tilauscope_label", "Origin")), 2, 0)
+        form.addWidget(_lbl(QApplication.translate("tilauscope_common", "Origin")), 2, 0)
         form.addWidget(self.ed_origin, 2, 1)
-        form.addWidget(_lbl(QApplication.translate("tilauscope_label", "Process")), 2, 2)
+        form.addWidget(_lbl(QApplication.translate("tilauscope_common", "Process")), 2, 2)
         form.addWidget(self.cmb_process, 2, 3, 1, 2)
-        form.addWidget(_lbl(QApplication.translate("tilauscope_label", "Roast level")), 3, 0)
+        form.addWidget(_lbl(QApplication.translate("tilauscope_common", "Roast level")), 3, 0)
         form.addWidget(self.cmb_level, 3, 1)
         form.addWidget(_lbl(QApplication.translate("tilauscope_label", "Roasted on")), 3, 2)
         form.addWidget(self.dt_roasted, 3, 3)
         form.addWidget(self.chk_no_date, 3, 4)
-        form.addWidget(_lbl(QApplication.translate("tilauscope_label", "Weight")), 4, 0)
+        form.addWidget(_lbl(QApplication.translate("Table", "Weight")), 4, 0)
         form.addWidget(self.spn_weight, 4, 1)
         form.addWidget(self.btn_scale, 4, 2)
-        form.addWidget(_lbl(QApplication.translate("tilauscope_label", "Tasting notes")), 5, 0)
+        form.addWidget(_lbl(QApplication.translate("tilauscope_common", "Tasting notes")), 5, 0)
         form.addWidget(self.ed_notes, 5, 1, 1, 4)
         root.addLayout(form)
 
@@ -268,11 +268,11 @@ class CustomLabelDlg(QDialog):
         self.btn_recall.setToolTip(QApplication.translate(
             "tilauscope_label", "Bring back the last label you printed"))
         self.btn_recall.clicked.connect(self._restore_last)
-        self.btn_clear = QPushButton(QApplication.translate("tilauscope_label", "Clear"))
+        self.btn_clear = QPushButton(QApplication.translate("tilauscope_common", "Clear"))
         self.btn_clear.clicked.connect(self._clear_fields)
-        btn_close = QPushButton(QApplication.translate("tilauscope_label", "Close"))
+        btn_close = QPushButton(QApplication.translate("Button", "Close"))
         btn_close.clicked.connect(self.close)
-        self.btn_print = QPushButton("🖨  " + QApplication.translate("tilauscope_label", "Print"))
+        self.btn_print = QPushButton("🖨  " + QApplication.translate("HelpDlg", "Print"))
         self.btn_print.setProperty("variant", "primary")
         self.btn_print.setDefault(True)
         self.btn_print.clicked.connect(self._print_label)
@@ -503,7 +503,7 @@ class CustomLabelDlg(QDialog):
             sm = getattr(self.aw, "scale_manager", None)
             if sm is None or not sm.is_scale1_configured():
                 show_styled_message(
-                    self, QApplication.translate("tilauscope_label", "Scale"),
+                    self, QApplication.translate("tilauscope_common", "Scale"),
                     QApplication.translate(
                         "tilauscope_label",
                         "No scale is set up yet — pair one in Settings, or type the "
@@ -568,9 +568,9 @@ class CustomLabelDlg(QDialog):
         except Exception as exc:  # noqa: BLE001
             _log.error("custom label build failed: %s", exc)
             show_styled_message(
-                self, QApplication.translate("tilauscope_label", "Print"),
+                self, QApplication.translate("HelpDlg", "Print"),
                 QApplication.translate(
-                    "tilauscope_label",
+                    "tilauscope_common",
                     "The label could not be built, so nothing was sent to the printer."),
                 QMessageBox.Icon.Warning)
             return
@@ -578,7 +578,7 @@ class CustomLabelDlg(QDialog):
         self._printing = True
         self.btn_print.setEnabled(False)
         self.lbl_status.setText(QApplication.translate(
-            "tilauscope_label", "Printing…"))
+            "tilauscope_common", "Printing…"))
         self._print_pill = print_progress_pill(self.container, 1)
         self._print_pill.set_margin(20, 56)
         try:
@@ -592,7 +592,7 @@ class CustomLabelDlg(QDialog):
     def _on_print_ok(self) -> None:
         pill, self._print_pill = self._print_pill, None
         if pill is not None:
-            pill.succeed("🖨  " + QApplication.translate("tilauscope_label", "Label printed"))
+            pill.succeed("🖨  " + QApplication.translate("tilauscope_common", "Label printed"))
         # The dialog stays open with its fields filled: the next bag of the same
         # lot is one click away.
         self._printing = False
@@ -606,9 +606,9 @@ class CustomLabelDlg(QDialog):
         self._printing = False
         self._on_printer_state()
         show_styled_message(
-            self, QApplication.translate("tilauscope_label", "Print"),
+            self, QApplication.translate("HelpDlg", "Print"),
             QApplication.translate(
-                "tilauscope_label",
+                "tilauscope_common",
                 "The label did not print: {0}\n\nCheck the printer is on and the roll "
                 "is loaded, then try again.").format(msg),
             QMessageBox.Icon.Warning)
@@ -622,7 +622,7 @@ class CustomLabelDlg(QDialog):
         self._printing = False
         self._on_printer_state()
         show_styled_message(
-            self, QApplication.translate("tilauscope_label", "Print"),
+            self, QApplication.translate("HelpDlg", "Print"),
             unconfirmed_message(), QMessageBox.Icon.Warning)
 
     # ── lifecycle ────────────────────────────────────────────────────────────

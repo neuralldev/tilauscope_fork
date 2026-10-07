@@ -178,7 +178,7 @@ class RoastAnalysisView(QWidget):
         controls.setSpacing(10)
         self.result_switch = SegmentedControl(
             [QApplication.translate('tilauscope_beancave', 'Summary'),
-             QApplication.translate('tilauscope_beancave', 'Expert')], compact=True)
+             QApplication.translate('Menu', 'Expert')], compact=True)
         self.result_switch.set_current(0)
         controls.addWidget(self.result_switch)
         controls.addSpacing(8)
@@ -234,7 +234,7 @@ class RoastAnalysisView(QWidget):
         form = QFormLayout()
         self.fit_period = QComboBox()
         self.fit_period.addItem(QApplication.translate('tilauscope_beancave', 'Same as the analysed period'), '')
-        self.fit_period.addItem(QApplication.translate('tilauscope_beancave', 'Dry end'), 'dry')
+        self.fit_period.addItem(QApplication.translate('tilauscope_common', 'Dry end'), 'dry')
         self.fit_period.addItem(QApplication.translate('tilauscope_beancave', '2 min before first crack'), 'crack')
         self.minimum_seconds = QDoubleSpinBox()
         self.minimum_seconds.setRange(0, 60)
@@ -348,7 +348,7 @@ class RoastAnalysisView(QWidget):
         segment_grid.setVerticalSpacing(2)
         self.segment_rows: list[QLabel] = []
         for name in (QApplication.translate('tilauscope_beancave', 'Position'), QApplication.translate('tilauscope_beancave', 'Peak deviation'),
-                     QApplication.translate('tilauscope_beancave', 'Mean absolute deviation'), QApplication.translate('tilauscope_beancave', 'Swing')):
+                     QApplication.translate('tilauscope_beancave', 'Mean absolute deviation'), QApplication.translate('Label', 'Swing')):
             value = QLabel('—')
             value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             caption = _caption(name)
@@ -382,7 +382,7 @@ class RoastAnalysisView(QWidget):
         expert_layout.setContentsMargins(0, 4, 8, 0)
         self.models_table = QTableWidget(0, 5)
         self.models_table.setHorizontalHeaderLabels([
-            QApplication.translate('tilauscope_beancave', 'Reference'), QApplication.translate('tilauscope_beancave', 'RMSE BT'), QApplication.translate('tilauscope_beancave', 'MSE BT'), QApplication.translate('tilauscope_beancave', 'Δ RoR at first crack'),
+            QApplication.translate('tilauscope_beancave', 'Reference'), QApplication.translate('Label', 'RMSE BT'), QApplication.translate('Label', 'MSE BT'), QApplication.translate('tilauscope_beancave', 'Δ RoR at first crack'),
             QApplication.translate('tilauscope_beancave', 'Max / min Δ RoR')])
         self.models_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.models_table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
@@ -705,7 +705,7 @@ class RoastAnalysisView(QWidget):
                      else QApplication.translate('tilauscope_beancave', 'the reference trend'))
         for number, observation in enumerate(self._observations, 1):
             title, facts, indicates, check = self._observation_text(observation, reference)
-            phase = {1: QApplication.translate('tilauscope_beancave', 'Drying'), 2: QApplication.translate('tilauscope_beancave', 'Maillard'), 3: QApplication.translate('tilauscope_beancave', 'Development')}.get(observation.phase)
+            phase = {1: QApplication.translate('Label', 'Drying'), 2: QApplication.translate('Label', 'Maillard'), 3: QApplication.translate('Label', 'Development')}.get(observation.phase)
             if phase:
                 title += ' · ' + phase
             card = _ObservationCard(number, title, facts, indicates, check)
@@ -782,13 +782,13 @@ class RoastAnalysisView(QWidget):
         for spine in axis.spines.values():
             spine.set_visible(False)
         axis.set_xlim(result.times[0], result.times[-1])
-        end = (QApplication.translate('tilauscope_beancave', 'Drop') if result.times[-1] >= result.drop_time
-               else QApplication.translate('tilauscope_beancave', 'End'))
+        end = (QApplication.translate('Tooltip', 'Drop') if result.times[-1] >= result.drop_time
+               else QApplication.translate('Label', 'End'))
         marks = [(result.times[0], QApplication.translate('tilauscope_beancave', 'Start')), (result.times[-1], end)]
         if result.dry_time is not None and result.times[0] <= result.dry_time <= result.times[-1]:
-            marks[0] = (result.dry_time, QApplication.translate('tilauscope_beancave', 'Dry end'))
+            marks[0] = (result.dry_time, QApplication.translate('tilauscope_common', 'Dry end'))
         if result.fc_time is not None:
-            marks.append((result.fc_time, QApplication.translate('tilauscope_beancave', 'First crack')))
+            marks.append((result.fc_time, QApplication.translate('tilauscope_common', 'First crack')))
         transform = axis.get_xaxis_transform()
         span = float(result.times[-1] - result.times[0])
         previous = None

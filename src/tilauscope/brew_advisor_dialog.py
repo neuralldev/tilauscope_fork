@@ -58,7 +58,7 @@ except Exception:  # noqa: BLE001
 # ── Code → translated label maps (resolved at render time) ────────────────
 def _method_label(mid: str) -> str:
     return {
-        "ESPRESSO": QApplication.translate("tilauscope_brew", "Espresso"), "V60": QApplication.translate("tilauscope_brew", "V60 / Pour-over"),
+        "ESPRESSO": QApplication.translate("tilauscope_common", "Espresso"), "V60": QApplication.translate("tilauscope_brew", "V60 / Pour-over"),
         "FRENCH_PRESS": QApplication.translate("tilauscope_brew", "French Press"), "AEROPRESS": QApplication.translate("tilauscope_brew", "AeroPress"),
         "PULSAR": QApplication.translate("tilauscope_brew", "Pulsar (no-bypass)"), "WEBER_BIRD": QApplication.translate("tilauscope_brew", "Weber Bird (no-bypass)"),
         "MOKA": QApplication.translate("tilauscope_brew", "Moka pot"),
@@ -1495,7 +1495,7 @@ class BrewAdvisorDlg(QDialog):
             self.cmb_water.addItem(QApplication.translate("tilauscope_brew", lbl), wp)
         self.cmb_water.currentIndexChanged.connect(self._on_water)
 
-        self.lbl_machine = QLabel(QApplication.translate("tilauscope_brew", "Machine"))
+        self.lbl_machine = QLabel(QApplication.translate("Message", "Machine"))
         self.cmb_machine = QComboBox()
         for mc in ESPRESSO_MACHINE_ORDER:
             self.cmb_machine.addItem(_machine_label(mc), mc)
@@ -1504,7 +1504,7 @@ class BrewAdvisorDlg(QDialog):
             self.cmb_machine.setCurrentIndex(j)
         self.cmb_machine.currentIndexChanged.connect(self._on_machine)
 
-        self.lbl_style = QLabel(QApplication.translate("tilauscope_brew", "Style"))
+        self.lbl_style = QLabel(QApplication.translate("Tab", "Style"))
         self.cmb_style = QComboBox()
         for stl in ESPRESSO_STYLE_ORDER:
             self.cmb_style.addItem(_style_label(stl), stl)
@@ -1544,9 +1544,9 @@ class BrewAdvisorDlg(QDialog):
             ("dose",  QApplication.translate("tilauscope_brew", "Dose")),
             ("water", QApplication.translate("tilauscope_brew", "Water")),
             ("ratio", QApplication.translate("tilauscope_brew", "Ratio")),
-            ("temp",  QApplication.translate("tilauscope_brew", "Temp")),
+            ("temp",  QApplication.translate("Label", "Temp")),
             ("grind", QApplication.translate("tilauscope_brew", "Grind")),
-            ("time",  QApplication.translate("tilauscope_brew", "Time")),
+            ("time",  QApplication.translate("Table", "Time")),
         ):
             tile = _KpiTile(cap)
             self.kpis[key] = tile
@@ -1848,7 +1848,7 @@ class BrewAdvisorDlg(QDialog):
 
         mbtn = QHBoxLayout()
         mbtn.setSpacing(8)
-        self.btn_manual_cancel = QPushButton(QApplication.translate("tilauscope_brew", "Cancel"))
+        self.btn_manual_cancel = QPushButton(QApplication.translate("Button", "Cancel"))
         self.btn_manual_cancel.clicked.connect(self._close_manual_entry)
         self.btn_manual_cancel.setStyleSheet(
             f"QPushButton {{ background:{THEME['SURFACE']}; color:{THEME['SUBTEXT']};"
@@ -1986,7 +1986,7 @@ class BrewAdvisorDlg(QDialog):
                 "tilauscope_brew",
                 "Connect the Niimbot B21S in BeanCave to print a 50×30 recipe label."))
 
-        btn_close = QPushButton(QApplication.translate("tilauscope_brew", "Close"))
+        btn_close = QPushButton(QApplication.translate("Button", "Close"))
         btn_close.clicked.connect(self.accept)
         btn_row.addWidget(self.btn_ai)
         btn_row.addWidget(self.btn_print)
@@ -2317,7 +2317,7 @@ class BrewAdvisorDlg(QDialog):
             return
         if getattr(np_, "paper_height", 0) != 30:
             show_styled_message(
-                self, QApplication.translate("tilauscope_brew", "Print"),
+                self, QApplication.translate("HelpDlg", "Print"),
                 QApplication.translate("tilauscope_brew",
                     "Brew labels need the 50×30 mm roll (detected: {0}×{1} mm).")
                     .format(getattr(np_, "paper_width", 0), getattr(np_, "paper_height", 0)),
@@ -2328,15 +2328,15 @@ class BrewAdvisorDlg(QDialog):
             method_label = _method_label(rec.method_id)
             grain = self._grain_line(rec)
             if rec.method_id == "ESPRESSO":
-                water_lbl = (QApplication.translate("tilauscope_brew", "Yield")
+                water_lbl = (QApplication.translate("Label", "Yield")
                              if rec.water_is_yield else QApplication.translate("tilauscope_brew", "Water"))
                 cells = [
                     (QApplication.translate("tilauscope_brew", "Dose"),  f"{rec.dose_g:.0f} g"),
                     (water_lbl,                                          f"{rec.water_g:.0f} g"),
                     (QApplication.translate("tilauscope_brew", "Ratio"), rec.ratio_str),
-                    (QApplication.translate("tilauscope_brew", "Temp"),  self._fmt_temp(rec.temp_c)),
+                    (QApplication.translate("Label", "Temp"),  self._fmt_temp(rec.temp_c)),
                     (QApplication.translate("tilauscope_brew", "Grind"), f"{rec.grind_um} µm"),
-                    (QApplication.translate("tilauscope_brew", "Time"),  self._fmt_time(rec.total_time_s)),
+                    (QApplication.translate("Table", "Time"),  self._fmt_time(rec.total_time_s)),
                 ]
                 img = build_brew_recipe_label_image(
                     self._title, rec.method_id, method_label, grain, grid_cells=cells)
@@ -2354,8 +2354,8 @@ class BrewAdvisorDlg(QDialog):
         except Exception as exc:  # noqa: BLE001
             _log.error("Brew label build failed: %s", exc)
             show_styled_message(
-                self, QApplication.translate("tilauscope_brew", "Print"),
-                QApplication.translate("tilauscope_brew",
+                self, QApplication.translate("HelpDlg", "Print"),
+                QApplication.translate("tilauscope_common",
                     "The label could not be built, so nothing was sent to the printer."),
                 QMessageBox.Icon.Warning)
             return
@@ -2375,7 +2375,7 @@ class BrewAdvisorDlg(QDialog):
         pill = self._print_pill
         self._print_pill = None
         if pill is not None:
-            pill.succeed("🖨  " + QApplication.translate("tilauscope_brew", "Label printed"))
+            pill.succeed("🖨  " + QApplication.translate("tilauscope_common", "Label printed"))
         if getattr(self, "btn_print", None) is not None:
             self.btn_print.setEnabled(self._can_print_label())
 
@@ -2446,7 +2446,7 @@ class BrewAdvisorDlg(QDialog):
                 "Switch the scale on and it will connect by itself."))
         else:
             self.lbl_scale_status.setText(
-                QApplication.translate("tilauscope_brew", "No scale configured"))
+                QApplication.translate("tilauscope_common", "No scale configured"))
             self.lbl_scale_status.setToolTip(QApplication.translate(
                 "tilauscope_brew",
                 "Configure a Bluetooth scale in the settings to enable live brewing."))
@@ -3452,7 +3452,7 @@ class BrewAdvisorDlg(QDialog):
                          f"{rec.grind_um}", f"{new} µm", word, "▼" if new < rec.grind_um else "▲"))
         if abs(corr.temp_delta) > 1e-6:
             new_t = _clamp(rec.temp_c + corr.temp_delta, 80.0, 99.0)
-            bits.append((QApplication.translate('tilauscope_brew', 'Temp'),
+            bits.append((QApplication.translate('Label', 'Temp'),
                          self._fmt_temp(rec.temp_c), self._fmt_temp(new_t), "",
                          "▼" if new_t < rec.temp_c else "▲"))
         if abs(corr.ratio_delta) > 1e-6:
@@ -3656,9 +3656,9 @@ class BrewAdvisorDlg(QDialog):
         if self._brew_running:
             return
         if hasattr(self, "lbl_brew_target"):
-            lbl = QApplication.translate("tilauscope_brew", "Yield") if rec.water_is_yield else QApplication.translate("tilauscope_brew", "Water")
+            lbl = QApplication.translate("Label", "Yield") if rec.water_is_yield else QApplication.translate("tilauscope_brew", "Water")
             self.lbl_brew_target.setText(
-                f"{QApplication.translate("tilauscope_brew", 'Target')}: {rec.water_g:.0f} g {lbl} · {self._fmt_time(rec.total_time_s)}")
+                f"{QApplication.translate("Label", 'Target')}: {rec.water_g:.0f} g {lbl} · {self._fmt_time(rec.total_time_s)}")
             # Show the plan corridor before the brew starts, so the operator can
             # read the intended shape ahead of pouring. A new recipe also
             # releases the frozen plan, wipes the previous brew's trace and
@@ -3677,7 +3677,7 @@ class BrewAdvisorDlg(QDialog):
             # it — the manual-entry button stayed hidden for exactly the
             # operators it was built for. Pure widget state, no I/O.
             self._sync_scale_ui()
-        water_label = QApplication.translate("tilauscope_brew", "Yield") if rec.water_is_yield else QApplication.translate("tilauscope_brew", "Water")
+        water_label = QApplication.translate("Label", "Yield") if rec.water_is_yield else QApplication.translate("tilauscope_brew", "Water")
 
         self._render_header_pills(rec)
 

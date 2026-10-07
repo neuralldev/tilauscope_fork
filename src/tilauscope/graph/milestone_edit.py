@@ -422,7 +422,7 @@ class MilestoneTimeDialog(QDialog):
         lay.setContentsMargins(22, 18, 22, 16)
         lay.setSpacing(10)
 
-        title = QLabel(QApplication.translate('tilauscope', 'Change the time of {0}').format(label))
+        title = QLabel(QApplication.translate('tilauscope_graph', 'Change the time of {0}').format(label))
         title.setProperty('variant', 'title')
         lay.addWidget(title)
 
@@ -430,10 +430,10 @@ class MilestoneTimeDialog(QDialog):
         if self._span is not None:
             lo, hi = self._span
             bounds = QApplication.translate(
-                'tilauscope', 'Now at {0}. Allowed from {1} to {2}.').format(
+                'tilauscope_graph', 'Now at {0}. Allowed from {1} to {2}.').format(
                     now, fmt_clock(times[lo] - self._origin), fmt_clock(times[hi] - self._origin))
         else:
-            bounds = QApplication.translate('tilauscope', 'Now at {0}. There is no room to move it.').format(now)
+            bounds = QApplication.translate('tilauscope_graph', 'Now at {0}. There is no room to move it.').format(now)
         caption = QLabel(bounds)
         caption.setProperty('variant', 'secondary')
         lay.addWidget(caption)
@@ -441,12 +441,12 @@ class MilestoneTimeDialog(QDialog):
         row = QHBoxLayout()
         row.setSpacing(10)
         if marked(profile.timeindex, CHARGE):
-            field_name = QApplication.translate('tilauscope', 'Time from the charge')
+            field_name = QApplication.translate('tilauscope_graph', 'Time from the charge')
         else:
-            field_name = QApplication.translate('tilauscope', 'Time from the start of the recording')
+            field_name = QApplication.translate('tilauscope_graph', 'Time from the start of the recording')
         row.addWidget(QLabel(field_name))
         self.field = QLineEdit(now)
-        self.field.setPlaceholderText(QApplication.translate('tilauscope', 'm:ss'))
+        self.field.setPlaceholderText(QApplication.translate('tilauscope_graph', 'm:ss'))
         self.field.setMaxLength(9)
         self.field.setFixedWidth(96)
         row.addWidget(self.field)
@@ -459,11 +459,11 @@ class MilestoneTimeDialog(QDialog):
 
         buttons = QHBoxLayout()
         buttons.addStretch(1)
-        cancel = QPushButton(QApplication.translate('tilauscope', 'Cancel'))
+        cancel = QPushButton(QApplication.translate('Button', 'Cancel'))
         cancel.setProperty('variant', 'outline')
         cancel.setAutoDefault(False)
         cancel.clicked.connect(self.reject)
-        self.apply_button = QPushButton(QApplication.translate('tilauscope', 'Apply'))
+        self.apply_button = QPushButton(QApplication.translate('Button', 'Apply'))
         self.apply_button.setProperty('variant', 'primary')
         self.apply_button.setDefault(True)
         self.apply_button.clicked.connect(self.accept)
@@ -499,25 +499,25 @@ class MilestoneTimeDialog(QDialog):
         value = parse_clock(self.field.text())
         times = self._profile.timex
         if self._span is None:
-            message = QApplication.translate('tilauscope', 'There is no room to move it.')
+            message = QApplication.translate('tilauscope_graph', 'There is no room to move it.')
         elif value is None:
-            message = QApplication.translate('tilauscope', 'Type the time as minutes:seconds, for example 5:24.')
+            message = QApplication.translate('tilauscope_graph', 'Type the time as minutes:seconds, for example 5:24.')
         else:
             lo, hi = self._span
             # The bounds are compared as they are shown, in whole seconds.
             first = round(times[lo] - self._origin)
             last = round(times[hi] - self._origin)
             if not first <= value <= last:
-                message = QApplication.translate('tilauscope', 'Outside the allowed range.')
+                message = QApplication.translate('tilauscope_graph', 'Outside the allowed range.')
             else:
                 index = nearest(times, self._origin + value, lo, hi)
                 shown = fmt_clock(times[index] - self._origin)
                 if index == self._current:
-                    message = QApplication.translate('tilauscope', 'Already at {0}: nothing to change.').format(shown)
+                    message = QApplication.translate('tilauscope_graph', 'Already at {0}: nothing to change.').format(shown)
                 else:
                     self._chosen = index
                     warning = False
-                    message = QApplication.translate('tilauscope', 'Will be set to {0}.').format(shown)
+                    message = QApplication.translate('tilauscope_graph', 'Will be set to {0}.').format(shown)
         self.feedback.setText(message)
         colour = THEME['YELLOW'] if warning else THEME['SUCCESS']
         self.feedback.setStyleSheet(f"QLabel {{ color: {colour}; }}")

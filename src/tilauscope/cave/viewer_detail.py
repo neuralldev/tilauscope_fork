@@ -129,10 +129,10 @@ def roast_tiles(facts: RoastFacts | None, price_per_kg: float = 0.0) -> list[Til
     Without facts (the roast is still loading, or could not be read) every tile
     keeps its caption and shows a dash, so nothing moves when the figures land.
     """
-    captions = (QApplication.translate('tilauscope_beancave', 'Roasted weight'),
+    captions = (QApplication.translate('tilauscope_common', 'Roasted weight'),
                 QApplication.translate('tilauscope_beancave', 'Roast time'),
                 QApplication.translate('tilauscope_beancave', 'Drop temperature'),
-                QApplication.translate('tilauscope_beancave', 'Colour'))
+                QApplication.translate('tilauscope_common', 'Colour'))
     if facts is None:
         return [TileText(caption) for caption in captions]
 
@@ -169,7 +169,7 @@ def roast_tiles(facts: RoastFacts | None, price_per_kg: float = 0.0) -> list[Til
     if facts.ground > 0:
         category = ground_category(facts.ground)
         sub = (QApplication.translate('tilauscope_beancave', 'Ground · {0}').format(category) if category
-               else QApplication.translate('tilauscope_beancave', 'Ground'))
+               else QApplication.translate('Label', 'Ground'))
         colour = TileText(captions[3], f'{facts.ground:.0f}', sub, get_agtron_color(facts.ground))
     elif facts.whole > 0:
         # The dot shows the reading on the same roast scale as everywhere else,
@@ -177,7 +177,7 @@ def roast_tiles(facts: RoastFacts | None, price_per_kg: float = 0.0) -> list[Til
         # equivalent. The category name stays out: naming a roast level is a
         # claim, and the names belong to ground readings.
         colour = TileText(captions[3], f'{facts.whole:.0f}',
-                          QApplication.translate('tilauscope_beancave', 'Whole bean'),
+                          QApplication.translate('tilauscope_common', 'Whole bean'),
                           get_agtron_color(facts.whole), swatch_filled=False)
     else:
         colour = _not_recorded(captions[3])
@@ -189,7 +189,7 @@ def energy_tile(profile: Mapping | None) -> TileText:
 
     From the profile's own energy bill, else rebuilt from its saved power curve.
     """
-    caption = QApplication.translate('tilauscope_beancave', 'Energy')
+    caption = QApplication.translate('Tab', 'Energy')
     if not profile:
         return TileText(caption)
     from tilauscope.energy_model import NONE, session_for_profile
@@ -216,7 +216,7 @@ def comparison_tiles(all_facts: Sequence[RoastFacts] | None) -> list[TileText]:
     """Roast time, drop temperature and colour across the compared roasts: a range and its spread."""
     captions = (QApplication.translate('tilauscope_beancave', 'Roast time'),
                 QApplication.translate('tilauscope_beancave', 'Drop temperature'),
-                QApplication.translate('tilauscope_beancave', 'Colour'))
+                QApplication.translate('tilauscope_common', 'Colour'))
     if all_facts is None:
         return [TileText(caption) for caption in captions]
 

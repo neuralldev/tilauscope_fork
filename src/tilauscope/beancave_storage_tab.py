@@ -82,11 +82,11 @@ _ZONE_RANK: dict[AwZone, int] = {
 
 def zone_label(zone: AwZone) -> str:
     return {
-        AwZone.OPTIMAL: QApplication.translate("tilauscope_storage", "Optimal"),
+        AwZone.OPTIMAL: QApplication.translate("tilauscope_common", "Optimal"),
         AwZone.WATCH: QApplication.translate("tilauscope_storage", "To watch"),
         AwZone.TOO_DRY: QApplication.translate("tilauscope_storage", "Too dry"),
         AwZone.MOLD_RISK: QApplication.translate("tilauscope_storage", "Mould risk"),
-        AwZone.UNKNOWN: QApplication.translate("tilauscope_storage", "aw not measured"),
+        AwZone.UNKNOWN: QApplication.translate("tilauscope_common", "aw not measured"),
     }[zone]
 
 
@@ -315,8 +315,8 @@ class StorageTab(QWidget):
 
     def _build_table(self) -> QWidget:
         headers = [
-            QApplication.translate("tilauscope_storage", "Bean"), QApplication.translate("tilauscope_storage", "Stock"), QApplication.translate("tilauscope_storage", "Sacks"),
-            QApplication.translate("tilauscope_storage", "aw"), QApplication.translate("tilauscope_storage", "Conditioning"), QApplication.translate("tilauscope_storage", "Trend"),
+            QApplication.translate("tilauscope_common", "Bean"), QApplication.translate("Label", "Stock"), QApplication.translate("tilauscope_common", "Sacks"),
+            QApplication.translate("tilauscope_common", "aw"), QApplication.translate("tilauscope_storage", "Conditioning"), QApplication.translate("tilauscope_storage", "Trend"),
         ]
         self.table = QTableWidget(0, len(headers))
         self.table.setHorizontalHeaderLabels(headers)
@@ -441,7 +441,7 @@ class StorageTab(QWidget):
         sacks_lbl.setProperty('variant', 'eyebrow')
         srow.addWidget(sacks_lbl)
         srow.addStretch()
-        self.f_assign_btn = QPushButton("+ " + QApplication.translate("tilauscope_storage", "Assign"))
+        self.f_assign_btn = QPushButton("+ " + QApplication.translate("tilauscope_common", "Assign"))
         self.f_assign_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.f_assign_btn.setStyleSheet(self._btn_css())
         self.f_assign_btn.clicked.connect(self._assign_sack)
@@ -650,7 +650,7 @@ class StorageTab(QWidget):
             trend = SA.compute_trend(aw, self._ambient_rh, getattr(b, "conditioning", ""))
             color = _ZONE_COLOR[zone]
 
-            name = getattr(b, "name", "") or QApplication.translate("tilauscope_storage", "(unnamed)")
+            name = getattr(b, "name", "") or QApplication.translate("tilauscope_common", "(unnamed)")
             crop = getattr(b, "crop", 0)
             sub = f" '{str(crop)[-2:]}" if crop else ""
             self._set_cell(r, 0, f"{name}{sub}")
@@ -736,7 +736,7 @@ class StorageTab(QWidget):
         a = SA.assess(aw, self._ambient_rh, cond, thr)
         color = _ZONE_COLOR[a.zone]
 
-        self.f_name.setText(getattr(b, "name", "") or QApplication.translate("tilauscope_storage", "(unnamed)"))
+        self.f_name.setText(getattr(b, "name", "") or QApplication.translate("tilauscope_common", "(unnamed)"))
         meta_bits = [x for x in (getattr(b, "process", ""), getattr(b, "species", "")) if x]
         crop = getattr(b, "crop", 0)
         if crop:
@@ -1032,11 +1032,11 @@ class StorageMqttConfigDialog(QDialog):
         test_btn.setStyleSheet(self._tab._btn_css())
         test_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         test_btn.clicked.connect(self._test)
-        cancel_btn = QPushButton(QApplication.translate("tilauscope_storage", "Cancel"))
+        cancel_btn = QPushButton(QApplication.translate("Button", "Cancel"))
         cancel_btn.setStyleSheet(self._tab._btn_css())
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel_btn.clicked.connect(self.reject)
-        save_btn = QPushButton(QApplication.translate("tilauscope_storage", "Save"))
+        save_btn = QPushButton(QApplication.translate("Message", "Save"))
         save_btn.setStyleSheet(self._accent_css())
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         save_btn.clicked.connect(self._save)

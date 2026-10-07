@@ -257,7 +257,7 @@ def price_per_kg_spin() -> QDoubleSpinBox:
     spin.setRange(0.0, 10_000_000.0)   # wide enough for JPY and KRW
     spin.setDecimals(2)
     spin.setSuffix(f" {currency_symbol()}/kg")
-    spin.setToolTip(QApplication.translate("tilauscope_beancave",
+    spin.setToolTip(QApplication.translate("tilauscope",
         "Purchase price per kg of green beans. Leave 0 if unknown."))
     return spin
 
@@ -271,7 +271,7 @@ def select_listed_or_other(combo, value: object) -> None:
     text = '' if value is None else str(value)
     idx = combo.findText(text)
     if idx < 0 and text:
-        idx = combo.findText(QApplication.translate("tilauscope_beancave", "Other"))
+        idx = combo.findText(QApplication.translate("tilauscope_common", "Other"))
     combo.setCurrentIndex(idx)
 
 
@@ -2057,7 +2057,7 @@ class TilauProgressPill(QWidget):
         self.btn_cancel.setFixedSize(18, 18)
         self.btn_cancel.setProperty('variant', 'icon')   # fixed size: no base padding
         self.btn_cancel.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_cancel.setToolTip(QApplication.translate("tilauscope", "Cancel"))
+        self.btn_cancel.setToolTip(QApplication.translate("Button", "Cancel"))
         self.btn_cancel.setStyleSheet(
             f"QPushButton {{ color:{THEME['SUBTEXT']}; background:transparent;"
             f" border:none; font-size:11px; }}"
@@ -2150,7 +2150,7 @@ def print_progress_pill(parent: QWidget, total: int,
     """
     pill = TilauProgressPill(
         parent,
-        "🖨  " + QApplication.translate("tilauscope", "Printing…"),
+        "🖨  " + QApplication.translate("tilauscope_common", "Printing…"),
         cancellable=(total > 1 and on_cancel is not None))
     if total > 1:
         pill.progress.set_count(0, total)

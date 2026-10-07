@@ -576,7 +576,7 @@ class AIProviderPickerDialog(QDialog):
 
         btn_row = QHBoxLayout()
         btn_row.setSpacing(10)
-        cancel_btn = QPushButton(QApplication.translate("tilauscope_ai", "Cancel"))
+        cancel_btn = QPushButton(QApplication.translate("Button", "Cancel"))
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {T['SURFACE']}; color: {T['TEXT']};
@@ -588,7 +588,7 @@ class AIProviderPickerDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
 
         self._save_btn = QPushButton(
-            QApplication.translate("tilauscope_ai", "⬥  Save")
+            QApplication.translate("tilauscope_common", "⬥  Save")
         )
         self._save_btn.setStyleSheet(f"""
             QPushButton {{

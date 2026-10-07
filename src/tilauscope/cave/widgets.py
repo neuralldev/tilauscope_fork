@@ -525,7 +525,7 @@ class QRCodeDialog(QDialog):
         btn_save.clicked.connect(self._save_as_png)
 
         btn_print = QPushButton(
-            QApplication.translate("tilauscope_beancave", "Print")
+            QApplication.translate("HelpDlg", "Print")
         )
         btn_print.setProperty('variant', 'primary')
         btn_print.clicked.connect(self._print)
@@ -578,7 +578,7 @@ class QRCodeDialog(QDialog):
                 _logd.error(f"QR code save failed: {exc}")
                 show_styled_message(
                     self,
-                    QApplication.translate("tilauscope_beancave", "Save Error"),
+                    QApplication.translate("tilauscope_common", "Save Error"),
                     QApplication.translate("tilauscope_beancave",
                         "The QR code could not be saved:") + f"\n{exc}",
                     QMessageBox.Icon.Warning)
@@ -658,7 +658,7 @@ class _DensityFloatWindow(QDialog):
         )
         self._density_lbl.mousePressEvent = self._on_density_clicked  # type: ignore[method-assign]
 
-        hint = QLabel(QApplication.translate("tilauscope_beancave", "tap to use"))
+        hint = QLabel(QApplication.translate("tilauscope_common", "tap to use"))
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         hint.setStyleSheet(
             f"color:{THEME['SUBTEXT']};font-size:10px;"
@@ -942,7 +942,7 @@ class URLInputDialog(QDialog):
         """
         self.url_input = QLineEdit()
         self.url_input.setStyleSheet(_input_style)
-        self.url_input.setPlaceholderText(QApplication.translate("tilauscope_beancave","Enter URL of supplier here..."))
+        self.url_input.setPlaceholderText(QApplication.translate("tilauscope_common","Enter URL of supplier here..."))
         self.url_input.setMinimumHeight(30)
 
         # Button: Paste URL
