@@ -622,6 +622,7 @@ class ClientBLE(QObject):
             # scan and connect
             # NOTE: re-connecting a bleak client by address on reconnect can lead to instabilities thus we re-scan always
             service_uuid:str|None
+            connected:bool = False # set to True once the connected client offers the requested service
             self._connected_service_uuid = None
             self._connected_device_name = None
             # Hook : si la sous-classe définit scan_and_connect_override(),
@@ -662,10 +663,14 @@ class ClientBLE(QObject):
                     self._connected_device_name = None
                 else:
                     # successfully connected
-                    self.on_connect()
+                    connected = True
             if self._ble_client is not None:
                 # start notifications
                 self.start_notifications()
+                if connected:
+                    # NOTE: on_connect() is signalled only after the notifications got established such that
+                    # implementations can already send commands expecting a notified response from on_connect()
+                    self.on_connect()
                 # await disconnect
                 self._disconnected_event.clear()
                 await self._disconnected_event.wait()
@@ -703,7 +708,7 @@ class ClientBLE(QObject):
             write_chars = self._writers[self._connected_service_uuid]
             wc:str|None = None
             if write_characteristic is None:
-                # if there is no explicit write_characteristic specified thus we write to the only registered as writer
+                # if there is no explicit write_characteristic specified thus we write to the only one registered as writer
                 if len(write_chars) == 1:
                     wc = write_chars[0]
             elif write_characteristic in write_chars:

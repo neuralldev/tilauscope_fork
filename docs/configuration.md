@@ -139,7 +139,7 @@ nothing in progress to watch.
 |---|---|---|
 | **Ambient** | TilauAmbient (BME280 / BLE) | Which probe to use. |
 | **Color & Airflow** | Difluid AirWave (BLE) | Which extractor to use, how fast it may change speed, the fan output, duct limit and mode for each phase, and whether it should emulate an Omniflux colour channel. |
-| **Roaster Link** | Skywalker v2 (TC4-BLE) | Which roaster link to use. |
+| **Roaster Link** | Skywalker V2 (TC4-BLE) | Which roaster link to use. |
 | **Color Meter** | Roast colour (Bluetooth) | Which colour meter the roast result form reads, among the [supported colour meters](hardware.md#colour-meter) found nearby. |
 | **Water Quality** | Lebrew AquaGauge (BLE) | Which water probe to use. |
 | **Scale** | Scale (Bluetooth) | Which scale every weight capture reads, among the [supported scales](hardware.md#bluetooth-scale) found nearby. A new choice connects to it when you save. |
@@ -156,6 +156,9 @@ Devices detected nearby but not recognised are listed separately, for identifica
     It is collapsed by default because the defaults suit the AirWave out of the box — open it only
     if airflow needs tuning to a specific room or drum.
 
+
+<!-- CAPTURE 4.5 [scene:config_sensors] — Configuration → SENSORS, Roaster Link group reading "Skywalker V2 (TC4-BLE)" with a
+Skywalker V2 assigned, and at least one other device detected and connected below it. -->
 
 ![the SENSORS tab with at least two devices detected and connected](assets/configuration-4.5.png)
 

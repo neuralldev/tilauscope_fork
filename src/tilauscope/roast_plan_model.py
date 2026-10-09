@@ -25,7 +25,7 @@ from pathlib import Path, PosixPath
 import re
 import numpy as np
 
-from tilauscope.tilauscope_types import (AGTRON_SCALES, AgtronScale, ProbeDeviation, RoasterBasicPlan, RoasterBasicPlanPerPhase, GreenBean, RoastingPhase, marked, normalize_timeindex,
+from tilauscope.tilauscope_types import (AGTRON_SCALES, AgtronScale, roast_batch_tag, ProbeDeviation, RoasterBasicPlan, RoasterBasicPlanPerPhase, GreenBean, RoastingPhase, marked, normalize_timeindex,
                                           get_ror_ideal_band, to_agtron, ROASTING_BASIC_BASE, clean_delta_bt, estimate_ror_dt, find_turning_point_index,
                                           which_roast_phase, find_flicks_crashes,
                                           GREEN_MOISTURE_NEUTRAL_PCT, weight_loss_target)
@@ -268,7 +268,7 @@ class _TechnologyProfile:
     plan_overrides: "dict[str, dict]" = field(default_factory=dict)
 
 
-## Radiant (FIR/NIR électrique — Skywalker, Kaleido, Cyberroaster).
+## Radiant (FIR/NIR électrique — Skywalker, Kaleido).
 _TECH_RADIANT: Final[_TechnologyProfile] = _TechnologyProfile(
     name="radiation",
     ror_at_drop_dark=4.0, ror_at_drop_light=5.5,
@@ -480,6 +480,13 @@ _SRC_COHERENCE: Final[str] = "coherence"
 #: The one instance every "nothing learned" path returns.
 _SOURCE_GRID: Final[_PlanSource] = _PlanSource(_SRC_GRID, 0, "grid")
 
+#: Label prefix of a plan built on the operator's reference roast. Its key is
+#: _SRC_LEARNED (it scores and gates as learned); the label is what a roast's
+#: snapshot keeps to say it was planned from the reference.
+OPERATOR_REFERENCE_LABEL: Final[str] = "operator reference"
+#: Count a reference stands for: its values are adopted as-is, never blended.
+_REFERENCE_ADOPTION_N: Final[int] = 3
+
 
 def _clamp(value: float, between_min: float, between_max: float) -> float:
     return max(between_min, min(between_max, value))
@@ -584,7 +591,7 @@ def _heater_authority_notes(pre_fc_values: "list[float]",
     """Describe low heater authority before FC without changing a setpoint.
 
     The thresholds are a MACHINE observation and only exist on machines that
-    have been measured — today the Cyberroaster alone (45 / 50 %). The note is
+    have been measured — today the Skywalker V2 alone (45 / 50 %). The note is
     therefore worded neutrally and filled from the roaster it is talking about:
     naming one machine inside the sentence made every other roaster that ever
     declares these fields quote the Skywalker at its owner, and it silently
@@ -683,14 +690,41 @@ def _select_two_roast_reference(profiles: "list[dict]", planned_mass_g: float,
     return copy.deepcopy(min(profiles, key=score))
 
 
+def _tasting_under_reference(change: "dict | None", reference_used: bool
+                             ) -> "tuple[dict | None, bool]":
+    """(change kept, change skipped) once the plan stands on the reference roast.
+
+    A roast that strayed from the reference is corrected by going back to it,
+    so its tasting change is dropped. A roast planned from the reference and
+    still off says the reference no longer reproduces, and a defect noted on
+    the reference itself cannot be corrected by it: either change applies on top.
+    """
+    if (change is None or not reference_used or change.get("planned_from_reference")
+            or change.get("of_reference")):
+        return change, False
+    return None, True
+
+
 def _choose_coherent_history(profiles: "list[dict]", planned_mass_g: float,
-                             target_agtron: float
+                             target_agtron: float, reference_roast_uuid: str = ""
                              ) -> "tuple[dict | None, int, _PlanSource, str | None]":
     """Apply the P1 cohort-basis and 0/1/2/3+ fallback policy.
 
     The third element grades the support: see _PlanSource for why it carries a
     stable key alongside the label the plan prints.
+
+    The operator's reference roast, when it is among the candidates, is chosen
+    over the medoid whatever the count: a roast tasted good is the quality
+    signal the medoid lacks. Its colour basis decides the cohort.
     """
+    if reference_roast_uuid:
+        for profile in profiles:
+            if profile.get("roast_uuid") == reference_roast_uuid:
+                basis = profile.get("color_basis")
+                count = sum(1 for p in profiles if p.get("color_basis") == basis)
+                return (copy.deepcopy(profile), count,
+                        _PlanSource(_SRC_LEARNED, count,
+                                    f"{OPERATOR_REFERENCE_LABEL} (n={count})"), basis)
     ground = [profile for profile in profiles if profile.get("color_basis") == "ground"]
     whole = [profile for profile in profiles if profile.get("color_basis") == "whole"]
     if len(ground) >= 2:
@@ -1588,7 +1622,8 @@ class TilauScopeRoastPlan:
         on the next regeneration.
         """
         key = (getattr(bean, "uuid", "") or bean.name,
-               target_agtron.name, round(charge_weight_g))
+               target_agtron.name, round(charge_weight_g),
+               getattr(bean, "reference_roast_uuid", "") or "")
         if key not in self._history_cache:
             self._history_cache[key] = self._analyze_historical_roasts(
                 bean, target_agtron, charge_weight_g)
@@ -1631,13 +1666,71 @@ class TilauScopeRoastPlan:
                 merged[n_key] = prev_n
                 for k in keys:
                     merged[k] = prev_history.get(k)
+                if n_key == "fc_bt_samples" and prev_history.get("operator_reference"):
+                    # The reference's first crack is kept as roasted, as on its own crop.
+                    merged["fc_regression_slope"] = merged["fc_regression_offset"] = None
                 inherited_n = max(inherited_n, prev_n)
         if inherited_n:
+            if prev_history.get("operator_reference"):
+                # A reference counts as several samples, not as several roasts.
+                inherited_n = int(prev_history.get("coherent_profile_samples") or 1)
             merged["previous_harvest"] = {"crop": int(prev.crop), "roasts": inherited_n,
                                           "humidity": float(prev.last_humidity or 0.0)}
+            if prev_history.get("operator_reference"):
+                # The calendar inherited above is the previous crop's reference roast.
+                merged["previous_harvest"]["reference_roast"] = prev_history.get("reference_roast")
             _logd.info(f"RoastPlan: '{bean.name}' {bean.crop} inherits the {prev.crop} calendar "
                        f"({inherited_n} roasts)")
         return merged
+
+    def _described_reference(self, reference: "dict | None", charge_weight_g: float) -> "dict | None":
+        """The reference roast with its date, batch number and weight, read from the roast index.
+
+        A reference left out before its colour was read is named by the cause the
+        index can show: a batch weight outside the ±25 % the history accepts, or
+        a roast file the index no longer holds.
+        """
+        if not reference:
+            return reference
+        out = dict(reference)
+        records = self._index_records()
+        meta = next((m for m in records.values()
+                     if m.roast_uuid and m.roast_uuid == out.get("roast_uuid")), None)
+        if meta is None and records and out.get("reason") == "filtered":
+            out["reason"] = "missing"
+        if meta is not None and out.get("reason") == "filtered" and (meta.exclude_learning or meta.simulated):
+            out["reason"] = "excluded"
+        if meta is not None:
+            out["epoch"] = int(meta.roastepoch or meta.mtime or 0)
+            out["batch"] = roast_batch_tag(meta.batch_prefix, meta.batch_nr)
+            out["weight_g"] = float(meta.weight_in_g or 0.0)
+            if (out.get("reason") == "filtered" and charge_weight_g > 0 and out["weight_g"] > 0
+                    and abs(out["weight_g"] - charge_weight_g) / charge_weight_g > 0.25):
+                out["reason"] = "weight"
+        return out
+
+    @staticmethod
+    def _reference_roast(bean: GreenBean) -> "tuple[str, str]":
+        """(roastUUID, status) of the bean's reference roast; ('', '') when it has none.
+
+        A reference counts only while its tasting still reads Yes: a verdict
+        changed since, or a tasting lost, leaves the plan on its usual history.
+        """
+        ref = str(getattr(bean, "reference_roast_uuid", "") or "")
+        if not ref:
+            return "", ""
+        try:
+            from tilauscope import tasting_log  # noqa: PLC0415
+            tasting = tasting_log.load(QSettings().value('beancaveDirectory', '', str)
+                                       ).entries.get(ref)
+        except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
+            _logd.warning(f"reference tasting lookup skipped: {e}")
+            tasting = None
+        if tasting is None:
+            return "", "no_tasting"
+        if tasting.verdict != "yes":
+            return "", "not_tasted_yes"
+        return ref, "not_eligible"
 
     def _tasting_change(self, bean: GreenBean) -> dict | None:
         """The change the tasting of this coffee's most recent roast asks of the next one, or None.
@@ -1660,9 +1753,14 @@ class TilauScopeRoastPlan:
                     tasting = tasting_log.load(QSettings().value('beancaveDirectory', '', str)
                                                ).entries.get(last.roast_uuid)
                     found = tasting_log.next_change(tasting)
+                    _reference = getattr(bean, "reference_roast_uuid", "") or ""
                     if found is not None:
                         change = {"defect": found[0], "lever": found[1], "delta": found[2],
-                                  "roast_epoch": int(last.roastepoch or last.mtime)}
+                                  "roast_epoch": int(last.roastepoch or last.mtime),
+                                  # Planned from THIS reference: one replaced since says nothing of it.
+                                  "planned_from_reference": bool(_reference) and (
+                                      last.plan_reference_uuid == _reference),
+                                  "of_reference": last.roast_uuid == _reference}
             except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
                 _logd.warning(f"tasting lookup skipped: {e}")
             self._tasting_change_cache[uuid] = change
@@ -1768,6 +1866,7 @@ class TilauScopeRoastPlan:
         """
         feedback_notes = []
         adjustments = []
+        _reference_uuid, _reference_status = self._reference_roast(bean)
 
         # Determine expected machine fingerprint from RoasterContext
         # Radiant: TP_ET > TP_BT (positive delta)
@@ -1830,6 +1929,11 @@ class TilauScopeRoastPlan:
         # P2: predictions are selected by their pre-roast target,
         # never by the actual colour (which would bias errors toward successes).
         prediction_snapshots: list[dict] = []
+        # The reference roast's colour, once read: says why it was left out, if it was.
+        _reference_agtron: float | None = None
+        # The reference read from its own file — its name and whether it is
+        # excluded — so neither depends on the roast index being there.
+        _reference_seen: dict = {}
         # Index pre-pass: quality filters 1-4 below all read scalars the index
         # holds, so the logs they would reject are dropped before being parsed.
         # The in-loop checks stay as the authority — a log the index does not
@@ -1838,6 +1942,13 @@ class TilauScopeRoastPlan:
             potential_logs, charge_weight_g=charge_weight_g, weight_tol_ratio=0.25)
         for log in potential_logs:
             delta_bt, timex, bt, tp_index, phase_times = self._get_delta_bt(log)
+            if _reference_uuid and self.lastprofiledata.get("roastUUID") == _reference_uuid:
+                _reference_seen = {
+                    "epoch": int(self.lastprofiledata.get("roastepoch") or 0),
+                    "batch": roast_batch_tag(str(self.lastprofiledata.get("roastbatchprefix") or ""),
+                                             int(self.lastprofiledata.get("roastbatchnr") or 0)),
+                    "excluded": (self.lastprofiledata.get("tilau_exclude_learning") is True
+                                 or self.lastprofiledata.get("tilau_simulated") is True)}
 
             if not delta_bt:
                 continue
@@ -1966,6 +2077,8 @@ class TilauScopeRoastPlan:
             _raw_color, _ = _selected_roast_color(self.lastprofiledata)
             agtron_plan = (to_agtron(_raw_color, self.lastprofiledata.get("color_system", ""))
                            if _raw_color is not None else 0.0)
+            if _reference_uuid and self.lastprofiledata.get("roastUUID") == _reference_uuid:
+                _reference_agtron = agtron_plan
             if (agtron_plan >= target_agtron.agtron_range.min_value and agtron_plan <= target_agtron.agtron_range.max_value):
                 relevant_logs_data.append({
                     "delta_bt": delta_bt,
@@ -2051,6 +2164,7 @@ class TilauScopeRoastPlan:
                 if _has_skeleton:
                     (coherent_profiles if _has_controls else skeleton_profiles).append({
                         "id": log.name,
+                        "roast_uuid": str(self.lastprofiledata.get("roastUUID") or ""),
                         "batch_g": _w_green,
                         "agtron": agtron_plan,
                         "color_basis": _color_basis,
@@ -2144,9 +2258,28 @@ class TilauScopeRoastPlan:
         _target_mid = _mean(target_agtron.agtron_range.min_value,
                             target_agtron.agtron_range.max_value)
         _profile_selected, _profile_n, _profile_source, _profile_basis = (
-            _choose_coherent_history(coherent_profiles, charge_weight_g, _target_mid))
+            _choose_coherent_history(coherent_profiles, charge_weight_g, _target_mid,
+                                     _reference_uuid))
         _profile_cohort = [p for p in coherent_profiles
                            if p.get("color_basis") == _profile_basis]
+        _operator_ref = bool(_reference_uuid and _profile_selected is not None
+                             and _profile_selected.get("roast_uuid") == _reference_uuid)
+        if _reference_uuid:
+            # Not among the complete roasts of this batch size and level.
+            _reference_status = "used" if _operator_ref else "not_eligible"
+        # Why a reference tasted Yes was left out: another level, an incomplete
+        # record, or a filter before its colour was read (batch weight, exclusion…).
+        _reference_reason = ""
+        _reference_level = ""
+        if _reference_status == "not_eligible":
+            if _reference_agtron is None:
+                _reference_reason = "excluded" if _reference_seen.get("excluded") else "filtered"
+            elif (target_agtron.agtron_range.min_value <= _reference_agtron
+                  <= target_agtron.agtron_range.max_value):
+                _reference_reason = "incomplete"
+            else:
+                _reference_reason = "level"
+                _reference_level = self._get_agtron_category(_reference_agtron)
 
         # ── Graded fallback: the thermal skeleton alone ─────────────────────
         # LAST RESORT ONLY. With two or more complete profiles nothing below
@@ -2159,7 +2292,7 @@ class TilauScopeRoastPlan:
         # about them, and inventing a hand from another roast would rebuild the
         # very cross-roast mixing P1 exists to prevent.
         _skeleton_only = False
-        if _profile_n < 2 and skeleton_profiles:
+        if _profile_n < 2 and skeleton_profiles and not _operator_ref:
             _s_selected, _s_n, _s_source, _s_basis = _choose_coherent_history(
                 coherent_profiles + skeleton_profiles, charge_weight_g, _target_mid)
             if _s_selected is not None and _s_n >= 2:
@@ -2174,9 +2307,14 @@ class TilauScopeRoastPlan:
 
         _prediction_error_summary = summarize_prediction_errors(prediction_snapshots)
 
+        # Count the plan adopts by: a reference is taken as-is, never blended.
+        _adopt_n = max(_profile_n, _REFERENCE_ADOPTION_N) if _operator_ref else _profile_n
+        def _count(samples: list) -> int:
+            return max(len(samples), _adopt_n) if (_operator_ref and samples) else len(samples)
+
         # At n=2 the normal adoption policy blends this one real roast with the
         # grid. At n>=3 every learned field below comes from the same medoid.
-        if _profile_selected is not None and _profile_n >= 2:
+        if _profile_selected is not None and _adopt_n >= 2:
             fc_bt_learned_c = round(float(_profile_selected["fc_bt_c"]), 1)
             fc_samples_c = [float(p["fc_bt_c"]) for p in _profile_cohort]
             timing_dry_learned = round(float(_profile_selected["dry_time_min"]), 2)
@@ -2187,7 +2325,8 @@ class TilauScopeRoastPlan:
             drop_bt_learned_c = round(float(_profile_selected["drop_bt_c"]), 1)
             _drop_samples = [float(p["drop_bt_c"]) for p in _profile_cohort]
             _drop_basis = str(_profile_basis)
-            drop_ror_samples_c = [float(p["drop_ror_c"]) for p in _profile_cohort]
+            drop_ror_samples_c = ([float(_profile_selected["drop_ror_c"])] if _operator_ref
+                                  else [float(p["drop_ror_c"]) for p in _profile_cohort])
             # The control hand — only when the reference roast actually logged
             # one. On the skeleton tier every field below stays None, so each
             # consumer falls through to its grid base on its own guard and
@@ -2208,17 +2347,17 @@ class TilauScopeRoastPlan:
                 heater_dev_learned = round(float(_profile_selected["heater_dev"]), 1)
                 heater_fc_learned = round(float(_profile_selected["heater_fc"]), 1)
                 heater_de_learned = (_profile_selected.get("heater_de"))
-                heater_samples = _profile_n
-                heater_fc_samples = [float(_profile_selected["heater_fc"])] * _profile_n
-                heater_de_samples = ([float(heater_de_learned)] * _profile_n
+                heater_samples = _adopt_n
+                heater_fc_samples = [float(_profile_selected["heater_fc"])] * _adopt_n
+                heater_de_samples = ([float(heater_de_learned)] * _adopt_n
                                       if heater_de_learned is not None else [])
                 dev_trajectory_learned = copy.deepcopy(_profile_selected.get("dev_trajectory") or {})
-                dev_traj_n = _profile_n if dev_trajectory_learned else 0
+                dev_traj_n = _adopt_n if dev_trajectory_learned else 0
                 _descent_selected = _profile_selected.get("pre_de_descent")
                 if _descent_selected is not None:
                     pre_de_lead_learned = round(float(_descent_selected[0]), 1)
                     pre_de_step_learned = round(float(_descent_selected[1]), 1)
-                    pre_de_lead_samples = [float(_descent_selected[0])] * _profile_n
+                    pre_de_lead_samples = [float(_descent_selected[0])] * _adopt_n
                 else:
                     pre_de_lead_learned = None
                     pre_de_step_learned = None
@@ -2249,31 +2388,42 @@ class TilauScopeRoastPlan:
             pre_de_lead_samples = []
             fc_bt_mad_c = drop_bt_mad_c = None
 
+        _reference_out = ({"roast_uuid": str(getattr(bean, "reference_roast_uuid", "") or ""),
+                           "reason": _reference_reason, "level": _reference_level,
+                           "status": _reference_status,
+                           "epoch": _reference_seen.get("epoch", 0), "batch": _reference_seen.get("batch", "")}
+                          if _reference_status else None)
         if not relevant_logs_data:
             if (fc_bt_learned_c is None and timing_dry_learned is None
                     and drop_bt_learned_c is None and not _prediction_error_summary):
-                return None
+                if _reference_out is None:
+                    return None
+                # Nothing learned, but why the reference is left out must reach the setup sheet.
+                return {"notes": [], "actions": [], "graph": None, "crashes": [], "flicks": [],
+                        "operator_reference": False, "reference_roast": _reference_out}
             # No log matches the target colour (no master curve possible), but
             # FC temperature / phase timings / colour response were still
             # learnable from other roast levels of the same bean.
             return {"notes": [], "actions": [], "graph": None,
                     "crashes": [], "flicks": [],
                     "fc_bt_learned_c": fc_bt_learned_c,
-                    "fc_bt_samples": len(fc_samples_c),
+                    "fc_bt_samples": _count(fc_samples_c),
                     "fc_regression_slope": fc_regression_slope,   # FC = a × Charge + b
                     "fc_regression_offset": fc_regression_offset,
                     "fc_regression": fc_regression,
                     "timing_dry_min_learned": timing_dry_learned,
                     "timing_fc_min_learned": timing_fc_learned,
-                    "timing_samples": len(dry_time_samples_min),
+                    "timing_samples": _count(dry_time_samples_min),
                     "drop_bt_learned_c": drop_bt_learned_c,
-                    "drop_bt_samples": len(_drop_samples),
-                    "drop_color_basis": (_drop_basis if len(_drop_samples) >= 2 else None),
+                    "drop_bt_samples": _count(_drop_samples),
+                    "drop_color_basis": (_drop_basis if _count(_drop_samples) >= 2 else None),
                     "coherent_profile": _profile_selected,
                     "coherent_profile_samples": _profile_n,
                     "coherent_profile_source": _profile_source.label,
                     "coherent_profile_key": _profile_source.key,
                     "coherent_profile_basis": _profile_basis,
+                    "operator_reference": _operator_ref,
+                    "reference_roast": _reference_out,
                     "prediction_error_summary": _prediction_error_summary,
                     "fc_bt_mad_c": fc_bt_mad_c,
                     "drop_bt_mad_c": drop_bt_mad_c,
@@ -2321,21 +2471,23 @@ class TilauScopeRoastPlan:
             "crashes": crashes_detected,
             "flicks": flicks_detected,
             "fc_bt_learned_c": fc_bt_learned_c,
-            "fc_bt_samples": len(fc_samples_c),
+            "fc_bt_samples": _count(fc_samples_c),
             "fc_regression_slope": fc_regression_slope,   # FC = a × Charge + b
             "fc_regression_offset": fc_regression_offset,
             "fc_regression": fc_regression,
             "timing_dry_min_learned": timing_dry_learned,
             "timing_fc_min_learned": timing_fc_learned,
-            "timing_samples": len(dry_time_samples_min),
+            "timing_samples": _count(dry_time_samples_min),
             "drop_bt_learned_c": drop_bt_learned_c,
-            "drop_bt_samples": len(_drop_samples),
-            "drop_color_basis": (_drop_basis if len(_drop_samples) >= 2 else None),
+            "drop_bt_samples": _count(_drop_samples),
+            "drop_color_basis": (_drop_basis if _count(_drop_samples) >= 2 else None),
             "coherent_profile": _profile_selected,
             "coherent_profile_samples": _profile_n,
             "coherent_profile_source": _profile_source.label,
             "coherent_profile_key": _profile_source.key,
             "coherent_profile_basis": _profile_basis,
+            "operator_reference": _operator_ref,
+            "reference_roast": _reference_out,
             "prediction_error_summary": _prediction_error_summary,
             "fc_bt_mad_c": fc_bt_mad_c,
             "drop_bt_mad_c": drop_bt_mad_c,
@@ -2355,14 +2507,14 @@ class TilauScopeRoastPlan:
             "peak_ror_learned": peak_ror_learned,   # setup loop
             "peak_ror_n": peak_ror_n,
             "drop_ror_learned_c": _med(drop_ror_samples_c),   # item A (Bench-Integration)
-            "drop_ror_samples": len(drop_ror_samples_c),
+            "drop_ror_samples": _count(drop_ror_samples_c),
             "airflow_dry_learned": (_profile_selected.get("airflow_dry")
-                                     if _profile_selected is not None and _profile_n >= 2 else None),
+                                     if _profile_selected is not None and _adopt_n >= 2 else None),
             "airflow_mai_learned": (_profile_selected.get("airflow_maillard")
-                                     if _profile_selected is not None and _profile_n >= 2 else None),
+                                     if _profile_selected is not None and _adopt_n >= 2 else None),
             "airflow_dev_learned": (_profile_selected.get("airflow_dev")
-                                     if _profile_selected is not None and _profile_n >= 2 else None),
-            "airflow_samples": (_profile_n if _profile_selected is not None else 0),
+                                     if _profile_selected is not None and _adopt_n >= 2 else None),
+            "airflow_samples": (_adopt_n if _profile_selected is not None else 0),
             }
         #return {"notes": feedback_notes, "actions": adjustments, "graph": self._prepare_historical_graph_data(relevant_logs_data), "crashes": crashes_detected, "flicks": flicks_detected}
 
@@ -3906,7 +4058,7 @@ class TilauScopeRoastPlan:
                     f"(was {_dry_before:.0f}%, n={_cohort_n})")
 
         # Heater ceiling: hardware limit, not a style choice — some elements
-        # (e.g. the ITOP Cyberroaster's FIR/NIR emitter) degrade above a
+        # (e.g. the Skywalker V2's FIR/NIR emitter) degrade above a
         # machine-specific power fraction, so the upper clamp bound is read
         # from the roaster context instead of a fixed 100.0.
         _heater_max_pct: float = heater_max_pct
@@ -4702,7 +4854,8 @@ class TilauScopeRoastPlan:
         # regenerations reuse the cached analysis (same bean/target/weight).
         history = self._get_history_cached(bean, agtron_target, charge_weight)
         history = self._inherit_previous_crop(history, bean, agtron_target, charge_weight)
-        _tasting = self._tasting_change(bean)
+        _tasting, _tasting_skipped = _tasting_under_reference(
+            self._tasting_change(bean), bool(history and history.get("operator_reference")))
         _tasting_lever = _tasting["lever"] if _tasting else ""
         _tasting_before_after: tuple[float, float] | None = None
 
@@ -4776,12 +4929,14 @@ class TilauScopeRoastPlan:
         # snapshot), so it carries the key and the label as two plain strings
         # and the source object is rebuilt here.
         _coherent_n = int(history.get("coherent_profile_samples", 0) or 0) if history else 0
+        # A reference roast stands on its own: one tasted Yes is enough.
+        _coherent_ok = _coherent_n >= 2 or bool(history and history.get("operator_reference"))
         _coherent_source: "_PlanSource | None" = None
         if history and history.get("coherent_profile_source"):
             _coherent_source = _PlanSource(
                 str(history.get("coherent_profile_key") or _SRC_GRID), _coherent_n,
                 str(history["coherent_profile_source"]))
-        if not fc_source.is_grid and _coherent_source and _coherent_n >= 2:
+        if not fc_source.is_grid and _coherent_source and _coherent_ok:
             fc_source = _coherent_source
 
         # ── Charge setup: band by PROCESS, bean/ambient modulation, and
@@ -4826,7 +4981,10 @@ class TilauScopeRoastPlan:
         # regression above it was dead. Only a fully learned first crack earns
         # the adjustment: at n=2 the value is already half grid, and shifting a
         # blend by a slope fitted on the same roasts would count them twice.
-        if (fc_source.key == _SRC_LEARNED and _fc_regression_slope is not None
+        # The operator's reference keeps its own first crack: a slope fitted on
+        # the cohort would replace it with the cohort's.
+        if (fc_source.key == _SRC_LEARNED and not (history and history.get("operator_reference"))
+                and _fc_regression_slope is not None
                 and _fc_regression_offset is not None and _charge_in_regression_range):
             fc_bt_adjusted = round(_fc_regression_slope * _charge_temperature + _fc_regression_offset, 1)
             if 175.0 <= fc_bt_adjusted <= 212.0:
@@ -5017,7 +5175,7 @@ class TilauScopeRoastPlan:
             t_dry_raw=history.get("timing_dry_min_learned") if history else None,
             t_fc_raw=history.get("timing_fc_min_learned") if history else None,
             t_n=int(history.get("timing_samples", 0) or 0) if history else 0,
-            coherent_source=(_coherent_source if _coherent_n >= 2 else None),
+            coherent_source=(_coherent_source if _coherent_ok else None),
             charge_weight_g=charge_weight, batch_optimal_g=_nominal_weight_g,
             thermal_inertia=_dev_inertia)
         dry_time_min      = _timing.dry_time_min
@@ -5161,7 +5319,7 @@ class TilauScopeRoastPlan:
             drop_bt_temperature=drop_bt_temperature, drop_min=_drop_min, drop_max=_drop_max,
             drop_learned_c=(history.get("drop_bt_learned_c") if history else None),
             drop_samples=(int(history.get("drop_bt_samples", 0) or 0) if history else 0),
-            coherent_source=(_coherent_source if _coherent_n >= 2 else None),
+            coherent_source=(_coherent_source if _coherent_ok else None),
             drop_ror_learned_c=(history.get("drop_ror_learned_c") if history else None),
             drop_ror_samples=(int(history.get("drop_ror_samples", 0) or 0) if history else 0),
             fc_bt=fc_bt, dev_time_min=dev_time_min,
@@ -5208,7 +5366,7 @@ class TilauScopeRoastPlan:
         drum_speed_pct: list[str] = _drum.drum_speed_pct
 
         # Heater ceiling: hardware limit, not a style choice — some elements
-        # (e.g. the ITOP Cyberroaster's FIR/NIR emitter) degrade above a
+        # (e.g. the Skywalker V2's FIR/NIR emitter) degrade above a
         # machine-specific power fraction, so the upper clamp bound is read
         # from the roaster context instead of a fixed 100.0.
         _heater_max_pct: float = ctx.heater_max_pct if ctx is not None else 100.0
@@ -5238,7 +5396,7 @@ class TilauScopeRoastPlan:
             heater_dev_learned=(history.get("heater_dev_learned") if history else None),
             heater_fc_learned=(history.get("heater_fc_learned") if history else None),
             heater_fc_samples=(int(history.get("heater_fc_samples", 0) or 0) if history else 0),
-            coherent_source=(_coherent_source if _coherent_n >= 2 else None),
+            coherent_source=(_coherent_source if _coherent_ok else None),
             cohort_dry_learned=_cohort_dry, cohort_samples=_cohort_n)
         heater_dry = _burner.heater_dry
         heater_maillard = _burner.heater_maillard
@@ -5344,7 +5502,7 @@ class TilauScopeRoastPlan:
             airflow_mai_learned=(history.get("airflow_mai_learned") if history else None),
             airflow_dev_learned=(history.get("airflow_dev_learned") if history else None),
             airflow_samples=(int(history.get("airflow_samples", 0) or 0) if history else 0),
-            coherent_source=(_coherent_source if _coherent_n >= 2 else None))
+            coherent_source=(_coherent_source if _coherent_ok else None))
         airflow = _airflow_ext.airflow
         extraction = _airflow_ext.extraction
         airwave_mode = _airflow_ext.airwave_mode
@@ -5495,7 +5653,14 @@ class TilauScopeRoastPlan:
             "Tasting Change": (dict(_tasting, before=_tasting_before_after[0], after=_tasting_before_after[1])
                                if _tasting and _tasting_before_after else None),
             # {crop, roasts, humidity} of the harvest whose calendar this plan inherits, or None.
-            "Previous Harvest": (history.get("previous_harvest") if history else None),
+            "Previous Harvest": (dict(history["previous_harvest"], reference_roast=self._described_reference(
+                                     history["previous_harvest"].get("reference_roast"), 0.0))
+                                 if history and history.get("previous_harvest") else None),
+            # The coffee's reference roast and what the plan did with it, or None.
+            "Reference Roast": (dict(self._described_reference(history["reference_roast"], charge_weight),
+                                     tasting_change_skipped=_tasting_skipped,
+                                     tasting_change_applied=bool(_tasting and history.get("operator_reference")))
+                                if history and history.get("reference_roast") else None),
             "History Profile Source": (_coherent_source.label if _coherent_source else "grid"),
             # How many roasts of this coffee the representative profile rests on — 0 when none.
             "History Roasts": _coherent_n if _coherent_source else 0,

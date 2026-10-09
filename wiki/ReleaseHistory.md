@@ -1,4 +1,29 @@
 ## [4.3] 2026-09-13
+build 32
+* ⚡ [feat(setup)] : the PLAN tab names the reference roast the plan stands on, or why it cannot serve this batch — another batch weight, another roast level, a tasting no longer Yes or no longer found, an exclusion from learning, a roast file no longer found; a new crop says its timings and temperatures come from the previous crop's reference
+* ⚡ [feat(setup)] : at the Expert level, the Roast Replay card offers to load the coffee's reference roast as the background curve; the Burner reaction time setting is removed, the replay uses the machine's measured burner lag, else 10 s
+* ⚡ [feat(beancave)] : the Analysis page can compare a roast with the coffee's reference roast
+* ⚡ [feat(beancave)] : a roast tasted Yes can be marked ★ as its coffee's reference roast, from the tasting line of the Roasts tab or the tasting form, and the ★ stays removable if its tasting changes; the Roasts list shows the ★ while it is tasted Yes, and Roast memory opens on NEXT PLAN — the reference, or why it is not used — before the last roast
+* ⚡ [feat(plan)] : the plan starts from the coffee's reference roast instead of its most typical roast, even when it is the only one on file; the reference's first crack is kept as roasted; a later roast that strayed from the reference, or was planned from a reference replaced since, loses its tasting change, one planned from it keeps it, as does a defect noted on the reference itself; a new crop starts from the previous crop's reference until it has roasts of its own
+build 31
+* 🐛 [fix(repair)] : typing nan or inf in a Roast Profile Maintenance number field no longer makes the roast file unreadable on Record; such a value reads as empty
+* 🐛 [fix(repair)] : Record writes only the fields of the form over the roast file as it is now, so a change saved in the meantime by another window or by Artisan is kept instead of reverted
+* 🐛 [fix(repair)] : Complete from bean keeps a beans text you typed and only adds the coffee link to it
+* 🐛 [fix(repair)] : changing only the letter case of a title no longer asks whether to overwrite another file
+* ⚡ [feat(repair)] : the Stamp device map button is removed — it no longer matched any roast; a roast whose devices no longer match is flagged by its own card
+* 🐛 [fix(repair)] : opening Roast Profile Maintenance while it is already open brings that window forward instead of opening a second one
+* 🐛 [fix(repair)] : a roast file with unexpected content is listed as damaged instead of stopping the reading of the folder
+* 🐛 [fix(repair)] : changing the filter while the folder is being read no longer slows the window down
+* 🐛 [fix(repair)] : Update Roast Counts no longer resets every coffee's roast count when used before BeanCave has finished indexing the roasts
+* 🐛 [fix(repair)] : choosing a damaged file after discarding edits no longer asks again about those edits on close
+* ⚡ [feat(devices)] : the Devices window sets up Artisan's new Santoker XT/YT extra device with Artisan's own serial settings
+* ⚡ [feat(i18n)] : German, Spanish, Italian and Chinese (Simplified and Traditional) translate every text of Roast Profile Maintenance — its filters, fault cards and messages
+build 30
+build 29
+* ⚡ [feat(i18n)] : Undo and All carry a single translation shared by every screen that shows them, instead of one per screen
+* ⚡ [feat(repair)] : Roast Profile Maintenance marks ⚑ the roast files a recording fault left unreliable — devices that no longer match the roast, preheat burner commands never written, the same roast saved twice, a silent power meter, bean-probe gaps or jumps, milestones out of order, a broken coffee link — with one card per fault saying what to do; missing preheat commands are rebuilt from the burner channel, and can be undone; the list filter becomes All / To complete / To review
+build 28
+* ⚡ [feat(roasters)] : the ITOP Cyberroaster is now named Skywalker V2 and the ITOP Skywalker V1 Skywalker V1, everywhere in TilauScope; past roasts, PID learning and the heater power you entered carry over to the new names
 build 27
 build 26
 * ⚡ [feat(i18n)] : French, German, Spanish, Italian and Chinese (Simplified and Traditional) are up to date with every new screen text, the new energy texts included

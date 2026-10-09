@@ -124,7 +124,9 @@ the right. The dot in front of a roast carries its measured colour, on the same 
 the rest of the application: filled for a ground reading, an outline of that colour for a
 whole-bean reading, which runs a shade darker on the same meter, and an empty grey ring when no
 colour was recorded. A **No result** badge marks a roast whose weight and colour were never
-filled in — see [Finishing a roast later](#finishing-a-roast-later).
+filled in — see [Finishing a roast later](#finishing-a-roast-later). A yellow **★** before the
+batch number marks the coffee's [reference roast](glossary.md#reference-roast) — see
+[Marking the reference roast](#marking-the-reference-roast).
 
 Roasts are grouped under a heading per day — **Today**, **Yesterday**, then the date — with the
 number of roasts that day. The heading of the day at the top of the list stays in place while
@@ -348,9 +350,10 @@ The row at the top holds the choices:
 
 - **Reference** — what the measured [rate of rise](glossary.md#ror--rate-of-rise) is compared
   with: a [reference trend](glossary.md#reference-trend) fitted to the roast itself
-  (quadratic, cubic or logarithmic), or **Previous roast**, the latest earlier roast of the same
-  coffee, aligned on CHARGE and read up to whichever roast dropped first. Its name shows when the
-  pointer rests on the choice.
+  (quadratic, cubic or logarithmic), **Previous roast**, the latest earlier roast of the same
+  coffee, or **★ Reference roast**, the coffee's [reference roast](glossary.md#reference-roast)
+  when it has one and it is not the roast on screen. Both roasts are aligned on CHARGE and read
+  up to whichever roast dropped first. Its name shows when the pointer rests on the choice.
 - **Period** — from **dry end** to DROP, or from **two minutes before first crack** to DROP.
 - **⚙ Settings** — where the trend is fitted from, if not from the start of the period, and
   the two thresholds under which small wobbles are merged: a duration and a deviation. They
@@ -485,6 +488,27 @@ When that roast is [excluded from learning](#repairing-incomplete-roast-files), 
 
 Cupping scores and Artisan's own cupping tools, reached from **Load in Artisan**, are untouched.
 
+### Marking the reference roast
+
+A roast you answered **👍 Yes** for can become the coffee's
+[reference roast](glossary.md#reference-roast): the roast the next plans of that coffee start
+from. A grey **☆** offers it, at the end of the tasting line under the roast and, in the tasting
+form, at the end of the *Yes · Almost · No* row once *Yes* is chosen. Click it: it turns into a
+yellow **★**, and the roast is the reference. Click the ★ again to remove it.
+
+A coffee has one reference. Marking another roast asks first — *Replace the reference roast of
+2 Sep (#41) with this one?* — and nothing changes if you cancel. Changing the tasting of the
+reference to *Almost* or *No* later stops the plan from using it, and the coffee's record says
+why; the Roasts list and the Analysis no longer show it as the reference. The ★ stays on it, in
+the tasting line and the tasting form, so you can still remove it. How the plan uses the reference is in
+[The roast plan](the-roast-plan.md#which-previous-roasts-count).
+
+<!-- CAPTURE 8.18 [scene:cave_reference_tasting] — the tasting line of a roast tasted Yes that is its coffee's reference: the
+yellow ★ at the end of the line, its tooltip "Reference roast — click to remove" shown; the
+roast list beside it with the ★ before that roast's batch number. -->
+
+![The tasting line of the reference roast with its yellow ★ and tooltip, the roast list marking it with a ★.](assets/after-the-roast-8.18.png)
+
 <!-- CAPTURE 8.16 — the tasting form on a rested roast: Almost chosen, Flat, papery ticked, the Next time card showing "Keep the burner one notch higher after first crack". -->
 
 ---
@@ -522,7 +546,9 @@ scanning; this is what scanning a roast actually shows.
 **Repair ALogs**, opened from **TilauScope → Roast Profile Maintenance…**, lists every roast
 file with a completeness mark — missing its coffee link, or missing a field the plan or the
 record relies on (weights, density, moisture, colour, ambient conditions). Selecting one opens
-it for editing directly.
+it for editing directly. The **All / To complete / To review** filter above the list narrows it
+to the files missing something, or to those marked **⚑** for a
+[recording fault](#recording-faults).
 
 A file marked **⛔ damaged** cannot serve the roast plan: it cannot be read, a milestone points
 past the recorded curve, or fewer than 11 samples lie between CHARGE and DROP. While it stays in
@@ -576,10 +602,47 @@ state — only pressing a button does.
 
 The 🚫 switch shown right after DROP sets the same **Excluded** state.
 
-![Repair ALogs, the file list with completeness marks](assets/after-the-roast-8.13.png)
+### Recording faults
 
-![The
-editor pane with Complete from bean about to be used](assets/after-the-roast-8.14.png)
+Some files carry a fault of the software or of an instrument rather than of the roast itself.
+The list marks them **⚑** followed by the number of faults found, and **To review** shows only
+them. Selecting one shows a card per fault above **PLAN LEARNING**, the most serious first; the
+first card that can be acted on carries the highlighted button.
+
+| Card | What it means | What to do |
+|---|---|---|
+| **Devices do not match this roast** | A channel holds readings its device cannot produce — a burner channel reading temperatures, an ambient probe reading pressure. A change in device numbering left the roast pointing at the wrong devices. | **Open this roast** closes the window and loads the roast; in **Devices**, choose **Change device** for that channel, then save. Refused while monitoring is on, since opening a roast replaces the live curve. |
+| **Preheat burner commands missing** | The preheat control ran, but its burner commands never reached the file, so its [hold power](glossary.md#hold-power) cannot be learned from this roast. The burner channel recorded them. | **Rebuild n commands** writes them back from that channel. |
+| **Same roast saved twice** | Another file has the same start time, so the plan counts the roast twice. | **Show the other file**, then set one copy to **Excluded**. |
+| **Power meter incomplete** | The meter recorded nothing, fell silent for three minutes or more, or read no heating during the roast. The energy figures of this roast are incomplete. | Nothing: it is for information. |
+| **Bean temperature gaps** | Five readings or more are missing between CHARGE and DROP, or a gap lasts longer than 10 s. | If the curve is unusable, set the roast to **Excluded**. |
+| **Milestones out of order** | DRY END sits before the [turning point](glossary.md#tp--turning-point), FIRST CRACK before DRY END, or FIRST CRACK after DROP: the phase durations read from this roast are wrong. | **Open this roast**, move the marks, then save. |
+| **Bean probe jumps** | The rate of rise goes above 40 °C/min or below −20 °C/min: the probe reading jumped. | If the curve is unusable, set the roast to **Excluded**. |
+| **Coffee link broken** | The roast points to a coffee that is no longer in BeanCave. | Choose the coffee under **Green bean**, press **Relink to the selected coffee**, then **Record**. |
+| **Simulated roast** | Recorded by the simulator, never used for learning. | Nothing. |
+
+Rebuilt commands are written to the file at once, like the plan-learning state; a green card then
+offers **Undo**, which removes exactly those commands and nothing else.
+
+A device that was already wrong while the roast was being recorded leaves readings that match it:
+such a roast cannot be told apart from a sound one, and is not marked.
+
+<!-- CAPTURE 8.13 [scene:repair_list] — Repair ALogs, the file list with the All / To complete / To review filter,
+To review selected, rows marked ⚑ with their count, and the card of a roast whose devices no longer match. -->
+
+![Roast Profile Maintenance on To review: rows marked with their fault count, and the card of a roast whose devices no longer match.](assets/after-the-roast-8.13.png)
+
+<!-- CAPTURE 8.17 [scene:repair_faults] — Repair ALogs editor pane on a file with a preheat fault: the "Preheat burner
+commands missing" card with Rebuild 3 commands highlighted above PLAN LEARNING, and a "Same roast
+saved twice" card below it. -->
+
+![Fault cards of a roast: preheat burner commands missing with Rebuild 3 commands, and the same roast saved twice.](assets/after-the-roast-8.17.png)
+
+<!-- CAPTURE 8.14 [scene:repair_complete] — Roast Profile Maintenance editor pane on an incomplete roast: a coffee chosen under
+Green bean, Complete from bean about to be used, the empty fields outlined; Record, Next incomplete ▸
+and Close below the fields. -->
+
+![The editor pane of an incomplete roast, its coffee chosen under Green bean, before Complete from bean.](assets/after-the-roast-8.14.png)
 
 ---
 

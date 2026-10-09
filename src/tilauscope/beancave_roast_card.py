@@ -26,6 +26,7 @@ from PyQt6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter, QPen
 from PyQt6.QtWidgets import QApplication
 
 from tilauscope.beancave_card_base import CardPainter
+from tilauscope.roasters import canonical_roaster_name
 from tilauscope.tilauscope_types import (COLOR_AIR, COLOR_GRAIN, CRACK_TICK_ALPHA,
                                          PHASE_COLORS, dimmed, profile_crack_times)
 
@@ -131,7 +132,7 @@ class RoastSocialCard(CardPainter):
         for i, line in enumerate(self._wrap(name, self._font(49, True), 980, 2)):
             self._label(p, 48, 67 + i * 56, line, 49, bold=True)
         self._label(p, 48, 185, ' · '.join(v for v in (self._date_label(profile),
-                    str(profile.get('roastertype') or '').strip()) if v), 24, color=_MUTED)
+                    canonical_roaster_name(str(profile.get('roastertype') or ''))) if v), 24, color=_MUTED)
         for x in (30, 552):
             self._rrect(p, QRectF(x, 238, 498, 130), 18, fill=_SURFACE, stroke=_BORDER)
         self._label(p, 52, 254, QApplication.translate('tilauscope_roast_review', 'Total duration'), 25, 450, _MUTED)

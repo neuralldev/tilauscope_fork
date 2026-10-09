@@ -24,7 +24,7 @@ From the `src` directory:
 ```bash
 python tilauscope/tools/extract_thermal_model.py \
   /path/to/your/alog/directory \
-  --machine "ITOP Cyberroaster" \
+  --machine "Skywalker V2" \
   --channel BT
 ```
 

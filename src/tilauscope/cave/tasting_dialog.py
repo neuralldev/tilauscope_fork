@@ -77,7 +77,7 @@ class TastingDialog(QDialog):
     """Would you roast it the same way again, what was off, and what to change next time."""
 
     def __init__(self, parent, *, directory: str, roast_uuid: str, bean_uuid: str,
-                 coffee: str, roast_epoch: int, mode: str = 'C') -> None:
+                 coffee: str, roast_epoch: int, mode: str = 'C', is_reference: bool = False) -> None:
         super().__init__(parent)
         # frameless translucent window: ground=False, else the grounded base
         # paints the rectangle opaque and squares off the rounded card.
@@ -107,6 +107,10 @@ class TastingDialog(QDialog):
                 border:1px solid {THEME['BORDER']}; border-radius:12px; padding:10px; font-size:13px; }}
             QPushButton#verdict:checked {{ color:{THEME['TEXT']}; border-color:{THEME['SUCCESS']};
                 background:rgba(166,227,161,0.10); }}
+            QPushButton#reference {{ color:{THEME['OVERLAY1']}; background:transparent;
+                border:1px solid {THEME['SURFACE1']}; border-radius:12px; font-size:20px; }}
+            QPushButton#reference:checked {{ color:{THEME['YELLOW']}; border-color:{THEME['YELLOW']};
+                background:rgba(249,226,175,0.10); }}
             QPushButton#defect {{ color:{THEME['SUBTEXT']}; background:transparent;
                 border:1px solid {THEME['BORDER']}; border-radius:14px; padding:6px 12px; font-size:12px; }}
             QPushButton#defect:checked {{ color:{THEME['TODAY']}; border-color:{THEME['TODAY']};
@@ -141,6 +145,15 @@ class TastingDialog(QDialog):
             b.setChecked(existing.verdict == key)
             self._verdicts.addButton(b)
             row.addWidget(b)
+        self._reference = QPushButton()
+        self._reference.setObjectName("reference")
+        self._reference.setCheckable(True)
+        self._reference.setChecked(is_reference)
+        self._is_reference = is_reference
+        self._reference.setFixedSize(46, 46)
+        self._reference.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._reference.toggled.connect(self._refresh_reference)
+        row.addWidget(self._reference)
         self._verdicts.buttonToggled.connect(lambda *_: self._refresh_next())
         lay.addLayout(row)
 
@@ -211,8 +224,24 @@ class TastingDialog(QDialog):
             defects=[k for k, b in self._defects.items() if b.isChecked()],
             notes=self._notes.toPlainText().strip())
 
+    def reference_choice(self) -> bool | None:
+        """Whether this roast should be the coffee's reference; None when the star was not offered."""
+        return self._reference.isChecked() if not self._reference.isHidden() else None
+
+    def _refresh_reference(self) -> None:
+        on = self._reference.isChecked()
+        self._reference.setText('★' if on else '☆')
+        self._reference.setToolTip(
+            QApplication.translate("tilauscope_beancave", "Reference roast — click to remove") if on else
+            QApplication.translate("tilauscope_beancave", "Make it the reference roast"))
+
     def _refresh_next(self) -> None:
         tasting = self._tasting()
+        # The star is offered on a Yes, and stays on the reference so it can be
+        # removed whatever its verdict; hiding it changes no designation. A roast
+        # without a coffee record has nowhere to keep it.
+        self._reference.setVisible(bool(self._bean_uuid) and (tasting.verdict == 'yes' or self._is_reference))
+        self._refresh_reference()
         change = tasting_log.next_change(tasting)
         if change is not None:
             what, why = change_text(change[0], self._mode)

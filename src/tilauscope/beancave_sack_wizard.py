@@ -1817,7 +1817,8 @@ class NewSackWizard(QDialog):
     def _collect_bean(self, mode: str) -> GreenBean:
         src = self._selected_source_bean()
         if mode == "newcrop" and src is not None:
-            # dial-ins are tuned on one lot — they do not travel to the next
+            # dial-ins are tuned on one lot — they do not travel to the next;
+            # nor does the reference roast, which the operator names per crop
             base = dataclasses.replace(
                 src,
                 crop=self.newcrop_crop_spin.value(),
@@ -1826,6 +1827,7 @@ class NewSackWizard(QDialog):
                 weight=0.0,
                 sacks=[],
                 dial_ins=[],
+                reference_roast_uuid='',
                 uuid=str(_uuid.uuid4()),
                 price_per_kg=self.nc_price_spin.value(),
                 screen_size=self.nc_screen_combo.currentData() or '',

@@ -59,7 +59,9 @@ def _source_kinds(sources: dict[str, str]) -> list[str]:
     kinds: set[str] = set()
     for source in sources.values():
         label = str(source or "").lower()
-        if "medoid" in label:
+        if "operator reference" in label:
+            kinds.add("history")
+        elif "medoid" in label:
             kinds.update(("history", "medoid"))
         elif "blend" in label:
             kinds.update(("grid", "history", "blend"))
@@ -122,6 +124,9 @@ def build_prediction_snapshot(
         "status": "planned",
         "source_kinds": _source_kinds(sources),
         "sources": sources,
+        # The reference roast this plan stood on, '' when it stood on none.
+        "reference_roast_uuid": (str((plan.get("Reference Roast") or {}).get("roast_uuid") or "")
+                                 if (plan.get("Reference Roast") or {}).get("status") == "used" else ""),
         "predicted": {
             "milestones": milestones,
             "target_color_agtron": round(float(target_color_agtron), 2),

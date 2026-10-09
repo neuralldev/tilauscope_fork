@@ -15538,7 +15538,7 @@ class ApplicationWindow(QMainWindow):
                     last_time:str|None = None
                     for i, tx in enumerate(self.qmc.timex):
                         if tx >= CHARGE > 0:
-                            di,mo = divmod(tx - CHARGE, 60)
+                            di,mo = divmod(math.floor(tx - CHARGE + 0.5), 60)
                             time2 = f'{di:02.0f}:{mo:02.0f}'  #@UnusedVariable # pylint: disable=unused-variable # noqa: F841
                         else:
                             time2 = '' #@UnusedVariable #@UnusedVariable # pylint: disable=unused-variable # noqa: F841
@@ -15559,7 +15559,7 @@ class ApplicationWindow(QMainWindow):
                                     else:
                                         event += self.qmc.etypesf(self.qmc.specialeventstype[n])[0] + self.qmc.eventsvalues(self.qmc.specialeventsvalue[n])
 
-                        di,mo = divmod(tx,60)
+                        di,mo = divmod(math.floor(tx + 0.5),60)
                         time1 = f'{di:02.0f}:{mo:02.0f}'
                         if last_time is None or last_time != time1:
                             extratemps:list[float] = []
@@ -18858,7 +18858,8 @@ class ApplicationWindow(QMainWindow):
             self.TilauScopeFCTreshold = toInt(settings.value('tilauscopefctreshold',self.TilauScopeFCTreshold))
             self.TilauScopeFCHalfBand = toFloat(settings.value('tilauscopefchalfband',self.TilauScopeFCHalfBand))
             self.TilauScopeDEMarkFlag = toBool(settings.value('tilauscopedemarkflag', self.TilauScopeDEMarkFlag))  ## TILAU
-            self.tilau_roaster = toString(settings.value('tilauscoperoaster',self.tilau_roaster))
+            from tilauscope.roasters import canonical_roaster_name  # noqa: PLC0415 ## TILAU ##
+            self.tilau_roaster = canonical_roaster_name(toString(settings.value('tilauscoperoaster',self.tilau_roaster))) ## TILAU ##
             self.tilau_roaster_readonly = toBool(settings.value('tilauscoperoasterreadonly',self.tilau_roaster_readonly)) ## TILAU ##
             # restore the BLE device name if it is a valid identifier
             # macOS: Core Bluetooth UUID — Windows: MAC address ## TILAU ##

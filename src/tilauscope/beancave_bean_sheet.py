@@ -40,8 +40,8 @@ from PyQt6.QtWidgets import (
 
 from tilauscope.bean_energy import match_variety_family
 from tilauscope.bean_qualifiers import physical_qualifier, screen_size_label
-from tilauscope.beancave_catalogue import short_date, svg_pixmap
-from tilauscope.roast_memory import RoastMemory, ready_to_taste
+from tilauscope.beancave_catalogue import roast_name, short_date, svg_pixmap
+from tilauscope.roast_memory import ReferenceState, RoastMemory, ready_to_taste
 from tilauscope.sack_manager import SackChipsRow
 from tilauscope.theme_qss import tint
 from tilauscope.tilauscope_types import THEME, format_money
@@ -138,6 +138,31 @@ class _Zone(QFrame):
         self.body.addLayout(self.head)
 
 
+def _facts(memory: RoastMemory) -> QWidget | None:
+    """A roast's development, loss and colour as small chips, or None when none was measured."""
+    facts_host = QWidget()
+    facts_host.setStyleSheet(_PLAIN)
+    facts = FlowLayout(facts_host, margin=0, spacing=_px(6))
+    facts.setSpacing(_px(5))
+    fact_css = (f"color:{THEME['TEXT']};font-size:{_fs(11)}px;background:{THEME['BORDER']};"
+                f"border:none;border-radius:6px;padding:{_px(1)}px {_px(7)}px;")
+    basis = (QApplication.translate("tilauscope_beancave", "ground") if memory.colour_basis == 'ground'
+             else QApplication.translate("tilauscope_beancave", "whole"))
+    for text, value, suffix in (
+            (QApplication.translate("Label", "Development"),
+             f"{memory.dev_pct:.0f} %" if memory.dev_pct is not None else None, ""),
+            (QApplication.translate("HTML Report Template", "Loss"),
+             f"{memory.loss_pct:.1f} %" if memory.loss_pct is not None else None, ""),
+            (QApplication.translate("tilauscope_common", "Colour"),
+             f"{memory.colour:.0f}" if memory.colour is not None else None, " " + basis)):
+        if value is None:
+            continue
+        f = QLabel(f"{text} <b style=\"font-family:{_MONO};\">{value}</b>{suffix}")
+        f.setStyleSheet(fact_css)
+        facts.addWidget(f)
+    return facts_host if facts.count() else None
+
+
 def _link_css() -> str:
     return (f"QPushButton {{ color:{THEME['ACCENT']};background:transparent;"
             f"border:1px solid transparent;border-radius:7px;"
@@ -221,14 +246,15 @@ class BeanSheetWidget(QWidget):
             z.deleteLater()
         self._zones = []
 
-    def set_bean(self, bean, memory: RoastMemory | None = None, mode: str = 'C') -> None:
-        self._last = (bean, memory, mode)
+    def set_bean(self, bean, memory: RoastMemory | None = None, mode: str = 'C',
+                 reference: ReferenceState | None = None) -> None:
+        self._last = (bean, memory, mode, reference)
         self._fit()
 
     def _build(self, k: float) -> None:
         global _K  # noqa: PLW0603 — read by the builders below, GUI thread only
         _K = self._k = k
-        bean, memory, mode = self._last
+        bean, memory, mode, reference = self._last
         self._cols.setContentsMargins(_px(12), _px(10), _px(12), _px(10))
         self._cols.setSpacing(_px(10))
         for col in (self._left, self._right):
@@ -236,7 +262,7 @@ class BeanSheetWidget(QWidget):
         self.clear()
         try:
             self._build_essentials(bean, memory)
-            self._build_memory(memory, mode)
+            self._build_memory(memory, mode, reference)
             self._build_characteristics(bean)
             self._build_provenance(bean)
             self._build_sacks(bean)
@@ -357,17 +383,21 @@ class BeanSheetWidget(QWidget):
             z.body.addWidget(memo)
         self._add(self._left, z)
 
-    def _build_memory(self, memory: RoastMemory | None, mode: str) -> None:
+    def _build_memory(self, memory: RoastMemory | None, mode: str,
+                      reference: ReferenceState | None = None) -> None:
         z = _Zone(QApplication.translate("tilauscope_beancave", "Roast memory"), accent=True)
         z.edit_btn.hide()
         if memory is None:
             z.body.addWidget(_label(QApplication.translate("tilauscope_beancave", "Not roasted yet"),
                                     f"color:{THEME['TEXT']};font-size:{_fs(14)}px;font-weight:600;"))
-            z.body.addWidget(_label(QApplication.translate(
-                "tilauscope_beancave",
-                "The first plan starts from this coffee's characteristics. Taste the result: "
-                "what you note here steers the next roast."),
-                f"color:{THEME['SUBTEXT']};font-size:{_fs(12)}px;", wrap=True))
+            if reference is not None:
+                z.body.addWidget(self._reference_block(reference))
+            else:
+                z.body.addWidget(_label(QApplication.translate(
+                    "tilauscope_beancave",
+                    "The first plan starts from this coffee's characteristics. Taste the result: "
+                    "what you note here steers the next roast."),
+                    f"color:{THEME['SUBTEXT']};font-size:{_fs(12)}px;", wrap=True))
             self._add(self._left, z)
             return
 
@@ -379,6 +409,12 @@ class BeanSheetWidget(QWidget):
         all_btn.clicked.connect(self.allRoastsRequested.emit)
         z.head.addWidget(all_btn)
 
+        if reference is not None:
+            z.body.addWidget(self._reference_block(reference))
+            z.body.addWidget(_label(QApplication.translate("tilauscope_beancave", "LAST ROAST"),
+                                    f"color:{THEME['SUBTEXT']};font-size:{_fs(11)}px;"
+                                    "font-weight:700;letter-spacing:1px;"))
+
         tasting = memory.tasting
         line = [short_date(memory.epoch)] if memory.epoch > 0 else []
         if memory.level:
@@ -387,28 +423,11 @@ class BeanSheetWidget(QWidget):
             line.append(f"{memory.weight_in_g:.0f} g")
         z.body.addWidget(_label(" · ".join(line), f"color:{THEME['TEXT']};font-size:{_fs(14)}px;font-weight:600;"))
 
-        facts_host = QWidget()
-        facts_host.setStyleSheet(_PLAIN)
-        facts = FlowLayout(facts_host, margin=0, spacing=_px(6))
-        facts.setSpacing(_px(5))
-        fact_css = (f"color:{THEME['TEXT']};font-size:{_fs(11)}px;background:{THEME['BORDER']};"
-                    f"border:none;border-radius:6px;padding:{_px(1)}px {_px(7)}px;")
-        basis = (QApplication.translate("tilauscope_beancave", "ground") if memory.colour_basis == 'ground'
-                 else QApplication.translate("tilauscope_beancave", "whole"))
-        for text, value, suffix in (
-                (QApplication.translate("Label", "Development"),
-                 f"{memory.dev_pct:.0f} %" if memory.dev_pct is not None else None, ""),
-                (QApplication.translate("HTML Report Template", "Loss"),
-                 f"{memory.loss_pct:.1f} %" if memory.loss_pct is not None else None, ""),
-                (QApplication.translate("tilauscope_common", "Colour"),
-                 f"{memory.colour:.0f}" if memory.colour is not None else None, " " + basis)):
-            if value is None:
-                continue
-            f = QLabel(f"{text} <b style=\"font-family:{_MONO};\">{value}</b>{suffix}")
-            f.setStyleSheet(fact_css)
-            facts.addWidget(f)
-        if facts.count():
-            z.body.addWidget(facts_host)
+        # NEXT PLAN shows facts for a reference in use only: otherwise they stay here.
+        if reference is None or reference.status != 'used':
+            facts_host = _facts(memory)
+            if facts_host is not None:
+                z.body.addWidget(facts_host)
 
         if tasting is not None:
             from tilauscope.cave.tasting_dialog import (  # noqa: PLC0415
@@ -466,6 +485,61 @@ class BeanSheetWidget(QWidget):
             bl.addWidget(taste)
             z.body.addWidget(box)
         self._add(self._left, z)
+
+    def _reference_block(self, reference: ReferenceState) -> QFrame:
+        """NEXT PLAN: the roast the next plan of this coffee stands on, or why it does not."""
+        memory = reference.memory
+        colour, glyph, border = {
+            'used': (THEME['YELLOW'], '★', 'solid'),
+            'inherited': (THEME['YELLOW'], '★', 'solid'),
+            'drift': (THEME['WARNING'], '★', 'solid'),
+        }.get(reference.status, (THEME['OVERLAY1'], '☆', 'dashed'))
+        box = QFrame()
+        box.setObjectName("nextPlan")
+        box.setStyleSheet(f"QFrame#nextPlan {{ background:{tint('YELLOW', 0.06) if border == 'solid' else 'transparent'};"
+                          f"border:1px {border} {colour};border-radius:8px; }}")
+        lay = QVBoxLayout(box)
+        lay.setContentsMargins(_px(10), _px(7), _px(10), _px(7))
+        lay.setSpacing(_px(4))
+        lay.addWidget(_label(QApplication.translate("tilauscope_beancave", "NEXT PLAN"),
+                             f"color:{colour};font-size:{_fs(11)}px;font-weight:700;letter-spacing:1px;"))
+        if memory is None:
+            title = QApplication.translate("tilauscope_beancave", "Reference not used: its roast file was not found")
+        elif reference.status == 'inherited':
+            title = " · ".join(part for part in (
+                QApplication.translate("tilauscope_beancave", "{0} crop").format(reference.crop),
+                memory.batch) if part)
+        else:
+            title = roast_name(memory.epoch, memory.batch)
+        words = {'almost': QApplication.translate("tilauscope_beancave", "Almost"),
+                 'no': QApplication.translate("tilauscope_beancave", "No")}
+        detail = ''
+        if memory is not None:
+            if reference.status == 'used':
+                detail = " · ".join(part for part in (
+                    memory.level or '', f"{memory.weight_in_g:.0f} g" if memory.weight_in_g > 0 else '') if part)
+            elif reference.status == 'drift':
+                detail = "— " + QApplication.translate("tilauscope_beancave", "the last roast followed it and was off")
+            elif reference.status == 'excluded':
+                detail = "— " + QApplication.translate("tilauscope_beancave", "not used, excluded from learning")
+            elif reference.status == 'not_tasted_yes':
+                detail = "— " + (QApplication.translate("tilauscope_beancave", "not used, tasted {0} since").format(
+                    words[reference.verdict]) if reference.verdict in words else
+                    QApplication.translate("tilauscope_beancave", "not used, no longer tasted Yes"))
+        row = QHBoxLayout()
+        row.setSpacing(_px(8))
+        row.addWidget(_label(glyph, f"color:{colour};font-size:{_fs(15)}px;"))
+        row.addWidget(_label(title, f"color:{THEME['TEXT']};font-size:{_fs(13)}px;font-weight:600;"))
+        if detail:
+            row.addWidget(_label(detail, f"color:{THEME['SUBTEXT']};font-size:{_fs(12)}px;", wrap=True), 1)
+        else:
+            row.addStretch(1)
+        lay.addLayout(row)
+        if reference.status == 'used' and memory is not None:
+            facts_host = _facts(memory)
+            if facts_host is not None:
+                lay.addWidget(facts_host)
+        return box
 
     def _build_characteristics(self, bean) -> None:
         z = _Zone(QApplication.translate("CheckBox", "Characteristics"))

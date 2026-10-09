@@ -32,6 +32,7 @@ from tilauscope.theme_qss import apply_tilau_theme, tint
 import os
 import re
 import ast
+import math
 import time
 import logging
 from pathlib import Path
@@ -43,8 +44,8 @@ from PyQt6.QtGui     import QColor, QMouseEvent
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QListWidget, QListWidgetItem, QSplitter,
-    QWidget, QPlainTextEdit, QApplication, QCheckBox, QMessageBox,
-    QFrame, QSizeGrip, QProgressDialog, QButtonGroup, QScrollArea,
+    QWidget, QPlainTextEdit, QApplication, QMessageBox,
+    QFrame, QSizeGrip, QButtonGroup, QScrollArea,
 )
 
 from tilauscope.tilauscope_types import (
@@ -52,6 +53,8 @@ from tilauscope.tilauscope_types import (
     RoastingPhase, marked, normalize_timeindex,
 )
 from tilauscope.roasters import RoasterManager, canonical_roaster_name
+from tilauscope import alog_health as health
+from tilauscope.tilaupid import PIDConfig
 
 if TYPE_CHECKING:
     from artisanlib.main import ApplicationWindow
@@ -175,6 +178,17 @@ def build_beans_field(bean: GreenBean) -> str:
     return "\n".join(parts)
 
 
+def link_beans_text(text: str, bean: GreenBean) -> str:
+    """Beans text linked to `bean`, keeping what was typed: the full bean card
+    when empty, the uuid line appended when unlinked, unchanged when linked."""
+    if _UUID_RE.search(text):
+        return text
+    if not text.strip():
+        return build_beans_field(bean)
+    # Machine key, not a label — same line as build_beans_field.
+    return f"{text.rstrip()}\nuuid: {bean.uuid}" if bean.uuid else text
+
+
 def build_alog_filename(data: dict, current_name: str = '') -> str:
     """Reconstruct the Artisan auto-filename: <title>_<yy-MM-dd_hhmm>.alog,
     cleaned of disallowed characters. The roast timestamp is taken from the
@@ -218,12 +232,18 @@ def write_alog(data: dict, path: Path) -> None:
 
 
 
-def _record_alog(data: dict, current: Path, new: Path) -> tuple[Path, OSError | None]:
-    """Write the repair over ``current``, then rename it to ``new`` in one move.
+def _record_alog(edits: dict, current: Path, new: Path) -> tuple[Path, OSError | None]:
+    """Write ``edits`` over ``current`` as it is on disk now, then rename it to ``new`` in one move.
 
-    Returns the path that now holds the roast, and the rename error if the file
-    had to keep its previous name. A write failure is raised.
+    Re-reading the disk keeps whatever was written since the file was opened
+    (another window, Artisan, a health repair). Returns the path that now holds the
+    roast, and the rename error if the file had to keep its previous name. A
+    read or write failure is raised.
     """
+    data = parse_alog(current)
+    if data is None:
+        raise OSError(f"{current.name} cannot be read")
+    data.update(edits)
     write_alog(data, current)
     if new.resolve() == current.resolve():
         return current, None
@@ -237,6 +257,12 @@ def _record_alog(data: dict, current: Path, new: Path) -> tuple[Path, OSError | 
     except Exception as exc:  # noqa: BLE001 — a repair must never fail on its cache
         _log.debug("alog index refresh skipped after rename: %s", exc)
     return new, None
+
+def _is_other_file(new: Path, current: Path) -> bool:
+    """True when ``new`` names an existing file other than ``current`` — a
+    case-only rename on a case-insensitive disk names the file itself."""
+    return new.exists() and not new.samefile(current)
+
 
 ## ── Learning state of a roast: admitted / not reviewed / excluded ──────────
 ## The admit key is a positive marker, written only when the roast is vouched for.
@@ -375,9 +401,11 @@ def selectable_roaster_name(
 
 def _safe_float(v: object) -> float:
     try:
-        return float(str(v).replace(',', '.'))
+        f = float(str(v).replace(',', '.'))
     except (TypeError, ValueError):
         return 0.0
+    # nan/inf would be written as bare names that literal_eval cannot read back
+    return f if math.isfinite(f) else 0.0
 
 
 def _roast_suffix(data: dict) -> str:
@@ -489,32 +517,45 @@ class _AgtronPicker(QDialog):
         self._drag_pos = None
 
 
-def stamp_device_map(data: dict, tilau_devices: dict) -> bool:
-    """Reconstruct tilau_name_map from extraname1 labels for legacy alogs that
-    pre-date the automatic stamping (saved before Approche-B was deployed).
-    Returns True when at least one slot was mapped, False when nothing changed."""
-    extradevices: list = data.get('extradevices') or []
-    extraname1:   list = data.get('extraname1')   or []
-    label_to_key: dict[str, str] = {d['label']: k for k, d in tilau_devices.items()}
-    name_map: dict[int, str] = {}
-    for slot_i in range(min(len(extradevices), len(extraname1))):
-        label = extraname1[slot_i]
-        if label in label_to_key:
-            name_map[slot_i] = label_to_key[label]
-    if not name_map:
-        return False
-    data['tilau_name_map'] = name_map
-    return True
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Main dialog
 # ─────────────────────────────────────────────────────────────────────────────
 
-# List-row audit cache: path -> (mtime, size, missing, learning state, defects).
+# List-row audit cache: path -> (mtime, size, missing, learning state, defects,
+# health findings, roast epoch, bean uuid).
 # Module-level so the full parse of each file is paid once per session, not at
 # every opening of the window. Keyed on mtime+size, so an edited file refreshes.
-_scan_cache: dict[str, tuple[float, int, list[str], str, list[str]]] = {}
+_scan_cache: dict[str, tuple[float, int, list[str], str, list[str],
+                             list[health.Finding], float, str]] = {}
+
+# List filters, in the order of the segmented control.
+_FILTER_ALL: Final[str] = 'all'
+_FILTER_INCOMPLETE: Final[str] = 'incomplete'
+_FILTER_REVIEW: Final[str] = 'review'
+
+# Findings whose card carries an action; the first one shown gets the primary button.
+_ACTIONABLE: Final[tuple[str, ...]] = (
+    health.DEVICE_SHIFT, health.PREHEAT_COMMANDS, health.DUPLICATE,
+    health.MILESTONE_ORDER, health.ORPHAN_BEAN)
+
+
+def _bean_uuid(data: dict) -> str:
+    m = _UUID_RE.search(data.get('beans', '') or '')
+    return m.group(1) if m else ''
+
+
+def _audit_entry(stamp: tuple[float, int], data: dict | None, heater_slider: int) -> tuple:
+    """The _scan_cache entry of a parsed file (None = unreadable)."""
+    if data is not None:
+        try:
+            defects = audit_structure(data)
+            epoch = data.get('roastepoch')
+            return (stamp[0], stamp[1], audit_alog(data), learning_state(data), defects,
+                    [] if defects else health.check_alog(data, heater_slider),
+                    float(epoch) if isinstance(epoch, (int, float)) else 0.0, _bean_uuid(data))
+        except Exception as exc:  # noqa: BLE001 — a dict Artisan did not write must not stop the scan
+            _log.warning("ALog audit failed, file listed as unreadable: %s", exc)
+    return (stamp[0], stamp[1], [], LEARNING_UNREVIEWED, [DEFECT_UNREADABLE], [], 0.0, '')
 
 
 class AlogRepairDialog(QDialog):
@@ -549,8 +590,17 @@ class AlogRepairDialog(QDialog):
         self._scan_seen: set[str] = set()
         self._scan_dir: Path | None = None
         self._scan_active = False
+        # One timer chains the slices: a rescan restarts it, never adds a second chain.
+        self._scan_timer = QTimer(self)
+        self._scan_timer.setSingleShot(True)
+        self._scan_timer.timeout.connect(self._scan_step)
         self._pending_select: Path | None = None
         self._pending_prev_row = -1
+        self._filter = _FILTER_ALL
+        self._bean_uuids: set[str] = set()
+        self._slider = PIDConfig().heater_slider
+        # path -> the other files saved with the same roast start; known after a full pass
+        self._duplicates: dict[str, list[str]] = {}
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -578,7 +628,6 @@ class AlogRepairDialog(QDialog):
             QListWidget {{ background-color:{THEME['SURFACE']}; border:1px solid {THEME['BORDER']};
                 border-radius:6px; font-size:12px; }}
             QListWidget::item:selected {{ background-color:{THEME['ACCENT']}; color:{THEME['BG']}; }}
-            QCheckBox {{ color:{THEME['SUBTEXT']}; font-size:11px; }}
             QScrollArea {{ background:transparent; border:none; }}
             QProgressBar {{ background-color:{THEME['SURFACE']}; color:{THEME['TEXT']};
                 border:1px solid {THEME['BORDER']}; border-radius:7px;
@@ -704,10 +753,31 @@ class AlogRepairDialog(QDialog):
         left_lay.addWidget(self._scan_row)
         filter_row = QHBoxLayout()
         filter_row.setContentsMargins(0, 0, 0, 0)
-        self._incomplete_only = QCheckBox(
-            QApplication.translate("tilauscope_repair", "Show incomplete only"))
-        self._incomplete_only.toggled.connect(lambda _on: self._reload_file_list())
-        filter_row.addWidget(self._incomplete_only)
+        filter_row.setSpacing(4)
+        filter_group = QButtonGroup(self)
+        filter_group.setExclusive(True)
+        for value, label, tip in (
+            (_FILTER_ALL, QApplication.translate("tilauscope_common", "All"),
+             QApplication.translate("tilauscope_repair", "Every roast file in the folder.")),
+            (_FILTER_INCOMPLETE, QApplication.translate("tilauscope_repair", "To complete"),
+             QApplication.translate("tilauscope_repair",
+                                    "Files missing a field, a coffee link, or that the plan cannot read.")),
+            (_FILTER_REVIEW, QApplication.translate("tilauscope_repair", "To review"),
+             QApplication.translate("tilauscope_repair",
+                                    "Files marked ⚑: a recording fault worth a look.")),
+        ):
+            btn = QPushButton(label)
+            btn.setCheckable(True)
+            btn.setChecked(value == self._filter)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setToolTip(tip)
+            btn.setStyleSheet(
+                "QPushButton { padding:5px 10px; font-size:11px; }"
+                f"QPushButton:checked {{ border:1.5px solid {THEME['ACCENT']};"
+                f" color:{THEME['ACCENT']}; background-color: {tint('TEXT', 0.06)}; }}")
+            btn.clicked.connect(lambda _checked=False, v=value: self._set_filter(v))
+            filter_group.addButton(btn)
+            filter_row.addWidget(btn)
         filter_row.addStretch(1)
         self._update_counts_btn = QPushButton(
             QApplication.translate("tilauscope_repair", "Update Roast Counts"))
@@ -738,6 +808,14 @@ class AlogRepairDialog(QDialog):
         self._damage_lbl.setVisible(False)
         form.addWidget(self._damage_lbl)
         form.setSpacing(7)
+
+        # recording faults of the selected file, one card each — see _show_health
+        self._health_box = QWidget()
+        self._health_lay = QVBoxLayout(self._health_box)
+        self._health_lay.setContentsMargins(0, 0, 0, 0)
+        self._health_lay.setSpacing(6)
+        self._health_box.setVisible(False)
+        form.addWidget(self._health_box)
 
         # ── Learning state of the selected roast ─────────────────────────────
         # Segmented control so the state reads directly off the row; written to
@@ -912,19 +990,11 @@ class AlogRepairDialog(QDialog):
         self._record_btn.clicked.connect(self._record)
         self._next_btn = QPushButton(QApplication.translate("tilauscope_repair", "Next incomplete \u25b8"))
         self._next_btn.clicked.connect(lambda: self._select_next_incomplete(self._list.currentRow()))
-        # — batch stamp tilau_name_map on legacy alogs
-        self._stamp_btn = QPushButton(
-            QApplication.translate("tilauscope_repair", "Stamp device map"))
-        self._stamp_btn.setToolTip(QApplication.translate(
-            "tilauscope_repair",
-            "Rebuild tilau_name_map in all ALogs that pre-date automatic device-index stamping."))
-        self._stamp_btn.clicked.connect(self._stamp_device_map_batch)
         close_btn = QPushButton(QApplication.translate("Button", "Close"))
         close_btn.setObjectName("btnGhost")
         close_btn.clicked.connect(self.close)
         btn_row.addWidget(self._record_btn)
         btn_row.addWidget(self._next_btn)
-        btn_row.addWidget(self._stamp_btn)
         btn_row.addWidget(close_btn)
         btn_row.addStretch(1)
 
@@ -981,6 +1051,7 @@ class AlogRepairDialog(QDialog):
         read, progress is reported, and the user can stop it at any point.
         `select_after` is applied once the scan ends (or is cancelled)."""
         self._scan_active = False          # halt any in-flight scan
+        self._scan_timer.stop()
         self._pending_select = select_after
         self._pending_prev_row = prev_row
         self._suppress_select = True
@@ -999,6 +1070,9 @@ class AlogRepairDialog(QDialog):
         self._scan_damaged = 0
         self._scan_shown = 0
         self._scan_seen = set()
+        self._duplicates = {}
+        self._bean_uuids = {b.uuid for b in self._green_beans() if b.uuid}
+        self._slider = self._heater_slider()
         self._scan_active = True
         self._scan_bar.setValue(0)
         self._scan_btn.setText(QApplication.translate("Button", "Cancel"))
@@ -1037,7 +1111,7 @@ class AlogRepairDialog(QDialog):
         else:
             # 1 ms rather than 0: a chain of zero timers can outrun the platform
             # run loop and starve the very repaints this slicing exists for.
-            QTimer.singleShot(1, self._scan_step)
+            self._scan_timer.start(1)
 
     def _scan_file(self, fp: Path) -> None:
         """Audit one file and append its row, unless the filter hides it."""
@@ -1049,49 +1123,132 @@ class AlogRepairDialog(QDialog):
         except OSError:
             return
         cached = _scan_cache.get(key)
-        if cached is not None and (cached[0], cached[1]) == stamp:
-            missing, _state, defects = list(cached[2]), cached[3], list(cached[4])
-        else:
-            data = parse_alog(fp)
-            if data is None:
-                missing, _state, defects = [], LEARNING_UNREVIEWED, [DEFECT_UNREADABLE]
-            else:
-                missing, _state = audit_alog(data), learning_state(data)
-                defects = audit_structure(data)
-            _scan_cache[key] = (stamp[0], stamp[1], list(missing), _state, list(defects))
-        is_incomplete = bool(missing or defects)
-        if is_incomplete:
+        if cached is None or (cached[0], cached[1]) != stamp:
+            _scan_cache[key] = _audit_entry(stamp, parse_alog(fp), self._slider)
+        missing, defects = _scan_cache[key][2], _scan_cache[key][4]
+        if missing or defects:
             self._scan_incomplete += 1
         if defects:
             self._scan_damaged += 1
-        if self._incomplete_only.isChecked() and not is_incomplete:
+        if not self._passes_filter(key):
             return
-        item = QListWidgetItem(fp.name)
-        item.setData(self._ROLE_PATH, str(fp))
-        item.setData(self._ROLE_INCOMPLETE, is_incomplete)
+        self._list.addItem(self._new_item(key))
+        self._scan_shown += 1
+
+    def _flag_count(self, key: str) -> int:
+        """How many recording faults the row of `key` marks with ⚑."""
+        entry = _scan_cache.get(key)
+        if entry is None or entry[4]:
+            return 0   # a damaged file shows its red banner instead
+        return len(entry[5]) + len(self._folder_findings(key, entry[7]))
+
+    def _folder_findings(self, key: str, uuid: str) -> list[health.Finding]:
+        """Findings that need the whole folder or BeanCave: a duplicate, a broken coffee link."""
+        found: list[health.Finding] = []
+        if key in self._duplicates:
+            found.append((health.DUPLICATE, tuple(self._duplicates[key])))
+        if uuid and self._bean_uuids and uuid not in self._bean_uuids:
+            found.append((health.ORPHAN_BEAN, ()))
+        return found
+
+    def _fresh_entry(self, path: Path, data: dict) -> tuple:
+        """The cache entry of `path`, recomputed from `data` only when the file changed."""
+        key = str(path)
+        try:
+            st = path.stat()
+            stamp = (st.st_mtime, st.st_size)
+        except OSError:
+            return _audit_entry((0.0, 0), data, self._slider)
+        cached = _scan_cache.get(key)
+        if cached is None or (cached[0], cached[1]) != stamp:
+            cached = _scan_cache[key] = _audit_entry(stamp, data, self._slider)
+        return cached
+
+    def _heater_slider(self) -> int:
+        """The slider TilauPID writes its burner commands on."""
+        cfg = getattr(getattr(self._aw, 'tilauPreheatingPid', None), 'cfg', None)
+        return int(cfg.heater_slider) if cfg is not None else PIDConfig().heater_slider
+
+    def _passes_filter(self, key: str) -> bool:
+        entry = _scan_cache[key]
+        if self._filter == _FILTER_INCOMPLETE:
+            return bool(entry[2] or entry[4])
+        if self._filter == _FILTER_REVIEW:
+            return self._flag_count(key) > 0
+        return True
+
+    def _set_filter(self, value: str) -> None:
+        if value != self._filter:
+            self._filter = value
+            self._reload_file_list()
+
+    def _new_item(self, key: str) -> QListWidgetItem:
+        entry = _scan_cache[key]
+        item = QListWidgetItem()
+        item.setData(self._ROLE_PATH, key)
+        item.setData(self._ROLE_INCOMPLETE, bool(entry[2] or entry[4]))
+        self._restyle_item(item)
+        return item
+
+    def _restyle_item(self, item: QListWidgetItem) -> None:
+        """Row text and colour, from the scan cache."""
+        key = item.data(self._ROLE_PATH)
+        _mtime, _size, missing, state, defects = _scan_cache[key][:5]
         if defects:
-            item.setForeground(QColor(THEME['CRITICAL']))
-            item.setText(f"\u26d4  {fp.name}  " + QApplication.translate(
-                "tilauscope_repair", "damaged"))
+            colour, mark, tail = 'CRITICAL', "\u26d4", "  " + QApplication.translate(
+                "tilauscope_repair", "damaged")
         elif 'beans_uuid' in missing:
-            item.setForeground(QColor(THEME['CRITICAL']))
-            item.setText(f"\u2716  {fp.name}")
+            colour, mark, tail = 'CRITICAL', "\u2716", ""
         elif missing:
-            item.setForeground(QColor(THEME['WARNING']))
-            item.setText(f"\u26A0  {fp.name}  ({len(missing)})")
+            colour, mark, tail = 'WARNING', "\u26A0", f"  ({len(missing)})"
         else:
-            item.setForeground(QColor(THEME['SUCCESS']))
-            item.setText(f"\u2713  {fp.name}")
+            colour, mark, tail = 'SUCCESS', "\u2713", ""
+        # ⚑ sits beside the mark: a long file name pushes the end of the row out of sight
+        flags = self._flag_count(key)
+        text = f"{mark}  " + (f"\u2691{flags}  " if flags else "") + Path(key).name + tail
         # Learning state as a suffix badge: 🚫 excluded, ✅ reviewed and
         # admitted, nothing for a file no one has ruled on yet. The prefix
         # (✓ ⚠ ✖) already says whether the METADATA is complete — a
         # different question entirely, and the two must stay readable apart.
-        if _state == LEARNING_EXCLUDED:
-            item.setText(item.text() + "  \U0001f6ab")
-        elif _state == LEARNING_ADMITTED:
-            item.setText(item.text() + "  ✅")
-        self._list.addItem(item)
-        self._scan_shown += 1
+        if state == LEARNING_EXCLUDED:
+            text += "  \U0001f6ab"
+        elif state == LEARNING_ADMITTED:
+            text += "  ✅"
+        item.setText(text)
+        item.setForeground(QColor(THEME[colour]))
+
+    def _row_of(self, key: str) -> QListWidgetItem | None:
+        for r in range(self._list.count()):
+            it = self._list.item(r)
+            if it is not None and it.data(self._ROLE_PATH) == key:
+                return it
+        return None
+
+    def _show_duplicates(self) -> None:
+        """Mark the files saved with the same roast start, once a full pass knows them all."""
+        by_epoch: dict[float, list[str]] = {}
+        for key in sorted(self._scan_seen):
+            entry = _scan_cache.get(key)
+            if entry is not None and entry[6] > 0 and not entry[4]:
+                by_epoch.setdefault(entry[6], []).append(key)
+        self._duplicates = {k: [o for o in keys if o != k]
+                            for keys in by_epoch.values() if len(keys) > 1 for k in keys}
+        for key in self._duplicates:
+            item = self._row_of(key)
+            if item is not None:
+                self._restyle_item(item)
+            elif self._filter == _FILTER_REVIEW and key in _scan_cache:
+                # rows are sorted by name: insert before the first one after it
+                name = Path(key).name.lower()
+                row = next((r for r in range(self._list.count())
+                            if Path(self._list.item(r).data(self._ROLE_PATH)).name.lower() > name),
+                           self._list.count())
+                self._suppress_select = True
+                self._list.insertItem(row, self._new_item(key))
+                self._suppress_select = False
+                self._scan_shown += 1
+        if self._current_path is not None and str(self._current_path) in self._duplicates:
+            self._refresh_health()
 
     def _finish_scan(self, cancelled: bool) -> None:
         self._scan_active = False
@@ -1113,16 +1270,20 @@ class AlogRepairDialog(QDialog):
                           if k not in self._scan_seen
                           and scanned is not None and Path(k).parent == scanned]:
                 del _scan_cache[stale]
+            self._show_duplicates()
+            to_review = sum(1 for k in self._scan_seen if self._flag_count(k))
             self._summary_lbl.setText(QApplication.translate(
                 "tilauscope_repair",
-                "{0} files \u00b7 {1} incomplete \u00b7 {2} damaged \u00b7 {3} shown").format(
+                "{0} files \u00b7 {1} incomplete \u00b7 {2} damaged \u00b7 {3} to review \u00b7 {4} shown").format(
                     len(self._scan_files), self._scan_incomplete, self._scan_damaged,
-                    self._scan_shown))
+                    to_review, self._scan_shown))
         if self._pending_select is not None:
             target, prev_row = self._pending_select, self._pending_prev_row
             self._pending_select = None
             self._pending_prev_row = -1
-            if not self._reselect(target) and prev_row >= 0:
+            if self._reselect(target):
+                self._refresh_health()   # _reselect bypasses _on_select
+            elif prev_row >= 0:
                 self._select_next_incomplete(prev_row)
 
     def _on_scan_button(self) -> None:
@@ -1155,9 +1316,11 @@ class AlogRepairDialog(QDialog):
             self, len(cave.green_beans), SVG_PROG_SEARCH)
         progress.show()
 
-        for bean in cave.green_beans:
-            bean.count  = 0
-            bean.weight = 0.0
+        # Gathered aside, applied only once a file was read: before BeanCave's index
+        # is loaded nothing matches, and zeroing every coffee then reached the
+        # catalogue at its next save.
+        counts  = [0] * len(cave.green_beans)
+        weights = [0.0] * len(cave.green_beans)
 
         flag_update    = False
         orphaned_count = 0
@@ -1180,7 +1343,7 @@ class AlogRepairDialog(QDialog):
                     if data is None:
                         continue
                     flag_update = True
-                    bean.count += 1
+                    counts[bi] += 1
                     w_data = data.get('weight')
                     if w_data:
                         w = w_data[0]
@@ -1190,7 +1353,7 @@ class AlogRepairDialog(QDialog):
                                 src_idx = weight_units.index(unit)
                             except ValueError:
                                 src_idx = 0
-                            bean.weight += convertWeight(float(w), src_idx, 0)
+                            weights[bi] += convertWeight(float(w), src_idx, 0)
                 except OSError as e:
                     _log.warning(f"update_roast_counts: cannot read {fname}: {e}")
 
@@ -1200,6 +1363,8 @@ class AlogRepairDialog(QDialog):
                 _log.warning(f"Orphaned roast: {fname} references missing UUID {uuid_val}")
 
         if flag_update:
+            for bean, count, weight in zip(cave.green_beans, counts, weights, strict=True):
+                bean.count, bean.weight = count, weight
             self._bc.save_green_beans()
             self._bc.populate_table()
 
@@ -1226,6 +1391,7 @@ class AlogRepairDialog(QDialog):
         if item is None:
             self._set_editor_enabled(False)
             self._show_damage([])
+            self._show_health(None)
             return
         path = Path(item.data(self._ROLE_PATH))
 
@@ -1239,11 +1405,18 @@ class AlogRepairDialog(QDialog):
                 return
 
         data = self._bc.get_alog_data(path)
-        if data is None:
+        defects = [DEFECT_UNREADABLE] if data is None else self._fresh_entry(path, data)[4]
+        if DEFECT_UNREADABLE in defects:
+            # nothing to edit, and the previous file's edits were just discarded
+            self._current_path = None
+            self._current_data = None
+            self._dirty = False
             self._set_editor_enabled(False)
-            self._show_damage([DEFECT_UNREADABLE])
+            self._show_damage(defects)
+            self._show_health(None)
             return
-        self._show_damage(audit_structure(data))
+        self._show_damage(defects)
+        self._show_health(data, path)
         self._current_path = path
         self._current_data = dict(data)  # copy; not committed until Record
         self._populate_editor(self._current_data)
@@ -1320,9 +1493,11 @@ class AlogRepairDialog(QDialog):
                 QMessageBox.Icon.Information)
             return
 
-        # beans: rebuild only when the link (uuid) is missing - this is the purpose
-        if not _UUID_RE.search(self._beans_edit.toPlainText() or ''):
-            self._beans_edit.setPlainText(build_beans_field(bean))
+        # beans: add the link (uuid) when missing - this is the purpose
+        text = self._beans_edit.toPlainText() or ''
+        linked = link_beans_text(text, bean)
+        if linked != text:
+            self._beans_edit.setPlainText(linked)
         # title: fill only if empty
         if not self._title_edit.text().strip():
             crop = str(bean.crop) if bean.crop else 'N/A'
@@ -1347,95 +1522,6 @@ class AlogRepairDialog(QDialog):
             self._ground_edit.setText(f"{value:.1f}")
 
     @pyqtSlot()
-    def _stamp_device_map_batch(self) -> None:
-        """Iterate every alog in the directory; write tilau_name_map for files
-        that contain TilauScope devices (identified by extraname1 label) but
-        lack the map key.  Skips files that already have the key."""
-        directory = Path(self._bc.alog_directory) if self._bc.alog_directory else None
-        if not directory or not directory.is_dir():
-            show_styled_message(
-                self,
-                QApplication.translate("tilauscope_repair", "No directory"),
-                QApplication.translate("tilauscope_repair", "ALog directory not set."),
-                QMessageBox.Icon.Warning)
-            return
-
-        tilau_devices = getattr(getattr(self._aw, 'qmc', None), 'tilau_devices', {})
-        if not tilau_devices:
-            _log.warning("stamp_device_map_batch: tilau_devices not available")
-            return
-
-        files = sorted(directory.glob("*.alog"))
-        total = len(files)
-        if total == 0:
-            return
-
-        progress = QProgressDialog(
-            QApplication.translate("tilauscope_repair", "Stamping device map…"),
-            QApplication.translate("Button", "Cancel"),
-            0, total, self,
-        )
-        progress.setWindowModality(Qt.WindowModality.WindowModal)
-        progress.setMinimumDuration(0)
-        progress.setValue(0)
-
-        stamped = 0
-        skipped = 0
-        errors  = 0
-
-        for idx, fp in enumerate(files):
-            if progress.wasCanceled():
-                break
-            progress.setLabelText(
-                QApplication.translate(
-                    "tilauscope_repair", "Processing {0}…").format(fp.name))
-            progress.setValue(idx)
-            QApplication.processEvents()
-
-            data = self._bc.get_alog_data(fp)
-            if data is None:
-                errors += 1
-                continue
-            # compute the expected map regardless of whether one is already stored
-            expected: dict[int, str] = {}
-            extradevices: list = data.get('extradevices') or []
-            extraname1:   list = data.get('extraname1')   or []
-            label_to_key: dict[str, str] = {d['label']: k for k, d in tilau_devices.items()}
-            for slot_i in range(min(len(extradevices), len(extraname1))):
-                lbl = extraname1[slot_i]
-                if lbl in label_to_key:
-                    expected[slot_i] = label_to_key[lbl]
-            if not expected:
-                # no TilauScope devices in this file
-                continue
-            # normalise stored map keys to int for comparison
-            stored = {int(k): v for k, v in (data.get('tilau_name_map') or {}).items()}
-            if stored == expected:
-                skipped += 1
-                continue
-            data['tilau_name_map'] = expected
-            try:
-                write_alog(data, fp)
-                stamped += 1
-                _log.info("tilau_name_map stamped: %s", fp.name)
-            except Exception as exc:  # pylint: disable=broad-except
-                _log.error("stamp_device_map_batch write error %s: %s", fp.name, exc)
-                errors += 1
-
-        progress.setValue(total)
-
-        msg = QApplication.translate(
-            "tilauscope_repair",
-            "{0} file(s) stamped · {1} already up-to-date · {2} error(s)").format(
-                stamped, skipped, errors)
-        show_styled_message(
-            self,
-            QApplication.translate("tilauscope_repair", "Stamp device map"),
-            msg,
-            QMessageBox.Icon.Information)
-        if stamped:
-            self._reload_file_list()
-    @pyqtSlot()
     def _record(self) -> None:
         if self._current_data is None or self._current_path is None:
             return
@@ -1453,13 +1539,15 @@ class AlogRepairDialog(QDialog):
                 QMessageBox.Icon.Warning)
             return
 
-        data = self._current_data
+        # Only the fields this form edits: _record_alog lays them over the file
+        # as it is on disk now, not over the copy taken at selection.
+        data: dict = {}
         data['title'] = self._title_edit.text().strip()
         data['beans'] = self._beans_edit.toPlainText().strip()
 
-        unit = self._weight_unit(data)
+        unit = self._weight_unit(self._current_data)
         data['weight'] = [wi, wo, unit]
-        dens = list(data.get('density') or [])
+        dens = list(self._current_data.get('density') or [])
         dens_val = _safe_float(self._density_edit.text())
         if len(dens) >= 4:
             dens[0] = dens_val
@@ -1479,11 +1567,11 @@ class AlogRepairDialog(QDialog):
         data['roastertype'] = roaster_name
         data['machinesetup'] = roaster_name
 
-        new_name = build_alog_filename(data, self._current_path.name)
+        new_name = build_alog_filename({**self._current_data, **data}, self._current_path.name)
         new_path = self._current_path.with_name(new_name)
 
         # collision guard: never silently clobber a different existing file
-        if new_path.exists() and new_path.resolve() != self._current_path.resolve():
+        if _is_other_file(new_path, self._current_path):
             if not self._confirm(
                     QApplication.translate("tilauscope_repair", "File exists"),
                     QApplication.translate("tilauscope_repair",
@@ -1513,6 +1601,7 @@ class AlogRepairDialog(QDialog):
                         new_name, rename_error),
                 QMessageBox.Icon.Warning, rich=True)
         _log.info("ALog repaired: %s -> %s", self._current_path.name, new_path.name)
+        self._current_data.update(data)
         self._dirty = False
         self.repaired.emit(str(new_path))
         prev_row = self._list.currentRow()
@@ -1671,6 +1760,249 @@ class AlogRepairDialog(QDialog):
         text = defect_text(defects)
         self._damage_lbl.setText(text)
         self._damage_lbl.setVisible(bool(text))
+
+    # ── recording faults of the selected file (FILE HEALTH) ─────────────────
+    def _show_health(self, data: dict | None, path: Path | None = None) -> None:
+        """One card per recording fault, most severe first; only the first action is primary."""
+        while self._health_lay.count():
+            w = self._health_lay.takeAt(0).widget()
+            if w is not None:
+                w.deleteLater()
+        if data is None or path is None:
+            self._health_box.setVisible(False)
+            return
+        entry = self._fresh_entry(path, data)
+        if entry[4]:
+            self._health_box.setVisible(False)
+            return
+        findings = list(entry[5]) + self._folder_findings(str(path), entry[7])
+        findings.sort(key=lambda f: health.SEVERITY.index(f[0]))
+        first_action = next((code for code, _args in findings if code in _ACTIONABLE), None)
+        for code, args in findings:
+            self._health_lay.addWidget(self._finding_card(code, args, primary=code == first_action))
+        rebuilt = health.rebuilt_count(data)
+        if rebuilt:
+            self._health_lay.addWidget(self._health_card(
+                QApplication.translate("tilauscope_repair", "✓ Preheat burner commands rebuilt"),
+                QApplication.translate("tilauscope_repair",
+                                       "{0} commands rebuilt from the burner channel.").format(rebuilt),
+                'SUCCESS',
+                (QApplication.translate("tilauscope_common", "Undo"), self._undo_preheat, False)))
+        self._health_box.setVisible(self._health_lay.count() > 0)
+
+    def _refresh_health(self) -> None:
+        if self._current_path is not None:
+            self._show_health(self._bc.get_alog_data(self._current_path), self._current_path)
+
+    def _finding_card(self, code: str, args: tuple, primary: bool) -> QFrame:
+        exclude_hint = QApplication.translate("tilauscope_repair", "If the curve is unusable, set Plan learning to Excluded.")
+        if code == health.DEVICE_SHIFT:
+            lines = [QApplication.translate("tilauscope_repair",
+                        "Channel {0} of {1} reads {2} to {3}, which this device cannot produce.").format(
+                            channel, device, lo, hi) for device, channel, lo, hi in args]
+            lines.append(QApplication.translate("tilauscope_repair",
+                            "A change in device numbering left this roast pointing at the wrong "
+                            "devices: opened as it is, it attaches these readings to them."))
+            return self._health_card(
+                QApplication.translate("tilauscope_repair", "⚑ Devices do not match this roast"), '\n'.join(lines), 'WARNING',
+                (QApplication.translate("tilauscope_repair", "Open this roast"), self._open_in_artisan, primary),
+                QApplication.translate("tilauscope_repair", "Then Devices › Change device, and save."))
+        if code == health.PREHEAT_COMMANDS:
+            count, lo, hi = args
+            return self._health_card(
+                QApplication.translate("tilauscope_repair", "⚑ Preheat burner commands missing"),
+                QApplication.translate("tilauscope_repair",
+                   "The PID ran this preheat, but its burner commands were not written. The burner "
+                   "channel recorded them: {0} commands from {1} to {2} %. Without them, the PID does "
+                   "not learn its hold power from this roast.").format(count, lo, hi),
+                'WARNING',
+                (QApplication.translate("tilauscope_repair", "Rebuild {0} commands").format(count),
+                 self._rebuild_preheat, primary))
+        if code == health.DUPLICATE:
+            return self._health_card(
+                QApplication.translate("tilauscope_repair", "⚑ Same roast saved twice"),
+                QApplication.translate("tilauscope_repair",
+                   "Same start time as {0}. The plan counts this roast twice: exclude one copy "
+                   "from learning.").format(', '.join(Path(p).name for p in args)),
+                'WARNING',
+                (QApplication.translate("tilauscope_repair", "Show the other file"),
+                 lambda _checked=False, other=args[0]: self._show_file(other), primary))
+        if code == health.POWER_METER:
+            if args[0] == health.METER_EMPTY:
+                text = QApplication.translate("tilauscope_repair", "The power meter recorded nothing.")
+            elif args[0] == health.METER_SILENT:
+                text = QApplication.translate("tilauscope_repair", "The power meter fell silent for {0} min {1} s.").format(
+                    args[1] // 60, f"{args[1] % 60:02d}")
+            else:
+                text = QApplication.translate("tilauscope_repair", "The power meter read no heating during the roast.")
+            return self._health_card(
+                QApplication.translate("tilauscope_repair", "⚑ Power meter incomplete"),
+                text + ' ' + QApplication.translate("tilauscope_repair", "Energy figures for this roast are incomplete."),
+                'WARNING')
+        if code == health.BT_GAPS:
+            return self._health_card(
+                QApplication.translate("tilauscope_repair", "⚑ Bean temperature gaps"),
+                QApplication.translate("tilauscope_repair",
+                   "{0} readings missing between CHARGE and DROP; the longest gap lasts {1} s.").format(
+                       *args) + ' ' + exclude_hint,
+                'WARNING')
+        if code == health.MILESTONE_ORDER:
+            texts = {
+                health.DRY_BEFORE_TP: QApplication.translate("tilauscope_repair", "DRY END is marked before the turning point."),
+                health.FC_BEFORE_DRY: QApplication.translate("tilauscope_repair", "FIRST CRACK is marked before DRY END."),
+                health.FC_AFTER_DROP: QApplication.translate("tilauscope_repair", "FIRST CRACK is marked after DROP."),
+            }
+            lines = [texts[a] for a in args]
+            lines.append(QApplication.translate("tilauscope_repair", "Phase durations read from this roast are wrong."))
+            return self._health_card(
+                QApplication.translate("tilauscope_repair", "⚑ Milestones out of order"), '\n'.join(lines), 'WARNING',
+                (QApplication.translate("tilauscope_repair", "Open this roast"), self._open_in_artisan, primary),
+                QApplication.translate("tilauscope_repair", "Then move the marks, and save."))
+        if code == health.ROR_OUTLIER:
+            return self._health_card(
+                QApplication.translate("tilauscope_repair", "⚑ Bean probe jumps"),
+                QApplication.translate("tilauscope_repair",
+                   "The rate of rise reaches {0} °C/min, far outside any roast: the probe "
+                   "reading jumped.").format(args[0]) + ' ' + exclude_hint,
+                'WARNING')
+        if code == health.ORPHAN_BEAN:
+            return self._health_card(
+                QApplication.translate("tilauscope_repair", "⚑ Coffee link broken"),
+                QApplication.translate("tilauscope_repair", "This roast is linked to a coffee that is no longer in BeanCave."),
+                'WARNING',
+                (QApplication.translate("tilauscope_repair", "Relink to the selected coffee"), self._relink_bean, primary),
+                QApplication.translate("tilauscope_repair", "Choose it under Green bean, then Record."))
+        return self._health_card(
+            QApplication.translate("tilauscope_repair", "⚑ Simulated roast"),
+            QApplication.translate("tilauscope_repair", "Recorded by the simulator: never used for learning."),
+            'SUBTEXT')
+
+    def _health_card(self, title: str, body: str, colour: str,
+                     action: tuple | None = None, hint: str = '') -> QFrame:
+        card = QFrame()
+        card.setObjectName('healthCard')
+        card.setStyleSheet(
+            f"QFrame#healthCard {{ border:1px solid {THEME[colour]}; border-radius:8px;"
+            f" background-color:{tint(colour, 0.08)}; }}")
+        lay = QVBoxLayout(card)
+        lay.setContentsMargins(10, 8, 10, 8)
+        lay.setSpacing(4)
+        title_lbl = QLabel(title)
+        title_lbl.setStyleSheet(f"color:{THEME[colour]}; font-size:12px; font-weight:bold;")
+        body_lbl = QLabel(body)
+        body_lbl.setWordWrap(True)
+        body_lbl.setStyleSheet("font-size:11px;")
+        lay.addWidget(title_lbl)
+        lay.addWidget(body_lbl)
+        if action is not None:
+            label, slot, primary = action
+            row = QHBoxLayout()
+            btn = QPushButton(label)
+            if primary:
+                btn.setObjectName("btnPrimary")
+            btn.clicked.connect(slot)
+            row.addWidget(btn)
+            if hint:
+                hint_lbl = QLabel(hint)
+                hint_lbl.setProperty('variant', 'caption')
+                row.addWidget(hint_lbl)
+            row.addStretch(1)
+            lay.addLayout(row)
+        return card
+
+    @pyqtSlot()
+    def _open_in_artisan(self) -> None:
+        """Close this window and load the selected roast in Artisan, where its devices are re-assigned."""
+        path = self._current_path
+        if path is None:
+            return
+        qmc = getattr(self._aw, 'qmc', None)
+        if qmc is not None and (qmc.flagon or qmc.flagstart):
+            show_styled_message(
+                self,
+                QApplication.translate("tilauscope_repair", "Open this roast"),
+                QApplication.translate("tilauscope_repair",
+                    "Turn monitoring off first: opening a roast replaces the live curve."),
+                QMessageBox.Icon.Warning)
+            return
+        self.close()
+        if self.isVisible():   # the operator kept unsaved edits
+            return
+        cur_file = getattr(self._aw, 'curFile', None)
+        if cur_file and Path(cur_file).resolve() == path.resolve():
+            return
+        try:
+            self._aw.loadFile(str(path))
+        except Exception as exc:  # noqa: BLE001
+            _log.error("ALog maintenance: could not open %s: %s", path.name, exc)
+
+    @pyqtSlot()
+    def _rebuild_preheat(self) -> None:
+        self._write_health_change(lambda d: health.rebuild_preheat_commands(d, self._slider))
+
+    @pyqtSlot()
+    def _undo_preheat(self) -> None:
+        self._write_health_change(health.undo_preheat_commands)
+
+    def _write_health_change(self, change) -> None:
+        """Apply `change` to the selected file on disk at once, like the learning state:
+        re-read from disk so unsaved edits stay out, then sync the editing copy."""
+        path = self._current_path
+        if path is None:
+            return
+        data = self._bc.get_alog_data(path)
+        new = change(data) if data is not None else None
+        if new is None:
+            return
+        try:
+            write_alog(new, path)
+            st = path.stat()
+        except Exception as exc:  # noqa: BLE001
+            _log.error("ALog maintenance write failed: %s", exc)
+            show_styled_message(
+                self,
+                QApplication.translate("tilauscope_common", "Save Error"),
+                QApplication.translate("tilauscope_repair",
+                    "Could not write the ALog file:<br><b>{0}</b>").format(exc),
+                QMessageBox.Icon.Warning, rich=True)
+            return
+        _log.info("ALog %s: %d rebuilt preheat burner commands on file",
+                  path.name, health.rebuilt_count(new))
+        if self._current_data is not None:
+            for k in health.EVENT_KEYS:
+                self._current_data[k] = new[k]
+            self._current_data.pop(health.REBUILT_KEY, None)
+            if health.REBUILT_KEY in new:
+                self._current_data[health.REBUILT_KEY] = new[health.REBUILT_KEY]
+        _scan_cache[str(path)] = _audit_entry((st.st_mtime, st.st_size), new, self._slider)
+        item = self._row_of(str(path))
+        if item is not None:
+            self._restyle_item(item)
+        self._show_health(new, path)
+
+    def _show_file(self, key: str) -> None:
+        item = self._row_of(key)
+        if item is not None:
+            self._list.setCurrentItem(item)
+            return
+        show_styled_message(
+            self,
+            QApplication.translate("tilauscope_repair", "Show the other file"),
+            QApplication.translate("tilauscope_repair",
+                "{0} is hidden by the filter. Choose All to see it.").format(Path(key).name),
+            QMessageBox.Icon.Information)
+
+    @pyqtSlot()
+    def _relink_bean(self) -> None:
+        bean = self._bean_combo.currentData()
+        if bean is None or not bean.uuid:
+            show_styled_message(
+                self,
+                QApplication.translate("tilauscope_repair", "No bean"),
+                QApplication.translate("tilauscope_repair", "Select a green bean first."),
+                QMessageBox.Icon.Information)
+            return
+        self._beans_edit.setPlainText(build_beans_field(bean))
 
     # ── helpers ────────────────────────────────────────────────────────────
     def _green_beans(self) -> list[GreenBean]:

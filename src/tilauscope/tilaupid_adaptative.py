@@ -66,6 +66,7 @@ from typing import cast, Final
 # artisanlib.main. This lets the alog scanner extract hold power WITHOUT an aw handle,
 # so the offline corpus tool gets the same numbers as the live PID.
 from artisanlib.util import events_internal_to_external_value, fromFtoCstrict
+from tilauscope.roasters import roaster_identity_key
 from tilauscope.tilaupid_thermal import (
     THERMAL_MODEL_FILENAME,
     ThermalModelCandidate,
@@ -103,7 +104,40 @@ _BUMPLESS_STOP_REASONS: Final[frozenset[str]] = frozenset(
 
 def _normalise_identity(value: object) -> str:
     """Stable comparison/key form for machine labels stored by Artisan."""
-    return "".join(ch for ch in str(value or "").casefold() if ch.isalnum())
+    return roaster_identity_key(value)
+
+
+IDENTITY_KEYS_VERSION: Final[int] = 2  # 2 = ITOP prefix dropped from both Skywalkers
+
+
+def migrate_renamed_machine_keys(settings: QSettings) -> None:
+    """Copy PID state stored under a renamed machine's former key to its current one.
+
+    Covers ``tilaupid/v<n>/<machine>/…`` and ``tilaupid/thermal/v<n>/<machine>/…``.
+    Old keys stay for rollback; an existing new key is never overwritten.
+    Idempotent; gated by a stored version."""
+    try:
+        done = int(settings.value("tilaupid/identity_keys_version", 0, int) or 0)
+    except (TypeError, ValueError):
+        done = 0
+    if done >= IDENTITY_KEYS_VERSION:
+        return
+    copied = 0
+    for key in list(settings.allKeys()):
+        parts = key.split("/")
+        at = 3 if len(parts) > 1 and parts[1] == "thermal" else 2
+        if parts[0] != "tilaupid" or len(parts) <= at + 1:
+            continue
+        current = roaster_identity_key(parts[at])
+        if current == parts[at]:
+            continue
+        parts[at] = current
+        new_key = "/".join(parts)
+        if not settings.contains(new_key):
+            settings.setValue(new_key, settings.value(key))
+            copied += 1
+    settings.setValue("tilaupid/identity_keys_version", IDENTITY_KEYS_VERSION)
+    _logd.info(f"TilauPID: {copied} key(s) copied to renamed machine identities")
 
 
 LAW_VERSION: int = 4  # v4 stores exact-SV nodes and interpolates continuously
@@ -281,7 +315,7 @@ def weight_triangular(roast_sv: float, roast_ambient: 'AmbientConditions',
     """
     Triangular kernel: linear decay to zero at window edge.
 
-    Used for FIR roasters (fast response): Skywalker, Kaleido, Cyberroaster.
+    Used for FIR roasters (fast response): Skywalker, Kaleido.
     Windows: ±10°C (SV), ±10°C (temp), ±10% (humidity), ±50 hPa (pressure).
     """
     w_sv = max(0.0, 1.0 - abs(roast_sv - target_sv) / 10.0)
@@ -1501,7 +1535,7 @@ class AdaptivePIDMixin:
             _logd.warning(f"TilauPID thermal candidate ignored: {exc}")
             return
         machine, channel = self._law_context()
-        if (candidate.machine_fingerprint != machine
+        if (_normalise_identity(candidate.machine_fingerprint) != machine
                 or candidate.control_channel != channel):
             _logd.info(
                 "TilauPID thermal candidate ignored: "
@@ -1718,6 +1752,7 @@ class AdaptivePIDMixin:
         if getattr(getattr(self, "aw", None), "simulator", None) is not None:
             return
         s = QSettings()
+        migrate_renamed_machine_keys(s)
         try:
             ver = int(s.value("tilaupid/law_version", 0, int) or 0)
         except (TypeError, ValueError):

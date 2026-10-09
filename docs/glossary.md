@@ -102,6 +102,13 @@ logarithm — used as a yardstick by the profile analysis. Its slope is a rate o
 wobble removed, so the gap between it and the measured [RoR](#ror--rate-of-rise) shows where the
 roast sped up or slowed down. Being close to it describes an even curve, not a good cup.
 
+#### Reference roast
+
+The roast of a coffee you tasted, answered *Yes* to "would you roast it the same way again?",
+and marked with a ★. The next plans of that coffee start from it rather than from your most
+typical past roast. One per coffee and per crop. Not to be confused with the
+[reference trend](#reference-trend), which is a curve fitted to a single roast.
+
 #### Projection
 
 The line Artisan draws ahead of the latest reading, showing where bean temperature is heading
@@ -317,6 +324,11 @@ as a change from the instant the guard acted, not as an absolute temperature.
 A control loop that holds a temperature at a target by continuously adjusting power.
 TilauScope uses one to bring the machine to its preheat target.
 
+#### Hold power
+
+The burner setting that keeps the machine at its preheat target once it has reached it.
+TilauScope's preheat control learns it from the burner commands recorded in past preheats.
+
 #### Shadow validation
 
 Running a candidate model beside the active controller using the same measurements, while
@@ -353,10 +365,9 @@ carried over from a nearby setpoint or from the machine's general thermal behavi
 Following a previously loaded background curve live, from [CHARGE](#charge) onward, moving the
 same controls at the same points instead of following the guided plan. On a machine with
 controls, it tracks bean temperature once available and falls back to elapsed time before that;
-on a machine without controls it only announces the moves to make. The **burner reaction time**
-tells the replay how far ahead to look when following the curve, so the effect lands when the
-curve says it should rather than after the machine's own lag — see
-[Preparing a roast](preparing-a-roast.md#automating-the-start).
+on a machine without controls it only announces the moves to make. The replay looks ahead by
+the machine's measured burner lag (10 s on a machine without a measured one), so the effect lands when the curve says it should rather than
+after that lag — see [Preparing a roast](preparing-a-roast.md#automating-the-start).
 
 ---
 

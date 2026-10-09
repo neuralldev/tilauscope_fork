@@ -202,6 +202,8 @@ class GreenBean(DataClassJSONMixin):
     # Purchase price per kg of green, in the system currency; 0 = unknown.
     price_per_kg: float = 0.0
     uuid:str = ''
+    # roastUUID of the roast the operator marked as this crop's reference; '' = none.
+    reference_roast_uuid: str = ''
     class Config(BaseConfig):
         ignore_missing_keys = True
 
@@ -1314,6 +1316,12 @@ def format_batch_label(prefix: str, nr: int, pos: int | None = None) -> str:
     if pos:
         label += f" ({int(pos)})"
     return label
+
+
+def roast_batch_tag(prefix: str, nr: int) -> str:
+    """A roast's batch as BeanCave shows it — "#44" — or "" when it has no batch number."""
+    label = format_batch_label((prefix or '').lstrip('#'), nr)
+    return f"#{label}" if label else ""
 
 import unicodedata
 def replace_accents(texte):

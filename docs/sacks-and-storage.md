@@ -85,8 +85,10 @@ different one this time, and the [price](beancave.md#price-and-screen-size) and
 previous crop — correct them if this harvest cost more or was graded differently.
 
 The first plans of the new crop are not built from scratch: they take the previous harvest's
-first crack, phase durations and drop temperature until the new crop has roasts of its own — see
-[The roast plan](the-roast-plan.md#which-previous-roasts-count).
+first crack, phase durations and drop temperature — from its
+[reference roast](glossary.md#reference-roast) when it has one — until the new crop has roasts of
+its own — see [The roast plan](the-roast-plan.md#which-previous-roasts-count). The ★ itself does
+not carry over: mark the new crop's own reference once one of its roasts has tasted right.
 
 **Measured on this lot** asks for [density](glossary.md#density), humidity
 ([moisture content](glossary.md#moisture-content)) and

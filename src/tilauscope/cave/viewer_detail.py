@@ -400,6 +400,7 @@ class TastingBanner(QFrame):
     """Under a rested roast: asks how it tasted, or recalls what was said."""
 
     taste_requested = pyqtSignal()
+    reference_toggled = pyqtSignal(bool)
 
     def __init__(self, parent=None) -> None:  # noqa: ANN001
         super().__init__(parent)
@@ -414,6 +415,14 @@ class TastingBanner(QFrame):
                 background: transparent; color: {THEME['MAUVE']};
                 border: none; padding: 4px 8px; font-weight: 600;
             }}
+            QFrame#roastTastingBanner QPushButton#reference {{
+                color: {THEME['OVERLAY1']}; border: 1px solid {THEME['SURFACE1']};
+                border-radius: 6px; padding: 0; font-size: 16px; font-weight: 400;
+            }}
+            QFrame#roastTastingBanner QPushButton#reference:checked {{
+                color: {THEME['YELLOW']}; border-color: {THEME['YELLOW']};
+                background: {tint('YELLOW', 28)};
+            }}
         """)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 6, 8, 6)
@@ -424,15 +433,34 @@ class TastingBanner(QFrame):
         self._button = QPushButton()
         self._button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self._button.clicked.connect(self.taste_requested)
+        self._reference = QPushButton()
+        self._reference.setObjectName('reference')
+        self._reference.setCheckable(True)
+        self._reference.setFixedSize(30, 26)
+        self._reference.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self._reference.clicked.connect(self.reference_toggled)
+        self._reference.hide()
         layout.addWidget(glyph)
         layout.addWidget(self._text, 1)
         layout.addWidget(self._button)
+        layout.addWidget(self._reference)
         self.hide()
 
     def show_state(self, text: str, button: str) -> None:
         self._text.setText(text)
         self._button.setText(button + " ›")
         self.show()
+
+    def set_reference(self, offered: bool, on: bool) -> None:
+        """The reference star: offered on a roast tasted Yes or on the reference, filled on the reference."""
+        self._reference.blockSignals(True)
+        self._reference.setChecked(on)
+        self._reference.blockSignals(False)
+        self._reference.setText('★' if on else '☆')
+        self._reference.setToolTip(
+            QApplication.translate('tilauscope_beancave', 'Reference roast — click to remove') if on else
+            QApplication.translate('tilauscope_beancave', 'Make it the reference roast'))
+        self._reference.setVisible(offered)
 
 
 class CurveMessageLabel(QLabel):

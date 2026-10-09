@@ -33,8 +33,11 @@ _logd: Final[logging.Logger] = logging.getLogger('tilau')
 LEGACY_ROASTER_NAMES: Final[dict[str, str]] = {
     'Cormorant': 'Cormorant CR600g',
     'Kaleido Serial': 'Kaleido M6 Pro',
-    'Skywalker Series - Delta': 'ITOP Skywalker V1',
-    'Skywalker Delta': 'ITOP Cyberroaster',
+    'Skywalker Series - Delta': 'Skywalker V1',
+    'ITOP Skywalker V1': 'Skywalker V1',
+    'Skywalker Delta': 'Skywalker V2',
+    'ITOP Cyberroaster': 'Skywalker V2',
+    'Cyberroaster': 'Skywalker V2',
 }
 
 # Matched on the lower-cased label: these names are typed by hand and arrive
@@ -48,6 +51,23 @@ def canonical_roaster_name(name: str) -> str:
     """Normalize known legacy Artisan labels to a roasters.json display name."""
     stripped = name.strip()
     return _LEGACY_ROASTER_NAMES_CI.get(stripped.lower(), stripped)
+
+
+def _alnum_key(value: object) -> str:
+    return "".join(ch for ch in str(value or "").casefold() if ch.isalnum())
+
+
+_LEGACY_IDENTITY_KEYS: Final[dict[str, str]] = {
+    _alnum_key(k): _alnum_key(v) for k, v in LEGACY_ROASTER_NAMES.items()}
+
+
+def roaster_identity_key(value: object) -> str:
+    """Case-folded alphanumeric machine key, legacy names resolved.
+
+    Accepts a label or a key already in this form, so state learned under a
+    machine's former name resolves to its current one."""
+    key = _alnum_key(value)
+    return _LEGACY_IDENTITY_KEYS.get(key, key)
 
 class HeatingType(StrEnum):
     GAS = auto()
@@ -468,7 +488,7 @@ class Roaster(DataClassDictMixin):
     # coach says so. None = the shared default.
     arrival_uncertainty_c: float | None = None
     # Stable slug matched against the device's handshake ROASTER_ID field,
-    # e.g. "itop-cyberroaster". Optional — falls back to manufacturer/model
+    # e.g. "skywalker-v2". Optional — falls back to manufacturer/model
     # matching (see RoasterManager.get_by_roaster_id).
     roaster_id: str | None = None
 
@@ -879,7 +899,7 @@ class RoasterManager:
                       if f"{r.manufacturer} {r.model}" == name), None)
         if exact is not None:
             return exact
-        # Tolerate roastertype values stored as model-only (e.g. "Cyberroaster")
+        # Tolerate roastertype values stored as model-only (e.g. "CR600g")
         return next((r for r in self._roasters if r.model == name), None)
 
 

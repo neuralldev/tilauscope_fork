@@ -33,6 +33,7 @@ from PyQt6.QtWidgets import (QApplication, QMessageBox) # @UnusedImport @Reimpor
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
+from tilauscope.roasters import canonical_roaster_name
 from tilauscope.tilauscope_types import AGTRON_SCALES, THEME, resolve_color_system
 from tilauscope.brew_advisor import BrewInput, WaterProfile
 from tilauscope.brew_advisor_dialog import BrewAdvisorDlg
@@ -248,7 +249,7 @@ class AnalysisMixin:
         # ── Extraction ────────────────────────────────────────────────────
         roasttime      = data.get("roasttime", "N/A")
         date           = data.get("roastdate", "N/A")
-        roastertype    = data.get("roastertype", "N/A")
+        roastertype    = canonical_roaster_name(str(data.get("roastertype") or "")) or "N/A"
         batch_prefix   = str(data.get("roastbatchprefix", "") or "")
         batch_nr       = int(data.get("roastbatchnr", 0) or 0)
         # Colour reference: GROUND describes real development; whole-bean is only

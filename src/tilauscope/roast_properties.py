@@ -29,7 +29,7 @@ from tilauscope.roast_insights import build_insights
 from tilauscope.guidance_phase import milestone_marked
 from tilauscope.roast_debrief import roast_colour_agtron
 from tilauscope.theme_qss import base_qss, apply_tilau_theme, tooltip_qss, tint, mono_family
-from tilauscope.roasters import RoasterManager
+from tilauscope.roasters import RoasterManager, canonical_roaster_name
 from tilauscope.probe_visibility import et_available_for, et_available_in_profile
 from tilauscope.sack_manager import prompt_release_if_emptied
 from PyQt6.QtCore    import Qt, QPropertyAnimation, pyqtSlot, QTimer, QSettings, QSize
@@ -50,7 +50,7 @@ from PyQt6.QtGui import QColor, QKeyEvent, QFontMetrics, QIcon
 
 from artisanlib.util import fromCtoFstrict, convertWeight, weight_units, events_internal_to_external_value
 from tilauscope.tilauscope_types import (
-    GreenBean, THEME, show_styled_message, AGTRON_SCALES, format_batch_label,
+    GreenBean, THEME, show_styled_message, AGTRON_SCALES, format_batch_label, roast_batch_tag,
     open_in_os_viewer, ensure_color_system, resolve_color_system, call_later,
     get_agtron_color, decode_alog_text, SCREEN_SIZE_RANGES, operator_level,
     park_until_finished,
@@ -1822,6 +1822,92 @@ class _RoastInsightsPanel(QWidget):
             parts.append(str(getattr(self._target_scale, 'name', '')))
         return " · ".join(p for p in parts if p)
 
+    def _reference_line(self, plan: dict) -> "tuple[str, bool] | None":
+        """The reference roast the plan stands on, or why it does not — (text, used); None without one."""
+        from tilauscope.beancave_catalogue import roast_name  # noqa: PLC0415
+
+        def _name(ref: dict) -> str:
+            return roast_name(int(ref.get("epoch") or 0), str(ref.get("batch") or ""), in_sentence=True)
+
+        ref = plan.get("Reference Roast") or {}
+        status = ref.get("status")
+        if not status:
+            # Only the calendar is inherited: the burner follows the new lot.
+            prev_ref = (plan.get("Previous Harvest") or {}).get("reference_roast") or {}
+            if prev_ref.get("status") == "used":
+                return QApplication.translate(
+                    "tilauscope_roast_setup",
+                    "Timings and temperatures from the {0} crop's reference roast ({1}), "
+                    "until this crop has roasts of its own.").format(
+                        plan["Previous Harvest"].get("crop", ""), _name(prev_ref)), True
+            return None
+        name = _name(ref)
+        if status == "used":
+            if ref.get("tasting_change_skipped"):
+                return (QApplication.translate("tilauscope_roast_setup",
+                                               "Based on your reference roast of {0}.").format(name) + " "
+                        + QApplication.translate(
+                            "tilauscope_roast_setup",
+                            "The change asked by the last tasting is not applied: "
+                            "going back to the reference is the correction.")), True
+            if ref.get("tasting_change_applied"):
+                return QApplication.translate(
+                    "tilauscope_roast_setup",
+                    "Based on your reference roast of {0}, with the change asked by the last tasting.").format(
+                        name), True
+            return QApplication.translate(
+                "tilauscope_roast_setup", "Based on your reference roast of {0}.").format(name), True
+        reason = ref.get("reason")
+        if reason == "missing":
+            text = QApplication.translate(
+                "tilauscope_roast_setup", "Your reference roast is not used: its roast file was not found.")
+        elif status == "no_tasting":
+            text = QApplication.translate(
+                "tilauscope_roast_setup", "Your reference roast ({0}) is not used: its tasting was not found.").format(name)
+        elif reason == "excluded":
+            text = QApplication.translate(
+                "tilauscope_roast_setup", "Your reference roast ({0}) is not used: it is excluded from learning.").format(
+                    name)
+        elif status == "not_tasted_yes":
+            text = QApplication.translate(
+                "tilauscope_roast_setup", "Your reference roast ({0}) is not used: it was not tasted Yes.").format(name)
+        elif reason == "weight":
+            text = QApplication.translate(
+                "tilauscope_roast_setup",
+                "Your reference roast ({0}) is not used: it was {1} g and this batch is {2} g.").format(
+                    name, f"{float(ref.get('weight_g') or 0):.0f}", f"{float(plan.get('Weight') or 0):.0f}")
+        elif reason == "level" and ref.get("level") and self._target_scale is not None:
+            text = QApplication.translate(
+                "tilauscope_roast_setup",
+                "Your reference roast ({0}) is not used: it was roasted {1} and this roast is {2}.").format(
+                    name, ref["level"], getattr(self._target_scale, 'name', ''))
+        else:
+            text = QApplication.translate(
+                "tilauscope_roast_setup", "Your reference roast ({0}) is not used for this batch.").format(name)
+        return text, False
+
+    @staticmethod
+    def _star_line(text: str, used: bool) -> QFrame:
+        """A ★ line in the reference's yellow, or a ☆ line in grey when the reference is not used."""
+        box = QFrame()
+        box.setObjectName("referenceLine")
+        colour = THEME['YELLOW'] if used else THEME['OVERLAY1']
+        box.setStyleSheet(
+            f"QFrame#referenceLine {{ border: 1px {'solid' if used else 'dashed'} {colour};"
+            f" border-radius: 8px; background: {'rgba(249,226,175,0.08)' if used else 'transparent'}; }}"
+            f" QLabel {{ border: none; background: transparent; }}")
+        row = QHBoxLayout(box)
+        row.setContentsMargins(10, 6, 10, 6)
+        row.setSpacing(8)
+        glyph = QLabel('★' if used else '☆')
+        glyph.setStyleSheet(f"color: {colour}; font-size: 15px;")
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setStyleSheet(f"color: {THEME['TEXT'] if used else THEME['SUBTEXT']}; font-size: 12px;")
+        row.addWidget(glyph, 0, Qt.AlignmentFlag.AlignTop)
+        row.addWidget(label, 1)
+        return box
+
     def _confidence(self, plan: dict) -> tuple[str, bool]:
         """What the plan rests on, in words — and whether it is guessing."""
         prev = plan.get("Previous Harvest") or {}
@@ -1893,8 +1979,15 @@ class _RoastInsightsPanel(QWidget):
                 lay.addWidget(self._hint_label(_tasting_change_text(change, mode), THEME['TODAY']))
             except Exception:  # noqa: BLE001
                 _log.exception("RoastInsights: tasting line failed")
-        text, guessing = self._confidence(plan)
-        lay.addWidget(self._hint_label(text, THEME['WARNING'] if guessing else None))
+        reference = self._reference_line(plan)
+        if reference is not None and reference[1]:
+            lay.addWidget(self._star_line(reference[0], True))
+        else:
+            text, guessing = self._confidence(plan)
+            if reference is not None:
+                lay.addWidget(self._star_line(reference[0] + " " + text, False))
+            else:
+                lay.addWidget(self._hint_label(text, THEME['WARNING'] if guessing else None))
         if operator_level(self._aw) == "expert":
             cb = QCheckBox(QApplication.translate(
                 "tilauscope_roast_setup", "Load the plan's alarms at start — replaces your current alarms"))
@@ -2118,6 +2211,12 @@ class _RoastInsightsPanel(QWidget):
         open_in_os_viewer(path, owner, helpers=helpers)
 
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _replay_reaction_time_s(ctx: Any) -> float:
+    """The burner lag a Roast Replay leads by: the machine's bench value, else 10 s."""
+    bench_value = getattr(ctx, "burner_reaction_time_s", None)
+    return float(bench_value) if bench_value is not None else 10.0
+
 
 def _default_autosave_prefix(qmc: Any) -> str:
     """The save-filename template, set to batch + title + date/time when empty.
@@ -3468,9 +3567,16 @@ class RoastSetupDialog(QDialog):
         replay_c.addWidget(self._replay_enable_cb)
         replay_c.addStretch()
 
-        # Shown instead of the reaction-time control when replay is unavailable
-        # (no background curve loaded, or roaster does not support it) — a
-        # disabled checkbox's own tooltip is too easy to miss.
+        # Named the background the replay will follow, once the reference is loaded.
+        self._replay_reference_chip = QLabel()
+        self._replay_reference_chip.setStyleSheet(
+            f"color: {THEME['TEXT']}; font-size: 12px; background: {THEME['BG']};"
+            f"border: 1px solid {THEME['SURFACE1']}; border-radius: 10px; padding: 2px 10px;")
+        self._replay_reference_chip.hide()
+        replay_c.insertWidget(1, self._replay_reference_chip)
+
+        # Why replay is unavailable (no background curve loaded, or roaster does
+        # not support it) — a disabled checkbox's own tooltip is too easy to miss.
         self._replay_status_lbl = QLabel()
         self._replay_status_lbl.setWordWrap(False)
         self._replay_status_lbl.setStyleSheet(
@@ -3478,24 +3584,20 @@ class RoastSetupDialog(QDialog):
         )
         replay_c.addWidget(self._replay_status_lbl)
 
-        self._replay_reaction_lbl = QLabel(QApplication.translate("tilauscope_roast_setup", "Burner reaction time"))
-        self._replay_reaction_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 12px; border: none;")
-        self._replay_reaction_spin = QSpinBox()
-        self._replay_reaction_spin.setRange(0, 999)
-        self._replay_reaction_spin.setSuffix(" s")
-        self._replay_reaction_spin.setMinimumHeight(32)
-        self._replay_reaction_spin.setMaximumWidth(100)
-        self._replay_reaction_spin.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self._replay_reaction_spin.setStyleSheet(
-            f"QSpinBox {{ background: {THEME['BG']}; color: {THEME['ACCENT']}; font-weight: bold;"
-            f"border: 1px solid {THEME['ACCENT']}; border-radius: 6px; padding: 4px 10px; font-size: 13px; }}"
-            f"QSpinBox:focus {{ border-color: {THEME['LAVENDER']}; }}"
-            f"QSpinBox:disabled {{ color: {THEME['BORDER']}; border-color: {THEME['BORDER']}; }}"
-        )
-        replay_c.addWidget(self._replay_reaction_lbl)
-        replay_c.addWidget(self._replay_reaction_spin)
+        # Expert only, in place of that reason: load the coffee's reference roast
+        # as the background. Nothing is replayed until the box is ticked.
+        self._replay_reference_btn = QPushButton()
+        self._replay_reference_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._replay_reference_btn.setToolTip(QApplication.translate(
+            "tilauscope_roast_setup", "Loads your reference roast as the background curve, so it can be replayed."))
+        self._replay_reference_btn.setStyleSheet(
+            f"QPushButton {{ color: {THEME['TEXT']}; background: {THEME['BORDER']};"
+            f"border: 1px solid {THEME['SURFACE1']}; border-radius: 8px; padding: 6px 12px; font-size: 12px; }}"
+            f"QPushButton:hover {{ border-color: {THEME['YELLOW']}; }}" + self._tooltip_style())
+        self._replay_reference_btn.clicked.connect(self._load_reference_background)
+        self._replay_reference_btn.hide()
+        replay_c.addWidget(self._replay_reference_btn)
         t.addWidget(replay_card)
-        self._replay_enable_cb.toggled.connect(self._replay_reaction_spin.setEnabled)
 
         t.addStretch()
 
@@ -3568,39 +3670,86 @@ class RoastSetupDialog(QDialog):
             _log.debug("Could not read auto flags: %s", exc)
 
         # Roast Replay — only meaningful if this roaster supports it AND a
-        # background curve is already loaded when the dialog opens.
+        # background curve is loaded.
         try:
-            supports_replay = bool(getattr(self._roaster_ctx, "supports_profile_replay", False))
-            has_background = self._aw.qmc.backgroundprofile is not None
-            available = supports_replay and has_background
             self._replay_enable_cb.setChecked(False)
-            self._replay_enable_cb.setEnabled(available)
-            self._replay_reaction_spin.setEnabled(False)
-            if not supports_replay:
-                _replay_status = QApplication.translate(
-                    "tilauscope_roast_setup", "Not supported by this roaster")
-            elif not has_background:
-                _replay_status = QApplication.translate(
-                    "tilauscope_roast_setup", "Load a background curve first (Roast > Background)")
-            else:
-                _replay_status = ""
-            _replay_tip = (_replay_status if _replay_status else QApplication.translate(
-                "tilauscope_roast_setup",
-                "Replays the loaded background curve during this roast — disables Guided."))
-            self._replay_enable_cb.setToolTip(_replay_tip)
-            # Reason text replaces the reaction-time control while unavailable —
-            # a disabled checkbox's own tooltip is too easy to miss.
-            self._replay_status_lbl.setText(_replay_status)
-            self._replay_status_lbl.setVisible(not available)
-            self._replay_reaction_lbl.setVisible(available)
-            self._replay_reaction_spin.setVisible(available)
-
-            bench_value = getattr(self._roaster_ctx, "burner_reaction_time_s", None)
-            reaction_default = (bench_value if bench_value is not None
-                                 else QSettings().value("tilauscope/replay_burner_reaction_time_s", 10.0, type=float))
-            self._replay_reaction_spin.setValue(int(round(reaction_default)))
+            self._replay_loaded_reference = ""
+            self._refresh_replay_card()
         except Exception as exc:
             _log.debug("Could not initialise Roast Replay controls: %s", exc)
+
+    def _refresh_replay_card(self) -> None:
+        """Whether replay is available, why not, and — for an Expert — the reference to load."""
+        supports_replay = bool(getattr(self._roaster_ctx, "supports_profile_replay", False))
+        has_background = self._aw.qmc.backgroundprofile is not None
+        available = supports_replay and has_background
+        self._replay_enable_cb.setEnabled(available)
+        if not supports_replay:
+            _replay_status = QApplication.translate(
+                "tilauscope_roast_setup", "Not supported by this roaster")
+        elif not has_background:
+            _replay_status = QApplication.translate(
+                "tilauscope_roast_setup", "Load a background curve first (Roast > Background)")
+        else:
+            _replay_status = ""
+        _replay_tip = (_replay_status if _replay_status else QApplication.translate(
+            "tilauscope_roast_setup",
+            "Replays the loaded background curve during this roast — disables Guided."))
+        self._replay_enable_cb.setToolTip(_replay_tip)
+        reference = (self._reference_record()
+                     if supports_replay and not has_background and operator_level(self._aw) == "expert"
+                     else None)
+        if reference is not None:
+            self._replay_reference_btn.setText(
+                "★  " + QApplication.translate("tilauscope_roast_setup", "Load {0}").format(
+                    self._record_name(reference)))
+        self._replay_reference_btn.setVisible(reference is not None)
+        self._replay_status_lbl.setText(_replay_status)
+        self._replay_status_lbl.setVisible(not available and reference is None)
+        self._replay_reference_chip.setText("★  " + self._replay_loaded_reference)
+        self._replay_reference_chip.setVisible(available and bool(self._replay_loaded_reference))
+
+    def _reference_record(self):  # noqa: ANN202
+        """The roast index record of this coffee's reference roast while it is tasted Yes, else None."""
+        from pathlib import Path  # noqa: PLC0415
+        ref = str(getattr(self._bean, "reference_roast_uuid", "") or "")
+        cache = getattr(self._parent_widget, "_metadata_cache", None)
+        if not ref or cache is None:
+            return None
+        record = next((m for m in cache.records.values() if m.roast_uuid == ref), None)
+        if (record is None or record.exclude_learning or record.simulated
+                or not Path(record.filepath_str).exists()):
+            return None
+        from tilauscope import tasting_log  # noqa: PLC0415
+        tasting = tasting_log.load(QSettings().value('beancaveDirectory', '', str)).entries.get(ref)
+        return record if tasting is not None and tasting.verdict == "yes" else None
+
+    @staticmethod
+    def _record_name(record) -> str:  # noqa: ANN001
+        from tilauscope.beancave_catalogue import roast_name  # noqa: PLC0415
+        return roast_name(int(record.roastepoch or record.mtime), roast_batch_tag(record.batch_prefix, record.batch_nr))
+
+    @pyqtSlot()
+    def _load_reference_background(self) -> None:
+        """The Expert's explicit ask: the reference roast becomes the background curve."""
+        # Reached from a click slot: an escape here would close the application.
+        try:
+            record = self._reference_record()
+            if record is None:
+                return
+            self._aw.loadAndRedrawBackgroundUUID(record.filepath_str)
+            if self._aw.qmc.backgroundprofile is None:
+                # Artisan refused it (Designer mode, unreadable file…): say so, or the click looks ignored.
+                show_styled_message(
+                    self, QApplication.translate("tilauscope_roast_setup", "Roast Replay"),
+                    QApplication.translate("tilauscope_roast_setup",
+                                           "The reference roast could not be loaded as the background curve."),
+                    QMessageBox.Icon.Warning)
+                return
+            self._replay_loaded_reference = self._record_name(record)
+            self._refresh_replay_card()
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the reference roast could not be loaded as background")
 
     @pyqtSlot(int)
     def _on_profile_changed(self, index: int) -> None:
@@ -3650,7 +3799,6 @@ class RoastSetupDialog(QDialog):
         # Roast Replay needs the loaded background curve to survive into the
         # live roast — read the checkbox before reset() clears anything.
         replay_wanted = self._replay_enable_cb.isEnabled() and self._replay_enable_cb.isChecked()
-        replay_reaction_s = float(self._replay_reaction_spin.value())
 
         # Reset Artisan first. False means the save prompt for the roast on
         # screen was cancelled: that roast stays, and nothing is written over it.
@@ -3937,8 +4085,7 @@ class RoastSetupDialog(QDialog):
         # Roast Replay: arm now (locks Expert) so the launch_guided_assistant()
         # call right below becomes a no-op — a replay session has no plan to guide.
         if replay_wanted and self._aw.tilauscope_main is not None:
-            QSettings().setValue("tilauscope/replay_burner_reaction_time_s", replay_reaction_s)
-            self._aw.tilauscope_main.arm_roast_replay(replay_reaction_s)
+            self._aw.tilauscope_main.arm_roast_replay(_replay_reaction_time_s(self._roaster_ctx))
         # Workflow guidé : ancre et démarre l'assistant automatiquement.
         # QTimer(0) diffère au prochain tick pour laisser Qt traiter show/raise.
         _aw = self._aw
@@ -6179,7 +6326,7 @@ class RoastDataReaderDialog(QDialog):
         bits = []
         if self._roast_title:
             bits.append(self._roast_title)
-        rtype = str(self._p.get('roastertype', '') or '')
+        rtype = canonical_roaster_name(str(self._p.get('roastertype', '') or ''))
         if rtype:
             bits.append(rtype)
         rdate = str(self._p.get('roastdate', '') or '')
@@ -6203,7 +6350,7 @@ class RoastDataReaderDialog(QDialog):
         self._filter_group = QButtonGroup(self)
         self._filter_group.setExclusive(True)
         for key, text in (
-            ('all',       QApplication.translate("tilauscope_roast_setup", "All")),
+            ('all',       QApplication.translate("tilauscope_common", "All")),
             ('milestone', QApplication.translate("tilauscope_roast_setup", "Milestones")),
             ('event',     QApplication.translate("Tab", "Events")),
         ):

@@ -40,6 +40,7 @@ from typing import Any, Final
 
 from PyQt6.QtCore import QObject, QSettings, pyqtSlot
 
+from tilauscope.roasters import canonical_roaster_name
 from tilauscope.energy_model import (
     CHANNELS, EXTRACTOR, HEATER_FROM_ARTISAN, HEATER_FROM_CONFIG, ROASTER, SOURCE_CURVE, SOURCE_RATED,
     EnergySession, heater_watts,
@@ -85,18 +86,20 @@ def _heater_powers() -> dict:
         powers = json.loads(str(QSettings().value(SETTING_HEATER_POWER, "{}", type=str) or "{}"))
     except ValueError:
         return {}
-    return powers if isinstance(powers, dict) else {}
+    if not isinstance(powers, dict):
+        return {}
+    return {canonical_roaster_name(str(k)): v for k, v in powers.items()}
 
 
 def heater_power(roaster: str) -> int | None:
     """The Heater power set in TilauScope Config for *roaster*, None when never set (0 = none)."""
-    w = _heater_powers().get(roaster)
+    w = _heater_powers().get(canonical_roaster_name(roaster))
     return int(w) if isinstance(w, (int, float)) else None
 
 
 def set_heater_power(roaster: str, watts: int) -> None:
     powers = _heater_powers()
-    powers[roaster] = int(watts)
+    powers[canonical_roaster_name(roaster)] = int(watts)
     QSettings().setValue(SETTING_HEATER_POWER, json.dumps(powers))
 
 

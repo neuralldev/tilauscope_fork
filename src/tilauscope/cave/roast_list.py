@@ -37,7 +37,7 @@ from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QLineEdit, QListView, QStyle,
                              QStyledItemDelegate)
 
-from tilauscope.tilauscope_types import THEME, get_agtron_color
+from tilauscope.tilauscope_types import THEME, get_agtron_color, roast_batch_tag
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -103,6 +103,7 @@ class RoastRow:
     colour_ground: bool = False   # the colour is a ground reading
     indexed: bool = False   # the roast index knows this file: weights and colour are read
     search: str = ''        # folded text a search matches against
+    roast_uuid: str = ''    # Artisan roastUUID, '' when the index does not know the file
 
     @property
     def missing_result(self) -> bool:
@@ -128,8 +129,7 @@ def make_row(fname: str, epoch: int, label: str, title: str,
     colour = weight_in = weight_out = 0.0
     colour_ground = False
     if meta is not None:
-        if meta.batch_nr > 0:
-            batch = f"#{(meta.batch_prefix or '').lstrip('#')}{meta.batch_nr}"
+        batch = roast_batch_tag(meta.batch_prefix, meta.batch_nr)
         # Ground when measured, else whole bean — never the lighter of the two.
         colour = meta.ground_color if meta.ground_color > 0 else max(meta.whole_color, 0.0)
         colour_ground = meta.ground_color > 0
@@ -140,7 +140,8 @@ def make_row(fname: str, epoch: int, label: str, title: str,
                     process=process, crop=crop, batch=batch, weight_in_g=weight_in,
                     weight_out_g=weight_out, colour=colour, colour_ground=colour_ground,
                     indexed=meta is not None,
-                    search=fold(' '.join(word for word in words if word)))
+                    search=fold(' '.join(word for word in words if word)),
+                    roast_uuid=getattr(meta, 'roast_uuid', '') or '')
 
 
 def day_of(epoch: int) -> date | None:
@@ -178,6 +179,7 @@ class RoastListModel(QAbstractListModel):
         super().__init__(parent)
         self._rows: list[RoastRow] = []
         self._row_of: dict[str, int] = {}
+        self._references: frozenset[str] = frozenset()
 
     def set_rows(self, rows: list[RoastRow]) -> None:
         self.beginResetModel()
@@ -187,6 +189,17 @@ class RoastListModel(QAbstractListModel):
 
     def rows(self) -> list[RoastRow]:
         return self._rows
+
+    def set_references(self, roast_uuids: frozenset[str]) -> None:
+        """The roasts marked as their coffee's reference — repaints, never rescans."""
+        if roast_uuids == self._references:
+            return
+        self._references = roast_uuids
+        if self._rows:
+            self.dataChanged.emit(self.index(0), self.index(len(self._rows) - 1))
+
+    def is_reference(self, row: RoastRow) -> bool:
+        return bool(row.roast_uuid) and row.roast_uuid in self._references
 
     def row_of(self, fname: str) -> int:
         return self._row_of.get(fname, -1)
@@ -205,6 +218,9 @@ class RoastListModel(QAbstractListModel):
             if role == Qt.ItemDataRole.DisplayRole:
                 return row.title
             if role == Qt.ItemDataRole.ToolTipRole:
+                if self.is_reference(row):
+                    return (QApplication.translate('tilauscope_beancave', 'Reference roast for this coffee')
+                            + '\n' + row.fname)
                 return row.fname
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
             _log.exception('roast list data')
@@ -524,6 +540,11 @@ class RoastRowDelegate(QStyledItemDelegate):
         painter.setFont(self._font_line)
         painter.setPen(self._colour('OVERLAY0'))
         painter.drawText(line2, align_right, batch)
+        if self._proxy.sourceModel().is_reference(row):
+            star = '★ '
+            painter.setPen(self._colour('YELLOW'))
+            painter.drawText(line2.adjusted(0, 0, -batch_w, 0), align_right, star)
+            batch_w += line_metrics.horizontalAdvance(star)
         painter.setPen(self._colour('SUBTEXT'))
         painter.drawText(line2, align_left, line_metrics.elidedText(
             second, Qt.TextElideMode.ElideRight, max(0, line2.width() - batch_w - 10)))

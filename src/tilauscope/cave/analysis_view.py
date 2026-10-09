@@ -154,7 +154,9 @@ class RoastAnalysisView(QWidget):
         self._parse = parse
         self._ror_of = ror_of
         self._profile = None
-        self._reference: tuple[str, str] | None = None
+        # 'roast' (the previous roast) and 'reference' (the coffee's reference
+        # roast) → (file name, label); both run the analyser's 'roast' model.
+        self._comparisons: dict[str, tuple[str, str]] = {}
         self._references: OrderedDict[str, tuple | None] = OrderedDict()
         self._generation = 0
         self._task = None
@@ -408,8 +410,10 @@ class RoastAnalysisView(QWidget):
     # ── inputs ─────────────────────────────────────────────────────────────
 
     def set_profile(self, data: dict, ror, ror_unit: str,
-                    reference: tuple[str, str] | None = None) -> None:
-        """reference is (file name, label) of the roast offered for comparison."""
+                    reference: tuple[str, str] | None = None,
+                    reference_roast: tuple[str, str] | None = None) -> None:
+        """reference and reference_roast are (file name, label) of the previous roast
+        and of the coffee's reference roast, offered for comparison."""
         # No arrays copied and no maths on the ordinary navigation path.
         self._profile = (data, ror, ror_unit)
         ti = normalize_timeindex(data.get('timeindex', ()))
@@ -417,27 +421,28 @@ class RoastAnalysisView(QWidget):
         self.markers.setText(QApplication.translate('tilauscope_beancave', '● CHARGE and DROP present') if complete else QApplication.translate('tilauscope_beancave', '● Markers incomplete'))
         self.markers.setStyleSheet(f"color: {THEME['SUCCESS' if complete else 'YELLOW']}; font-size: 12px;")
         self.markers.show()
-        self._set_reference(reference)
+        self._set_comparisons({'roast': reference, 'reference': reference_roast})
         self._changed()
 
-    def _set_reference(self, reference: tuple[str, str] | None) -> None:
-        if reference is not None and self._parse is None:
-            reference = None
-        self._reference = reference
-        at = self.model.findData('roast')
+    def _set_comparisons(self, comparisons: dict[str, tuple[str, str] | None]) -> None:
+        self._comparisons = {key: value for key, value in comparisons.items()
+                             if value is not None and self._parse is not None}
         self.model.blockSignals(True)
         try:
-            if reference is None:
-                if at >= 0:
-                    if self.model.currentIndex() == at:
-                        self.model.setCurrentIndex(0)
-                    self.model.removeItem(at)
-            else:
-                label = QApplication.translate('tilauscope_beancave', 'Previous roast')
+            for key, label in (('roast', QApplication.translate('tilauscope_beancave', 'Previous roast')),
+                               ('reference', '★ ' + QApplication.translate('tilauscope_beancave', 'Reference roast'))):
+                at = self.model.findData(key)
+                comparison = self._comparisons.get(key)
+                if comparison is None:
+                    if at >= 0:
+                        if self.model.currentIndex() == at:
+                            self.model.setCurrentIndex(0)
+                        self.model.removeItem(at)
+                    continue
                 if at < 0:
-                    self.model.addItem(label, 'roast')
+                    self.model.addItem(label, key)
                     at = self.model.count() - 1
-                self.model.setItemData(at, reference[1], Qt.ItemDataRole.ToolTipRole)
+                self.model.setItemData(at, comparison[1], Qt.ItemDataRole.ToolTipRole)
         finally:
             self.model.blockSignals(False)
 
@@ -476,8 +481,10 @@ class RoastAnalysisView(QWidget):
             return
         data, ror, unit = self._profile
         reference: dict = {}
-        if self.model.currentData() == 'roast' and self._reference is not None:
-            fname = self._reference[0]
+        key = self.model.currentData()
+        comparison = self._comparisons.get(key) if key in ('roast', 'reference') else None
+        if comparison is not None:
+            fname = comparison[0]
             if fname not in self._references:
                 self._show_loading()
                 self._task = _ReferenceTask(fname, self._parse)
@@ -487,7 +494,7 @@ class RoastAnalysisView(QWidget):
             loaded = self._references[fname]
             if loaded is None:
                 self._pending = False
-                self._show_error('reference')
+                self._show_error('reference' if key == 'roast' else 'reference_roast')
                 return
             ref_data, ref_ror = loaded
             reference = {'reference_times': tuple(ref_data.get('timex', ())),
@@ -588,6 +595,9 @@ class RoastAnalysisView(QWidget):
         if code == 'reference':
             return QApplication.translate('tilauscope_beancave', 'The previous roast needs CHARGE, DROP and readings covering the analysed period. '
                        'Choose a trend as reference instead.')
+        if code == 'reference_roast':
+            return QApplication.translate('tilauscope_beancave', 'The reference roast needs CHARGE, DROP and readings covering the analysed period. '
+                       'Choose a trend as reference instead.')
         if code == 'units':
             return QApplication.translate('tilauscope_beancave', 'The temperature unit is not recognized.')
         if code == 'readings':
@@ -598,13 +608,16 @@ class RoastAnalysisView(QWidget):
 
     def _model_name(self, model: str, short: bool = False) -> str:
         if short:
-            return {'quadratic': 'x²', 'cubic': 'x³', 'logarithmic': 'ln()'}.get(model, QApplication.translate('tilauscope_beancave', 'Previous roast'))
+            return {'quadratic': 'x²', 'cubic': 'x³', 'logarithmic': 'ln()'}.get(
+                model, QApplication.translate('tilauscope_beancave', 'Reference roast')
+                if self.model.currentData() == 'reference'
+                else QApplication.translate('tilauscope_beancave', 'Previous roast'))
         return self.model.itemText(max(0, self.model.findData(model)))
 
     def _render(self, results: dict) -> None:
         self._results = results
         model = self.model.currentData()
-        result = results.get(model)
+        result = results.get('roast' if model == 'reference' else model)
         if not isinstance(result, AnalysisResult):
             self._show_error(result if isinstance(result, str) else 'fit')
             return
@@ -701,8 +714,9 @@ class RoastAnalysisView(QWidget):
         count = len(self._observations)
         self.examine_title.setText(
             QApplication.translate('tilauscope_beancave', 'To examine · 1 passage') if count == 1 else QApplication.translate('tilauscope_beancave', 'To examine · {n} passages').format(n=count))
-        reference = (QApplication.translate('tilauscope_beancave', 'the previous roast') if self.model.currentData() == 'roast'
-                     else QApplication.translate('tilauscope_beancave', 'the reference trend'))
+        reference = {'roast': QApplication.translate('tilauscope_beancave', 'the previous roast'),
+                     'reference': QApplication.translate('tilauscope_beancave', 'your reference roast'),
+                     }.get(self.model.currentData(), QApplication.translate('tilauscope_beancave', 'the reference trend'))
         for number, observation in enumerate(self._observations, 1):
             title, facts, indicates, check = self._observation_text(observation, reference)
             phase = {1: QApplication.translate('Label', 'Drying'), 2: QApplication.translate('Label', 'Maillard'), 3: QApplication.translate('Label', 'Development')}.get(observation.phase)
@@ -729,7 +743,7 @@ class RoastAnalysisView(QWidget):
                 cells = (self._model_name(name, True), QApplication.translate('tilauscope_beancave', 'Unavailable'), '', '', '')
             for col, text in enumerate(cells):
                 item = QTableWidgetItem(text)
-                if name == model:
+                if name == ('roast' if model == 'reference' else model):
                     item.setForeground(QColor(THEME['ACCENT']))
                 self.models_table.setItem(row, col, item)
 
@@ -738,6 +752,8 @@ class RoastAnalysisView(QWidget):
 
         if model == 'roast':
             method = QApplication.translate('tilauscope_beancave', 'Reference compared: the previous roast, aligned on CHARGE and cut at the earlier DROP.')
+        elif model == 'reference':
+            method = QApplication.translate('tilauscope_beancave', 'Reference compared: your reference roast, aligned on CHARGE and cut at the earlier DROP.')
         else:
             method = QApplication.translate('tilauscope_beancave', 'BT(t) = {equation}, with t in seconds from CHARGE, fitted from {start}.').format(
                 equation=result.equation, start=_clock(result.fit_start))

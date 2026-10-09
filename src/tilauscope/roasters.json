@@ -1,8 +1,8 @@
 [
     {
-        "manufacturer": "ITOP",
-        "model": "Cyberroaster",
-        "roaster_id": "itop-cyberroaster",
+        "manufacturer": "Skywalker",
+        "model": "V2",
+        "roaster_id": "skywalker-v2",
         "roaster_type": "drum",
         "heating_type": "electric",
         "electrical_specification": {
@@ -82,9 +82,9 @@
         "thermal_model_sigma": 1.0
     },
     {
-        "manufacturer": "ITOP",
-        "model": "Skywalker V1",
-        "roaster_id": "itop-skywalker-v1",
+        "manufacturer": "Skywalker",
+        "model": "V1",
+        "roaster_id": "skywalker-v1",
         "roaster_type": "drum",
         "heating_type": "electric",
         "electrical_specification": {
@@ -151,7 +151,7 @@
         "supports_auto_airflow_events": false,
         "supports_profile_replay": false,
         "dev_thermal_inertia_factor": 0.45,
-        "notes": "bt_offsets aligned with Cyberroaster \u2014 same FIR technology. Calibrated on 68 real roasts raw BT values.",
+        "notes": "bt_offsets aligned with Skywalker V2 \u2014 same FIR technology. Calibrated on 68 real roasts raw BT values.",
         "peak_ror_ceiling_c": 16.0,
         "thermal_model_kernel": "triangular",
         "thermal_model_sigma": 1.0

@@ -1605,7 +1605,6 @@ def csv_load(csvFile:io.TextIOWrapper) -> 'ProfileData':
 
     return profile
 
-
 def exportProfile2CSV(filename:str, profile:'ProfileData') -> bool:
     if all(key in profile for key in [ 'mode', 'timex', 'timeindex', 'temp1', 'temp2', 'roastdate', 'roasttime', 'extratimex' ]) and len(profile['timex']) > 0: # pyright: ignore[reportTypedDictNotRequiredAccess]
         import csv
@@ -1660,7 +1659,7 @@ def exportProfile2CSV(filename:str, profile:'ProfileData') -> bool:
             events_set:set[str] = set()
             for i, tx in enumerate(timex_zero):
                 if tx >= CHARGE >= 0:
-                    di,mo = divmod(tx - CHARGE, 60)
+                    di,mo = divmod(math.floor(tx - CHARGE + 0.5), 60)
                     time2 = f'{di:02.0f}:{mo:02.0f}'
                 else:
                     time2 = ''
@@ -1670,7 +1669,7 @@ def exportProfile2CSV(filename:str, profile:'ProfileData') -> bool:
                         event = ev[1]
                         events_set.add(ev[1])
                         break
-                di,mo = divmod(tx,60)
+                di,mo = divmod(math.floor(tx + 0.5),60)
                 time1 = f'{di:02.0f}:{mo:02.0f}'
                 if last_time is None or last_time != time1:
                     extratemps = []
@@ -1688,7 +1687,6 @@ def exportProfile2CSV(filename:str, profile:'ProfileData') -> bool:
                 last_time = time1
         return True
     return False
-
 
 #### roast time
 

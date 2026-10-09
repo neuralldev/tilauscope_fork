@@ -89,7 +89,8 @@ class ViewerPlotMixin:
         analysis_view = getattr(self, 'roast_analysis_view', None)
         if analysis_view is not None and self.selected_roast_fnames() == [self._displayed_fname]:
             analysis_view.set_profile(shown, deltabt, self.aw.qmc.mode,
-                                      self.previous_roast(self._displayed_fname))
+                                      self.previous_roast(self._displayed_fname),
+                                      self.reference_roast(self._displayed_fname))
 
     def _engine_milestone_moved(self, milestone: int, index: int) -> None:
         """A milestone dragged on the engine, held until the operator saves it.

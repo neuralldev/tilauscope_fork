@@ -168,6 +168,17 @@ adjusting after tasting. A single earlier roast is too few to learn from: the pl
 starts from the coffee's characteristics, and the line says so. When you tasted the last roast and something was off, the change the
 plan made for it is recalled there too.
 
+When the coffee has a [reference roast](glossary.md#reference-roast), the line is framed in
+yellow and names it — *★ Based on your reference roast of 12 Sep (#44).* — adding, when it
+applies, that the change asked by the last tasting is not applied because going back to the
+reference is the correction, or that it is applied on top — when the last roast was planned from
+the reference, or is the reference itself with something noted off. A new harvest without a
+reference of its own says *Timings and temperatures from the 2025 crop's reference roast (#31),
+until this crop has roasts of its own*: the burner still follows the new lot. When the reference cannot serve this batch, a grey ☆ line says
+why — *it was 250 g and this batch is 400 g*, *it was roasted Light and this roast is Medium*,
+*it was not tasted Yes*, *its tasting was not found*, *it is excluded from learning*, *its roast
+file was not found* — followed by what the plan rests on instead.
+
 **📌 Pin** sets the current plan aside so it can be compared with another: pin it, then change
 the weight, the use or the level, and the roadmap becomes a table of both plans side by side with
 what moved — later first crack, longer development, a lighter batch after cooling. **Unpin**
@@ -246,10 +257,15 @@ Under *Roast automation*, four milestones can be marked automatically:
     which of the two is missing, and lets you set how much temperature tolerance the target gets.
 
 Under *Roast Replay*, a background curve loaded before the sheet was opened can be replayed
-live during the roast: **Enable roast replay** turns it on, and **Burner reaction time** sets
-how far ahead the replay looks when following the curve — see
+live during the roast: **Enable roast replay** turns it on — see
 [Roast Replay](glossary.md#roast-replay) in the glossary. The box stays unavailable, with a
 short explanation, until a background curve is loaded and the machine profile supports replay.
+At the [Expert](getting-started.md#guided-or-expert) level, when no background is loaded and
+the coffee has a [reference roast](glossary.md#reference-roast), a button takes the place of
+that explanation — **★ Load 12 Sep · #44** — and loads the reference as the background curve.
+The box then becomes available, with the loaded roast named beside it; nothing is replayed
+until you tick it. If Artisan cannot load it — in its Designer mode, for example — a message
+says so and the button stays.
 Choosing replay switches the roast to the [Expert](getting-started.md#guided-or-expert) level
 for as long as the replay lasts: a replay follows a recorded curve, not the guided plan. This
 is borrowed, not kept — the level you normally roast at comes back when the replay ends, along
@@ -269,10 +285,11 @@ would be a milestone the replay never had.
     while the window is open disarms an already-running replay the same way, since a replay
     armed for one machine's profile no longer applies once the machine changes.
 
-<!-- CAPTURE 5.9 — the ⚙ MORE OPTIONS tab with the new Roast Replay card visible (a background
-curve loaded, box ticked, burner reaction time filled in) -->
+<!-- CAPTURE 5.9 [scene:setup_replay_reference] — the ⚙ MORE OPTIONS tab with the Roast Replay card at the Expert level, on a
+coffee with a reference roast: the reference loaded with ★ Load…, the box ticked, the ★ chip
+naming the loaded roast beside it. -->
 
-![The ⚙ MORE OPTIONS tab with the new Roast Replay card visible (a background curve loaded, box ticked, burner reaction time filled in).](assets/preparing-a-roast-5.9.png)
+![The MORE OPTIONS tab at the Expert level: Roast Replay ticked, the loaded reference roast named by its ★ chip.](assets/preparing-a-roast-5.9.png)
 
 ---
 

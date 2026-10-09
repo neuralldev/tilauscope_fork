@@ -39,7 +39,8 @@ from PyQt6.QtWidgets import (QApplication, QComboBox, QWidget, QHeaderView, QTab
 
 from tilauscope.theme_qss import tint
 from tilauscope.tilauscope_types import (GreenBean, BeanCaveContainer, GREEN_BEAN_COLUMNS, show_styled_message,
-                                         THEME, TilauProgressDialog, _IS_WINDOWS, select_listed_or_other)
+                                         THEME, TilauProgressDialog, _IS_WINDOWS, select_listed_or_other,
+                                         roast_batch_tag)
 from tilauscope.header_icons import SVG_PROG_AI
 from tilauscope.sack_manager import SackPool, confirm_release, prompt_release_if_emptied  # sack labels (Lot 1, §9.3)
 from tilauscope.bean_qualifiers import physical_qualifier  # plain-language reading of density/humidity/aw
@@ -279,17 +280,20 @@ class BeanTabMixin:
 
     def _show_bean_sheet(self, bean) -> None:
         """The read sheet of this coffee, with the memory of its last roast."""
-        memory = None
+        memory = reference = None
         try:
             from tilauscope import tasting_log  # noqa: PLC0415
-            from tilauscope.roast_memory import last_roast  # noqa: PLC0415
-            memory = last_roast(
-                getattr(bean, 'uuid', '') or '', list(self._metadata_cache.records.values()),
-                tasting_log.load(self.beancave_directory).entries, self.aw.qmc.mode,
-                lambda roastertype: self._roast_machine_ctx({'roastertype': roastertype}))
+            from tilauscope.roast_memory import last_roast, reference_state  # noqa: PLC0415
+            records = list(self._metadata_cache.records.values())
+            tastings = tasting_log.load(self.beancave_directory).entries
+            ctx_for = lambda roastertype: self._roast_machine_ctx({'roastertype': roastertype})  # noqa: E731
+            memory = last_roast(getattr(bean, 'uuid', '') or '', records, tastings,
+                                self.aw.qmc.mode, ctx_for)
+            reference = reference_state(bean, self.cave.green_beans if self.cave else [], records,
+                                        tastings, memory, self.aw.qmc.mode, ctx_for)
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
             _logd.exception("roast memory unavailable")
-        self.bean_sheet.set_bean(bean, memory, self.aw.qmc.mode)
+        self.bean_sheet.set_bean(bean, memory, self.aw.qmc.mode, reference)
 
     def _catalogue_memories(self) -> dict:
         """bean uuid → the memory of its last roast, for the catalogue rows."""
@@ -329,10 +333,60 @@ class BeanTabMixin:
             return
         dlg = TastingDialog(self, directory=str(self.beancave_directory), roast_uuid=roast_uuid,
                             bean_uuid=bean.uuid, coffee=bean.name or '',
-                            roast_epoch=int(meta.roastepoch or meta.mtime), mode=self.aw.qmc.mode)
+                            roast_epoch=int(meta.roastepoch or meta.mtime), mode=self.aw.qmc.mode,
+                            is_reference=bean.reference_roast_uuid == roast_uuid)
         if dlg.exec():
+            choice = dlg.reference_choice()
+            if choice is not None:
+                self._set_reference_roast(bean, roast_uuid, choice)
+            self._repaint_references()
             self._refresh_bean_sheet()
             self.catalogue_list.set_beans(self.cave.green_beans)
+
+    def _set_reference_roast(self, bean, roast_uuid: str, on: bool) -> bool:
+        """Mark or clear this roast as the coffee's reference; True once the record is saved."""
+        current = getattr(bean, 'reference_roast_uuid', '') or ''
+        target = roast_uuid if on else ''
+        if target == current or (not on and current != roast_uuid):
+            return False
+        if on and current:
+            from tilauscope.beancave_catalogue import roast_name  # noqa: PLC0415
+            meta = next((m for m in self._metadata_cache.records.values()
+                         if m.roast_uuid == current), None)
+            named = (roast_name(int(meta.roastepoch or meta.mtime), roast_batch_tag(meta.batch_prefix, meta.batch_nr),
+                                in_sentence=True) if meta is not None else '')
+            reply = show_styled_message(
+                self, QApplication.translate("tilauscope_beancave", "Reference roast"),
+                QApplication.translate("tilauscope_beancave",
+                                       "Replace the reference roast of {0} with this one?").format(named)
+                if named else QApplication.translate("tilauscope_beancave",
+                                                     "Replace the reference roast with this one?"),
+                QMessageBox.Icon.Question, width=420,
+                buttons=[QApplication.translate("tilauscope_beancave", "Replace"),
+                         QApplication.translate("Button", "Cancel")])
+            if reply != 0:
+                return False
+        bean.reference_roast_uuid = target
+        if not self.save_green_beans():
+            bean.reference_roast_uuid = current
+            return False
+        self._repaint_references()
+        self._refresh_bean_sheet()
+        return True
+
+    def _repaint_references(self) -> None:
+        """The ★ of the Roasts list, read again from the records and the tastings."""
+        model = getattr(self, '_roast_model', None)
+        if model is not None:
+            model.set_references(self._reference_uuids())
+
+    def _reference_uuids(self) -> frozenset[str]:
+        """The roastUUID of every coffee's reference roast while it is tasted Yes."""
+        from tilauscope import tasting_log  # noqa: PLC0415
+        tastings = tasting_log.load(self.beancave_directory).entries
+        return frozenset(b.reference_roast_uuid for b in (getattr(self, 'uuidmap', None) or {}).values()
+                         if getattr(b, 'reference_roast_uuid', '')
+                         and getattr(tastings.get(b.reference_roast_uuid), 'verdict', '') == 'yes')
 
     @pyqtSlot()
     def _show_bean_roasts(self) -> None:
@@ -537,6 +591,12 @@ class BeanTabMixin:
                 QApplication.translate("tilauscope_beancave", "Directory Error"),
                 QApplication.translate("tilauscope_common",
                     "Please select a valid ALog directory first."))
+            return
+        # a second window over the same files would undo the first one's writes
+        open_dlg = getattr(self, '_alog_repair_dlg', None)
+        if open_dlg is not None and open_dlg.isVisible():
+            open_dlg.raise_()
+            open_dlg.activateWindow()
             return
         from tilauscope.alog_repair import AlogRepairDialog
         self._alog_repair_dlg = AlogRepairDialog(self, self.aw)  # keep ref (non-modal)
@@ -934,6 +994,7 @@ class BeanTabMixin:
                 dial_ins=list(existing_bean.dial_ins),
                 screen_size=existing_bean.screen_size,
                 price_per_kg=existing_bean.price_per_kg,
+                reference_roast_uuid=existing_bean.reference_roast_uuid,
             )
             self.cave.green_beans[selected_row_index] = new_bean_data
             if existing_bean.uuid != new_bean_data.uuid:

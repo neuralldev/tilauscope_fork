@@ -232,7 +232,7 @@ class _SensorGroup:
 
     def __init__(self, label: str, prefix: "str | tuple[str, ...]", combo: QComboBox,
                  name_attr: str, list_attr: str) -> None:
-        self.label        = label       # fixed combo/label display (e.g. "Skywalker v2")
+        self.label        = label       # fixed combo/label display (e.g. "Skywalker V2")
         self.prefix       = prefix      # BLE advertised-name prefix to match
         self.combo        = combo
         self.status: QLabel | None = None
@@ -889,14 +889,14 @@ class TilauscopeConfigDlg(QDialog):
         layout.addWidget(_section_label(
              QApplication.translate("tilauscope_devices", "Roaster Link")
         ))
-        skywalker_group = QGroupBox("Skywalker v2  (TC4-BLE)")
+        skywalker_group = QGroupBox("Skywalker V2  (TC4-BLE)")
         skywalker_group.setContentsMargins(12, 18, 12, 12)
         sw_g = QGridLayout(skywalker_group)
         sw_g.setVerticalSpacing(10); sw_g.setHorizontalSpacing(10)
         self.SkywalkerComboBox = QComboBox()
         self.SkywalkerComboBox.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         skywalker_cell = self._sensor_cell(
-            "Skywalker v2", self._prefixes["skywalker"], self.SkywalkerComboBox,
+            "Skywalker V2", self._prefixes["skywalker"], self.SkywalkerComboBox,
             "bleSkywalkerDeviceName", "bleSkywalkerDeviceslist",
         )
         sw_g.addWidget(_field_label(QApplication.translate("tilauscope_devices", "Device:")), 0, 0)

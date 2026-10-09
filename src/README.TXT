@@ -27,7 +27,7 @@
   - a buttons allows to parse the alog files and compute stats, and number of roasts displayed oin the first tab
   - a LLM button allows to compute IA stuff to detect quality of your roasts, compute coefficients that will be used for predictive calculation adapted to your machine/roast habits. this is also generating a CSV file that can be used in some other IA engine. this is the choice I made to keep Artisan lightweight with data usage
 - Difluid Airwave support
-  - detection of device is done in device tab, choose if you want to use it manually or if you wan the automatic PID feature working withe the device/airwave pid tab to take over. this  intelligent pid, monitors your roast and keep variations of temperature within the drumm as small as possible to prevent crash/flick using succion power of Airwave. values are based on my experiments on cyberroaster/skywalker v2 roaster
+  - detection of device is done in device tab, choose if you want to use it manually or if you wan the automatic PID feature working withe the device/airwave pid tab to take over. this  intelligent pid, monitors your roast and keep variations of temperature within the drumm as small as possible to prevent crash/flick using succion power of Airwave. values are based on my experiments on Skywalker V2 roaster
   - omniflux emulation mode also supported (automatically disables the pid), but not officially available at the moment, working only with the V500 firmware
   - in device tab, airwave inlet and catalyst temps can be mapped to extra devices
   - in event/config, you can add commands with "Difluid Airwave Command" device listed or IO Commands

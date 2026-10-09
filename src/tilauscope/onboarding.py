@@ -423,17 +423,17 @@ class OnboardingWizard(QDialog):
         col.setContentsMargins(0, 0, 6, 0)
         col.setSpacing(6)
 
-        from tilauscope.roasters import RoasterManager
+        from tilauscope.roasters import RoasterManager, canonical_roaster_name
         manager = RoasterManager()
         self._roaster_group = QButtonGroup(self)
         self._roaster_cards: list[tuple[str, QPushButton]] = []
         names = self._roaster_names()
-        current = (getattr(self._aw, "tilau_roaster", "")
+        current = canonical_roaster_name(getattr(self._aw, "tilau_roaster", "")
                    or QSettings().value("RoastPlan/RoasterModel", "", str) or "")
         default_i = next(
             (i for i, n in enumerate(names) if n == current),
             next((i for i, n in enumerate(names)
-                  if "cyberroaster" in n.lower() or "skywalker v2" in n.lower()), 0),
+                  if n == "Skywalker V2"), 0),
         )
         for i, name in enumerate(names):
             card = self._roaster_card(name, manager.get_by_display_name(name))
@@ -617,11 +617,8 @@ class OnboardingWizard(QDialog):
     def _fill_connection(self) -> None:
         self._clear_layout(self._link_bar)
         self._clear_layout(self._conn_body)
-        from tilauscope.roasters import RoasterManager
-        roaster = RoasterManager().get_by_display_name(self._roaster)
-        model = roaster.model if roaster is not None else self._roaster
         self._conn_title.setText(
-            QApplication.translate("tilauscope_onboarding","How is your {0} connected?").format(model))
+            QApplication.translate("tilauscope_onboarding","How is your {0} connected?").format(self._roaster))
         if len(self._setups) > 1:
             group = self._fresh_group("_link_group")
             for i, setup in enumerate(self._setups):
@@ -1395,7 +1392,7 @@ class OnboardingWizard(QDialog):
                     return list(names)
         except Exception:  # pylint: disable=broad-except
             pass
-        return ["ITOP Cyberroaster"]
+        return ["Skywalker V2"]
 
     def _set_roaster(self, name: str) -> None:
         self._roaster = name

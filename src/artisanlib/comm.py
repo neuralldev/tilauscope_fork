@@ -623,6 +623,7 @@ class serialport:
                                    self.MQTT_910,                    #205
                                    self.MQTT_1112,                   #206  
                                    self.MODBUS_1112,                 #207
+                                   self.Santoker_XY,                 #208
         ]
         ## TILAU ##
         self.devicefunctionlist += [
@@ -635,8 +636,8 @@ class serialport:
                                    self.TILAUMQTTBRIDGE56,          # MQTT Bridge
                                    self.TILAUMQTTBRIDGE78,          # MQTT Bridge
                                    self.TILAUMQTTBRIDGE910,         # MQTT Bridge
-                                   self.SKYWALKER_BTET,             # Cyberroaster TC4-over-BLE (BT/ET) 
-                                   self.SKYWALKER_PF,               # Cyberroaster OT echoes (Burner/Airflow)
+                                   self.SKYWALKER_BTET,             # Skywalker V2 TC4-over-BLE (BT/ET) 
+                                   self.SKYWALKER_PF,               # Skywalker V2 OT echoes (Burner/Airflow)
                                    self.TRP_BTET,                   # TRP generic serial roaster (BT/ET) 
                                    self.TRP_HF,                     # TRP Heater/Fan readback 
                                    self.SKYCOMMAND_BTET,            # SKYCOMMAND ## skycommand/roaster BT/ET readback
@@ -1893,7 +1894,7 @@ class serialport:
 
     ## TILAU ##
     def SKYWALKER_BTET(self) -> tuple[float,float,float]:
-        # Cyberroaster (Skywalker V2) telemetry over the TC4-over-BLE transport.
+        # Skywalker V2 telemetry over the TC4-over-BLE transport.
         tx = self.aw.qmc.timeclock.elapsedMilli()
         if self.aw.bleSkywalkerDeviceName is not None and self.aw.bleSkywalkerDevice is not None:
             t1 = self.aw.bleSkywalkerDevice.getET()  # Celsius from the cached sample
@@ -1906,7 +1907,7 @@ class serialport:
         return tx, t1, t2  # time, ET (chan2), BT (chan1)
     
     def SKYWALKER_PF(self) -> tuple[float,float,float]:
-        # Cyberroaster actuator echoes (%). Extra-device path swaps t1/t2:
+        # Skywalker V2 actuator echoes (%). Extra-device path swaps t1/t2:
         # t1 -> Label2/chan2, t2 -> Label1/chan1.
         tx = self.aw.qmc.timeclock.elapsedMilli()
         if self.aw.bleSkywalkerDeviceName is not None and self.aw.bleSkywalkerDevice is not None:
@@ -2476,6 +2477,15 @@ class serialport:
         else:
             t1 = t2 = -1
         return tx,t1,t2 # time, Board (chan2), IR (chan1)
+
+    def Santoker_XY(self) -> tuple[float,float,float]:
+        tx = self.aw.qmc.timeclock.elapsedMilli()
+        if self.aw.santoker is not None:
+            t1 = self.aw.santoker.getETlegacy()
+            t2 = self.aw.santoker.getBTlegacy()
+        else:
+            t1 = t2 = -1
+        return tx,t1,t2 # time, ET Legacy (chan2), BT Legacy (chan1)
 
     def Santoker_RR(self) -> tuple[float,float,float]:
         tx = self.aw.qmc.timeclock.elapsedMilli()

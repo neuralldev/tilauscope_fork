@@ -712,7 +712,7 @@ class RoastCurveWidget(QWidget):
         _pill.setSpacing(6)
         self._unsaved_label = QLabel()
         self._unsaved_label.setObjectName('unsavedText')
-        _undo = QPushButton(QApplication.translate('tilauscope_graph', 'Undo'))
+        _undo = QPushButton(QApplication.translate('tilauscope_common', 'Undo'))
         _undo.setObjectName('unsavedUndo')
         _undo.setToolTip(QApplication.translate(
             'tilauscope_graph', 'Put the milestones back as the file has them'))

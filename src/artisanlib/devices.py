@@ -4659,6 +4659,9 @@ class DeviceAssignmentDlg(ArtisanResizeablDialog):
                 ##########################
                 ####  DEVICE 207 is +MODBUS 1112 but +DEVICE cannot be set as main device
                 ##########################
+                ##########################
+                ####  DEVICE 208 is +Santoker XT/YT but +DEVICE cannot be set as main device
+                ##########################
                 ## TILAU ##  main-device selection for dynamically registered BLE/TRP devices
                 elif meter in [d["label"] for d in self.aw.qmc.tilau_devices.values()]:
                     self.aw.qmc.device = next(
@@ -4671,6 +4674,7 @@ class DeviceAssignmentDlg(ArtisanResizeablDialog):
                         self.aw.ser.stopbits = 1
                         self.aw.ser.timeout = 0.4                                           
                     message = QApplication.translate('Message','Device set to {0}').format(meter)
+
                 # ADD DEVICE:
 
                 # ensure that by selecting a real device, the initial sampling rate is set to 3s
@@ -4896,7 +4900,8 @@ class DeviceAssignmentDlg(ArtisanResizeablDialog):
                 1, # 204
                 1, # 205
                 1, # 206
-                1  # 207
+                1, # 207
+                1  # 208
                 ]
             #init serial settings of extra devices
             for i, _ in enumerate(self.aw.qmc.extradevices):

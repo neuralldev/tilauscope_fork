@@ -19,7 +19,7 @@
 
 """
 tilau_tc4ble.py — standalone BLE transport + control for a TC4-over-BLE roaster
-(Skywalker V2 / "Cyberroaster", BLE bridge TD5325A), self-contained with its
+(Skywalker V2, BLE bridge TD5325A), self-contained with its
 own asyncio I/O thread; the sampling thread reads via read_latest().
 
 Safety: connecting alone makes the controller assert a default actuator state

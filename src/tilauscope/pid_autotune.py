@@ -128,12 +128,12 @@ class PIDAutotune(QDialog):
     _LIVE_CALIBRATION_ACTUATORS: Final[
         frozenset[tuple[str, str]]
     ] = frozenset()
-    # First reduced-risk pilot: current ITOP Cyberroaster + exact slider-4
+    # First reduced-risk pilot: current Skywalker V2 + exact slider-4
     # actuator from the operator's 2026-08-28 configuration. A successful run
     # is always cut to 0% and rolled back for review; it cannot retain gains.
     _SUPERVISED_PILOT_ACTUATORS: Final[frozenset[tuple[str, str]]] = frozenset({
         (
-            "itop-cyberroaster",
+            "skywalker-v2",
             "559c368d9f76411191563ecb16bb67f2012eecc30ca8a8d1be7a5506c11af947",
         ),
     })

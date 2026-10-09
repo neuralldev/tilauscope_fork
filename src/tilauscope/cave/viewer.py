@@ -245,6 +245,7 @@ class ViewerMixin:
         self.roast_result_banner.record_requested.connect(self.on_roast_finished_clicked)
         self.roast_tasting_banner = TastingBanner()
         self.roast_tasting_banner.taste_requested.connect(self._open_tasting)
+        self.roast_tasting_banner.reference_toggled.connect(self._toggle_reference)
 
         self.roast_tiles = [KpiTile() for _ in range(4)]
         # Energy of the roast shown; a click opens its energy sheet
@@ -1028,6 +1029,7 @@ class ViewerMixin:
         # roast appears twice. Silently: a rebuild is not a selection.
         with self._silently():
             self._roast_model.set_rows(items)
+            self._roast_model.set_references(self._reference_uuids())
         self._selection_debounce.stop()
         self._list_scanning = False
         self._refresh_coffee_filter()
@@ -1211,6 +1213,19 @@ class ViewerMixin:
             return None
         previous = max(earlier, key=lambda r: r.epoch)
         return previous.fname, ' · '.join(part for part in (previous.batch, previous.label) if part)
+
+    def reference_roast(self, fname: str) -> tuple[str, str] | None:
+        """(file name, label) of the reference roast of the same coffee, or None — never the roast itself."""
+        rows = self._roast_model.rows()
+        row = self._roast_model.row_of(fname) if fname else -1
+        if row < 0 or not rows[row].group:
+            return None
+        current = rows[row]
+        reference = next((r for r in rows if r.group == current.group and r.fname != fname
+                          and self._roast_model.is_reference(r)), None)
+        if reference is None:
+            return None
+        return reference.fname, ' · '.join(part for part in (reference.batch, reference.label) if part)
 
     def _view_selected_fnames(self) -> list[str]:
         rows = sorted(index.row() for index in self.roast_list_view.selectionModel().selectedRows())
@@ -1604,6 +1619,10 @@ class ViewerMixin:
             banner.hide()
             return
         tasting = tasting_log.load(self.beancave_directory).entries.get(roast_uuid)
+        bean = self.bean_from_profile(profile)
+        is_reference = bean is not None and bean.reference_roast_uuid == roast_uuid
+        banner.set_reference(is_reference or (tasting is not None and tasting.verdict == 'yes' and bean is not None),
+                             is_reference)
         if tasting is not None:
             labels = defect_labels()
             parts = [verdict_labels().get(tasting.verdict, '')] + [labels[d] for d in tasting.defects if d in labels]
@@ -1637,9 +1656,29 @@ class ViewerMixin:
         coffee = (bean.name if bean is not None else '') or str(profile.get('title') or '')
         dlg = TastingDialog(self, directory=str(self.beancave_directory), roast_uuid=roast_uuid,
                             bean_uuid=(bean.uuid if bean is not None else ''), coffee=coffee,
-                            roast_epoch=self._roast_epoch(profile), mode=self.aw.qmc.mode)
+                            roast_epoch=self._roast_epoch(profile), mode=self.aw.qmc.mode,
+                            is_reference=bean is not None and bean.reference_roast_uuid == roast_uuid)
         if dlg.exec():
+            choice = dlg.reference_choice()
+            if choice is not None and bean is not None:
+                self._set_reference_roast(bean, roast_uuid, choice)
+            self._repaint_references()
             self._refresh_tasting_banner(profile)
+
+    @pyqtSlot(bool)
+    def _toggle_reference(self, on: bool) -> None:
+        """The banner's star: mark or clear the roast on screen as its coffee's reference."""
+        # Reached from a click slot: an escape here would close the application.
+        try:
+            profile = self.displayed_profile() or {}
+            roast_uuid = str(profile.get('roastUUID') or '')
+            bean = self.bean_from_profile(profile)
+            if bean is not None and roast_uuid:
+                self._set_reference_roast(bean, roast_uuid, on)
+            # Whatever happened — saved, refused or cancelled — the star shows the record.
+            self._refresh_tasting_banner(profile)
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the reference roast could not be changed")
 
     def _open_roast_energy(self) -> None:
         """The energy sheet of the roast on screen, read from its own profile."""

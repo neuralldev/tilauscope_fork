@@ -52,7 +52,7 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 
 # Bump on any change to the fields extracted below: a mismatch forces a full
 # rebuild rather than serving entries that lack the new data.
-INDEX_SCHEMA: Final[int] = 4
+INDEX_SCHEMA: Final[int] = 6
 
 # Read windows. The head must cover every scalar key, the event lists AND the
 # whole 'timex' array — the burner readings below turn event indices into times
@@ -76,7 +76,7 @@ _SCALAR_KEYS: Final[tuple[str, ...]] = (
     'ambientTemp', 'ambient_humidity', 'ambient_pressure',
     'tilau_exclude_learning', 'tilau_simulated',
 )
-_BLOCK_KEYS: Final[tuple[str, ...]] = ('weight', 'computed')
+_BLOCK_KEYS: Final[tuple[str, ...]] = ('weight', 'computed', 'tilau_roast_plan_snapshot')
 # Read only to derive the burner readings; never stored (timex alone is 20 KB).
 _SERIES_KEYS: Final[tuple[str, ...]] = (
     'timex', 'timeindex', 'specialevents', 'specialeventstype', 'specialeventsvalue',
@@ -132,6 +132,10 @@ class AlogMetadata(DataClassJSONMixin):
     # fit the head window — the heater slots above are then not authoritative and
     # a caller that needs them must fall back on a full parse.
     heater_read: bool = False
+    # ── schema 6 ────────────────────────────────────────────────────────────
+    # roastUUID of the reference roast the pre-roast plan stood on; '' when the
+    # roast was not planned, or planned from anything else.
+    plan_reference_uuid: str = ""
 
 
 @dataclass
@@ -386,6 +390,10 @@ def read_alog_metadata(path: Path) -> "AlogMetadata | None":
     except (TypeError, ValueError):
         pid_source = 1
 
+    snapshot = values.get('tilau_roast_plan_snapshot')
+    plan_reference_uuid = (str(snapshot.get('reference_roast_uuid') or "")
+                           if isinstance(snapshot, dict) else "")
+
     return AlogMetadata(
         filename=path.name,
         filepath_str=str(path),
@@ -419,6 +427,7 @@ def read_alog_metadata(path: Path) -> "AlogMetadata | None":
         heater_fc=heater[3],
         heater_de=heater[4],
         heater_read=heater_read,
+        plan_reference_uuid=plan_reference_uuid,
     )
 
 

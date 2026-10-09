@@ -251,8 +251,8 @@ you have never had to correct gets no reduction scheduled at all.
 
 After dry end the ladder follows its grid or learned settings. Coffee properties do not impose
 a heater floor, but **the machine does**. Where a roaster has been measured for it, the plan
-never asks for a setting below the power that still sustains the reaction — on the Skywalker V2
-(the *ITOP Cyberroaster* profile), 45%. Below it the element keeps heating but no longer feeds
+never asks for a setting below the power that still sustains the reaction — on the Skywalker V2,
+45%. Below it the element keeps heating but no longer feeds
 the roast, and the rate of rise gives way. The floor applies to every phase, and it applies to
 a setting learned from your own history as much as to one off the grid: a habit of dropping
 lower is exactly what it is there to stop from spreading.
@@ -313,7 +313,8 @@ Alongside the values, the plan carries *First Crack source*, *Heater source*, *P
 source*, *Drop RoR source* and *Drop Temp Source*. They identify the shared historical profile:
 `medoid (n=N)` for the representative real roast, `grid/profile blend (n=2)`, or `grid`.
 With one complete roast, *History profile* says `reference only (n=1)` while the individual
-targets remain on the grid.
+targets remain on the grid. When the plan stands on your [reference roast](glossary.md#reference-roast),
+*History profile* and the values taken from it say `operator reference (n=N)`.
 
 A fourth label, `skeleton (n=N)`, appears when the only matching roasts recorded no slider
 movements — driven on the PID, or with event logging switched off. Those roasts still show
@@ -355,10 +356,25 @@ lots are never mixed. The plan says so in *History support*, and prints the prev
 moisture beside this lot's under *Bean Humidity*, so a difference between the two lots is visible
 before you roast.
 
+Your **[reference roast](glossary.md#reference-roast)**, when you have marked one, comes before
+everything else in this section. The plan takes its first crack, phase durations, drop, burner
+and air as they are — even when it is the only roast of the coffee on file, because you tasted it
+and said yes. It is used only for a comparable batch size and the same roast level; for another
+batch or another level, the plan goes back to your other roasts and the roast setup says why. A
+reference whose tasting you later changed to *Almost* or *No*, or which you excluded from
+learning, is no longer used. A new harvest starts from the previous harvest's reference until it
+has roasts of its own; the ★ itself is not carried over.
+
 Your **tasting** of the coffee's last roast adds one more change on top. If you ticked what was
 off — *Flat, papery*, *Burnt*, … — the plan makes the one change it asks for (a notch of burner, a
 few degrees at charge or drop, or 20 s of development), and the roast setup names it. See
-[Tasting](after-the-roast.md#tasting).
+[Tasting](after-the-roast.md#tasting). With a reference roast, going back to it is itself the
+correction for a roast that strayed from it, so that roast's change is not applied — and so is
+a roast planned from a reference you have replaced since. If the last roast was planned from the
+current reference and still tasted off, the change is applied on top of the
+reference: the coffee may have changed since, as a lot does while it ages. The same holds when
+the last roast is the reference itself and you noted something off: going back to it cannot
+correct it.
 
 One figure is learned from a wider set: the **burner you start on**. It comes from your roasts
 of the same process at the same batch size, whatever the coffee was — a washed coffee at 400 g
@@ -385,6 +401,8 @@ drop. That could describe a synthetic roast that was never performed. Instead it
 complete historical roast and keeps its timings, milestone settings and development trajectory
 together.
 
+- When your [reference roast](glossary.md#reference-roast) is among the complete matching
+  roasts, it is selected, whatever their number, and its values are used as they are.
 - With no complete matching observation, the reference grid is used.
 - With one observation, the grid remains authoritative and the roast is shown as a reference.
 - With two observations, the roast closest in batch mass and target colour is blended cautiously

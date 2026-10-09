@@ -110,6 +110,14 @@ def short_date(epoch: int) -> str:
     return QLocale().toString(QDate(d.year, d.month, d.day), "d MMM")
 
 
+def roast_name(epoch: int, batch: str, *, in_sentence: bool = False) -> str:
+    """'12 Sep · #44' — '12 Sep (#44)' inside a sentence — or whichever part is known."""
+    when = short_date(epoch) if epoch > 0 else ''
+    if when and batch:
+        return f"{when} ({batch})" if in_sentence else f"{when} · {batch}"
+    return when or batch
+
+
 def to_roast_order(bean, memory: RoastMemory | None) -> tuple:
     """Sort key of « To roast first »: what keeps worst comes first.
 

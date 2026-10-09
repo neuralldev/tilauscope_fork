@@ -29,6 +29,7 @@ SRC_ROOT = Path(__file__).resolve().parents[2]
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
+from tilauscope.roasters import roaster_identity_key
 from tilauscope.tilaupid_thermal import (
     THERMAL_MODEL_FILENAME,
     ThermalModelCandidate,
@@ -48,7 +49,7 @@ def _fahrenheit_to_celsius(value: float) -> float:
 
 
 def _normalise_identity(value: object) -> str:
-    return "".join(ch for ch in str(value or "").casefold() if ch.isalnum())
+    return roaster_identity_key(value)
 
 
 def _control_channel(value: object) -> str:
