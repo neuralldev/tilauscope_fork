@@ -1,4 +1,6 @@
 ## [4.3] 2026-09-13
+build 35
+* 🐛 [fix(tilauambient)] : a Bluetooth device dropping its link (e.g. the scale) no longer freezes sampling and stops the preheat PID
 build 34
 * 🐛 [fix(labels)] : printing a second roast label in the same session no longer closes TilauScope
 * 🐛 [fix(labels)] : Print, in a coffee's QR code window, prints the code instead of closing TilauScope

@@ -135,6 +135,9 @@ one button in [Devices → AMBIENT](devices.md#ambient--where-room-conditions-co
 before it will be found at all, unlike the off-the-shelf devices in this chapter. Its
 crack-listening sensitivity is a setting of its own, independent of the general first-crack
 detection settings in [Configuration → DETECTION](configuration.md#-detection--how-milestones-get-marked-automatically).
+The probe is read in the background, once a second: if it stops answering, its channels show no
+reading after three seconds while the rest of the recording carries on, and the crack count can
+lag the curve by up to one second.
 
 ---
 

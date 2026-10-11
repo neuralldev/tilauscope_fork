@@ -31,6 +31,7 @@ from typing import Final, TYPE_CHECKING
 import queue
 import struct
 import threading  # à ajouter en tête de fichier avec les autres imports
+import time
 
 if TYPE_CHECKING:
     from bleak.backends.characteristic import BleakGATTCharacteristic  # pylint: disable=unused-import
@@ -45,6 +46,12 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
 
 TILAUAMBIENT_PREFIX= "TLSCAM" # all devices start with this name
+
+# The probe is read on its own thread, never on the sampling one: a BLE read
+# shares one loop with every other device and stalls while any of them drops.
+_POLL_INTERVAL_S: Final[float] = 1.0
+_READ_TIMEOUT_S: Final[float] = 2.0
+_MAX_AGE_S: Final[float] = 3.0   # an older reading is no reading
 
 class TILAUAMBIENT_UUID(StrEnum): 
     TILAU_AMBIENT_SERVICE_UUID  = "f3b6e2a0-8c4e-4e1f-9c2d-1a7f5b9a1c01" # service UUID to discover devices 3aac4624d50252911649cd910be541bc
@@ -209,6 +216,13 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
         self.pressure: float = 0
         
         self.crackcounterstarted:bool = False
+
+        # last poller readings as (monotonic time, data)
+        self._cache_lock = threading.Lock()
+        self._ambient: tuple[float, TilauAmbientData] | None = None
+        self._audio: tuple[float, TilauAudioData] | None = None
+        self._poll_stop = threading.Event()
+        self._poller = threading.Thread(target=self._poll_loop, name="tilauambient-poll", daemon=True)
         
         self.setLogging(True)
         self.add_device_description(TILAUAMBIENT_UUID.TILAU_AMBIENT_SERVICE_UUID,"")
@@ -221,6 +235,7 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
         self.start(case_sensitive=False, address=uuid)
 
         self.is_connected = False
+        self._poller.start()
         
     def notify_callback(self, _sender:'BleakGATTCharacteristic', data:bytearray) -> None:
         parsed_msg = self.parse_full_message(data)
@@ -232,6 +247,8 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
             _logd.info("invalid message")
 
     def bleStop(self):
+        self._poll_stop.set()
+        self._poller.join(timeout=1.0)
         self.stop()
         # now wait for all the ble async queues to flush before killing the object
         from tilauscope.tilau_ble_scanner import wait_ble_client_released  # noqa: PLC0415
@@ -249,12 +266,43 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
         self.is_connected = False
         self.disconnected_signal.emit() # On émet le signal
 
+    def _poll_loop(self) -> None:
+        while not self._poll_stop.wait(_POLL_INTERVAL_S):
+            if not self.is_connected:
+                continue
+            try:
+                ambient = self._read_ambient()
+                with self._cache_lock:
+                    self._ambient = (time.monotonic(), ambient)
+                if self.crackcounterstarted:
+                    audio = self._read_audio()
+                    with self._cache_lock:
+                        self._audio = (time.monotonic(), audio)
+            except Exception:  # noqa: BLE001 - a dead poller would freeze the probe for the session
+                _logd.exception("TilauAmbient poll failed")
+
+    def _cached(self, slot: str) -> object | None:
+        with self._cache_lock:
+            entry = getattr(self, slot)
+        if entry is None or time.monotonic() - entry[0] > _MAX_AGE_S:
+            return None
+        return entry[1]
+
     def askAmbient(self) -> TilauAmbientData:
-        #_logd.info("ask ambient")
+        """Last reading taken by the poller; never waits on the BLE link."""
+        data = self._cached('_ambient')
+        return data if isinstance(data, TilauAmbientData) else TilauAmbientData(0,0,0,0,False)
+
+    def getCrackCounter(self) -> TilauAudioData:
+        """Last crack count taken by the poller; never waits on the BLE link."""
+        data = self._cached('_audio')
+        return data if isinstance(data, TilauAudioData) else TilauAudioData(0,False)
+
+    def _read_ambient(self) -> TilauAmbientData:
         try:
-            payload = self.read(TILAUAMBIENT_UUID.TILAU_AMBIENT_DIALOG_UUID)
+            payload = self.read(TILAUAMBIENT_UUID.TILAU_AMBIENT_DIALOG_UUID, _READ_TIMEOUT_S)
         except Exception as e:
-            _logd.warning(f"askAmbient read failed: {e}")
+            _logd.warning(f"ambient read failed: {e}")
             return TilauAmbientData(0,0,0,0,False)
         if payload is None:
             return TilauAmbientData(0,0,0,0,False)
@@ -274,11 +322,11 @@ class TilauAmbientBLE(ClientBLE, TilauAmbientProtocol, TilauAudioProtocol): # py
         
     # audio features
     
-    def getCrackCounter(self):
+    def _read_audio(self) -> TilauAudioData:
         try:
-            payload = self.read(TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID)
+            payload = self.read(TILAUAMBIENT_UUID.TILAU_AUDIO_DIALOG_UUID, _READ_TIMEOUT_S)
         except Exception as e:
-            _logd.warning(f"getCrackCounter read failed: {e}")
+            _logd.warning(f"crack counter read failed: {e}")
             return TilauAudioData(0,False)
         #_logd.debug(f"get crack counter {payload}")
         if payload is None :

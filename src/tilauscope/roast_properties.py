@@ -632,7 +632,7 @@ class _AmbientFloatWindow(QDialog):
       show-time, then detaches at close.
     · While the probe is connected it polls get_ambient() every
       POLL_INTERVAL_MS via a QTimer (main-thread, no extra thread needed –
-      get_ambient() is a fast BLE read).
+      get_ambient() returns the probe's last cached reading).
     · If no device is available when the card opens it waits, showing
       "waiting for probe", and wires up as soon as one appears (checked on
       each timer tick).

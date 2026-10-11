@@ -457,13 +457,17 @@ class BLE:
         return False
 
 
-    def read(self, client:BleakClient, read_uuid:str) -> bytes|None:
+    ## TILAU ## optional timeout: a bounded read gives up instead of holding its caller
+    def read(self, client:BleakClient, read_uuid:str, timeout:float|None = None) -> bytes|None:
         if hasattr(self, '_asyncLoopThread') and self._asyncLoopThread is not None and client.is_connected:
             fut = asyncio.run_coroutine_threadsafe(
                     client.read_gatt_char(read_uuid),
                     self._asyncLoopThread.loop)
             try:
-                return bytes(fut.result())
+                return bytes(fut.result(timeout=timeout))
+            except TimeoutError: ## TILAU ## fut.exception() would wait again on a pending read
+                fut.cancel()
+                _log.error('BLE read timeout')
             except Exception: # pylint: disable=broad-except
                 #raise fut.exception() from e # type: ignore[misc]
                 exc = fut.exception() if not fut.cancelled() else CancelledError()
@@ -722,7 +726,7 @@ class ClientBLE(QObject):
                 return ble.write(self._ble_client, wc, message, response, chunk)
         return False
 
-    def read(self, read_characteristic:str|None = None) -> bytes|None:
+    def read(self, read_characteristic:str|None = None, timeout:float|None = None) -> bytes|None: ## TILAU ## timeout
         if self._ble_client is not None and self._connected_service_uuid is not None and self._connected_service_uuid in self._readers:
             if self._logging:
                 _log.debug('receive from %s', self._readers[self._connected_service_uuid])
@@ -740,7 +744,7 @@ class ClientBLE(QObject):
                 else:
                     _log.debug('read failed. Characteristic %s not registered for read for service %s', read_characteristic, self._connected_service_uuid)
             else:
-                return ble.read(self._ble_client, rc)
+                return ble.read(self._ble_client, rc, timeout)
         return None
 
     async def _keep_alive(self) -> None:

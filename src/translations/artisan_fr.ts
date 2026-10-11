@@ -36626,7 +36626,7 @@ FC START</source>
             <location filename="../tilauscope/roast_properties.py" line="4797" />
             <location filename="../tilauscope/roast_properties.py" line="2462" />
             <source>Current weight is &lt;b&gt;{0} g&lt;/b&gt;.&lt;br&gt;Replace with scale reading &lt;b&gt;{1} g&lt;/b&gt;?</source>
-            <translation>Le poids courant est &lt;b&gt;0} g&lt;/b&gt;.&lt;br&gt;Remplacer le poids actuel par cellui lu sur la balance &lt;b&gt;{1} g&lt;/b&gt;?</translation>
+            <translation>Le poids courant est &lt;b&gt;{0} g&lt;/b&gt;.&lt;br&gt;Remplacer le poids actuel par celui lu sur la balance &lt;b&gt;{1} g&lt;/b&gt;?</translation>
         </message>
         <message>
             <location filename="../tilauscope/roast_properties.py" line="2524" />
