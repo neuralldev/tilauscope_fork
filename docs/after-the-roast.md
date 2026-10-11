@@ -210,7 +210,7 @@ Under the card, three choices change what the curve shows, and are kept for next
   scale from one roast to the next, so two roasts read alike at a glance; **Custom…** asks for
   a start and an end, and says so when the end is less than half a minute after the start.
 - **Burner & air** — the strip of burner, air and drum settings under the curve: the settings
-  that explain its shape.
+  that explain its shape, each change labelled with its new value.
 
 With **two or more roasts** selected, **Time range** and **Burner & air** step aside — a
 comparison is framed on its roasts — and **View** offers three ways to compare them instead:

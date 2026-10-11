@@ -1358,10 +1358,8 @@ class OnboardingWizard(QDialog):
     def _open_first_bean(self) -> None:
         try:
             bc = self._beancave
-            if hasattr(bc, "clear_form"):
-                bc.clear_form()
-            if hasattr(bc, "_enter_edit_mode"):
-                bc._enter_edit_mode()
+            # the editor alone: the old entry form behind it is reached from nowhere else,
+            # and an editor closed unsaved left the new user on a form with no Update
             if hasattr(bc, "_open_full_bean_editor"):
                 bc._open_full_bean_editor()
         except Exception as e:  # pylint: disable=broad-except

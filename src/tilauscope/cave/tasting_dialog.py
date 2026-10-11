@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QDate, QLocale, Qt
 from PyQt6.QtWidgets import (QApplication, QButtonGroup, QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel,
                              QPlainTextEdit, QPushButton, QVBoxLayout)
 
@@ -128,8 +128,12 @@ class TastingDialog(QDialog):
         title.setStyleSheet("font-size:17px;font-weight:700;")
         lay.addWidget(title)
         if roasted is not None:
+            # the interface's language, as the roast list: strftime names the day in the process locale
+            locale_str = getattr(getattr(getattr(parent, 'aw', None), 'qmc', None), 'locale_str', None)
+            locale = QLocale(locale_str) if isinstance(locale_str, str) and locale_str else QLocale()
+            day = locale.toString(QDate(roasted.year, roasted.month, roasted.day), 'ddd d MMM')
             sub = QLabel(QApplication.translate("tilauscope_beancave", "Roasted {0} · {1} days of rest").format(
-                roasted.strftime("%a %d %b"), (datetime.now().astimezone().date() - roasted).days))
+                day, (datetime.now().astimezone().date() - roasted).days))
             sub.setStyleSheet(f"color:{THEME['SUBTEXT']};font-size:12px;")
             lay.addWidget(sub)
 

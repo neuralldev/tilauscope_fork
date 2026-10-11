@@ -577,6 +577,7 @@ class RoastAnalysisView(QWidget):
             'dry': QApplication.translate('tilauscope_beancave', 'The dry-end marker is missing'),
             'crack': QApplication.translate('tilauscope_beancave', 'The first-crack marker is missing'),
             'reference': QApplication.translate('tilauscope_beancave', 'The reference roast cannot be compared'),
+            'reference_roast': QApplication.translate('tilauscope_beancave', 'The reference roast cannot be compared'),
             'units': QApplication.translate('tilauscope_beancave', 'The temperature unit is not recognized'),
             'readings': QApplication.translate('tilauscope_beancave', 'Readings are incomplete'),
         }
@@ -619,7 +620,10 @@ class RoastAnalysisView(QWidget):
         model = self.model.currentData()
         result = results.get('roast' if model == 'reference' else model)
         if not isinstance(result, AnalysisResult):
-            self._show_error(result if isinstance(result, str) else 'fit')
+            code = result if isinstance(result, str) else 'fit'
+            if code == 'reference' and model == 'reference':
+                code = 'reference_roast'   # the ★ roast failed, not the previous one
+            self._show_error(code)
             return
         self._result = result
         self._observations = observations(result)

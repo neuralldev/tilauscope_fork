@@ -76,7 +76,8 @@ out-of-stock entry, cropped, so the badges are legible](assets/beancave-3.3.png)
 If the library's file cannot be read when BeanCave opens — damaged, or not readable on this
 computer — BeanCave says so and saves nothing over it until it is repaired or restored and
 BeanCave reopened. Adding a coffee to an empty catalogue at that moment would otherwise replace
-every coffee on file with that one.
+every coffee on file with that one. A folder that holds no library yet — the case of a first use —
+simply opens on an empty catalogue.
 
 
 ---
@@ -99,7 +100,8 @@ rather than leaving its zones cramped at the top.
 Under the record, **Roast this coffee** opens the [roast setup sheet](preparing-a-roast.md) for
 it, and **Plan** opens the same sheet on its PLAN tab, to see — and compare — what a batch of it
 would look like before roasting it. **Share & print** holds the bean label, its QR code and the
-shareable card; the bin at the far end deletes the record, after asking.
+shareable card; the bin at the far end deletes the record, after asking, and gives its sack
+labels back to the pool.
 
 Each zone's edit button states what it covers — *Edit name, origin, year and stock*, *Edit farm,
 supplier, altitude and price* — so there is no guessing which dialog holds which field. Editing a zone

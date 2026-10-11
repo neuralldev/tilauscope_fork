@@ -430,7 +430,7 @@ class QRCodeDialog(QDialog):
         self,
         bean_name: str,
         pixmap: QPixmap,
-        pil_img,                       # PIL.Image pour save/print
+        pil_img,                       # image qrcode pour save
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -587,16 +587,18 @@ class QRCodeDialog(QDialog):
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
         print_dialog = QPrintDialog(printer, self)
         if print_dialog.exec() == QPrintDialog.DialogCode.Accepted:
-            from PIL.ImageQt import ImageQt as _IQt
+            # the pixmap holds the same QR; _pil_img is a qrcode wrapper ImageQt rejects
+            q_img   = self._pixmap.toImage()
             painter = QPainter(printer)
-            q_img   = _IQt(self._pil_img)
-            rect    = painter.viewport()
-            size    = q_img.size()
-            size.scale(rect.size(), Qt.AspectRatioMode.KeepAspectRatio)
-            painter.setViewport(rect.x(), rect.y(), size.width(), size.height())
-            painter.setWindow(q_img.rect())
-            painter.drawImage(0, 0, q_img)
-            painter.end()
+            try:
+                rect = painter.viewport()
+                size = q_img.size()
+                size.scale(rect.size(), Qt.AspectRatioMode.KeepAspectRatio)
+                painter.setViewport(rect.x(), rect.y(), size.width(), size.height())
+                painter.setWindow(q_img.rect())
+                painter.drawImage(0, 0, q_img)
+            finally:
+                painter.end()
 
 class _DensityFloatWindow(QDialog):
     """Always-on-top card showing live computed density from scale1.

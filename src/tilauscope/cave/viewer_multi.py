@@ -31,6 +31,8 @@ from PyQt6.QtWidgets import (QApplication) # @UnusedImport @Reimport  @Unresolve
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.tilauscope_types import (THEME, RoastingPhase, normalize_timeindex, estimate_ror_dt, find_turning_point_index, dominant_dev_ror_event)
+from artisanlib.util import convertRoRstrict, convertTemp
+from tilauscope.cave.analysis import _phase_split, _total_and_dtr
 from tilauscope.cave.common import (_logd, _PLOT_PALETTE, _FS_AXIS, _FS_TICK)
 from tilauscope.graph import comparison as compare
 
@@ -45,32 +47,15 @@ class ViewerMultiMixin:
     """
 
 
-    # Teintes catégorielles distinctes — une par roast en comparaison (Catppuccin).
-    # Le roast est identifié par la couleur ; le type de donnée par le style de
-    # trait (BT plein, RoR tireté, ET pointillé fin).
-    _MULTI_HUES: tuple = (
-        "#89B4FA",  # Blue
-        "#FAB387",  # Peach
-        "#A6E3A1",  # Green
-        "#CBA6F7",  # Mauve
-        "#F9E2AF",  # Yellow
-        "#94E2D5",  # Teal
-        "#F38BA8",  # Red
-        "#F5C2E7",  # Pink
-    )
+    def _comparison_hue(self, position: int) -> str | None:
+        """The colour the compared roast at this position is drawn in; None = the bean colour."""
+        if position == 0:
+            return None
+        return compare.COMPARISON_HUES[(position - 1) % len(compare.COMPARISON_HUES)]
 
-    def _make_multi_palette(self, n: int) -> list[tuple[str, str, str, str]]:
-        """Génère n quadruplets (bt, et, dbt, ror) — une teinte distincte par roast.
-
-        Les quatre composantes partagent la même teinte : la distinction BT / ET /
-        RoR se fait par le style de trait au tracé, pas par la couleur. Au-delà de
-        8 roasts, les teintes sont recyclées.
-        """
-        result = []
-        for i in range(n):
-            hue = self._MULTI_HUES[i % len(self._MULTI_HUES)]
-            result.append((hue, hue, hue, hue))
-        return result
+    def _comparison_colour(self, position: int) -> str:
+        """The same colour, resolved, for what is drawn outside the curve engine (chips, dots)."""
+        return self._comparison_hue(position) or self.roast_curve._grain_colour()
 
     def _plot_multi_curves(self) -> None:
         """Compare the loaded roasts on TilauScope's own curve engine.
@@ -89,12 +74,11 @@ class ViewerMultiMixin:
                 continue
             # The first roast with data holds the frame, and keeps the bean
             # colour it is drawn in everywhere else.
-            hue = (None if not roasts
-                   else compare.COMPARISON_HUES[(len(roasts) - 1)
-                                                % len(compare.COMPARISON_HUES)])
+            hue = self._comparison_hue(len(roasts))
             roast = compare.from_profile(
                 data, colour=hue, title=str(curve.get('title') or ''),
-                deltabt=curve.get('deltabt'), deltaet=curve.get('deltaet'))
+                deltabt=curve.get('deltabt'), deltaet=curve.get('deltaet'),
+                ror_unit=self.aw.qmc.mode)
             if roast is not None:
                 roasts.append(roast)
         if not roasts:
@@ -105,7 +89,6 @@ class ViewerMultiMixin:
         self.roast_curve.set_comparison(
             roasts, getattr(self, '_multi_view_mode', 'overlay'))
         self.canvas_stack.setCurrentWidget(self.roast_curve)
-        self.last_plot_data = self._multi_curves[0]['data']
         # Onglet Advanced Stats : dot plot comparatif + mini-résumé (pas le tableau).
         try:
             self._set_stats_view(True)
@@ -118,13 +101,11 @@ class ViewerMultiMixin:
     def _extract_roast_metrics(self, data: dict) -> dict:
         c = data.get('computed', {})
         mode = data.get('mode', 'C')
-        t_charge = 0
-        t_dry    = c.get('DRY_time', 0) or 0
-        t_fcs    = c.get('FCs_time', 0) or 0
-        t_drop   = c.get('DROP_time', 0) or 0
-        drying      = t_dry - t_charge
-        maillard    = t_fcs - t_dry
-        development = t_drop - t_fcs
+        # a missing mark leaves its figures unknown (None), never a 100 % DTR (same rules as the sheet)
+        total, dtr = _total_and_dtr(c)
+        split = _phase_split(c)
+        drying, maillard = (split[0], split[1]) if split else (None, None)
+        development = (total - (c.get('FCs_time', 0) or 0)) if dtr is not None else None
         # Resolved after the phases: the weight-loss target needs this roast's
         # own water and development, not the colour alone.
         try:
@@ -135,18 +116,18 @@ class ViewerMultiMixin:
         # result, never the reference the roast is judged against.
         level, lvl_th = self.roast_level_thresholds(
             self.roast_level_measured(data, c, mode)[0],
-            moisture_pct=_moist, dev_time_min=development / 60.0,
+            moisture_pct=_moist, dev_time_min=(development or 0) / 60.0,
             drop_offset_c=self.roast_drop_offset_c(data))
         dtr_target = sum(lvl_th['dtr']) / 2.0
         wl_target = lvl_th['wl_target']
-        total       = t_drop - t_charge
-        dtr  = round(100 * development / total, 1) if total > 0 else 0.0
         wl   = c.get('weight_loss', None)
         try: wl = round(float(wl), 1) if wl not in (None, 0.0, 'N/A') else None
         except (TypeError, ValueError): wl = None
+        # every roast in the operator's unit: a comparison may mix °C and °F files
+        unit = str(getattr(getattr(self.aw, 'qmc', None), 'mode', mode) or mode)
         def _ror(key):
             v = c.get(key, None)
-            try: return round(float(v), 2) if v not in (None, 'N/A') else None
+            try: return round(convertRoRstrict(float(v), mode, unit), 2) if v not in (None, 'N/A') else None
             except (TypeError, ValueError): return None
         def _fmt_s(s):
             s = int(s or 0)
@@ -159,7 +140,7 @@ class ViewerMultiMixin:
         w_unit = charge_w[2] if len(charge_w) > 2 else 'g'
         def _bt(key):
             v = c.get(key, None)
-            try: return round(float(v), 1) if v not in (None, 'N/A', 0) else None
+            try: return round(convertTemp(float(v), mode, unit), 1) if v not in (None, 'N/A', 0) else None
             except (TypeError, ValueError): return None
         def _auc(key):
             # AUC (area under BT curve above the configured base) — absolute value
@@ -170,11 +151,11 @@ class ViewerMultiMixin:
             except (TypeError, ValueError): return None
         return {
             'title': data.get('title', '?'), 'date': data.get('roastdate', ''),
-            'mode': mode, 'total_s': total, 'total_fmt': _fmt_s(total),
+            'mode': unit, 'total_s': total, 'total_fmt': _fmt_s(total),
             'drying_s': drying, 'drying_fmt': _fmt_s(drying),
-            'drying_pct': round(100*drying/total,1) if total>0 else 0,
+            'drying_pct': round(100*drying/total,1) if drying is not None else None,
             'maillard_s': maillard, 'maillard_fmt': _fmt_s(maillard),
-            'maillard_pct': round(100*maillard/total,1) if total>0 else 0,
+            'maillard_pct': round(100*maillard/total,1) if maillard is not None else None,
             'dev_s': development, 'dev_fmt': _fmt_s(development), 'dtr': dtr,
             'wl': wl, 'charge_bt': _bt('CHARGE_BT'), 'drop_bt': _bt('DROP_BT'),
             'tp_bt': _bt('TP_BT'), 'tp_fmt': _fmt_s(c.get('TP_time', 0) or 0),
@@ -407,7 +388,7 @@ class ViewerMultiMixin:
             self.stats_dot_canvas.draw_idle()
             self.stats_summary.setText("")
             return
-        palette = self._make_multi_palette(len(metrics))
+        hues = [self._comparison_colour(j) for j in range(len(metrics))]
         ax = fig.add_subplot(111)
         ax.set_facecolor(_PLOT_PALETTE['background'])
 
@@ -457,8 +438,8 @@ class ViewerMultiMixin:
                 x = 0.12 + norm * 0.76
                 is_ref = (j == 0)
                 ax.scatter([x], [y], s=95 if is_ref else 55, zorder=5,
-                           facecolors=palette[j][0],
-                           edgecolors=THEME['TEXT'] if is_ref else palette[j][0],
+                           facecolors=hues[j],
+                           edgecolors=THEME['TEXT'] if is_ref else hues[j],
                            linewidths=1.7 if is_ref else 0)
         ax.set_xlim(0, 1)
         ax.set_ylim(-0.6, nrows - 0.4)

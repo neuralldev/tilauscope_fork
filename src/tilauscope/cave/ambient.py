@@ -160,8 +160,10 @@ class AmbientMixin:
             QMessageBox.Icon.Question,
             rich=True,
             width=400,
+            buttons=[QApplication.translate("tilauscope_beancave", "Replace"),
+                     QApplication.translate("Button", "Cancel")],
         )
-        if reply == QMessageBox.StandardButton.Ok:
+        if reply == 0:   # the index of the button pressed, -1 when closed
             self.density_input.setValue(value)
 
     def _set_wa_label_state(self, connected: bool) -> None:

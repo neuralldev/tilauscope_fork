@@ -63,6 +63,9 @@ class ViewerPlotMixin:
             # looking at, and what any further correction is measured from.
             shown['timeindex'] = list(self._pending_timeindex)
             saved = normalize_timeindex(list(data.get('timeindex') or []))
+            if self._rate_bounds(shown) != self._rate_bounds(data):
+                # CHARGE and DROP bound the rate: a moved one is drawn from the series it now bounds
+                deltaet, deltabt = self.evaldeltas(shown, 'temp1'), self.evaldeltas(shown, 'temp2')
         qmc = getattr(self.aw, 'qmc', None)
         try:
             pcts = [qmc.eventsInternal2ExternalValue(v)
@@ -73,7 +76,7 @@ class ViewerPlotMixin:
             shown, colour=None, title=str(data.get('title') or ''),
             deltabt=deltabt,
             deltaet=deltaet if et_available_in_profile(data) else [],
-            ev_pcts=pcts)
+            ev_pcts=pcts, ror_unit=getattr(qmc, 'mode', None))
         if roast is None:
             self.roast_info_text.setText(QApplication.translate(
                 "tilauscope_beancave", "The file holds no readings to draw."))
@@ -146,6 +149,12 @@ class ViewerPlotMixin:
         """Auto, 0–12 min or a custom range, on the roast already drawn."""
         self._apply_engine_view()
 
+    @staticmethod
+    def _rate_bounds(data: dict) -> tuple[int, int]:
+        """CHARGE and DROP, the two marks the rate series is computed between."""
+        ti = normalize_timeindex(list(data.get('timeindex') or []))
+        return ti[RoastingPhase.CHARGE], ti[RoastingPhase.DROP]
+
     def _replot_single(self) -> None:
         """Draw the roast on screen again from what is loaded, for a change of layout or of milestones."""
         cache = getattr(self, '_plot_cache', None)
@@ -217,7 +226,9 @@ class ViewerPlotMixin:
         cache = getattr(self, '_plot_cache', None)
         if cache is not None:
             # Drawn again from the roast as now saved, so the pill has nothing left to name.
-            self._plot_cache = (source, *cache[1:])
+            rates = (cache[1:] if self._rate_bounds(source) == self._rate_bounds(cache[0])
+                     else (self.evaldeltas(source, 'temp1'), self.evaldeltas(source, 'temp2')))
+            self._plot_cache = (source, *rates)
             self._replot_single()
 
     def take_snapshot(self, filename: str | None = None) -> None:
@@ -239,7 +250,7 @@ class ViewerPlotMixin:
             QStandardPaths.StandardLocation.DownloadLocation
         )
 
-        default_path = str(Path(downloads_dir) / f)
+        default_path = str(Path(downloads_dir) / f"{Path(f).stem}.png")
 
         file_path = self._open_file_dialog_save(
             QApplication.translate("tilauscope_beancave","Save Curve Snapshot as PNG"),
@@ -248,10 +259,14 @@ class ViewerPlotMixin:
         )
 
         if file_path:
+            # QPixmap.save fails on a suffix it does not know, and empties the file it was pointed at
+            if not file_path.lower().endswith(".png"):
+                file_path += ".png"
             try:
                 # A picture of what is on screen: the roast is drawn by the
                 # curve engine, and the engine is a widget, not a figure.
-                self.roast_curve.snapshot().save(file_path)
+                if not self.roast_curve.snapshot().save(file_path):
+                    raise OSError(file_path)
                 self._show_message(self, QApplication.translate("tilauscope_beancave","Snapshot Successful"),
                                         QApplication.translate("tilauscope_beancave","The curve has been successfully saved to:")+f"\n{file_path}")
                 # show the snapshot straight away, like the roast card does

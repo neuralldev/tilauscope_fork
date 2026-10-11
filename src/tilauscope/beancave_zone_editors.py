@@ -20,6 +20,7 @@ Each ✎ opens a modal dialog editing only one zone (essentials, provenance, cha
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from datetime import datetime
 
@@ -587,7 +588,8 @@ class ZoneEditorDialog(QDialog):
         self.name_edit.setText(bean.name)
         self.farm_edit.setText(bean.farm)
         self.supplier_edit.setText(bean.supplier)
-        self.crop_spin.setValue(int(bean.crop or 0))
+        if bean.crop:   # a page that names no year keeps the proposed one
+            self.crop_spin.setValue(int(bean.crop))
         self.altitude_spin.setValue(int(bean.altitude or 0))
         update_combo(self.country_combo, bean.country)
 
@@ -607,6 +609,7 @@ class ZoneEditorDialog(QDialog):
 
         if getattr(bean, 'is_blend', False):
             self.type_combo.setCurrentIndex(1)
+            self.bean1_ratio_spin.setValue(float(bean.bean1_ratio or 0.0))
             select_listed_or_other(self.bean2_combo, bean.bean2_name or "")
             self.bean2_ratio_spin.setValue(float(bean.bean2_ratio or 0.0))
             select_listed_or_other(self.bean3_combo, bean.bean3_name or "")
@@ -883,7 +886,10 @@ class ZoneEditorDialog(QDialog):
                                 QApplication.translate("tilauscope_beancave", "The bean needs a name."))
             return False
         b.name = name
-        b.country = self.country_combo.currentText().strip()
+        country = self.country_combo.currentText().strip()
+        # a country the closed list cannot show reads blank: left so, the record keeps it
+        if country or self.country_combo.findText(b.country or "") >= 0:
+            b.country = country
         b.crop = int(self.crop_spin.value())
         b.weight_left = float(self.stock_spin.value())
         return True
@@ -940,9 +946,16 @@ class ZoneEditorDialog(QDialog):
             'all': (self._apply_essentials, self._apply_provenance,
                     self._apply_characteristics, self._apply_sensory),
         }.get(self._zone, ())
+        before = dataclasses.replace(b)
+
+        def _restore() -> None:   # the record keeps nothing that did not reach the disk
+            for f in dataclasses.fields(b):
+                setattr(b, f.name, getattr(before, f.name))
+
         try:
             for apply_fn in appliers:
                 if not apply_fn():
+                    _restore()
                     return
 
             if self._create:
@@ -962,6 +975,7 @@ class ZoneEditorDialog(QDialog):
                 if self._create:
                     cave.green_beans.remove(b)
                     self._host.uuidmap.pop(b.uuid, None)
+                _restore()
                 return
             # stock just hit 0 g: offer to reclaim this bean's labels
             # (design v4 §9.3, shared helper — never duplicate this check).
@@ -973,5 +987,6 @@ class ZoneEditorDialog(QDialog):
             self.accept()
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
             _logd.exception("zone editor save failed")
+            _restore()
             show_styled_message(self, QApplication.translate("tilauscope_beancave", "Save failed"),
                                 QApplication.translate("tilauscope_beancave", "The record could not be saved. See the log for details."))

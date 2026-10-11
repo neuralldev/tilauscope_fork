@@ -19,6 +19,7 @@ import json
 import time
 import os
 import threading
+from functools import partial
 from typing import override, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -184,11 +185,12 @@ class LifecycleMixin:
 
         self.last_sorted_column = -1
         self.sort_order = Qt.SortOrder.AscendingOrder
-        self.last_plot_data: dict|None = None
         self._displayed_fname: str = ""   # roast the curve is currently showing
         self._loading_fname: str = ""     # roast the in-flight load is for
+        self._alog_load_gen: int = 0      # number of the latest single-roast load
 
         self.np: NiimbotBLE|None = None
+        self._niimbot_awaiting_paper = False   # connected, roll size still asked of the cloud
         self._print_pill = None   # host A — pastille de progression d'impression
         self.bleRoastSeeAGDevice: LebrewWaterActivityChecker|None = None
         self.bleTilauAmbientDevice = None  # BeanCave-managed ambient probe (BME280), same pattern as Lebrew
@@ -218,6 +220,7 @@ class LifecycleMixin:
         self._multi_load_idx: int = 0            # index courant dans la queue
         self._multi_alog_thread: QThread | None = None   # thread courant multi
         self._multi_alog_worker: object | None  = None   # worker courant multi
+        self._multi_load_gen: int = 0            # number of the current comparison load
         self._alog_uuid_index:      dict[str, list[str]] = {}  # uuid  → [filename, ...]
         self._alog_file_uuid:       dict[str, str]        = {}  # filename → uuid  (reverse)
         self.datatable = QTableWidget()
@@ -250,8 +253,8 @@ class LifecycleMixin:
         self.update_button.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
         self.generate_qr_button.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
         self.generate_card_button.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
-        self.roast.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
-        self.plan_button.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
+        self.roast.setEnabled(self._selected_bean_in_stock())
+        self.plan_button.setEnabled(self._selected_bean_in_stock())
         self.remove_button.setEnabled(False)
         self.new_crop_button.setEnabled(False if self.cave is None or self.cave.green_beans is None or len(self.cave.green_beans) == 0 else True)
         self.update_ui_visibility()
@@ -272,10 +275,12 @@ class LifecycleMixin:
         if self.aw:
             self.aw.installEventFilter(self)
 
-        # Replace Artisan AlarmDlg with TilauScope editor
+        # Replace Artisan AlarmDlg with TilauScope editor. It closes over aw, not
+        # this dialog: it outlives every BeanCave, and must not keep a closed one alive.
+        aw = self.aw
         def _tilau_alarmconfig(_: bool = False) -> None:
             from tilauscope.alarms import TilauAlarmDlg
-            dlg = TilauAlarmDlg(self.aw, self.aw)
+            dlg = TilauAlarmDlg(aw, aw)
             dlg.show()
         self.aw.alarmconfig = _tilau_alarmconfig   # type: ignore[method-assign]
 
@@ -497,20 +502,26 @@ class LifecycleMixin:
             self._indexer_thread = None
             self._indexer_worker = None
 
+        directory = Path(self.alog_directory)
         self._indexer_thread = QThread()
-        self._indexer_worker = _AlogCacheIndexingWorker(Path(self.alog_directory), self._metadata_cache.records)
+        self._indexer_worker = _AlogCacheIndexingWorker(directory, self._metadata_cache.records)
         self._indexer_worker.moveToThread(self._indexer_thread)
 
         self._indexer_thread.started.connect(self._indexer_worker.run)
-        self._indexer_worker.finished.connect(self._on_cache_indexing_complete)
+        # the records name their folder: a disconnect does not withdraw a result already queued
+        self._indexer_done = partial(self._on_cache_indexing_complete, directory)
+        self._indexer_worker.finished.connect(self._indexer_done)
         self._indexer_worker.finished.connect(self._indexer_thread.quit)
         # the worker goes with its thread object, never by its own deleteLater (see _launch_worker)
         self._indexer_thread._worker = self._indexer_worker
         self._indexer_thread.finished.connect(self._indexer_thread.deleteLater)
         self._indexer_thread.start()
 
-    def _on_cache_indexing_complete(self, updated_records: dict):
+    def _on_cache_indexing_complete(self, directory: Path, updated_records: dict):
         """Callback when background index updates are fully synced."""
+        if directory != Path(self.alog_directory):
+            _logd.debug(f"roast index of {directory} dropped: no longer the ALog folder")
+            return
         self._metadata_cache.records = updated_records
 
         # Instantly rebuild lookups from memory without firing off another background thread
@@ -522,6 +533,31 @@ class LifecycleMixin:
             self._refresh_bean_sheet()
             if self.cave is not None:
                 self.catalogue_list.set_beans(self.cave.green_beans)
+
+    def _stop_indexer(self) -> None:
+        """Stop the roast indexing pass, if one runs (closing, or another ALog folder)."""
+        if getattr(self, '_indexer_thread', None) is not None:
+            # Disconnect result slot so signal doesn't fire into a half-dead widget.
+            try:
+                if self._indexer_thread.isRunning():
+                    self._indexer_worker.finished.disconnect(self._indexer_done)
+                    self._indexer_thread.requestInterruption()  # signal worker de s'arrêter
+                    self._indexer_thread.quit()
+                    if not self._indexer_thread.wait(2000):     # 2s — scan disque peut être lent
+                        # No terminate(): it kills the thread at an arbitrary
+                        # instruction and can leave a Qt-internal mutex locked
+                        # for good — the next Bean Cave then freezes while it
+                        # builds a widget, with no crash and no log. These
+                        # workers check isInterruptionRequested and return
+                        # within a read, so waiting once more is the safe move.
+                        _log.warning("indexer thread did not stop cooperatively — waiting once more")
+                        if not self._indexer_thread.wait(2000):
+                            _log.error("indexer thread is still running and was left to finish on its own")
+                            park_until_finished(self._indexer_thread, self._indexer_worker)
+            except (TypeError, RuntimeError):
+                pass
+            self._indexer_thread = None
+            self._indexer_worker = None
 
     def _cancel_threads(self) -> None:
         """Request stop + wait (briefly) for all background threads."""
@@ -550,28 +586,7 @@ class LifecycleMixin:
         self._stop_list_scan()
 
         # --- Indexer (Cache load) ---
-        if hasattr(self, '_indexer_thread') and self._indexer_thread is not None:
-            # Disconnect result slot so signal doesn't fire into a half-dead widget.
-            try:
-                if self._indexer_thread.isRunning():
-                    self._indexer_worker.finished.disconnect(self._on_cache_indexing_complete)
-                    self._indexer_thread.requestInterruption()  # signal worker de s'arrêter
-                    self._indexer_thread.quit()
-                    if not self._indexer_thread.wait(2000):     # 2s — scan disque peut être lent
-                        # No terminate(): it kills the thread at an arbitrary
-                        # instruction and can leave a Qt-internal mutex locked
-                        # for good — the next Bean Cave then freezes while it
-                        # builds a widget, with no crash and no log. These
-                        # workers check isInterruptionRequested and return
-                        # within a read, so waiting once more is the safe move.
-                        _log.warning("indexer thread did not stop cooperatively — waiting once more")
-                        if not self._indexer_thread.wait(2000):
-                            _log.error("indexer thread is still running and was left to finish on its own")
-                            park_until_finished(self._indexer_thread, self._indexer_worker)
-            except (TypeError, RuntimeError):
-                pass
-            self._indexer_thread = None
-            self._indexer_worker = None
+        self._stop_indexer()
 
         # --- Roaster load ---
         if hasattr(self, '_roaster_thread') and self._roaster_thread is not None:
@@ -674,7 +689,9 @@ class LifecycleMixin:
                     # Drop the result slots first: a label finishing during the
                     # 5 s wait used to land in a dialog already tearing down.
                     for _sig, _slot in ((self.niimbot_worker.print_finished, self._on_print_success),
-                                        (self.niimbot_worker.print_error, self._on_print_error)):
+                                        (self.niimbot_worker.print_error, self._on_print_error),
+                                        (self.niimbot_worker.print_unconfirmed, self._on_print_unconfirmed),
+                                        (self.niimbot_worker.copy_progress, self._on_roast_copy_progress)):
                         try:
                             _sig.disconnect(_slot)
                         except (TypeError, RuntimeError):
@@ -1231,6 +1248,23 @@ class LifecycleMixin:
                 pass
             self._data_reader = None
 
+    def _close_step_alog_repair(self) -> bool:
+        """Close the maintenance window with BeanCave; False when the operator keeps it."""
+        # parentless window holding this library: a later save from it would undo the next BeanCave's
+        dlg = getattr(self, '_alog_repair_dlg', None)
+        if dlg is None:
+            return True
+        try:
+            return bool(dlg.close())   # still asks first when an edit is unsaved
+        except RuntimeError:
+            return True
+
+    def _close_step_storage(self) -> None:
+        # only a tab change hid it: closed on the Storage tab, its timer and broker link ran on
+        st = getattr(self, 'storage_tab_widget', None)
+        if st is not None:
+            st.on_hidden()
+
     def _close_step_table_signals(self) -> None:
         # itemSelectionChanged is what the bean tab actually connects; asking the
         # selection model for selectionChanged raised TypeError every time and
@@ -1253,8 +1287,11 @@ class LifecycleMixin:
             self.aw.beanCaveMenuAction.setChecked(False)
 
     def _close_step_persist(self) -> None:
-        self.save_green_beans()
+        if self.beancave_directory:   # without a folder there is nowhere to save: nothing to say at close
+            self.save_green_beans()
         self.save_settings()
+        # the last write: past it this instance holds a library its replacement may change
+        self._library_closed = True
 
     def _close_step_tooltip(self) -> None:
         if hasattr(self, '_hover_tooltip'):
@@ -1294,10 +1331,15 @@ class LifecycleMixin:
         writes, the printer teardown) would never run at all.
         """
         _log.info("beancave closing")
+        # an unsaved maintenance edit the operator keeps holds BeanCave open with it
+        if not self._close_step_alog_repair() and event is not None:
+            event.ignore()
+            return
         for step in (self._close_step_flag_shutdown,
                      self._cancel_threads,
                      self._close_step_density_window,
                      self._close_step_data_reader,
+                     self._close_step_storage,
                      self._close_step_table_signals,
                      self._close_step_geometry,
                      self._close_step_persist,
@@ -1314,6 +1356,22 @@ class LifecycleMixin:
         if event is not None:
             event.accept()
             super().closeEvent(event)
+        self._release_after_close()
+
+    def _release_after_close(self) -> None:
+        """A closed BeanCave is replaced, never shown again: let it go."""
+        try:
+            if self.aw is not None:
+                self.aw.removeEventFilter(self)
+                if getattr(self.aw, 'beancaveWindow', None) is self:
+                    self.aw.beancaveWindow = None
+            # a QThread destroyed while running aborts the application
+            for thread in self.findChildren(QThread):
+                if thread.isRunning():
+                    park_until_finished(thread, getattr(thread, '_worker', None))
+            self.deleteLater()
+        except Exception as e:  # noqa: BLE001  a Qt virtual's tail: never raise
+            _log.error(f"beancave release after close failed: {e}")
 
 
 
@@ -1372,7 +1430,6 @@ class LifecycleMixin:
             self.save_settings()
             self.load_green_beans()
             self.populate_table()
-            self.update_directory_labels()
             self.is_directory_defined = str(self.beancave_directory) != "" and str(self.alog_directory) != ""
             self.update_ui_visibility()
             _logd.debug(f"Beancave directory selected: {self.beancave_directory}")
@@ -1408,7 +1465,8 @@ class LifecycleMixin:
             # rebuild off-thread before any consumer asks.
             directory_changed(self.alog_directory)
             self._metadata_cache.records = {}
-            self.update_directory_labels()
+            self._stop_indexer()            # the old folder's pass, if one runs
+            self.trigger_cache_refresh()
             self.list_alog_files()
             _logd.debug(QApplication.translate("tilauscope_beancave","ALog directory selected")+f": {self.alog_directory}")
             self.is_directory_defined = str(self.beancave_directory) != "" and str(self.alog_directory) != ""

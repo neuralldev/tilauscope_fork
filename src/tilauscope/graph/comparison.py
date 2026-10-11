@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from collections.abc import Sequence
 from typing import Any, Final
 
+from artisanlib.util import convertRoRstrict
 from tilauscope.tilauscope_types import (THEME, is_reading, normalize_timeindex,
                                          profile_crack_times)
 
@@ -111,12 +112,14 @@ class ComparedRoast:
 def from_profile(data: dict, *, colour: str | None, title: str,
                  deltabt: list[Any] | None = None,
                  deltaet: list[Any] | None = None,
-                 ev_pcts: list[Any] | None = None) -> ComparedRoast | None:
+                 ev_pcts: list[Any] | None = None,
+                 ror_unit: str | None = None) -> ComparedRoast | None:
     """A saved profile as a compared roast, or None when it has nothing to draw.
 
     The rate is taken as BeanCave computed it on load and never recomputed:
     no profile carries its own rate, and a second opinion about what the rate
-    was would put two answers on one screen.
+    was would put two answers on one screen. BeanCave computes it in the
+    application's unit (``ror_unit``); the roast is drawn in its file's.
     """
     try:
         timex = [float(t) for t in (data.get('timex') or [])]
@@ -132,15 +135,23 @@ def from_profile(data: dict, *, colour: str | None, title: str,
     # Anchored on its own charge, so two roasts are compared at the same instant
     # of their own story rather than at the same instant of the recording.
     origin = timex[charge] if 0 <= charge < len(timex) else timex[0]
+    mode = str(data.get('mode', 'C') or 'C')
+
+    def _rate(series: list[Any] | None) -> list[Any]:
+        if not ror_unit or ror_unit == mode:
+            return list(series or [])
+        return [convertRoRstrict(float(v), ror_unit, mode) if is_reading(v) else v  # type: ignore[arg-type]
+                for v in (series or [])]
+
     return ComparedRoast(
         title=title,
         colour=colour,
-        mode=str(data.get('mode', 'C') or 'C'),
+        mode=mode,
         timex=[t - origin for t in timex],
         temp1=list(data.get('temp1') or []),
         temp2=temp2,
-        delta2=list(deltabt or []),
-        delta1=list(deltaet or []),
+        delta2=_rate(deltabt),
+        delta1=_rate(deltaet),
         timeindex=timeindex,
         events=list(data.get('specialevents') or []),
         ev_types=list(data.get('specialeventstype') or []),

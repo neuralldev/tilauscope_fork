@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass  # pylint: disable=unused-import
@@ -1696,7 +1696,7 @@ class ViewerMixin:
         chips = []
         for position, fname in enumerate(fnames):
             row = self._row_for(fname)
-            hue = self._MULTI_HUES[position % len(self._MULTI_HUES)]
+            hue = self._comparison_colour(position)
             name = html.escape(row.title if row is not None else Path(fname).stem)
             when = (datetime.fromtimestamp(row.epoch).strftime('%H:%M')
                     if row is not None and row.epoch > 0 else "")
@@ -1849,6 +1849,7 @@ class ViewerMixin:
         holder.setDefaultWidget(panel)
         menu.addAction(holder)
         menu.exec(self.curve_range_switch.mapToGlobal(QPoint(0, self.curve_range_switch.height())))
+        menu.deleteLater()   # built per use; deferred, so the fields are still read below
         if not applied:
             return False
         low = QTime(0, 0).secsTo(start.time())
@@ -1905,6 +1906,7 @@ class ViewerMixin:
             filepath = Path(self.alog_directory) / selected[0]
             if not filepath.exists():
                 _log.error(f"File not found in beancave plot routine: {filepath}")
+                self._drop_displayed_roast()
                 return
             self._cancel_alog_thread()
             self._start_alog_load(filepath,
@@ -1932,14 +1934,15 @@ class ViewerMixin:
             self._multi_progress.setMaximum(len(filepaths))
             self._multi_progress.setValue(0)
             self._multi_progress.show()
-            self._load_next_multi_curve()
+            self._load_next_multi_curve(self._multi_load_gen)
 
     # ── Helpers factored out ─────────────────────────────────────────────────
 
-    def _on_multi_alog_thread_done(self) -> None:
+    def _on_multi_alog_thread_done(self, gen: int) -> None:
         """Null-ifie les refs multi quand le thread Qt est terminé."""
-        self._multi_alog_thread = None
-        self._multi_alog_worker = None
+        if gen == self._multi_load_gen:   # never the handles of the comparison replacing it
+            self._multi_alog_thread = None
+            self._multi_alog_worker = None
 
     def _cancel_alog_thread(self) -> None:
         """Cancel any in-flight load thread (mono or multi).
@@ -1953,15 +1956,7 @@ class ViewerMixin:
         # Chemin mono
         if hasattr(self, '_alog_thread') and self._alog_thread is not None:
             try:
-                # Disconnect first and unconditionally: a worker that has already
-                # emitted finished and whose thread has quit is no longer running,
-                # but its queued call is still on its way to a slot that would
-                # repaint the load replacing it.
-                try:
-                    self._alog_worker.finished.disconnect(self._alog_worker_finished_on_plot_ok)
-                    self._alog_worker.error.disconnect(self._alog_worker_finished_on_plot_error)
-                except (AttributeError, TypeError, RuntimeError):
-                    pass
+                # its result, even one already queued, is dropped by the load number (_start_alog_load)
                 if self._alog_thread.isRunning():
                     self._alog_thread.requestInterruption()
                     self._alog_thread.quit()
@@ -1973,17 +1968,11 @@ class ViewerMixin:
                 pass
             self._alog_thread = None
             self._alog_worker = None
-        # Chemin multi
+        # Chemin multi — every step already queued by the comparison being
+        # replaced (curve, thread end, next load) carries the old number
+        self._multi_load_gen += 1
         if hasattr(self, '_multi_alog_thread') and self._multi_alog_thread is not None:
             try:
-                # Same as the mono path above: a queued finished from a worker
-                # that has already stopped added a phantom roast to the next
-                # comparison, after the curve list had been reset.
-                try:
-                    self._multi_alog_worker.finished.disconnect(self._on_multi_curve_loaded)
-                    self._multi_alog_worker.error.disconnect(self._on_multi_curve_error)
-                except (AttributeError, TypeError, RuntimeError):
-                    pass
                 if self._multi_alog_thread.isRunning():
                     self._multi_alog_thread.requestInterruption()
                     self._multi_alog_thread.quit()
@@ -2009,26 +1998,33 @@ class ViewerMixin:
         # the worker goes with its thread object, never by its own deleteLater (see _launch_worker)
         thread._worker = worker
         thread.started.connect(worker.run)
-        worker.finished.connect(on_ok)
-        worker.error.connect(on_err)
         if multi:
             # En mode multi : le thread se quitte sur finished/error,
             # puis est détruit proprement ; les refs Python sont gérées
             # par _on_multi_curve_loaded / _on_multi_curve_error.
+            gen = self._multi_load_gen
+            worker.finished.connect(partial(self._if_current_comparison, gen, on_ok))
+            worker.error.connect(partial(self._if_current_comparison, gen, on_err))
             worker.finished.connect(thread.quit)
             worker.error.connect(thread.quit)
             worker.cancelled.connect(thread.quit)
             self._multi_alog_thread = thread
             self._multi_alog_worker = worker
-            thread.finished.connect(self._on_multi_alog_thread_done)
+            thread.finished.connect(partial(self._on_multi_alog_thread_done, gen))
             thread.finished.connect(thread.deleteLater)
         else:
-            # Chemin mono — comportement original
+            # Chemin mono — disconnect never withdraws a call already queued, so
+            # every result and thread end carries its load number: only the
+            # latest one may paint or clear the handles.
+            self._alog_load_gen += 1
+            gen = self._alog_load_gen
+            worker.finished.connect(partial(self._if_current_load, gen, on_ok))
+            worker.error.connect(partial(self._if_current_load, gen, on_err))
             worker.finished.connect(thread.quit)
             worker.error.connect(thread.quit)
             worker.cancelled.connect(thread.quit)
             worker.cancelled.connect(partial(self._alog_load_cancelled, filepath.name))
-            thread.finished.connect(self._on_alog_thread_done)
+            thread.finished.connect(partial(self._on_alog_thread_done, gen))
             thread.finished.connect(thread.deleteLater)
             self._alog_thread = thread
             self._alog_worker = worker
@@ -2081,11 +2077,17 @@ class ViewerMixin:
         # The printed label also needs the printer ready (heartbeat answered).
         self.print_label_action.setEnabled(mono and getattr(self, "_niimbot_connected", False))
 
-    def _load_next_multi_curve(self) -> None:
+    def _if_current_comparison(self, gen: int, slot: Any, *args: Any) -> None:
+        if gen == self._multi_load_gen:
+            slot(*args)
+
+    def _load_next_multi_curve(self, gen: int) -> None:
         """Charge séquentiellement la prochaine courbe de la queue multi.
         Le cache est consulté dans le thread UI — thread-safe.
         Si cache hit : on injecte directement les données sans lancer de thread.
         Si cache miss : on lance _AlogLoadWorker."""
+        if gen != self._multi_load_gen:   # a step queued by a replaced comparison
+            return
         if self._multi_load_idx >= len(self._multi_load_queue):
             self._multi_progress.hide()
             self._plot_multi_curves()
@@ -2134,14 +2136,14 @@ class ViewerMixin:
         self._multi_load_idx += 1
         self._multi_progress.setValue(self._multi_load_idx)
         # singleShot(0) laisse le thread courant terminer son cleanup si applicable
-        QTimer.singleShot(0, self._load_next_multi_curve)
+        QTimer.singleShot(0, partial(self._load_next_multi_curve, self._multi_load_gen))
 
     @pyqtSlot(str)
     def _on_multi_curve_error(self, err: str) -> None:
         _log.warning(f"Multi load error (skipped): {err}")
         self._multi_load_idx += 1
         self._multi_progress.setValue(self._multi_load_idx)
-        QTimer.singleShot(0, self._load_next_multi_curve)
+        QTimer.singleShot(0, partial(self._load_next_multi_curve, self._multi_load_gen))
 
     @pyqtSlot()
     def on_roast_finished_clicked(self) -> None:
@@ -2333,6 +2335,13 @@ class ViewerMixin:
         self.roast_analysis_view.clear_profile(QApplication.translate(
             "tilauscope_beancave", "The roast could not be read. Select it again to retry."))
         self._fill_detail_single(None)
+        self._drop_displayed_roast()
+
+    def _drop_displayed_roast(self) -> None:
+        """The curve left on screen belongs to the previous roast: nothing may act on it under the new name."""
+        self._displayed_fname = ""
+        self.roast_curve.release_editor()
+        self._set_viewer_buttons_enabled(False, multi=False)
 
     @pyqtSlot(object, object, object)
     def _alog_worker_finished_on_plot_ok(self, profiledata, deltaet, deltabt):
@@ -2351,7 +2360,10 @@ class ViewerMixin:
         self.remember_deltas(profiledata, 'temp1', deltaet)
         self.remember_deltas(profiledata, 'temp2', deltabt)
         # Draws the roast and fills its sheet (display_roast_info) in one pass.
-        self.plot_bt_curve_preview(self.lastprofiledata, deltaet, deltabt)  # type: ignore
+        try:   # a Qt slot: an escape would close the application
+            self.plot_bt_curve_preview(self.lastprofiledata, deltaet, deltabt)  # type: ignore
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the loaded roast could not be drawn")
         # ── Update header label with roast display name ──────────────────────
         # The detail head names it: the line above the curve is for messages only.
         self.roast_plot_label.setText("")
@@ -2364,12 +2376,16 @@ class ViewerMixin:
             if label and self._displayed_fname == pend:
                 self.show_barista_expert_view(self.lastprofiledata)
 
-    @pyqtSlot()
-    def _on_alog_thread_done(self) -> None:
+    def _if_current_load(self, gen: int, slot: Any, *args: Any) -> None:
+        if gen == self._alog_load_gen:
+            slot(*args)
+
+    def _on_alog_thread_done(self, gen: int) -> None:
         """Clear refs after alog thread finishes normally so _cancel_threads
         and the next file selection won't see a stale thread handle."""
-        self._alog_thread = None
-        self._alog_worker = None
+        if gen == self._alog_load_gen:   # a replaced load's end must not clear its successor's
+            self._alog_thread = None
+            self._alog_worker = None
 
     def displayed_profile(self) -> ProfileData | None:
         """The profile the canvas is actually showing, read back from its file.

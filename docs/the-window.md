@@ -351,7 +351,8 @@ recalculated every time a roast is opened. Changing the level therefore changes 
 **is**, on this roast and on every one opened afterwards.
 
 **The lever strips are drawn live**, throughout the preheat and the roast, and each one carries
-its current level in figures at its right edge. Reading a gesture against the curve it caused is
+its current level in figures at its right edge; a traced strip also labels each change with its
+new value. Reading a gesture against the curve it caused is
 the point of them, and that reading is worth most while the roast is still running. Before the
 first move on a channel, the strip shows the level the lever is being held at.
 

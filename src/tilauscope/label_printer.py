@@ -982,8 +982,10 @@ class GreenBeanLabelPrinter(_FontMixin):
         try:
             printer = self._make_printer(output_path)
             painter = QPainter(printer)
-            self.render(painter, bean)
-            painter.end()
+            try:
+                self.render(painter, bean)
+            finally:
+                painter.end()   # an open painter leaves the PDF unfinished
             _logd.debug(f"Green bean label saved to {output_path}")
             return True
         except Exception as e:

@@ -1,4 +1,47 @@
 ## [4.3] 2026-09-13
+build 34
+* 🐛 [fix(labels)] : printing a second roast label in the same session no longer closes TilauScope
+* 🐛 [fix(labels)] : Print, in a coffee's QR code window, prints the code instead of closing TilauScope
+* 🐛 [fix(beancave)] : Choose folder, on a Roasts tab whose roast folder is missing, no longer closes TilauScope; the folders chosen in the first-run wizard now apply in full
+* 🐛 [fix(repair)] : Roast Profile Maintenance closes with BeanCave and can no longer write an older bean library over the current one; an unsaved edit kept open there keeps BeanCave open too
+* 🐛 [fix(beancave)] : moving quickly between roasts or comparisons in the Roasts tab no longer shows one roast's curve under another's name, nor saves a milestone correction into the wrong roast file
+* 🐛 [fix(beancave)] : selecting a roast that cannot be read, or whose file has gone, no longer leaves the previous roast's curve and actions under the new name
+* 🐛 [fix(beancave)] : the rate of rise of a roast saved in °F shows at its true value in a °C TilauScope, and the reverse, for one roast and in comparisons
+* 🐛 [fix(beancave)] : in a comparison, each roast's chip and dot wear the colour of its curve
+* 🐛 [fix(beancave)] : Curve image proposes a .png name, always saves a PNG, says so when the image could not be written, and can no longer empty the roast file of the same name
+* 🐛 [fix(labels)] : the printed roast label names the coffee of that roast, not the coffee of an earlier comparison
+* 🐛 [fix(labels)] : a slow network no longer freezes TilauScope while the label printer connects, and an incomplete answer about the roll no longer closes it
+* 🐛 [fix(labels)] : Print label is offered only with one roast selected
+* 🐛 [fix(labels)] : closing BeanCave while a label prints is safe also when the printer stops answering
+* 🐛 [fix(labels)] : a green-bean label PDF that could not be made says so and no longer opens an older file of the same name
+* 🐛 [fix(storage)] : a change made in the Storage tab after coming back from a roast is saved
+* 🐛 [fix(storage)] : closing BeanCave on the Storage tab stops its storage-room readings and its broker connection
+* 🐛 [fix(storage)] : Test, in the storage-room sensor settings, reads a topic just typed in on the first click
+* 🐛 [fix(beancave)] : Roast this coffee and Plan stay greyed for a coffee out of stock
+* 🐛 [fix(beancave)] : a BeanCave folder that holds no library yet opens on an empty catalogue, without an error
+* 🐛 [fix(beancave)] : closing BeanCave releases the memory it held
+* 🐛 [fix(sacks)] : a new crop entered through Essentials proposes the next harvest year, the previous price and the screen size
+* 🐛 [fix(sacks)] : the New sack assistant no longer fills in a category, process or species nobody chose, and a new crop keeps its coffee's variety and process as they are, those outside the lists included
+* 🐛 [fix(sacks)] : in the New sack assistant, the restock total follows the weight typed, the review no longer lists AI gaps for a restock, and the New crop page shows the supplier, notes and score corrected from the review
+* 🐛 [fix(sacks)] : deleting a coffee gives its sack labels back to the pool
+* 🐛 [fix(sacks)] : when the bean library cannot be saved, a label assigned, released or deleted stays as it is on file
+* 🐛 [fix(beancave)] : Fill from URL, in the expert form, keeps a blend's first share and the proposed harvest year
+* 🐛 [fix(beancave)] : a zone edit whose save failed is discarded entirely, and a country outside the list is kept when the Essentials are saved
+* 🐛 [fix(beancave)] : moving CHARGE or DROP in the Roasts tab redraws the rate of rise between the new marks
+* 🐛 [fix(beancave)] : a missing first crack or dry end no longer gives a 100 % DTR, a negative Maillard or a total time of 0:00, on the roast sheet or in a comparison
+* 🐛 [fix(beancave)] : roasts saved in °C and in °F are compared in one unit
+* 🐛 [fix(beancave)] : the Analysis page explains a failure of the ★ reference roast as such, not as the previous roast's
+* 🐛 [fix(beancave)] : Load in TilauScope and Background say so when nothing was loaded instead of announcing it
+* 🐛 [fix(beancave)] : a roast that cannot be drawn no longer closes TilauScope
+* 🐛 [fix(beancave)] : after choosing another roast folder, roast memory, catalogue badges, scanned roast QR codes and the phone's roast page are available at once
+* 🐛 [fix(beancave)] : choosing a BeanCave folder whose library cannot be loaded no longer keeps the previous folder's coffees in use
+* 🐛 [fix(beancave)] : with a BeanCave folder that cannot be written, closing BeanCave no longer writes the library somewhere else
+* 🐛 [fix(beancave)] : the roast sheet shows a roast title as written, and its Charge & Drop section title is translated
+* 🐛 [fix(i18n)] : the tasting sheet writes the roast date in the interface's language
+* 🐛 [fix(beancave)] : the time-range menu, QR code and print preview windows are no longer kept in memory after use
+* ⚡ [feat(onboarding)] : the first-run wizard ends on the coffee editor alone
+build 33
+* ⚡ [feat(curve)] : the burner, air and drum strips under the curve, in TilauScope and in the BeanCave Roasts tab, show the new value at each change instead of only the last one
 build 32
 * ⚡ [feat(setup)] : the PLAN tab names the reference roast the plan stands on, or why it cannot serve this batch — another batch weight, another roast level, a tasting no longer Yes or no longer found, an exclusion from learning, a roast file no longer found; a new crop says its timings and temperatures come from the previous crop's reference
 * ⚡ [feat(setup)] : at the Expert level, the Roast Replay card offers to load the coffee's reference roast as the background curve; the Burner reaction time setting is removed, the replay uses the machine's measured burner lag, else 10 s

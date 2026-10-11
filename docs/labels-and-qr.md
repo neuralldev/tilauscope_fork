@@ -63,7 +63,8 @@ full spec sheet on an 80 mm roll, or a condensed card on a 30 mm roll (small eno
 QR is dropped — there is no room to make it useful at that size). Sack labels and labels for a
 bought coffee always use the 30 mm roll.
 
-**🖨 Print label** opens a preview with a copies count, then prints in the background. The label
+**🖨 Print label** is offered once the printer is ready and a single roast is selected. It
+opens a preview with a copies count, then prints in the background. The label
 is sent to the printer once, whatever the count, and the printer puts the copies out one by one.
 Printing is refused, with a plain explanation rather than a silent failure, when the roll is
 out of labels, when the loaded paper isn't recognised, when it doesn't match the size the

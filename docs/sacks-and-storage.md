@@ -143,7 +143,8 @@ review and release them in bulk.
 **The label pool.** Behind the scenes, labels are tracked as a pool: printed and assigned,
 printed and never assigned, or released and available again. New ids are handed out in
 sequence; released and unused ids are always offered first before a new one is minted, so the
-id space does not grow faster than the bags actually on the shelf.
+id space does not grow faster than the bags actually on the shelf. Deleting a coffee gives its
+labels back to the pool.
 
 !!! note
     Printing sack labels — a batch of new ids, a reprint, or registering an

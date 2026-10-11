@@ -57,6 +57,14 @@ def _phase_split(computed: dict) -> tuple[float, float, float, float] | None:
     return t_dry - t_charge, t_fcs - t_dry, t_drop - t_fcs, t_drop - t_charge
 
 
+def _total_and_dtr(computed: dict) -> tuple[float, float | None]:
+    """(total seconds from CHARGE, DTR %) — each needs only its own marks, not the full split."""
+    t_fcs  = computed.get("FCs_time", 0) or 0
+    t_drop = computed.get("DROP_time", 0) or 0
+    dtr = round(100 * (t_drop - t_fcs) / t_drop, 1) if 0 < t_fcs < t_drop else None
+    return t_drop, dtr
+
+
 class AnalysisMixin:
     """Reading a single roast: colour level, phase rules, and the written report.
 
@@ -287,7 +295,7 @@ class AnalysisMixin:
 
         weight_loss = computed.get("weight_loss", 0.0)
         defect_weight = computed.get("roast_defects_loss", 0.0)
-        dtr_pct_val = development_pct if split is not None else None
+        total, dtr_pct_val = _total_and_dtr(computed)
 
         try:
             wl_val = float(weight_loss) if weight_loss not in {0.0, "N/A"} else None
@@ -561,7 +569,7 @@ class AnalysisMixin:
     <!-- HEADER -->
     <tr>
     <td colspan="3" style="padding-bottom:4px;">
-        <span style="font-size:14px; font-weight:bold;">{data.get('title','—')}</span>
+        <span style="font-size:14px; font-weight:bold;">{html.escape(str(data.get('title') or '—'))}</span>
         {f' &nbsp;<span style="font-size:11px; font-weight:bold; padding:2px 7px; border-radius:4px; background-color:{THEME["ACCENT"]}; color:{THEME["BG"]}">{batch_prefix}{batch_nr}</span>' if batch_nr > 0 else ''}<br/>
         <span style="font-size:11px; color:{THEME['SUBTEXT']};">{date} {roasttime} · {roastertype}</span>
     </td>
@@ -595,7 +603,7 @@ class AnalysisMixin:
     {phase_bar_html}
 
     <!-- TEMPÉRATURES -->
-    {section_title(QApplication.translate("tilauscope_beancave","Charge BT").replace(" BT","") + " & Drop")}
+    {section_title(QApplication.translate("tilauscope_beancave","Charge & Drop"))}
     <tr>
     <td colspan="2" style="vertical-align:top; padding-right:1px;">
         <table cellpadding="0" cellspacing="0">

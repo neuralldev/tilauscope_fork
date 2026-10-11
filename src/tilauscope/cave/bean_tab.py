@@ -725,10 +725,16 @@ class BeanTabMixin:
             self.update_button.setEnabled(False)
             self.generate_qr_button.setEnabled(True)
             self.generate_card_button.setEnabled(True)
-            self.roast.setEnabled(True)
-            self.plan_button.setEnabled(True)
+            in_stock = self._selected_bean_in_stock()
+            self.roast.setEnabled(in_stock)
+            self.plan_button.setEnabled(in_stock)
             self.remove_button.setEnabled(True)
             self.new_crop_button.setEnabled(True)
+
+    def _selected_bean_in_stock(self) -> bool:
+        """Roast and Plan are offered only for a bean that is actually in stock."""
+        bean = self.selected_green_bean()
+        return bean is not None and (getattr(bean, "weight_left", 0.0) or 0.0) > 0
 
     @pyqtSlot()
     def load_selected_bean_into_form(self) -> None:
@@ -815,8 +821,7 @@ class BeanTabMixin:
             self.update_button.setEnabled(True)
             self.generate_qr_button.setEnabled(True)
             self.generate_card_button.setEnabled(True)
-            # Only allow roasting a bean that is actually in stock.
-            in_stock = (getattr(bean, "weight_left", 0.0) or 0.0) > 0
+            in_stock = self._selected_bean_in_stock()
             self.roast.setEnabled(in_stock)
             self.plan_button.setEnabled(in_stock)
             self.roast.setToolTip(
@@ -907,8 +912,11 @@ class BeanTabMixin:
             row = self.datatable.currentRow()
             if 0 <= row < len(self.cave.green_beans):
                 bean = self.cave.green_beans[row]
-                bean.sacks = [s for s in (getattr(bean, 'sacks', None) or []) if s != sack_id]
-                self.save_green_beans()
+                previous = list(getattr(bean, 'sacks', None) or [])
+                bean.sacks = [s for s in previous if s != sack_id]
+                if not self.save_green_beans():
+                    bean.sacks = previous   # the file still gives it to this bean: not free
+                    return
                 SackPool.release(sack_id)
                 self._set_form_sacks(bean.sacks)
                 # Lot 5: reflect the release on the sheet and the list
@@ -1068,8 +1076,12 @@ class BeanTabMixin:
     def remove_green_bean(self, index:QModelIndex) -> None:
         removed_bean = self.cave.green_beans[index.row()]
         del self.cave.green_beans[index.row()]
+        if not self.save_green_beans():
+            self.cave.green_beans.insert(index.row(), removed_bean)   # still on disk: still listed
+            return
         self.uuidmap.pop(removed_bean.uuid, None)
-        self.save_green_beans()
+        for sack_id in getattr(removed_bean, 'sacks', None) or []:
+            SackPool.release(sack_id)   # no bean holds them any more: reusable
         self.populate_table()
         self.clear_form()
 
@@ -1162,6 +1174,10 @@ class BeanTabMixin:
         # A file that exists but could not be read must never be saved over:
         # the next Add would replace the whole library with one bean.
         self._library_unreadable = False
+        # nothing of the previous folder survives a load that fails
+        self.cave = None
+        self.green_beans = []
+        self.uuidmap = {}
 
         if str(self.beancave_directory) != '' and self._is_readable_directory(Path(self.beancave_directory)) and self._is_readable_file(beancave_file_path):
             try:
@@ -1197,8 +1213,12 @@ class BeanTabMixin:
         else:
             if str(self.beancave_directory) != "":
                 self._library_unreadable = beancave_file_path.exists()
-                _logd.error(QApplication.translate("tilauscope_beancave","Directory or file access is not possible"))
-                self._show_message(self, QApplication.translate("Error Message","Error"), QApplication.translate("tilauscope_beancave","Directory or file access is not possible"), QMessageBox.Icon.Warning)
+                if not self._library_unreadable and self._is_readable_directory(Path(self.beancave_directory)):
+                    # no library yet: every new user starts here, nothing to report
+                    _logd.debug("no beancave.json yet, the library starts empty")
+                else:
+                    _logd.error(QApplication.translate("tilauscope_beancave","Directory or file access is not possible"))
+                    self._show_message(self, QApplication.translate("Error Message","Error"), QApplication.translate("tilauscope_beancave","Directory or file access is not possible"), QMessageBox.Icon.Warning)
             else:
                 # call first bean assist
                 _logd.debug("bean cave is empty, run first bean assistant")
@@ -1211,6 +1231,9 @@ class BeanTabMixin:
         Every failure below is reported to the operator and then swallowed, so
         callers that need to say "saved" have no other way to know.
         """
+        if getattr(self, '_library_closed', False):
+            _log.warning("closed BeanCave: bean library not saved over the live one")
+            return False
         if getattr(self, '_library_unreadable', False):
             self._show_message(self,
                 QApplication.translate("tilauscope_common", "Save Error"),
@@ -1219,11 +1242,12 @@ class BeanTabMixin:
                     "Repair or restore beancave.json, then reopen BeanCave."),
                 QMessageBox.Icon.Warning)
             return False
-        if self.beancave_directory is not None:
-            # check if cave is not none before trying to save
-            if self.cave is None or self.cave.green_beans is None:
-                _logd.warning("No green beans to save.")
-                return False
+        # check if cave is not none before trying to save
+        if self.cave is None or self.cave.green_beans is None:
+            _logd.warning("No green beans to save.")
+            return False
+        # "" is no folder: Path("") would write into the current directory
+        if self.beancave_directory:
             beancave_file_path = Path(self.beancave_directory) / BEANCAVE_FILE_NAME
             try:
                 beancave_file_path.parent.mkdir(parents=True, exist_ok=True)

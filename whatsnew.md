@@ -44,6 +44,8 @@ A smaller release: TilauScope now adapts itself to machines that have no air pro
 * **Screen size, without the jargon.** Choose the bean size from a short list — Large (AA, Supremo), Medium (AB, Excelso), Small or Peaberry — as the supplier's sheet states it. It is written into each roast of that coffee, and filled in for you when you read the record from the supplier's page.
 * **The roast plan's alarms, in one click.** At the Expert level, the PLAN tab can load the plan's alarm set when the roast starts. The alarm editor's Presets menu can also import an alarm file — such as the one saved next to each plan's PDF — and export yours to share it.
 
+* **A sturdier BeanCave.** A full review of BeanCave fixed some fifty faults. Printing several labels in a row, printing a QR code or choosing a folder no longer closes TilauScope. A roast is never drawn under another's name, a rate of rise saved in °F reads at its true value, and comparison chips match their curves. Nothing is lost when a save fails, and deleting a coffee gives its sack labels back.
+
 ## 🔌 Devices
 
 * **More Bluetooth scales.** The Decent Scale and the Bookoo Themis Mini can now be paired alongside Acaia: the SENSORS tab lists every supported scale it finds nearby, and the one you choose feeds every weight capture — roast setup, stock, density, labels and brewing. Decent and Bookoo support follows each manufacturer's published protocol and has not yet been confirmed on the scales themselves; if one misbehaves, a snapshot from the TilauScope Debug window shows what it sent.

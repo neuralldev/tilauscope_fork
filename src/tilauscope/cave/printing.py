@@ -48,7 +48,7 @@ from tilauscope.cave.common import (
     _log, _logd, _safe_filename)
 from tilauscope.cave.widgets import (
     QRCodeDialog)
-from tilauscope.cave.workers import NiimbotWorker
+from tilauscope.cave.workers import NiimbotWorker, _CallableWorker
 
 
 class PrintingMixin:
@@ -110,6 +110,7 @@ class PrintingMixin:
                 parent=self,
             )
             dlg.exec()
+            dlg.deleteLater()   # one per QR shown: never kept as a child of BeanCave
 
         except Exception as e:
             self._show_message(
@@ -139,6 +140,12 @@ class PrintingMixin:
 
         try:
             self.aw.loadFile(str(full_path))
+            # the loader swallows its errors and loads nothing on a cancelled "Save profile?"
+            if Path(self.aw.curFile or '') != full_path:
+                self._show_message(self, QApplication.translate("tilauscope_beancave","Loading error"),
+                                   QApplication.translate("tilauscope_beancave","An error occurred while loading file")+f": {alog_filename}",
+                                   QMessageBox.Icon.Warning)
+                return
             self._show_message(self,
                                     QApplication.translate("tilauscope_beancave","Load in TilauScope"),
                                     f"'{alog_filename}' "+QApplication.translate("tilauscope_beancave","has been loaded in TilauScope."))
@@ -169,6 +176,11 @@ class PrintingMixin:
 
         try:
             self.aw.loadAndRedrawBackgroundUUID(str(full_path))
+            if Path(self.aw.qmc.backgroundpath or '') != full_path:
+                self._show_message(self, QApplication.translate("tilauscope_beancave","Load error"),
+                                   QApplication.translate("tilauscope_beancave", "An error occurred while loading")+f": {alog_filename}",
+                                   QMessageBox.Icon.Warning)
+                return
             self._show_message(self, QApplication.translate("tilauscope_beancave","TilauScope Load"),
                                     f"'{alog_filename}'"+QApplication.translate("tilauscope_beancave"," has been loaded in main TilauScope window."))
         except AttributeError:
@@ -215,6 +227,8 @@ class PrintingMixin:
             # BLE établi — le polling peut démarrer immédiatement,
             # même si le papier n'est pas encore détecté.
             self._niimbot_ble_up = True
+            self._niimbot_awaiting_paper = False
+            cloud_pending = False
             self._start_niimbot_poll()
             # Ne pas appeler stop/start_notifications ici : _connect() de ClientBLE
             # appelle déjà start_notifications() juste après on_connect().
@@ -230,10 +244,11 @@ class PrintingMixin:
                 _logd.debug(f"rfid detected, confirmed paper type={rfid.type} remaining labels={rfid.used_len}/{rfid.total_len}")
                 self.np.remaining_labels = rfid.used_len if rfid.used_len is not None else 0
                 self.np.total_labels = rfid.total_len if rfid.total_len is not None else 0
-                t = self.get_cloud_template_info(str(rfid.barcode))
-                if t is not None:  #swap as we print vertical on B21
-                    self.np.paper_height = int(t["width"])
-                    self.np.paper_width = int(t["height"])
+                # A web request of up to 10 s: off the GUI thread, the roll size lands in _on_cloud_template.
+                barcode = str(rfid.barcode)
+                cloud_pending = True
+                self._launch_worker(_CallableWorker(lambda: self.get_cloud_template_info(barcode)),
+                                    on_ok=self._on_cloud_template, on_err=self._on_cloud_template_error)
             _logd.debug(f"Niimbot Device ID: {deviceID}")
             _logd.debug(f"Niimbot Firmware Version: {firmwareVersion}")
             _logd.debug(f"paper type h={self.np.paper_height}xw={self.np.paper_width}")
@@ -258,15 +273,48 @@ class PrintingMixin:
                 _logd.warning("niimbot printer status is unstable (2)")
                 return
 
-            if self.np.paper_height > 0 and self.np.paper_width > 0:
-                text, color = self._niimbot_ready_status()
-                self.niimbot_overlay.update_status(text, color)
-                self._niimbot_connected = True
-                self.print_label_action.setEnabled(True)
-                _logd.debug("everything is ok")
+            if cloud_pending and not (self.np.paper_height > 0 and self.np.paper_width > 0):
+                # "Connecting…" until the roll size arrives; armed only here, never over a cover warning
+                self._niimbot_awaiting_paper = True
                 return
-            self.niimbot_overlay.update_status(QApplication.translate("tilauscope_beancave","Printer: Invalid paper"), THEME['CRITICAL'])
-            _logd.debug("paper cannot be used no size detected")
+            self._show_niimbot_paper_state()
+
+    def _one_roast_selected(self) -> bool:
+        """The viewer's rule for "Print label": one roast, never none or a comparison."""
+        return len(self.selected_roast_fnames()) == 1
+
+    def _show_niimbot_paper_state(self) -> None:
+        if self.np.paper_height > 0 and self.np.paper_width > 0:
+            text, color = self._niimbot_ready_status()
+            self.niimbot_overlay.update_status(text, color)
+            self._niimbot_connected = True
+            self.print_label_action.setEnabled(self._one_roast_selected())
+            _logd.debug("everything is ok")
+            return
+        self._niimbot_connected = False
+        self.niimbot_overlay.update_status(QApplication.translate("tilauscope_beancave","Printer: Invalid paper"), THEME['CRITICAL'])
+        _logd.debug("paper cannot be used no size detected")
+
+    @pyqtSlot(object)
+    def _on_cloud_template(self, t: object) -> None:
+        # A Qt slot: an escape would close the application.
+        try:
+            if self.is_shutting_down or self.np is None:
+                return
+            if isinstance(t, dict):
+                try:   # swap as we print vertical on B21
+                    self.np.paper_height, self.np.paper_width = int(t["width"]), int(t["height"])
+                except (KeyError, TypeError, ValueError):
+                    _log.warning(f"niimbot cloud template without a roll size: {t}")
+            if self._niimbot_awaiting_paper:
+                self._niimbot_awaiting_paper = False
+                self._show_niimbot_paper_state()
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("niimbot roll size could not be applied")
+
+    @pyqtSlot(str)
+    def _on_cloud_template_error(self, _err: str) -> None:
+        self._on_cloud_template(None)
 
     @pyqtSlot()
     def niimbot_disconnected(self) -> None:
@@ -404,7 +452,7 @@ class PrintingMixin:
             text, color = self._niimbot_ready_status()
             self.niimbot_overlay.update_status(text, color)
             self._niimbot_connected = True
-            self.print_label_action.setEnabled(True)
+            self.print_label_action.setEnabled(self._one_roast_selected())
         else:
             self._niimbot_connected = False
             self.niimbot_overlay.update_status(
@@ -419,7 +467,11 @@ class PrintingMixin:
             return
         # A run can last minutes; replacing its thread would destroy it mid-print.
         running = getattr(self, "niimbot_thread", None)
-        if running is not None and running.isRunning():
+        try:
+            busy = running is not None and running.isRunning()
+        except RuntimeError:  # C++ object already deleted by its finished → deleteLater
+            busy = False
+        if busy:
             self._show_message(self,
                 QApplication.translate("HelpDlg", "Print"),
                 QApplication.translate("tilauscope_beancave", "A print is already in progress"),
@@ -427,7 +479,13 @@ class PrintingMixin:
             return
 
         # ── Résoudre le GreenBean ────────────────────────────────────────────
-        bean_field = self.last_plot_data.get("beans", "") if self.last_plot_data is not None else ""
+        # From the roast being printed, never from what a comparison last drew.
+        roast_path = self.selected_roast_path()
+        try:
+            roast = self.get_alog_data(roast_path) if roast_path is not None else None
+        except Exception:  # noqa: BLE001  read again below, where a failure is reported
+            roast = None
+        bean_field = (roast or {}).get("beans", "") or ""
         bean = None
         uuid_match = self.uuid_pattern.search(bean_field)
         if uuid_match and self.cave and self.cave.green_beans:
@@ -639,7 +697,9 @@ class PrintingMixin:
             btn_print.clicked.connect(preview_dialog.accept)
             btn_cancel.clicked.connect(preview_dialog.reject)
 
-            if preview_dialog.exec() == QDialog.DialogCode.Accepted:
+            accepted = preview_dialog.exec() == QDialog.DialogCode.Accepted
+            preview_dialog.deleteLater()   # deferred: copies_spin is still read below
+            if accepted:
                 # Progression dans la pastille flottante (host A) : la barre
                 # d'état garde l'état imprimante au lieu d'être détournée.
                 copies = int(copies_spin.value())
@@ -931,7 +991,12 @@ class PrintingMixin:
                     self._show_message(self,
                                             QApplication.translate("tilauscope_common","Success"),
                                             QApplication.translate("tilauscope_beancave","Label saved to")+f" {file_path}")
-                self.try_to_open_file(file_path)
+                    self.try_to_open_file(file_path)
+                else:   # an older file of that name would open as if it were this label
+                    self._show_message(self,
+                                       QApplication.translate("tilauscope_common", "Save Error"),
+                                       QApplication.translate("tilauscope_beancave", "Unable to save file") + f" '{file_path}'.",
+                                       QMessageBox.Icon.Warning)
 
     # Export the selected bean sheet as a shareable landscape JPEG
     def on_export_social_card(self):

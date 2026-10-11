@@ -226,6 +226,7 @@ class NewSackWizard(QDialog):
         self._ai_thread: QThread | None = None
         self._ai_worker: _WizardAIWorker | None = None
         self._prefilled_from: GreenBean | None = None
+        self._prefill_shown: dict[str, str] = {}   # identity lists as the copy left them
         # locked source record: set only by the "New crop" shortcut
         self._source_bean: GreenBean | None = source_bean
         self._aw_win: QDialog | None = None
@@ -643,6 +644,8 @@ class NewSackWizard(QDialog):
         self.restock_weight_spin.setDecimals(0)
         self.restock_weight_spin.setSuffix(" g")
         self.restock_weight_spin.setValue(1000.0)
+        # the "current → new stock" line follows what is typed, not only the first value
+        self.restock_weight_spin.valueChanged.connect(self._refresh_essentials_mode)
         rf.addRow(QApplication.translate("tilauscope_sacks", "Weight of the new sack:"), self.restock_weight_spin)
         rl.addLayout(rf)
         self.restock_hint = self._hint("")
@@ -911,23 +914,24 @@ class NewSackWizard(QDialog):
             QApplication.translate("tilauscope_sacks",
                 "This crop replaces the previous one — set {0} stock to 0").format(year))
         self._refresh_newcrop_more_label()
-        if self._prefilled_from is not src:
-            # proposed once per source record, never against an operator edit
-            self._prefill_from_source()
-            self.newcrop_crop_spin.setValue(
-                (src.crop + 1) if src.crop else datetime.now().astimezone().year)
-            self.nc_price_spin.setValue(float(src.price_per_kg or 0.0))
-            idx = self.nc_screen_combo.findData(src.screen_size or '')
-            self.nc_screen_combo.setCurrentIndex(idx if idx >= 0 else 0)
-        # the Characteristics page can be reached from Review — take back what
-        # was edited there so both views show the same measurements
+        # proposed once per source record, never against an operator edit
+        self._prefill_from_source()
+        # the Characteristics, Provenance and Sensory pages can be reached from
+        # Review — take back what was edited there so both views show the same values
         for nc_spin, main_spin in ((self.nc_density_spin, self.density_spin),
                                    (self.nc_humidity_spin, self.humidity_spin),
-                                   (self.nc_wa_spin, self.wa_spin)):
+                                   (self.nc_wa_spin, self.wa_spin),
+                                   (self.nc_sca_spin, self.sca_spin)):
             if nc_spin.value() != main_spin.value():
                 nc_spin.blockSignals(True)
                 nc_spin.setValue(main_spin.value())
                 nc_spin.blockSignals(False)
+        for nc_edit, main_edit in ((self.nc_supplier_edit, self.supplier_edit),
+                                   (self.nc_flavour_edit, self.flavour_edit)):
+            if nc_edit.text() != main_edit.text():
+                nc_edit.blockSignals(True)
+                nc_edit.setText(main_edit.text())
+                nc_edit.blockSignals(False)
 
     # ── Page 2 : sack identification ──────────────────────────────────────────
     def _build_sack_page(self) -> QWidget:
@@ -1139,10 +1143,11 @@ class NewSackWizard(QDialog):
         f.setVerticalSpacing(10)
         # category drives the process list — they live side by side (user request)
         self.category_combo = QComboBox()
-        self.category_combo.addItems(getattr(self._host, 'coffee_beans_categories', []) or [])
+        # an empty entry first, as in the zone editor: a list nobody chose from stays empty
+        self.category_combo.addItems([""] + list(getattr(self._host, 'coffee_beans_categories', []) or []))
         self.process_combo = QComboBox()
         self.species_combo = QComboBox()
-        self.species_combo.addItems(getattr(self._host, 'coffee_beans_species', []) or [])
+        self.species_combo.addItems([""] + list(getattr(self._host, 'coffee_beans_species', []) or []))
         self.varieties_combo = QComboBox()
         self.density_spin = QDoubleSpinBox()
         self.density_spin.setRange(0.0, 800.0)
@@ -1195,7 +1200,7 @@ class NewSackWizard(QDialog):
         self.process_combo.clear()
         items = (getattr(self._host, 'coffee_processing_methods', {}) or {}).get(category, [])
         # same entries as the BeanCave form, "Other" included, so a saved process reloads there
-        self.process_combo.addItems(list(items)
+        self.process_combo.addItems([""] + list(items)
                                     + [QApplication.translate("tilauscope_common", "Other")])
         if current:
             idx = self.process_combo.findText(current)
@@ -1396,8 +1401,9 @@ class NewSackWizard(QDialog):
                 self.flavour_edit.text().strip()]))
 
         # AI flow: point out what could not be extracted / still needs a value.
+        # Only for the new bean the page was read for, never a restock or new crop chosen after.
         warn_parts = []
-        if self._ai_used:
+        if self._ai_used and mode == "new":
             missing = []
             if not self.farm_edit.text().strip():
                 missing.append(QApplication.translate("tilauscope_sacks", "farm"))
@@ -1728,6 +1734,10 @@ class NewSackWizard(QDialog):
             set_combo(self.bean3_combo, bean.bean3_name)
             self.bean3_ratio_spin.setValue(bean.bean3_ratio or 0.0)
 
+    def _identity_lists(self) -> dict[str, QComboBox]:
+        return {'category': self.category_combo, 'process': self.process_combo,
+                'species': self.species_combo, 'varieties': self.varieties_combo}
+
     def _prefill_from_source(self) -> None:
         """New-crop path: copy the whole source record into pages 3–5 once.
 
@@ -1739,12 +1749,19 @@ class NewSackWizard(QDialog):
         if src is None or self._prefilled_from is src:
             return
         self._apply_bean_to_widgets(src)
+        self._prefill_shown = {f: c.currentText() for f, c in self._identity_lists().items()}
         for spin in (self.density_spin, self.humidity_spin, self.wa_spin,
                      self.nc_density_spin, self.nc_humidity_spin, self.nc_wa_spin):
             spin.setValue(0.0)
         self.nc_supplier_edit.setText(src.supplier)
         self.nc_flavour_edit.setText(src.flavour_notes)
         self.nc_sca_spin.setValue(src.sca or 0.0)
+        # here, not on the New crop page: Next on Essentials copies the record first
+        self.newcrop_crop_spin.setValue(
+            (src.crop + 1) if src.crop else datetime.now().astimezone().year)
+        self.nc_price_spin.setValue(float(src.price_per_kg or 0.0))
+        idx = self.nc_screen_combo.findData(src.screen_size or '')
+        self.nc_screen_combo.setCurrentIndex(idx if idx >= 0 else 0)
         self._prefilled_from = src
 
     # ── Create ────────────────────────────────────────────────────────────────
@@ -1849,6 +1866,11 @@ class NewSackWizard(QDialog):
         base.process = self.process_combo.currentText()
         base.species = self.species_combo.currentText()
         base.varieties = self.varieties_combo.currentText()
+        if mode == "newcrop" and src is not None:
+            # a list cannot show a value it does not hold: one left as copied stays the coffee's own
+            for field, combo in self._identity_lists().items():
+                if combo.currentText() == self._prefill_shown.get(field):
+                    setattr(base, field, getattr(src, field))
         base.density = self.density_spin.value()
         base.last_humidity = self.humidity_spin.value()
         base.water_activity = self.wa_spin.value()

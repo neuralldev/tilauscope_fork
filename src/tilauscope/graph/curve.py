@@ -2402,14 +2402,18 @@ class RoastCurveWidget(QWidget):
                 if held is None:
                     continue
                 points = [(self._t_min, held)]
+                recorded = False
+            else:
+                recorded = True
             painter.setClipRect(lane)
             if kind == 'area':
-                self._draw_channel_area(painter, lane, colour, points, end)
+                self._draw_channel_area(painter, lane, colour, points, end, recorded)
             else:
                 self._draw_channel_marks(painter, lane, colour, points)
 
     def _draw_channel_area(self, painter: QPainter, lane: QRectF, colour: QColor,
-                           points: list[tuple[float, float]], end: float) -> None:
+                           points: list[tuple[float, float]], end: float,
+                           recorded: bool) -> None:
         """Filled staircase. A setting holds until the next one, so the outline
         steps — drawing it sloped would invent a ramp nobody made."""
         poly = QPolygonF()
@@ -2451,12 +2455,63 @@ class RoastCurveWidget(QWidget):
         # draws a line along the floor of its lane and is otherwise
         # indistinguishable from a lane with nothing in it — which is the one
         # reading the operator must never have to guess at.
-        self._draw_lane_value(painter, lane, colour, held)
+        end_chip = self._draw_lane_value(painter, lane, colour, held)
+        if recorded and end_chip is not None:
+            self._draw_step_values(painter, lane, colour, points, end_chip.left())
+
+    def _draw_step_values(self, painter: QPainter, lane: QRectF, colour: QColor,
+                          points: list[tuple[float, float]], limit: float) -> None:
+        """The new level beside each step, above its line when the lane leaves
+        room, below it otherwise. On a strip this thin the height of a step
+        cannot be read off the trace.
+
+        A value is written only where it fits between its own step and the
+        next one (or the end-of-trace value at ``limit``): a number laid over
+        the next riser, or cut by it, would misread the setting."""
+        font = QFont()
+        font.setPointSize(_LEGEND_FONT_PT - 1)
+        font.setBold(True)
+        metrics = QFontMetricsF(font)
+        height = metrics.height() + 1.0
+        if lane.height() < height + 2.0:
+            return              # a strip squeezed below the text: the trace alone
+        painter.setFont(font)
+        steps: list[tuple[float, float]] = []
+        previous: int | None = None
+        for t, v in points:
+            if t > self._t_max:
+                break
+            value = int(round(v))
+            if t >= self._t_min and value != previous:
+                steps.append((self._x(t), v))
+            previous = value
+        bounds = [x for x, _v in steps[1:]] + [limit]
+        for (x, v), next_x in zip(steps, bounds, strict=True):
+            text = f'{int(round(v))}'
+            width = metrics.horizontalAdvance(text) + 6.0
+            if x + 2.0 + width > next_x - 1.0:
+                continue
+            level = self._y_in(lane, v)
+            top = level - height - 1.5
+            if top < lane.top():
+                top = min(level + 1.5, lane.bottom() - height)
+            self._draw_value_chip(painter, QRectF(x + 2.0, top, width, height),
+                                  colour, text, 2.0)
+
+    @staticmethod
+    def _draw_value_chip(painter: QPainter, chip: QRectF, colour: QColor,
+                         text: str, radius: float) -> None:
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(THEME['CRUST']))
+        painter.drawRoundedRect(chip, radius, radius)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(QPen(colour))
+        painter.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), text)
 
     def _draw_lane_value(self, painter: QPainter, lane: QRectF, colour: QColor,
-                         value: float | None) -> None:
+                         value: float | None) -> QRectF | None:
         if value is None:
-            return
+            return None
         font = QFont()
         font.setPointSize(_LEGEND_FONT_PT)
         font.setBold(True)
@@ -2467,12 +2522,8 @@ class RoastCurveWidget(QWidget):
         height = min(lane.height() - 2.0, 16.0)
         chip = QRectF(lane.right() - width - 3.0, lane.center().y() - height / 2.0,
                       width, height)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(THEME['CRUST']))
-        painter.drawRoundedRect(chip, 3.0, 3.0)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.setPen(QPen(colour))
-        painter.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), text)
+        self._draw_value_chip(painter, chip, colour, text, 3.0)
+        return chip
 
     def _draw_channel_marks(self, painter: QPainter, lane: QRectF, colour: QColor,
                             points: list[tuple[float, float]]) -> None:
@@ -2509,12 +2560,7 @@ class RoastCurveWidget(QWidget):
                 width,
                 max(8.0, row_height - 2.0),
             )
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor(THEME['CRUST']))
-            painter.drawRoundedRect(chip, 2.0, 2.0)
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.setPen(QPen(colour))
-            painter.drawText(chip, int(Qt.AlignmentFlag.AlignCenter), text)
+            self._draw_value_chip(painter, chip, colour, text, 2.0)
 
         # Markers are painted last. Even under pathological label density the
         # point remains visible and cannot be mistaken for part of a number.

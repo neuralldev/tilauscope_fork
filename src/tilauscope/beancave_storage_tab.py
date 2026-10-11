@@ -706,9 +706,14 @@ class StorageTab(QWidget):
         if not rows:
             return None
         idx = rows[0].row()
-        if 0 <= idx < len(self._rows):
-            return self._rows[idx]
-        return None
+        if not 0 <= idx < len(self._rows):
+            return None
+        shown = self._rows[idx]
+        # The library may have been reloaded since the table was filled: act on its live record.
+        uuid = getattr(shown, "uuid", "")
+        if not uuid:
+            return shown
+        return next((b for b in self._all_beans() if getattr(b, "uuid", "") == uuid), None)
 
     def _on_row_selected(self) -> None:
         b = self._selected_bean()
@@ -850,11 +855,12 @@ class StorageTab(QWidget):
         """The FULL catalogue — never the table's list, which filters on stock."""
         return list(getattr(self.host, "green_beans", []) or [])
 
-    def _save_beans(self) -> None:
+    def _save_beans(self) -> bool:
         try:
-            self.host.save_green_beans()
+            return bool(self.host.save_green_beans())
         except Exception:
             _logd.exception("StorageTab: saving green beans failed")
+            return False
 
     def _render_sacks(self, bean: "GreenBean | None") -> None:
         """Fill the slot-A block, hiding it entirely when it serves no purpose."""
@@ -883,9 +889,12 @@ class StorageTab(QWidget):
             sack_id = dlg.selected_id()
             if not sack_id:
                 return
-            bean.sacks = list(getattr(bean, "sacks", None) or []) + [sack_id]
+            previous = list(getattr(bean, "sacks", None) or [])
+            bean.sacks = previous + [sack_id]
+            if not self._save_beans():
+                bean.sacks = previous   # not on disk: the label stays in the pool
+                return
             SackPool.mark_assigned(sack_id)
-            self._save_beans()
             self.refresh()
             _logd.debug(f"Sack {sack_id} assigned to '{getattr(bean, 'name', '?')}'")
         except Exception:
@@ -1071,6 +1080,12 @@ class StorageMqttConfigDialog(QDialog):
         """
 
     def _test(self) -> None:
+        self._run_test(retry=True)
+
+    def _retest(self) -> None:
+        self._run_test(retry=False)
+
+    def _run_test(self, retry: bool) -> None:
         for topic_edit, field_edit, prev in (
             (self.h_topic, self.h_field, self.h_preview),
             (self.t_topic, self.t_field, self.t_preview),
@@ -1081,6 +1096,10 @@ class StorageMqttConfigDialog(QDialog):
                 continue
             payload = self._tab._poll_topic(topic)
             mono = "font-size:10px; font-family: monospace;"
+            if payload is None and retry:
+                # a topic just subscribed: the broker's retained message lands a moment later
+                QTimer.singleShot(1000, self._retest)
+                return
             if payload is None:
                 prev.setText("⚠ " + QApplication.translate("tilauscope_storage", "no data received on this topic"))
                 prev.setStyleSheet(f"color:{THEME['WARNING']}; {mono}")
