@@ -126,5 +126,5 @@ win_inet_pton==1.1.0; platform_system=='Windows'
 google-api-python-client>=2.198.0
 google-auth>=2.58.0
 google-auth-httplib2>=0.4.2
-google-auth-oauthlib>=1.4.0
+google-auth-oauthlib>=1.4.1
 
