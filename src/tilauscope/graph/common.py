@@ -105,10 +105,8 @@ def within_share(delta: float, target: float, share: float, mode: str = 'C') -> 
         return False
 
 
-#: The preheat target counts as reached inside this band, below or above it —
-#: ready to charge, not merely close. A share of the target is far too wide for
-#: that decision. Every screen that says the drum has arrived reads it here.
-PREHEAT_BAND_C: Final[float] = 2.0
+#: The preheat target counts as reached inside this band (shared with the tablet).
+from tilaucore.preheat import PREHEAT_BAND_C  # noqa: E402
 
 
 def preheat_arrived(delta: float, mode: str = 'C') -> bool:

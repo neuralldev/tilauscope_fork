@@ -38,19 +38,12 @@ from typing import Any, Final
 
 from artisanlib.util import convertTemp
 from tilauscope.graph.common import delta_scale, preheat_arrived
+from tilaucore.preheat import PREHEAT_ETA_CAP_S, PREHEAT_NEAR_C, preheat_eta
 from tilauscope.tilauscope_types import THEME
 
-#: Past this a projection has stopped meaning anything — the rate is near zero
-#: and the arithmetic runs away. It is deliberately generous: a drum taken from
-#: cold to 200° is a twenty-minute climb, and refusing to count it down leaves
-#: the operator watching a screen that says 'still settling' for half a preheat.
-#: The figure is honest about being drawn from the rate of the moment; early on
-#: that rate is still building, so the estimate starts long and comes in.
-_ETA_CAP_S: Final[float] = 45 * 60.0
-
-#: Below this the approach has started; above it the drum is still far out.
-#: A gap in °C, scaled to what the operator reads.
-_NEAR_DEGREES_C: Final[float] = 15.0
+# Shared with the tablet: the cap on a time to target, and the near band.
+_ETA_CAP_S: Final[float] = PREHEAT_ETA_CAP_S
+_NEAR_DEGREES_C: Final[float] = PREHEAT_NEAR_C
 
 
 @dataclass(frozen=True)
@@ -159,13 +152,5 @@ def _projected(pid: Any, qmc: Any, actual: float) -> float | None:
 
 
 def _eta(delta: float, rate: float | None) -> float | None:
-    """Seconds to the target, or None when the climb does not support one.
-
-    A tapering burner lets the rate sag well before the close band is reached;
-    that is the anticipation working, not a stall, so it gets no number rather
-    than a frozen one.
-    """
-    if rate is None or rate <= 0 or delta <= 0:
-        return None
-    seconds = delta / rate * 60.0
-    return seconds if seconds <= _ETA_CAP_S else None
+    """Seconds to the target, or None when the climb does not support one (tilaucore.preheat)."""
+    return preheat_eta(delta, rate)

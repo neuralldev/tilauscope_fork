@@ -7,7 +7,8 @@ src/.pydevproject
 src/artisan-mac-*.dmg
 src/artisan-win-*-setup.exe
 src/.ruff_cache
-
+src/graphify-out/*
+graphify-out/
 # Virtual environments
 venv/
 .venv*/

@@ -24,53 +24,24 @@ from PyQt6.QtWidgets import (QApplication, QButtonGroup, QDialog, QFrame, QGridL
                              QPlainTextEdit, QPushButton, QVBoxLayout)
 
 from tilauscope import tasting_log
+from tilaucore.tasting_log import DEFECT_WORDS, VERDICT_WORDS
 from tilauscope.tilauscope_types import THEME, RoastTasting, show_styled_message
 from tilauscope.theme_qss import apply_tilau_theme
 
 
 def defect_labels() -> dict[str, str]:
     """Defect key → what the operator tastes, in the order of tasting_log.DEFECT_CHANGES."""
-    return {
-        'burnt': QApplication.translate("tilauscope_beancave", "Burnt"),
-        'bitter': QApplication.translate("tilauscope_beancave", "Bitter, smoky"),
-        'flat': QApplication.translate("tilauscope_beancave", "Flat, papery"),
-        'bready': QApplication.translate("tilauscope_beancave", "Bready, dull"),
-        'grassy': QApplication.translate("tilauscope_beancave", "Grassy, raw"),
-        'sour': QApplication.translate("tilauscope_beancave", "Sour, thin"),
-    }
+    return {key: QApplication.translate(*word) for key, word in DEFECT_WORDS.items()}
 
 
 def verdict_labels() -> dict[str, str]:
     """Verdict key → its thumb and word, as the operator picked it."""
-    return {
-        'yes': "👍  " + QApplication.translate("HelpDlg", "Yes"),
-        'almost': "🤏  " + QApplication.translate("tilauscope_beancave", "Almost"),
-        'no': "👎  " + QApplication.translate("tilauscope_beancave", "No"),
-    }
-
-
-def _degrees(delta_c: float, mode: str) -> str:
-    return f"{abs(delta_c) * 1.8:.0f} °F" if mode == 'F' else f"{abs(delta_c):.0f} °C"
+    return {key: f"{thumb}  {QApplication.translate(*word)}" for key, (thumb, word) in VERDICT_WORDS.items()}
 
 
 def change_text(defect: str, mode: str = 'C') -> tuple[str, str]:
     """(the change for next time, why) for a defect."""
-    delta = tasting_log.DEFECT_CHANGES[defect][1]
-    texts = {
-        'burnt': (QApplication.translate("tilauscope_beancave", "Charge {0} cooler").format(_degrees(delta, mode)),
-                  QApplication.translate("tilauscope_beancave", "Burnt usually means the beans met too much heat at the start.")),
-        'bitter': (QApplication.translate("tilauscope_beancave", "Burner one notch lower before first crack"),
-                   QApplication.translate("tilauscope_beancave", "Bitter, smoky usually means too much heat at the end.")),
-        'flat': (QApplication.translate("tilauscope_beancave", "Burner one notch higher before first crack"),
-                 QApplication.translate("tilauscope_beancave", "Flat, papery usually means too little heat reaching first crack.")),
-        'bready': (QApplication.translate("tilauscope_beancave", "Start with the burner one notch higher"),
-                   QApplication.translate("tilauscope_beancave", "Bready, dull usually means the roast dragged for lack of heat.")),
-        'grassy': (QApplication.translate("tilauscope_beancave", "Let it develop 20 s longer after first crack"),
-                   QApplication.translate("tilauscope_beancave", "Grassy, raw usually means the roast ended too soon after first crack.")),
-        'sour': (QApplication.translate("tilauscope_beancave", "Drop {0} later").format(_degrees(delta, mode)),
-                 QApplication.translate("tilauscope_beancave", "Sour, thin usually means the beans needed a little more development.")),
-    }
-    return texts[defect]
+    return tasting_log.change_text(defect, mode, lambda text: QApplication.translate(*text))
 
 
 class TastingDialog(QDialog):
@@ -250,11 +221,9 @@ class TastingDialog(QDialog):
         if change is not None:
             what, why = change_text(change[0], self._mode)
         elif tasting.verdict == 'yes':
-            what, why = (QApplication.translate("tilauscope_beancave", "Nothing to change"),
-                         QApplication.translate("tilauscope_beancave", "Roast it the same way next time."))
+            what, why = (QApplication.translate(*text) for text in tasting_log.NEXT_SAME)
         elif tasting.verdict:
-            what, why = (QApplication.translate("tilauscope_beancave", "Tick what was off"),
-                         QApplication.translate("tilauscope_beancave", "It tells the next roast what to change."))
+            what, why = (QApplication.translate(*text) for text in tasting_log.NEXT_TICK)
         else:
             self._next.hide()
             return

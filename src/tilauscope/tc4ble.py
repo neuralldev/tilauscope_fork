@@ -58,10 +58,12 @@ _CHAN_INIT = "CHAN;1200"   # logical->physical channel map (Artisan default)
 _READ_CMD  = "READ"        # one CSV line per poll
 _POLL_S    = 1.0           # poll cadence; keep <= qmc sample interval / 2
 
-# CSV field order after CHAN;1200: ambient, ET, BT, <actuator/config echoes...> firmware labels inverted vs physical probes: field[1]=drum(ET), field[2]=bean(BT)
+# CSV field order after CHAN;1200: ambient, bean (BT), drum (ET), burner echo, airflow echo.
+# The two indices below read the probes the other way round; Artisan's ET/BT swap
+# setting puts them back on display, so they stay as they are.
 _IDX_AMBIENT     = 0
-_IDX_BT          = 2  # physical probe swap: firmware field[2] = bean (BT), field[1] = drum (ET)
-_IDX_ET          = 1
+_IDX_BT          = 2  # the drum probe (ET), swapped back by the Artisan setting
+_IDX_ET          = 1  # the bean probe (BT), swapped back by the Artisan setting
 _IDX_BURNER_ECHO  = 3      # CSV field that echoes the OT1 (burner) duty  [confirmed]
 _IDX_AIRFLOW_ECHO = 4      # CSV field that echoes the OT2 (airflow) duty [confirmed]
 

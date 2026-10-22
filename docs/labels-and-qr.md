@@ -60,8 +60,9 @@ no share is recorded.
 
 Roast labels can also print directly to a paired Niimbot thermal printer, in two sizes: a
 full spec sheet on an 80 mm roll, or a condensed card on a 30 mm roll (small enough that the
-QR is dropped — there is no room to make it useful at that size). Sack labels and labels for a
-bought coffee always use the 30 mm roll.
+QR is dropped — there is no room to make it useful at that size). On the 30 mm card, a detail
+the coffee has no value for (process, altitude, density, SCA score) is left out rather than
+printed empty. Sack labels and labels for a bought coffee always use the 30 mm roll.
 
 **🖨 Print label** is offered once the printer is ready and a single roast is selected. It
 opens a preview with a copies count, then prints in the background. The label

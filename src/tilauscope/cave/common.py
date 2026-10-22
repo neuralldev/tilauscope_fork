@@ -45,6 +45,7 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from artisanlib.util import fill_gaps, convertTemp, smooth_list, float2float
+from tilaucore.beans import from_json
 from tilauscope.tilauscope_types import (BeanCaveContainer, THEME, _IS_WINDOWS,
                                          RoastingPhase, marked, normalize_timeindex,
                                          estimate_ror_dt, COLOR_AIR, COLOR_GRAIN, dimmed)
@@ -221,7 +222,7 @@ def load_cave_beans() -> list:
             _logd.error(f'Beancave file not readable: {cave_file}')
             return []
         content = cave_file.read_text(encoding='utf-8-sig' if _IS_WINDOWS else 'utf-8')
-        cave = BeanCaveContainer.from_json(content)
+        cave = from_json(BeanCaveContainer, content)
         return cave.green_beans or []
     except json.JSONDecodeError as e:
         _logd.error(f'load_cave_beans: JSON error in beancave.json: {e}')

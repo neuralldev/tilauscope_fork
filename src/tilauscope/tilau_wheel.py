@@ -21,94 +21,8 @@ from PyQt6.QtGui import QColor, QPainter, QBrush, QPen, QFont, QFontMetrics, QPa
 # Import THEME from your project file
 from tilauscope.tilauscope_types import THEME
 
-FLAVOR_WHEEL_DATA = {
-    "Enzymatic": {
-        "color": "#8B3A2B",
-        "groups": {
-            "Fruits": {
-                "color": "#D35400",
-                "subgroups": {
-                    "Citric": {"color": "#E67E22", "notes": ["Orange", "Blood orange", "Orange peel", "Tangerine", "Grapefruit", "Yuzu", "Bergamot", "Lemon", "Green Lemon", "Lemon peel", "Lime", "Physalis"]},
-                    "Stone fruits": {"color": "#C0392B", "notes": ["Peach", "Yellow peach", "Nispero", "Apricot", "Black plum", "Yellow plum", "Red plum", "Red cherry", "Black cherry", "Nectarine"]},
-                    "Berries": {"color": "#922B21", "notes": ["Strawberry", "Blueberry", "Raspberry", "Redcurrant", "Blackcurrant", "Blackberry", "Red mulberry", "Red grape", "White grape"]},
-                    "Yellow fruits": {"color": "#F4D03F", "notes": ["Apple", "Red Apple", "Green Apple", "Golden Apple", "Pomegranate", "Pear", "Coffee cherry", "Blueberry raisins", "Grape raisin"]},
-                    "Other fruits": {"color": "#D2B4DE", "notes": ["Raisins", "Prunes", "Dried Peaches", "Dried apple", "Dehydrated pear", "Dehydrated strawberry"]},
-                    "Tropical fruits": {"color": "#F39C12", "notes": ["Pineapple", "Banana", "Semi-Ripe Banana", "Passion Fruit", "Mango", "Papaya", "Kiwi", "Melon", "Watermelon", "Coconut", "Guava", "Tamarind", "Starfruit", "Lychee", "Persimmon"]}
-                }
-            },
-            "Fragrances": {
-                "color": "#F9E79F",
-                "subgroups": {
-                    "Floral": {"color": "#FEF9E7", "notes": ["Hibiscus", "Camellia", "Azalea", "Lilly", "Dark rose", "Rose", "Jasmine", "White flower"]},
-                    "Herbal": {"color": "#D4EFDF", "notes": ["Chamomile", "Violet", "Rhubarb", "Black Tea", "Green Tea"]}
-                }
-            },
-            "Alcohols": {
-                "color": "#FADBD8",
-                "subgroups": {
-                    "Winey": {"color": "#FDEDEC", "notes": ["White wine", "Rosé wine", "Red wine", "Champagne", "Porto"]},
-                    "Liqueurs": {"color": "#F5EEF8", "notes": ["Whisky", "Rum", "Anise liqueur", "Almond liqueur"]}
-                }
-            },
-            "Fermentation": {
-                "color": "#D5DBDB",
-                "subgroups": {
-                    "Acetic": {"color": "#E5E8E8", "notes": ["Yogurt", "Over ripe fruit"]},
-                    "Lactic": {"color": "#F2F3F4", "notes": ["Yogurt"]}
-                }
-            }
-        }
-    },
-    "Caramelization": {
-        "color": "#2B4C8B",
-        "groups": {
-            "Sweets": {
-                "color": "#2E86C1",
-                "subgroups": {
-                    "Sugars": {"color": "#AED6F1", "notes": ["Cane sugar", "Muscovado sugar", "Panela", "Molasses", "Maple Syrup", "Honey", "Dulce de leche"]},
-                    "Caramels": {"color": "#3498DB", "notes": ["Light brown caramel", "Dark brown caramel", "Toffee"]}
-                }
-            },
-            "Chocolates": {
-                "color": "#4A235A",
-                "subgroups": {
-                    "Chocolaty": {"color": "#5B2C6F", "notes": ["Butter", "Vanilla", "White chocolate", "Milk chocolate", "Dark chocolate", "Cocoa"]}
-                }
-            },
-            "Nutty": {
-                "color": "#5499C7",
-                "subgroups": {
-                    "Nutty": {"color": "#85C1E9", "notes": ["Marzipan", "Hazelnut", "Roasted almond", "Almond", "Peanuts", "Walnut", "Macadamia"]}
-                }
-            },
-            "Cereals": {
-                "color": "#A9CCE3",
-                "subgroups": {
-                    "Cereals": {"color": "#D4E6F1", "notes": ["Malt", "Wheat", "Toasted bread", "Oat", "Biscuit"]}
-                }
-            }
-        }
-    },
-    "Dry distillation": {
-        "color": "#1E4D2B",
-        "groups": {
-            "Spices": {
-                "color": "#7D6608",
-                "subgroups": {
-                    "Spicy": {"color": "#9A7D0A", "notes": ["Pepper", "Ginger", "Nutmeg", "Cinnamon", "Anise", "Clove"]},
-                    "Woody": {"color": "#1D8348", "notes": ["Cedar", "Tobacco", "Pipe tobacco"]}
-                }
-            },
-            "Vegetables": {
-                "color": "#145A32",
-                "subgroups": {
-                    "Vegetables": {"color": "#1E8449", "notes": ["Cucumber", "Tomato", "Pumpkin", "Carrot", "Olive oil", "Peas", "Mushroom"]},
-                    "Aromatic herbs": {"color": "#A9DFBF", "notes": ["Basil", "Mint", "Lemon grass", "Fennel", "Thyme", "Rosemary", "Bay leaf"]}
-                }
-            }
-        }
-    }
-}
+# The wheel's data lives in the library shared with the tablet.
+from tilaucore.flavour_wheel import FLAVOR_WHEEL_DATA, notes_text  # noqa: E402  pylint: disable=wrong-import-position
 
 from tilauscope.theme_qss import apply_tilau_theme
 
@@ -401,4 +315,4 @@ class FlavorSelectorDialog(QDialog):
 
     def get_notes(self) -> str:
         """Contrat d'interface inchangé : retourne les notes triées séparées par virgule."""
-        return ", ".join(sorted(self.wheel.selected_notes))
+        return notes_text(self.wheel.selected_notes)

@@ -26,20 +26,12 @@ from __future__ import annotations
 
 from PyQt6.QtWidgets import QApplication
 
-from tilauscope.bean_energy import (
-    AW_BOUND_BELOW,
-    AW_FREE_ABOVE,
-    HUMIDITY_HIGH_PCT,
-    HUMIDITY_LOW_PCT,
-)
-from tilauscope.storage_advisor import DEFAULT_THRESHOLDS
+from tilaucore import bean_qualifiers as _core
 from tilauscope.tilauscope_types import THEME
 
-# Density has no single reference constant in the energy model (it modulates
-# continuously around 700 g/l), so the two ends are the ones the coach's advice
-# already names to the operator.
-DENSITY_LIGHT_BELOW: float = 650.0
-DENSITY_DENSE_ABOVE: float = 780.0
+# The rule and the words live in tilaucore (shared with the tablet); here they are
+# translated and coloured for the desktop.
+_COLOUR: dict[str | None, str | None] = {None: None, _core.WARNING: THEME['WARNING'], _core.CRITICAL: THEME['CRITICAL']}
 
 
 def physical_qualifier(kind: str, value: float) -> tuple[str, str | None]:
@@ -48,40 +40,15 @@ def physical_qualifier(kind: str, value: float) -> tuple[str, str | None]:
     kind is 'density' | 'humidity' | 'aw'. Colour is None inside the usual
     range, so the caller leaves its normal text colour alone.
     """
-    if not value or value <= 0.0:
+    word, level = _core.physical_qualifier(kind, value)
+    if word is None:
         return "", None
-    if kind == 'density':
-        if value < DENSITY_LIGHT_BELOW:
-            return QApplication.translate("tilauscope_beancave", "light"), THEME['WARNING']
-        if value > DENSITY_DENSE_ABOVE:
-            return QApplication.translate("tilauscope_common", "dense"), THEME['WARNING']
-        return QApplication.translate("tilauscope_common", "standard"), None
-    if kind == 'humidity':
-        if value < HUMIDITY_LOW_PCT:
-            return QApplication.translate("tilauscope_beancave", "dry — old crop"), THEME['WARNING']
-        if value > HUMIDITY_HIGH_PCT:
-            return QApplication.translate("tilauscope_beancave", "moist"), THEME['WARNING']
-        return QApplication.translate("tilauscope_common", "normal"), None
-    if kind == 'aw':
-        if value < AW_BOUND_BELOW:
-            return QApplication.translate("tilauscope_beancave", "bound water"), THEME['WARNING']
-        if value >= DEFAULT_THRESHOLDS.risk:
-            return QApplication.translate("tilauscope_beancave", "free water — storage risk"), THEME['CRITICAL']
-        if value > AW_FREE_ABOVE:
-            return QApplication.translate("tilauscope_beancave", "free water"), THEME['WARNING']
-        return QApplication.translate("tilauscope_beancave", "typical"), None
-    return "", None
+    return QApplication.translate(*word), _COLOUR[level]
 
 
 def screen_size_options() -> list[tuple[str, str]]:
     """(key, label) of every size class, Unknown first — keys of SCREEN_SIZE_RANGES."""
-    return [
-        ('', QApplication.translate("tilauscope_beancave", "Unknown")),
-        ('large', QApplication.translate("tilauscope_beancave", "Large — AA, Supremo, 17/18+")),
-        ('medium', QApplication.translate("tilauscope_beancave", "Medium — AB, Excelso, 15/16")),
-        ('small', QApplication.translate("tilauscope_beancave", "Small — 14/15 and below")),
-        ('peaberry', QApplication.translate("tilauscope_beancave", "Peaberry — PB")),
-    ]
+    return [(key, QApplication.translate(*label)) for key, label in _core.SCREEN_SIZE_OPTIONS]
 
 
 def screen_size_label(key: str) -> str:

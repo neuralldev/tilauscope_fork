@@ -144,7 +144,7 @@ known — using the standard pace* and the charge is exactly what it would have 
 line is there so the adjustment is visible rather than silently applied.
 
 When you tasted the last roast of this coffee and something was off, a second line recalls it
-with the change the plan made — for example *💡 Last time: Flat, papery — Keep the burner one
+with the change the plan made — for example *💡 Last taste: Flat, papery — Keep the burner one
 notch higher after first crack (70 → 75 %)*. See [Tasting](after-the-roast.md#tasting).
 
 ## Judging the batch before it starts
@@ -234,7 +234,17 @@ During preheating, the joined **PID ON / PID OFF** control in the graph toolbar 
 temporarily enable or disable TilauPID; it disappears once CHARGE is marked.
 Choosing **PID OFF** also removes TilauPID from the preheating status immediately.
 
-Under *Roast automation*, four milestones can be marked automatically:
+Under *Roast automation*, four milestones can be marked automatically. The boxes start from the
+defaults set in [Configuration → DETECTION](configuration.md#-detection--how-milestones-get-marked-automatically)
+and hold **for this roast only**: a box that differs from its default carries a yellow **changed**
+tag, and every box goes back to its default when the roast is stopped after Charge, or when
+monitoring is switched off. Quitting the application never keeps a one-roast choice as a default.
+
+<!-- CAPTURE 5.19 [scene:setup_auto_changed] — the ⚙ MORE OPTIONS tab, Roast automation card: the line "For this roast only — the
+defaults are in Configuration › Detection; back to them when the roast ends.", Auto Drop ticked
+against an unticked default so its yellow "changed" tag shows. -->
+
+![The Roast automation card: for this roast only, Auto Drop ticked against its default and tagged changed.](assets/preparing-a-roast-5.19.png)
 
 | Option | What it does |
 |---|---|

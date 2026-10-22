@@ -635,7 +635,7 @@ class OnboardingWizard(QDialog):
         if setup is None:
             return
         if setup.link == "bluetooth":
-            self._fill_bluetooth(setup, model)
+            self._fill_bluetooth(setup, self._roaster)
         elif setup.link == "network":
             self._fill_network(setup)
         elif setup.link == "probes":

@@ -52,8 +52,10 @@ from tilauscope.tilauscope_types import (BeanCaveContainer, show_styled_message,
                                          open_in_os_viewer, call_later)
 from tilauscope.lebrewroastsee import LebrewWaterActivityChecker
 from tilauscope.roasters import RoasterManager
+from tilaucore.beans import to_dict
+from tilaucore.data_files import BEANCAVE_LISTS_JSON, ROASTERS_JSON
 from tilauscope.alogmanager import (AlogCacheCollection, AlogIndex, _AlogCacheIndexingWorker, directory_changed)
-from tilauscope.cave.common import (PKG_DIR,
+from tilauscope.cave.common import (
     _log, _logd, C0_COLOR_KEY, C_BT_COLOR_KEY, C_DTR_COLOR_KEY, C_WL_COLOR_KEY,
     DEFAULT_C0, DEFAULT_C_BT, DEFAULT_C_DTR, DEFAULT_C_WL,
     apply_mica_acrylic_effect)
@@ -446,7 +448,7 @@ class LifecycleMixin:
         try:
             uuidmap = getattr(self, 'uuidmap', None)
             bean = uuidmap.get(uuid_str) if uuidmap else None
-            return bean.to_dict() if bean is not None else None
+            return to_dict(bean) if bean is not None else None
         except Exception:  # noqa: BLE001
             return None
 
@@ -887,7 +889,7 @@ class LifecycleMixin:
         super().mouseMoveEvent(event)
 
     def load_parameters(self) -> None :
-        parameters_file = PKG_DIR / "beancave_beans.json"
+        parameters_file = BEANCAVE_LISTS_JSON
         if not parameters_file.exists():
             _log.error(f"parameter file {parameters_file} not found")
             return
@@ -908,7 +910,7 @@ class LifecycleMixin:
 
          # --- roasters: kick off background load ---
         self.roaster_manager = RoasterManager()          # empty stub, safe to use immediately
-        roaster_path = PKG_DIR / "roasters.json"
+        roaster_path = ROASTERS_JSON
         self._start_roaster_load(roaster_path)
 
     def _launch_worker(self, worker, on_ok, on_err=None, *,

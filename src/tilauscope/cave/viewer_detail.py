@@ -21,7 +21,6 @@ says is checked without building the dialog; the widgets only show it.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -30,76 +29,15 @@ from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy,
                              QVBoxLayout)
 
-from tilauscope.alogmanager import _to_grams
+# The summary of a roast (facts, tiles, level of a colour) lives in the library
+# shared with the tablet.
+from tilaucore import roast_summary as _summary
+from tilaucore.roast_summary import DASH, RoastFacts, colour_category, mss, roast_facts  # noqa: F401
 from tilauscope.theme_qss import tint
-from tilauscope.tilauscope_types import AGTRON_SCALES, THEME, format_money, get_agtron_color
+from tilauscope.tilauscope_types import THEME, format_money
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
-
-DASH = '—'
-
-
-def mss(seconds: float) -> str:
-    """m:ss, the way roast times are read."""
-    total = int(round(seconds))
-    return f'{total // 60}:{total % 60:02d}'
-
-
-def _number(value: object) -> float:
-    try:
-        number = float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return 0.0
-    return 0.0 if math.isnan(number) or math.isinf(number) else number
-
-
-@dataclass(frozen=True, slots=True)
-class RoastFacts:
-    """What the tiles show about one roast, read from its profile."""
-    weight_in_g: float
-    weight_out_g: float
-    total_s: float          # CHARGE to DROP; 0 when either is unmarked
-    development_s: float    # first crack to DROP; 0 when first crack is unmarked
-    drop_bt: float
-    first_crack_bt: float
-    unit: str               # the profile's own, 'C' or 'F'
-    ground: float
-    whole: float
-
-    @property
-    def has_result(self) -> bool:
-        """A roasted weight or a colour — what the result form records."""
-        return self.weight_out_g > 0 or self.ground > 0 or self.whole > 0
-
-
-def roast_facts(profile: Mapping) -> RoastFacts:
-    computed = profile.get('computed')
-    if not isinstance(computed, dict):
-        computed = {}
-    drop_s = _number(computed.get('DROP_time')) or _number(computed.get('totaltime'))
-    first_crack_s = _number(computed.get('FCs_time'))
-    weight = profile.get('weight')
-    return RoastFacts(
-        weight_in_g=_to_grams(weight, 0),
-        weight_out_g=_to_grams(weight, 1),
-        total_s=drop_s,
-        development_s=drop_s - first_crack_s if 0 < first_crack_s < drop_s else 0.0,
-        drop_bt=_number(computed.get('DROP_BT')),
-        first_crack_bt=_number(computed.get('FCs_BT')),
-        unit='F' if str(profile.get('mode') or 'C').upper() == 'F' else 'C',
-        ground=_number(profile.get('ground_color')),
-        whole=_number(profile.get('whole_color')),
-    )
-
-
-def ground_category(value: float) -> str:
-    """The Agtron category of a ground reading — ground only: the names belong to that scale."""
-    for scale in AGTRON_SCALES:
-        if scale.agtron_range.min_value <= value <= scale.agtron_range.max_value:
-            return scale.name
-    return ''
-
 
 @dataclass(frozen=True, slots=True)
 class TileText:
@@ -126,62 +64,20 @@ def _spread(text: str) -> str:
 def roast_tiles(facts: RoastFacts | None, price_per_kg: float = 0.0) -> list[TileText]:
     """Roasted weight, roast time, drop temperature and colour — each with what it means.
 
-    Without facts (the roast is still loading, or could not be read) every tile
-    keeps its caption and shows a dash, so nothing moves when the figures land.
+    The tiles are the library's, shared with the tablet; here they are translated,
+    and the roast cost is shown in the operator's currency.
     """
-    captions = (QApplication.translate('tilauscope_common', 'Roasted weight'),
-                QApplication.translate('tilauscope_beancave', 'Roast time'),
-                QApplication.translate('tilauscope_beancave', 'Drop temperature'),
-                QApplication.translate('tilauscope_common', 'Colour'))
-    if facts is None:
-        return [TileText(caption) for caption in captions]
-
-    if facts.weight_out_g > 0:
-        sub = tip = ''
-        if facts.weight_in_g > 0:
-            loss = max(0.0, (facts.weight_in_g - facts.weight_out_g) / facts.weight_in_g * 100.0)
-            sub = QApplication.translate('tilauscope_beancave', '−{0} % from {1} g').format(
-                f'{loss:.0f}', f'{facts.weight_in_g:.0f}')
-            if price_per_kg > 0:
-                cost = facts.weight_in_g / 1000.0 * price_per_kg
-                sub += f' · {format_money(cost)}'
-                tip = QApplication.translate('tilauscope_beancave', 'Roast cost {0} · {1} per roasted kg').format(
-                    format_money(cost),
-                    format_money(cost / (facts.weight_out_g / 1000.0)))
-        weight = TileText(captions[0], f'{facts.weight_out_g:.0f} g', sub, tip=tip)
-    else:
-        weight = _not_recorded(captions[0])
-
-    if facts.total_s > 0:
-        sub = (QApplication.translate('tilauscope_beancave', 'Development {0}').format(mss(facts.development_s))
-               if facts.development_s > 0 else '')
-        duration = TileText(captions[1], mss(facts.total_s), sub)
-    else:
-        duration = _not_recorded(captions[1])
-
-    if facts.drop_bt > 0:
-        sub = (QApplication.translate('tilauscope_beancave', 'First crack at {0}').format(
-                   _degrees(facts.first_crack_bt, facts.unit)) if facts.first_crack_bt > 0 else '')
-        drop = TileText(captions[2], _degrees(facts.drop_bt, facts.unit), sub)
-    else:
-        drop = _not_recorded(captions[2])
-
-    if facts.ground > 0:
-        category = ground_category(facts.ground)
-        sub = (QApplication.translate('tilauscope_beancave', 'Ground · {0}').format(category) if category
-               else QApplication.translate('Label', 'Ground'))
-        colour = TileText(captions[3], f'{facts.ground:.0f}', sub, get_agtron_color(facts.ground))
-    elif facts.whole > 0:
-        # The dot shows the reading on the same roast scale as everywhere else,
-        # hollow because a whole bean reads a shade darker than its ground
-        # equivalent. The category name stays out: naming a roast level is a
-        # claim, and the names belong to ground readings.
-        colour = TileText(captions[3], f'{facts.whole:.0f}',
-                          QApplication.translate('tilauscope_common', 'Whole bean'),
-                          get_agtron_color(facts.whole), swatch_filled=False)
-    else:
-        colour = _not_recorded(captions[3])
-    return [weight, duration, drop, colour]
+    tiles = []
+    for tile in _summary.roast_tiles(facts, price_per_kg):
+        sub = ' · '.join(QApplication.translate(*text).format(*args) for text, args in tile.sub)
+        tip = ''
+        if tile.cost is not None:
+            sub += f' · {format_money(tile.cost)}'
+            tip = QApplication.translate('tilauscope_beancave', 'Roast cost {0} · {1} per roasted kg').format(
+                format_money(tile.cost), format_money(tile.cost_per_roasted_kg))
+        tiles.append(TileText(QApplication.translate(*tile.caption), tile.value, sub, tile.swatch,
+                              tile.swatch_filled, tip))
+    return tiles
 
 
 def energy_tile(profile: Mapping | None) -> TileText:

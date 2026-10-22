@@ -251,7 +251,10 @@ class ViewerMixin:
         # Energy of the roast shown; a click opens its energy sheet
         self.roast_energy_tile = KpiTile()
         self.roast_energy_tile.clicked.connect(self._open_roast_energy)
-        tiles_row = QHBoxLayout()
+        # A widget, so the curve snapshot can grab the cards with the curve
+        self._roast_tiles_strip = QWidget()
+        tiles_row = QHBoxLayout(self._roast_tiles_strip)
+        tiles_row.setContentsMargins(0, 0, 0, 0)
         tiles_row.setSpacing(8)
         for tile in (*self.roast_tiles, self.roast_energy_tile):
             tiles_row.addWidget(tile, 1)
@@ -264,7 +267,7 @@ class ViewerMixin:
         head_layout.addLayout(meta_row)
         head_layout.addWidget(self.roast_compare_note)
         head_layout.addWidget(self.roast_result_banner)
-        head_layout.addLayout(tiles_row)
+        head_layout.addWidget(self._roast_tiles_strip)
         head_layout.addWidget(self.roast_tasting_banner)
         self._show_detail_none()
 
@@ -2247,6 +2250,8 @@ class ViewerMixin:
             deltabt = self.evaldeltas(data, "temp2")
         except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
             _logd.debug(f"roast card: RoR unavailable: {e}")
+        energy = energy_tile(data).value
+        energy = '' if energy == DASH else energy
 
         title = str(data.get('title') or 'roast')
         safe_name = _safe_filename(title, "roast")
@@ -2265,7 +2270,8 @@ class ViewerMixin:
             if not file_path.lower().endswith(".png"):
                 file_path += ".png"
             ok = RoastSocialCard().save_png(
-                data, file_path, bean=bean, deltabt=deltabt, ror_unit=self.aw.qmc.mode)
+                data, file_path, bean=bean, deltabt=deltabt, ror_unit=self.aw.qmc.mode, energy=energy,
+                lane_colors=list(self.aw.qmc.EvalueColor))
         except Exception as e:
             _logd.error(f"Roast card export failed: {e}", exc_info=True)
             ok = False

@@ -127,6 +127,9 @@ except Exception: # pylint: disable=broad-except
 
 ## TILAU ##
 from tilauscope.mqttbridge import TilauscopeMQTTClient, MQTTSensorConfig, TilauMqttPorts
+from tilaucore.alarms import AlarmRun, PROFILE_KEYS, read_profile_alarms, Readings as AlarmReadings ## TILAU ##
+from tilaucore.playback import Foreground, Playback ## TILAU ## Roast Replay shared with the Android prototype
+from tilaucore.milestones import CHARGE_MIN_BT, DROP_MIN_BT, DROP_MIN_S ## TILAU ## auto CHARGE/DROP gates shared with the Android prototype
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -604,6 +607,7 @@ class tgraphcanvas(QObject):
         self.temp_decay_weights:list[int]|None = None
 
         # used by BTbreak
+        ## TILAU ## unused: BTbreak and checkTop read tilaucore.milestones.BTBREAK; kept for upstream merges
         self.btbreak_params:BTBreakParams = {
             'delay': [[40000,1000,500],               #autoChargeMode="Standard"
                       [40000,1000,500]],              #autoChargeMode="Sensitive"
@@ -5105,7 +5109,7 @@ class tgraphcanvas(QObject):
                         # autodetect CHARGE event
                         # only if BT > 77C/170F
                         if self.autoChargeIdx == 0 and self.autoChargeFlag and self.autoCHARGEenabled and self.timeindex[0] < 0 and length_of_qmc_timex >= 5 and \
-                            ((self.mode == 'C' and sample_temp2[-1] > 77) or (self.mode == 'F' and sample_temp2[-1] > 170)):
+                            sample_temp2[-1] > CHARGE_MIN_BT['F' if self.mode == 'F' else 'C']: ## TILAU ## the shared thresholds
                             b = self.aw.BTbreak(length_of_qmc_timex - 1,event='CHARGE') # call BTbreak with last index
                             if b > 0:
                                 # we found a BT break at the current index minus b
@@ -5135,8 +5139,8 @@ class tgraphcanvas(QObject):
                         # autodetect DROP event
                         # only if 7min into roast and BT>160C/320F
                         if self.autoDropIdx == 0 and self.autoDropFlag and self.autoDROPenabled and self.timeindex[0] > -1 and self.timeindex[6] == 0 and \
-                            length_of_qmc_timex >= 5 and ((self.mode == 'C' and sample_temp2[-1] > 160) or (self.mode == 'F' and sample_temp2[-1] > 320)) and\
-                            ((sample_timex[-1] - sample_timex[self.timeindex[0]]) > 7*60):
+                            length_of_qmc_timex >= 5 and sample_temp2[-1] > DROP_MIN_BT['F' if self.mode == 'F' else 'C'] and\
+                            ((sample_timex[-1] - sample_timex[self.timeindex[0]]) > DROP_MIN_S): ## TILAU ## the shared thresholds
                             b = self.aw.BTbreak(length_of_qmc_timex - 1,event='DROP') # call BTbreak with last index
                             if b > 0:
                                 # we found a BT break at the current index minus b
@@ -5222,195 +5226,22 @@ class tgraphcanvas(QObject):
                     #check for each alarm that was not yet triggered
                     try:
                         self.alarmSemaphore.acquire(1)
-                        for i, aflag in enumerate(self.alarmflag):
-                            ## TILAU ##
-                            if not aflag:
-                                continue
-                            alarm_ready:bool = False # set to true if alarm i is ready to be fired by either criteria, time or temp
-                            #if alarm on, and not triggered, and time is after set time:
-                            # menu: 0:ON, 1:START, 2:CHARGE, 3:TP, 4:DRY, 5:FCs, 6:FCe, 7:SCs, 8:SCe, 9:DROP, 10:COOL
-                            # qmc.alarmtime = -1 (None == START)
-                            # qmc.alarmtime = 0 (CHARGE)
-                            # qmc.alarmtime = 1 (DRY)
-                            # qmc.alarmtime = 2 (FCs)
-                            # qmc.alarmtime = 3 (FCe)
-                            # qmc.alarmtime = 4 (SCs)
-                            # qmc.alarmtime = 5 (SCe)
-                            # qmc.alarmtime = 6 (DROP)
-                            # qmc.alarmtime = 7 (COOL)
-                            # qmc.alarmtime = 8 (TP)
-                            # qmc.alarmtime = 9 (ON)
-                            # qmc.alamrtime = 10 (If Alarm)
-                            # Cases: (only between CHARGE and DRY we check for TP if alarmtime[i]=8)
-                            # 1) the alarm From is START
-                            # 2) the alarm was not triggered yet
-                            # 3) the alarm From is ON
-                            # 4) the alarm From is CHARGE
-                            # 5) the alarm From is any other event but TP
-                            # 6) the alarm From is TP, it is CHARGED and the TP pattern is recognized
-                            if self.alarmstate[i] == -1 \
-                              and (self.alarmguard[i] < 0 or (0 <= self.alarmguard[i] < len(self.alarmstate) and self.alarmstate[self.alarmguard[i]] != -1)) \
-                              and (self.alarmnegguard[i] < 0 or (0 <= self.alarmnegguard[i] < len(self.alarmstate) and self.alarmstate[self.alarmnegguard[i]] == -1)) \
-                              and ((self.alarmtime[i] == 9) or (self.alarmtime[i] < 0 and local_flagstart) \
-                                or (local_flagstart and self.alarmtime[i] == 0 and self.timeindex[0] > -1) \
-                                or (local_flagstart and self.alarmtime[i] > 0 and self.alarmtime[i] < 8 and self.timeindex[self.alarmtime[i]] > 0) \
-                                or (self.alarmtime[i] == 10 and self.alarmguard[i] != -1)  \
-                                or (local_flagstart and self.alarmtime[i] == 8 and self.timeindex[0] > -1 \
-                                    and self.TPalarmtimeindex)):
-                                #########
-                                # check alarmoffset (time after From event):
-                                if self.alarmoffset[i] > 0:
-                                    alarm_time = self.timeclock.elapsed()/1000.
-                                    if self.alarmtime[i] < 0: # time after START
-                                        pass # the alarm_time is the clock time
-                                    elif local_flagstart and self.alarmtime[i] == 0 and self.timeindex[0] > -1: # time after CHARGE
-                                        alarm_time = alarm_time - sample_timex[self.timeindex[0]]
-                                    elif local_flagstart and self.alarmtime[i] == 8 and self.TPalarmtimeindex: # time after TP
-                                        alarm_time = alarm_time - sample_timex[self.TPalarmtimeindex]
-                                    elif local_flagstart and self.alarmtime[i] < 8 and self.timeindex[self.alarmtime[i]] > 0: # time after any other event
-                                        alarm_time = alarm_time - sample_timex[self.timeindex[self.alarmtime[i]]]
-                                    elif local_flagstart and self.alarmtime[i] == 10: # time or temp after the trigger of the alarmguard (if one is set)
-                                        # we know here that the alarmstate of the guard is valid as it has triggered
-                                        alarm_time = alarm_time - sample_timex[self.alarmstate[self.alarmguard[i]]]
-
-                                    if alarm_time >= self.alarmoffset[i]:
-                                        alarm_ready = True
-                                
-                                #########
-                                # check alarmtemp:
-                                alarm_temp:float|None = None
-                                alarm_idx:int|None = None
-                                ## TILAU ## cache the SENSOR source (channel), not the From event.
-                                # alarmtime selects the anchor; alarmsource selects the channel.
-                                asrc = self.alarmsource[i]
-                                if self.alarmtime[i] == 10:  # IF ALARM: relative to the guard trigger
-                                    if_alarm_state = self.alarmstate[self.alarmguard[i]]
-                                    if if_alarm_state != -1:
-                                        alarm_idx = if_alarm_state if if_alarm_state < len(sample_timex) else -1
-                                else:
-                                    alarm_idx = None
-                                if asrc == -2 and sample_delta1[-1] is not None:        # DeltaET
-                                    alarm_temp = sample_delta1[-1]
-                                    if alarm_idx is not None:
-                                        sd1 = sample_delta1[alarm_idx]
-                                        if sd1 is not None and alarm_temp is not None:
-                                            alarm_temp -= sd1
-                                elif asrc == -1 and sample_delta2[-1] is not None:      # DeltaBT
-                                    alarm_temp = sample_delta2[-1]
-                                    if alarm_idx is not None:
-                                        sd2 = sample_delta2[alarm_idx]
-                                        if sd2 is not None and alarm_temp is not None:
-                                            alarm_temp -= sd2
-                                elif asrc == 0:                                         # ET
-                                    alarm_temp = sample_temp1[-1]
-                                    if alarm_idx is not None:
-                                        alarm_temp -= sample_temp1[alarm_idx]
-                                elif asrc == 1:                                         # BT
-                                    alarm_temp = sample_temp2[-1]
-                                    if alarm_idx is not None:
-                                        alarm_temp -= sample_temp2[alarm_idx]
-                                elif asrc > 1 and ((asrc - 2)//2 < len(self.extradevices)):  # extra devices
-                                    if asrc % 2 == 0 and len(sample_extratemp1[(asrc - 2)//2])>0:
-                                        alarm_temp = sample_extratemp1[(asrc - 2)//2][-1]
-                                        if alarm_idx is not None and alarm_idx < len(sample_extratemp1[(asrc - 2)//2]):
-                                            alarm_temp -= sample_extratemp1[(asrc - 2)//2][alarm_idx]
-                                    elif len(sample_extratemp2[(asrc - 2)//2])>0:
-                                        alarm_temp = sample_extratemp2[(asrc - 2)//2][-1]
-                                        if alarm_idx is not None and alarm_idx < len(sample_extratemp2[(asrc - 2)//2]):
-                                            alarm_temp -= sample_extratemp2[(asrc - 2)//2][alarm_idx]
-
-                                # only evaluate a real reading: skip None (no source) and -1 (drop-out)
-                                if alarm_temp is not None and alarm_temp != -1:
-                                    alarm_limit = self.alarmtemperature[i]
-                                    operator = self.alarmcond[i]
-                                    if operator == 0:    # 
-                                        alarm_ready |= alarm_temp < alarm_limit
-                                    elif operator == 1:  # >
-                                        alarm_ready |= alarm_temp > alarm_limit
-                                    elif operator == 2:  # ==
-                                        alarm_ready |= alarm_temp == alarm_limit
-                                    elif operator == 3:  # !=
-                                        alarm_ready |= alarm_temp != alarm_limit
-                                    # relative IF-ALARM: equality vs the guard-time reading also fires
-                                    if alarm_idx is not None and alarm_temp == alarm_limit:
-                                        alarm_ready = True
-                                # # check alarmtemp:
-                                # alarm_temp:float|None = None
-                                # alarm_idx:int|None = None
-                                # aas = self.alarmtime[i] 
-
-                                # if aas == 10: # IF ALARM and only during recording as otherwise no data to refer to is available
-                                #     # and this is a conditional alarm with alarm_time set to IF ALARM
-                                #     if_alarm_state = self.alarmstate[self.alarmguard[i]] # reading when the IF ALARM triggered
-                                #     if if_alarm_state != -1:
-                                #         if if_alarm_state < len(sample_timex):
-                                #             alarm_idx = if_alarm_state
-                                #         else:
-                                #             alarm_idx = -1
-                                #     # we subtract the reading at alarm_idx from the current reading of the channel determined by alarmsource
-                                # else:
-                                #     alarm_idx = None
-                                # if aas == -2 and sample_delta1[-1] is not None:  #check DeltaET (might be None)
-                                #     alarm_temp = sample_delta1[-1]
-                                #     if alarm_idx is not None:
-                                #         sd1 = sample_delta1[alarm_idx]
-                                #         if sd1 is not None and alarm_temp is not None:
-                                #             alarm_temp -= sd1 # subtract the reading at alarm_idx for IF ALARMs
-                                # elif aas == -1 and sample_delta2[-1] is not None: #check DeltaBT (might be None
-                                #     alarm_temp = sample_delta2[-1]
-                                #     if alarm_idx is not None:
-                                #         sd2 = sample_delta2[alarm_idx]
-                                #         if sd2 is not None and alarm_temp is not None:
-                                #             alarm_temp -= sd2 # subtract the reading at alarm_idx for IF ALARMs
-                                # elif aas == 0:                      #check ET
-                                #     alarm_temp = sample_temp1[-1]
-                                #     if alarm_idx is not None:
-                                #         alarm_temp -= sample_temp1[alarm_idx] # subtract the reading at alarm_idx for IF ALARMs
-                                # elif aas == 1:                      #check BT
-                                #     alarm_temp = sample_temp2[-1]
-                                #     if alarm_idx is not None:
-                                #         alarm_temp -= sample_temp2[alarm_idx] # subtract the reading at alarm_idx for IF ALARMs
-                                # elif aas > 1 and ((aas - 2) < (2*len(self.extradevices))):
-                                #     if (aas)%2==0:
-                                #         alarm_temp = sample_extratemp1[(aas - 2)//2][-1]
-                                #         if alarm_idx is not None:
-                                #             alarm_temp -= sample_extratemp1[(aas - 2)//2][alarm_idx] # subtract the reading at alarm_idx for IF ALARMs
-                                #     else:
-                                #         alarm_temp = sample_extratemp2[(aas - 2)//2][-1]
-                                #         if alarm_idx is not None:
-                                #             alarm_temp -= sample_extratemp2[(aas - 2)//2][alarm_idx] # subtract the reading at alarm_idx for IF ALARMs
-
-                                # alarm_limit = self.alarmtemperature[i]
-                                # operator = self.alarmcond[i]
-                                # if operator == 0: # <
-                                #     alarm_ready |= alarm_temp < alarm_limit
-                                # elif operator == 1: # >
-                                #     alarm_ready |= alarm_temp > alarm_limit
-                                # elif operator == 2: # ==
-                                #     alarm_ready |= alarm_temp == alarm_limit
-                                # elif operator == 3: # !=
-                                #     alarm_ready |= alarm_temp != alarm_limit
-                                # else:
-                                #     alarm_ready = alarm_idx is not None and alarm_temp == alarm_limit # for relative IF_ALARMS we include the equality
-                            
-#                                if alarm_temp is not None and alarm_temp != -1 and (
-#                                        (self.alarmcond[i] == 1 and alarm_temp > alarm_limit) or
-#                                        (self.alarmcond[i] == 0 and alarm_temp < alarm_limit) or
-#                                        (self.alarmcond[i] == 2 and alarm_temp == alarm_limit) or
-#                                        (self.alarmcond[i] == 3 and alarm_temp != alarm_limit) or
-#                                        (alarm_idx is not None and alarm_temp == alarm_limit)): # for relative IF_ALARMS we include the equality
-#                                    alarm_ready = True
-                            if alarm_ready:
-                                # fire alarm i
-                                self.alarmstate[i] = max(0,len(self.timex) - 1) # we have to ensure that alarmstate of triggered alarms is never negative
-                                alarm_beep = len(self.alarmbeep) > i and self.alarmbeep[i] # beep?
-                                alarm_action = self.alarmaction[i]
-                                alarm_string = self.alarmstrings[i]
-                                self.processAlarmSignal.emit(i+1,alarm_beep,alarm_action,alarm_string)
-                                _log.debug('alarm %s fired',i+1)
-                                ## TILAU ##
-                                if self.aw.tilauscope_main is not None: # tilauscope call for fire alarm
-                                    self.aw.tilauscope_main.alarm_fired_signal.emit(i)
+                        ## TILAU ## the shared firing rule (tilaucore.alarms), the tablet's too
+                        run = AlarmRun(read_profile_alarms({key: getattr(self, key) for key in PROFILE_KEYS}))
+                        run.state = self.alarmstate
+                        readings = AlarmReadings(clock_s=self.timeclock.elapsed()/1000., recording=local_flagstart,
+                            times=sample_timex, et=sample_temp1, bt=sample_temp2, delta_et=sample_delta1, delta_bt=sample_delta2,
+                            marks=self.timeindex, tp=self.TPalarmtimeindex,
+                            extra=list(zip(sample_extratemp1, sample_extratemp2))[:len(self.extradevices)],
+                            recorded=len(self.timex))
+                        for i in run.step(readings):
+                            alarm_beep = len(self.alarmbeep) > i and self.alarmbeep[i] # beep?
+                            alarm_action = self.alarmaction[i]
+                            alarm_string = self.alarmstrings[i]
+                            self.processAlarmSignal.emit(i+1,alarm_beep,alarm_action,alarm_string)
+                            _log.debug('alarm %s fired',i+1)
+                            if self.aw.tilauscope_main is not None: # tilauscope call for fire alarm
+                                self.aw.tilauscope_main.alarm_fired_signal.emit(i)
                     except Exception as e: # pylint: disable=broad-except
                         _log.exception(e)
                     finally:
@@ -6607,274 +6438,46 @@ class tgraphcanvas(QObject):
         self.replayedBackgroundEvents = set()
 
     # called only after CHARGE
+    ## TILAU ## which background events fire, the slider jumps and the ramps come from
+    ## tilaucore.playback, the engine the Android prototype shares (android/AUTOMATION-SPEC.md
+    ## decision 14); same moves and ramps on the corpus. The sliders, the Fuji PID commands, the
+    ## playback aid and its beep stay here.
     def playbackevent(self) -> None:
-
-        # returns the last registered foreground event index for the given event type, or None if no event of that type has been registered yet
-        @functools.lru_cache(maxsize=10)
-        def last_registered_foreground_event(event_type:int) -> int|None:
-            try:
-                return len(self.specialeventstype) - 1 - self.specialeventstype[::-1].index(event_type) # index of last foreground event if any; except otherwise
-            except ValueError:
-                return None
-
         try:
             #needed when using device NONE
             if self.timex:
-                #find time or temp distances
+                playback = Playback(self.timeB, self.temp1B, self.temp2B, self.stemp1B, self.stemp2B,
+                    self.backgroundEvents, self.backgroundEtypes, self.backgroundEvalues, self.timeindexB,
+                    replay_type=self.replayType, playback=self.specialeventplayback, ramp=self.specialeventplaybackramp,
+                    lookahead_s=self.aw.qmc.ramp_lookahead, moves=self.backgroundPlaybackEvents,
+                    aid=self.specialeventplaybackaid if self.backgroundReproduce else (False,) * 4,
+                    aid_window_s=self.detectBackgroundEventTime)
+                playback.replayed = self.replayedBackgroundEvents # never replay one event twice
+                slider_events, ramps = playback.step(self.timeclock.elapsedMilli(), Foreground(
+                    self.timex, self.temp1, self.temp2, self.ctemp1, self.ctemp2, self.TPalarmtimeindex,
+                    self.specialevents, self.specialeventstype, self.specialeventsvalue))
 
-
-                reproducing:int|None = None # index of the event that is currently replaying as text (suppress other replays in this round)
-
-                # if all event types reached their end, we can stop checking further events (optimization)
-
-                # register per event type that we do not have to check further events of that type, if all are checked we can stop the processing
-                end_reached:list[bool] = [not flag for flag in self.specialeventplayback] # those event types not activated for event replay are considered done already
-
-                # the next variables is used to realize ramping event replay
-                ramps:list[int|None] = [None,None,None,None]  # holds the time or temp ramp value to be applied per event type, calculated from last replayed event and the succeeding event
-
-                slider_events:dict[int,int] = {} # keep event type value pairs to move sliders (but only once per slider and per interval!)
-                next_byTemp_checked:list[bool] = [False,False,False,False] # we take care to reply events by temperature in order; if the next event cannot be triggered by-temp we prevent to trigger the but next as is likely to trigger as we assume always increasing temperatures; but not the next in the row!
-
-                # after an replay by-temp event is checked we set the flag corresponding to its event type in next_byTemp_checked to prevent further checking of this type for by-temp
-                # preventing later events to trigger by-temp to keep events triggered in-order (we assume temps increase and without this all further event will trigger immediately!)
-
-                for i, bge in enumerate(self.backgroundEvents):
-                    if all(end_reached):
-                        # for each type an event was found that did not fire, we can stop looking further for monotonicity
-                        break
-
-                    event_type = self.backgroundEtypes[i]
-
-                    if 0 <= event_type < 4: # only the 4 custom events can be replayed
-
-                        now = self.timeclock.elapsedMilli()
-
-                        if (i not in self.replayedBackgroundEvents and # never replay one event twice
-                            not end_reached[event_type] and # we already reached the next event of this type after the first enabled (not yet replayed) one
-                            (self.timeindexB[6]==0 or bge <= self.timeindexB[6]) and # don't replay events that happened after DROP in the backgroundprofile
-                            event_type < 4 and len(self.timeB)>bge):
-
-                            last_registered_foreground_event_idx:int|None = last_registered_foreground_event(event_type)
-                            # if last registered foreground event value is lower than this background events value
-                            # we replay this one by temperature, otherwise by time in mixed mode replay mode (self.replayType in {3,4})
-                            value_decreasing:bool = (last_registered_foreground_event_idx is not None and
-                                len(self.specialeventsvalue)>last_registered_foreground_event_idx and
-                                self.specialeventsvalue[last_registered_foreground_event_idx] > self.backgroundEvalues[i])
-
-                            timed = self.timeB[bge] - now
-                            delta:float = 99999 # by default don't trigger this one
-
-                            if self.replayType == 0 or (self.replayType in {3, 4} and not value_decreasing): # replay by time (also in mixed replay mode if value increases)
-                                delta = timed
-
-                            elif not next_byTemp_checked[event_type] and (self.replayType == 1 or (self.replayType == 3 and value_decreasing)): # replay by BT (after TP)
-                                if self.TPalarmtimeindex is not None:
-                                    if len(self.ctemp2)>0 and self.ctemp2[-1] is not None and len(self.stemp2B)>bge:
-                                        delta = self.stemp2B[bge] - self.ctemp2[-1]
-                                    next_byTemp_checked[event_type] = True # prevent later events to trigger
-                                else: # before TP we switch back to time-based
-                                    delta = timed
-                            elif not next_byTemp_checked[event_type] and (self.replayType == 2 or (self.replayType == 4 and value_decreasing)): # replay by ET (after TP)
-                                if self.TPalarmtimeindex is not None:
-                                    if len(self.ctemp1)> 0 and self.ctemp1[-1] is not None and len(self.stemp1B)>bge:
-                                        delta = self.stemp1B[bge] - self.ctemp1[-1]
-                                    next_byTemp_checked[event_type] = True # prevent later events to trigger
-                                else: # before TP we switch back to time-based
-                                    delta = timed
-
-                            if (reproducing is None and self.specialeventplaybackaid[event_type] and  # only show playback aid for event types with activated playback aid
-                                    self.backgroundReproduce and 0 < timed < self.detectBackgroundEventTime):
-                                if i not in self.beepedBackgroundEvents and self.backgroundReproduceBeep:
-                                    self.beepedBackgroundEvents.add(i)
-                                    QApplication.beep()
-                                #write text message
-                                message = f'> [{self.Betypesf(event_type)}] [{self.eventsvalues(self.backgroundEvalues[i])}] : <b>{stringfromseconds(timed)}</b> : {self.backgroundEStrings[i]}'
-                                #rotate colors to get attention
-                                if int(round(timed))%2:
-                                    style = "background-color:'transparent';"
-                                else:
-                                    style = "background-color:'yellow';"
-
-                                self.aw.sendmessage(message,style=style)
-                                reproducing = i
-
-
-                            if delta <= 0:
-                                #for devices that support automatic roaster control
-                                #if Fuji PID
-                                if self.device == 0 and '::' in self.backgroundEStrings[i]:
-
-                                    # COMMAND SET STRINGS
-                                    #  (adjust the SV PID to the float VALUE1)
-                                    # SETRS::VALUE1::VALUE2::VALUE3  (VALUE1 = target SV. float VALUE2 = time to reach int VALUE 1 (ramp) in minutes. int VALUE3 = hold (soak) time in minutes)
-
-                                    # IMPORTANT: VALUES are for controlling ET only (not BT). The PID should control ET not BT. The PID should be connected to ET only.
-                                    # Therefore, these values don't reflect a BT defined profile. They define an ET profile.
-                                    # They reflect the changes in ET, which indirectly define BT after some time lag
-
-                                    # There are two ways to record a roast. One is by changing Set Values (SV) during the roast,
-                                    # the other is by using ramp/soaks segments (RS).
-                                    # Examples:
-
-                                    # SETSV::560.3           sets an SV value of 560.3F in the PID at the time of the recorded background event
-
-                                    # SETRS::440.2::2::0     starts Ramp Soak mode so that it reaches 440.2F in 2 minutes and holds (soaks) 440.2F for zero minutes
-
-                                    # SETRS::300.0::2::3::SETRS::540.0::6::0::SETRS::560.0::4::0::SETRS::560::0::0
-                                    #       this command has 4 comsecutive commands inside (4 segments)
-                                    #       1 SETRS::300.0::2::3 reach 300.0F in 2 minutes and hold it for 3 minutes (ie. total dry phase time = 5 minutes)
-                                    #       2 SETRS::540.0::6::0 then reach 540.0F in 6 minutes and hold it there 0 minutes (ie. total mid phase time = 6 minutes )
-                                    #       3 SETRS::560.0::4::0 then reach 560.0F in 4 minutes and hold it there 0 minutes (ie. total finish phase time = 4 minutes)
-                                    #       4 SETRS::560::0::0 then do nothing (because ramp time and soak time are both 0)
-                                    #       END ramp soak mode
-
-                                    self.aw.fujipid.replay(self.backgroundEStrings[i])
-                                    libtime.sleep(.3)  #avoid possible close times (rounding off)
-
-
-                                # if playbackevents is active, we fire the event by moving the slider, but only if
-                                # an event type is given (type<4), the background event type is named exactly as the one of the foreground
-                                # (NOTE: the event slider does not need to be visible any longer)
-                                if (self.backgroundPlaybackEvents and event_type < 4 and
-                                        self.specialeventplayback[event_type] and # only replay event types activated for replay
-                                        (str(self.etypesf(event_type) == str(self.Betypesf(event_type)))) and
-                                        len(self.backgroundEvalues)>i):
-                                    slider_events[event_type] = self.eventsInternal2ExternalValue(self.backgroundEvalues[i]) # add to dict (later overwrite earlier slider moves!)
-
-                                self.replayedBackgroundEvents.add(i) # in any case we mark this event as processed
-
-                            elif self.backgroundPlaybackEvents and event_type < 4: # Note that this playbackevent() is also called if only self.backgroundReproduce is True in which case we do not want any ramping
-
-                                # we reached a background event (in order) which is not yet ready for (direct) replay
-                                # as we assume all further events of this type will as well not fire as they are ordered by time and
-                                # temperatures which are assumed to increase
-                                end_reached[event_type] = True
-
-                                if (#event_type not in slider_events and  # only if there is no slider event of the corresponding type
-                                        # UPDATE: we also ramp if we are @ the event to avoid SV discontinuities if lookahead is active, otherwise non-linearities could occur
-                                        self.specialeventplayback[event_type] and     # only replay event types activated for replay
-                                        (str(self.etypesf(event_type) == str(self.Betypesf(event_type)))) and
-                                        self.specialeventplaybackramp[event_type]):   # only calculate ramp for ramping events
-
-                                    ## calculate ramping
-
-                                    # we pick as left event of the ramp the last event of type event_type either of the foreground or the background, whichever ever is closer
-                                    # NOTE: this last event was not necessarily replayed before and might have been manually entered instead
-
-                                    last_registered_background_event_idx:int|None = None
-                                    last_registered_background_event_time:float|None = None
-                                    last_registered_foreground_event_time:float|None = None
-                                    TP_time:float|None = None
-                                    try:
-                                        previous_background_event_types = self.backgroundEtypes[:i] # check only events before NOW (events before the current checked index bge)
-                                        last_registered_background_event_idx = len(previous_background_event_types) - 1 - previous_background_event_types[::-1].index(event_type) # index of last background event if any; except otherwise
-                                        last_registered_background_event_time = self.timeB[self.backgroundEvents[last_registered_background_event_idx]]
-                                    except ValueError: # index access fails if there is no such event/index
-                                        pass
-                                    if last_registered_foreground_event_idx is not None:
-                                        last_registered_foreground_event_time = self.timex[self.specialevents[last_registered_foreground_event_idx]]
-                                    try:
-                                        if self.TPalarmtimeindex is not None:
-                                            TP_time = self.timex[self.TPalarmtimeindex]
-                                    except ValueError: # index access fails if there is no such event/index
-                                        pass
-
-                                    last_event_idx:int|None = last_registered_background_event_idx
-                                    last_event_time:float|None = last_registered_background_event_time
-                                    last_event_value:int|None = None
-                                    last_event_temp1:float|None = None
-                                    last_event_temp2:float|None = None
-                                    last_event_temp:float|None = None
-
-                                    if (last_registered_foreground_event_idx is not None and last_registered_background_event_time is not None and last_registered_foreground_event_time is not None and
-                                        last_registered_foreground_event_time > last_registered_background_event_time):
-                                        # last foreground event is newer then last background event thus we use that foreground one
-                                        last_event_idx = last_registered_foreground_event_idx
-                                        last_event_time = last_registered_foreground_event_time
-                                        last_event_value = self.eventsInternal2ExternalValue(self.specialeventsvalue[last_registered_foreground_event_idx])
-
-                                        # only if there is a last_event after TP we do ramping by temperature
-                                        if TP_time is not None and TP_time < last_event_time and len(self.specialevents)>last_event_idx:
-                                            last_event_temp1 = self.temp1[self.specialevents[last_event_idx]]
-                                            last_event_temp2 = self.temp2[self.specialevents[last_event_idx]]
-                                    elif last_registered_background_event_idx is not None and last_event_time is not None and last_event_idx is not None:
-                                        # use last background event as assigned above is the last we just passed, we add its value
-                                        last_event_value = self.eventsInternal2ExternalValue(self.backgroundEvalues[last_registered_background_event_idx])
-                                        # only if there is a last_event after TP we do ramping by temperature
-                                        if TP_time is not None and TP_time < last_event_time and len(self.backgroundEvents)>last_event_idx:
-                                            last_event_temp1 = self.temp1B[self.backgroundEvents[last_event_idx]]
-                                            last_event_temp2 = self.temp2B[self.backgroundEvents[last_event_idx]]
-
-                                    if last_event_idx is not None:
-                                        next_event_value = self.eventsInternal2ExternalValue(self.backgroundEvalues[i])                          # next always from background
-                                        next_event_temp:float|None = None
-                                        current_temp:float|None = None
-
-                                        if (last_event_temp2 is not None and (self.replayType == 1 or (self.replayType == 3 and value_decreasing)) and len(self.temp2)>1 and self.temp2[-1] != -1 and
-                                                self.temp2[-2] != -1 and self.temp2[-1] >= self.temp2[-2] and
-                                                len(self.temp2B) > bge):
-                                            # if replayType is by BT or (replayType is by time/BT and value is decreasing)
-                                            last_event_temp = last_event_temp2
-                                            next_event_temp = self.temp2B[bge]
-                                            current_temp = self.temp2[-1]
-                                        elif (last_event_temp1 is not None and (self.replayType == 2 or (self.replayType == 4 and value_decreasing)) and len(self.temp1)>1 and self.temp1[-1] != -1 and
-                                                self.temp1[-2] != -1 and self.temp1[-1] >= self.temp1[-2] and
-                                                len(self.temp1B) > bge):
-                                            # if replayType is by ET or (replayType is by time/ET and value is decreasing)
-                                            last_event_temp = last_event_temp1
-                                            next_event_temp = self.temp1B[bge]
-                                            current_temp = self.temp1[-1]
-
-                                        # compute ramp value if possible
-                                        if ((self.replayType in {1,2} or (self.replayType in {3,4} and value_decreasing)) and last_event_temp is not None and next_event_temp is not None and
-                                                current_temp is not None):
-                                            # if replayType is BT or ET or (time/BT and value is decreasing) or (time/ET and value is decreasing)
-                                            # if background event target temperature did increase (or decrease) as the foreground, we ramp by temperature
-                                            if min(last_event_temp, next_event_temp) <= current_temp <= max(last_event_temp, next_event_temp) and last_event_value is not None:
-                                                # we ramp only within the limits
-                                                coefficients = numpy.polyfit([last_event_temp, next_event_temp], [last_event_value, next_event_value], 1)
-                                                ramps[event_type] = numpy.poly1d(coefficients)(current_temp)
-                                        elif (last_event_temp is None and next_event_temp is None and
-                                                (self.replayType == 0 or # if replay by time is selected
-                                                    (last_event_temp1 is None and last_event_temp2 is None) or # if TP is not yet passed or no event after TP and now has been set
-                                                    (last_event_temp2 is not None and (self.replayType == 1 or (self.replayType == 3 and not value_decreasing))) or # replay by BT, but BT did not increase
-                                                    (last_event_temp1 is not None and (self.replayType == 2) or (self.replayType == 4 and not value_decreasing))) # replay by ET, but ET did not increase
-                                                and last_event_time is not None and len(self.timeB)>bge):
-                                                  # if replay by temp (as one or both of those event_temps is not None), but current temp did not increase we don't
-                                                  # ramp by time instead as this would confuse everything.
-                                            # we ramp by (absolute) time (ignoring relative shift by CHARGE)
-                                            last_time = last_event_time
-                                            next_time = self.timeB[bge]
-
-                                            if last_time <= now <= next_time and last_event_value is not None:
-                                                # we ramp only within the limits
-                                                next_after_next_registered_background_event_idx:None|int = None
-                                                if (now + self.aw.qmc.ramp_lookahead) >= next_time:
-                                                    # with lookahead we are leaving the current ramp, lets check if there is a next one
-                                                    try:
-                                                        # next event is at i (@next_time), but we are looking for the one after that
-                                                        next_background_event_types = self.backgroundEtypes[i+1:] # check only events after NOW (events after the current checked index bge)
-                                                        next_after_next_registered_background_event_idx = i + 1 + next_background_event_types.index(event_type) # index of next background event if any; except otherwise
-                                                    except ValueError: # index access fails if there is no such event/index
-                                                        pass
-                                                if next_after_next_registered_background_event_idx is None:
-                                                    # incl. the lookahead we are still within the current ramp or there is no next ramp
-                                                    coefficients = numpy.polyfit([last_time, next_time], [last_event_value, next_event_value], 1)
-                                                    ramps[event_type] = numpy.poly1d(coefficients)(now + self.aw.qmc.ramp_lookahead)
-                                                else:
-                                                    try:
-                                                        next_after_next_idx:int = self.backgroundEvents[next_after_next_registered_background_event_idx]
-                                                        if self.timeindexB[6]==0 or next_after_next_idx < self.timeindexB[6]:
-                                                            # we don't ramp to events after DROP
-                                                            next_after_next_time:float = self.timeB[next_after_next_idx]
-                                                            next_after_next_event_value:int = self.eventsInternal2ExternalValue(self.backgroundEvalues[next_after_next_registered_background_event_idx])
-                                                            # we take the next ramp after the current one
-                                                            coefficients = numpy.polyfit([next_time, next_after_next_time], [next_event_value, next_after_next_event_value], 1)
-                                                            ramps[event_type] = numpy.poly1d(coefficients)(now + self.aw.qmc.ramp_lookahead)
-                                                    except IndexError:
-                                                        pass
-
+                # in the background's order: the playback aid announcing an event (its value, the time
+                # left, blinking), then the Fuji PID command of an event that fired
+                announced = playback.announced[0] if playback.announced is not None else None
+                for i in sorted(set(playback.fired) | ({announced} if announced is not None else set())):
+                    if i == announced and playback.announced is not None:
+                        timed = playback.announced[1]
+                        event_type = self.backgroundEtypes[i]
+                        if i not in self.beepedBackgroundEvents and self.backgroundReproduceBeep:
+                            self.beepedBackgroundEvents.add(i)
+                            QApplication.beep()
+                        message = f'> [{self.Betypesf(event_type)}] [{self.eventsvalues(self.backgroundEvalues[i])}] : <b>{stringfromseconds(timed)}</b> : {self.backgroundEStrings[i]}'
+                        #rotate colors to get attention
+                        if int(round(timed))%2:
+                            style = "background-color:'transparent';"
+                        else:
+                            style = "background-color:'yellow';"
+                        self.aw.sendmessage(message,style=style)
+                    #if Fuji PID (SETSV::value, SETRS::value::ramp::soak, see the Fuji PID documentation)
+                    if i in playback.fired and self.device == 0 and '::' in self.backgroundEStrings[i]:
+                        self.aw.fujipid.replay(self.backgroundEStrings[i])
+                        libtime.sleep(.3)  #avoid possible close times (rounding off)
 
                 # now move the sliders to the new values (if any)
                 for k,v in slider_events.items():
@@ -6888,7 +6491,7 @@ class tgraphcanvas(QObject):
                         self.aw.fireslideraction_internal(k, ramp_value) # higher precision ramp value send in extern slider actions
 
                 #delete existing message
-                if reproducing is None:
+                if playback.announced is None:
                     text = self.aw.messagelabel.text()
                     if len(text) and text[0] == '>':
                         self.aw.clearMessageLine(style="background-color:'transparent';")
@@ -8074,8 +7677,15 @@ class tgraphcanvas(QObject):
 #On macOS, if the modality is set to Qt::WindowModal and the message box has a parent, then the message box will be a Qt::Sheet,
 #otherwise the message box will be a standard dialog.
 # setWindowModality(Qt.WindowModality.WindowModal)
-            reply = QMessageBox.warning(None, #self.aw,  # only without super this one shows the native dialog on macOS under Qt 6.6.2 and later
-                QApplication.translate('Message','Profile unsaved'), string, buttons)
+            ## TILAU ## TilauScope asks with its own dialog: the native alert crashes AppKit
+            ## when the monitor redraws the screen while it lays itself out.
+            if self.aw.tilauscope_main is not None:
+                from tilauscope.tilauscope_types import ask_save_profile  # pylint: disable=import-outside-toplevel
+                reply = {'save': QMessageBox.StandardButton.Save, 'discard': QMessageBox.StandardButton.Discard}.get(
+                    ask_save_profile(self.aw.tilauscope_main, allow_discard), QMessageBox.StandardButton.Cancel)
+            else:
+                reply = QMessageBox.warning(None, #self.aw,  # only without super this one shows the native dialog on macOS under Qt 6.6.2 and later
+                    QApplication.translate('Message','Profile unsaved'), string, buttons)
             self.safesaveflag = flag
             if reply == QMessageBox.StandardButton.Save:
                 return bool(self.aw.fileSave(self.aw.curFile))  #if accepted, calls fileClean() and thus turns safesaveflag = False
@@ -14016,6 +13626,9 @@ class tgraphcanvas(QObject):
                 if self.aw.bleSkywalkerDevice is not None:
                     self.stopSkywalkerManager()
                 self.stopTilauPidManager()
+                ## TILAU ## at any OFF, the automatic milestones Roast Setup chose give way to the defaults
+                from tilauscope.auto_marks import end_roast # pylint: disable=import-outside-toplevel
+                end_roast(self.aw)
                 # disconnect tilauscope
                 if self.aw.tilauscope_main is not None:
                     self.aw.tilauscope_main.update_status_text()
@@ -14838,6 +14451,10 @@ class tgraphcanvas(QObject):
                 # to have this still incomplete roast be associated with any scheduleItem (rule: a roast without a DROP is never automatically registered as scheduleItem)
                 self.scheduleID = None
             self.cacheforBbp()  # save items for bbp
+            ## TILAU ## a charged roast ends: the automatic milestones Roast Setup chose for it give way to the defaults
+            if self.timeindex[0] > -1:
+                from tilauscope.auto_marks import end_roast # pylint: disable=import-outside-toplevel
+                end_roast(self.aw)
             self.aw.enableSaveActions()
             self.aw.resetCurveVisibilities()
             self.flagstart = False

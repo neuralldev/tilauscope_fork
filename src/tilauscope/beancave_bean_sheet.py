@@ -38,7 +38,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from tilauscope.bean_energy import match_variety_family
+from tilaucore.bean_qualifiers import family_pace
 from tilauscope.bean_qualifiers import physical_qualifier, screen_size_label
 from tilauscope.beancave_catalogue import roast_name, short_date, svg_pixmap
 from tilauscope.roast_memory import ReferenceState, RoastMemory, ready_to_taste
@@ -581,18 +581,8 @@ class BeanSheetWidget(QWidget):
         if getattr(bean, 'is_blend', False):
             z.body.addLayout(self._blend_bar(bean))
 
-        family = match_variety_family(bean.varieties)
-        if family is None:
-            pace = QApplication.translate("tilauscope_beancave", "not known — standard pace")
-        else:
-            name, delta = family
-            if delta > 0:
-                word = QApplication.translate("tilauscope_common", "wants a faster roast")
-            elif delta < 0:
-                word = QApplication.translate("tilauscope_common", "takes a slower roast")
-            else:
-                word = QApplication.translate("tilauscope_common", "keeps the standard pace")
-            pace = f"{name} — {word}"
+        name, words = family_pace(bean.varieties)
+        pace = f"{name} — {QApplication.translate(*words)}" if name else QApplication.translate(*words)
         fam = QFrame()
         fam.setObjectName("familyLine")
         fam.setStyleSheet(f"QFrame#familyLine {{ background:{THEME['BORDER']};border:none;border-radius:8px; }}")

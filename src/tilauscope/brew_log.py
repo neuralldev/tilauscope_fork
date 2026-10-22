@@ -27,6 +27,7 @@ import platform
 from pathlib import Path
 from typing import Optional
 
+from tilaucore.beans import from_json, to_json
 from tilauscope.tilauscope_types import BrewLog, BrewSample
 
 _log = logging.getLogger(__name__)
@@ -69,7 +70,7 @@ def load(directory) -> BrewLog:
     if path is None or not path.exists():
         return BrewLog()
     try:
-        return BrewLog.from_json(path.read_text(encoding=_ENCODING))
+        return from_json(BrewLog, path.read_text(encoding=_ENCODING))
     except Exception as exc:  # noqa: BLE001
         _log.warning("Brew log: %s unreadable (%s); starting from an empty journal", path, exc)
         return BrewLog()
@@ -88,7 +89,7 @@ def save(directory, log: BrewLog) -> bool:
     tmp = path.with_suffix(".tmp")
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp.write_text(log.to_json(), encoding=_ENCODING)
+        tmp.write_text(to_json(log), encoding=_ENCODING)
         os.replace(tmp, path)
         return True
     except Exception as exc:  # noqa: BLE001
@@ -129,7 +130,7 @@ def record(directory, bean_uuid: str, sample: BrewSample) -> bool:
         # Read here, not via load(): its empty journal for an unreadable file,
         # saved now, would replace every sample on file with this single one.
         try:
-            log = BrewLog.from_json(path.read_text(encoding=_ENCODING))
+            log = from_json(BrewLog, path.read_text(encoding=_ENCODING))
         except Exception:  # noqa: BLE001
             _log.error("Brew log: %s unreadable; sample not recorded over it", path)
             return False

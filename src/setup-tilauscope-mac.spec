@@ -85,8 +85,9 @@ DATA_FILES = [
     ('includes/Themes/*', 'includes/Themes/'),
     ('includes/Icons/*', 'includes/Icons/'),
     ('README.txt', '.'),
-    ('tilauscope/beancave_beans.json', 'tilauscope'),
-    ('tilauscope/roasters.json', 'tilauscope'),
+    # Data of the shared domain library (tilaucore/data_files.py finds them beside it).
+    ('tilaucore/data/beancave_beans.json', 'tilaucore/data'),
+    ('tilaucore/data/roasters.json', 'tilaucore/data'),
     # Bundled fonts loaded at runtime via QFontDatabase.addApplicationFont
     # (resolved against os.path.dirname(__file__) → the 'tilauscope' folder).
     ('tilauscope/JetBrainsMono-Bold.ttf', 'tilauscope'),

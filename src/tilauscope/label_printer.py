@@ -33,6 +33,7 @@ from artisanlib.atypes import ProfileData
 
 from tilauscope.tilauscope_types import GreenBean, _IS_WINDOWS, _IS_MACOS, _IS_LINUX
 from tilauscope import text_shaping
+from tilaucore.roast_label import label_data, lines_30mm
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
@@ -1092,93 +1093,8 @@ class NiimbotLabelBuilder:
         bean: GreenBean,
         data: dict,
     ) -> tuple[dict[str, str], str, dict[str, float]]:
-        """Retourne (roast_data, qr_url, phases).
-
-        ``phases`` contient les durées brutes (s) et les pourcentages.
-        Lève ``ValueError`` si les points clés sont manquants/invalides.
-        """
-        computed = data.get("computed", {})
-        mode     = data.get("mode", "C")
-
-        t_dry  = computed.get("DRY_time")
-        t_fcs  = computed.get("FCs_time")
-        t_drop = computed.get("DROP_time")
-
-        if None in (t_dry, t_fcs, t_drop) or t_drop <= 0:
-            raise ValueError(
-                "Données de torréfaction incomplètes (DRY/FCs/DROP) — "
-                "impossible de calculer les phases."
-            )
-
-        drying     = float(t_dry)
-        maillard   = float(t_fcs)  - float(t_dry)
-        development= float(t_drop) - float(t_fcs)
-        total      = float(t_drop)
-
-        phases: dict[str, float] = {
-            "drying":          drying,
-            "maillard":        maillard,
-            "development":     development,
-            "total":           total,
-            "drying_pct":      round(100 * drying     / total, 1),
-            "maillard_pct":    round(100 * maillard   / total, 1),
-            "development_pct": round(100 * development/ total, 1),
-        }
-
-        roast_iso  = data.get("roastisodate", "N/A")
-        roast_date = (
-            f"{roast_iso[8:10]}-{roast_iso[5:7]}-{roast_iso[:4]}"
-            if roast_iso != "N/A" else "N/A"
-        )
-
-        weightin  = computed.get("weightin",  "N/A")
-        weightout = computed.get("weightout", "N/A")
-        wloss     = computed.get("weight_loss","N/A")
-
-        # Ground when measured, else whole — never the lighter of the two.
-        colour = next((c for c in (data.get('ground_color'), data.get('whole_color'))
-                       if isinstance(c, (int, float)) and c > 0), 'N/A')
-
-        roast_data: dict[str, str] = {
-            "Bean":        (bean.name[:27] + "…") if len(bean.name) > 30 else bean.name,
-            "Origin":      bean.country,
-            "Process":     bean.process,
-            "Variety":     bean.varieties,
-            "Roaster":     bean.supplier,
-            "Farm":        bean.farm,
-            "Density":     f"{bean.density} g/l" if bean.density > 0 else str(data.get("density", ["-"])[0]),
-            "Altitude":    f"{bean.altitude} m" if bean.altitude > 0 else "-",
-            "Date":        roast_date,
-            "Time":        data.get("roasttime", "N/A"),
-            "SCA Score":   str(bean.sca),
-            "Weight In":   f"{weightin} g",
-            "Weight Out":  f"{weightout} g",
-            "Weight Loss": f"{wloss} %",
-            "Agtron Color":f"{colour} {data.get('color_system','')}".strip(),
-            "Total Time":  self._fmt_seconds(int(computed.get("totaltime", 0))),
-            "DTR":         f"{round(computed.get('finishphasetime',0) / computed.get('totaltime',1) * 100, 1)}%",
-            "Drop BT":     f"{computed.get('DROP_BT','N/A')}°{mode}",
-            "RoR DEV":     f"{computed.get('finish_phase_ror','N/A')}°{mode}/min",
-            "Notes (Aro.)":data.get("Aroma_Notes",   "N/A"),
-            "Notes (Fls.)":bean.flavour_notes,
-            "Notes (M.F.)":data.get("Mouthfeel_Notes","N/A"),
-        }
-
-        # Tasting notes consolidées
-        notes_parts = []
-        for key in ("Notes (Aro.)", "Notes (Fls.)", "Notes (M.F.)"):
-            val = roast_data[key]
-            if val and val != "N/A":
-                initial = key.replace("Notes (", "").replace(".)", "")[:1]
-                notes_parts.append(f"{initial}: {val}")
-        roast_data["Tasting Notes"] = "; ".join(notes_parts)
-
-        # QR encodes the same http record URL as the PDF label and the bean/sack
-        # labels, so any label can be scanned (webcam or phone) to open the record.
-        roast_uuid = str(data.get("roastUUID") or "")
-        qr_url = f"{qr_base_url()}/roast/{roast_uuid}" if roast_uuid else ""
-
-        return roast_data, qr_url, phases
+        """Retourne (roast_data, qr_url, phases) — tilaucore.roast_label, shared with the tablet."""
+        return label_data(bean, data, qr_base_url)
 
     # ── Layout 80 mm ─────────────────────────────────────────────────────────
     #
@@ -1366,32 +1282,27 @@ class NiimbotLabelBuilder:
         # Texte pleine largeur (W - 2*PAD).
         TEXT_W = W - 2 * PAD
         current_y = PAD
+        texts = lines_30mm(roast_data, lambda text: QApplication.translate(*text))
 
         # Ligne 1 : Origin + Farm  — police valeur, pleine largeur
-        origin_farm = f"{roast_data['Origin']} {roast_data['Farm']}"
+        origin_farm = texts["origin_farm"]
         # Troncature pixel-exacte
         while draw.textbbox((0, 0), origin_farm, font=self._font_value)[2] > TEXT_W and len(origin_farm) > 3:
             origin_farm = origin_farm[:-1]
-        if origin_farm != f"{roast_data['Origin']} {roast_data['Farm']}":
+        if origin_farm != texts["origin_farm"]:
             origin_farm = origin_farm.rstrip() + "…"
         draw.text((PAD, current_y), origin_farm, font=self._font_value, fill=0)
         current_y += draw.textbbox((0, 0), origin_farm, font=self._font_value)[3] + 1
 
         # Ligne 2 : Bean — police subtitle
-        bean_txt = QApplication.translate("Label", "Beans") + f": {roast_data['Bean']}"
+        bean_txt = texts["bean"]
         while draw.textbbox((0, 0), bean_txt, font=self._font_subtitle)[2] > TEXT_W and len(bean_txt) > 6:
             bean_txt = bean_txt[:-1]
         draw.text((PAD, current_y), bean_txt, font=self._font_subtitle, fill=0)
         current_y += draw.textbbox((0, 0), bean_txt, font=self._font_subtitle)[3] + 2
 
         # Lignes détails — police subtitle, pleine largeur, troncature adaptative
-        detail_rows = [
-            (QApplication.translate("tilauscope_common", "Process"),   roast_data["Process"]),
-            (QApplication.translate("tilauscope_common", "Altitude"),  roast_data["Altitude"]),
-            (QApplication.translate("Label", "Density"),   roast_data["Density"]),
-            (QApplication.translate("tilauscope_common", "SCA score"), roast_data["SCA Score"]),
-        ]
-        for lbl, val in detail_rows:
+        for lbl, val in texts["details"]:
             if current_y + draw.textbbox((0, 0), "Ag", font=self._font_subtitle)[3] > H - PAD * 4:
                 break
             current_y += self._draw_adapting_text_line(
@@ -1402,17 +1313,17 @@ class NiimbotLabelBuilder:
 
         current_y += 2
         # Ligne date
-        date_txt = QApplication.translate("tilauscope_label", "Roasted on") + f": {roast_data['Date']}"
+        date_txt = texts["date"]
         draw.text((PAD, current_y), date_txt, font=self._font_subtitle, fill=0)
         current_y += draw.textbbox((0, 0), date_txt, font=self._font_subtitle)[3] + 2
 
         # Tasting notes — police graph, wrapping pixel-exact
-        notes_hdr = QApplication.translate("tilauscope_common", "Tasting notes") + ": "
+        notes_hdr = texts["notes_header"]
         draw.text((PAD, current_y), notes_hdr, font=self._font_graph, fill=0)
         current_y += draw.textbbox((0, 0), notes_hdr, font=self._font_graph)[3] + 1
 
         self._draw_wrapped_text(
-            draw, roast_data["Tasting Notes"],
+            draw, texts["notes"],
             PAD, current_y, TEXT_W, H - PAD,
             self._font_graph,
         )

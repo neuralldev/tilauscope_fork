@@ -168,10 +168,20 @@ Skywalker V2 assigned, and at least one other device detected and connected belo
 
 ## 🔬 DETECTION — how milestones get marked automatically
 
-This tab tunes the algorithms behind
-[Auto First Crack and Auto Dry End](preparing-a-roast.md#automating-the-start): what counts as a
-crack, and what counts as the end of drying, in terms specific enough to matter for your machine
-and your microphone.
+This tab sets the defaults of the four automatic milestones — the boxes
+[Roast automation](preparing-a-roast.md#automating-the-start) starts from on every roast, and can
+change for one roast — and tunes the algorithms behind Auto First Crack and Auto Dry End: what
+counts as a crack, and what counts as the end of drying, in terms specific enough to matter for
+your machine and your microphone.
+
+### Charge and Drop
+
+**Enable automatic Charge detection & marking** and **Enable automatic Drop detection & marking**
+are Artisan's own automatic CHARGE and DROP: Charge is marked when bean temperature falls as the
+beans go in (above 77 °C / 170 °F), Drop when it falls as they come out, no earlier than 7 minutes
+into the roast and above 160 °C / 320 °F. They are the same settings as Artisan's Auto Mark boxes:
+changing them there changes the defaults too. An alarm or an event button that turns them on or off
+during a roast acts on that roast only.
 
 ### First Crack (FC)
 
@@ -210,7 +220,8 @@ to do anything. Colour is used as a bonus signal where a colour device is config
 
 ![the DETECTION tab, First Crack and Dry End groups](assets/configuration-4.7.png)
 
-<!-- CAPTURE 4.7 [scene:config_detection] — Configuration → DETECTION, the whole tab: the First Crack group with
+<!-- CAPTURE 4.7 [scene:config_detection] — Configuration → DETECTION, the whole tab: the Charge and Drop group
+at the top (Charge ticked, Drop unticked), then the First Crack group with
 Temperature tolerance at 5 °C and the band line reading a real target, Cracks to confirm at 4,
 Listening window at 35 s, and the Dry End group below. Capture on a machine that has a crack
 counter, so the status line is the grey one, not the peach warning. -->

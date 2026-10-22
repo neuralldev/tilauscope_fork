@@ -3776,6 +3776,11 @@ class EventsDlg(ArtisanResizeablDialog):
             #update autoCharge/Drop flag
             self.aw.qmc.autoChargeFlag = self.autoCharge.isChecked()
             self.aw.qmc.autoDropFlag = self.autoDrop.isChecked()
+            ## TILAU ## a box ticked or unticked here is also the default once a roast's own choice ends
+            from tilauscope import auto_marks # pylint: disable=import-outside-toplevel
+            auto_marks.set_defaults(self.aw, {k: v for k, v, stored in (
+                ('charge', self.aw.qmc.autoChargeFlag, self.autoChargeFlagstored),
+                ('drop', self.aw.qmc.autoDropFlag, self.autoDropFlagstored)) if v != stored})
             self.aw.qmc.markTPflag = self.markTP.isChecked()
             self.aw.qmc.autoChargeMode = self.autoChargeModeComboBox.currentIndex()
             self.aw.qmc.autoDropMode = self.autoDropModeComboBox.currentIndex()

@@ -44,6 +44,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from tilaucore.roast_summary import roast_name as _roast_name
 from tilauscope.bean_qualifiers import physical_qualifier
 from tilauscope.roast_memory import RoastMemory, ready_to_taste
 from tilauscope.theme_qss import tint, tint_hex
@@ -111,11 +112,8 @@ def short_date(epoch: int) -> str:
 
 
 def roast_name(epoch: int, batch: str, *, in_sentence: bool = False) -> str:
-    """'12 Sep · #44' — '12 Sep (#44)' inside a sentence — or whichever part is known."""
-    when = short_date(epoch) if epoch > 0 else ''
-    if when and batch:
-        return f"{when} ({batch})" if in_sentence else f"{when} · {batch}"
-    return when or batch
+    """'12 Sep · #44' — '12 Sep (#44)' inside a sentence — tilaucore's, with the date in the interface language."""
+    return _roast_name(epoch, batch, in_sentence=in_sentence, short_date=short_date)
 
 
 def to_roast_order(bean, memory: RoastMemory | None) -> tuple:

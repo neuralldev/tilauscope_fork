@@ -52,6 +52,7 @@ from tilauscope.tilauscope_types import (
     THEME, AGTRON_SCALES, GreenBean, no_enter_default, show_styled_message, TilauProgress,
     RoastingPhase, marked, normalize_timeindex,
 )
+from tilaucore.bean_text import beans_text
 from tilauscope.roasters import RoasterManager, canonical_roaster_name
 from tilauscope import alog_health as health
 from tilauscope.tilaupid import PIDConfig
@@ -156,26 +157,8 @@ def plausibility_checks(values: dict[str, float]) -> list[str]:
 
 
 def build_beans_field(bean: GreenBean) -> str:
-    """Canonical beans text - mirrors roast_properties._build_beans_field."""
-    parts: list[str] = []
-    if bean.name:
-        parts.append(bean.name)
-    if bean.country:
-        parts.append(bean.country)
-    if bean.farm:
-        parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Farm:"), bean.farm))
-    if bean.process:
-        parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Process"), bean.process))
-    if bean.varieties:
-        parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Variety"), bean.varieties))
-    if bean.altitude:
-        parts.append("{0} {1}m".format(QApplication.translate("tilauscope_common", "Altitude:"), bean.altitude))
-    if bean.sca:
-        parts.append(QApplication.translate("tilauscope_common", "SCA: {0}").format(f"{bean.sca:.1f}"))
-    if bean.uuid:
-        # Machine key, not a label — see the same line in roast_properties.
-        parts.append(f"uuid: {bean.uuid}")
-    return "\n".join(parts)
+    """Canonical beans text, the one Roast Setup writes."""
+    return beans_text(bean, QApplication.translate)
 
 
 def link_beans_text(text: str, bean: GreenBean) -> str:

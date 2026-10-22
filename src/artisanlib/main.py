@@ -163,6 +163,8 @@ import matplotlib.backends.qt_editor._formlayout as formlayout # type:ignore[unt
 from tilauscope.mqttbridge import MQTTConfig, TilauscopeMQTTClient
 from tilauscope.ai_support import TilauAIConfig
 from tilauscope.ai_service import TilauAIService
+from tilauscope import auto_marks ## TILAU ## a roast's own automatic milestones are never saved as the defaults
+from tilaucore.milestones import bt_break, check_top ## TILAU ## Auto CHARGE / DROP shared with the Android prototype
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -21090,11 +21092,12 @@ class ApplicationWindow(QMainWindow):
             self.settingsSetValue(settings, default_settings, 'ctMedian',self.colorTrack_median_window_size, read_defaults)
 
             ## TILAU ##
-            self.settingsSetValue(settings, default_settings, 'tilauscopefcmarking', self.TilauScopeFCMarkFlag, read_defaults)
+            auto_defaults = auto_marks.defaults(self)
+            self.settingsSetValue(settings, default_settings, 'tilauscopefcmarking', auto_defaults['first_crack'], read_defaults)
             self.settingsSetValue(settings, default_settings, 'tilauscopefcwindow', self.TilauScopeFCWindow, read_defaults)
             self.settingsSetValue(settings, default_settings, 'tilauscopefctreshold', self.TilauScopeFCTreshold, read_defaults)
             self.settingsSetValue(settings, default_settings, 'tilauscopefchalfband', self.TilauScopeFCHalfBand, read_defaults)
-            self.settingsSetValue(settings, default_settings, 'tilauscopedemarkflag', self.TilauScopeDEMarkFlag, read_defaults)  ## TILAU
+            self.settingsSetValue(settings, default_settings, 'tilauscopedemarkflag', auto_defaults['dry_end'], read_defaults)  ## TILAU
             # save BLE device name            
             self.settingsSetValue(settings, default_settings, 'tilauscoperoaster', self.tilau_roaster, read_defaults)
             self.settingsSetValue(settings, default_settings, 'tilauscoperoasterreadonly', self.tilau_roaster_readonly, read_defaults) ## TILAU ##
@@ -21221,8 +21224,8 @@ class ApplicationWindow(QMainWindow):
             self.settingsSetValue(settings, default_settings, 'showEtypes',self.qmc.showEtypes, read_defaults)
             self.settingsSetValue(settings, default_settings, 'chargeTimer',self.qmc.chargeTimerFlag, read_defaults)
             self.settingsSetValue(settings, default_settings, 'chargeTimerPeriod',self.qmc.chargeTimerPeriod, read_defaults)
-            self.settingsSetValue(settings, default_settings, 'autoCharge',self.qmc.autoChargeFlag, read_defaults)
-            self.settingsSetValue(settings, default_settings, 'autoDrop',self.qmc.autoDropFlag, read_defaults)
+            self.settingsSetValue(settings, default_settings, 'autoCharge',auto_defaults['charge'], read_defaults) ## TILAU ##
+            self.settingsSetValue(settings, default_settings, 'autoDrop',auto_defaults['drop'], read_defaults) ## TILAU ##
             self.settingsSetValue(settings, default_settings, 'autoChargeMode',self.qmc.autoChargeMode, read_defaults)
             self.settingsSetValue(settings, default_settings, 'autoDropMode',self.qmc.autoDropMode, read_defaults)
             self.settingsSetValue(settings, default_settings, 'markTP',self.qmc.markTPflag, read_defaults)
@@ -25083,63 +25086,16 @@ class ApplicationWindow(QMainWindow):
                 index = i
         return index
 
+    ## TILAU ## checkTop and BTbreak run on tilaucore.milestones, the engine the Android prototype
+    ## shares (android/AUTOMATION-SPEC.md decision 14); same results on 106 roasts, every sample
     def checkTop(self, d:float, offset:float, dpre_dpost_diff:float, p0:float, p1:float, p2:float, p3:float, p4:float, p5:float, twice:bool = False) -> bool:
-        d1 = p0 - p1
-        d2 = p1 - p2
-        #--
-        d3 = p4 - p3
-        d4 = p5 - p4
-        dpre = (d1 + d2) / 2.0
-        dpost = (d3 + d4) / 2.0
-
-        f = self.qmc.btbreak_params['f']
-        maxdpre = self.qmc.btbreak_params['maxdpre']
-        f_dtwice = self.qmc.btbreak_params['f_dtwice']
-
-        #scale parameters for temperature units
-        if self.qmc.mode == 'F':
-            f *= 1.8
-            d *= 1.8
-            maxdpre *= 1.8
-            dpre_dpost_diff *= 1.8
-
-        if twice:
-            d = d * f_dtwice
-
-        # improved variant requesting for a certain minimum delta between the reading of interest and the next two post event legs:
-        return bool(d3 < d and d4 < d and ((abs(dpost) > min(maxdpre, offset + (f * abs(dpre))))
-                                           or (dpost < 0 and dpre < 0 and (-dpre - dpost) > dpre_dpost_diff)))
+        return check_top(d, offset, dpre_dpost_diff, p0, p1, p2, p3, p4, p5, self.qmc.mode, twice)
 
     # returns (negative) offset o>0 to current index i pointing to the index i-o at which a BTbreak was recognized or 0 if no BT break could be detected
     # i the index of the last reading to be considered to proof that i-2 (or i-4) is the index of the BT break
-    # idea:
-    # . average delta before i-2 is not negative
-    # . average delta after i-2 is negative and twice as high (absolute) as the one before
-    # d is minimum temperature delta of the two legs after the event to prevent too early recognition based on noise
     def BTbreak(self, i:int, event:str) -> int:
-        #Compensate for fast sample rates
-        if self.qmc.delay < self.qmc.btbreak_params['delay'][self.qmc.autoDropMode][2] :
-            sampleMode = 2
-        elif self.qmc.delay < self.qmc.btbreak_params['delay'][self.qmc.autoDropMode][1] :
-            sampleMode = 1
-        else:
-            sampleMode = 0
-
-        if event in {'DROP','drop'}:
-            d = self.qmc.btbreak_params['d_drop'][self.qmc.autoDropMode][sampleMode]
-            offset = self.qmc.btbreak_params['offset_drop'][self.qmc.autoDropMode][sampleMode]
-            dpre_dpost_diff = self.qmc.btbreak_params['dpre_dpost_diff'][self.qmc.autoDropMode][sampleMode]
-        else: #CHARGE
-            d = self.qmc.btbreak_params['d_charge'][self.qmc.autoChargeMode][sampleMode]
-            offset = self.qmc.btbreak_params['offset_charge'][self.qmc.autoChargeMode][sampleMode]
-            dpre_dpost_diff = self.qmc.btbreak_params['dpre_dpost_diff'][self.qmc.autoChargeMode][sampleMode]
-
-        if len(self.qmc.timex)>5 and 4 < i < len(self.qmc.timex):  #'i>4' prevents reading temp2[-1] or worse when using BTbreak post recording
-            if self.checkTop(d,offset,dpre_dpost_diff,self.qmc.temp2[i-5],self.qmc.temp2[i-4],self.qmc.temp2[i-3],self.qmc.temp2[i-2],self.qmc.temp2[i-1],self.qmc.temp2[i]):
-                return self.qmc.btbreak_params['tight']
-            if len(self.qmc.timex)>10 and i>10 and self.checkTop(d,offset,dpre_dpost_diff,self.qmc.temp2[i-10],self.qmc.temp2[i-8],self.qmc.temp2[i-6],self.qmc.temp2[i-4],self.qmc.temp2[i-2],self.qmc.temp2[i],twice=True):
-                return self.qmc.btbreak_params['loose']
-        return 0
+        return bt_break(self.qmc.temp2, i, 'DROP' if event in {'DROP','drop'} else 'CHARGE', self.qmc.delay,
+                        self.qmc.autoChargeMode, self.qmc.autoDropMode, self.qmc.mode)
 
     # updates AUC guide (expected time to hit target AUC; self.qmc.AUCguideTime) based on current AUC, target, base, and RoR
     def updateAUCguide(self) -> None:
@@ -29315,6 +29271,16 @@ def main() -> None:
     _tilau_headless_boot = (os.environ.get('TILAU_HEADLESS') == '1'
                             or QSettings().value('tilauscope/headless_mode', False, type=bool))
     appWindow._tilau_headless = bool(_tilau_headless_boot)
+
+    ## TILAU ## With Artisan hidden, macOS finishes launching with no visible window
+    ## and asks for an untitled document of the Info.plist "Document" class; without
+    ## that class it shows "No document could be created". Register an inert one
+    ## (the upstream workaround, disabled since 4.2.13), only when headless.
+    if sys.platform.startswith('darwin') and appWindow._tilau_headless:
+        from Cocoa import NSDocument # type: ignore[import-untyped, attr-defined, unused-ignore] # @UnresolvedImport # pylint: disable=import-error,no-name-in-module
+        class Document(NSDocument): # type:ignore[misc,no-any-unimported] # zuban: ignore # pylint: disable=too-few-public-methods,unused-variable
+            def makeWindowControllers(self) -> None:
+                pass
 
     app.setActivationWindow(appWindow,activateOnMessage=False) # set the activation window for the QtSingleApplication
 

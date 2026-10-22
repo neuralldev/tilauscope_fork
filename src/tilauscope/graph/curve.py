@@ -2485,6 +2485,8 @@ class RoastCurveWidget(QWidget):
             if t >= self._t_min and value != previous:
                 steps.append((self._x(t), v))
             previous = value
+        if not steps:
+            return              # every step before the window: nothing to write beside one
         bounds = [x for x, _v in steps[1:]] + [limit]
         for (x, v), next_x in zip(steps, bounds, strict=True):
             text = f'{int(round(v))}'

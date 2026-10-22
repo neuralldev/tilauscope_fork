@@ -38,6 +38,7 @@ from PyQt6.QtWidgets import (QApplication, QComboBox, QWidget, QHeaderView, QTab
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.theme_qss import tint
+from tilaucore.beans import from_json, to_json
 from tilauscope.tilauscope_types import (GreenBean, BeanCaveContainer, GREEN_BEAN_COLUMNS, show_styled_message,
                                          THEME, TilauProgressDialog, _IS_WINDOWS, select_listed_or_other,
                                          roast_batch_tag)
@@ -1182,7 +1183,7 @@ class BeanTabMixin:
         if str(self.beancave_directory) != '' and self._is_readable_directory(Path(self.beancave_directory)) and self._is_readable_file(beancave_file_path):
             try:
                 content = beancave_file_path.read_text(encoding='utf-8-sig' if _IS_WINDOWS else 'utf-8')
-                self.cave = BeanCaveContainer.from_json(content)
+                self.cave = from_json(BeanCaveContainer, content)
                 self.green_beans = self.cave.green_beans
                 updated = False
                 for bean in self.green_beans:
@@ -1253,7 +1254,7 @@ class BeanTabMixin:
                 beancave_file_path.parent.mkdir(parents=True, exist_ok=True)
                 _atomic_write_text(
                     beancave_file_path,
-                    self.cave.to_json(),
+                    to_json(self.cave),
                     encoding='utf-8-sig' if _IS_WINDOWS else 'utf-8',
                 )
                 return True

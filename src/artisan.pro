@@ -12,6 +12,7 @@ SOURCES = \
     artisanlib/*.py \
     help/*.py \
     plus/*.py \
+    tilaucore/*.py \
     tilauscope/*.py
 
 # the list of translation has to be synced with the script pylupdate6pro (for pylupdate6)

@@ -56,6 +56,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QCursor, QPalette, QColor
 from PyQt6 import sip
 
+from tilauscope import auto_marks
+from tilaucore.milestones import CHARGE_MIN_BT, DROP_MIN_BT
 from tilauscope.config_controls_tab import ControlsTab
 from tilauscope.energy_model import HEATER_FROM_ARTISAN, HEATER_FROM_CONFIG, ROASTER, SOURCE_CURVE, SOURCE_RATED
 from tilauscope.energy_tap import (SETTING_EXTRACTOR_ON_ROASTER_METER, heater_estimate, resolve_sensors,
@@ -1009,6 +1011,37 @@ class TilauscopeConfigDlg(QDialog):
     def _setup_detection_tab(self) -> None:
         scroll = _scrollable(self._detection_tab)
         layout = scroll.widget().layout()
+        auto = auto_marks.defaults(self.aw)
+
+        # ── Charge and Drop (Artisan's Auto Mark) ─────────────────────────
+        layout.addWidget(_section_label(
+            QApplication.translate("tilauscope_devices", "Charge and Drop")
+        ))
+        unit = 'F' if self.aw.qmc.mode == 'F' else 'C'
+        cd_lbl = QLabel(
+            QApplication.translate(
+                "tilauscope_devices",
+                "Artisan marks Charge when bean temperature drops as the beans go in (above {0}), "
+                "and Drop when it drops as they come out (from 7 min and above {1}). These are the "
+                "defaults for every roast; Roast Setup can change them for one roast."
+            ).format(f"{CHARGE_MIN_BT[unit]:.0f} °{unit}", f"{DROP_MIN_BT[unit]:.0f} °{unit}")
+        )
+        cd_lbl.setStyleSheet(
+            f"color: {THEME['SUBTEXT']}; font-size: 11px; font-style: italic;"
+        )
+        cd_lbl.setWordWrap(True)
+        layout.addWidget(cd_lbl)
+        cd_group = QGroupBox()
+        cd_g = QVBoxLayout(cd_group)
+        self.chargeMarking = QCheckBox(literal_ampersand(
+            QApplication.translate("tilauscope_devices", "Enable automatic Charge detection & marking")))
+        self.chargeMarking.setChecked(auto['charge'])
+        self.dropMarking = QCheckBox(literal_ampersand(
+            QApplication.translate("tilauscope_devices", "Enable automatic Drop detection & marking")))
+        self.dropMarking.setChecked(auto['drop'])
+        cd_g.addWidget(self.chargeMarking)
+        cd_g.addWidget(self.dropMarking)
+        layout.addWidget(cd_group)
 
         # ── First Crack ───────────────────────────────────────────────────
         layout.addWidget(_section_label(
@@ -1038,7 +1071,7 @@ class TilauscopeConfigDlg(QDialog):
             literal_ampersand(
                 QApplication.translate("tilauscope_devices", "Enable automatic FC detection & marking"))
         )
-        self.fcMarking.setChecked(self.aw.TilauScopeFCMarkFlag)
+        self.fcMarking.setChecked(auto['first_crack'])
         self.fcMarking.setToolTip(
             QApplication.translate(
                 "tilauscope_devices",
@@ -1138,7 +1171,7 @@ class TilauscopeConfigDlg(QDialog):
             literal_ampersand(
                 QApplication.translate("tilauscope_devices", "Enable automatic Dry End detection & marking"))
         )
-        self.deMarking.setChecked(self.aw.TilauScopeDEMarkFlag)
+        self.deMarking.setChecked(auto['dry_end'])
         self.deMarking.setToolTip(
             QApplication.translate(
                 "tilauscope_devices",
@@ -2927,10 +2960,10 @@ class TilauscopeConfigDlg(QDialog):
             aw.bleNiimbotDeviceName = None
 
         # ── Detection ─────────────────────────────────────────────────────
-        aw.TilauScopeFCMarkFlag  = self.fcMarking.isChecked()
+        auto_marks.set_defaults(aw, {'charge': self.chargeMarking.isChecked(), 'drop': self.dropMarking.isChecked(),
+                                     'dry_end': self.deMarking.isChecked(), 'first_crack': self.fcMarking.isChecked()})
         aw.TilauScopeFCWindow    = self.fcWindowSpin.value()
         aw.TilauScopeFCTreshold  = self.fcThresholdSpin.value()
-        aw.TilauScopeDEMarkFlag  = self.deMarking.isChecked()
         # Only when the operator moved it: converting the shown value back every
         # time would erode the stored °C figure on a Fahrenheit graph.
         if self.fcHalfBandSpin.value() != self._fc_half_shown:

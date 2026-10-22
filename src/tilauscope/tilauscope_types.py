@@ -25,7 +25,6 @@ from collections.abc import Iterable, Mapping
 from typing import Any, Final, NamedTuple
 from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.dict import DataClassDictMixin
-from mashumaro.config import BaseConfig
 from PyQt6.QtWidgets import (QApplication, QMessageBox, QDialog, QVBoxLayout, QHBoxLayout,
                              QFrame, QLabel, QWidget, QPushButton, QSizePolicy, QDoubleSpinBox)
 from PyQt6.QtCore import (Qt, QPropertyAnimation, QTimer, QElapsedTimer, QRectF, QSize,
@@ -44,202 +43,22 @@ class AUCStartEvent:
     DRYEND = 2
     FCSTART = 3
 
-@dataclass(frozen=True)
-class AgtronRange:
-    min_value: float
-    max_value: float
+# Roast levels and colour conversion live in the library shared with the tablet.
+from tilaucore.roast_colour import (  # noqa: E402  pylint: disable=wrong-import-position
+    AGTRON_SCALES, DEFAULT_COLOR_SYSTEM, AgtronRange, AgtronScale, get_agtron_color, resolve_color_system, to_agtron)
 
-@dataclass
-class AgtronScale:
-    name: str
-    agtron_range : AgtronRange
-    description : str
-    color_map: str
+# The green coffee records live in the library shared with the tablet; their
+# files are read and written with tilaucore.beans.from_json / to_json.
+from tilaucore.beans import (  # noqa: E402  pylint: disable=wrong-import-position
+    BeanCaveContainer, BrewDialIn, BrewLog, BrewSample, GreenBean, ReferenceProfile, RoastTasting, TastingLog)
 
-@dataclass
-class BrewDialIn(DataClassJSONMixin):
-    """One accepted brew dial-in for a bean, keyed by brew method.
+# The screen size ranges live in the library shared with the tablet.
+from tilaucore.bean_qualifiers import SCREEN_SIZE_RANGES  # noqa: E402,F401  pylint: disable=wrong-import-position
 
-    Stores the corrected recipe plus what produced it, so a later brew of the
-    same bean reopens on the setting that actually tasted right instead of the
-    generic recommendation. One entry per method (latest wins).
-    """
-    method_id: str = ''
-    grind_um: int = 0
-    ratio: float = 0.0            # the N in 1:N
-    temp_c: float = 0.0
-    # What the engine recommended before the correction. A dial-in is a relative
-    # adjustment: storing the base lets the same ratio be re-applied to a different roast of the same bean.
-    base_grind_um: int = 0
-    base_temp_c: float = 0.0
-    base_ratio: float = 0.0       # the N in 1:N before the correction
-    dose_g: float = 0.0
-    taste: list[str] = field(default_factory=list)   # TasteCode values reported
-    diagnosis: str = ''                              # DiagnosisCode value
-    measured_time_s: int = 0
-    measured_yield_g: float = 0.0
-    iso_date: str = ''
-    class Config(BaseConfig):
-        ignore_missing_keys = True
-
-
-# One measured extraction, kept for analysis — not for reopening. `dial_ins` above
-# answers "what setting should I reopen on"; this append-only journal answers "did the last change do anything" (own file: brewlog.json).
-@dataclass
-class BrewSample(DataClassJSONMixin):
-    method_id: str = ''
-    iso_date: str = ''
-    # ── the cause: what was actually brewed ──
-    grind_um: int = 0
-    ratio: float = 0.0            # the N in 1:N
-    temp_c: float = 0.0
-    dose_g: float = 0.0
-    # ── what the engine had recommended before any correction ──
-    base_grind_um: int = 0
-    base_ratio: float = 0.0
-    base_temp_c: float = 0.0
-    # ── the target: needed to recompute the gap once the engine has moved on ──
-    planned_time_s: int = 0
-    planned_water_g: float = 0.0
-    # ── the consequence ──
-    measured_time_s: int = 0
-    measured_yield_g: float = 0.0
-    # The clean filter signal. Total time is mostly the operator's pour
-    # schedule; only the final drain reflects the bed, hence the grind. False when
-    # no scale was on the line — never estimated, the gap is left visible.
-    drawdown_s: int = 0
-    drawdown_valid: bool = False
-    # Where the two measurements above came from: "scale" (Acaia) or "manual" (machines
-    # with an integrated scale no cup fits over) — a later fit must tell the two populations apart.
-    measured_source: str = 'scale'
-    # ── the context, without which the two above cannot be compared ──
-    agtron: float = 0.0
-    days_off_roast: int = -1
-    espresso_style: str = ''
-    # ── the verdict that justified recording this at all ──
-    taste: list[str] = field(default_factory=list)
-    diagnosis: str = ''
-    class Config(BaseConfig):
-        ignore_missing_keys = True
-
-
-@dataclass
-class BrewLog(DataClassJSONMixin):
-    """Journal of measured extractions, keyed by GreenBean.uuid.
-
-    Lives in brewlog.json beside beancave.json. Its absence is a normal state:
-    nothing depends on it to brew.
-    """
-    version: int = 1
-    entries: dict[str, list[BrewSample]] = field(default_factory=dict)
-    class Config(BaseConfig):
-        ignore_missing_keys = True
-
-
-@dataclass
-class RoastTasting(DataClassJSONMixin):
-    """What the operator thought of one roast once rested; keyed by its Artisan roastUUID."""
-    bean_uuid: str = ''
-    iso_date: str = ''
-    verdict: str = ''       # '' | 'yes' | 'almost' | 'no'
-    defects: list[str] = field(default_factory=list)   # keys of tasting_log.DEFECT_CHANGES
-    notes: str = ''
-    class Config(BaseConfig):
-        ignore_missing_keys = True
-
-
-@dataclass
-class TastingLog(DataClassJSONMixin):
-    """Tastings of roasts, in tastings.json beside beancave.json."""
-    version: int = 1
-    entries: dict[str, RoastTasting] = field(default_factory=dict)
-    class Config(BaseConfig):
-        ignore_missing_keys = True
-
-
-@dataclass
-class GreenBean(DataClassJSONMixin):
-    name: str = ''
-    farm: str = ''
-    country: str = ''
-    supplier: str = ''
-    category: str = ''
-    process: str = ''
-    crop: int = 0
-    density: float = 0.0
-    last_humidity: float = 0.0
-    water_activity: float = 0.0
-    altitude: int = 0
-    species: str = ""
-    varieties: str = ""
-    weight_left: float = 0.0 # input green beans left in stock
-    flavour_notes: str = ''
-    sca: float = 0.0
-    count: int = 0
-    weight: float = 0.0 # calculation of total weight roasted from alogs
-    # --- Blend Fields ---
-    is_blend: bool = False
-    bean1_ratio: float = 100.0
-    bean2_name: str = ''
-    bean2_ratio: float = 0.0
-    bean3_name: str = ''
-    bean3_ratio: float = 0.0
-    blend_notes: str = ''
-    tips: str = ''
-    # Sack identifiers attached to this bean (labelled bags). Fully
-    # optional: an empty list is a normal, permanent state — nothing depends
-    # on a sack being registered. weight_left stays the single global stock.
-    sacks: list[str] = field(default_factory=list)
-    # Storage conditioning for the water-activity advisor (Stockage tab).
-    # Language-neutral key: '' (unknown) | 'vacuum' | 'grainpro' | 'ecotact' | 'bocal' | 'toile'.
-    # Sealed conditionings suspend the moisture-drift trend (no air exchange).
-    conditioning: str = ''
-    # Accepted brew dial-ins, one per brew method (latest wins). Optional and
-    # additive: an empty list is the normal state for a bean never brewed with taste feedback.
-    dial_ins: list[BrewDialIn] = field(default_factory=list)
-    # Size class key of SCREEN_SIZE_RANGES; '' = unknown.
-    screen_size: str = ''
-    # Purchase price per kg of green, in the system currency; 0 = unknown.
-    price_per_kg: float = 0.0
-    uuid:str = ''
-    # roastUUID of the roast the operator marked as this crop's reference; '' = none.
-    reference_roast_uuid: str = ''
-    class Config(BaseConfig):
-        ignore_missing_keys = True
-
-@dataclass
-class ReferenceProfile(DataClassJSONMixin):
-    title: str =''
-    count: int = 0
-    avg_drop_bt: float = 0.0
-    avg_weight_loss : float = 0.0
-    avg_roast_color : float = 0.0
-    avg_total_time_min : float = 0.0
-    avg_dtr_pct : float = 0.0
-
-@dataclass
-class BeanCaveContainer(DataClassJSONMixin):
-    green_beans: list[GreenBean] = field(default_factory=list)
-    reference_profiles: list[ReferenceProfile] = field(default_factory=list)
-    class Config(BaseConfig):
-        ignore_missing_keys = True
-
-# GreenBean.screen_size key → Artisan (beansize_min, beansize_max), in 1/64".
-# Unknown ('' or any other key) writes (0, 0), Artisan's own "not set".
-SCREEN_SIZE_RANGES: dict[str, tuple[int, int]] = {
-    'large':    (17, 18),
-    'medium':   (15, 16),
-    'small':    (13, 14),
-    'peaberry': (13, 14),
-}
-
-# ISO code → symbol of the currencies offered in Config › BeanCave.
-CURRENCIES: dict[str, str] = {
-    'EUR': '€', 'USD': '$', 'GBP': '£', 'CHF': 'CHF', 'CAD': 'CA$', 'AUD': 'A$',
-    'NZD': 'NZ$', 'JPY': '¥', 'CNY': 'CN¥', 'KRW': '₩', 'TWD': 'NT$', 'HKD': 'HK$',
-    'SGD': 'S$', 'INR': '₹', 'SEK': 'kr', 'NOK': 'kr', 'DKK': 'kr', 'PLN': 'zł',
-    'CZK': 'Kč', 'BRL': 'R$', 'MXN': 'MX$', 'ZAR': 'R',
-}
+# The currencies offered in Config › BeanCave live in the library shared with the tablet.
+from tilaucore.currency import CURRENCIES  # noqa: E402  pylint: disable=wrong-import-position
+from tilaucore.bean_edit import NUMBERS as _NUMBERS  # noqa: E402  pylint: disable=wrong-import-position
+PRICE_LIMITS = _NUMBERS['price_per_kg']
 
 
 def currency_code() -> str:
@@ -256,8 +75,9 @@ def currency_symbol() -> str:
 def price_per_kg_spin() -> QDoubleSpinBox:
     """The green-coffee price field, in the configured currency per kg."""
     spin = QDoubleSpinBox()
-    spin.setRange(0.0, 10_000_000.0)   # wide enough for JPY and KRW
-    spin.setDecimals(2)
+    low, high, decimals = PRICE_LIMITS   # wide enough for JPY and KRW
+    spin.setRange(low, high)
+    spin.setDecimals(decimals)
     spin.setSuffix(f" {currency_symbol()}/kg")
     spin.setToolTip(QApplication.translate("tilauscope",
         "Purchase price per kg of green beans. Leave 0 if unknown."))
@@ -316,57 +136,6 @@ GREEN_BEAN_COLUMNS = [
 # get_agtron_color(), so one Agtron number is always the same colour. The
 # tones go light to dark without a step back, and are legible on the dark
 # theme background.
-AGTRON_SCALES: list[AgtronScale] = [
-    AgtronScale(
-        name="Extremely Dark",
-        agtron_range=AgtronRange(0.0, 25.99),
-        description="Italian",
-        color_map="#2D1A0E",
-    ),
-    AgtronScale(
-        name="Very Dark",
-        agtron_range=AgtronRange(26.0, 34.99),
-        description="French",
-        color_map="#4C2B16",
-    ),
-    AgtronScale(
-        name="Dark",
-        agtron_range=AgtronRange(35.0, 40.99),
-        description="Vienna",
-        color_map="#6B3D1E",
-    ),
-    AgtronScale(
-        name="Medium Dark",
-        agtron_range=AgtronRange(41.0, 50.99),
-        description="Full City",
-        color_map="#855734",
-    ),
-    AgtronScale(
-        name="Medium",
-        agtron_range=AgtronRange(51.0, 60.99),
-        description="City",
-        color_map="#A0704A",
-    ),
-    AgtronScale(
-        name="Medium Light",
-        agtron_range=AgtronRange(61.0, 70.99),
-        description="American",
-        color_map="#B98B5E",
-    ),
-    AgtronScale(
-        name="Light",
-        agtron_range=AgtronRange(71.0, 100.99),
-        description="New England",
-        color_map="#D2A679",
-    ),
-    AgtronScale(
-        name="Very Light",
-        agtron_range=AgtronRange(101.0, 130.0),
-        description="Cinnamon",
-        color_map="#E8CDA5",
-    ),
-]
-
 # ── .alog text helpers ───────────────────────────────────────────────────────
 
 # Escapes Artisan writes into a profile's text fields: \xNN, \uNNNN and the
@@ -397,96 +166,6 @@ def decode_alog_text(value: object, default: str = '') -> str:
     return text
 
 
-# ── Colour helpers ────────────────────────────────────────────────────────────
-# These functions are pure (no Qt dependency) so they can be imported at module
-# level in any consumer without triggering Qt initialisation.
-
-# Roast-colour systems whose readings are already on (or aligned to) the Agtron
-# Gourmet scale (0-100, higher = lighter) and are used as-is.
-# ColorTrack (Probat): SCAA cupping standard (coffeelabequipment.com/SCAA_COFFEE_COLOR.pdf)
-# sets Agtron Gourmet=63.0 ↔ ColorTrack=62.0 (within the ±1 document tolerance),
-# confirming the two scales are effectively 1:1 around the medium-light reference.
-_AGTRON_NATIVE: frozenset[str] = frozenset({"agtron", "colortest", "colortrack", ""})
-
-
-def to_agtron(value: float, system: str) -> float:
-    """SINGLE SOURCE OF TRUTH for converting any roast-colour reading to the
-    Agtron Gourmet scale (0-100, higher = lighter). Every TilauScope module that
-    needs an Agtron value MUST go through this function so the whole app shares
-    one definition.
-
-    Agtron is the only *normalised* roast-level reference, so readings on other
-    meters are APPROXIMATED rather than rejected — for roast-level purposes an
-    approximation is more useful than no value at all.
-
-    Sources:
-      [S-SCAA] SCAA Standard "Roast Level for Cupping" (coffeelabequipment.com/
-               SCAA_COFFEE_COLOR.pdf): single-point anchors at the cupping
-               reference roast (Agtron Gourmet 63 ± 1).
-      [S-TON]  Tonino-App official calibration files (github.com/myTonino/
-               Tonino-App, src/scales/*.toni v1.0.24): 13 measured Agtron/
-               Tonino pairs bridged through the shared raw-sensor axis.
-               OLS linear fit: Tonino → Agtron  (σ ≈ 4 Ag).
-      [S-PROB] Probat Colorette product page (probat.com): Colorette scale
-               range 0–200.
-
-    ColorTrack [S-SCAA]: CT=62.0 ↔ Ag=63.0 — within SCAA ±1 tolerance, so
-    ColorTrack ≈ Agtron Gourmet (same scale, same direction). Listed in
-    _AGTRON_NATIVE; value returned as-is.
-
-    Tonino [S-TON]: T-values run lighter-is-higher, same direction as Agtron.
-    OLS on 13 pairs from Agtron.toni + Tonino.toni:
-      Agtron = 0.777 × T − 16.6   (±4 Ag at 1σ, unbiased)
-
-    Probat Colorette 3b [S-SCAA + S-PROB]: scale 0–200, lighter-is-higher.
-    SCAA anchor: Col3b=96.0 ↔ Ag=63.0.  Assuming proportional through origin
-    (both read ≈ 0 for carbonised/unroasted green):
-      Agtron = 0.656 × Colorette   (single-anchor estimate; ±8 Ag uncertainty)
-
-    Returns 0.0 only when there is genuinely no reading (value <= 0), which
-    callers treat as "unknown colour".
-    """
-    if value <= 0:
-        return 0.0
-    s = (system or "").strip().lower()
-    if s in _AGTRON_NATIVE:
-        return value
-    if s == "tonino":
-        # [S-TON] OLS on 13 Agtron.toni/Tonino.toni calibration pairs.
-        return (value * 0.777) - 16.6
-    if s == "colorette":
-        # [S-SCAA + S-PROB] Colorette 3b, scale 0–200.  Single SCAA anchor
-        # (Col3b=96 ↔ Ag=63) + proportional-through-origin assumption.
-        return value * 0.656
-    return value  # unknown meter → assume already Agtron-comparable
-
-
-DEFAULT_COLOR_SYSTEM: str = "Agtron"
-
-
-def resolve_color_system(current: str, ground: float, whole: float,
-                         default: str = DEFAULT_COLOR_SYSTEM) -> str:
-    """Name the colour scale of a roast that carries a reading but no scale.
-
-    Artisan's colour-system index defaults to 0, and entry 0 is the empty
-    string: a profile saved without an explicit choice reads back as
-    `color_system: ''`. Every consumer that needs the scale to interpret the
-    figure — the dial-in advice, the label — takes that for "no colour
-    measured" and refuses a roast that was in fact measured. The TilauScope
-    colour fields are Agtron, so the scale is named as soon as a reading
-    exists.
-
-    Returns *current* when it is already set, *default* when a reading exists
-    without one, and "" when there is genuinely nothing measured.
-    """
-    cur = (current or "").strip()
-    if cur:
-        return cur
-    if ground > 0 or whole > 0:
-        return default
-    return ""
-
-
 def ensure_color_system(qmc: object, default: str = DEFAULT_COLOR_SYSTEM) -> str:
     """Apply :func:`resolve_color_system` to a live Artisan canvas.
 
@@ -513,20 +192,6 @@ def ensure_color_system(qmc: object, default: str = DEFAULT_COLOR_SYSTEM) -> str
     return resolved
 
 
-def get_agtron_color(agtron: float) -> str:
-    """Return the grain-colour hex that matches *agtron* on the SCA Gourmet scale.
-
-    The colour is taken directly from AGTRON_SCALES.color_map so the
-    annotation always reflects the actual visual colour of the bean.
-    Falls back to a neutral grey when the value is out of range (e.g. -1
-    sentinel or pre-stabilisation noise).
-    """
-    for scale in AGTRON_SCALES:
-        if scale.agtron_range.min_value <= agtron <= scale.agtron_range.max_value:
-            return scale.color_map
-    return "#9E9E9E"  # grey — out of range / sensor not ready
-
-
 def get_roc_color(roc: float) -> str:
     """Return a colour for the Omniflux Rate-of-Color value (Agtron/min).
 
@@ -545,243 +210,13 @@ def get_roc_color(roc: float) -> str:
     return "#00BFFF"                     # DeepSkyBlue — slow / stalled
 
 
-# ── RoR (Rate-of-Rise, bean temperature) phase classifier ───────────────────
-# Distinct from get_roc_color() above (Rate-of-COLOUR, Agtron/min). RoR works on
-# BT in degrees/min. Bands are dual-sided (both too-high and too-low matter) and
-# phase-specific. Source: Rao / Cropster / Mill City / Anne Cooper.
-_ROR_PHASE_BANDS_C = {
-    # phase_key:  (warn_lo, warn_hi, crit_lo, crit_hi)   -- ideal band in comment
-    "CHARGE_DRY": (6.0, 15.0, 3.0, 18.0),   # ideal 8-14
-    "DRY_FC":     (4.0, 13.0, 2.0, 16.0),   # ideal 5-12
-    "FC_DROP":    (1.5,  7.0, 0.5,  9.0),   # ideal 2-6
-}
-_ROR_IDEAL_C = {"CHARGE_DRY": (8.0, 14.0), "DRY_FC": (5.0, 12.0), "FC_DROP": (2.0, 6.0)}
-_ROR_PHASE_ALIASES = {
-    "drying": "CHARGE_DRY", "dry": "CHARGE_DRY", "charge_dry": "CHARGE_DRY",
-    "maillard": "DRY_FC", "dry_fc": "DRY_FC",
-    "development": "FC_DROP", "dev": "FC_DROP", "fc_drop": "FC_DROP",
-}
-
-
-def _ror_phase_key(phase: str) -> str:
-    p = str(phase).strip()
-    return _ROR_PHASE_ALIASES.get(p.lower(), p.upper())
-
-
-def get_ror_color_by_phase(ror: float, phase: str, mode: str = "C") -> tuple[str, str, str]:
-    """
-    Classify a BT Rate-of-Rise (degrees/min) against dual-sided, phase-specific
-    bands. Returns (level, direction, colour):
-
-        level     : "ok" | "warn" | "crit"
-        direction : "normal" | "high" | "low"
-        colour    : hex string (green / gold / red)
-
-    `phase` accepts a band key ("CHARGE_DRY"|"DRY_FC"|"FC_DROP") or an alias
-    ("drying"|"maillard"|"development"). mode "F" scales the C bands by 1.8.
-
-    This is the RoR (bean-temperature) classifier. For Rate-of-Colour
-    (Agtron/min) use get_roc_color(): RoR and RoC are different signals.
-    """
-    band = _ROR_PHASE_BANDS_C.get(_ror_phase_key(phase))
-    if band is None or ror is None:
-        return "ok", "normal", "#32CD32"
-    warn_lo, warn_hi, crit_lo, crit_hi = band
-    if mode == "F":
-        warn_lo, warn_hi, crit_lo, crit_hi = (v * 1.8 for v in (warn_lo, warn_hi, crit_lo, crit_hi))
-    if ror > crit_hi:
-        return "crit", "high", "#FF4500"
-    if ror < crit_lo:
-        return "crit", "low", "#FF4500"
-    if ror > warn_hi:
-        return "warn", "high", "#FFD700"
-    if ror < warn_lo:
-        return "warn", "low", "#FFD700"
-    return "ok", "normal", "#32CD32"
-
-
-def get_ror_ideal_band(phase: str, mode: str = "C") -> tuple[float, float]:
-    """Ideal RoR target band (degrees/min) for a phase, for display/messaging."""
-    lo, hi = _ROR_IDEAL_C.get(_ror_phase_key(phase), (0.0, 0.0))
-    return (lo * 1.8, hi * 1.8) if mode == "F" else (lo, hi)
-
-
-# ── Shared crash/flick detection (prominence-based, sample-rate invariant) ────
-# Single source for both the plan generator (historical-log analysis) and the
-# BeanCave coach (single-roast and multi-roast comparison) — same algorithm,
-# same thresholds, everywhere a crash or a flick is flagged.
-
-def clean_delta_bt(delta_bt: list) -> list:
-    """Forward-fills None values in a delta_bt (RoR) array; 0.0 at the start."""
-    cleaned_list = []
-    last_valid_value = 0.0
-    for value in delta_bt:
-        if value is None:
-            cleaned_list.append(last_valid_value)
-        else:
-            current_val = float(value)
-            cleaned_list.append(current_val)
-            last_valid_value = current_val
-    return cleaned_list
-
-
-def estimate_ror_dt(timex) -> float:
-    """Median sampling interval (s) of a log, derived from its own recorded
-    timestamps. Robust to the user's Artisan sampling setting, which varies
-    per recording. Falls back to 1.0 s."""
-    import numpy as np
-    tx = np.asarray(timex, dtype=float)
-    if tx.size < 2:
-        return 1.0
-    d = np.diff(tx)
-    d = d[d > 0]
-    if d.size == 0:
-        return 1.0
-    return float(np.clip(np.median(d), 0.25, 10.0))
-
-
-def find_turning_point_index(bt_input: list, dt: float = 1.0) -> int:
-    """Index of the Turning Point = the BT minimum, searched in the early
-    window (~15 s .. 2 min 30 after charge). Uses BT, not the RoR minimum:
-    the RoR minimum (steepest cooling) occurs BEFORE the turning point."""
-    import numpy as np
-    bt = np.array([np.nan if b is None else float(b) for b in bt_input], dtype=float) if bt_input else np.array([])
-    if bt.size == 0:
-        return 0
-    lo = min(int(round(15.0 / dt)), bt.size - 1)
-    hi = min(int(round(150.0 / dt)), bt.size)
-    if hi <= lo:
-        hi = bt.size
-    if hi <= lo:
-        return 0
-    seg = bt[lo:hi]
-    if np.all(np.isnan(seg)):
-        return lo
-    return lo + int(np.nanargmin(seg))
-
-
-def which_roast_phase(current_time: float, phase_times: dict) -> int:
-    """Roasting phase for a timestamp (seconds since charge): 1=DRY, 2=MAILLARD,
-    3=DEVELOPMENT, 0=out of scope (including post-FC when FC itself is unmarked,
-    since Maillard and development cannot then be told apart)."""
-    dry_end  = phase_times.get("dry_end")
-    fc_start = phase_times.get("fc_start")
-    drop     = phase_times.get("drop")
-    if drop is None:
-        return 0
-    if dry_end is not None and current_time <= dry_end:
-        return 1
-    if fc_start is not None and current_time <= fc_start:
-        return 2
-    if fc_start is None:
-        return 0
-    if current_time <= drop:
-        return 3
-    return 0
-
-
-def find_flicks_crashes(
-        delta_bt: list,
-        timex: list,
-        phase_times: dict,
-        tp_index: int,
-        prominence: float = 1.0,        # degrees C/min: significance of the dip/bump
-        debounce_sec: float = 20.0,
-        recovery_margin_sec: float = 30.0,
-):
-    """
-    Detect significant RoR dips (crashes) and bumps (flicks) as LOCAL EXTREMA
-    ranked by PROMINENCE (degrees C/min).
-
-    Why prominence: a healthy roast has a continuously declining RoR, which has
-    no local extremum, so it is never flagged. A crash is a genuine local valley
-    and a flick a genuine local peak; their prominence is the physical measure of
-    how significant the event is, comparable across roasts.
-
-    Sample-rate invariant: every time window/limit is converted to samples using
-    the per-log sampling interval derived from timex, so detection does not
-    assume 1 Hz.
-    """
-    import numpy as np
-    from scipy.signal import find_peaks
-
-    flicks: list = []
-    crashes: list = []
-
-    ror = np.asarray(clean_delta_bt(delta_bt), dtype=float)
-    tx  = np.asarray(timex, dtype=float)
-    n = ror.size
-    if n < 10 or tx.size != n:
-        return flicks, crashes
-
-    dt = estimate_ror_dt(tx)
-    distance = max(1, int(round(debounce_sec / dt)))
-
-    # Light denoise (~5 s). Prominence already rejects small wiggles, so keep
-    # this light to avoid attenuating short real flicks near first crack.
-    win = max(1, int(round(5.0 / dt)))
-    if win > 1:
-        kernel = np.ones(win) / win
-        ror_s = np.convolve(ror, kernel, mode='same')
-    else:
-        ror_s = ror
-
-    # Exclude the post-TP recovery: locate the recovery RoR peak within ~180 s
-    # after the (BT-based) turning point, then start detecting a margin later so
-    # the recovery peak itself is never mistaken for a flick.
-    peak_limit = min(n, tp_index + int(round(180.0 / dt)))
-    if 0 <= tp_index < peak_limit:
-        rec_idx = tp_index + int(np.argmax(ror_s[tp_index:peak_limit]))
-        detect_from_t = tx[rec_idx] + recovery_margin_sec
-    else:
-        detect_from_t = float(tx[0]) + 120.0
-
-    flick_idx, fprops = find_peaks(ror_s, prominence=prominence, distance=distance)
-    crash_idx, cprops = find_peaks(-ror_s, prominence=prominence, distance=distance)
-
-    for k, i in enumerate(flick_idx):
-        if tx[i] <= detect_from_t:
-            continue
-        flicks.append({
-            "time":      float(tx[i]),
-            "ror_value": round(float(ror_s[i]), 2),
-            "severity":  round(float(fprops["prominences"][k]), 2),
-            "phase":     which_roast_phase(float(tx[i]), phase_times),
-        })
-    for k, i in enumerate(crash_idx):
-        if tx[i] <= detect_from_t:
-            continue
-        crashes.append({
-            "time":      float(tx[i]),
-            "ror_value": round(float(ror_s[i]), 2),
-            "severity":  round(float(cprops["prominences"][k]), 2),
-            "phase":     which_roast_phase(float(tx[i]), phase_times),
-        })
-    return flicks, crashes
-
-
-# Below this prominence a dip or a bump is inside the smoothing noise of a stored
-# log: it does not show on the plotted RoR curve, so the coach must not name it.
-DEV_EVENT_PROMINENCE_C: float = 2.0
-
-
-def dominant_dev_ror_event(delta_bt: list, timex: list, phase_times: dict,
-                           tp_index: int, mode: str = "C") -> dict | None:
-    """The one significant RoR accident between first crack and drop, or None.
-
-    A crash and a flick announced together contradict each other: every dip sits
-    between two bumps, so the same wiggle yields both. Only the most prominent
-    event is kept, so the advice names a single gesture.
-    """
-    scale = 1.8 if mode == "F" else 1.0
-    flicks, crashes = find_flicks_crashes(
-        delta_bt, timex, phase_times, tp_index,
-        prominence=DEV_EVENT_PROMINENCE_C * scale)
-    events = ([dict(e, kind="crash") for e in crashes if e.get("phase") == 3]
-              + [dict(e, kind="flick") for e in flicks if e.get("phase") == 3])
-    if not events:
-        return None
-    return max(events, key=lambda e: float(e.get("severity", 0.0)))
+# Reading a recorded roast lives in the library shared with the tablet.
+from tilaucore.roast_analysis import (  # noqa: E402,F401  pylint: disable=wrong-import-position
+    DEV_EVENT_PROMINENCE_C, DRY_MATTER_DEV_REF_MIN, DRY_MATTER_LOSS_PCT_BY_CATEGORY, DRY_MATTER_PCT_PER_DEV_MIN,
+    GREEN_MOISTURE_NEUTRAL_PCT, UNMARKED, WEIGHT_LOSS_TOLERANCE_PCT, ProbeDeviation, ProbeDeviationInterval,
+    RoastingPhase, WeightLossTarget, clean_delta_bt, dominant_dev_ror_event, estimate_ror_dt,
+    find_flicks_crashes, find_turning_point_index, get_ror_color_by_phase, get_ror_ideal_band, is_reading,
+    marked, normalize_timeindex, weight_loss_target, weight_loss_target_from_plan, which_roast_phase)
 
 
 # dictionnaire de standardisation pour nettoyer les noms de processus courants
@@ -793,66 +228,6 @@ standardization_map = {
     "Washed Process": "Washed",
     "Natural Process": "Natural",
 }
-
-# Artisan roasting phases from timeindex table
-class RoastingPhase:
-    CHARGE = 0
-    DRYEND = 1
-    FCSTART = 2
-    FCEND = 3
-    SCSTART = 4
-    SCEND = 5
-    DROP = 6
-    COOLEND = 7
-
-
-UNMARKED: Final[tuple[int, ...]] = (-1, 0, 0, 0, 0, 0, 0, 0)
-
-
-def marked(timeindex: object, i: int) -> bool:
-    """True if milestone `i` has been placed.
-
-    The "unmarked" sentinel is PER INDEX, not per mode. `timeindex` resets to
-    [-1,0,0,0,0,0,0,0] in every mode: CHARGE reads -1 because 0 is a valid
-    sample index, while 1..7 read 0 when unmarked. Testing `> -1` on a milestone
-    is therefore always true and silently disables whatever it was guarding.
-    Lives here, beside RoastingPhase, so reading a timeindex never costs an
-    import of the graph package.
-    """
-    try:
-        if i == 0:
-            return int(timeindex[0]) > -1  # type: ignore[index]
-        return int(timeindex[i]) > 0  # type: ignore[index]
-    except (TypeError, IndexError, ValueError):
-        return False
-
-
-def is_reading(value: object) -> bool:
-    """False for None and for Artisan's -1: the probe answered nothing at that sample.
-
-    Lives beside `marked` for the same reason: reading a sample never costs an
-    import of the graph package.
-    """
-    return value is not None and value != -1
-
-
-def normalize_timeindex(raw: object) -> list[int]:
-    """A short or absent `timeindex` padded to 8 slots, each with ITS sentinel.
-
-    Padding every missing slot with -1 would leave one variable carrying two
-    conventions at once — -1 for a slot the file never had, 0 for a milestone
-    the operator never marked — and a reader testing either one alone silently
-    misses the other half. Pad from Artisan's own reset row instead, so a
-    truncated file is indistinguishable from an unmarked one and `marked()`
-    is the only test any caller needs.
-    """
-    try:
-        vals = [int(v) for v in raw]  # type: ignore[union-attr]
-    except (TypeError, ValueError):
-        vals = []
-    vals = vals[:8]
-    return vals + list(UNMARKED[len(vals):])
-
 
 @dataclass
 class MQTTSensor(DataClassDictMixin):
@@ -873,346 +248,11 @@ class MQTTSensorConfig(DataClassJSONMixin):
 
 MQTT_SENSORS_KEY = "mqtt/sensors"
 
-# temperature offset from BT probe to actual bean temp
-@dataclass
-class ProbeDeviationInterval:
-    start_min: float = 0.0
-    end_min: float = 0.0
+# The level table and the arrival-pair reading live in the library shared with the tablet.
+from tilaucore.roast_levels import (  # noqa: E402,F401  pylint: disable=wrong-import-position
+    ARRIVAL_SECONDS_PER_DEGREE, ARRIVAL_UNCERTAINTY_DEFAULT_C, ROASTING_BASIC_BASE, RoasterBasicPlan,
+    RoasterBasicPlanPerPhase, arrival_index, roast_level_from_arrival, roast_level_from_arrival_detail)
 
-# roaster BT deviation settings
-@dataclass
-class ProbeDeviation(DataClassDictMixin):
-    probe_id: str
-    bt_at_charge : ProbeDeviationInterval
-    bt_at_de : ProbeDeviationInterval
-    bt_at_fc : ProbeDeviationInterval
-    bt_at_drop : ProbeDeviationInterval
-    use_roaster_offsets: bool = True
-
-@dataclass
-class RoasterBasicPlanPerPhase:
-   # No charge temperature here: charge is owned by _CHARGE_FLOOR_C and
-   # _CHARGE_CEILING_BY_PROCESS in roast_plan_model (a single machine floor,
-   # a ceiling per process, in measured BT).
-   name: str
-   heater_cmfc: tuple[float, float, float]
-   total_time: tuple[float, float]
-   drying_time: tuple[float, float]
-   maillard_time: tuple[float, float]
-   development_time: tuple[float, float]
-   dtr_pct: tuple[float, float]
-   drop_temp: tuple[int, int]
-   fc_temp:int
-   dry_temp:int
-
-@dataclass
-class RoasterBasicPlan(DataClassDictMixin):
-    plans: list[RoasterBasicPlanPerPhase]
-
-# Base roast-plan table by Agtron category (names match AGTRON_SCALES), before
-# any per-roast correction (FIR/NIR light-roast tweak, BT-probe deviation).
-# Single source shared by the plan generator (roast_plan_model.py, which
-# deep-copies this before applying its corrections) and the BeanCave coach
-# (beancave.py, which reads it as-is for post-roast reference ranges) so the
-# two never judge a roast against different fundamentals.
-ROASTING_BASIC_BASE: RoasterBasicPlan = RoasterBasicPlan(
-    plans=[
-        RoasterBasicPlanPerPhase(
-            name="Very Light",
-            heater_cmfc=(0.85, 0.70, 0.50),
-            total_time=(7.5, 8.75),
-            drying_time=(3.5, 4.0),
-            maillard_time=(3.0, 3.5),
-            development_time=(1.0, 1.25),
-            dtr_pct=(0.13, 0.15),
-            drop_temp=(197, 203),
-            fc_temp=194,
-            dry_temp=153,
-        ),
-        RoasterBasicPlanPerPhase(
-            name="Light",
-            heater_cmfc=(0.85, 0.70, 0.50),
-            total_time=(8.25, 10.25),
-            drying_time=(3.5, 4.5),
-            maillard_time=(3.5, 4.0),
-            development_time=(1.25, 1.75),
-            dtr_pct=(0.15, 0.17),
-            drop_temp=(203, 208),
-            fc_temp=195,
-            dry_temp=155,
-        ),
-        RoasterBasicPlanPerPhase(
-            name="Medium Light",
-            heater_cmfc=(0.75, 0.65, 0.45),
-            total_time=(9.75, 11.25),
-            drying_time=(4.5, 5.0),
-            maillard_time=(3.75, 4.25),
-            development_time=(1.5, 2.0),
-            dtr_pct=(0.16, 0.19),
-            drop_temp=(208, 213),
-            fc_temp=196,
-            dry_temp=158,
-        ),
-        RoasterBasicPlanPerPhase(
-            name="Medium",
-            heater_cmfc=(0.75, 0.60, 0.45),
-            total_time=(11.0, 12.75),
-            drying_time=(4.75, 5.25),
-            maillard_time=(4.25, 4.75),
-            development_time=(2.0, 2.75),
-            dtr_pct=(0.18, 0.22),
-            drop_temp=(212, 217),
-            fc_temp=198,
-            dry_temp=160,
-        ),
-        RoasterBasicPlanPerPhase(
-            name="Medium Dark",
-            heater_cmfc=(0.70, 0.60, 0.40),
-            total_time=(12.0, 13.5),
-            drying_time=(5.0, 5.5),
-            maillard_time=(4.5, 5.0),
-            development_time=(2.5, 3.0),
-            dtr_pct=(0.20, 0.23),
-            drop_temp=(217, 222),
-            fc_temp=200,
-            dry_temp=162,
-        ),
-        RoasterBasicPlanPerPhase(
-            name="Dark",
-            heater_cmfc=(0.70, 0.60, 0.42),
-            total_time=(12.25, 13.75),
-            drying_time=(5.0, 5.5),
-            maillard_time=(4.5, 5.0),
-            development_time=(2.75, 3.25),
-            dtr_pct=(0.22, 0.24),
-            drop_temp=(221, 226),
-            fc_temp=202,
-            dry_temp=163,
-        ),
-        RoasterBasicPlanPerPhase(
-            name="Very Dark",
-            heater_cmfc=(0.72, 0.62, 0.44),
-            total_time=(12.5, 14.0),
-            drying_time=(5.0, 5.5),
-            maillard_time=(4.5, 5.0),
-            development_time=(3.0, 3.5),
-            dtr_pct=(0.23, 0.26),
-            drop_temp=(224, 229),
-            fc_temp=203,
-            dry_temp=164,
-        ),
-        RoasterBasicPlanPerPhase(
-            name="Extremely Dark",
-            heater_cmfc=(0.72, 0.62, 0.44),
-            total_time=(13.0, 14.5),
-            drying_time=(5.0, 5.5),
-            maillard_time=(4.75, 5.25),
-            development_time=(3.25, 3.75),
-            dtr_pct=(0.24, 0.27),
-            drop_temp=(228, 236),
-            fc_temp=204,
-            dry_temp=165,
-        ),
-    ]
-)
-
-# Neutral green moisture (%). The reference a lot is read against when its own
-# moisture was not measured. Shared with the plan model's charge modulation, so
-# a single value moves both.
-GREEN_MOISTURE_NEUTRAL_PCT: float = 10.5
-
-# Weight loss decomposes: the WATER the lot carried, plus the DRY MATTER burnt
-# off. The water is measured (green moisture), so only the dry matter is
-# modelled here — and it depends on the DEVELOPMENT as much as on the colour.
-# Corpus, n=92: at constant colour, dry-matter loss rises +2.2 points per minute
-# of development; development alone explains R^2=0.24 of it against 0.08 for
-# colour alone. Keying the band on colour only keys it on the weak variable.
-# The chain is: destination (espresso/filter) -> development -> weight loss, so
-# the destination never enters here, it enters through the development.
-# Anchor: Hoos — light filter, 1:00 development, loss = moisture + 1 to 2 points.
-DRY_MATTER_DEV_REF_MIN: float = 1.0
-DRY_MATTER_PCT_PER_DEV_MIN: float = 2.2
-# Set to the model's own measured residual spread (+/-1.7 points on the corpus):
-# below that the flag reports weighing noise, not roasting — on a 300 g batch one
-# point of loss is 3 g, the order of the chaff. The target is a bearing, not a
-# fine verdict; nothing is flagged inside this tolerance.
-WEIGHT_LOSS_TOLERANCE_PCT: float = 1.7
-
-# Dry-matter loss (%) at the reference development, by Agtron category (names
-# match AGTRON_SCALES).
-DRY_MATTER_LOSS_PCT_BY_CATEGORY: dict[str, float] = {
-    "Very Light":     0.6,
-    "Light":          1.0,   # Hoos anchor
-    "Medium Light":   1.1,
-    "Medium":         1.3,
-    # Below this line the values are CONVENTION, not measurement: the measured
-    # range stops around 51 Agtron, and prolonging the observed colour slope to
-    # Vienna/French would produce absurd numbers.
-    "Medium Dark":    2.2,
-    "Dark":           3.5,
-    "Very Dark":      5.0,
-    "Extremely Dark": 6.5,
-}
-
-
-class WeightLossTarget(NamedTuple):
-    """Prescribed weight loss (%) and the band around it that reads as on-target."""
-
-    target: float
-    low:    float
-    high:   float
-
-
-_PLANS_BY_NAME: "dict[str, RoasterBasicPlanPerPhase]" = {}
-
-
-# On the arrival pair, one degree at drop is worth two seconds of development:
-# a hotter drop and a shorter development land on the same colour. That
-# equivalence is what lets the two be read on a single axis.
-ARRIVAL_SECONDS_PER_DEGREE: float = 2.0
-
-
-def arrival_index(drop_bt_c: float, dev_time_min: float) -> float:
-    """The arrival pair on one axis, in °C-equivalent."""
-    return drop_bt_c + (dev_time_min * 60.0) / ARRIVAL_SECONDS_PER_DEGREE
-
-
-# What a roast level read from the arrival is worth on a home machine, in °C.
-# These roasters are built from low-cost parts — a drop temperature is not a
-# laboratory measurement — so a level is only ever resolved to about this much,
-# and an arrival this close to a neighbouring level could be read either way.
-# A roaster record may carry its own figure (RoasterContext.arrival_uncertainty_c).
-ARRIVAL_UNCERTAINTY_DEFAULT_C: float = 3.0
-
-
-def roast_level_from_arrival_detail(drop_bt_c: "float | None", dev_time_min: "float | None",
-                                    drop_offset_c: float = 0.0,
-                                    uncertainty_c: float = ARRIVAL_UNCERTAINTY_DEFAULT_C
-                                    ) -> "tuple[str | None, str | None]":
-    """(level, neighbour) — the level the roast ran, and the level it could just
-    as well be read as when the arrival lands within `uncertainty_c` of it.
-
-    See `roast_level_from_arrival` for how the level itself is read. The
-    neighbour is None whenever the arrival sits clear inside one band.
-    """
-    if drop_bt_c is None or dev_time_min is None:
-        return None, None
-    try:
-        drop_v, dev_v = float(drop_bt_c), float(dev_time_min)
-    except (TypeError, ValueError):
-        return None, None
-    if drop_v <= 0 or dev_v <= 0:
-        return None, None
-    measured = arrival_index(drop_v, dev_v)
-    scored = []
-    for plan in ROASTING_BASIC_BASE.plans:
-        lo = arrival_index(plan.drop_temp[0] + drop_offset_c, plan.development_time[0])
-        hi = arrival_index(plan.drop_temp[1] + drop_offset_c, plan.development_time[1])
-        dist = 0.0 if lo <= measured <= hi else (lo - measured if measured < lo else measured - hi)
-        # Reference bands overlap at their edges; inside two of them the closer
-        # centre wins, so the verdict never depends on the table's order.
-        scored.append((dist, abs(measured - (lo + hi) / 2.0), plan.name))
-    scored.sort()
-    level = scored[0][2]
-    neighbour = (scored[1][2]
-                 if len(scored) > 1 and scored[1][0] <= uncertainty_c
-                 else None)
-    return level, neighbour
-
-
-def roast_level_from_arrival(drop_bt_c: "float | None", dev_time_min: "float | None",
-                             drop_offset_c: float = 0.0) -> "str | None":
-    """The roast level a roast actually ran, read from what it did.
-
-    The level is a property of the roast, not of the bean's colour: the colour
-    is the result and is expected to agree with it. So the category is read from
-    the arrival pair — how long the bean developed and how hot it left — against
-    the same per-level reference the plan generator prescribes
-    (ROASTING_BASIC_BASE), with the two traded off at ARRIVAL_SECONDS_PER_DEGREE.
-
-    `drop_offset_c` is the roaster's bean-probe deviation at drop
-    (RoasterContext.bt_offsets[3]), added to the reference the same way
-    the plan generator adds it, so the comparison happens in the temperature
-    the machine actually shows. Returns None when either half of the pair is
-    missing — half an arrival says nothing.
-    """
-    if drop_bt_c is None or dev_time_min is None:
-        return None
-    try:
-        drop_v, dev_v = float(drop_bt_c), float(dev_time_min)
-    except (TypeError, ValueError):
-        return None
-    if drop_v <= 0 or dev_v <= 0:
-        return None
-    return roast_level_from_arrival_detail(drop_v, dev_v, drop_offset_c)[0]
-
-
-def _plan_by_name(category: str) -> "RoasterBasicPlanPerPhase | None":
-    """Roast-level plan row by name, indexed on first use.
-
-    Built lazily rather than at import time: `ROASTING_BASIC_BASE` is defined
-    above but the module is imported from the 1 Hz refresh path, and a linear
-    scan per lookup is the kind of cost that has no reason to be there.
-    """
-    if not _PLANS_BY_NAME:
-        _PLANS_BY_NAME.update({p.name: p for p in ROASTING_BASIC_BASE.plans})
-    return _PLANS_BY_NAME.get(category)
-
-
-def weight_loss_target(category: "str | None", *,
-                       moisture_pct: float = 0.0,
-                       dev_time_min: float = 0.0) -> "WeightLossTarget | None":
-    """Weight loss to aim for: the lot's water, plus the colour's dry matter,
-    plus what the development adds to it.
-
-    `moisture_pct` outside [5, 20] counts as not measured and falls back to
-    GREEN_MOISTURE_NEUTRAL_PCT; `dev_time_min` <= 0 counts as not known and
-    falls back to the roast level's conventional development. Returns None for
-    an unknown category.
-    """
-    if not category:
-        return None
-    base = DRY_MATTER_LOSS_PCT_BY_CATEGORY.get(category)
-    if base is None:
-        return None
-    water = (moisture_pct if 5.0 <= moisture_pct <= 20.0
-             else GREEN_MOISTURE_NEUTRAL_PCT)
-    if dev_time_min <= 0.0:
-        # Not "no development", but "development not known": fall back to the
-        # one this roast level conventionally gets, from the plan's own table.
-        # Zeroing the term instead would silently target a 1:00 development for
-        # every colour, and under-aim a medium roast by more than a point.
-        _plan = _plan_by_name(category)
-        dev_time_min = (sum(_plan.development_time) / 2.0 if _plan
-                        else DRY_MATTER_DEV_REF_MIN)
-    dev_extra = DRY_MATTER_PCT_PER_DEV_MIN * (dev_time_min - DRY_MATTER_DEV_REF_MIN)
-    # A development short enough to drive the dry matter negative would mean the
-    # bean lost less than its water, which cannot happen.
-    target = water + max(0.0, base + dev_extra)
-    return WeightLossTarget(target,
-                            target - WEIGHT_LOSS_TOLERANCE_PCT,
-                            target + WEIGHT_LOSS_TOLERANCE_PCT)
-
-
-def weight_loss_target_from_plan(plan: "dict | None") -> "WeightLossTarget | None":
-    """`weight_loss_target` read off a generated plan dict.
-
-    Single place where the plan's three keys are named. The plan also publishes
-    the rounded figure under "Target Weight Loss", but that string carries
-    neither the tolerance band nor the decimals, so the panels recompute from
-    the same inputs the printed plan used rather than parsing their own display.
-    Returns None on a plan that predates these keys.
-    """
-    if not plan:
-        return None
-    def _num(key: str) -> float:
-        try:
-            return float(plan.get(key) or 0.0)
-        except (TypeError, ValueError):
-            return 0.0
-    return weight_loss_target(plan.get("Target Agtron"),
-                              moisture_pct=_num("Bean Humidity"),
-                              dev_time_min=_num("Development Phase (min)"))
 #
 # category = Traditional Wet
 # process = Washed / Wet Process
@@ -1272,8 +312,7 @@ THEME = {
 # line the roast is read from. The roast window, BeanCave's viewer, the roast
 # cards and the phone all read these, because a roast reviewed afterwards must
 # be the same picture as the roast that was driven.
-COLOR_GRAIN: Final[str] = '#89B4FA'          # blue — grain temperature
-COLOR_AIR: Final[str] = '#FAB387'            # peach — air temperature
+from tilaucore.display_colours import COLOR_AIR, COLOR_GRAIN  # noqa: E402,F401  pylint: disable=wrong-import-position
 
 
 def dimmed(colour: str, fallback: str) -> str:
@@ -1303,25 +342,8 @@ def dimmed(colour: str, fallback: str) -> str:
 PHASE_COLORS: Final[tuple[str, str, str]] = (THEME['SKY'], THEME['YELLOW'], THEME['CRITICAL'])
 
 
-def format_batch_label(prefix: str, nr: int, pos: int | None = None) -> str:
-    """Render an Artisan batch identity as a display string.
-
-    Mirrors Artisan's convention: ``{prefix}{nr} (pos)``.
-    Returns an empty string when ``nr <= 0`` (batch system inactive or
-    not yet assigned — the number is assigned by Artisan at DROP).
-    """
-    if nr is None or nr <= 0:
-        return ""
-    label = f"{prefix or ''}{int(nr)}"
-    if pos:
-        label += f" ({int(pos)})"
-    return label
-
-
-def roast_batch_tag(prefix: str, nr: int) -> str:
-    """A roast's batch as BeanCave shows it — "#44" — or "" when it has no batch number."""
-    label = format_batch_label((prefix or '').lstrip('#'), nr)
-    return f"#{label}" if label else ""
+# The batch label lives in the library shared with the tablet.
+from tilaucore.roast_memory import format_batch_label, roast_batch_tag  # noqa: E402,F401  pylint: disable=wrong-import-position
 
 import unicodedata
 def replace_accents(texte):
@@ -1484,6 +506,22 @@ STYLED_MESSAGE_FADE_MS: int = 400
 def show_styled_message(parent, title, text, icon=QMessageBox.Icon.Information, rich=False, width:int= 0, buttons:list[str]=None):
     m = TilauMessageBox(parent, title, text, icon, rich, width, buttons)
     return m.exec() # call message box
+
+def ask_save_profile(parent, allow_discard: bool = True) -> str:
+    """'save', 'discard' or 'cancel': Artisan's "Profile unsaved" question, styled.
+
+    Artisan's native alert crashes AppKit when the monitor redraws the screen while
+    it lays itself out; this one is a Qt window. Closing it cancels.
+    """
+    choices = [('cancel', QApplication.translate('Button', 'Cancel'))]
+    if allow_discard:
+        choices.append(('discard', QApplication.translate('QPlatformTheme', 'Discard')))  # Qt's own, in every language
+    choices.append(('save', QApplication.translate('Button', 'Save')))
+    index = show_styled_message(parent, QApplication.translate('Message', 'Profile unsaved'),
+                                QApplication.translate('Message', 'Save profile?'), QMessageBox.Icon.Warning,
+                                buttons=[label for _, label in choices])
+    return choices[index][0] if 0 <= index < len(choices) else 'cancel'
+
 
 class TilauMessageBox(QMessageBox):
     def __init__(self, parent, title, text, icon, rich, width,buttons:list[str]=None):
@@ -2306,36 +1344,11 @@ class TilauProgressDialog(QDialog):
         return False
 
 # ── Milestone temperature windows (DE / FC) ─────────────────────────────────
-# Profession-standard milestone bands in the *true* bean frame (before per-roaster
-# sensor offset). Resolution: (1) plan target >0 -> point (offset already applied
-# by the plan); (2) else profession band + roaster per-phase BT offset
-# (displayed = true + offset); offset 0 -> raw profession default.
-PROFESSION_DE_TRUE_C: tuple[float, float] = (158.0, 163.0)
-PROFESSION_FC_TRUE_C: tuple[float, float] = (195.0, 200.0)
-MILESTONE_HALF_C: float = 5.0
-
-
-def resolve_milestone_window(plan_target_c: float, true_band_c: tuple[float, float],
-                             sensor_offset_c: float = 0.0,
-                             half_c: float = MILESTONE_HALF_C
-                             ) -> tuple[float, float, float, float]:
-    """Returns (gate_lo, gate_hi, band_lo, band_hi) in the displayed BT frame."""
-    if plan_target_c and plan_target_c > 0.0:
-        band_lo = band_hi = float(plan_target_c)
-    else:
-        band_lo = float(true_band_c[0]) + float(sensor_offset_c)
-        band_hi = float(true_band_c[1]) + float(sensor_offset_c)
-    return band_lo - half_c, band_hi + half_c, band_lo, band_hi
-
-
-def resolve_de_window(plan_target_c: float, bt_dry_offset_c: float = 0.0,
-                      half_c: float = MILESTONE_HALF_C) -> tuple[float, float, float, float]:
-    return resolve_milestone_window(plan_target_c, PROFESSION_DE_TRUE_C, bt_dry_offset_c, half_c)
-
-
-def resolve_fc_window(plan_target_c: float, bt_fc_offset_c: float = 0.0,
-                      half_c: float = MILESTONE_HALF_C) -> tuple[float, float, float, float]:
-    return resolve_milestone_window(plan_target_c, PROFESSION_FC_TRUE_C, bt_fc_offset_c, half_c)
+# Profession-standard bands in the *true* bean frame, resolved to the displayed
+# frame (plan target, else band + roaster offset): shared with the Android prototype.
+from tilaucore.milestones import (  # noqa: E402,F401  pylint: disable=wrong-import-position
+    MILESTONE_HALF_C, PROFESSION_DE_TRUE_C, PROFESSION_FC_TRUE_C, resolve_de_window, resolve_fc_window,
+    resolve_milestone_window)
 
 
 # --- Extra-device channel classification --------------------------------------

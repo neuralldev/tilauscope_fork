@@ -165,7 +165,7 @@ and batch number, and five figures, each with what it means underneath:
 | **Roasted weight** | The weight loss, the charge weight it came from and, when the coffee has a [price](beancave.md#price-and-screen-size), what that green cost — hover it for the cost per roasted kg |
 | **Roast time** | The [development](glossary.md#dtr--development-time-ratio) time, when first crack was marked |
 | **Drop temperature** | The bean temperature at first crack |
-| **Colour** | **Ground** and its colour category — or **Whole bean**, which is given no category |
+| **Colour** | **Ground** and its colour category — or, without a ground reading, **Whole bean** and its colour category |
 | **Energy** | The kWh per kg of green coffee and where the figure comes from — see [Energy](energy.md#after-the-roast); a **›** opens the roast's energy detail |
 
 A figure that was never recorded reads **Not recorded**. With several roasts selected, the head
@@ -515,19 +515,32 @@ roast list beside it with the ★ before that roast's batch number. -->
 
 ## Sharing a roast
 
-**Export → Roast card (PNG)** exports the selected roast as a **2160 × 3240 portrait PNG** for social sharing.
-It includes the coffee's identity, total duration, measured colour (ground or whole bean),
-and separate temperature and [rate-of-rise](glossary.md#ror--rate-of-rise) graphs with the same time axis.
-When a crack probe counted during the roast, the rate-of-rise graph carries one tick per pop along its foot.
-Dry end, first crack and drop show elapsed time since charge and bean temperature.
-Below the graphs, drying, Maillard and development show their durations and shares of the roast;
-the phase bar is proportional to time. Charge and roasted weights and weight loss complete the card.
-Missing milestones are labelled **Not marked**; unavailable phase durations are shown as a dash.
-The phase bar remains neutral when its boundaries are incomplete. Missing RoR is explicitly indicated;
-when the turning point is available, RoR starts there. The export uses the profile's temperature unit.
+**Export → Roast card (PNG)** exports the selected roast as a **3200 × 1800 landscape PNG**, to share or keep.
+Across the top: the coffee's identity, date and roaster, then three columns of figures —
+total duration, development time and share, and how much the bean temperature rose during development;
+green and roasted weights and weight loss; measured colour (ground or whole bean), energy used,
+and the ambient temperature, humidity and pressure measured during the roast.
+The curve shows bean temperature, air temperature and [rate of rise](glossary.md#ror--rate-of-rise)
+from charge to drop, with charge, turning point, dry end, first crack and drop labelled
+and the peak rate of rise marked. Under it, a phase bar gives drying, Maillard and development
+their durations and shares of the roast, then each setting played on the machine (burner, air,
+drum…) is drawn on the same time axis, in the colours and names of your event sliders.
+The **Key moments** column on the right lists the milestones and every settings change from charge
+to drop, with bean temperature and rate of rise at that moment; settings put in place with the charge
+count as starting values, and a setting moved several times within a few seconds keeps its last value.
+When the column cannot hold every change, drum, damper and then air changes are left out before burner changes.
+Missing milestones are left out; figures that were not recorded show a dash, and ambient
+conditions are left out when no reading was taken. A roast without charge or drop exports
+its figures with **Charge or drop not marked** in place of the curve.
+
 This is the roast's counterpart to the bean record's own card
 (see [BeanCave](beancave.md#sharing-and-printing)).
-**Export → Curve image (PNG)** is simpler: a plain image of the curve exactly as it is displayed, crack ticks included.
+**Export → Curve image (PNG)** is simpler: a plain image of the curve exactly as it is displayed, crack ticks included, with the roast's summary cards (weight, time, drop temperature, colour, energy) above it.
+
+<!-- CAPTURE 8.19 [scene:roast_export] — Export → Roast card (PNG) of a completed roast: key figures, the curve with its milestones and settings lanes, the Key moments column. -->
+
+![An exported roast card: key figures, the curve with its milestones and the settings played, and the key moments.](assets/after-the-roast-8.19.png)
+
 
 Scanning a roast's printed label or QR opens a different, read-only **roast card**: title,
 date, a small curve with its milestones, weight and loss, colour and
@@ -535,9 +548,9 @@ date, a small curve with its milestones, weight and loss, colour and
 link back to the source coffee. See [Labels and QR](labels-and-qr.md) for printing and
 scanning; this is what scanning a roast actually shows.
 
-<!-- CAPTURE 8.11 [scene:card] — Export a completed roast as a portrait Card with temperature and RoR, all three milestones, phase durations and measured colour. -->
+<!-- CAPTURE 8.11 [scene:card] — The read-only roast card a scanned label or QR opens: title, roast date, the small curve with its milestones, weights and loss, colour, DTR and key times. -->
 
-![A completed roast exported as a portrait card.](assets/after-the-roast-8.11.png)
+![The read-only roast card opened by scanning a roast's label or QR.](assets/after-the-roast-8.11.png)
 
 ---
 

@@ -25,7 +25,10 @@ import time
 from typing import TYPE_CHECKING, Any, Final
 from datetime import datetime
 
+from tilaucore.bean_text import beans_text, roast_title
 from tilauscope.roast_insights import build_insights
+from tilaucore.roast_plan_view import confidence, reference_line, tasting_change_text
+from tilauscope import auto_marks
 from tilauscope.guidance_phase import milestone_marked
 from tilauscope.roast_debrief import roast_colour_agtron
 from tilauscope.theme_qss import base_qss, apply_tilau_theme, tooltip_qss, tint, mono_family
@@ -1347,19 +1350,7 @@ class _WeatherFloatWindow(QDialog):
 
 def _tasting_change_text(change: dict, unit: str) -> str:
     """'💡 Last time: <defect> — <change> (<before → after>)' for a plan's "Tasting Change"."""
-    from tilauscope.cave.tasting_dialog import change_text, defect_labels  # noqa: PLC0415
-    mode = 'F' if unit == 'F' else 'C'
-    before, after = float(change["before"]), float(change["after"])
-    lever = change["lever"]
-    if lever.startswith("burner_"):
-        values = f"{before:.0f} → {after:.0f} %"
-    elif lever == "development_s":
-        values = f"{int(before) // 60}:{int(before) % 60:02d} → {int(after) // 60}:{int(after) % 60:02d}"
-    else:
-        values = f"{before:.0f} → {after:.0f} °{mode}"
-    return QApplication.translate(
-        "tilauscope_roast_setup", "💡 Last time: {0} — {1} ({2})").format(
-            defect_labels().get(change["defect"], ""), change_text(change["defect"], mode)[0], values)
+    return tasting_change_text(change, unit, lambda text: QApplication.translate(*text))
 
 
 class _RoastInsightsPanel(QWidget):
@@ -1824,67 +1815,9 @@ class _RoastInsightsPanel(QWidget):
 
     def _reference_line(self, plan: dict) -> "tuple[str, bool] | None":
         """The reference roast the plan stands on, or why it does not — (text, used); None without one."""
-        from tilauscope.beancave_catalogue import roast_name  # noqa: PLC0415
-
-        def _name(ref: dict) -> str:
-            return roast_name(int(ref.get("epoch") or 0), str(ref.get("batch") or ""), in_sentence=True)
-
-        ref = plan.get("Reference Roast") or {}
-        status = ref.get("status")
-        if not status:
-            # Only the calendar is inherited: the burner follows the new lot.
-            prev_ref = (plan.get("Previous Harvest") or {}).get("reference_roast") or {}
-            if prev_ref.get("status") == "used":
-                return QApplication.translate(
-                    "tilauscope_roast_setup",
-                    "Timings and temperatures from the {0} crop's reference roast ({1}), "
-                    "until this crop has roasts of its own.").format(
-                        plan["Previous Harvest"].get("crop", ""), _name(prev_ref)), True
-            return None
-        name = _name(ref)
-        if status == "used":
-            if ref.get("tasting_change_skipped"):
-                return (QApplication.translate("tilauscope_roast_setup",
-                                               "Based on your reference roast of {0}.").format(name) + " "
-                        + QApplication.translate(
-                            "tilauscope_roast_setup",
-                            "The change asked by the last tasting is not applied: "
-                            "going back to the reference is the correction.")), True
-            if ref.get("tasting_change_applied"):
-                return QApplication.translate(
-                    "tilauscope_roast_setup",
-                    "Based on your reference roast of {0}, with the change asked by the last tasting.").format(
-                        name), True
-            return QApplication.translate(
-                "tilauscope_roast_setup", "Based on your reference roast of {0}.").format(name), True
-        reason = ref.get("reason")
-        if reason == "missing":
-            text = QApplication.translate(
-                "tilauscope_roast_setup", "Your reference roast is not used: its roast file was not found.")
-        elif status == "no_tasting":
-            text = QApplication.translate(
-                "tilauscope_roast_setup", "Your reference roast ({0}) is not used: its tasting was not found.").format(name)
-        elif reason == "excluded":
-            text = QApplication.translate(
-                "tilauscope_roast_setup", "Your reference roast ({0}) is not used: it is excluded from learning.").format(
-                    name)
-        elif status == "not_tasted_yes":
-            text = QApplication.translate(
-                "tilauscope_roast_setup", "Your reference roast ({0}) is not used: it was not tasted Yes.").format(name)
-        elif reason == "weight":
-            text = QApplication.translate(
-                "tilauscope_roast_setup",
-                "Your reference roast ({0}) is not used: it was {1} g and this batch is {2} g.").format(
-                    name, f"{float(ref.get('weight_g') or 0):.0f}", f"{float(plan.get('Weight') or 0):.0f}")
-        elif reason == "level" and ref.get("level") and self._target_scale is not None:
-            text = QApplication.translate(
-                "tilauscope_roast_setup",
-                "Your reference roast ({0}) is not used: it was roasted {1} and this roast is {2}.").format(
-                    name, ref["level"], getattr(self._target_scale, 'name', ''))
-        else:
-            text = QApplication.translate(
-                "tilauscope_roast_setup", "Your reference roast ({0}) is not used for this batch.").format(name)
-        return text, False
+        from tilauscope.beancave_catalogue import short_date  # noqa: PLC0415
+        level = str(getattr(self._target_scale, 'name', '')) if self._target_scale is not None else ""
+        return reference_line(plan, level, lambda text: QApplication.translate(*text), short_date)
 
     @staticmethod
     def _star_line(text: str, used: bool) -> QFrame:
@@ -1910,27 +1843,8 @@ class _RoastInsightsPanel(QWidget):
 
     def _confidence(self, plan: dict) -> tuple[str, bool]:
         """What the plan rests on, in words — and whether it is guessing."""
-        prev = plan.get("Previous Harvest") or {}
-        if prev.get("crop"):
-            return QApplication.translate(
-                "tilauscope_roast_setup", "Built on the {0} harvest ({1} roasts)").format(
-                    prev["crop"], prev.get("roasts", 0)), False
-        try:
-            n = int(plan.get("History Roasts") or 0)
-        except (TypeError, ValueError):
-            n = 0
-        if n > 1:   # a single roast is shown as reference only; the plan starts from the grid
-            return QApplication.translate(
-                "tilauscope_roast_setup", "Based on {0} roasts of this coffee").format(n), False
         bean = (self._last_setup or {}).get("bean")
-        if int(getattr(bean, 'count', 0) or 0) == 0:
-            return QApplication.translate(
-                "tilauscope_roast_setup",
-                "First roast of this coffee — the plan starts from its characteristics; "
-                "expect to adjust after tasting."), True
-        return QApplication.translate(
-            "tilauscope_roast_setup",
-            "No earlier roast of this coffee could be used — the plan starts from its characteristics."), True
+        return confidence(plan, int(getattr(bean, 'count', 0) or 0), lambda text: QApplication.translate(*text))
 
     def _render_roadmap(self) -> None:
         host = self._roadmap_host
@@ -2319,8 +2233,9 @@ class RoastSetupDialog(QDialog):
         self.setMinimumWidth(580)
         # No explicit minimum height: the layout's own minimum keeps the tallest
         # tab from being squeezed below its widgets' sizes.
-        # Wide enough for the PLAN tab's A/B comparison without squeezing it.
-        self.resize(720, 640)
+        # Wide enough for the PLAN tab's A/B comparison and its roadmap rows, with
+        # the roadmap's Pin and PDF buttons in view (720 hid PDF in French).
+        self.resize(860, 640)
         # drag support state
         self._drag_pos: object = None
 
@@ -2772,28 +2687,7 @@ class RoastSetupDialog(QDialog):
 
     def _build_beans_field(self) -> str:
         """Mimics the beans text that Artisan/BeanCave historically injects."""
-        b = self._bean
-        parts: list[str] = []
-        if b.name:
-            parts.append(b.name)
-        if b.country:
-            parts.append(b.country)
-        if b.farm:
-            parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Farm:"), b.farm))
-        if b.process:
-            parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Process"), b.process))
-        if b.varieties:
-            parts.append("{0} {1}".format(QApplication.translate("tilauscope_common", "Variety"), b.varieties))
-        if b.altitude:
-            parts.append("{0} {1}m".format(QApplication.translate("tilauscope_common", "Altitude:"), b.altitude))
-        if b.sca:
-            parts.append(QApplication.translate("tilauscope_common", "SCA: {0}").format(f"{b.sca:.1f}"))
-        if b.uuid:
-            # Machine key, not a label: the assistant reads it back to find the
-            # bean. Translated, French returned "uuid : : {0}" and the roast lost
-            # its link to the record it names.
-            parts.append(f"uuid: {b.uuid}")
-        return "\n".join(parts)
+        return beans_text(self._bean, QApplication.translate)
 
     def _populate_fields(self) -> None:
         b = self._bean
@@ -2859,8 +2753,7 @@ class RoastSetupDialog(QDialog):
         # Title suggestion
         try:
             if self._title_combo.count() == 0 or self._title_combo.currentText() == "":
-                crop = str(b.crop) if b.crop else 'N/A'
-                self._title_combo.setCurrentText(f"{b.name} - {b.process} - {crop}")
+                self._title_combo.setCurrentText(roast_title(b))
         except Exception:  # noqa: BLE001
             pass
 
@@ -3490,9 +3383,30 @@ class RoastSetupDialog(QDialog):
         auto_c.setContentsMargins(16, 10, 16, 10)
         auto_c.setSpacing(6)
 
-        # Hint moved to each checkbox's tooltip — "Roast automation" section
-        # label above already says what the card is for; a static line here
-        # only ate space that 4 checkboxes don't need.
+        # One line, the card's only one: what is checked here holds for this roast only.
+        scope_lbl = QLabel(QApplication.translate(
+            "tilauscope_roast_setup",
+            "For this roast only — the defaults are in Configuration › Detection; back to them when the roast ends."))
+        scope_lbl.setStyleSheet(f"color: {THEME['SUBTEXT']}; font-size: 11px; border: none;")
+        scope_lbl.setWordWrap(True)
+        auto_c.addWidget(scope_lbl)
+        self._auto_changed_tags: dict[str, tuple[QCheckBox, QLabel]] = {}
+
+        def _with_changed_tag(cb: QCheckBox, key: str) -> QHBoxLayout:
+            tag = QLabel(QApplication.translate("tilauscope_roast_setup", "changed"))
+            tag.setStyleSheet(f"color: {THEME['YELLOW']}; border: 1px solid {THEME['YELLOW']};"
+                              "border-radius: 7px; padding: 0 6px; font-size: 10px;")
+            tag.setToolTip(QApplication.translate("tilauscope_roast_setup", "Differs from the default, for this roast"))
+            tag.hide()
+            cb.toggled.connect(lambda _checked=False: self._refresh_auto_changed_tags())
+            self._auto_changed_tags[key] = (cb, tag)
+            cb.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)  # the tag sits by its label
+            row = QHBoxLayout()
+            row.setSpacing(6)
+            row.addWidget(cb)
+            row.addWidget(tag)
+            row.addStretch()
+            return row
 
         def _make_auto_cb(label: str, sublabel: str, enabled: bool = True) -> QCheckBox:
             cb = QCheckBox(label)
@@ -3516,8 +3430,8 @@ class RoastSetupDialog(QDialog):
         )
         active_row = QHBoxLayout()
         active_row.setSpacing(24)
-        active_row.addWidget(self._auto_charge_cb)
-        active_row.addWidget(self._auto_drop_cb)
+        active_row.addLayout(_with_changed_tag(self._auto_charge_cb, 'charge'))
+        active_row.addLayout(_with_changed_tag(self._auto_drop_cb, 'drop'))
         active_row.addStretch()
         auto_c.addLayout(active_row)
 
@@ -3534,8 +3448,8 @@ class RoastSetupDialog(QDialog):
         )
         detect_row = QHBoxLayout()
         detect_row.setSpacing(24)
-        detect_row.addWidget(self._auto_dry_end_cb)
-        detect_row.addWidget(self._auto_fc_cb)
+        detect_row.addLayout(_with_changed_tag(self._auto_dry_end_cb, 'dry_end'))
+        detect_row.addLayout(_with_changed_tag(self._auto_fc_cb, 'first_crack'))
         detect_row.addStretch()
         auto_c.addLayout(detect_row)
         t.addWidget(auto_card)
@@ -3601,6 +3515,12 @@ class RoastSetupDialog(QDialog):
 
         t.addStretch()
 
+    def _refresh_auto_changed_tags(self) -> None:
+        """The "changed" tag beside each automation box that differs from its default."""
+        default = auto_marks.defaults(self._aw)
+        for key, (cb, tag) in getattr(self, '_auto_changed_tags', {}).items():
+            tag.setVisible(cb.isChecked() != default[key])
+
     def _populate_optional_tab(self) -> None:
         """Read current Artisan state to initialise optional-settings widgets."""
 
@@ -3661,11 +3581,12 @@ class RoastSetupDialog(QDialog):
 
         # Automation flags
         try:
-            qmc = self._aw.qmc
-            self._auto_charge_cb.setChecked(bool(qmc.autoChargeFlag))
-            self._auto_drop_cb.setChecked(bool(qmc.autoDropFlag))
-            self._auto_dry_end_cb.setChecked(bool(getattr(self._aw, "TilauScopeDEMarkFlag", False)))
-            self._auto_fc_cb.setChecked(bool(getattr(self._aw, "TilauScopeFCMarkFlag", False)))
+            default = auto_marks.defaults(self._aw)
+            self._auto_charge_cb.setChecked(default['charge'])
+            self._auto_drop_cb.setChecked(default['drop'])
+            self._auto_dry_end_cb.setChecked(default['dry_end'])
+            self._auto_fc_cb.setChecked(default['first_crack'])
+            self._refresh_auto_changed_tags()
         except Exception as exc:
             _log.debug("Could not read auto flags: %s", exc)
 
@@ -4023,9 +3944,6 @@ class RoastSetupDialog(QDialog):
         # Automation flags. Own block: indented into the handler above, they only
         # ever ran when setting the preheat command had failed, so a checkbox
         # changed on the normal path kept its previous setting.
-        self._aw.qmc.autoChargeFlag = self._auto_charge_cb.isChecked()
-        self._aw.qmc.autoDropFlag   = self._auto_drop_cb.isChecked()
-
         # Auto Dry End requires a configured Dry-phase BT target (phases[1]);
         # without it the detector cannot fire, so the flag is not activated.
         de_checked = self._auto_dry_end_cb.isChecked()
@@ -4043,8 +3961,10 @@ class RoastSetupDialog(QDialog):
                 )
                 de_checked = False
                 self._auto_dry_end_cb.setChecked(False)
-        self._aw.TilauScopeDEMarkFlag = de_checked
-        self._aw.TilauScopeFCMarkFlag = self._auto_fc_cb.isChecked()
+        # For this roast only: the defaults come back when it ends
+        auto_marks.choose_for_roast(self._aw, {
+            'charge': self._auto_charge_cb.isChecked(), 'drop': self._auto_drop_cb.isChecked(),
+            'dry_end': de_checked, 'first_crack': self._auto_fc_cb.isChecked()})
 
         # Expert: the plan's alarms replace the operator's own — written only now
         # that the roast is confirmed, never while the plan is merely looked at.

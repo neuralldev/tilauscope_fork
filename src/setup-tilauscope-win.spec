@@ -261,8 +261,10 @@ copy_file(YOCTO_BIN / 'yapi64.dll', TARGETSTR + '_internal\\yoctopuce\\cdll')
 # Note: python-snap7 >=3.0 is a pure Python implementation, no native DLL to bundle
 
 make_dir(TARGETSTR + '_internal\\tilauscope')
-copy_file(SOURCE / 'tilauscope' / 'beancave_beans.json', TARGETSTR + '_internal\\tilauscope')
-copy_file(SOURCE / 'tilauscope' / 'roasters.json', TARGETSTR + '_internal\\tilauscope')
+# Data of the shared domain library (tilaucore/data_files.py finds them beside it).
+make_dir(TARGETSTR + '_internal\\tilaucore\\data')
+copy_file(SOURCE / 'tilaucore' / 'data' / 'beancave_beans.json', TARGETSTR + '_internal\\tilaucore\\data')
+copy_file(SOURCE / 'tilaucore' / 'data' / 'roasters.json', TARGETSTR + '_internal\\tilaucore\\data')
 # Fonts loaded at runtime via QFontDatabase.addApplicationFont, resolved
 # against os.path.dirname(__file__) → the 'tilauscope' package folder.
 copy_file(SOURCE / 'tilauscope' / 'JetBrainsMono-Bold.ttf', TARGETSTR + '_internal\\tilauscope')

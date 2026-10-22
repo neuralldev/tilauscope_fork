@@ -46,6 +46,7 @@ from PyQt6.QtWidgets import (
 
 from tilauscope.tilauscope_types import (THEME, TilauProgressDialog, show_styled_message, price_per_kg_spin,
                                          select_listed_or_other)
+from tilaucore.bean_edit import apply as apply_zone
 from tilauscope.bean_qualifiers import screen_size_options
 from tilauscope.header_icons import SVG_PROG_AI
 from tilauscope.sack_manager import prompt_release_if_emptied  # sack reclaim (§9.3)
@@ -878,61 +879,43 @@ class ZoneEditorDialog(QDialog):
         self._ai_worker = None
 
     # ── save ─────────────────────────────────────────────────────────────────
+    def _countries(self) -> list[str]:
+        return list(getattr(self._host, 'coffee_producing_countries', []) or [])
+
     def _apply_essentials(self) -> bool:
-        b = self._bean
         name = self.name_edit.text().strip()
         if not name:
             show_styled_message(self, QApplication.translate("tilauscope_beancave", "Missing name"),
                                 QApplication.translate("tilauscope_beancave", "The bean needs a name."))
             return False
-        b.name = name
-        country = self.country_combo.currentText().strip()
-        # a country the closed list cannot show reads blank: left so, the record keeps it
-        if country or self.country_combo.findText(b.country or "") >= 0:
-            b.country = country
-        b.crop = int(self.crop_spin.value())
-        b.weight_left = float(self.stock_spin.value())
+        apply_zone(self._bean, 'essentials', {
+            'name': name, 'country': self.country_combo.currentText(),
+            'crop': self.crop_spin.value(), 'weight_left': self.stock_spin.value()}, self._countries())
         return True
 
     def _apply_provenance(self) -> bool:
-        b = self._bean
-        b.farm = self.farm_edit.text().strip()
-        b.supplier = self.supplier_edit.text().strip()
-        b.altitude = int(self.altitude_spin.value())
-        b.price_per_kg = float(self.price_spin.value())
+        apply_zone(self._bean, 'provenance', {
+            'farm': self.farm_edit.text(), 'supplier': self.supplier_edit.text(),
+            'altitude': self.altitude_spin.value(), 'price_per_kg': self.price_spin.value()}, self._countries())
         return True
 
     def _apply_characteristics(self) -> bool:
-        b = self._bean
-        is_blend = self.type_combo.currentIndex() == 1
-        b.is_blend = is_blend
-        if is_blend:
-            b.bean1_ratio = float(self.bean1_ratio_spin.value())
-            b.bean2_name = self.bean2_combo.currentText().strip()
-            b.bean2_ratio = float(self.bean2_ratio_spin.value())
-            b.bean3_name = self.bean3_combo.currentText().strip()
-            b.bean3_ratio = float(self.bean3_ratio_spin.value())
-        else:
-            b.bean1_ratio = 100.0
-            b.bean2_name = ""
-            b.bean2_ratio = 0.0
-            b.bean3_name = ""
-            b.bean3_ratio = 0.0
-        b.category = self.category_combo.currentText().strip()
-        b.process = self.process_combo.currentText().strip()
-        b.species = self.species_combo.currentText().strip()
-        b.varieties = self.varieties_combo.currentText().strip()
-        b.density = float(self.density_spin.value())
-        b.last_humidity = float(self.humidity_spin.value())
-        b.water_activity = float(self.wa_spin.value())
-        b.screen_size = self.screen_combo.currentData() or ''
+        apply_zone(self._bean, 'characteristics', {
+            'is_blend': self.type_combo.currentIndex() == 1,
+            'bean1_ratio': self.bean1_ratio_spin.value(),
+            'bean2_name': self.bean2_combo.currentText(), 'bean2_ratio': self.bean2_ratio_spin.value(),
+            'bean3_name': self.bean3_combo.currentText(), 'bean3_ratio': self.bean3_ratio_spin.value(),
+            'category': self.category_combo.currentText(), 'process': self.process_combo.currentText(),
+            'species': self.species_combo.currentText(), 'varieties': self.varieties_combo.currentText(),
+            'density': self.density_spin.value(), 'last_humidity': self.humidity_spin.value(),
+            'water_activity': self.wa_spin.value(), 'screen_size': self.screen_combo.currentData() or ''},
+            self._countries())
         return True
 
     def _apply_sensory(self) -> bool:
-        b = self._bean
-        b.sca = float(self.sca_spin.value())
-        b.flavour_notes = self.flavour_edit.text().strip()
-        b.tips = self.tips_edit.toPlainText().strip()
+        apply_zone(self._bean, 'sensory', {
+            'sca': self.sca_spin.value(), 'flavour_notes': self.flavour_edit.text(),
+            'tips': self.tips_edit.toPlainText()}, self._countries())
         return True
 
     def _save(self) -> None:

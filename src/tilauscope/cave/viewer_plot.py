@@ -24,12 +24,13 @@ from pathlib import Path
 from artisanlib.atypes import ProfileData
 from tilauscope.probe_visibility import et_available_in_profile
 
-from PyQt6.QtCore import QPoint # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
-from PyQt6.QtWidgets import (QApplication, QMessageBox) # @UnusedImport @Reimport  @UnresolvedImport
+from PyQt6.QtGui import QColor, QPainter, QPixmap, QRegion
+from PyQt6.QtCore import QPoint, QPointF, Qt # @UnusedImport @Reimport  @UnresolvedImport QT_TRANSLATE_NOOP declares strings the extractor must see when translate() is fed a variable
+from PyQt6.QtWidgets import (QApplication, QMessageBox, QWidget) # @UnusedImport @Reimport  @UnresolvedImport
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
-from tilauscope.tilauscope_types import (show_styled_message, RoastingPhase,
+from tilauscope.tilauscope_types import (THEME, show_styled_message, RoastingPhase,
                                          normalize_timeindex)
 from tilauscope.cave.common import (_log, _atomic_write_text, recompute_milestone_fields)
 
@@ -231,6 +232,31 @@ class ViewerPlotMixin:
             self._plot_cache = (source, *rates)
             self._replot_single()
 
+    def _snapshot_with_tiles(self) -> QPixmap:
+        """The curve picture under the roast cards, when the cards are on screen."""
+        curve = self.roast_curve.snapshot()
+        strip = self._roast_tiles_strip
+        if strip.isHidden() or not strip.isVisibleTo(self):
+            return curve
+        ratio = curve.devicePixelRatio()
+        # Children only, onto a transparent pixmap: the strip's own background would show as a band
+        cards = QPixmap(round(strip.width() * ratio), round(strip.height() * ratio))
+        cards.setDevicePixelRatio(ratio)
+        cards.fill(Qt.GlobalColor.transparent)
+        strip.render(cards, QPoint(), QRegion(), QWidget.RenderFlag.DrawChildren)
+        gap = 8   # logical pixels
+        # Sizes are in device pixels, drawing is in logical ones
+        cards_w, cards_h = cards.width() / ratio, cards.height() / ratio
+        curve_w, curve_h = curve.width() / ratio, curve.height() / ratio
+        out = QPixmap(round(max(cards_w, curve_w) * ratio), round((cards_h + gap + curve_h) * ratio))
+        out.setDevicePixelRatio(ratio)
+        out.fill(QColor(THEME["BG"]))
+        painter = QPainter(out)
+        painter.drawPixmap(QPointF(0, 0), cards)
+        painter.drawPixmap(QPointF(0, cards_h + gap), curve)
+        painter.end()
+        return out
+
     def take_snapshot(self, filename: str | None = None) -> None:
         if self.cave is None or not hasattr(self.cave, 'green_beans'):
             return
@@ -265,7 +291,7 @@ class ViewerPlotMixin:
             try:
                 # A picture of what is on screen: the roast is drawn by the
                 # curve engine, and the engine is a widget, not a figure.
-                if not self.roast_curve.snapshot().save(file_path):
+                if not self._snapshot_with_tiles().save(file_path):
                     raise OSError(file_path)
                 self._show_message(self, QApplication.translate("tilauscope_beancave","Snapshot Successful"),
                                         QApplication.translate("tilauscope_beancave","The curve has been successfully saved to:")+f"\n{file_path}")

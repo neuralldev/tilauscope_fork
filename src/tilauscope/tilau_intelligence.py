@@ -22,8 +22,8 @@ from typing import Final, NamedTuple
 from typing import TYPE_CHECKING
 import logging
 from artisanlib.main import ApplicationWindow # pylint: disable=unused-import
-from tilauscope.tilauscope_types import (MILESTONE_HALF_C, resolve_de_window,
-                                         resolve_fc_window,
+from tilaucore.milestones import DryEnd, FirstCrack
+from tilauscope.tilauscope_types import (MILESTONE_HALF_C,
                                          classify_extra_channel,
                                          resolve_crack_channel)
 
@@ -35,26 +35,12 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 # curve must never pull in. Re-exported here for existing callers.
 
 class FirstCrackDetector:
-    """
-    Advanced First Crack detection using a sliding time window and
-    thermodynamic gating.
-    """
+    """First Crack on the desktop: the crack channels read from qmc, the decision taken by
+    tilaucore.milestones.FirstCrack, the engine the Android prototype shares."""
 
     def __init__(self):
-        # Configuration (could be moved to QSettings later)
-        self.window_seconds: float = 35.0  # Detection window — widened to handle sparse FC onset
-                                            # (natural/light FC cracks can be 10-30s apart initially;
-                                            #  7s was too tight and kept purging isolated early cracks)
-        self.threshold: int = 4           # Min cracks in window to trigger
-
-        # State
-        self.crack_timestamps = deque()
+        self._core = FirstCrack()
         self.last_count: int = 0
-        self.is_fired: bool = False
-        # position-anchored FC state
-        self._armed: bool = False              # BT approached the FC window from below
-        self._pos_since: float | None = None   # position-base confirmation timer
-        self._CONFIRM_S: float = 4.0
         self.aw_qmc = None
         # FC + SC crack counters. Attribution inverts between builds
         # (a roast may route ALL pops to FCcounter on one build, to SCcounter on
@@ -67,17 +53,31 @@ class FirstCrackDetector:
         self._sc_raw_at_fc: int | None = None        # SC raw snapshot at FC fire (offset)
         self._fc_tally: int = 0                      # our own FC pop tally beside raw counters
 
-        # Half-width of the BT band around the FC target, in °C (converted to the
-        # roast's own unit frame at detection time).
-        self.half_band_c: float = MILESTONE_HALF_C
+    # The detection window (s), the cracks in it that call FC, and the BT half-band (°C)
+    # around the target: the shared detector's, set from Artisan's settings.
+    @property
+    def window_seconds(self) -> float:
+        return self._core.window_s
+
+    @property
+    def threshold(self) -> int:
+        return self._core.threshold
+
+    @property
+    def half_band_c(self) -> float:
+        return self._core.half_band_c
+
+    @property
+    def crack_timestamps(self) -> "deque[float]":
+        return self._core.crack_times
+
+    @property
+    def is_fired(self) -> bool:
+        return self._core.fired
 
     def reset(self):
-        self.crack_timestamps.clear()
+        self._core = FirstCrack(self._core.window_s, self._core.threshold, self._core.half_band_c)
         self.last_count = 0
-        self.is_fired = False
-        self._armed = False
-        self._pos_since = None
-        self._banked_count = None
         self._cached_crack_device_idx = -1
         self._cached_crack_device_channel = -1
         self._cached_sc_device_idx = -1
@@ -88,9 +88,9 @@ class FirstCrackDetector:
     def detect_extradevice(self, aw: ApplicationWindow) -> int | None:
         self.aw_qmc = aw.qmc
         # Load configuration from Artisan AppWindow
-        self.window_seconds = float(getattr(aw, "TilauScopeFCWindow", 35.0))
-        self.threshold      = int(getattr(aw, "TilauScopeFCTreshold", 4))
-        self.half_band_c    = float(getattr(aw, "TilauScopeFCHalfBand", MILESTONE_HALF_C))
+        self._core.window_s    = float(getattr(aw, "TilauScopeFCWindow", 35.0))
+        self._core.threshold   = int(getattr(aw, "TilauScopeFCTreshold", 4))
+        self._core.half_band_c = float(getattr(aw, "TilauScopeFCHalfBand", MILESTONE_HALF_C))
 
         qmc = aw.qmc
         found_crack_idx: int | None = None
@@ -137,83 +137,20 @@ class FirstCrackDetector:
 
     def check_detection(self, current_bt: float, target_fcs: float,
                       current_time: float, mode: str = 'C') -> float | bool:
-        """Position-anchored First Crack (same proven architecture as
-        DryEnd). The crack counter over-counts pre-FC noise on real setups, so pops
-        are NOT the primary trigger: the physical window is the base, and a pop
-        BURST only corroborates AT/ABOVE the target (never below -> cannot fire on
-        pre-FC noise). The pop counter is the fused FC+SC channel. Colour and RoC
-        play no role at FC (no reliable colour threshold; RoR is a DryEnd signal,
-        negative-sloped by FC) — both stay DryEnd-only.
-
-        Window: plan target_fcs (native units) -> point +/- half; else profession
-        FC band (resolve_fc_window). Returns the FC timestamp when fired, else False.
-        """
-        if self.is_fired:
+        """The FC timestamp when it fires at this sample, else False. The fused FC+SC pop count
+        is read here; the window (plan target_fcs in native units, else the profession band),
+        the arming from below and the burst rule are tilaucore's."""
+        if self._core.fired:
             return False
-
-        # --- resolve the FC window in the roast's own unit frame ---
-        half = self.half_band_c * (1.8 if mode == 'F' else 1.0)
-        if target_fcs and target_fcs > 0.0:
-            band_lo = band_hi = float(target_fcs)
-            fc_lo, fc_hi = band_lo - half, band_hi + half
-        else:
-            # profession band is °C-frame -> resolve in °C with the °C half, then convert
-            fc_lo, fc_hi, band_lo, band_hi = resolve_fc_window(0.0, 0.0, self.half_band_c)
-            if mode == 'F':
-                fc_lo, fc_hi, band_lo, band_hi = (v * 9.0 / 5.0 + 32.0
-                                                  for v in (fc_lo, fc_hi, band_lo, band_hi))
-
         raw = self._get_crack_counter_value()
         if raw is not None:
             self.last_count = raw                      # keep the UI badge current
-
-        # --- below the window: arm from below, bank no pops (reject pre-FC noise) ---
-        if current_bt < fc_lo:
-            self._armed = True
+        fired_at = self._core.check(current_bt, target_fcs, current_time, raw, mode)
+        if fired_at is None:
             return False
-        if not self._armed:                            # entered window without approaching from below
-            return False
-
-        # --- fail-safe: FC cannot be later than band_hi + half ---
-        if current_bt >= fc_hi:
-            self.is_fired = True
-            self._snapshot_at_fire()
-            _log.info(f"FC_Detector: FIRED force@FC_hi (BT={current_bt:.1f}>={fc_hi:.1f})")
-            return current_time
-
-        # --- in-window: bank NEW pops (delta vs a private banked tracker), purge ---
-        prev = getattr(self, "_banked_count", None)
-        if raw is not None:
-            if prev is None:
-                self._banked_count = raw          # baseline: pops before entering window ignored
-            elif raw > prev:
-                for _ in range(raw - prev):
-                    self.crack_timestamps.append(current_time)
-                self._banked_count = raw
-        while self.crack_timestamps and (current_time - self.crack_timestamps[0] > self.window_seconds):
-            self.crack_timestamps.popleft()
-        audio = len(self.crack_timestamps)
-
-        # --- pop BURST advancer: only AT/ABOVE the band (>= target / band_lo) ---
-        if audio >= self.threshold and current_bt >= band_lo:
-            self.is_fired = True
-            self._snapshot_at_fire()
-            _log.info(f"FC_Detector: FIRED burst ({audio} pops, BT={current_bt:.1f})")
-            return self.crack_timestamps[0]
-
-        # --- position base: BT reached the band (target) with a short confirm ---
-        if current_bt >= band_hi:
-            if self._pos_since is None:
-                self._pos_since = current_time
-            if (current_time - self._pos_since) >= self._CONFIRM_S:
-                self.is_fired = True
-                self._snapshot_at_fire()
-                _log.info(f"FC_Detector: FIRED position (BT={current_bt:.1f}>={band_hi:.1f})")
-                return current_time
-        else:
-            self._pos_since = None
-
-        return False
+        self._snapshot_at_fire()
+        _log.info(f"FC_Detector: FIRED @ t={current_time:.0f}s (BT={current_bt:.1f}), first crack at {fired_at:.0f}s")
+        return fired_at
 
     def _get_value_by_cache(self, idx: int, channel: int) -> float | None:
         """Récupère la dernière valeur d'un périphérique extra mis en cache."""
@@ -363,95 +300,21 @@ class DryEndResult(NamedTuple):
 
 
 class DryEndDetector:
-    """Dry-End detector — physical window + sensor-priority cascade.
+    """Dry End on the desktop: Artisan's turning point, its smoothed BT RoR (delta2) and the
+    colour channel read from qmc, the decision taken by tilaucore.milestones.DryEnd, the engine
+    the Android prototype shares.
 
-    Roaster-agnostic. No RoR_BT/RoR_ET ratio, no ET-BT gap assumption (both are
-    roaster-type dependent). DE is physically bounded to [band-5, band+5] in the
-    roaster's displayed BT frame; the markers only decide WHERE inside that window
-    to fire, with a hard force-fire at band_hi+5.
-
-    Target window (set via set_bean_context, resolved by tilauscope_types,
-    in the roast's own unit frame — half is +/-5 °C or +/-9 °F, and the
-    profession fallback band is converted when Artisan runs in °F):
-        plan target (authoritative, offset already applied)  -> point +/- half
-        else profession band + roaster dry sensor offset      -> band +/- half
-
-    Markers (priority by available sensors), evaluated only inside the window:
-        S_color : Agtron Rate-of-Colour turned sustained-negative (browning onset)
-                  = DE at the onset of the negative slope. Primary when colour live.
-        S_morph : post-TP RoR bell knee (RoR dropped from its peak AND flattening
-                  or dipping). Uses Artisan's smoothed delta2. Primary without colour.
-        S_pos   : BT position inside the window. Weak prior + (with the force-fire)
-                  the fail-safe; never fires on its own.
+    Roaster-agnostic: DE is bounded to the window around the plan target (else the profession
+    band + the roaster's dry offset); inside it, the colour turn, the knee of the post-TP RoR
+    bell and BT's position decide where to fire, with a force-fire at the window's top.
     """
 
-    _BUFFER_SIZE: Final[int] = 240          # ~8 min @ 0.5 Hz, covers all windows
-    _ROR_WINDOW_S: Final[float] = 30.0      # fallback RoR window (when no delta2)
-
-    _FIRE_THRESHOLD:     Final[float] = 0.75
-    _CONFIRM_DURATION_S: Final[float] = 4.0  # light debounce; onset persistence is in S_color
-
-    # Colour (Agtron/min) — onset of sustained browning
-    _COLOR_SLOPE_WINDOW_S: Final[float] = 30.0
-    _COLOR_SLOPE_NEG:      Final[float] = -0.8   # Agtron/min below which it darkens
-    _COLOR_ONSET_S:        Final[float] = 6.0    # sustained-negative duration -> full
-    _COLOR_MIN_SAMPLES:    Final[int]   = 5
-    _COLOR_VALID_MIN:      Final[float] = 0.0    # Omniflux -1 -> invalid, skip
-    _AG_PEAK_DROP_MIN:     Final[float] = 1.0    # Agtron units below in-window peak
-                                                 # to confirm a real (non-noise) peak
-
-    # Morphology of the post-TP RoR bell (Artisan smoothed delta2)
-    _MORPH_SLOPE_WINDOW_S: Final[float] = 30.0
-    _MORPH_DROP_FULL:      Final[float] = 0.45   # calibrated: median drop ~0.43 at DE
-    _MORPH_FLAT_SCALE:     Final[float] = 4.0    # |dRoR/dt| (C/min^2) scale for flat/creux
-    _ROR_PEAK_MIN:         Final[float] = 3.0    # ignore tiny (noise) peaks
-
-    # Confidence blend. Position (plan target) is the reliable backbone across all
-    # validated roasts; morphology advances it; colour can only ADVANCE the fire
-    # (max-blend) and never starves the base — robust when colour is absent,
-    # stuck at -1, or behaving unexpectedly (e.g. Agtron rising through DE).
-    _POS_W:       Final[float] = 0.75
-    _MORPH_W:     Final[float] = 0.25
-    _COLOR_W:     Final[float] = 0.90
-    _COLOR_POS_W: Final[float] = 0.10
-
     def __init__(self) -> None:
-        self._bt_buf: deque[float] = deque([0.0] * self._BUFFER_SIZE, maxlen=self._BUFFER_SIZE)
-        self._t_buf:  deque[float] = deque([0.0] * self._BUFFER_SIZE, maxlen=self._BUFFER_SIZE)
-        self._ror_buf:   deque[float] = deque(maxlen=self._BUFFER_SIZE)
-        self._ror_t_buf: deque[float] = deque(maxlen=self._BUFFER_SIZE)
-        self._ag_buf:    deque[float] = deque(maxlen=self._BUFFER_SIZE)
-        self._ag_t_buf:  deque[float] = deque(maxlen=self._BUFFER_SIZE)
-
-        # turning point (from Artisan)
-        self._bt_tp:        float = 0.0
-        self._tp_confirmed: bool  = False
-        self._tp_time:      float = 0.0
-
-        # resolved DE window (displayed BT frame)
-        self._de_lo:   float = 0.0
-        self._de_hi:   float = 0.0
-        self._band_lo: float = 0.0
-        self._band_hi: float = 0.0
-        self._unit_scale: float = 1.0   # 1.8 in °F — scales °C-doctrine RoR thresholds
-
-        # marker state
-        self._ror_peak:        float = 0.0
-        self._ag_peak:         float = -1.0   # in-window Agtron peak (DE candidate)
-        self._color_neg_since: float | None = None
-
-        # devices
+        self._core = DryEnd()
+        self._tp_time: float = 0.0
         self.aw_qmc = None
         self._cached_color_device_idx: int = -1
         self._cached_color_channel:    int = -1
-
-        # firing state
-        self.is_fired:       bool = False
-        self._armed:         bool = False   # True once BT approached the window from below
-        self._confirm_since: float | None = None
-
-        # diagnostics
-        self._diag_logged: bool = False
         self._last_diag_t: float = -1.0
 
     # ------------------------------------------------------------------
@@ -460,30 +323,10 @@ class DryEndDetector:
 
     def reset(self) -> None:
         """Remet le détecteur à zéro. À appeler au CHARGE."""
-        self._bt_buf = deque([0.0] * self._BUFFER_SIZE, maxlen=self._BUFFER_SIZE)
-        self._t_buf  = deque([0.0] * self._BUFFER_SIZE, maxlen=self._BUFFER_SIZE)
-        self._ror_buf.clear(); self._ror_t_buf.clear()
-        self._ag_buf.clear();  self._ag_t_buf.clear()
-
-        self._bt_tp = 0.0
-        self._tp_confirmed = False
+        self._core = DryEnd()
         self._tp_time = 0.0
-
-        self._de_lo = self._de_hi = self._band_lo = self._band_hi = 0.0
-        self._unit_scale = 1.0
-
-        self._ror_peak = 0.0
-        self._ag_peak = -1.0
-        self._color_neg_since = None
-
         self._cached_color_device_idx = -1
         self._cached_color_channel    = -1
-
-        self.is_fired = False
-        self._armed = False
-        self._confirm_since = None
-
-        self._diag_logged = False
         self._last_diag_t = -1.0
         _log.info("DryEnd_Detector: reset.")
 
@@ -502,6 +345,7 @@ class DryEndDetector:
                     break
         if self._cached_color_device_idx == -1:
             _log.info("DryEnd_Detector: no Agtron device — colour marker disabled.")
+        self._core.colour_meter = self._cached_color_device_idx != -1
 
     def set_bean_context(self, bt_de_target: float, bt_tp: float = 0.0,
                          bt_dry_offset: float = 0.0, mode: str = 'C') -> None:
@@ -512,113 +356,35 @@ class DryEndDetector:
                         the profession band shifted by bt_dry_offset.
         bt_dry_offset : roaster bean_temperature_offset_c[dry] (index 1). Only used
                         on the fallback path (°C frame, converted with the band).
-        mode          : Artisan temperature unit ('C'/'F') — same contract as the
-                        FC detector: half-window and the profession fallback band
-                        are resolved in the roast's own unit frame.
+        mode          : Artisan temperature unit ('C'/'F').
         """
-        self._unit_scale = 1.8 if mode == 'F' else 1.0
-        half = 9.0 if mode == 'F' else 5.0
-        if bt_de_target and bt_de_target > 0.0:
-            # plan target is native; only the half-window scales with the unit
-            de_lo, de_hi, band_lo, band_hi = resolve_de_window(
-                bt_de_target, bt_dry_offset, half_c=half)
-        else:
-            # profession band + offset are °C-frame -> resolve in °C, then convert
-            de_lo, de_hi, band_lo, band_hi = resolve_de_window(0.0, bt_dry_offset)
-            if mode == 'F':
-                de_lo, de_hi, band_lo, band_hi = (
-                    v * 9.0 / 5.0 + 32.0 for v in (de_lo, de_hi, band_lo, band_hi))
-        self._de_lo, self._de_hi = de_lo, de_hi
-        self._band_lo, self._band_hi = band_lo, band_hi
+        self._core.set_context(bt_de_target, bt_dry_offset, mode)
         if bt_tp > 0.0:
-            self._bt_tp = bt_tp
-            self._tp_confirmed = True
-        _log.debug(
-            f"DryEnd_Detector: window set — band=[{band_lo:.1f},{band_hi:.1f}] "
-            f"gate=[{de_lo:.1f},{de_hi:.1f}] "
-            f"(plan_target={bt_de_target:.1f} dry_offset={bt_dry_offset:+.1f})"
-        )
+            self._core.set_tp(bt_tp)
 
     def check_detection(self, bt: float, et: float, current_time: float) -> DryEndResult:
         """Called every tick. `et` kept for signature compatibility (unused)."""
-        self._bt_buf.append(bt)
-        self._t_buf.append(current_time)
-
-        if not self.is_fired:
+        if not self._core.fired:
             self._sync_tp_from_artisan()
-            self._accumulate_ror()
-            self._accumulate_agtron()
-
-        # need a confirmed TP and a resolved window
-        if not self._tp_confirmed or self._de_hi <= 0.0:
-            return DryEndResult(0.0, False, 0.0, 0.0, 0.0, 0.0, "")
-
-        if self.is_fired:
-            return DryEndResult(1.0, False, 0.0, 0.0, 0.0, 0.0, "")
-
-        # below the window: physically impossible -> idle. Arm: we are approaching
-        # the window from below (the rising post-TP limb where DE actually occurs).
-        if bt < self._de_lo:
-            self._armed = True
-            return DryEndResult(0.0, False, 0.0, 0.0, 0.0, 0.0, "")
-
-        # never fire if TP was confirmed while BT was already above the window
-        # (initial post-charge plunge / edge cases): wait to be armed from below.
-        if not self._armed:
-            return DryEndResult(0.0, False, 0.0, 0.0, 0.0, 0.0, "")
-
-        # fail-safe: at/over band_hi+5 -> force fire (can't be later)
-        if bt >= self._de_hi:
-            self.is_fired = True
-            reason = f"force@DE_hi (BT={bt:.1f}>={self._de_hi:.1f})"
-            _log.info(f"DryEnd_Detector: FIRED @ t={current_time:.0f}s force — {reason}")
-            return DryEndResult(1.0, True, 1.0, 0.0, 0.0, 0.0, reason)
-
-        # in-window markers
-        s_pos   = self._score_pos(bt)
-        s_morph = self._score_morph()
-        base    = self._POS_W * s_pos + self._MORPH_W * s_morph
-
-        color_live, s_color = self._score_color(current_time)
-        if color_live and s_color > 0.0:
-            color_conf = self._COLOR_W * s_color + self._COLOR_POS_W * s_pos
-            confidence = max(base, color_conf)
-        else:
-            confidence = base
-        confidence = max(0.0, min(1.0, confidence))
-
-        if current_time % 10 < 2 and current_time != self._last_diag_t:
-            self._last_diag_t = current_time
-            _log.info(
-                f"DryEnd_Detector: t={current_time:.0f}s conf={confidence:.2f} BT={bt:.1f} "
-                f"pos={s_pos:.2f} morph={s_morph:.2f} "
-                f"color={s_color:.2f}{'' if color_live else '(off)'} rorpeak={self._ror_peak:.1f}"
-            )
-
-        if confidence >= self._FIRE_THRESHOLD:
-            if self._confirm_since is None:
-                self._confirm_since = current_time
-        else:
-            self._confirm_since = None
-
-        if (self._confirm_since is not None
-                and (current_time - self._confirm_since) >= self._CONFIRM_DURATION_S):
-            self.is_fired = True
-            reason = self._build_reason(s_pos, s_color, s_morph, color_live)
+        colour = self._get_agtron_value() if not self._core.fired and self._cached_color_device_idx != -1 else None
+        r = self._core.check(bt, current_time, self._delta2(), colour)
+        if r.fired:
             _log.info(f"DryEnd_Detector: FIRED @ t={current_time:.0f}s "
-                      f"confidence={confidence:.3f} — {reason}")
-            return DryEndResult(confidence, True, s_pos, s_color, s_morph, 0.0, reason)
-
-        return DryEndResult(confidence, False, s_pos, s_color, s_morph, 0.0, "")
+                      f"confidence={r.confidence:.3f} — {r.reason}")
+        elif r.score_pos > 0.0 and current_time % 10 < 2 and current_time != self._last_diag_t:
+            self._last_diag_t = current_time
+            _log.info(f"DryEnd_Detector: t={current_time:.0f}s conf={r.confidence:.2f} BT={bt:.1f} "
+                      f"pos={r.score_pos:.2f} morph={r.score_morph:.2f} color={r.score_color:.2f}")
+        return DryEndResult(r.confidence, r.fired, r.score_pos, r.score_color, r.score_morph, 0.0, r.reason)
 
     # ------------------------------------------------------------------
-    # Turning Point (Artisan)
+    # What the shared detector is given from Artisan
     # ------------------------------------------------------------------
 
     def _sync_tp_from_artisan(self) -> None:
         """Consume Artisan's Turning Point (qmc.TPalarmtimeindex). temp2=BT,
         timex=absolute time, timeindex[0]=CHARGE. Read-only, once."""
-        if self._tp_confirmed or self.aw_qmc is None:
+        if self._core.tp_confirmed or self.aw_qmc is None:
             return
         qmc = self.aw_qmc
         tp_idx = getattr(qmc, "TPalarmtimeindex", None)
@@ -628,164 +394,22 @@ class DryEndDetector:
             charge_idx = qmc.timeindex[0]
             if charge_idx < 0:
                 return
-            self._bt_tp        = float(qmc.temp2[tp_idx])
-            self._tp_time      = float(qmc.timex[tp_idx] - qmc.timex[charge_idx])
-            self._tp_confirmed = True
-            _log.info(f"DryEnd_Detector: TP from Artisan — BT_TP={self._bt_tp:.1f} @ t={self._tp_time:.0f}s")
+            bt_tp = float(qmc.temp2[tp_idx])
+            self._tp_time = float(qmc.timex[tp_idx] - qmc.timex[charge_idx])
+            self._core.set_tp(bt_tp)
+            _log.info(f"DryEnd_Detector: TP from Artisan — BT_TP={bt_tp:.1f} @ t={self._tp_time:.0f}s")
         except (IndexError, TypeError, ValueError):
             return
 
-    # ------------------------------------------------------------------
-    # Accumulators (run every tick, post-TP)
-    # ------------------------------------------------------------------
-
-    def _accumulate_ror(self) -> None:
-        """Feed the RoR history (from Artisan delta2, else computed) and track the
-        post-TP peak. The peak anchors the morphology knee."""
-        if not self._tp_confirmed:
-            return
-        r = self._ror_bt()
-        if r is None:
-            return
-        self._ror_buf.append(r)
-        self._ror_t_buf.append(self._t_buf[-1])
-        if r > self._ror_peak:
-            self._ror_peak = r
-
-    def _accumulate_agtron(self) -> None:
-        if self._cached_color_device_idx == -1:
-            return
-        v = self._get_agtron_value()
-        if v is None or v < self._COLOR_VALID_MIN:   # Omniflux -1 -> skip (not live)
-            return
-        self._ag_buf.append(v)
-        self._ag_t_buf.append(self._t_buf[-1])
-
-    # ------------------------------------------------------------------
-    # Markers
-    # ------------------------------------------------------------------
-
-    def _score_pos(self, bt: float) -> float:
-        """BT position in the window: 0 at de_lo, ramps to 1 at band_lo, 1 in band."""
-        if bt <= self._de_lo:
-            return 0.0
-        if bt >= self._band_hi:
-            return 1.0
-        # ramp across the whole gate up to band_hi: peaks at the late edge so it
-        # cannot fire alone early inside a wide (roaster-fallback) band.
-        return (bt - self._de_lo) / (self._band_hi - self._de_lo)
-
-    def _score_color(self, current_time: float) -> tuple[bool, float]:
-        """(live, score). DE = the Agtron PEAK followed by a permanent descent
-        (RoC turns and stays negative). Peak tracking is window-gated (caller only
-        calls this in-window), so the pre-TP / pre-DE fluctuation is excluded.
-        Returns live=False when the colour channel has no usable live data.
-
-        NB on current Omniflux output the Agtron peak lags the thermal DE by a few
-        degrees and the RoC is noisy; the max-blend keeps this purely an *advancer*,
-        so a late peak never delays the position-anchored fire."""
-        if self._cached_color_device_idx == -1 or not self._ag_buf:
-            return (False, 0.0)
-        ag_now = self._ag_buf[-1]
-        if ag_now > self._ag_peak:
-            self._ag_peak = ag_now            # in-window running peak (DE candidate)
-        slope = self._regress_slope(self._ag_buf, self._ag_t_buf,
-                                    self._COLOR_SLOPE_WINDOW_S, self._COLOR_MIN_SAMPLES)
-        if slope is None:
-            return (False, 0.0)               # not enough live colour data
-        roc = slope * 60.0                    # Agtron / minute (computed RoC)
-        descended = (self._ag_peak - ag_now) >= self._AG_PEAK_DROP_MIN
-        if descended and roc <= self._COLOR_SLOPE_NEG:
-            if self._color_neg_since is None:
-                self._color_neg_since = current_time
-            dur = current_time - self._color_neg_since
-            return (True, max(0.0, min(1.0, dur / self._COLOR_ONSET_S)))
-        self._color_neg_since = None
-        return (True, 0.0)
-
-    def _score_morph(self) -> float:
-        """Post-TP RoR bell knee: RoR dropped from its peak (drop) AND flattening or
-        dipping (flat/creux). min() of both so a steep descent does not score."""
-        # RoR series is in the native unit — °C-doctrine thresholds scale ×1.8 in °F
-        if self._ror_peak < self._ROR_PEAK_MIN * self._unit_scale:
-            return 0.0
-        r_now = self._ror_bt()
-        if r_now is None:
-            return 0.0
-        drop = (self._ror_peak - r_now) / self._ror_peak
-        drop_score = max(0.0, min(1.0, drop / self._MORPH_DROP_FULL))
-        slope = self._regress_slope(self._ror_buf, self._ror_t_buf,
-                                    self._MORPH_SLOPE_WINDOW_S, 5)
-        if slope is None:
-            return 0.0
-        slope_min2 = slope * 60.0   # °/min per minute (native unit)
-        if slope_min2 >= 0.0:
-            flat_score = 1.0                                   # creux (turning up)
-        else:
-            flat_score = max(0.0, 1.0 - (-slope_min2) / (self._MORPH_FLAT_SCALE * self._unit_scale))
-        return max(0.0, min(1.0, min(drop_score, flat_score)))
-
-    # ------------------------------------------------------------------
-    # Numeric helpers
-    # ------------------------------------------------------------------
-
-    def _ror_bt(self) -> float | None:
-        """BT RoR (C/min). Prefer Artisan's smoothed delta2, else compute."""
-        qmc = self.aw_qmc
-        if qmc is not None:
-            d2 = getattr(qmc, "delta2", None)
-            if d2:
-                v = d2[-1]
-                if v is not None:
-                    try:
-                        return float(v)
-                    except (TypeError, ValueError):
-                        pass
-        return self._ror(self._bt_buf)
-
-    def _idx_back_by_time(self, seconds: float) -> int | None:
-        n = len(self._t_buf)
-        if n < 2:
-            return None
-        target = self._t_buf[-1] - seconds
-        for back in range(1, n):
-            if self._t_buf[-1 - back] <= target:
-                return n - 1 - back
+    def _delta2(self) -> float | None:
+        """Artisan's smoothed BT RoR at this sample; None lets the shared detector compute it."""
+        d2 = getattr(self.aw_qmc, "delta2", None) if self.aw_qmc is not None else None
+        if d2 and d2[-1] is not None:
+            try:
+                return float(d2[-1])
+            except (TypeError, ValueError):
+                pass
         return None
-
-    def _ror(self, buf: deque[float], window_s: float = _ROR_WINDOW_S) -> float:
-        idx = self._idx_back_by_time(window_s)
-        if idx is None:
-            return 0.0
-        dt = self._t_buf[-1] - self._t_buf[idx]
-        if dt <= 0:
-            return 0.0
-        return (buf[-1] - buf[idx]) / dt * 60.0
-
-    @staticmethod
-    def _regress_slope(vals: deque[float], ts: deque[float],
-                       window_s: float, min_n: int) -> float | None:
-        """Least-squares slope (unit/second) over the most recent `window_s`.
-        None if fewer than `min_n` points in the window."""
-        n = len(ts)
-        if n < min_n:
-            return None
-        cutoff = ts[-1] - window_s
-        xs: list[float] = []
-        ys: list[float] = []
-        for i in range(n - 1, -1, -1):
-            if ts[i] < cutoff:
-                break
-            xs.append(ts[i]); ys.append(vals[i])
-        m = len(xs)
-        if m < min_n:
-            return None
-        sx = sum(xs); sy = sum(ys)
-        sxx = sum(x * x for x in xs); sxy = sum(x * y for x, y in zip(xs, ys))
-        den = m * sxx - sx * sx
-        if den == 0:
-            return None
-        return (m * sxy - sx * sy) / den
 
     def _get_agtron_value(self, offset: int = 0) -> float | None:
         if self.aw_qmc is None or self._cached_color_device_idx == -1:
@@ -806,28 +430,21 @@ class DryEndDetector:
         except (IndexError, TypeError, ValueError):
             return None
 
-    @staticmethod
-    def _build_reason(pos: float, color: float, morph: float, color_live: bool) -> str:
-        parts = []
-        if color_live and color >= 0.5:
-            parts.append(f"Agtron_peak_descent({color:.2f})")
-        if morph >= 0.5:
-            parts.append(f"RoR_knee({morph:.2f})")
-        if pos >= 0.5:
-            parts.append(f"BT_in_band({pos:.2f})")
-        return " + ".join(parts) if parts else "composite"
-
     # ------------------------------------------------------------------
     # Properties
     # ------------------------------------------------------------------
 
     @property
+    def is_fired(self) -> bool:
+        return self._core.fired
+
+    @property
     def bt_tp(self) -> float:
-        return self._bt_tp
+        return self._core.bt_tp
 
     @property
     def tp_confirmed(self) -> bool:
-        return self._tp_confirmed
+        return self._core.tp_confirmed
 
     @property
     def ratio_initial(self) -> float:

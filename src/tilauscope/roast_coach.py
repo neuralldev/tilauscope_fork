@@ -39,6 +39,8 @@ from typing import Any, Final
 from PyQt6.QtCore import QSettings, QT_TRANSLATE_NOOP
 from PyQt6.QtWidgets import QApplication
 
+# The arrival-pair level reading lives in the library shared with the tablet.
+from tilaucore.roast_levels import arrival_uncertainty_c, measured_level, probe_drop_offset_c  # noqa: F401
 from tilauscope.tilauscope_types import (
     ARRIVAL_UNCERTAINTY_DEFAULT_C, ROASTING_BASIC_BASE, RoastingPhase, dominant_dev_ror_event,
     estimate_ror_dt, find_turning_point_index, get_ror_ideal_band, normalize_timeindex,
@@ -125,52 +127,6 @@ def roast_inputs(profile: dict) -> tuple[Any, Any]:
         except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
             _log.debug("coach: green bean unavailable: %s", e)
     return ctx, bean
-
-
-def probe_drop_offset_c(ctx: Any) -> float:
-    """The bean probe's deviation at drop for the machine that ran the roast.
-
-    Same value and same sign the plan generator applies to the reference drop
-    window, so a level read here and a level prescribed there mean the same
-    temperature on the operator's own display.
-    """
-    offsets = getattr(ctx, 'bt_offsets', None) if ctx is not None else None
-    if offsets and len(offsets) >= 4:
-        try:
-            return float(offsets[3])
-        except (TypeError, ValueError):
-            pass
-    return 0.0
-
-
-def arrival_uncertainty_c(ctx: Any) -> float:
-    """What a level read from this machine's arrival is worth, in °C."""
-    try:
-        return float(getattr(ctx, 'arrival_uncertainty_c', None)
-                     or ARRIVAL_UNCERTAINTY_DEFAULT_C)
-    except (TypeError, ValueError):
-        return ARRIVAL_UNCERTAINTY_DEFAULT_C
-
-
-def measured_level(computed: dict, mode: str, ctx: Any) -> tuple[str | None, str | None]:
-    """(level, neighbour) for a roast, from its arrival pair.
-
-    `neighbour` is the level the arrival could just as well be read as when it
-    lands on a band edge — None when the reading is clear-cut.
-    """
-    try:
-        drop_bt = float(computed.get('DROP_BT') or 0.0)
-        fcs_t = float(computed.get('FCs_time') or 0.0)
-        drop_t = float(computed.get('DROP_time') or 0.0)
-    except (TypeError, ValueError):
-        return None, None
-    if drop_bt <= 0 or fcs_t <= 0 or drop_t <= fcs_t:
-        return None, None
-    # The reference table is in °C — convert at the boundary, once.
-    drop_c = (drop_bt - 32.0) * 5.0 / 9.0 if mode == 'F' else drop_bt
-    return roast_level_from_arrival_detail(drop_c, (drop_t - fcs_t) / 60.0,
-                                           probe_drop_offset_c(ctx),
-                                           arrival_uncertainty_c(ctx))
 
 
 def level_thresholds(level: str | None, *, moisture_pct: float = 0.0,
