@@ -113,8 +113,9 @@ Each roast saves its energy record with it, preheat included. Opening the roast 
 after STOP or months later — gives the same figures, recalculated on its milestones: moving
 CHARGE or DROP afterwards moves the periods with them.
 
-**BeanCave → Roasts** shows an **Energy** figure beside the four others: the roast's kWh, with the
-kWh per kg and the [provenance](glossary.md#energy-provenance) underneath. Its **›** opens the
+**BeanCave → Roasts** shows an **Energy** figure beside the four others: the roast's kWh from CHARGE
+to DROP, with **Charge → Drop** and the [provenance](glossary.md#energy-provenance) underneath; the
+kWh per kg is in the sheet. Its **›** opens the
 **energy sheet** of that roast, a floating window:
 
 - **The total** since monitoring started. It is only called *Total* when every expected source was

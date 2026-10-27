@@ -82,6 +82,7 @@ from tilauscope.roast_review_panel import RoastReviewPanel
 from tilauscope.theme_qss import apply_tilau_theme, tint, tooltip_qss
 from tilauscope.tilauscope_types import THEME, _IS_MACOS, call_later
 from tilauscope.whats_new import maybe_show_whats_new
+from tilauscope.backup_dialog import show_backup_notices
 from tilauscope.widgets.controls import ClickableValue, HoldToFireButton
 from tilauscope.widgets.labels import ClickableLabel, TickerLabel
 from tilauscope.widgets.phase import PhaseWidget
@@ -414,6 +415,7 @@ class BuildMixin:
             call_later(self, 500, lambda: self.showMessage(message))
         else:
             call_later(self, 1200, lambda: maybe_show_whats_new(self, self))
+        call_later(self, 2500, lambda: show_backup_notices(self, self.aw))
 
     def init_ui(self):
 

@@ -606,6 +606,15 @@ try:
 except Exception: # pylint: disable=broad-except
     pass
 
+## TILAU ## Apply a restore asked for before the last quit (Help › Restore
+## TilauScope). Must run before the first settings read and before any data
+## file is opened: applied live, the settings save on quit would undo it.
+try:
+    from tilauscope.backup import apply_pending_restore
+    apply_pending_restore()
+except Exception: # pylint: disable=broad-except
+    pass
+
 
 #app.setStyleSheet("") # setting any styleSheet on QApplication disables native dialogs on macOS
 
@@ -22423,6 +22432,13 @@ class ApplicationWindow(QMainWindow):
                 self.qmc.flagKeepON = flagKeepON
                 if QApplication.queryKeyboardModifiers() != (Qt.KeyboardModifier.AltModifier | Qt.KeyboardModifier.ShiftModifier):
                     self.closeEventSettings() # it takes quite some time to write the >1000 setting items
+                ## TILAU ## automatic backup, or the relaunch a restore asked for —
+                ## after the settings are written, so a backup carries them.
+                try:
+                    from tilauscope.backup_dialog import on_quit
+                    on_quit()
+                except Exception as e: # pylint: disable=broad-except
+                    _log.exception(e)
 #                gc.collect() # this takes quite some time
                 QApplication.exit()
                 return True
@@ -25354,7 +25370,7 @@ class ApplicationWindow(QMainWindow):
             ## home. While a roast is monitoring, going to BeanCave hides TilauScope
             ## instead of closing it (closeEvent is blocked by flagon), so re-opening
             ## must show that same instance, not toggle to Artisan or spawn a new one.
-            self._tilau_allow_show = False  # aw stays hidden
+            self._tilau_set_artisan_view(False)  # aw stays hidden
             ts.show()
             ts.raise_()
             ts.activateWindow()
@@ -25365,7 +25381,7 @@ class ApplicationWindow(QMainWindow):
             ## Reveal Artisan BEFORE closing TilauScope so we never drop to zero
             ## visible windows (which would trip lastWindowClosed -> fileQuit).
             if self._tilau_headless:
-                self._tilau_allow_show = True  # explicit reveal — let showEvent pass
+                self._tilau_set_artisan_view(True)  # explicit reveal — let showEvent pass
                 self.show()
                 self.raise_()
                 self.activateWindow()
@@ -25393,7 +25409,7 @@ class ApplicationWindow(QMainWindow):
             ## and BeanCave (e.g. when opened straight from the BeanCave menu, which
             ## would otherwise leave BeanCave visible behind TilauScope).
             if self._tilau_headless:
-                self._tilau_allow_show = False
+                self._tilau_set_artisan_view(False)
                 self.hide()
                 self._tilau_hide_beancave()
         ## TILAU ## keep the Shift+T menu label in sync with the active view
@@ -25405,6 +25421,13 @@ class ApplicationWindow(QMainWindow):
         """True when TilauScope exists and is the visible (active) view."""
         ts = self.tilauscope_main
         return ts is not None and not sip.isdeleted(ts) and ts.isVisible()
+
+    def _tilau_set_artisan_view(self, active:bool) -> None:
+        """Open (or close) the showEvent gate and restore (or re-hide) the
+        Artisan menu items TilauScope hides, with the Artisan window as the view."""
+        self._tilau_allow_show = active
+        if hasattr(self, 'tilau_menu') and self.tilau_menu is not None:
+            self.tilau_menu.set_artisan_view(active)
 
     def _tilau_hide_beancave(self) -> None:
         """Hide the BeanCave home window if it is currently visible."""
@@ -28780,7 +28803,7 @@ class ApplicationWindow(QMainWindow):
                     self.tilauscope_main = None
                 if hasattr(self, 'tilau_menu') and self.tilau_menu is not None:
                     self.tilau_menu.refresh_main_label(True, self._tilau_scope_visible())
-            self._tilau_allow_show = False
+            self._tilau_set_artisan_view(False)
             self.hide()
             self.beancaveWindow.raise_()
             self.beancaveWindow.activateWindow()

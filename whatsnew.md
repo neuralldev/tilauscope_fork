@@ -55,6 +55,10 @@ A smaller release: TilauScope now adapts itself to machines that have no air pro
 * **Your controls and milestones, set in one place.** A new **CONTROLS** tab in TilauScope Config names the machine's four controls — the sliders, buttons, alarms and phone follow as soon as you save — and sets what the roaster is sent at each milestone: a line of milestones shows at a glance which ones send a command, and a click on an empty one adds it. Artisan's crowded Events settings and Roast menu are no longer needed and are hidden.
 * **On a machine with no air probe, such as the Skywalker V1, TilauScope no longer shows exhaust temperature.** Its readout, the air-temperature and machine-response curve options, the phone's ET and ΔT tiles, the roast miniatures, the PID input choice, and any advice that mentioned it are hidden or reworded around bean temperature — and preheating always follows bean temperature on that machine.
 
+## 💾 Your data
+
+* **Back up everything, restore everything.** **Help › Back up TilauScope** puts your roasts, the BeanCave, what TilauScope has learned and all your settings in one file. Turn on the automatic backup and it is made each time TilauScope closes after new roasts, with a second copy on a network drive or in a cloud folder if you like. **Help › Restore TilauScope** shows what a backup holds before putting it back as a whole — on a new computer too — and keeps a safety copy of what it replaces. Passwords and API keys stay in your keychain and are entered again after a restore.
+
 ## 🌍 Translations
 
 * German, Spanish, Italian, Simplified and Traditional Chinese are **complete again** — the new Devices window's labels were showing in English inside an otherwise translated interface.

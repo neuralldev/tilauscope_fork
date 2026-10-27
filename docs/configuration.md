@@ -52,7 +52,9 @@ way with no model selected at all.
 the roaster stands in its cleaning cycle, and your recent roasts.
 
 **BeanCave home mode (hide the Artisan window)** starts TilauScope in the BeanCave shell with
-the Artisan window hidden.
+the Artisan window hidden. When you switch to the Artisan window, the Artisan menus that
+TilauScope hides are available again; they are hidden again when you return to TilauScope or
+BeanCave.
 
 !!! info "Ongoing"
     BeanCave home mode only takes effect **after a restart** — ticking it does not change
@@ -395,6 +397,75 @@ currency is used. Amounts follow the system's number format, so the symbol may s
 after the figure.
 
 <!-- CAPTURE 4.13 — the BEANCAVE tab: the Directories group, then the Currency section with its dropdown open. -->
+
+---
+
+## 💾 Back up and restore — Help menu
+
+Artisan's **Help → Save Settings...** keeps Artisan's own settings only. **Help → Back up
+TilauScope...** keeps everything in one file: every roast, the BeanCave (coffees, tastings, brew
+journal), what TilauScope has learned from your roasts and preheats, and all the settings. They
+are saved together because they belong together: the roast plan and the BeanCave are built from
+that list of roasts.
+
+Passwords and API keys are not in the [backup](glossary.md#backup): they stay in the system
+keychain. Phone pairings and log files are not in it either. Both entries are greyed out during a
+roast.
+
+### Back up now
+
+**BACKUP FOLDER** is where backups go, **Documents › TilauScope Backups** until another folder is
+chosen. **Back up now** writes a file named after the day, ending in `.tilaubackup`. TilauScope
+stays usable meanwhile, and **Cancel** stops the run without leaving a half-written file. A backup
+made this way is never deleted by TilauScope.
+
+<!-- CAPTURE 4.15 [scene:backup_window] — Help → Back up TilauScope..., the window as it opens: the four counters, the
+BACKUP FOLDER row, Back up now, and AUTOMATIC BACKUP set to On with an extra copy folder marked
+Reachable. -->
+
+![Back up TilauScope: what is saved, the backup folder with Back up now, and the automatic backup on with an extra copy on a network share.](assets/configuration-4.15.png)
+
+### Automatic backup
+
+With **AUTOMATIC BACKUP** on, TilauScope makes a backup when it closes, if a roast was saved since
+the last automatic one. It never runs during a roast. A small window shows the progress while
+TilauScope closes; **Skip this time** closes at once, and the backup is made at the next closing.
+
+**Extra copy — network or cloud folder** adds a second copy of each automatic backup, for example
+on a network drive or in a folder your cloud service synchronises. The folder has to be reachable
+when TilauScope closes: on macOS, connect to the network share in the Finder first. When it is not
+reachable, the local copy is still made and TilauScope says so at the next start; **Check folder**
+opens this window. **✕** removes the extra copy.
+
+**Copies to keep** — 3, 5 or 10 — is how many automatic backups stay in each folder; the oldest
+go first.
+
+### Restore
+
+**Help → Restore TilauScope...** asks for a backup file, then shows what it holds beside what is
+on this computer now. Restoring is all or nothing: everything on this computer is replaced by the
+backup, because a BeanCave or a learned plan only makes sense with the roasts it was built from.
+Roasts made since the backup no longer appear, but they are not lost: TilauScope first saves the
+current state as a [safety copy](glossary.md#safety-copy) in the backup folder, and that file can be
+restored the same way.
+
+**Roasts go to** is the folder the roasts are put back in: the one in use on this computer, or the
+one they came from on a new computer. **Change...** accepts an empty folder or the roast folder
+already in use, never a folder holding other files, since restoring replaces its content. The
+BeanCave goes back with the roasts when it lived in the same folder.
+
+**Restore and restart** checks the file, makes the safety copy, then closes TilauScope and opens it
+again with the backup in place. A message confirms the date of the backup restored; enter your
+passwords and API keys again (AI assistant, MQTT) from **Open settings**.
+
+A file that is damaged or incomplete is refused, as is a backup made by a newer version of
+TilauScope: update first. In both cases nothing is changed.
+
+<!-- CAPTURE 4.16 [scene:restore_preview] — Help → Restore TilauScope..., the preview of a backup: the file and its date,
+the IN THE BACKUP / ON THIS COMPUTER counts with "1 more" on Roasts, the replacement warning, the
+Roasts go to row, and Restore and restart. -->
+
+![Restore TilauScope: the backup beside this computer, the replacement warning, where the roasts go, and Restore and restart.](assets/configuration-4.16.png)
 
 ---
 

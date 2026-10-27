@@ -457,3 +457,20 @@ automation that was driving the heat is stopped, the burner goes to zero, and ai
 extraction open fully.
 The drum keeps turning and the beans stay in it — emptying the drum remains your gesture.
 See [The roasting window](the-window.md#cutting-the-heat-in-an-emergency).
+
+---
+
+## Your data
+
+#### Backup
+
+One file, ending in `.tilaubackup`, that holds everything TilauScope keeps: the roasts, the
+BeanCave, what TilauScope has learned and the settings. Passwords and API keys are not in it. It
+is restored as a whole, never in part. See
+[Configuration](configuration.md#-back-up-and-restore--help-menu).
+
+#### Safety copy
+
+The [backup](#backup) TilauScope makes of the current state just before a restore replaces it.
+It sits in the backup folder, named *TilauScope-before-restore-* and the date, and is restored
+like any other backup.

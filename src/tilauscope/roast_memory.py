@@ -86,6 +86,12 @@ def _designated(ref: str, records: list, tastings: dict[str, RoastTasting],
     return ReferenceState('used', memory)
 
 
+def lost_references(beans: Iterable[Any], records: Iterable[Any]) -> list[Any]:
+    """The coffees whose reference roast is no longer among the roast files: its file was deleted."""
+    present = {getattr(m, 'roast_uuid', '') for m in records}
+    return [b for b in beans if getattr(b, 'reference_roast_uuid', '') and b.reference_roast_uuid not in present]
+
+
 def ready_to_taste(memory: RoastMemory | None) -> bool:
     """Rested past its degassing and not tasted yet — the same reading the Roasts tab asks on."""
     if memory is None or memory.tasting is not None or not memory.roast_uuid or memory.rest_days < 0:

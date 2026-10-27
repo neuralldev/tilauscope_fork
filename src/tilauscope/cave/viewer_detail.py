@@ -81,7 +81,7 @@ def roast_tiles(facts: RoastFacts | None, price_per_kg: float = 0.0) -> list[Til
 
 
 def energy_tile(profile: Mapping | None) -> TileText:
-    """Energy of the roast, CHARGE to DROP: kWh, then kWh/kg green and where it comes from.
+    """Energy of the roast, CHARGE to DROP: kWh, then where it comes from (kWh/kg green is in the energy view).
 
     From the profile's own energy bill, else rebuilt from its saved power curve.
     """
@@ -98,10 +98,7 @@ def energy_tile(profile: Mapping | None) -> TileText:
     if roast.provenance == NONE:
         return _not_recorded(caption)
     glyph, _colour, words = provenance(roast)
-    bits = []
-    if summary.wh_per_kg is not None:
-        bits.append(QApplication.translate('tilauscope_beancave', '{0} kWh/kg').format(
-            f'{summary.wh_per_kg / 1000:.3f}'))
+    bits = [QApplication.translate('tilauscope_beancave', 'Charge → Drop')]
     bits.append(f'{glyph} {words}')
     if session is not None and session.rebuilt:
         bits.append(QApplication.translate('tilauscope_beancave', 'rebuilt'))

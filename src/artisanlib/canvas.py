@@ -7669,23 +7669,12 @@ class tgraphcanvas(QObject):
         flag = self.safesaveflag
         self.safesaveflag = False
         if flag and len(self.timex) > 3:
-            string = QApplication.translate('Message','Save profile?')
-            if allow_discard:
-                buttons = QMessageBox.StandardButton.Discard|QMessageBox.StandardButton.Save|QMessageBox.StandardButton.Cancel
-            else:
-                buttons = QMessageBox.StandardButton.Save|QMessageBox.StandardButton.Cancel
-#On macOS, if the modality is set to Qt::WindowModal and the message box has a parent, then the message box will be a Qt::Sheet,
-#otherwise the message box will be a standard dialog.
-# setWindowModality(Qt.WindowModality.WindowModal)
-            ## TILAU ## TilauScope asks with its own dialog: the native alert crashes AppKit
-            ## when the monitor redraws the screen while it lays itself out.
-            if self.aw.tilauscope_main is not None:
-                from tilauscope.tilauscope_types import ask_save_profile  # pylint: disable=import-outside-toplevel
-                reply = {'save': QMessageBox.StandardButton.Save, 'discard': QMessageBox.StandardButton.Discard}.get(
-                    ask_save_profile(self.aw.tilauscope_main, allow_discard), QMessageBox.StandardButton.Cancel)
-            else:
-                reply = QMessageBox.warning(None, #self.aw,  # only without super this one shows the native dialog on macOS under Qt 6.6.2 and later
-                    QApplication.translate('Message','Profile unsaved'), string, buttons)
+            ## TILAU ## TilauScope asks with its own dialog, its window open or not, wording the question and
+            ## its buttons itself: the native alert crashes AppKit when the monitor redraws the screen while it
+            ## lays itself out, and on macOS 27 when it draws its warning icon (at quit, BeanCave closed, 2026-10-24).
+            from tilauscope.tilauscope_types import ask_save_profile  # pylint: disable=import-outside-toplevel
+            reply = {'save': QMessageBox.StandardButton.Save, 'discard': QMessageBox.StandardButton.Discard}.get(
+                ask_save_profile(self.aw.tilauscope_main, allow_discard), QMessageBox.StandardButton.Cancel)
             self.safesaveflag = flag
             if reply == QMessageBox.StandardButton.Save:
                 return bool(self.aw.fileSave(self.aw.curFile))  #if accepted, calls fileClean() and thus turns safesaveflag = False

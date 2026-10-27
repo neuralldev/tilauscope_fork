@@ -1,4 +1,48 @@
 ## [4.3] 2026-09-13
+build 41
+* ⚡ [feat(backup)] : Help › Back up TilauScope saves roasts, BeanCave, what TilauScope has learned and all settings in one file, by hand or automatically when TilauScope closes after new roasts, with an optional extra copy to a network or cloud folder; Help › Restore TilauScope puts a backup back as a whole after a safety copy of the current state, and restarts
+* 🐛 [fix(menus)] : in BeanCave home mode, switching to the Artisan window brings back the Artisan menus TilauScope hides; they are hidden again when returning to TilauScope or BeanCave
+* 🐛 [fix(beancave)] : when BeanCave is the home screen, typing Shift+B or Esc in it no longer closes TilauScope
+* 🐛 [fix(android)] : after a dropped roaster link the Android prototype never gives heat again by itself: a burner change asked while the link was away no longer reaches the roaster at the reconnection, and the burner, air and drum are greyed until the link is back (the extractor stays free)
+* ⚡ [feat(android)] : following a roast on the Android prototype, a dropped and recovered link pauses the following; the banner offers to resume it, and touching any lever takes the roast back and clears the banner
+* 🐛 [fix(android)] : leaving the Android prototype (screen off, Home, sharing the roast) while the roaster cools after End roast no longer stops the cooling nor closes the app; a back-to-back roast still takes the cooling roaster and its preheat starts from there
+* 🐛 [fix(android)] : the Android prototype no longer replays the end of the previous roast (cooling, roaster off) at the start of the next one when End roast was tapped while the link was away
+* 🐛 [fix(android)] : a crash of the Android prototype's page display no longer closes the app or loses the roast: the page opens again
+* 🐛 [fix(android)] : the Android prototype's link check in Settings waits while the roaster cools the last roast instead of stopping the cooling, and says that a back-to-back roast can be started from the roast screen
+* 🐛 [fix(android)] : a roast whose Charge was found automatically is restored after the Android prototype was closed during it, with who set each lever (TilauPID, alarm) and its preheat target, instead of being lost
+* 🐛 [fix(android)] : the Android prototype's alarms on the drum probe's rate of rise (ET RoR) now fire
+* 🐛 [fix(android)] : from the second roast of a session, the Android prototype's alarms show their toast, beep and message again
+* 🐛 [fix(android)] : two roasts of the same name saved in the same minute on the Android prototype no longer overwrite each other
+* 🐛 [fix(android)] : the Android prototype's built-in demo, with no roaster declared, no longer takes the green weight off the coffee's stock
+* 🐛 [fix(android)] : on the Android prototype, the plan follows the green weight weighed on the roast screen, Roast Setup offers the plan's charge temperature as preheat target for each roast until you type your own, and its plan chart reads in °F when °F is chosen
+* 🐛 [fix(android)] : on the Android prototype, a decimal comma typed in the coffee editor is kept, quick repeated taps on a lever or an alarm stepper all count, and buttons updated by a scale or a scan no longer miss a tap
+* 🐛 [fix(android)] : the Android prototype's Settings › General "Change" keeps the changes not yet saved, Roast Setup says why a preheat target is refused, and a refused Start no longer leaves the roaster connected
+* 🐛 [fix(android)] : an Acaia Lunar that kept its pairing from an earlier connection no longer stays on "Connecting…" on the Android prototype: its weight is read at once
+* ⚡ [feat(android)] : the Android prototype's Green chip shows the scale's live weight with a scale icon, in green with a tick when it is the weight kept for the roast
+* ⚡ [feat(android)] : the Android prototype keeps a diagnostic log (devices, orders to the roaster, errors, never a password) and shares it from Settings › General › Diagnostic log, to send with a problem
+* 🐛 [fix(android)] : choosing the same coffee again in the Android prototype's BeanCave keeps the green weight kept for its roast
+build 40
+* 🐛 [fix(tilauscope)] : quitting after opening a roast no longer closes TilauScope abruptly on macOS 27: the "Save profile?" question is always TilauScope's own dialog, even once BeanCave is closed
+* ⚡ [feat(android)] : the Android prototype records the roast's energy from Start, preheat included, from the MQTT roaster and extractor power sensors (the burner estimates the roaster between Charge and Drop without a reading); the roast file carries it for the desktop, the end of roast shows it with its energy sheet, and BeanCave › Roasts shows it in the Energy tile, which opens the same sheet
+* ⚡ [feat(android)] : the Android prototype shows temperatures in °C or °F, chosen in Settings › General: readings, curves, targets, alarms and summaries; roast files stay in °C
+* 🐛 [fix(android)] : a roast recorded in °F on the computer is no longer read as °C on the Android prototype (its curve in Roasts and when it is followed)
+* ⚡ [feat(android)] : the Android prototype's roast curves in BeanCave › Roasts name each milestone with its bean temperature and time, the turning point included, as on the desktop; the live roast curve gives the bean temperature too
+* ⚡ [feat(android)] : in the Android prototype's BeanCave › Roasts, a double tap on the curve opens it full screen and closes it, and sharing a roast is the share icon
+* 🐛 [fix(android)] : the Android prototype's End roast ends the roaster's cooling as the desktop's Cool end does, once the beans are under 50 °C: the cooling fans no longer keep running after the roast
+* 🐛 [fix(android)] : the Android prototype's Settings › Network saves every change at once, so the broker and its sensors are kept even when the app is closed before leaving the page
+* ⚡ [feat(beancave)] : the Energy tile in BeanCave › Roasts says Charge → Drop, the period its kWh covers, on the desktop and the Android prototype; the kWh per kg of green moves to the energy sheet, whose total also counts the preheat and the cooling
+* ⚡ [feat(android)] : in the Android prototype's BeanCave › Roasts, swiping a roast to the right shows a bin that deletes it after asking; the roast memory, the plan and the preheat learning follow, the green stock does not change
+* 🐛 [fix(beancave)] : a reference roast whose file was deleted no longer leaves its ★ on the coffee: BeanCave removes it at the next reading of the roast folder, on the desktop and the Android prototype
+* 🐛 [fix(android)] : coming back to the Android prototype from another app returns to the page it was on, Settings included, instead of restarting on the roast screen
+build 39
+* 🐛 [fix(android)] : the Android prototype's MQTT link no longer drops every minute and a half while sensors publish often, and Settings › Network listens only to the sensors' topics, so a busy broker no longer slows the roast; with TLS the broker's certificate must name its host
+* 🐛 [fix(android)] : when Bluetooth was refused once and then allowed at the next question, the Android prototype's roast screen no longer keeps its "Bluetooth not allowed" warning; the label printer, like the other devices, connects again once Bluetooth is back
+* ⚡ [feat(android)] : the Android prototype reads sensors over MQTT, set in Settings › Network (broker, user, password, TLS; each sensor's topic, field and what it feeds, its value shown live): room temperature, humidity and pressure when TilauAmbient does not read, and the roaster's and extractor's power for the energy of the roast
+* 🐛 [fix(android)] : the Android prototype no longer closes when Bluetooth is switched off or restarts, a roast included, and its accessories reconnect by themselves once Bluetooth is back
+* ⚡ [feat(android)] : when Bluetooth is not allowed, the Android prototype's roast screen says so (red link pill, a card over the curve) and opens Android's settings for the app; once allowed, the roaster and the accessories connect as you come back
+* 🐛 [fix(android)] : the Android prototype asks its permissions one after the other: at Start the Bluetooth question was lost when the notification question came at the same time, and with several devices waiting only the last one connected once Bluetooth was allowed
+* 🐛 [fix(android)] : the Android prototype ignores a roaster frame whose temperature is not a number, instead of failing on it
+* 🐛 [fix(android)] : the Android prototype's roast time follows the tablet's clock, as the desktop's does: it no longer falls behind by about 5 % (a 10-minute roast read 9:30), screen on or off; the tablet stays awake while a roast records, and a moment when it falls behind shows as a peach link pill, "tablet late", in the roast summary and in the roast file
 build 38
 * 🐛 [fix(onboarding)] : the first-run assistant opens the connection step of a roaster reached over Bluetooth again; it stopped with an error
 * ⚡ [feat(android)] : the Android prototype has a signature sound, a warm chord opening note after note: in full when the app starts, short when an alarm with its bell on fires — the bell was silent before

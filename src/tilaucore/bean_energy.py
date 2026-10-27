@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Tilau
+# This file is part of TilauScope.
+
 """Experimental, non-constraining bean-energy floor model — not consumed by
 roast-plan generation; kept only for isolated experiments, not a physical law.
 

@@ -244,8 +244,8 @@ When the coffee has a [reference roast](glossary.md#reference-roast), the zone o
 its development, weight loss and colour. The last roast follows under **LAST ROAST**, with its
 tasting — and with its own development, weight loss and colour whenever the reference is not
 used. **NEXT PLAN** also says when the reference is not used, and why — *not used, tasted
-Almost since*, *not used, excluded from learning*, or that its roast file was not found — and
-turns orange when *the last roast followed it and was off*: the coffee may have changed. A new
+Almost since*, *not used, excluded from learning*, or that its roast file was not found while the
+roast folder cannot be reached — and turns orange when *the last roast followed it and was off*: the coffee may have changed. A new
 harvest without roasts of its own shows the previous harvest's reference it starts from, for
 example *★ 2025 crop · #31*. To mark a reference, see
 [Marking the reference roast](after-the-roast.md#marking-the-reference-roast).

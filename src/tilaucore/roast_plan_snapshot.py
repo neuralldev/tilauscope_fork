@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Tilau
+# This file is part of TilauScope.
+
 """Versioned pre-roast prediction snapshots and out-of-sample errors."""
 
 from __future__ import annotations

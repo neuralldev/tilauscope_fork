@@ -166,7 +166,7 @@ and batch number, and five figures, each with what it means underneath:
 | **Roast time** | The [development](glossary.md#dtr--development-time-ratio) time, when first crack was marked |
 | **Drop temperature** | The bean temperature at first crack |
 | **Colour** | **Ground** and its colour category — or, without a ground reading, **Whole bean** and its colour category |
-| **Energy** | The kWh per kg of green coffee and where the figure comes from — see [Energy](energy.md#after-the-roast); a **›** opens the roast's energy detail |
+| **Energy** | The roast's kWh, Charge to Drop (the line under it says **Charge → Drop**), and where the figure comes from — see [Energy](energy.md#after-the-roast); a **›** opens the roast's energy detail |
 
 A figure that was never recorded reads **Not recorded**. With several roasts selected, the head
 reads how many are compared, names each one in its curve's colour, and gives the roast time,
@@ -500,7 +500,9 @@ A coffee has one reference. Marking another roast asks first — *Replace the re
 2 Sep (#41) with this one?* — and nothing changes if you cancel. Changing the tasting of the
 reference to *Almost* or *No* later stops the plan from using it, and the coffee's record says
 why; the Roasts list and the Analysis no longer show it as the reference. The ★ stays on it, in
-the tasting line and the tasting form, so you can still remove it. How the plan uses the reference is in
+the tasting line and the tasting form, so you can still remove it. Deleting the reference's roast
+file removes the ★: BeanCave finds it gone the next time it reads the roast folder. A folder it
+cannot reach (a disconnected disk) removes nothing. How the plan uses the reference is in
 [The roast plan](the-roast-plan.md#which-previous-roasts-count).
 
 <!-- CAPTURE 8.18 [scene:cave_reference_tasting] — the tasting line of a roast tasted Yes that is its coffee's reference: the

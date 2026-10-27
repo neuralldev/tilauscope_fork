@@ -61,6 +61,7 @@ class TilauMenuExtension:
         self._sync_checked_states()
         self._patch_config_menu(ui_mode)
         self._insert_export_logs_action()
+        self._insert_backup_actions()
         self._insert_tilau_top_menu(menu_bar, ui_mode)
         self.display_policy.enforce()
 
@@ -131,6 +132,12 @@ class TilauMenuExtension:
             QApplication.translate('Menu', 'Export Logs...'), aw)
         self.act_export_logs.triggered.connect(self._export_logs)
 
+        # Inserted into Help after Artisan's Save Settings, always visible
+        self.act_backup = QAction(QApplication.translate('Menu', 'Back up TilauScope...'), aw)
+        self.act_backup.triggered.connect(self._open_backup)
+        self.act_restore = QAction(QApplication.translate('Menu', 'Restore TilauScope...'), aw)
+        self.act_restore.triggered.connect(self._open_restore)
+
         # No About entry here: Artisan's own About action already reads
         # "About TilauScope" and opens the fork's About window (see helpAbout()).
 
@@ -143,7 +150,8 @@ class TilauMenuExtension:
                         self.act_profile_maintenance, self.act_custom_buttons,
                         self.act_devices, self.act_config,
                         self.act_first_config, self.act_debug,
-                        self.act_pid_autotune, self.act_export_logs):
+                        self.act_pid_autotune, self.act_export_logs,
+                        self.act_backup, self.act_restore):
             _action.setMenuRole(QAction.MenuRole.NoRole)
 
     def _open_profile_maintenance(self, _checked: bool = False) -> None:
@@ -184,6 +192,20 @@ class TilauMenuExtension:
             open_device_setup(self._aw)
         except Exception:  # pylint: disable=broad-except
             _log.exception('opening the Devices window failed')
+
+    def _open_backup(self, _checked: bool = False) -> None:
+        try:
+            from tilauscope.backup_dialog import open_backup
+            open_backup(self._aw)
+        except Exception:  # pylint: disable=broad-except
+            _log.exception('opening the backup window failed')
+
+    def _open_restore(self, _checked: bool = False) -> None:
+        try:
+            from tilauscope.backup_dialog import open_restore
+            open_restore(self._aw)
+        except Exception:  # pylint: disable=broad-except
+            _log.exception('opening the restore window failed')
 
     def _export_logs(self, _checked: bool = False) -> None:
         from tilauscope.tilau_exceptions import report_a_bug
@@ -263,44 +285,49 @@ class TilauMenuExtension:
         Re-applied on every set_menu() call (mode switches rebuild the menus).
         Hidden, never deleted: a hidden QAction also stays disabled whatever Artisan
         sets later, so its shortcut (Ctrl+U, Ctrl+Shift+A) cannot open the dialog.
+        Left visible while the Artisan window is the active view (headless escape hatch).
         """
+        self.set_artisan_view(bool(getattr(self._aw, '_tilau_allow_show', False)))
+        self._rewire_help_actions()
+        self._rewire_events_action()
+
+    def set_artisan_view(self, active: bool) -> None:
+        """Restore the hidden Artisan menu items while the Artisan window is the
+        active view, hide them again when TilauScope or BeanCave takes over."""
         aw = self._aw
-        for attr, hide in (
-            ('viewMenu', lambda m: m.menuAction().setVisible(False)),
-            ('editGraphAction', lambda a: a.setVisible(False)),  # Roast > Properties…, Ctrl+T
+        for attr, show in (
+            ('viewMenu', lambda m, v: m.menuAction().setVisible(v)),
+            ('editGraphAction', lambda a, v: a.setVisible(v)),  # Roast > Properties…, Ctrl+T
             # Background (Ctrl+B) and Switch (Ctrl+W) are covered by TilauScope's own background.
-            ('RoastMenu', lambda m: [a.setVisible(False) for a in (m.menuAction(), *m.actions())]),
+            ('RoastMenu', lambda m, v: [a.setVisible(v) for a in (m.menuAction(), *m.actions())]),
             # Its actions carry Ctrl+K and Ctrl+Alt+K: hidden with the menu so the keys stay inert.
-            ('analyzeMenu', lambda m: [a.setVisible(False) for a in (m.menuAction(), *m.actions())]),
-            ('calibrateDelayAction', lambda a: a.setVisible(False)),
-            ('curvesAction', lambda a: a.setVisible(False)),
-            ('phasesGraphAction', lambda a: a.setVisible(False)),
-            ('WindowconfigAction', lambda a: a.setVisible(False)),
-            ('autosaveAction', lambda a: a.setVisible(False)),
-            ('batchAction', lambda a: a.setVisible(False)),
-            ('colorsAction', lambda a: a.setVisible(False)),
-            ('themeMenu', lambda m: m.menuAction().setVisible(False)),
+            ('analyzeMenu', lambda m, v: [a.setVisible(v) for a in (m.menuAction(), *m.actions())]),
+            ('calibrateDelayAction', lambda a, v: a.setVisible(v)),
+            ('curvesAction', lambda a, v: a.setVisible(v)),
+            ('phasesGraphAction', lambda a, v: a.setVisible(v)),
+            ('WindowconfigAction', lambda a, v: a.setVisible(v)),
+            ('autosaveAction', lambda a, v: a.setVisible(v)),
+            ('batchAction', lambda a, v: a.setVisible(v)),
+            ('colorsAction', lambda a, v: a.setVisible(v)),
+            ('themeMenu', lambda m, v: m.menuAction().setVisible(v)),
             # Config › Machine and Machine Name: the first-time setup sets the roaster up from roasters.json.
-            ('machineMenu', lambda m: m.menuAction().setVisible(False)),
-            ('machineNameAction', lambda a: a.setVisible(False)),
-            ('UIModeMenu', lambda m: m.menuAction().setVisible(False)),
-            ('wheeleditorAction', lambda a: a.setVisible(False)),
-            ('calculatorAction', lambda a: a.setVisible(False)),
-            ('scheduleAction', lambda a: a.setVisible(False)),
-            ('transformAction', lambda a: a.setVisible(False)),
-            ('flavorAction', lambda a: a.setVisible(False)),
-            ('errorAction', lambda a: a.setVisible(False)),
-            ('messageAction', lambda a: a.setVisible(False)),
-            ('serialAction', lambda a: a.setVisible(False)),
-            ('platformAction', lambda a: a.setVisible(False)),
-            ('resetAction', lambda a: a.setVisible(False)),
+            ('machineMenu', lambda m, v: m.menuAction().setVisible(v)),
+            ('machineNameAction', lambda a, v: a.setVisible(v)),
+            ('UIModeMenu', lambda m, v: m.menuAction().setVisible(v)),
+            ('wheeleditorAction', lambda a, v: a.setVisible(v)),
+            ('calculatorAction', lambda a, v: a.setVisible(v)),
+            ('scheduleAction', lambda a, v: a.setVisible(v)),
+            ('transformAction', lambda a, v: a.setVisible(v)),
+            ('flavorAction', lambda a, v: a.setVisible(v)),
+            ('errorAction', lambda a, v: a.setVisible(v)),
+            ('messageAction', lambda a, v: a.setVisible(v)),
+            ('serialAction', lambda a, v: a.setVisible(v)),
+            ('platformAction', lambda a, v: a.setVisible(v)),
+            ('resetAction', lambda a, v: a.setVisible(v)),
         ):
             obj = getattr(aw, attr, None)
             if obj is not None:
-                hide(obj)
-
-        self._rewire_help_actions()
-        self._rewire_events_action()
+                show(obj, active)
 
     def _rewire_help_actions(self) -> None:
         """Point Help/Documentation and Help/Check for Updates at TilauScope's
@@ -357,6 +384,22 @@ class TilauMenuExtension:
         ref = getattr(self._aw, 'KshortCAction', None) \
             or getattr(self._aw, 'helpDocumentationAction', None)
         self._insert_action_after(help_menu, ref, self.act_export_logs)
+
+    def _insert_backup_actions(self) -> None:
+        """Add Back up / Restore after Help › Save Settings, greyed during a roast.
+        helpMenu is rebuilt on every set_menu(), so this re-inserts every time."""
+        help_menu = getattr(self._aw, 'helpMenu', None)
+        if help_menu is None or self.act_backup in help_menu.actions():
+            return
+        self._insert_action_after(help_menu, getattr(self._aw, 'saveAsSettingsAction', None), self.act_backup)
+        self._insert_action_after(help_menu, self.act_backup, self.act_restore)
+        help_menu.insertSeparator(self.act_backup)
+        help_menu.aboutToShow.connect(self._sync_backup_actions)
+
+    def _sync_backup_actions(self) -> None:
+        idle = not self._aw.qmc.flagstart
+        self.act_backup.setEnabled(idle)
+        self.act_restore.setEnabled(idle)
 
     @staticmethod
     def _open_tilau_documentation(_checked: bool = False) -> None:

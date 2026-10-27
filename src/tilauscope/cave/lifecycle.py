@@ -528,6 +528,7 @@ class LifecycleMixin:
 
         # Instantly rebuild lookups from memory without firing off another background thread
         self.update_alog_uuid_indexes()
+        self._drop_lost_references(directory)
 
         # Refresh GUI views smoothly
         if self.initialized:
@@ -535,6 +536,19 @@ class LifecycleMixin:
             self._refresh_bean_sheet()
             if self.cave is not None:
                 self.catalogue_list.set_beans(self.cave.green_beans)
+
+    def _drop_lost_references(self, directory: Path) -> None:
+        """A reference ★ goes with its roast file, deleted outside TilauScope; an unreachable folder clears nothing."""
+        if getattr(self, "cave", None) is None or not directory.is_dir():
+            return
+        from tilauscope.roast_memory import lost_references  # noqa: PLC0415
+        lost = lost_references(self.cave.green_beans, self._metadata_cache.records.values())
+        if not lost:
+            return
+        for bean in lost:
+            _logd.info(f"reference roast {bean.reference_roast_uuid} of {bean.name} no longer found: star removed")
+            bean.reference_roast_uuid = ''
+        self.save_green_beans()
 
     def _stop_indexer(self) -> None:
         """Stop the roast indexing pass, if one runs (closing, or another ALog folder)."""
@@ -1204,6 +1218,12 @@ class LifecycleMixin:
         _logd.debug("Settings saved successfully.")
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
+        # headless: BeanCave is the home and the last visible window — closing it quits the app
+        if getattr(self.aw, '_tilau_headless', False) and (
+                event.key() == Qt.Key.Key_Escape
+                or (event.key() == Qt.Key.Key_B and event.modifiers() == Qt.KeyboardModifier.ShiftModifier)):
+            event.accept()
+            return
         if event.key() == Qt.Key.Key_B and event.modifiers() == Qt.KeyboardModifier.ShiftModifier:
             self.close()
         elif event.key() == Qt.Key.Key_Escape:

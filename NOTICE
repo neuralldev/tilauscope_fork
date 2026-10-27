@@ -30,6 +30,12 @@ This distribution combines code under two licences:
     under the GNU Affero General Public License version 3 or later. The full text
     is in LICENSE.
 
+  * The shared domain library `src/tilaucore/` and the Android application
+    `android/` are original works by Tilau, licensed under the GNU Affero General
+    Public License version 3 or later. The few files there that contain portions
+    derived from Artisan Roaster Scope say so in their header and name the
+    Artisan files concerned; those portions keep their original licence.
+
 Section 13 of the GNU General Public License version 3 expressly permits linking
 GPLv3-covered code with code covered by the GNU Affero General Public License
 version 3. The combined work is therefore distributed under the terms of the GNU
