@@ -999,6 +999,70 @@ class PrintingMixin:
                                        QMessageBox.Icon.Warning)
 
     # Export the selected bean sheet as a shareable landscape JPEG
+    def on_share_coffee(self, _checked: bool = False) -> None:
+        """Share & print › Share this coffee: the selected coffee in one file."""
+        bean = self.selected_green_bean()
+        if not bean:
+            return
+        try:
+            from tilauscope.coffee_share import gather
+            from tilauscope.coffee_share_dialog import open_share_coffee
+            open_share_coffee(self, gather(bean, self._metadata_cache.records.values(), self.beancave_directory))
+        except Exception:  # pylint: disable=broad-except
+            _logd.exception("share coffee failed")
+
+    def on_import_coffee(self, _checked: bool = False) -> None:
+        """+ New bean › Import a coffee: a package shared by another roaster, or moved from another computer."""
+        try:
+            self._import_coffee()
+        except Exception as e:  # pylint: disable=broad-except
+            _logd.exception("import coffee failed")
+            self._show_message(self, QApplication.translate("tilauscope_beancave", "Import coffee"),
+                               QApplication.translate("tilauscope_common", "An unexpected error occurred") + f": {e}",
+                               QMessageBox.Icon.Warning)
+
+    def _import_coffee(self) -> None:
+        from PyQt6.QtWidgets import QFileDialog  # noqa: PLC0415
+        from tilaucore import coffee_share as core  # noqa: PLC0415
+        from tilaucore.archive import ArchiveError  # noqa: PLC0415
+        from tilauscope import coffee_share  # noqa: PLC0415
+        from tilauscope.backup import app_version  # noqa: PLC0415
+        from tilauscope.coffee_share_dialog import ask_import  # noqa: PLC0415
+        title = QApplication.translate("tilauscope_beancave", "Import coffee")
+        if not self.is_directory_defined:
+            self._show_message(self, title, QApplication.translate("tilauscope_beancave", "Set the BeanCave and roast folders first, in Configuration › BEANCAVE."), QMessageBox.Icon.Warning)
+            return
+        folder = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation) or str(Path.home())
+        chosen, _ = QFileDialog.getOpenFileName(
+            self, title, folder, QApplication.translate("tilauscope_beancave", "TilauScope coffee") + f" (*{core.EXTENSION})")
+        if not chosen:
+            return
+        version, build = app_version()
+        try:
+            package = core.read_package(Path(chosen), version=version, build=build)
+        except ArchiveError as e:
+            text = (QApplication.translate("tilauscope_beancave", "This coffee comes from a newer TilauScope ({0}). Update TilauScope, then import it. Nothing was changed.").format(str(e))
+                    if e.kind == ArchiveError.NEWER else
+                    QApplication.translate("tilauscope_beancave", "This file is damaged or incomplete. Nothing was changed."))
+            self._show_message(self, title, text, QMessageBox.Icon.Warning)
+            return
+        self._ensure_cave()   # a new folder holds no library yet
+        plan = coffee_share.preview(package, self.cave.green_beans, self._metadata_cache.records.values(),
+                                    self.aw.qmc.roastertype_setup)
+        replace = ask_import(self, package, plan)
+        if replace is None:
+            return
+        if coffee_share.apply_import(package, beans=self.cave.green_beans, preview=plan,
+                                     alog_directory=self.alog_directory, cave_directory=self.beancave_directory,
+                                     replace_record=replace):
+            if not self.save_green_beans():
+                self.populate_table()
+                return   # BeanCave has said why the library was not saved
+            self.uuidmap = {b.uuid: b for b in self.cave.green_beans if b.uuid}
+        self.populate_table()
+        self.trigger_cache_refresh()
+        self._show_message(self, title, QApplication.translate("tilauscope_beancave", "Coffee imported: {0}").format(package.bean.name))
+
     def on_export_social_card(self):
         selected_rows = self.datatable.selectionModel().selectedRows()
         if not selected_rows:

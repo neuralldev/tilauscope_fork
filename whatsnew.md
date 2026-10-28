@@ -58,6 +58,7 @@ A smaller release: TilauScope now adapts itself to machines that have no air pro
 ## 💾 Your data
 
 * **Back up everything, restore everything.** **Help › Back up TilauScope** puts your roasts, the BeanCave, what TilauScope has learned and all your settings in one file. Turn on the automatic backup and it is made each time TilauScope closes after new roasts, with a second copy on a network drive or in a cloud folder if you like. **Help › Restore TilauScope** shows what a backup holds before putting it back as a whole — on a new computer too — and keeps a safety copy of what it replaces. Passwords and API keys stay in your keychain and are entered again after a restore.
+* **Share a coffee.** **Share & print › Share this coffee…** puts a coffee in one file. For another roaster: its record, your reference roast with its tasting and your brewing settings — your name, your folders and your room stay out of it. For your other computer: the coffee whole, every roast included. **+ New bean › Import a coffee…** shows what the file brings before adding anything, and never overwrites what you have. A roast from another roaster is marked **Shared**: a curve to read and to replay, which your roast plan does not learn from — until it suits you: **Learn from this roast** lets it guide your next roasts of that coffee, reference ★ included.
 
 ## 🌍 Translations
 

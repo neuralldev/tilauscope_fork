@@ -222,7 +222,7 @@ class BeanTabMixin:
         elif not has_beans:
             self.empty_state_label.setText(
                 QApplication.translate("tilauscope_beancave",
-                    "Your bean cave is empty. Please define your first bean using the 'Add' button.")
+                    "Your bean cave is empty. Add your first green bean, or import a coffee, with the New bean button.")
             )
             self.add_button.setEnabled(True)
             show_form = False
@@ -238,6 +238,9 @@ class BeanTabMixin:
         # Lot 5: visibility drives the rich list; datatable stays hidden
         self.catalogue_list.setVisible(show_form)
         self.empty_state_label.setVisible(not show_form)
+        if hasattr(self, '_empty_state'):
+            self._empty_state.setVisible(not show_form)
+            self.empty_new_bean_tool.setVisible(self.is_directory_defined and not has_beans)
         if hasattr(self, '_notice_bar'):
             self._notice_bar.setVisible(show_form and self._right_stack.currentIndex() == 1)
 
@@ -350,6 +353,12 @@ class BeanTabMixin:
         target = roast_uuid if on else ''
         if target == current or (not on and current != roast_uuid):
             return False
+        if on:
+            meta = next((m for m in self._metadata_cache.records.values() if m.roast_uuid == roast_uuid), None)
+            if meta is not None and meta.shared and meta.exclude_learning:
+                self._show_message(self, QApplication.translate("tilauscope_beancave", "Reference roast"),
+                                   QApplication.translate("tilauscope_beancave", "A shared roast takes the ★ once you choose to learn from it."))
+                return False
         if on and current:
             from tilauscope.beancave_catalogue import roast_name  # noqa: PLC0415
             meta = next((m for m in self._metadata_cache.records.values()
@@ -382,12 +391,15 @@ class BeanTabMixin:
             model.set_references(self._reference_uuids())
 
     def _reference_uuids(self) -> frozenset[str]:
-        """The roastUUID of every coffee's reference roast while it is tasted Yes."""
+        """The roastUUID of every coffee's reference roast while it is tasted Yes, or a shared roast learned from."""
+        from tilaucore.coffee_share import adopted  # noqa: PLC0415
         from tilauscope import tasting_log  # noqa: PLC0415
         tastings = tasting_log.load(self.beancave_directory).entries
+        learned = {m.roast_uuid for m in self._metadata_cache.records.values() if adopted(m)}
         return frozenset(b.reference_roast_uuid for b in (getattr(self, 'uuidmap', None) or {}).values()
                          if getattr(b, 'reference_roast_uuid', '')
-                         and getattr(tastings.get(b.reference_roast_uuid), 'verdict', '') == 'yes')
+                         and (b.reference_roast_uuid in learned
+                              or getattr(tastings.get(b.reference_roast_uuid), 'verdict', '') == 'yes'))
 
     @pyqtSlot()
     def _show_bean_roasts(self) -> None:
@@ -437,18 +449,22 @@ class BeanTabMixin:
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
             _logd.exception("zone editor failed")
 
+    def _ensure_cave(self) -> None:
+        """An empty library to add to when the folder holds none yet."""
+        if self.cave is None:
+            self.cave = BeanCaveContainer(green_beans=[], reference_profiles=[])
+        if getattr(self.cave, 'green_beans', None) is None:
+            self.cave.green_beans = []
+        # Keep the alias on the live list: the sack resolver and the /sack
+        # web route read self.green_beans, which load_green_beans is
+        # otherwise the only place to re-point.
+        self.green_beans = self.cave.green_beans
+
     # Lot 5 step D — Add: full expert editor on a blank record
     @pyqtSlot()
     def _open_full_bean_editor(self) -> None:
         try:
-            if self.cave is None:
-                self.cave = BeanCaveContainer(green_beans=[], reference_profiles=[])
-            if getattr(self.cave, 'green_beans', None) is None:
-                self.cave.green_beans = []
-            # Keep the alias on the live list: the sack resolver and the /sack
-            # web route read self.green_beans, which load_green_beans is
-            # otherwise the only place to re-point.
-            self.green_beans = self.cave.green_beans
+            self._ensure_cave()
             from tilauscope.beancave_zone_editors import ZoneEditorDialog
             bean = GreenBean()
             bean.uuid = str(uuid.uuid4())

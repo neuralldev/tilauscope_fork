@@ -66,7 +66,9 @@ def last_roast(bean_uuid: str, records: Iterable[Any], tastings: dict[str, Roast
     uuid = (bean_uuid or '').lower()
     if not uuid:
         return None
-    roasts = [m for m in records if (m.uuid or '').lower() == uuid and not m.simulated]
+    # A shared roast was made by someone else: never this operator's last roast.
+    roasts = [m for m in records if (m.uuid or '').lower() == uuid and not m.simulated
+              and not getattr(m, 'shared', False)]
     if not roasts:
         return None
     last = max(roasts, key=lambda m: m.roastepoch or m.mtime)

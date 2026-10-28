@@ -2403,7 +2403,7 @@ class RoastSetupDialog(QDialog):
         latest = None
         try:
             for rec in cache.records.values():
-                if (rec.uuid or "").lower() == uuid and not rec.simulated and rec.weight_in_g > 0 and (
+                if (rec.uuid or "").lower() == uuid and not rec.simulated and not rec.shared and rec.weight_in_g > 0 and (
                         latest is None or rec.roastepoch > latest.roastepoch):
                     latest = rec
         except Exception:  # noqa: BLE001

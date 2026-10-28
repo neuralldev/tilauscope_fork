@@ -28,6 +28,7 @@ from typing import Any, Callable, Iterable
 
 # The last-roast memory lives in the library shared with the tablet; the
 # reference state and the tasting readiness stay here until the plan moves.
+from tilaucore.coffee_share import adopted
 from tilaucore.roast_memory import RoastMemory, _memory_of, last_roast  # noqa: F401
 from tilauscope.tilauscope_types import RoastTasting
 
@@ -75,7 +76,7 @@ def _designated(ref: str, records: list, tastings: dict[str, RoastTasting],
         return ReferenceState('missing', None)
     memory = _memory_of(record, 1, tastings, mode, ctx_for, now)
     tasting = tastings.get(ref)
-    if tasting is None or tasting.verdict != 'yes':
+    if not adopted(record) and (tasting is None or tasting.verdict != 'yes'):
         return ReferenceState('not_tasted_yes', memory, verdict=tasting.verdict if tasting else '')
     if getattr(record, "exclude_learning", False) or getattr(record, "simulated", False):
         return ReferenceState('excluded', memory)

@@ -28,7 +28,7 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 
 # Bump on any change to the fields extracted below: a mismatch forces a full
 # rebuild rather than serving entries that lack the new data.
-INDEX_SCHEMA: Final[int] = 6
+INDEX_SCHEMA: Final[int] = 7
 
 # Read windows. The head must cover every scalar key, the event lists AND the
 # whole 'timex' array — the burner readings below turn event indices into times
@@ -52,7 +52,7 @@ _SCALAR_KEYS: Final[tuple[str, ...]] = (
     'ambientTemp', 'ambient_humidity', 'ambient_pressure',
     'tilau_exclude_learning', 'tilau_simulated',
 )
-_BLOCK_KEYS: Final[tuple[str, ...]] = ('weight', 'computed', 'tilau_roast_plan_snapshot')
+_BLOCK_KEYS: Final[tuple[str, ...]] = ('weight', 'computed', 'tilau_roast_plan_snapshot', 'tilau_shared')
 # Read only to derive the burner readings; never stored (timex alone is 20 KB).
 _SERIES_KEYS: Final[tuple[str, ...]] = (
     'timex', 'timeindex', 'specialevents', 'specialeventstype', 'specialeventsvalue',
@@ -112,6 +112,11 @@ class AlogMetadata:
     # roastUUID of the reference roast the pre-roast plan stood on; '' when the
     # roast was not planned, or planned from anything else.
     plan_reference_uuid: str = ""
+    # ── schema 7 ────────────────────────────────────────────────────────────
+    # A roast another roaster shared (``tilau_shared``): never this operator's
+    # last roast, never the source of a "Next time", and outside learning until
+    # it is adopted (its ``exclude_learning`` cleared).
+    shared: bool = False
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -379,6 +384,7 @@ def read_alog_metadata(path: Path) -> "AlogMetadata | None":
         whole_color=_num('whole_color'),
         exclude_learning=bool(values.get('tilau_exclude_learning') is True),
         simulated=bool(values.get('tilau_simulated') is True),
+        shared=bool(values.get('tilau_shared')),
         computed=computed if isinstance(computed, dict) else {},
         machinesetup=str(values.get('machinesetup') or ""),
         pid_source=pid_source,

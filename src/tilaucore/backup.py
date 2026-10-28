@@ -25,12 +25,10 @@ with the roast list they were built from.
 from __future__ import annotations
 
 import fnmatch
-import hashlib
 import json
 import logging
 import os
 import platform
-import re
 import shutil
 import socket
 import threading
@@ -38,8 +36,10 @@ import zipfile
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any, Final
+
+from tilaucore.archive import ArchiveError, member_path, sha256_file, sha256_stream, version_key
 
 _log = logging.getLogger(__name__)
 
@@ -74,15 +74,7 @@ EXCLUDED: Final[tuple[str, ...]] = (
 Progress = Callable[[int, int], None]
 
 
-class BackupError(Exception):
-    """A backup that cannot be read or restored. ``kind`` names the screen to show."""
-
-    DAMAGED: Final[str] = "damaged"
-    NEWER: Final[str] = "newer"
-
-    def __init__(self, kind: str, detail: str = "") -> None:
-        super().__init__(detail or kind)
-        self.kind = kind
+BackupError = ArchiveError
 
 
 class Cancelled(Exception):
@@ -191,14 +183,6 @@ def backup_name(prefix: str, folder: Path, now: datetime | None = None) -> Path:
     return folder / f"{prefix}{now:%Y-%m-%d_%H%M%S}{EXTENSION}"
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def write_backup(target: Path, roots: Mapping[str, str | os.PathLike | None], settings: Mapping[str, Any], *,
                  version: str, build: int, progress: Progress | None = None,
                  cancel: threading.Event | None = None) -> Manifest:
@@ -216,7 +200,7 @@ def write_backup(target: Path, roots: Mapping[str, str | os.PathLike | None], se
             for done, (name, path) in enumerate(entries):
                 if cancel is not None and cancel.is_set():
                     raise Cancelled
-                manifest.files[name] = {"sha256": _sha256(path), "size": path.stat().st_size}
+                manifest.files[name] = {"sha256": sha256_file(path), "size": path.stat().st_size}
                 archive.write(path, name)
                 if progress is not None:
                     progress(done + 1, len(entries))
@@ -235,10 +219,6 @@ def _manifest_dict(manifest: Manifest) -> dict[str, Any]:
 
 # ── reading ─────────────────────────────────────────────────────────────────
 
-def _version_key(version: str, build: int) -> tuple[int, ...]:
-    return (*(int(part) for part in re.findall(r"\d+", version)), int(build))
-
-
 def read_manifest(path: Path, *, version: str, build: int) -> Manifest:
     """The manifest, or BackupError: damaged, or written by a newer TilauScope."""
     try:
@@ -252,7 +232,7 @@ def read_manifest(path: Path, *, version: str, build: int) -> Manifest:
         manifest = Manifest(created=raw["created"], version=raw["version"], build=int(raw["build"]),
                             system=raw["system"], host=raw["host"], roots=raw["roots"],
                             counts=Counts(**raw["counts"]), files=raw["files"])
-        newer = raw["format"] > FORMAT or _version_key(manifest.version, manifest.build) > _version_key(version, build)
+        newer = raw["format"] > FORMAT or version_key(manifest.version, manifest.build) > version_key(version, build)
     except (KeyError, TypeError, ValueError) as e:
         raise BackupError(BackupError.DAMAGED, str(e)) from e
     if newer:
@@ -271,11 +251,9 @@ def verify(path: Path, manifest: Manifest, progress: Progress | None = None,
                     raise Cancelled
                 if name not in names:
                     raise BackupError(BackupError.DAMAGED, f"missing {name}")
-                digest = hashlib.sha256()
                 with archive.open(name) as handle:
-                    for chunk in iter(lambda h=handle: h.read(1 << 20), b""):
-                        digest.update(chunk)
-                if digest.hexdigest() != info["sha256"]:
+                    digest = sha256_stream(handle)
+                if digest != info["sha256"]:
                     raise BackupError(BackupError.DAMAGED, f"checksum {name}")
                 if progress is not None:
                     progress(done + 1, len(manifest.files))
@@ -314,14 +292,6 @@ def safe_target(candidate: str | os.PathLike, known: tuple[str | os.PathLike | N
     return not path.exists() or (path.is_dir() and not any(path.iterdir()))
 
 
-def _member_path(base: Path, relative: str) -> Path:
-    """The file a member lands on — never outside ``base`` (no ``..``, no absolute name)."""
-    parts = PurePosixPath(relative).parts
-    if not parts or relative.startswith("/") or any(p in ("..", "") or ":" in p or "\\" in p for p in parts):
-        raise BackupError(BackupError.DAMAGED, f"unsafe name {relative}")
-    return base.joinpath(*parts)
-
-
 def restore_files(path: Path, manifest: Manifest, targets: Mapping[str, Path],
                   progress: Progress | None = None) -> None:
     """Replace each hosting root's content by the archive's.
@@ -344,7 +314,7 @@ def restore_files(path: Path, manifest: Manifest, targets: Mapping[str, Path],
                 key, _, relative = name[len("roots/"):].partition("/")
                 if key not in staged:
                     continue
-                destination = _member_path(staged[key], relative)
+                destination = member_path(staged[key], relative)
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 with archive.open(name) as source, destination.open("wb") as sink:
                     shutil.copyfileobj(source, sink)

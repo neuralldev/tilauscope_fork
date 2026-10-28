@@ -124,7 +124,10 @@ the right. The dot in front of a roast carries its measured colour, on the same 
 the rest of the application: filled for a ground reading, an outline of that colour for a
 whole-bean reading, which runs a shade darker on the same meter, and an empty grey ring when no
 colour was recorded. A **No result** badge marks a roast whose weight and colour were never
-filled in — see [Finishing a roast later](#finishing-a-roast-later). A yellow **★** before the
+filled in — see [Finishing a roast later](#finishing-a-roast-later); a roast that came from
+another roaster carries a **Shared** badge instead, **Shared · learning** once your plan learns
+from it — see
+[Sharing a coffee](beancave.md#what-a-shared-roast-is). A yellow **★** before the
 batch number marks the coffee's [reference roast](glossary.md#reference-roast) — see
 [Marking the reference roast](#marking-the-reference-roast).
 
@@ -492,7 +495,8 @@ Cupping scores and Artisan's own cupping tools, reached from **Load in Artisan**
 
 A roast you answered **👍 Yes** for can become the coffee's
 [reference roast](glossary.md#reference-roast): the roast the next plans of that coffee start
-from. A grey **☆** offers it, at the end of the tasting line under the roast and, in the tasting
+from. So can a [shared roast](glossary.md#shared-roast) your plan learns from, without a tasting
+of yours — see [Sharing a coffee](beancave.md#what-a-shared-roast-is). A grey **☆** offers it, at the end of the tasting line under the roast and, in the tasting
 form, at the end of the *Yes · Almost · No* row once *Yes* is chosen. Click it: it turns into a
 yellow **★**, and the roast is the reference. Click the ★ again to remove it.
 

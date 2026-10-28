@@ -37,6 +37,7 @@ from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QLineEdit, QListView, QStyle,
                              QStyledItemDelegate)
 
+from tilaucore.coffee_share import adopted
 from tilauscope.tilauscope_types import THEME, get_agtron_color, roast_batch_tag
 
 if TYPE_CHECKING:
@@ -104,11 +105,13 @@ class RoastRow:
     indexed: bool = False   # the roast index knows this file: weights and colour are read
     search: str = ''        # folded text a search matches against
     roast_uuid: str = ''    # Artisan roastUUID, '' when the index does not know the file
+    shared: bool = False    # another roaster's roast, imported with their coffee
+    learning: bool = False  # a shared roast the plan was told to learn from
 
     @property
     def missing_result(self) -> bool:
         """Neither a roasted weight nor a colour — the result form was never filled."""
-        return self.indexed and self.weight_out_g <= 0 and self.colour <= 0
+        return self.indexed and not self.shared and self.weight_out_g <= 0 and self.colour <= 0
 
     def matches(self, tokens: list[str]) -> bool:
         return all(token in self.search for token in tokens)
@@ -141,7 +144,8 @@ def make_row(fname: str, epoch: int, label: str, title: str,
                     weight_out_g=weight_out, colour=colour, colour_ground=colour_ground,
                     indexed=meta is not None,
                     search=fold(' '.join(word for word in words if word)),
-                    roast_uuid=getattr(meta, 'roast_uuid', '') or '')
+                    roast_uuid=getattr(meta, 'roast_uuid', '') or '',
+                    shared=bool(getattr(meta, 'shared', False)), learning=adopted(meta))
 
 
 def day_of(epoch: int) -> date | None:
@@ -400,6 +404,8 @@ class RoastRowDelegate(QStyledItemDelegate):
         self._font_head = self._font(base, 11, QFont.Weight.DemiBold)
         self._font_badge = self._font(base, 10, QFont.Weight.DemiBold)
         self._no_result = QApplication.translate('tilauscope_beancave', 'No result')
+        self._shared = QApplication.translate('tilauscope_beancave', 'Shared')
+        self._shared_learning = QApplication.translate('tilauscope_beancave', 'Shared · learning')
 
     @staticmethod
     def _font(base: QFont, pixels: int, weight: QFont.Weight) -> QFont:
@@ -517,8 +523,10 @@ class RoastRowDelegate(QStyledItemDelegate):
 
         badge_w = 0
         badge_metrics = QFontMetrics(self._font_badge)
-        if row.missing_result:
-            badge_w = badge_metrics.horizontalAdvance(self._no_result) + 12
+        badge_text, badge_token = ((self._shared_learning if row.learning else self._shared, 'ACCENT') if row.shared
+                                   else (self._no_result, 'WARNING'))
+        if row.missing_result or row.shared:
+            badge_w = badge_metrics.horizontalAdvance(badge_text) + 12
         title_room = max(0, line1.width() - when_w - 10 - (badge_w + 8 if badge_w else 0))
         title_metrics = QFontMetrics(self._font_title)
         title = title_metrics.elidedText(first, Qt.TextElideMode.ElideRight, title_room)
@@ -530,11 +538,11 @@ class RoastRowDelegate(QStyledItemDelegate):
             badge = QRectF(left + title_metrics.horizontalAdvance(title) + 8,
                            line1.center().y() - 8, badge_w, 16)
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(self._colour('WARNING', 40))
+            painter.setBrush(self._colour(badge_token, 40))
             painter.drawRoundedRect(badge, 8, 8)
             painter.setFont(self._font_badge)
-            painter.setPen(self._colour('WARNING'))
-            painter.drawText(badge, int(Qt.AlignmentFlag.AlignCenter), self._no_result)
+            painter.setPen(self._colour(badge_token))
+            painter.drawText(badge, int(Qt.AlignmentFlag.AlignCenter), badge_text)
 
         batch_w = line_metrics.horizontalAdvance(batch)
         painter.setFont(self._font_line)

@@ -786,7 +786,7 @@ class LifecycleMixin:
             return
 
         # Persist the cleared paths so stale values don't survive a restart
-        self.save_settings()
+        self._save_directories()
         self.is_directory_defined = False
 
         msg = (
@@ -1202,11 +1202,16 @@ class LifecycleMixin:
             _logd.warning(f"color prediction coefficients loading failed, falling back to defaults: {e}")
 
 
-    @pyqtSlot()
-    def save_settings(self) -> None:
+    def _save_directories(self) -> None:
+        # Written only when BeanCave itself changes them: Configuration owns
+        # them too, and a copy saved at close would undo its change.
         settings = QSettings()
         settings.setValue('alogDirectory', self.alog_directory)
         settings.setValue('beancaveDirectory', self.beancave_directory)
+
+    @pyqtSlot()
+    def save_settings(self) -> None:
+        settings = QSettings()
         settings.setValue(C0_COLOR_KEY, self.C0_COLOR)
         settings.setValue(C_BT_COLOR_KEY, self.C_BT_COLOR)
         settings.setValue(C_DTR_COLOR_KEY, self.C_DTR_COLOR)
@@ -1449,11 +1454,8 @@ class LifecycleMixin:
             return
         if self.directory_validity_check(directory) and directory != self.beancave_directory:
             self.beancave_directory = directory.rstrip('\\') if _IS_WINDOWS else directory
-            self.save_settings()
-            self.load_green_beans()
-            self.populate_table()
-            self.is_directory_defined = str(self.beancave_directory) != "" and str(self.alog_directory) != ""
-            self.update_ui_visibility()
+            self._save_directories()
+            self._reload_cave()
             _logd.debug(f"Beancave directory selected: {self.beancave_directory}")
             self._show_message(self,
             QApplication.translate("tilauscope_beancave","Beancave Directory Selected"),
@@ -1482,17 +1484,12 @@ class LifecycleMixin:
             return
         if self.directory_validity_check(directory) and directory != self.alog_directory:
             self.alog_directory = directory.rstrip('\\') if _IS_WINDOWS else directory
-            self.save_settings()
+            self._save_directories()
             # New folder → the index built for the old one is void. Drop it and
             # rebuild off-thread before any consumer asks.
             directory_changed(self.alog_directory)
-            self._metadata_cache.records = {}
-            self._stop_indexer()            # the old folder's pass, if one runs
-            self.trigger_cache_refresh()
-            self.list_alog_files()
+            self._reload_roasts()
             _logd.debug(QApplication.translate("tilauscope_beancave","ALog directory selected")+f": {self.alog_directory}")
-            self.is_directory_defined = str(self.beancave_directory) != "" and str(self.alog_directory) != ""
-            self.update_ui_visibility()
             self._show_message(self,
                 QApplication.translate("tilauscope_beancave","ALog Directory Selected"),
                 QApplication.translate("tilauscope_beancave","The directory") +  f" '{self.alog_directory}' " + QApplication.translate("tilauscope_beancave","has been selected."),
@@ -1500,6 +1497,31 @@ class LifecycleMixin:
         else:
             if _IS_WINDOWS :
                 self.raise_()
+
+    def _reload_cave(self) -> None:
+        self.load_green_beans()
+        self.populate_table()
+        self.is_directory_defined = str(self.beancave_directory) != "" and str(self.alog_directory) != ""
+        self.update_ui_visibility()
+
+    def _reload_roasts(self) -> None:
+        self._metadata_cache.records = {}
+        self._stop_indexer()            # the old folder's pass, if one runs
+        self.trigger_cache_refresh()
+        self.list_alog_files()
+        self.is_directory_defined = str(self.beancave_directory) != "" and str(self.alog_directory) != ""
+        self.update_ui_visibility()
+
+    def apply_folders(self, beancave_directory: str, alog_directory: str) -> None:
+        """Follow folders chosen in Configuration, already saved there."""
+        cave_changed = beancave_directory != self.beancave_directory
+        roasts_changed = alog_directory != self.alog_directory
+        self.beancave_directory = beancave_directory
+        self.alog_directory = alog_directory
+        if cave_changed:
+            self._reload_cave()
+        if roasts_changed:
+            self._reload_roasts()
 
     @pyqtSlot()
     def on_click_roast_properties(self) -> None:

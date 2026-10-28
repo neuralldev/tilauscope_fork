@@ -53,7 +53,7 @@ from tilauscope.beancave_catalogue import svg_icon
 from tilauscope.theme_qss import style_combo_popup, styled_popup_view, tint
 from tilauscope.tilauscope_types import (THEME, literal_ampersand, standardization_map,
                                          TilauProgressRow, to_agtron, normalize_timeindex,
-                                         RoastingPhase)
+                                         RoastingPhase, show_styled_message)
 from tilauscope.roast_timeline import RoastReadyDialog
 from tilauscope.cave.common import (
     _log, _logd, _PLOT_PALETTE, _safe_filename,
@@ -67,7 +67,7 @@ from tilauscope.cave.roast_list import (
     RoastListView, RoastRow, RoastRowDelegate, RoastSearchField, fold, roast_count_text)
 from tilauscope.widgets.controls import SegmentedControl
 from tilauscope.cave.viewer_detail import (
-    DASH, CurveMessageLabel, KpiTile, ResultBanner, TastingBanner, comparison_tiles, custom_range_error, energy_tile,
+    DASH, CurveMessageLabel, KpiTile, ResultBanner, SharedBanner, TastingBanner, comparison_tiles, custom_range_error, energy_tile,
     menu_qss, roast_facts, roast_tiles)
 
 
@@ -243,6 +243,8 @@ class ViewerMixin:
 
         self.roast_result_banner = ResultBanner()
         self.roast_result_banner.record_requested.connect(self.on_roast_finished_clicked)
+        self.roast_shared_banner = SharedBanner()
+        self.roast_shared_banner.learning_toggled.connect(self._toggle_learning)
         self.roast_tasting_banner = TastingBanner()
         self.roast_tasting_banner.taste_requested.connect(self._open_tasting)
         self.roast_tasting_banner.reference_toggled.connect(self._toggle_reference)
@@ -267,6 +269,7 @@ class ViewerMixin:
         head_layout.addLayout(meta_row)
         head_layout.addWidget(self.roast_compare_note)
         head_layout.addWidget(self.roast_result_banner)
+        head_layout.addWidget(self.roast_shared_banner)
         head_layout.addWidget(self._roast_tiles_strip)
         head_layout.addWidget(self.roast_tasting_banner)
         self._show_detail_none()
@@ -1542,6 +1545,7 @@ class ViewerMixin:
         self.roast_energy_tile.setVisible(single)
         if not single:
             self.roast_result_banner.hide()
+            self.roast_shared_banner.hide()
             self.roast_tasting_banner.hide()
 
     def _show_tiles(self, texts: list) -> None:
@@ -1567,6 +1571,7 @@ class ViewerMixin:
         self.roast_energy_tile.show_text(energy_tile(None))
         self.roast_energy_tile.set_clickable(False)
         self.roast_result_banner.hide()
+        self.roast_shared_banner.hide()
         self.roast_tasting_banner.hide()
         self._set_detail_mode('single')
 
@@ -1592,6 +1597,10 @@ class ViewerMixin:
             self._refresh_tasting_banner(profile)
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
             _log.exception("the roast's tasting could not be shown")
+        try:
+            self._refresh_shared_banner(profile)
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the roast's shared state could not be shown")
         try:
             energy = energy_tile(profile)
             self.roast_energy_tile.show_text(energy)
@@ -1624,13 +1633,24 @@ class ViewerMixin:
         tasting = tasting_log.load(self.beancave_directory).entries.get(roast_uuid)
         bean = self.bean_from_profile(profile)
         is_reference = bean is not None and bean.reference_roast_uuid == roast_uuid
-        banner.set_reference(is_reference or (tasting is not None and tasting.verdict == 'yes' and bean is not None),
+        learned = bool(profile.get('tilau_shared')) and not profile.get('tilau_exclude_learning')
+        banner.set_reference(is_reference or (bean is not None and (learned or (tasting is not None
+                                                                              and tasting.verdict == 'yes'))),
                              is_reference)
         if tasting is not None:
             labels = defect_labels()
             parts = [verdict_labels().get(tasting.verdict, '')] + [labels[d] for d in tasting.defects if d in labels]
-            banner.show_state(QApplication.translate("tilauscope_beancave", "Tasted: {0}").format(
-                " · ".join(p for p in parts if p)), QApplication.translate("Menu", "Edit"))
+            verdict = " · ".join(p for p in parts if p)
+            if profile.get('tilau_shared'):
+                # The sender's verdict on their own cup: read, never edited as if it were the operator's.
+                banner.show_state(QApplication.translate("tilauscope_beancave", "Their tasting: {0}").format(verdict), "")
+            else:
+                banner.show_state(QApplication.translate("tilauscope_beancave", "Tasted: {0}").format(verdict),
+                                  QApplication.translate("Menu", "Edit"))
+            return
+        if profile.get('tilau_shared'):
+            # The sender's cup cannot be tasted here: no Taste prompt, the ★ stays on the line.
+            banner.show_state(QApplication.translate("tilauscope_beancave", "No tasting came with this roast."), "")
             return
         epoch = self._roast_epoch(profile)
         colour = to_agtron(float(profile.get('ground_color') or 0) or float(profile.get('whole_color') or 0),
@@ -1644,6 +1664,64 @@ class ViewerMixin:
                               QApplication.translate("Textbox", "Taste"))
         else:
             banner.hide()
+
+    def _refresh_shared_banner(self, profile) -> None:  # noqa: ANN001
+        """On a roast from another roaster: whether the plan learns from it, and the way to change that."""
+        from tilauscope.coffee_share import other_machine  # noqa: PLC0415
+        banner = self.roast_shared_banner
+        shared = (profile or {}).get('tilau_shared')
+        if not shared:
+            banner.hide()
+            return
+        roaster = str((shared.get('roaster') if isinstance(shared, dict) else '') or profile.get('roastertype') or '')
+        elsewhere = other_machine(roaster, str(getattr(self.aw.qmc, 'roastertype_setup', '') or ''))
+        if elsewhere:
+            banner.show_state(QApplication.translate(
+                "tilauscope_beancave",
+                "Roasted on a {0}. Replay it on your roaster: the roast you make will teach your plan.").format(elsewhere), "")
+        elif profile.get('tilau_exclude_learning'):
+            banner.show_state(QApplication.translate(
+                "tilauscope_beancave",
+                "Your plan does not learn from a shared roast until you choose to. Once it does, the roast can take the ★ and guide your next roasts of this coffee."),
+                QApplication.translate("tilauscope_beancave", "Learn from this roast"))
+        else:
+            banner.show_state(QApplication.translate(
+                "tilauscope_beancave",
+                "Your plan learns from this roast. It can take the ★ and guide your next roasts of this coffee."),
+                QApplication.translate("tilauscope_beancave", "Stop learning from this roast"))
+
+    @pyqtSlot()
+    def _toggle_learning(self) -> None:
+        """The shared banner's button: learn from the roast on screen, or stop."""
+        # Reached from a click slot: an escape here would close the application.
+        try:
+            from tilauscope.coffee_share import learn_from  # noqa: PLC0415
+            profile, path = self.displayed_profile() or {}, self.displayed_profile_path()
+            if not profile.get('tilau_shared') or path is None:
+                return
+            learn = bool(profile.get('tilau_exclude_learning'))
+            roast_uuid = str(profile.get('roastUUID') or '')
+            bean = self.bean_from_profile(profile)
+            if not learn and bean is not None and roast_uuid and bean.reference_roast_uuid == roast_uuid:
+                reply = show_styled_message(
+                    self, QApplication.translate("tilauscope_beancave", "Reference roast"),
+                    QApplication.translate("tilauscope_beancave",
+                                           "This roast is the reference of this coffee. Stop learning from it and remove its ★?"),
+                    QMessageBox.Icon.Question, width=420,
+                    buttons=[QApplication.translate("tilauscope_beancave", "Stop learning"),
+                             QApplication.translate("Button", "Cancel")])
+                if reply != 0 or not self._set_reference_roast(bean, roast_uuid, False):
+                    return
+            learn_from(path, learn)
+            profile = self.displayed_profile() or {}
+            self._refresh_shared_banner(profile)
+            self._refresh_tasting_banner(profile)
+            self.trigger_cache_refresh()
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("learning from the shared roast could not be changed")
+            self._show_message(self, QApplication.translate("tilauscope_beancave", "Reference roast"),
+                               QApplication.translate("tilauscope_common", "An unexpected error occurred"),
+                               QMessageBox.Icon.Warning)
 
     def _open_tasting(self) -> None:
         """The tasting form of the roast on screen."""

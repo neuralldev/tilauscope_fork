@@ -105,7 +105,8 @@ roast sped up or slowed down. Being close to it describes an even curve, not a g
 #### Reference roast
 
 The roast of a coffee you tasted, answered *Yes* to "would you roast it the same way again?",
-and marked with a ★. The next plans of that coffee start from it rather than from your most
+and marked with a ★ — or a [shared roast](#shared-roast) your plan learns from. The next plans
+of that coffee start from it rather than from your most
 typical past roast. One per coffee and per crop. Not to be confused with the
 [reference trend](#reference-trend), which is a curve fitted to a single roast.
 
@@ -469,8 +470,20 @@ BeanCave, what TilauScope has learned and the settings. Passwords and API keys a
 is restored as a whole, never in part. See
 [Configuration](configuration.md#-back-up-and-restore--help-menu).
 
+#### Coffee package
+
+One file, ending in `.tilaucoffee`, that carries one coffee from one TilauScope to another:
+cleaned of anything personal for another roaster, whole for your own other computer. See
+[BeanCave](beancave.md#sharing-a-coffee).
+
 #### Safety copy
 
 The [backup](#backup) TilauScope makes of the current state just before a restore replaces it.
 It sits in the backup folder, named *TilauScope-before-restore-* and the date, and is restored
 like any other backup.
+
+#### Shared roast
+
+A roast another roaster sent you in a [coffee package](#coffee-package). It is a curve to read
+and to replay; your roast plan learns from it only once you choose **Learn from this roast**, and
+it never takes anything from your stock. See [BeanCave](beancave.md#what-a-shared-roast-is).

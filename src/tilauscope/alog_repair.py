@@ -1326,6 +1326,8 @@ class AlogRepairDialog(QDialog):
                     if data is None:
                         continue
                     flag_update = True
+                    if data.get('tilau_shared'):   # roasted by another roaster, not from this stock
+                        continue
                     counts[bi] += 1
                     w_data = data.get('weight')
                     if w_data:

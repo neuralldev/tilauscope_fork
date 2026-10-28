@@ -289,6 +289,48 @@ class ResultBanner(QFrame):
         self.hide()
 
 
+class SharedBanner(QFrame):
+    """Above a roast shared by another roaster: whether the plan learns from it, and the switch."""
+
+    learning_toggled = pyqtSignal()
+
+    def __init__(self, parent=None) -> None:  # noqa: ANN001
+        super().__init__(parent)
+        self.setObjectName('roastSharedBanner')
+        self.setStyleSheet(f"""
+            QFrame#roastSharedBanner {{
+                background-color: {tint('ACCENT', 22)};
+                border: 1px solid {tint('ACCENT', 90)};
+                border-radius: 8px;
+            }}
+            QFrame#roastSharedBanner QLabel {{ background: transparent; border: none; }}
+            QFrame#roastSharedBanner QPushButton {{
+                background: transparent; color: {THEME['ACCENT']};
+                border: 1px solid {THEME['ACCENT']}; border-radius: 14px;
+                padding: 4px 14px; font-weight: 600;
+            }}
+            QFrame#roastSharedBanner QPushButton:hover {{ background-color: {tint('ACCENT', 45)}; }}
+        """)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 6, 8, 6)
+        layout.setSpacing(8)
+        self._text = QLabel()
+        self._text.setWordWrap(True)
+        self._button = QPushButton()
+        self._button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self._button.clicked.connect(self.learning_toggled)
+        layout.addWidget(self._text, 1)
+        layout.addWidget(self._button)
+        self.hide()
+
+    def show_state(self, text: str, button: str) -> None:
+        """``button`` empty: nothing to switch, the line only explains."""
+        self._text.setText(text)
+        self._button.setText(button)
+        self._button.setVisible(bool(button))
+        self.show()
+
+
 class TastingBanner(QFrame):
     """Under a rested roast: asks how it tasted, or recalls what was said."""
 
@@ -340,8 +382,10 @@ class TastingBanner(QFrame):
         self.hide()
 
     def show_state(self, text: str, button: str) -> None:
+        """``button`` empty: the line only says something, there is nothing to open."""
         self._text.setText(text)
-        self._button.setText(button + " ›")
+        self._button.setText(button + " ›" if button else "")
+        self._button.setVisible(bool(button))
         self.show()
 
     def set_reference(self, offered: bool, on: bool) -> None:

@@ -2827,6 +2827,14 @@ class TilauscopeConfigDlg(QDialog):
             # it. Rebuild off-thread so the next roast plan does not pay the scan.
             from tilauscope.alogmanager import directory_changed
             directory_changed(_alog_dir)
+        # An open BeanCave still shows the old folders.
+        from tilauscope.cave.lifecycle import live_beancave
+        _bc = getattr(aw, 'beancaveWindow', None)
+        if live_beancave(_bc):
+            try:
+                _bc.apply_folders(self.beancaveDirectoryEdit.text().strip(), _alog_dir)
+            except Exception:  # pylint: disable=broad-except
+                _log.exception("BeanCave could not follow the new folders")
 
         # ── General ───────────────────────────────────────────────────────
         aw.tilau_roaster = (

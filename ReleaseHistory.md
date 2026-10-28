@@ -1,4 +1,13 @@
 ## [4.3] 2026-09-13
+build 43
+* ⚡ [feat(beancave)] : Learn from this roast, on a shared roast in Roasts, lets the roast plan learn from it and lets it take the reference ★ without a tasting of yours; Stop learning takes it back out; a roast from another machine is offered to replay, not to learn from
+* ⚡ [feat(i18n)] : backup, coffee sharing and their BeanCave screens are translated in French, German, Spanish, Italian and Chinese (simplified and traditional)
+* 🐛 [fix(beancave)] : a shared roast's tasting line shows the sender's verdict as theirs, without Edit, and a shared roast that came without a tasting no longer asks how it tasted
+build 42
+* ⚡ [feat(beancave)] : Share & print › Share this coffee… packs a coffee in one .tilaucoffee file, either for another roaster (record without stock or price, reference roast cleaned of names, paths and room conditions, its tasting, brewing settings) or whole for your other computer; + New bean ▾ › Import a coffee… shows what it brings before adding it
+* ⚡ [feat(beancave)] : a roast received from another roaster is marked Shared in Roasts and stays out of the roast plan, the last-roast memory, the Next time advice, the reference ★ and the stock
+* 🐛 [fix(beancave)] : closing BeanCave no longer puts back the old BeanCave and roast folders after they were changed in Configuration, and an open BeanCave now follows the new folders at once
+* 🐛 [fix(beancave)] : an empty BeanCave shows the New bean button under its message, instead of leaving no way to add the first coffee
 build 41
 * ⚡ [feat(backup)] : Help › Back up TilauScope saves roasts, BeanCave, what TilauScope has learned and all settings in one file, by hand or automatically when TilauScope closes after new roasts, with an optional extra copy to a network or cloud folder; Help › Restore TilauScope puts a backup back as a whole after a safety copy of the current state, and restarts
 * 🐛 [fix(menus)] : in BeanCave home mode, switching to the Artisan window brings back the Artisan menus TilauScope hides; they are hidden again when returning to TilauScope or BeanCave

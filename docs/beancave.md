@@ -281,6 +281,96 @@ works too — see [Labels and QR](labels-and-qr.md) for printing and scanning in
 
 ---
 
+## Sharing a coffee
+
+A coffee can travel as one file, ending in `.tilaucoffee`: to another roaster who roasts the same
+coffee, or to your own other computer. **Share & print › Share this coffee…** on its record opens
+the window, and two tabs choose who it is for.
+
+**With another roaster** packs a starting point: the coffee's record without its stock, bags or
+price, its [reference roast](glossary.md#reference-roast), your tasting of that roast and your
+brewing settings. Without a reference roast the package carries the record and the brewing
+settings only: mark the roast you would roast again with a ★ to include it — see
+[Marking the reference roast](after-the-roast.md#marking-the-reference-roast). The roast is
+cleaned before it leaves: your name and organisation, the room's temperature, humidity and
+pressure, and every folder path, computer name or identifier written into the file are removed,
+including from your notes. The coffee's supplier stays.
+
+**To another of my computers** packs the coffee as it is here: the record with stock, bags and
+price, every roast of it, their tastings, the brewing settings and the brewing journal. Nothing is
+removed, and nothing is deleted from this computer.
+
+**Save package…** writes the file, by default in your Downloads folder; **Show in folder** then
+finds it for sending.
+
+<!-- CAPTURE 3.11 [scene:coffee_share] — the Share this coffee window on With another roaster: IN THE PACKAGE
+listing the record without stock, bags or price, the ★ reference roast and its tasting, and the brewing settings; the
+note on what is left out of the roast. -->
+
+![Share this coffee, With another roaster: the record without stock, bags or price, the reference roast and its tasting, the brewing settings, and what is left out of the roast.](assets/beancave-3.11.png)
+
+### Importing a coffee
+
+**+ New bean ▾ › Import a coffee…** opens a `.tilaucoffee` file and shows what it brings before
+anything changes: who it comes from, the date and the TilauScope version it was made with, then
+**WHAT YOU GET**. On an empty BeanCave the **New bean** button sits under the empty-cellar message.
+
+- **The coffee is new here** — its record joins the catalogue.
+- **The coffee is already here** — from another roaster, your record stays as it is and their
+  roast joins it. From your other computer, the roasts you do not have yet are added and nothing
+  is deleted or overwritten; tick **Replace my record of this coffee** to take that computer's
+  record.
+- **Every roast is already here** — the window says so, and **Import** stays unavailable: there is
+  nothing to add. From your other computer, ticking **Replace my record of this coffee** makes it
+  available again.
+- **Roasted on another machine** — a warning names that machine: the curve is one to read, not
+  to copy.
+
+A file made by a newer TilauScope, or a damaged one, is refused and nothing changes.
+
+<!-- CAPTURE 3.12 [scene:coffee_import] — the Import coffee window for a coffee shared by another roaster: the origin
+line, WHAT YOU GET with their reference roast, their tasting and their brewing settings, and the caption on shared
+roasts. -->
+
+![Import coffee from another roaster: who it comes from, what you get, and the reminder that your roast plan does not learn from a shared roast.](assets/beancave-3.12.png)
+
+### What a shared roast is
+
+A roast that came from another roaster is a [shared roast](glossary.md#shared-roast). It is
+listed in **Roasts** with a **Shared** badge, and it opens, reads and compares like any other
+roast. To roast along with it, select it and use **Background** at the top of the roast: it
+becomes the background curve of your next roast, which [Roast Replay](glossary.md#roast-replay)
+can follow.
+
+Its tasting line shows the sender's verdict as theirs — *Their tasting: Almost* — to read, not to
+edit: it is their cup, not yours. A shared roast that came without a tasting says so, and never
+asks you how it tasted.
+
+Your roast plan does not learn from it until you choose to. A line above its figures says so,
+with **Learn from this roast**: once a roast suits you — after replaying it, typically — that
+button lets the plan learn from it like one of your own roasts. Its badge then reads
+**Shared · learning**, and it can be marked as the coffee's
+[reference roast](glossary.md#reference-roast) without a tasting of yours: you cannot taste the
+sender's cup, so choosing to learn from it stands for your *Yes*. **Stop learning from this
+roast** takes it back out; if it is the reference, a confirmation removes the ★ first.
+
+Some things never change, learned from or not: it is never the coffee's last roast on its
+record, the sender's tasting never sets the *Next time* change, and it takes nothing from your
+stock, roast count or roasted weight — it was roasted elsewhere.
+
+<!-- CAPTURE 3.13 [scene:cave_shared_learning] — the Roasts tab on a shared roast the plan learns from: the Shared · learning badge on its row, the
+line above its figures with Stop learning from this roast, and the ★ on its tasting line. -->
+
+![A shared roast the plan learns from: its Shared · learning badge and ★ in the list, the line with Stop learning from this roast, and the sender's tasting.](assets/beancave-3.13.png)
+
+A roast made on another machine is not learned from at all: the line says *Roasted on a
+Skywalker V1. Replay it on your roaster: the roast you make will teach your plan.* Follow it on
+your own machine; the roast you make is yours, and that one teaches the plan.
+
+Roasts brought from your own other computer are not shared roasts: they count as yours.
+
+---
+
 ## Roast files
 
 Auditing incomplete roast files, linking one to a green coffee, and recomputing how many roasts

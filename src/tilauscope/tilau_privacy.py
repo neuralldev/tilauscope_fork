@@ -60,6 +60,7 @@ class Profile(StrEnum):
 
     DIAGNOSTIC   = 'DIAGNOSTIC'    # debug archive: URLs destroyed
     AI_OUTBOUND  = 'AI_OUTBOUND'   # model prompt: URLs normalised
+    SHARED_ROAST = 'SHARED_ROAST'  # roast file given to another roaster: URLs normalised, supplier kept
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -138,6 +139,18 @@ _PERSONAL: Final[Rule] = (
         r"(?i)([\"']?(?:operator|organization|organisation|user[_ -]?name|"
         r"device[_ -]?name|full[_ -]?name|phone|telephone|contact|customer|"
         r"client|supplier)[\"']?\s*[:=]\s*)"
+        r"(?:[\"'][^\"'\r\n]*[\"']|[^\s,;}\]\r\n]+)"),
+    r'\1[REDACTED_PERSONAL]',
+)
+
+#: The same labels without ``supplier``: a coffee shared with another roaster
+#: names the importer it came from on purpose.
+_PERSONAL_KEEP_SUPPLIER: Final[Rule] = (
+    'personal',
+    re.compile(
+        r"(?i)([\"']?(?:operator|organization|organisation|user[_ -]?name|"
+        r"device[_ -]?name|full[_ -]?name|phone|telephone|contact|customer|"
+        r"client)[\"']?\s*[:=]\s*)"
         r"(?:[\"'][^\"'\r\n]*[\"']|[^\s,;}\]\r\n]+)"),
     r'\1[REDACTED_PERSONAL]',
 )
@@ -466,6 +479,9 @@ def runtime_sensitive_values() -> tuple[str, ...]:
 
 
 def _rules_for(profile: Profile) -> tuple[Rule, ...]:
+    if profile is Profile.SHARED_ROAST:
+        # Notes typed by hand travel with a shared roast, as they do in a prompt.
+        return (_AUTH, _SECRET, *_PATH_RULES, *_NETWORK_RULES, _PERSONAL_KEEP_SUPPLIER, *_FREE_TEXT_RULES)
     common = (_AUTH, _SECRET, *_PATH_RULES, *_NETWORK_RULES, _PERSONAL)
     if profile is Profile.AI_OUTBOUND:
         return (*common, *_FREE_TEXT_RULES)
@@ -522,14 +538,23 @@ def sanitize_text(text: str,
                   sensitive_values: Iterable[str] = (),
                   *,
                   profile: Profile = Profile.DIAGNOSTIC,
-                  report: RedactionReport | None = None) -> str:
+                  report: RedactionReport | None = None,
+                  keep: Iterable[str] = ()) -> str:
     """Remove personal data and credentials from *text*.
 
     ``sensitive_values`` are exact strings known to identify this user; they go
     first so a multi-word name is still whole when it is matched, before a
-    field-level rule replaces part of its context.
+    field-level rule replaces part of its context. ``keep`` are identifiers the
+    text must still carry afterwards (a roast's and its coffee's UUID): set
+    cut out before any rule runs, the pieces around them cleaned one by one,
+    so no rule reaching to the end of a line can take them along.
     """
     rep = report if report is not None else RedactionReport()
+    kept = sorted({value for value in keep if value}, key=len, reverse=True)
+    if kept:
+        pieces = re.split('(' + '|'.join(re.escape(value) for value in kept) + ')', text or '')
+        return ''.join(piece if i % 2 else sanitize_text(piece, sensitive_values, profile=profile, report=rep)
+                       for i, piece in enumerate(pieces))
     cleaned = text or ''
 
     # Addresses go before the identity values: an e-mail is self-contained, and
@@ -549,7 +574,7 @@ def sanitize_text(text: str,
         cleaned = _apply(rule, cleaned, rep)
     cleaned = _IPV6_CANDIDATE.sub(
         lambda m: _count_ipv6(m, rep), cleaned)
-    if profile is Profile.AI_OUTBOUND:
+    if profile is not Profile.DIAGNOSTIC:
         cleaned = _CARD_CANDIDATE.sub(lambda m: _redact_card(m, rep), cleaned)
     return _unmask_urls(cleaned, parked)
 

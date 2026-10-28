@@ -783,6 +783,11 @@ class BeanTabBuildMixin:
             _act.triggered.connect(_btn.click)
             _share_actions.append((_act, _btn))
             _btn.setVisible(False)
+        # The coffee itself — record, reference roast, tasting — in one file.
+        _share_menu.addSeparator()
+        _share_coffee = _share_menu.addAction(QApplication.translate("tilauscope_beancave", "Share this coffee…"))
+        _share_coffee.triggered.connect(self.on_share_coffee)
+        _share_actions.append((_share_coffee, self.generate_card_button))
         _share_menu.aboutToShow.connect(
             lambda: [act.setEnabled(btn.isEnabled()) for act, btn in _share_actions])
         self.share_button.setMenu(_share_menu)
@@ -799,33 +804,38 @@ class BeanTabBuildMixin:
         self.remove_button.setFixedSize(36, 34)
         _actions_layout.addWidget(self.remove_button)
 
-        # « + New bean ▾ » heads the catalogue: the guided assistant on a click,
-        # the expert form in its menu.
-        self.new_sack_tool = QToolButton()
-        self.new_sack_tool.setText(QApplication.translate("tilauscope_common", "New bean"))
-        self.new_sack_tool.setIcon(svg_icon("M12 5v14M5 12h14", THEME['BG'], 15, 2.4))
-        self.new_sack_tool.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.new_sack_tool.setToolTip(self.new_sack_button.toolTip())
-        self.new_sack_tool.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.new_sack_tool.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
-        self.new_sack_tool.clicked.connect(self._open_new_sack_wizard)
-        _sack_menu = QMenu(self.new_sack_tool)
-        _sack_menu.setStyleSheet(menu_qss())
-        _sack_menu.addAction(QApplication.translate("tilauscope_beancave", "New bean — guided"),
-                             self._open_new_sack_wizard)
-        _sack_menu.addAction(QApplication.translate("tilauscope_beancave", "Add — expert form"),
-                             self.add_button.click)
-        self.new_sack_tool.setMenu(_sack_menu)
-        # One piece, as drawn: the chevron opens the expert form, no divider.
-        self.new_sack_tool.setFixedHeight(38)
-        self.new_sack_tool.setStyleSheet(
-            f"QToolButton {{ background:{THEME['ACCENT']};color:{THEME['BG']};border:none;"
-            f"border-radius:8px;padding:0 26px 0 10px;font-weight:700;font-size:13px; }}"
-            f"QToolButton:hover {{ background:{THEME['LAVENDER']}; }}"
-            f"QToolButton::menu-button {{ border:none;width:20px;"
-            f"border-top-right-radius:8px;border-bottom-right-radius:8px; }}"
-            f"QToolButton::menu-arrow {{ width:9px;height:9px; }}"
-            + tooltip_qss())
+        # « + New bean ▾ » heads the catalogue, and the empty cave that has no catalogue:
+        # the guided assistant on a click, the expert form and the import in its menu.
+        def _new_bean_tool() -> QToolButton:
+            tool = QToolButton()
+            tool.setText(QApplication.translate("tilauscope_common", "New bean"))
+            tool.setIcon(svg_icon("M12 5v14M5 12h14", THEME['BG'], 15, 2.4))
+            tool.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+            tool.setToolTip(self.new_sack_button.toolTip())
+            tool.setCursor(Qt.CursorShape.PointingHandCursor)
+            tool.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+            tool.clicked.connect(self._open_new_sack_wizard)
+            menu = QMenu(tool)
+            menu.setStyleSheet(menu_qss())
+            menu.addAction(QApplication.translate("tilauscope_beancave", "New bean — guided"),
+                           self._open_new_sack_wizard)
+            menu.addAction(QApplication.translate("tilauscope_beancave", "Add — expert form"),
+                           self.add_button.click)
+            menu.addAction(QApplication.translate("tilauscope_beancave", "Import a coffee…"),
+                           self.on_import_coffee)
+            tool.setMenu(menu)
+            # One piece, as drawn: the chevron opens the expert form, no divider.
+            tool.setFixedHeight(38)
+            tool.setStyleSheet(
+                f"QToolButton {{ background:{THEME['ACCENT']};color:{THEME['BG']};border:none;"
+                f"border-radius:8px;padding:0 26px 0 10px;font-weight:700;font-size:13px; }}"
+                f"QToolButton:hover {{ background:{THEME['LAVENDER']}; }}"
+                f"QToolButton::menu-button {{ border:none;width:20px;"
+                f"border-top-right-radius:8px;border-bottom-right-radius:8px; }}"
+                f"QToolButton::menu-arrow {{ width:9px;height:9px; }}"
+                + tooltip_qss())
+            return tool
+        self.new_sack_tool = _new_bean_tool()
         self.new_sack_button.setVisible(False)
 
         # ── Pane droit assembly ─────────────────────────────────────────────
@@ -873,7 +883,14 @@ class BeanTabBuildMixin:
         self.empty_state_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_state_label.setWordWrap(True)
         self.empty_state_label.setStyleSheet("font-size:14pt;color:gray;padding:20px;")
-        self.empty_state_label.hide()
+        self.empty_new_bean_tool = _new_bean_tool()
+        self._empty_state = QWidget()
+        _empty_layout = QVBoxLayout(self._empty_state)
+        _empty_layout.addStretch(1)
+        _empty_layout.addWidget(self.empty_state_label)
+        _empty_layout.addWidget(self.empty_new_bean_tool, 0, Qt.AlignmentFlag.AlignHCenter)
+        _empty_layout.addStretch(1)
+        self._empty_state.hide()
 
         # ── QSplitter horizontal ────────────────────────────────────────────
         _splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -895,7 +912,7 @@ class BeanTabBuildMixin:
         main_tab_layout.setContentsMargins(0, 0, 0, 0)
         main_tab_layout.setSpacing(0)
         main_tab_layout.addWidget(_splitter, 1)
-        main_tab_layout.addWidget(self.empty_state_label)
+        main_tab_layout.addWidget(self._empty_state, 1)
 
         # ── Overlays ────────────────────────────────────────────────────────
         self.aw_overlay = AwReadingOverlay(self)

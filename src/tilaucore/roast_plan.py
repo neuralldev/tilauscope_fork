@@ -27,6 +27,7 @@ from tilaucore.artisan_compat import (RoRSettings, convertTemp, convertWeight, d
                                       events_internal_to_external_value, fill_gaps, fromCtoFstrict, fromFtoCstrict,
                                       profile_sampling_interval, recompute_bt_deltas, smooth_list)
 from tilaucore.bean_energy import FloorProfile, match_variety_family
+from tilaucore.coffee_share import adopted
 from tilaucore.bean_qualifiers import QT_TRANSLATE_NOOP
 from tilaucore.beans import BeanCaveContainer, GreenBean, from_json
 from tilaucore.numeric import (Pchip, arange, clip, column_stats, interp, mean, median, moving_average,
@@ -1778,6 +1779,14 @@ class RoastPlanEngine:
         """(roastUUID, status) of the bean's reference roast — see reference_roast."""
         return reference_roast(bean, self._beancave_directory())
 
+    def _plan_reference(self, bean: GreenBean) -> "tuple[str, str]":
+        """The reference the plan stands on: tasted Yes, or a shared roast the operator chose to learn from."""
+        uuid, status = self._reference_roast(bean)
+        ref = str(getattr(bean, "reference_roast_uuid", "") or "")
+        if not uuid and ref and any(m.roast_uuid == ref and adopted(m) for m in self._index_records().values()):
+            return ref, "not_eligible"
+        return uuid, status
+
     def _tasting_change(self, bean: GreenBean) -> dict | None:
         """The change the tasting of this coffee's most recent roast asks of the next one, or None.
 
@@ -1790,8 +1799,9 @@ class RoastPlanEngine:
         if uuid not in self._tasting_change_cache:
             change = None
             try:
+                # A shared roast's tasting speaks of its sender's cup, never of the next roast here.
                 roasts = [m for m in self._index_records().values()
-                          if m.uuid.lower() == uuid and not m.simulated]
+                          if m.uuid.lower() == uuid and not m.simulated and not getattr(m, 'shared', False)]
                 last = max(roasts, key=lambda m: m.roastepoch or m.mtime, default=None)
                 # An excluded roast still answered the older tastings.
                 if last is not None and last.roast_uuid and not last.exclude_learning:
@@ -1910,7 +1920,7 @@ class RoastPlanEngine:
         """
         feedback_notes = []
         adjustments = []
-        _reference_uuid, _reference_status = self._reference_roast(bean)
+        _reference_uuid, _reference_status = self._plan_reference(bean)
 
         # Determine expected machine fingerprint from RoasterContext
         # Radiant: TP_ET > TP_BT (positive delta)
