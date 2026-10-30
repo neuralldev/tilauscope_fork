@@ -118,12 +118,18 @@ Such a roast is easy to find again: its row in the list carries a **No result** 
 
 ## The Roasts tab
 
+!!! note "The ground colour is the roast's colour"
+    The ground reading averages the whole bean; a whole-bean reading sees only the surface. On a
+    Skywalker the ground reads about 10 Agtron points lighter than the whole bean, and the gap
+    depends on how the roaster heats. So a roast measured whole only is shown and judged at its
+    estimated ground colour, marked **~** and **ground (est.)**. A ground reading always wins.
+
 **BeanCave → Roasts** lists every roast file on the left, on two lines each: the coffee and the
 time it was roasted, then its process, crop year and charge weight, with the batch number on
 the right. The dot in front of a roast carries its measured colour, on the same roast scale as
-the rest of the application: filled for a ground reading, an outline of that colour for a
-whole-bean reading, which runs a shade darker on the same meter, and an empty grey ring when no
-colour was recorded. A **No result** badge marks a roast whose weight and colour were never
+the rest of the application: filled for a ground reading, an outline for a roast measured on the
+whole bean only, drawn at its estimated ground colour, and an empty grey ring when no colour was
+recorded. A **No result** badge marks a roast whose weight and colour were never
 filled in — see [Finishing a roast later](#finishing-a-roast-later); a roast that came from
 another roaster carries a **Shared** badge instead, **Shared · learning** once your plan learns
 from it — see
@@ -168,7 +174,7 @@ and batch number, and five figures, each with what it means underneath:
 | **Roasted weight** | The weight loss, the charge weight it came from and, when the coffee has a [price](beancave.md#price-and-screen-size), what that green cost — hover it for the cost per roasted kg |
 | **Roast time** | The [development](glossary.md#dtr--development-time-ratio) time, when first crack was marked |
 | **Drop temperature** | The bean temperature at first crack |
-| **Colour** | **Ground** and its colour category — or, without a ground reading, **Whole bean** and its colour category |
+| **Colour** | **Ground** and its colour category — or, without a ground reading, **Ground (est.)** with a **~** before the figure, or **Whole bean** on a roaster with no declared gap |
 | **Energy** | The roast's kWh, Charge to Drop (the line under it says **Charge → Drop**), and where the figure comes from — see [Energy](energy.md#after-the-roast); a **›** opens the roast's energy detail |
 
 A figure that was never recorded reads **Not recorded**. With several roasts selected, the head

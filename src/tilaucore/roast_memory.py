@@ -13,6 +13,7 @@ from typing import Any, Callable, Iterable
 
 from tilaucore import tasting_log
 from tilaucore.beans import RoastTasting
+from tilaucore.roast_colour import roast_agtron
 from tilaucore.roast_levels import measured_level
 
 
@@ -47,7 +48,7 @@ class RoastMemory:
     dev_pct: float | None           # development, share of the total time
     loss_pct: float | None
     colour: float | None            # as measured: ground first, else whole
-    colour_basis: str               # 'ground' | 'whole' | ''
+    colour_basis: str               # 'ground' | 'estimated' | 'whole' | ''
     rest_days: int                  # calendar days since the roast, -1 unknown
     tasting: RoastTasting | None
     change: tuple[str, str, float] | None   # (defect, lever, delta) for the next roast
@@ -91,11 +92,8 @@ def _memory_of(last: Any, count: int, tastings: dict[str, RoastTasting], mode: s
     loss_pct = None
     if last.weight_in_g > 0 and 0 < last.weight_out_g < last.weight_in_g:
         loss_pct = (last.weight_in_g - last.weight_out_g) / last.weight_in_g * 100.0
-    colour, basis = None, ''
-    if last.ground_color > 0:
-        colour, basis = float(last.ground_color), 'ground'
-    elif last.whole_color > 0:
-        colour, basis = float(last.whole_color), 'whole'
+    _agtron, basis = roast_agtron(last.ground_color, last.whole_color, '')
+    colour = float(_agtron) if basis else None
     epoch = int(last.roastepoch or last.mtime or 0)
     today = (now or datetime.now().astimezone()).date()
     rest_days = ((today - datetime.fromtimestamp(epoch, tz=UTC).astimezone().date()).days

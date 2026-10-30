@@ -40,7 +40,7 @@ except ImportError:
     from PyQt5.QtWidgets import QApplication  # type: ignore # @UnusedImport @Reimport  @UnresolvedImport
 
 from tilauscope import roast_coach as coach
-from tilauscope.tilauscope_types import to_agtron
+from tilaucore.roast_colour import agtron_text, roast_agtron
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 
@@ -208,17 +208,17 @@ def _roast_datetime(qmc) -> dict:
         return {"roastdate": str(stamp or ""), "roasttime": ""}
 
 
+def roast_colour(profile: dict) -> "tuple[float | None, str]":
+    """(Agtron, basis) of the roast: ground, else its estimate from the whole bean."""
+    agtron, basis = roast_agtron(_pos(profile.get("ground_color")) or 0.0,
+                                 _pos(profile.get("whole_color")) or 0.0,
+                                 str(profile.get("color_system") or "Agtron"))
+    return (float(agtron), basis) if basis else (None, "")
+
+
 def roast_colour_agtron(profile: dict) -> "float | None":
-    """Ground colour when measured, else whole — never the lighter of the two."""
-    system = str(profile.get("color_system") or "Agtron")
-    for key in ("ground_color", "whole_color"):
-        raw = _pos(profile.get(key))
-        if raw is not None:
-            try:
-                return float(to_agtron(raw, system))
-            except Exception:  # pylint: disable=broad-except
-                return raw
-    return None
+    """The roast's colour in Agtron, None without a reading."""
+    return roast_colour(profile)[0]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -273,7 +273,7 @@ def build_debrief(profile: dict, snapshot: "dict | None" = None,
             out.phases[key] = v
 
     # ── figures ────────────────────────────────────────────────────────────
-    agtron = roast_colour_agtron(profile)
+    agtron, colour_basis = roast_colour(profile)
     # Bands follow the level the roast ran at, read as the coach reads it —
     # never the colour, which is the roast's result, not its reference.
     bands = coach.roast_bands(profile, roast_context=roast_context, bean=bean)
@@ -346,18 +346,19 @@ def build_debrief(profile: dict, snapshot: "dict | None" = None,
 
     # colour — stated, never turned into advice: no DROP↔Agtron slope is
     # validated, so an écart here cannot prescribe a temperature change.
-    # Named after the reading roast_colour_agtron took: ground, else whole.
-    ground = _pos(profile.get("ground_color")) is not None
+    # Named after the reading roast_colour took: ground, estimated, or whole.
     if agtron is not None and planned_colour is not None:
-        band = (QApplication.translate("tilauscope_review", "Agtron ground · planned {0}") if ground
-                else QApplication.translate("tilauscope_review", "Agtron whole · planned {0}"))
+        band = {"ground": QApplication.translate("tilauscope_review", "Agtron ground · planned {0}"),
+                "estimated": QApplication.translate("tilauscope_review", "Agtron ground (est.) · planned {0}"),
+                }.get(colour_basis, QApplication.translate("tilauscope_review", "Agtron whole · planned {0}"))
         out.figures["colour"] = Figure(
-            f"{agtron:.0f}", band.format(f"{planned_colour:.0f}"), "neutral")
+            agtron_text(agtron, colour_basis), band.format(f"{planned_colour:.0f}"), "neutral")
     elif agtron is not None:
         out.figures["colour"] = Figure(
-            f"{agtron:.0f}",
-            QApplication.translate("tilauscope_review", "Agtron ground") if ground
-            else QApplication.translate("tilauscope_review", "Agtron whole"), "neutral")
+            agtron_text(agtron, colour_basis),
+            {"ground": QApplication.translate("tilauscope_review", "Agtron ground"),
+             "estimated": QApplication.translate("tilauscope_review", "Agtron ground (est.)"),
+             }.get(colour_basis, QApplication.translate("tilauscope_review", "Agtron whole")), "neutral")
     elif planned_colour is not None:
         out.figures["colour"] = Figure(
             band=QApplication.translate("tilauscope_review", "not measured · planned {0}").format(

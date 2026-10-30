@@ -24,6 +24,7 @@ from typing import Any, Final
 import logging
 
 from tilaucore.roasters import *  # noqa: F403  pylint: disable=wildcard-import,unused-wildcard-import
+from tilaucore.roast_colour import set_whole_to_ground_offset
 from tilaucore.roasters import HeatingType, RoasterContext, RoasterManager
 
 _logd: Final[logging.Logger] = logging.getLogger('tilau')
@@ -152,6 +153,7 @@ def roast_context_for(aw: Any, name: str | None = None) -> RoasterContext | None
         getattr(context, 'inlet_air_mode', 'push') if context is not None else 'push')
     # ET stays shown unless the machine is declared without the probe.
     aw._tilau_has_et = getattr(context, 'has_et_probe', None) is not False
+    set_whole_to_ground_offset(getattr(context, 'whole_to_ground_agtron_offset', 0.0))
     return context
 
 

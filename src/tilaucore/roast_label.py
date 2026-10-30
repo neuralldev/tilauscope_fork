@@ -13,6 +13,7 @@ from collections.abc import Callable
 
 from tilaucore.bean_qualifiers import QT_TRANSLATE_NOOP
 from tilaucore.beans import GreenBean
+from tilaucore.roast_colour import agtron_text, roast_agtron
 
 Text = tuple[str, str]
 
@@ -74,6 +75,9 @@ def label_data(bean: GreenBean, data: dict, qr_base_url: Callable[[], str]
     # Ground when measured, else whole — never the lighter of the two.
     colour = next((c for c in (data.get('ground_color'), data.get('whole_color'))
                    if isinstance(c, (int, float)) and c > 0), 'N/A')
+    _agtron, _basis = roast_agtron(*(float(c) if isinstance(c, (int, float)) else 0.0
+                                     for c in (data.get('ground_color'), data.get('whole_color'))),
+                                   str(data.get('color_system') or ''))
 
     roast_data: dict[str, str] = {
         "Bean":        (bean.name[:27] + "…") if len(bean.name) > 30 else bean.name,
@@ -90,7 +94,8 @@ def label_data(bean: GreenBean, data: dict, qr_base_url: Callable[[], str]
         "Weight In":   f"{weightin} g",
         "Weight Out":  f"{weightout} g",
         "Weight Loss": f"{wloss} %",
-        "Agtron Color":f"{colour} {data.get('color_system','')}".strip(),
+        "Agtron Color":(f"{agtron_text(_agtron, _basis)} Agtron" if _basis == 'estimated'
+                        else f"{colour} {data.get('color_system','')}".strip()),
         "Total Time":  _fmt_seconds(int(computed.get("totaltime", 0))),
         "DTR":         f"{round(computed.get('finishphasetime',0) / computed.get('totaltime',1) * 100, 1)}%",
         "Drop BT":     f"{computed.get('DROP_BT','N/A')}°{mode}",

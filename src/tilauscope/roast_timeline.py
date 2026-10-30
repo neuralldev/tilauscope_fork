@@ -37,7 +37,8 @@ from PyQt6.QtCore import (
 from tilauscope.tilauscope_types import THEME
 from tilauscope.alogmanager import AlogMetadata
 from tilauscope.brew_advisor import (DEGASSING_BANDS, degassing_band, rest_window,
-                                     BrewFamily, to_agtron)
+                                     BrewFamily)
+from tilaucore.roast_colour import roast_agtron
 from tilauscope.theme_qss import apply_tilau_theme
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -136,8 +137,7 @@ def _get_agtron(filepath: Path) -> float:
         scale  = re.search(r"['\"]color_system['\"]\s*:\s*['\"]([^'\"]+)['\"]", text)
         ground = _num_field(text, 'ground_color')
         whole  = _num_field(text, 'whole_color')
-        return to_agtron(ground if ground > 0 else whole,
-                         scale.group(1) if scale else "")
+        return roast_agtron(ground, whole, scale.group(1) if scale else "")[0]
     except Exception:
         return 0.0
 

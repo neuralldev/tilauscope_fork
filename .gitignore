@@ -79,6 +79,7 @@ VC*.exe
 version_info*.txt
 change.sh
 CLAUDE.md
+.claude/context/
 FeatureBaclog.md
 Roadmap.md
 AutoRoast-Spec.md

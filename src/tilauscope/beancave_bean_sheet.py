@@ -39,6 +39,7 @@ from PyQt6.QtWidgets import (
 )
 
 from tilaucore.bean_qualifiers import family_pace
+from tilaucore.roast_colour import agtron_text
 from tilauscope.bean_qualifiers import physical_qualifier, screen_size_label
 from tilauscope.beancave_catalogue import roast_name, short_date, svg_pixmap
 from tilauscope.roast_memory import ReferenceState, RoastMemory, ready_to_taste
@@ -146,15 +147,17 @@ def _facts(memory: RoastMemory) -> QWidget | None:
     facts.setSpacing(_px(5))
     fact_css = (f"color:{THEME['TEXT']};font-size:{_fs(11)}px;background:{THEME['BORDER']};"
                 f"border:none;border-radius:6px;padding:{_px(1)}px {_px(7)}px;")
-    basis = (QApplication.translate("tilauscope_beancave", "ground") if memory.colour_basis == 'ground'
-             else QApplication.translate("tilauscope_beancave", "whole"))
+    basis = {'ground': QApplication.translate("tilauscope_beancave", "ground"),
+             'estimated': QApplication.translate("tilauscope_beancave", "ground (est.)"),
+             }.get(memory.colour_basis, QApplication.translate("tilauscope_beancave", "whole"))
     for text, value, suffix in (
             (QApplication.translate("Label", "Development"),
              f"{memory.dev_pct:.0f} %" if memory.dev_pct is not None else None, ""),
             (QApplication.translate("HTML Report Template", "Loss"),
              f"{memory.loss_pct:.1f} %" if memory.loss_pct is not None else None, ""),
             (QApplication.translate("tilauscope_common", "Colour"),
-             f"{memory.colour:.0f}" if memory.colour is not None else None, " " + basis)):
+             (agtron_text(memory.colour, memory.colour_basis) if memory.colour is not None else None),
+             " " + basis)):
         if value is None:
             continue
         f = QLabel(f"{text} <b style=\"font-family:{_MONO};\">{value}</b>{suffix}")

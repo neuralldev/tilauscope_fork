@@ -38,6 +38,7 @@ from PyQt6.QtWidgets import (QAbstractItemView, QApplication, QLineEdit, QListVi
                              QStyledItemDelegate)
 
 from tilaucore.coffee_share import adopted
+from tilaucore.roast_colour import roast_agtron
 from tilauscope.tilauscope_types import THEME, get_agtron_color, roast_batch_tag
 
 if TYPE_CHECKING:
@@ -133,9 +134,10 @@ def make_row(fname: str, epoch: int, label: str, title: str,
     colour_ground = False
     if meta is not None:
         batch = roast_batch_tag(meta.batch_prefix, meta.batch_nr)
-        # Ground when measured, else whole bean — never the lighter of the two.
-        colour = meta.ground_color if meta.ground_color > 0 else max(meta.whole_color, 0.0)
-        colour_ground = meta.ground_color > 0
+        # Ground when measured, else its estimate from the whole bean. The scale
+        # stays the one the row's raw reading is on: the index keeps no other.
+        colour, _basis = roast_agtron(meta.ground_color, max(meta.whole_color, 0.0), '')
+        colour_ground = _basis == 'ground'
         weight_in, weight_out = meta.weight_in_g, meta.weight_out_g
     words = (title, process, str(crop) if crop else '',
              bean.farm if bean is not None else '', bean.country if bean is not None else '', batch)

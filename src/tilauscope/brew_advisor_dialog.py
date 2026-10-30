@@ -35,6 +35,7 @@ from PyQt6.QtWidgets import (
 )
 
 from artisanlib.util import fromCtoFstrict
+from tilaucore.roast_colour import agtron_text, roast_agtron
 from tilauscope.tilauscope_types import THEME, show_styled_message, print_progress_pill, call_later
 from tilauscope.ai_support import normalize_engine, get_suppress_thinking_params, provider_base_url
 from tilauscope.tilau_privacy import prepare_ai_messages
@@ -3627,12 +3628,14 @@ class BrewAdvisorDlg(QDialog):
     def _render_header_pills(self, rec) -> None:
         """Roast level as its swatch, rest as its status — no naked number."""
         inp = self.service.input
+        _agtron, _basis = roast_agtron(inp.ground_color, inp.whole_color, inp.color_system)
         agt = inp.ground_color if inp.ground_color > 0 else inp.whole_color
         swatch = THEME[degassing_band(rec.agtron).key]
         self.roast_swatch.setStyleSheet(
             f"background:{swatch}; border:1px solid {THEME['SURFACE2']}; border-radius:3px;")
         label = _roast_label(rec.roast_key)
-        self.lbl_roast.setText(f"{label} · {agt} {inp.color_system}" if agt > 0 else label)
+        self.lbl_roast.setText((f"{label} · {agtron_text(_agtron, _basis)} Agtron" if _basis == "estimated"
+                                else f"{label} · {agt} {inp.color_system}") if agt > 0 else label)
         self.pill_roast.setVisible(True)
         if inp.days_off_roast < 0:
             self.pill_rest.setVisible(False)

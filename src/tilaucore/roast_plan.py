@@ -95,6 +95,34 @@ _CHARGE_CEILING_BY_PROCESS: dict[str, float] = {
 _CHARGE_FLOOR_C: float = 160.0
 _CHARGE_MODULATION_MAX_C: float = 5.0
 
+## ── Pression du lieu (WaterActivity-Altitude-Spec §8bis, Tilau 2026-10-29) ──
+## Altitude et pression vont de pair : la pression du lieu est le pivot,
+## l'altitude n'en est que la lecture standard. K = P0 / P (1 au niveau de la mer).
+## Les lois s'appliquent aux valeurs de GRILLE : une valeur apprise sur cette
+## machine porte déjà la pression du lieu, la corriger la compterait deux fois.
+_P0_HPA: Final[float] = 1013.25
+_PRESSURE_PLAUSIBLE_HPA: Final[tuple[float, float]] = (500.0, 1100.0)
+_K_CHARGE: Final[float] = 0.10          # T_charge · (1 + 0,10·(K − 1)), en °C
+_K_BURNER_EXPONENT: Final[float] = -0.6  # Q_ref · K^−0,6
+_K_FC_C: Final[float] = 2.5             # FC − 2,5·(K − 1) °C (grille seulement)
+
+
+def station_pressure_hpa(altitude_m: float) -> float:
+    """International barometric formula: the standard station pressure at altitude_m."""
+    return _P0_HPA * (1.0 - 0.0065 * float(altitude_m) / 288.15) ** 5.25588
+
+
+def pressure_factor(pressure_hpa: "float | None", altitude_m: float) -> float:
+    """K = P0 / P — the measured station pressure first, else the altitude's
+    standard pressure. An implausible reading falls back to the altitude."""
+    if pressure_hpa is not None:
+        _lo, _hi = _PRESSURE_PLAUSIBLE_HPA
+        if _lo <= float(pressure_hpa) <= _hi:
+            return _P0_HPA / float(pressure_hpa)
+        _logd.warning(f"RoastPlan: station pressure {float(pressure_hpa):.0f} hPa out of "
+                      f"plausible range — the altitude is used instead")
+    return _P0_HPA / station_pressure_hpa(_clamp(float(altitude_m or 0.0), -500.0, 6000.0))
+
 ## ── Destination : à quoi sert ce café (Hoos 2026, étape 1) ──────────────────
 ## La chaîne est destination → développement → perte de masse, et elle n'a qu'un
 ## maillon : la destination n'entre nulle part ailleurs. Un second terme direct
@@ -217,6 +245,7 @@ _CALENDAR_GROUPS: Final[tuple[tuple[str, tuple[str, ...]], ...]] = (
     ("fc_bt_samples", ("fc_bt_learned_c", "fc_regression_slope", "fc_regression_offset",
                        "fc_regression", "fc_bt_mad_c")),
     ("timing_samples", ("timing_dry_min_learned", "timing_fc_min_learned")),
+    ("pace_n", ("dry_pace", "maillard_pace")),
     ("drop_bt_samples", ("drop_bt_learned_c", "drop_color_basis", "drop_bt_mad_c")),
 )
 ## Own roasts at the target colour from which a new crop stops inheriting.
@@ -306,12 +335,19 @@ _TECH_RADIANT: Final[_TechnologyProfile] = _TechnologyProfile(
             "drop_temp": (201, 203),
             "development_time": (0.75, 1.0), "dtr_pct": (0.08, 0.12),
         },
-        ## Medium light : le développement s'allonge, le total ne bouge pas —
-        ## le Maillard récupère la différence (« laisser caraméliser un peu
-        ## plus longtemps »).
+        ## Le temps en plus d'un niveau plus foncé va au développement : la bande
+        ## générale reste, le DTR radiant sort plus haut que la table, pensée
+        ## pour 12-14 min. Skywalker Delta communauté à 15-18 % de perte : 19-28 %
+        ## (2026-10-30). Raccourcir la bande éclaircit le roast, voir skill
+        ## physique-torrefaction §6 ter.
         "Medium Light": {
-            "development_time": (1.4, 1.6), "dtr_pct": (0.13, 0.16),
+            "development_time": (1.4, 1.6), "dtr_pct": (0.15, 0.20),
         },
+        "Medium": {"dtr_pct": (0.19, 0.30)},
+        "Medium Dark": {"dtr_pct": (0.19, 0.30)},
+        "Dark": {"dtr_pct": (0.19, 0.30)},
+        "Very Dark": {"dtr_pct": (0.19, 0.30)},
+        "Extremely Dark": {"dtr_pct": (0.19, 0.30)},
     },
 )
 
@@ -1985,6 +2021,8 @@ class RoastPlanEngine:
         prediction_snapshots: list[dict] = []
         # The reference roast's colour, once read: says why it was left out, if it was.
         _reference_agtron: float | None = None
+        dry_pace_samples: list[float] = []
+        maillard_pace_samples: list[float] = []
         # The reference read from its own file — its name and whether it is
         # excluded — so neither depends on the roast index being there.
         _reference_seen: dict = {}
@@ -1993,7 +2031,7 @@ class RoastPlanEngine:
         # The in-loop checks stay as the authority — a log the index does not
         # know is kept and judged on the profile itself.
         potential_logs = self._prefilter_logs(
-            potential_logs, charge_weight_g=charge_weight_g, weight_tol_ratio=0.25)
+            potential_logs, charge_weight_g=charge_weight_g)
         for log in potential_logs:
             delta_bt, timex, bt, tp_index, phase_times = self._get_delta_bt(log)
             if _reference_uuid and self.lastprofiledata.get("roastUUID") == _reference_uuid:
@@ -2036,6 +2074,7 @@ class RoastPlanEngine:
             # RoR curve; mixing it into the master curve corrupts the envelope.
             _WEIGHT_TOL = 0.25   # ±25% of the planned charge
             _w_green = 0.0
+            _mass_comparable = True
             if charge_weight_g > 0.0:
                 _w = self.lastprofiledata.get("weight")
                 if _w:
@@ -2047,11 +2086,7 @@ class RoastPlanEngine:
                 if _w_green <= 0.0:
                     _logd.debug(f"_analyze_historical_roasts: skipping {log.name} — missing green weight")
                     continue
-                if abs(_w_green - charge_weight_g) / charge_weight_g > _WEIGHT_TOL:
-                    _logd.debug(
-                        f"_analyze_historical_roasts: skipping {log.name} — batch weight "
-                        f"{_w_green:.0f}g vs plan {charge_weight_g:.0f}g (>±{_WEIGHT_TOL:.0%})")
-                    continue
+                _mass_comparable = abs(_w_green - charge_weight_g) / charge_weight_g <= _WEIGHT_TOL
 
             # ── Data quality filter 4: machine fingerprint via ET/BT at TP ─
             # Only apply when RoasterContext is available and both TP temps exist.
@@ -2071,6 +2106,30 @@ class RoastPlanEngine:
                         _logd.debug(f"_analyze_historical_roasts: skipping {log.name} — radiant fingerprint on drum roaster (TP delta={_tp_delta:.1f}°C)")
                         continue
 
+            # ── Pace of the coffee and FC: the bean's own behaviour on this rig,
+            # the same at every batch size (Tilau, 2026-10-30) and every level.
+            # Everything below stays on comparable batches: its values are
+            # absolute, and scale with mass. Charge BT feeds the FC regression.
+            _fc_log = self.lastprofiledata.get("computed", {}).get("FCs_BT", 0.0) or 0.0
+            if _fc_log > 0.0:
+                _log_mode = str(self.lastprofiledata.get("mode", "C"))
+                fc_c = fromFtoCstrict(float(_fc_log)) if _log_mode == "F" else float(_fc_log)
+                fc_samples_c.append(fc_c)
+                charge_samples_c.append(_charge_bt_c)  # parallel list for regression
+            _dry_s = self.lastprofiledata.get("computed", {}).get("DRY_time", 0.0) or 0.0
+            _fcs_s = self.lastprofiledata.get("computed", {}).get("FCs_time", 0.0) or 0.0
+            if _dry_s > 0.0 and _fcs_s > _dry_s:
+                _pace = self._pace_sample(float(_dry_s) / 60.0, float(_fcs_s - _dry_s) / 60.0,
+                                          _w_green)
+                if _pace is not None:
+                    dry_pace_samples.append(_pace[0])
+                    maillard_pace_samples.append(_pace[1])
+            if not _mass_comparable:
+                _logd.debug(
+                    f"_analyze_historical_roasts: {log.name} — batch weight {_w_green:.0f}g vs "
+                    f"plan {charge_weight_g:.0f}g (>±{_WEIGHT_TOL:.0%}): pace and FC only")
+                continue
+
             _snapshot = self.lastprofiledata.get("tilau_roast_plan_snapshot")
             if isinstance(_snapshot, dict):
                 try:
@@ -2083,24 +2142,10 @@ class RoastPlanEngine:
                 except (TypeError, ValueError):
                     pass
 
-            # ── FC learning sample — collected BEFORE the Agtron gate: the FC
-            # temperature is a physical property of the bean on this rig,
-            # independent of the target roast level, so every quality-filtered
-            # log contributes regardless of its final colour.
-            # Also collect charge BT for FC regression (charge influences FC temp).
-            _fc_log = self.lastprofiledata.get("computed", {}).get("FCs_BT", 0.0) or 0.0
-            if _fc_log > 0.0:
-                _log_mode = str(self.lastprofiledata.get("mode", "C"))
-                fc_c = fromFtoCstrict(float(_fc_log)) if _log_mode == "F" else float(_fc_log)
-                fc_samples_c.append(fc_c)
-                charge_samples_c.append(_charge_bt_c)  # parallel list for regression
-
             # ── DROP learning: raw DROP BT, same target colour category only.
             # Ground and whole-bean measurements stay in separate cohorts.
             _drop_log  = self.lastprofiledata.get("computed", {}).get("DROP_BT", 0.0) or 0.0
-            _raw_color, _color_basis = _selected_roast_color(self.lastprofiledata)
-            _color_log = (to_agtron(_raw_color, self.lastprofiledata.get("color_system", ""))
-                          if _raw_color is not None else 0.0)
+            _color_log, _color_basis = self._learning_agtron(self.lastprofiledata)
             if (_drop_log > 0.0 and _color_basis is not None
                     and target_agtron.agtron_range.min_value <= _color_log
                     <= target_agtron.agtron_range.max_value):
@@ -2128,9 +2173,7 @@ class RoastPlanEngine:
                         peak_ror_samples.append(_pk_c)
 
             # 2. Filter by Agtron Category
-            _raw_color, _ = _selected_roast_color(self.lastprofiledata)
-            agtron_plan = (to_agtron(_raw_color, self.lastprofiledata.get("color_system", ""))
-                           if _raw_color is not None else 0.0)
+            agtron_plan, _ = self._learning_agtron(self.lastprofiledata)
             if _reference_uuid and self.lastprofiledata.get("roastUUID") == _reference_uuid:
                 _reference_agtron = agtron_plan
             if (agtron_plan >= target_agtron.agtron_range.min_value and agtron_plan <= target_agtron.agtron_range.max_value):
@@ -2246,6 +2289,11 @@ class RoastPlanEngine:
         fc_regression_slope: float | None = None
         fc_regression_offset: float | None = None
 
+        _pace_fields: dict = {
+            "dry_pace": round(float(median(dry_pace_samples)), 3) if dry_pace_samples else None,
+            "maillard_pace": (round(float(median(maillard_pace_samples)), 3)
+                              if maillard_pace_samples else None),
+            "pace_n": len(dry_pace_samples)}
         fc_regression = _fit_fc_charge_regression(
             charge_samples_c, fc_samples_c)
         fc_regression_slope = fc_regression["slope"]
@@ -2449,7 +2497,8 @@ class RoastPlanEngine:
                           if _reference_status else None)
         if not relevant_logs_data:
             if (fc_bt_learned_c is None and timing_dry_learned is None
-                    and drop_bt_learned_c is None and not _prediction_error_summary):
+                    and drop_bt_learned_c is None and not _prediction_error_summary
+                    and not _pace_fields["pace_n"]):
                 if _reference_out is None:
                     return None
                 # Nothing learned, but why the reference is left out must reach the setup sheet.
@@ -2461,6 +2510,7 @@ class RoastPlanEngine:
             return {"notes": [], "actions": [], "graph": None,
                     "crashes": [], "flicks": [],
                     "fc_bt_learned_c": fc_bt_learned_c,
+                    **_pace_fields,
                     "fc_bt_samples": _count(fc_samples_c),
                     "fc_regression_slope": fc_regression_slope,   # FC = a × Charge + b
                     "fc_regression_offset": fc_regression_offset,
@@ -2525,6 +2575,7 @@ class RoastPlanEngine:
             "crashes": crashes_detected,
             "flicks": flicks_detected,
             "fc_bt_learned_c": fc_bt_learned_c,
+            **_pace_fields,
             "fc_bt_samples": _count(fc_samples_c),
             "fc_regression_slope": fc_regression_slope,   # FC = a × Charge + b
             "fc_regression_offset": fc_regression_offset,
@@ -3142,7 +3193,8 @@ class RoastPlanEngine:
                        moisture: "_GreenPairValue", structure: "_GreenPairValue",
                        ambient_temp_c: "float | None",
                        minutes_since_last_drop: "float | None",
-                       thermal_mass_idx: float, heat_retention_idx: float) -> "_ChargeSetup":
+                       thermal_mass_idx: float, heat_retention_idx: float,
+                       pressure_k: float = 1.0) -> "_ChargeSetup":
         """Charge band by PROCESS, bean/ambient modulation, and inter-batch
         heat-soak correction (banc 2026-08-05) — owner ruling 2026-08-04 on
         the doctrine (process sets the band, batch weight is deliberately
@@ -3265,6 +3317,14 @@ class RoastPlanEngine:
             -_CHARGE_STRUCTURE_MAX_C, _CHARGE_STRUCTURE_MAX_C)
         charge_bt_temperature = _clamp(charge_bt_temperature + _mod_structure,
                                        _CHARGE_ABSOLUTE_MIN_C, _CHARGE_ABSOLUTE_MAX_C)
+        # Pression du lieu : un effet de LIEU, appliqué après la bande comme la structure.
+        if pressure_k != 1.0:
+            _charge_before_k = charge_bt_temperature
+            charge_bt_temperature = _clamp(
+                charge_bt_temperature * (1.0 + _K_CHARGE * (pressure_k - 1.0)),
+                _CHARGE_ABSOLUTE_MIN_C, _CHARGE_ABSOLUTE_MAX_C)
+            _logd.info(f"RoastPlan: charge {_charge_before_k:.1f}→{charge_bt_temperature:.1f}°C "
+                       f"for the station pressure (K={pressure_k:.3f})")
         _logd.info(
             f"RoastPlan: charge {charge_bt_temperature:.1f}°C — band {_charge_band} "
             f"({process_type_lower or 'washed default'}), in-band modulation "
@@ -3401,10 +3461,65 @@ class RoastPlanEngine:
                 pass
         return float(getattr(self, "_nominal_weight_g_cache", 0.0) or 0.0)
 
+    def _tp_dip_line(self) -> "tuple[float, float] | None":
+        """(base, per_load) of the turning-point dip declared by the roaster, or None."""
+        _ctx = getattr(self, "_roaster_ctx", None)
+        _base = getattr(_ctx, "tp_dip_share_base", None)
+        _per = getattr(_ctx, "tp_dip_share_per_load", None)
+        return (float(_base), float(_per)) if _base is not None and _per is not None else None
+
+    def _time_rule(self) -> "tuple[float, float, float, float] | None":
+        """(drying base, drying per load, Maillard base, Maillard per drying minute)
+        declared by the roaster, or None."""
+        _ctx = getattr(self, "_roaster_ctx", None)
+        _vals = tuple(getattr(_ctx, key, None) for key in (
+            "drying_time_base_min", "drying_time_per_load_min",
+            "maillard_time_base_min", "maillard_per_drying"))
+        if None in _vals:
+            return None
+        return tuple(float(v) for v in _vals)
+
+    def _pace_sample(self, dry_min: float, maillard_min: float,
+                     weight_g: float) -> "tuple[float, float] | None":
+        """(drying, Maillard) of a past roast ÷ the time rule at its own batch
+        size: the coffee's pace, comparable across masses. None without a rule
+        or on a duration outside the plausibility gates."""
+        _rule = self._time_rule()
+        _nominal = self._nominal_weight_g()
+        if (_rule is None or _nominal <= 0.0 or weight_g <= 0.0
+                or not 2.5 <= dry_min <= 8.0 or not 2.0 <= maillard_min <= 7.0):
+            return None
+        _lo, _hi = self._PACE_BOUNDS
+        _dry = dry_min / (_rule[0] + _rule[1] * weight_g / _nominal)
+        _mai = maillard_min / (_rule[2] + _rule[3] * dry_min)
+        return (_dry, _mai) if _lo <= _dry <= _hi and _lo <= _mai <= _hi else None
+
+    def _adopted_pace(self, history: "dict | None") -> "tuple[float, float]":
+        """The coffee's (drying, Maillard) pace, by the usual adoption policy."""
+        _n = int((history or {}).get("pace_n", 0) or 0)
+        return (self._adopt_learned(1.0, (history or {}).get("dry_pace"), _n)[0],
+                self._adopt_learned(1.0, (history or {}).get("maillard_pace"), _n)[0])
+
+    def _learning_agtron(self, data: dict) -> "tuple[float, str | None]":
+        """Agtron a past roast is classed at, and its measurement basis.
+
+        Ground colour when measured; otherwise the whole-bean colour moved by the
+        roaster's whole→ground offset (roasters.json) — the level is a GROUND
+        colour, and most operators only measure the whole bean."""
+        _raw, _basis = _selected_roast_color(data)
+        if _raw is None:
+            return 0.0, None
+        _agtron = to_agtron(_raw, data.get("color_system", ""))
+        if _basis == "whole":
+            _agtron += float(getattr(getattr(self, "_roaster_ctx", None),
+                                     "whole_to_ground_agtron_offset", 0.0) or 0.0)
+        return _agtron, _basis
+
     @classmethod
     def _tp_placeholder_c(cls, charge_temperature_c: float,
                           charge_weight_g: float = 0.0,
-                          nominal_weight_g: float = 0.0) -> float:
+                          nominal_weight_g: float = 0.0,
+                          dip_line: "tuple[float, float] | None" = None) -> float:
         """Où la courbe est TRACÉE au point de retournement (°C). Placeholder :
         `replan_from_milestone(plan, "tp", ...)` le remplace par le vrai TP dès qu'il
         est observé (~1 min après charge), puis re-cale tout ce qui suit.
@@ -3414,6 +3529,14 @@ class RoastPlanEngine:
         température de charge égale.
         """
         _anchors = cls._TP_DIP_ANCHORS
+        if dip_line is not None:
+            ## Part de creux déclarée par le modèle de torréfacteur (roasters.json),
+            ## mesurée sur ses roasts : elle remplace la table intégrée.
+            _ratio = (charge_weight_g / nominal_weight_g
+                      if charge_weight_g > 0.0 and nominal_weight_g > 0.0 else 1.0)
+            _share = _clamp(dip_line[0] + dip_line[1] * _ratio,
+                            cls._TP_DIP_SHARE_MIN, cls._TP_DIP_SHARE_MAX)
+            return charge_temperature_c * (1.0 - _share)
         if charge_weight_g <= 0.0 or nominal_weight_g <= 0.0:
             ## Lot ou machine inconnus : l'ancre nominale, la mieux échantillonnée.
             ## Ancre la plus proche du nominal — pas une égalité flottante :
@@ -3712,6 +3835,56 @@ class RoastPlanEngine:
             maillard_compressed=_mai_compressed,
             dry_bt_shift_c=_dry_shift)
 
+    ## L'allure d'un café se lit à toutes les masses (Tilau, 2026-10-30) : réel
+    ## ÷ modèle, séchage et Maillard. Bornes : au-delà, c'est une mesure fausse.
+    _PACE_BOUNDS: Final[tuple[float, float]] = (0.75, 1.25)
+
+    ## Sous ce Maillard, la règle de temps ne décrit plus un roast : il ne resterait
+    ## même pas le dernier segment de l'enveloppe (la minute qui précède le FC).
+    _TIME_RULE_MIN_MAILLARD_MIN: Final[float] = 1.0
+
+    @classmethod
+    def _time_rule_timing(cls, *, rule: "tuple[float, float, float, float]",
+                          envelope: "tuple[float, float, float, float]",
+                          load: float, tp_time_min: float, tp_bt_c: float,
+                          dry_bt_c: float, fc_bt_c: float, dev_time_min: float,
+                          drop_ror_c: float, dry_correction_min: float = 0.0,
+                          dry_floor_min: float = 0.0,
+                          pace: "tuple[float, float]" = (1.0, 1.0)) -> "_EnvelopeTiming | None":
+        """Phase durations from the roaster model's TIME RULE
+        (RoastPlan-Timing-Review-2026-10-29, Tilau).
+
+        Time drives the roast: drying is held by the load (base + per_load ×
+        charge / optimal batch); Maillard carries the drying's momentum (base +
+        per_drying × drying — same time constant, same environment, fixed
+        temperature bounds; the development does not enter it, skill
+        physique-torrefaction §7); development is the target level's band, so
+        a darker level spends its extra time there. `pace` is this coffee's own
+        (drying, Maillard) pace against the model, learned at every batch size. The
+        rates of rise are the consequence — temperature to cover over the
+        duration — and the envelope only gives the first-crack entry and the
+        development descent. None when the rule leaves less than a Maillard:
+        the envelope then decides, as before.
+        """
+        _base, _per_load, _mai_base, _mai_per_dry = rule
+        _dry_time: float = max(tp_time_min + 0.5,
+                               (_base + _per_load * max(0.0, load)) * pace[0]
+                               + dry_correction_min,
+                               dry_floor_min)
+        _mai_time: float = (_mai_base + _mai_per_dry * _dry_time) * pace[1]
+        if _mai_time < cls._TIME_RULE_MIN_MAILLARD_MIN:
+            return None
+        _mai_time = min(_mai_time, _dry_time * cls._MAILLARD_TO_DRYING_MAX)
+        _dry_ror: float = max(0.0, dry_bt_c - tp_bt_c) / (_dry_time - tp_time_min)
+        _mai_ror: float = max(0.0, fc_bt_c - dry_bt_c) / _mai_time
+        _at_fc: float = envelope[3]
+        _dev_delta: float = max(0.0, (_at_fc + max(0.0, drop_ror_c)) / 2.0
+                                * max(0.0, dev_time_min))
+        return _EnvelopeTiming(
+            dry_time_min=_dry_time, maillard_time_min=_mai_time,
+            dry_ror_c=_dry_ror, maillard_ror_c=_mai_ror,
+            fc_entry_ror_c=_at_fc, dev_delta_c=_dev_delta)
+
     def _calibrate_and_floor_phase_durations(
             self, *, dry_time_min: float, total_time_min: float, dev_time_min: float,
             drying_time_band: "tuple[float, float]", maillard_time_band: "tuple[float, float]",
@@ -4004,6 +4177,7 @@ class RoastPlanEngine:
             heater_fc_learned: "float | None", heater_fc_samples: int,
             coherent_source: "_PlanSource | None" = None,
             cohort_dry_learned: "float | None" = None, cohort_samples: int = 0,
+            pressure_k: float = 1.0,
     ) -> "_BurnerSetpoints":
         """Grid base by process/humidity, learned heater profile adoption, the
         Maillard energy floor, and the learned pre-FC setpoint (banc
@@ -4057,6 +4231,11 @@ class RoastPlanEngine:
         _grid_dry:float = (HEATER_C * 100.0) + heater_dry_process + heater_compensation + structure_compensation + cal_heater_dry_pct
         _grid_mai:float = (HEATER_M * 100.0) + heater_dry_process + heater_compensation + structure_compensation + cal_heater_mai_pct
         _grid_dev:float = (HEATER_FC * 100.0) + heater_dry_process + heater_compensation
+        # Pression du lieu : la grille est un réglage du niveau de la mer (spec §8bis).
+        if pressure_k != 1.0:
+            _k_burner = pressure_k ** _K_BURNER_EXPONENT
+            _grid_dry, _grid_mai, _grid_dev = (_grid_dry * _k_burner, _grid_mai * _k_burner,
+                                               _grid_dev * _k_burner)
 
         # ── Learned heater profile (design validé 2026-07-04, #5) ────────────
         # Burner % actually held by the coherent colour-matched reference roast
@@ -4395,6 +4574,7 @@ class RoastPlanEngine:
             airflow_dev_learned: "float | None" = None,
             airflow_samples: int = 0,
             coherent_source: "_PlanSource | None" = None,
+            pressure_k: float = 1.0,
     ) -> "_AirflowExtraction":
         """Airflow/extraction base values, the shared learned-trajectory
         helper, the Maillard Air Ramp and the Development Ramp (banc
@@ -4471,6 +4651,10 @@ class RoastPlanEngine:
         # le tambour est l'EXTRACTION, pas le ventilateur d'admission.
         if inlet_air_mode == "pull" and tech.airflow_pct is None:
             airflow_targets[0] -= round(_adi * 6.0)
+        # Pression du lieu : l'air moins dense transporte moins, la grille ouvre
+        # l'airflow d'autant (spec §8bis) ; l'extraction n'est pas corrigée.
+        if pressure_k != 1.0:
+            airflow_targets = [v * pressure_k for v in airflow_targets]
         _airflow_n = int(airflow_samples or 0)
         for index, learned in enumerate((airflow_dry_learned, airflow_mai_learned,
                                          airflow_dev_learned)):
@@ -4727,7 +4911,8 @@ class RoastPlanEngine:
             # °C-PURE: this function works entirely in °C. generate_roast_plan
             # converts the returned grids/waypoints to °F at its output boundary.
             tp_temperature = self._tp_placeholder_c(
-                charge_temperature, charge_weight, self._nominal_weight_g())
+                charge_temperature, charge_weight, self._nominal_weight_g(),
+                self._tp_dip_line())
             # TP time: heavier loads take longer to recover; light roast charge temps
             # are lower so thermal exchange is slower → TP arrives later.
             # Model: tp_temperature ≈ 0.9 + charge_weight / 1500  (minutes), bounded [0.75, 1.5]
@@ -4762,7 +4947,7 @@ class RoastPlanEngine:
             # --- 4. Build the PCHIP grids from the anchors (shared builder) ---
             return self._build_pchip_curve(waypoints)
 
-    def generate_roast_plan(self, bean:GreenBean, agtron_target:AgtronScale, ambient_temp:float, ambient_humidity:float, charge_weight:float, roast_altitude:float, bt_deviation:ProbeDeviation|None, airwave_present:bool=False, minutes_since_last_drop:'float | None'=None):
+    def generate_roast_plan(self, bean:GreenBean, agtron_target:AgtronScale, ambient_temp:float, ambient_humidity:float, charge_weight:float, roast_altitude:float, bt_deviation:ProbeDeviation|None, airwave_present:bool=False, minutes_since_last_drop:'float | None'=None, station_pressure:'float | None'=None):
 
         # ── UNIT NORMALISATION ───────────────────────────────────────────────────
         # All internal physics maths are in °C.
@@ -4951,8 +5136,12 @@ class RoastPlanEngine:
 
         # calculate fc temperature — grid chain: grid value + probe deviation
         # (already in fc_bt_temperature) + roast-altitude correction.
-        adj_roast_alt:float = (roast_altitude / 300.0)
-        _fc_grid:float = fc_bt_temperature - adj_roast_alt
+        # Station pressure first, else the roast altitude's standard pressure
+        # (spec §8bis). The internal steam pressure is what cracks the bean, so
+        # a lower ambient advances the FC only by ΔP over the vapour-pressure
+        # slope — not by the boiling-point lapse at ambient pressure.
+        _pressure_k: float = pressure_factor(station_pressure, roast_altitude)
+        _fc_grid:float = fc_bt_temperature - _K_FC_C * (_pressure_k - 1.0)
 
         # Learned FC (per bean × machine) from the coherent historical roast.
         # Adoption policy (progressive): n>=3 → medoid value adopted as-is;
@@ -5004,7 +5193,8 @@ class RoastPlanEngine:
             family_weight=_family_weight,
             moisture=_moisture, structure=_structure,
             ambient_temp_c=_ambient_measured_c, minutes_since_last_drop=minutes_since_last_drop,
-            thermal_mass_idx=_thermal_mass_idx, heat_retention_idx=_heat_retention_idx)
+            thermal_mass_idx=_thermal_mass_idx, heat_retention_idx=_heat_retention_idx,
+            pressure_k=_pressure_k)
         _charge_temperature = _charge.nominal_temperature_c
 
         # FC regression adjustment by charge temperature
@@ -5127,9 +5317,10 @@ class RoastPlanEngine:
         # calculé — erreur qu'un écrêtage dans la bande idéale masquait ensuite
         # au lieu de la corriger.
         _tp_bt_c: float = self._tp_placeholder_c(
-            charge_bt_temperature, charge_weight, _nominal_weight_g)
+            charge_bt_temperature, charge_weight, _nominal_weight_g, self._tp_dip_line())
 
         _env_timing: "_EnvelopeTiming | None" = None
+        _time_rule_used: bool = False
         _env_dev_delta_c: float = 0.0
         if _tech.ror_envelope is not None:
             ## Cible de RoR au drop de la technologie, interpolée sur le niveau —
@@ -5137,15 +5328,36 @@ class RoastPlanEngine:
             _env_drop_ror: float = (_tech.ror_at_drop_dark
                                     + (_tech.ror_at_drop_light - _tech.ror_at_drop_dark)
                                     * agtron_ratio)
-            _env_timing = self._envelope_timing(
-                envelope=_tech.ror_envelope, tp_time_min=_tp_time_min,
-                tp_bt_c=_tp_bt_c, dry_bt_c=dry_bt_temperature, fc_bt_c=fc_bt,
-                dev_time_min=dev_time_min, drop_ror_c=_env_drop_ror,
-                # Les corrections eau/ambiante restent : elles sont physiques et
-                # s'ajoutent à la durée déduite, elles ne la remplacent pas.
-                dry_correction_min=dry_time_min - _grid_dry_time_min,
-                dry_floor_min=self._dry_floor_min(
-                    charge_weight, _nominal_weight_g, _dev_inertia))
+            _rule = self._time_rule()
+            if _rule is not None and _nominal_weight_g > 0.0:
+                ## Le TEMPS drive le roast sur ce modèle de torréfacteur : la
+                ## règle déclarée dans roasters.json fixe les durées, le RoR suit.
+                _env_timing = self._time_rule_timing(
+                    rule=_rule, envelope=_tech.ror_envelope,
+                    load=charge_weight / _nominal_weight_g, tp_time_min=_tp_time_min,
+                    tp_bt_c=_tp_bt_c, dry_bt_c=dry_bt_temperature, fc_bt_c=fc_bt,
+                    dev_time_min=dev_time_min, drop_ror_c=_env_drop_ror,
+                    # L'ancre est ajustée sur des roasts réels : l'eau du grain y
+                    # est déjà ; seule l'ambiante (référence 20 °C) s'ajoute.
+                    dry_correction_min=(dry_time_min - _grid_dry_time_min
+                                        - effect.d_dry_time_min),
+                    dry_floor_min=self._dry_floor_min(
+                        charge_weight, _nominal_weight_g, _dev_inertia),
+                    pace=self._adopted_pace(history))
+                _time_rule_used = _env_timing is not None
+                if not _time_rule_used:
+                    _logd.info("RoastPlan: time rule leaves no Maillard — "
+                               "durations from the RoR envelope")
+            if _env_timing is None:
+                _env_timing = self._envelope_timing(
+                    envelope=_tech.ror_envelope, tp_time_min=_tp_time_min,
+                    tp_bt_c=_tp_bt_c, dry_bt_c=dry_bt_temperature, fc_bt_c=fc_bt,
+                    dev_time_min=dev_time_min, drop_ror_c=_env_drop_ror,
+                    # Les corrections eau/ambiante restent : elles sont physiques et
+                    # s'ajoutent à la durée déduite, elles ne la remplacent pas.
+                    dry_correction_min=dry_time_min - _grid_dry_time_min,
+                    dry_floor_min=self._dry_floor_min(
+                        charge_weight, _nominal_weight_g, _dev_inertia))
             _env_dev_delta_c = _env_timing.dev_delta_c
             if _env_timing.dry_bt_shift_c > 0.0:
                 ## Sécher plus longtemps à la même pente, c'est arriver plus haut :
@@ -5248,6 +5460,7 @@ class RoastPlanEngine:
         ## Sous enveloppe, le pic post-TP est la première ancre — plus la loi
         ## « % brûleur ÷ 75 × 12 », qui sortait un pic SOUS la moyenne du
         ## séchage, ce qu'aucune courbe ne peut faire.
+        _peak_ratio = getattr(ctx, "dry_ror_mean_to_peak", None) if ctx is not None else None
         dry_ror_peak:float = (_tech.ror_envelope[0] if _tech.ror_envelope is not None
                               else (heater_dry_base / 75.0 * _tech.dry_ror_peak_c
                                     if _tech.dry_ror_peak_follows_heater
@@ -5265,6 +5478,10 @@ class RoastPlanEngine:
 
         _dry_active_min: float = max(0.5, dry_time_min - _tp_time_min)
         dry_ror_average: float = (dry_bt_temperature - _tp_bt_c) / _dry_active_min
+        # Sous la règle de temps, le pic est une CONSÉQUENCE du séchage planifié
+        # (rapport moyenne/pic mesuré sur ce modèle) ; l'enveloppe n'en est que le bas.
+        if _time_rule_used and _peak_ratio:
+            dry_ror_peak = max(dry_ror_peak, dry_ror_average / float(_peak_ratio))
         if _env_timing is None:
             # Align the dry RoR target to the CHARGE->DRY band so the plan target stays
             # consistent with the live phase classifier (no "on plan" reading as warn).
@@ -5439,7 +5656,8 @@ class RoastPlanEngine:
             heater_fc_learned=(history.get("heater_fc_learned") if history else None),
             heater_fc_samples=(int(history.get("heater_fc_samples", 0) or 0) if history else 0),
             coherent_source=(_coherent_source if _coherent_ok else None),
-            cohort_dry_learned=_cohort_dry, cohort_samples=_cohort_n)
+            cohort_dry_learned=_cohort_dry, cohort_samples=_cohort_n,
+            pressure_k=_pressure_k)
         heater_dry = _burner.heater_dry
         heater_maillard = _burner.heater_maillard
         heater_dev = _burner.heater_dev
@@ -5544,7 +5762,8 @@ class RoastPlanEngine:
             airflow_mai_learned=(history.get("airflow_mai_learned") if history else None),
             airflow_dev_learned=(history.get("airflow_dev_learned") if history else None),
             airflow_samples=(int(history.get("airflow_samples", 0) or 0) if history else 0),
-            coherent_source=(_coherent_source if _coherent_ok else None))
+            coherent_source=(_coherent_source if _coherent_ok else None),
+            pressure_k=_pressure_k)
         airflow = _airflow_ext.airflow
         extraction = _airflow_ext.extraction
         airwave_mode = _airflow_ext.airwave_mode

@@ -1,4 +1,17 @@
 ## [4.3] 2026-09-13
+build 44
+* ⚡ [feat(roast plan)] : on the Skywalker V1 and V2, at every roast level, the plan's phase durations follow time: drying is set by the batch size, Maillard follows drying (about one minute plus half of it) whatever the development, a darker level spends its extra time in development, and the rates of rise, the peak after the turning point included, follow from those durations
+* 🐛 [fix(roast plan)] : the planned turning point on the Skywalker V1 and V2 now sits where its recent roasts turn (20-30 °C lower on small batches), and the coffee's moisture no longer lengthens the planned drying a second time
+* ⚡ [feat(colour)] : the ground colour is the true colour of a roast everywhere: a roast measured on the whole bean only now counts and reads at its estimated ground colour (about 10 Agtron points lighter on the Skywalker V1 and V2), marked ~ and "ground (est.)", in the roast plan, the roast review, BeanCave, labels and brewing advice
+* ⚡ [feat(roast plan)] : what a coffee teaches about its pace now carries across batch sizes: its drying and Maillard pace and its first crack are learned from all its roasts, so a 250 g plan benefits from your 400 g roasts
+* 🐛 [fix(roast plan)] : on a radiant roaster the usual development ratio from medium to very dark is now 19-30 %, and 15-20 % at medium light, so plans no longer warn about a normal development
+* ⚡ [feat(roast plan)] : the plan takes the air pressure of the place you roast in (probe or weather, otherwise from the altitude) into its reference charge, burner, airflow and first crack; values learned from your roasts are not corrected again
+* 🐛 [fix(roast plan)] : the altitude where a coffee was grown no longer passes for the altitude you roast at: it only stands in for the bean's density, and the "High altitude → +Maillard slower" hint is gone
+* ⚡ [feat(roast setup)] : the room card says what the plan is built on, under every reading: the temperature and the air pressure, measured or worked out from the altitude
+* ⚡ [feat(android)] : the Android prototype follows the same plan changes, uses the ambient probe's air pressure in its plan, and shows a roast measured on the whole bean at its estimated ground colour
+* ⚡ [feat(auto)] : AUTO can be armed on a plan with no history of the coffee: that choice is the operator's
+* ⚡ [feat(auto)] : AUTO no longer follows the rate of rise: it carries out the plan (phase values, burner, air and development ramps, crash net in development, milestones, drop), keeps to the burner ceiling declared for the roaster, and its status shows the next ramp step instead of a rate-of-rise drift
+* 🐛 [fix(roast setup)] : the roast plan profile no longer announces a "phase injection" that will not come
 build 43
 * ⚡ [feat(beancave)] : Learn from this roast, on a shared roast in Roasts, lets the roast plan learn from it and lets it take the reference ★ without a tasting of yours; Stop learning takes it back out; a roast from another machine is offered to replay, not to learn from
 * ⚡ [feat(i18n)] : backup, coffee sharing and their BeanCave screens are translated in French, German, Spanish, Italian and Chinese (simplified and traditional)

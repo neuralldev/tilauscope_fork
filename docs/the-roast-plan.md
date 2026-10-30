@@ -27,7 +27,8 @@ and from the room. The use is the same setting as in the guided assistant: chang
 place and both follow. It sets the development time (filter the shortest, espresso the longest,
 omni between the two) and carries through to the drop temperature and the weight loss to aim
 for. The room comes from the ambient probe, or, without one, from the online weather or values
-typed in; its temperature moves the charge, and its altitude moves first crack — see
+typed in; its temperature moves the charge, and its air pressure nudges the charge, the burner, the
+airflow and first crack — see
 [What the coffee and the room are doing](preparing-a-roast.md#what-the-coffee-and-the-room-are-doing).
 
 Two things take the plan off the screen:
@@ -153,37 +154,47 @@ Time*, *Drop Temp*.
 Maillard duration is not lengthened merely because it is under 3:00; only a 2:00 technical
 plausibility guard rejects likely bad milestone data. Style ranges remain guidance.
 
-On a radiant electric roaster these durations are not read off a style table. They are what
+On a Skywalker V1 or V2, at every roast level, **time drives the plan**. Drying is set by
+the batch size — about 4:15 at 250 g, 5:00 at 350 g, 5:20 at 400 g and 6:00 at 500 g, as measured
+on the roasts recorded on this machine. Maillard follows drying: it carries the same momentum, so
+a brisk drying leads into a brisker Maillard, and it lasts about one minute plus half the drying
+time. Development is set by the roast level and the coffee's use, and it does not shorten or
+lengthen Maillard: a coffee browns at its own pace, and more heat would only scorch or tip it.
+A darker roast spends its extra time in development. On a light roast drying then comes out at
+about half the roast, within a few percent either way. The rates of rise
+follow from these durations — the temperature to cover in the time given — so the peak after the
+turning point is a consequence of the drying, not a figure to aim at; on a small batch it can
+read 18 or more. A high peak on a small batch is normal: the machine heats it more easily.
+
+**A coffee keeps its pace at any batch size.** Durations themselves change with the batch, so the
+plan does not copy them from a roast of another size. What it learns from all your roasts of a
+coffee is how fast that coffee dries and browns against the figures above, and its first crack,
+and it applies that pace at the batch size you are planning. Burner, air, drop and the durations
+read from history still come from roasts of a comparable size.
+
+On roasters that do not declare these durations, the durations are what
 the rate-of-rise plan costs: the curve leaves the turning point near 16°C/min, enters Maillard
 near 12, passes 8 a minute before first crack and arrives at the crack at 5 to 6, and drying
 and Maillard last exactly as long as that climb takes. A larger batch turns lower, so it has
-further to climb and takes longer — around 250 g dries in about four minutes where 400 g needs
-closer to six. Nothing states that rule; it falls out of the slope and the temperature to cover.
+further to climb and takes longer.
 
 **Drying does not climb at one speed for every batch.** The longer the climb, the higher the
 average rate the machine holds through it; a small batch turns high and starts already past the
-steep part of the curve, so it never reaches the rate a large batch does. Measured on the
-Skywalker, a 400 g batch averages about 13.5°C/min from the turning point to the dry end while
-a 250 g one averages barely over 10. The plan works its drying time out from the climb it
-actually has to make rather than assuming one speed, which is why a small batch is no longer
-promised a drying time it cannot hold.
-Bean moisture, room temperature and your own roast history still shift the result on top.
+steep part of the curve, so it never reaches the rate a large batch does. The plan works its
+drying time out from the climb it actually has to make rather than assuming one speed, which is
+why a small batch is no longer promised a drying time it cannot hold.
+Room temperature and your own roast history still shift the result on top. The coffee's moisture
+changes the energy the plan gives, not the drying time.
 
-Maillard is always planned shorter than drying, and shorter by a real margin — four minutes of
-drying against three of Maillard, or five against four. Equal halves are not a shape this
-machine roasts: the rate of rise has no time to come down. On a small batch the turning point
-sits high, so there is little climb left before the dry end while Maillard still has its full
-span to cover, and the arithmetic alone would invert the two. When that happens it is Maillard
-that gives way, not drying: drying has a duration the batch size fixes — around three minutes
-at 150 g, closer to five at a full drum — while Maillard has only a rate to hold, and a rate
-can be held higher. The plan then leads Maillard more briskly than the usual easing and tells
-you the rate it settled on.
+Maillard is always planned shorter than drying. When the arithmetic would make it longer, it is
+Maillard that gives way, not drying: drying has a duration the batch size fixes, while Maillard
+has only a rate to hold, and a rate can be held higher. The plan then leads Maillard more briskly
+than the usual easing and tells you the rate it settled on.
 
 One case needs a word. When the batch is small the machine cannot dry any faster than its own
 floor, so drying may be held longer than the climb strictly costs — and a longer dry at the
-same rate of rise arrives hotter. The plan then raises the dry end by a couple of degrees
-rather than pretend the bean is where it was, because the rate of rise has to keep falling
-into Maillard and it cannot do that if drying gains time without gaining temperature.
+same rate of rise arrives hotter. Where the durations come from the rate-of-rise plan, the plan
+then raises the dry end by a couple of degrees rather than pretend the bean is where it was.
 
 The Skywalker V2's post-turning-point [rate of rise](glossary.md#ror--rate-of-rise) is centred
 near 16°C/min in the available history. The plan treats this as a typical reference, not a
@@ -192,21 +203,16 @@ used to declare a plan impossible.
 
 *Estimated TP* is the turning point the plan draws on its own curve — one figure, not two. It is
 placed from the batch size rather than from the charge temperature alone, because that is what
-the machine actually does: load half a drum and the temperature dives far less far. Expect a
-small batch to turn some 25°C higher than a full one charged identically, and expect the drying
-rate of rise to be correspondingly gentler — there is less climb left to make.
+the machine actually does: load half a drum and the temperature dives less far. The real turning
+point replaces it as soon as it is seen.
 
-**The turning point is read from a table, not from a formula.** Like the deviation of a
-temperature probe, it is described by a set of measured values at fixed load steps rather than
-by one curve stretched across every batch size: a quarter drum, five eighths, seven eighths and
-a full load each carry their own figure, taken from the roasts actually recorded at that step,
-and anything between two steps is read across them. Outside the measured range the plan repeats
-the nearest known value rather than continuing a slope nothing supports — which is why the dip
-stops deepening below roughly a quarter drum, and a 150 g and a 250 g batch turn at much the
-same temperature. Each step is stated as a *proportion* of the load and of the charge
-temperature, not in grams and degrees, so the same table describes a roaster it was not measured
-on. Steps backed by few roasts are marked as such and are the first to be replaced as the
-history fills in.
+On a Skywalker V1 or V2 the dip is the one measured on its recent roasts: the bean probe falls by a
+little under half the charge temperature, a bit more for a full drum than for a small batch.
+On another roaster it is read from a table of measured values at fixed load steps — a quarter
+drum, five eighths, seven eighths and a full load — and anything between two steps is read across
+them; outside the measured range the plan repeats the nearest known value. Each step is stated as
+a *proportion* of the load and of the charge temperature, not in grams and degrees, so the same
+table describes a roaster it was not measured on.
 
 **RoR targets.** *Target ROR Maillard*, *Target ROR at FC*, *Target ROR Dev* and *Target ROR at
 Drop*: the slope to hold at each stage. The Maillard figure is an average, and an average says
@@ -232,8 +238,9 @@ roast, not at development.
 On a radiant electric roaster the development window is shorter than the general table
 suggests: roughly 0:45 to 1:00 for a light roast and about 1:30 for a medium light one. The
 radiant element finishes the roast quickly, and a light roast held a full two minutes past
-first crack usually lands medium. The total time does not change with it — the extra time
-goes back into Maillard, where the sugars have longer to develop.
+first crack usually lands medium. Darker levels keep their longer development: shortening it
+would also lower the drop temperature and lighten the roast. On a radiant roaster that makes
+the development ratio higher than on a slower roast — 19 to 30 % from medium to very dark.
 
 **The curve.** *Planned BT* and *Planned RoR*, a smooth curve the real roast can be laid over.
 
@@ -412,7 +419,10 @@ together.
   first crack, drop and finishing rate of rise.
 
 Whole-bean and ground-colour histories remain separate. A ground-colour cohort is preferred
-once it contains two complete roasts; otherwise whole-bean history is used. The PDF's *History
+once it contains two complete roasts; otherwise whole-bean history is used. A roast level is a
+ground colour, and many roasts are only measured whole: a roast measured whole only is placed at
+the ground colour it would read — on the Skywalker, about 10 Agtron points lighter than the whole
+bean; the gap depends on how the roaster heats — to decide which level it belongs to. The PDF's *History
 profile* line states whether the source is grid, reference only, a grid/profile blend or a
 representative historical roast.
 

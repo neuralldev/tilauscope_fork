@@ -125,7 +125,7 @@ at the same batch size are not steered identically.
 ## Where the roast stands
 
 **Against the plan.** During drying and Maillard the assistant states the lead or lag against
-the planned curve — *plan +0:15* — or simply *on plan* / **ON PLAN ✓**.
+the planned curve — *plan +0:15* — or simply *on plan*.
 
 **Against the expected slope.** [RoR](glossary.md#ror--rate-of-rise) is judged at the point on
 the curve the roast has actually reached, not against a fixed number:

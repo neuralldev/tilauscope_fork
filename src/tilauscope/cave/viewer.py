@@ -52,8 +52,9 @@ from tilauscope.header_icons import make_icon
 from tilauscope.beancave_catalogue import svg_icon
 from tilauscope.theme_qss import style_combo_popup, styled_popup_view, tint
 from tilauscope.tilauscope_types import (THEME, literal_ampersand, standardization_map,
-                                         TilauProgressRow, to_agtron, normalize_timeindex,
+                                         TilauProgressRow, normalize_timeindex,
                                          RoastingPhase, show_styled_message)
+from tilaucore.roast_colour import roast_agtron
 from tilauscope.roast_timeline import RoastReadyDialog
 from tilauscope.cave.common import (
     _log, _logd, _PLOT_PALETTE, _safe_filename,
@@ -1653,8 +1654,8 @@ class ViewerMixin:
             banner.show_state(QApplication.translate("tilauscope_beancave", "No tasting came with this roast."), "")
             return
         epoch = self._roast_epoch(profile)
-        colour = to_agtron(float(profile.get('ground_color') or 0) or float(profile.get('whole_color') or 0),
-                           str(profile.get('color_system') or ''))
+        colour = roast_agtron(float(profile.get('ground_color') or 0), float(profile.get('whole_color') or 0),
+                              str(profile.get('color_system') or ''))[0]
         # Calendar days, as the rest calendar counts them — not 24-hour slices.
         days = ((datetime.now().astimezone().date()
                  - datetime.fromtimestamp(epoch, tz=UTC).astimezone().date()).days

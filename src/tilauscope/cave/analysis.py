@@ -33,6 +33,7 @@ from PyQt6.QtWidgets import (QApplication, QMessageBox) # @UnusedImport @Reimpor
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
+from tilaucore.roast_colour import agtron_text, roast_agtron
 from tilauscope.roasters import canonical_roaster_name
 from tilauscope.tilauscope_types import AGTRON_SCALES, THEME, resolve_color_system
 from tilauscope.brew_advisor import BrewInput, WaterProfile
@@ -326,7 +327,9 @@ class AnalysisMixin:
         # measurement it came from and shows the whole/ground delta when both
         # exist (a wide delta = surface and core developed unevenly).
         _cs = str(colorsystem or "").strip()
-        colour_badge_txt = f"{roast_colour:g} {_cs}".strip() if roast_colour > 0 else str(roastcolor)
+        _agtron, _basis = roast_agtron(ground_colour, whole_colour, _cs)
+        colour_badge_txt = (f"{agtron_text(_agtron, _basis)} Agtron" if _basis == "estimated"
+                            else f"{roast_colour:g} {_cs}".strip() if roast_colour > 0 else str(roastcolor))
         colour_detail = ""
         if ground_colour > 0 and whole_colour > 0:
             colour_detail = QApplication.translate(

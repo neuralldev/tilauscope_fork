@@ -387,6 +387,28 @@ class Roaster:
     # stable physical machine signature.
     maillard_ror_decay: float | None = None
 
+    ## Time rule of this roaster model (RoastPlan-Timing-Review-2026-10-29):
+    ## drying = base + per_load × (charge / optimal batch), in minutes, and
+    ## Maillard = maillard_time_base_min + maillard_per_drying × drying — the
+    ## Maillard carries the drying's momentum, the development (set by the
+    ## target level, so a darker roast spends its extra time there) does not
+    ## enter it. None → the plan keeps deducing the
+    ## durations from its RoR envelope.
+    drying_time_base_min: float | None = None
+    drying_time_per_load_min: float | None = None
+    maillard_time_base_min: float | None = None
+    maillard_per_drying: float | None = None
+    ## Mean drying RoR over the post-TP peak, measured on this model: the peak
+    ## the plan prints is the consequence of the drying it plans.
+    dry_ror_mean_to_peak: float | None = None
+    ## Turning-point dip, 1 − TP/charge = base + per_load × (charge / optimal
+    ## batch), measured on this model. None → the plan's built-in table.
+    tp_dip_share_base: float | None = None
+    tp_dip_share_per_load: float | None = None
+    ## Ground minus whole-bean Agtron on this model: a roast measured whole only
+    ## is placed at its estimated ground colour. None → no estimate (0).
+    whole_to_ground_agtron_offset: float | None = None
+
     ## Continuous hot time the element takes in one go, and the temperature
     ## above which it counts. Protects the thermal cut-out during a bench
     ## session; a plate value, not a measurement.
@@ -558,6 +580,16 @@ class RoasterContext:
     ## Heater ceiling: hardware limit, not a style choice — see
     ## Roaster.heater_max_pct. 100.0 = no declared ceiling.
     heater_max_pct: float = 100.0
+    ## Time rule, TP dip and colour estimate — see the Roaster fields of the
+    ## same names. None = not declared for this model.
+    drying_time_base_min: float | None = None
+    drying_time_per_load_min: float | None = None
+    maillard_time_base_min: float | None = None
+    maillard_per_drying: float | None = None
+    dry_ror_mean_to_peak: float | None = None
+    tp_dip_share_base: float | None = None
+    tp_dip_share_per_load: float | None = None
+    whole_to_ground_agtron_offset: float = 0.0
     heater_support_threshold_pct: "float | None" = None
     heater_caution_pct: "float | None" = None
 
@@ -633,6 +665,16 @@ class RoasterContext:
             heater_caution_pct       = roaster.heater_caution_pct,
             maillard_ror_decay       = (roaster.maillard_ror_decay
                                         if roaster.maillard_ror_decay is not None else 2.0),
+            drying_time_base_min     = roaster.drying_time_base_min,
+            drying_time_per_load_min = roaster.drying_time_per_load_min,
+            maillard_time_base_min   = roaster.maillard_time_base_min,
+            maillard_per_drying      = roaster.maillard_per_drying,
+            dry_ror_mean_to_peak     = roaster.dry_ror_mean_to_peak,
+            tp_dip_share_base        = roaster.tp_dip_share_base,
+            tp_dip_share_per_load    = roaster.tp_dip_share_per_load,
+            whole_to_ground_agtron_offset = (roaster.whole_to_ground_agtron_offset
+                                             if roaster.whole_to_ground_agtron_offset is not None
+                                             else 0.0),
             hot_above_c              = (roaster.hot_above_c
                                         if roaster.hot_above_c is not None else 150.0),
             max_continuous_hot_minutes = (roaster.max_continuous_hot_minutes

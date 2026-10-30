@@ -33,6 +33,7 @@ from artisanlib.atypes import ProfileData
 
 from tilauscope.tilauscope_types import GreenBean, _IS_WINDOWS, _IS_MACOS, _IS_LINUX
 from tilauscope import text_shaping
+from tilaucore.roast_colour import roast_agtron
 from tilaucore.roast_label import label_data, lines_30mm
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
@@ -665,7 +666,9 @@ class RoastedBeanLabelPrinter(_FontMixin):
 
         bean_color_raw = 0
         if profile:
-            bean_color_raw = int(profile.get("ground_color") or profile.get("whole_color") or 0)
+            bean_color_raw = int(roast_agtron(float(profile.get("ground_color") or 0),
+                                              float(profile.get("whole_color") or 0),
+                                              str(profile.get("color_system") or ""))[0])
         roast_color = agtron_to_roast_name(bean_color_raw)
 
         crop = str(bean.crop) if bean and bean.crop and bean.crop > 0 else "-"

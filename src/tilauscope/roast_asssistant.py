@@ -40,8 +40,9 @@ from artisanlib.util import fromCtoFstrict, fromFtoCstrict, weight_units, conver
 
 from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, THEME,
     get_ror_color_by_phase, get_ror_ideal_band,
-    format_batch_label, to_agtron, weight_loss_target_from_plan)
+    format_batch_label, weight_loss_target_from_plan)
 from tilauscope.theme_qss import style_combo_popup, tint, tooltip_qss
+from tilaucore.roast_colour import roast_agtron
 from tilauscope.roasters import RoasterContext, roast_context_for
 from tilauscope.probe_visibility import et_available_for
 from tilauscope.graph.common import preheat_arrived
@@ -51,8 +52,6 @@ from tilauscope.roast_plan_model import (TilauScopeRoastPlan, heat_soak_correcti
                                          ROAST_DESTINATION_SETTING)
 from tilauscope.roast_plan_snapshot import build_prediction_snapshot
 # moteur de trim pur (v1b) — calé hors-app sur le corpus de roasts
-from tilauscope.autopilot_core import (AutoPilotCore, TrimParams,
-                                       Phase as _APPhase, Lever as _APLever)
 from tilauscope.guidance_core import GuidanceMode, GuidanceParams
 from tilauscope.guidance_observer import (
     ActionSource, Lever as GuidanceLever, observable_control_levers,
@@ -497,10 +496,6 @@ def _plan_heater_pct(plan: "dict | None", phase: str) -> "float | None":
         return None
 
 
-# AutoPilot v1a — hard burner ceiling. SOURCE UNIQUE = TrimParams.max_burner_pct
-# (le trim et le feedforward/rampe partagent le même plafond ; changer de torréfacteur
-# ne se règle qu'à un seul endroit). Partagé en esprit avec le PID de préchauffe.
-_AP_MAX_BURNER: Final = TrimParams().max_burner_pct
 # ticks AUTO consécutifs en échec tolérés avant de rendre la main (1 Hz) : un
 # raté isolé est rattrapable, trois d'affilée = le pilote ne pilote plus.
 _AP_TICK_FAIL_MAX: Final = 3
@@ -513,7 +508,7 @@ _AP_DROP_CONFIRM_TICKS: Final = 3
 # transitoirement les sliders ; AUTO les suit sans se mettre en pause pendant cette fenêtre.
 _AP_CHARGE_SETTLE_S: Final = 8.0
 # AUTO user access. Re-enabled explicitly with the MANUAL/AUTO coach
-# switch; all runtime gates (active session, plan confidence, read-only roaster)
+# switch; all runtime gates (active session, a plan, read-only roaster)
 # remain mandatory before arming.
 _AP_USER_ENABLED: Final = True
 # Dev en AUTO — « tenir le feu » : la coupe rapide du feu en dev est la cause
@@ -524,7 +519,6 @@ _AP_NET_STEP_PCT: Final = 2.0           # touche du filet (2 %/4-5 s, jamais blo
 _AP_NET_CADENCE_S: Final = 5.0          # cadence des touches du filet
 _AP_NET_CAP_PCT: Final = 6.0            # borne d'offset AIR du filet (3 touches)
 _AP_NET_RESORB_QUIET_S: Final = 25.0    # calme requis avant résorption de l'offset
-_AP_FF_ONLY_KEY: Final = "tilauscope/ap_feedforward_only"  # flag A/B (QSettings caché)
 
 # plan keys of the per-phase lever values, by Artisan slider index
 _AP_LEVER_KEYS: Final = {
@@ -540,70 +534,19 @@ _AP_PHASE_WORD: Final = {"DRY": "drying", "MAI": "maillard", "DEV": "development
 _AP_COOLING_LEVERS: Final = {3: 0.0, 0: 75.0, 2: 75.0, 1: 80.0}  # burner, air, ext, drum
 
 
-def _ap_curve_ror_c(plan: dict | None, t_min: float, mode: str) -> "float | None":
-    """RoR PLANIFIÉE RÉELLE (°C/min) au temps t_min, interpolée depuis
-    `bt_plan_curve.ror_plan` — la courbe physiquement modélisée (décélérante),
-    pas une moyenne scalaire. C'est LA cible correcte pour l'écart affiché et le
-    trim : comparer le RoR réel à la RoR prévue AU MÊME POINT. °F → ÷1.8."""
+def _ap_next_ramp_bt(plan: dict | None, keys: "tuple[str, ...]",
+                     bt: float) -> "float | None":
+    """Seuil BT du prochain palier des rampes `keys` au-dessus de bt, None sans palier."""
+    nxt: "float | None" = None
     try:
-        c = (plan or {})["bt_plan_curve"]
-        tm, rp = c["time_min"], c["ror_plan"]
-        if not tm or len(tm) != len(rp):
-            return None
-        if t_min <= tm[0]:
-            v = rp[0]
-        elif t_min >= tm[-1]:
-            v = rp[-1]
-        else:
-            i = bisect.bisect_left(tm, t_min)
-            i = min(max(i, 1), len(tm) - 1)
-            t0, t1 = tm[i - 1], tm[i]
-            f = 0.0 if t1 == t0 else (t_min - t0) / (t1 - t0)
-            v = rp[i - 1] + (rp[i] - rp[i - 1]) * f
-        return (v / 1.8) if mode == 'F' else float(v)
-    except (KeyError, TypeError, ValueError, IndexError):
+        for key in keys:
+            for step in (plan or {}).get(key) or []:
+                thr = float(step["bt"])
+                if thr > bt and (nxt is None or thr < nxt):
+                    nxt = thr
+    except (TypeError, ValueError, KeyError):
         return None
-
-
-def _ap_phase_endpoints(plan: dict | None, phase_key: str,
-                        mode: str) -> "tuple[float, float]":
-    """Cibles RoR (début, fin) de phase pour l'AutoPilotCore, en °C/min,
-    ÉCHANTILLONNÉES SUR LA VRAIE COURBE du plan aux temps des jalons (fix
-    2026-07-10 : l'ancienne reconstruction géométrique produisait une cible
-    Maillard plate qui ne suivait pas la courbe → écarts % incohérents). Repli
-    sur les moyennes scalaires seulement si la courbe manque."""
-    try:
-        wps = (plan or {})["bt_plan_curve"]["waypoints"]
-        k0, k1 = ("dry_end", "fc_start") if phase_key == "MAI" else ("fc_start", "drop")
-        w0, w1 = _waypoint(wps, k0, -1), _waypoint(wps, k1, -1)
-        r0 = _ap_curve_ror_c(plan, float(w0["time_min"]), mode)
-        r1 = _ap_curve_ror_c(plan, float(w1["time_min"]), mode)
-        if r0 is not None and r1 is not None:
-            return max(0.5, r0), max(0.5, r1)
-    except (KeyError, TypeError, ValueError, IndexError):
-        pass
-    # repli géométrique (pas de courbe)
-    s = 1.8 if mode == 'F' else 1.0
-    avg_mai = _plan_ror(plan, "Target ROR Maillard") / s
-    avg_dev = _plan_ror(plan, "Target ROR Dev (Avg)") / s
-    if phase_key == "MAI":
-        end = max(0.5, avg_dev)
-        return max(end, 2.0 * avg_mai - end), end
-    start = max(0.5, avg_dev * 1.3)
-    return start, max(0.5, 2.0 * avg_dev - start)
-
-
-def _ap_phase_span_sec(plan: dict | None, phase_key: str) -> "float | None":
-    """Durée planifiée (s) de la phase MAI/DEV depuis les waypoints
-    de la courbe du plan vivant (clés stables). None si indisponible."""
-    try:
-        wps = (plan or {})["bt_plan_curve"]["waypoints"]
-        k0, k1 = ("dry_end", "fc_start") if phase_key == "MAI" else ("fc_start", "drop")
-        w0, w1 = _waypoint(wps, k0, -1), _waypoint(wps, k1, -1)
-        span = (float(w1["time_min"]) - float(w0["time_min"])) * 60.0
-        return span if span > 30.0 else None
-    except (KeyError, TypeError, ValueError, IndexError):
-        return None
+    return nxt
 
 
 def _ap_ramp_crossed(plan: dict | None, bt_prev: float,
@@ -2628,8 +2571,6 @@ class _MaillardPage(QWidget):
         self._tr_ideal_decrease                  = QApplication.translate("tilauscope_roast_assistant", "Ideal decrease ✓")
         self._tr_ror_is_ok                       = QApplication.translate("tilauscope_roast_assistant", "RoR is OK")
         self._tr_ror_increasing_watch_slope      = QApplication.translate("tilauscope_roast_assistant", "RoR increasing — look after the slope")
-        self._tr_high_altitude                   = QApplication.translate("tilauscope_roast_assistant", "High altitude")
-        self._tr_maillard_slower                 = QApplication.translate("tilauscope_roast_assistant", "+Maillard slower")
         self._tr_floral_early_fcs                = QApplication.translate("tilauscope_roast_assistant", " · Floral profile → early FCs recommmended")
         self._tr_ror_too_low_baked_banner        = QApplication.translate("tilauscope_roast_assistant", "⚠ RoR too low — risk of baked coffee!")
         self._tr_fcs_imminent                    = QApplication.translate("tilauscope_roast_assistant", "⚠ FCs imminent — prepare next action")
@@ -2711,8 +2652,6 @@ class _MaillardPage(QWidget):
                 ror_sub = (self._tr_ideal_decrease if trend == "↓"
                            else self._tr_ror_is_ok if trend == "→"
                            else self._tr_ror_increasing_watch_slope)
-            if bean and bean.altitude and bean.altitude > 1800:
-                ror_sub += "  · " + self._tr_high_altitude + f" ({bean.altitude}m) → " + self._tr_maillard_slower
 
         # ETA / gap to FC — modèle décéléré : le RoR Maillard décline, le modèle
         # constant était optimiste et faisait SOUS-alerter la projection
@@ -3843,11 +3782,10 @@ class _CoolingPage(QWidget):
         try:
             ground = float(getattr(qmc, "ground_color", 0) or 0)
             whole  = float(getattr(qmc, "whole_color",  0) or 0)
-            raw = ground if ground > 0 else (whole if whole > 0 else 0.0)
-            if raw > 0:
+            if ground > 0 or whole > 0:
                 csys = qmc.color_systems[qmc.color_system_idx]
-                colour_val = self._average_color_in_agtron(float(raw), csys)
-                is_measured = True
+                colour_val, _basis = roast_agtron(ground, whole, csys)
+                is_measured = _basis != "estimated"   # une estimation garde son ~
         except (IndexError, TypeError, ValueError, AttributeError):
             colour_val = None
         if colour_val is None:
@@ -4522,7 +4460,7 @@ class _AutoCockpitPage(QWidget):
     Quatre éléments, gros, ZÉRO texte d'appoint — la machine pilote, elle ne se
     justifie pas à l'écran (le détail vit dans les événements Artisan et le log) :
       1. bandeau « ● AUTO PILOTE · phase · chrono »
-      2. UN état en toutes lettres (ON PLAN ✓ / DRIFTING ↑↓ / PAUSED)
+      2. UN état en toutes lettres (NEXT STEP AT … / FOLLOWING PLAN / PAUSED)
       3. UNE carte action (quoi + quand)
       4. quatre tuiles leviers (nom + valeur, flash quand AUTO agit) + barre jalon
     Remplace la page de phase quand AUTO est armé ou en pause."""
@@ -4905,8 +4843,6 @@ class RoastAssistantPanel(QWidget):
         self._ap_bt_prev: "float | None" = None   # BT du tick précédent (franchissement montant de rampe)
         self._ap_settle_until: float = 0.0  # coutures de jalon (CHARGE/DE/FC) : fenêtre de grâce anti-pause
         self._ap_tick_failures: int = 0     # ticks consécutifs en échec (pause au-delà de _AP_TICK_FAIL_MAX)
-        self._tr_ap_blocked_lowconf = QApplication.translate(
-            "tilauscope_roast_assistant", "AUTO unavailable — not enough past roasts of this coffee to trust the plan.")
         self._tr_ap_blocked_noplan = QApplication.translate(
             "tilauscope_roast_assistant", "AUTO unavailable — no roast plan for this session.")
         self._tr_ap_blocked_inactive = QApplication.translate(
@@ -4929,9 +4865,7 @@ class RoastAssistantPanel(QWidget):
         self._ap_automark_done: set[str] = set()                  # "DE"/"FC" one-shot
         self._tr_cp_pilot   = QApplication.translate("tilauscope_roast_assistant", "● AUTO PILOTING")
         self._tr_cp_paused  = QApplication.translate("tilauscope_roast_assistant", "⏸ AUTO PAUSED")
-        self._tr_cp_onplan  = QApplication.translate("tilauscope_roast_assistant", "ON PLAN ✓")
-        self._tr_cp_drift_h = QApplication.translate("tilauscope_roast_assistant", "DRIFTING ↑")
-        self._tr_cp_drift_l = QApplication.translate("tilauscope_roast_assistant", "DRIFTING ↓")
+        self._tpl_cp_next   = QApplication.translate("tilauscope_roast_assistant", "NEXT STEP AT {0}°")
         self._tr_cp_follow  = QApplication.translate("tilauscope_roast_assistant", "FOLLOWING PLAN")
         self._tr_cp_pausest = QApplication.translate("tilauscope_roast_assistant", "PAUSED — tap AUTO")
         self._tr_cp_waiting = QApplication.translate("tilauscope_roast_assistant", "⚙ following the plan")
@@ -4958,15 +4892,8 @@ class RoastAssistantPanel(QWidget):
         self._tr_ap_dropmark = QApplication.translate("tilauscope_roast_assistant", "⚙ DROP marked (auto)")
         self._tr_ap_dropstand = QApplication.translate(
             "tilauscope_roast_assistant", "⬇ auto-DROP stood down — back below target")
-        # v1b — moteur de trim continu (autopilot_core, calé Sim-1/Sim-2)
-        self._ap_core = AutoPilotCore(self._ap_trim_params())
-        self._tpl_ap_trim = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · {0} → {1}% ({2})")
         self._tpl_ap_dev_ramp = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · DEV {0}")
-        self._tr_ap_ceiling = QApplication.translate(
-            "tilauscope_roast_assistant", "⚠ AUTO · trim at its ceiling — check the plan")
-        # v2 — « tenir le feu » en dev (rate-limiter exotherme), filet
-        # réactif minimal AIR-d'abord, et flag A/B feedforward-seul vs +trim.
-        self._ap_ff_only: bool = False           # lu depuis QSettings à l'armement
+        # « tenir le feu » en dev (rate-limiter exotherme) et filet réactif minimal AIR-d'abord.
         self._ap_dev_heater_pending: "float | None" = None  # cible feu en file (monotone)
         self._ap_dev_rate_anchor: "tuple[float, float] | None" = None  # (t_fc_sec, burner_pct)
         self._ap_net_offset: float = 0.0         # offset AIR posé par le filet (auto-résorbé)
@@ -4985,8 +4912,6 @@ class RoastAssistantPanel(QWidget):
         self._tr_data_stale = QApplication.translate(
             "tilauscope_roast_assistant",
             "⚠ No bean temperature coming in — advice on hold until it returns")
-        self._tr_ap_mode_ff = QApplication.translate("tilauscope_roast_assistant", "feedforward only")
-        self._tr_ap_mode_trim = QApplication.translate("tilauscope_roast_assistant", "feedforward + trim")
 
         # Historique RoR : tendance ([-5:]) ET fenêtre 15 s du détecteur de crash
         # dev — 64 valeurs couvrent 15 s même à l'échantillonnage le plus rapide
@@ -5157,7 +5082,7 @@ class RoastAssistantPanel(QWidget):
         self._bean_header = _BeanHeader()
         body_lay.addWidget(self._bean_header)
         # Explicit MANUAL/AUTO coach switch; AUTO is gated by active session,
-        # plan confidence and machine write capability.
+        # a plan and machine write capability.
         self._bean_header.btn_auto.clicked.connect(self._ap_toggle)
         self._bean_header.btn_manual.clicked.connect(self._coach_manual_selected)
         self._auto_user_available = _AP_USER_ENABLED and not _guidance_curve_only(self.aw)
@@ -5546,6 +5471,7 @@ class RoastAssistantPanel(QWidget):
                 ambient_humidity=ambient_hum,
                 charge_weight=charge_weight,
                 roast_altitude=roast_alt,
+                station_pressure=self._station_pressure(),
                 bt_deviation=None,   # the roaster's own offsets, as in Roast Setup's plan
                 airwave_present=getattr(self.aw, "bleAirwaveDevice", None) is not None,
                 minutes_since_last_drop=self._minutes_since_last_drop(),
@@ -5641,6 +5567,14 @@ class RoastAssistantPanel(QWidget):
         room = getattr(self.aw, "_tilau_planned_room", None)
         alt = room[2] if room else getattr(self.aw.qmc, "elevation", 0)
         return float(alt or 0.0)
+
+    def _station_pressure(self) -> "float | None":
+        """Station pressure (hPa) the setup sheet planned with, else the recorded room, else None."""
+        room = getattr(self.aw, "_tilau_planned_room", None)
+        if room:
+            return float(room[3]) if len(room) > 3 and room[3] else None
+        p = getattr(self.aw.qmc, "ambient_pressure", 0)
+        return float(p) if p else None
 
     def _stop_assistant(self) -> None:
         self.is_active = False
@@ -5799,7 +5733,7 @@ class RoastAssistantPanel(QWidget):
                 # une reprise en main et se mettait en pause au jalon.
                 self._ap_settle_until = time.monotonic() + _AP_CHARGE_SETTLE_S
                 self._ap_apply_phase(phase_key)
-                self._ap_core_start_phase(phase_key)   # trim v1b : cibles fraîches, trims à zéro
+                self._ap_start_phase(phase_key)
             elif phase_key in ("DROP", "COOL"):
                 self._ap_apply_cooling()   # burner 0, air/ext forts, drum rapide, puis off
 
@@ -6017,6 +5951,7 @@ class RoastAssistantPanel(QWidget):
                 ambient_humidity=ambient_hum,
                 charge_weight=charge_weight,
                 roast_altitude=self._roast_altitude(),
+                station_pressure=self._station_pressure(),
                 bt_deviation=None,
                 airwave_present=getattr(self.aw, "bleAirwaveDevice", None) is not None,
                 minutes_since_last_drop=self._minutes_since_last_drop(),
@@ -6226,46 +6161,25 @@ class RoastAssistantPanel(QWidget):
         b = _burner_slider_idx(self.aw)
         return (0, 1, 2, b) if b not in (0, 1, 2) else (0, 1, 2)
 
-    def _ap_trim_params(self) -> TrimParams:
-        """Paramètres du trim pour ce torréfacteur.
-        # TODO(v2): lire les surcharges pas/fenêtres/bornes depuis RoasterContext
-        # et apprendre les magnitudes des roasts manuels (spec §3bis).
-        Les défauts SONT la calibration Skywalker (Sim-1/Sim-2, 81 roasts) — la
-        seule machine existante aujourd'hui ; le seam d'injection est ici."""
-        return TrimParams()
+    def _ap_max_burner(self) -> float:
+        """Plafond brûleur déclaré par le torréfacteur (roasters.json), 100 sans plafond."""
+        return float(getattr(self.roast_context, "heater_max_pct", 100.0) or 100.0)
 
-    def _ap_core_start_phase(self, phase_key: str) -> None:
-        """Démarre la phase du moteur de trim (MAI/DEV seulement — périmètre des
-        sims). Cibles = reconstruction géométrique des moyennes du plan vivant
-        (°C), durée = waypoints de la courbe. Appelé APRÈS le feedforward, pour
-        que les valeurs observées soient celles fraîchement posées."""
-        if phase_key not in ("MAI", "DEV"):
+    def _ap_start_phase(self, phase_key: str) -> None:
+        """Entrée en DEV (jalon ou reprise) : ancre du rate-limiter exotherme
+        (t0 = entrée en dev, b0 = feu courant), file feu vidée, filet réactif
+        remis à zéro (nouvelle référence)."""
+        if phase_key != "DEV":
             return
         try:
-            mode = self.aw.qmc.mode
-            rs, re_ = _ap_phase_endpoints(self._plan, phase_key, mode)
-            span = _ap_phase_span_sec(self._plan, phase_key) or 300.0
             t0 = float(self._collect_qmc_context()["t_now_sec"])
-            aw_on = getattr(self.aw, "bleAirwaveDevice", None) is not None
-            self._ap_core.start_phase(
-                _APPhase.MAILLARD if phase_key == "MAI" else _APPhase.DEV,
-                t0, t0 + span, rs, re_,
-                {_APLever.AIR: _read_slider_pct(self.aw, 0),
-                 _APLever.HEATER: _read_slider_pct(self.aw, _burner_slider_idx(self.aw)),
-                 _APLever.EXT: _read_slider_pct(self.aw, 2) if aw_on else None})
-            _logd.info(f"AutoPilot: trim engine phase {phase_key} "
-                       f"target {rs:.1f}→{re_:.1f} °C/min over {span:.0f}s")
-            if phase_key == "DEV":
-                # ── « tenir le feu » : ancre du rate-limiter exotherme (t0 =
-                # entrée en dev / reprise, b0 = feu courant) + file feu vidée +
-                # filet réactif remis à zéro (nouvelle référence).
-                _b0 = _read_slider_pct(self.aw, _burner_slider_idx(self.aw))
-                self._ap_dev_rate_anchor = (t0, float(_b0)) if _b0 is not None else None
-                self._ap_dev_heater_pending = None
-                self._ap_net_offset = 0.0
-                self._ap_net_quiet_since = None
+            _b0 = _read_slider_pct(self.aw, _burner_slider_idx(self.aw))
+            self._ap_dev_rate_anchor = (t0, float(_b0)) if _b0 is not None else None
+            self._ap_dev_heater_pending = None
+            self._ap_net_offset = 0.0
+            self._ap_net_quiet_since = None
         except Exception:  # pylint: disable=broad-except
-            _logd.warning("AutoPilot: trim engine start_phase failed", exc_info=True)
+            _logd.warning("AutoPilot: start_phase failed", exc_info=True)
 
     def _ap_cockpit_active(self) -> bool:
         """Vue cockpit affichée : AUTO ARMÉ pendant une phase de roast.
@@ -6313,7 +6227,6 @@ class RoastAssistantPanel(QWidget):
             self._ap_drop_confirm = 0
         if state == "off":
             self._ap_expected.clear()
-            self._ap_core.disarm()   # v1b : plus d'action moteur possible jusqu'au prochain armement
             self._ap_dev_heater_pending = None   # file feu + rate-limiter dev
             self._ap_dev_rate_anchor = None
             self._ap_net_offset = 0.0            # filet réactif
@@ -6355,18 +6268,8 @@ class RoastAssistantPanel(QWidget):
 
     def _ap_plan_block_reason(self) -> "str | None":
         """Why the current plan cannot drive AUTO, or None when it can."""
-        if self._plan is None:
-            return self._tr_ap_blocked_noplan
-        # Read the machine key, never "History Support": that one is
-        # the TRANSLATED display string, so this gate matched only in English —
-        # in French it reads « grille du plan seulement » and the test below was
-        # silently false, arming the AutoPilot on a plan that knows nothing of
-        # the coffee. Same disease as the plan's own source labels.
-        support = str((self._plan.get("Source Keys") or {}).get(
-            "confidence", self._plan.get("Plan Confidence", "grid only")))
-        if support == "grid only":
-            return self._tr_ap_blocked_lowconf
-        return None
+        # AUTO on a grid-only plan is the operator's call (Tilau, 2026-10-30).
+        return self._tr_ap_blocked_noplan if self._plan is None else None
 
     @pyqtSlot()
     def _ap_toggle(self) -> None:
@@ -6379,14 +6282,10 @@ class RoastAssistantPanel(QWidget):
         if self._ap_state == "paused":
             self._ap_resync()
             self._ap_set_state("armed")
-            # Re-baseline le moteur de trim à la reprise : trims cumulés remis à
-            # zéro et cibles/timing re-lus depuis la position courante — un
-            # réglage manuel fait pendant la pause devient la nouvelle référence
-            # (sinon le core garde des trims périmés vs les leviers d'avant-pause).
-            # Pas de feedforward : on respecte les sliders tels que laissés.
-            _pk = {self._PHASE_MAI: "MAI", self._PHASE_DEV: "DEV"}.get(self._current_phase)
-            if _pk is not None:
-                self._ap_core_start_phase(_pk)
+            # Reprise : un réglage manuel fait pendant la pause devient la nouvelle
+            # référence du feu de dev. Pas de feedforward : les sliders restent tels que laissés.
+            if self._current_phase == self._PHASE_DEV:
+                self._ap_start_phase("DEV")
             self._ap_notice = (self._tr_ap_armed_note, _S_OK, now + 5)
             return
         # off → armement : gates (assistant actif, plan présent, confiance non-low)
@@ -6397,26 +6296,19 @@ class RoastAssistantPanel(QWidget):
             self._bean_header.set_auto_state("blocked")
             self._ap_notice = (_reason, _S_WARN, now + 8)
             return
-        # ── Flag A/B (QSettings caché, lu à CHAQUE armement off→armé — jamais ──
-        # au tick) : feedforward-seul + filet minimal vs feedforward + trim v1b.
-        # Le mode armé est journalisé pour l'analyse A/B des roasts réels.
-        from PyQt6.QtCore import QSettings
-        self._ap_ff_only = bool(QSettings().value(_AP_FF_ONLY_KEY, False, type=bool))
         self._ap_resync()
         self._ap_set_state("armed")
-        _mode_txt = self._tr_ap_mode_ff if self._ap_ff_only else self._tr_ap_mode_trim
-        self._ap_notice = (f"{self._tr_ap_armed_note} · {_mode_txt}", _S_OK, now + 5)
-        _logd.info(f"AutoPilot: armed — A/B mode "
-                   f"{'feedforward-only' if self._ap_ff_only else 'feedforward+trim'}")
+        self._ap_notice = (self._tr_ap_armed_note, _S_OK, now + 5)
+        _logd.info("AutoPilot: armed")
         # feedforward immédiat sur la phase courante (armement en cours de roast)
         _pk = {self._PHASE_DRY: "DRY", self._PHASE_MAI: "MAI",
                self._PHASE_DEV: "DEV"}.get(self._current_phase)
         if _pk is not None:
             self._ap_apply_phase(_pk)
-            self._ap_core_start_phase(_pk)   # armement en cours de phase (MAI/DEV)
+            self._ap_start_phase(_pk)   # armement en cours de dev
 
     def _ap_plan_levers(self, phase_key: str) -> list[tuple[int, float]]:
-        """(idx slider, % plan) pour la phase — heater borné à _AP_MAX_BURNER ;
+        """(idx slider, % plan) pour la phase — heater borné au plafond du torréfacteur ;
         le slider extraction (2) n'est piloté que si un AirWave est présent ;
         le drum (1) est posé au CHARGE puis VERROUILLÉ sur les machines à
         transition de vitesse brutale (ctx.drum_midroast_locked — Skywalker :
@@ -6452,7 +6344,7 @@ class RoastAssistantPanel(QWidget):
         if not heater_governed:
             h = _plan_heater_pct(self._plan, _AP_PHASE_WORD[phase_key])
             if h is not None:
-                out.append((_burner_slider_idx(self.aw), min(h, _AP_MAX_BURNER)))
+                out.append((_burner_slider_idx(self.aw), min(h, self._ap_max_burner())))
         return out
 
     def _ap_apply_phase(self, phase_key: str) -> None:
@@ -6553,20 +6445,14 @@ class RoastAssistantPanel(QWidget):
         elif not armed:
             status, scol = self._tr_cp_pausest, THEME['YELLOW']
         else:
-            # v1b : la cible affichée = celle du MOTEUR (droite interpolée par
-            # phase, °C) — statut et décisions de trim partagent la même vérité.
-            _tgt_c = (self._ap_core.target_ror(float(ctx["t_now_sec"]))
-                      if p in (self._PHASE_MAI, self._PHASE_DEV) else None)
-            if _tgt_c is not None and _tgt_c > 0 and ror is not None:
-                _ror_c = (ror / 1.8) if mode == 'F' else ror
-                _d = (_ror_c - _tgt_c) / _tgt_c
-                _tol = self._ap_core.p.ok_rel
-                if _d > _tol:
-                    status, scol = self._tr_cp_drift_h, THEME['YELLOW']
-                elif _d < -_tol:
-                    status, scol = self._tr_cp_drift_l, THEME['YELLOW']
-                else:
-                    status, scol = self._tr_cp_onplan, THEME['SUCCESS']
+            # AUTO exécute le plan, il ne suit pas le RoR : le statut annonce le
+            # prochain palier de rampe de la phase, jamais un écart de RoR.
+            _keys = {self._PHASE_DRY: ("Heater Ramp",),
+                     self._PHASE_MAI: ("Heater Ramp", "Air Ramp"),
+                     self._PHASE_DEV: ("Dev Ramp",)}.get(p, ())
+            _next = _ap_next_ramp_bt(self._plan, _keys, bt)
+            if _next is not None:
+                status, scol = self._tpl_cp_next.format(f"{_next:.0f}"), THEME['SUCCESS']
             else:
                 status, scol = self._tr_cp_follow, THEME['SUCCESS']
         # action — quoi + quand
@@ -6647,7 +6533,7 @@ class RoastAssistantPanel(QWidget):
         _b_idx = _burner_slider_idx(self.aw)
         _pokes: list[tuple[int, float]] = []
         if "heater" in step:
-            _pokes.append((_b_idx, min(float(step["heater"]), _AP_MAX_BURNER)))
+            _pokes.append((_b_idx, min(float(step["heater"]), self._ap_max_burner())))
         if "airflow" in step:
             _pokes.append((0, float(step["airflow"])))
         if _aw_on and "extraction" in step:
@@ -6699,7 +6585,7 @@ class RoastAssistantPanel(QWidget):
             if _t_now <= _t0 + _AP_DEV_RATE_WINDOW_S:
                 # budget de descente linéaire depuis l'entrée en dev
                 _floor = max(0.0, _b0 - _AP_DEV_RATE_PCT_PER_MIN * (_t_now - _t0) / 60.0)
-        _tgt = min(max(float(_tgt_p), _floor), _AP_MAX_BURNER)
+        _tgt = min(max(float(_tgt_p), _floor), self._ap_max_burner())
         if _tgt >= _cur:
             return False   # monotone : le budget n'autorise encore aucun pas
         _full = _tgt <= float(_tgt_p) + 1e-6
@@ -6810,10 +6696,11 @@ class RoastAssistantPanel(QWidget):
                            _S_OK, time.monotonic() + 12)
         _logd.info(f"AutoPilot: DROP cooling feedforward → {applied} — disarmed")
 
-    def _ap_tick(self, ctx: dict, bt: float, ror: "float | None", mode: str,
+    def _ap_tick(self, ctx: dict, bt: float, ror: "float | None",
                  dry_end_temp: float, fc_temp: float, drop_temp: float) -> None:
         """Appelé à chaque refresh (1 Hz). O(1) : reprise en main → PAUSE,
-        crash-guard, palier de rampe dû, puis trim continu (moteur v1b).
+        crash-guard, jalons, auto-DROP, puis palier de rampe dû. AUTO exécute le
+        plan : aucune action ne poursuit un écart de RoR.
 
         Hors phases de roast (préchauffe notamment), on OBSERVE seulement :
         le PID de préchauffe pilote légitimement le burner (et le fan) — le
@@ -6958,7 +6845,7 @@ class RoastAssistantPanel(QWidget):
             hit = _ap_ramp_crossed(self._plan, prev, bt) if prev is not None else None
             if hit is not None:
                 thr, heater = hit
-                heater = min(float(heater), _AP_MAX_BURNER)
+                heater = min(float(heater), self._ap_max_burner())
                 b_idx = _burner_slider_idx(self.aw)
                 cur = _read_slider_pct(self.aw, b_idx)
                 if cur is not None and abs(cur - heater) >= 1.0 \
@@ -6970,7 +6857,7 @@ class RoastAssistantPanel(QWidget):
                     self._ap_notice = (_txt, _S_OK, _now + 8)
                     self._ap_last_action = (_txt, _now)      # cockpit
                     self._ap_lever_flash[b_idx] = _now       # cockpit
-                    ramp_acted = True   # feedforward prioritaire : pas de trim ce tick
+                    ramp_acted = True
                     _logd.info(f"AutoPilot: ramp step crossed at BT {thr:.0f} "
                                f"→ burner {heater:.0f}%")
             # ── rampe AIRFLOW de Maillard (montée douce pour chasser les fumées) ──
@@ -6996,80 +6883,6 @@ class RoastAssistantPanel(QWidget):
                         ramp_acted = self._ap_apply_dev_step(_dhit)
             if not ramp_acted:
                 ramp_acted = self._ap_dev_heater_dispense(ctx)
-
-        # ── trim continu (v1b, moteur autopilot_core calé Sim-1/Sim-2) ────────
-        # MAI + DEV seulement (périmètre des sims) ; max 1 actuation par tick :
-        # si la rampe a agi, le moteur observe mais n'agit pas ce tour-ci.
-        # Flag A/B : en mode feedforward-seul le moteur est ENTIÈREMENT sauté
-        # (ni observation ni action — le filet réactif est la seule réaction).
-        if (not self._ap_ff_only and not _net_hold
-                and self._current_phase in (self._PHASE_MAI, self._PHASE_DEV)
-                and not ramp_acted and ror is not None
-                and self._ap_drop_deadline is None):   # drop imminent → on ne trime plus
-            _aw_on = getattr(self.aw, "bleAirwaveDevice", None) is not None
-            _b_idx = _burner_slider_idx(self.aw)
-            self._ap_core.observe_levers(
-                air=_read_slider_pct(self.aw, 0),
-                heater=_read_slider_pct(self.aw, _b_idx),
-                ext=_read_slider_pct(self.aw, 2) if _aw_on else None)
-            self._ap_core.set_lever_steps(
-                air=_slider_step(self.aw, 0), heater=_slider_step(self.aw, _b_idx),
-                ext=_slider_step(self.aw, 2))
-            if not _aw_on:
-                # AirWave parti en cours de roast : la dernière valeur observée
-                # est périmée — le moteur ne doit plus rien bâtir dessus.
-                self._ap_core.forget_lever(_APLever.EXT)
-            _ror_c = (ror / 1.8) if mode == 'F' else ror
-            _act = self._ap_core.tick(float(ctx["t_now_sec"]), _ror_c)
-            # AirWave déconnecté en cours de roast : le core peut encore émettre
-            # une action EXT sur une valeur observée périmée — ne jamais la poser
-            # sur le slider 2 sans AirWave présent (les chemins feedforward sont
-            # déjà gardés de la même façon).
-            if _act is not None and _act.lever is _APLever.EXT and not _aw_on:
-                self._ap_core.discard(_act)   # jamais posée = jamais débitée
-                _act = None
-            # Frein FEU en DEV : jamais posé direct sur le slider. La coupe
-            # rapide post-FC crashe (41 % vs 16 %) — le trim rejoint la file
-            # monotone et sort par le rate-limiter exotherme, comme la rampe.
-            if (_act is not None and _act.lever is _APLever.HEATER
-                    and _act.delta_pct < 0
-                    and self._current_phase == self._PHASE_DEV):
-                _p = self._ap_dev_heater_pending
-                _tv = float(_act.target_value)
-                self._ap_dev_heater_pending = _tv if _p is None else min(_p, _tv)
-                self._ap_dev_heater_dispense(ctx)
-                _logd.info(f"AutoPilot trim: heater brake queued → {_tv:.0f}% "
-                           f"({_act.reason})")
-            elif _act is not None:
-                _idx = {_APLever.AIR: 0, _APLever.HEATER: _b_idx,
-                        _APLever.EXT: 2}[_act.lever]
-                _before = _read_slider_pct(self.aw, _idx)
-                _applied = _apply_slider_value(self.aw, _idx, _act.target_value)
-                _rb = _read_slider_pct(self.aw, _idx)
-                if _applied and _rb is not None and _before is not None and abs(_rb - _before) < 0.5:
-                    _applied = False   # the slider took nothing: not a gesture, not a debit
-                if _applied:
-                    self._ap_expected[_idx] = _rb if _rb is not None else _act.target_value
-                    _now = time.monotonic()
-                    try:
-                        _lbl = str(self.aw.qmc.etypes[_idx]).upper()
-                    except (AttributeError, IndexError):
-                        _lbl = f"SLD{_idx}"
-                    _txt = self._tpl_ap_trim.format(
-                        _lbl, f"{_act.target_value:.0f}", _act.reason)
-                    self._ap_last_action = (_txt, _now)
-                    self._ap_lever_flash[_idx] = _now
-                    self._ap_notice = (_txt, _S_OK, _now + 8)
-                    _logd.info(f"AutoPilot trim: {_act.lever.value} "
-                               f"{_act.delta_pct:+.1f}% ({_act.kind} · {_act.reason})")
-                else:
-                    self._ap_core.discard(_act)   # écriture slider refusée
-                    _logd.warning(f"AutoPilot trim: {_act.lever.value} "
-                                  f"{_act.delta_pct:+.1f}% not applied — trim rolled back")
-            elif self._ap_core.bound_hit is not None:
-                # borne atteinte = le plan est probablement faux — le dire UNE fois
-                self._ap_core.bound_hit = None
-                self._ap_notice = (self._tr_ap_ceiling, _S_WARN, time.monotonic() + 8)
 
     def _paint_ap_alert(self, text: str, level: str, hold_s: float = 20.0) -> None:
         """Pose une alerte immédiatement, sans attendre la boucle.
@@ -7453,7 +7266,7 @@ class RoastAssistantPanel(QWidget):
         # gardé (armé seulement) — jamais de charge quand AUTO est off.
         if self._ap_state == "armed":
             try:
-                self._ap_tick(ctx, bt, ror, mode,
+                self._ap_tick(ctx, bt, ror,
                               dry_end_temp, fc_temp, drop_temp)
             except Exception:  # pylint: disable=broad-except
                 self._ap_tick_failed()
@@ -7737,11 +7550,6 @@ class RoastAssistantPanel(QWidget):
         if data == 10:
             self._refresh_current_page()
 
-    def _average_color_in_agtron(self, color: float, color_system: str) -> float:
-        """Convert a color reading to the Agtron scale via the single shared
-        converter (tilauscope_types.to_agtron) so every module agrees."""
-        return to_agtron(color, color_system)
-
     def populate_bean_list(self) -> None:
         """
         Charge la liste des grains depuis BeanHelper et pré-sélectionne
@@ -7839,9 +7647,8 @@ class RoastAssistantPanel(QWidget):
                 # is taken to be on the operator's current scale.
                 color_system = (profile_path.get("color_system")
                                 or self.aw.qmc.color_systems[self.aw.qmc.color_system_idx])
-                raw_color    = ground if ground > 0 else (whole if whole > 0 else 0)
-                if raw_color > 0:
-                    ag_color = self._average_color_in_agtron(float(raw_color), color_system)
+                if ground > 0 or whole > 0:
+                    ag_color = roast_agtron(float(ground), float(whole), color_system)[0]
             except Exception as e:
                 _logd.debug(f"RoastAssistant: erreur lecture couleur profil ({e})")
         else:

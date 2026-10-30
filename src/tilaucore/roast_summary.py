@@ -20,7 +20,7 @@ from datetime import datetime
 
 from tilaucore.alog_index import _to_grams
 from tilaucore.bean_qualifiers import QT_TRANSLATE_NOOP
-from tilaucore.roast_colour import AGTRON_SCALES, get_agtron_color
+from tilaucore.roast_colour import AGTRON_SCALES, agtron_text, get_agtron_color, roast_agtron
 
 DASH = '—'
 
@@ -110,6 +110,8 @@ _DEVELOPMENT = QT_TRANSLATE_NOOP('tilauscope_beancave', 'Development {0}')
 _FIRST_CRACK_AT = QT_TRANSLATE_NOOP('tilauscope_beancave', 'First crack at {0}')
 _GROUND_LEVEL = QT_TRANSLATE_NOOP('tilauscope_beancave', 'Ground · {0}')
 _GROUND = QT_TRANSLATE_NOOP('Label', 'Ground')
+_GROUND_EST_LEVEL = QT_TRANSLATE_NOOP('tilauscope_beancave', 'Ground (est.) · {0}')
+_GROUND_EST = QT_TRANSLATE_NOOP('tilauscope_beancave', 'Ground (est.)')
 _WHOLE_LEVEL = QT_TRANSLATE_NOOP('tilauscope_beancave', 'Whole bean · {0}')
 _WHOLE = QT_TRANSLATE_NOOP('tilauscope_common', 'Whole bean')
 CAPTIONS: tuple[Text, ...] = (_ROASTED_WEIGHT, _ROAST_TIME, _DROP_TEMPERATURE, _COLOUR)
@@ -164,10 +166,14 @@ def roast_tiles(facts: RoastFacts | None, price_per_kg: float = 0.0) -> list[Til
         sub = ((_GROUND_LEVEL, (category,)),) if category else ((_GROUND, ()),)
         colour = Tile(_COLOUR, f'{facts.ground:.0f}', sub, get_agtron_color(facts.ground))
     elif facts.whole > 0:
-        # A whole bean reads a shade darker than its ground equivalent: hollow dot.
-        category = colour_category(facts.whole)
-        sub = ((_WHOLE_LEVEL, (category,)),) if category else ((_WHOLE, ()),)
-        colour = Tile(_COLOUR, f'{facts.whole:.0f}', sub, get_agtron_color(facts.whole), swatch_filled=False)
+        # Its estimated ground colour when the roaster declares the gap; hollow dot.
+        agtron, basis = roast_agtron(0.0, facts.whole, 'Agtron')
+        category = colour_category(agtron)
+        if basis == 'estimated':
+            sub = ((_GROUND_EST_LEVEL, (category,)),) if category else ((_GROUND_EST, ()),)
+        else:
+            sub = ((_WHOLE_LEVEL, (category,)),) if category else ((_WHOLE, ()),)
+        colour = Tile(_COLOUR, agtron_text(agtron, basis), sub, get_agtron_color(agtron), swatch_filled=False)
     else:
         colour = _not_recorded(_COLOUR)
     return [weight, duration, drop, colour]

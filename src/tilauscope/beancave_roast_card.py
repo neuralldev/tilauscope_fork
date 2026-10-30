@@ -28,6 +28,8 @@ from PyQt6.QtWidgets import QApplication
 
 from artisanlib.util import decodeLocalStrict, events_internal_to_external_value
 from tilauscope.beancave_card_base import CardPainter
+from tilaucore.roast_colour import agtron_text
+from tilauscope.roast_debrief import roast_colour
 from tilauscope.roasters import canonical_roaster_name
 from tilauscope.tilauscope_types import (COLOR_AIR, COLOR_GRAIN, PHASE_COLORS, THEME,
                                          dimmed, get_agtron_color)
@@ -100,14 +102,7 @@ class RoastSocialCard(CardPainter):
 
     @staticmethod
     def agtron_of(profile: dict) -> int:
-        for key in ('ground_color', 'whole_color'):
-            try:
-                value = float(profile.get(key) or 0)
-                if math.isfinite(value) and value > 0:
-                    return round(value)
-            except (TypeError, ValueError):
-                pass
-        return 0
+        return round(roast_colour(profile)[0] or 0)
 
     @staticmethod
     def _date_label(profile: dict) -> str:
@@ -288,11 +283,11 @@ class RoastSocialCard(CardPainter):
         if incoming and outgoing and incoming > 0 and outgoing > 0:
             loss = f'{(incoming - outgoing) / incoming * 100:.1f} %'
         agtron = self.agtron_of(profile)
-        ground = _number(profile.get('ground_color'))
+        basis = roast_colour(profile)[1]
         colour_label = (QApplication.translate('tilauscope_common', 'Colour') if not agtron else
-                        QApplication.translate('tilauscope_roast_review', 'Colour · ground')
-                        if ground is not None and ground > 0 else
-                        QApplication.translate('tilauscope_roast_review', 'Colour · whole bean'))
+                        {'ground': QApplication.translate('tilauscope_roast_review', 'Colour · ground'),
+                         'estimated': QApplication.translate('tilauscope_roast_review', 'Colour · ground (est.)'),
+                         }.get(basis, QApplication.translate('tilauscope_roast_review', 'Colour · whole bean')))
         ambient = []
         for key, fmt in (('ambientTemp', '{:.0f} ' + unit), ('ambient_humidity', '{:.0f} %'),
                          ('ambient_pressure', '{:.0f} hPa')):
@@ -310,7 +305,8 @@ class RoastSocialCard(CardPainter):
              (QApplication.translate('tilauscope_common', 'Roasted weight'),
               f'{outgoing:g} {wunit}' if outgoing else dash, _TEXT),
              (QApplication.translate('tilauscope_common', 'Weight loss'), loss, _TEXT)],
-            [(colour_label, QApplication.translate('tilauscope_roast_review', 'Agtron') + f' {agtron}'
+            [(colour_label, QApplication.translate('tilauscope_roast_review', 'Agtron')
+              + f" {agtron_text(agtron, basis)}"
               if agtron else dash, _TEXT),
              (QApplication.translate('Tab', 'Energy'), energy or dash, _TEXT)]
             + ([(QApplication.translate('Tab', 'Ambient'), ' · '.join(ambient), _TEXT)] if ambient else []),

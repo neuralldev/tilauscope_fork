@@ -86,7 +86,7 @@ The window remembers the probe's last reading. When the probe does not answer �
 prepared on a laptop away from the roaster, or a probe switched off — the window shows that
 reading greyed out, with its age (*last reading · 3 days ago*), and the plan is built on it
 until the probe answers again. A probe that has never been read says *waiting for probe* and
-names what the plan uses meanwhile, for example *Plan now uses 20 °C, sea level*.
+names what the plan uses, for example *Plan uses 20 °C and sea-level pressure*.
 
 Without an ambient probe, a **☂ WEATHER** window takes its place. It does nothing until it is
 tapped: **Tap for local weather** reads the temperature, humidity, pressure and altitude of your town
@@ -96,11 +96,17 @@ it** offers the three values to fill in by hand instead; a typed altitude is rem
 next roasts. Online weather reads the temperature **outside**, which in winter can be far from
 the room's — type the room's own figure when the two differ.
 
-The **altitude** matters for the plan: water boils at a lower temperature up a mountain, and
-the plan expects first crack about 1 °C lower for every 300 m — some 8 °C lower at 2,500 m than
-at sea level. The plan takes the altitude from the probe, otherwise from the weather or the
-typed value, otherwise from Artisan's own altitude setting, and assumes sea level when none of
-them has one.
+The **air pressure** of the place you roast in matters for the plan, a little: thinner air
+carries less heat. The plan nudges its reference charge temperature, burner and airflow for
+it, and expects first crack slightly earlier — about 0.5 °C lower at 1,500 m, 0.9 °C at 2,500 m.
+Values learned from your own roasts already carry your location and are not corrected again.
+The plan takes the pressure from the probe or the weather; without one it works the pressure
+out from the altitude — from the probe, the weather or the typed value, otherwise from Artisan's
+own altitude setting — and assumes sea level when none of them has one. Under each reading the
+card says which it is, for example *Plan uses 18 °C and about 846 hPa, worked out from 1500 m*.
+The altitude where the
+coffee was **grown** is a different figure: it only stands in for the bean's density, see
+[The roast plan](the-roast-plan.md).
 
 <!-- CAPTURE 5.17 [scene:setup_weather] — the ☂ WEATHER window beside the sheet (no ambient probe configured): once
 before the tap (*Tap for local weather*), once with a reading (temperature, humidity, altitude,

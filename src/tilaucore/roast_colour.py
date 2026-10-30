@@ -140,6 +140,39 @@ def to_agtron(value: float, system: str) -> float:
 DEFAULT_COLOR_SYSTEM: str = "Agtron"
 
 
+## Ground minus whole-bean Agtron on the selected roaster (roasters.json): the
+## gap between the bean's surface and its inside depends on the technology.
+_whole_to_ground_offset: float = 0.0
+
+
+def set_whole_to_ground_offset(offset: float) -> None:
+    """Called by the single resolver of the selected roaster."""
+    global _whole_to_ground_offset  # noqa: PLW0603  # one roaster selected per process
+    _whole_to_ground_offset = float(offset or 0.0)
+
+
+def roast_agtron(ground: float, whole: float, system: str) -> "tuple[float, str]":
+    """SINGLE SOURCE OF TRUTH for a roast's colour: (Agtron, basis).
+
+    The ground colour is the true colour of a roast. A roast measured whole only
+    reads at its estimated ground colour ('estimated'); 'whole' only when the
+    roaster declares no gap; (0.0, '') without a reading.
+    """
+    if ground and ground > 0:
+        return to_agtron(ground, system), 'ground'
+    if whole and whole > 0:
+        _agtron = to_agtron(whole, system)
+        if _agtron > 0 and _whole_to_ground_offset:
+            return _agtron + _whole_to_ground_offset, 'estimated'
+        return _agtron, 'whole'
+    return 0.0, ''
+
+
+def agtron_text(agtron: float, basis: str) -> str:
+    """A roast colour as shown: an estimate carries its ~."""
+    return f"{'~' if basis == 'estimated' else ''}{agtron:.0f}"
+
+
 def resolve_color_system(current: str, ground: float, whole: float,
                          default: str = DEFAULT_COLOR_SYSTEM) -> str:
     """Name the colour scale of a roast that carries a reading but no scale.
