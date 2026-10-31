@@ -4135,6 +4135,7 @@ class _SetupBar(QFrame):
             "seconds of development than a filter one"))
         self.refresh_destination()
         self.seg_destination.changed.connect(self._on_destination_changed)
+        self.combo_bean.currentIndexChanged.connect(lambda _index: self.refresh_destination())
         row3.addWidget(self._lbl_dest)
         row3.addWidget(self.seg_destination)
 
@@ -4158,14 +4159,15 @@ class _SetupBar(QFrame):
         self.setVisible(visible)
 
     def refresh_destination(self) -> None:
-        """Light the destination in force, re-read from the setting.
+        """Light the destination in force: the selected coffee's, else the setting.
 
-        The preparation dialog and the planning tab write the same setting, and
+        The preparation dialog and the planning tab write the same choice, and
         either can run while this panel is already built: without re-reading it
         the segments would show one destination while the plan was built on
         another.
         """
-        key = str(QSettings().value(ROAST_DESTINATION_SETTING, "omni", str) or "omni")
+        key = (str(getattr(self.combo_bean.currentData(), "destination", "") or "")
+               or str(QSettings().value(ROAST_DESTINATION_SETTING, "omni", str) or "omni"))
         key = key.strip().lower()
         self.seg_destination.set_current(
             ROAST_DESTINATION_KEYS.index(key) if key in ROAST_DESTINATION_KEYS
@@ -5115,6 +5117,7 @@ class RoastAssistantPanel(QWidget):
         # mirrors the selection in the header AND takes down a refused-start
         # notice, which the idle page has to exist to carry.
         self._setup_bar.combo_bean.currentIndexChanged.connect(self._on_setup_selection_changed)
+        self._setup_bar.seg_destination.changed.connect(self._store_bean_destination)
         self._setup_bar.combo_agtron.currentIndexChanged.connect(self._on_setup_selection_changed)
 
         self._stack.setCurrentIndex(0)
@@ -5361,6 +5364,19 @@ class RoastAssistantPanel(QWidget):
         self._bean_header.update_bean(self._setup_bar.selected_bean(),
                                       self._setup_bar.selected_agtron(),
                                       self._setup_bar.selected_destination())
+
+    def _store_bean_destination(self, index: int) -> None:
+        """Brewed as belongs to the selected coffee, as on the setup sheet."""
+        bean = self._setup_bar.combo_bean.currentData()
+        if bean is None or not 0 <= index < len(ROAST_DESTINATION_KEYS):
+            return
+        bean.destination = ROAST_DESTINATION_KEYS[index]
+        # A slot: an escape here would close the application.
+        try:
+            from tilauscope.cave.common import save_bean_destination  # noqa: PLC0415
+            save_bean_destination(bean.uuid, bean.destination, getattr(self.aw, 'beancaveWindow', None))
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _logd.exception("the coffee's destination could not be saved")
 
     def _on_setup_selection_changed(self, _idx: int) -> None:
         self._refresh_bean_header()
@@ -6154,8 +6170,7 @@ class RoastAssistantPanel(QWidget):
     # ── AutoPilot v1a — feedforward (AutoRoast-Spec §3 étage 1, §5, §6) ──────
     # L'AutoPilot n'a aucun savoir propre : il applique les valeurs de
     # phase du plan vivant (replan inclus) et les paliers de rampe heater, via
-    # le même chemin que l'humain (_apply_slider_value). Le trim continu
-    # (étage 2, autopilot_core) arrive en v1b.
+    # le même chemin que l'humain (_apply_slider_value).
 
     def _ap_watch_idxs(self) -> tuple[int, ...]:
         b = _burner_slider_idx(self.aw)
@@ -7663,6 +7678,7 @@ class RoastAssistantPanel(QWidget):
         self._setup_bar.populate_beans(beans, current_uuid, ag_color)
         # populate_beans() fills the combo with signals blocked, so the
         # header has to be refreshed explicitly here.
+        self._setup_bar.refresh_destination()
         self._refresh_bean_header()
         _logd.debug(
             f"RoastAssistant: {len(beans)} grain(s) chargé(s), "

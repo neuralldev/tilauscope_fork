@@ -120,11 +120,15 @@ Below them, a row of **extra counters** shows the readings of whatever additiona
 configured in [Devices](devices.md), each with its name above its value — colour, humidity,
 crack count, whatever the setup provides.
 
-<!-- CAPTURE 2.3 [scene:window_readouts] — the three readouts in neutral state. CAPTURE 2.4 — the same readouts with one
-in the red/approach state, ideally the BT readout near its limit. CAPTURE 2.5 — the extra
+<!-- CAPTURE 2.3 [scene:window_readouts] — the three readouts in neutral state. CAPTURE 2.4 [scene:window_readouts_alert] — the same readouts with one
+in the red/approach state, ideally the BT readout near its limit. CAPTURE 2.5 [scene:window_extra_counters] — the extra
 counters row on a setup with at least two extra devices. -->
 
 ![The three readouts in their neutral state.](assets/the-window-2.3.png)
+
+![The three readouts with BT near its limit.](assets/the-window-2.4.png)
+
+![The extra counters row with two extra devices.](assets/the-window-2.5.png)
 
 ---
 
@@ -159,12 +163,14 @@ back to exactly what it was showing — the cooling message included.
 
 <!-- CAPTURE 2.6 [scene:window_phases] — the three phase blocks mid-Maillard, with the active phase visibly current.
 CAPTURE 2.7 [scene:window_cooling_msg] — the same area showing the drop/cooling message instead.
-CAPTURE 2.7b — the same area showing the no-temperature warning. Reproduce by starting
+CAPTURE 2.7b [scene:window_no_reading] — the same area showing the no-temperature warning. Reproduce by starting
 monitoring with the roaster's cable unplugged and waiting five seconds. -->
 
 ![The three phase blocks mid-Maillard, the active phase current.](assets/the-window-2.6.png)
 
 ![The same area showing the drop and cooling message.](assets/the-window-2.7.png)
+
+![The phase area showing the no-temperature warning.](assets/the-window-2.7b.png)
 
 ---
 
@@ -530,13 +536,17 @@ already sitting in this list — which is the whole point of keeping it. The sec
 start of the recording to its end, and empties with the cards above it at the next **START** or
 **RESET**.
 
-<!-- CAPTURE 2.11 — the sidebar expanded during a recording, showing a triggered-alarm card and a
+<!-- CAPTURE 2.11 [scene:window_sidebar] — the sidebar expanded during a recording, showing a triggered-alarm card and a
 fired-event card, both stamped +m:ss, plus one event card pressed before START carrying its "not
 recorded before START" line. CAPTURE 2.12 [scene:messages] — the ARTISAN message section with several messages,
-newest highlighted, ending on "Scope recording stopped". CAPTURE 2.13 — the grip strip in both
+newest highlighted, ending on "Scope recording stopped". CAPTURE 2.13 [scene:window_grip] — the grip strip in both
 states, collapsed and expanded. -->
 
+![The expanded sidebar with an alarm card, a fired event card and one event pressed before START.](assets/the-window-2.11.png)
+
 ![The Artisan message section with several messages.](assets/the-window-2.12.png)
+
+![The grip strip collapsed and expanded.](assets/the-window-2.13.png)
 
 ---
 
@@ -556,8 +566,10 @@ and a block is never cut in two by the panel wrapping onto another line — it m
 Narrowing the panel puts fewer blocks per line, never fewer buttons per block, so a pair you
 reach for without looking stays where your hand expects it at any width.
 
-<!-- CAPTURE 2.14 — the floating event panel, narrow enough to wrap, showing two welded blocks
+<!-- CAPTURE 2.14 [scene:window_events_wrapped] — the floating event panel, narrow enough to wrap, showing two welded blocks
 on separate lines. -->
+
+![The event panel wrapped on two lines, with its welded blocks.](assets/the-window-2.14.png)
 
 ### Arranging your own buttons
 
@@ -635,9 +647,11 @@ follow from the start. Turning monitoring on clears it and the replay draws itse
 its speed is then set by the **x1 / x2 / x8** selector above the curve, and clicking the timer
 pauses and resumes it.
 
-<!-- CAPTURE 2.16 — the window with a simulation on, before monitoring: mauve frame, SIMULATION
+<!-- CAPTURE 2.16 [scene:window_simulation] — the window with a simulation on, before monitoring: mauve frame, SIMULATION
 band naming the replayed roast with its Leave simulation control at the right, and the roast to
 be replayed on the chart. Reproduce by starting the simulator on a past roast. -->
+
+![The window with a simulation on: mauve frame, SIMULATION band naming the roast, Leave simulation at the right.](assets/the-window-2.16.png)
 
 ---
 

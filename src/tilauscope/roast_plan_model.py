@@ -1276,6 +1276,29 @@ class BuildPRoastPlanPDF(FPDF):
         if self.get_y() + needed_height > self.page_break_trigger:
             self.add_page()
 
+    def _draw_plan_notes(self, plan_data: dict) -> None:
+        """Section 6: past crashes and flicks in red, then the plan's own notes."""
+        notes = plan_data.get("notes") or []
+        actions = plan_data.get("actions") or []
+        if not notes and not actions:
+            return
+        self.add_page(same=True)
+        try:
+            self.set_fill_color(220, 220, 220)
+            self.set_font('helvetica', 'B', 12)
+            self.cell(0, 7, QApplication.translate("tilauscope_roast_plan", '6. Historical Feedback & Plan Notes'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
+            self.ln(2)
+            for lines, style, colour in ((notes, 'B', (200, 0, 0)), (actions, '', (0, 0, 0))):
+                for line in lines:
+                    self.ensure_space(12)
+                    self.set_font('helvetica', style, 10)
+                    self.set_text_color(*colour)
+                    self.multi_cell(0, 5, f"{line}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+                    self.ln(2)
+            self.set_text_color(0, 0, 0)
+        except Exception as e:
+            _logd.error(f"error printing pdf : {e}")
+
     @staticmethod
     def _destination_label(key: Any) -> str:
         """Human name of the brewing destination the plan was built for."""
@@ -1568,7 +1591,7 @@ class BuildPRoastPlanPDF(FPDF):
         self.set_fill_color(220, 220, 220)
         self.set_font('helvetica', 'B', 12)
         self.cell(0, 7, QApplication.translate("tilauscope_roast_plan",
-            '4. Machine Settings at Phase Entry (what to be on when you cross the milestone)'),
+            '4. Machine Settings at Phase Entry'),
             new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
         self.ln(1)
         self.set_font('helvetica', 'I', 8.5)
@@ -1656,39 +1679,7 @@ class BuildPRoastPlanPDF(FPDF):
             except Exception as e:
                 _logd.error(f"error drawing control ramp graph : {e}")
 
-        # 6. Historical Feedback (Notes and Actions)
-        notes = plan_data.get("notes", [])
-        actions = plan_data.get("actions", [])
-
-        if notes is not None and len(notes)>0:
-            self.add_page(same=True)
-            try:
-                self.set_fill_color(220, 220, 220)
-                self.set_font('helvetica', 'B', 12)
-                self.cell(0, 7, QApplication.translate("tilauscope_roast_plan",'6. Historical Feedback & Actions'), new_x=XPos.LMARGIN, new_y=YPos.NEXT, fill=True)
-                self.ln(2)
-
-                # Standard loop for lists of strings
-                for i in range(len(notes)):
-                    # Warning Note
-                    self.ensure_space(12)
-                    self.set_font('helvetica', 'B', 10)
-                    self.set_text_color(200, 0, 0) # Red for warnings
-                    self.cell(0, 6, f"{notes[i]}",new_x=XPos.LMARGIN, new_y=YPos.NEXT,)
-
-                    # Associated Action
-                    if i < len(actions):
-                        self.ensure_space(12)
-                        self.set_font('helvetica', 'I', 10)
-                        self.set_text_color(0, 0, 0) # Back to black
-                        self.cell(0, 6, f"{actions[i]}",new_x=XPos.LMARGIN, new_y=YPos.NEXT,)
-
-                    self.ln(2)
-
-        # Reset text color for any following content
-                self.set_text_color(0, 0, 0)
-            except Exception as e:
-                _logd.error(f"error printing pdf : {e}")
+        self._draw_plan_notes(plan_data)
 
         # --- APPEL DU NOUVEAU GRAPHIQUE ---
         if graph_data:

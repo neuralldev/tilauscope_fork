@@ -47,7 +47,9 @@ most boards.
 If the roaster is read through a PID controller or an external program, neither option is lit
 and the window says so. Nothing changes unless Meter or TC4 board is chosen.
 
-<!-- CAPTURE 14.2 — ROASTER tab with TC4 board selected and Signal smoothing open. -->
+<!-- CAPTURE 14.2 [scene:devices_tc4] — ROASTER tab with TC4 board selected and Signal smoothing open. -->
+
+![The ROASTER tab with TC4 board selected and Signal smoothing open.](assets/devices-14.2.png)
 
 ---
 

@@ -2962,9 +2962,10 @@ class RoastSetupDialog(QDialog):
     _DEST_KEYS: tuple[str, ...] = ("filter", "omni", "espresso")
 
     def _restore_destination(self) -> None:
-        """Select the destination remembered from the last roast (default omni)."""
+        """Select the coffee's destination, else the last one chosen (default omni)."""
         from PyQt6.QtCore import QSettings
-        key = str(QSettings().value("tilauscope/roast_destination", "omni", str) or "omni")
+        key = (str(getattr(self._bean, "destination", "") or "")
+               or str(QSettings().value("tilauscope/roast_destination", "omni", str) or "omni"))
         if key not in self._dest_buttons:
             key = "omni"
         self._dest_buttons[key].setChecked(True)
@@ -2979,10 +2980,23 @@ class RoastSetupDialog(QDialog):
         if not 0 <= index < len(self._DEST_KEYS):
             return
         QSettings().setValue("tilauscope/roast_destination", self._DEST_KEYS[index])
+        self._store_bean_destination(self._DEST_KEYS[index])
         plan_button = getattr(self, "_plan_dest_buttons", {}).get(self._DEST_KEYS[index])
         if plan_button is not None:
             plan_button.setChecked(True)
         self._refresh_insights()
+
+    def _store_bean_destination(self, key: str) -> None:
+        """The choice belongs to this coffee: on the record, and nothing else of it is touched."""
+        self._bean.destination = key
+        host = self._parent_widget
+        record = getattr(host, 'uuidmap', {}).get(self._bean.uuid)
+        if record is None:
+            return
+        previous = record.destination
+        record.destination = key
+        if not host.save_green_beans():
+            record.destination = previous   # the file still holds it; the operator was told why
 
     def _set_family_readout(self, family: str, delta_c: float) -> None:
         """State what the coffee's variety did to the charge, or that it did nothing.

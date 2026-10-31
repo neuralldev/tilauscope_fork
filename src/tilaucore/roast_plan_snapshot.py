@@ -78,6 +78,15 @@ def _source_kinds(sources: dict[str, str]) -> list[str]:
     return [kind for kind in ("grid", "history", "blend", "medoid") if kind in kinds]
 
 
+def _tasting_change(plan: dict, mode: str) -> "dict | None":
+    """The change a tasting made to this plan, with its values in the plan's unit."""
+    change = plan.get("Tasting Change")
+    if not change:
+        return None
+    return {"defect": change["defect"], "lever": change["lever"], "before": change["before"],
+            "after": change["after"], "unit": "F" if mode == "F" else "C"}
+
+
 def build_prediction_snapshot(
         plan: dict, *, plan_id: str, target_color_agtron: float,
         expected_color_basis: str = "ground", mode: str = "C",
@@ -131,6 +140,7 @@ def build_prediction_snapshot(
         # The reference roast this plan stood on, '' when it stood on none.
         "reference_roast_uuid": (str((plan.get("Reference Roast") or {}).get("roast_uuid") or "")
                                  if (plan.get("Reference Roast") or {}).get("status") == "used" else ""),
+        "tasting_change": _tasting_change(plan, mode),
         "predicted": {
             "milestones": milestones,
             "target_color_agtron": round(float(target_color_agtron), 2),

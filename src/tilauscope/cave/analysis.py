@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     pass  # pylint: disable=unused-import
 import html
+import logging
 from datetime import datetime
 
 #import matplotlib.pyplot as plt
@@ -41,6 +42,9 @@ from tilauscope.brew_advisor_dialog import BrewAdvisorDlg
 from tilauscope import roast_coach as coach
 from tilauscope.cave.common import (
     _logd)
+
+
+_log = logging.getLogger(__name__)
 
 
 def _phase_split(computed: dict) -> tuple[float, float, float, float] | None:
@@ -639,6 +643,62 @@ class AnalysisMixin:
     </body></html>"""
 
         self.roast_info_text.setText(summary)
+
+        # Reached from a load's completion: the sheet above must survive a summary that fails.
+        try:
+            self._show_stats_summary(data, computed, reading, split, [
+                phase_rise('TP', 'DRY'), phase_rise('DRY', 'FCs'), phase_rise('FCs', 'DROP')],
+                (f"{wl_val:.1f} %" if wl_val else "N/A", wl_text, wl_kind),
+                (f"{dtr_pct_val:.1f} %" if dtr_pct_val else "N/A", dtr_text, dtr_kind))
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the roast summary could not be shown")
+
+    def _show_stats_summary(self, data, computed, reading, split, rises, loss, ratio) -> None:  # noqa: ANN001
+        """Statistics at a glance: the one point, the next change, the phases, three checks."""
+        from tilauscope import tasting_log  # noqa: PLC0415
+        from tilauscope.cave.stats_view import PhaseFigures, StatsSummary  # noqa: PLC0415
+        from tilauscope.cave.tasting_dialog import change_text  # noqa: PLC0415
+        top = coach.headline(reading.rows)
+        next_text = top.next_step if top is not None else ''
+        # The operator's own cup outranks the reading; a shared roast's tasting is its sender's.
+        roast_uuid = str(data.get('roastUUID') or '')
+        tasting = (tasting_log.load(getattr(self, 'beancave_directory', None)).entries.get(roast_uuid)
+                   if roast_uuid and not data.get('tilau_shared') else None)
+        if tasting is not None:
+            change = tasting_log.next_change(tasting)
+            if change is not None:
+                next_text = change_text(change[0], str(self.aw.qmc.mode))[0]
+            elif tasting.verdict == 'yes':
+                next_text = QApplication.translate(*tasting_log.NEXT_SAME[0])
+        status_words = {
+            'short': QApplication.translate('tilauscope_beancave', 'shorter than usual'),
+            'long': QApplication.translate('tilauscope_beancave', 'longer than usual'),
+            'ok': QApplication.translate('tilauscope_common', 'on target')}
+        phases = []
+        if split is not None:
+            total = sum(split[:3]) or 1.0
+            names = ((QApplication.translate("tilauscope_beancave", "Drying (Charge -> Dry)"), 'drying', 'ACCENT'),
+                     (QApplication.translate("tilauscope_beancave", "Maillard (Dry -> FCs)"), 'maillard', 'WARNING'),
+                     (QApplication.translate("tilauscope_beancave", "Development (FCs -> Drop)"), 'development', 'SUCCESS'))
+            for (name, key, colour), seconds, rise in zip(names, split[:3], rises):
+                status = reading.phase_status.get(key, '')
+                phases.append(PhaseFigures(
+                    name.split("(")[0].strip(), 100.0 * seconds / total, self.format_seconds(int(seconds)),
+                    rise, status_words.get(status, ''), status in ('short', 'long'), colour))
+        level = reading.level or ''
+        cards = [(QApplication.translate("tilauscope_common", "Weight loss"), *loss),
+                 (QApplication.translate("tilauscope_beancave", "Development ratio"), *ratio)]
+        if level:
+            cards.append((QApplication.translate("tilauscope_beancave", "Read as"), level,
+                          (QApplication.translate("tilauscope_beancave", "Could be {0}").format(reading.neighbour)
+                           if reading.neighbour else ''), 'neutral'))
+        self.roast_stats_summary.show_summary(StatsSummary(
+            kind=top.kind if top is not None else 'ok',
+            title=top.title if top is not None else QApplication.translate("tilauscope_beancave", "Nothing stands out"),
+            effect=top.effect if top is not None else QApplication.translate(
+                "tilauscope_beancave", "Every reading is within its range."),
+            next_text=next_text, phases=phases, cards=cards))
+        self._set_stats_view(False)
 
     @staticmethod
     def format_seconds(seconds: float) -> str:

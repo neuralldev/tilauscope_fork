@@ -1020,6 +1020,7 @@ class BeanTabMixin:
                 screen_size=existing_bean.screen_size,
                 price_per_kg=existing_bean.price_per_kg,
                 reference_roast_uuid=existing_bean.reference_roast_uuid,
+                destination=existing_bean.destination,
             )
             self.cave.green_beans[selected_row_index] = new_bean_data
             if existing_bean.uuid != new_bean_data.uuid:

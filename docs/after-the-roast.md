@@ -305,7 +305,16 @@ so one point of the roast can be read across several roasts in a row.
 ## Coach's Advice
 
 **Statistics**, beside **Curve** in the Roasts tab, reads the finished roast, not the plan for it; the **Coach**
-card in the roast review opens the same reading in the roasting window. The roast level
+card in the roast review opens the same reading in the roasting window.
+
+The page opens on what matters: the **one thing to look at**, or *Nothing stands out* when every
+reading is within its range, and beside it what to do **next time**. When you have tasted the
+roast, your cup decides that line, and the reading comes second. Under them, the three phases
+with their duration, average rise and state, then weight loss, development ratio and the roast
+level it was read as. **All figures and advice** opens the full sheet: every temperature, the
+average rises, the accumulated heat, and each point the coach noted; **‹ Summary** comes back.
+
+The roast level
 it judges against is read from what the roast did — how long the bean developed and how hot it
 left, the pair that sets the colour — corrected for your machine's own probe, never from the
 colour measured afterwards. The advice opens by naming that level and the pair it was read
@@ -316,7 +325,7 @@ The colour is the result of the roast, so a roast whose colour disagrees is a ro
 badly, not a roast that belongs to another level. It is shown for what it is, with a category
 name only when it was measured on ground beans, since that is the scale those names belong to.
 
-The four figures above the advice are **average rises**: the degrees gained across a phase
+The average figures of each phase are **average rises**: the degrees gained across a phase
 divided by its length, from the turning point to the drop. They are not the rate of rise drawn
 on the curve, which moves throughout each phase — a drying phase averaging 12°/min contains
 readings well above and well below that.
@@ -338,18 +347,40 @@ with the time it happened — so you can go and look at that spot yourself.
     (see [Preparing a roast](preparing-a-roast.md#judging-the-batch-before-it-starts)). That
     one works from the coffee and the plan; this one works from what was actually measured.
 
-![Statistics with Coach's Advice fully populated, ideally
-flagging at least one phase](assets/after-the-roast-8.8.png)
+![Statistics: the one point to look at, the next change, the phases and three checks.](assets/after-the-roast-8.8.png)
 
-<!-- CAPTURE 8.8 [scene:cave_stats] (image) — Statistics chosen beside Curve in the Roasts tab, Coach's Advice fully populated, ideally flagging at least one phase -->
+<!-- CAPTURE 8.8 [scene:cave_stats] (image) — Statistics chosen beside Curve in the Roasts tab: the one point to look at, the next change, the phases and the three checks -->
 
+
+---
+
+## The journal
+
+**Journal**, beside **Statistics** in the Roasts tab, follows one coffee from roast to roast, so
+you can see what you have already tried. Select one roast: the page shows all the roasts of its
+coffee, latest first. Roasts received from another roaster and simulated roasts are left out.
+
+**Next roast**, at the top, gives the one change your latest tasting asks for, or invites you to
+taste that roast first. Each roast below shows its date and batch, then two things:
+
+- **Tried** — the change its plan carried, with the values before and after. The first roast of
+  a coffee says so.
+- **In the cup** — your verdict and what you ticked, or *Not tasted yet*.
+
+A line marked **Suggested**, in grey, is what the tasting before asked for on a roast that has
+no record of it: older roasts, and roasts started without the assistant. It tells you what was
+advised, not what was done.
+
+![The Journal page: the next roast at the top, then each roast of the coffee with what it tried and how it tasted.](assets/after-the-roast-8.8c.png)
+
+<!-- CAPTURE 8.8c [scene:cave_journal] (image) — Journal chosen in the Roasts tab, four roasts of one coffee -->
 
 ---
 
 ## Profile analysis
 
 Artisan's Analyzer fits a trend to the bean temperature and prints, in two text boxes over the
-curve, how far the rate of rise strayed from it. **Analysis**, beside **Statistics** in the
+curve, how far the rate of rise strayed from it. **Analysis**, beside **Journal** in the
 Roasts tab, takes its place — the Analyzer is no longer offered in the **Tools** menu. It runs
 the same kind of reading on the roast selected, lays it out as a page, and names the passages
 worth a look. It is computed only while the page is
@@ -481,7 +512,7 @@ coffee:
 |---|---|
 | **Burnt** | Charge 3 °C cooler |
 | **Bitter, smoky** | Burner one notch lower before first crack |
-| **Flat, papery** | Keep the burner one notch higher after first crack |
+| **Flat, papery** | Burner one notch higher before first crack |
 | **Bready, dull** | Start with the burner one notch higher |
 | **Grassy, raw** | Let it develop 20 s longer after first crack |
 | **Sour, thin** | Drop 2 °C later |
@@ -521,7 +552,9 @@ roast list beside it with the ★ before that roast's batch number. -->
 
 ![The tasting line of the reference roast with its yellow ★ and tooltip, the roast list marking it with a ★.](assets/after-the-roast-8.18.png)
 
-<!-- CAPTURE 8.16 — the tasting form on a rested roast: Almost chosen, Flat, papery ticked, the Next time card showing "Keep the burner one notch higher after first crack". -->
+<!-- CAPTURE 8.16 [scene:tasting_form] — the tasting form on a rested roast: Almost chosen, Flat, papery ticked, the Next time card showing "Burner one notch higher before first crack". -->
+
+![The tasting form with Almost chosen, Flat, papery ticked and the Next time card.](assets/after-the-roast-8.16.png)
 
 ---
 
@@ -622,8 +655,10 @@ The state is written to the file the moment you press it, without **Record**, an
 it: ✅ for admitted, 🚫 for excluded, nothing for not reviewed. Browsing the list never changes a
 state — only pressing a button does.
 
-<!-- CAPTURE 8.15 — the Repair ALogs editor pane, PLAN LEARNING segmented control visible with
-"– Not reviewed" selected, and a file list showing one ✅ row and one 🚫 row. -->
+<!-- CAPTURE 8.15 [scene:repair_learning] — the Repair ALogs editor pane, PLAN LEARNING segmented control visible with
+"– Not reviewed" selected, beside the file list. -->
+
+![The PLAN LEARNING control on Not reviewed, the file list showing an admitted and an excluded roast.](assets/after-the-roast-8.15.png)
 
 The 🚫 switch shown right after DROP sets the same **Excluded** state.
 

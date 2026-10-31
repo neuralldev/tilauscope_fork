@@ -1,4 +1,17 @@
 ## [4.3] 2026-09-13
+build 45
+* 🐛 [fix(macOS)] : TilauScope no longer crashes on macOS 27.2 when opening the roasting view: Qt moves to 6.11.2
+* 🐛 [fix(roast setup)] : What is this coffee for? is now kept per coffee, so a choice made for one coffee no longer changes the development planned for the next
+* ⚡ [feat(beancave)] : Roasts gains a Journal page: all the roasts of a coffee with the change each one tried, its values before and after, how it tasted, and the next change to make
+* ⚡ [feat(beancave)] : Statistics opens on one point to look at and what to do next time, your tasting first, then the phases and three checks; All figures and advice opens the full sheet
+* ⚡ [feat(i18n)] : the Journal, the new Statistics page and the revised plan notes are translated in French, German, Spanish, Italian and Chinese (simplified and traditional)
+* 🐛 [fix(roast plan)] : the plan PDF now prints all its notes, with or without a past crash: section 6 was skipped when no crash or flick was on record and dropped most notes otherwise, and long notes now wrap instead of running off the page
+* ⚡ [feat(roast plan)] : plan notes explain the settings and no longer ask for a move during the roast: past crashes and flicks are stated as facts with the size of the RoR dip or bump, without the old Action lines
+* 🐛 [fix(roast plan)] : in Fahrenheit, the plan notes on colour feedback and on development speeding up after first crack show Fahrenheit values instead of Celsius ones
+* 🐛 [fix(i18n)] : the plan note on a development ratio outside the usual window is fully translatable, later and earlier included
+* ⚡ [feat(docs)] : the user guide gains 15 screenshots: readouts near their limit, extra counters, the no-temperature warning, live events, event panel, simulation, Configuration CONTROLS, Privacy and BEANCAVE tabs, the TC4 board, the roast summary and result, plan learning and the tasting form
+* 🐛 [fix(docs)] : the tasting table now gives the Next time advice the app shows for Flat, papery: burner one notch higher before first crack
+* ⚡ [feat(auto)] : removed the unused rate-of-rise trim engine left behind in AUTO; AUTO keeps carrying out the plan
 build 44
 * ⚡ [feat(roast plan)] : on the Skywalker V1 and V2, at every roast level, the plan's phase durations follow time: drying is set by the batch size, Maillard follows drying (about one minute plus half of it) whatever the development, a darker level spends its extra time in development, and the rates of rise, the peak after the turning point included, follow from those durations
 * 🐛 [fix(roast plan)] : the planned turning point on the Skywalker V1 and V2 now sits where its recent roasts turn (20-30 °C lower on small batches), and the coffee's moisture no longer lengthens the planned drying a second time

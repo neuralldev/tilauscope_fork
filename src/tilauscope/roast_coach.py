@@ -71,6 +71,10 @@ class AdviceRow:
     icon: str
     text: str
     kind: str = "ok"   # ok | warn | bad | info
+    # A row whose text does not open on its own short name states it here;
+    # `detail` is then what follows that name, free of the level's label.
+    title: str = ""
+    detail: str = ""
 
 
 @dataclass
@@ -85,6 +89,40 @@ class CoachReading:
     dtr_window: tuple[float, float] = (0.0, 0.0)
     wl_window: tuple[float, float] = (0.0, 0.0)
     rows: list[AdviceRow] = field(default_factory=list)
+    # 'drying' | 'maillard' | 'development' → 'short' | 'long' | 'ok'
+    phase_status: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class Headline:
+    """The one point of a reading, cut for a glance."""
+    kind: str       # 'warn' | 'bad'
+    title: str
+    effect: str
+    next_step: str  # '' when the advice names no gesture
+
+
+def _split_next_step(detail: str) -> tuple[str, str]:
+    """(what it means, what to do): the advice ends on its gesture when it has two sentences."""
+    sentences = [s.strip() for s in re.split(r'(?<=[.!?。！？])\s*', detail) if s.strip()]
+    if len(sentences) < 2:
+        return detail.strip(), ''
+    return ' '.join(sentences[:-1]), sentences[-1]
+
+
+def headline(rows: list[AdviceRow]) -> Headline | None:
+    """The row that matters most, or None when nothing was flagged."""
+    row = next((r for kind in ('bad', 'warn') for r in rows if r.kind == kind), None)
+    if row is None:
+        return None
+    if row.title:
+        title, detail = row.title, row.detail or row.text
+    else:
+        # The rows are assembled as "<name> (<figures>) <level> — <advice>", in every language.
+        head, _, detail = row.text.partition(' — ')
+        title = head.partition(' (')[0]
+    effect, next_step = _split_next_step(detail)
+    return Headline(row.kind, title, effect, next_step)
 
 
 def _safe_moisture(value: Any) -> float:
@@ -309,8 +347,10 @@ def read_roast(data: dict, *, roast_context: Any = None, bean: Any = None,
     computed, mode, development = b.computed, b.mode, b.development
     rows: list[AdviceRow] = []
 
-    def add(icon: str, text: str, kind: str) -> None:
-        rows.append(AdviceRow(icon, text, kind))
+    phase_status: dict[str, str] = {}
+
+    def add(icon: str, text: str, kind: str, title: str = "", detail: str = "") -> None:
+        rows.append(AdviceRow(icon, text, kind, title, detail))
 
     # The level everything below is measured against, said out loud with the
     # pair it was read from — a verdict the operator cannot see the basis of
@@ -424,6 +464,8 @@ def read_roast(data: dict, *, roast_context: Any = None, bean: Any = None,
             # judged finer than the seconds its milestones were called with.
             grace = (0.5 if phase_key in ('drying', 'maillard')
                      else _MILESTONE_MARK_TOLERANCE_S / 60.0)
+            phase_status[phase_key] = ('short' if actual_min < mn - grace
+                                       else 'long' if actual_min > mx + grace else 'ok')
             if actual_min < mn - grace:
                 # Observational, not a verdict: the range is learned from the
                 # user's own roasts at this level, so a short phase may simply
@@ -474,20 +516,20 @@ def read_roast(data: dict, *, roast_context: Any = None, bean: Any = None,
             else:
                 drop_low, drop_high = drop_low_c, drop_high_c
             if drop_bt_f < drop_low and b.dtr_pct < b.dtr_lo:
-                add("🔴",
-                    QApplication.translate("tilauscope_beancave",
-                        "Both the drop temperature and the development ratio land below the "
-                        "window expected for this roast level — two signals agreeing on "
-                        "under-development. Watch for grassy or baked notes; consider a hotter "
-                        "charge or a slower Maillard.") + f" {b.level_label}",
-                    "bad")
+                _said = QApplication.translate("tilauscope_beancave",
+                    "Both the drop temperature and the development ratio land below the "
+                    "window expected for this roast level — two signals agreeing on "
+                    "under-development. Watch for grassy or baked notes; consider a hotter "
+                    "charge or a slower Maillard.")
+                add("🔴", f"{_said} {b.level_label}", "bad",
+                    QApplication.translate("tilauscope_beancave", "Probably under-developed"), _said)
             elif drop_bt_f > drop_high and b.dtr_pct < b.dtr_lo:
-                add("🔶",
-                    QApplication.translate("tilauscope_beancave",
-                        "Drop temperature is higher than expected for this level yet the "
-                        "development ratio is short — the bean colour may be darker than "
-                        "intended. Watch for scorching; reduce end-heat or drop earlier.") + f" {b.level_label}",
-                    "warn")
+                _said = QApplication.translate("tilauscope_beancave",
+                    "Drop temperature is higher than expected for this level yet the "
+                    "development ratio is short — the bean colour may be darker than "
+                    "intended. Watch for scorching; reduce end-heat or drop earlier.")
+                add("🔶", f"{_said} {b.level_label}", "warn",
+                    QApplication.translate("tilauscope_beancave", "Hot drop, short development"), _said)
         except (TypeError, ValueError):
             pass
 
@@ -509,13 +551,13 @@ def read_roast(data: dict, *, roast_context: Any = None, bean: Any = None,
                         "Flat or negative RoR entering first crack: the roast lost momentum "
                         "right at FC, a strong stall/crash signal. Add a touch of heat just "
                         "before FC next time to carry momentum into development."),
-                    "bad")
+                    "bad", QApplication.translate("tilauscope_beancave", "Momentum lost at first crack"))
             elif fcs_ror_v < dev_ror_lo:
                 add("🐌",
                     QApplication.translate("tilauscope_beancave",
                         "Low RoR entering first crack: little momentum into "
                         "development — watch for a stall and baked, flat character."),
-                    "warn")
+                    "warn", QApplication.translate("tilauscope_beancave", "Little momentum into first crack"))
         except (TypeError, ValueError):
             pass
 
@@ -557,14 +599,14 @@ def read_roast(data: dict, *, roast_context: Any = None, bean: Any = None,
                             "RoR crash at {0} in development: the rate dropped sharply before "
                             "drop. This can cause baked character. Maintain at least {1:.0f}°/min "
                             "through drop.").format(at_t, dev_ror_lo),
-                        "bad")
+                        "bad", QApplication.translate("tilauscope_beancave", "RoR crash in development"))
                 else:
                     add("📈",
                         QApplication.translate("tilauscope_beancave",
                             "RoR flick at {0} in development: the rate bumped up significantly. "
                             "This may indicate a heat spike. Reduce burner earlier to avoid "
                             "scorching.").format(at_t),
-                        "warn")
+                        "warn", QApplication.translate("tilauscope_beancave", "RoR flick in development"))
     except (TypeError, ValueError, IndexError):
         pass
 
@@ -592,4 +634,4 @@ def read_roast(data: dict, *, roast_context: Any = None, bean: Any = None,
 
     return CoachReading(level=b.level, neighbour=b.neighbour, thresholds=b.thresholds,
                         dtr_window=(b.dtr_lo, b.dtr_hi), wl_window=(b.wl_lo, b.wl_hi),
-                        rows=rows)
+                        rows=rows, phase_status=phase_status)

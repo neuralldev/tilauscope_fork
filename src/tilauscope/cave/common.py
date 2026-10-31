@@ -230,6 +230,40 @@ def load_cave_beans() -> list:
         _logd.error(f'load_cave_beans: unexpected error: {e}')
     return []
 
+def save_bean_destination(bean_uuid: str, destination: str, beancave: object | None = None) -> bool:
+    """Store one coffee's destination, and nothing else of it. True once on disk.
+
+    An open BeanCave holds the library in memory and would write it back over the
+    file, so it takes the change itself. Otherwise the file is re-read here, and
+    an unreadable one is left alone.
+    """
+    from PyQt6.QtCore import QSettings
+    from tilaucore.beans import to_json
+    from tilauscope.cave.lifecycle import live_beancave
+    if live_beancave(beancave):
+        record = getattr(beancave, 'uuidmap', {}).get(bean_uuid)
+        if record is None:
+            return False
+        record.destination = destination
+        return bool(beancave.save_green_beans())  # type: ignore[attr-defined]
+    directory = QSettings().value('beancaveDirectory', '', str)
+    if not directory or not bean_uuid:
+        return False
+    cave_file = Path(directory).expanduser() / BEANCAVE_FILE_NAME
+    encoding = 'utf-8-sig' if _IS_WINDOWS else 'utf-8'
+    try:
+        cave = from_json(BeanCaveContainer, cave_file.read_text(encoding=encoding))
+        record = next((b for b in cave.green_beans or [] if b.uuid == bean_uuid), None)
+        if record is None:
+            return False
+        record.destination = destination
+        _atomic_write_text(cave_file, to_json(cave), encoding=encoding)
+        return True
+    except (OSError, ValueError) as e:
+        _logd.error(f'save_bean_destination: {e}')
+        return False
+
+
 def _atomic_write_text(path: Path, content: str, encoding: str) -> None:
     """Durably replace *path* without ever exposing a partially written file."""
     tmp_path = path.with_name(f'.{path.name}.{uuid.uuid4().hex}.tmp')

@@ -175,17 +175,22 @@ def plan_cooled_weight(plan: dict) -> "float | None":
     return weight * (1.0 - loss / 100.0)
 
 
-def tasting_change_text(change: dict, unit: str, translate: Translate) -> str:
-    """'💡 Last time: <defect> — <change> (<before → after>)' for a plan's "Tasting Change"."""
+def tasting_change_values(change: dict, unit: str) -> str:
+    """'<before> → <after>' of a tasting change, in its lever's own terms."""
     mode = 'F' if unit == 'F' else 'C'
     before, after = float(change["before"]), float(change["after"])
     lever = change["lever"]
     if lever.startswith("burner_"):
-        values = f"{before:.0f} → {after:.0f} %"
-    elif lever == "development_s":
-        values = f"{int(before) // 60}:{int(before) % 60:02d} → {int(after) // 60}:{int(after) % 60:02d}"
-    else:
-        values = f"{before:.0f} → {after:.0f} °{mode}"
+        return f"{before:.0f} → {after:.0f} %"
+    if lever == "development_s":
+        return f"{int(before) // 60}:{int(before) % 60:02d} → {int(after) // 60}:{int(after) % 60:02d}"
+    return f"{before:.0f} → {after:.0f} °{mode}"
+
+
+def tasting_change_text(change: dict, unit: str, translate: Translate) -> str:
+    """'💡 Last time: <defect> — <change> (<before → after>)' for a plan's "Tasting Change"."""
+    mode = 'F' if unit == 'F' else 'C'
+    values = tasting_change_values(change, unit)
     defect = tasting_log.DEFECT_WORDS.get(change["defect"])
     return translate(QT_TRANSLATE_NOOP("tilauscope_roast_setup", "💡 Last taste: {0} — {1} ({2})")).format(
         translate(defect) if defect else "", tasting_log.change_text(change["defect"], mode, translate)[0], values)

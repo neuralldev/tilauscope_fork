@@ -139,9 +139,10 @@ what that profile has to serve.
 one thing here you choose; everything else on the card is read for you. The choice sets the
 development time: filter the shortest, espresso the longest, omni between the two. The gap is a
 handful of seconds, which is enough to be tasted, and it carries through to the drop temperature
-and to the [weight loss](glossary.md#weight-loss) to aim for. Your choice is remembered for the
-next roast, and the same choice sits on the PLAN tab and in the
-[guided assistant](the-guided-roast.md#the-panel) — one setting, three places to set it.
+and to the [weight loss](glossary.md#weight-loss) to aim for. Your choice is remembered for this
+coffee, and a coffee with no choice yet starts from the last one you made. The same choice sits
+on the PLAN tab and in the [guided assistant](the-guided-roast.md#the-panel) — one setting,
+three places to set it.
 
 **Bean family** states what TilauScope read from the coffee's variety and what it did with it —
 for example *Bourbon — takes a slower roast (−4 °C on the charge)*. When the record names no

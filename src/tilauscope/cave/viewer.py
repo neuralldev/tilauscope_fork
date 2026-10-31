@@ -361,10 +361,25 @@ class ViewerMixin:
         _sm_layout.addWidget(self.stats_dot_canvas, 1)
         self.stats_multi_widget.setVisible(False)
 
-        self.stats_layout.addWidget(QLabel(QApplication.translate("tilauscope_beancave","Roasting statistics and information")))
+        from tilauscope.cave.stats_view import RoastStatsSummary
+        self.roast_stats_summary = RoastStatsSummary()
+        self.roast_stats_summary.figures_requested.connect(lambda: self._show_all_figures(True))
+        self.roast_stats_summary.setVisible(False)
+        self.stats_back = QPushButton(QApplication.translate("tilauscope_beancave", "‹ Summary"))
+        self.stats_back.setFlat(True)
+        self.stats_back.setStyleSheet(f"color: {THEME['ACCENT']}; font-weight: 600; text-align: left; border: none;")
+        self.stats_back.clicked.connect(lambda: self._show_all_figures(False))
+        self.stats_back.setVisible(False)
+        self.stats_layout.addWidget(self.roast_stats_summary, 1)
+        self.stats_layout.addWidget(self.stats_back, 0, Qt.AlignmentFlag.AlignLeft)
         self.stats_layout.addWidget(self.stats_scroll, 1)
         self.stats_layout.addWidget(self.stats_multi_widget, 1)
         self.viewer_pages.addWidget(self.stats_tab)
+
+        from tilauscope.cave.journal_view import RoastJournalView
+        self.roast_journal_view = RoastJournalView()
+        self.roast_journal_view.taste_requested.connect(self._open_tasting)
+        self.viewer_pages.addWidget(self.roast_journal_view)
 
         from tilauscope.cave.analysis_view import RoastAnalysisView
         # The reference roast is read off the GUI thread; its RoR is computed on it, like the curve's.
@@ -378,6 +393,7 @@ class ViewerMixin:
         self.detail_page_switch = SegmentedControl(
             [QApplication.translate("tilauscope_beancave", "Curve"),
              QApplication.translate("Tab", "Statistics"),
+             QApplication.translate("tilauscope_beancave", "Journal"),
              QApplication.translate("tilauscope_beancave", "Analysis")], compact=True)
         self.detail_page_switch.set_current(0)
         self.detail_page_switch.changed.connect(self._on_detail_page_changed)
@@ -1548,6 +1564,43 @@ class ViewerMixin:
             self.roast_result_banner.hide()
             self.roast_shared_banner.hide()
             self.roast_tasting_banner.hide()
+        self._refresh_journal()
+
+    def _show_all_figures(self, on: bool) -> None:
+        self._stats_all_figures = on
+        self._set_stats_view(False)
+
+    def _clear_stats_summary(self) -> None:
+        """No roast on screen: the page shows the sheet's own message, not the last roast's summary."""
+        # Also reached while the page is being built, before the summary exists.
+        summary = getattr(self, 'roast_stats_summary', None)
+        if summary is not None:
+            summary.clear()
+            self._set_stats_view(False)
+
+    def _refresh_journal(self) -> None:
+        """The Journal follows the roast on screen, and is read only while it shows."""
+        # Reached from slots: an escape here would close the application.
+        try:
+            view = getattr(self, 'roast_journal_view', None)
+            if view is None or self.viewer_pages.currentWidget() is not view:
+                return
+            profile = self.displayed_profile() if self._detail_mode == 'single' else None
+            bean = self.bean_from_profile(profile) if profile else None
+            if not profile:
+                view.show_message(QApplication.translate(
+                    "tilauscope_beancave", "Select one roast to read its coffee's journal."))
+            elif bean is None:
+                view.show_message(QApplication.translate(
+                    "tilauscope_beancave", "This roast is not linked to a coffee."))
+            else:
+                from tilauscope import tasting_log  # noqa: PLC0415
+                from tilaucore.roast_journal import journal_rows  # noqa: PLC0415
+                rows = journal_rows(bean.uuid, self._metadata_cache.records.values(),
+                                    tasting_log.load(self.beancave_directory).entries)
+                view.show_rows(rows, str(profile.get('roastUUID') or ''), self.aw.qmc.mode)
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _log.exception("the journal could not be shown")
 
     def _show_tiles(self, texts: list) -> None:
         for tile, text in zip(self.roast_tiles, texts):
@@ -1557,6 +1610,7 @@ class ViewerMixin:
         self.roast_detail_title.setText("")
         self.roast_detail_title.setToolTip("")
         self._set_detail_mode('none')
+        self._clear_stats_summary()
 
     def _show_detail_single(self, fname: str) -> None:
         """Open the head on one roast; its figures follow once it has loaded.
@@ -1598,6 +1652,9 @@ class ViewerMixin:
             self._refresh_tasting_banner(profile)
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
             _log.exception("the roast's tasting could not be shown")
+        self._refresh_journal()
+        if not profile:
+            self._clear_stats_summary()
         try:
             self._refresh_shared_banner(profile)
         except Exception:  # noqa: BLE001  pylint: disable=broad-except
@@ -1746,6 +1803,7 @@ class ViewerMixin:
                 self._set_reference_roast(bean, roast_uuid, choice)
             self._repaint_references()
             self._refresh_tasting_banner(profile)
+            self._refresh_journal()
 
     @pyqtSlot(bool)
     def _toggle_reference(self, on: bool) -> None:
@@ -1854,6 +1912,7 @@ class ViewerMixin:
         # page the button opened a curve the card was not showing.
         self.zoom_button.setVisible(index == 0)
         self.curve_bar.setVisible(index == 0)
+        self._refresh_journal()
 
     @pyqtSlot(int)
     def _on_curve_view_changed(self, index: int) -> None:

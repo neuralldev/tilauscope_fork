@@ -263,8 +263,12 @@ should not become a reference. This is the switch that protects every future pla
 Later, from the file list, you can also mark a roast as reviewed and sound — see
 [After the roast](after-the-roast.md#repairing-incomplete-roast-files).
 
-<!-- CAPTURE 7.15 — the ROAST SUMMARY, on a roast with a visible drift in one phase.
-CAPTURE 7.16 — the colour entry and the Exclude from learning control. -->
+<!-- CAPTURE 7.15 [scene:window_summary] — the ROAST SUMMARY, on a roast with a visible drift in one phase.
+CAPTURE 7.16 [scene:result] — the colour entry and the Exclude from learning control. -->
+
+![The ROAST SUMMARY of a finished roast.](assets/the-guided-roast-7.15.png)
+
+![The result form with its colour entry.](assets/the-guided-roast-7.16.png)
 
 ---
 

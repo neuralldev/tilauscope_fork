@@ -28,7 +28,7 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 
 # Bump on any change to the fields extracted below: a mismatch forces a full
 # rebuild rather than serving entries that lack the new data.
-INDEX_SCHEMA: Final[int] = 7
+INDEX_SCHEMA: Final[int] = 8
 
 # Read windows. The head must cover every scalar key, the event lists AND the
 # whole 'timex' array — the burner readings below turn event indices into times
@@ -117,6 +117,10 @@ class AlogMetadata:
     # last roast, never the source of a "Next time", and outside learning until
     # it is adopted (its ``exclude_learning`` cleared).
     shared: bool = False
+    # ── schema 8 ────────────────────────────────────────────────────────────
+    # The change a tasting made to the plan this roast followed, None when it
+    # made none or the roast has no plan on record.
+    tasting_change: "dict[str, Any] | None" = None
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -362,6 +366,7 @@ def read_alog_metadata(path: Path) -> "AlogMetadata | None":
     snapshot = values.get('tilau_roast_plan_snapshot')
     plan_reference_uuid = (str(snapshot.get('reference_roast_uuid') or "")
                            if isinstance(snapshot, dict) else "")
+    tasting_change = snapshot.get('tasting_change') if isinstance(snapshot, dict) else None
 
     return AlogMetadata(
         filename=path.name,
@@ -398,6 +403,7 @@ def read_alog_metadata(path: Path) -> "AlogMetadata | None":
         heater_de=heater[4],
         heater_read=heater_read,
         plan_reference_uuid=plan_reference_uuid,
+        tasting_change=tasting_change if isinstance(tasting_change, dict) else None,
     )
 
 

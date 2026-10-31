@@ -369,8 +369,15 @@ class ViewerMultiMixin:
 
     def _set_stats_view(self, multi: bool) -> None:
         """Bascule l'onglet Advanced Stats : vue HTML (mono) ↔ dot plot (multi)."""
+        summary = getattr(self, 'roast_stats_summary', None)
+        has_summary = not multi and summary is not None and summary.has_data
+        at_glance = has_summary and not getattr(self, '_stats_all_figures', False)
+        if summary is not None:
+            summary.setVisible(at_glance)
+        if hasattr(self, 'stats_back'):
+            self.stats_back.setVisible(has_summary and not at_glance)
         if hasattr(self, 'stats_scroll'):
-            self.stats_scroll.setVisible(not multi)
+            self.stats_scroll.setVisible(not multi and not at_glance)
         if hasattr(self, 'stats_multi_widget'):
             self.stats_multi_widget.setVisible(multi)
 

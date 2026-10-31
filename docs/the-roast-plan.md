@@ -285,23 +285,25 @@ continuous slide. Below it, every gesture in order: its time, the bean temperatu
 it, which lever, and from what to what. Then *At a glance* — charge and drop temperatures, first
 crack, total time, and the duration of each phase with its share of the roast.
 
-**Airflow.** *Airflow*, *AirWave*, *AirWave Mode*, with the reason attached — *to smooth RoR*,
-*to prevent crash*, *Action: Increase extraction/airflow to shed thermal energy*.
+**Airflow.** *Airflow*, *AirWave*, *AirWave Mode*.
 
 **Drum speed.** *Drum Speed* and *Control*, computed once for this batch — see
 *Preparing a roast* for why drum speed is a setup decision.
 
-**Action notes.** Each requested gesture comes with its reason (*Action: Reduce burner 10% 45s
-before*, *Action: Boost heater*). A plan you understand is a plan you can learn from; a list of
-orders is not.
+**Plan notes.** The section *Historical Feedback & Plan Notes* says why this plan is what it is:
+what your roasts of this coffee taught it, a small batch that changes the pace, a development
+ratio outside the usual window. A plan you understand is a plan you can learn from; a list of
+orders is not. These notes explain the settings, they do not ask for a move during the roast.
 
-**Risk markers.** *CRASH* and *FLICK* points with a *Severity*, plus *RoR variance* — the plan
-knows where this coffee is likely to [crash](glossary.md#crash) or
-[flick](glossary.md#flick) before it happens.
+**Past crashes and flicks.** In red at the top of the same section: each
+[crash](glossary.md#crash) or [flick](glossary.md#flick) your earlier roasts of this coffee
+showed, how often, when, and its size (*RoR dip* or *RoR bump*, in degrees per minute). The
+*RoR variance* band of the historical graph shows how much those roasts differed. The fix for a
+past crash is in the settings of the next plan.
 
-**Geometry notes.** An unusual Maillard reference shape is reported as information to compare
-with live measurements. The fallback decay exponent is a drawing aid, not proof that a flick,
-a sensory defect, or an unrecoverable roast will follow.
+**Geometry notes.** An unusual Maillard reference shape is reported as information. The
+fallback decay exponent is a drawing aid, not proof that a flick, a sensory defect, or an
+unrecoverable roast will follow.
 
 !!! note
     Every temperature in the plan is a [bean temperature](glossary.md#bt--bean-temperature) and

@@ -119,9 +119,11 @@ saved without a command sends nothing.
 is shown there but cannot be changed: it carries the preheat temperature, which is set in the
 [roast setup](preparing-a-roast.md).
 
-<!-- CAPTURE 4.14 — Configuration → CONTROLS, a Skywalker setup: the four control names filled,
+<!-- CAPTURE 4.14 [scene:config_skywalker] — Configuration → CONTROLS, a Skywalker setup: the four control names filled,
 CHARGE, DROP and COOL END dots filled with their three cards showing skywalker(EVT,…) commands,
 and Monitoring buttons unfolded with START reading "Preheat to 181 °C". -->
+
+![The CONTROLS tab of a Skywalker: control names, three milestone commands, and Monitoring buttons with the preheat on START.](assets/configuration-4.14.png)
 
 ---
 
@@ -364,10 +366,11 @@ Both answers are shown here with an **Ask me again** button, which forgets the a
 notice appears once more the next time the feature is used. A line reading *not asked yet* means
 nothing has been granted, and there is nothing to forget.
 
-<!-- CAPTURE 4.13b — the INTEGRATIONS tab, Privacy group: AI provider disclosure showing
+<!-- CAPTURE 4.13b [scene:config_privacy] — the INTEGRATIONS tab, Privacy group: AI provider disclosure showing
 "acknowledged for Gemini" with its Ask me again button enabled, and Location lookup showing
 "not asked yet" with its button greyed out. -->
 
+![The Privacy group: the AI notice acknowledged with Ask me again available, Location lookup not asked yet.](assets/configuration-4.13b.png)
 
 ![the AI Provider status line, configured](assets/configuration-4.10.png)
 
@@ -396,7 +399,9 @@ and of the stock values and roast costs worked out from them. Until one is chose
 currency is used. Amounts follow the system's number format, so the symbol may sit before or
 after the figure.
 
-<!-- CAPTURE 4.13 — the BEANCAVE tab: the Directories group, then the Currency section with its dropdown open. -->
+<!-- CAPTURE 4.13c [scene:config_beancave] — the BEANCAVE tab: the Directories group, then the Currency section. -->
+
+![The BEANCAVE tab with the Directories group and the Currency section.](assets/configuration-4.13c.png)
 
 ---
 

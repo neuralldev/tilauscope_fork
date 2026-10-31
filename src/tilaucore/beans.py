@@ -161,6 +161,8 @@ class GreenBean:
     uuid:str = ''
     # roastUUID of the roast the operator marked as this crop's reference; '' = none.
     reference_roast_uuid: str = ''
+    # What this coffee is for ('filter' | 'omni' | 'espresso'); '' = not chosen yet.
+    destination: str = ''
 
 
 @dataclass

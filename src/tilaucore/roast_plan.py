@@ -655,7 +655,7 @@ def _heater_authority_notes(pre_fc_values: "list[float]",
     if low < caution_threshold:
         return [_tr(QT_TRANSLATE_NOOP(
             "tilauscope_roast_plan",
-            "The planned pre-first-crack heater enters the {0}–{1}% low-margin zone on the {2}; use the live rate of rise to decide whether to hold or adjust it.")).format(
+            "The planned pre-first-crack heater enters the {0}–{1}% low-margin zone on the {2}.")).format(
             f"{support_threshold:.0f}", f"{caution_threshold:.0f}", machine)]
     return []
 
@@ -1116,6 +1116,11 @@ class RoastPlanEngine:
         _dest = str(self._destination_setting or "").strip().lower()
         return _dest if _dest in _DEV_DESTINATION_BONUS_SEC else _DEV_DESTINATION_DEFAULT
 
+    def _destination_for(self, bean: GreenBean) -> str:
+        """The coffee's own destination, else the last one chosen."""
+        _dest = str(getattr(bean, "destination", "") or "").strip().lower()
+        return _dest if _dest in _DEV_DESTINATION_BONUS_SEC else self._read_roast_destination()
+
     def _list_alogs(self):
         if not self.alog_directory or not Path(self.alog_directory).is_dir():
             return []
@@ -1398,10 +1403,9 @@ class RoastPlanEngine:
         return matches
 
     def _crash_flick_feedback(self, crashes_detected: list, flicks_detected: list
-                              ) -> tuple[list[str], list[str]]:
-        """History notes and advice for the crashes and flicks of past roasts."""
+                              ) -> list[str]:
+        """History notes for the crashes and flicks of past roasts: the fact, no in-roast advice."""
         feedback_notes: list[str] = []
-        adjustments: list[str] = []
         phase_words = {"DRY": _tr(QT_TRANSLATE_NOOP("Label", "Dry")),
                        "MAILLARD": _tr(QT_TRANSLATE_NOOP("Label", "Maillard")),
                        "DEVELOPMENT": _tr(QT_TRANSLATE_NOOP("Label", "Development"))}
@@ -1411,9 +1415,8 @@ class RoastPlanEngine:
             occurrences = crash.get("occurrence_count", 1)
             time_str = self.format_time((crash["time"])/60.0)
 
-            msg = _tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","CRASH"))+f" ({occurrences}x) "+_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","at"))+f" {time_str} "+_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","during"))+f" {phase}. "+_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","Severity"))+f": {crash['severity']}"
+            msg = _tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","CRASH"))+f" ({occurrences}x) "+_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","at"))+f" {time_str} "+_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","during"))+f" {phase}. "+_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","RoR dip"))+f": {crash['severity']:.1f}°/min"
             feedback_notes.append(msg)
-            adjustments.append(_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","Action: Monitor momentum; consider reducing airflow.")))
 
         for flick in flicks_detected:
             phase = flick.get("phase", _tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","OUT OF SCOPE")))
@@ -1421,10 +1424,9 @@ class RoastPlanEngine:
             occurrences = flick.get("occurrence_count", 1)
             time_str = self.format_time(flick["time"]/60.0)
 
-            msg = _tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","FLICK"))+f" ({occurrences}x) "+_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","at"))+f" {time_str} "+_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","during"))+f" {phase}. "+_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","Severity"))+f": {flick['severity']}"
+            msg = _tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","FLICK"))+f" ({occurrences}x) "+_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","at"))+f" {time_str} "+_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","during"))+f" {phase}. "+_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","RoR bump"))+f": {flick['severity']:.1f}°/min"
             feedback_notes.append(msg)
-            adjustments.append(_tr(QT_TRANSLATE_NOOP("tilauscope_roast_plan","Action: Increase extraction/airflow to shed thermal energy.")))
-        return feedback_notes, adjustments
+        return feedback_notes
 
     def _average_event_group(self, group):
         """
@@ -1955,7 +1957,6 @@ class RoastPlanEngine:
             — only alogs matching the current roaster type are included
         """
         feedback_notes = []
-        adjustments = []
         _reference_uuid, _reference_status = self._plan_reference(bean)
 
         # Determine expected machine fingerprint from RoasterContext
@@ -2563,14 +2564,12 @@ class RoastPlanEngine:
         #time_index = self.lastprofiledata.get("timeindex",[])
         #charge_in_sec = time_index[0] if len(time_index) > 0 and time_index[0] > -1 else 0
 
-        _notes, _actions = self._crash_flick_feedback(crashes_detected, flicks_detected)
-        feedback_notes += _notes
-        adjustments += _actions
+        feedback_notes += self._crash_flick_feedback(crashes_detected, flicks_detected)
 
         master_graph_data = self._prepare_historical_graph_data(relevant_logs_data)
         return {
             "notes": feedback_notes,
-            "actions": adjustments,
+            "actions": [],
             "graph": master_graph_data, # Contient maintenant ror_mean, bt_mean, etc.
             "crashes": crashes_detected,
             "flicks": flicks_detected,
@@ -3066,13 +3065,13 @@ class RoastPlanEngine:
             note = {
                 "acceleration": _tr(QT_TRANSLATE_NOOP(
                     "tilauscope_roast_plan",
-                    "Geometry note: covering {0}°{1} in {2} of Maillard makes the reference curve rise. Compare it with the live rate of rise and consider the charge setup or Maillard duration.")),
+                    "Geometry note: covering {0}°{1} in {2} of Maillard makes the reference curve rise: look at the charge setup or the Maillard duration.")),
                 "crash": _tr(QT_TRANSLATE_NOOP(
                     "tilauscope_roast_plan",
-                    "Geometry note: the reference curve falls to {3}°{1}/min before first crack to cover {0}°{1} in {2}. Check the live rate of rise before changing the plan.")),
+                    "Geometry note: the reference curve falls to {3}°{1}/min before first crack to cover {0}°{1} in {2}.")),
                 "illegible": _tr(QT_TRANSLATE_NOOP(
                     "tilauscope_roast_plan",
-                    "Geometry note: the planned heater change is {4}% across a {2} Maillard. Treat this as an unusual reference shape and reassess it against live measurements.")),
+                    "Geometry note: the planned heater change is {4}% across a {2} Maillard: an unusual reference shape.")),
             }[_mai_conflict].format(
                 f"{ma_bt_temperature * ror_scale:.0f}", mode,
                 self.format_time(maillard_time_min),
@@ -4023,6 +4022,10 @@ class RoastPlanEngine:
         # atypical lot) can never pull the plan out of the target style.
         drop_source: "_PlanSource" = _SOURCE_GRID
         _notes: "list[str]" = []
+        _is_fahrenheit = self.mode == "F"
+        _ror_scale = 1.8 if _is_fahrenheit else 1.0
+        def _note_temp(value_c: float) -> str:
+            return f"{(fromCtoFstrict(value_c) if _is_fahrenheit else value_c):.1f}"
         ## Lot 4 — sous enveloppe, la température de drop se DÉDUIT : on entre
         ## le FC à la pente prescrite, elle continue de descendre vers le RoR de
         ## drop, et le ΔT qui en résulte donne la cible. La bande de style ne la
@@ -4056,8 +4059,8 @@ class RoastPlanEngine:
                 # it is supposed to explain.
                 _colour_note = _tr(QT_TRANSLATE_NOOP(
                     "tilauscope_roast_plan",
-                    "Colour feedback ({0} measured roast(s)): drop target adjusted {1}°C vs grid ({2}°)")).format(
-                    _drop_n, f"{drop_bt_temperature - _drop_grid:+.1f}", f"{_drop_grid:.1f}")
+                    "Colour feedback ({0} measured roast(s)): drop target adjusted {1}° vs grid ({2}°)")).format(
+                    _drop_n, f"{(drop_bt_temperature - _drop_grid) * _ror_scale:+.1f}", _note_temp(_drop_grid))
                 _colour_drop_c = drop_bt_temperature
                 _logd.info(
                     f"RoastPlan: drop from colour history {drop_bt_temperature:.1f}°C "
@@ -4097,8 +4100,8 @@ class RoastPlanEngine:
                 _colour_note = _tr(QT_TRANSLATE_NOOP(
                     "tilauscope_roast_plan",
                     "The measured colours of your last {0} roast(s) put the drop at {1}°, but the learned first crack ({2}°) is high for this roast level: reaching it over the planned development lifts the target to {3}°.")).format(
-                    _drop_n, f"{_colour_drop_c:.1f}", f"{fc_bt:.1f}",
-                    f"{drop_bt_temperature:.1f}")
+                    _drop_n, _note_temp(_colour_drop_c), _note_temp(fc_bt),
+                    _note_temp(drop_bt_temperature))
 
         if _colour_note is not None:
             _notes.append(_colour_note)
@@ -4121,8 +4124,8 @@ class RoastPlanEngine:
                 f"FC {fc_bt:.1f}°C over {dev_time_min:.2f} min)")
             _notes.append(_tr(QT_TRANSLATE_NOOP(
                 "tilauscope_roast_plan",
-                "The planned drop temperature asks development to speed up after first crack ({0} against {1}°/min entering the crack). Either drop earlier or enter the crack with more momentum.")).format(
-                f"{dev_ror:.1f}", f"{env_fc_entry_ror_c:.1f}"))
+                "The planned drop temperature asks development to speed up after first crack ({0} against {1}°/min entering the crack).")).format(
+                f"{dev_ror * _ror_scale:.1f}", f"{env_fc_entry_ror_c * _ror_scale:.1f}"))
 
         drop_ror = self._compute_ror_at_drop(
             agtron_ratio    = agtron_ratio,
@@ -4956,9 +4959,9 @@ class RoastPlanEngine:
         # We convert back to the native unit only in the final output dict.
         from tilaucore.artisan_compat import fromFtoCstrict, fromCtoFstrict
 
-        # La destination peut avoir changé depuis la construction du moteur
-        # (celui-ci est mis en cache par ses appelants) : on la relit ici.
-        self.roast_destination = self._read_roast_destination()
+        # La destination appartient au café, et peut avoir changé depuis la
+        # construction du moteur (mis en cache par ses appelants) : on la relit ici.
+        self.roast_destination = self._destination_for(bean)
 
         _is_fahrenheit = (self.mode == "F")
 
@@ -5540,12 +5543,15 @@ class RoastPlanEngine:
                 f"(dev={dev_time_min:.2f}min, total={drop_time_min:.2f}min)."
             )
             if history is not None:
-                history["actions"] = (history.get("actions") or []) + [_tr(QT_TRANSLATE_NOOP(
+                _dtr_note = (_tr(QT_TRANSLATE_NOOP(
                     "tilauscope_roast_plan",
-                    "The planned development ratio ({0}%) lands outside the usual window for this roast level ({1}-{2}%) — the roast reaches first crack {3} than the style expects.")).format(
+                    "The planned development ratio ({0}%) lands outside the usual window for this roast level ({1}-{2}%) — the roast reaches first crack later than the style expects."))
+                    if dtr_achieved < roast_constraints.dtr_pct[0] else _tr(QT_TRANSLATE_NOOP(
+                    "tilauscope_roast_plan",
+                    "The planned development ratio ({0}%) lands outside the usual window for this roast level ({1}-{2}%) — the roast reaches first crack earlier than the style expects.")))
+                history["actions"] = (history.get("actions") or []) + [_dtr_note.format(
                     f"{dtr_achieved*100:.1f}", f"{roast_constraints.dtr_pct[0]*100:.0f}",
-                    f"{roast_constraints.dtr_pct[1]*100:.0f}",
-                    "later" if dtr_achieved < roast_constraints.dtr_pct[0] else "earlier")]
+                    f"{roast_constraints.dtr_pct[1]*100:.0f}")]
 
         # drop_bt_temperature: scale within [drop_min, drop_max] using dev_thermal_inertia_factor.
         # High inertia (shop cast-iron drum, _dev_inertia→1.0) → upper range (keeps climbing);
