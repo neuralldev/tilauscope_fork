@@ -360,7 +360,7 @@ class OnboardingWizard(QDialog):
             f"color:{_T['SUBTEXT']}; font-size:13px; background:{_T['SURFACE']};"
             f" border:1px solid {_T['OVERLAY']}; border-radius:14px; padding:8px 16px;"
         )
-        lay.addWidget(self._operator_preview, 0, Qt.AlignmentFlag.AlignLeft)
+        lay.addWidget(self._operator_preview, 0, Qt.AlignmentFlag.AlignLeft)  # type: ignore[call-arg]
         self._on_operator_changed(self._operator)
         lay.addSpacing(26)
 
@@ -444,7 +444,7 @@ class OnboardingWizard(QDialog):
             col.addWidget(card)
         col.addStretch()
         scroll.setWidget(holder)
-        lay.addWidget(scroll, 1)
+        lay.addWidget(scroll, 1)  # type: ignore[call-arg]
         search.textChanged.connect(self._filter_roasters)
 
         g = QLabel(QApplication.translate("tilauscope_onboarding","From this roaster").upper())
@@ -819,7 +819,7 @@ class OnboardingWizard(QDialog):
             self._periph.append((attrs, status, prefix))
             page.layout().addWidget(row)
         # the colour meter row has no prefix: it is matched through the colormeters registry
-        self._color_status: QLabel = status
+        self._color_status: QLabel = status  # type: ignore[possibly-undefined]
 
         # ── other known Artisan BLE devices (identification only) ──────────
         # Live-only: whatever advertises nearby and matches an Artisan signature

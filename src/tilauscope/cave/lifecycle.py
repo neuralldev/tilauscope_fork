@@ -91,7 +91,7 @@ class LifecycleMixin:
     """
 
     def __init__(self, aw:'ApplicationWindow', uuid:str="") -> None:
-        super().__init__(parent=aw)
+        super().__init__(parent=aw)  # type: ignore[call-arg]
         # before setting up information for ui, let's work on security
         self.shutdown_lock = QMutex() # Le verrou
         self.is_shutting_down = False  # Le drapeau
@@ -240,7 +240,7 @@ class LifecycleMixin:
         #if a bean was given in parameter, search for uuid, then go to the green bean record and the roast itself as well in 3rd tab
         b = self._get_uuid_from_bean_description(uuid) # get uuid and validate that it is in the list
 
-        self.is_directory_defined:bool = str(self.beancave_directory) != "" and str(self.alog_directory) != ""
+        self.is_directory_defined = str(self.beancave_directory) != "" and str(self.alog_directory) != ""
 
         # Positioning on the green bean if a bean match was found for the provided uuid parameter
         self.populate_table()

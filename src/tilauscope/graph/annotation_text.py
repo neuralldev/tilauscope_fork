@@ -41,11 +41,13 @@ from PyQt6.QtWidgets import QApplication
 
 from artisanlib.util import stringfromseconds
 from tilauscope.tilauscope_types import get_agtron_color
-from tilauscope.graph.common import delta_scale, preheat_arrived, report_once, within_share
+from tilauscope.graph.common import (DRY_END_WINDOW_C, FIRST_CRACK_WINDOW_C, NOW_WINDOW_C, delta_scale, preheat_arrived,
+                                      report_once, within_share)
 from tilauscope.probe_visibility import et_available_for
 from tilauscope.tilauscope_types import get_roc_color as _omniflux_roc_color
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
+_CHARGE_SETTLE_S: Final[float] = 30.0   # the first readings after charge are drum heat, not the bean
 
 # Constant colour palettes, built once rather than on every refresh.
 _PID_COLORS: Final[dict[str, str]] = {
@@ -133,9 +135,9 @@ def _labels() -> dict[str, str]:
             'coach_dry_in':         QApplication.translate('tilauscope_graph', 'DRY END in'),
             'coach_fc_in':          QApplication.translate('tilauscope_graph', '1C in'),
             'coach_on_track':       QApplication.translate('tilauscope_graph', '✓ On track'),
-            'coach_approaching_dry':QApplication.translate('tilauscope_graph', '⚠ Approaching DRY END — ease the heat'),
-            'coach_fc_imminent':    QApplication.translate('tilauscope_graph', '👂 1C imminent — get ready to cut power'),
-            'coach_fc_approaching': QApplication.translate('tilauscope_graph', '⚠ 1C approaching — get ready to reduce'),
+            'coach_approaching_dry':QApplication.translate('tilauscope_graph', 'Approaching DRY END'),
+            'coach_fc_imminent':    QApplication.translate('tilauscope_graph', '👂 1C imminent'),
+            'coach_fc_approaching': QApplication.translate('tilauscope_graph', '1C approaching'),
             'coach_cracks_heard':   QApplication.translate('tilauscope_graph', '👂 Cracks starting…'),
             'coach_browning_ok':    QApplication.translate('tilauscope_graph', '✓ Steady browning'),
             'coach_dev_ok':         QApplication.translate('tilauscope_graph', '✓ Development on track'),
@@ -497,6 +499,8 @@ def _coach_html(qmc: Any, idx, info, x_intersect, bt, et, mode, L, colors,
         ror = None
     ror_str = f" · RoR {ror:+.0f}" if ror is not None else ""
 
+    _scale = delta_scale(mode)
+    _plan_targets = getattr(qmc, '_tilau_plan_targets', None)
     toward = ""
     hero = ""
     hero_color = colors['value']
@@ -508,20 +512,24 @@ def _coach_html(qmc: Any, idx, info, x_intersect, bt, et, mode, L, colors,
         toward = L['coach_toward_dry']
         inter = info["rel_tx"] - (x_intersect - info["charge"])
         inter_time = stringfromseconds(-inter) if inter < 0 else "--:--"
-        if inter < 0 and -inter < 45.0:
+        _dry_target = _plan_targets[0] if _plan_targets else info["target"]
+        _dry_gap = _dry_target - bt
+        # Right after charge the bean is still falling from drum heat: only a climbing bean approaches.
+        _dry_approaching = (info["rel_tx"] >= _CHARGE_SETTLE_S and ror is not None and ror > 0
+                            and _dry_gap <= DRY_END_WINDOW_C * _scale)
+        if _dry_approaching and _dry_gap <= DRY_END_WINDOW_C * _scale / 2.0:
             hero_color = RED
-        elif inter < 0 and -inter < 90.0:
+        elif _dry_approaching:
             hero_color = YELLOW
         hero = f"{L['coach_dry_in']} {inter_time}"
-        _dry_approaching = inter < 0 and -inter < 90.0
         if _dry_approaching:
             verdict, verdict_color = L['coach_approaching_dry'], YELLOW
         else:
             verdict, verdict_color = L['coach_on_track'], GREEN
-        compact = f"{L['BT']} {bt:.0f}°→{info['target']:.0f}°{mode}{ror_str}"
+        compact = f"{L['BT']} {bt:.0f}°→{_dry_target:.0f}°{mode}{ror_str}"
         ## TILAU ## publish coach proximity so the assistant panel's DRY END
-        ## button lights up together with this "approaching" alert (same
-        ## predicted-time signal, not a divergent temperature-gap threshold)
+        ## button lights up together with this "approaching" alert: the bean's
+        ## distance to the target, never a predicted time
         qmc._tilau_coach_pub = {"toward": "DE",
                                  "eta_sec": (-inter if inter < 0 else -1.0),
                                  "approaching": bool(_dry_approaching)}
@@ -530,14 +538,14 @@ def _coach_html(qmc: Any, idx, info, x_intersect, bt, et, mode, L, colors,
         toward = L['coach_toward_fc']
         pred = info.get("pred_sec", 0.0)
         hero = f"{L['coach_fc_in']} {stringfromseconds(pred) if pred and pred > 0 else '--:--'}"
-        # Hero colour tracks predicted time-to-1C, like the drying phase does.
-        if pred and pred > 0:
-            if pred < 45.0:
-                hero_color = RED
-            elif pred < 90.0:
-                hero_color = YELLOW
+        # Hero colour tracks the bean's distance to 1C, like the drying phase does.
+        _fc_gap = (_plan_targets[1] if _plan_targets else info["target"]) - bt
+        if _fc_gap <= FIRST_CRACK_WINDOW_C * _scale / 2.0:
+            hero_color = RED
+        elif _fc_gap <= FIRST_CRACK_WINDOW_C * _scale:
+            hero_color = YELLOW
         # Verdict priority: acoustic burst (strongest) → cracks heard →
-        # time-to-1C proximity (works without a mic) → steady browning.
+        # distance to 1C (works without a mic) → steady browning.
         fc_signal = False
         if qmc.fc_detector._cached_crack_device_idx != -1:
             cnt = qmc.fc_detector.last_count
@@ -550,7 +558,7 @@ def _coach_html(qmc: Any, idx, info, x_intersect, bt, et, mode, L, colors,
                 fc_signal = True
         _fc_approaching = fc_signal
         if not fc_signal:
-            if pred and 0 < pred < 90.0:
+            if _fc_gap <= FIRST_CRACK_WINDOW_C * _scale:
                 verdict, verdict_color = L['coach_fc_approaching'], YELLOW
                 _fc_approaching = True
             else:
@@ -569,18 +577,24 @@ def _coach_html(qmc: Any, idx, info, x_intersect, bt, et, mode, L, colors,
     elif idx in ("FC", "SCs", "SCe"):
         toward = L['coach_toward_drop']
         dev_pct = info.get("dev_pct", 0.0)
-        DEV_TARGET = 20.0
+        DEV_TARGET = float(getattr(qmc, '_tilau_dev_target', None) or 20.0)
         hero = f"{L['coach_dev_short']} {dev_pct:.0f}% · {L['Target']} {DEV_TARGET:.0f}%"
-        drop_temp = info.get("drop_temp", 0.0)
+        drop_temp = _plan_targets[2] if _plan_targets else info.get("drop_temp", 0.0)
         gap = drop_temp - bt
         warn_gap = 15.0 if mode == "C" else 27.0
         # Drive the verdict from the DEVELOPMENT RATIO, not temperature: on
         # this roaster BT can sit near the configured drop temp very early,
         # so a temperature-first rule wrongly says "drop" at 5% dev.
-        if dev_pct >= DEV_TARGET - 2.0:
+        if _plan_targets:
+            # a plan lands on its drop temperature, the same one the assistant shows
+            if gap <= NOW_WINDOW_C * _scale:
+                verdict, verdict_color, hero_color = L['coach_ready_drop'], RED, GREEN
+            else:
+                verdict, verdict_color = L['coach_dev_ok'], GREEN
+        elif dev_pct >= DEV_TARGET - 2.0:
             # development target reached → time to drop
             verdict, verdict_color, hero_color = L['coach_ready_drop'], RED, GREEN
-        elif dev_pct < 13.0 and drop_temp > 0.0 and gap < warn_gap:
+        elif dev_pct < DEV_TARGET * 0.65 and drop_temp > 0.0 and gap < warn_gap:
             # hot enough to drop but not developed yet → hold / ease the heat
             verdict, verdict_color, hero_color = L['coach_underdeveloped'], YELLOW, YELLOW
         else:

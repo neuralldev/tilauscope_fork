@@ -23,6 +23,8 @@ buys is a boundary to read within, not a decoupling.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import logging
 from typing import Final
 
@@ -407,7 +409,7 @@ class SlidersMixin:
             return
         # add action to slider
         if n in [0,1,2,3]:
-            slider_lcd:dict[int, callable[int]] = {
+            slider_lcd:dict[int, Callable[[int], None]] = {
                 0:self.aw.updateSlider1LCD,
                 1:self.aw.updateSlider2LCD,
                 2:self.aw.updateSlider3LCD,

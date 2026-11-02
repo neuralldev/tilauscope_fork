@@ -42,10 +42,11 @@ from tilauscope.tilauscope_types import (GreenBean, AGTRON_SCALES, AgtronScale, 
     get_ror_color_by_phase, get_ror_ideal_band,
     format_batch_label, weight_loss_target_from_plan)
 from tilauscope.theme_qss import style_combo_popup, tint, tooltip_qss
+from tilaucore.milestones import MILESTONE_HALF_C
 from tilaucore.roast_colour import roast_agtron
 from tilauscope.roasters import RoasterContext, roast_context_for
 from tilauscope.probe_visibility import et_available_for
-from tilauscope.graph.common import preheat_arrived
+from tilauscope.graph.common import DRY_END_WINDOW_C, FIRST_CRACK_WINDOW_C, NOW_WINDOW_C, delta_scale, preheat_arrived
 from tilauscope.roast_plan_model import (TilauScopeRoastPlan, heat_soak_correction,
                                          destination_dev_bonus_sec,
                                          ROAST_DESTINATION_KEYS,
@@ -330,6 +331,26 @@ def _dev_crash_threshold(ror_target_drop: float, mode: str,
     return fallback * scale
 
 
+_TP_GRACE_S: Final = 45.0   # le RoR se remet du creux de charge : illisible jusque-là
+
+
+def _crash_readable(t_now_sec: float, t_tp_sec: float) -> bool:
+    """Le séchage ne se juge qu'après le TP : la chute du creux de charge n'est pas un crash."""
+    return t_tp_sec > 0.0 and t_now_sec - t_tp_sec >= _TP_GRACE_S
+
+
+def _dev_air_step(target: float, current: float) -> "float | None":
+    """Le prochain palier d'air vers la cible du plan. L'air ne redescend jamais."""
+    return current + _DEV_STAGE if target - current >= _DEV_STAGE else None
+
+
+def _burner_may_rise(plan: "dict | None", t_now_sec: float, t_fcs_sec: float) -> bool:
+    """Un grain jamais torréfié est le seul qu'on rattrape au brûleur, et dans la
+    première minute après le FC. Un grain appris garde son feu (Tilau, 2026-11-02)."""
+    return ((plan or {}).get("Plan Confidence", "grid only") == "grid only"
+            and t_now_sec - t_fcs_sec <= 60.0)
+
+
 def _dtr_realtime(t_now_sec: float, t_charge_sec: float, t_fcs_sec: float) -> float|None:
     """DTR temps réel en % : (temps depuis FC) / (temps depuis CHARGE) × 100."""
     total = t_now_sec - t_charge_sec
@@ -512,13 +533,13 @@ _AP_CHARGE_SETTLE_S: Final = 8.0
 # remain mandatory before arming.
 _AP_USER_ENABLED: Final = True
 # Dev en AUTO — « tenir le feu » : la coupe rapide du feu en dev est la cause
-# principale des crashes post-FC ; filet réactif minimal, AIR d'abord, offset borné auto-résorbé.
+# principale des crashes post-FC ; filet minimal : air par paliers, brûleur tenu sauf grain jamais torréfié.
 _AP_DEV_RATE_PCT_PER_MIN: Final = 5.0   # descente feu max en fenêtre exotherme
 _AP_DEV_RATE_WINDOW_S: Final = 75.0     # fenêtre exotherme FC → FC+75 s
-_AP_NET_STEP_PCT: Final = 2.0           # touche du filet (2 %/4-5 s, jamais bloc 5 %)
-_AP_NET_CADENCE_S: Final = 5.0          # cadence des touches du filet
-_AP_NET_CAP_PCT: Final = 6.0            # borne d'offset AIR du filet (3 touches)
-_AP_NET_RESORB_QUIET_S: Final = 25.0    # calme requis avant résorption de l'offset
+_AP_NET_STEP_PCT: Final = 5.0           # palier du filet, sur l'air
+_AP_NET_CADENCE_S: Final = 30.0         # l'air répond en 20-40 s : pas de palier sur un effet pas encore vu
+_AP_NET_MAX_STAGES: Final = 3           # paliers au plus, puis on laisse faire
+_AP_NET_ROR_BACK_C: Final = 0.5         # °C/min regagnés : le RoR repart, le filet s'arrête
 
 # plan keys of the per-phase lever values, by Artisan slider index
 _AP_LEVER_KEYS: Final = {
@@ -729,6 +750,10 @@ def _ror_deviation_advice(
             "{0}{1} reference trajectory ({2}) — curve observation only",
         ).format(prefix, arrow, ref)
 
+    # Guided: the gesture card alone names the burner value, from the plan steps.
+    if getattr(aw, "_tilau_guided_level", False) is True:
+        return status, ""
+
     # ── Quantification plan « UN CRAN » ────────────────────────────────────
     # Correction validée par la pratique = UN cran de ~5 %, jamais un bloc (un
     # écart lu comme "-15% d'un coup" = pompage). Suggère le prochain pas vers le
@@ -786,11 +811,6 @@ _AIRWAVE_COOLING_PCT: Final = 30
 _AIRWAVE_MODE_BY_PHASE = {"drying": "FAN", "maillard": "STD", "development": "EXT"}
 
 
-# Fenêtre d'approche d'un jalon (minutes) : plancher de repli quand le graphe ne
-# publie pas de proximité. Le signal principal est _coach_approaching() ci-dessous,
-# lu directement depuis l'état publié par le graphe.
-_APPROACH_MIN: Final = 1.5
-
 
 def _milestone_suggestion(aw, which: str, max_age_s: float = 30.0) -> "dict | None":
     """Suggestion de jalon fraîche publiée par le détecteur (#10) : lit
@@ -806,6 +826,33 @@ def _milestone_suggestion(aw, which: str, max_age_s: float = 30.0) -> "dict | No
         return s
     except (AttributeError, TypeError, ValueError):
         return None
+
+
+def _simulated_mark_passed(profile: "dict | None", index: int, recorded_s: float) -> "bool | None":
+    """Whether a simulation has reached milestone `index` of the roast it replays,
+    None outside a simulation or when the original never marked it."""
+    try:
+        i = int(profile["timeindex"][index])
+        timex = profile["timex"]
+        return recorded_s >= float(timex[i]) if 0 < i < len(timex) else None
+    except (IndexError, KeyError, TypeError, ValueError):
+        return None
+
+
+def _ap_milestone_due(which: "str | None", suggested: bool, bt: float, dry_end_temp: float,
+                      fc_temp: float, *, tp_seen: bool, scale: float = 1.0,
+                      original: "bool | None" = None) -> bool:
+    """AUTO marks a milestone when the detector calls it. Without a call, a simulation
+    takes the original's own mark; live, BT leaving the detector's window decides.
+    Nothing else moves the phase while AUTO is armed."""
+    if which is None:
+        return False
+    if suggested:
+        return True
+    if original is not None:
+        return original
+    target = dry_end_temp if which == "DE" else fc_temp
+    return tp_seen and target > 0 and bt >= target + MILESTONE_HALF_C * scale
 
 
 def _mark_missing_milestone(aw, which: str) -> None:
@@ -914,41 +961,27 @@ def _seconds_since_event(aw, idx: int):
 
 class _RoRCrashDetector:
     """
-    Détecte un crash RoR imminent à partir de la pente sur la fenêtre glissante.
+    Détecte un crash RoR : perte sur une fenêtre glissante de 15 s, tenue quelques
+    secondes. Même critère dans toutes les phases, seul le geste annoncé change.
+    Rejeu sur 60 roasts : 3 en développement, 1 avant le FC, aucun sur un roast sain.
 
-    Logique
-    -------
-    - Calcule la pente (°/min²) sur les N dernières valeurs de ror_hist
-    - Si pente < SLOPE_THRESHOLD et distance à la température cible < _temp_proximity
-      pendant au moins CONSECUTIVE_TICKS cycles consécutifs → crash imminent
-    - Émet un beep Qt et retourne un message d'alerte
-
-    Réinitialisation automatique si la pente se redresse.
+    Émet un beep Qt et retourne un message d'alerte.
 
     Note mode
     ---------
     reset(mode) doit être appelé à chaque changement de phase pour adapter
-    _temp_proximity à l'unité courante (°C ou °F).
+    le seuil à l'unité courante (°C ou °F).
     """
-    SLOPE_THRESHOLD    = -0.8   # deg/min PER SECOND - dangerous fall rate (dt-normalised)
-    _TEMP_PROXIMITY_C  = 12.0   # deg C - vigilance window before the target temperature
-    MIN_DURATION_SEC   = 6.0    # seconds the condition must hold (sample-rate invariant)
-    ROR_FLOOR          = 5.0    # deg/min - RoR genuinely low (not mere deceleration)
-    # Calibration DEV : crash franc = perte de RoR sur une fenêtre glissante de
-    # 15 s ; seuil 3,0 °C/min (conservateur, filet minimal).
-    DEV_FALL_WINDOW_S    = 15.0  # fenêtre de mesure de la chute (dev)
-    DEV_FALL_C_PER_WIN   = 3.0   # °C/min perdus sur la fenêtre → crash franc
-    DEV_MIN_SPAN_S       = 10.0  # historique mini couvert avant de juger
-    DEV_MIN_DURATION_SEC = 5.0   # tenue de la condition (< 4-5 s = bruit)
-    DRUM_QUIET_S         = 30.0  # muet après un geste tambour (artefact de MESURE RoR)
+    FALL_WINDOW_S    = 15.0  # fenêtre de mesure de la chute
+    FALL_C_PER_WIN   = 3.0   # °C/min perdus sur la fenêtre → crash franc
+    MIN_SPAN_S       = 10.0  # historique mini couvert avant de juger
+    MIN_DURATION_SEC = 5.0   # tenue de la condition (< 4-5 s = bruit)
+    DRUM_QUIET_S     = 30.0  # muet après un geste tambour (artefact de MESURE RoR)
 
     def __init__(self) -> None:
         self._consecutive:    int   = 0
         self._last_beep_ror:  float = 0.0
-        self._temp_proximity: float = self._TEMP_PROXIMITY_C  # °C par défaut
-        self._slope_threshold: float = self.SLOPE_THRESHOLD   # °C/min/s par défaut
-        self._ror_floor:       float = self.ROR_FLOOR         # °C/min par défaut
-        self._dev_fall_thr:    float = self.DEV_FALL_C_PER_WIN  # °C/min/15 s par défaut
+        self._fall_thr:       float = self.FALL_C_PER_WIN  # °C/min/15 s par défaut
         self._drum_quiet_until: float = 0.0   # monotonic — survit au reset()
 
     def notify_drum_event(self) -> None:
@@ -959,37 +992,30 @@ class _RoRCrashDetector:
 
     def reset(self, mode: str = 'C') -> None:
         """
-        Réinitialise le détecteur et adapte tous les seuils à l'unité.
+        Réinitialise le détecteur et adapte le seuil à l'unité (un delta : ×1.8 en °F).
         Doit être appelé à chaque set_phase().
         """
         self._consecutive   = 0
         self._last_beep_ror = 0.0
-        # Spans / RoR / pentes : ce sont tous des DELTAS → scaling ×1.8 en °F
-        _s = 9.0 / 5.0 if mode == 'F' else 1.0
-        self._temp_proximity  = self._TEMP_PROXIMITY_C * _s
-        self._slope_threshold = self.SLOPE_THRESHOLD * _s
-        self._ror_floor       = self.ROR_FLOOR * _s
-        self._dev_fall_thr    = self.DEV_FALL_C_PER_WIN * _s
+        self._fall_thr      = self.FALL_C_PER_WIN * (9.0 / 5.0 if mode == 'F' else 1.0)
 
     def check(
         self,
         ror: float,
         ror_hist: "deque[float]",
-        bt: float,
-        target_temp: float,
         dt: float = 1.0,
         dev_mode: bool = False,
+        raise_burner: bool = False,
     ) -> str | None:
         """
-        Retourne un message d'alerte si crash imminent, None sinon.
+        Retourne un message d'alerte si crash, None sinon.
 
-        dt-aware : la pente est normalisee par le temps reel ((n-1)*dt) et la duree
-        de confirmation est en SECONDES (MIN_DURATION_SEC), pas en nombre de ticks,
-        donc independante du reglage d'echantillonnage Artisan (qmc.delay).
+        dt-aware : fenêtre et tenue sont en SECONDES, donc indépendantes du
+        réglage d'échantillonnage Artisan (qmc.delay).
 
-        dev_mode : critère DEV recalibré (chute cumulée sur fenêtre 15 s, sans
-        garde de proximité cible — un crash de dev arrive n'importe où entre FC
-        et drop). Le conseil est AIR d'abord : on ne re-coupe JAMAIS le feu.
+        dev_mode choisit le geste. Avant le dev : l'air, puis le brûleur s'il ne
+        suffit pas. En dev : le brûleur reste, l'air monte par paliers de 5 % ;
+        raise_burner ajoute le brûleur (voir _burner_may_rise).
         """
         if len(ror_hist) < 4:
             return None
@@ -998,51 +1024,36 @@ class _RoRCrashDetector:
             return None
 
         dt = dt if (dt and dt > 0) else 1.0
-        if dev_mode:
-            _n = min(len(ror_hist), max(2, int(round(self.DEV_FALL_WINDOW_S / dt)) + 1))
-            _vals = list(ror_hist)[-_n:]
-            _span = (len(_vals) - 1) * dt
-            if _span < self.DEV_MIN_SPAN_S:
-                return None
-            # chute normalisée à la fenêtre nominale (°C/min perdus / 15 s)
-            _fall = (_vals[0] - _vals[-1]) * (self.DEV_FALL_WINDOW_S / _span)
-            if _fall >= self._dev_fall_thr:
-                self._consecutive += 1
-                _req = max(2, int(-(-self.DEV_MIN_DURATION_SEC // dt)))
-                if self._consecutive >= _req:
-                    if abs(ror - self._last_beep_ror) > 0.5:
-                        QApplication.beep()
-                        self._last_beep_ror = ror
-                    return QApplication.translate(
-                        "tilauscope_roast_assistant",
-                        "⚠ RoR crash — {0}°/min lost in 15s — support with AIR, never cut the fire"
-                    ).format(f"{_fall:.1f}")
-            else:
-                self._consecutive = 0
+        _n = min(len(ror_hist), max(2, int(round(self.FALL_WINDOW_S / dt)) + 1))
+        _vals = list(ror_hist)[-_n:]
+        _span = (len(_vals) - 1) * dt
+        if _span < self.MIN_SPAN_S:
             return None
-        vals  = list(ror_hist)[-4:]
-        span_sec = max(1e-6, (len(vals) - 1) * dt)
-        slope = (vals[-1] - vals[0]) / span_sec            # deg/min per second
-
-        gap_to_target = target_temp - bt
-        required_ticks = max(2, int(-(-self.MIN_DURATION_SEC // dt)))   # ceil(MIN_DURATION_SEC/dt)
-
-        if (slope < self._slope_threshold
-                and ror < self._ror_floor
-                and 0 < gap_to_target < self._temp_proximity):
-            self._consecutive += 1
-            if self._consecutive >= required_ticks:
-                if abs(ror - self._last_beep_ror) > 0.5:
-                    QApplication.beep()
-                    self._last_beep_ror = ror
-                return QApplication.translate(
-                    "tilauscope_roast_assistant",
-                    "⚠ RoR crash — {0}°/min/s slope, {1}° from target — raise heater now"
-                ).format(f"{slope:.1f}", f"{gap_to_target:.1f}")
-        else:
+        # chute normalisée à la fenêtre nominale (°C/min perdus / 15 s)
+        _fall = (_vals[0] - _vals[-1]) * (self.FALL_WINDOW_S / _span)
+        if _fall < self._fall_thr:
             self._consecutive = 0
-
-        return None
+            return None
+        self._consecutive += 1
+        if self._consecutive < max(2, int(-(-self.MIN_DURATION_SEC // dt))):
+            return None
+        if abs(ror - self._last_beep_ror) > 0.5:
+            QApplication.beep()
+            self._last_beep_ror = ror
+        if dev_mode and raise_burner:
+            return QApplication.translate(
+                "tilauscope_roast_assistant",
+                "⚠ RoR crash — {0}°/min lost in 15s — 5 % more air and burner, step by step until the RoR picks up"
+            ).format(f"{_fall:.1f}")
+        if dev_mode:
+            return QApplication.translate(
+                "tilauscope_roast_assistant",
+                "⚠ RoR crash — {0}°/min lost in 15s — keep the burner where it is, raise the air by 5 % steps"
+            ).format(f"{_fall:.1f}")
+        return QApplication.translate(
+            "tilauscope_roast_assistant",
+            "⚠ RoR crash — {0}°/min lost in 15s — raise the air; if the RoR does not pick up, raise the burner"
+        ).format(f"{_fall:.1f}")
 
 def _fmt_sec(sec: float) -> str:
     """Formate des secondes en 'mm:ss' lisible (ex. 255 → '4:15')."""
@@ -1248,6 +1259,11 @@ class _HeroMetric(QWidget):
         lay.addWidget(self._val)
         lay.addWidget(self._sub)
 
+    def set_figures_only(self, on: bool) -> None:
+        """Under Details the big value is gone: only the line of figures remains."""
+        self._lbl.setVisible(not on)
+        self._val.setVisible(not on)
+
     def set_label(self, text: str, color: str = THEME['OVERLAY0']) -> None:
         t = text.upper()
         if t != self._last_lbl:
@@ -1365,6 +1381,7 @@ class _CoachLine(QLabel):
         self.setWordWrap(True)
         self.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self._level = None
+        self.quiet_when_ok = False   # Guided: the line speaks only to warn
         self._apply(_S_OK)
 
     def _apply(self, level: str) -> None:
@@ -1385,12 +1402,22 @@ class _CoachLine(QLabel):
             self._level = level
         if self.text() != text:
             self.setText(text)
+        if self.quiet_when_ok:
+            self.setVisible(level != _S_OK and bool(text))
+
+
+# In Guided these would only repeat the gesture card, or warn without naming a gesture.
+_GUIDED_SILENT: Final[frozenset[str]] = frozenset({
+    "dry-ror", "dry-physics", "dry-duration", "mai-baked", "mai-duration", "mai-fc", "dev-drop",
+    "global-stall"})
 
 
 def _render_coach_candidates(aw, coach: _CoachLine,
                              candidates: list[AdviceCandidate]) -> None:
     """Render the one selected candidate; an empty output is intentional silence."""
     candidates = list(getattr(aw, "_tilau_guidance_safety_candidates", ())) + candidates
+    if coach.quiet_when_ok:
+        candidates = [c for c in candidates if c.key not in _GUIDED_SILENT]
     decision = getattr(aw, "_tilau_guidance_decision", None)
     selector = getattr(aw, "_tilau_guidance_selector", None)
     # Rendering has no authority fallback: before a live session publishes its
@@ -1764,6 +1791,8 @@ class _ContextButton(QPushButton):
                  parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._style = style
+        self._wanted = True
+        self.hide_when_idle = False   # Guided: a button shows only when it can act
         self.maintext = label
         text = label if not hint else f"{label}\n{hint}"
         self.setText(text)
@@ -1793,12 +1822,265 @@ class _ContextButton(QPushButton):
         self._style = style
         self._apply_style(style)
 
+    def setVisible(self, visible: bool) -> None:  # noqa: N802  (Qt override)
+        self._wanted = visible
+        super().setVisible(visible and (self.isEnabled() or not self.hide_when_idle))
+
     def set_active(self, active: bool, style: str | None = None) -> None:
         self.setEnabled(active)
         if style:
             self._apply_style(style if active else 'dim')
         elif not active:
             self._apply_style('dim')
+        if self.hide_when_idle:
+            self.setVisible(self._wanted)
+
+
+class _GestureHero(QFrame):
+    """Guided: what to do now, the loudest thing on the page; the figures wait under Details."""
+
+    def __init__(self, phase: int) -> None:
+        super().__init__()
+        self.setObjectName('gestureHero')
+        self._color = ""
+        self._last: "tuple | None" = None
+        self.details_open = False
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(9)
+        strip = QHBoxLayout()
+        strip.setSpacing(3)
+        for index, (share, colour) in enumerate(((50, _ACCENT), (36, THEME['WARNING']), (14, _OK))):
+            part = QFrame()
+            part.setFixedHeight(6)
+            part.setStyleSheet(f"background: {colour if index <= phase else _BORDER}; border-radius: 3px;")
+            strip.addWidget(part, share)
+        lay.addLayout(strip)
+        self._card = QFrame()
+        self._card.setObjectName('gestureCard')
+        card = QVBoxLayout(self._card)
+        card.setContentsMargins(16, 14, 16, 14)
+        card.setSpacing(5)
+        self._label = QLabel("")
+        self._hero = QLabel("")
+        # A wrapped QLabel reports one line of nothing as its minimum: the glyphs were sliced.
+        self._hero.setMinimumHeight(38)
+        self._hero.setWordWrap(True)
+        self._sub = QLabel("")
+        self._sub.setWordWrap(True)
+        self._sub.setStyleSheet(f"color: {THEME['SUBTEXT1']}; font-size: 15px; {_FONT} border: none;")
+        card.addWidget(self._label)
+        card.addWidget(self._hero)
+        card.addWidget(self._sub)
+        lay.addWidget(self._card)
+        self._next = QLabel("")
+        self._next.setWordWrap(True)
+        self._next.setStyleSheet(f"color: {THEME['SUBTEXT1']}; font-size: 12px; {_FONT} border: none;")
+        lay.addWidget(self._next)
+
+    def set(self, label: str, color: str, hero: str, sub: str = "", next_text: str = "") -> None:
+        """Cheap on the 1 Hz path: nothing is touched unless the words changed."""
+        state = (label, color, hero, sub, next_text)
+        if state == self._last:
+            return
+        self._last = state
+        self._card.setVisible(True)
+        self._label.setText(label)
+        self._hero.setText(hero)
+        self._sub.setText(sub)
+        self._sub.setVisible(bool(sub))
+        self._next.setText(next_text)
+        self._next.setVisible(bool(next_text))
+        if color != self._color:
+            self._color = color
+            self._label.setStyleSheet(f"color: {color}; font-size: 12px; font-weight: 700; {_FONT} border: none;")
+            self._hero.setStyleSheet(f"color: {THEME['TEXT']}; font-size: 28px; font-weight: 800; {_FONT} border: none;")
+            self._card.setStyleSheet(
+                f"QFrame#gestureCard {{ background: {_SURFACE}; border: 1px solid {color}; border-radius: 10px; }}")
+
+
+    def rest(self) -> None:
+        """Nothing to do yet: the phase strip alone, no card to read."""
+        if self._last != ():
+            self._last = ()
+            self._card.setVisible(False)
+            self._next.setVisible(False)
+
+
+class _DetailsButton(QPushButton):
+    """Opens the page's figures; its words follow what a tap would do."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._open_text = QApplication.translate("tilauscope_roast_assistant", "Details ›")
+        self._hide_text = QApplication.translate("tilauscope_roast_assistant", "Hide details")
+        self.setFlat(True)
+        self.setCheckable(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setStyleSheet(f"color: {_ACCENT}; font-size: 12px; font-weight: 700; {_FONT}"
+                           " border: none; text-align: left; padding: 2px 0;")
+        self.setText(self._open_text)
+        self.toggled.connect(lambda on: self.setText(self._hide_text if on else self._open_text))
+
+
+_DEV_STAGE: Final[int] = 5   # % moved at a time by hand in development
+_AIR_SLIDER: Final[int] = 0     # machine lever order: 0=Air, 1=Drum, 2=Damper, 3=Burner
+
+
+def _plan_steps(plan: "dict | None") -> "list[tuple[float, str, int]]":
+    """Every lever step the plan asks for, as (BT, 'burner' | 'air', %), in BT order. By hand
+    the development levers move in whole stages, once the plan has drifted that far."""
+    steps: "list[tuple[float, str, int]]" = []
+    dev_steps: "dict[str, list[tuple[float, int]]]" = {"burner": [], "air": []}
+    for key in ("Heater Ramp", "Air Ramp", "Dev Ramp"):
+        for entry in (plan or {}).get(key) or []:
+            try:
+                threshold = float(entry["bt"])
+                if entry.get("heater") is not None:
+                    if key == "Dev Ramp":
+                        dev_steps["burner"].append((threshold, int(entry["heater"])))
+                    else:
+                        steps.append((threshold, "burner", int(entry["heater"])))
+                if entry.get("airflow") is not None:
+                    if key == "Dev Ramp":
+                        dev_steps["air"].append((threshold, int(entry["airflow"])))
+                    else:
+                        steps.append((threshold, "air", int(entry["airflow"])))
+            except (TypeError, ValueError, KeyError):
+                continue
+    steps.sort(key=lambda step: step[0])
+    for lever, ramp in dev_steps.items():
+        held = next((step[2] for step in reversed(steps) if step[1] == lever), None)
+        for threshold, pct in sorted(ramp):
+            if held is None:
+                held = pct
+            elif abs(pct - held) >= _DEV_STAGE:
+                held += _DEV_STAGE if pct > held else -_DEV_STAGE
+            else:
+                continue
+            steps.append((threshold, lever, held))
+    return sorted(steps, key=lambda step: step[0])
+
+
+def _no_burner_step(due: "tuple[float, str, int] | None", crashing: bool) -> "tuple[float, str, int] | None":
+    """A crash has its own message: the card asks for no burner move against it."""
+    return None if crashing and due is not None and due[1] == "burner" else due
+
+
+class _GestureTrack:
+    """One roast's way up the plan. BT only counts going up, and a step is asked for once:
+    a probe dip or a replan never brings back a step already behind the bean."""
+
+    def __init__(self) -> None:
+        self.peak: "float | None" = None
+        self.pending: "dict[str, tuple[float, str, int]]" = {}
+
+
+def _ror_above(ror: "float | None", target: float) -> bool:
+    return ror is not None and target > 0 and ror > target
+
+
+def _gesture_steps(aw, plan: "dict | None", bt: float, scale: float, ror_high: bool = False
+                   ) -> "tuple[tuple[float, str, int] | None, tuple[float, str, int] | None]":
+    """(step due now, next step that changes a lever), burner first. The plan, learning
+    included, speaks even while the operator's own move is being observed: that is when
+    it is needed. A machine with no lever to read back gets the step while the bean is on it.
+    A step up on the burner waits while the RoR is already too high."""
+    track = getattr(aw, "_tilau_gesture_track", None)
+    if track is None:
+        track = aw._tilau_gesture_track = _GestureTrack()
+    context = getattr(aw, "_tilau_roast_context", None)
+    steps = [step for step in _plan_steps(plan)
+             if step[1] != "air" or context is None or context.has_airflow_control]
+    window = NOW_WINDOW_C * scale
+    for step in steps:
+        if step[0] <= bt + window and (track.peak is None or step[0] > track.peak):
+            track.pending[step[1]] = step
+    track.peak = max(bt + window, track.peak if track.peak is not None else bt + window)
+    curve_only = _guidance_curve_only(aw)
+    due = None
+    current: "dict[str, float | None]" = {}
+    for lever, slider in (("air", _AIR_SLIDER), ("burner", _burner_slider_idx(aw))):
+        held = None if curve_only else _read_slider_pct(aw, slider)
+        current[lever] = held
+        step = track.pending.get(lever)
+        if step is None:
+            continue
+        size = _slider_step(aw, slider)
+        if held is None and bt > step[0] + window * 2:
+            del track.pending[lever]
+        elif held is not None and (abs(held - round(step[2] / size) * size) < 1
+                                   or (lever == "air" and step[2] < held)):
+            del track.pending[lever]
+        elif not (ror_high and lever == "burner" and held is not None and step[2] > held):
+            due = step
+            current[lever] = step[2]
+    return due, next((step for step in steps
+                      if step[0] > track.peak and step[2] != current[step[1]]), None)
+
+
+class _GuidedPage:
+    """What the three roasting pages share in Guided: the gesture leads, the figures fold away."""
+
+    def _install_gesture(self, layout: QVBoxLayout, ctx_row: QHBoxLayout, phase: int) -> None:
+        self._page_layout = layout
+        self._ctx_row = ctx_row
+        self._guided = False
+        self.gesture = _GestureHero(phase)
+        self.gesture.setVisible(False)
+        layout.insertWidget(0, self.gesture)
+        self.btn_details = _DetailsButton()
+        self.btn_details.setVisible(False)
+        self.btn_details.toggled.connect(self._show_details)
+        layout.insertWidget(layout.count() - 1, self.btn_details, 0, Qt.AlignmentFlag.AlignLeft)
+        self._g_hold = QApplication.translate("tilauscope_roast_assistant", "Hold the burner")
+        self._g_nothing = QApplication.translate("tilauscope_roast_assistant", "Nothing to change until dry end")
+        self._g_burner = QApplication.translate("tilauscope_roast_assistant", "Burner {0} %")
+        self._g_at = QApplication.translate("tilauscope_roast_assistant", "At {0}°")
+        self._g_air = QApplication.translate("tilauscope_roast_assistant", "Air {0} %")
+        self._g_next = QApplication.translate("tilauscope_roast_assistant", "Next: {0} at {1}°")
+        self._g_now = QApplication.translate("tilauscope_roast_assistant", "Now")
+        self._g_in = QApplication.translate("tilauscope_roast_assistant", "In about {0}")
+        self._g_listen = QApplication.translate("tilauscope_roast_assistant", "Listen")
+        self._g_fc_soon = QApplication.translate("tilauscope_roast_assistant", "First crack soon")
+        self._g_fc_in = QApplication.translate("tilauscope_roast_assistant", "First crack in about {0}")
+        self._g_dry_end = QApplication.translate("tilauscope_roast_assistant", "Dry end")
+        self._g_first_crack = QApplication.translate("tilauscope_roast_assistant", "First crack")
+        self._g_drop = QApplication.translate("tilauscope_roast_assistant", "Drop at {0}°")
+
+    def set_guided(self, on: bool) -> None:
+        self._guided = on
+        self.gesture.setVisible(on)
+        self.btn_details.setVisible(on)
+        self.coach.quiet_when_ok = on
+        self.coach.setVisible(not on or bool(self.coach.text()))
+        # The actions sit right under the gesture they carry out.
+        self._page_layout.removeItem(self._ctx_row)
+        self._page_layout.insertLayout(1 if on else self._page_layout.count() - 2, self._ctx_row)
+        for index in range(self._ctx_row.count()):
+            button = self._ctx_row.itemAt(index).widget()
+            if isinstance(button, _ContextButton):
+                button.hide_when_idle = on
+                button.setVisible(button._wanted)  # noqa: SLF001
+        self._prog_outer.setVisible(not on)
+        self._lbl_prog_val.setVisible(not on)
+        self._show_details(self.btn_details.isChecked())
+
+    def _show_details(self, on: bool) -> None:
+        self.gesture.details_open = on
+        self.hero.setVisible(not self._guided or on)
+        self.hero.set_figures_only(self._guided)
+        # The sub-line reserves its height from its width: it has one only once shown.
+        self.hero._sync_sub_height()  # noqa: SLF001
+
+    def _step_words(self, step: "tuple[float, str, int]") -> str:
+        return (self._g_burner if step[1] == "burner" else self._g_air).format(step[2])
+
+    def _next_words(self, step: "tuple[float, str, int] | None") -> str:
+        return self._g_next.format(self._step_words(step), f"{step[0]:.0f}") if step else ""
+
+    def _eta_words(self, eta_min: "float | None") -> str:
+        return self._g_in.format(_fmt_sec(eta_min * 60.0)) if eta_min is not None and eta_min * 60.0 >= 1.0 else ""
 
 class _IdlePage(QWidget):
     """Affichée avant que l'assistant soit lancé."""
@@ -2094,7 +2376,7 @@ class _PreheatPage(QWidget):
             self.btn_charge.set_active(near, style='ok' if near else 'dim')
 
 
-class _DryingPage(QWidget):
+class _DryingPage(_GuidedPage, QWidget):
     """Drying phase, layout B (low-density). Hero = current RoR (the steering
     variable); sub-line folds band/target, BT and DRY END ETA. A single coach
     line carries the advice, tinted by severity."""
@@ -2104,7 +2386,7 @@ class _DryingPage(QWidget):
     _ROR_OK_H = 12.0
     _ROR_HIGH = 15.0
     _STABILIZE_SEC = 60.0
-    _TP_GRACE_SEC  = 45.0
+    _TP_GRACE_SEC  = _TP_GRACE_S
 
     def __init__(self, aw: ApplicationWindow):
         super().__init__()
@@ -2190,6 +2472,7 @@ class _DryingPage(QWidget):
         layout.addWidget(self._reco)
         layout.addLayout(_ctx_row)
         layout.addStretch(1)
+        self._install_gesture(layout, _ctx_row, 0)
 
         # ── Translation cache (hot-path: called every 1 Hz refresh) ──────────
         self._tr_postcharge_drop                  = QApplication.translate("tilauscope_roast_assistant", "⬇ Post-charge drop — turning point ahead")
@@ -2300,7 +2583,7 @@ class _DryingPage(QWidget):
                 ror_status, ror_sub = _ror_deviation_advice(ror, ror_target, mode, "drying",
                                                             aw=self.aw, plan=plan)
                 if ror < _ror_lo:
-                    ror_status, ror_sub = _S_CRIT, self._tr_ramping_too_slow_raise_heater
+                    ror_status, ror_sub = _S_CRIT, "" if self._guided else self._tr_ramping_too_slow_raise_heater
             else:
                 if ror < _ror_lo:
                     ror_status, ror_sub = _S_CRIT, self._tr_ramping_too_slow_raise_heater
@@ -2330,7 +2613,7 @@ class _DryingPage(QWidget):
             grain_notes.append(self._tpl_dense_bean_sustained_heat.format(f"{_dens:.0f}"))
         if _is_natural:
             grain_notes.append(self._tr_natural_honey_extended_drying)
-        coach_text = ror_sub + ("  ·  " + "  ·  ".join(grain_notes) if grain_notes else "")
+        coach_text = "  ·  ".join([ror_sub, *grain_notes]) if ror_sub else ""
 
         # ── Gap ET/BT (alert only) ──────────────────────────────────────────────
         gap_grace = (t_tp_sec < 0) or ((t_now_sec - t_tp_sec) < self._TP_GRACE_SEC)
@@ -2393,6 +2676,24 @@ class _DryingPage(QWidget):
         self.hero.set_label(f"{self._w_phase} · {word}", wcol)
         self.hero.update(f"{ror:.1f}" if ror is not None else "--",
                          "  ·  ".join(sub_parts), vcol, trend)
+        crash_msg = None
+        if crash_detector and not stabilizing:
+            crash_msg = crash_detector.check(
+                ror, ror_hist, dt=max(0.25, self.aw.qmc.delay / 1000.0))
+        # Charge to turning point: nothing to read, nothing to do. A flat RoR later on is not that.
+        if self._guided and (initial_stabilize or tp_grace_active or (post_charge_dip and t_tp_sec < 0)):
+            self.gesture.rest()
+        elif self._guided:
+            due, ahead = _gesture_steps(self.aw, plan, bt, s, _ror_above(ror, ror_target))
+            due = _no_burner_step(due, bool(crash_msg))
+            if due is not None:
+                self.gesture.set(self._g_now, _OK, self._step_words(due), "", self._next_words(ahead))
+            elif ahead is not None:
+                self.gesture.set(self._w_phase, _ACCENT, self._g_hold,
+                                 self._g_nothing if bt < dry_end_temp <= ahead[0] else "",
+                                 self._next_words(ahead))
+            else:
+                self.gesture.set(self._w_phase, _ACCENT, self._g_dry_end, self._eta_words(eta))
 
         # ── Progress → DRY END ──────────────────────────────────────────────────
         start = phases[0] if phases else 160.0
@@ -2400,11 +2701,6 @@ class _DryingPage(QWidget):
         self._set_progress(((bt - start) / span * 100.0) if span > 0 else 0.0)
 
         # ── Coach (single line, severity-tinted) ────────────────────────────────
-        crash_msg = None
-        if crash_detector and not stabilizing:
-            crash_msg = crash_detector.check(
-                ror, ror_hist, bt, target_temp=dry_end_temp,
-                dt=max(0.25, self.aw.qmc.delay / 1000.0))
 
         _candidates: list[AdviceCandidate] = []
         if crash_msg:
@@ -2440,7 +2736,7 @@ class _DryingPage(QWidget):
                 AdviceCategory.CONSEQUENCE if not getattr(
                     self.aw, "_tilau_guidance_decision").directional_plan_advice
                 else AdviceCategory.ACTION,
-                AdviceSeverity.WARNING if ror_status == _S_WARN else AdviceSeverity.INFO,
+                AdviceSeverity.WARNING if ror_status in (_S_WARN, _S_CRIT) else AdviceSeverity.INFO,
                 requires_plan_authority=ror_status != _S_OK))
         _render_coach_candidates(self.aw, self.coach, _candidates)
 
@@ -2455,12 +2751,9 @@ class _DryingPage(QWidget):
         else:
             self.btn_cancel.hide()
 
-        # Actif dès l'approche et au-delà de la cible (marquage manuel obligatoire) ;
-        # s'allume avec l'alerte « approaching DRY END » du graphe.
-        near_dry = (not stabilizing) and (
-            _coach_approaching(self.aw, "DE")
-            or (dry_end_temp - bt) <= 8.0 * s
-            or (eta is not None and eta <= _APPROACH_MIN))
+        # Actif dans la fenêtre de température autour de la cible et au-delà
+        # (marquage manuel obligatoire), comme l'alerte du graphe.
+        near_dry = (not stabilizing) and (dry_end_temp - bt) <= DRY_END_WINDOW_C * s
         dry_due  = near_dry and bt >= dry_end_temp
         self.btn_dry_end.set_active(near_dry, style=('warn' if dry_due else 'ok') if near_dry else 'dim')
         _aw_on = getattr(self.aw, "bleAirwaveDevice", None) is not None
@@ -2468,7 +2761,7 @@ class _DryingPage(QWidget):
             near_dry and _aw_on, style='ok' if (near_dry and _aw_on) else 'dim')
 
 
-class _MaillardPage(QWidget):
+class _MaillardPage(_GuidedPage, QWidget):
     """Maillard phase, layout B (low-density).
 
     Hero = current RoR (steering). Sub-line folds FCs ETA, gap to FC and the
@@ -2564,6 +2857,7 @@ class _MaillardPage(QWidget):
         layout.addWidget(self._reco)
         layout.addLayout(_ctx_row)
         layout.addStretch(1)
+        self._install_gesture(layout, _ctx_row, 1)
 
         # ── Translation cache (hot-path: called every 1 Hz refresh) ──────────
         self._tr_ror_too_low_baked               = QApplication.translate("tilauscope_roast_assistant", "RoR too low → risk of baked coffee")
@@ -2687,12 +2981,13 @@ class _MaillardPage(QWidget):
         t_total       = t_now_sec - t_charge_sec
         mai_ratio     = ((t_mai_elapsed / t_total) * 100) if t_total > 0 else 0
 
-        # Hero (RoR) + status word
+        # Hero (RoR) + status word. Baked is the slow side: far above plan is not that.
+        _ror_baked = ror_s == _S_CRIT and (ror_target <= 0 or ror < ror_target)
         if ror is None:
             word, wcol, vcol = self._w_na, THEME['SUBTEXT'], THEME['SUBTEXT']
-        elif ror_s == _S_CRIT:
+        elif _ror_baked:
             word, wcol, vcol = self._w_baked, _CRIT, _CRIT
-        elif ror_s == _S_WARN:
+        elif ror_s in (_S_WARN, _S_CRIT):
             word, wcol, vcol = self._w_drifting, _WARN, _WARN
         else:
             word, wcol, vcol = self._w_on_track, _OK, THEME['YELLOW']
@@ -2724,17 +3019,19 @@ class _MaillardPage(QWidget):
                 k in bean.flavour_notes.lower()
                 for k in ("floral", "jasmin", "fruit", "acidity", "acidité"))):
             floral = self._tr_floral_early_fcs
-        coach_text = ror_sub + floral
+        # Guided leaves "RoR too low" out: Tilau, 2026-11-01.
+        _coach_sub = "" if self._guided and ror_sub == self._tr_ror_too_low_baked else ror_sub
+        coach_text = _coach_sub + floral if _coach_sub else ""
 
         crash_msg = None
         if crash_detector:
-            crash_msg = crash_detector.check(ror, ror_hist, bt, target_temp=fc_temp,
+            crash_msg = crash_detector.check(ror, ror_hist,
                                              dt=max(0.25, self.aw.qmc.delay / 1000.0))
         _candidates = []
         if crash_msg:
             _candidates.append(AdviceCandidate(
                 "mai-crash", crash_msg, AdviceCategory.SAFETY, AdviceSeverity.CRITICAL))
-        if ror_s == _S_CRIT:
+        if _ror_baked:
             _candidates.append(AdviceCandidate(
                 "mai-baked", self._tr_ror_too_low_baked_banner,
                 AdviceCategory.SAFETY, AdviceSeverity.CRITICAL))
@@ -2752,7 +3049,7 @@ class _MaillardPage(QWidget):
                 AdviceCategory.CONSEQUENCE if not getattr(
                     self.aw, "_tilau_guidance_decision").directional_plan_advice
                 else AdviceCategory.ACTION,
-                AdviceSeverity.WARNING if ror_s == _S_WARN else AdviceSeverity.INFO,
+                AdviceSeverity.WARNING if ror_s in (_S_WARN, _S_CRIT) else AdviceSeverity.INFO,
                 requires_plan_authority=ror_s != _S_OK))
         _render_coach_candidates(self.aw, self.coach, _candidates)
 
@@ -2763,11 +3060,8 @@ class _MaillardPage(QWidget):
             self.quick_adjust.refresh()
         # Actif dès l'approche et au-delà : marquer FC est une opération manuelle
         # obligatoire, le bouton ne se réinvalide jamais après le FC théorique.
-        # S'allume avec l'alerte « 1C approaching/imminent » du graphe ; l'écart 10°
-        # reste un plancher de repli quand le graphe ne publie rien.
-        near_fc = (_coach_approaching(self.aw, "FC")
-                   or (fc_temp - bt) <= 10.0 * s
-                   or (eta_to_fc_sec is not None and eta_to_fc_sec <= _APPROACH_MIN * 60.0))
+        # Fenêtre de température autour de la cible, ou crack entendu par le graphe.
+        near_fc = _coach_approaching(self.aw, "FC") or (fc_temp - bt) <= FIRST_CRACK_WINDOW_C * s
         fc_due  = near_fc and bt >= fc_temp
         self.btn_fcs.set_active(near_fc, style=('warn' if fc_due else 'ok') if near_fc else 'dim')
         _aw_on = getattr(self.aw, "bleAirwaveDevice", None) is not None
@@ -2784,7 +3078,8 @@ class _MaillardPage(QWidget):
         if not self._readonly and _plan_authority:
             try:
                 burner_now = _read_slider_pct(self.aw, _burner_slider_idx(self.aw))
-                approach = 12.0 * s
+                # Same rule as the card: the button offers a step once the bean is on it.
+                approach = NOW_WINDOW_C * s
                 due: "tuple[float, int] | None" = None
                 for st in (plan or {}).get("Heater Ramp") or []:
                     thr, h = float(st["bt"]), int(st["heater"])
@@ -2794,6 +3089,13 @@ class _MaillardPage(QWidget):
                     self._pending_ramp = due
             except (TypeError, ValueError, KeyError):
                 self._pending_ramp = None
+        _due, _ahead = (None, None)
+        if self._guided:
+            # The card decides: its button carries out the burner step it is showing.
+            _due, _ahead = _gesture_steps(self.aw, plan, bt, s, _ror_above(ror, ror_target))
+            _due = _no_burner_step(_due, bool(crash_msg))
+            self._pending_ramp = (_due[0], _due[2]) if (
+                _due is not None and _due[1] == "burner" and not self._readonly) else None
         if self._pending_ramp is not None:
             thr, h = self._pending_ramp
             self.btn_ramp.maintext = self._tpl_set_burner.format(f"{h}")
@@ -2803,9 +3105,20 @@ class _MaillardPage(QWidget):
             self.btn_ramp.setVisible(True)
         else:
             self.btn_ramp.setVisible(False)
+        if self._guided:
+            _fc_in = self._g_fc_in.format(_fmt_sec(eta_to_fc_sec)) if (eta_to_fc_sec or 0) >= 1.0 else ""
+            if _due is not None:
+                self.gesture.set(self._g_now, _OK, self._step_words(_due), "", _fc_in)
+            elif near_fc:
+                self.gesture.set(self._g_listen, THEME['YELLOW'], self._g_fc_soon, self._eta_words(eta))
+            elif _ahead is not None and _ahead[0] < fc_temp:
+                self.gesture.set(self._w_phase, THEME['WARNING'], self._step_words(_ahead),
+                                 self._g_at.format(f"{_ahead[0]:.0f}"), _fc_in)
+            else:
+                self.gesture.set(self._w_phase, THEME['WARNING'], self._g_first_crack, self._eta_words(eta))
 
 
-class _DevelopmentPage(QWidget):
+class _DevelopmentPage(_GuidedPage, QWidget):
     """Development phase, layout B (low-density).
 
     Hero = realtime DTR (the headline development metric). Sub-line folds DTR
@@ -2897,20 +3210,21 @@ class _DevelopmentPage(QWidget):
         layout.addWidget(self._reco)
         layout.addLayout(_ctx_row)
         layout.addStretch(1)
+        self._install_gesture(layout, _ctx_row, 2)
 
         # ── Translation cache (hot-path: called every 1 Hz refresh) ──────────
-        self._tr_ror_crash_baked_risk            = QApplication.translate("tilauscope_roast_assistant", "RoR crash → baked risk, either DROP or HEAT")
+        self._tr_ror_crash_baked_risk            = QApplication.translate("tilauscope_roast_assistant", "RoR crash → baked risk: drop soon")
         self._tr_drop_prefix                     = QApplication.translate("tilauscope_roast_assistant", "→ DROP ")
         self._tr_ror_dev_normal                  = QApplication.translate("tilauscope_roast_assistant", "RoR DEV is normal")
         self._tr_in_target_range_envisage_drop   = QApplication.translate("tilauscope_roast_assistant", "in target range → envisage DROP")
-        self._tr_ror_crash_drop_now              = QApplication.translate("tilauscope_roast_assistant", "⚠ RoR crash detected — DROP now or start heating again!")
+        self._tr_ror_crash_drop_now              = QApplication.translate("tilauscope_roast_assistant", "⚠ RoR too low — DROP soon")
         self._tr_drop_20sec                      = QApplication.translate("tilauscope_roast_assistant", "⏱ DROP in less than 20 seconds — get ready!")
         self._tr_dtr_target_reached              = QApplication.translate("tilauscope_roast_assistant", "DTR target reached")
         self._tr_dtr_near_target                 = QApplication.translate("tilauscope_roast_assistant", "DTR near target")
         self._tr_near_drop_target                = QApplication.translate("tilauscope_roast_assistant", "near drop target")
         self._tr_drop_operator_choice            = QApplication.translate(
             "tilauscope_roast_assistant", "available at any time")
-        self._tr_color_in_target_range           = QApplication.translate("tilauscope_roast_assistant", "color in target range")
+        self._tr_color_in_target_range           = QApplication.translate("tilauscope_roast_assistant", "color in range")
         # B-layout labels
         self._w_phase     = QApplication.translate("tilauscope_common", "DEVELOPMENT")
         self._w_on_target = QApplication.translate("tilauscope_roast_assistant", "DTR ON TARGET")
@@ -3001,7 +3315,7 @@ class _DevelopmentPage(QWidget):
                 if eta is not None and eta < 0.5 and ror_target_drop > 0:
                     ror_s, ror_sub = _ror_deviation_advice(ror, ror_target_drop, mode, "development",
                                                            aw=self.aw, plan=plan)
-                    ror_sub = self._tr_drop_prefix + ror_sub
+                    ror_sub = self._tr_drop_prefix + ror_sub if ror_sub else ""
                 else:
                     ror_s, ror_sub = _ror_deviation_advice(ror, ror_target_avg, mode, "development",
                                                            aw=self.aw, plan=plan)
@@ -3056,7 +3370,7 @@ class _DevelopmentPage(QWidget):
             _sub_txt += "<br>" + "  ·  ".join(sub_parts2)
         self.hero.set_label(f"{self._w_phase} · {word}", wcol)
         self.hero.update(f"{dtr:.1f}" if dtr is not None else "--", _sub_txt, vcol)
-
+        self.aw.qmc._tilau_dev_target = dtr_target   # the curve's coach reads the same target
         # ── Progress → DROP (BT from FC to drop target) ─────────────────────────
         span = drop_temp - bt_at_fcs
         self._set_progress(((bt - bt_at_fcs) / span * 100.0) if span > 0 else 0.0)
@@ -3066,9 +3380,23 @@ class _DevelopmentPage(QWidget):
         if crash_detector:
             # dev_mode : critère recalibré (chute/15 s — l'ancienne pente −0,8/s
             # attrapait 0/21 crashes de dev sur le corpus, banc 2026-07-11)
-            crash_msg = crash_detector.check(ror, ror_hist, bt, target_temp=drop_temp,
+            crash_msg = crash_detector.check(ror, ror_hist,
                                              dt=max(0.25, self.aw.qmc.delay / 1000.0),
-                                             dev_mode=True)
+                                             dev_mode=True,
+                                             raise_burner=_burner_may_rise(plan, t_now_sec, t_fcs_sec))
+        if self._guided:
+            _drop_words = self._g_drop.format(f"{drop_temp:.0f}")
+            _scale = 1.8 if mode == 'F' else 1.0
+            _due, _ahead = _gesture_steps(self.aw, plan, bt, _scale, _ror_above(ror, ror_target_avg))
+            _due = _no_burner_step(_due, bool(crash_msg) or (ror is not None and ror < ror_crash_thr))
+            if plan and bt >= drop_temp - NOW_WINDOW_C * _scale:
+                self.gesture.set(self._g_now, _OK, _drop_words)
+            elif _due is not None:
+                self.gesture.set(self._g_now, _OK, self._step_words(_due), "", _drop_words)
+            else:
+                self.gesture.set(self._w_phase, _OK, _drop_words, self._eta_words(eta),
+                                 self._next_words(_ahead))
+
         _candidates = []
         if ror is not None and ror_s == _S_CRIT and ror < ror_crash_thr:
             _candidates.append(AdviceCandidate(
@@ -3706,16 +4034,18 @@ class _CoolingPage(QWidget):
 
         self._eor_time.update(f"{_fmt(t_total)}", "")
 
+        col_sub = ""
         if agtron_pred is not None:
             col_status = _S_OK
-            col_sub = ""
             if agtron_target:
                 tmin, tmax = agtron_target.agtron_range.min_value, agtron_target.agtron_range.max_value
                 if agtron_pred < tmin:
-                    col_sub = f"Δ +{tmin - agtron_pred:.0f} pts dark"
+                    col_sub = QApplication.translate("tilauscope_roast_assistant", "{0} pts darker").format(
+                        f"{tmin - agtron_pred:.0f}")
                     col_status = _S_WARN
                 elif agtron_pred > tmax:
-                    col_sub = f"Δ +{agtron_pred - tmax:.0f} pts light"
+                    col_sub = QApplication.translate("tilauscope_roast_assistant", "{0} pts lighter").format(
+                        f"{agtron_pred - tmax:.0f}")
                     col_status = _S_WARN
             self._eor_color.update(f"~{agtron_pred:.0f}", col_sub, col_status)
         else:
@@ -3735,12 +4065,10 @@ class _CoolingPage(QWidget):
             self._eor_dtr2_val.setText("--")
 
         if agtron_pred is not None and agtron_target:
-            tmin, tmax = agtron_target.agtron_range.min_value, agtron_target.agtron_range.max_value
-            mid = (tmin + tmax) / 2
-            delta = agtron_pred - mid
-            col = THEME['YELLOW'] if abs(delta) > 5 else THEME['SUCCESS']
+            # The same distance as the tile: to the level's range, not to its middle.
+            col = THEME['YELLOW'] if col_sub else THEME['SUCCESS']
             self._eor_col2_val.setText(
-                f"<span style='color:{col}'>{agtron_target.name}  Δ{delta:+.0f}</span>")
+                f"<span style='color:{col}'>{agtron_target.name}  {col_sub}</span>")
 
         # FC + Drop BT
         try:
@@ -4498,6 +4826,7 @@ class _AutoCockpitPage(QWidget):
         # 2. état en toutes lettres
         self._lbl_status = QLabel("--")
         self._lbl_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._lbl_status.setWordWrap(True)
         self._status_color: "str | None" = None
 
         # 3. carte action
@@ -4512,7 +4841,8 @@ class _AutoCockpitPage(QWidget):
         self._lbl_action.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._lbl_action.setWordWrap(True)
         self._lbl_action.setStyleSheet(
-            f"color: {THEME['TEXT']}; font-size: 19px; font-weight: 800; {_FONT}")
+            f"color: {THEME['TEXT']}; font-size: 17px; font-weight: 800; {_FONT}")
+        self._lbl_action.setMinimumHeight(50)   # two lines: a longer action never squeezes
         self._lbl_when = QLabel("")
         self._lbl_when.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._lbl_when.setStyleSheet(f"color: {THEME['OVERLAY2']}; font-size: 12px; {_FONT}")
@@ -4627,8 +4957,8 @@ class _AutoCockpitPage(QWidget):
         if status_color != self._status_color:
             self._status_color = status_color
             self._lbl_status.setStyleSheet(
-                f"color: {status_color}; font-size: 26px; font-weight: 900;"
-                f"letter-spacing: 1px; {_FONT} border: none;")
+                f"color: {status_color}; font-size: 18px; font-weight: 900;"
+                f"{_FONT} border: none;")
         if self._lbl_status.text() != status:
             self._lbl_status.setText(status)
         if self._lbl_action.text() != action:
@@ -4874,13 +5204,16 @@ class RoastAssistantPanel(QWidget):
         self._tpl_cp_ago    = QApplication.translate("tilauscope_roast_assistant", "{0}s ago")
         self._tr_cp_justnow = QApplication.translate("tilauscope_common", "just now")
         self._tpl_ap_marked = QApplication.translate("tilauscope_roast_assistant", "⚙ {0} marked (auto)")
+        self._tr_ap_mark_de = QApplication.translate("Label", "DRY END")
+        self._tr_ap_mark_fc = QApplication.translate("tilauscope_common", "FIRST CRACK")
         self._cp_phase_words = {
             self._PHASE_DRY: QApplication.translate("tilauscope_roast_assistant", "DRYING"),
             self._PHASE_MAI: QApplication.translate("tilauscope_roast_assistant", "MAILLARD"),
             self._PHASE_DEV: QApplication.translate("tilauscope_common", "DEVELOPMENT"),
         }
         self._cp_ms_words = {
-            self._PHASE_DRY: "DE", self._PHASE_MAI: "FC", self._PHASE_DEV: "DROP",
+            self._PHASE_DRY: "DE", self._PHASE_MAI: "FC",
+            self._PHASE_DEV: QApplication.translate("Label", "DROP"),
         }
         # jalons en cockpit : bouton contextuel + auto-DROP plan (10 s annulables)
         self._ap_drop_deadline: "float | None" = None   # t_mono du tir auto-DROP
@@ -4895,18 +5228,16 @@ class RoastAssistantPanel(QWidget):
         self._tr_ap_dropstand = QApplication.translate(
             "tilauscope_roast_assistant", "⬇ auto-DROP stood down — back below target")
         self._tpl_ap_dev_ramp = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · DEV {0}")
-        # « tenir le feu » en dev (rate-limiter exotherme) et filet réactif minimal AIR-d'abord.
+        # « tenir le feu » en dev (rate-limiter exotherme) et filet réactif air + brûleur.
         self._ap_dev_heater_pending: "float | None" = None  # cible feu en file (monotone)
         self._ap_dev_rate_anchor: "tuple[float, float] | None" = None  # (t_fc_sec, burner_pct)
-        self._ap_net_offset: float = 0.0         # offset AIR posé par le filet (auto-résorbé)
+        self._ap_net_ror: "float | None" = None  # RoR au dernier palier ; None = filet au repos
+        self._ap_net_stages: int = 0             # paliers posés depuis le début du filet
         self._ap_net_last: float = 0.0           # monotonic de la dernière touche du filet
-        self._ap_net_quiet_since: "float | None" = None  # début du calme post-crash
         self._drum_last_pct: "float | None" = None       # watch tambour (mute détection RoR)
         self._tpl_ap_devfire = QApplication.translate(
             "tilauscope_roast_assistant", "⚙ AUTO · Burner → {0}% (dev, rate-limited)")
-        self._tpl_ap_net = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · crash net — AIR {0}%")
-        self._tr_ap_net_exhausted = QApplication.translate(
-            "tilauscope_roast_assistant", "⚠ RoR crash — safety net exhausted, AUTO paused — take over")
+        self._tpl_ap_net = QApplication.translate("tilauscope_roast_assistant", "⚙ AUTO · crash net +{0} %")
         self._tr_ap_tick_failed = QApplication.translate(
             "tilauscope_roast_assistant", "⚠ AUTO paused — the pilot hit an internal error, take over")
         self._tr_ap_data_stale = QApplication.translate(
@@ -5214,6 +5545,16 @@ class RoastAssistantPanel(QWidget):
         self._operator_level = level
         self._bean_header.set_start_stop_visible(level != "guided")
         self._page_idle.set_operator_level(level)
+        self.aw._tilau_guided_level = level == "guided"
+        for page in (self._page_dry, self._page_mai, self._page_dev):
+            page.set_guided(level == "guided")
+
+    def _sync_bean_details(self) -> None:
+        """While roasting in Guided, the coffee's details wait under Details with the figures."""
+        page = self._stack.currentWidget()
+        folded = (self._operator_level == "guided" and isinstance(page, _GuidedPage)
+                  and not page.gesture.details_open)
+        self._bean_header._lbl_details.setVisible(not folded)  # noqa: SLF001
 
     def _minutes_since_last_drop(self) -> "float | None":
         """Minutes écoulées (wall clock) depuis le dernier DROP de la session —
@@ -5609,6 +5950,9 @@ class RoastAssistantPanel(QWidget):
         self._refresh_bean_header()   # keep showing what is selected
         self._current_phase = self._PHASE_IDLE
         self._stack.setCurrentIndex(self._PHASE_IDLE)
+        self.aw.qmc._tilau_plan_targets = None
+        self.aw.qmc._tilau_dev_target = None
+        self.aw._tilau_gesture_track = None
         self._ror_hist.clear()
         self._bt_stale = False
         self._bt_at_fcs = 0.0
@@ -6184,6 +6528,11 @@ class RoastAssistantPanel(QWidget):
         """Entrée en DEV (jalon ou reprise) : ancre du rate-limiter exotherme
         (t0 = entrée en dev, b0 = feu courant), file feu vidée, filet réactif
         remis à zéro (nouvelle référence)."""
+        # The bean may reach the mark past the plan's temperature: the steps it
+        # already crossed in the previous phase still apply on the next tick.
+        _ramp = self._plan.get({"MAI": "Air Ramp", "DEV": "Dev Ramp"}.get(phase_key, ""), []) if self._plan else []
+        if _ramp and self._ap_bt_prev is not None:
+            self._ap_bt_prev = min(self._ap_bt_prev, min(float(_s["bt"]) for _s in _ramp) - 0.1)
         if phase_key != "DEV":
             return
         try:
@@ -6191,8 +6540,8 @@ class RoastAssistantPanel(QWidget):
             _b0 = _read_slider_pct(self.aw, _burner_slider_idx(self.aw))
             self._ap_dev_rate_anchor = (t0, float(_b0)) if _b0 is not None else None
             self._ap_dev_heater_pending = None
-            self._ap_net_offset = 0.0
-            self._ap_net_quiet_since = None
+            self._ap_net_ror = None
+            self._ap_net_stages = 0
         except Exception:  # pylint: disable=broad-except
             _logd.warning("AutoPilot: start_phase failed", exc_info=True)
 
@@ -6218,6 +6567,7 @@ class RoastAssistantPanel(QWidget):
 
     def _ap_set_state(self, state: str, lag_s: float | None = None) -> None:
         self._ap_state = state
+        self.aw.qmc._tilau_auto_piloted = state == "armed"
         if state == "armed":
             self._ap_tick_failures = 0   # tout armement repart d'une ardoise nette
             self.aw._tilau_guidance_decision = self._guidance_session.set_auto(True)
@@ -6244,8 +6594,8 @@ class RoastAssistantPanel(QWidget):
             self._ap_expected.clear()
             self._ap_dev_heater_pending = None   # file feu + rate-limiter dev
             self._ap_dev_rate_anchor = None
-            self._ap_net_offset = 0.0            # filet réactif
-            self._ap_net_quiet_since = None
+            self._ap_net_ror = None
+            self._ap_net_stages = 0
         self._sync_stack_page()
 
     def _operator_takeover(
@@ -6334,7 +6684,7 @@ class RoastAssistantPanel(QWidget):
             return out
         airwave = getattr(self.aw, "bleAirwaveDevice", None) is not None
         drum_locked = getattr(self.roast_context, "drum_midroast_locked", True)
-        # En DEV, si une Dev Ramp existe, air/heater/ext sont portés GRADUELLEMENT
+        # En DEV, si une Dev Ramp existe, air/heater sont portés GRADUELLEMENT
         # par la rampe (escalier fin depuis la valeur Maillard) — NE PAS les
         # feedforward ici, sinon saut brutal au FC (bug vu par Tilau 2026-07-10).
         dev_ramp_governs = (phase_key == "DEV" and bool(self._plan.get("Dev Ramp")))
@@ -6343,8 +6693,8 @@ class RoastAssistantPanel(QWidget):
                 continue
             if idx == 1 and drum_locked and phase_key != "DRY":
                 continue   # drum figé après le CHARGE sur cette machine
-            if idx in (0, 2) and dev_ramp_governs:
-                continue   # air / ext portés par la Dev Ramp
+            if idx == 0 and dev_ramp_governs:
+                continue   # air porté par la Dev Ramp ; l'extraction se pose ici, au FC
             try:
                 parts = str(self._plan.get(key, "")).split(" | ")
                 out.append((idx, float(parts[col].strip().rstrip("%"))))
@@ -6385,10 +6735,11 @@ class RoastAssistantPanel(QWidget):
                 applied.append(f"{_lbl} {self._ap_expected[idx]:.0f}%")
         if applied:
             _now = time.monotonic()
-            self._ap_notice = (self._tpl_ap_phase.format(phase_key, " · ".join(applied)),
-                               _S_OK, _now + 8)
+            _txt = self._tpl_ap_phase.format(self._cp_phase_words[self._PHASE_MAP[phase_key]],
+                                            " · ".join(applied))
+            self._ap_notice = (_txt, _S_OK, _now + 8)
             # cockpit : carte action + flash des tuiles posées dans CET appel uniquement
-            self._ap_last_action = (self._tpl_ap_phase.format(phase_key, " · ".join(applied)), _now)
+            self._ap_last_action = (_txt, _now)
             for _i in _posed_idx:
                 self._ap_lever_flash[_i] = _now
             _logd.info(f"AutoPilot: phase {phase_key} feedforward → {applied}")
@@ -6510,11 +6861,10 @@ class RoastAssistantPanel(QWidget):
         self._page_cockpit.refresh(armed, pilot, phase_txt, status, scol,
                                    action, when, levers, flashed,
                                    self._cp_ms_words.get(p, ""), pct, ms_right)
-        # bouton de jalon : contextualisé par phase, proéminent à l'approche de
-        # la cible plan (même convention ±8° que les pages), « Annuler » pendant
-        # le compte à rebours d'auto-DROP.
+        # bouton de jalon : contextualisé par phase, toujours discret — AUTO marque
+        # seul, le bouton n'est qu'un repli —, « Annuler » pendant le compte à
+        # rebours d'auto-DROP.
         _btn = self._page_cockpit.btn_ms
-        _scale = 1.8 if mode == 'F' else 1.0
         pending = self._missing_milestone()
         if p == self._PHASE_DEV and self._ap_drop_deadline is not None:
             _label, _style = self._tr_cp_btn_cancel, 'cancel'
@@ -6523,18 +6873,11 @@ class RoastAssistantPanel(QWidget):
                       else self._tr_cp_btn_fc)
             _style = 'warn'
         elif p == self._PHASE_DRY:
-            _label = self._tr_cp_btn_de
-            # garde TP : avant le turning point la BT DESCEND à travers le seuil
-            # (température de charge) — sans cette garde le bouton s'allumait dès
-            # la charge (même piège que la rampe, franchissement montant requis).
-            _style = ('warn' if (ctx["t_tp_sec"] > 0
-                                 and (dry_end_temp - bt) <= 8.0 * _scale) else 'dim')
+            _label, _style = self._tr_cp_btn_de, 'dim'
         elif p == self._PHASE_MAI:
-            _label = self._tr_cp_btn_fc
-            _style = 'warn' if (fc_temp - bt) <= 8.0 * _scale else 'dim'
+            _label, _style = self._tr_cp_btn_fc, 'dim'
         else:
-            _label = self._tr_cp_btn_drop
-            _style = 'warn' if (drop_temp - bt) <= 5.0 * _scale else 'dim'
+            _label, _style = self._tr_cp_btn_drop, 'dim'
         if _btn.text() != _label:
             _btn.setText(_label)
         _btn.set_active(True, style=_style)
@@ -6629,59 +6972,47 @@ class RoastAssistantPanel(QWidget):
                    f"(pending {_tgt_p:.0f}%, floor {_floor:.0f}%)")
         return True
 
-    def _ap_net_tick(self, crash_msg: "str | None") -> bool:
-        """Filet réactif minimal du dev (spec §3quinquies, décision
-        Tilau 2026-07-11 : « agir puis pause si épuisé »). AIR d'abord (l'air
-        soutient la réaction — jamais de remontée feu réactive), touches de
-        2 %/4-5 s, offset borné _AP_NET_CAP_PCT et AUTO-RÉSORBÉ : quand le RoR
-        se repose sur la pente (calme _AP_NET_RESORB_QUIET_S), l'air redescend
-        vers le plan par pas de 2 %. Renvoie True = filet ÉPUISÉ (borne atteinte
-        et ça crashe toujours) → l'appelant met AUTO en pause."""
+    def _ap_max_dev_burner(self) -> float:
+        """Plafond brûleur en développement : au-delà, la couleur externe part trop vite."""
+        return min(self._ap_max_burner(),
+                   float(getattr(self.roast_context, "dev_heater_max_pct", 100.0) or 100.0))
+
+    def _ap_net_step(self, idx: int, delta: float, ceiling: float) -> float:
+        """Bouge un levier du filet (écho anti-pause). Renvoie le chemin parcouru."""
+        _cur = _read_slider_pct(self.aw, idx)
+        if _cur is None:
+            return 0.0
+        _tgt = max(0.0, min(ceiling, _cur + delta))
+        if abs(_tgt - _cur) < 1.0 or not _apply_slider_value(self.aw, idx, _tgt):
+            return 0.0
+        _rb = _read_slider_pct(self.aw, idx)
+        self._ap_expected[idx] = _rb if _rb is not None else _tgt
+        self._ap_lever_flash[idx] = time.monotonic()
+        return (_rb if _rb is not None else _tgt) - _cur
+
+    def _ap_net_tick(self, crash_msg: "str | None", ror: float, raise_burner: bool = False) -> None:
+        """Filet du dev (Tilau, 2026-11-02) : l'air monte par paliers de 5 % tant que le
+        RoR ne repart pas et ne redescend jamais. Le brûleur reste où il est, sauf
+        raise_burner (voir _burner_may_rise), où il suit l'air."""
         _now = time.monotonic()
-        if crash_msg is None:
-            if self._ap_net_offset > 0.0:
-                if self._ap_net_quiet_since is None:
-                    self._ap_net_quiet_since = _now
-                elif (_now - self._ap_net_quiet_since >= _AP_NET_RESORB_QUIET_S
-                        and _now - self._ap_net_last >= _AP_NET_CADENCE_S):
-                    _cur = _read_slider_pct(self.aw, 0)
-                    if _cur is not None:
-                        _step = min(_AP_NET_STEP_PCT, self._ap_net_offset)
-                        _tgt = max(0.0, _cur - _step)
-                        if _apply_slider_value(self.aw, 0, _tgt):
-                            _rb = _read_slider_pct(self.aw, 0)
-                            self._ap_expected[0] = _rb if _rb is not None else _tgt
-                            self._ap_net_offset = max(0.0, self._ap_net_offset - _step)
-                            self._ap_net_last = _now
-                            self._ap_lever_flash[0] = _now
-                            _logd.info(f"AutoPilot net: resorb — AIR → {_tgt:.0f}% "
-                                       f"(offset {self._ap_net_offset:.0f}%)")
-            return False
-        # ── crash actif ──
-        self._ap_net_quiet_since = None
-        if self._ap_net_offset >= _AP_NET_CAP_PCT:
-            # borné : on tient encore 2 cadences (l'air agit avec du lag) puis épuisé
-            return (_now - self._ap_net_last) >= 2.0 * _AP_NET_CADENCE_S
-        if _now - self._ap_net_last >= _AP_NET_CADENCE_S:
-            _cur = _read_slider_pct(self.aw, 0)
-            if _cur is not None:
-                _tgt = min(100.0, _cur + _AP_NET_STEP_PCT)
-                if _tgt <= _cur:
-                    # air déjà au plafond physique : filet sans munition → épuisé
-                    self._ap_net_offset = _AP_NET_CAP_PCT
-                    self._ap_net_last = _now
-                elif _apply_slider_value(self.aw, 0, _tgt):
-                    _rb = _read_slider_pct(self.aw, 0)
-                    self._ap_expected[0] = _rb if _rb is not None else _tgt
-                    self._ap_net_offset += _AP_NET_STEP_PCT
-                    self._ap_net_last = _now
-                    self._ap_lever_flash[0] = _now
-                    _txt = self._tpl_ap_net.format(f"{_tgt:.0f}")
-                    self._ap_last_action = (_txt, _now)
-                    self._ap_notice = (crash_msg, _S_WARN, _now + 8)
-                    _logd.info(f"AutoPilot net: crash — AIR → {_tgt:.0f}% "
-                               f"(offset {self._ap_net_offset:.0f}%)")
-        return False
+        _back = _AP_NET_ROR_BACK_C * (1.8 if self.aw.qmc.mode == 'F' else 1.0)
+        if crash_msg is None and (self._ap_net_ror is None
+                                  or ror >= self._ap_net_ror + _back):
+            self._ap_net_ror = None
+            return
+        if self._ap_net_stages >= _AP_NET_MAX_STAGES or _now - self._ap_net_last < _AP_NET_CADENCE_S:
+            return
+        self._ap_net_last = _now
+        self._ap_net_ror = ror
+        self._ap_net_stages += 1
+        self._ap_dev_heater_pending = None   # le brûleur ne redescend plus de ce roast
+        if raise_burner:
+            self._ap_net_step(_burner_slider_idx(self.aw), _AP_NET_STEP_PCT, self._ap_max_dev_burner())
+        if self._ap_net_step(0, _AP_NET_STEP_PCT, 100.0):
+            _txt = self._tpl_ap_net.format(f"{_AP_NET_STEP_PCT:.0f}")
+            self._ap_last_action = (_txt, _now)
+            self._ap_notice = (crash_msg or _txt, _S_WARN, _now + 8)
+            _logd.info(f"AutoPilot net: crash — air +{_AP_NET_STEP_PCT:.0f}%")
 
     def _ap_apply_cooling(self) -> None:
         """DROP marqué : pose les réglages de refroidissement (brûleur coupé,
@@ -6758,30 +7089,27 @@ class RoastAssistantPanel(QWidget):
             return
         # ── crash-guard : les pages qui alimentaient le détecteur sont masquées ──
         # en cockpit — il DOIT être nourri ici. Prioritaire : pré-empte toute
-        # actuation. En DEV (détecteur recalibré banc 2026-07-11), le FILET
-        # RÉACTIF minimal agit d'abord (AIR +2 %/4-5 s, borné, auto-résorbé) ;
-        # PAUSE seulement s'il est épuisé (décision Tilau 2026-07-11). Hors dev,
-        # comportement v1 conservé : crash ⇒ PAUSE.
-        _tgt_temp = {self._PHASE_DRY: dry_end_temp, self._PHASE_MAI: fc_temp,
-                     self._PHASE_DEV: drop_temp}.get(self._current_phase, drop_temp)
+        # actuation. En DEV, le FILET tient le brûleur et monte l'air par 5 %.
+        # Hors dev, crash ⇒ PAUSE et l'opérateur
+        # suit le message : l'air, puis le brûleur.
         _net_hold = False   # filet à la main : gèle descente+trim, PAS les jalons
         if ror is not None:
             _in_dev = (self._guidance_phases.confirmed_phase
                        is GuidancePhase.DEVELOPMENT)
-            _crash = self._crash_detector.check(
-                ror, self._ror_hist, bt, target_temp=_tgt_temp,
-                dt=max(0.25, self.aw.qmc.delay / 1000.0), dev_mode=_in_dev)
+            _rise = _in_dev and _burner_may_rise(self._plan, float(ctx.get("t_now_sec", 0.0) or 0.0),
+                                                 float(ctx.get("t_fcs_sec", 0.0) or 0.0))
+            _crash = None
+            if self._current_phase != self._PHASE_DRY or _crash_readable(
+                    float(ctx.get("t_now_sec", 0.0) or 0.0), float(ctx.get("t_tp_sec", 0.0) or 0.0)):
+                _crash = self._crash_detector.check(
+                    ror, self._ror_hist,
+                    dt=max(0.25, self.aw.qmc.delay / 1000.0), dev_mode=_in_dev, raise_burner=_rise)
             if _in_dev:
-                if self._ap_net_tick(_crash):
-                    self._ap_set_state("paused")
-                    self._ap_notice = (self._tr_ap_net_exhausted, _S_WARN,
-                                       time.monotonic() + 12)
-                    _logd.info("AutoPilot: crash net exhausted — paused")
-                    return
+                self._ap_net_tick(_crash, ror, _rise)
                 # pendant un crash : plus aucune baisse de feu ni trim, mais les
                 # jalons et l'auto-DROP CONTINUENT (BT à la cible ⇒ dropper,
                 # surtout en crash — sinon sur-cuisson pendant que le filet agit)
-                _net_hold = _crash is not None
+                _net_hold = self._ap_net_ror is not None
             elif _crash:
                 self._ap_set_state("paused")
                 self._ap_notice = (_crash, _S_WARN, time.monotonic() + 10)
@@ -6793,15 +7121,17 @@ class RoastAssistantPanel(QWidget):
         _pending = self._guidance_phases.pending_milestone
         _which = _pending.value if _pending is not None else None
         if _which is not None and _which not in self._ap_automark_done:
-            _sug = _milestone_suggestion(self.aw, _which)
-            if _sug is not None:
+            if _ap_milestone_due(_which, _milestone_suggestion(self.aw, _which) is not None,
+                                 bt, dry_end_temp, fc_temp, tp_seen=ctx["t_tp_sec"] > 0.0,
+                                 scale=delta_scale(self.aw.qmc.mode),
+                                 original=self._ap_original_mark(1 if _which == "DE" else 2)):
                 self._ap_automark_done.add(_which)
                 if _which == "DE":
                     self.aw.qmc.markDRYSignal.emit(False)
                 else:
                     self.aw.qmc.markFCsSignal.emit(False)
                 _now = time.monotonic()
-                _txt = self._tpl_ap_marked.format("DRY END" if _which == "DE" else "FC START")
+                _txt = self._tpl_ap_marked.format(self._tr_ap_mark_de if _which == "DE" else self._tr_ap_mark_fc)
                 self._ap_last_action = (_txt, _now)
                 self._ap_notice = (_txt, _S_OK, _now + 8)
                 _logd.info(f"AutoPilot: milestone {_which} auto-marked")
@@ -6814,11 +7144,18 @@ class RoastAssistantPanel(QWidget):
                 and self._guidance_phases.confirmed_phase is GuidancePhase.DEVELOPMENT
                 and not self._ap_drop_cancelled):
             _now = time.monotonic()
+            _orig_drop = self._ap_original_mark(6)
+            if _orig_drop:
+                self._ap_drop_cancelled = True   # one-shot
+                self._ap_last_action = (self._tr_ap_dropmark, _now)
+                self.aw.qmc.markDropSignal.emit(False)
+                _logd.info("AutoPilot: DROP auto-marked at the original's")
+                return
             try:
                 _drop_t = float((self._plan or {}).get("Drop Temp") or 0.0)
             except (TypeError, ValueError):
                 _drop_t = 0.0
-            _at_target = _drop_t > 0 and bt >= _drop_t
+            _at_target = _orig_drop is None and _drop_t > 0 and bt >= _drop_t
             if self._ap_drop_deadline is None:
                 # Un échantillon isolé ne largue pas un roast : la cible doit
                 # être TENUE _AP_DROP_CONFIRM_TICKS ticks d'affilée.
@@ -6881,7 +7218,7 @@ class RoastAssistantPanel(QWidget):
                 if _ahit is not None and self._ap_apply_dev_step(_ahit):
                     ramp_acted = True
         # ── rampe de DÉVELOPPEMENT (trajectoire apprise) : feu baisse + airflow monte
-        # + extraction douce au franchissement des seuils BT ; burner jamais posé
+        # au franchissement des seuils BT ; burner jamais posé
         # direct, mis en file monotone, délivré rate-limité (≤5%/min en fenêtre exotherme).
         elif (self._current_phase == self._PHASE_DEV
               and self._ap_drop_deadline is None and not _net_hold):
@@ -6890,7 +7227,13 @@ class RoastAssistantPanel(QWidget):
                 if _dhit is not None:
                     _dhit = {k: v for k, v in _dhit.items() if k not in ("bt", "_f")}
                     _h = _dhit.pop("heater", None)
-                    if _h is not None:
+                    _a = _dhit.pop("airflow", None)
+                    _cur_air = _read_slider_pct(self.aw, 0)
+                    _next_air = (_dev_air_step(_a, _cur_air)
+                                 if _a is not None and _cur_air is not None else None)
+                    if _next_air is not None:
+                        _dhit["airflow"] = _next_air
+                    if _h is not None and self._ap_net_stages == 0:
                         _p = self._ap_dev_heater_pending
                         self._ap_dev_heater_pending = (float(_h) if _p is None
                                                        else min(_p, float(_h)))
@@ -6898,6 +7241,13 @@ class RoastAssistantPanel(QWidget):
                         ramp_acted = self._ap_apply_dev_step(_dhit)
             if not ramp_acted:
                 ramp_acted = self._ap_dev_heater_dispense(ctx)
+
+    def _ap_original_mark(self, index: int) -> "bool | None":
+        """Simulation: has the replayed roast reached this milestone? None when live."""
+        _timex = self.aw.qmc.timex
+        return _simulated_mark_passed(
+            getattr(getattr(self.aw, "simulator", None), "profile", None), index,
+            float(_timex[-1]) if _timex else 0.0)
 
     def _paint_ap_alert(self, text: str, level: str, hold_s: float = 20.0) -> None:
         """Pose une alerte immédiatement, sans attendre la boucle.
@@ -6940,6 +7290,8 @@ class RoastAssistantPanel(QWidget):
                 self._paint_ap_alert(self._tr_ap_data_stale, _S_CRIT)
             else:
                 self._paint_ap_alert(self._tr_data_stale, _S_CRIT)
+            for page in (self._page_dry, self._page_mai, self._page_dev):
+                page.gesture.rest()
         except Exception:  # pylint: disable=broad-except
             self._ap_state = "paused"   # dernier recours : plus aucune actuation
             _logd.exception("RoastAssistant: _on_data_stale failed")
@@ -7053,7 +7405,7 @@ class RoastAssistantPanel(QWidget):
         if _heater_now is not None:
             for _step in (self._plan or {}).get("Heater Ramp") or []:
                 try:
-                    if abs(bt - float(_step["bt"])) <= 3.0 and abs(
+                    if abs(bt - float(_step["bt"])) <= 3.0 * delta_scale(self.aw.qmc.mode) and abs(
                             _heater_now - float(_step["heater"])) <= 0.5:
                         self._guidance_session.actions.expect(
                             GuidanceLever.HEATER, _heater_now,
@@ -7139,6 +7491,10 @@ class RoastAssistantPanel(QWidget):
                 drop_temp    = float(self._plan.get("Drop Temp",         drop_temp))
             except (TypeError, ValueError):
                 pass
+        # The curve's coach judges against these same targets, not the profile's phases.
+        self.aw.qmc._tilau_plan_targets = (dry_end_temp, fc_temp, drop_temp) if self._plan else None
+        if self._current_phase == self._PHASE_PREHEAT:
+            self.aw._tilau_gesture_track = None   # the next charge starts up the plan again
 
         # Missing manual markers do not freeze guidance in Drying. The plan's
         # milestone temperatures provide a monotone fallback, without claiming
@@ -7155,7 +7511,9 @@ class RoastAssistantPanel(QWidget):
             _resolved = resolve_phase_from_plan_temperature(
                 _phase_for_guidance, float(bt), dry_end_temp, fc_temp,
                 turning_point_seen=ctx["t_tp_sec"] > 0.0)
-            if _resolved.inferred:
+            # AUTO moves on real marks only, which it sets itself (_ap_tick): a phase
+            # inferred from the plan would run the next phase ahead of the bean.
+            if _resolved.inferred and self._ap_state != "armed":
                 _phase_key = {
                     GuidancePhase.MAILLARD: "MAI",
                     GuidancePhase.DEVELOPMENT: "DEV",
@@ -7409,6 +7767,8 @@ class RoastAssistantPanel(QWidget):
                 _coach = getattr(self._stack.currentWidget(), "coach", None)
                 if _coach is not None and _coach_accepts(_coach, _level):
                     _coach.set(_text, _level)
+
+        self._sync_bean_details()
 
         # Recalcule la taille si nécessaire (contenu dynamique : banner, boutons)
         self._adjust_size_if_needed()

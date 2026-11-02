@@ -239,8 +239,8 @@ def analyze_profile(source: AnalysisInput) -> AnalysisResult:
     window = times[start:end + 1]
     if source.model == 'roast':
         fit_start = start
-        reference_bt = np.interp(window, ref_t, ref_bt)
-        reference_ror = np.interp(window, ref_t, ref_ror)
+        reference_bt = np.interp(window, ref_t, ref_bt)  # type: ignore[possibly-undefined]
+        reference_ror = np.interp(window, ref_t, ref_ror)  # type: ignore[possibly-undefined]
         equation = ''
     else:
         fit_start = _period_start(source.fit_period or source.period, ti, times, charge, drop, fc)

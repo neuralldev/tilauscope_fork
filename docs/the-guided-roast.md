@@ -198,7 +198,10 @@ The assistant raises problems while they can still be fixed.
 
 | Alert | What it means |
 |---|---|
-| *⚠ RoR crash detected — DROP now or start heating again!* | The roast has [crashed](glossary.md#crash). Two ways out, both stated. |
+| *⚠ RoR crash — 3.4°/min lost in 15s — raise the air; if the RoR does not pick up, raise the burner* | The rate of rise has [crashed](glossary.md#crash) before first crack. The air comes first, the burner only if the air is not enough. |
+| *⚠ RoR crash — 3.4°/min lost in 15s — keep the burner where it is, raise the air by 5 % steps* | A crash after first crack on a coffee you have roasted before. The burner stays to support the reaction; the air keeps climbing. |
+| *⚠ RoR crash — 3.4°/min lost in 15s — 5 % more air and burner, step by step until the RoR picks up* | The same crash on a coffee never roasted, in the first minute after first crack. It is the one case where the burner goes back up: nothing is known yet about this coffee. |
+| *⚠ RoR too low — DROP soon* | The rate of rise has fallen so far that waiting would only bake the coffee. |
 | *↩ Recovery — RoR rebuilding after turning point* | Not a fault — the normal rebuild after [TP](glossary.md#tp--turning-point). |
 | *⚠ Extended drying: ~5:30 vs plan 4:45 — baked risk, raise heater* | Drying is running long enough to risk a [baked](glossary.md#baked) cup. |
 | *⚠ Extended Maillard — baked risk, raise heat or anticipate FCs* | The same problem, one phase later. |
@@ -208,8 +211,8 @@ The assistant raises problems while they can still be fixed.
 | *⚠ Critical Gap between ET/BT — dangerous thermic gradiant* | The two probes have diverged dangerously. Never raised on a machine without an air probe. |
 | *⚠ No bean temperature coming in — advice on hold until it returns* | The bean probe has stopped reporting. Rather than repeat advice built on a temperature the coffee has left behind, the assistant holds everything it says until a fresh reading arrives, and picks up on its own when it does. |
 
-Alerts name the correction, not just the condition — *raise heater*, *reduce heater*, *DROP now
-or start heating again*. An alert you cannot act on is noise.
+Alerts name the correction, not just the condition — *raise heater*, *reduce heater*, *raise the
+air*. An alert you cannot act on is noise.
 
 !!! warning "Alarms behave differently in Guided"
     At Guided level, and in Expert while the assistant is running, the alarm actions configured

@@ -493,7 +493,7 @@ class _FontMixin:
             r   = self._fm(painter, tf).boundingRect(box, Qt.TextFlag.TextWordWrap, text)
             if r.height() <= self.p(scale, self._NOTES_MAX_MM):
                 return {"mode": "text", "text": text, "font": tf, "h": r.height()}
-        return {"mode": "text", "text": text, "font": tf, "h": r.height()}
+        return {"mode": "text", "text": text, "font": tf, "h": r.height()}  # type: ignore[possibly-undefined]
 
     def _make_printer(self, output_path: str) -> QPrinter:
         # PDF page = native label size (100x150mm) so it prints at 100%

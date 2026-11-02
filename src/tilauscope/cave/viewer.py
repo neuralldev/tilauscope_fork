@@ -1314,7 +1314,7 @@ class ViewerMixin:
     def _build_coffee_chip(self) -> QFrame:
         """The coffee the list follows, in place of the coffee list while one is chosen."""
         self._followed_bean_name = ""
-        self._coffee_labels: dict[str, str] = {}
+        self._coffee_labels = {}
         chip = self.roast_coffee_chip = QFrame()
         chip.setObjectName("coffeeChip")
         chip.setFixedHeight(32)

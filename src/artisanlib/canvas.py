@@ -1794,6 +1794,7 @@ class tgraphcanvas(QObject):
         ## Silent auto-marking is opt-in (QSettings tilauscope/milestone_automark,
         ## default False) — the safe default is suggest + operator confirmation.
         self._tilau_milestone_suggest: dict | None = None
+        self._tilau_auto_piloted: bool = False ## TILAU ## AUTO marks its own milestones, whatever the Auto Dry End / First Crack settings
 ## TILAU ##
 
         self.legend:Legend|None = None
@@ -5256,7 +5257,7 @@ class tgraphcanvas(QObject):
                     # polling started, we are not in simulator also not FC already set, if crack counter is on, check if it has to be raised
                     # for testing purpose allow simulator FC marking
                     if self.flagstart and self.timex and len(self.timex)>0 and \
-                            self.aw.TilauScopeFCMarkFlag and \
+                            (self.aw.TilauScopeFCMarkFlag or self._tilau_auto_piloted) and \
                             self.timeindex[1] > 0 and \
                             self.timeindex[2] <= 0 and \
                             self._tilau_milestone_detection_allowed() and \
@@ -5264,6 +5265,9 @@ class tgraphcanvas(QObject):
                         #_log.error("check crack detector")
                         current_bt = sample_temp2[-1] if sample_temp2 else 0.0
                         target_fcs = float(self.phases[2]) # phases[2] is the FCs target in the current unit
+                        _tilau_targets = getattr(self, '_tilau_plan_targets', None) ## TILAU ## AUTO follows the plan's first crack
+                        if self._tilau_auto_piloted and _tilau_targets:
+                            target_fcs = float(_tilau_targets[1])
                         charge_time = sample_timex[self.timeindex[0]] if self.timeindex[0] > -1 else (sample_timex[0] if sample_timex else 0.0)
                         current_roast_time = sample_timex[-1] - charge_time if sample_timex else 0.0  
                         ## TILAU ## check if the FC detector triggers a mark event
@@ -5293,7 +5297,7 @@ class tgraphcanvas(QObject):
                     ## TILAU — Dry End auto-detection
                     # Conditions : recording actif + flag activé + CHARGE marqué + DRY END pas encore marqué
                     if self.flagstart and self.timex and len(self.timex) > 0 and \
-                            self.aw.TilauScopeDEMarkFlag and \
+                            (self.aw.TilauScopeDEMarkFlag or self._tilau_auto_piloted) and \
                             self.timeindex[0] > -1 and \
                             self.timeindex[1] <= 0 and \
                             self._tilau_milestone_detection_allowed():

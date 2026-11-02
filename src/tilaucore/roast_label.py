@@ -75,7 +75,7 @@ def label_data(bean: GreenBean, data: dict, qr_base_url: Callable[[], str]
     # Ground when measured, else whole — never the lighter of the two.
     colour = next((c for c in (data.get('ground_color'), data.get('whole_color'))
                    if isinstance(c, (int, float)) and c > 0), 'N/A')
-    _agtron, _basis = roast_agtron(*(float(c) if isinstance(c, (int, float)) else 0.0
+    _agtron, _basis = roast_agtron(*(float(c) if isinstance(c, (int, float)) else 0.0  # type: ignore[call-arg]
                                      for c in (data.get('ground_color'), data.get('whole_color'))),
                                    str(data.get('color_system') or ''))
 

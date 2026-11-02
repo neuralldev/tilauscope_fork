@@ -494,3 +494,28 @@ def weight_loss_target_from_plan(plan: dict | None) -> WeightLossTarget | None:
     return weight_loss_target(plan.get("Target Agtron"),
                               moisture_pct=_num("Bean Humidity"),
                               dev_time_min=_num("Development Phase (min)"))
+
+
+_FC_BURNER_TRIAL_MAX_PCT: Final = 5.0
+
+
+def learned_fc_burner(trials: "list[tuple[float, float]]") -> "float | None":
+    """The burner to try at first crack next, from this coffee's (burner, RoR lost after FC).
+
+    Each roast is a trial: the plan keeps the setting that lost the least, and when that
+    setting is the edge of what was tried, goes one trial further that way. It stops once
+    a further trial loses more. None until two different settings were tried.
+    """
+    tried: "dict[float, list[float]]" = {}
+    for burner, lost in trials:
+        tried.setdefault(float(burner), []).append(float(lost))
+    if len(tried) < 2:
+        return None
+    settings = sorted(tried)
+    best = min(settings, key=lambda burner: sum(tried[burner]) / len(tried[burner]))
+    where = settings.index(best)
+    if where == len(settings) - 1:
+        return best + min(best - settings[-2], _FC_BURNER_TRIAL_MAX_PCT)
+    if where == 0:
+        return best - min(settings[1] - best, _FC_BURNER_TRIAL_MAX_PCT)
+    return best

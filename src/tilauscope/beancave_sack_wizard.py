@@ -1808,9 +1808,9 @@ class NewSackWizard(QDialog):
             # and the records as they were — a retry must not apply this twice.
             if not host.save_green_beans():
                 if mode == "restock":
-                    src.weight_left, src.sacks = previous
+                    src.weight_left, src.sacks = previous  # type: ignore[possibly-undefined]
                 else:
-                    host.cave.green_beans.remove(bean)
+                    host.cave.green_beans.remove(bean)  # type: ignore[possibly-undefined]
                     host.uuidmap.pop(bean.uuid, None)
                     if retired is not None:
                         retired[0].weight_left = retired[1]

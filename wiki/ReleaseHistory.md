@@ -1,4 +1,14 @@
 ## [4.3] 2026-09-13
+build 46
+* ⚡ [feat(i18n)] : the new crash and low RoR messages are translated in French, German, Spanish, Italian and Chinese (simplified and traditional)
+* ⚡ [feat(roast plan)] : on the Skywalker the plan now arrives at first crack at 8 °C/min, where a roast really arrives, instead of a theoretical 5; drop temperatures rise accordingly (204 °C for a medium)
+* ⚡ [feat(roast plan)] : after first crack the extraction is set once and stays (35 % on an AirWave), the burner only moves in the first minute, and the air always climbs in steps
+* ⚡ [feat(roast plan)] : the burner at first crack is learned from how steady the rate of rise stayed over the following minute, whatever the length of the development
+* 🐛 [fix(roast plan)] : past crashes and flicks listed by the plan no longer include small dips that do not show on the curve
+* ⚡ [feat(guided)] : one crash rule for every phase, and one message per situation: before first crack the air, then the burner; after it, keep the burner and raise the air; a coffee never roasted may also get the burner back in the first minute
+* 🐛 [fix(guided)] : a crash before first crack is now detected; the card no longer asks for less air than you already gave
+* 🐛 [fix(auto)] : AUTO waits for each air step to act before the next one, never lowers the air in development, keeps the burner once a crash is seen, and no longer pauses for a crash in development
+* 🐛 [fix(alarms)] : the alarm programme and the plan PDF set the extraction at first crack
 build 45
 * 🐛 [fix(macOS)] : TilauScope no longer crashes on macOS 27.2 when opening the roasting view: Qt moves to 6.11.2
 * 🐛 [fix(roast setup)] : What is this coffee for? is now kept per coffee, so a choice made for one coffee no longer changes the development planned for the next

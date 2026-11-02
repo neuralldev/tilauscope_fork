@@ -1207,16 +1207,16 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
                 content_layout.takeAt(0)
 
             if self.is_swapped:
-                content_layout.addWidget(self.collapsible_events.sidebar, stretch=0)
-                content_layout.addWidget(self.collapsible_events.grip,    stretch=0)
-                content_layout.addWidget(self.curve, stretch=1)
-                content_layout.addWidget(left_widget, stretch=0)
+                content_layout.addWidget(self.collapsible_events.sidebar, stretch=0)  # type: ignore[call-arg]
+                content_layout.addWidget(self.collapsible_events.grip,    stretch=0)  # type: ignore[call-arg]
+                content_layout.addWidget(self.curve, stretch=1)  # type: ignore[call-arg]
+                content_layout.addWidget(left_widget, stretch=0)  # type: ignore[call-arg]
                 self.swap_button.setToolTip(QApplication.translate('tilauscope_window', 'Swap panel position from right to left'))
             else:
-                content_layout.addWidget(left_widget, stretch=0)
-                content_layout.addWidget(self.curve, stretch=1)
-                content_layout.addWidget(self.collapsible_events.grip,    stretch=0)
-                content_layout.addWidget(self.collapsible_events.sidebar, stretch=0)
+                content_layout.addWidget(left_widget, stretch=0)  # type: ignore[call-arg]
+                content_layout.addWidget(self.curve, stretch=1)  # type: ignore[call-arg]
+                content_layout.addWidget(self.collapsible_events.grip,    stretch=0)  # type: ignore[call-arg]
+                content_layout.addWidget(self.collapsible_events.sidebar, stretch=0)  # type: ignore[call-arg]
                 self.swap_button.setToolTip(QApplication.translate('tilauscope_window', 'Swap panel position from left to right'))
         finally:
             # 3. Re-enable updates and trigger one single clean repaint

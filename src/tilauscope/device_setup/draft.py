@@ -506,7 +506,7 @@ def apply_quantifiers(aw: 'ApplicationWindow', original: DeviceDraft, index_of: 
     as alarms do.
     """
     _renumber_sources([(aw.eventquantifiersource, aw.eventquantifieractive),
-                       *((palette[PALETTE_QUANTIFIER_SOURCE], palette[PALETTE_QUANTIFIER_ACTIVE])
+                       *((palette[PALETTE_QUANTIFIER_SOURCE], palette[PALETTE_QUANTIFIER_ACTIVE])  # type: ignore[list-item]
                          for palette in aw.buttonpalette if len(palette) > PALETTE_QUANTIFIER_SOURCE)],
                       FIRST_EXTRA_QUANTIFIER_SOURCE, _QUANTIFIER_FALLBACK_SOURCE,
                       _slots_after_save(original, index_of))

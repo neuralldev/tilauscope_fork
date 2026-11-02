@@ -280,9 +280,9 @@ class TilauscopeAlarmFactory:
         # DERNIÈRE valeur de la Dev Ramp — sauterait d'un coup à l'arrivée puis
         # ferait redescendre les paliers, exactement le saut brutal que la rampe
         # existe pour éviter. On pose donc ce que la trajectoire TIENT au FC :
-        # le dernier palier de la rampe d'air pour l'airflow, la valeur de
-        # Maillard pour l'AirWave, le dernier palier de la rampe brûleur pour le
-        # filet de sécurité. Même lecture que la table d'entrée de phase du PDF
+        # le dernier palier de la rampe d'air pour l'airflow, le dernier palier
+        # de la rampe brûleur pour le filet de sécurité. L'AirWave, lui, se pose
+        # bien ici : aucune rampe ne le porte, il reste fixe après le FC. Même lecture que la table d'entrée de phase du PDF
         # (_entry_settings). Sans Dev Ramp, rien ne suivrait : on garde alors la
         # colonne DEV, seule valeur qui sera jamais posée.
         dev_ramp = self.plan.get("Dev Ramp") or []
@@ -290,7 +290,7 @@ class TilauscopeAlarmFactory:
                       else heaters[2])
         _fc_air = (int(air_ramp[-1]["airflow"]) if (dev_ramp and air_ramp)
                    else (airflows[1] if dev_ramp else airflows[2]))
-        _fc_ext = extractions[1] if dev_ramp else extractions[2]
+        _fc_ext = extractions[2]
         # Le step burner à FC n'est qu'un filet de sécurité : negguard sur le
         # dernier step de la rampe — il ne tire que si le seuil BT anticipé
         # n'a jamais été atteint (FC précoce, sonde en retard). Offset +1 s :
@@ -1006,10 +1006,9 @@ class BuildPRoastPlanPDF(FPDF):
         if levels["drum"]:
             rows.append((QApplication.translate("Label", "Drum Speed") + " (%)",
                          _fmt(levels["drum"], ctx.pct_to_drum_label if ctx else None)))
-        # AirWave: posted at CHARGE and at DRY END, then carried by the Dev Ramp
-        # — so the value at FC entry is still the Maillard one, as for airflow.
+        # AirWave: posted at CHARGE, DRY END and FC, then left alone.
         if str(plan_data.get("Extraction (%) (Dry|Mai|Dev)", "")).strip():
-            _ext = _phase("Extraction (%) (Dry|Mai|Dev)", (0, 1, 1))
+            _ext = _phase("Extraction (%) (Dry|Mai|Dev)", (0, 1, 2))
             rows.append((QApplication.translate("tilauscope_common", "AirWave")
                          + " (% " + QApplication.translate("ComboBox", "Fan") + ")",
                          _fmt(_ext, None)))

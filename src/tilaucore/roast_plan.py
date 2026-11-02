@@ -32,9 +32,9 @@ from tilaucore.bean_qualifiers import QT_TRANSLATE_NOOP
 from tilaucore.beans import BeanCaveContainer, GreenBean, from_json
 from tilaucore.numeric import (Pchip, arange, clip, column_stats, interp, mean, median, moving_average,
                                polyfit_line, round_half_even)
-from tilaucore.roast_analysis import (GREEN_MOISTURE_NEUTRAL_PCT, ProbeDeviation, RoastingPhase, clean_delta_bt,
+from tilaucore.roast_analysis import (DEV_EVENT_PROMINENCE_C, GREEN_MOISTURE_NEUTRAL_PCT, ProbeDeviation, RoastingPhase, clean_delta_bt,
                                       estimate_ror_dt, find_flicks_crashes, find_turning_point_index,
-                                      get_ror_ideal_band, marked, normalize_timeindex, weight_loss_target,
+                                      get_ror_ideal_band, learned_fc_burner, marked, normalize_timeindex, weight_loss_target,
                                       which_roast_phase)
 from tilaucore.roast_colour import AGTRON_SCALES, AgtronScale, to_agtron
 from tilaucore.roast_levels import ROASTING_BASIC_BASE, RoasterBasicPlan, RoasterBasicPlanPerPhase
@@ -314,7 +314,7 @@ _TECH_RADIANT: Final[_TechnologyProfile] = _TechnologyProfile(
     burner_floor_pct=45.0,
     airflow_pct=(35.0, 45.0, 50.0),
     dry_ror_peak_c=12.0, dry_ror_peak_follows_heater=True,
-    ror_envelope=(16.0, 12.0, 8.0, 5.5),
+    ror_envelope=(16.0, 12.0, 8.0, 8.0),
     tp_time_min=1.25, tp_time_heater_pct=70.0,
     light_heater_base_by_process=(0.0, -5.0, -10.0),
     plan_overrides={
@@ -1535,6 +1535,22 @@ class RoastPlanEngine:
             _logd.debug(f"_extract_pre_de_descent failed: {e}")
             return None
 
+    def _ror_lost_after_fc(self, delta_bt: list, timex: list, phase_times: dict) -> "float | None":
+        """How far the RoR strayed from first crack over the next minute, in °C/min.
+
+        A fixed window: past it the burner is left alone, and a longer development
+        must not read as a worse burner. A RoR that climbs counts as much as one that falls.
+        """
+        fc, drop = phase_times.get("fc_start"), phase_times.get("drop")
+        if not delta_bt or not timex or not fc or not drop or drop <= fc:
+            return None
+        values = [delta_bt[i] for i in range(min(len(delta_bt), len(timex)))
+                  if fc <= timex[i] <= min(fc + 60.0, drop) and delta_bt[i] is not None]
+        if len(values) < 2:
+            return None
+        lost = abs(values[0] - sum(values) / len(values))
+        return lost / 1.8 if self.mode == "F" else lost
+
     def _extract_phase_heater(self, phase_times: dict) -> "tuple[float | None, float | None, float | None, float | None, float | None]":
         """Représentation du heater réellement tenu par phase (dry, maillard,
         dev, fc, de) sur le log courant (self.lastprofiledata) — la valeur du
@@ -1997,6 +2013,7 @@ class RoastPlanEngine:
         heater_mai_samples:  list[float] = []
         heater_dev_samples:  list[float] = []
         heater_fc_samples:   list[float] = []   # item C : feu tenu AU FC
+        fc_burner_trials:    "list[tuple[float, float]]" = []   # (feu au FC, RoR perdu ensuite)
         # Feu tenu AU DRY END : point d'arrivée du séchage.
         heater_de_samples:   list[float] = []
         # Premier geste de descente EFFECTIVE avant le DRY END : son avance sur
@@ -2198,6 +2215,9 @@ class RoastPlanEngine:
                     heater_dev_samples.append(_h_dev)
                 if _h_fc is not None:
                     heater_fc_samples.append(_h_fc)
+                    _lost = self._ror_lost_after_fc(delta_bt, timex, phase_times)
+                    if _lost is not None:
+                        fc_burner_trials.append((_h_fc, _lost))
                 if _h_de is not None:
                     heater_de_samples.append(_h_de)
                 # Gardes de plausibilité à la COLLECTE, comme pour le RoR de pic
@@ -2491,6 +2511,13 @@ class RoastPlanEngine:
             pre_de_lead_samples = []
             fc_bt_mad_c = drop_bt_mad_c = None
 
+        ## Chaque roast est un essai : le feu au FC se déduit de ce qu'ils ont donné,
+        ## pas de ce qui a été fait (Tilau, 2026-11-01).
+        _fc_burner_tried = learned_fc_burner(fc_burner_trials)
+        if _fc_burner_tried is not None:
+            heater_fc_learned = _fc_burner_tried
+            heater_fc_samples = [_fc_burner_tried] * max(3, len(fc_burner_trials))
+
         _reference_out = ({"roast_uuid": str(getattr(bean, "reference_roast_uuid", "") or ""),
                            "reason": _reference_reason, "level": _reference_level,
                            "status": _reference_status,
@@ -2547,9 +2574,8 @@ class RoastPlanEngine:
             drop_time   = phase_times["drop"]
             f, c = find_flicks_crashes(
                 data["delta_bt"], tx, phase_times, tp_idx,
-                # delta series is in the display unit — the °C-doctrine
-                # prominence (1 °C/min) scales ×1.8 on °F installs.
-                prominence=1.0 * (1.8 if self.mode == "F" else 1.0),
+                # delta series is in the display unit: the °C threshold scales on °F installs.
+                prominence=DEV_EVENT_PROMINENCE_C * (1.8 if self.mode == "F" else 1.0),
                 debounce_sec=20.0 * (1.5 - getattr(self, '_thermal_response_speed_cache', 0.70)),
             )
 
@@ -2601,6 +2627,7 @@ class RoastPlanEngine:
             "heater_samples": heater_samples,
             "heater_fc_learned": heater_fc_learned,        # item C
             "heater_fc_samples": len(heater_fc_samples),
+            "fc_burner_tried": _fc_burner_tried,
             "heater_de_learned": heater_de_learned,
             "heater_de_samples": len(heater_de_samples),
             "pre_de_lead_learned": pre_de_lead_learned,
@@ -3046,15 +3073,14 @@ class RoastPlanEngine:
             _r_de_c, ror_fc_c, _drop_required_pct, maillard_time_min)
         _ror_fc_geom_c: float = ror_fc_c
         ## Sous enveloppe, la pente d'arrivée au FC est PRESCRITE, pas déduite
-        ## d'une décroissance géométrique : c'est elle qui décide de la couleur
-        ## (entrer à 8 au lieu de 5 donne un medium, même avec 1:00 de dev).
+        ## d'une décroissance géométrique.
         if env_fc_entry_ror_c is not None:
             if abs(_ror_fc_geom_c - env_fc_entry_ror_c) > 1.0:
                 _logd.info(
                     f"RoastPlan: drawn curve arrives at first crack at "
                     f"{_ror_fc_geom_c:.1f}°C/min, envelope prescribes "
                     f"{env_fc_entry_ror_c:.1f}")
-            ror_fc_c = env_fc_entry_ror_c
+            ror_fc_c = min(env_fc_entry_ror_c, ror_maillard)   # le RoR ne remonte pas au FC
         note = ""
         if _mai_conflict:
             _logd.warning(
@@ -3476,7 +3502,7 @@ class RoastPlanEngine:
             "maillard_time_base_min", "maillard_per_drying"))
         if None in _vals:
             return None
-        return tuple(float(v) for v in _vals)
+        return tuple(float(v) for v in _vals)  # type: ignore[return-value]
 
     def _pace_sample(self, dry_min: float, maillard_min: float,
                      weight_g: float) -> "tuple[float, float] | None":
@@ -3717,7 +3743,8 @@ class RoastPlanEngine:
 
         Maillard is integrated in two segments because the envelope bends
         inside it: the last minute before first crack is the 8 → entry stretch,
-        the rest is 12 → 8.
+        the rest is 12 → 8. The roast reaches first crack at about 8 and falls
+        after it: the 5 of the old envelope was the drop, not the entry.
         """
         _post_tp, _de, _pre_fc, _at_fc = envelope
         _dry_rise: float = dry_bt_c - tp_bt_c
@@ -4181,7 +4208,7 @@ class RoastPlanEngine:
             coherent_source: "_PlanSource | None" = None,
             cohort_dry_learned: "float | None" = None, cohort_samples: int = 0,
             pressure_k: float = 1.0,
-    ) -> "_BurnerSetpoints":
+            dev_heater_max_pct: float = 100.0) -> "_BurnerSetpoints":
         """Grid base by process/humidity, learned heater profile adoption, the
         Maillard energy floor, and the learned pre-FC setpoint (banc
         2026-08-05).
@@ -4345,7 +4372,8 @@ class RoastPlanEngine:
         # limit must win over the correction, never the other way round.
         if moisture_fc_heater_pct:
             heater_pre_fc += moisture_fc_heater_pct
-        heater_pre_fc = _clamp(heater_pre_fc, _floor_pct, _heater_max_pct)
+        heater_pre_fc = _clamp(heater_pre_fc, _floor_pct, min(_heater_max_pct, dev_heater_max_pct))
+        heater_dev = min(heater_dev, dev_heater_max_pct)
         if not heater_fc_source.is_grid:
             if coherent_source:
                 heater_fc_source = coherent_source
@@ -4556,7 +4584,7 @@ class RoastPlanEngine:
         else:
             # Fixed-speed drum: emit a single "N/A" marker so downstream
             # consumers (alarm factory, PDF) know drum events should be skipped.
-            drum_speed_pct: list[str] = ["--", "--", "--"]
+            drum_speed_pct = ["--", "--", "--"]
             _logd.debug("RoastPlan: drum speed events suppressed — roaster has no variable-speed drum")
 
         return _DrumSpeed(drum_speed_pct=drum_speed_pct)
@@ -4578,6 +4606,7 @@ class RoastPlanEngine:
             airflow_samples: int = 0,
             coherent_source: "_PlanSource | None" = None,
             pressure_k: float = 1.0,
+            dev_time_min: float = 0.0,
     ) -> "_AirflowExtraction":
         """Airflow/extraction base values, the shared learned-trajectory
         helper, the Maillard Air Ramp and the Development Ramp (banc
@@ -4714,7 +4743,6 @@ class RoastPlanEngine:
         _dev_traj = dev_trajectory_learned or {}
         _dev_traj_n = int(dev_traj_samples or 0)
         _dev_use_learned = _dev_traj_n >= 2
-        _DEV_EXT_RISE_CAP = 10.0   # AirWave puissant : montée douce (≤ +10 vs Maillard)
         def _mai_pct(lst: "list", i: int) -> "float | None":
             try: return float(str(lst[i]).rstrip('%'))
             except (IndexError, ValueError, TypeError): return None
@@ -4777,20 +4805,16 @@ class RoastPlanEngine:
         # cible apprise (f=0.75) si historique ≥ 2 sinon colonne DEV.
         # item C : le dev part de la valeur pre-FC RÉELLE de la rampe
         # (feu au FC appris) — continuité au FC préservée quand h_fc ≠ h_dev.
+        # L'extraction ne suit pas : posée au FC, elle ne sert qu'à chasser les fumées.
         _dev_start = {3: (float(heater_pre_fc) if has_heater_control else None),
-                      0: _air_fc,
-                      2: (30.0 if airwave_present else None)}
+                      0: _air_fc}
         _dev_end: dict = {}
         for _et, _col in ((3, float(heater_dev) if has_heater_control else None),
-                          (0, _mai_pct(airflow, 2)),
-                          (2, 35.0 if airwave_present else None)):
+                          (0, _mai_pct(airflow, 2))):
             if _dev_start[_et] is None or _col is None:
                 continue
             _lrn = _dev_traj.get(_et, {}).get(0.75) if _dev_use_learned else None
-            _tgt = _lrn if _lrn is not None else _col
-            if _et == 2:   # extraction : plafond de montée depuis Maillard
-                _tgt = min(_tgt, _dev_start[2] + _DEV_EXT_RISE_CAP)
-            _dev_end[_et] = _tgt
+            _dev_end[_et] = _lrn if _lrn is not None else _col
         # ── TENIR LE FEU en dev (spec AutoPilot §3sexies, banc 2026-07-11) ──────
         # Les roasts SMOOTH tiennent le brûleur (~48→42, −6 sur tout le dev) ; la
         # descente profonde (~20-25) est RÉFUTÉE au banc (elle crashe PLUS :
@@ -4819,23 +4843,29 @@ class RoastPlanEngine:
             _burner_drop = max(0.0, _dev_start[3] - _dev_end[3])   # % de feu perdu en dev
             _air_support = _air_fc + min(_AIR_DEV_SUPPORT_K * _burner_drop, _AIR_DEV_SUPPORT_CAP)
             _dev_end[0] = _clamp(_air_support, _dev_end[0], 100.0)
-        _dev_res = {3: max(1.0, heater_resolution_pct), 0: _airflow_step, 2: _airflow_step}
-        _dev_lohi = {3: (0.0, heater_max_pct), 0: (AIRFLOW_MIN, 100.0), 2: (EXTRACTION_MIN, 100.0)}
-        _dev_keys = {3: "heater", 0: "airflow", 2: "extraction"}
+        # L'air monte quoi qu'il arrive : il chasse les fumées et renouvelle l'air du tambour.
+        if 0 in _dev_end:
+            _dev_end[0] = min(max(_dev_end[0], _air_fc + _airflow_step), 100.0)
+        _dev_res = {3: max(1.0, heater_resolution_pct), 0: _airflow_step}
+        _dev_lohi = {3: (0.0, heater_max_pct), 0: (AIRFLOW_MIN, 100.0)}
+        _dev_keys = {3: "heater", 0: "airflow"}
         # nb de paliers = plus grand mouvement / résolution (borné 3..8) → ~5 % / pas
         _max_move = max((abs(_dev_end[e] - _dev_start[e]) / _dev_res[e]
                          for e in _dev_end), default=0.0)
         _dev_n = int(_clamp(round(_max_move), 3, 8))
         _dev_ramp = []
         _dev_prev = {e: _dev_start[e] for e in _dev_end}
-        for _i in range(1, _dev_n + 1):
-            _f = _i / _dev_n
+        # Le brûleur se règle dans la première minute après le FC, puis on n'y touche plus.
+        _burner_span = min(1.0, 1.0 / dev_time_min) if dev_time_min > 0.0 else 1.0
+        for _f in sorted({_i / _dev_n * _span for _i in range(1, _dev_n + 1)
+                          for _span in (1.0, _burner_span)}):
             # seuils répartis de FC jusqu'à ~3° sous le drop (dernier pas avant cooling)
             _bt_f_c = fc_bt + (drop_bt_temperature - 3.0 - fc_bt) * _f
             _entry = {"bt": round(to_native(_bt_f_c), 1), "_f": round(_f, 4)}
             for _et in _dev_end:
                 _lo, _hi = _dev_lohi[_et]; _step = _dev_res[_et]
-                _desired = _dev_start[_et] + (_dev_end[_et] - _dev_start[_et]) * _f
+                _progress = min(1.0, _f / _burner_span) if _et == 3 else _f
+                _desired = _dev_start[_et] + (_dev_end[_et] - _dev_start[_et]) * _progress
                 _q = _clamp(round(_desired / _step) * _step, _lo, _hi)
                 if abs(_q - _dev_prev[_et]) >= _step - 1e-6:   # a bougé d'au moins 1 pas
                     _entry[_dev_keys[_et]] = int(_q)
@@ -5525,9 +5555,9 @@ class RoastPlanEngine:
             maillard_phase_percent:float = round((maillard_time_min / drop_time_min) * 100.0,0)
             dev_phase_percent:float = 100.0 - dry_phase_percent - maillard_phase_percent
         else:
-            dry_phase_percent:float = 0.0
-            maillard_phase_percent:float = 0.0
-            dev_phase_percent:float = 0.0
+            dry_phase_percent = 0.0
+            maillard_phase_percent = 0.0
+            dev_phase_percent = 0.0
 
         # DTR is the RESULT of the durations above, never their driver (owner
         # ruling 2026-08-04 — same doctrine as the rate of rise: settings are
@@ -5655,6 +5685,7 @@ class RoastPlanEngine:
             roast_constraints=roast_constraints,
             cal_heater_dry_pct=_cal_heater_dry, cal_heater_mai_pct=_cal_heater_mai,
             soak_dheater_pct=_soak_dheater, heater_max_pct=_heater_max_pct,
+            dev_heater_max_pct=(ctx.dev_heater_max_pct if ctx is not None else 100.0),
             heater_samples=(int(history.get("heater_samples", 0) or 0) if history else 0),
             heater_dry_learned=(history.get("heater_dry_learned") if history else None),
             heater_mai_learned=(history.get("heater_mai_learned") if history else None),
@@ -5687,6 +5718,11 @@ class RoastPlanEngine:
         _h_dev_free = _burner.dev_free_pct
         if _burner.notes:
             _plan_notes += _burner.notes
+        if history and history.get("fc_burner_tried") is not None:
+            _plan_notes.append(_tr(QT_TRANSLATE_NOOP(
+                "tilauscope_roast_plan",
+                "Burner before first crack {0}%: learned from the RoR fall of past roasts of this coffee"
+            )).format(f"{_burner.heater_pre_fc:.0f}"))
 
         ## Garde-fou du temps de TP : la constante machine vaut à 70-80 % de
         ## brûleur de charge (vérifiée sur 91 roasts, tous dans cette fenêtre).
@@ -5761,7 +5797,7 @@ class RoastPlanEngine:
             drop_bt_temperature=drop_bt_temperature, to_native=_to_native,
             heater_pre_fc=heater_pre_fc, heater_dev=heater_dev,
             has_heater_control=_has_heater, heater_resolution_pct=_heater_res,
-            heater_max_pct=_heater_max_pct,
+            heater_max_pct=_heater_max_pct, dev_time_min=dev_time_min,
             dev_trajectory_learned=(history.get("dev_trajectory_learned") if history else None),
             dev_traj_samples=(int(history.get("dev_traj_samples", 0) or 0) if history else 0),
             airflow_dry_learned=(history.get("airflow_dry_learned") if history else None),

@@ -379,6 +379,8 @@ class Roaster:
     ## Heater ceiling: hardware limit, not a style choice; the plan must
     ## never target above it. None (default) → RoasterContext falls back to 100.0.
     heater_max_pct: float | None = None
+    ## Above this in development the outside of the bean darkens too fast.
+    dev_heater_max_pct: float | None = None
     # Machine-specific guidance thresholds; neither clamps a plan.
     heater_support_threshold_pct: float | None = None
     heater_caution_pct: float | None = None
@@ -580,6 +582,7 @@ class RoasterContext:
     ## Heater ceiling: hardware limit, not a style choice — see
     ## Roaster.heater_max_pct. 100.0 = no declared ceiling.
     heater_max_pct: float = 100.0
+    dev_heater_max_pct: float = 100.0
     ## Time rule, TP dip and colour estimate — see the Roaster fields of the
     ## same names. None = not declared for this model.
     drying_time_base_min: float | None = None
@@ -661,6 +664,8 @@ class RoasterContext:
             heater_resolution_pct    = heater_res,
             heater_max_pct           = (roaster.heater_max_pct
                                         if roaster.heater_max_pct is not None else 100.0),
+            dev_heater_max_pct       = (roaster.dev_heater_max_pct
+                                        if roaster.dev_heater_max_pct is not None else 100.0),
             heater_support_threshold_pct = roaster.heater_support_threshold_pct,
             heater_caution_pct       = roaster.heater_caution_pct,
             maillard_ror_decay       = (roaster.maillard_ror_decay

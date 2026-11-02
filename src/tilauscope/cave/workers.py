@@ -148,7 +148,7 @@ class NiimbotWorker(QObject):
     print_unconfirmed = pyqtSignal()
     copy_progress = pyqtSignal(int, int)  # labels out, labels in the run — for multi-copy runs
 
-    def __init__(self, printer_instance:NiimbotBLE, label_image:Image, label_type:Niimprint_PaperType, copies:int=1):
+    def __init__(self, printer_instance:NiimbotBLE, label_image:"Image.Image", label_type:Niimprint_PaperType, copies:int=1):
         super().__init__()
         self.printer = printer_instance
         self.image = label_image

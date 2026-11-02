@@ -2097,7 +2097,7 @@ class RoastCurveWidget(QWidget):
             spans.append((_t(1), _t(2) if fcs else now, _PHASE_MAILLARD))
         if fcs:
             spans.append((_t(2), _t(6) if dropped else now, _PHASE_DEVELOPMENT))
-        return spans
+        return spans  # type: ignore[return-value]
 
     def _draw_phase_bands(self, painter: QPainter, timex: list[Any],
                           timeindex: list[Any]) -> None:

@@ -111,7 +111,7 @@ from tilauscope.theme_qss import apply_tilau_theme
 def _get_local_build() -> int:
     """Return the current build integer (0 if not determinable)."""
     try:
-        from artisanlib.__init__ import __build__  # type: ignore[import]
+        from artisanlib import __build__
         return int(str(__build__).strip("\"'"))
     except Exception:
         return 0
@@ -119,7 +119,7 @@ def _get_local_build() -> int:
 
 def _get_local_version() -> str:
     try:
-        from artisanlib.__init__ import __version__  # type: ignore[import]
+        from artisanlib import __version__
         return str(__version__)
     except Exception:
         return "0.0.0"

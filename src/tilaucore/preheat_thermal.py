@@ -263,10 +263,10 @@ def _robust_equilibrium_fit(
             break
         working = filtered
     rmse = math.sqrt(sum(
-        (y - (gain * u + loss * loss_term)) ** 2
+        (y - (gain * u + loss * loss_term)) ** 2  # type: ignore[possibly-undefined]
         for u, loss_term, y in working
     ) / len(working))
-    return gain, loss, rmse, len(working)
+    return gain, loss, rmse, len(working)  # type: ignore[possibly-undefined]
 
 
 def _rollout_errors(

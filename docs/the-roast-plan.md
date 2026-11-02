@@ -218,8 +218,8 @@ table describes a roaster it was not measured on.
 Drop*: the slope to hold at each stage. The Maillard figure is an average, and an average says
 nothing about where the roast lands — *Target ROR at FC* is the arrival value, and it is the one
 that decides first crack. On a radiant roaster it is prescribed by the plan rather than deduced
-from the curve, because entering the crack at 8°C/min instead of 5 gives a medium roast even on
-a one-minute development. The four figures fall from one to the next: a plan whose development
+from the curve: about 8°C/min on a Skywalker, which is where a roast really arrives. The rate then
+falls quickly after the crack and settles: that fall is normal and is not a crash. The four figures fall from one to the next: a plan whose development
 average sits above its first-crack figure would describe a curve that speeds up after the crack,
 and the plan now says so instead of printing it silently.
 
@@ -228,6 +228,15 @@ at the prescribed first-crack slope, keeps easing towards the drop slope, and th
 that climb reaches is the target. Measured colours from your own roasts still correct it — a
 table of drop temperatures by roast level does not survive a change of machine or probe, your
 own record of what a colour reading cost does.
+
+**After first crack.** Each lever has its own rule. The extraction is set at first crack, about
+35 % on an AirWave, and stays there: it clears the smoke and regulates nothing. The burner is held
+or lowered according to what is known of the coffee, within the first minute, and then left alone.
+A coffee that crashes at first crack keeps its heat to support the reaction. The air climbs in
+steps whatever happens: it clears the smoke and brings clean air through the roaster.
+
+Each roast of a coffee is a trial of the burner at first crack: the plan keeps the setting that
+held the rate of rise steadiest over the minute after the crack.
 
 **Development.** *Resulting DTR (%)* — development itself is planned as a duration at the
 right temperature and rate of rise for the batch, and the ratio is the figure that comes out

@@ -85,6 +85,13 @@ DROP: Final[int] = 6
 #: A share of an ABSOLUTE reading is not a physical band unless it is judged in
 #: °C: the two scales share no origin, so 5 % of 392 °F is 10.9 °C where 5 % of
 #: 200 °C is 10. Every roast approach band in TilauScope goes through `within_share`.
+# A milestone is near when the bean is this close to its target, in °C; the time
+# predicted to reach it says nothing of where the bean is.
+DRY_END_WINDOW_C: Final[float] = 5.0
+FIRST_CRACK_WINDOW_C: Final[float] = 10.0
+NOW_WINDOW_C: Final[float] = 1.0   # "Now" means the bean is on the target
+
+
 def delta_scale(mode: str) -> float:
     """Factor turning a °C difference or rate into the display unit."""
     return 1.8 if mode == 'F' else 1.0

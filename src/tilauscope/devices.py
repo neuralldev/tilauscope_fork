@@ -1623,7 +1623,7 @@ class TilauscopeConfigDlg(QDialog):
             prefixes["scale"] = all_prefixes()
         except Exception:  # pylint: disable=broad-except
             pass
-        return prefixes
+        return prefixes  # type: ignore[return-value]
 
     def _no_device_text(self) -> str:
         return QApplication.translate("tilauscope_devices", "— no device —")

@@ -109,7 +109,7 @@ def _is_newer(remote_v: str, remote_b: int, local_v: str, local_b: int) -> bool:
 def _get_local_version() -> tuple[str, int]:
     """Import version/build from artisanlib and return (version_str, build_int)."""
     try:
-        from artisanlib.__init__ import __build__, __version__  # type: ignore[import]
+        from artisanlib import __build__, __version__
         build_str = str(__build__).strip('"\'')
         return str(__version__), int(build_str)
     except Exception as exc:

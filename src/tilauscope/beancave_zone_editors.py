@@ -956,7 +956,7 @@ class ZoneEditorDialog(QDialog):
             # out of the cave again so a retry does not add it twice.
             if not self._host.save_green_beans():
                 if self._create:
-                    cave.green_beans.remove(b)
+                    cave.green_beans.remove(b)  # type: ignore[possibly-undefined]
                     self._host.uuidmap.pop(b.uuid, None)
                 _restore()
                 return
