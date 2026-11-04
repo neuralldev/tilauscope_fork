@@ -39,6 +39,7 @@ from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath
 from artisanlib.util import convertRoRstrict
 from tilauscope.tilauscope_types import PHASE_COLORS, THEME
 from tilauscope.theme_qss import base_qss, tooltip_qss
+from tilauscope import ror
 from tilauscope.roast_debrief import (build_debrief, profile_from_qmc, fmt_mmss,
                                       display_name, Debrief, delta_c_to_mode)
 
@@ -172,9 +173,7 @@ class RoastReviewPanel(QWidget):
                 bt = qmc.temp2
             if not bt or len(bt) != len(timex):
                 return None
-            _, delta_bt = qmc.recomputeDeltas(
-                timex, qmc.timeindex[0], qmc.timeindex[6], None, bt,
-                optimalSmoothing=getattr(qmc, "optimalSmoothing", True))
+            _, delta_bt = ror.recompute_deltas(qmc, timex, qmc.timeindex[0], qmc.timeindex[6], None, bt)
             if not delta_bt:
                 return None
             # Before the turning point the BT is still falling into the drum;

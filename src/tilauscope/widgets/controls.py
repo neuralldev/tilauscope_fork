@@ -312,6 +312,10 @@ class SegmentedControl(QWidget):
         if 0 <= index < len(self._buttons):
             self._buttons[index].setToolTip(text)
 
+    def set_enabled(self, index: int, enabled: bool) -> None:
+        if 0 <= index < len(self._buttons):
+            self._buttons[index].setEnabled(enabled)
+
     def _on_clicked(self, index: int) -> None:
         moved = index != self._current
         self.set_current(index)   # clicking the lit segment keeps it lit

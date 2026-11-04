@@ -371,6 +371,40 @@ Roasts brought from your own other computer are not shared roasts: they count as
 
 ---
 
+## BeanCave on its own, beside Artisan
+
+BeanCave also exists as a program of its own, for macOS and Windows, for roasting with the
+official Artisan rather than with TilauScope. It is meant for Artisan only: do not run it while
+TilauScope is open.
+
+**First launch.** Three steps: where Artisan saves your roasts (BeanCave finds it in Artisan's
+settings), where your coffees live (a library already in that folder is kept), and which roaster
+you use, so roast plans are built for that machine.
+
+**Roasting a coffee.** **Prepare in Artisan** on a bean record opens the coffee's next roast in
+Artisan, with its name, its batch weight, its alarms and its reference roast as the background
+curve. Artisan may ask whether to load a profile that is not genuine: answer yes. Roast as usual
+in Artisan. When Artisan saves the roast, BeanCave takes its green weight off the coffee's stock,
+once per roast.
+
+**Settings.** **⚙ Settings** in the header, or **BeanCave → Settings…** (⌘, on macOS), has three
+tabs:
+
+| Tab | What it sets |
+|---|---|
+| **DEVICES** | The scale, the colour meter, the AquaGauge, the ambient probe and the label printer. |
+| **LIBRARY** | The library and roasts folders, the currency, the roaster and the label size. |
+| **INTEGRATIONS** | The MQTT broker and the AI provider. |
+
+These settings belong to BeanCave. At its first launch it takes over the devices, MQTT and AI
+TilauScope already knows on this computer; after that, a change in one program does not reach
+the other.
+
+The **Use as reference in Artisan** button is not offered on its own: Artisan cannot receive a
+background curve that way. The reference roast reaches Artisan through **Prepare in Artisan**.
+
+---
+
 ## Roast files
 
 Auditing incomplete roast files, linking one to a green coffee, and recomputing how many roasts

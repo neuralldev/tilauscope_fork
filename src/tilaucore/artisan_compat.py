@@ -206,6 +206,8 @@ class RoRSettings:
     limit: bool = True
     limit_min: int = -10
     limit_max: int = 45
+    et_delta_samples: int = 6
+    et_delta_filter: int = 7
 
 
 def profile_sampling_interval(profile: dict) -> float:
@@ -239,10 +241,25 @@ def compute_deltas(timex: list[float], temp: list, ds: int, delta_filter: int, r
             else None for i, d in enumerate(delta)]
 
 
+def recompute_deltas(timex: list[float], charge_idx: int, drop_idx: int, et: list | None, bt: list,
+                     settings: RoRSettings, recording: bool = False, et_samples: int | None = None,
+                     bt_samples: int | None = None) -> tuple[list[float | None] | None, list[float | None]]:
+    """Artisan's recomputeDeltas, standard method only: (ET rate or None when no ET is given, BT rate).
+
+    Artisan's other methods (polynomial fit, optimal smoothing, a formula) are deliberately left out.
+    """
+    start, end = charge_idx if charge_idx > -1 else 0, drop_idx if drop_idx > 0 else len(timex)
+    dropouts = settings.filter_dropouts and not recording
+
+    def rate(temp: list, ds: int, delta_filter: int) -> list[float | None]:
+        return compute_deltas(timex, temp, max(1, ds), delta_filter, start, end, settings.median_filter_factor,
+                              dropouts, settings.limit, settings.limit_min, settings.limit_max)
+
+    et_rate = None if et is None else rate(et, et_samples or settings.et_delta_samples, settings.et_delta_filter)
+    return et_rate, rate(bt, bt_samples or settings.delta_samples, settings.delta_filter)
+
+
 def recompute_bt_deltas(timex: list[float], charge_idx: int, drop_idx: int, bt: list,
                         settings: RoRSettings, recording: bool = False) -> list[float | None]:
     """The BT half of Artisan's recomputeDeltas."""
-    return compute_deltas(timex, bt, max(1, settings.delta_samples), settings.delta_filter,
-                          charge_idx if charge_idx > -1 else 0, drop_idx if drop_idx > 0 else len(timex),
-                          settings.median_filter_factor, settings.filter_dropouts and not recording,
-                          settings.limit, settings.limit_min, settings.limit_max)
+    return recompute_deltas(timex, charge_idx, drop_idx, None, bt, settings, recording)[1]

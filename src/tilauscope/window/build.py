@@ -27,7 +27,7 @@ import logging
 from typing import Final
 
 from PyQt6.QtCore import QPoint, QSettings, QSize, QTimer, Qt
-from PyQt6.QtGui import QFont, QFontMetrics, QKeySequence, QShortcut
+from PyQt6.QtGui import QFont, QFontMetrics
 from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
@@ -338,16 +338,6 @@ class BuildMixin:
         QTimer.singleShot(500, self.focusOn)
 
         self.aw.tilauscopeMain.setChecked(True)
-
-        # Shift+T view-toggle from within TilauScope, headless only. The act_main
-        # QAction/shortcut lives on the Artisan window, which is hidden (and thus
-        # receives no key events) there — so the shortcut is registered on this
-        # window instead. In normal mode there is no second view to reach: Artisan
-        # stays hidden and closing TilauScope quits, so a key that closed it would
-        # read as a view switch and end the session instead.
-        if getattr(self.aw, '_tilau_headless', False):
-            self._view_toggle_sc = QShortcut(QKeySequence("Shift+T"), self)
-            self._view_toggle_sc.activated.connect(self.aw.tilauscopeCall)
 
         self.aw.pidcontrol.activateSVSlider(True)
 

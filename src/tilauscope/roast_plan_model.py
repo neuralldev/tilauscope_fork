@@ -34,6 +34,7 @@ from PyQt6.QtCore import  QSettings
 from PyQt6.QtWidgets import QApplication
 
 from tilaucore.artisan_compat import RoRSettings
+from tilauscope.ror import ror_settings
 from tilaucore import roast_plan as _core
 from tilaucore.roast_plan import *  # noqa: F403  pylint: disable=wildcard-import,unused-wildcard-import
 from tilaucore.roast_plan import (  # noqa: F401  (re-exported for the desktop and its tests)
@@ -73,12 +74,7 @@ class TilauScopeRoastPlan(RoastPlanEngine):
         return bool(self.parent.qmc.flagon)
 
     def _ror_settings(self) -> RoRSettings:
-        q = self.parent.qmc
-        return RoRSettings(curvefilter=q.curvefilter, interpolate_drops=q.interpolateDropsflag,
-                           delta_samples=q.deltaBTsamples, delta_filter=q.deltaBTfilter,
-                           median_filter_factor=q.median_filter_factor_RoR, filter_dropouts=q.filterDropOuts,
-                           limit=q.RoRlimitFlag, limit_min=max(-q.maxRoRlimit, q.RoRlimitm),
-                           limit_max=min(q.maxRoRlimit, q.RoRlimit))
+        return ror_settings(self.parent.qmc)
 
     def _beancave_directory(self) -> str:
         return QSettings().value('beancaveDirectory', '', str)

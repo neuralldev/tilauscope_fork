@@ -307,6 +307,9 @@ class TilauscopeConfigDlg(QDialog):
     def __init__(self, parent: QWidget, aw: 'ApplicationWindow') -> None:
         super().__init__(parent)
         self.aw = aw
+        # BeanCave alone (wiki/BeanCave-Standalone-Spec.md §11): only what the cellar
+        # uses — its devices, its files, its integrations. Nothing of the roaster.
+        self._alone = bool(getattr(aw, 'tilau_standalone', False))
         from tilauscope.roasters import RoasterManager
         self._roasters = RoasterManager()   # the roaster database, read once per opening
 
@@ -430,6 +433,7 @@ class TilauscopeConfigDlg(QDialog):
         # Title bar
         title_row = QHBoxLayout()
         title_lbl = _dialog_title(
+            QApplication.translate("tilauscope_devices", "BEANCAVE SETTINGS") if self._alone else
             QApplication.translate("tilauscope_devices", "TILAU CONFIGURATION")
         )
         close_btn = _close_button()
@@ -458,21 +462,29 @@ class TilauscopeConfigDlg(QDialog):
         self._printing_tab   = QWidget(); self._printing_tab.setStyleSheet(_tab_qss)
         self._beancave_tab   = QWidget(); self._beancave_tab.setStyleSheet(_tab_qss)
 
-        self._tabs.addTab(self._general_tab,     QApplication.translate("tilauscope_devices", "⚙  GENERAL"))
-        self._tabs.addTab(self._controls_tab,    QApplication.translate("tilauscope_devices", "🎚  CONTROLS"))
-        self._tabs.addTab(self._sensors_tab,     QApplication.translate("tilauscope_devices", "📡  SENSORS"))
-        self._tabs.addTab(self._detection_tab,   QApplication.translate("tilauscope_devices", "🔬  DETECTION"))
-        self._tabs.addTab(self._integrations_tab, QApplication.translate("tilauscope_devices", "🌐  INTEGRATIONS"))
-        self._tabs.addTab(self._printing_tab,    QApplication.translate("tilauscope_devices", "🖨  PRINTING"))
-        self._tabs.addTab(self._beancave_tab,    QApplication.translate("tilauscope_devices", "☕  BEANCAVE"))
+        if self._alone:
+            self._tabs.addTab(self._sensors_tab,     QApplication.translate("tilauscope_devices", "📡  DEVICES"))
+            self._tabs.addTab(self._beancave_tab,    QApplication.translate("tilauscope_devices", "☕  LIBRARY"))
+            self._tabs.addTab(self._integrations_tab, QApplication.translate("tilauscope_devices", "🌐  INTEGRATIONS"))
+            self._setup_sensors_tab()
+            self._setup_beancave_tab()
+            self._setup_integrations_tab()
+        else:
+            self._tabs.addTab(self._general_tab,     QApplication.translate("tilauscope_devices", "⚙  GENERAL"))
+            self._tabs.addTab(self._controls_tab,    QApplication.translate("tilauscope_devices", "🎚  CONTROLS"))
+            self._tabs.addTab(self._sensors_tab,     QApplication.translate("tilauscope_devices", "📡  SENSORS"))
+            self._tabs.addTab(self._detection_tab,   QApplication.translate("tilauscope_devices", "🔬  DETECTION"))
+            self._tabs.addTab(self._integrations_tab, QApplication.translate("tilauscope_devices", "🌐  INTEGRATIONS"))
+            self._tabs.addTab(self._printing_tab,    QApplication.translate("tilauscope_devices", "🖨  PRINTING"))
+            self._tabs.addTab(self._beancave_tab,    QApplication.translate("tilauscope_devices", "☕  BEANCAVE"))
 
-        self._setup_general_tab()
-        self._controls = ControlsTab(self._controls_tab, self.aw)
-        self._setup_sensors_tab()
-        self._setup_detection_tab()
-        self._setup_integrations_tab()
-        self._setup_printing_tab()
-        self._setup_beancave_tab()
+            self._setup_general_tab()
+            self._controls = ControlsTab(self._controls_tab, self.aw)
+            self._setup_sensors_tab()
+            self._setup_detection_tab()
+            self._setup_integrations_tab()
+            self._setup_printing_tab()
+            self._setup_beancave_tab()
 
         # background sensor scan is scoped to the SENSORS tab: hook the
         # central BLE scanner on enter, release it on leave (and on close).
@@ -609,18 +621,9 @@ class TilauscopeConfigDlg(QDialog):
     # TAB 1 — GENERAL
     # ─────────────────────────────────────────────────────────────────────────
 
-    def _setup_general_tab(self) -> None:
-        scroll = _scrollable(self._general_tab)
-        layout = scroll.widget().layout()
-
-        # Who roasts: identity card, name edited in place
-        layout.addWidget(self._build_identity_card())
-
-        # Roaster model
-        layout.addWidget(_section_label(QApplication.translate("Label", "Roaster")))
-        roaster_group = QGroupBox(QApplication.translate("tilauscope_devices", "Machine Profile"))
-        rg = QFormLayout(roaster_group)
-        self.tilauRoaster = QComboBox()
+    def _roaster_combo(self) -> QComboBox:
+        """The roaster models of TilauScope's database, the current one selected; index 0 is none."""
+        combo = QComboBox()
         # macOS: the popup is a separate top-level window that does not reliably
         # inherit the dialog's descendant QSS — style the view object directly so
         # the dropdown gets the Mocha background instead of the white system one.
@@ -646,18 +649,32 @@ class TilauscopeConfigDlg(QDialog):
             }}
             """
         )
-        self.tilauRoaster.setView(_roaster_view)
-        style_combo_popup(self.tilauRoaster)
-        self.tilauRoaster.setToolTip(
+        combo.setView(_roaster_view)
+        style_combo_popup(combo)
+        combo.setToolTip(
             QApplication.translate("tilauscope_devices", "Select the active roaster machine profile")
         )
         items = [QApplication.translate("tilauscope_devices", "— select a roaster model —")]
         items.extend(self._roasters.get_roaster_list())
-        self.tilauRoaster.addItems(items)
+        combo.addItems(items)
         if self.aw.tilau_roaster:
-            idx = self.tilauRoaster.findText(self.aw.tilau_roaster)
+            idx = combo.findText(self.aw.tilau_roaster)
             if idx >= 0:
-                self.tilauRoaster.setCurrentIndex(idx)
+                combo.setCurrentIndex(idx)
+        return combo
+
+    def _setup_general_tab(self) -> None:
+        scroll = _scrollable(self._general_tab)
+        layout = scroll.widget().layout()
+
+        # Who roasts: identity card, name edited in place
+        layout.addWidget(self._build_identity_card())
+
+        # Roaster model
+        layout.addWidget(_section_label(QApplication.translate("Label", "Roaster")))
+        roaster_group = QGroupBox(QApplication.translate("tilauscope_devices", "Machine Profile"))
+        rg = QFormLayout(roaster_group)
+        self.tilauRoaster = self._roaster_combo()
         rg.addRow(QApplication.translate("tilauscope_devices", "Model:"), self.tilauRoaster)
         # read-only roaster: monitoring only, Artisan sends no commands
         self.tilauRoasterReadonly = QCheckBox(
@@ -701,22 +718,8 @@ class TilauscopeConfigDlg(QDialog):
         if self.aw.TilauScopeNotification is not None:
             self.tilauScopeNotificationCheckBox.setChecked(self.aw.TilauScopeNotification)
 
-        # Headless "BeanCave home" mode — persisted in QSettings and read
-        # at boot (main.py). Boot-time only, so it takes effect after a restart.
-        self.headlessModeCheckBox = QCheckBox(
-            QApplication.translate("tilauscope_devices", "BeanCave home mode (hide the Artisan window)")
-        )
-        self.headlessModeCheckBox.setToolTip(
-            QApplication.translate("tilauscope_devices",
-                "Start in the BeanCave shell with the Artisan window hidden. Takes effect after a restart.")
-        )
-        self.headlessModeCheckBox.setChecked(
-            QSettings().value('tilauscope/headless_mode', False, type=bool)
-        )
-
         fg.addWidget(self.tilauScopeAnnotationCheckBox)
         fg.addWidget(self.tilauScopeNotificationCheckBox)
-        fg.addWidget(self.headlessModeCheckBox)
         layout.addWidget(feat_group)
 
         # QR scan / mobile record server (spec wiki/QR-Scan-Spec.md §2.1) —
@@ -821,6 +824,18 @@ class TilauscopeConfigDlg(QDialog):
         layout.addWidget(ambient_group)
 
         # ── Color & Airflow — AirWave BLE ─────────────────────────────────
+        # The extractor and the roaster link are the roaster's: BeanCave alone skips them.
+        if not self._alone:
+            self._setup_roaster_sensors(layout)
+
+        # ── Color Meter ───────────────────────────────────────────────────
+        layout.addWidget(_section_label(
+            QApplication.translate("tilauscope_devices", "Color Meter")
+        ))
+        self._setup_cellar_sensors(layout)
+
+    def _setup_roaster_sensors(self, layout: QVBoxLayout) -> None:
+        """AirWave, its extraction per phase, and the Skywalker roaster link."""
         layout.addWidget(_section_label(
             QApplication.translate("tilauscope_devices", "Color & Airflow")
         ))
@@ -906,10 +921,8 @@ class TilauscopeConfigDlg(QDialog):
         sw_g.addWidget(skywalker_cell, 0, 2)
         layout.addWidget(skywalker_group)
 
-        # ── Color Meter ───────────────────────────────────────────────────
-        layout.addWidget(_section_label(
-            QApplication.translate("tilauscope_devices", "Color Meter")
-        ))
+    def _setup_cellar_sensors(self, layout: QVBoxLayout) -> None:
+        """Colour meter, AquaGauge, scale, label printer: the devices BeanCave uses too."""
         c1_group = QGroupBox(QApplication.translate("tilauscope_devices", "Roast colour  (Bluetooth)"))
         c1_group.setContentsMargins(12, 18, 12, 12)
         c1g = QGridLayout(c1_group)
@@ -1389,7 +1402,10 @@ class TilauscopeConfigDlg(QDialog):
     def _setup_printing_tab(self) -> None:
         scroll = _scrollable(self._printing_tab)
         layout = scroll.widget().layout()
+        self._add_label_size(layout)
+        layout.addStretch()
 
+    def _add_label_size(self, layout: QVBoxLayout) -> None:
         layout.addWidget(_section_label(QApplication.translate("tilauscope_devices", "Labels")))
         label_group = QGroupBox(literal_ampersand(
             QApplication.translate("tilauscope_devices", "Green bean & roasted bean labels")))
@@ -1440,8 +1456,6 @@ class TilauscopeConfigDlg(QDialog):
         self.labelSizeCombo.setCurrentIndex(idx if idx >= 0 else 0)
         lg.addRow(QApplication.translate("tilauscope_devices", "Label size:"), self.labelSizeCombo)
         layout.addWidget(label_group)
-
-        layout.addStretch()
 
     # ─────────────────────────────────────────────────────────────────────────
     # FC detection labels
@@ -2137,6 +2151,8 @@ class TilauscopeConfigDlg(QDialog):
         btn_layout.addStretch()
         btn_layout.addWidget(self.mqttCheckSensorButton)
         form_layout.addRow(buttons)
+        if self._alone:
+            return   # the roast energy is TilauScope's
 
         self.mqttExtractorOnMeterCheck = QCheckBox(QApplication.translate(
             "tilauscope_devices", "Extractor is plugged into the roaster meter"))
@@ -2765,6 +2781,16 @@ class TilauscopeConfigDlg(QDialog):
         money_form.addRow(_field_label(QApplication.translate("tilauscope_devices", "Currency:")),
                           self.currencyCombo)
         layout.addWidget(money_group)
+        if self._alone:
+            # TilauScope keeps these in GENERAL and PRINTING, tabs BeanCave alone does not have.
+            layout.addWidget(_section_label(QApplication.translate("Label", "Roaster")))
+            roaster_group = QGroupBox(QApplication.translate("tilauscope_devices", "Machine Profile"))
+            roaster_form = QFormLayout(roaster_group)
+            self.tilauRoaster = self._roaster_combo()
+            roaster_form.addRow(_field_label(QApplication.translate("tilauscope_devices", "Model:")),
+                                self.tilauRoaster)
+            layout.addWidget(roaster_group)
+            self._add_label_size(layout)
         layout.addStretch()
 
     def _directory_row(self, form: QFormLayout, label: str, value: str,
@@ -2836,35 +2862,39 @@ class TilauscopeConfigDlg(QDialog):
             except Exception:  # pylint: disable=broad-except
                 _log.exception("BeanCave could not follow the new folders")
 
-        # ── General ───────────────────────────────────────────────────────
-        aw.tilau_roaster = (
-            self.tilauRoaster.currentText()
-            if self.tilauRoaster.currentIndex() > 0
-            else "")
-        aw.tilau_roaster_readonly = self.tilauRoasterReadonly.isChecked()
-        from tilauscope.roasters import sync_operator_to_qmc, sync_roaster_to_qmc
-        sync_roaster_to_qmc(aw, aw.tilau_roaster) # mirror onto the canvas machine label
-        if self._identity_stack.currentIndex() == 1:
-            self._commit_identity()  # Save while still typing keeps the name
-        sync_operator_to_qmc(aw, self._operator_name)
-        self._apply_roaster_slider_visibilities()
-        # The Replay header and the assistant's advisor were both built for
-        # the previously selected roaster. Realign them on the new one; guarded
-        # so a failure here cannot abort the settings still to be applied below.
-        tilauscope = getattr(aw, "tilauscope_main", None)
-        if tilauscope is not None:
-            try:
-                if not sip.isdeleted(tilauscope):
-                    tilauscope.refresh_replay_capability()
-            except Exception as e:  # pylint: disable=broad-except
-                _log.warning("refresh_replay_capability failed: %s", e)
-        aw.TilauScopeAnnotation  = self.tilauScopeAnnotationCheckBox.isChecked()
-        aw.TilauScopeNotification = self.tilauScopeNotificationCheckBox.isChecked()
+        if not self._alone:
+            # ── General ───────────────────────────────────────────────────────
+            aw.tilau_roaster = (
+                self.tilauRoaster.currentText()
+                if self.tilauRoaster.currentIndex() > 0
+                else "")
+            aw.tilau_roaster_readonly = self.tilauRoasterReadonly.isChecked()
+            from tilauscope.roasters import sync_operator_to_qmc, sync_roaster_to_qmc
+            sync_roaster_to_qmc(aw, aw.tilau_roaster) # mirror onto the canvas machine label
+            if self._identity_stack.currentIndex() == 1:
+                self._commit_identity()  # Save while still typing keeps the name
+            sync_operator_to_qmc(aw, self._operator_name)
+            self._apply_roaster_slider_visibilities()
+            # The Replay header and the assistant's advisor were both built for
+            # the previously selected roaster. Realign them on the new one; guarded
+            # so a failure here cannot abort the settings still to be applied below.
+            tilauscope = getattr(aw, "tilauscope_main", None)
+            if tilauscope is not None:
+                try:
+                    if not sip.isdeleted(tilauscope):
+                        tilauscope.refresh_replay_capability()
+                except Exception as e:  # pylint: disable=broad-except
+                    _log.warning("refresh_replay_capability failed: %s", e)
+            aw.TilauScopeAnnotation  = self.tilauScopeAnnotationCheckBox.isChecked()
+            aw.TilauScopeNotification = self.tilauScopeNotificationCheckBox.isChecked()
 
-        # ── Controls ──────────────────────────────────────────────────────
-        # before the AirWave mapping below, whose first-time renaming of the
-        # damper control must win over the name this tab loaded
-        self._controls.apply()
+            # ── Controls ──────────────────────────────────────────────────────
+            # before the AirWave mapping below, whose first-time renaming of the
+            # damper control must win over the name this tab loaded
+            self._controls.apply()
+        else:
+            aw.tilau_roaster = (self.tilauRoaster.currentText()
+                                if self.tilauRoaster.currentIndex() > 0 else "")
 
         # ── Sensors — Ambient ─────────────────────────────────────────────
         t = self.tilauscopeProbeComboBoxcList.currentText()
@@ -2874,19 +2904,20 @@ class TilauscopeConfigDlg(QDialog):
         else:
             aw.bleTilauScopeDeviceName = None  # unassigned via 🗑
 
-        # ── Sensors — AirWave ─────────────────────────────────────────────
-        t = self.AirwaveComboBox.currentText()
-        if t and t != _no_dev:
-            m = re.search(r'\((.*?)\)', t)
-            aw.bleAirwaveDeviceName = m.group(1) if m else t
-        else:
-            aw.bleAirwaveDeviceName = None  # unassigned via 🗑
-        aw.bleAirwavepidRamp         = self.AirwavePidRampSpinBox.value()
-        aw.bleAirwaveEmulateOmniflux = self.AirwaveEmulateOmnifluxCheckVBox.isChecked()
-        aw.bleAirwavepidparms        = self._get_airwave_pid_data()
-        # AirWave configured → map the Damper slider onto it (runs
-        # after the roaster visibilities so it re-claims idx 2 even read-only)
-        self._apply_airwave_damper_mapping()
+        if not self._alone:
+            # ── Sensors — AirWave ─────────────────────────────────────────────
+            t = self.AirwaveComboBox.currentText()
+            if t and t != _no_dev:
+                m = re.search(r'\((.*?)\)', t)
+                aw.bleAirwaveDeviceName = m.group(1) if m else t
+            else:
+                aw.bleAirwaveDeviceName = None  # unassigned via 🗑
+            aw.bleAirwavepidRamp         = self.AirwavePidRampSpinBox.value()
+            aw.bleAirwaveEmulateOmniflux = self.AirwaveEmulateOmnifluxCheckVBox.isChecked()
+            aw.bleAirwavepidparms        = self._get_airwave_pid_data()
+            # AirWave configured → map the Damper slider onto it (runs
+            # after the roaster visibilities so it re-claims idx 2 even read-only)
+            self._apply_airwave_damper_mapping()
 
         # Only accept a real BLE identifier from the combos: an empty scan leaves
         # "No X found" as the combo text, which must not overwrite the stored UUID.
@@ -2898,16 +2929,17 @@ class TilauscopeConfigDlg(QDialog):
                 return m.group(1).strip()
             return None
 
-        # ── Roaster — Skywalker (TC4-BLE) ──
-        # An explicit 🗑 (placeholder) unassigns; otherwise only a valid id writes,
-        # so an assigned-but-absent device keeps its assignment.
-        _sw_txt = self.SkywalkerComboBox.currentText()
-        if _sw_txt == _no_dev:
-            aw.bleSkywalkerDeviceName = None
-        else:
-            _bid = _combo_ble_id(_sw_txt)
-            if _bid is not None:
-                aw.bleSkywalkerDeviceName = _bid
+        if not self._alone:
+            # ── Roaster — Skywalker (TC4-BLE) ──
+            # An explicit 🗑 (placeholder) unassigns; otherwise only a valid id writes,
+            # so an assigned-but-absent device keeps its assignment.
+            _sw_txt = self.SkywalkerComboBox.currentText()
+            if _sw_txt == _no_dev:
+                aw.bleSkywalkerDeviceName = None
+            else:
+                _bid = _combo_ble_id(_sw_txt)
+                if _bid is not None:
+                    aw.bleSkywalkerDeviceName = _bid
 
         # ── Sensors — colour meter ────────────────────────────────────────
         _c1_txt = self.lebrewRoastSeeC1ComboBox.currentText()
@@ -2967,15 +2999,16 @@ class TilauscopeConfigDlg(QDialog):
         else:
             aw.bleNiimbotDeviceName = None
 
-        # ── Detection ─────────────────────────────────────────────────────
-        auto_marks.set_defaults(aw, {'charge': self.chargeMarking.isChecked(), 'drop': self.dropMarking.isChecked(),
-                                     'dry_end': self.deMarking.isChecked(), 'first_crack': self.fcMarking.isChecked()})
-        aw.TilauScopeFCWindow    = self.fcWindowSpin.value()
-        aw.TilauScopeFCTreshold  = self.fcThresholdSpin.value()
-        # Only when the operator moved it: converting the shown value back every
-        # time would erode the stored °C figure on a Fahrenheit graph.
-        if self.fcHalfBandSpin.value() != self._fc_half_shown:
-            aw.TilauScopeFCHalfBand = self._fc_half_c()
+        if not self._alone:
+            # ── Detection ─────────────────────────────────────────────────────
+            auto_marks.set_defaults(aw, {'charge': self.chargeMarking.isChecked(), 'drop': self.dropMarking.isChecked(),
+                                         'dry_end': self.deMarking.isChecked(), 'first_crack': self.fcMarking.isChecked()})
+            aw.TilauScopeFCWindow    = self.fcWindowSpin.value()
+            aw.TilauScopeFCTreshold  = self.fcThresholdSpin.value()
+            # Only when the operator moved it: converting the shown value back every
+            # time would erode the stored °C figure on a Fahrenheit graph.
+            if self.fcHalfBandSpin.value() != self._fc_half_shown:
+                aw.TilauScopeFCHalfBand = self._fc_half_c()
 
         # ── Integrations — MQTT ───────────────────────────────────────────
         aw.mqttConfig.broker_url = self.mqttBrokerEdit.text()
@@ -2994,67 +3027,58 @@ class TilauscopeConfigDlg(QDialog):
         self._mqtt_sensors = self._get_mqtt_sensor_data()
         self._mqtt_ports.save_mqtt_sensors(self._mqtt_sensors)
 
-        # energy: an extractor counted inside the roaster meter; a session not yet recording follows at once
-        on_meter = self.mqttExtractorOnMeterCheck.isChecked()
-        QSettings().setValue(SETTING_EXTRACTOR_ON_ROASTER_METER, on_meter)
-        tap = getattr(aw, "tilau_energy_tap", None)
-        if tap is not None and tap.live and tap.session is not None and not aw.qmc.flagstart:
-            tap.session.extractor_on_roaster_meter = on_meter
-        # for the roaster the window opened on, even if this Save changes it
-        if self.heaterPowerSpin is not None and self.heaterPowerSpin.value() != self._heater_w:
-            set_heater_power(self._energy_roaster, self.heaterPowerSpin.value())
-            if tap is not None:
-                tap.refresh_heater()
+        if not self._alone:
+            # energy: an extractor counted inside the roaster meter; a session not yet recording follows at once
+            on_meter = self.mqttExtractorOnMeterCheck.isChecked()
+            QSettings().setValue(SETTING_EXTRACTOR_ON_ROASTER_METER, on_meter)
+            tap = getattr(aw, "tilau_energy_tap", None)
+            if tap is not None and tap.live and tap.session is not None and not aw.qmc.flagstart:
+                tap.session.extractor_on_roaster_meter = on_meter
+            # for the roaster the window opened on, even if this Save changes it
+            if self.heaterPowerSpin is not None and self.heaterPowerSpin.value() != self._heater_w:
+                set_heater_power(self._energy_roaster, self.heaterPowerSpin.value())
+                if tap is not None:
+                    tap.refresh_heater()
 
-        # headless "BeanCave home" mode -> QSettings (boot-time; restart)
-        _h_prev = QSettings().value('tilauscope/headless_mode', False, type=bool)
-        _h_new  = self.headlessModeCheckBox.isChecked()
-        if _h_new != _h_prev:
-            QSettings().setValue('tilauscope/headless_mode', _h_new)
-            show_styled_message(
-                self,
-                QApplication.translate("tilauscope_devices", "Restart required"),
-                QApplication.translate("tilauscope_devices",
-                    "BeanCave home mode will take effect the next time you start TilauScope."),
-            )
+            # record web server -> QSettings (spec wiki/QR-Scan-Spec.md §2.1); the
+            # server itself is opt-in and boot-time, like remote control below
+            _w_prev = QSettings().value('tilauscope/web_enabled', False, type=bool)
+            _w_new  = self.webServerCheckBox.isChecked()
+            _p_prev = QSettings().value('tilauscope/web_port', 8123, type=int)
+            _p_new  = self.webPortSpin.value()
+            if _w_new != _w_prev or _p_new != _p_prev:
+                QSettings().setValue('tilauscope/web_enabled', _w_new)
+                QSettings().setValue('tilauscope/web_port', _p_new)
+                show_styled_message(
+                    self,
+                    QApplication.translate("tilauscope_devices", "Restart required"),
+                    QApplication.translate("tilauscope_devices",
+                        "The record web server will take effect the next time you "
+                        "start TilauScope. Labels printed from now on will encode the new port."),
+                )
 
-        # record web server -> QSettings (spec wiki/QR-Scan-Spec.md §2.1); the
-        # server itself is opt-in and boot-time, like remote control below
-        _w_prev = QSettings().value('tilauscope/web_enabled', False, type=bool)
-        _w_new  = self.webServerCheckBox.isChecked()
-        _p_prev = QSettings().value('tilauscope/web_port', 8123, type=int)
-        _p_new  = self.webPortSpin.value()
-        if _w_new != _w_prev or _p_new != _p_prev:
-            QSettings().setValue('tilauscope/web_enabled', _w_new)
-            QSettings().setValue('tilauscope/web_port', _p_new)
-            show_styled_message(
-                self,
-                QApplication.translate("tilauscope_devices", "Restart required"),
-                QApplication.translate("tilauscope_devices",
-                    "The record web server will take effect the next time you "
-                    "start TilauScope. Labels printed from now on will encode the new port."),
-            )
-
-        # remote control (phone piloting) -> QSettings (boot-time; restart)
-        _r_prev  = QSettings().value('tilauscope/remote_enabled', False, type=bool)
-        _r_new   = self.remoteControlCheckBox.isChecked()
-        _rp_prev = QSettings().value('tilauscope/remote_port', 8765, type=int)
-        _rp_new  = self.remotePortSpin.value()
-        if _r_new != _r_prev or _rp_new != _rp_prev:
-            QSettings().setValue('tilauscope/remote_enabled', _r_new)
-            QSettings().setValue('tilauscope/remote_port', _rp_new)
-            show_styled_message(
-                self,
-                QApplication.translate("tilauscope_devices", "Restart required"),
-                QApplication.translate("tilauscope_devices",
-                    "Remote control will take effect the next time you start TilauScope."),
-            )
+            # remote control (phone piloting) -> QSettings (boot-time; restart)
+            _r_prev  = QSettings().value('tilauscope/remote_enabled', False, type=bool)
+            _r_new   = self.remoteControlCheckBox.isChecked()
+            _rp_prev = QSettings().value('tilauscope/remote_port', 8765, type=int)
+            _rp_new  = self.remotePortSpin.value()
+            if _r_new != _r_prev or _rp_new != _rp_prev:
+                QSettings().setValue('tilauscope/remote_enabled', _r_new)
+                QSettings().setValue('tilauscope/remote_port', _rp_new)
+                show_styled_message(
+                    self,
+                    QApplication.translate("tilauscope_devices", "Restart required"),
+                    QApplication.translate("tilauscope_devices",
+                        "Remote control will take effect the next time you start TilauScope."),
+                )
 
         # label size — takes effect on the next print, no restart needed
         QSettings().setValue("tilauscope/label_size_mm", self.labelSizeCombo.currentData())
         QSettings().setValue("tilauscope/currency", self.currencyCombo.currentData())
 
         # AI config saved immediately in _open_ai_provider_picker
+        if self._alone:
+            aw.save_settings()   # BeanCave alone has no Artisan to write them on quit
         self.accept()
 
     @pyqtSlot()

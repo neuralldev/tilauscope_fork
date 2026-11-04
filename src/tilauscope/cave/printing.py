@@ -146,6 +146,8 @@ class PrintingMixin:
                                    QApplication.translate("tilauscope_beancave","An error occurred while loading file")+f": {alog_filename}",
                                    QMessageBox.Icon.Warning)
                 return
+            if getattr(self.aw, 'tilau_standalone', False):
+                return   # Artisan comes to the front with it: nothing to add
             self._show_message(self,
                                     QApplication.translate("tilauscope_beancave","Load in TilauScope"),
                                     f"'{alog_filename}' "+QApplication.translate("tilauscope_beancave","has been loaded in TilauScope."))
@@ -180,6 +182,8 @@ class PrintingMixin:
                 self._show_message(self, QApplication.translate("tilauscope_beancave","Load error"),
                                    QApplication.translate("tilauscope_beancave", "An error occurred while loading")+f": {alog_filename}",
                                    QMessageBox.Icon.Warning)
+                return
+            if getattr(self.aw, 'tilau_standalone', False):
                 return
             self._show_message(self, QApplication.translate("tilauscope_beancave","TilauScope Load"),
                                     f"'{alog_filename}'"+QApplication.translate("tilauscope_beancave"," has been loaded in main TilauScope window."))

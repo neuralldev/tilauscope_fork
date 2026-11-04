@@ -291,6 +291,10 @@ class BeanTabBuildMixin:
             + tooltip_qss())
         self.roast.clicked.connect(self.on_click_roast_properties)
         self.roast.setToolTip(QApplication.translate("tilauscope_beancave","Set a roast session based on the current selection."))
+        if getattr(self.aw, 'tilau_standalone', False):
+            self.roast.setText(" " + QApplication.translate("tilauscope_beancave", "Prepare in Artisan"))
+            self.roast.setToolTip(QApplication.translate(
+                "tilauscope_beancave", "Choose the batch, then find it ready in Artisan."))
 
         self.plan_button = _icon_btn(
             "M4 2h6v1.5H4zM3 3h8v10H3zM5 6h4M5 8.5h4M5 11h2",

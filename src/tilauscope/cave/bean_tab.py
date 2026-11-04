@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass  # pylint: disable=unused-import
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 #import matplotlib.pyplot as plt
@@ -38,7 +38,10 @@ from PyQt6.QtWidgets import (QApplication, QComboBox, QWidget, QHeaderView, QTab
 # Import QWebEngineView for both PyQt6 and PyQt5
 
 from tilauscope.theme_qss import tint
+from tilaucore import bean_measures
 from tilaucore.beans import from_json, to_json
+from tilauscope.alogmanager import AlogIndex
+from tilauscope.cave.library_lock import LibraryLock
 from tilauscope.tilauscope_types import (GreenBean, BeanCaveContainer, GREEN_BEAN_COLUMNS, show_styled_message,
                                          THEME, TilauProgressDialog, _IS_WINDOWS, select_listed_or_other,
                                          roast_batch_tag)
@@ -511,6 +514,16 @@ class BeanTabMixin:
             self.catalogue_list.select_index(rows[0].row() if rows else -1)
         except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
             _logd.debug(f"catalogue selection sync skipped: {e}")
+
+    @pyqtSlot()
+    def open_settings(self) -> None:
+        """BeanCave alone: its devices, folders and integrations, in TilauScope's settings window."""
+        try:
+            from tilauscope.devices import TilauscopeConfigDlg
+            self._settings_dialog = TilauscopeConfigDlg(self, self.aw)
+            self._settings_dialog.show()
+        except Exception as e:  # noqa: BLE001  pylint: disable=broad-except
+            _logd.error(f"settings window failed: {e}", exc_info=True)
 
     # ------- QR scan → record routing (spec wiki/QR-Scan-Spec.md §3.3) -------
 
@@ -1021,6 +1034,7 @@ class BeanTabMixin:
                 price_per_kg=existing_bean.price_per_kg,
                 reference_roast_uuid=existing_bean.reference_roast_uuid,
                 destination=existing_bean.destination,
+                measures=list(existing_bean.measures),
             )
             self.cave.green_beans[selected_row_index] = new_bean_data
             if existing_bean.uuid != new_bean_data.uuid:
@@ -1041,7 +1055,7 @@ class BeanTabMixin:
             _logd.warning(f"Invalid row selected for update: {selected_row_index}")
 
     def refresh_home(self) -> None:
-        """Refresh the home view when returning to BeanCave after a roast (headless).
+        """Refresh BeanCave when it is shown again after a roast.
 
         Green-bean edits — including the roast's stock decrease — are already
         persisted to disk by update_selected_bean(), so reloading from disk is
@@ -1192,6 +1206,7 @@ class BeanTabMixin:
         # A file that exists but could not be read must never be saved over:
         # the next Add would replace the whole library with one bean.
         self._library_unreadable = False
+        self._hold_library_lock()
         # nothing of the previous folder survives a load that fails
         self.cave = None
         self.green_beans = []
@@ -1214,7 +1229,8 @@ class BeanTabMixin:
                         bean.density = 0.0
                         updated = True
                 self.uuidmap = {bean.uuid: bean for bean in self.green_beans if hasattr(bean, 'uuid') and bean.uuid is not None}
-                if updated:
+                updated = self._merge_roast_measures() or updated
+                if updated and not self._library_read_only:
                     self.save_green_beans()
             except json.JSONDecodeError as e:
                 self._library_unreadable = True
@@ -1243,6 +1259,35 @@ class BeanTabMixin:
             self.cave = None
             self.green_beans = []
 
+    def _hold_library_lock(self) -> None:
+        """One writer at a time on a library (cave.library_lock): the other program only reads it."""
+        lock = getattr(self, '_library_lock', None)
+        if lock is not None and lock.folder != Path(self.beancave_directory):
+            lock.release()
+            lock = None
+        if lock is None and self.beancave_directory:
+            lock = self._library_lock = LibraryLock(self.beancave_directory)
+        self._library_read_only = lock is not None and not lock.acquire()
+        banner = getattr(self, '_read_only_banner', None)
+        if banner is not None:
+            banner.setVisible(self._library_read_only)
+
+    def _merge_roast_measures(self) -> bool:
+        """True when roasts gave the measure history older points. A history
+        that cannot be read is no reason to lose the library."""
+        if not self.alog_directory:
+            return False
+        try:
+            records = dict(AlogIndex.instance().records(Path(self.alog_directory)))
+            stamps = bean_measures.roast_stamps(records.values())
+            added = False
+            for bean in self.green_beans:
+                added = bean_measures.merge_stamps(bean, stamps.get(bean.uuid, [])) or added
+            return added
+        except Exception:  # noqa: BLE001
+            _log.exception("measure history not read from the roasts")
+            return False
+
     def save_green_beans(self) -> bool:
         """True only when the library actually reached the disk.
 
@@ -1251,6 +1296,12 @@ class BeanTabMixin:
         """
         if getattr(self, '_library_closed', False):
             _log.warning("closed BeanCave: bean library not saved over the live one")
+            return False
+        if getattr(self, '_library_read_only', False):
+            self._show_message(self,
+                QApplication.translate("tilauscope_common", "Save Error"),
+                QApplication.translate("tilauscope_beancave", "Another program has this library open, so nothing was saved."),
+                QMessageBox.Icon.Warning)
             return False
         if getattr(self, '_library_unreadable', False):
             self._show_message(self,
@@ -1268,6 +1319,10 @@ class BeanTabMixin:
         if self.beancave_directory:
             beancave_file_path = Path(self.beancave_directory) / BEANCAVE_FILE_NAME
             try:
+                # Every edit of a record ends here, whichever editor made it.
+                today = date.today().isoformat()
+                for bean in self.cave.green_beans:
+                    bean_measures.sync(bean, today)
                 beancave_file_path.parent.mkdir(parents=True, exist_ok=True)
                 _atomic_write_text(
                     beancave_file_path,

@@ -74,6 +74,28 @@ _GITHUB_RELEASES_URL: Final[str] = (
     "https://github.com/neuralldev/tilauscope_fork/releases"
 )
 
+#: The programs published in those releases, by the prefix of their installers.
+#: BeanCave alone rides in TilauScope's releases under its own prefix.
+_PRODUCTS: Final[dict[str, str]] = {"tilauscope": "TilauScope", "beancave": "BeanCave"}
+
+
+def _asset_re(product: str) -> re.Pattern[str]:
+    """The installer names of *product* for this platform.
+
+    Installers are attached to the release as assets. The tag itself carries
+    only the version (one release per public version); the build number stays
+    in the asset name so support can trace an exact binary.
+      macOS   : tilauscope-4.1.0-build41.dmg          beancave-4.3.0-build48.dmg
+      Windows : tilauscope-4.1.0-build41-setup.exe    beancave-4.3.0-build48-setup.exe
+    The build workflows pad the version to X.Y.Z ("4.3" -> "4.3.0") because
+    installs up to 4.3 build 1 match nothing else; two parts are accepted here.
+    """
+    prefix = re.escape(product)
+    return re.compile(
+        rf"^{prefix}-(\d+(?:\.\d+)+)-build(\d+)-setup\.exe$" if _IS_WINDOWS
+        else rf"^{prefix}-(\d+(?:\.\d+)+)-build(\d+)\.dmg$"
+    )
+
 # Aliased to the shared palette table; the _THEME name is kept so the ~40
 # references below need no churn. See wiki/Theme-QSS-Spec.md.
 from tilauscope.tilauscope_types import THEME as _THEME  # noqa: E402
@@ -128,24 +150,13 @@ class _UpdateCheckWorker(QObject):
     no_update    = pyqtSignal()
     check_error  = pyqtSignal(str)
 
-    def __init__(self, local_v: str, local_b: int) -> None:
+    def __init__(self, local_v: str, local_b: int, product: str = "tilauscope") -> None:
         super().__init__()
         self._local_v = local_v
         self._local_b = local_b
+        self._asset_re = _asset_re(product)
 
     # ── GitHub releases (tilauscope_fork) ───────────────────────────────────────
-
-    # Installers are attached to the release as assets. The tag itself carries
-    # only the version (one release per public version, two assets); the build
-    # number stays in the asset name so support can trace an exact binary.
-    #   macOS   : tilauscope-4.1.0-build41.dmg
-    #   Windows : tilauscope-4.1.0-build41-setup.exe
-    # The build workflows pad the version to X.Y.Z ("4.3" → "4.3.0") because
-    # installs up to 4.3 build 1 match nothing else; two parts are accepted here.
-    _ASSET_RE: Final = re.compile(
-        r"^tilauscope-(\d+(?:\.\d+)+)-build(\d+)-setup\.exe$" if _IS_WINDOWS
-        else r"^tilauscope-(\d+(?:\.\d+)+)-build(\d+)\.dmg$"
-    )
 
     def _check_github(self) -> dict | None:
         """Scan tilauscope_fork's releases for the newest installer asset
@@ -170,7 +181,7 @@ class _UpdateCheckWorker(QObject):
             for asset in release.get("assets") or ():
                 name = asset.get("name") or ""
                 url = asset.get("browser_download_url")
-                m = self._ASSET_RE.match(name)
+                m = self._asset_re.match(name)
                 if not m or not url:
                     continue
                 v_str, b = m.group(1), int(m.group(2))
@@ -438,8 +449,10 @@ class _UpdateAvailableDialog(QDialog):
         local_version:  str,
         local_build:    int,
         parent: QWidget | None = None,
+        product: str = "tilauscope",
     ) -> None:
         super().__init__(parent)
+        self._product = product
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
@@ -505,6 +518,9 @@ class _UpdateAvailableDialog(QDialog):
 
         # ── Body text ──────────────────────────────────────────────────────
         body = QLabel(QApplication.translate("tilauscope_updates",
+            "A new version of <b>BeanCave</b> is available.\n"
+            "Download now to get the latest features and fixes."
+        ) if self._product == "beancave" else QApplication.translate("tilauscope_updates",
             "A new version of <b>TilauScope</b> is available.\n"
             "Download now to get the latest features and fixes."
         ))
@@ -639,8 +655,10 @@ class _DownloadProgressDialog(QDialog):
 class _InstallReadyDialog(QDialog):
     """Shown after a successful download – asks to launch and quit."""
 
-    def __init__(self, file_path: str, parent: QWidget | None = None) -> None:
+    def __init__(self, file_path: str, parent: QWidget | None = None,
+                 product: str = "tilauscope") -> None:
         super().__init__(parent)
+        self._product = product
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
@@ -676,11 +694,15 @@ class _InstallReadyDialog(QDialog):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         inner.addWidget(title)
 
-        body = QLabel(QApplication.translate("tilauscope_updates",
+        body = QLabel((QApplication.translate("tilauscope_updates",
+            "<b>{0}</b><br/><br/>"
+            "Click <b>Install Now</b> to launch the installer and close BeanCave.<br/>"
+            "Or <b>Later</b> to install manually from your Downloads folder."
+        ) if self._product == "beancave" else QApplication.translate("tilauscope_updates",
             "<b>{0}</b><br/><br/>"
             "Click <b>Install Now</b> to launch the installer and close TilauScope.<br/>"
             "Or <b>Later</b> to install manually from your Downloads folder."
-        ).format(filename))
+        )).format(filename))
         body.setWordWrap(True)
         body.setTextFormat(Qt.TextFormat.RichText)
         body.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -715,7 +737,7 @@ class _InstallReadyDialog(QDialog):
 
 class TilauUpdater(QObject):
     """
-    Non-blocking startup update checker for TilauScope.
+    Non-blocking startup update checker for TilauScope, or for BeanCave alone.
 
     Parameters
     ----------
@@ -725,12 +747,16 @@ class TilauUpdater(QObject):
     delay_ms : int
         Milliseconds to wait after construction before starting the check.
         Default 5 000 ms so the main window can finish drawing first.
+    product : str
+        The installers looked for: "tilauscope" or "beancave" (see _PRODUCTS).
     """
 
-    def __init__(self, parent_window: QWidget, delay_ms: int = 5000) -> None:
+    def __init__(self, parent_window: QWidget, delay_ms: int = 5000,
+                 product: str = "tilauscope") -> None:
         super().__init__(parent_window)
         self._parent = parent_window
         self._delay_ms = delay_ms
+        self._product = product
 
         # Threads / workers kept alive as instance variables
         self._check_thread: QThread | None = None
@@ -775,7 +801,7 @@ class TilauUpdater(QObject):
         local_v, local_b = _get_local_version()
         _log.info(f"[TilauUpdater] Local version: {local_v}  build: {local_b}")
 
-        self._check_worker = _UpdateCheckWorker(local_v, local_b)
+        self._check_worker = _UpdateCheckWorker(local_v, local_b, self._product)
         self._check_thread = QThread(self)
         self._check_worker.moveToThread(self._check_thread)
 
@@ -805,6 +831,8 @@ class TilauUpdater(QObject):
                 self._parent,
                 QApplication.translate("Menu", "Check for Updates"),
                 QApplication.translate("tilauscope_updates",
+                    "You are running the latest version of BeanCave.")
+                if self._product == "beancave" else QApplication.translate("tilauscope_updates",
                     "You are running the latest version of TilauScope."),
                 QMessageBox.Icon.Information,
             )
@@ -831,7 +859,7 @@ class TilauUpdater(QObject):
                          digest: str) -> None:
         local_v, local_b = _get_local_version()
 
-        dlg = _UpdateAvailableDialog(remote_v, remote_b, local_v, local_b, self._parent)
+        dlg = _UpdateAvailableDialog(remote_v, remote_b, local_v, local_b, self._parent, self._product)
         if dlg.exec() != QDialog.DialogCode.Accepted:
             _log.info("[TilauUpdater] User deferred update.")
             return
@@ -936,7 +964,7 @@ class TilauUpdater(QObject):
     # ── step 4 : install ──────────────────────────────────────────────────────
 
     def _offer_install(self, file_path: str) -> None:
-        dlg = _InstallReadyDialog(file_path, self._parent)
+        dlg = _InstallReadyDialog(file_path, self._parent, self._product)
         if dlg.exec() != QDialog.DialogCode.Accepted:
             _log.info("[TilauUpdater] User chose to install later.")
             return

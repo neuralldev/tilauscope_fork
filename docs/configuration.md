@@ -51,16 +51,6 @@ way with no model selected at all.
 **Show the cleaning reminder at startup** opens the routine check when TilauScope starts: where
 the roaster stands in its cleaning cycle, and your recent roasts.
 
-**BeanCave home mode (hide the Artisan window)** starts TilauScope in the BeanCave shell with
-the Artisan window hidden. When you switch to the Artisan window, the Artisan menus that
-TilauScope hides are available again; they are hidden again when you return to TilauScope or
-BeanCave.
-
-!!! info "Ongoing"
-    BeanCave home mode only takes effect **after a restart** — ticking it does not change
-    anything until TilauScope is closed and reopened. It also works today without covering
-    everything the fork does; see [Getting started](getting-started.md#settings).
-
 ### Remote access
 
 **Record web server (phone QR scan)** runs the small web server a phone camera talks to when

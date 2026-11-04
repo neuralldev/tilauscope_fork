@@ -25,16 +25,21 @@ from tilauscope.theme_qss import apply_tilau_theme
 import logging
 from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import Qt, QTimer, QSettings
+from datetime import datetime
+
+from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer, QSettings
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QPushButton,
     QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView,
     QComboBox, QSplitter, QSizePolicy, QDialog, QLineEdit, QGridLayout,
 )
-from PyQt6.QtGui import QColor, QBrush
+from PyQt6.QtGui import QColor, QBrush, QPainter, QPen
 from PyQt6.QtWidgets import QApplication
 
+from tilaucore import bean_measures
+from tilauscope.beancave_catalogue import short_date
 from tilauscope.tilauscope_types import THEME
+from tilauscope.widgets.controls import SegmentedControl
 from tilauscope.sack_manager import (   # sack labels (design v4 §9)
     SackAssignDialog, SackChipsRow, SackPool, ReclaimSacksDialog,
     confirm_release, orphaned_sacks, release_sacks,
@@ -153,6 +158,89 @@ def load_thresholds() -> StorageThresholds:
 # Widget
 # --------------------------------------------------------------------------- #
 
+#: The kinds of the history switch, in its order.
+_HISTORY_KINDS: tuple[str, ...] = ("aw", "moisture")
+#: Below this many points a kind has no line to draw.
+_HISTORY_MIN_POINTS = 2
+#: How each kind's scale is written.
+_HISTORY_FORMAT: dict[str, str] = {"aw": "{0:.2f}", "moisture": "{0:.1f} %"}
+
+
+class _MeasureChart(QWidget):
+    """One kind of measure over time; `band` shades a range of values (the optimal aw)."""
+
+    _MARGIN_LEFT, _MARGIN_RIGHT, _MARGIN_TOP, _MARGIN_BOTTOM = 42.0, 10.0, 8.0, 20.0
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setFixedHeight(130)
+        self._points: list[tuple[float, float]] = []   # (epoch, value)
+        self._band: tuple[float, float] | None = None
+        self._format = "{0:.2f}"
+
+    def set_series(self, points: list[tuple[float, float]], band: tuple[float, float] | None,
+                   value_format: str) -> None:
+        self._points, self._band, self._format = points, band, value_format
+        self.update()
+
+    def paintEvent(self, _event) -> None:  # noqa: N802, ANN001
+        try:
+            self._paint()
+        except Exception:  # noqa: BLE001  pylint: disable=broad-except
+            _logd.exception("StorageTab: measure chart not drawn")
+
+    def _paint(self) -> None:
+        if len(self._points) < _HISTORY_MIN_POINTS:
+            return
+        plot = QRectF(self.rect()).adjusted(self._MARGIN_LEFT, self._MARGIN_TOP,
+                                            -self._MARGIN_RIGHT, -self._MARGIN_BOTTOM)
+        times = [t for t, _ in self._points]
+        values = [v for _, v in self._points]
+        low, high = min(values), max(values)
+        if self._band is not None:
+            low, high = min(low, self._band[0]), max(high, self._band[1])
+        pad = (high - low) * 0.1 or abs(high) * 0.05 or 1.0
+        low, high = low - pad, high + pad
+        span_t = (times[-1] - times[0]) or 1.0
+
+        def x(t: float) -> float:
+            return plot.left() + (t - times[0]) / span_t * plot.width()
+
+        def y(v: float) -> float:
+            return plot.bottom() - (v - low) / (high - low) * plot.height()
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        font = painter.font()
+        font.setPixelSize(10)
+        painter.setFont(font)
+        scale = list(self._band) if self._band is not None else [min(values), max(values)]
+        if self._band is not None:
+            shade = QColor(THEME['SUCCESS'])
+            shade.setAlphaF(0.10)
+            painter.fillRect(QRectF(plot.left(), y(self._band[1]), plot.width(),
+                                    y(self._band[0]) - y(self._band[1])), shade)
+        for value in dict.fromkeys(scale):
+            painter.setPen(QPen(QColor(THEME['BORDER']), 1, Qt.PenStyle.DashLine))
+            painter.drawLine(QPointF(plot.left(), y(value)), QPointF(plot.right(), y(value)))
+            painter.setPen(QColor(THEME['SUBTEXT']))
+            painter.drawText(QRectF(0.0, y(value) - 7.0, plot.left() - 5.0, 14.0),
+                             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                             self._format.format(value))
+        line = [QPointF(x(t), y(v)) for t, v in self._points]
+        painter.setPen(QPen(QColor(THEME['ACCENT']), 2))
+        painter.drawPolyline(line)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(THEME['ACCENT']))
+        for point in line:
+            painter.drawEllipse(point, 3.5, 3.5)
+        painter.setPen(QColor(THEME['SUBTEXT']))
+        bottom = QRectF(plot.left(), plot.bottom() + 5.0, plot.width(), 14.0)
+        painter.drawText(bottom, Qt.AlignmentFlag.AlignLeft, short_date(int(times[0])))
+        painter.drawText(bottom, Qt.AlignmentFlag.AlignRight, short_date(int(times[-1])))
+        painter.end()
+
+
 class StorageTab(QWidget):
     """The Stockage tab body. Owns nothing but reads host.green_beans live."""
 
@@ -162,6 +250,7 @@ class StorageTab(QWidget):
         self._rows: list["GreenBean"] = []          # bean per visible table row
         self._orphans: list[tuple[object, list[str]]] = []   # out-of-stock beans still holding labels
         self._selected_uuid: str = ""
+        self._history_kind: str = _HISTORY_KINDS[0]
         self._ambient_rh: float | None = None
         self._ambient_temp: float | None = None
         # Dedicated MQTT connection for the storage sensor, used when no roast is
@@ -419,6 +508,20 @@ class StorageTab(QWidget):
         self.f_measure_btn.clicked.connect(self._open_aw_editor)
         awrow.addWidget(self.f_measure_btn)
         v.addLayout(awrow)
+
+        # dated history of the measures: hides entirely below two points
+        self.f_history = QWidget()
+        hv = QVBoxLayout(self.f_history)
+        hv.setContentsMargins(0, 0, 0, 0)
+        hv.setSpacing(6)
+        self.f_history_switch = SegmentedControl(
+            [QApplication.translate("tilauscope_common", "aw"),
+             QApplication.translate("Label", "Moisture")], compact=True)
+        self.f_history_switch.changed.connect(self._on_history_kind)
+        hv.addWidget(self.f_history_switch)
+        self.f_history_chart = _MeasureChart()
+        hv.addWidget(self.f_history_chart)
+        v.addWidget(self.f_history)
 
         # conditioning selector
         cond_lbl = QLabel(QApplication.translate("tilauscope_storage", "CONDITIONING"))
@@ -732,6 +835,7 @@ class StorageTab(QWidget):
             self.f_conditioning.setEnabled(False)
             self.f_measure_btn.setEnabled(False)
             self.f_verdict.setText("")
+            self.f_history.hide()
             self._render_sacks(None)
             return
 
@@ -765,6 +869,28 @@ class StorageTab(QWidget):
 
         self._render_sacks(b)
         self.f_verdict.setText(self._verdict_html(a))
+        self._render_history(b, thr)
+
+    def _render_history(self, bean: "GreenBean", thr: StorageThresholds) -> None:
+        """The kind in view stays from one coffee to the next while it has a line to draw."""
+        drawable = [kind for kind in _HISTORY_KINDS
+                    if len(bean_measures.series(bean, kind)) >= _HISTORY_MIN_POINTS]
+        self.f_history.setVisible(bool(drawable))
+        if not drawable:
+            return
+        if self._history_kind not in drawable:
+            self._history_kind = drawable[0]
+        for index, kind in enumerate(_HISTORY_KINDS):
+            self.f_history_switch.set_enabled(index, kind in drawable)
+        self.f_history_switch.set_current(_HISTORY_KINDS.index(self._history_kind))
+        points = [(datetime.fromisoformat(m.iso_date).timestamp(), m.value)
+                  for m in bean_measures.series(bean, self._history_kind)]
+        self.f_history_chart.set_series(points, (thr.dry, thr.warn) if self._history_kind == "aw" else None,
+                                        _HISTORY_FORMAT[self._history_kind])
+
+    def _on_history_kind(self, index: int) -> None:
+        self._history_kind = _HISTORY_KINDS[index]
+        self._render_fiche()
 
     def _verdict_html(self, a: SA.StorageAssessment) -> str:
         lines: list[str] = []

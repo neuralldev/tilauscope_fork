@@ -73,6 +73,19 @@ jobs:
           cd src
           pyinstaller --clean setup-tilauscope-mac.spec
 
+      # BeanCave alone, beside the official Artisan. Its own dist folder: the
+      # DMG packs the app's folder, so it must not hold TilauScope.app too.
+      # A BeanCave failure never holds back the TilauScope release.
+      - name: Build BeanCave with PyInstaller
+        id: beancave_build
+        continue-on-error: true
+        env:
+          TILAU_SKIP_DMG: '1'
+        run: |
+          cd src
+          pyinstaller --clean --noconfirm --distpath ../build/beancave-dist \
+            --workpath ../build/beancave-work setup-beancave-mac.spec
+
       - name: Import Developer ID certificate
         env:
           MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
@@ -149,6 +162,34 @@ jobs:
             echo "::warning::DMG signed but NOT notarized — shipping with a manual-authorization note."
           fi
 
+      - name: Sign, package, notarize and staple BeanCave
+        if: steps.beancave_build.outcome == 'success'
+        continue-on-error: true
+        env:
+          CODESIGN_IDENTITY: ${{ env.CODESIGN_IDENTITY }}
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APP_BUILD: ${{ env.APP_BUILD }}
+          ASSET_VERSION: ${{ env.ASSET_VERSION }}
+          NOTARIZE_REQUIRED: '0'
+          VOLNAME: BeanCave
+        run: |
+          export APPLE_API_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
+          echo -n "$APPLE_API_KEY_P8_BASE64" | base64 --decode > "$APPLE_API_KEY_PATH"
+          chmod 600 "$APPLE_API_KEY_PATH"
+
+          DMG="src/beancave-${ASSET_VERSION}-build${APP_BUILD}.dmg"
+          src/sign-notarize-macos.sh "build/beancave-dist/BeanCave.app" "$DMG"
+
+          rm -f "$APPLE_API_KEY_PATH"
+
+          NOTARIZED=$(cat "${DMG}.notarized" 2>/dev/null || echo 0)
+          echo "BEANCAVE_NOTARIZED=$NOTARIZED" >> $GITHUB_ENV
+          if [ "$NOTARIZED" != "1" ]; then
+            echo "::warning::BeanCave DMG signed but NOT notarized — shipping with a manual-authorization note."
+          fi
+
       - name: Clean up signing keychain
         if: always()
         run: |
@@ -163,6 +204,7 @@ jobs:
           APP_BUILD: ${{ env.APP_BUILD }}
           ASSET_VERSION: ${{ env.ASSET_VERSION }}
           NOTARIZED: ${{ env.NOTARIZED }}
+          BEANCAVE_NOTARIZED: ${{ env.BEANCAVE_NOTARIZED }}
         run: |
           TAG="v${APP_VERSION}"
           DMG="src/tilauscope-${ASSET_VERSION}-build${APP_BUILD}.dmg"
@@ -190,6 +232,37 @@ jobs:
                 gh release delete-asset "$TAG" "$old" --yes
               done \
             || echo "::warning::Older installers could not all be removed from $TAG."
+
+          # BeanCave rides in the same release, pruned the same way. Its asset
+          # names start with beancave-, so TilauScope's updater never takes one.
+          BEANCAVE_DMG="src/beancave-${ASSET_VERSION}-build${APP_BUILD}.dmg"
+          if [ -f "$BEANCAVE_DMG" ]; then
+            gh release upload "$TAG" "$BEANCAVE_DMG" --clobber
+            gh release view "$TAG" --json assets -q '
+              .assets[].name
+              | select(test("^beancave-.*-build[0-9]+\\.dmg$"))
+              | select((capture("-build(?<b>[0-9]+)\\.dmg$").b | tonumber) < (env.APP_BUILD | tonumber))' \
+              | while read -r old; do
+                  gh release delete-asset "$TAG" "$old" --yes
+                done \
+              || echo "::warning::Older BeanCave installers could not all be removed from $TAG."
+          else
+            echo "::warning::No BeanCave DMG for this build - the release carries TilauScope only."
+          fi
+
+          if [ -f "$BEANCAVE_DMG" ] && [ "${BEANCAVE_NOTARIZED}" != "1" ]; then
+            BODY=$(gh release view "$TAG" --json body -q .body)
+            case "$BODY" in
+              *"BeanCave build is signed but NOT notarized"*)
+                echo "BeanCave notarization warning already present." ;;
+              *)
+                gh release edit "$TAG" --notes "$(printf '%s\n\n%s\n%s\n\n%s\n' \
+                  "$BODY" \
+                  "**This macOS BeanCave build is signed but NOT notarized.** After dragging" \
+                  "BeanCave to Applications, run once in Terminal:" \
+                  "    xattr -dr com.apple.quarantine /Applications/BeanCave.app")" ;;
+            esac
+          fi
 
           # Only the macOS job ever edits the notes, so this cannot race with
           # the Windows job. Guard against re-running the workflow twice.

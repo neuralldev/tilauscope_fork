@@ -207,6 +207,18 @@ it — click the live value to drop it straight into the field.
 ![ the AquaGauge floating reading ](assets/sacks-and-storage-3.7.png)
 ![ the density and aquagauge floating reading ](assets/sacks-and-storage-3.8.png)
 
+### History of the measures
+
+Under the water activity, a small chart shows how a coffee's **aw** and **Moisture** have
+moved over time — pick one with the switch above it. Each time one of these values changes on
+the coffee, whichever window it was changed in, the new value is kept with the day's date; a
+second change on the same day replaces the first, so a corrected typo leaves no point.
+
+The history does not start empty: the moisture recorded in each roast of the coffee, and the
+water activity some roasts carry in their bean description, give it its older points. A value
+needs two dates to draw a line — until then the chart, or that half of the switch, stays out
+of the way. The chart draws the readings; it draws no conclusion from them.
+
 ### Storage-room humidity
 
 A banner at the top of the tab shows the storage room's own humidity and temperature, where

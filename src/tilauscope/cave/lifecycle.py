@@ -180,6 +180,8 @@ class LifecycleMixin:
         self.cache_refresh_timer = QTimer(self)
         self.cache_refresh_timer.setInterval(5 * 60 * 1000) # 5 minutes in milliseconds
         self.cache_refresh_timer.timeout.connect(self.trigger_cache_refresh)
+        if getattr(self.aw, 'tilau_standalone', False):
+            self._watch_roasts_folder()
 
         # Trigger once on initial startup/entry
         self.trigger_cache_refresh()
@@ -298,6 +300,8 @@ class LifecycleMixin:
         QTimer.singleShot(500, self._maybe_show_onboarding)
 
     def _maybe_show_onboarding(self) -> None:
+        if getattr(self.aw, 'tilau_standalone', False):
+            return   # TilauScope's assistant: BeanCave alone has its own first launch (cave.first_run)
         try:
             from tilauscope.onboarding import maybe_show_onboarding
             self._onboarding_dlg = maybe_show_onboarding(self, self.aw)
@@ -529,6 +533,8 @@ class LifecycleMixin:
         # Instantly rebuild lookups from memory without firing off another background thread
         self.update_alog_uuid_indexes()
         self._drop_lost_references(directory)
+        if getattr(self.aw, 'tilau_standalone', False):
+            self._take_saved_roasts_from_stock(updated_records)
 
         # Refresh GUI views smoothly
         if self.initialized:
@@ -536,6 +542,43 @@ class LifecycleMixin:
             self._refresh_bean_sheet()
             if self.cave is not None:
                 self.catalogue_list.set_beans(self.cave.green_beans)
+
+    def _take_saved_roasts_from_stock(self, records: dict) -> None:
+        """BeanCave alone: a roast Artisan saved for a coffee of the library comes off its stock."""
+        if getattr(self, "cave", None) is None or getattr(self, '_library_read_only', False):
+            return
+        from tilaucore.stock_from_roasts import take_new_roasts  # noqa: PLC0415
+        first_run = self.cave.stock_taken_roasts is None
+        taken = take_new_roasts(self.cave, records.values())
+        if (first_run or taken) and not self.save_green_beans():
+            return
+        if taken:
+            self._show_stock_note(taken[-1].bean, taken[-1].grams)
+
+    def _show_stock_note(self, bean, grams: float) -> None:  # noqa: ANN001
+        """A short note, bottom right: which coffee lost how much, and what is left."""
+        note = QLabel(f"<b>{QApplication.translate('tilauscope_beancave', 'Roast saved by Artisan')}</b><br>"
+                      + QApplication.translate("tilauscope_beancave", "{0} · {1} g taken from stock, {2} g left.").format(
+                          bean.name, f"{grams:.0f}", f"{bean.weight_left:.0f}"), self)
+        note.setStyleSheet(f"QLabel {{ background:{THEME['SURFACE']};color:{THEME['TEXT']};"
+                           f"border:1px solid {THEME['SUCCESS']};border-radius:12px;padding:12px 16px; }}")
+        note.adjustSize()
+        note.move(max(0, self.width() - note.width() - 32), max(0, self.height() - note.height() - 96))
+        note.show()
+        note.raise_()
+        call_later(note, 8000, note.deleteLater)
+
+    def _watch_roasts_folder(self) -> None:
+        """BeanCave alone: Artisan saves into the roasts folder; each change re-reads it, a moment later."""
+        from PyQt6.QtCore import QFileSystemWatcher  # noqa: PLC0415
+        self._roasts_watcher = QFileSystemWatcher(self)
+        self._roasts_settle = QTimer(self)
+        self._roasts_settle.setSingleShot(True)
+        self._roasts_settle.setInterval(2000)   # Artisan writes the file in more than one go
+        self._roasts_settle.timeout.connect(self.trigger_cache_refresh)
+        self._roasts_watcher.directoryChanged.connect(lambda _path: self._roasts_settle.start())
+        if self.alog_directory and Path(self.alog_directory).is_dir():
+            self._roasts_watcher.addPath(str(self.alog_directory))
 
     def _drop_lost_references(self, directory: Path) -> None:
         """A reference ★ goes with its roast file, deleted outside TilauScope; an unreachable folder clears nothing."""
@@ -1054,32 +1097,21 @@ class LifecycleMixin:
             QPushButton:hover {{ background: {THEME['ACCENT']}; color: {THEME['BG']}; }}
         """)
         header.addWidget(self.scan_qr_btn)
-        # headless home: BeanCave has no menu bar (the Artisan window that
-        # owns it is hidden), so give the home a direct way to open the roast view.
-        # tilauscopeCall() opens TilauScope and hides BeanCave (view-switch).
-        if getattr(self.aw, '_tilau_headless', False):
-            self.open_tilauscope_btn = QPushButton(QApplication.translate("tilauscope_beancave", "▶  TilauScope"))
-            self.open_tilauscope_btn.setFixedHeight(30)
-            self.open_tilauscope_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            self.open_tilauscope_btn.setToolTip(QApplication.translate(
-                "tilauscope_beancave", "Open the roasting view"))
-            self.open_tilauscope_btn.clicked.connect(lambda: self.aw.tilauscopeCall())
-            self.open_tilauscope_btn.setStyleSheet(f"""
-                QPushButton {{
-                    background: {THEME['ACCENT']};
-                    color: {THEME['BG']};
-                    border-radius: 15px;
-                    border: none;
-                    padding: 0 14px;
-                    font-weight: 800;
-                    }}
-                QPushButton:hover {{ background: {THEME['LAVENDER']}; }}
-                QPushButton:pressed {{ background: {THEME['SAPPHIRE']}; }}
-            """)
-            header.addWidget(self.open_tilauscope_btn)
+        if getattr(self.aw, 'tilau_standalone', False):
+            # Alone, BeanCave keeps its own devices and files (BeanCave-Standalone-Spec §11);
+            # inside TilauScope they are set in its Configuration.
+            self.settings_btn = QPushButton(QApplication.translate("tilauscope_beancave", "⚙  Settings"))
+            self.settings_btn.setFixedHeight(30)
+            self.settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.settings_btn.setToolTip(QApplication.translate(
+                "tilauscope_beancave", "Devices, folders and integrations of BeanCave"))
+            self.settings_btn.clicked.connect(self.open_settings)
+            self.settings_btn.setStyleSheet(self.scan_qr_btn.styleSheet())
+            header.addWidget(self.settings_btn)
         header.addWidget(self.close_btn)
 
         self.layout.addLayout(header)
+        self.layout.addWidget(self._build_read_only_banner())
 
         self.tab_widget = QTabWidget()
         self.main_tab = QWidget()
@@ -1223,12 +1255,6 @@ class LifecycleMixin:
         _logd.debug("Settings saved successfully.")
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        # headless: BeanCave is the home and the last visible window — closing it quits the app
-        if getattr(self.aw, '_tilau_headless', False) and (
-                event.key() == Qt.Key.Key_Escape
-                or (event.key() == Qt.Key.Key_B and event.modifiers() == Qt.KeyboardModifier.ShiftModifier)):
-            event.accept()
-            return
         if event.key() == Qt.Key.Key_B and event.modifiers() == Qt.KeyboardModifier.ShiftModifier:
             self.close()
         elif event.key() == Qt.Key.Key_Escape:
@@ -1314,11 +1340,54 @@ class LifecycleMixin:
             self.aw.beanCaveMenuAction.setChecked(False)
 
     def _close_step_persist(self) -> None:
-        if self.beancave_directory:   # without a folder there is nowhere to save: nothing to say at close
+        # without a folder there is nowhere to save, and a library another program holds is not ours to save
+        if self.beancave_directory and not getattr(self, '_library_read_only', False):
             self.save_green_beans()
         self.save_settings()
         # the last write: past it this instance holds a library its replacement may change
         self._library_closed = True
+        lock = getattr(self, '_library_lock', None)
+        if lock is not None:
+            lock.release()
+
+    def _build_read_only_banner(self) -> QFrame:
+        """Shown while the other program holds the library (cave.library_lock)."""
+        alone = getattr(self.aw, 'tilau_standalone', False)
+        banner = QFrame()
+        banner.setObjectName('readOnlyBanner')
+        banner.setStyleSheet(f"QFrame#readOnlyBanner {{ border:1px solid {THEME['YELLOW']};border-radius:10px; }}"
+                             "QLabel { border:none;background:transparent; }")
+        row = QHBoxLayout(banner)
+        row.setContentsMargins(16, 10, 12, 10)
+        text = QVBoxLayout()
+        text.setSpacing(2)
+        title = QLabel(QApplication.translate("tilauscope_beancave", "TilauScope has this library open") if alone
+                       else QApplication.translate("tilauscope_beancave", "BeanCave has this library open"))
+        title.setStyleSheet(f"color:{THEME['YELLOW']};font-weight:700;")
+        detail = QLabel(QApplication.translate("tilauscope_beancave", "You can look, not change. Close it in TilauScope, then try again.") if alone
+                        else QApplication.translate("tilauscope_beancave", "You can look, not change. Close it in BeanCave, then try again."))
+        detail.setStyleSheet(f"color:{THEME['SUBTEXT']};")
+        text.addWidget(title)
+        text.addWidget(detail)
+        row.addLayout(text, 1)
+        retry = QPushButton(QApplication.translate("tilauscope_beancave", "Try again"))
+        retry.setCursor(Qt.CursorShape.PointingHandCursor)
+        retry.setStyleSheet(f"QPushButton {{ color:{THEME['YELLOW']};background:transparent;"
+                            f"border:1px solid {THEME['YELLOW']};border-radius:8px;padding:6px 14px; }}")
+        retry.clicked.connect(self._retry_library)
+        row.addWidget(retry)
+        banner.setVisible(bool(getattr(self, '_library_read_only', False)))
+        self._read_only_banner = banner
+        return banner
+
+    @pyqtSlot()
+    def _retry_library(self) -> None:
+        """The other program may have let go of the library: read it again, as its writer if so."""
+        try:
+            self.load_green_beans()
+            self.populate_table()
+        except Exception:  # noqa: BLE001  — a click slot: an escape would close the application
+            _log.exception("library not read again")
 
     def _close_step_tooltip(self) -> None:
         if hasattr(self, '_hover_tooltip'):

@@ -152,6 +152,14 @@ class ViewerMixin:
         self.load_artisan_background_button_viewer.clicked.connect(self.load_roast_in_artisan_background)
         self.load_artisan_background_button_viewer.setToolTip(QApplication.translate("tilauscope_beancave","Load the selected ALog file into TilauScope's background for comparison."))
         self.load_artisan_background_button_viewer.setEnabled(False)
+        if getattr(self.aw, 'tilau_standalone', False):
+            self.load_artisan_button_viewer.setText(" " + QApplication.translate("tilauscope_beancave", "Open in Artisan"))
+            self.load_artisan_button_viewer.setToolTip(QApplication.translate(
+                "tilauscope_beancave", "Open the selected roast in Artisan."))
+            # Nothing reaches a running Artisan's background from outside it: the
+            # "?template" open is lost on its way through the system. Prepare in Artisan
+            # carries the reference inside the prepared roast instead.
+            self.load_artisan_background_button_viewer.hide()
 
         # Export: the label, the card, the curve image — and the printer's state.
         self.export_button = _vbtn("M7 2v7M4 6l3 3 3-3M2.5 11.5h9",
@@ -2207,9 +2215,10 @@ class ViewerMixin:
         self.burner_air_button.setVisible(not multi)
         # One roast's actions: greyed with none selected, out of the way while comparing.
         mono = enabled and not multi
+        alone = getattr(self.aw, 'tilau_standalone', False)
         for button in (self.load_artisan_button_viewer, self.load_artisan_background_button_viewer,
                        self.export_button):
-            button.setVisible(not multi)
+            button.setVisible(not multi and not (alone and button is self.load_artisan_background_button_viewer))
             button.setEnabled(mono)
         for action in (self.roast_finished_action, self.print_pdf_label_action, self.planning_action,
                        self.dial_in_action, self.curve_image_action, self.roast_card_action,

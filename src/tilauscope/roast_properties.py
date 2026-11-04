@@ -24,6 +24,7 @@ import re
 import time
 from typing import TYPE_CHECKING, Any, Final
 from datetime import datetime
+from pathlib import Path
 
 from tilaucore.bean_text import beans_text, roast_title
 from tilaucore.roast_plan import station_pressure_hpa
@@ -33,6 +34,7 @@ from tilauscope import auto_marks
 from tilauscope.guidance_phase import milestone_marked
 from tilauscope.roast_debrief import roast_colour_agtron
 from tilauscope.theme_qss import base_qss, apply_tilau_theme, tooltip_qss, tint, mono_family
+from tilauscope.alogmanager import AlogIndex
 from tilauscope.roasters import RoasterManager, canonical_roaster_name
 from tilauscope.probe_visibility import et_available_for, et_available_in_profile
 from tilauscope.sack_manager import prompt_release_if_emptied
@@ -2605,8 +2607,14 @@ class RoastSetupDialog(QDialog):
         self._title_combo.setMinimumHeight(38)
         t1.addWidget(self._title_combo)
 
+        # BeanCave alone: Artisan numbers the batch and the stock goes down when the
+        # roast comes back saved, so neither the batch nor the stock box is shown;
+        # MORE OPTIONS (TilauPID, automation, replay) is TilauScope's own.
+        alone = getattr(self._aw, 'tilau_standalone', False)
+
         # Batch (forecast — never advances the counter; toggle delegates activation)
-        t1.addWidget(_section_label(QApplication.translate("Label", "Batch")))
+        batch_label = _section_label(QApplication.translate("Label", "Batch"))
+        t1.addWidget(batch_label)
         self._batch_block = _BatchBlock(self._aw, _BatchBlock.MODE_PREVIEW)
         # guard against vertical compression on short screens
         self._batch_block.setMinimumHeight(56)
@@ -2645,8 +2653,10 @@ class RoastSetupDialog(QDialog):
         t1.addWidget(self._weight_prefill_lbl)
 
         self._decrease_stock_cb = QCheckBox(QApplication.translate("tilauscope_roast_setup", "Decrease bean stock by this weight after OK"))
-        self._decrease_stock_cb.setChecked(True)
+        self._decrease_stock_cb.setChecked(not alone)
         t1.addWidget(self._decrease_stock_cb)
+        for widget in (batch_label, self._batch_block, self._decrease_stock_cb):
+            widget.setVisible(not alone)
 
         # Physical properties moved to ⚙ OPTIONS tab (see _build_optional_tab2)
 
@@ -2671,8 +2681,9 @@ class RoastSetupDialog(QDialog):
 
         # ── TAB 3: Optional settings ──────────────────────────────────────
         tab3 = QWidget()
-        self._tabs.addTab(tab3, QApplication.translate("tilauscope_roast_setup", "⚙  MORE OPTIONS"))
+        more = self._tabs.addTab(tab3, QApplication.translate("tilauscope_roast_setup", "⚙  MORE OPTIONS"))
         self._build_optional_tab3(tab3)
+        self._tabs.setTabVisible(more, not alone)
 
         # ── TAB 4: the plan — choices stay put, the roadmap scrolls ───────
         tab4 = QWidget()
@@ -2695,14 +2706,18 @@ class RoastSetupDialog(QDialog):
         cancel_btn.setProperty('variant', 'outline')
         cancel_btn.clicked.connect(self._on_cancel)
 
-        self._ok_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "⬥  Start Roast"))
+        self._ok_btn = QPushButton(QApplication.translate("tilauscope_roast_setup", "Prepare in Artisan")
+                                   if getattr(self._aw, 'tilau_standalone', False) else
+                                   QApplication.translate("tilauscope_roast_setup", "⬥  Start Roast"))
         self._ok_btn.setObjectName('footerBtn')
         self._ok_btn.setProperty('variant', 'primary')
         self._ok_btn.setDefault(True)
         self._ok_btn.clicked.connect(self._on_ok)
 
-        self._weigh_hint_lbl = QLabel("⚖  " + QApplication.translate(
-            "tilauscope_roast_setup", "Weigh the batch to start the roast"))
+        self._weigh_hint_lbl = QLabel("⚖  " + (
+            QApplication.translate("tilauscope_roast_setup", "Weigh the batch to prepare it")
+            if getattr(self._aw, 'tilau_standalone', False)
+            else QApplication.translate("tilauscope_roast_setup", "Weigh the batch to start the roast")))
         self._weigh_hint_lbl.setStyleSheet(f"color: {THEME['WARNING']}; font-size: 12px;")
         btn_row.addWidget(self._weigh_hint_lbl)
         btn_row.addStretch()
@@ -3906,6 +3921,10 @@ class RoastSetupDialog(QDialog):
             )
             return
 
+        if getattr(self._aw, 'tilau_standalone', False):
+            self._prepare_in_artisan()
+            return
+
         # ── Optional settings ──────────────────────────────────────────────
 
         # Save profile combo selection
@@ -4061,12 +4080,7 @@ class RoastSetupDialog(QDialog):
         # QTimer(0) diffère au prochain tick pour laisser Qt traiter show/raise.
         _aw = self._aw
         QTimer.singleShot(0, lambda: _aw.tilauscope_main and _aw.tilauscope_main.launch_guided_assistant())
-        # headless: BeanCave is the persistent home shell — hide it (keep
-        # the single instance and its threads alive) instead of closing/destroying.
-        if getattr(self._aw, '_tilau_headless', False):
-            self._parent_widget.hide()
-        else:
-            self._parent_widget.close()
+        self._parent_widget.close()
         self.accept()
         # Owned by the main window, not by this dialog: the dialog has just
         # closed, and the invitation has to outlive it.
@@ -4076,6 +4090,37 @@ class RoastSetupDialog(QDialog):
             text=lets_start_a_new_roast_message,
             icon=QMessageBox.Icon.Information, rich=False
         ))
+
+    def _prepare_in_artisan(self) -> None:
+        """BeanCave alone: Artisan records the roast. It gets this one prepared, the
+        reference roast as its background and the plan's alarms. Nothing drives the
+        machine, and the stock goes down when the roast comes back saved."""
+        from tilaucore.coffee_share import read_alog  # noqa: PLC0415
+        alarms = None
+        try:
+            self._insights_panel.ensure_plan()
+            alarms = self._insights_panel.write_plan_alarms()
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("RoastSetupDialog: plan alarms not written: %s", exc)
+        reference = self._reference_record()
+        # The setup Artisan recorded the last roast with, so the prepared one is this machine's.
+        base = None
+        records = [m for m in AlogIndex.instance().records(QSettings().value('alogDirectory', '', str)).values()
+                   if not m.simulated and not m.shared]
+        if records:
+            try:
+                base = read_alog(Path(max(records, key=lambda m: m.roastepoch or m.mtime).filepath_str))
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("RoastSetupDialog: last roast not read: %s", exc)
+        if not self._aw.prepare_in_artisan(base, alarms, reference.filepath_str if reference else None):
+            show_styled_message(
+                self, QApplication.translate("tilauscope_roast_setup", "Prepare in Artisan"),
+                QApplication.translate("tilauscope_roast_setup",
+                                       "Artisan could not be opened. Check that it is installed, then try again."),
+                QMessageBox.Icon.Warning, rich=False)
+            return
+        self._close_helpers()
+        self.accept()
 
     @pyqtSlot()
     def _on_cancel(self) -> None:

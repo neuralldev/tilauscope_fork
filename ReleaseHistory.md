@@ -1,4 +1,10 @@
 ## [4.3] 2026-09-13
+build 48
+build 47
+* ⚡ [feat(beancave)] : BeanCave becomes a program of its own, for macOS and Windows, to use beside the official Artisan: a three-step first launch (Artisan's roasts folder, the library folder, the roaster), Prepare in Artisan opens the coffee's next roast in Artisan with its name, weight, alarms and reference curve, and the green weight comes off the stock when Artisan saves the roast
+* ⚡ [feat(beancave)] : BeanCave on its own has its settings (⚙ Settings, or Preferences… ⌘,): its devices (scale, colour meter, AquaGauge, ambient probe, label printer), library, roaster, label size, MQTT and AI; at first launch it takes over the ones TilauScope already knows
+* ⚡ [feat(beancave)] : the Storage tab draws each coffee's water activity and moisture over time: every change of value is kept with its date, and the history starts from the values your roasts and older copies of the library already held
+* ⚡ [feat(tools)] : tools/backfill_measures.py adds to a bean library the water activity and moisture found in its older copies and backups
 build 46
 * ⚡ [feat(i18n)] : the new crash and low RoR messages are translated in French, German, Spanish, Italian and Chinese (simplified and traditional)
 * ⚡ [feat(roast plan)] : on the Skywalker the plan now arrives at first crack at 8 °C/min, where a roast really arrives, instead of a theoretical 5; drop temperatures rise accordingly (204 °C for a medium)

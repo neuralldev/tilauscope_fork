@@ -114,6 +114,7 @@ def within_share(delta: float, target: float, share: float, mode: str = 'C') -> 
 
 #: The preheat target counts as reached inside this band (shared with the tablet).
 from tilaucore.preheat import PREHEAT_BAND_C  # noqa: E402
+from tilauscope import ror  # noqa: E402
 
 
 def preheat_arrived(delta: float, mode: str = 'C') -> bool:
@@ -339,8 +340,8 @@ def rise_series(qmc: Any, *, machine: bool = False) -> list[Any]:
         _rise_cache['owner'] = qmc
         _rise_cache['key'] = key
         try:
-            d1, d2 = qmc.recomputeDeltas(
-                qmc.timex,
+            d1, d2 = ror.recompute_deltas(
+                qmc, qmc.timex,
                 int(qmc.timeindex[0]) if marked(qmc.timeindex, 0) else -1,
                 int(qmc.timeindex[DROP]) if marked(qmc.timeindex, DROP) else 0,
                 qmc.stemp1, qmc.stemp2)

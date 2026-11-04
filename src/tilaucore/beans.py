@@ -115,6 +115,14 @@ class TastingLog:
 
 
 @dataclass
+class Measure:
+    """One dated reading of a coffee; see tilaucore.bean_measures."""
+    iso_date: str = ''
+    kind: str = ''          # 'aw' | 'moisture'
+    value: float = 0.0
+
+
+@dataclass
 class GreenBean:
     name: str = ''
     farm: str = ''
@@ -163,6 +171,8 @@ class GreenBean:
     reference_roast_uuid: str = ''
     # What this coffee is for ('filter' | 'omni' | 'espresso'); '' = not chosen yet.
     destination: str = ''
+    # Dated history of water activity and moisture; the fields above keep the latest.
+    measures: list[Measure] = field(default_factory=list)
 
 
 @dataclass
@@ -180,6 +190,8 @@ class ReferenceProfile:
 class BeanCaveContainer:
     green_beans: list[GreenBean] = field(default_factory=list)
     reference_profiles: list[ReferenceProfile] = field(default_factory=list)
+    # BeanCave alone: the roastUUIDs already taken from stock; None until it first runs.
+    stock_taken_roasts: list[str] | None = None
 
 
 T = TypeVar('T')

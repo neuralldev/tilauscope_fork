@@ -61,9 +61,8 @@ class ChromeMixin:
         LCD updates that carry those samples to us are untouched; see the gate
         in updategraphics().
 
-        Tied to visibility rather than to construction because the headless
-        flow hides this window without closing it, and a hidden TilauScope must
-        not leave Artisan's graph frozen behind it.
+        Tied to visibility rather than to construction: a hidden TilauScope
+        must not leave Artisan's graph frozen behind it.
         """
         super().showEvent(a0)
         self.aw.tilau_suspend_render = True

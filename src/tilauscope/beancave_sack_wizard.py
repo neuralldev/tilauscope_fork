@@ -1844,6 +1844,7 @@ class NewSackWizard(QDialog):
                 weight=0.0,
                 sacks=[],
                 dial_ins=[],
+                measures=[],
                 reference_roast_uuid='',
                 uuid=str(_uuid.uuid4()),
                 price_per_kg=self.nc_price_spin.value(),

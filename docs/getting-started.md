@@ -205,12 +205,6 @@ rather than adapting to a generic default.
 
 **🌐 INTEGRATIONS** — the MQTT broker and the AI provider.
 
-!!! info "Ongoing — BeanCave home mode"
-    **⚙ GENERAL** also offers *BeanCave home mode (hide the Artisan window)*, which makes
-    BeanCave the main window. It only takes effect **after a restart**. It works today, but the
-    full experience is still being built: expect to return to the Artisan window for anything the
-    fork does not cover yet.
-
 See [Configuration](configuration.md) for every setting in this dialog, tab by tab.
 
 ![one per tab](assets/getting-started-1.13.png)

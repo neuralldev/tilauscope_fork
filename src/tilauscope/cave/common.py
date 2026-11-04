@@ -44,7 +44,9 @@ from PyQt6.QtSvg import QSvgRenderer  # icônes SVG inline pour ZoomToggleButton
 
 # Import QWebEngineView for both PyQt6 and PyQt5
 
-from artisanlib.util import fill_gaps, convertTemp, smooth_list, float2float
+from artisanlib.util import convertTemp, float2float
+from tilaucore.artisan_compat import fill_gaps, smooth_list
+from tilauscope import ror
 from tilaucore.beans import from_json
 from tilauscope.tilauscope_types import (BeanCaveContainer, THEME, _IS_WINDOWS,
                                          RoastingPhase, marked, normalize_timeindex,
@@ -435,14 +437,12 @@ def recompute_profile_deltas(qmc, data: dict, deltaname: str, ds: int):
     temp = [convertTemp(t, unit, qmc.mode) for t in data.get(deltaname, [])]
 
     cf = qmc.curvefilter  # smoothed twice as heavy for PID/RoR as for the drawn curve
-    t1 = smooth_list(data.get('timex', []),
-                     (fill_gaps(temp) if qmc.interpolateDropsflag else temp),
-                     window_len=cf, decay_smoothing=not qmc.optimalSmoothing)
+    t1 = smooth_list(data.get('timex', []), (fill_gaps(temp) if qmc.interpolateDropsflag else temp), window_len=cf)
     if len(t1) > 10 and len(tx) > 10:
         # RoR computation starts 10 readings after CHARGE to skip the initial peak
         ror_start = min(rd + 10, len(tx) - 1)
-        _, deltas = qmc.recomputeDeltas(tx, ror_start, drop, None, t1,
-                                        optimalSmoothing=qmc.optimalSmoothing,
-                                        deltaBTsamples=ds)
-        return deltas
+        try:
+            return ror.recompute_deltas(qmc, tx, ror_start, drop, None, t1, bt_samples=ds)[1]
+        except Exception:  # noqa: BLE001
+            _logd.exception('stored profile RoR not computed')
     return None

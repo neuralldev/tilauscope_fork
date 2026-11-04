@@ -67,6 +67,14 @@ jobs:
 
           create-version-file metadata.yml --outfile src\version_info-win.txt --version ${{ env.ASSET_VERSION }}.${{ env.APP_BUILD }}
 
+          echo company_name: "Tilau" > metadata-beancave.yml
+          echo product_name: "BeanCave" >> metadata-beancave.yml
+          echo file_description: "BeanCave" >> metadata-beancave.yml
+          echo internal_name: "BeanCave" >> metadata-beancave.yml
+          echo original_filename: "BeanCave.exe" >> metadata-beancave.yml
+
+          create-version-file metadata-beancave.yml --outfile src\version_info-beancave-win.txt --version ${{ env.ASSET_VERSION }}.${{ env.APP_BUILD }}
+
       - name: Get PyQt6 Path
         shell: bash
         run: |
@@ -95,6 +103,25 @@ jobs:
           script-file: src/setup-tilauscope.nsi
           arguments: "/DPRODUCT_VERSION=${{ env.APP_VERSION }}  /DPRODUCT_BUILD=${{ env.APP_BUILD }}"
       
+      # BeanCave alone, beside the official Artisan (dist\BeanCave, next to
+      # dist\TilauScope). A BeanCave failure never holds back the TilauScope release.
+      - name: Build BeanCave with PyInstaller
+        id: beancave_build
+        continue-on-error: true
+        shell: cmd
+        run: |
+          set PARENT_DIR=%CD%
+          cd src
+          pyinstaller --noconfirm --log-level=WARN setup-beancave-win.spec
+
+      - name: Build BeanCave installer with NSIS
+        if: steps.beancave_build.outcome == 'success'
+        continue-on-error: true
+        uses: joncloud/makensis-action@v4
+        with:
+          script-file: src/setup-beancave.nsi
+          arguments: "/DPRODUCT_VERSION=${{ env.APP_VERSION }}  /DPRODUCT_BUILD=${{ env.APP_BUILD }}"
+
       - name: Rename artifact
         env:
           APP_VERSION: ${{ env.APP_VERSION }}
@@ -102,6 +129,9 @@ jobs:
           ASSET_VERSION: ${{ env.ASSET_VERSION }}
         run: |
           mv src\tilauscope-win-x64-${{ env.APP_VERSION }}-setup.exe src\tilauscope-${{ env.ASSET_VERSION }}-build${{ env.APP_BUILD }}-setup.exe
+          if (Test-Path src\beancave-win-x64-${{ env.APP_VERSION }}-setup.exe) {
+            mv src\beancave-win-x64-${{ env.APP_VERSION }}-setup.exe src\beancave-${{ env.ASSET_VERSION }}-build${{ env.APP_BUILD }}-setup.exe
+          }
 
       - name: Publish GitHub release
         shell: bash
@@ -137,6 +167,23 @@ jobs:
                 gh release delete-asset "$TAG" "$old" --yes
               done \
             || echo "::warning::Older installers could not all be removed from $TAG."
+
+          # BeanCave rides in the same release, pruned the same way. Its asset
+          # names start with beancave-, so TilauScope's updater never takes one.
+          BEANCAVE_EXE="src/beancave-${ASSET_VERSION}-build${APP_BUILD}-setup.exe"
+          if [ -f "$BEANCAVE_EXE" ]; then
+            gh release upload "$TAG" "$BEANCAVE_EXE" --clobber
+            gh release view "$TAG" --json assets -q '
+              .assets[].name
+              | select(test("^beancave-.*-build[0-9]+-setup\\.exe$"))
+              | select((capture("-build(?<b>[0-9]+)-setup\\.exe$").b | tonumber) < (env.APP_BUILD | tonumber))' \
+              | while read -r old; do
+                  gh release delete-asset "$TAG" "$old" --yes
+                done \
+              || echo "::warning::Older BeanCave installers could not all be removed from $TAG."
+          else
+            echo "::warning::No BeanCave installer for this build - the release carries TilauScope only."
+          fi
 
       - name: Notify on Discord
         if: always()

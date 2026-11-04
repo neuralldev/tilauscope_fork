@@ -119,7 +119,7 @@ from PyQt6.QtWidgets import (QApplication, QWidget, QMessageBox, QLabel, QMainWi
                          QStyleFactory, QMenuBar, QMenu, QLayout, QDockWidget)
 from PyQt6.QtGui import (QScreen, QPageLayout, QAction, QWindow, 
                             ## TILAU ##
-                            QImageReader, QShowEvent,
+                            QImageReader,
                             QKeySequence, QShortcut,
                             QPixmap,QColor,QDesktopServices,QIcon,
                             QRegularExpressionValidator, QDoubleValidator, QPainter, QCursor)
@@ -1972,15 +1972,6 @@ class ApplicationWindow(QMainWindow):
         self.bleSkywalkerDevice = None
         # tilauscope main
         self.tilauscope_main:TilauScope|None = None
-        # headless-boot mode: Artisan window hidden, BeanCave is the shell.
-        # Set True in main() when TILAU_HEADLESS=1. Drives the view-toggle in
-        # tilauscopeCall() (flip aw visibility) and the act_main menu label.
-        self._tilau_headless:bool = False
-        # headless: gate that allows the Artisan window to actually show.
-        # Only the escape hatch (tilauscopeCall revealing Artisan) sets this True;
-        # every other show() on aw (profile reload, redraw, fullscreen restore…)
-        # is bounced back to hidden by showEvent so BeanCave stays the sole view.
-        self._tilau_allow_show:bool = False
         self.tilauDBG:TilauscopeLoggerWindow|None = None
         # TILAU # app-level owner of the read-only Records server + (opt-in) Control
         # server. Started in main() for both boot paths; independent of BeanCave.
@@ -20400,9 +20391,7 @@ class ApplicationWindow(QMainWindow):
             self.updateControlsVisibility()
             self.updateReadingsLCDsVisibility() # update visibility of reading LCD based on the users preference
 
-            ## TILAU ## never restore fullscreen/maximized at boot. In headless mode a
-            ## macOS fullscreen window lives in its own Space and cannot be hidden by
-            ## aw.hide() (leaving Artisan visible behind BeanCave). In direct boot the
+            ## TILAU ## never restore fullscreen/maximized at boot. The
             ## user wants the Artisan window to reopen at its last *windowed* size, not
             ## maximized/fullscreen. restoreGeometry() above already keeps the pre-max
             ## normal geometry inside 'Geometry', so clearing the Maximized/FullScreen
@@ -20836,16 +20825,6 @@ class ApplicationWindow(QMainWindow):
             _, _, exc_tb = sys.exc_info()
             self.qmc.adderror((QApplication.translate('Error Message','Exception:') + ' fetchCurveStyles() {0}').format(str(e)),getattr(exc_tb, 'tb_lineno', '?'))
 
-    ## TILAU ## headless catch-all: keep the Artisan window hidden unless the
-    ## escape hatch explicitly asked to reveal it. Various boot/runtime paths call
-    ## show() on aw (profile reload, redraw, fullscreen restore); re-hide on the
-    ## next tick so BeanCave stays the sole visible window.
-    @override
-    def showEvent(self, a0:'QShowEvent|None' = None) -> None:
-        super().showEvent(a0)
-        if self._tilau_headless and not self._tilau_allow_show:
-            QTimer.singleShot(0, self.hide)
-
     #Saves the settings when closing application. See the oppposite settingsLoad()
     @pyqtSlot('QCloseEvent')
     @override
@@ -20858,8 +20837,7 @@ class ApplicationWindow(QMainWindow):
                 a0.ignore()
 
     ## TILAU ## start the app-level web host (Records always-on + opt-in Control).
-    ## Called from main() via QTimer.singleShot for BOTH boot paths (headless
-    ## BeanCave shell and direct Artisan window), after settings are loaded.
+    ## Called from main() via QTimer.singleShot, after settings are loaded.
     def start_tilau_web_host(self) -> None:
         try:
             from tilauscope.webhost import TilauWebHost
@@ -20867,7 +20845,7 @@ class ApplicationWindow(QMainWindow):
             records_port = settings.value('tilauscope/web_port', 8123, type=int)
             control_port = settings.value('tilauscope/remote_port', 8765, type=int)
             ## TILAU ## both servers are opt-in; TILAU_WEB=1 / TILAU_REMOTE=1 are dev
-            ## overrides (mirroring TILAU_HEADLESS) to enable one without the UI toggle.
+            ## overrides to enable one without the UI toggle.
             records_enabled = (settings.value('tilauscope/web_enabled', False, type=bool)
                                or os.environ.get('TILAU_WEB') == '1')
             control_enabled = (settings.value('tilauscope/remote_enabled', False, type=bool)
@@ -25365,26 +25343,7 @@ class ApplicationWindow(QMainWindow):
     def tilauscopeCall(self, _:bool = False, message: str = "") -> None:
         from tilauscope.displayscope import TilauScope
         ts = self.tilauscope_main
-        if ts is not None and self._tilau_headless and not ts.isVisible():
-            ## TILAU ## RESUME a hidden (live) TilauScope session from the BeanCave
-            ## home. While a roast is monitoring, going to BeanCave hides TilauScope
-            ## instead of closing it (closeEvent is blocked by flagon), so re-opening
-            ## must show that same instance, not toggle to Artisan or spawn a new one.
-            self._tilau_set_artisan_view(False)  # aw stays hidden
-            ts.show()
-            ts.raise_()
-            ts.activateWindow()
-            self.hide()  # keep Artisan hidden
-            self._tilau_hide_beancave()
-        elif ts is not None:
-            ## TILAU ## headless: a VISIBLE TilauScope -> escape hatch to Artisan.
-            ## Reveal Artisan BEFORE closing TilauScope so we never drop to zero
-            ## visible windows (which would trip lastWindowClosed -> fileQuit).
-            if self._tilau_headless:
-                self._tilau_set_artisan_view(True)  # explicit reveal — let showEvent pass
-                self.show()
-                self.raise_()
-                self.activateWindow()
+        if ts is not None:
             # close() returns False when closeEvent refuses (e.g. sampling active,
             # flagon True): in that case TilauScope keeps the Artisan graph, so we
             # must NOT drop the reference — doing so orphans the central widget and
@@ -25392,11 +25351,8 @@ class ApplicationWindow(QMainWindow):
             if self.tilauscope_main.close():
                 self.tilauscope_main = None
             else:
-                ## TILAU ## The close was refused (a roast is sampling), so
-                ## TilauScope stays up — but Artisan has just been revealed
-                ## above it. Both windows are now on screen, and the one that
-                ## suspended the figure is no longer the only one being looked
-                ## at: give Artisan its graph back.
+                ## TILAU ## The close was refused (a roast is sampling): give
+                ## Artisan its graph back, as TilauScope no longer suspends it.
                 self.tilau_suspend_render = False
         else:
             self.tilauscope_main = TilauScope(self, message)
@@ -25405,41 +25361,10 @@ class ApplicationWindow(QMainWindow):
             self.tilauscope_main.show()
             self.tilauscope_main.raise_() # Bring to front without locking
             self.tilauscope_main.activateWindow()
-            ## TILAU ## headless: TilauScope is the sole active view — hide Artisan
-            ## and BeanCave (e.g. when opened straight from the BeanCave menu, which
-            ## would otherwise leave BeanCave visible behind TilauScope).
-            if self._tilau_headless:
-                self._tilau_set_artisan_view(False)
-                self.hide()
-                self._tilau_hide_beancave()
-        ## TILAU ## keep the Shift+T menu label in sync with the active view
-        if hasattr(self, 'tilau_menu') and self.tilau_menu is not None:
-            self.tilau_menu.refresh_main_label(self._tilau_headless, self._tilau_scope_visible())
-
-    ## TILAU ## helpers for the headless view-switch --------------------------
-    def _tilau_scope_visible(self) -> bool:
-        """True when TilauScope exists and is the visible (active) view."""
-        ts = self.tilauscope_main
-        return ts is not None and not sip.isdeleted(ts) and ts.isVisible()
-
-    def _tilau_set_artisan_view(self, active:bool) -> None:
-        """Open (or close) the showEvent gate and restore (or re-hide) the
-        Artisan menu items TilauScope hides, with the Artisan window as the view."""
-        self._tilau_allow_show = active
-        if hasattr(self, 'tilau_menu') and self.tilau_menu is not None:
-            self.tilau_menu.set_artisan_view(active)
-
-    def _tilau_hide_beancave(self) -> None:
-        """Hide the BeanCave home window if it is currently visible."""
-        bc = getattr(self, 'beancaveWindow', None)
-        if bc is not None and not sip.isdeleted(bc) and bc.isVisible():
-            bc.hide()
 
     @pyqtSlot(int)
     def _tilau_reshow_after_beancave(self, _result:int = 0) -> None:
-        """Restore the Artisan window hidden behind BeanCave (non-headless only)."""
-        if self._tilau_headless:
-            return
+        """Restore the Artisan window hidden behind BeanCave."""
         if not self.isVisible():
             self.show()
             self.raise_()
@@ -28760,55 +28685,7 @@ class ApplicationWindow(QMainWindow):
     ## TILAU ##
     @pyqtSlot(bool)
     def handleBeancave(self, _:bool = False) -> None:   # 2025-12-23 fix beancave display modality
-        ## TILAU ## headless: BeanCave is the persistent HOME shell. Reuse the single
-        ## instance (show/raise) instead of close+recreate. Recreating orphans the
-        ## previous BeanCave — still a child of aw — whose BLE scanner / worker
-        ## QThread (started via a queued singleShot) can outlive its closeEvent and
-        ## then abort at interpreter finalize ("QThread: Destroyed while running").
-        ## One instance, closed exactly once at quit, mirrors normal Artisan teardown.
-        if self._tilau_headless:
-            ## TILAU ## a closed BeanCave is replaced: its teardown is not undone on show
-            from tilauscope.cave.lifecycle import live_beancave
-            bc = getattr(self, 'beancaveWindow', None)
-            recreated = not live_beancave(bc)
-            if recreated:
-                from tilauscope.beancave import BeancaveDlg
-                self.beancaveWindow = BeancaveDlg(self, self.qmc.beans if self.qmc.beans else "")
-                self.beancaveWindow.setWindowModality(Qt.WindowModality.NonModal)
-            self.beancaveWindow.show()
-            ## TILAU ## BeanCave is the home shell: make it a real top-level by
-            ## clearing its transient parent (aw). Otherwise Qt treats a parented
-            ## window as "secondary" and fires lastWindowClosed -> fileQuit as soon
-            ## as TilauScope (the only unparented window) closes, even while BeanCave
-            ## is visible. With no transient parent, lastWindowClosed fires only when
-            ## BeanCave itself closes — the intended "close home = quit" semantics.
-            _wh = self.beancaveWindow.windowHandle()
-            if _wh is not None:
-                _wh.setTransientParent(None)
-            ## TILAU ## returning to an existing BeanCave (e.g. after a roast) — refresh
-            ## its content (stock reloaded from disk + roast history re-indexed) so the
-            ## home reflects the roast just finished. Deferred so the click unwinds first.
-            if not recreated and hasattr(self.beancaveWindow, 'refresh_home'):
-                _bc = self.beancaveWindow
-                QTimer.singleShot(0, lambda: _bc.refresh_home())
-            # Leave the roast view. If a roast is live (qmc.flagon) TilauScope's
-            # closeEvent refuses to close (safety) — so HIDE it and keep the session
-            # so it can be resumed from the home; otherwise close it and hand the
-            # graph back to the hidden aw. Keep Artisan hidden either way.
-            if self.tilauscope_main is not None:
-                if getattr(self.qmc, 'flagon', False):
-                    self.tilauscope_main.hide()   # live roast -> preserve, resumable
-                else:
-                    self.tilauscope_main.close()
-                    self.tilauscope_main = None
-                if hasattr(self, 'tilau_menu') and self.tilau_menu is not None:
-                    self.tilau_menu.refresh_main_label(True, self._tilau_scope_visible())
-            self._tilau_set_artisan_view(False)
-            self.hide()
-            self.beancaveWindow.raise_()
-            self.beancaveWindow.activateWindow()
-            return
-        # ── normal mode: refresh by close+recreate ──
+        # refresh by close+recreate
         if hasattr(self, 'beancaveWindow') and self.beancaveWindow is not None:
             self.beancaveWindow.close()
             self.beancaveWindow = None
@@ -28816,7 +28693,7 @@ class ApplicationWindow(QMainWindow):
         self.beancaveWindow = BeancaveDlg(self,self.qmc.beans if self.qmc.beans else "")
         self.beancaveWindow.setWindowModality(Qt.WindowModality.NonModal)
         self.beancaveWindow.show()
-        ## TILAU ## view-switch also in non-headless mode: hide the Artisan window
+        ## TILAU ## view-switch: hide the Artisan window
         ## while BeanCave is open and restore it when BeanCave closes. Safe wrt
         ## quit-on-last-window: QDialog emits finished synchronously inside its
         ## closeEvent (reject), so Artisan is visible again before Qt evaluates
@@ -29287,24 +29164,6 @@ def main() -> None:
 
     appWindow = ApplicationWindow(locale=locale_str, artisanviewerFirstStart=artisanviewerFirstStart)
 
-    ## TILAU ## Decide headless (BeanCave home) mode BEFORE settingsLoad, so the
-    ## settings restore can skip fullscreen (a macOS fullscreen window cannot be
-    ## hidden by aw.hide() and would leave Artisan visible behind BeanCave).
-    ## Enabled by the persistent QSettings pref; TILAU_HEADLESS=1 forces it for dev.
-    _tilau_headless_boot = (os.environ.get('TILAU_HEADLESS') == '1'
-                            or QSettings().value('tilauscope/headless_mode', False, type=bool))
-    appWindow._tilau_headless = bool(_tilau_headless_boot)
-
-    ## TILAU ## With Artisan hidden, macOS finishes launching with no visible window
-    ## and asks for an untitled document of the Info.plist "Document" class; without
-    ## that class it shows "No document could be created". Register an inert one
-    ## (the upstream workaround, disabled since 4.2.13), only when headless.
-    if sys.platform.startswith('darwin') and appWindow._tilau_headless:
-        from Cocoa import NSDocument # type: ignore[import-untyped, attr-defined, unused-ignore] # @UnresolvedImport # pylint: disable=import-error,no-name-in-module
-        class Document(NSDocument): # type:ignore[misc,no-any-unimported] # zuban: ignore # pylint: disable=too-few-public-methods,unused-variable
-            def makeWindowControllers(self) -> None:
-                pass
-
     app.setActivationWindow(appWindow,activateOnMessage=False) # set the activation window for the QtSingleApplication
 
 
@@ -29333,8 +29192,7 @@ def main() -> None:
     appWindow.restoreExtraDeviceSettingsBackup() # load settings backup if it exists (like on RESET)
     _log.info('loaded %s settings in %.2fs', len(QSettings().allKeys()), libtime.process_time() - start_time)
 
-    ## TILAU ## start the app-level web host (Records always-on + opt-in Control)
-    ## here, before the headless/direct boot branch, so it runs in BOTH boot paths.
+    ## TILAU ## start the app-level web host (Records always-on + opt-in Control).
     ## Deferred via QTimer so it never blocks startup.
     QTimer.singleShot(0, appWindow.start_tilau_web_host)
 
@@ -29375,11 +29233,8 @@ def main() -> None:
     if debugLogLevelActive():
         appWindow.sendmessage(QApplication.translate('Message', 'debug logging ON'))
 
-    ## TILAU ## headless boot: hide the Artisan main window and promote BeanCave to
-    ## the primary shell. Mode was decided above (appWindow._tilau_headless) so
-    ## settingsLoad could already skip the fullscreen restore.
-    ## TILAU ## Drive quit ourselves in BOTH boot modes: the Artisan window is
-    ## hidden either way, so Qt's own quit-on-last-window fires with nothing on
+    ## TILAU ## Drive quit ourselves: the Artisan window is
+    ## hidden, so Qt's own quit-on-last-window fires with nothing on
     ## screen and ends the process WITHOUT closeApp() — settings unsaved, the web
     ## host still listening, BLE still scanning. Closing the last TilauScope
     ## window is how this application is quit, so it must quit it properly.
@@ -29396,17 +29251,12 @@ def main() -> None:
     ## while thread is still running"). Deferring lets the originating close unwind
     ## first, then quits cleanly.
     app.lastWindowClosed.connect(lambda: QTimer.singleShot(0, lambda: appWindow.fileQuit()))
-    if appWindow._tilau_headless:
-        _log.info('TILAU: headless boot active (Artisan window hidden)')
-        appWindow.hide()
-        appWindow.handleBeancave()  # open BeanCave as the top-level shell
-    else:
-        ## TILAU ## Open the TilauScope shell as the initial roasting view, and
-        ## keep Artisan hidden before the event loop gets a chance to paint its
-        ## canvas. There is no way back to that window in this mode: closing
-        ## TilauScope closes the application.
-        appWindow.hide()
-        QTimer.singleShot(0, appWindow.tilauscopeCall)
+    ## TILAU ## Open the TilauScope shell as the initial roasting view, and
+    ## keep Artisan hidden before the event loop gets a chance to paint its
+    ## canvas. There is no way back to that window: closing TilauScope closes
+    ## the application.
+    appWindow.hide()
+    QTimer.singleShot(0, appWindow.tilauscopeCall)
 
     try:
         if sys.argv and len(sys.argv) > 1:
@@ -29530,17 +29380,6 @@ def main() -> None:
         # ret = app.exec()
         # app = None
         # sys.exit()
-
-    ## TILAU ## headless: exit hard once the event loop returns. closeApp() has
-    ## already persisted settings and stopped activities before we get here (log:
-    ## "wrote N settings"). This is not just cosmetic — the BLE scan runs in a
-    ## bleak thread that cannot be stopped synchronously (the scan blocks for
-    ## seconds), so on some quits a background QThread is still winding down when
-    ## Python/sip finalize deletes the object tree, aborting with
-    ## "QThread: Destroyed while thread is still running". os._exit skips that
-    ## finalize cleanly. Intermittent, so it must be unconditional in headless.
-    if appWindow._tilau_headless:
-        os._exit(0)
 
 # the following seems to create issue on Mac and Windows builds on exit
 #    del aw

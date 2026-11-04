@@ -83,6 +83,10 @@ class TilauMenuExtension:
         self.act_main.setCheckable(True)
         self.act_main.setShortcut('Shift+T')
         self.act_main.triggered.connect(aw.tilauscopeCall)
+        # TilauScope is the application: Artisan's window is hidden at boot and
+        # closing TilauScope quits, so this entry has no second view to reach.
+        # Hidden rather than removed — `aw.tilauscopeMain` is this action.
+        self.act_main.setVisible(False)
 
         self.act_beancave = QAction(QApplication.translate('Menu', 'BeanCave'), aw)
         self.act_beancave.setCheckable(True)
@@ -228,24 +232,6 @@ class TilauMenuExtension:
         self.act_beancave.setChecked(bool(aw.beancave))
         self.act_debug.setChecked(bool(aw.tilauDBG))
         self.act_pid_autotune.setChecked(bool(aw.PIDAutotune))
-        self.refresh_main_label(getattr(aw, '_tilau_headless', False), bool(aw.tilauscope_main))
-
-    def refresh_main_label(self, headless: bool, tilau_open: bool) -> None:
-        # The action only exists as a VIEW TOGGLE, and only headless mode has two
-        # views to toggle between. In normal mode TilauScope is the application:
-        # Artisan's window is hidden at boot and closing TilauScope quits, so the
-        # entry could only ever take the operator somewhere they cannot come back
-        # from. Hidden rather than removed — set_menu() runs before the boot mode
-        # is known, so the decision has to be one this method can revisit.
-        self.act_main.setVisible(headless)
-        if not headless:
-            self.act_main.setText('TilauScope')
-        elif tilau_open:
-            # TilauScope is the active view -> Shift+T reveals the Artisan window
-            self.act_main.setText(QApplication.translate('Menu', 'Switch to Artisan window'))
-        else:
-            # Artisan is the active view -> Shift+T returns to TilauScope
-            self.act_main.setText(QApplication.translate('Menu', 'Switch to TilauScope'))
 
     # ------------------------------------------------------------------
     # Menu building — add new TilauScope submenus here
@@ -285,9 +271,8 @@ class TilauMenuExtension:
         Re-applied on every set_menu() call (mode switches rebuild the menus).
         Hidden, never deleted: a hidden QAction also stays disabled whatever Artisan
         sets later, so its shortcut (Ctrl+U, Ctrl+Shift+A) cannot open the dialog.
-        Left visible while the Artisan window is the active view (headless escape hatch).
         """
-        self.set_artisan_view(bool(getattr(self._aw, '_tilau_allow_show', False)))
+        self.set_artisan_view(False)
         self._rewire_help_actions()
         self._rewire_events_action()
 

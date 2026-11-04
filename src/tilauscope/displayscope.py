@@ -740,14 +740,6 @@ class TilauScope(BuildMixin, ChromeMixin, LiveMixin, SlidersMixin, MilestonesMix
 
     def toggle_beancave(self):
         """Toggles the visibility of the Bean Cave panel."""
-        # headless: BeanCave is the home view — leaving TilauScope means
-        # switching to BeanCave (close TilauScope, keep Artisan hidden). Delegated
-        # to aw.handleBeancave() so the button and the Shift+B/menu path converge.
-        # Deferred: handleBeancave closes this very TilauScope, so let the button
-        # click handler unwind first before we tear the window down.
-        if getattr(self.aw, '_tilau_headless', False):
-            QTimer.singleShot(0, lambda: self.aw.handleBeancave())
-            return
         if hasattr(self.aw, 'beancaveWindow') and self.aw.beancaveWindow is not None and self.aw.beancaveWindow.isVisible():
             self.aw.beancaveWindow.close()
             self.update_button_style(self.btn_beancave, True, False, False)
