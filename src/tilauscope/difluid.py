@@ -21,10 +21,12 @@ import struct
 from contextlib import contextmanager
 from enum import StrEnum, IntEnum
 import time
-from typing import Final
+from typing import Final, TYPE_CHECKING
 from artisanlib.ble_port import ClientBLE
 from artisanlib.util import fromFtoCstrict
-from artisanlib.main import ApplicationWindow # pylint: disable=unused-import
+if TYPE_CHECKING:
+    # Never at run time: BeanCave alone imports this module, and artisanlib.main would take its application over.
+    from artisanlib.main import ApplicationWindow  # pylint: disable=unused-import
 import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor

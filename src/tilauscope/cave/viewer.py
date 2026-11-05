@@ -769,7 +769,8 @@ class ViewerMixin:
                                QMessageBox.Icon.Warning)
             return
         try:
-            cur_file = getattr(self.aw, 'curFile', None)
+            # Alone, curFile is only the roast last handed to Artisan: hand it again.
+            cur_file = None if getattr(self.aw, 'tilau_standalone', False) else getattr(self.aw, 'curFile', None)
             already_open = bool(cur_file) and Path(cur_file).resolve() == fp.resolve()
             if not already_open:
                 self.aw.loadFile(str(fp))

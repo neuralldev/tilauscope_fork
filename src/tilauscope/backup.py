@@ -380,7 +380,11 @@ def relaunch_after_exit() -> bool:
                 bundle = Path(sys.executable).resolve().parents[2]
                 command = ["open", str(bundle)] if bundle.suffix == ".app" else command
         else:
-            command = [sys.executable, *sys.argv]
+            # Under `python -m`, argv[0] is the module's file: run as that file, its package is not found.
+            spec = getattr(sys.modules.get("__main__"), "__spec__", None)
+            name = getattr(spec, "name", "") or ""
+            command = ([sys.executable, "-m", name.removesuffix(".__main__"), *sys.argv[1:]] if name
+                       else [sys.executable, *sys.argv])
         if platform.system() == "Windows":
             args = ", ".join("'" + a.replace("'", "''") + "'" for a in command[1:])
             script = (f"Wait-Process -Id {pid} -ErrorAction SilentlyContinue; "

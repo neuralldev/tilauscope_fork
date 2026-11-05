@@ -1,9 +1,12 @@
 ## [4.3] 2026-09-13
+build 51
 build 50
 build 49
 * ⚡ [feat(beancave)] : BeanCave on its own backs up and restores itself from its menu (Back up BeanCave… / Restore BeanCave…), automatically on closing after new roasts too; a TilauScope backup is never restored by BeanCave, nor the reverse
 * 🐛 [fix(backup)] : backups no longer carry the library and single-instance locks
 * 🐛 [fix(beancave)] : in BeanCave on its own, the Settings window looks for devices as soon as it opens, so a scale removed earlier can be chosen again
+* 🐛 [fix(beancave)] : BeanCave on its own, with an ambient probe chosen, ends when its window closes instead of staying open in the background
+* ⚡ [feat(beancave)] : BeanCave on its own keeps a log, beancave.log in its data folder, with any error no one caught
 * ⚡ [feat(beancave)] : BeanCave on its own reads the ambient probe chosen in its settings
 * ⚡ [feat(beancave)] : BeanCave on its own opens Roast Profile Maintenance from its menu, and a banner in Roasts links the roasts Artisan saved without a coffee; once linked, a roast is taken from that coffee's stock
 * 🐛 [fix(beancave)] : on its own, Roast result saves the roasted weight, colour, defects, notes and batch into the roast file instead of failing, and the roast shows its weight loss and colour at once

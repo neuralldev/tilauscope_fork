@@ -1924,7 +1924,8 @@ class AlogRepairDialog(QDialog):
         self.close()
         if self.isVisible():   # the operator kept unsaved edits
             return
-        cur_file = getattr(self._aw, 'curFile', None)
+        # Alone, curFile is only the roast last handed to Artisan: hand it again.
+        cur_file = None if getattr(self._aw, 'tilau_standalone', False) else getattr(self._aw, 'curFile', None)
         if cur_file and Path(cur_file).resolve() == path.resolve():
             return
         try:

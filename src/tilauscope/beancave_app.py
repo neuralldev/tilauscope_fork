@@ -14,6 +14,7 @@ cave/standalone.py and hands roasts to Artisan through the files it opens.
 from __future__ import annotations
 
 import logging
+import os
 import platform
 import sys
 from pathlib import Path
@@ -71,6 +72,26 @@ def main() -> int:
     # One BeanCave at a time: a second launch leaves the first one alone.
     data = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
     data.mkdir(parents=True, exist_ok=True)
+    # Without a console (Windows, the Dock), the log file is the only trace; as TilauScope's.
+    from logging.handlers import RotatingFileHandler
+    log_file = RotatingFileHandler(data / 'beancave.log', maxBytes=800_000, backupCount=2,
+                                   encoding='utf-8', delay=True)
+    log_file.setFormatter(logging.Formatter(
+        '%(asctime)s %(threadName)-10s %(name)-20s %(levelname)-7s: %(message)s', '%m-%d %H:%M:%S'))
+    logging.getLogger().addHandler(log_file)
+    logging.getLogger().setLevel(logging.INFO)
+    _log.info('BeanCave starting (pid %s)', os.getpid())
+    # An exception no one catches (a slot, a virtual, a thread) is written down before anything else sees it.
+    import threading
+    previous_hook = sys.excepthook
+
+    def log_uncaught(kind, value, trace):  # noqa: ANN001
+        _log.critical('uncaught exception', exc_info=(kind, value, trace))
+        previous_hook(kind, value, trace)
+    sys.excepthook = log_uncaught
+    threading.excepthook = lambda args: _log.critical(
+        'uncaught exception in thread %s', getattr(args.thread, 'name', '?'),
+        exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
     instance = QLockFile(str(data / 'beancave.instance'))
     if not instance.tryLock(0):
         _log.info('BeanCave is already running')
@@ -156,6 +177,13 @@ def main() -> int:
     except Exception:  # noqa: BLE001
         _log.exception('backup on quit failed')
     window.release_bluetooth()
+    # The windows go while the application still exists: one left to Python's exit is
+    # destroyed after it, and macOS crashes there (SIGSEGV in QWidget::~QWidget, 2026-11-05).
+    from PyQt6 import sip
+    for widget in QApplication.topLevelWidgets():
+        if not sip.isdeleted(widget):
+            sip.delete(widget)
+    _log.info('BeanCave ends')
     return code
 
 

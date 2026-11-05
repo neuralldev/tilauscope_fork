@@ -35,12 +35,13 @@ import time
 
 if TYPE_CHECKING:
     from bleak.backends.characteristic import BleakGATTCharacteristic  # pylint: disable=unused-import
+    # Never at run time: BeanCave alone imports this module, and artisanlib.main would take its application over.
+    from artisanlib.main import ApplicationWindow  # pylint: disable=unused-import
 
 from PyQt6.QtCore import pyqtSignal, QDateTime, QObject # @UnusedImport @Reimport  @UnresolvedImport
 from PyQt6.QtCore import QMutex, QMutexLocker
 
 from artisanlib.ble_port import ClientBLE
-from artisanlib.main import ApplicationWindow # pylint: disable=unused-import
 
 _log: Final[logging.Logger] = logging.getLogger(__name__)
 _logd: Final[logging.Logger] = logging.getLogger("tilau")
