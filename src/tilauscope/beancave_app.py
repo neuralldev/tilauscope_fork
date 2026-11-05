@@ -18,7 +18,7 @@ import platform
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QLibraryInfo, QLocale, QLockFile, QSettings, QStandardPaths, QTranslator
+from PyQt6.QtCore import QLibraryInfo, QLocale, QLockFile, QSettings, QStandardPaths, QTimer, QTranslator
 from PyQt6.QtGui import QAction, QIcon, QKeySequence
 from PyQt6.QtWidgets import QApplication, QMenuBar
 
@@ -63,7 +63,10 @@ def main() -> int:
     app.setOrganizationName('TilauScope')
     app.setOrganizationDomain('tilauscope.org')
     app.setApplicationName('BeanCave')
-    app.setWindowIcon(QIcon(str(Path(getResourcePath()) / 'Icons' / 'beancave.png')))
+    # macOS draws the Dock icon from the bundle and rounds it, as TilauScope's; a
+    # window icon would replace it with the square tile as it is.
+    if platform.system() != 'Darwin':
+        app.setWindowIcon(QIcon(str(Path(getResourcePath()) / 'Icons' / 'beancave.png')))
 
     # One BeanCave at a time: a second launch leaves the first one alone.
     data = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation))
@@ -72,6 +75,9 @@ def main() -> int:
     if not instance.tryLock(0):
         _log.info('BeanCave is already running')
         return 0
+    # A restore chosen in the last session, before anything reads the settings or the library.
+    from tilauscope import backup
+    backup.apply_pending_restore()
 
     from tilauscope.cave.artisan_prefs import apply_artisan_settings, artisan_settings, roasts_folder
     from tilauscope.cave.first_run import ROASTER_KEY, FirstRunDialog, needs_first_run
@@ -95,6 +101,7 @@ def main() -> int:
     window.tilau_roaster = canonical_roaster_name(QSettings().value(ROASTER_KEY, '', str))
     cave = BeancaveDlg(window)
     window.beancaveWindow = cave
+    from tilauscope import backup_dialog
     # macOS moves this entry to the application menu as Preferences… (⌘,).
     menu_bar = QMenuBar()
     settings_action = QAction(QApplication.translate("tilauscope_beancave", "Settings…"), menu_bar)
@@ -104,18 +111,52 @@ def main() -> int:
     # TilauScope's updater, on BeanCave's own installers in the same releases.
     from tilauscope.tilau_updater import TilauUpdater
     updater = TilauUpdater(cave, product='beancave')
+    window._tilau_updater = updater   # a backup from a newer BeanCave offers to update
     update_action = QAction(QApplication.translate("Menu", "Check for Updates"), menu_bar)
     update_action.setMenuRole(QAction.MenuRole.ApplicationSpecificRole)
     update_action.triggered.connect(updater.check_now)
+    # Roasts Artisan saved without a coffee are linked here (the Roasts banner opens it too).
+    maintenance_action = QAction(QApplication.translate('Menu', 'Roast Profile Maintenance...'), menu_bar)
+    maintenance_action.setMenuRole(QAction.MenuRole.ApplicationSpecificRole)
+    maintenance_action.triggered.connect(lambda _checked=False: cave.open_profile_maintenance())
+    # TilauScope's backup and restore, under BeanCave's name (backup.app_name).
+    backup_action = QAction(QApplication.translate("tilauscope_beancave", "Back up BeanCave…"), menu_bar)
+    backup_action.setMenuRole(QAction.MenuRole.ApplicationSpecificRole)
+    backup_action.triggered.connect(lambda _checked=False: backup_dialog.open_backup(window, cave))
+    restore_action = QAction(QApplication.translate("tilauscope_beancave", "Restore BeanCave…"), menu_bar)
+    restore_action.setMenuRole(QAction.MenuRole.ApplicationSpecificRole)
+    restore_action.triggered.connect(lambda _checked=False: backup_dialog.open_restore(window))
+    # ⌘Q closes BeanCave's window, so its own close (saves, threads, printer) runs,
+    # and may be refused there; quitting follows from the window closing.
+    quit_action = QAction(QApplication.translate("tilauscope_beancave", "Quit"), menu_bar)
+    quit_action.setMenuRole(QAction.MenuRole.QuitRole)
+    quit_action.setShortcut(QKeySequence.StandardKey.Quit)
+    quit_action.triggered.connect(cave.close)
     menu = menu_bar.addMenu('BeanCave')
     if menu is not None:
         menu.addAction(settings_action)
+        menu.addAction(maintenance_action)
+        menu.addAction(backup_action)
+        menu.addAction(restore_action)
         menu.addAction(update_action)
-    # Its parent is never shown, so Qt would not count it as the last window: closing it quits.
+        menu.addAction(quit_action)
+    # Its parent is never shown, so Qt does not count it as a window at all: closing it
+    # quits. And Qt's own quit on the last window must go, or closing any parentless
+    # window (a message, a card) would end BeanCave with its own window still open.
+    app.setQuitOnLastWindowClosed(False)
     cave.finished.connect(app.quit)
     cave.show()
     updater.start()
-    return app.exec()
+    # What the last session left to say: a restore done or failed, an extra copy not made.
+    QTimer.singleShot(1500, lambda: backup_dialog.show_backup_notices(cave, window))
+    code = app.exec()
+    # Quitting: relaunch for a restore chosen now, else the automatic backup when due.
+    try:
+        backup_dialog.on_quit()
+    except Exception:  # noqa: BLE001
+        _log.exception('backup on quit failed')
+    window.release_bluetooth()
+    return code
 
 
 if __name__ == '__main__':

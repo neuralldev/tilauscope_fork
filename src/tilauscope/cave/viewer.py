@@ -84,6 +84,8 @@ class ViewerMixin:
 
     def setup_roast_viewer_tab_ui(self) -> None:
         self.roast_viewer_layout = QVBoxLayout()
+        if getattr(self.aw, 'tilau_standalone', False):
+            self.roast_viewer_layout.addWidget(self._build_awaiting_link_banner())
 
         # ── Helper SVG inline identique à l'onglet Green Beans ───────────────
         _FS2 = "12px"
@@ -2325,7 +2327,11 @@ class ViewerMixin:
             filename = filepath.name
             cur_file = getattr(self.aw, 'curFile', None)
             already_open = bool(cur_file) and Path(cur_file).resolve() == filepath.resolve()
-            if not already_open:
+            if getattr(self.aw, 'tilau_standalone', False):
+                # Alone, no Artisan window holds the roast: the stand-in holds it,
+                # and writes the result back into its file.
+                self.aw.hold_roast(str(filepath), data)
+            elif not already_open:
                 self.aw.loadFile(str(filepath))
         except Exception as e:
             _logd.error(f"on_roast_finished_clicked: failed to load: {e}")

@@ -29,6 +29,7 @@ from PyQt6.QtGui import QAction, QDesktopServices
 from PyQt6.QtWidgets import QApplication, QWidget
 
 from artisanlib.scale import ScaleManager
+from artisanlib.util import decodeLocalStrict, encodeLocalStrict
 from tilaucore.artisan_compat import events_internal_to_external_value
 from tilauscope.ai_support import TilauAIConfig
 from tilauscope.cave import standalone_settings
@@ -62,6 +63,42 @@ def prepared_profile(base: dict | None, properties: dict, reference: str | None 
         if isinstance(profile.get(key), str):
             profile[key] = codecs.unicode_escape_encode(profile[key])[0].decode('utf8')
     return profile
+
+
+def _percent(part: float, whole: float) -> float:
+    return round(100.0 * part / whole, 1) if whole else 0.0
+
+
+def result_edits(profile: dict, qmc: Any) -> dict:
+    """What the roast result window changed, in the roast file's keys, as Artisan
+    saves them: the weights also in its computed figures, which BeanCave reads back."""
+    w_in, w_out, unit = qmc.weight
+    to_g = {'g': 1.0, 'kg': 1000.0, 'lb': 453.59237, 'oz': 28.349523125}.get(unit, 1.0)
+    computed = dict(profile.get('computed') or {})
+    computed['weightin'] = round(w_in * to_g, 1)
+    computed['weightout'] = round(w_out * to_g, 1)
+    computed['roast_defects_weight'] = round(qmc.roasted_defects_weight * to_g, 1)
+    for key, value in (('weight_loss', _percent(w_in - w_out, w_in) if w_out else 0.0),
+                       ('roast_defects_loss', _percent(qmc.roasted_defects_weight, w_out))):
+        if value:
+            computed[key] = value
+        else:
+            computed.pop(key, None)
+    return {
+        'beans': encodeLocalStrict(qmc.beans),
+        'weight': [w_in, w_out, unit],
+        'defects_weight': qmc.roasted_defects_weight,
+        'whole_color': qmc.whole_color,
+        'ground_color': qmc.ground_color,
+        'color_system': qmc.color_systems[qmc.color_system_idx],
+        'tipping': qmc.tipping_flag,
+        'scorching': qmc.scorching_flag,
+        'roastingnotes': encodeLocalStrict(qmc.roastingnotes),
+        'roastbatchprefix': encodeLocalStrict(qmc.roastbatchprefix),
+        'roastbatchnr': qmc.roastbatchnr,
+        'roastbatchpos': qmc.roastbatchpos,
+        'computed': computed,
+    }
 
 
 class _Signal:
@@ -170,6 +207,9 @@ class StandaloneCanvas:
         self.ground_color: float = 0
         self.whole_color: float = 0
         self.roasted_defects_weight: float = 0.0
+        self.tipping_flag: bool = False
+        self.scorching_flag: bool = False
+        self.roastingnotes: str = ''
         self.autosaveprefix: str = ''
         self.batchcounter: int = 0
         self.batchprefix: str = '#'
@@ -188,6 +228,13 @@ class StandaloneCanvas:
         self.extrabuttonactionstrings: list[str] = []
         self.xextrabuttonactions: list[int] = []
         self.xextrabuttonactionstrings: list[str] = []
+        # Artisan's extra devices: none here. The ambient probe looks for its own among them.
+        self.extradevices: list[int] = []
+        self.extratemp1: list[list[float]] = []
+        self.extratemp2: list[list[float]] = []
+        self.RTextratemp1: list[float] = []
+        self.RTextratemp2: list[float] = []
+        self.tilau_devices: dict[str, dict] = {}
         self.locale_str: str = QLocale().name().split('_')[0]
         self.fig = _Figure()
 
@@ -233,6 +280,7 @@ class StandaloneWindow(QWidget):
         self.app = QApplication.instance()
         self.qmc = StandaloneCanvas()
         self.curFile: str | None = None
+        self._held: dict | None = None   # the roast the result window edits (hold_roast)
         self.beancaveWindow: Any = None
         self.beanCaveMenuAction = QAction(self)   # TilauScope's menu entry: kept, never shown
         self.tilauscope_main: Any = None
@@ -294,10 +342,44 @@ class StandaloneWindow(QWidget):
             _log.exception('MQTT settings not read')
         from tilauscope.ai_service import TilauAIService  # noqa: PLC0415
         self.tilau_ai_service = TilauAIService(self.tilau_aiConfig, parent=self)
+        self._tilau_updater: Any = None   # set by beancave_app: "Check for updates" after a newer backup
 
     def save_settings(self) -> None:
         """What the settings window chose: TilauScope's Artisan writes it on quit, BeanCave at once."""
         standalone_settings.save(self, QSettings())
+
+    def release_bluetooth(self) -> None:
+        """Stop every Bluetooth scan and link before Python ends, as Artisan's closeApp
+        does: one left running calls into the finalising interpreter and crashes on quit."""
+        import sys  # noqa: PLC0415
+
+        def scanners() -> None:
+            if 'tilauscope.tilau_ble_scanner' in sys.modules:
+                from tilauscope.tilau_ble_scanner import TilauBLEScanner  # noqa: PLC0415
+                TilauBLEScanner.stop_all()
+
+        def loop() -> None:
+            # Last: the cancellations above travel through this loop.
+            if 'artisanlib.ble_port' in sys.modules:
+                from artisanlib import ble_port  # noqa: PLC0415
+                ble_port.ble.close()
+
+        # Each step on its own: a failure must not leave the next one undone.
+        for step in (self.scale_manager.disconnect_all_slot, scanners, loop):
+            try:
+                step()
+            except Exception as exc:  # noqa: BLE001
+                _log.debug('bluetooth release on quit: %s', exc)
+
+    def fileQuit(self) -> None:  # noqa: N802  (Artisan's name)
+        """Quit, as Artisan's menu does: BeanCave's window closes, then the program."""
+        if self.beancaveWindow is not None:
+            self.beancaveWindow.close()
+
+    def tilauscope_config(self) -> None:
+        """TilauScope's Configuration: BeanCave's settings here."""
+        if self.beancaveWindow is not None:
+            self.beancaveWindow.open_settings()
 
     def alarmconfig(self, _: bool = False) -> None:
         """Artisan's alarm editor: there is none here."""
@@ -306,11 +388,58 @@ class StandaloneWindow(QWidget):
         """There is no TilauScope here."""
 
     def getProfile(self, *_args: Any, **_kwargs: Any) -> dict:  # noqa: N802  (Artisan's name)
+        if self._held is not None:
+            return {**self._held, **result_edits(self._held, self.qmc)}
         return prepared_profile(None, self.qmc.properties())
 
-    def fileSave(self, *_args: Any) -> bool:  # noqa: N802  (Artisan's name)
-        """No roast is held here to save."""
-        return False
+    def hold_roast(self, path: str, profile: dict) -> None:
+        """A recorded roast on qmc for the roast result window, as Artisan's loadFile
+        puts it on its own canvas: the window edits it, fileSave writes it back."""
+        q = self.qmc
+        weight = list(profile.get('weight') or (0.0, 0.0, 'g'))
+        q.weight = (float(weight[0] or 0), float(weight[1] or 0), str(weight[2] or 'g'))
+        q.beans = decodeLocalStrict(profile.get('beans'))
+        q.roastingnotes = decodeLocalStrict(profile.get('roastingnotes'))
+        q.roastbatchprefix = decodeLocalStrict(profile.get('roastbatchprefix'), '#')
+        q.roastbatchnr = int(profile.get('roastbatchnr') or 0)
+        q.roastbatchpos = int(profile.get('roastbatchpos') or 1)
+        q.roasted_defects_weight = float(profile.get('defects_weight') or 0)
+        q.whole_color = float(profile.get('whole_color') or 0)
+        q.ground_color = float(profile.get('ground_color') or 0)
+        system = profile.get('color_system')
+        q.color_system_idx = q.color_systems.index(system) if system in q.color_systems else 0
+        q.tipping_flag = bool(profile.get('tipping', False))
+        q.scorching_flag = bool(profile.get('scorching', False))
+        q.timex = list(profile.get('timex') or [])
+        q.temp1 = list(profile.get('temp1') or [])
+        q.temp2 = list(profile.get('temp2') or [])
+        q.timeindex = list(profile.get('timeindex') or [-1, 0, 0, 0, 0, 0, 0, 0])
+        computed = profile.get('computed') or {}
+        q.statisticstimes = [float(computed.get(key) or 0) for key in
+                             ('totaltime', 'dryphasetime', 'midphasetime', 'finishphasetime', 'coolphasetime')]
+        self._held = dict(profile)
+        self.curFile = path
+
+    def fileSave(self, filename: str | None = None, *_args: Any) -> bool:  # noqa: N802  (Artisan's name)
+        """Write the held roast's result back into its file, over what is on disk now:
+        Artisan, or a repair, may have written it since it was read."""
+        if self._held is None or not filename or filename != self.curFile:
+            return False
+        from tilauscope.alog_repair import parse_alog, write_alog  # noqa: PLC0415
+        path = Path(filename)
+        data = parse_alog(path)
+        if data is None:
+            return False
+        data.update(result_edits(data, self.qmc))
+        # The content changes, so Artisan's hash of it would no longer match.
+        data.pop('hash', None)
+        try:
+            write_alog(data, path)
+        except OSError as exc:
+            _log.error('roast result not saved to %s: %s', path, exc)
+            return False
+        self._held = data
+        return True
 
     def loadAlarms(self, filename: str) -> None:  # noqa: N802  (Artisan's name)
         """Hand an alarm set to the operator's Artisan."""

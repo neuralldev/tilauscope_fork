@@ -615,7 +615,8 @@ class BeanTabMixin:
         self._open_bean_sheet_from_scan(bean_uuid)
 
     @pyqtSlot()
-    def open_profile_maintenance(self) -> None:
+    def open_profile_maintenance(self, focus: str | None = None) -> None:
+        """Roast Profile Maintenance; `focus` opens it on that roast, among those to complete."""
         if not self.alog_directory or not Path(self.alog_directory).is_dir():
             self._show_message(self,
                 QApplication.translate("tilauscope_beancave", "Directory Error"),
@@ -629,7 +630,7 @@ class BeanTabMixin:
             open_dlg.activateWindow()
             return
         from tilauscope.alog_repair import AlogRepairDialog
-        self._alog_repair_dlg = AlogRepairDialog(self, self.aw)  # keep ref (non-modal)
+        self._alog_repair_dlg = AlogRepairDialog(self, self.aw, focus=focus)  # keep ref (non-modal)
         self._alog_repair_dlg.repaired.connect(lambda _p: self.trigger_cache_refresh())
         self._alog_repair_dlg.show()
 

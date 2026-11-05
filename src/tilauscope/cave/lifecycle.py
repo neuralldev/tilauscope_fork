@@ -547,13 +547,57 @@ class LifecycleMixin:
         """BeanCave alone: a roast Artisan saved for a coffee of the library comes off its stock."""
         if getattr(self, "cave", None) is None or getattr(self, '_library_read_only', False):
             return
-        from tilaucore.stock_from_roasts import take_new_roasts  # noqa: PLC0415
-        first_run = self.cave.stock_taken_roasts is None
-        taken = take_new_roasts(self.cave, records.values())
-        if (first_run or taken) and not self.save_green_beans():
+        from tilaucore.stock_from_roasts import awaiting_link, take_new_roasts  # noqa: PLC0415
+        baseline = getattr(self, '_stock_baseline', False)
+        before = (self.cave.stock_taken_roasts, list(self.cave.stock_awaiting_link))
+        taken = take_new_roasts(self.cave, records.values(), baseline=baseline)
+        self._stock_baseline = False
+        changed = before != (self.cave.stock_taken_roasts, self.cave.stock_awaiting_link)
+        if changed and not self.save_green_beans():
             return
+        self._show_awaiting_link(awaiting_link(self.cave, records.values()))
         if taken:
             self._show_stock_note(taken[-1].bean, taken[-1].grams)
+
+    def _show_awaiting_link(self, roasts: list) -> None:
+        """The Roasts banner: Artisan roasts that have no coffee of the library yet."""
+        banner = getattr(self, '_awaiting_link_banner', None)
+        if banner is None:
+            return
+        self._awaiting_link_path = roasts[0].filepath_str if roasts else ''
+        if roasts:
+            self._awaiting_link_title.setText(QApplication.translate(
+                "tilauscope_beancave", "Roasts saved by Artisan without a coffee: {0}").format(len(roasts)))
+        banner.setVisible(bool(roasts))
+
+    def _build_awaiting_link_banner(self) -> QFrame:
+        """BeanCave alone: roasts Artisan saved without a coffee wait to be linked to one."""
+        banner = QFrame()
+        banner.setObjectName('awaitingLinkBanner')
+        banner.setStyleSheet(f"QFrame#awaitingLinkBanner {{ border:1px solid {THEME['YELLOW']};border-radius:10px; }}"
+                             "QLabel { border:none;background:transparent; }")
+        row = QHBoxLayout(banner)
+        row.setContentsMargins(16, 10, 12, 10)
+        text = QVBoxLayout()
+        text.setSpacing(2)
+        self._awaiting_link_title = QLabel()
+        self._awaiting_link_title.setStyleSheet(f"color:{THEME['TEXT']};font-weight:700;")
+        detail = QLabel(QApplication.translate(
+            "tilauscope_beancave", "They count neither for stock nor for the next plans. Link each to its coffee."))
+        detail.setStyleSheet(f"color:{THEME['SUBTEXT']};")
+        detail.setWordWrap(True)
+        text.addWidget(self._awaiting_link_title)
+        text.addWidget(detail)
+        row.addLayout(text, 1)
+        link = QPushButton(QApplication.translate("tilauscope_beancave", "Link them…"))
+        link.setCursor(Qt.CursorShape.PointingHandCursor)
+        link.setStyleSheet(f"QPushButton {{ color:{THEME['TEXT']};background:{THEME['SURFACE']};"
+                           f"border:1px solid {THEME['YELLOW']};border-radius:8px;padding:6px 14px; }}")
+        link.clicked.connect(lambda: self.open_profile_maintenance(getattr(self, '_awaiting_link_path', '') or None))
+        row.addWidget(link)
+        banner.setVisible(False)
+        self._awaiting_link_banner = banner
+        return banner
 
     def _show_stock_note(self, bean, grams: float) -> None:  # noqa: ANN001
         """A short note, bottom right: which coffee lost how much, and what is left."""
@@ -1574,6 +1618,16 @@ class LifecycleMixin:
         self.update_ui_visibility()
 
     def _reload_roasts(self) -> None:
+        if getattr(getattr(self, 'aw', None), 'tilau_standalone', False):
+            # Another roasts folder: the roasts already in it are not Artisan's new ones,
+            # and Artisan's next roast lands there.
+            self._stock_baseline = True
+            watcher = getattr(self, '_roasts_watcher', None)
+            if watcher is not None:
+                if watcher.directories():
+                    watcher.removePaths(watcher.directories())
+                if self.alog_directory and Path(self.alog_directory).is_dir():
+                    watcher.addPath(str(self.alog_directory))
         self._metadata_cache.records = {}
         self._stop_indexer()            # the old folder's pass, if one runs
         self.trigger_cache_refresh()

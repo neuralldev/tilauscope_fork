@@ -43,6 +43,11 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
+def _beancave() -> bool:
+    """BeanCave alone backs up and restores itself, under its own name (BeanCave-Standalone-Spec)."""
+    return backup.app_name() == "BeanCave"
+
+
 _open: dict[str, QDialog] = {}   # one window of each kind, kept alive while shown
 
 
@@ -90,7 +95,7 @@ class _RunPage:
 class BackupDialog(_Card):
 
     def __init__(self, parent: QWidget | None) -> None:
-        super().__init__(parent, QApplication.translate("tilauscope_diagnostics", "Back up TilauScope"))
+        super().__init__(parent, (QApplication.translate("tilauscope_diagnostics", "Back up BeanCave") if _beancave() else QApplication.translate("tilauscope_diagnostics", "Back up TilauScope")))
         self._job: backup.BackupJob | None = None
         self._target: Path | None = None
         self._build_settings_page()
@@ -118,7 +123,7 @@ class BackupDialog(_Card):
             inner.addWidget(_label(caption, variant="caption"))
             tiles.addWidget(tile, 0, column)
         lay.addLayout(tiles)
-        lay.addWidget(_label(QApplication.translate("tilauscope_diagnostics", "Roasts, BeanCave, settings and everything TilauScope has learned are saved together, so they always match."), "body"))
+        lay.addWidget(_label((QApplication.translate("tilauscope_diagnostics", "Roasts, coffees, sacks, tastings and BeanCave's settings are saved together, so they always match.") if _beancave() else QApplication.translate("tilauscope_diagnostics", "Roasts, BeanCave, settings and everything TilauScope has learned are saved together, so they always match.")), "body"))
         lay.addWidget(_label("🔒  " + QApplication.translate("tilauscope_diagnostics", "Passwords and API keys stay in the system keychain. They are not in the backup."), "body"))
         lay.addWidget(_separator())
 
@@ -152,7 +157,7 @@ class BackupDialog(_Card):
         box = QVBoxLayout(self._auto_box)
         box.setContentsMargins(0, 0, 0, 0)
         box.setSpacing(12)
-        box.addWidget(_label(QApplication.translate("tilauscope_diagnostics", "When TilauScope closes after a session with new roasts. Never during a roast."), "body"))
+        box.addWidget(_label((QApplication.translate("tilauscope_diagnostics", "When BeanCave closes after new roasts.") if _beancave() else QApplication.translate("tilauscope_diagnostics", "When TilauScope closes after a session with new roasts. Never during a roast.")), "body"))
         box.addWidget(_label(QApplication.translate("tilauscope_diagnostics", "Extra copy — network or cloud folder")))
         row = QHBoxLayout()
         self._extra = _label("", "path", "mono")
@@ -231,7 +236,7 @@ class BackupDialog(_Card):
 
     # page 1
     def _build_run_page(self) -> None:
-        self._run = _RunPage(self.page(), QApplication.translate("tilauscope_diagnostics", "You can keep using TilauScope meanwhile."))
+        self._run = _RunPage(self.page(), (QApplication.translate("tilauscope_diagnostics", "You can keep using BeanCave meanwhile.") if _beancave() else QApplication.translate("tilauscope_diagnostics", "You can keep using TilauScope meanwhile.")))
         self._run.title.setText(QApplication.translate("tilauscope_diagnostics", "Copying files"))
         self._run.cancel.clicked.connect(self._cancel)
 
@@ -254,7 +259,7 @@ class BackupDialog(_Card):
         lay.addLayout(row)
 
     def _start_backup(self) -> None:
-        self._target = core.backup_name(core.MANUAL_PREFIX, Path(backup.folder()))
+        self._target = core.backup_name(core.prefix(backup.app_name()), Path(backup.folder()))
         self._job = backup.BackupJob()
         self._job.progress.connect(self._run.show_progress)
         self._job.finished.connect(self._finished)
@@ -294,7 +299,7 @@ class BackupDialog(_Card):
 class RestoreDialog(_Card):
 
     def __init__(self, parent: QWidget | None, aw: ApplicationWindow, archive: Path, manifest: core.Manifest) -> None:
-        super().__init__(parent, QApplication.translate("tilauscope_diagnostics", "Restore TilauScope"))
+        super().__init__(parent, (QApplication.translate("tilauscope_diagnostics", "Restore BeanCave") if _beancave() else QApplication.translate("tilauscope_diagnostics", "Restore TilauScope")))
         self._aw = aw
         self._archive = archive
         self._manifest = manifest
@@ -305,7 +310,7 @@ class RestoreDialog(_Card):
                          if key in core.OPERATOR_ROOTS and info["inside"] is None}
         self._known = {key: (current.get(key), info["path"]) for key, info in manifest.roots.items()}
         self._build_preview(core.count(core.plan_roots(current)))
-        self._run = _RunPage(self.page(), QApplication.translate("tilauscope_diagnostics", "TilauScope restarts when this is done."))
+        self._run = _RunPage(self.page(), (QApplication.translate("tilauscope_diagnostics", "BeanCave restarts when this is done.") if _beancave() else QApplication.translate("tilauscope_diagnostics", "TilauScope restarts when this is done.")))
         self._run.title.setText(QApplication.translate("tilauscope_diagnostics", "Checking the backup and saving the current state…"))
         self._run.cancel.clicked.connect(self._cancel)
 
@@ -317,7 +322,7 @@ class RestoreDialog(_Card):
         inner = QVBoxLayout(file_card)
         inner.setContentsMargins(16, 12, 16, 12)
         inner.addWidget(_label(self._archive.name, variant="mono"))
-        inner.addWidget(_label(QApplication.translate("tilauscope_diagnostics", "Made on {0} · TilauScope {1} build {2} · {3}").format(
+        inner.addWidget(_label((QApplication.translate("tilauscope_diagnostics", "Made on {0} · BeanCave {1} build {2} · {3}") if _beancave() else QApplication.translate("tilauscope_diagnostics", "Made on {0} · TilauScope {1} build {2} · {3}")).format(
             _when(made.created), made.version, made.build, _system(made.system)), variant="caption"))
         lay.addWidget(file_card)
 
@@ -359,7 +364,7 @@ class RestoreDialog(_Card):
             lay.addLayout(row)
         if core.CAVE in self._manifest.roots and core.CAVE not in self._targets:
             lay.addWidget(_label(QApplication.translate("tilauscope_diagnostics", "The BeanCave goes to its usual folder."), variant="caption"))
-        lay.addWidget(_label("🔒  " + QApplication.translate("tilauscope_diagnostics", "TilauScope restarts. Then enter your passwords and API keys again (AI assistant, MQTT)."), "body"))
+        lay.addWidget(_label("🔒  " + (QApplication.translate("tilauscope_diagnostics", "BeanCave restarts. Then enter your passwords and API keys again (AI assistant, MQTT).") if _beancave() else QApplication.translate("tilauscope_diagnostics", "TilauScope restarts. Then enter your passwords and API keys again (AI assistant, MQTT).")), "body"))
         lay.addStretch()
 
         row = QHBoxLayout()
@@ -379,7 +384,7 @@ class RestoreDialog(_Card):
         if not chosen:
             return
         if not core.safe_target(chosen, self._known.get(key, ())):
-            show_styled_message(self, self.windowTitle(), QApplication.translate("tilauscope_diagnostics", "This folder already holds other files, and restoring replaces its content.\n\nChoose an empty folder, or the one TilauScope already uses."), QMessageBox.Icon.Warning)
+            show_styled_message(self, self.windowTitle(), (QApplication.translate("tilauscope_diagnostics", "This folder already holds other files, and restoring replaces its content.\n\nChoose an empty folder, or the one BeanCave already uses.") if _beancave() else QApplication.translate("tilauscope_diagnostics", "This folder already holds other files, and restoring replaces its content.\n\nChoose an empty folder, or the one TilauScope already uses.")), QMessageBox.Icon.Warning)
             return
         self._targets[key] = chosen
         _set_path(self._target_labels[key], chosen)
@@ -420,7 +425,7 @@ class RestoreDialog(_Card):
 
 def _damaged(parent: QWidget | None) -> bool:
     """True when the operator asks to pick another file."""
-    title = QApplication.translate("tilauscope_diagnostics", "Restore TilauScope")
+    title = (QApplication.translate("tilauscope_diagnostics", "Restore BeanCave") if _beancave() else QApplication.translate("tilauscope_diagnostics", "Restore TilauScope"))
     text = QApplication.translate("tilauscope_diagnostics", "This file is damaged or incomplete.\n\nIt cannot be restored. Nothing was changed.")
     buttons = [QApplication.translate("Button", "Close"), QApplication.translate("tilauscope_diagnostics", "Choose another file…")]
     return show_styled_message(parent, title, text, QMessageBox.Icon.Critical, buttons=buttons) == 1
@@ -448,18 +453,23 @@ def open_restore(aw: ApplicationWindow) -> None:
     if aw.qmc.flagstart or "restore" in _open:
         return
     parent = QApplication.activeWindow()
-    title = QApplication.translate("tilauscope_diagnostics", "Restore TilauScope")
+    title = (QApplication.translate("tilauscope_diagnostics", "Restore BeanCave") if _beancave() else QApplication.translate("tilauscope_diagnostics", "Restore TilauScope"))
     version, build = backup.app_version()
     while True:
         chosen, _ = QFileDialog.getOpenFileName(parent, title, backup.folder(),
-                                                QApplication.translate("tilauscope_diagnostics", "TilauScope backup") + f" (*{core.EXTENSION})")
+                                                (QApplication.translate("tilauscope_diagnostics", "BeanCave backup") if _beancave() else QApplication.translate("tilauscope_diagnostics", "TilauScope backup")) + f" (*{core.EXTENSION})")
         if not chosen:
             return
         try:
-            manifest = core.read_manifest(Path(chosen), version=version, build=build)
+            manifest = core.read_manifest(Path(chosen), version=version, build=build, app=backup.app_name())
         except core.BackupError as e:
+            if e.kind == core.BackupError.OTHER_APP:
+                # A program's name, never translated: TilauScope or BeanCave.
+                text = QApplication.translate("tilauscope_diagnostics", "This backup was made by {0}. Restore it in {0}. Nothing was changed.").format(str(e))
+                show_styled_message(parent, title, text, QMessageBox.Icon.Warning)
+                continue
             if e.kind == core.BackupError.NEWER:
-                text = QApplication.translate("tilauscope_diagnostics", "This backup comes from a newer TilauScope ({0}).\n\nUpdate TilauScope, then restore. Nothing was changed.").format(str(e))
+                text = (QApplication.translate("tilauscope_diagnostics", "This backup comes from a newer BeanCave ({0}).\n\nUpdate BeanCave, then restore. Nothing was changed.") if _beancave() else QApplication.translate("tilauscope_diagnostics", "This backup comes from a newer TilauScope ({0}).\n\nUpdate TilauScope, then restore. Nothing was changed.")).format(str(e))
                 buttons = [QApplication.translate("Button", "Close"), QApplication.translate("tilauscope_diagnostics", "Check for updates")]
                 if show_styled_message(parent, title, text, QMessageBox.Icon.Warning, buttons=buttons) == 1:
                     updater = getattr(aw, "_tilau_updater", None)
@@ -554,12 +564,12 @@ def show_backup_notices(parent: QWidget, aw: ApplicationWindow) -> None:
 
 def _notices(parent: QWidget, aw: ApplicationWindow) -> None:
     settings = QSettings()
-    title = QApplication.translate("tilauscope_diagnostics", "Restore TilauScope")
+    title = (QApplication.translate("tilauscope_diagnostics", "Restore BeanCave") if _beancave() else QApplication.translate("tilauscope_diagnostics", "Restore TilauScope"))
     failed_safety = settings.value(backup.KEY_RESTORE_FAILED, None)
     restored = settings.value(backup.KEY_RESTORED, "", type=str)
     if failed_safety is not None:
         settings.remove(backup.KEY_RESTORE_FAILED)
-        text = QApplication.translate("tilauscope_diagnostics", "The restore could not be completed.\n\nThe state from before the restore is saved in {0}. You can restore it from Help › Restore TilauScope.").format(Path(str(failed_safety)).name)
+        text = (QApplication.translate("tilauscope_diagnostics", "The restore could not be completed.\n\nThe state from before the restore is saved in {0}. You can restore it from BeanCave › Restore BeanCave.") if _beancave() else QApplication.translate("tilauscope_diagnostics", "The restore could not be completed.\n\nThe state from before the restore is saved in {0}. You can restore it from Help › Restore TilauScope.")).format(Path(str(failed_safety)).name)
         show_styled_message(parent, title, text, QMessageBox.Icon.Critical)
     elif restored:
         settings.remove(backup.KEY_RESTORED)
@@ -571,5 +581,5 @@ def _notices(parent: QWidget, aw: ApplicationWindow) -> None:
         settings.setValue(backup.KEY_EXTRA_FAILED, False)
         text = QApplication.translate("tilauscope_diagnostics", "Network folder unreachable — the local backup was saved.")
         buttons = [QApplication.translate("tilauscope_diagnostics", "Later"), QApplication.translate("tilauscope_diagnostics", "Check folder")]
-        if show_styled_message(parent, QApplication.translate("tilauscope_diagnostics", "Back up TilauScope"), text, QMessageBox.Icon.Warning, buttons=buttons) == 1:
+        if show_styled_message(parent, (QApplication.translate("tilauscope_diagnostics", "Back up BeanCave") if _beancave() else QApplication.translate("tilauscope_diagnostics", "Back up TilauScope")), text, QMessageBox.Icon.Warning, buttons=buttons) == 1:
             open_backup(aw, parent)

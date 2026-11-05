@@ -30,6 +30,11 @@ if TYPE_CHECKING:
 
 _log:  Final[logging.Logger] = logging.getLogger(__name__)
 
+#: The devices BeanCave alone connects when it starts (cave.lifecycle._start_ble_scanner);
+#: the scale is not one of them, its manager takes a new one at once.
+_CAVE_DEVICES: Final[tuple[str, ...]] = ('bleTilauScopeDeviceName', 'bleRoastSeeDeviceName',
+                                         'bleRoastSeeAGDeviceName', 'bleNiimbotDeviceName')
+
 
 # A real BLE identifier — macOS: Core Bluetooth UUID; Windows: MAC address.
 _BLE_ID_PATTERN: Final[re.Pattern[str]] = re.compile(
@@ -1770,6 +1775,15 @@ class TilauscopeConfigDlg(QDialog):
 
     # ── scanner wiring (SENSORS tab lifetime) ──────────────────────────────
 
+    def showEvent(self, event) -> None:  # noqa: ANN001, N802
+        """Alone, DEVICES opens first: no tab change would start the search."""
+        super().showEvent(event)
+        try:
+            if self._tabs.currentWidget() is self._sensors_tab:
+                self._hook_scanner()
+        except Exception as e:  # pylint: disable=broad-except
+            _log.exception("TilauScope config: scanner hook on show failed: %s", e)
+
     @pyqtSlot(int)
     def _on_tab_changed(self, index: int) -> None:
         if self._tabs.widget(index) is self._sensors_tab:
@@ -3077,9 +3091,29 @@ class TilauscopeConfigDlg(QDialog):
         QSettings().setValue("tilauscope/currency", self.currencyCombo.currentData())
 
         # AI config saved immediately in _open_ai_provider_picker
+        devices_changed = False
         if self._alone:
             aw.save_settings()   # BeanCave alone has no Artisan to write them on quit
+            devices_changed = any(self._org.get(key) != getattr(aw, key, None) for key in _CAVE_DEVICES)
         self.accept()
+        if devices_changed:
+            self._offer_restart()
+
+    def _offer_restart(self) -> None:
+        """BeanCave alone connects its devices when it starts: a new one works after a restart."""
+        cave = getattr(self.aw, 'beancaveWindow', None)
+        choice = show_styled_message(
+            cave, QApplication.translate("tilauscope_devices", "BEANCAVE SETTINGS"),
+            QApplication.translate("tilauscope_devices", "BeanCave uses the new devices after it restarts."),
+            QMessageBox.Icon.Information,
+            buttons=[QApplication.translate("tilauscope_devices", "Restart now"),
+                     QApplication.translate("tilauscope_devices", "Later")])
+        if choice != 0 or cave is None:
+            return
+        cave.close()
+        if not cave.isVisible():   # its own close may keep it open (an unsaved maintenance edit)
+            from tilauscope.backup import relaunch_after_exit  # noqa: PLC0415
+            relaunch_after_exit()
 
     @pyqtSlot()
     def _on_cancel(self) -> None:

@@ -115,10 +115,21 @@ Function un.onInit
     Abort
 FunctionEnd
 
-; Only the program folder: the coffee library lives in the user's own folder and is never touched.
+; Only what the installer put there (setup-beancave-win.spec), never the whole folder: one
+; chosen by hand may hold other files, the coffee library among them.
 Section Uninstall
   SetShellVarContext all
-  RMDir /r /REBOOTOK "$INSTDIR"
+  Delete "$INSTDIR\BeanCave.exe"
+  Delete "$INSTDIR\LICENSE.txt"
+  Delete "$INSTDIR\beancave.ico"
+  Delete "$INSTDIR\vc_redist.x64.exe"
+  RMDir /r "$INSTDIR\_internal"
+  RMDir /r "$INSTDIR\translations"
+  RMDir /r "$INSTDIR\Icons"
+  RMDir /r "$INSTDIR\Themes"
+  RMDir /r "$INSTDIR\Machines"
+  Delete /REBOOTOK "$INSTDIR\uninst.exe"
+  RMDir /REBOOTOK "$INSTDIR"
   Delete "$SMPROGRAMS\BeanCave\BeanCave.lnk"
   Delete "$SMPROGRAMS\BeanCave\Uninstall.lnk"
   RMDir "$SMPROGRAMS\BeanCave"

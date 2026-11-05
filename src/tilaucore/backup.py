@@ -49,9 +49,19 @@ MANIFEST_NAME: Final[str] = "manifest.json"
 SETTINGS_NAME: Final[str] = "settings.json"
 PENDING_RESTORE_NAME: Final[str] = "pending_restore.json"
 
-MANUAL_PREFIX: Final[str] = "TilauScope-"
-AUTO_PREFIX: Final[str] = "TilauScope-auto-"
-SAFETY_PREFIX: Final[str] = "TilauScope-before-restore-"
+#: The program that made a backup: TilauScope, or BeanCave alone. Each restores only its own.
+APP: Final[str] = "TilauScope"
+MANUAL, AUTO, SAFETY = "", "auto-", "before-restore-"
+
+
+def prefix(app: str, kind: str = MANUAL) -> str:
+    """``<app>-``, ``<app>-auto-`` or ``<app>-before-restore-``: the start of a backup's file name."""
+    return f"{app}-{kind}"
+
+
+MANUAL_PREFIX: Final[str] = prefix(APP)
+AUTO_PREFIX: Final[str] = prefix(APP, AUTO)
+SAFETY_PREFIX: Final[str] = prefix(APP, SAFETY)
 
 # Root keys. ROAST and CAVE are the operator's folders; DATA and APPDATA are the
 # application's own (learning, PID calibration), always restored on this machine.
@@ -69,6 +79,7 @@ EXCLUDED: Final[tuple[str, ...]] = (
     f"*{EXTENSION}", f"*{EXTENSION}.tmp", PENDING_RESTORE_NAME,
     "alog_index.json", "uuids.db", "sync", "tilau_snapshot_*.txt",
     "tilauscope-web.crt", "tilauscope-web.key",
+    ".beancave.lock", "beancave.instance",   # one writer per library; one BeanCave alone
 )
 
 Progress = Callable[[int, int], None]
@@ -99,6 +110,7 @@ class Manifest:
     roots: dict[str, dict[str, Any]]
     counts: Counts
     files: dict[str, dict[str, Any]] = field(default_factory=dict)
+    app: str = APP   # a backup written before BeanCave alone existed is TilauScope's
 
 
 # ── what goes in ────────────────────────────────────────────────────────────
@@ -178,20 +190,20 @@ def backup_name(prefix: str, folder: Path, now: datetime | None = None) -> Path:
     """``<prefix><date>.tilaubackup``, the time added only when that name is taken."""
     now = now or datetime.now().astimezone()
     path = folder / f"{prefix}{now:%Y-%m-%d}{EXTENSION}"
-    if prefix == MANUAL_PREFIX and not path.exists():
+    if not prefix.endswith((AUTO, SAFETY)) and not path.exists():
         return path
     return folder / f"{prefix}{now:%Y-%m-%d_%H%M%S}{EXTENSION}"
 
 
 def write_backup(target: Path, roots: Mapping[str, str | os.PathLike | None], settings: Mapping[str, Any], *,
                  version: str, build: int, progress: Progress | None = None,
-                 cancel: threading.Event | None = None) -> Manifest:
+                 cancel: threading.Event | None = None, app: str = APP) -> Manifest:
     """Write the backup to ``target``. Atomic: a stopped or failed run leaves no file."""
     plan = plan_roots(roots)
     entries = collect(plan)
     manifest = Manifest(created=datetime.now().astimezone().isoformat(timespec="seconds"),
                         version=version, build=int(build), system=platform.system(), host=socket.gethostname(),
-                        roots=plan, counts=count(plan))
+                        roots=plan, counts=count(plan), app=app)
     target.parent.mkdir(parents=True, exist_ok=True)
     partial = target.with_name(target.name + ".tmp")
     try:
@@ -214,13 +226,14 @@ def write_backup(target: Path, roots: Mapping[str, str | os.PathLike | None], se
 def _manifest_dict(manifest: Manifest) -> dict[str, Any]:
     return {"format": FORMAT, "created": manifest.created, "version": manifest.version,
             "build": manifest.build, "system": manifest.system, "host": manifest.host,
-            "roots": manifest.roots, "counts": vars(manifest.counts), "files": manifest.files}
+            "roots": manifest.roots, "counts": vars(manifest.counts), "files": manifest.files,
+            "app": manifest.app}
 
 
 # ── reading ─────────────────────────────────────────────────────────────────
 
-def read_manifest(path: Path, *, version: str, build: int) -> Manifest:
-    """The manifest, or BackupError: damaged, or written by a newer TilauScope."""
+def read_manifest(path: Path, *, version: str, build: int, app: str = APP) -> Manifest:
+    """The manifest, or BackupError: damaged, written by a newer version, or by the other program."""
     try:
         with zipfile.ZipFile(path) as archive:
             raw = json.loads(archive.read(MANIFEST_NAME).decode("utf-8"))
@@ -231,10 +244,12 @@ def read_manifest(path: Path, *, version: str, build: int) -> Manifest:
     try:
         manifest = Manifest(created=raw["created"], version=raw["version"], build=int(raw["build"]),
                             system=raw["system"], host=raw["host"], roots=raw["roots"],
-                            counts=Counts(**raw["counts"]), files=raw["files"])
+                            counts=Counts(**raw["counts"]), files=raw["files"], app=str(raw.get("app") or APP))
         newer = raw["format"] > FORMAT or version_key(manifest.version, manifest.build) > version_key(version, build)
     except (KeyError, TypeError, ValueError) as e:
         raise BackupError(BackupError.DAMAGED, str(e)) from e
+    if manifest.app != app:
+        raise BackupError(BackupError.OTHER_APP, manifest.app)
     if newer:
         raise BackupError(BackupError.NEWER, manifest.version)
     return manifest

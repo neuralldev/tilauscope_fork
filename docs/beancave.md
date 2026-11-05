@@ -377,6 +377,11 @@ BeanCave also exists as a program of its own, for macOS and Windows, for roastin
 official Artisan rather than with TilauScope. It is meant for Artisan only: do not run it while
 TilauScope is open.
 
+**Installing and updating.** BeanCave is published with each TilauScope release, on the same
+release page: `beancave-….dmg` for macOS, `beancave-…-setup.exe` for Windows. It looks for a newer
+build a few seconds after it opens, and on demand from **BeanCave → Check for Updates**; it only
+ever offers BeanCave's own installer.
+
 **First launch.** Three steps: where Artisan saves your roasts (BeanCave finds it in Artisan's
 settings), where your coffees live (a library already in that folder is kept), and which roaster
 you use, so roast plans are built for that machine.
@@ -386,6 +391,18 @@ Artisan, with its name, its batch weight, its alarms and its reference roast as 
 curve. Artisan may ask whether to load a profile that is not genuine: answer yes. Roast as usual
 in Artisan. When Artisan saves the roast, BeanCave takes its green weight off the coffee's stock,
 once per roast.
+
+**After the roast.** In the **Roasts** tab, select the roast, then **⋯ More → Roast result**: the
+roasted weight, colour, defects and notes are written into the roast file itself. Close that roast
+in Artisan first: saving it there afterwards would put back what Artisan held.
+
+**A roast made without Prepare in Artisan.** It arrives with no coffee, so it counts neither for
+stock nor for the next plans. While such roasts are waiting, a banner at the top of the
+**Roasts** tab counts them; **Link them…** opens **Roast Profile Maintenance** on the first one.
+Once a roast is linked to its coffee, its green weight is taken from that coffee's stock, once.
+Maintenance also opens from **BeanCave → Roast Profile Maintenance...**. Roasts that were already in
+the folder when BeanCave first ran are not asked about. A roast recorded by TilauScope on the same
+library is never taken from stock again: TilauScope took it when the roast started.
 
 **Settings.** **⚙ Settings** in the header, or **BeanCave → Settings…** (⌘, on macOS), has three
 tabs:
@@ -399,6 +416,15 @@ tabs:
 These settings belong to BeanCave. At its first launch it takes over the devices, MQTT and AI
 TilauScope already knows on this computer; after that, a change in one program does not reach
 the other.
+
+**Backup and restore.** **BeanCave → Back up BeanCave…** saves the roasts, coffees, sacks,
+tastings and BeanCave's settings together, by default into `Documents/BeanCave Backups`, as
+`BeanCave-<date>.tilaubackup`. With automatic backup on, BeanCave also backs up when it closes
+after new roasts, and an extra copy can go to a network or cloud folder. **BeanCave → Restore
+BeanCave…** shows what a backup holds, keeps a safety copy of the current state, then BeanCave
+restarts and applies it. A TilauScope backup is refused by BeanCave, and a BeanCave backup by
+TilauScope: nothing is replaced. Passwords and API keys stay in the system keychain, and
+Artisan's own settings are not in the backup.
 
 The **Use as reference in Artisan** button is not offered on its own: Artisan cannot receive a
 background curve that way. The reference roast reaches Artisan through **Prepare in Artisan**.

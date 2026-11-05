@@ -1,5 +1,24 @@
 ## [4.3] 2026-09-13
+build 50
+build 49
+* ⚡ [feat(beancave)] : BeanCave on its own backs up and restores itself from its menu (Back up BeanCave… / Restore BeanCave…), automatically on closing after new roasts too; a TilauScope backup is never restored by BeanCave, nor the reverse
+* 🐛 [fix(backup)] : backups no longer carry the library and single-instance locks
+* 🐛 [fix(beancave)] : in BeanCave on its own, the Settings window looks for devices as soon as it opens, so a scale removed earlier can be chosen again
+* ⚡ [feat(beancave)] : BeanCave on its own reads the ambient probe chosen in its settings
+* ⚡ [feat(beancave)] : BeanCave on its own opens Roast Profile Maintenance from its menu, and a banner in Roasts links the roasts Artisan saved without a coffee; once linked, a roast is taken from that coffee's stock
+* 🐛 [fix(beancave)] : on its own, Roast result saves the roasted weight, colour, defects, notes and batch into the roast file instead of failing, and the roast shows its weight loss and colour at once
+* 🐛 [fix(beancave)] : BeanCave on its own no longer closes by itself when a message or another window closes, for example when Artisan quits
+* 🐛 [fix(beancave)] : BeanCave on its own no longer crashes on quit while a scale, colour meter or water activity probe is being searched for
+* 🐛 [fix(beancave)] : on macOS, BeanCave's Dock icon is rounded like TilauScope's
+* 🐛 [fix(beancave)] : Quit (⌘Q) closes BeanCave the way closing its window does, so what it saves on closing is kept
+* 🐛 [fix(beancave)] : BeanCave on its own pointed at another roasts folder no longer takes the roasts already in it from stock, and takes Artisan's next roast saved there
+* 🐛 [fix(beancave)] : the Windows uninstaller of BeanCave removes only its own files, never other files of the folder it was installed in
+* 🐛 [fix(beancave)] : BeanCave on its own no longer takes from stock a second time a roast TilauScope recorded on the same library
 build 48
+* ⚡ [feat(beancave)] : BeanCave on its own is published with each TilauScope release, as a signed and notarised DMG for macOS and an installer for Windows
+* ⚡ [feat(beancave)] : BeanCave on its own checks for its updates at launch and from BeanCave › Check for Updates, the same way TilauScope does, and only ever offers its own installer
+* ⚡ [feat(i18n)] : BeanCave's first launch, settings, Prepare in Artisan and update messages are translated in French, German, Spanish, Italian and Chinese (simplified and traditional)
+* 🐛 [fix(i18n)] : the French update window no longer reads "InstallerMaintenant" and "maintenat"
 build 47
 * ⚡ [feat(beancave)] : BeanCave becomes a program of its own, for macOS and Windows, to use beside the official Artisan: a three-step first launch (Artisan's roasts folder, the library folder, the roaster), Prepare in Artisan opens the coffee's next roast in Artisan with its name, weight, alarms and reference curve, and the green weight comes off the stock when Artisan saves the roast
 * ⚡ [feat(beancave)] : BeanCave on its own has its settings (⚙ Settings, or Preferences… ⌘,): its devices (scale, colour meter, AquaGauge, ambient probe, label printer), library, roaster, label size, MQTT and AI; at first launch it takes over the ones TilauScope already knows

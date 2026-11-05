@@ -28,6 +28,7 @@ class ArchiveError(Exception):
 
     DAMAGED: Final[str] = "damaged"
     NEWER: Final[str] = "newer"
+    OTHER_APP: Final[str] = "other_app"   # a backup of the other program (TilauScope / BeanCave alone)
 
     def __init__(self, kind: str, detail: str = "") -> None:
         super().__init__(detail or kind)

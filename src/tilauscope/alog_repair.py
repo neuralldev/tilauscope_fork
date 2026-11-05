@@ -550,7 +550,9 @@ class AlogRepairDialog(QDialog):
     _ROLE_PATH       = Qt.ItemDataRole.UserRole
     _ROLE_INCOMPLETE = Qt.ItemDataRole.UserRole + 1
 
-    def __init__(self, beancave: 'BeancaveDlg', aw: 'ApplicationWindow') -> None:
+    def __init__(self, beancave: 'BeancaveDlg', aw: 'ApplicationWindow', focus: str | None = None) -> None:
+        """`focus`: a roast file to open on, among the files to complete (BeanCave alone,
+        a roast Artisan saved without a coffee)."""
         super().__init__(None)  # parent=None: avoid Qt embedding on macOS
         # frameless translucent window: ground=False. The grounded base emits
         # QDialog { background-color }, which paints the whole rectangle opaque
@@ -579,7 +581,11 @@ class AlogRepairDialog(QDialog):
         self._scan_timer.timeout.connect(self._scan_step)
         self._pending_select: Path | None = None
         self._pending_prev_row = -1
-        self._filter = _FILTER_ALL
+        self._filter = _FILTER_INCOMPLETE if focus else _FILTER_ALL
+        # One folder: the name is enough. Kept by the filter even when linked to another
+        # library's coffee, which leaves nothing to complete.
+        self._focus_name = Path(focus).name if focus else ''
+        self._focus = self._focus_name
         self._bean_uuids: set[str] = set()
         self._slider = PIDConfig().heater_slider
         # path -> the other files saved with the same roast start; known after a full pass
@@ -1117,6 +1123,9 @@ class AlogRepairDialog(QDialog):
             return
         self._list.addItem(self._new_item(key))
         self._scan_shown += 1
+        if self._focus and fp.name == self._focus:
+            self._focus = ''
+            self._list.setCurrentRow(self._list.count() - 1)
 
     def _flag_count(self, key: str) -> int:
         """How many recording faults the row of `key` marks with ⚑."""
@@ -1153,6 +1162,8 @@ class AlogRepairDialog(QDialog):
         return int(cfg.heater_slider) if cfg is not None else PIDConfig().heater_slider
 
     def _passes_filter(self, key: str) -> bool:
+        if self._focus_name and Path(key).name == self._focus_name:
+            return True
         entry = _scan_cache[key]
         if self._filter == _FILTER_INCOMPLETE:
             return bool(entry[2] or entry[4])

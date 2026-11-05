@@ -192,6 +192,9 @@ class BeanCaveContainer:
     reference_profiles: list[ReferenceProfile] = field(default_factory=list)
     # BeanCave alone: the roastUUIDs already taken from stock; None until it first runs.
     stock_taken_roasts: list[str] | None = None
+    # BeanCave alone: roastUUIDs saved by Artisan with no coffee of the library since it
+    # first ran. Linking one takes its green weight from that coffee's stock, once.
+    stock_awaiting_link: list[str] = field(default_factory=list)
 
 
 T = TypeVar('T')

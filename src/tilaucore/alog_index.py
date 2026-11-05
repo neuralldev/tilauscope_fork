@@ -28,7 +28,7 @@ _log: Final[logging.Logger] = logging.getLogger(__name__)
 
 # Bump on any change to the fields extracted below: a mismatch forces a full
 # rebuild rather than serving entries that lack the new data.
-INDEX_SCHEMA: Final[int] = 8
+INDEX_SCHEMA: Final[int] = 9
 
 # Read windows. The head must cover every scalar key, the event lists AND the
 # whole 'timex' array — the burner readings below turn event indices into times
@@ -52,7 +52,8 @@ _SCALAR_KEYS: Final[tuple[str, ...]] = (
     'ambientTemp', 'ambient_humidity', 'ambient_pressure',
     'tilau_exclude_learning', 'tilau_simulated',
 )
-_BLOCK_KEYS: Final[tuple[str, ...]] = ('weight', 'computed', 'tilau_roast_plan_snapshot', 'tilau_shared')
+_BLOCK_KEYS: Final[tuple[str, ...]] = ('weight', 'computed', 'tilau_roast_plan_snapshot', 'tilau_shared',
+                                       'tilau_name_map')
 # Read only to derive the burner readings; never stored (timex alone is 20 KB).
 _SERIES_KEYS: Final[tuple[str, ...]] = (
     'timex', 'timeindex', 'specialevents', 'specialeventstype', 'specialeventsvalue',
@@ -121,6 +122,10 @@ class AlogMetadata:
     # The change a tasting made to the plan this roast followed, None when it
     # made none or the roast has no plan on record.
     tasting_change: "dict[str, Any] | None" = None
+    # ── schema 9 ────────────────────────────────────────────────────────────
+    # Saved by TilauScope (it writes ``tilau_name_map`` in every roast; Artisan never
+    # does): TilauScope took its stock when it started, BeanCave alone does not again.
+    recorded_by_tilauscope: bool = False
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -390,6 +395,7 @@ def read_alog_metadata(path: Path) -> "AlogMetadata | None":
         exclude_learning=bool(values.get('tilau_exclude_learning') is True),
         simulated=bool(values.get('tilau_simulated') is True),
         shared=bool(values.get('tilau_shared')),
+        recorded_by_tilauscope=values.get('tilau_name_map') is not None,
         computed=computed if isinstance(computed, dict) else {},
         machinesetup=str(values.get('machinesetup') or ""),
         pid_source=pid_source,

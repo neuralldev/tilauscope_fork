@@ -59,6 +59,12 @@ _MACHINE_KEYS: Final[tuple[str, ...]] = ("tilauscope/remote_devices",)
 _MACHINE_PREFIXES: Final[tuple[str, ...]] = ("tilauscope/backup/",)
 
 
+def app_name() -> str:
+    """The program backing up: BeanCave alone (wiki/BeanCave-Standalone-Spec.md), else TilauScope."""
+    from PyQt6.QtCore import QCoreApplication  # noqa: PLC0415
+    return "BeanCave" if QCoreApplication.applicationName() == "BeanCave" else core.APP
+
+
 def app_version() -> tuple[str, int]:
     try:
         from artisanlib import __build__, __version__  # type: ignore[attr-defined]
@@ -70,7 +76,14 @@ def app_version() -> tuple[str, int]:
 # ── where things are ────────────────────────────────────────────────────────
 
 def data_directory() -> str:
-    """Artisan's data folder (getDataDirectory), resolved the same way at backup and at start-up restore."""
+    """Artisan's data folder (getDataDirectory), resolved the same way at backup and at start-up restore.
+
+    BeanCave alone keeps its own: getDataDirectory names TilauScope's, whose learning a
+    BeanCave backup must not carry, and where a BeanCave restore left pending would be
+    applied by TilauScope's next start.
+    """
+    if app_name() == "BeanCave":
+        return QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation)
     from artisanlib.util import getDataDirectory
     return getDataDirectory() or ""
 
@@ -85,7 +98,7 @@ def roots() -> dict[str, str]:
 
 def default_folder() -> str:
     documents = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DocumentsLocation)
-    return str(Path(documents) / "TilauScope Backups")
+    return str(Path(documents) / f"{app_name()} Backups")
 
 
 def folder() -> str:
@@ -253,10 +266,11 @@ def backup_work(target: Path):
     """The job body for one backup to ``target``. Everything Qt-bound is read here, on the GUI thread."""
     settings, where = dump_settings(), roots()
     version, build = app_version()
+    app = app_name()
 
     def work(job: BackupJob) -> Path:
         core.write_backup(target, where, settings, version=version, build=build,
-                          progress=job.report, cancel=job.cancel)
+                          progress=job.report, cancel=job.cancel, app=app)
         return target
     return work
 
@@ -264,19 +278,20 @@ def backup_work(target: Path):
 def auto_backup_work():
     """The automatic run: local copy, pruned, then the extra copy when one is set."""
     local, extra, keep = Path(folder()), QSettings().value(KEY_EXTRA, "", type=str), keep_count()
-    target = core.backup_name(core.AUTO_PREFIX, local)
+    auto = core.prefix(app_name(), core.AUTO)
+    target = core.backup_name(auto, local)
     write = backup_work(target)
 
     def work(job: BackupJob) -> str:
         write(job)
-        core.prune(local, core.AUTO_PREFIX, keep)
+        core.prune(local, auto, keep)
         if not extra:
             return "ok"
         try:
             if not extra_reachable(extra):
                 raise OSError(extra)
             core.copy_to(target, Path(extra))
-            core.prune(Path(extra), core.AUTO_PREFIX, keep)
+            core.prune(Path(extra), auto, keep)
         except OSError:
             _log.warning("backup: extra copy to %s failed", extra, exc_info=True)
             return "extra_failed"
@@ -305,7 +320,7 @@ def auto_backup_due() -> bool:
 
 def restore_work(archive: Path, manifest: core.Manifest, targets: dict[str, str]):
     """Check the archive, keep the current state in a safety backup, then leave the restore to the next start."""
-    safety = core.backup_name(core.SAFETY_PREFIX, Path(folder()))
+    safety = core.backup_name(core.prefix(app_name(), core.SAFETY), Path(folder()))
     write = backup_work(safety)
     data = Path(data_directory())
 
@@ -333,7 +348,7 @@ def apply_pending_restore() -> None:
     try:
         archive = Path(pending["archive"])
         version, build = app_version()
-        manifest = core.read_manifest(archive, version=version, build=build)
+        manifest = core.read_manifest(archive, version=version, build=build, app=app_name())
         core.verify(archive, manifest)
         here = {core.DATA: data,
                 core.APPDATA: QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)}
@@ -352,7 +367,7 @@ def apply_pending_restore() -> None:
 
 
 def relaunch_after_exit() -> bool:
-    """Start a helper that reopens TilauScope once this process is gone.
+    """Start a helper that reopens this program (TilauScope or BeanCave) once this process is gone.
 
     It waits for the exit: the single-instance guard turns away a start that
     overlaps the one quitting. Returns False when no way to relaunch is known.
